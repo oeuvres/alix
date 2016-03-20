@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<jardesc>
+    <jar path="chapitre/WEB-INF/lib/alix.jar"/>
+    <options buildIfNeeded="true" compress="true" descriptionLocation="/alix/chapitre.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="false" overwrite="false" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
+    <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
+    <selectedProjects/>
+    <manifest generateManifest="false" manifestLocation="/alix/java/META-INF/MANIFEST.MF" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
+        <sealing sealJar="false">
+            <packagesToSeal/>
+            <packagesToUnSeal/>
+        </sealing>
+    </manifest>
+    <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
+        <javaElement handleIdentifier="=alix/java&lt;com.github.oeuvres.lucene{Demo.java"/>
+        <javaElement handleIdentifier="=alix/java&lt;com.github.oeuvres.lucene{Alix.java"/>
+        <javaElement handleIdentifier="=alix/java&lt;com.github.oeuvres.lucene{ChapitreSimilariy.java"/>
+        <javaElement handleIdentifier="=alix/java&lt;com.github.oeuvres.lucene{MoreLikeThisQuery.java"/>
+        <javaElement handleIdentifier="=alix/java&lt;com.github.oeuvres.lucene{MoreLikeThis.java"/>
+        <javaElement handleIdentifier="=alix/java&lt;com.github.oeuvres.lucene{ChapitreCodec.java"/>
+        <folder path="/alix/java/META-INF"/>
+        <javaElement handleIdentifier="=alix/java&lt;com.github.oeuvres.lucene{XmlTokenizer.java"/>
+        <javaElement handleIdentifier="=alix/java&lt;com.github.oeuvres.lucene{XmlAnalyzer.java"/>
+    </selectedElements>
+</jardesc>
