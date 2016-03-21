@@ -4,6 +4,9 @@ import java.util.Map;
 
 /**
  * source: http://java-performance.info/implementing-world-fastest-java-int-to-int-hash-map/
+ * 
+ * TODO, use the interleaving int instead of the long array.
+ * 
  * An efficient int-int Map implementation, 
  * with a special method to modify a value by addition
  * Used for word vectors indexed by int  
@@ -147,7 +150,6 @@ public class IntIntMap
     while ( true ) {
       idx = getNextIndex( idx );
       c = data[ idx ];
-      if (add) System.out.print(" "+(c >> 32));
       if ( c == FREE_CELL ) {
         data[ idx ] = (((long)key) & KEY_MASK) | ( ((long)value) << 32 );
         //size is set inside
@@ -216,21 +218,20 @@ public class IntIntMap
   {
     if (pointer < 0 ) return nextKey();
     if (data[pointer] == FREE_CELL) return nextKey();
-    // (((long)key) & KEY_MASK) | ( ((long)value) << 32 );
-    // (int) (c >> 32);
     return (int)(data[pointer] & KEY_MASK);
   }
   /**
    * Current value
    */
-  public int currentValue() 
+  public long currentValue() 
   {
     if (pointer < 0 ) return nextValue();
     if (data[pointer] == FREE_CELL) return nextValue();
-    return (int)data[pointer] >> 32;
+    return (int)(data[pointer] >> 32);
   }
   /**
    * A light iterator implementation
+   * TODO optimization
    * @return
    */
   public int nextKey() {
@@ -250,7 +251,7 @@ public class IntIntMap
   {
     while ( pointer+1 < data.length) {
       pointer++;
-      if (data[pointer] != FREE_CELL) return (int)(data[pointer] & KEY_MASK);
+      if (data[pointer] != FREE_CELL) return (int)(data[pointer] >> 32);
     }
     reset();
     return NO_VALUE;
@@ -368,6 +369,14 @@ public class IntIntMap
       else first = false;
       sb.append(key +":"+(entry >> 32));
     }
+    /* less efficient but works
+    reset();
+    while(nextKey() != NO_KEY) {
+      if (!first) sb.append(", ");
+      else first = false;
+      sb.append(currentKey() +":"+currentValue());      
+    }
+    */
     sb.append(" }");
     return sb.toString();
   }

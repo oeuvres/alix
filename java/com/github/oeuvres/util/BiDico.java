@@ -9,6 +9,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -28,20 +30,19 @@ import java.util.Set;
 
 
 /**
- * A specialized bi-directional Map <String, int>
- * to get String by int, or int by String.
- * It’s a grow only object, keys can’t be removed.
- * Integer are unique, incremental, and kept consistent during all life of Object.
- * A count for String is incremented on each add() if key already exists.
- * Counter is not incremented on get (by key or by index)
+ * A specialized bi-directional Map <String, int> for a dictionary of terms.
  * 
- * Different output are nicely provided to sort things
+ * No put with free key, the key is an incremented counter.
+ * Keys are kept consistent during all life of Object, but may be lost on saving and dictionary merges.
+ * It’s a grow only object, entries can’t be removed.
+ * Get String by int, or int by String.
+ * A count for String is incremented on each add() if key already exists.
  * 
  * @author glorieux-f
  *
  */
 public class BiDico  {
-  /** Pointer in list, only growing when words are added */
+  /** Pointer in the array, only growing when words are added */
   private int pointer;
   /** HashMap to find String fast, int array is a hack to have an object, with mutable int, 
    * V[0] is counter, V[1] is int shortkey */
@@ -57,7 +58,7 @@ public class BiDico  {
    */
   public BiDico()
   {
-    pointer = 0; // pointer start at 1 because 0 is considered as an empty value for objects
+    pointer = 0;
     map = new HashMap<String, int[]>();
     array = new String[32];
   }
@@ -84,10 +85,20 @@ public class BiDico  {
   /**
    * Get the count of a word, 0 if not found
    * @param a word
-   * @return the key
+   * @return the count of occurrences
    */
   public int count(String word) {
     value = map.get(word);
+    if (value == null) return 0;
+    return value[0];
+  }
+  /**
+   * Get the count of a word, 0 if not found
+   * @param a word key
+   * @return the key
+   */
+  public int count(int key) {
+    value = map.get(array[key]);
     if (value == null) return 0;
     return value[0];
   }
@@ -167,12 +178,32 @@ public class BiDico  {
    * @throws NumberFormatException
    * @throws IOException
    */
-  public void save(Path path) throws IOException {
+  public void csv(Path path) throws IOException {
     BufferedWriter writer = Files.newBufferedWriter(
         path, 
         Charset.forName("UTF-8"),
         StandardOpenOption.TRUNCATE_EXISTING
     );
+    csv(writer);
+  }
+  /**
+   * Send a CSV version of the dictionary
+   * @return
+   */
+  public String csv() {
+    String ret=null;
+    try {
+      ret = csv(new StringWriter()).toString();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return ret;
+  }
+  /**
+   * Give a csv view of all dic
+   * @throws IOException 
+   */
+  public Writer csv(Writer writer) throws IOException {
     String word;
     try {
       writer.write("WORD\tCOUNT\tKEY\n");
@@ -185,9 +216,18 @@ public class BiDico  {
     } finally {
       writer.close();
     }
+    return writer;
   }
   /**
-   * Load a freqlist from file
+   * Is used for debug, is not a save method
+   */
+  @Override
+  public String toString() {
+    return freqlist(20, null).toString();
+  }
+  /**
+   * Load a freqlist from csv
+   * TODO test it
    * @param file
    * @throws IOException 
    * @throws NumberFormatException 
@@ -244,9 +284,9 @@ public class BiDico  {
     Set<String> stoplist = new HashSet<String>(Files.readAllLines(stopfile, StandardCharsets.UTF_8));
     System.out.print("Tokens: "+dic.sum()+" Forms: "+dic.size()+"  ");
     System.out.println(dic.freqlist(100, stoplist));
-    // TODO write this object
     Path dicpath = Paths.get( context.toString(), "/zola-dic.csv"); 
-    dic.save(dicpath);
+    dic.csv(dicpath);
     System.out.println("Dico saved in: "+dicpath);
+    // TODO test reload
   }
 }
