@@ -1,43 +1,46 @@
 package com.github.oeuvres.util;
 
-import java.util.Map;
+import java.util.Arrays;
 
 /**
  * source: http://java-performance.info/implementing-world-fastest-java-int-to-int-hash-map/
  * 
- * TODO, use the interleaving int instead of the long array.
  * 
- * An efficient int-int Map implementation, 
- * with a special method to modify a value by addition
+ * An efficient int-int Map implementation, encoded in a long array for key and value;
+ * This alllow to 
+ * A special method is used to modify a value by addition.
  * Used for word vectors indexed by int  
  */
-public class IntIntMap
+public class IntIntMap implements Cloneable
 {
   private static final long FREE_CELL = 0;
-
   private static long KEY_MASK = 0xFFFFFFFFL;
-
   public static final int NO_KEY = 0;
   public static final int NO_VALUE = 0;
-
+  
+  // fields to clone
   /** Keys and values */
   private long[] data;
-  /** An iterator used to get keys and values */
-  private int pointer = -1;
-
   /** Do we have 'free' key in the map? */
   private boolean hasFreeKey;
   /** Value of 'free' key */
   private int freeValue;
-
+  
+  
+  // constructor
+  /** Current map size */
+  private int size;
   /** Fill factor, must be between (0 and 1) */
   private final float fillFactor;
   /** We will resize a map once it reaches this size */
   private int threshold;
-  /** Current map size */
-  private int size;
   /** Mask to calculate the original position */
   private int mask;
+  
+  // not important
+  /** An iterator used to get keys and values */
+  private int pointer = -1;
+
   
   /**
    * Constructor with default fillFactor
@@ -49,10 +52,8 @@ public class IntIntMap
 
   public IntIntMap( final int size, final float fillFactor )
   {
-    if ( fillFactor <= 0 || fillFactor >= 1 )
-      throw new IllegalArgumentException( "FillFactor must be in (0, 1)" );
-    if ( size <= 0 )
-      throw new IllegalArgumentException( "Size must be positive!" );
+    if ( fillFactor <= 0 || fillFactor >= 1 )  throw new IllegalArgumentException( "FillFactor must be in (0, 1)" );
+    if ( size <= 0 ) throw new IllegalArgumentException( "Size must be positive!" );
     final int capacity = arraySize( size, fillFactor );
     mask = capacity - 1;
     this.fillFactor = fillFactor;
@@ -60,7 +61,16 @@ public class IntIntMap
     data = new long[capacity];
     threshold = (int) (capacity * fillFactor);
   }
-
+  @Override
+  public IntIntMap clone() {
+    IntIntMap clone = null;
+    try {
+      clone = (IntIntMap)super.clone();
+    } catch (CloneNotSupportedException e) {
+      e.printStackTrace();
+    }
+    return clone; 
+  }
   public int get( final int key )
   {
     if ( key == NO_KEY ) return hasFreeKey ? freeValue : NO_VALUE;
@@ -69,13 +79,13 @@ public class IntIntMap
     //end of chain already
     if ( c == FREE_CELL ) return NO_VALUE;
     //we check FREE prior to this call
-    if ( ((int)(c & KEY_MASK)) == key )  return (int) (c >> 32);
+    if ( key(c) == key )  return value(c);
     while ( true )
     {
       idx = getNextIndex(idx);
       c = data[ idx ];
       if ( c == FREE_CELL ) return NO_VALUE;
-      if ( ((int)(c & KEY_MASK)) == key ) return (int) (c >> 32);
+      if ( key(c) == key ) return value(c);
     }
   }
   /**
@@ -104,7 +114,7 @@ public class IntIntMap
    * @param key
    * @return old value
    */
-  public int inc( final int key ) {
+  public int add( final int key ) {
     return put(key, 1, true);
   }
   /**
@@ -113,7 +123,7 @@ public class IntIntMap
    * @param key
    * @param value
    * @param add true: value is added to old one if key exists; false: value replace old value
-   * @return
+   * @return old value
    */
   private int put( final int key, int value, boolean add )
   {
@@ -128,49 +138,45 @@ public class IntIntMap
 
     int idx = getStartIndex( key );
     long c = data[idx];
-    if ( c == FREE_CELL ) //end of chain already
-    {
-      data[ idx ] = (((long)key) & KEY_MASK) | ( ((long)value) << 32 );
+    if ( c == FREE_CELL ) { //end of chain already
+      data[ idx ] = entry( key, value );
       //size is set inside
       if ( size >= threshold ) rehash( data.length * 2 ); 
       else ++size;
       return NO_VALUE;
     }
     //we check FREE prior to this call
-    else if ( ((int)(c & KEY_MASK)) == key ) 
-    {
-      if (add) {
-        value += (c >> 32);
-      }
-      data[ idx ] = (((long)key) & KEY_MASK) | ( ((long)value) << 32 );
-      // return old value
-      return (int) (c >> 32);
+    else if ( key(c) == key ) {
+      if (add) value += value(c);
+      data[ idx ] = entry( key, value );
+      return value(c);
     }
 
     while ( true ) {
       idx = getNextIndex( idx );
       c = data[ idx ];
       if ( c == FREE_CELL ) {
-        data[ idx ] = (((long)key) & KEY_MASK) | ( ((long)value) << 32 );
+        data[ idx ] = entry(key, value);
         //size is set inside
         if ( size >= threshold )  rehash( data.length * 2 ); 
         else  ++size;
         return NO_VALUE;
       }
-      else if ( ((int)(c & KEY_MASK)) == key ) {
-        if (add) {
-          value += (c >> 32); 
-        }
-        data[ idx ] = (((long)key) & KEY_MASK) | ( ((long)value) << 32 );
-        return (int) (c >> 32);
+      else if ( key(c) == key ) {
+        if (add) value += value(c); 
+        data[ idx ] = entry(key, value);
+        return value(c);
       }
     }
   }
-
+  /**
+   * 
+   * @param key
+   * @return Old value
+   */
   public int remove( final int key )
   {
-    if ( key == NO_KEY )
-    {
+    if ( key == NO_KEY ) {
       if ( !hasFreeKey ) return NO_VALUE;
       hasFreeKey = false;
       final int ret = freeValue;
@@ -182,20 +188,20 @@ public class IntIntMap
     int idx = getStartIndex( key );
     long c = data[ idx ];
     if ( c == FREE_CELL ) return NO_VALUE;  //end of chain already
-    if ( ((int)(c & KEY_MASK)) == key ) { 
+    if ( key(c) == key ) { 
       //we check FREE prior to this call
       --size;
       shiftKeys( idx );
-      return (int) (c >> 32);
+      return value(c);
     }
     while ( true ) {
       idx = getNextIndex( idx );
       c = data[ idx ];
       if ( c == FREE_CELL ) return NO_VALUE;
-      if ( ((int)(c & KEY_MASK)) == key ) {
+      if ( key(c) == key ) {
         --size;
         shiftKeys( idx );
-        return (int) (c >> 32);
+        return value(c);
       }
     }
   }
@@ -205,6 +211,27 @@ public class IntIntMap
     return size;
   }
   /**
+   * Build a long entry from int key and value
+   */
+  private static long entry(int key, int value) 
+  {
+    return (((long)key) & KEY_MASK) | ( ((long)value) << 32 );
+  }
+  /**
+   * Get an int value from a long entry
+   */
+  private static int value(long entry)
+  {
+    return (int) (entry >> 32);
+  }
+  /**
+   * Get the key from a long entry
+   */
+  private static int key(long entry)
+  {
+    return (int) (entry & KEY_MASK);
+  }
+  /**
    * Reset Iterator, start at -1 so that nextKey() go to 0
    */
   public void reset() 
@@ -212,32 +239,36 @@ public class IntIntMap
     pointer = -1;
   }
   /**
+   * Get keys in frequency order
+   */
+  /**
    * Current key, 
    */
   public int currentKey() 
   {
     if (pointer < 0 ) return nextKey();
     if (data[pointer] == FREE_CELL) return nextKey();
-    return (int)(data[pointer] & KEY_MASK);
+    return key(data[pointer]);
   }
   /**
    * Current value
    */
-  public long currentValue() 
+  public int currentValue() 
   {
     if (pointer < 0 ) return nextValue();
     if (data[pointer] == FREE_CELL) return nextValue();
-    return (int)(data[pointer] >> 32);
+    return value(data[pointer]);
   }
   /**
    * A light iterator implementation
    * TODO optimization
    * @return
    */
-  public int nextKey() {
+  public int nextKey() 
+  {
     while ( pointer+1 < data.length) {
       pointer++;
-      if (data[pointer] != FREE_CELL) return (int)(data[pointer] & KEY_MASK);
+      if (data[pointer] != FREE_CELL) return key(data[pointer]);
     }
     reset();
     return NO_KEY;
@@ -251,7 +282,7 @@ public class IntIntMap
   {
     while ( pointer+1 < data.length) {
       pointer++;
-      if (data[pointer] != FREE_CELL) return (int)(data[pointer] >> 32);
+      if (data[pointer] != FREE_CELL) return value(data[pointer]);
     }
     reset();
     return NO_VALUE;
@@ -267,13 +298,10 @@ public class IntIntMap
     int last, slot;
     int k;
     final long[] data = this.data;
-    while ( true )
-    {
+    while ( true ) {
       pos = ((last = pos) + 1) & mask;
-      while ( true )
-      {
-        if ((k = ((int)(data[pos] & KEY_MASK))) == NO_KEY)
-        {
+      while ( true ) {
+        if ((k = key(data[pos])) == NO_KEY) {
           data[last] = FREE_CELL;
           return last;
         }
@@ -297,9 +325,8 @@ public class IntIntMap
     size = hasFreeKey ? 1 : 0;
 
     for ( int i = oldCapacity; i-- > 0; ) {
-      final int oldKey = (int) (oldData[ i ] & KEY_MASK);
-      if( oldKey != NO_KEY )
-        put( oldKey, (int) (oldData[ i ] >> 32));
+      final int oldKey = key(oldData[ i ]);
+      if( oldKey != NO_KEY ) put( oldKey, value(oldData[ i ]));
     }
   }
   private int getStartIndex( final int key )
@@ -322,7 +349,8 @@ public class IntIntMap
    * @param x a long integer smaller than or equal to 2<sup>62</sup>.
    * @return the least power of two greater than or equal to the specified value.
    */
-  public static long nextPowerOfTwo( long x ) {
+  private static long nextPowerOfTwo( long x )
+  {
     if ( x == 0 ) return 1;
     x--;
     x |= x >> 1;
@@ -340,7 +368,8 @@ public class IntIntMap
    * @return the minimum possible size for a backing array.
    * @throws IllegalArgumentException if the necessary size is larger than 2<sup>30</sup>.
    */
-  public static int arraySize( final int expected, final float f ) {
+  private static int arraySize( final int expected, final float f ) 
+  {
     final long s = Math.max( 2, nextPowerOfTwo( (long)Math.ceil( expected / f ) ) );
     if ( s > (1 << 30) ) throw new IllegalArgumentException( "Too large (" + expected + " expected elements with load factor " + f + ")" );
     return (int)s;
@@ -349,57 +378,80 @@ public class IntIntMap
   //taken from FastUtil
   private static final int INT_PHI = 0x9E3779B9;
 
-  public static int phiMix( final int x ) {
+  private static int phiMix( final int x )
+  {
     final int h = x * INT_PHI;
     return h ^ (h >> 16);
   }
   /**
+   * Output a two dimensions array in random order
+   */
+  public int[][] toArray()
+  {
+    int[][] ret = new int[size][2];
+    int i = 0;
+    for (long  entry : data) {
+      if (entry == FREE_CELL) continue;
+      ret[i][0] = key(entry);
+      ret[i][1] = value(entry);
+      i++;
+    }
+    return ret;
+  }
+
+  /**
    * Nicer output for debug
    */
   @Override
-  public String toString() {
+  public String toString()
+  {
     StringBuffer sb = new StringBuffer();
     sb.append("{ ");
     boolean first = true;
     int key;
     for (long  entry : data) {
-      key = (int)(entry & KEY_MASK);
+      key = key(entry);
       if (key == NO_KEY) continue;
       if (!first) sb.append(", ");
       else first = false;
-      sb.append(key +":"+(entry >> 32));
+      sb.append(key +":"+value(entry));
     }
-    /* less efficient but works
-    reset();
-    while(nextKey() != NO_KEY) {
-      if (!first) sb.append(", ");
-      else first = false;
-      sb.append(currentKey() +":"+currentValue());      
-    }
-    */
+
     sb.append(" }");
     return sb.toString();
   }
   /**
    * Just for testing, no reasons to use this object in CLI
    */
-  public static void main(String[] args) {
+  public static void main(String[] args)
+  {
     IntIntMap iimap = new IntIntMap(10, (float) 0.7);
     System.out.println("Char…ger ... ");
-    iimap.put(-5, 890);
-    for (int i=1; i<10; i++) {
-      for (int j=1; j<=i; j++) {
-        iimap.put(i, j);
-      }
+    for ( int i=-5; i<0; i++ ) {
+      iimap.put(i, i);
     }
-    System.out.println(iimap);
-    iimap = new IntIntMap(10, (float) 0.7);
+    System.out.println("toString() "+iimap);    
+    IntIntMap clone = iimap.clone();
+    for ( int i=1; i < 10; i++ ) {
+      clone.put(i, i);
+    }
+    System.out.println("clone()");
+    System.out.print("nextKey() ");
+    iimap.reset();
+    while(clone.nextKey() != IntIntMap.NO_KEY) {
+      System.out.print(clone.currentKey() +","+clone.currentValue()+"  ");      
+    }
+    System.out.println();
+    System.out.println("add()");
+    iimap = new IntIntMap(150, (float) 0.7);
     for (int i=1; i<10; i++) {
       for (int j=1; j<=i; j++) {
         iimap.add(i, j); 
       }
     }
-    System.out.println(iimap);
+    System.out.println("toArray() "+Arrays.deepToString(iimap.toArray()));
+   
+    
   }
 
 }
