@@ -71,6 +71,26 @@ public class IntIntMap implements Cloneable
     }
     return clone; 
   }
+  /**
+   * Check if a key is used
+   * @param key
+   * @return
+   */
+  public boolean contains(final int key) {
+    if ( key == NO_KEY ) return false;
+    int idx = getStartIndex(key);
+    long c = data[ idx ];
+    if ( c == FREE_CELL ) return false;
+    if ( key(c) == key )  return true;
+    while ( true )
+    {
+      idx = getNextIndex(idx);
+      c = data[ idx ];
+      if ( c == FREE_CELL ) return false;
+      if ( key(c) == key ) return true;
+    }
+  }
+  
   public int get( final int key )
   {
     if ( key == NO_KEY ) return hasFreeKey ? freeValue : NO_VALUE;

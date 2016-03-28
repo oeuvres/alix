@@ -1,8 +1,19 @@
 package com.github.oeuvres.util;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+
+import com.github.oeuvres.fr.Tokenizer;
+
 /**
+ * An efficient int-Object Map implementation.
+ * For a list of chars, is 2.3x faster than "abcde".indexOf()
  * source: http://java-performance.info/implementing-world-fastest-java-int-to-int-hash-map/
- * An efficient int-Object Map implementation, with a method to add int  
+ *  
  */
 public class IntObjectMap<E>
 {
@@ -51,6 +62,19 @@ public class IntObjectMap<E>
     threshold = (int) (capacity * fillFactor);
   }
 
+  /**
+   * Test if key is present
+   * TODO test if freeValue is a good answer
+   * @param key
+   * @return
+   */
+  public boolean contains( final int key )
+  {
+    if ( key == NO_KEY) return false;
+    final int idx = getReadIndex( key );
+    return idx != -1 ? true : false;
+  }
+  
   @SuppressWarnings("unchecked")
   public E get( final int key )
   {
@@ -149,6 +173,18 @@ public class IntObjectMap<E>
     }
     reset();
     return NO_KEY;
+  }
+  /**
+   * Give keys as a sorted Array of int
+   */
+  public int[] keys() {
+    int[] ret = new int[size];
+    reset();
+    for (int i=0; i < size; i++) {
+      ret[i] = nextKey();
+    }
+    Arrays.sort( ret );
+    return ret;
   }
 
   /**
@@ -338,15 +374,40 @@ public class IntObjectMap<E>
     return sb.toString();
   }
   /**
-   * Testing the object
+   * Testing the object performances
+   * @throws IOException 
    */
-  public static void main(String[] args) {
-    System.out.println("IntObjectMap ...");
-    IntObjectMap<String> iomap = new IntObjectMap<String>(10, (float) 0.7);
-    for (int i=1; i <= 20; i++) {      
-      iomap.put(i, ""+i);
+  public static void main(String[] args) throws IOException {
+    // french letter in frequency order
+    String letters = "easitnrulodcmpévfqgbhàjxèêyMELCzIPDAçSâJBVOTûùRôNîFœHQUGÀÉÇïkZwKWXëYÊÔŒÈüÂÎæäÆ";
+    // feel a HashMap with these letters
+    IntIntMap alphabet = new IntIntMap(letters.length());
+    for (int i=0; i < letters.length(); i++) {
+      alphabet.put( letters.charAt( i ), 0);
     }
-    System.out.println(iomap);
+    // a big file to read
+    Path context = Paths.get(Tokenizer.class.getClassLoader().getResource("").getPath()).getParent();
+    Path textfile = Paths.get(context.toString(), "/Textes/zola.txt");
+    String text = new String(Files.readAllBytes(textfile), StandardCharsets.UTF_8);
+    char c;
+    int count = 0;
+    //
+    long time = System.nanoTime();
+    System.out.print( "IntObjectMap" );
+    for (int i=0; i < text.length(); i++) {
+      c = text.charAt( i );
+      if (alphabet.contains( (int)c )) count++;
+    }
+    System.out.println(", test "+count+" chars in "+((System.nanoTime() - time) / 1000000) + " ms" );
+    time = System.nanoTime();
+    count = 0;
+    System.out.print( "String.indexOf" );
+    for (int i=0; i < text.length(); i++) {
+      c = text.charAt( i );
+      if (letters.indexOf( c ) > -1) count++;
+    }
+    System.out.println(" test "+count+" chars in "+((System.nanoTime() - time) / 1000000) + " ms" );
+
 
   }
 }

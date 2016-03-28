@@ -78,7 +78,8 @@ public class BiDico
   /**
    * Get the index of a term, 0 if not found
    * 
-   * @param a term
+   * @param a
+   *          term
    * @return the key
    */
   public int index( String term )
@@ -107,8 +108,8 @@ public class BiDico
   /**
    * Get the count of a term by index, 0 if not found
    * 
-   * @param a
-   *          term id
+   * @param index
+   *          a term index
    * @return the state of counter after increments
    */
   public int count( int index )
@@ -308,7 +309,8 @@ public class BiDico
             continue;
           }
           add( strings[0].trim(), value );
-        } else {
+        }
+        else {
           add( line.trim() );
         }
       }

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
+import com.github.oeuvres.fr.HashLem;
 import com.github.oeuvres.util.BiDico;
 import com.github.oeuvres.util.Cosine;
 import com.github.oeuvres.util.IntIntMap;
@@ -28,7 +29,12 @@ import com.github.oeuvres.util.IntSlider;
 /**
  * Space of a corpus, dictionary with vectors of co-occurrences.
  * Terms are stores int, for efficency and Cosine calculations.
+ * There are probably lots of better optimizations, similarities are for now 
+ * linear calculations.
  * 
+ * TODO, try Jacqard relevance
+ * https://en.wikipedia.org/wiki/MinHash
+ * https://github.com/tdebatty/java-LSH
  */
 public class Dicovek {
   /** Uded as attribute in a token stream  */
@@ -103,7 +109,8 @@ public class Dicovek {
       vek = new IntIntMap(10);
       vectors.put(termid, vek);
     }
-    // fill the vector, using the convenient inc method
+    // try to use a boost factor, not interesting
+    // fill the vector, using the convenient add method
     for (int i=-left; i<=right; i++) {
       if (i==0) continue;
       vek.add(win.get(i));
@@ -194,40 +201,15 @@ public class Dicovek {
     try {
       writer.write("{\n");
       boolean first1 = true;
-      int[][] coocs; // will receive the co-occurrences to sort
+ 
       int size;
       // get a sorted Dictionary to loop on
       List<Map.Entry<String, int[]>> list = terms.freqlist();
       Map.Entry<String, int[]> entry;
-      int count1 = limit;
+      int count1 = 1;
       for( int i = 0; i < terms.size(); i++ ) {
         entry = list.get(i);
-        // get the vector for this word
-        vek = vectors.get(entry.getValue()[BiDico.INDEX_POS]);
-        // some words on dictionary has no vector, like stop words
-        if ( vek == null ) continue;
-        if (first1) first1 = false;
-        else writer.append(",\n  ");
-        writer.write("  \""+entry.getKey()+"\": {"); // the term
-        writer.write(""+entry.getValue()[BiDico.COUNT_POS]); // the term count
-        // get vector as an array
-        coocs = vek.toArray();
-        // sort it before output
-        Arrays.sort(coocs, new Comparator<int[]>() {
-          @Override
-          public int compare(int[] o1, int[] o2) {
-            return Integer.compare(o2[1], o1[1]);
-          }
-        });
-        size = coocs.length;
-        writer.write(", "+size);
-        int count2 = limit;
-        for ( int j = 0; j < size; j++ ) {
-          writer.write(", ");
-          writer.write("\""+terms.term(coocs[j][0])+"\":"+coocs[j][1]);
-          if (--count2 == 0) break;
-        }
-        writer.write("}");
+        // TODO, write vector
         if (--count1 == 0) break;
       }
       writer.write("\n}");
@@ -235,6 +217,36 @@ public class Dicovek {
     finally {
       writer.close();
     }
+  }
+  public String coocs(String term, int limit, boolean stop) {
+    StringBuffer sb = new StringBuffer();
+    int index = terms.index( term );
+    if (index == 0) return null;
+    vek = vectors.get(index);
+    // some words on dictionary has no vector, like stop words
+    if ( vek == null ) return null;
+    // get vector as an array
+    int[][] coocs; // will receive the co-occurrences to sort
+    coocs = vek.toArray();
+    // sort coocs by score
+    Arrays.sort(coocs, new Comparator<int[]>() {
+      @Override
+      public int compare(int[] o1, int[] o2) {
+        return Integer.compare(o2[1], o1[1]);
+      }
+    });
+    int size = coocs.length;
+    boolean first = true;
+    String w;
+    for ( int j = 0; j < size; j++ ) {
+      w = terms.term(coocs[j][0]);
+      if (stop && stoplist.contains( w )) continue;
+      if (first) first = false;
+      else sb.append(", ");
+      sb.append(w+":"+coocs[j][1]);
+      if (--limit == 0) break;
+    }
+    return sb.toString();
   }
   /**
    * A row similar word with different info, used for sorting
@@ -261,9 +273,10 @@ public class Dicovek {
   public static void main(String[] args) throws IOException {
     
     Path context = Paths.get(BiDico.class.getClassLoader().getResource("").getPath()).getParent();
-    Path textfile = Paths.get( context.toString(), "/Textes/zola.txt");
+    String auteur = "zola";
+    Path textfile = Paths.get( context.toString(), "/Textes/"+auteur+".txt");
     System.out.print("Parse: "+textfile+"... ");
-    String text = new String(Files.readAllBytes(textfile), StandardCharsets.UTF_8).toLowerCase();
+    String text = new String(Files.readAllBytes(textfile), StandardCharsets.UTF_8);
     Scanner scan = new Scanner(text);    
     scan.useDelimiter("\\PL+");
     
@@ -275,12 +288,25 @@ public class Dicovek {
     Dicovek veks = new Dicovek(wing, wing, stoplist);
     long start = System.nanoTime();
     String w;
+    String lem;
     boolean nostop = false;
     // nostop = true;
+    HashLem lems = null;
+    // lems = new HashLem(Paths.get( context.toString(), "/res/fr-lemma.csv"));
     while( scan.hasNext() ) {
       w = scan.next();
-      if (nostop && stoplist.contains( w )) continue;
-      veks.add(w);
+      if (lems != null) {
+        // fist letter is upper case, test if it is a name
+        if ( Character.isUpperCase( w.charAt( 0 ))) {
+          lem = lems.get( w.toLowerCase() );
+        }
+        else {
+          lem = lems.get(w);
+        }
+        if (lem == null) veks.add(w);
+        else veks.add(lem);
+      }
+      else veks.add(w);
     }
     // add empty words here to finish window
     veks.add("").add("").add("");
@@ -288,7 +314,7 @@ public class Dicovek {
     System.out.println( ((System.nanoTime() - start) / 1000000) + " ms");
     System.out.println( veks.freqlist(true, 100) );
     
-    Path vekspath = Paths.get( context.toString(), "/zola-veks.json"); 
+    Path vekspath = Paths.get( context.toString(), "/"+auteur+"-veks.json"); 
     veks.json( vekspath, 100 ); // store the vectors in a file
     System.out.println( ((System.nanoTime() - start) / 1000000) + " ms");
 
@@ -296,28 +322,34 @@ public class Dicovek {
     BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
     List<SimRow> table;
     String filename;
+    filename = auteur+"-2-"+wing+".txt";
+    BufferedWriter writer = Files.newBufferedWriter(
+        Paths.get( context.toString(), "/"+filename), 
+        Charset.forName("UTF-8")
+    );
     while (true) {
-      System.out.println("Mot: ");
+      System.out.print("Mot: ");
       String word = keyboard.readLine().trim();
-      if (word == null || "".equals(word)) System.exit(0);
+      if (word == null || "".equals(word)) {
+        writer.close();
+        System.exit(0);
+      }
       start = System.nanoTime();
       table = veks.syns(word);
       if ( table == null ) continue;
-      if (nostop) filename = word+"-"+wing+"-nostop.csv";
-      else filename = word+"-"+wing+".csv";
-      BufferedWriter writer = Files.newBufferedWriter(
-          Paths.get( context.toString(), "/"+filename), 
-          Charset.forName("UTF-8")
-      );
-      writer.write( "TERM\tFREQ\tSIM\n" );
+      writer.write( word+"\n" );
+      writer.write( veks.coocs( word, 30, true ) );
+      writer.newLine();
+      int limit = 30;
       for (SimRow row:table) {
-        writer.write(row+"\n");
+        writer.write(row.term);
+        writer.write( ", " );
+        if (--limit == 0 ) break;
       }
-      writer.write("-\t-\t-\n");
-      writer.close();
-      // HashMap<String, HashMapContext> dict=initMainDistribDict(word, mapSetMotsFrancaisPost, cosine);
-      System.out.println( ((System.nanoTime() - start) / 1000000) + " ms");
+      writer.write("\n\n");
+      writer.flush();
     }
+
   }
   
 }
