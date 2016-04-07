@@ -192,24 +192,31 @@ public class Tokenizer
     text = new String(Files.readAllBytes(textfile), StandardCharsets.UTF_8);
     toks = new Tokenizer(text);
     System.out.println( "Chargé en "+((System.nanoTime() - time) / 1000000) + " ms" );
+    HashLem lems = new HashLem(Paths.get( context.toString(), "/res/fr-lemma.csv"));
     int limit = 0;
     time = System.nanoTime();
     int count = 0;
     // populate a Dico
     BiDico dic = new BiDico();
-
+    String token;
+    String lc;
     while ( toks.read()) { // loop Zola (with no op) 434ms 
       count++;
-      /*
-      c = token.charAt( 0 );
-      token.setCharAt( 0,  );
-      */
-      // dic.add( toks.getCS().toString() );
+      token = toks.getString();
+      // upper
+      if (Char.isUpperCase( token.charAt( 0 ) )) {
+        lc = token.toLowerCase();
+        if (lems.containsKey( lc )) dic.add( lc );
+        else dic.add( token );
+      }
+      else {
+        dic.add( token );        
+      }
     }
     System.out.println( count + " tokens in "+((System.nanoTime() - time) / 1000000) + " ms");
     Path stopfile = Paths.get( context.toString(), "/res/fr-stop.txt" );
     Set<String> stoplist = new HashSet<String>( Files.readAllLines( stopfile, StandardCharsets.UTF_8 ) );
     System.out.println( "Tokens: " + dic.sum() + " Forms: " + dic.size() + "  " );
-    System.out.println( dic.csv( 100, stoplist ) );
+    System.out.println( dic.csv( 100 ) );
   }
 }

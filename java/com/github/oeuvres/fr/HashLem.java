@@ -17,6 +17,7 @@ import java.util.List;
  */
 public class HashLem extends HashMap<String,String>
 {
+  /** List of grammatical  */
   /**
    * 
    */
@@ -37,5 +38,11 @@ public class HashLem extends HashMap<String,String>
     System.out.println( ((System.nanoTime() - start) / 1000000) + " ms");
     System.out.println( lems.get( "est" ) );
     System.out.println( lems.get( "l" ) );
+  }
+  class Word {
+    String lem;
+    int cat;
+    float orthfreq;
+    
   }
 }

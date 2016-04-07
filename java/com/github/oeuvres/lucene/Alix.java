@@ -91,8 +91,6 @@ import net.sf.saxon.tinytree.TinyNodeImpl;
  * @author glorieux-f (2016, lucene.5.5.0 port, github migration, Teinte integration)
  */
 public class Alix {
-  /** Mandatory field, unique id for the base */
-  public static String ID = "ID";
   /** Mandatory field, XML file name, maybe used for update */
   public static String FILENAME = "FILENAME";
   /** Current filename proceded */
@@ -107,6 +105,7 @@ public class Alix {
 	static Result outNull = new StreamResult(new NullOutputStream());
 	/** An XML transformer to serialize a DOM to XML */
 	static Transformer dom2string;
+	
 
 	
 	/**
@@ -158,6 +157,7 @@ public class Alix {
     tf.setAttribute("http://saxon.sf.net/feature/version-warning", Boolean.FALSE);
     tf.setAttribute("http://saxon.sf.net/feature/recoveryPolicy", new Integer(0));
     parser = tf.newTransformer(new StreamSource(xslFile));
+    
 
     final PathMatcher matcher = glob; // transmit the matcher by a final variable to the anonymous class
     Files.walkFileTree(srcDir, new SimpleFileVisitor<Path>() {
@@ -203,6 +203,7 @@ public class Alix {
       lucwriter.deleteDocuments(new Term(FILENAME, filename));
       // A file to work on
       Source xml = new StreamSource(xmlPath.toFile());
+      parser.setParameter( "filename", filename );
       parser.transform(xml, outNull);
     } catch (IOException e) {
       fatal(e);
@@ -249,7 +250,7 @@ public class Alix {
    */
   public static void docNew() {
     doc = new Document();
-    // key to delete 
+    // key to delete
     doc.add(new StringField(FILENAME, filename, Store.YES));    
   }
   /**

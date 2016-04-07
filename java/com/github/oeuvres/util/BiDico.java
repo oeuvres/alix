@@ -260,13 +260,13 @@ public class BiDico
     int size = list.size();
     String term;
     try {
-      writer.write( "TERM\tCOUNT\tKEY\n" );
+      writer.write( "TERM\tCOUNT\t%\n" );
       for (int i = 0; i < size; i++) {
         Map.Entry<String, int[]> entry = list.get( i );
         term = entry.getKey();
         if (stoplist != null && stoplist.contains( term ))
           continue;
-        writer.write( term + "\t" + entry.getValue()[COUNT_POS] + "\t" + entry.getValue()[INDEX_POS] + "\n" );
+        writer.write( term + "\t" + entry.getValue()[COUNT_POS] + "\t" + (1.0*entry.getValue()[COUNT_POS]/map.size()) + "\n" );
         if (limit-- == 0)
           break;
       }

@@ -271,13 +271,14 @@ public class Dicovek {
    * @throws IOException 
    */
   public static void main(String[] args) throws IOException {
-    
+    String auteur = "maupassant";
+    if (args.length > 0) auteur = args[0];
     Path context = Paths.get(BiDico.class.getClassLoader().getResource("").getPath()).getParent();
-    String auteur = "zola";
+
     Path textfile = Paths.get( context.toString(), "/Textes/"+auteur+".txt");
     System.out.print("Parse: "+textfile+"... ");
     String text = new String(Files.readAllBytes(textfile), StandardCharsets.UTF_8);
-    Scanner scan = new Scanner(text);    
+    Scanner scan = new Scanner(text.toLowerCase());    
     scan.useDelimiter("\\PL+");
     
     
@@ -328,6 +329,7 @@ public class Dicovek {
         Charset.forName("UTF-8")
     );
     while (true) {
+      System.out.println( "" );
       System.out.print("Mot: ");
       String word = keyboard.readLine().trim();
       if (word == null || "".equals(word)) {
@@ -337,15 +339,24 @@ public class Dicovek {
       start = System.nanoTime();
       table = veks.syns(word);
       if ( table == null ) continue;
+      /*
       writer.write( word+"\n" );
       writer.write( veks.coocs( word, 30, true ) );
       writer.newLine();
+      */
+      System.out.print( "COOCCURRENTS : " );
+      System.out.println( veks.coocs( word, 30, true ) );
+      System.out.println( "" );
       int limit = 30;
+      System.out.print( "SIMINYMES : " );
       for (SimRow row:table) {
-        writer.write(row.term);
-        writer.write( ", " );
+        // writer.write(row.term);
+        // writer.write( ", " );
+        System.out.print( row.term );
+        System.out.print( ", " );
         if (--limit == 0 ) break;
       }
+      System.out.println( "" );
       writer.write("\n\n");
       writer.flush();
     }

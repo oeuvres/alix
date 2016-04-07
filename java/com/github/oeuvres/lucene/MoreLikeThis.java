@@ -234,7 +234,7 @@ public final class MoreLikeThis {
    * @see #getMaxQueryTerms
    * @see #setMaxQueryTerms
    */
-  public static final int DEFAULT_MAX_QUERY_TERMS = 25;
+  public static final int DEFAULT_MAX_QUERY_TERMS = 50;
 
   /**
    * Analyzer that will be used to parse the doc.

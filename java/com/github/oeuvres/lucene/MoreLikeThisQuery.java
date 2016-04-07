@@ -40,7 +40,7 @@ public class MoreLikeThisQuery extends Query {
   private final String fieldName;
   private float percentTermsToMatch = 0.3f;
   private int minTermFrequency = 1;
-  private int maxQueryTerms = 5;
+  private int maxQueryTerms = 50;
   private Set<?> stopWords = null;
   private int minDocFreq = -1;
 
