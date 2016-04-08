@@ -1,12 +1,14 @@
 package com.github.oeuvres.fr;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
 
@@ -14,8 +16,11 @@ import com.github.oeuvres.util.BiDico;
 import com.github.oeuvres.util.Char;
 
 /**
- * A tokenizer for French, build for efficiency.
- * Much faster than a String Scanner, and more precise.
+ * A tokenizer for French, build for efficiency AND precision.
+ * Faster than a String Scanner.
+ * If token asked as String, case will be normalized on dictionaries.
+ * 
+ * History
  * 3x time faster when token is extracted by index from internal string
  * Char array is a bit faster than String.charAt() but not enough to be too complex;
  * 
@@ -28,9 +33,10 @@ import com.github.oeuvres.util.Char;
  */
 public class Tokenizer
 {
+  // TODO va-t'en, parce que
   /** French, « vois-tu » break hyphen before these words */
   public static final HashSet<String> HYPHEN_BREAK_BEFORE = new HashSet<String>(Arrays.asList(
-      "ce", "ci","elle","en","eux", "il", "ils", "je",  "la", "là", "le", "lui", "m'", 
+      "ce", "ci","elle","en","eux", "il", "ils", "je", "Je",  "la", "là", "le", "lui", "m'", 
         "me", "moi", "nous", "on", "te", "toi", "tu", "vous", "y"
   ));
   /** French, « qu’elle », break apostrophe after those words */
@@ -38,13 +44,61 @@ public class Tokenizer
       "c", "C", "d", "D", "j", "J", "jusqu", "Jusqu", "l", "L", "lorsqu", "Lorsqu", 
       "m", "M", "n", "N", "puisqu", "Puisqu", "qu", "Qu", "quoiqu", "Quoiqu", "s", "S", "t", "T"
   ));
+  /** French names, keep Capitalization */
+  public static final HashSet<String> NAMES;
+  /** French stopwaords */
+  public static final HashSet<String> STOPLIST;
+  /** French common words at start of sentences, lower case */
+  public static final HashSet<String> LC;
+  public static final HashSet<String> WORDS;
   
-  /** Current token */
-  // public StringBuffer token = new StringBuffer();
-  /** Other String buffer for tests */
-  private StringBuffer sb2 = new StringBuffer();
-  // index of last word ?
-  // last token was dot ?
+  static {
+    List<String> lines = null;
+    Path path;
+    try {
+      path = Paths.get( Tokenizer.class.getResource( "names.txt" ).toURI() );
+      lines = Files.readAllLines( path );
+    } catch (IOException e) {
+      e.printStackTrace();
+    } catch (URISyntaxException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    NAMES = new HashSet<String>(lines);
+    try {
+      path = Paths.get( Tokenizer.class.getResource( "stoplist.txt" ).toURI() );
+      lines = Files.readAllLines( path );
+    } catch (URISyntaxException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    STOPLIST = new HashSet<String>(lines);
+    try {
+      lines = Files.readAllLines( Paths.get( Tokenizer.class.getResource( "lc.txt" ).toURI() ) );
+    } catch (IOException e) {
+      e.printStackTrace();
+    } catch (URISyntaxException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    LC = new HashSet<String>(lines);
+    try {
+      lines = Files.readAllLines( Paths.get( Tokenizer.class.getResource( "words.txt" ).toURI() ) );
+    } catch (IOException e) {
+      e.printStackTrace();
+    } catch (URISyntaxException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    WORDS = new HashSet<String>(lines);
+  }
+
+  /** A local String for tests */
+  private String s;
+
   /** Start of a word */
   public int start;
   /** End of a word */
@@ -66,7 +120,8 @@ public class Tokenizer
     // useful for TEI files
     int pos = text.indexOf( "</teiHeader>" );
     if (pos > 0) pointer = pos+12;
-    this.text = new StringBuffer(text+" "); // append a security space can cost 50ms for 16Mo file
+    this.text = new StringBuffer(text); 
+    this.text.append( ' ' ); // append a security space can cost 50ms for 16Mo file
     size = text.length();
   }
   public boolean hasNext() {
@@ -76,7 +131,7 @@ public class Tokenizer
    * Forwards pointer to next non space char
    * Jump notes ?
    */
-  public char next() 
+  private char next() 
   {
     while (pointer < size ) {
       char c = text.charAt( pointer );
@@ -89,26 +144,16 @@ public class Tokenizer
     pointer = 0;
     return 0;
   }
-  /*
-    '@^du$@ui' => "de\nle",
-    '@^au$@ui' => "à\nle",
-    '@^aux$@ui' => "à\nles",
-    
-    '@que\nen-dira-t-on@ui' => "qu'en-dira-t-on",
-    '@-t-@u' => "\n",
-    "@-t'@u" => "\nte\n",
-    '@ce\nest-à-dire@ui' => "c'est-a-dire",
-    '@(très)-@ui' => "$1\n",
-   */
+
   /**
    * Set start and end index of a token
    */
-  private boolean read() 
+  public boolean read() 
   {
     char c = next();
     if (c == 0) return false;
     start = pointer;
-    // if fisrt char is punctuation, take a token with punct only
+    // if first char is punctuation, take a token with punct only
     if (Char.isPunctuation( c )) {
       do {
         end = ++pointer; // set end to incremented pointer
@@ -130,17 +175,12 @@ public class Tokenizer
       // hyphen
       else if (c == '-') {
         
-        sb2.setLength( 0 );
         // test if word after should break on hyphen
         int i = 1;
-        char c2;
-        c2 = text.charAt(  pointer + i );
-        while (Char.isWord( c2 )) {
-          sb2.append( c2 );
+        while (Char.isWord( text.charAt(  pointer + i ) )) {
           i++;
-          c2 = text.charAt(  pointer + i );
         }
-        if (HYPHEN_BREAK_BEFORE.contains( sb2.toString() )) {
+        if (HYPHEN_BREAK_BEFORE.contains( text.subSequence( pointer+1, pointer+i ) )) {
           end = pointer++; // return pointer on the hyphen
           return true;
         }
@@ -151,10 +191,17 @@ public class Tokenizer
     return true;
   }
   /**
-   * Get token as String
+   * Get current token as String
    */
   public String getString() {
-    return text.substring( start, end  );
+    // upper case
+    if (Char.isUpperCase( text.charAt( start ) )) {
+      s = text.substring( start, end );
+      if ( NAMES.contains( s ) ) return s;
+      if ( LC.contains( s.toLowerCase() ) ) return s.toLowerCase();
+      return s;
+    }
+    else return text.substring( start, end  );
   }
   /**
    * 
@@ -176,12 +223,13 @@ public class Tokenizer
       if (!textfile.isAbsolute()) textfile = Paths.get(context.toString(), args[0]);      
     }
     else {
-      textfile = Paths.get(context.toString(), "/Textes/zola.txt");
+      textfile = Paths.get(context.toString(), "/Textes/maupassant.txt");
     }
+    System.out.println( WORDS.contains( "il" ) );
     Tokenizer toks;
     long time;
     time = System.nanoTime();
-    String text = "J’aime ce casse-tête, me direz-vous… et qu’y puis-je ?";
+    String text = "J’aime ce casse-tête, me direz-vous… Irais-Je à Paris ?";
     toks = new Tokenizer(text);
     while ( toks.read()) {
       System.out.print( toks.getString()+"|" );
@@ -192,31 +240,24 @@ public class Tokenizer
     text = new String(Files.readAllBytes(textfile), StandardCharsets.UTF_8);
     toks = new Tokenizer(text);
     System.out.println( "Chargé en "+((System.nanoTime() - time) / 1000000) + " ms" );
-    HashLem lems = new HashLem(Paths.get( context.toString(), "/res/fr-lemma.csv"));
     int limit = 0;
     time = System.nanoTime();
     int count = 0;
     // populate a Dico
     BiDico dic = new BiDico();
+    BiDico s1 = new BiDico();
     String token;
-    String lc;
+    boolean dot = true;
     while ( toks.read()) { // loop Zola (with no op) 434ms 
       count++;
       token = toks.getString();
-      // upper
-      if (Char.isUpperCase( token.charAt( 0 ) )) {
-        lc = token.toLowerCase();
-        if (lems.containsKey( lc )) dic.add( lc );
-        else dic.add( token );
-      }
-      else {
-        dic.add( token );        
-      }
+      dic.add( token );        
     }
+   
     System.out.println( count + " tokens in "+((System.nanoTime() - time) / 1000000) + " ms");
-    Path stopfile = Paths.get( context.toString(), "/res/fr-stop.txt" );
+     Path stopfile = Paths.get( context.toString(), "/res/fr-stop.txt" );
     Set<String> stoplist = new HashSet<String>( Files.readAllLines( stopfile, StandardCharsets.UTF_8 ) );
     System.out.println( "Tokens: " + dic.sum() + " Forms: " + dic.size() + "  " );
-    System.out.println( dic.csv( 100 ) );
+    System.out.println( dic.csv( 1000 ) );
   }
 }

@@ -20,7 +20,9 @@ import java.util.Map;
 import java.util.Scanner;
 
 import com.github.oeuvres.fr.HashLem;
+import com.github.oeuvres.fr.Tokenizer;
 import com.github.oeuvres.util.BiDico;
+import com.github.oeuvres.util.Char;
 import com.github.oeuvres.util.Cosine;
 import com.github.oeuvres.util.IntIntMap;
 import com.github.oeuvres.util.IntObjectMap;
@@ -28,7 +30,7 @@ import com.github.oeuvres.util.IntSlider;
 
 /**
  * Space of a corpus, dictionary with vectors of co-occurrences.
- * Terms are stores int, for efficency and Cosine calculations.
+ * Terms are stores as int, for efficency and Cosine calculations.
  * There are probably lots of better optimizations, similarities are for now 
  * linear calculations.
  * 
@@ -37,7 +39,7 @@ import com.github.oeuvres.util.IntSlider;
  * https://github.com/tdebatty/java-LSH
  */
 public class Dicovek {
-  /** Uded as attribute in a token stream  */
+  /** Used as attribute in a token stream  */
   public static int STOPWORD = 1;
   /** Tmp, see max vector size */
   private int vekmax;
@@ -57,16 +59,31 @@ public class Dicovek {
   private IntIntMap vek;
   /**
    * Simple constructor
+   * 
+   * @param contextLeft
+   * @param contextRight
    */
   public Dicovek(int contextLeft, int contextRight) {
     this(contextLeft, contextRight, null, 5000);
   }
+  /**
+   * Constructor with Stopwords
+   * 
+   * @param contextLeft
+   * @param contextRight
+   * @param stoplist
+   */
   public Dicovek(int contextLeft, int contextRight, HashSet<String> stoplist) {
     this(contextLeft, contextRight, stoplist, 5000);
   }
   
   /**
    * Full constructor with all options
+   * 
+   * @param contextLeft
+   * @param contextRight
+   * @param stoplist
+   * @param initialSize
    */
   public Dicovek(int contextLeft, int contextRight, HashSet<String> stoplist, int initialSize) {    
     left = contextLeft;
@@ -85,6 +102,7 @@ public class Dicovek {
    * @param term A token
    */
   public Dicovek add(String term) {
+    // if ( term == null ) term = ""; // do something ?
     // default is an empty position
     int termid = 0;
     // add term to the dictionary and gets its int id
@@ -271,47 +289,34 @@ public class Dicovek {
    * @throws IOException 
    */
   public static void main(String[] args) throws IOException {
-    String auteur = "maupassant";
+    // TODO, meilleur API de paramètres
+    String auteur = "zola";
     if (args.length > 0) auteur = args[0];
-    Path context = Paths.get(BiDico.class.getClassLoader().getResource("").getPath()).getParent();
-
+    // récupérer le dossier parent
+    Path context = Paths.get(Dicovek.class.getClassLoader().getResource("").getPath()).getParent();
     Path textfile = Paths.get( context.toString(), "/Textes/"+auteur+".txt");
     System.out.print("Parse: "+textfile+"... ");
+    
+    // charger le texte d’un coup
     String text = new String(Files.readAllBytes(textfile), StandardCharsets.UTF_8);
-    Scanner scan = new Scanner(text.toLowerCase());    
-    scan.useDelimiter("\\PL+");
-    
-    
-    Path stopfile = Paths.get( context.toString(), "/res/fr-stop.txt");
-    HashSet<String> stoplist = new HashSet<String>(Files.readAllLines(stopfile, StandardCharsets.UTF_8));
-    
+    Tokenizer toks = new Tokenizer(text);
+    // largeur avant-après
     int wing = 4;
-    Dicovek veks = new Dicovek(wing, wing, stoplist);
+    // le chargeur de vecteur a besoin d'une liste de mots vide pour éviter de f  aire le vecteur de "de" ?
+    Dicovek veks = new Dicovek(wing, wing, Tokenizer.STOPLIST);
+    // Dicovek veks = new Dicovek(wing, wing); // TODO, NPE sur les vecteurs avec mots vides
     long start = System.nanoTime();
     String w;
     String lem;
     boolean nostop = false;
-    // nostop = true;
-    HashLem lems = null;
-    // lems = new HashLem(Paths.get( context.toString(), "/res/fr-lemma.csv"));
-    while( scan.hasNext() ) {
-      w = scan.next();
-      if (lems != null) {
-        // fist letter is upper case, test if it is a name
-        if ( Character.isUpperCase( w.charAt( 0 ))) {
-          lem = lems.get( w.toLowerCase() );
-        }
-        else {
-          lem = lems.get(w);
-        }
-        if (lem == null) veks.add(w);
-        else veks.add(lem);
-      }
-      else veks.add(w);
+    // TODO 
+    HashLem lems = new HashLem(Paths.get( context.toString(), "/res/fr-lemma.csv"));
+    while( toks.read() ) {
+      w = toks.getString(); // le tokeniseur régularise la casse entre mot de langue et nom propre
+     veks.add( lems.get( w ) );
     }
     // add empty words here to finish window
     veks.add("").add("").add("");
-    scan.close();
     System.out.println( ((System.nanoTime() - start) / 1000000) + " ms");
     System.out.println( veks.freqlist(true, 100) );
     

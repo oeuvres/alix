@@ -7,7 +7,6 @@ import java.util.Arrays;
  * 
  * 
  * An efficient int-int Map implementation, encoded in a long array for key and value;
- * This alllow to 
  * A special method is used to modify a value by addition.
  * Used for word vectors indexed by int  
  */

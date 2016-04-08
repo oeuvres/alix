@@ -6,7 +6,7 @@ package com.github.oeuvres.util;
  * Taken from http://www.tomshut.de/java/index.html
  * 
  * Idea is to populate a big array of properties for most of the code points
- * Memory ptimization is possible for alphabetic scripts (… or ’ are in
+ * Memory optimization is possible for alphabetic scripts (… or ’ are in
  * 2000-206F block) Chinese is not relevant for such classes but will need a
  * test
  * 

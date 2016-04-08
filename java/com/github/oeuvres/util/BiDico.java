@@ -275,6 +275,20 @@ public class BiDico
     }
     return writer;
   }
+  
+  public Writer txt( int limit ) throws IOException
+  {
+    Writer writer = new StringWriter();
+    List<Map.Entry<String, int[]>> list = freqlist();
+    int size = list.size();
+    for (int i = 0; i < size; i++) {
+      Map.Entry<String, int[]> entry = list.get( i );
+      writer.write( entry.getKey() ) ;
+      writer.write( "\n" ) ;
+      if (limit-- == 0) break;
+    }
+    return writer;
+  }
 
   /**
    * Is used for debug, is not a save method

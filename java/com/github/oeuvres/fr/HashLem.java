@@ -17,19 +17,25 @@ import java.util.List;
  */
 public class HashLem extends HashMap<String,String>
 {
-  /** List of grammatical  */
-  /**
-   * 
-   */
   private static final long serialVersionUID = 1L;
-  public HashLem(final Path path) throws IOException {
+  public HashLem(final Path path) throws IOException 
+  {
     // super();
-    List<String> lines = Files.readAllLines( path, StandardCharsets.UTF_8 ); // 60ms
+    List<String> lines = Files.readAllLines( path, StandardCharsets.UTF_8 ); // 60ms    
     for (String line: lines) {
       int pos = line.indexOf( ',' );
       this.put( line.substring( 0, pos ), line.substring( pos+1) );
     } // 60 ms
   }
+  
+  @Override
+  public String get( Object key )
+  {
+    String value = super.get( key );
+    if ( value == null ) return "";
+    else return value;
+  }
+  
   static public void main(String[] args) throws IOException {
     long start = System.nanoTime();
     Path context = Paths.get(HashLem.class.getClassLoader().getResource("").getPath()).getParent();
@@ -37,7 +43,7 @@ public class HashLem extends HashMap<String,String>
     HashLem lems = new HashLem(dicfile);
     System.out.println( ((System.nanoTime() - start) / 1000000) + " ms");
     System.out.println( lems.get( "est" ) );
-    System.out.println( lems.get( "l" ) );
+    System.out.println( lems.get( "l'" ) );
   }
   class Word {
     String lem;
