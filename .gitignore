@@ -1,6 +1,4 @@
-
+/classes/
 *.csv
-
+*.txt
 *.json
-
-alix.jar
