@@ -1,4 +1,4 @@
 /classes/
-*.csv
-*.txt
-*.json
+/*.csv
+/*.txt
+/*.json

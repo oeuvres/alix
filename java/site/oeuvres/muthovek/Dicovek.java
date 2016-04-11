@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import site.oeuvres.fr.HashLem;
+import site.oeuvres.fr.Lexik;
 import site.oeuvres.fr.Tokenizer;
 import site.oeuvres.util.Cosine;
 import site.oeuvres.util.Dico;
@@ -35,6 +36,7 @@ import site.oeuvres.util.IntSlider;
  * TODO, try Jacqard relevance
  * https://en.wikipedia.org/wiki/MinHash
  * https://github.com/tdebatty/java-LSH
+ * super-bit locality ?
  */
 public class Dicovek {
   /** Used as attribute in a token stream  */
@@ -139,24 +141,20 @@ public class Dicovek {
    */
   public String freqlist(boolean stop, int limit) {
     StringBuffer sb = new StringBuffer();
-    List<Map.Entry<String, int[]>> list = terms.freqlist();
-    Map.Entry<String, int[]> entry;
-    boolean first = true;
-    String w;    
-    for( int i = 0; i < list.size(); i++ ) {
-      entry = list.get( i );
-      w = entry.getKey();
+    boolean first = true;  
+    for( String w: terms.byCount() ) {
       if (stoplist.contains( w )) continue;
       if (first) first = false;
       else sb.append( ", " );
-      sb.append( w+":"+ entry.getValue()[Dico.COUNT_POS]); 
+      sb.append( w+":"+ terms.count( w )); 
       if (--limit == 0) break;
     }
     return sb.toString();
   }
   /**
-   * List "syns" by vector proximity, just Cosine for now
-   * TODO: good object to give back
+   * List "siminymes" by vector proximity
+   * TODO: better efficiency
+   * 
    * @throws IOException 
    */
   public ArrayList<SimRow> syns( String term ) throws IOException {
@@ -170,18 +168,15 @@ public class Dicovek {
     Cosine cosine = new Cosine();
     float score;
     // list dico in freq order
-    List<Map.Entry<String, int[]>> list = terms.freqlist();
-    Map.Entry<String, int[]> entry;
     int limit = 1000;
     ArrayList<SimRow> table = new ArrayList<SimRow>();
     SimRow row;
-    for( int i = 0; i < list.size(); i++ ) {
-      entry = list.get( i );
-      vek = vectors.get( entry.getValue()[Dico.INDEX_POS] );
+    for( String w: terms.byCount() ) {
+      vek = vectors.get( terms.index( w ) );
       if ( vek == null ) continue;
       score = (float)cosine.similarity( vekA, vek );
       if (score < 0.7) continue;
-      row = new SimRow(entry.getKey(), entry.getValue()[Dico.COUNT_POS], score);
+      row = new SimRow(w, terms.count( w ), score);
       table.add( row );
       if (limit-- == 0) break;
     }
@@ -217,14 +212,8 @@ public class Dicovek {
     try {
       writer.write("{\n");
       boolean first1 = true;
- 
-      int size;
-      // get a sorted Dictionary to loop on
-      List<Map.Entry<String, int[]>> list = terms.freqlist();
-      Map.Entry<String, int[]> entry;
       int count1 = 1;
-      for( int i = 0; i < terms.size(); i++ ) {
-        entry = list.get(i);
+      for( String w: terms.byCount() ) {
         // TODO, write vector
         if (--count1 == 0) break;
       }
@@ -301,7 +290,7 @@ public class Dicovek {
     // largeur avant-après
     int wing = 4;
     // le chargeur de vecteur a besoin d'une liste de mots vide pour éviter de f  aire le vecteur de "de" ?
-    Dicovek veks = new Dicovek(wing, wing, Tokenizer.STOPLIST);
+    Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST);
     // Dicovek veks = new Dicovek(wing, wing); // TODO, NPE sur les vecteurs avec mots vides
     long start = System.nanoTime();
     String w;

@@ -34,6 +34,7 @@ public class Char
     // infinite loop when size = 65536
     for (char c = 0; c < SIZE; c++) {      
       short properties = 0x0;
+      // DO NOT modify '<>' values
       // hacky, hyphen maybe part of compound word, or start of a separator like ---
       if ( c == '-' ) {
         properties |= WORD;

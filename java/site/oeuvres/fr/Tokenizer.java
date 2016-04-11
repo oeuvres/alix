@@ -39,55 +39,20 @@ import site.oeuvres.util.Dico;
 public class Tokenizer
 {
   // TODO va-t'en, parce que
-  /** French, « vois-tu » break hyphen before these words */
-  public static final HashSet<String> HYPHEN_BREAK_BEFORE = new HashSet<String>(Arrays.asList(
-      "ce", "ci","elle","en","eux", "il", "ils", "je", "Je",  "la", "là", "le", "lui", "m'", 
+  /** French, « vois-tu » hyphen is breakable before these words */
+  public static final HashSet<String> HYPHEN_POST = new HashSet<String>(Arrays.asList(
+      "ce", "elle","en","eux", "il", "ils", "je", "Je",  "la", "là", "le", "lui", "m'", 
         "me", "moi", "nous", "on", "te", "toi", "tu", "vous", "y"
   ));
-  /** French, « qu’elle », break apostrophe after those words */
+  /** French, « j’aime », break apostrophe after those words */
   public static final HashSet<String> ELLISION = new HashSet<String>(Arrays.asList(
       "c", "C", "d", "D", "j", "J", "jusqu", "Jusqu", "l", "L", "lorsqu", "Lorsqu", 
       "m", "M", "n", "N", "puisqu", "Puisqu", "qu", "Qu", "quoiqu", "Quoiqu", "s", "S", "t", "T"
   ));
-  /** French names on which keep Capitalization */
-  public static final HashSet<String> NAMES;
-  /** French stopwords */
-  public static final HashSet<String> STOPLIST;
-  /** French common words at start of sentences, render to lower case */
-  public static final HashSet<String> LC;
-  /** 130 000 types French lexicon seems not too bad for memory */
-  public static final HashSet<String> WORDS;
-  
-  static {
-    List<String> lines = null;
-    InputStream res;
-    res = Tokenizer.class.getResourceAsStream( "stoplist.txt" );
-    lines = new BufferedReader( 
-      new InputStreamReader(res, StandardCharsets.UTF_8)
-    ).lines().collect(Collectors.toList());
-    STOPLIST = new HashSet<String>(lines);
-    res = Tokenizer.class.getResourceAsStream( "names.txt" );
-    lines = new BufferedReader( 
-      new InputStreamReader(res, StandardCharsets.UTF_8)
-    ).lines().collect(Collectors.toList());
-    NAMES = new HashSet<String>(lines);
-    res = Tokenizer.class.getResourceAsStream( "words.txt" );
-    lines = new BufferedReader( 
-      new InputStreamReader(res, StandardCharsets.UTF_8)
-    ).lines().collect(Collectors.toList());
-    WORDS = new HashSet<String>(lines); 
-    res = Tokenizer.class.getResourceAsStream( "lc.txt" );
-    lines = new BufferedReader( 
-      new InputStreamReader(res, StandardCharsets.UTF_8)
-    ).lines().collect(Collectors.toList());
-    LC = new HashSet<String>(lines); 
-
-  }
-
-  /** A local String for tests */
-  private String word;
-  /** A local String for tests */
-  // private String lc;
+  /** French, « parce que », test if next word is que */
+  public static final HashSet<String> QUE_PRE = new HashSet<String>(Arrays.asList(
+      "afin", "Afin", "après", "Après", "cependant", "Cependant", "dès", "Dès", "parce", "Parce", "pour", "Pour", "tandis", "Tandis"
+  ));
 
   /** Start of a word */
   public int start;
@@ -97,6 +62,7 @@ public class Tokenizer
   public final StringBuffer text;
   /** Where we are in the text */
   private int pointer;
+  /** Current char */
   /** Size of the text */
   public final int size;
   /** Are we inside an XML tag ? */
@@ -119,20 +85,30 @@ public class Tokenizer
   }
   /**
    * Forwards pointer to next non space char
-   * Jump notes ?
    */
-  private char next() 
+  private int next() 
   {
-    while (pointer < size ) {
-      char c = text.charAt( pointer );
-      if (tag && c == '>') tag = false; // end of tag
-      else if (tag); // inside tag, go next
-      else if (c == '<') tag = true; // start tag
-      else if (!Char.isSpace( c )) return c;
-      pointer++;
+    pointer = next(pointer);
+    return pointer;
+  }
+  /**
+   * Find position of next non tag or non space char
+   * If char at pos is not space, return same value
+   * Jump notes ?
+   * @param pos 
+   * @return the position of next non space char 
+   */
+  private int next( int pos ) {
+    while ( pos < size ) {
+      char c = text.charAt( pos );
+      if ( tag && c == '>' ) tag = false; // end of tag
+      else if ( tag ); // inside tag, go next
+      else if ( c == '<' ) tag = true; // start tag
+      else if ( c == '-' ); // words do not start by an hyphen
+      else if (!Char.isSpace( c )) return pos;
+      pos++;
     }
-    pointer = 0;
-    return 0;
+    return -1;
   }
 
   /**
@@ -140,8 +116,8 @@ public class Tokenizer
    */
   public boolean read() 
   {
-    char c = next();
-    if (c == 0) return false;
+    if (next() < 0) return false;
+    char c = text.charAt( pointer );
     start = pointer;
     // if first char is punctuation, take a token with punct only
     if (Char.isPunctuation( c )) {
@@ -151,14 +127,23 @@ public class Tokenizer
       } while(Char.isPunctuation( c ));
       return true;
     }
-    // start of word with possible OCR problems
-    do {
+    // start of word 
+    while(true) {
+      // start of a tag, say it's end of word, do not increment pointer
+      if ( c == '<' ) return true;
       // apos normalisation
-      if ( c == '\'' || c == '’' ) {        
+      if ( c == '\'' || c == '’' ) {
+        text.setCharAt( pointer, '\'' ); // normalize apos
+        // problem : ’’
+        if ( end - start < 1 ) {
+          start = ++pointer;
+          end = ++pointer;
+          continue;
+        }
         // word before apos is known, (ex: puisqu'), give it and put pointer after apos
         if ( ELLISION.contains( text.subSequence( start, end ) )) {
-          // keep l' ?
-          // if ( (pointer - start)  != 1 || text.charAt( start ) != 'l' )  
+          // keep t'
+          // if ( (pointer - start)  != 1 || text.charAt( start ) != 't' )  
           text.setCharAt( end, 'e' );
           end = ++pointer; // start next word after apos
           return true;
@@ -166,38 +151,39 @@ public class Tokenizer
       }
       // hyphen
       else if (c == '-') {
-        
         // test if word after should break on hyphen
         int i = 1;
-        while (Char.isWord( text.charAt(  pointer + i ) )) {
-          i++;
-        }
-        if (HYPHEN_BREAK_BEFORE.contains( text.subSequence( pointer+1, pointer+i ) )) {
+        while (Char.isWord( text.charAt(  pointer + i ) )) i++;
+        if ( HYPHEN_POST.contains( text.subSequence( pointer+1, pointer+i ) )) {
           end = pointer++; // return pointer on the hyphen
           return true;
         }
-      }
+      }      
       end = ++pointer;
       c = text.charAt( pointer );
-    } while (!Char.isPunctuationOrSpace( c ));
-    return true;
+      if (Char.isPunctuationOrSpace( c )) return true;
+    }
   }
   /**
    * Get current token as String with case correction according to lexicons
    */
   public String getString() {
-    String word = text.substring( start, end ); // more efficient for testing to get String here
-    // res
+    String w = text.substring( start, end ); // more efficient for testing to get String here
+    // not very efficient but…
+    if ( "parce".equals( w ) || "Parce".equals( w ) || "tandis".equals( w ) || "Tandis".equals( w )) {
+      read(); // go to next word after "que"
+      return w.toLowerCase()+" que";
+    }
     // upper case ?
-    if (Char.isUpperCase( word.charAt( 0 ) )) {
+    if (Char.isUpperCase( w.charAt( 0 ) )) {
       // test first if upper case is know as a name (keep Paris: town, do not give paris: bets) 
-      if ( NAMES.contains( word ) ) return word;
+      if ( Lexik.NAMES.contains( w ) ) return w;
       // no sensible performance gain with the little lexicon
       // if ( LC.contains( s.toLowerCase() ) ) return s.toLowerCase();
-      if ( WORDS.contains( word.toLowerCase() ) ) return word.toLowerCase();
-      return word;
+      if ( Lexik.WORDS.contains( w.toLowerCase() ) ) return w.toLowerCase();
+      return w;
     }
-    else return word;
+    else return w;
   }
   /**
    * Get current token as a char sequence, with no test 
@@ -213,29 +199,22 @@ public class Tokenizer
    */
   public static void main(String[] args) throws IOException {    
     Path context = Paths.get(Tokenizer.class.getClassLoader().getResource("").getPath()).getParent();
-    Path textfile;
-    if (args.length > 0) {
-      textfile = Paths.get(args[0]);
-      if (!textfile.isAbsolute()) textfile = Paths.get(context.toString(), args[0]);      
+    String text;
+    if (args.length < 1) {
+      text = "J’aime t’avoir comme casse-tête parce \nque Vois-tu… <i>Paris</i> ?";
+      Tokenizer toks = new Tokenizer(text);
+      while ( toks.read()) {
+        System.out.print( toks.getString()+"|" );
+      }
+      return;
     }
-    else {
-      textfile = Paths.get(context.toString(), "/Textes/histoire-do.xml");
-    }
-    System.out.println( WORDS.contains( "il" ) );
-    Tokenizer toks;
-    long time;
-    time = System.nanoTime();
-    String text = "J’aime ce casse-tête, me direz-vous… Irais-Je à Paris ?";
-    toks = new Tokenizer(text);
-    while ( toks.read()) {
-      System.out.print( toks.getString()+"|" );
-    }
-    System.out.println( "" );
-    time = System.nanoTime();
-    // zola loaded in 175 ms
+    long time  = System.nanoTime();
+    Path textfile = Paths.get(args[0]);
+    if (!textfile.isAbsolute()) textfile = Paths.get(context.toString(), args[0]);      
     text = new String(Files.readAllBytes(textfile), StandardCharsets.UTF_8);
-    toks = new Tokenizer(text);
+    // zola loaded in 175 ms
     System.out.println( "Chargé en "+((System.nanoTime() - time) / 1000000) + " ms" );
+    Tokenizer toks = new Tokenizer(text);
     time = System.nanoTime();
     // populate a Dico
     Dico dic = new Dico();
@@ -245,10 +224,8 @@ public class Tokenizer
       dic.add( token );        
     }
    
-    System.out.println( dic.sum() + " tokens in "+((System.nanoTime() - time) / 1000000) + " ms");
-    Path stopfile = Paths.get( context.toString(), "/res/fr-stop.txt" );
-    Set<String> stoplist = new HashSet<String>( Files.readAllLines( stopfile, StandardCharsets.UTF_8 ) );
-    System.out.println( "Tokens: " + dic.sum() + " Types: " + dic.size() + "  " );
+    System.out.println( dic.occs() + " tokens in "+((System.nanoTime() - time) / 1000000) + " ms");
+    System.out.println( "Tokens: " + dic.occs() + " Types: " + dic.size() + "  " );
     System.out.println( dic.csv( 100 ) );
   }
 }
