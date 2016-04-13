@@ -36,11 +36,11 @@ public class Char
       short properties = 0x0;
       // DO NOT modify '<>' values
       // hacky, hyphen maybe part of compound word, or start of a separator like ---
-      if ( c == '-' ) {
+      if ( c == '-' || c == '\'' || c == '’' ) {
         properties |= WORD;
         // properties |= PUNCTUATION;
       }
-      else if (c == '\'' || c == '’' || c == '_') {
+      else if ( c == '_') {
         properties |= WORD;
       }
       else if (Character.isLetter( c )) {
@@ -159,9 +159,10 @@ public class Char
    */
   public static void main( String args[] )
   {
-    System.out.println( "_ isWord: " + Char.isWord( '_' ) );
-    System.out.println( "- isWord: " + Char.isWord( '-' ) );
-    System.out.println( "’ isWord: " + Char.isWord( '’' ) );
+    System.out.println( "- Char.isWord: " + Char.isWord( '-' ) + " Character.isLetter:" + Character.isLetter( '-' ));
+    System.out.println( "' Char.isWord: " + Char.isWord( '\'' ) + " Character.isLetter:" + Character.isLetter( '\'' ) );
+    System.out.println( "’ Char.isWord: " + Char.isWord( '’' ) + " Character.isLetter:" + Character.isLetter( '’' ) );
+    System.out.println( "& Char.isWord: " + Char.isWord( '&' ) + " Character.isLetter:" + Character.isLetter( '&' ));
     System.out.println( "_ isPunctuation: " + Char.isPunctuation( '_' ) );
     System.out.println( "- isPunctuation: " + Char.isPunctuation( '-' ) );
     System.out.println( "Œ isUpperCase: " + Char.isUpperCase( 'Œ' ) );

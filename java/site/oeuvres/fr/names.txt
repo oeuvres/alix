@@ -504,6 +504,8 @@ BMX
 BTS
 Baal
 Baar
+Baba
+Babar
 Babel
 Babylone
 Babylonie
@@ -722,6 +724,7 @@ Bobbie
 Bobby
 Bobigny
 Bobo-Dioulasso
+Boche
 Bochner
 Bochum
 Bode
@@ -933,6 +936,7 @@ Calgary
 Cali
 Californie
 Caligula
+Calypso
 Calkin
 Callas
 Callie
@@ -1518,6 +1522,7 @@ Doha
 Dole
 Dollard-des-Ormeaux
 Dolorès
+Dom
 Dombes
 Domenico
 Domingo
@@ -1525,8 +1530,12 @@ Dominic
 Dominique
 Domitien
 Domitille
+Don
+Dona
+Doña
 Donald
 Donatien
+Dondon
 Donetsk
 Dongguan
 Donna
@@ -1658,6 +1667,8 @@ Eleanor
 Elena
 Elijah
 Eliott
+Elise
+Élise
 Elizabeth
 Ellen
 Elme
@@ -1748,6 +1759,7 @@ Euterpe
 Eva
 Evan
 Eve
+Ève
 Evere
 Everest
 Evergem
@@ -1813,6 +1825,7 @@ Fermi
 Fernand
 Fernande
 Fernando
+Fétu
 Feuerbach
 Feydeau
 Feynman
@@ -1878,6 +1891,7 @@ Foucault
 Fouché
 Fougères
 Fourier
+Fournier
 Fragonard
 Frameries
 Fran
@@ -1958,6 +1972,7 @@ Gabriel
 Gabriella
 Gabrielle
 Gaetano
+Gaga
 Gagny
 Gail
 Gal
@@ -3657,6 +3672,7 @@ Microsoft
 Midas
 Midgard
 Midi-Pyrénées
+Mignon
 Miguel
 Mikael
 Mikaël
@@ -3680,6 +3696,7 @@ Mimas
 Mina
 Minakshisundaram
 Mindy
+Minerve
 Minkowski
 Minneapolis
 Minnesota
@@ -3715,6 +3732,7 @@ Moira
 Moire
 Mol
 Moldavie
+Mole
 Molenbeek-Saint-Jean
 Molise
 Molière
@@ -3923,6 +3941,8 @@ Neil
 Neila
 Nelly
 Nelson
+Nenesse
+Nénesse
 Neptune
 Nerval
 Nessus
@@ -4117,6 +4137,7 @@ Orcades
 Oregon
 Oren
 Oriane
+Orient
 Origène
 Orion
 Orlando
@@ -5191,6 +5212,7 @@ Sète
 Sèvre
 Sébastien
 Sébastopol
+Séchard
 Ségolène
 Sélène
 Séléna
@@ -5610,6 +5632,7 @@ Vernier
 Vernon
 Veronica
 Veronika
+Verrières
 Versailles
 Vertou
 Verviers
@@ -5976,6 +5999,10 @@ Zeeman
 Zele
 Zemst
 Zener
+Zephir
+Zéphir
+Zephire
+Zéphire
 Zermelo
 Zeus
 Zibit

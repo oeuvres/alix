@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -176,14 +177,17 @@ public class Dico
   {
     return occs;
   }
-
+  public String[] byCount() {
+    return byCount( -1 );
+  }
   /**
    * Used for freqlist, return a view of the map sorted by term count
    */
-  public String[] byCount()
+  public String[] byCount(int limit)
   {
     if (lastOccs == occs) return byCount; // already calculated, give it
-    List<Map.Entry<String, int[]>> list = new LinkedList<Map.Entry<String, int[]>>( byString.entrySet() );
+    // Do not use LinkedList nere, very slow access by index list.get(i), arrayList is good
+    List<Map.Entry<String, int[]>> list = new ArrayList<Map.Entry<String, int[]>>( byString.entrySet() );
     Collections.sort( list, new Comparator<Map.Entry<String, int[]>>()
     {
       @Override
@@ -192,9 +196,9 @@ public class Dico
         return o2.getValue()[COUNT_POS] - o1.getValue()[COUNT_POS];
       }
     } );
-    int size = list.size();
+    int size = Math.min( list.size(), limit ) ;
+    if ( limit < 1 ) size = list.size();
     byCount = new String[size];
-    Map.Entry<String, int[]> entry;
     for (int i = 0; i < size; i++) {
       byCount[i] = list.get( i ).getKey();
     }

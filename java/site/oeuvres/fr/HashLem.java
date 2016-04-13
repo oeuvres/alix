@@ -13,6 +13,8 @@ import java.util.List;
 /**
  * A poor lemmatizer
  * @author glorieux-f
+ * 
+ * TODO, unknown
  *
  */
 public class HashLem extends HashMap<String,String>
@@ -32,7 +34,7 @@ public class HashLem extends HashMap<String,String>
   public String get( Object key )
   {
     String value = super.get( key );
-    if ( value == null ) return "";
+    if ( value == null ) return (String)key;
     else return value;
   }
   
