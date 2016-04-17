@@ -1,32 +1,45 @@
-package site.oeuvres.util;
+package site.oeuvres.muthovek;
 
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Random;
 
 /**
- * source: http://java-performance.info/implementing-world-fastest-java-int-to-int-hash-map/
  * 
  * 
- * An efficient int-int Map implementation, encoded in a long array for key and value;
+ * An efficient int-int Map implementation, encoded in a long array for key and value.
  * A special method is used to modify a value by addition.
- * Used for word vectors indexed by int  
+ * Used for word vectors indexed by int.
+ * A local Cosine is implemented.
+ * Be careful, do not use 0 as a key, is used to tag empty value, no warning will be sent.
+ * 
+ * 
+ * source: http://java-performance.info/implementing-world-fastest-java-int-to-int-hash-map/
  */
-public class IntIntMap implements Cloneable
+public class Vek implements Cloneable
 {
-  private static final long FREE_CELL = 0;
+  /** Binary mask to get upper int from data */
   private static long KEY_MASK = 0xFFFFFFFFL;
   public static final int NO_KEY = 0;
   public static final int NO_VALUE = 0;
+  private static final long FREE_CELL;
+  static { // build FREE_CELL value, to avoid errors
+    FREE_CELL = entry( NO_KEY, NO_VALUE );
+  }
+
+  /** An int rowid */
+  final int id;
+  /** Fields  */
+  final String label;
   
-  // fields to clone
+
   /** Keys and values */
   private long[] data;
   /** Do we have 'free' key in the map? */
   private boolean hasFreeKey;
   /** Value of 'free' key */
   private int freeValue;
-  
-  
-  // constructor
+    
   /** Current map size */
   private int size;
   /** Fill factor, must be between (0 and 1) */
@@ -36,46 +49,50 @@ public class IntIntMap implements Cloneable
   /** Mask to calculate the original position */
   private int mask;
   
-  // not important
   /** An iterator used to get keys and values */
   private int pointer = -1;
+  /** The current entry of the pointer */
+  private int[] entry = new int[2];
+  /** Memory of size when last magnitude have been calculated */
+  private int magsize;
+  /** Used for cosine */
+  private double magnitude;
 
+  /**
+   * Constructor 
+   * @param size
+   */
+  public Vek( int size )
+  {
+    this( -1, null, size );
+  }
   
   /**
    * Constructor with default fillFactor
    * @param size
    */
-  public IntIntMap( final int size) {
-    this(size, (float)0.75);
-  }
-
-  public IntIntMap( final int size, final float fillFactor )
+  public Vek( final int id, final String label, int size )
   {
+    this.id = id;
+    this.label = label;
+    /*
     if ( fillFactor <= 0 || fillFactor >= 1 )  throw new IllegalArgumentException( "FillFactor must be in (0, 1)" );
     if ( size <= 0 ) throw new IllegalArgumentException( "Size must be positive!" );
+    */
+    this.fillFactor = (float)0.75;
     final int capacity = arraySize( size, fillFactor );
     mask = capacity - 1;
-    this.fillFactor = fillFactor;
-
     data = new long[capacity];
     threshold = (int) (capacity * fillFactor);
   }
-  @Override
-  public IntIntMap clone() {
-    IntIntMap clone = null;
-    try {
-      clone = (IntIntMap)super.clone();
-    } catch (CloneNotSupportedException e) {
-      e.printStackTrace();
-    }
-    return clone; 
-  }
+  
   /**
    * Check if a key is used
    * @param key
    * @return
    */
-  public boolean contains(final int key) {
+  public boolean contains(final int key)
+  {
     if ( key == NO_KEY ) return false;
     int idx = getStartIndex(key);
     long c = data[ idx ];
@@ -89,7 +106,11 @@ public class IntIntMap implements Cloneable
       if ( key(c) == key ) return true;
     }
   }
-  
+  /**
+   * Get a value by key
+   * @param key
+   * @return the value
+   */
   public int get( final int key )
   {
     if ( key == NO_KEY ) return hasFreeKey ? freeValue : NO_VALUE;
@@ -107,35 +128,71 @@ public class IntIntMap implements Cloneable
       if ( key(c) == key ) return value(c);
     }
   }
+  
   /**
-   * Put a value for a key.
+   * Put a value by key
    * 
    * @param key
    * @param value
    * @return old value
    */
-  public int put( final int key, final int value ) {
+  public int put( final int key, final int value )
+  {
     return put(key, value, false);
   }
+  /**
+   * Put an array of values, index in array is the key
+   * 
+   * @param key
+   * @param value
+   * @return vector for chaining
+   */
+  public Vek put( int[] data )
+  {
+    int length = data.length;
+    // 0 is an empty 
+    for (int i=0; i < length; i++)
+      put(i+1, data[i]);
+    return this;
+  }
+  
   /**
    * Add value to a key, create it if not exists
    * 
    * @param key 
    * @param value new value
-   * @return old value
+   * @return the vector, to chain input
    */
-  public int add( final int key, final int value ) {
-    return put(key, value, true);
+  public Vek add( final int key, final int value )
+  {
+    put(key, value, true);
+    return this;
   }
+  
+  /**
+   * Add a vector to another
+   * 
+   * @param An IntIntMap to add to this on
+   * @return new size
+   */
+  public int add( Vek toadd )
+  {
+    toadd.reset();
+    while (toadd.next()) add(toadd.key(), toadd.value());
+    return size;
+  }
+  
   /**
    * Increment a key when it exists, create it if needed, return 
    *
    * @param key
    * @return old value
    */
-  public int add( final int key ) {
+  public int inc( final int key )
+  {
     return put(key, 1, true);
   }
+  
   /**
    * Private access to the values for put, add, or inc
    * 
@@ -188,6 +245,7 @@ public class IntIntMap implements Cloneable
       }
     }
   }
+  
   /**
    * 
    * @param key
@@ -224,18 +282,27 @@ public class IntIntMap implements Cloneable
       }
     }
   }
-
+  
+  /**
+   * Get internal size
+   * @return
+   */
   public int size()
   {
     return size;
   }
+
   /**
-   * Build a long entry from int key and value
+   * Build an entry for the data array 
+   * @param key
+   * @param value
+   * @return the entry
    */
   private static long entry(int key, int value) 
   {
     return (((long)key) & KEY_MASK) | ( ((long)value) << 32 );
   }
+  
   /**
    * Get an int value from a long entry
    */
@@ -243,6 +310,7 @@ public class IntIntMap implements Cloneable
   {
     return (int) (entry >> 32);
   }
+  
   /**
    * Get the key from a long entry
    */
@@ -250,62 +318,60 @@ public class IntIntMap implements Cloneable
   {
     return (int) (entry & KEY_MASK);
   }
+  
   /**
-   * Reset Iterator, start at -1 so that nextKey() go to 0
+   * Reset Iterator, start at -1 so that we know 
+   * that pointer is not set on first valid entry
+   * (remember, a hash may have lots of empty cells and will not start at 0)
    */
   public void reset() 
   {
-    pointer = -1;
+    pointer = -1;    
   }
+  
   /**
-   * Get keys in frequency order
+   * Iterate throw data to go to next entry
+   * Jump empty cells, set entry by reference.
    */
-  /**
-   * Current key, 
-   */
-  public int currentKey() 
-  {
-    if (pointer < 0 ) return nextKey();
-    if (data[pointer] == FREE_CELL) return nextKey();
-    return key(data[pointer]);
-  }
-  /**
-   * Current value
-   */
-  public int currentValue() 
-  {
-    if (pointer < 0 ) return nextValue();
-    if (data[pointer] == FREE_CELL) return nextValue();
-    return value(data[pointer]);
-  }
-  /**
-   * A light iterator implementation
-   * TODO optimization
-   * @return
-   */
-  public int nextKey() 
+  public boolean next()
   {
     while ( pointer+1 < data.length) {
       pointer++;
-      if (data[pointer] != FREE_CELL) return key(data[pointer]);
+      if (data[pointer] != FREE_CELL) {
+        entry[0] = key(data[pointer]);
+        entry[1] = value(data[pointer]);
+        return true;
+      }
     }
     reset();
-    return NO_KEY;
+    return false;
   }
-
+  
   /**
-   * A light iterator implementation
+   * Use after next(), get current key by iterator.
+   */
+  public int key() 
+  {
+    return entry[0];
+  }
+  
+  /**
+   * Use after next(), get current value by iterator.
+   */
+  public int value() 
+  {
+    return entry[1];
+  }
+  
+  /**
+   * Use after next(), get current entry by iterator.
    * @return
    */
-  public int nextValue() 
+  public int[] entry() 
   {
-    while ( pointer+1 < data.length) {
-      pointer++;
-      if (data[pointer] != FREE_CELL) return value(data[pointer]);
-    }
-    reset();
-    return NO_VALUE;
+    return entry;
   }
+  
   /**
    * 
    * @param pos
@@ -348,6 +414,7 @@ public class IntIntMap implements Cloneable
       if( oldKey != NO_KEY ) put( oldKey, value(oldData[ i ]));
     }
   }
+  
   private int getStartIndex( final int key )
   {
     return phiMix(key) & mask;
@@ -359,9 +426,10 @@ public class IntIntMap implements Cloneable
   }
 
 
-  /** Taken from FastUtil implementation */
 
-  /** Return the least power of two greater than or equal to the specified value.
+  /** 
+   * Return the least power of two greater than or equal to the specified value.
+   * Taken from FastUtil implementation
    *
    * <p>Note that this function will return 1 when the argument is 0.
    *
@@ -380,7 +448,8 @@ public class IntIntMap implements Cloneable
     return ( x | x >> 32 ) + 1;
   }
 
-  /** Returns the least power of two smaller than or equal to 2<sup>30</sup> and larger than or equal to <code>Math.ceil( expected / f )</code>.
+  /** 
+   * Returns the least power of two smaller than or equal to 2<sup>30</sup> and larger than or equal to <code>Math.ceil( expected / f )</code>.
    *
    * @param expected the expected number of elements in a hash table.
    * @param f the load factor.
@@ -402,6 +471,7 @@ public class IntIntMap implements Cloneable
     final int h = x * INT_PHI;
     return h ^ (h >> 16);
   }
+  
   /**
    * Output a two dimensions array in random order
    */
@@ -439,38 +509,123 @@ public class IntIntMap implements Cloneable
     sb.append(" }");
     return sb.toString();
   }
+  
+  /**
+   * Equality 
+   */
+  @Override
+  public boolean equals(Object obj) 
+  {
+    if (!(obj instanceof Vek))
+      return false;
+    if (obj == this)
+      return true;
+    int[][] a = ((Vek)obj).toArray();
+    int[][] b = ((Vek)obj).toArray();
+    if ( a.length != b.length )
+      return false;
+    Arrays.sort( a , new Comparator<int[]>() {
+      public int compare(int[] o1, int[] o2) {
+        return o1[0] - o2[0];
+      }
+    });
+    Arrays.sort( b , new Comparator<int[]>() {
+      public int compare(int[] o1, int[] o2) {
+        return o1[0] - o2[0];
+      }
+    });
+    int size = a.length;
+    for ( int i = 0; i < size; i++) {
+      if (a[0] != b[0]) return false;
+      if (a[1] != b[1]) return false;
+    }
+    return true;
+  }
+  
+  /**
+   * Cosine similarity with vector
+   * @param vek1
+   * @param vek2
+   * @return the similarity score
+   */
+  public double cosine( Vek vek)
+  {
+    return dotProduct(vek) / (this.magnitude() * vek.magnitude());
+  }
+  
+  /**
+   * Calculation of magnitude with cache
+   * @return the maginitude
+   */
+  public double magnitude()
+  {
+    if (magnitude != 0 && magsize == size) return magnitude;
+    reset();
+    magnitude = 0;
+    while(next()) {
+      magnitude += value() * value();
+    }
+    magsize = size;
+    magnitude = (double)Math.sqrt(magnitude);
+    return magnitude;
+  }
+  
+  /**
+   * Used in Cosine calculations
+   * @param vek
+   * @return
+   */
+  private double dotProduct(Vek vek)
+  {
+    double sum = 0;
+    reset();
+    while( next() ) {
+      sum += value() * vek.get( key() );
+    }
+    return sum;
+  }  
+
+  /**
+   * Not really thought for now
+   */
+  @Override
+  public Vek clone()
+  {
+    Vek clone = null;
+    try {
+      clone = (Vek)super.clone();
+    } catch (CloneNotSupportedException e) {
+      e.printStackTrace();
+    }
+    return clone; 
+  }
+  
   /**
    * Just for testing, no reasons to use this object in CLI
    */
   public static void main(String[] args)
   {
-    IntIntMap iimap = new IntIntMap(10, (float) 0.7);
-    System.out.println("Char…ger ... ");
-    for ( int i=-5; i<0; i++ ) {
-      iimap.put(i, i);
-    }
-    System.out.println("toString() "+iimap);    
-    IntIntMap clone = iimap.clone();
-    for ( int i=1; i < 10; i++ ) {
-      clone.put(i, i);
-    }
-    System.out.println("clone()");
-    System.out.print("nextKey() ");
-    iimap.reset();
-    while(clone.nextKey() != IntIntMap.NO_KEY) {
-      System.out.print(clone.currentKey() +","+clone.currentValue()+"  ");      
-    }
-    System.out.println();
-    System.out.println("add()");
-    iimap = new IntIntMap(150, (float) 0.7);
-    for (int i=1; i<10; i++) {
-      for (int j=1; j<=i; j++) {
-        iimap.add(i, j); 
+    long time;
+    time = System.nanoTime();
+    Random rng = new Random();
+    int max = 30000;
+    int size;
+    Vek[] dic= new Vek[max];
+    System.out.print( max+" vectors" );
+    for ( int i=0 ; i < max; i++ ) {
+      size = 50 + rng.nextInt(3000) + 1;
+      dic[i] = new Vek(i, "", size);
+      for ( int j=0; j < size; j++) {
+        dic[i].put( j, rng.nextInt(30000) );
       }
     }
-    System.out.println("toArray() "+Arrays.deepToString(iimap.toArray()));
-   
-    
+    System.out.print( " filled in "+((System.nanoTime() - time) / 1000000)+" ms. Cosine for one vector against all "  );
+    time = System.nanoTime();
+    // Cosine for one 
+    for ( int i=0 ; i < max; i++ ) {
+      dic[0].cosine( dic[i] );
+    }
+    System.out.println( " in "+((System.nanoTime() - time) / 1000000)+" ms."  );
   }
 
 }

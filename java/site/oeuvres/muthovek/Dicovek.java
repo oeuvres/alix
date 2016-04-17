@@ -23,11 +23,13 @@ import site.oeuvres.fr.Lexik;
 import site.oeuvres.fr.Tokenizer;
 import site.oeuvres.util.Cosine;
 import site.oeuvres.util.Dico;
-import site.oeuvres.util.IntIntMap;
 import site.oeuvres.util.IntObjectMap;
 import site.oeuvres.util.IntSlider;
 
 /**
+ * Started from code of Marianne Reboul.
+ * Idea from Google word2vek
+ * 
  * Space of a corpus, dictionary with vectors of co-occurrences.
  * Terms are stores as int, for efficency and Cosine calculations.
  * There are probably lots of better optimizations, similarities are for now 
@@ -37,6 +39,8 @@ import site.oeuvres.util.IntSlider;
  * https://en.wikipedia.org/wiki/MinHash
  * https://github.com/tdebatty/java-LSH
  * super-bit locality ?
+ * 
+ * @author glorieux-f
  */
 public class Dicovek {
   /** Used as attribute in a token stream  */
@@ -50,13 +54,13 @@ public class Dicovek {
   /** Dictionary in order of indexing for int keys, should be kept private, no external modif */
   private Dico terms;
   /** Vectors of co-occurences for each term of dictionary */
-  private IntObjectMap<IntIntMap> vectors;
+  private IntObjectMap<Vek> vectors;
   /** Sliding window */
   private IntSlider win;
   /** List of stop words, usually grammatical, do not modify during object life */
   private final HashSet<String> stoplist;
   /** Current Vector to work on */
-  private IntIntMap vek;
+  private Vek vek;
   /**
    * Simple constructor
    * 
@@ -91,7 +95,7 @@ public class Dicovek {
     this.stoplist = stoplist;    
     terms = new Dico();
     // 44960 is the size of all Zola vocabulary
-    vectors = new IntObjectMap<IntIntMap>(initialSize);
+    vectors = new IntObjectMap<Vek>(initialSize);
     win = new IntSlider(contextLeft, contextRight);
   }
   /**
@@ -106,7 +110,7 @@ public class Dicovek {
     // default is an empty position
     int termid = 0;
     // add term to the dictionary and gets its int id
-    if (!term.equals("")) termid = terms.add(term);
+    if ( !term.equals("") ) termid = terms.add(term);
     // no stop list, add simple term
     if (stoplist == null) win.addRight(termid);
     // term is a stop word, add an attribute to the window position
@@ -124,14 +128,14 @@ public class Dicovek {
     vek = vectors.get(termid);
     // optimize ? term not yet encountered, create vector
     if (vek == null) {
-      vek = new IntIntMap(10);
+      vek = new Vek(10);
       vectors.put(termid, vek);
     }
     // try to use a boost factor, not interesting
     // fill the vector, using the convenient add method
     for (int i=-left; i<=right; i++) {
       if (i==0) continue;
-      vek.add(win.get(i));
+      vek.inc( win.get(i) );
     }
     return this;
   }
@@ -161,12 +165,12 @@ public class Dicovek {
     // get vector for requested word
     int k = terms.index( term );
     if (k == 0) return null;
-    IntIntMap vekA = vectors.get( k );
+    Vek vekterm = vectors.get( k );
     // some words of the dictionary has no vector but are recorded in co-occurrence (ex: stop)
-    if ( vekA == null ) return null;
+    if ( vekterm == null ) return null;
     // Similarity
     Cosine cosine = new Cosine();
-    float score;
+    double score;
     // list dico in freq order
     int limit = 1000;
     ArrayList<SimRow> table = new ArrayList<SimRow>();
@@ -174,7 +178,7 @@ public class Dicovek {
     for( String w: terms.byCount() ) {
       vek = vectors.get( terms.index( w ) );
       if ( vek == null ) continue;
-      score = (float)cosine.similarity( vekA, vek );
+      score = vekterm.cosine( vek );
       if (score < 0.7) continue;
       row = new SimRow(w, terms.count( w ), score);
       table.add( row );
@@ -261,8 +265,8 @@ public class Dicovek {
   class SimRow {
     public final  String term;
     public final int count;
-    public final float score;
-    public SimRow(String term, int count, float score) {
+    public final double score;
+    public SimRow(String term, int count, double score) {
       this.term = term;
       this.count = count;
       this.score = score;
@@ -288,7 +292,7 @@ public class Dicovek {
     String text = new String(Files.readAllBytes(textfile), StandardCharsets.UTF_8);
     Tokenizer toks = new Tokenizer(text);
     // largeur avant-après
-    int wing = 4;
+    int wing = 10;
     // le chargeur de vecteur a besoin d'une liste de mots vide pour éviter de f  aire le vecteur de "de" ?
     Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST);
     // Dicovek veks = new Dicovek(wing, wing); // TODO, NPE sur les vecteurs avec mots vides

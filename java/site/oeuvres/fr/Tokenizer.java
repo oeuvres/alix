@@ -217,8 +217,10 @@ public class Tokenizer
   public static void main(String[] args) throws IOException {
     // maybe useful, the path of the project, but could be not consistent with 
     // Path context = Paths.get(Tokenizer.class.getClassLoader().getResource("").getPath()).getParent();
-    if ( args.length < 1) {
-      String text = "D’abord, M., j’aime ce &amp; casse-tête parce \nque <i>Paris.</i>.. : \"Vois-tu ?\" s’écria-t-on, \"non.\" cria-t’il.";
+    if ( true || args.length < 1) {
+      String text;
+      text = "D’abord, M., j’aime ce &amp; casse-tête parce \nque <i>Paris.</i>.. : \"Vois-tu ?\" s’écria-t-on, \"non.\" cria-t’il.";
+      text = "— D'abord, M. Fontaine, j’aime ce casse-tête parce que voyez-vous, c’est de <i>Paris.</i>.. \"Et voilà !\" s'écria-t'il.";
       Tokenizer toks = new Tokenizer(text);
       while ( toks.read()) {
         System.out.print( toks.getString()+"|" );

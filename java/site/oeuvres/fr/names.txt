@@ -11,6 +11,7 @@ ARNm
 ASBL
 ASC
 ASCII
+Astarté
 AUD
 AXA
 Aaliyah

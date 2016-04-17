@@ -22,7 +22,7 @@ import java.util.Scanner;
 import java.util.Set;
 
 /**
- * A specialized table for a dictionary of terms with count and int key.
+ * A specialized table for a dictionary of terms with count and int key (starting at 1).
  * Access by String (internal HashMap), by an int key (internal array, for optimized vector).
  * Useful methods to get term list in inverse frequency order.
  * 
@@ -32,6 +32,8 @@ import java.util.Set;
  * There’s no method to put a term with a free key, terms are never replaced and
  * keep their index. Ids are kept consistent during all life of Object, but may
  * be lost on saving (TODO) and dictionary merges (TODO).
+ * 
+ * TODO implement saving on SQL backend
  * 
  * @author glorieux-f
  *
@@ -50,11 +52,11 @@ public class Dico
   private String[] byIndex;
   /** List of terms, kept in inverse count order */
   private String[] byCount;
-  /** Current working value, speed +3% */
+  /** Current working value */
   int[] value;
   /** Count of all occurrences */
   private int occs;
-  /** Last occurrences count before bycount sorting */
+  /** Last occurrences count before some ops, for caching */
   private int lastOccs;
 
   /**
@@ -62,7 +64,6 @@ public class Dico
    */
   public Dico()
   {
-    pointer = 0;
     byString = new HashMap<String, int[]>();
     byIndex = new String[32];
   }
@@ -85,8 +86,7 @@ public class Dico
   /**
    * Get the index of a term, 0 if not found
    * 
-   * @param a
-   *          term
+   * @param term
    * @return the key
    */
   public int index( String term )
@@ -135,6 +135,18 @@ public class Dico
   public int add( String term )
   {
     return add( term, 1 );
+  }
+  /**
+   * Add a list of terms
+   * 
+   * @param term
+   * @return better idea than void ?
+   */
+  public void add( String[] bag )
+  {
+    int length = bag.length;
+    for ( int i=0; i<length; i++)
+      add( bag[i], 1 );
   }
 
   /**
@@ -277,12 +289,12 @@ public class Dico
     int length = byCount.length;
     int count;
     try {
-      writer.write( "TERM\tCOUNT\t%\n" );
+      writer.write( "TERM\tCOUNT\t%\tID\n" );
       for (int i = 0; i < length; i++) {
         if (stoplist != null && stoplist.contains( byCount[i] ))
           continue;
         count = count( byCount[i] );
-        writer.write( byCount[i] + "\t" + count + "\t" + (1000000.0*count/occs) + "\n" );
+        writer.write( byCount[i] + "\t" + count + "\t" + (1000000.0*count/occs)+"\t"+ index(byCount[i]) + "\n" );
         if (limit-- == 0)
           break;
       }
