@@ -1,9 +1,11 @@
 package site.oeuvres.fr;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -21,34 +23,50 @@ public class Lexik
   public static final HashSet<String> NAMES;
   /** French stopwords */
   public static final HashSet<String> STOPLIST;
-  /** French common words at start of sentences, render to lower case */
-  public static final HashSet<String> LC;
   /** 130 000 types French lexicon seems not too bad for memory */
   public static final HashSet<String> WORDS;
+  /** French common words at start of sentences, render to lower case */
+  // public static final HashSet<String> LC;
   
   static {
-    List<String> lines = null;
-    InputStream res;
-    res = Tokenizer.class.getResourceAsStream( "stoplist.txt" );
-    lines = new BufferedReader( 
-      new InputStreamReader(res, StandardCharsets.UTF_8)
-    ).lines().collect(Collectors.toList());
-    STOPLIST = new HashSet<String>(lines);
-    res = Tokenizer.class.getResourceAsStream( "names.txt" );
-    lines = new BufferedReader( 
-      new InputStreamReader(res, StandardCharsets.UTF_8)
-    ).lines().collect(Collectors.toList());
-    NAMES = new HashSet<String>(lines);
-    res = Tokenizer.class.getResourceAsStream( "words.txt" );
-    lines = new BufferedReader( 
-      new InputStreamReader(res, StandardCharsets.UTF_8)
-    ).lines().collect(Collectors.toList());
-    WORDS = new HashSet<String>(lines); 
-    res = Tokenizer.class.getResourceAsStream( "lc.txt" );
-    lines = new BufferedReader( 
-      new InputStreamReader(res, StandardCharsets.UTF_8)
-    ).lines().collect(Collectors.toList());
-    LC = new HashSet<String>(lines); 
+    String l;
+    BufferedReader buf;
+    STOPLIST = new HashSet<String>();
+    NAMES = new HashSet<String>();
+    WORDS = new HashSet<String>();
+    try {
+      buf = new BufferedReader( 
+        new InputStreamReader(
+          Tokenizer.class.getResourceAsStream( "stoplist.txt" ), 
+          StandardCharsets.UTF_8
+        )
+      );
+      
+      while ((l = buf.readLine()) != null) STOPLIST.add( l );
+      buf.close();
+      
+      buf = new BufferedReader( 
+        new InputStreamReader(
+          Tokenizer.class.getResourceAsStream( "names.txt" ), 
+          StandardCharsets.UTF_8
+        )
+      );
+      while ((l = buf.readLine()) != null) NAMES.add( l );
+      buf.close();
+      
+      buf = new BufferedReader( 
+        new InputStreamReader(
+          Tokenizer.class.getResourceAsStream( "words.txt" ), 
+          StandardCharsets.UTF_8
+        )
+      );
+      while ((l = buf.readLine()) != null) WORDS.add( l );
+      buf.close();
+    } 
+    catch (IOException e) {
+      e.printStackTrace();
+    }
+
 
   }
 
