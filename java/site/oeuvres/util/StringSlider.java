@@ -14,9 +14,11 @@ import java.util.Scanner;
  */
 public class StringSlider {
   /** Data of the sliding window */
-  private StringBuffer[] data;
-  /** Size of “wing” (left or right) */
-  private final int wing; 
+  private final StringBuffer[] data;
+  /** Size of left wing */
+  private final int left; 
+  /** Size of right wing */
+  private final int right; 
   /** Size of the widow */
   private final int width;
   /** Index of center cell */
@@ -25,12 +27,13 @@ public class StringSlider {
   /** 
    * Constructor, init data
    */
-  public StringSlider(final int wing) 
+  public StringSlider(final int left, final int right) 
   {
-    this.wing = wing;
-    width = wing + wing + 1;
-    center = wing;
-    data = new StringBuffer[wing+wing+1];
+    this.left = left;
+    this.right = right;
+    width = left + right + 1;
+    center = left;
+    data = new StringBuffer[width];
     // Arrays.fill will repeat a reference to the same object but do not create it 
     for (int i=0; i<width; i++) data[i] = new StringBuffer();
   }
@@ -52,7 +55,7 @@ public class StringSlider {
   {
     // modulo in java produce negatives
     center = (((center + 1) % width) + width) % width;
-    int i = (((center + wing) % width) + width) % width;
+    int i = (((center + right) % width) + width) % width;
     String ret = data[i].toString();
     data[i].setLength(0);
     data[i].append(value);
@@ -62,7 +65,16 @@ public class StringSlider {
    * Show window content
    */
   public String toString() {
-    return Arrays.toString(data);
+    StringBuffer sb = new StringBuffer();
+    for (int i = -left; i <= right; i++) {
+      if (i == 0) sb.append( " <" );
+      sb.append( get(i) );
+      if (i == 0) sb.append( "> " );
+      else if (i == right);
+      else if (i == -1);
+      else sb.append( " " );
+    }
+    return sb.toString();
   }
   /**
    * Test the Class
@@ -85,13 +97,12 @@ public class StringSlider {
       + " et à gauche, les volets à glissière sur les vitres et à l’arrière ;"
       + " elle a retiré ses gants, pensant qu’il veut l’embrasser, ou qu’elle le caresse."
     ;
-    StringSlider win = new StringSlider(3);
+    StringSlider win = new StringSlider(2, 5);
     @SuppressWarnings("resource")
     Scanner s = new Scanner(text).useDelimiter("\\PL+");
     while(s.hasNext()) {
       win.addRight(s.next());
-      System.out.println(win.get(-3)+" "+win.get(-2)+" "+win.get(-1)+" –"
-      +win.get(0)+"– "+win.get(1)+" "+win.get(2)+" "+win.get(3));
+      System.out.println(win);
     }
     s.close();
   }
