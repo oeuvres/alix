@@ -7,21 +7,24 @@ import java.io.InputStreamReader;
 import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
-import site.oeuvres.fr.HashLem;
+import site.oeuvres.fr.PoorLem;
 import site.oeuvres.fr.Lexik;
 import site.oeuvres.fr.Tokenizer;
-import site.oeuvres.util.Cosine;
 import site.oeuvres.util.Dico;
 import site.oeuvres.util.IntObjectMap;
 import site.oeuvres.util.IntSlider;
@@ -35,7 +38,7 @@ import site.oeuvres.util.IntSlider;
  * There are probably lots of better optimizations, similarities are for now 
  * linear calculations.
  * 
- * TODO, try Jacqard relevance
+ * TODO, try other proximity relevance
  * https://en.wikipedia.org/wiki/MinHash
  * https://github.com/tdebatty/java-LSH
  * super-bit locality ?
@@ -44,9 +47,7 @@ import site.oeuvres.util.IntSlider;
  */
 public class Dicovek {
   /** Used as attribute in a token stream  */
-  public static int STOPWORD = 1;
-  /** Tmp, see max vector size */
-  private int vekmax;
+  public final static int STOPWORD = 1;
   /** Size of left context */
   final int left;
   /** Size of right context */
@@ -58,7 +59,9 @@ public class Dicovek {
   /** Sliding window */
   private IntSlider win;
   /** List of stop words, usually grammatical, do not modify during object life */
-  private final HashSet<String> stoplist;
+  private final Set<String> stoplist;
+  /** A hash for a poor lemmatiser */
+  private final PoorLem lems;
   /** Current Vector to work on */
   private Vek vek;
   /**
@@ -67,8 +70,9 @@ public class Dicovek {
    * @param contextLeft
    * @param contextRight
    */
-  public Dicovek(int contextLeft, int contextRight) {
-    this(contextLeft, contextRight, null, 5000);
+  public Dicovek(int contextLeft, int contextRight)
+  {
+    this(contextLeft, contextRight, null, null);
   }
   /**
    * Constructor with Stopwords
@@ -77,8 +81,9 @@ public class Dicovek {
    * @param contextRight
    * @param stoplist
    */
-  public Dicovek(int contextLeft, int contextRight, HashSet<String> stoplist) {
-    this(contextLeft, contextRight, stoplist, 5000);
+  public Dicovek(int contextLeft, int contextRight, Set<String> stoplist)
+  {
+    this(contextLeft, contextRight, stoplist, null);
   }
   
   /**
@@ -89,15 +94,18 @@ public class Dicovek {
    * @param stoplist
    * @param initialSize
    */
-  public Dicovek(int contextLeft, int contextRight, HashSet<String> stoplist, int initialSize) {    
+  public Dicovek(int contextLeft, int contextRight, Set<String> stoplist, PoorLem lems)
+  {    
     left = contextLeft;
     right = contextRight;
     this.stoplist = stoplist;    
     terms = new Dico();
     // 44960 is the size of all Zola vocabulary
-    vectors = new IntObjectMap<Vek>(initialSize);
+    vectors = new IntObjectMap<Vek>(5000);
     win = new IntSlider(contextLeft, contextRight);
+    this.lems = lems;
   }
+  
   /**
    * Add a term and do good work
    * Most of the logic is here
@@ -105,7 +113,8 @@ public class Dicovek {
    * 
    * @param term A token
    */
-  public Dicovek add(String term) {
+  public Dicovek add(String term)
+  {
     // if ( term == null ) term = ""; // do something ?
     // default is an empty position
     int termid = 0;
@@ -169,7 +178,6 @@ public class Dicovek {
     // some words of the dictionary has no vector but are recorded in co-occurrence (ex: stop)
     if ( vekterm == null ) return null;
     // Similarity
-    Cosine cosine = new Cosine();
     double score;
     // list dico in freq order
     int limit = 1000;
@@ -227,6 +235,14 @@ public class Dicovek {
       writer.close();
     }
   }
+  /**
+   * A list of co-occurrencies
+   * 
+   * @param term
+   * @param limit
+   * @param stop
+   * @return
+   */
   public String coocs(String term, int limit, boolean stop) {
     StringBuffer sb = new StringBuffer();
     int index = terms.index( term );
@@ -259,7 +275,7 @@ public class Dicovek {
   }
   /**
    * A row similar word with different info, used for sorting
-   * @author user
+   * @author glorieux-f
    *
    */
   class SimRow {
@@ -275,71 +291,106 @@ public class Dicovek {
       return term+"\t"+count+"\t"+score;
     }
   }
+  /**
+   * Use default tokenizer of the package (French)
+   * to feed the dico
+   * @throws IOException 
+   */
+  public void tokenize(Path file) throws IOException {
+    String text = new String(Files.readAllBytes( file ), StandardCharsets.UTF_8);
+    Tokenizer toks = new Tokenizer(text);
+    String w;
+    // give some space before
+    for ( int i=0; i < left; i++ )
+      add("");
+    if ( lems != null ) {
+      while( toks.read() ) {
+        w = toks.getString(); // le tokeniseur régularise la casse entre mot de langue et nom propre
+        add( lems.get( w ) );
+      }
+    }
+    else {
+      while( toks.read() ) {
+        w = toks.getString();
+        add( w );
+      }
+    }
+    // give some space after
+    for ( int i=0; i < right; i++ )
+      add("");
+  }
+  /**
+   * Explore 
+   * @param glob
+   * @throws IOException 
+   */
+  public void walk( String glob ) throws IOException {
+    // get the parent folder before the first glob star, needed for ../*/*.xml
+    int before = glob.indexOf('*');
+    if (before<0) before = glob.length()-1;
+    int pos = glob.substring( 0, before).lastIndexOf( '/' );
+    Path dir = Paths.get(glob.substring( 0, pos+1 ));
+    final PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:"+glob);
+    Files.walkFileTree( dir , new SimpleFileVisitor<Path>() {
+      @Override
+      public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+        if ( dir.getFileName().toString().startsWith( "." )) return FileVisitResult.SKIP_SUBTREE;
+        return FileVisitResult.CONTINUE;
+      }
+      @Override
+      public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+        if (matcher.matches(file)) {
+          System.out.println(file);
+          tokenize(file);
+        }
+        return FileVisitResult.CONTINUE;
+      }
+      @Override
+      public FileVisitResult visitFileFailed(Path path, IOException exc) throws IOException {
+        System.out.println( path );
+        return FileVisitResult.CONTINUE;
+      }
+    });
+  }
   
   /**
    * @throws IOException 
    */
   public static void main(String[] args) throws IOException {
-    // TODO, meilleur API de paramètres
-    String auteur = "zola";
-    if (args.length > 0) auteur = args[0];
-    // récupérer le dossier parent
-    Path context = Paths.get(Dicovek.class.getClassLoader().getResource("").getPath()).getParent();
-    Path textfile = Paths.get( context.toString(), "/Textes/"+auteur+".txt");
-    System.out.print("Parse: "+textfile+"... ");
-    
-    // charger le texte d’un coup
-    String text = new String(Files.readAllBytes(textfile), StandardCharsets.UTF_8);
-    Tokenizer toks = new Tokenizer(text);
-    // largeur avant-après
-    int wing = 10;
-    // le chargeur de vecteur a besoin d'une liste de mots vide pour éviter de f  aire le vecteur de "de" ?
-    Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST);
-    // Dicovek veks = new Dicovek(wing, wing); // TODO, NPE sur les vecteurs avec mots vides
-    long start = System.nanoTime();
-    String w;
-    String lem;
-    boolean nostop = false;
-    // TODO 
-    HashLem lems = new HashLem(Paths.get( context.toString(), "/res/fr-lemma.csv"));
-    while( toks.read() ) {
-      w = toks.getString(); // le tokeniseur régularise la casse entre mot de langue et nom propre
-     veks.add( lems.get( w ) );
+    String usage = 
+        "Usage: java -cp alix.jar site.oeuvres.muthovek.Dicovek texts/*\n"
+       +"   texts maybe in txt or xml.\n"
+    ;
+    if ( args.length == 0 ) {
+      System.out.println( usage );
+      System.exit( 0 );
     }
-    // add empty words here to finish window
-    veks.add("").add("").add("");
-    System.out.println( ((System.nanoTime() - start) / 1000000) + " ms");
-    System.out.println( veks.freqlist(true, 100) );
+    // largeur avant-après
+    int wing = 4;
+    // le chargeur de vecteur a besoin d'une liste de mots vide pour éviter de faire le vecteur de "de"
+    // un lemmatiseur du pauvre sert à regrouper les entrées des vecteurs
+    Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST, new PoorLem());
+    long start = System.nanoTime();
+    // Boucler sur les fichiers
+    for ( int i=0; i < args.length; i++) {
+      veks.walk( args[i] );
+    }
     
-    Path vekspath = Paths.get( context.toString(), "/"+auteur+"-veks.json"); 
-    veks.json( vekspath, 100 ); // store the vectors in a file
-    System.out.println( ((System.nanoTime() - start) / 1000000) + " ms");
-
+    System.out.println( "Chargé en "+((System.nanoTime() - start) / 1000000) + " ms");
+    System.out.println( veks.freqlist(true, 100) );
     // Boucle de recherche
     BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
     List<SimRow> table;
-    String filename;
-    filename = auteur+"-2-"+wing+".txt";
-    BufferedWriter writer = Files.newBufferedWriter(
-        Paths.get( context.toString(), "/"+filename), 
-        Charset.forName("UTF-8")
-    );
     while (true) {
       System.out.println( "" );
       System.out.print("Mot: ");
       String word = keyboard.readLine().trim();
       if (word == null || "".equals(word)) {
-        writer.close();
         System.exit(0);
       }
       start = System.nanoTime();
       table = veks.syns(word);
       if ( table == null ) continue;
-      /*
-      writer.write( word+"\n" );
-      writer.write( veks.coocs( word, 30, true ) );
-      writer.newLine();
-      */
       System.out.print( "COOCCURRENTS : " );
       System.out.println( veks.coocs( word, 30, true ) );
       System.out.println( "" );
@@ -347,15 +398,11 @@ public class Dicovek {
       // TODO optimiser 
       System.out.print( "SIMINYMES : " );
       for (SimRow row:table) {
-        // writer.write(row.term);
-        // writer.write( ", " );
         System.out.print( row.term );
         System.out.print( ", " );
         if (--limit == 0 ) break;
       }
       System.out.println( "" );
-      writer.write("\n\n");
-      writer.flush();
     }
 
   }

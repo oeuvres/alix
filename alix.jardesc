@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<jardesc>
+    <jar path="Alix/build/alix.jar"/>
+    <options buildIfNeeded="true" compress="true" descriptionLocation="/Alix/alix.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="true" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
+    <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
+    <selectedProjects/>
+    <manifest generateManifest="true" mainClassHandleIdentifier="=Alix/java&lt;site.oeuvres.muthovek{Dicovek.java[Dicovek" manifestLocation="/Alix/java/META-INF/MANIFEST.MF" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
+        <sealing sealJar="false">
+            <packagesToSeal/>
+            <packagesToUnSeal/>
+        </sealing>
+    </manifest>
+    <selectedElements exportClassFiles="false" exportJavaFiles="false" exportOutputFolder="true">
+        <file path="/Alix/java/.DS_Store"/>
+        <folder path="/Alix/java/META-INF/services"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres"/>
+        <file path="/Alix/java/META-INF/MANIFEST.MF"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.util"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.lucene"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.muthovek"/>
+    </selectedElements>
+</jardesc>
