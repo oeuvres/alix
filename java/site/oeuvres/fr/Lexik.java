@@ -13,7 +13,8 @@ import java.util.stream.Collectors;
 
 /**
  * Preloaded list of words
- * @author user
+ * Lists are not too big, should not be a problem for memory.
+ * @author gloieux-f
  *
  */
 public class Lexik

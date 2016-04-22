@@ -180,27 +180,45 @@ public class Dicovek {
     // Similarity
     double score;
     // list dico in freq order
-    int limit = 1000;
+    int limit = 3000;
     ArrayList<SimRow> table = new ArrayList<SimRow>();
     SimRow row;
     for( String w: terms.byCount() ) {
       vek = vectors.get( terms.index( w ) );
       if ( vek == null ) continue;
       score = vekterm.cosine( vek );
-      if (score < 0.7) continue;
+      // score differs 
+      if (score < 0.8) continue;
       row = new SimRow(w, terms.count( w ), score);
       table.add( row );
       if (limit-- == 0) break;
     }
-    // sort 
-    Collections.sort(table, new Comparator<SimRow>() {
-      @Override
-      public int compare(SimRow row1, SimRow row2)
-      {
-        return (int)( 100000*(row2.score - row1.score) );
-      }
-    });
+    // sort as a bug ? 
+    Collections.sort(table);
     return table;
+  }
+  /**
+   * A row similar word with different info, used for sorting
+   * @author glorieux-f
+   *
+   */
+  class SimRow implements Comparable<SimRow> {
+    public final  String term;
+    public final int count;
+    public final double score;
+    public SimRow(String term, int count, double score) {
+      this.term = term;
+      this.count = count;
+      this.score = score;
+    }
+    public String toString() {
+      return term+"\t"+count+"\t"+score;
+    }
+    @Override
+    public int compareTo(SimRow other) {
+      // score maybe be highly close and bug around 0
+      return Double.compare( other.score, score );
+    }
   }
   
   public void json(Path path) throws IOException {
@@ -272,24 +290,6 @@ public class Dicovek {
       if (--limit == 0) break;
     }
     return sb.toString();
-  }
-  /**
-   * A row similar word with different info, used for sorting
-   * @author glorieux-f
-   *
-   */
-  class SimRow {
-    public final  String term;
-    public final int count;
-    public final double score;
-    public SimRow(String term, int count, double score) {
-      this.term = term;
-      this.count = count;
-      this.score = score;
-    }
-    public String toString() {
-      return term+"\t"+count+"\t"+score;
-    }
   }
   /**
    * Use default tokenizer of the package (French)
@@ -389,11 +389,11 @@ public class Dicovek {
         System.exit(0);
       }
       start = System.nanoTime();
-      table = veks.syns(word);
-      if ( table == null ) continue;
       System.out.print( "COOCCURRENTS : " );
       System.out.println( veks.coocs( word, 30, true ) );
       System.out.println( "" );
+      table = veks.syns(word);
+      if ( table == null ) continue;
       int limit = 30;
       // TODO optimiser 
       System.out.print( "SIMINYMES : " );

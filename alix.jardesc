@@ -16,7 +16,6 @@
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr"/>
         <javaElement handleIdentifier="=Alix/java&lt;site"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres"/>
-        <file path="/Alix/java/META-INF/MANIFEST.MF"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.util"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.lucene"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.muthovek"/>
