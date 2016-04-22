@@ -1,5 +1,6 @@
 ,
 .
+..
 ...
 …
 :
@@ -16,6 +17,7 @@
 ?
 …
 *
+•
 (
 )
 [
@@ -23,15 +25,13 @@
 {
 }
 /
+\
 ''
 %
 =
 ==
 ===
 ====
-www
-http
-com
 0
 1
 2
@@ -42,6 +42,13 @@ com
 7
 8
 9
+&
+&amp
+&amp;
+&gt
+&gt;
+&lt
+&lt;
 a
 à
 ad
@@ -160,6 +167,7 @@ ci
 cinq
 cinquante
 cm
+com
 combien
 comme
 comment
@@ -275,6 +283,8 @@ grande
 grandes
 grands
 grant
+h
+H
 ha
 hé
 hélas
@@ -284,6 +294,7 @@ ho
 hors
 hui
 huit
+http
 i
 I
 icelle
@@ -323,6 +334,7 @@ IX
 ixe
 IXe
 j
+J
 j'
 j’
 jadis
@@ -342,6 +354,7 @@ jusques
 j'y
 j’y
 l
+L
 l'
 l’
 la
@@ -442,6 +455,8 @@ oudict
 oudit
 oudiz
 oui
+p
+P
 par
 parce
 par-dessus
@@ -677,3 +692,4 @@ y
 ycelle
 ycelles
 ycellui
+www

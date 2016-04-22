@@ -40,6 +40,9 @@ public class Char
         properties |= WORD;
         // properties |= PUNCTUATION;
       }
+      else if ( c == '&') {
+        properties |= WORD;
+      }
       else if ( c == '_') {
         properties |= WORD;
       }
@@ -163,6 +166,7 @@ public class Char
     System.out.println( "' Char.isWord: " + Char.isWord( '\'' ) + " Character.isLetter:" + Character.isLetter( '\'' ) );
     System.out.println( "’ Char.isWord: " + Char.isWord( '’' ) + " Character.isLetter:" + Character.isLetter( '’' ) );
     System.out.println( "& Char.isWord: " + Char.isWord( '&' ) + " Character.isLetter:" + Character.isLetter( '&' ));
+    System.out.println( "~ Char.isWord: " + Char.isWord( '~' ) + " Character.isLetter:" + Character.isLetter( '~' ));
     System.out.println( "_ isPunctuation: " + Char.isPunctuation( '_' ) );
     System.out.println( "- isPunctuation: " + Char.isPunctuation( '-' ) );
     System.out.println( "Œ isUpperCase: " + Char.isUpperCase( 'Œ' ) );
