@@ -1,8 +1,13 @@
 package site.oeuvres.muthovek;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Random;
+
+import site.oeuvres.util.Calcul;
 
 /**
  * 
@@ -428,27 +433,6 @@ public class Vek implements Cloneable
 
 
   /** 
-   * Return the least power of two greater than or equal to the specified value.
-   * Taken from FastUtil implementation
-   *
-   * <p>Note that this function will return 1 when the argument is 0.
-   *
-   * @param x a long integer smaller than or equal to 2<sup>62</sup>.
-   * @return the least power of two greater than or equal to the specified value.
-   */
-  private static long nextPowerOfTwo( long x )
-  {
-    if ( x == 0 ) return 1;
-    x--;
-    x |= x >> 1;
-    x |= x >> 2;
-    x |= x >> 4;
-    x |= x >> 8;
-    x |= x >> 16;
-    return ( x | x >> 32 ) + 1;
-  }
-
-  /** 
    * Returns the least power of two smaller than or equal to 2<sup>30</sup> and larger than or equal to <code>Math.ceil( expected / f )</code>.
    *
    * @param expected the expected number of elements in a hash table.
@@ -458,7 +442,7 @@ public class Vek implements Cloneable
    */
   private static int arraySize( final int expected, final float f ) 
   {
-    final long s = Math.max( 2, nextPowerOfTwo( (long)Math.ceil( expected / f ) ) );
+    final long s = Math.max( 2, Calcul.nextSquare( (long)Math.ceil( expected / f ) ) );
     if ( s > (1 << 30) ) throw new IllegalArgumentException( "Too large (" + expected + " expected elements with load factor " + f + ")" );
     return (int)s;
   }
@@ -495,18 +479,12 @@ public class Vek implements Cloneable
   public String toString()
   {
     StringBuffer sb = new StringBuffer();
-    sb.append("{ ");
-    boolean first = true;
     int key;
     for (long  entry : data) {
       key = key(entry);
       if (key == NO_KEY) continue;
-      if (!first) sb.append(", ");
-      else first = false;
-      sb.append(key +":"+value(entry));
+      sb.append(key +"\t"+value(entry));
     }
-
-    sb.append(" }");
     return sb.toString();
   }
   
@@ -561,12 +539,13 @@ public class Vek implements Cloneable
   {
     if (magnitude != 0 && magsize == size) return magnitude;
     reset();
-    magnitude = 0;
-    while(next()) {
-      magnitude += value() * value();
+    // here there is no
+    long mag = 0;
+    while( next() ) {
+      mag += (long)value() * (long)value();
     }
     magsize = size;
-    magnitude = (double)Math.sqrt(magnitude);
+    magnitude = (double)Math.sqrt(mag);
     return magnitude;
   }
   

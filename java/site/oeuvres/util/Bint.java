@@ -61,7 +61,7 @@ public class Bint
   public Bint( int capacity, final int mode )
   {
     if ( capacity < 2 ) capacity=2;
-    length = nextPower2( capacity );
+    length = (int) Calcul.nextSquare( capacity );
     data = new long[length];
     Arrays.fill( data, NO_ENTRY );
     // buffer is sized for the desired capacity of data
@@ -119,7 +119,7 @@ public class Bint
   {
     long[] tmp = data;
     // be sure to have always a stop entry (+1) in loops
-    length = nextPower2( size+bufpointer+1 );
+    length = (int) Calcul.nextSquare( size+bufpointer+1 );
     data = new long[length];
     Arrays.fill( data, NO_ENTRY );
     // put old data and buffer in same array
@@ -127,7 +127,7 @@ public class Bint
     System.arraycopy( buffer, 0, data, size, bufpointer );
     uniq();
     // size should have been updated
-    buffer = new long[nextPower2(100)];
+    buffer = new long[(int) Calcul.nextSquare(100)];
     Arrays.fill( buffer, NO_ENTRY );
     // buffer is ready for next inserts
     return this;
@@ -140,7 +140,7 @@ public class Bint
     bufpointer++;
     if (bufpointer < buflength) return this;
     long[] tmp = buffer;
-    buflength = nextPower2( buflength+buflength );
+    buflength = (int) Calcul.nextSquare( buflength+buflength );
     buffer = new long[buflength];
     Arrays.fill( buffer, NO_ENTRY );
     System.arraycopy( tmp, 0, buffer, 0, tmp.length );
@@ -266,29 +266,13 @@ public class Bint
   }
 
 
-  /** 
-   * Return the least power of two greater than or equal to the specified value.
-   * Taken from FastUtil implementation
-   *
-   * <p>Note that this function will return 1 when the argument is 0.
-   *
-   * @param x an integer smaller than or equal to 2<sup>31</sup>.
-   * @return the least power of two greater than or equal to the specified value.
+
+  /**
+   * An int array vue of data
+   * @return
    */
-  private static int nextPower2( int x )
+  public int[][] toArray() 
   {
-    if ( x == 0 ) return 1;
-    x--;
-    x |= x >> 1;
-    x |= x >> 2;
-    x |= x >> 4;
-    x |= x >> 8;
-    x |= x >> 16;
-    return ( x | x >> 32 ) + 1;
-  }
-
-
-  public int[][] toArray() {
     int[][] ret = new int[size][2];
     long entry;
     for (int i=0; i < size; i++) {
@@ -298,7 +282,9 @@ public class Bint
     }
     return ret;
   }
-  public String toString() {
+  
+  public String toString() 
+  {
     StringBuffer sb = new StringBuffer();
     sb.append("{ ");
     boolean first = true;

@@ -25,6 +25,7 @@ import java.util.Set;
 import site.oeuvres.fr.PoorLem;
 import site.oeuvres.fr.Lexik;
 import site.oeuvres.fr.Tokenizer;
+import site.oeuvres.util.Char;
 import site.oeuvres.util.Dico;
 import site.oeuvres.util.IntObjectMap;
 import site.oeuvres.util.IntSlider;
@@ -180,7 +181,7 @@ public class Dicovek {
     // Similarity
     double score;
     // list dico in freq order
-    int limit = 3000;
+    int limit = 10000;
     ArrayList<SimRow> table = new ArrayList<SimRow>();
     SimRow row;
     for( String w: terms.byCount() ) {
@@ -253,6 +254,9 @@ public class Dicovek {
       writer.close();
     }
   }
+  public String coocs( final String term ) {
+    return coocs( term, -1, false);
+  }
   /**
    * A list of co-occurrencies
    * 
@@ -261,7 +265,7 @@ public class Dicovek {
    * @param stop
    * @return
    */
-  public String coocs(String term, int limit, boolean stop) {
+  public String coocs( final String term, int limit, final boolean stop) {
     StringBuffer sb = new StringBuffer();
     int index = terms.index( term );
     if (index == 0) return null;
@@ -271,7 +275,7 @@ public class Dicovek {
     // get vector as an array
     int[][] coocs; // will receive the co-occurrences to sort
     coocs = vek.toArray();
-    // sort coocs by score
+    // sort coocs by count
     Arrays.sort(coocs, new Comparator<int[]>() {
       @Override
       public int compare(int[] o1, int[] o2) {
@@ -303,15 +307,21 @@ public class Dicovek {
     // give some space before
     for ( int i=0; i < left; i++ )
       add("");
-    if ( lems != null ) {
+    if ( lems != null ) { // ne faire le test qu’une fois
       while( toks.read() ) {
-        w = toks.getString(); // le tokeniseur régularise la casse entre mot de langue et nom propre
+        w = toks.getString();
+        // ne pas ajouter la ponctuation
+        if ( !Char.isWord( w.charAt( 0 ) )) {
+          continue;
+        }
         add( lems.get( w ) );
       }
     }
     else {
       while( toks.read() ) {
         w = toks.getString();
+        // ne pas ajouter la ponctuation
+        if ( !Char.isWord( w.charAt( 0 ) )) continue;
         add( w );
       }
     }
@@ -366,8 +376,8 @@ public class Dicovek {
       System.exit( 0 );
     }
     // largeur avant-après
-    int wing = 4;
-    // le chargeur de vecteur a besoin d'une liste de mots vide pour éviter de faire le vecteur de "de"
+    int wing = 3;
+    // le chargeur de vecteur a besoin d'une liste de mots vides pour éviter de faire le vecteur de "de"
     // un lemmatiseur du pauvre sert à regrouper les entrées des vecteurs
     Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST, new PoorLem());
     long start = System.nanoTime();
@@ -399,6 +409,10 @@ public class Dicovek {
       System.out.print( "SIMINYMES : " );
       for (SimRow row:table) {
         System.out.print( row.term );
+        /*
+        System.out.print( ":" );
+        System.out.print( row.score );
+        */
         System.out.print( ", " );
         if (--limit == 0 ) break;
       }

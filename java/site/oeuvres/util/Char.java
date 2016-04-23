@@ -167,6 +167,7 @@ public class Char
     System.out.println( "’ Char.isWord: " + Char.isWord( '’' ) + " Character.isLetter:" + Character.isLetter( '’' ) );
     System.out.println( "& Char.isWord: " + Char.isWord( '&' ) + " Character.isLetter:" + Character.isLetter( '&' ));
     System.out.println( "~ Char.isWord: " + Char.isWord( '~' ) + " Character.isLetter:" + Character.isLetter( '~' ));
+    System.out.println( ", Char.isWord: " + Char.isWord( ',' ) + " Character.isLetter:" + Character.isLetter( ',' ) + ", isPunctuation: " + Char.isPunctuation( ',' ));
     System.out.println( "_ isPunctuation: " + Char.isPunctuation( '_' ) );
     System.out.println( "- isPunctuation: " + Char.isPunctuation( '-' ) );
     System.out.println( "Œ isUpperCase: " + Char.isUpperCase( 'Œ' ) );
@@ -174,7 +175,6 @@ public class Char
     System.out.println( "&nbsp; isSpace: " + Char.isSpace( ' ' ) );
     System.out.println( "\\n isSpace: " + Char.isSpace( '\n' ) );
     System.out.println( "  isSpace: " + Char.isSpace( ' ' ) );
-    System.out.println( ", isPunctuation: " + Char.isPunctuation( ',' ) );
     System.out.println( "+ isPunctuation: " + Char.isPunctuation( '+' ) );
     System.out.println( "= isPunctuation: " + Char.isPunctuation( '=' ) );
     System.out.println( "6 isPunctuationOrSpace: " + Char.isPunctuationOrSpace( '6' ) );
