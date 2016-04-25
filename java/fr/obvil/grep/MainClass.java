@@ -25,7 +25,7 @@ import com.univocity.parsers.tsv.TsvParserSettings;
 
 public class MainClass {
 
-	public static final String DEFAULT_PATH="/home/bilbo/Téléchargements/critique2000/tei/";
+	public static final String DEFAULT_PATH="C:/Users/Administrateur/Desktop/critique2000/tei/";
 	public static final String OBVIL_PATH="http://obvil-dev.paris-sorbonne.fr/corpus/critique/";
 	public static final String GITHUB_PATH="http://obvil.github.io/critique2000/tei/";
 	public static String WORD="littérature";
@@ -123,8 +123,8 @@ public class MainClass {
 			for (StatsTokens entry:statsPerDoc){
 				if (combinedStats.isEmpty()==false&&combinedStats.containsKey(entry.getQuery())){
 					String stats[]=new String[5];
-					double totalTmp=entry.getTotal()+Double.parseDouble(combinedStats.get(entry.getQuery())[0]);
-					double tokenTmp=entry.getNbEntry()+Double.parseDouble(combinedStats.get(entry.getQuery())[1]);
+					int totalTmp=entry.getTotal()+Integer.parseInt(combinedStats.get(entry.getQuery())[0]);
+					int tokenTmp=entry.getNbEntry()+Integer.parseInt(combinedStats.get(entry.getQuery())[1]);
 					stats[0]=String.valueOf(totalTmp);
 					stats[1]=String.valueOf(tokenTmp);
 					stats[2]=entry.getAuthorsName();

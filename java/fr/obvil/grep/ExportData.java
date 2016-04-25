@@ -11,7 +11,7 @@ public class ExportData {
 	
 		try
 		{
-			FileWriter writer = new FileWriter(folderPath+fileName+".csv");
+			FileWriter writer = new FileWriter(folderPath+fileName+".tsv");
 
 			writer.append("Auteur\t");
 			writer.append("Total De Tokens\t");

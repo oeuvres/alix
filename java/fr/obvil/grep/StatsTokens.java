@@ -9,8 +9,8 @@ package fr.obvil.grep;
  */
 public class StatsTokens {
 	private String query;
-	private double nbTokens;
-	private double nbSearchedEntry;
+	private int nbTokens;
+	private int nbSearchedEntry;
 	private String docName;
 	private String authorsName;
 	private String year;
@@ -30,25 +30,25 @@ public class StatsTokens {
 	/**
 	 * @return the totalTokens
 	 */
-	public double getTotal() {
+	public int getTotal() {
 		return nbTokens;
 	}
 	/**
 	 * @param totalTokens the nbOfTokens to set
 	 */
-	public void setTotal(double totalTokens) {
+	public void setTotal(int totalTokens) {
 		this.nbTokens = totalTokens;
 	}
 	/**
 	 * @return the nb of searched token
 	 */
-	public double getNbEntry() {
+	public int getNbEntry() {
 		return nbSearchedEntry;
 	}
 	/**
 	 * @param stats the nb of searched token to set
 	 */
-	public void setStats(double stats) {
+	public void setStats(int stats) {
 		this.nbSearchedEntry = stats;
 	}
 	/**
