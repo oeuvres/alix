@@ -14,6 +14,7 @@ public class StatsTokens {
 	private String docName;
 	private String authorsName;
 	private String year;
+	private String title;
 	/**
 	 * @return the query
 	 */
@@ -85,5 +86,17 @@ public class StatsTokens {
 	 */
 	public void setYear(String year) {
 		this.year = year;
+	}
+	/**
+	 * @return the title
+	 */
+	public String getTitle() {
+		return title;
+	}
+	/**
+	 * @param title the title to set
+	 */
+	public void setTitle(String title) {
+		this.title = title;
 	}
 }

@@ -17,6 +17,7 @@ public class ExportData {
 			writer.append("Total De Tokens\t");
 			writer.append("Occurrences du Mot\t");
 			writer.append("Date\t");
+			writer.append("Titre\t");
 			writer.append('\n');
 			
 			for (Entry<String, String[]> entry:stats.entrySet()){
@@ -24,6 +25,7 @@ public class ExportData {
 				writer.append(entry.getValue()[0]+"\t");
 				writer.append(entry.getValue()[1]+"\t");
 				writer.append(entry.getValue()[3]+"\t");
+				writer.append(entry.getValue()[4]+"\t");
 				writer.append('\n');
 			}
 			writer.flush();

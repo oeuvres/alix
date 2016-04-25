@@ -25,9 +25,9 @@ import com.univocity.parsers.tsv.TsvParserSettings;
 
 public class MainClass {
 
-	public static final String DEFAULT_PATH="/home/bilbo/Téléchargements/critique2000-gh-pages/tei";
-	public static final String OBVIL_PATH="http://obvil-dev.paris-sorbonne.fr/corpus/critique";
-	public static final String GITHUB_PATH="http://obvil.github.io/critique2000/tei";
+	public static final String DEFAULT_PATH="/home/bilbo/Téléchargements/critique2000/tei/";
+	public static final String OBVIL_PATH="http://obvil-dev.paris-sorbonne.fr/corpus/critique/";
+	public static final String GITHUB_PATH="http://obvil.github.io/critique2000/tei/";
 	public static String WORD="littérature";
 
 	public static void main(String[] args) throws MalformedURLException, SAXException, IOException, ParserConfigurationException {
@@ -42,7 +42,7 @@ public class MainClass {
 		String doItAgain="";
 		String chosenPath="";
 		
-		System.out.println("Définissez le chemin vers vos fichiers à analyser (exemple : /home/bilbo/Téléchargements/critique2000-gh-pages/tei)");
+		System.out.println("Définissez le chemin vers vos fichiers à analyser (exemple : /home/bilbo/Téléchargements/critique2000-gh-pages/tei/)");
 		chosenPath=usersPath.nextLine();
 		if(chosenPath.equals(null))chosenPath=DEFAULT_PATH;
 		
@@ -53,15 +53,13 @@ public class MainClass {
 			System.out.println("Quel mot voulez-vous chercher ?");
 			String usersWord = usersChoice.next();
 
-			if (usersWord!=null){
-				WORD=usersWord;
-			}
+			if (usersWord!=null)WORD=usersWord;
 
-			System.out.println("Recherche par nom ou par date (réponses : nom/date) :");
+			System.out.println("Recherche par nom, par date ou par titre (réponses : nom/date/titre) :");
 
 			String nameOrYear = usersChoice.next();
 
-			while(!nameOrYear.equals("nom")&&!nameOrYear.equals("date")){
+			while(!nameOrYear.equals("nom")&&!nameOrYear.equals("date")&&!nameOrYear.equals("titre")){
 				System.out.println("**********");
 				System.out.println("Veuillez rentrer le mot nom ou le mot date");
 				System.out.println("**********");
@@ -69,20 +67,25 @@ public class MainClass {
 				nameOrYear = usersChoice.next();
 			}
 			if (nameOrYear.equals("nom")){
-				columnForQuery=1;
+				columnForQuery=2;
 				System.out.println("Vous demandez les statistiques par nom, calcul en cours...");
 			}
 			else if (nameOrYear.equals("date")){
-				columnForQuery=2;
+				columnForQuery=3;
 				System.out.println("Vous demandez les statistiques par date, calcul en cours...");
+			}
+			else if (nameOrYear.equals("titre")){
+				columnForQuery=4;
+				System.out.println("Vous demandez les statistiques par titre, calcul en cours...");
 			}
 
 			long time = System.nanoTime();
+			
 			for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 
 				String []cells=allRows.get(counterRows);
 				int countOccurrences=0;
-				String fileName=cells[0].substring(cells[0].lastIndexOf("/"), cells[0].length());
+				String fileName=cells[1]+".xml";
 				StringBuilder pathSB=new StringBuilder();
 				pathSB.append(DEFAULT_PATH);
 				pathSB.append(fileName);
@@ -103,8 +106,9 @@ public class MainClass {
 				mapOccurrences.setStats(countOccurrences);
 				mapOccurrences.setTotal(toks.size);
 				mapOccurrences.setDocName(fileName);
-				mapOccurrences.setAuthorsName(cells[1]);
-				mapOccurrences.setYear(cells[2]);
+				mapOccurrences.setAuthorsName(cells[2]);
+				mapOccurrences.setYear(cells[3]);
+				mapOccurrences.setTitle(cells[4]);
 				statsPerDoc.add(mapOccurrences);
 			}
 
@@ -118,22 +122,23 @@ public class MainClass {
 
 			for (StatsTokens entry:statsPerDoc){
 				if (combinedStats.isEmpty()==false&&combinedStats.containsKey(entry.getQuery())){
-					String stats[]=new String[4];
+					String stats[]=new String[5];
 					double totalTmp=entry.getTotal()+Double.parseDouble(combinedStats.get(entry.getQuery())[0]);
-					stats[0]=String.valueOf(totalTmp);
 					double tokenTmp=entry.getNbEntry()+Double.parseDouble(combinedStats.get(entry.getQuery())[1]);
 					stats[0]=String.valueOf(totalTmp);
 					stats[1]=String.valueOf(tokenTmp);
 					stats[2]=entry.getAuthorsName();
 					stats[3]=entry.getYear();
+					stats[4]=entry.getTitle()+" // "+combinedStats.get(entry.getQuery())[4];
 					combinedStats.put(entry.getQuery(), stats);
 				}
 				else{
-					String stats[]=new String[4];
+					String stats[]=new String[5];
 					stats[0]=String.valueOf(entry.getTotal());
 					stats[1]=String.valueOf(entry.getNbEntry());
 					stats[2]=entry.getAuthorsName();
 					stats[3]=entry.getYear();
+					stats[4]=entry.getTitle();
 					combinedStats.put(entry.getQuery(), stats);
 				}
 			}
@@ -161,7 +166,7 @@ public class MainClass {
 				ExportData.exportToCSV("./TargetCSV/",usersWord,combinedStats);
 			}
 			else{
-				System.out.println("Votre Requête n'a pas été enregistrée");
+				System.out.println("Votre requête n'a pas été enregistrée");
 			}
 
 			System.out.println("\nVoulez-vous faire une nouvelle requête ? (oui/non)");
