@@ -8,5 +8,6 @@
 	<classpathentry kind="lib" path="lib/lucene-analyzers-common-5.5.0.jar"/>
 	<classpathentry kind="lib" path="lib/lucene-core-5.5.0.jar"/>
 	<classpathentry kind="lib" path="lib/lucene-misc-5.5.0.jar"/>
+	<classpathentry kind="lib" path="lib/univocity-parsers-2.0.2.jar"/>
 	<classpathentry kind="output" path="classes"/>
 </classpath>
