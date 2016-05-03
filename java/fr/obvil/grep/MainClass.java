@@ -1,12 +1,14 @@
 package fr.obvil.grep;
 
-import java.io.File;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -18,41 +20,51 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
 
-import site.oeuvres.fr.Tokenizer;
-
 import com.univocity.parsers.tsv.TsvParser;
 import com.univocity.parsers.tsv.TsvParserSettings;
 
+import site.oeuvres.fr.Tokenizer;
+
 public class MainClass {
 
-	public static final String DEFAULT_PATH="C:/Users/Administrateur/Desktop/critique2000/tei/";
-	public static final String OBVIL_PATH="http://obvil-dev.paris-sorbonne.fr/corpus/critique/";
-	public static final String GITHUB_PATH="http://obvil.github.io/critique2000/tei/";
+	public static final String DEFAULT_PATH="/home/odysseus/Bureau/critique2000/tei/";
+	public static final String OBVIL_PATH="http:/obvil-dev.paris-sorbonne.fr/corpus/critique/";
+	public static final String GITHUB_PATH="http:/obvil.github.io/critique2000/tei/";
 	public static String WORD="littérature";
 
 	public static void main(String[] args) throws MalformedURLException, SAXException, IOException, ParserConfigurationException {
 		@SuppressWarnings("resource")
 		Scanner usersPath=new Scanner(System.in);
-		TsvParserSettings settings = new TsvParserSettings();
-		TsvParser parser = new TsvParser(settings);
-		List<String[]> allRows = parser.parseAll(new File ("./Source/critique2000.tsv"));
+		List <String []>allRows=new ArrayList<String[]>();
+		BufferedReader TSVFile = new BufferedReader(new FileReader("./Source/critique2000Bis.tsv"));
+
+		String dataRow = TSVFile.readLine();
+
+		while (dataRow != null){
+			String[] dataArray = dataRow.split(",");
+			allRows.add(dataArray);
+			dataRow = TSVFile.readLine();
+		}
+
+		TSVFile.close();
+
 		HashSet <StatsTokens>statsPerDoc=new HashSet<StatsTokens>();
 		int columnForQuery=0;
 
 		String doItAgain="";
 		String chosenPath="";
-		
+
 		System.out.println("Définissez le chemin vers vos fichiers à analyser (exemple : /home/bilbo/Téléchargements/critique2000-gh-pages/tei/)");
 		chosenPath=usersPath.nextLine();
 		if(chosenPath.equals(null))chosenPath=DEFAULT_PATH;
-		
+
 		while (!doItAgain.equals("non")){
 
 			@SuppressWarnings("resource")
 			Scanner usersChoice = new Scanner(System.in); 
 			System.out.println("Quel mot voulez-vous chercher ?");
-			String usersWord = usersChoice.next();
-
+			String usersWord = usersChoice.nextLine();
+				
 			if (usersWord!=null)WORD=usersWord;
 
 			System.out.println("Recherche par nom, par date ou par titre (réponses : nom/date/titre) :");
@@ -67,25 +79,24 @@ public class MainClass {
 				nameOrYear = usersChoice.next();
 			}
 			if (nameOrYear.equals("nom")){
-				columnForQuery=2;
+				columnForQuery=3;
 				System.out.println("Vous demandez les statistiques par nom, calcul en cours...");
 			}
 			else if (nameOrYear.equals("date")){
-				columnForQuery=3;
+				columnForQuery=4;
 				System.out.println("Vous demandez les statistiques par date, calcul en cours...");
 			}
 			else if (nameOrYear.equals("titre")){
-				columnForQuery=4;
+				columnForQuery=5;
 				System.out.println("Vous demandez les statistiques par titre, calcul en cours...");
 			}
 
 			long time = System.nanoTime();
-			
 			for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 
 				String []cells=allRows.get(counterRows);
 				int countOccurrences=0;
-				String fileName=cells[1]+".xml";
+				String fileName=cells[2]+".xml";
 				StringBuilder pathSB=new StringBuilder();
 				pathSB.append(DEFAULT_PATH);
 				pathSB.append(fileName);
@@ -96,20 +107,23 @@ public class MainClass {
 				while( toks.read() ) {		
 					sbToks.append(toks.getString()+" ");
 				}
-				Pattern p = Pattern.compile(" "+WORD+" ");
-				Matcher m = p.matcher(sbToks.toString());
-				while (m.find()){
-					countOccurrences++;
-				}
-				StatsTokens mapOccurrences= new StatsTokens();
-				mapOccurrences.setQuery(cells[columnForQuery]);
-				mapOccurrences.setStats(countOccurrences);
-				mapOccurrences.setTotal(toks.size);
-				mapOccurrences.setDocName(fileName);
-				mapOccurrences.setAuthorsName(cells[2]);
-				mapOccurrences.setYear(cells[3]);
-				mapOccurrences.setTitle(cells[4]);
-				statsPerDoc.add(mapOccurrences);
+				
+					Pattern p = Pattern.compile(" "+WORD+" ");
+					Matcher m = p.matcher(sbToks.toString());
+					while (m.find()){
+						countOccurrences++;
+					}
+					StatsTokens mapOccurrences= new StatsTokens();
+					mapOccurrences.setQuery(cells[columnForQuery]);
+					mapOccurrences.setStats(countOccurrences);
+					mapOccurrences.setTotal(toks.size);
+					mapOccurrences.setDocName(fileName);
+					mapOccurrences.setAuthorsName(cells[2]);
+					mapOccurrences.setYear(cells[3]);
+					mapOccurrences.setTitle(cells[4]);
+					statsPerDoc.add(mapOccurrences);
+				
+				
 			}
 
 			System.out.println("\nTemps de repérage des matchs : "+(System.nanoTime() - time) / 1000000);
@@ -159,7 +173,7 @@ public class MainClass {
 			else {
 				System.err.println("Il n'y a pas d'entrée correspondant à votre demande");
 			}
-			
+
 			System.out.println("\nSouhaitez-vous enregistrer votre requête dans un csv ? (oui/non)");
 			String save= usersChoice.next();	
 			if (save.equals("oui")){
