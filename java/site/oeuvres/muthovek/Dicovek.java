@@ -405,6 +405,26 @@ public class Dicovek {
       table = veks.syns(word);
       if ( table == null ) continue;
       int limit = 30;
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
       // TODO optimiser 
       System.out.print( "SIMINYMES : " );
       for (SimRow row:table) {
