@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
@@ -57,13 +56,11 @@ public class MainClass {
 
 		TSVFile.close();
 
-		HashSet <StatsTokens>statsPerDoc=new HashSet<StatsTokens>();
 		int columnForQuery=1;
 
 		String doItAgain="";
 		String chosenPath="";
 		
-
 		System.out.println("Définissez le chemin vers vos fichiers à analyser (exemple : /home/bilbo/Téléchargements/critique2000-gh-pages/tei/)");
 		chosenPath=line.nextLine();
 		
@@ -71,6 +68,7 @@ public class MainClass {
 		System.out.println(chosenPath);
 		
 		while (!doItAgain.equals("non")){
+			HashSet <StatsTokens>statsPerDoc=new HashSet<StatsTokens>();
 			String preciseQuery="";
 			
 			System.out.println("Quelle type de recherche voulez-vous effectuer ? (rentrer le numéro correspondant et taper \"entrée\")");
@@ -131,12 +129,13 @@ public class MainClass {
 			case 2 :
 				System.out.println("Quel premier mot voulez-vous chercher ?");
 				String firstUsersWord = word.next();
+				System.out.println(firstUsersWord);
 				System.out.println("Quel second mot voulez-vous chercher ?");
 				String secondUsersWord = word.next();
+				System.out.println(secondUsersWord);
 				System.out.println("Quelle est l'étendue de votre fenêtre (en nombre de mots) ?");
 				int usersWindow = Integer.valueOf(word.next());
-				columnForQuery=maClasse.rechercheParNomDateTitre(word);		
-				System.out.println("colonne de la query : "+columnForQuery);
+				columnForQuery=maClasse.rechercheParNomDateTitre(word);
 				
 				for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 					String []cells=allRows.get(counterRows);
@@ -154,24 +153,34 @@ public class MainClass {
 						listTokens.add(toks.getString());
 						sbToks.append(toks.getString()+" ");
 					}
-					int minDistance=twoWordsInWindow(listTokens.toArray(new String[listTokens.size()]), firstUsersWord, secondUsersWord, usersWindow);
-					if (minDistance<100){
-						System.out.println(minDistance);
-				    	Pattern p = Pattern.compile(" "+firstUsersWord+".*"+secondUsersWord);
+						
+					System.out.println("début du matching");
+
+				    	Pattern p = Pattern.compile(" "+firstUsersWord+"[\\s\\w+\\s]{1,"+usersWindow+"}"+secondUsersWord, Pattern.CASE_INSENSITIVE);
 						Matcher m = p.matcher(sbToks.toString());
-						while (m.find()){
-							countOccurrences++;
-						}
-						StatsTokens mapOccurrences= new StatsTokens();
-						mapOccurrences.setQuery(cells[columnForQuery]);
-						mapOccurrences.setStats(countOccurrences);
-						mapOccurrences.setTotal(toks.size);
-						mapOccurrences.setDocName(fileName);
-						mapOccurrences.setAuthorsName(cells[2]);
-						mapOccurrences.setYear(cells[3]);
-						mapOccurrences.setTitle(cells[4]);
-						statsPerDoc.add(mapOccurrences);
-				    }
+
+					    while(m.find()) {
+					        countOccurrences++;
+					    }
+					    
+					    Pattern p2 = Pattern.compile(" "+secondUsersWord+"[\\s\\w+\\s]{1,"+usersWindow+"}"+firstUsersWord, Pattern.CASE_INSENSITIVE);
+						Matcher m2 = p2.matcher(sbToks.toString());
+					    
+						while(m2.find()) {
+					        countOccurrences++;
+					    }
+						
+						System.out.println(countOccurrences);
+
+					StatsTokens mapOccurrences= new StatsTokens();
+					mapOccurrences.setQuery(cells[columnForQuery]);
+					mapOccurrences.setStats(countOccurrences);
+					mapOccurrences.setTotal(toks.size);
+					mapOccurrences.setDocName(fileName);
+					mapOccurrences.setAuthorsName(cells[3]);
+					mapOccurrences.setYear(cells[4]);
+					mapOccurrences.setTitle(cells[5]);
+					statsPerDoc.add(mapOccurrences);
 				}	
 				System.out.println("\nQuel(le) "+maClasse.getNameOrYear()+" voulez-vous ?");
 				line=new Scanner(System.in);
@@ -265,30 +274,4 @@ public class MainClass {
 		}
 		return columnForQuery;
 	}
-	
-	
-	public static int twoWordsInWindow(String strArray[], String str1, String str2, int window){
-	    int i,startIndex=0,minDistance=window;
-	    for( i=0;i<strArray.length;i++){
-	        if(strArray[i].equals(str1)||strArray[i].equals(str2)){
-	            startIndex = i;
-	            break;
-	        }
-	    }
-	    for(;i<strArray.length;i++){
-	        if(strArray[i].equals(str1)||strArray[i].equals(str2)){
-	            if(strArray[i]!=strArray[startIndex] && (i-startIndex)<minDistance){
-	                minDistance = i-startIndex;
-	                startIndex =i;
-	            }
-	            else{
-	                startIndex =i;
-	            }
-	        }
-	    }
-	    
-	    return minDistance;
-	}
-	
-	
 }
