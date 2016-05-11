@@ -24,7 +24,8 @@ import site.oeuvres.fr.Tokenizer;
 
 public class GrepMultiWordExpressions {
 
-	public static final String DEFAULT_PATH="C:/Users/Administrateur/Desktop/textes/";
+	public static final String DEFAULT_PATH="/home/bilbo/Bureau/textes/";
+	public static final String DEFAULT_TSV="./Source/critique2000.tsv";
 	public static final String OBVIL_PATH="http:/obvil-dev.paris-sorbonne.fr/corpus/critique/";
 	public static final String GITHUB_PATH="http:/obvil.github.io/critique2000/tei/";
 	public static String WORD="littérature";
@@ -44,7 +45,13 @@ public class GrepMultiWordExpressions {
 		Scanner line=new Scanner(System.in);
 		Scanner word=new Scanner(System.in);
 		List <String []>allRows=new ArrayList<String[]>();
-		BufferedReader TSVFile = new BufferedReader(new FileReader("./Source/critique2000.tsv"));
+		
+		
+		System.out.println("Définissez le chemin de votre fichier tsv (./Source/critique2000.tsv)");
+		String tsvPath=line.nextLine();
+		if(tsvPath.equals(null)||tsvPath.equals(""))tsvPath=DEFAULT_TSV;
+		
+		BufferedReader TSVFile = new BufferedReader(new FileReader(tsvPath));
 
 		String dataRow = TSVFile.readLine();
 
@@ -64,7 +71,7 @@ public class GrepMultiWordExpressions {
 		System.out.println("Définissez le chemin vers vos fichiers à analyser (exemple : /home/bilbo/Téléchargements/critique2000-gh-pages/tei/)");
 		chosenPath=line.nextLine();
 
-		if(chosenPath.equals(null))chosenPath=DEFAULT_PATH;
+		if(chosenPath.equals(null)||chosenPath.equals(""))chosenPath=DEFAULT_PATH;
 
 		while (!doItAgain.equals("non")){
 			HashSet <StatsTokens>statsPerDoc=new HashSet<StatsTokens>();
@@ -150,17 +157,19 @@ public class GrepMultiWordExpressions {
 						sbToks.append(toks.getString()+" ");
 					}
 
-					Pattern p = Pattern.compile(" "+firstUsersWord+"[\\s\\w+\\s]{1,"+usersWindow+"}"+secondUsersWord, Pattern.CASE_INSENSITIVE);
+					Pattern p = Pattern.compile(" "+firstUsersWord+"[(\b\\w+\b)\\W*\\s*]{1,"+usersWindow+"}"+secondUsersWord, Pattern.CASE_INSENSITIVE);
 					Matcher m = p.matcher(sbToks.toString());
 
 					while(m.find()) {
+						System.out.println(m.group());
 						countOccurrences++;
 					}
 
-					Pattern p2 = Pattern.compile(" "+secondUsersWord+"[\\s\\w+\\s]{1,"+usersWindow+"}"+firstUsersWord, Pattern.CASE_INSENSITIVE);
+					Pattern p2 = Pattern.compile(" "+secondUsersWord+"[(\b\\w+\b)\\W*\\s*]{1,"+usersWindow+"}"+firstUsersWord, Pattern.CASE_INSENSITIVE);
 					Matcher m2 = p2.matcher(sbToks.toString());
 
 					while(m2.find()) {
+						System.out.println(m2.group());
 						countOccurrences++;
 					}
 
