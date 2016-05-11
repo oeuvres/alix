@@ -93,9 +93,7 @@ public class GrepMultiWordExpressions {
 				String usersWord = line.nextLine();
 
 				if (usersWord!=null)WORD=usersWord;
-
-				
-				
+		
 				System.out.println("Calcul des matchs en cours...");
 				
 				for (int counterRows=1; counterRows<allRows.size(); counterRows++){
@@ -119,32 +117,35 @@ public class GrepMultiWordExpressions {
 					}
 
 					if (statsPerAuthor.containsKey(cells[3])){
-						String [] tmp=new String[6];
+						String [] tmp=new String[7];
 						tmp[1]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[3])[1])+countOccurrences);
 						tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[3])[2])+toks.size);
-						tmp[0]=fileName;
+						tmp[0]=String.valueOf((Double.parseDouble(statsPerAuthor.get(cells[3])[1])+countOccurrences)/(Integer.parseInt(statsPerAuthor.get(cells[3])[2])+toks.size)); //Relative Frequency
 						tmp[3]=cells[3]; //Authors name
 						tmp[4]=cells[4]; // Year
 						tmp[5]=statsPerAuthor.get(cells[3])[5]+" // "+cells[5]; // Title
+						tmp[6]=fileName;
 						statsPerAuthor.put(cells[3], tmp);
 					}
 					else{
-						String mapOccurrences[]= new String[6];
+						String mapOccurrences[]= new String[7];
 						mapOccurrences[1]=String.valueOf(countOccurrences);
 						mapOccurrences[2]=String.valueOf(toks.size);
-						mapOccurrences[0]=fileName;
+						mapOccurrences[0]=String.valueOf(countOccurrences/toks.size); //Relative Frequency
 						mapOccurrences[3]=cells[3]; //Authors name
 						mapOccurrences[4]=cells[4]; // Year
 						mapOccurrences[5]=cells[5]; // Title
+						mapOccurrences[6]=fileName;
 						statsPerAuthor.put(cells[3],mapOccurrences);
 					}
-					String statsPourListeDocs []=new String[6];
+					String statsPourListeDocs []=new String[7];
 					statsPourListeDocs[1]=String.valueOf(countOccurrences);
 					statsPourListeDocs[2]=String.valueOf(toks.size);
-					statsPourListeDocs[0]=fileName;
+					statsPourListeDocs[0]=String.valueOf(countOccurrences/toks.size); //Relative Frequency
 					statsPourListeDocs[3]=cells[3]; //Authors name
 					statsPourListeDocs[4]=cells[4]; // Year
 					statsPourListeDocs[5]=cells[5]; // Title
+					statsPourListeDocs[6]=fileName;
 					statsPerDoc.add(statsPourListeDocs);
 				}
 
@@ -199,32 +200,35 @@ public class GrepMultiWordExpressions {
 					}
 
 					if (statsPerAuthor.containsKey(cells[3])){
-						String [] tmp=new String[6];
+						String [] tmp=new String[7];
 						tmp[1]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[3])[1])+countOccurrences);
 						tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[3])[2])+toks.size);
-						tmp[0]=fileName;
+						tmp[0]=String.valueOf((Float.parseFloat(statsPerAuthor.get(cells[3])[1])+(float)countOccurrences)/(Float.parseFloat(statsPerAuthor.get(cells[3])[2])+(float)toks.size)); //Relative Frequency
 						tmp[3]=cells[3]; //Authors name
 						tmp[4]=cells[4]; // Year
 						tmp[5]=statsPerAuthor.get(cells[3])[5]+" // "+cells[5]; // Title
+						tmp[6]=fileName;
 						statsPerAuthor.put(cells[3], tmp);
 					}
 					else{
-						String mapOccurrences[]= new String[6];
+						String mapOccurrences[]= new String[7];
 						mapOccurrences[1]=String.valueOf(countOccurrences);
 						mapOccurrences[2]=String.valueOf(toks.size);
-						mapOccurrences[0]=fileName;
+						mapOccurrences[0]=String.valueOf((float)countOccurrences/(float)toks.size); //Relative Frequency
 						mapOccurrences[3]=cells[3]; //Authors name
 						mapOccurrences[4]=cells[4]; // Year
 						mapOccurrences[5]=cells[5]; // Title
+						mapOccurrences[6]=fileName;
 						statsPerAuthor.put(cells[3],mapOccurrences);
 					}
-					String statsPourListeDocs []=new String[6];
+					String statsPourListeDocs []=new String[7];
 					statsPourListeDocs[1]=String.valueOf(countOccurrences);
 					statsPourListeDocs[2]=String.valueOf(toks.size);
-					statsPourListeDocs[0]=fileName;
+					statsPourListeDocs[0]=String.valueOf((float)countOccurrences/(float)toks.size); //Relative Frequency
 					statsPourListeDocs[3]=cells[3]; //Authors name
 					statsPourListeDocs[4]=cells[4]; // Year
 					statsPourListeDocs[5]=cells[5]; // Title
+					statsPourListeDocs[6]=fileName;
 					statsPerDoc.add(statsPourListeDocs);
 				}	
 
@@ -238,7 +242,6 @@ public class GrepMultiWordExpressions {
 			}
 
 			HashMap<String, int[]>combinedStats=new HashMap<String, int[]>();
-
 
 			for (Entry<String, String[]>entry:statsPerAuthor.entrySet()){
 				String keyStr=entry.getValue()[columnForQuery];
@@ -269,6 +272,7 @@ public class GrepMultiWordExpressions {
 								System.out.println("\nPour le fichier : "+doc[5]);
 								System.out.println("Nombre total de tokens : "+doc[2]);
 								System.out.println("Nombre de matchs : "+doc[1]);
+								System.out.println("Fréquence Relative : "+doc[0]);
 							}
 						}
 					}
