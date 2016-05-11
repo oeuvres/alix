@@ -3,11 +3,13 @@
  */
 package fr.obvil.grep;
 
+import java.util.HashMap;
+
 /**
  *
  *
  */
-public class StatsTokens {
+public class StatsTokens extends HashMap {
 	private String query;
 	private int nbTokens;
 	private int nbSearchedEntry;

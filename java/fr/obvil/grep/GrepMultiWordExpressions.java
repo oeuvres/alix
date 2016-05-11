@@ -74,7 +74,8 @@ public class GrepMultiWordExpressions {
 		if(chosenPath.equals(null)||chosenPath.equals(""))chosenPath=DEFAULT_PATH;
 
 		while (!doItAgain.equals("non")){
-			HashSet <StatsTokens>statsPerDoc=new HashSet<StatsTokens>();
+			List <StatsTokens>statsPerDoc=new ArrayList<StatsTokens>();
+//			List <StatsTokens>clonePreviousStats=new ArrayList<StatsTokens>();
 			String preciseQuery="";
 
 			System.out.println("Quelle type de recherche voulez-vous effectuer ? (rentrer le numéro correspondant et taper \"entrée\")");
@@ -142,6 +143,9 @@ public class GrepMultiWordExpressions {
 
 				for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 					String []cells=allRows.get(counterRows);
+//					clonePreviousStats.addAll(statsPerDoc);
+					
+					
 					int countOccurrences=0;
 					String fileName=cells[2]+".xml";
 					StringBuilder pathSB=new StringBuilder();
@@ -156,8 +160,8 @@ public class GrepMultiWordExpressions {
 						listTokens.add(toks.getString());
 						sbToks.append(toks.getString()+" ");
 					}
-
-					Pattern p = Pattern.compile(" "+firstUsersWord+"[(\\s\b\\w+\b)+(\\s*\\W*)]{1,"+usersWindow+"}"+secondUsersWord, Pattern.CASE_INSENSITIVE);
+					
+					Pattern p = Pattern.compile(firstUsersWord+"\\s[^\\p{L}]*(\\p{L}+(\\s[^\\w])*\\s){1,"+usersWindow+"}"+secondUsersWord, Pattern.CASE_INSENSITIVE);
 					Matcher m = p.matcher(sbToks.toString());
 
 					while(m.find()) {
@@ -165,7 +169,7 @@ public class GrepMultiWordExpressions {
 						countOccurrences++;
 					}
 
-					Pattern p2 = Pattern.compile(" "+secondUsersWord+"[(\\s\b\\w+\b)+(\\s*\\W*)]{1,"+usersWindow+"}"+firstUsersWord, Pattern.CASE_INSENSITIVE);
+					Pattern p2 = Pattern.compile(secondUsersWord+"\\s[^\\p{L}]*(\\p{L}+(\\s[^\\w])*\\s){1,"+usersWindow+"}"+firstUsersWord, Pattern.CASE_INSENSITIVE);
 					Matcher m2 = p2.matcher(sbToks.toString());
 
 					while(m2.find()) {
@@ -182,6 +186,14 @@ public class GrepMultiWordExpressions {
 					mapOccurrences.setYear(cells[4]);
 					mapOccurrences.setTitle(cells[5]);
 					statsPerDoc.add(mapOccurrences);
+					
+//					if (clonePreviousStats.isEmpty()==false){
+//							for (StatsTokens mapClone:clonePreviousStats){
+//								if (mapOccurrences.getAuthorsName().contains(mapClone.getAuthorsName())){
+//									mapOccurrences.setStats(mapOccurrences.getNbEntry()+mapClone.getNbEntry());
+//								}
+//							}
+//					}
 				}	
 				System.out.println("\nQuel(le) "+maClasse.getNameOrYear()+" voulez-vous ?");
 				line=new Scanner(System.in);
@@ -195,8 +207,10 @@ public class GrepMultiWordExpressions {
 			for (StatsTokens entry:statsPerDoc){
 				if (combinedStats.isEmpty()==false&&combinedStats.containsKey(entry.getQuery())){
 					String stats[]=new String[5];
-					int totalTmp=entry.getTotal()+Integer.parseInt(combinedStats.get(entry.getQuery())[0]);
-					int tokenTmp=entry.getNbEntry()+Integer.parseInt(combinedStats.get(entry.getQuery())[1]);
+					int previousTotal=Integer.parseInt(combinedStats.get(entry.getQuery())[0]);
+					int totalTmp=entry.getTotal()+previousTotal;
+					int previousOccurrences=Integer.parseInt(combinedStats.get(entry.getQuery())[1]);
+					int tokenTmp=entry.getNbEntry()+previousOccurrences;
 					stats[0]=String.valueOf(totalTmp);
 					stats[1]=String.valueOf(tokenTmp);
 					stats[2]=entry.getAuthorsName();
