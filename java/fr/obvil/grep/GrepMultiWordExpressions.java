@@ -22,7 +22,7 @@ import org.xml.sax.SAXException;
 
 import site.oeuvres.fr.Tokenizer;
 
-public class MainClass {
+public class GrepMultiWordExpressions {
 
 	public static final String DEFAULT_PATH="C:/Users/Administrateur/Desktop/textes/";
 	public static final String OBVIL_PATH="http:/obvil-dev.paris-sorbonne.fr/corpus/critique/";
@@ -39,7 +39,7 @@ public class MainClass {
 	}
 
 	public static void main(String[] args) throws MalformedURLException, SAXException, IOException, ParserConfigurationException {
-		MainClass maClasse=new MainClass();
+		GrepMultiWordExpressions maClasse=new GrepMultiWordExpressions();
 		@SuppressWarnings("resource")
 		Scanner line=new Scanner(System.in);
 		Scanner word=new Scanner(System.in);
@@ -65,7 +65,6 @@ public class MainClass {
 		chosenPath=line.nextLine();
 
 		if(chosenPath.equals(null))chosenPath=DEFAULT_PATH;
-		System.out.println(chosenPath);
 
 		while (!doItAgain.equals("non")){
 			HashSet <StatsTokens>statsPerDoc=new HashSet<StatsTokens>();
@@ -81,8 +80,7 @@ public class MainClass {
 
 				System.out.println("Quel mot voulez-vous chercher ?");
 
-				String usersWord = line.nextLine();	
-				System.out.println(usersWord);
+				String usersWord = line.nextLine();
 
 				if (usersWord!=null)WORD=usersWord;
 
@@ -129,10 +127,8 @@ public class MainClass {
 			case 2 :
 				System.out.println("Quel premier mot voulez-vous chercher ?");
 				String firstUsersWord = word.next();
-				System.out.println(firstUsersWord);
 				System.out.println("Quel second mot voulez-vous chercher ?");
 				String secondUsersWord = word.next();
-				System.out.println(secondUsersWord);
 				System.out.println("Quelle est l'étendue de votre fenêtre (en nombre de mots) ?");
 				int usersWindow = Integer.valueOf(word.next());
 				columnForQuery=maClasse.rechercheParNomDateTitre(word);
@@ -230,7 +226,7 @@ public class MainClass {
 			System.out.println("\nSouhaitez-vous enregistrer votre requête dans un csv ? (oui/non)");
 			String save= word.next();	
 			if (save.equals("oui")){
-				ExportData.exportToCSV("./TargetCSV/",WORD,combinedStats);
+				ExportData.exportToCSV("./TargetCSV/",WORD.replaceAll("\\s", "_"),combinedStats);
 			}
 			else{
 				System.out.println("Votre requête n'a pas été enregistrée");
