@@ -24,16 +24,16 @@ import site.oeuvres.fr.Tokenizer;
 
 public class MainClass {
 
-	public static final String DEFAULT_PATH="C:/Users/Administrateur/Desktop/critique2000-gh-pages/tei/";
+	public static final String DEFAULT_PATH="C:/Users/Administrateur/Desktop/textes/";
 	public static final String OBVIL_PATH="http:/obvil-dev.paris-sorbonne.fr/corpus/critique/";
 	public static final String GITHUB_PATH="http:/obvil.github.io/critique2000/tei/";
 	public static String WORD="littérature";
 	String nameOrYearOrTitle="";
-	
+
 	public String getNameOrYear() {
 		return nameOrYearOrTitle;
 	}
-	
+
 	public void setNameOrYear(String query) {
 		this.nameOrYearOrTitle = query;
 	}
@@ -60,32 +60,32 @@ public class MainClass {
 
 		String doItAgain="";
 		String chosenPath="";
-		
+
 		System.out.println("Définissez le chemin vers vos fichiers à analyser (exemple : /home/bilbo/Téléchargements/critique2000-gh-pages/tei/)");
 		chosenPath=line.nextLine();
-		
+
 		if(chosenPath.equals(null))chosenPath=DEFAULT_PATH;
 		System.out.println(chosenPath);
-		
+
 		while (!doItAgain.equals("non")){
 			HashSet <StatsTokens>statsPerDoc=new HashSet<StatsTokens>();
 			String preciseQuery="";
-			
+
 			System.out.println("Quelle type de recherche voulez-vous effectuer ? (rentrer le numéro correspondant et taper \"entrée\")");
 			System.out.println("1 : rechercher un seul mot, une expression ou une expression régulière");
 			System.out.println("2 : rechercher deux mots dans une fenêtre à définir");
 			int chooseTypeRequest = Integer.valueOf(word.next());
-			
+
 			switch (chooseTypeRequest){
 			case 1 :
-				
+
 				System.out.println("Quel mot voulez-vous chercher ?");
-				
+
 				String usersWord = line.nextLine();	
 				System.out.println(usersWord);
-				
+
 				if (usersWord!=null)WORD=usersWord;
-				
+
 				maClasse.rechercheParNomDateTitre(word);
 				System.out.println("colonne de la query : "+columnForQuery);
 				for (int counterRows=1; counterRows<allRows.size(); counterRows++){
@@ -102,20 +102,20 @@ public class MainClass {
 					while( toks.read() ) {		
 						sbToks.append(toks.getString()+" ");
 					}
-						Pattern p = Pattern.compile(" "+WORD+" ");
-						Matcher m = p.matcher(sbToks.toString());
-						while (m.find()){
-							countOccurrences++;
-						}
-						StatsTokens mapOccurrences= new StatsTokens();
-						mapOccurrences.setQuery(cells[columnForQuery]);
-						mapOccurrences.setStats(countOccurrences);
-						mapOccurrences.setTotal(toks.size);
-						mapOccurrences.setDocName(fileName);
-						mapOccurrences.setAuthorsName(cells[2]);
-						mapOccurrences.setYear(cells[3]);
-						mapOccurrences.setTitle(cells[4]);
-						statsPerDoc.add(mapOccurrences);
+					Pattern p = Pattern.compile(" "+WORD+" ");
+					Matcher m = p.matcher(sbToks.toString());
+					while (m.find()){
+						countOccurrences++;
+					}
+					StatsTokens mapOccurrences= new StatsTokens();
+					mapOccurrences.setQuery(cells[columnForQuery]);
+					mapOccurrences.setStats(countOccurrences);
+					mapOccurrences.setTotal(toks.size);
+					mapOccurrences.setDocName(fileName);
+					mapOccurrences.setAuthorsName(cells[2]);
+					mapOccurrences.setYear(cells[3]);
+					mapOccurrences.setTitle(cells[4]);
+					statsPerDoc.add(mapOccurrences);
 				}
 				long time = System.nanoTime();
 				System.out.println("\nTemps de repérage des matchs : "+(System.nanoTime() - time) / 1000000);
@@ -125,7 +125,7 @@ public class MainClass {
 				preciseQuery = line.nextLine();
 				WORD=usersWord;
 				break;
-				
+
 			case 2 :
 				System.out.println("Quel premier mot voulez-vous chercher ?");
 				String firstUsersWord = word.next();
@@ -136,7 +136,7 @@ public class MainClass {
 				System.out.println("Quelle est l'étendue de votre fenêtre (en nombre de mots) ?");
 				int usersWindow = Integer.valueOf(word.next());
 				columnForQuery=maClasse.rechercheParNomDateTitre(word);
-				
+
 				for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 					String []cells=allRows.get(counterRows);
 					int countOccurrences=0;
@@ -153,24 +153,20 @@ public class MainClass {
 						listTokens.add(toks.getString());
 						sbToks.append(toks.getString()+" ");
 					}
-						
-					System.out.println("début du matching");
 
-				    	Pattern p = Pattern.compile(" "+firstUsersWord+"[\\s\\w+\\s]{1,"+usersWindow+"}"+secondUsersWord, Pattern.CASE_INSENSITIVE);
-						Matcher m = p.matcher(sbToks.toString());
+					Pattern p = Pattern.compile(" "+firstUsersWord+"[\\s\\w+\\s]{1,"+usersWindow+"}"+secondUsersWord, Pattern.CASE_INSENSITIVE);
+					Matcher m = p.matcher(sbToks.toString());
 
-					    while(m.find()) {
-					        countOccurrences++;
-					    }
-					    
-					    Pattern p2 = Pattern.compile(" "+secondUsersWord+"[\\s\\w+\\s]{1,"+usersWindow+"}"+firstUsersWord, Pattern.CASE_INSENSITIVE);
-						Matcher m2 = p2.matcher(sbToks.toString());
-					    
-						while(m2.find()) {
-					        countOccurrences++;
-					    }
-						
-						System.out.println(countOccurrences);
+					while(m.find()) {
+						countOccurrences++;
+					}
+
+					Pattern p2 = Pattern.compile(" "+secondUsersWord+"[\\s\\w+\\s]{1,"+usersWindow+"}"+firstUsersWord, Pattern.CASE_INSENSITIVE);
+					Matcher m2 = p2.matcher(sbToks.toString());
+
+					while(m2.find()) {
+						countOccurrences++;
+					}
 
 					StatsTokens mapOccurrences= new StatsTokens();
 					mapOccurrences.setQuery(cells[columnForQuery]);
@@ -190,7 +186,7 @@ public class MainClass {
 			}
 
 			HashMap<String, String[]>combinedStats=new HashMap<String, String[]>();
-			
+
 			for (StatsTokens entry:statsPerDoc){
 				if (combinedStats.isEmpty()==false&&combinedStats.containsKey(entry.getQuery())){
 					String stats[]=new String[5];
@@ -245,9 +241,7 @@ public class MainClass {
 		}
 		System.out.println("Fin du programme");
 	}
-	
-	
-	
+
 	public int rechercheParNomDateTitre (Scanner usersChoice){
 		int columnForQuery=0;
 		System.out.println("Recherche par nom, par date ou par titre (réponses : nom/date/titre) :");
