@@ -21,11 +21,11 @@ public class ExportData {
 			writer.append('\n');
 			
 			for (Entry<String, String[]> entry:stats.entrySet()){
-				writer.append(entry.getValue()[2]+"\t");
-				writer.append(entry.getValue()[0]+"\t");
-				writer.append(entry.getValue()[1]+"\t");
 				writer.append(entry.getValue()[3]+"\t");
+				writer.append(entry.getValue()[2]+"\t");
+				writer.append(entry.getValue()[1]+"\t");
 				writer.append(entry.getValue()[4]+"\t");
+				writer.append(entry.getValue()[5]+"\t");
 				writer.append('\n');
 			}
 			writer.flush();

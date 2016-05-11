@@ -10,12 +10,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
@@ -45,12 +46,12 @@ public class GrepMultiWordExpressions {
 		Scanner line=new Scanner(System.in);
 		Scanner word=new Scanner(System.in);
 		List <String []>allRows=new ArrayList<String[]>();
-		
-		
+
+
 		System.out.println("Définissez le chemin de votre fichier tsv (./Source/critique2000.tsv)");
 		String tsvPath=line.nextLine();
 		if(tsvPath.equals(null)||tsvPath.equals(""))tsvPath=DEFAULT_TSV;
-		
+
 		BufferedReader TSVFile = new BufferedReader(new FileReader(tsvPath));
 
 		String dataRow = TSVFile.readLine();
@@ -74,8 +75,9 @@ public class GrepMultiWordExpressions {
 		if(chosenPath.equals(null)||chosenPath.equals(""))chosenPath=DEFAULT_PATH;
 
 		while (!doItAgain.equals("non")){
-			List <StatsTokens>statsPerDoc=new ArrayList<StatsTokens>();
-//			List <StatsTokens>clonePreviousStats=new ArrayList<StatsTokens>();
+			HashMap <String,String[]>statsPerAuthor=new HashMap<String, String[]>();
+			List <String[]>statsPerDoc=new ArrayList<String[]>();
+
 			String preciseQuery="";
 
 			System.out.println("Quelle type de recherche voulez-vous effectuer ? (rentrer le numéro correspondant et taper \"entrée\")");
@@ -92,8 +94,10 @@ public class GrepMultiWordExpressions {
 
 				if (usersWord!=null)WORD=usersWord;
 
-				maClasse.rechercheParNomDateTitre(word);
-				System.out.println("colonne de la query : "+columnForQuery);
+				
+				
+				System.out.println("Calcul des matchs en cours...");
+				
 				for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 					String []cells=allRows.get(counterRows);
 					int countOccurrences=0;
@@ -113,19 +117,39 @@ public class GrepMultiWordExpressions {
 					while (m.find()){
 						countOccurrences++;
 					}
-					StatsTokens mapOccurrences= new StatsTokens();
-					mapOccurrences.setQuery(cells[columnForQuery]);
-					mapOccurrences.setStats(countOccurrences);
-					mapOccurrences.setTotal(toks.size);
-					mapOccurrences.setDocName(fileName);
-					mapOccurrences.setAuthorsName(cells[2]);
-					mapOccurrences.setYear(cells[3]);
-					mapOccurrences.setTitle(cells[4]);
-					statsPerDoc.add(mapOccurrences);
-				}
-				long time = System.nanoTime();
-				System.out.println("\nTemps de repérage des matchs : "+(System.nanoTime() - time) / 1000000);
 
+					if (statsPerAuthor.containsKey(cells[3])){
+						String [] tmp=new String[6];
+						tmp[1]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[3])[1])+countOccurrences);
+						tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[3])[2])+toks.size);
+						tmp[0]=fileName;
+						tmp[3]=cells[3]; //Authors name
+						tmp[4]=cells[4]; // Year
+						tmp[5]=statsPerAuthor.get(cells[3])[5]+" // "+cells[5]; // Title
+						statsPerAuthor.put(cells[3], tmp);
+					}
+					else{
+						String mapOccurrences[]= new String[6];
+						mapOccurrences[1]=String.valueOf(countOccurrences);
+						mapOccurrences[2]=String.valueOf(toks.size);
+						mapOccurrences[0]=fileName;
+						mapOccurrences[3]=cells[3]; //Authors name
+						mapOccurrences[4]=cells[4]; // Year
+						mapOccurrences[5]=cells[5]; // Title
+						statsPerAuthor.put(cells[3],mapOccurrences);
+					}
+					String statsPourListeDocs []=new String[6];
+					statsPourListeDocs[1]=String.valueOf(countOccurrences);
+					statsPourListeDocs[2]=String.valueOf(toks.size);
+					statsPourListeDocs[0]=fileName;
+					statsPourListeDocs[3]=cells[3]; //Authors name
+					statsPourListeDocs[4]=cells[4]; // Year
+					statsPourListeDocs[5]=cells[5]; // Title
+					statsPerDoc.add(statsPourListeDocs);
+				}
+
+				columnForQuery=maClasse.rechercheParNomDateTitre(word);
+				
 				System.out.println("\nQuel(le) "+maClasse.getNameOrYear()+" voulez-vous ?");
 				line=new Scanner(System.in);
 				preciseQuery = line.nextLine();
@@ -139,13 +163,12 @@ public class GrepMultiWordExpressions {
 				String secondUsersWord = word.next();
 				System.out.println("Quelle est l'étendue de votre fenêtre (en nombre de mots) ?");
 				int usersWindow = Integer.valueOf(word.next());
-				columnForQuery=maClasse.rechercheParNomDateTitre(word);
+
+				System.out.println("Calcul des matchs en cours...");
 
 				for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 					String []cells=allRows.get(counterRows);
-//					clonePreviousStats.addAll(statsPerDoc);
-					
-					
+
 					int countOccurrences=0;
 					String fileName=cells[2]+".xml";
 					StringBuilder pathSB=new StringBuilder();
@@ -160,12 +183,11 @@ public class GrepMultiWordExpressions {
 						listTokens.add(toks.getString());
 						sbToks.append(toks.getString()+" ");
 					}
-					
+
 					Pattern p = Pattern.compile(firstUsersWord+"\\s[^\\p{L}]*(\\p{L}+(\\s[^\\w])*\\s){1,"+usersWindow+"}"+secondUsersWord, Pattern.CASE_INSENSITIVE);
 					Matcher m = p.matcher(sbToks.toString());
 
 					while(m.find()) {
-						System.out.println(m.group());
 						countOccurrences++;
 					}
 
@@ -173,28 +195,41 @@ public class GrepMultiWordExpressions {
 					Matcher m2 = p2.matcher(sbToks.toString());
 
 					while(m2.find()) {
-						System.out.println(m2.group());
 						countOccurrences++;
 					}
 
-					StatsTokens mapOccurrences= new StatsTokens();
-					mapOccurrences.setQuery(cells[columnForQuery]);
-					mapOccurrences.setStats(countOccurrences);
-					mapOccurrences.setTotal(toks.size);
-					mapOccurrences.setDocName(fileName);
-					mapOccurrences.setAuthorsName(cells[3]);
-					mapOccurrences.setYear(cells[4]);
-					mapOccurrences.setTitle(cells[5]);
-					statsPerDoc.add(mapOccurrences);
-					
-//					if (clonePreviousStats.isEmpty()==false){
-//							for (StatsTokens mapClone:clonePreviousStats){
-//								if (mapOccurrences.getAuthorsName().contains(mapClone.getAuthorsName())){
-//									mapOccurrences.setStats(mapOccurrences.getNbEntry()+mapClone.getNbEntry());
-//								}
-//							}
-//					}
+					if (statsPerAuthor.containsKey(cells[3])){
+						String [] tmp=new String[6];
+						tmp[1]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[3])[1])+countOccurrences);
+						tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[3])[2])+toks.size);
+						tmp[0]=fileName;
+						tmp[3]=cells[3]; //Authors name
+						tmp[4]=cells[4]; // Year
+						tmp[5]=statsPerAuthor.get(cells[3])[5]+" // "+cells[5]; // Title
+						statsPerAuthor.put(cells[3], tmp);
+					}
+					else{
+						String mapOccurrences[]= new String[6];
+						mapOccurrences[1]=String.valueOf(countOccurrences);
+						mapOccurrences[2]=String.valueOf(toks.size);
+						mapOccurrences[0]=fileName;
+						mapOccurrences[3]=cells[3]; //Authors name
+						mapOccurrences[4]=cells[4]; // Year
+						mapOccurrences[5]=cells[5]; // Title
+						statsPerAuthor.put(cells[3],mapOccurrences);
+					}
+					String statsPourListeDocs []=new String[6];
+					statsPourListeDocs[1]=String.valueOf(countOccurrences);
+					statsPourListeDocs[2]=String.valueOf(toks.size);
+					statsPourListeDocs[0]=fileName;
+					statsPourListeDocs[3]=cells[3]; //Authors name
+					statsPourListeDocs[4]=cells[4]; // Year
+					statsPourListeDocs[5]=cells[5]; // Title
+					statsPerDoc.add(statsPourListeDocs);
 				}	
+
+				columnForQuery=maClasse.rechercheParNomDateTitre(word);
+
 				System.out.println("\nQuel(le) "+maClasse.getNameOrYear()+" voulez-vous ?");
 				line=new Scanner(System.in);
 				preciseQuery = line.nextLine();
@@ -202,54 +237,48 @@ public class GrepMultiWordExpressions {
 				break;
 			}
 
-			HashMap<String, String[]>combinedStats=new HashMap<String, String[]>();
+			HashMap<String, int[]>combinedStats=new HashMap<String, int[]>();
 
-			for (StatsTokens entry:statsPerDoc){
-				if (combinedStats.isEmpty()==false&&combinedStats.containsKey(entry.getQuery())){
-					String stats[]=new String[5];
-					int previousTotal=Integer.parseInt(combinedStats.get(entry.getQuery())[0]);
-					int totalTmp=entry.getTotal()+previousTotal;
-					int previousOccurrences=Integer.parseInt(combinedStats.get(entry.getQuery())[1]);
-					int tokenTmp=entry.getNbEntry()+previousOccurrences;
-					stats[0]=String.valueOf(totalTmp);
-					stats[1]=String.valueOf(tokenTmp);
-					stats[2]=entry.getAuthorsName();
-					stats[3]=entry.getYear();
-					stats[4]=entry.getTitle()+" // "+combinedStats.get(entry.getQuery())[4];
-					combinedStats.put(entry.getQuery(), stats);
+
+			for (Entry<String, String[]>entry:statsPerAuthor.entrySet()){
+				String keyStr=entry.getValue()[columnForQuery];
+				if (combinedStats.isEmpty()==false&&combinedStats.containsKey(keyStr)){
+					int[]stats=new int[2];
+					int previousTotalInt=Integer.parseInt(entry.getValue()[1]);
+					int previousNbMatches=Integer.parseInt(entry.getValue()[2]);
+					stats[0]=previousTotalInt+combinedStats.get(keyStr)[0];
+					stats[1]=previousNbMatches+combinedStats.get(keyStr)[1];
+					combinedStats.put(entry.getValue()[columnForQuery], stats);
 				}
 				else{
-					String stats[]=new String[5];
-					stats[0]=String.valueOf(entry.getTotal());
-					stats[1]=String.valueOf(entry.getNbEntry());
-					stats[2]=entry.getAuthorsName();
-					stats[3]=entry.getYear();
-					stats[4]=entry.getTitle();
-					combinedStats.put(entry.getQuery(), stats);
+					int[]stats=new int[2];
+					stats[0]=Integer.parseInt(entry.getValue()[1]);
+					stats[1]=Integer.parseInt(entry.getValue()[2]);
+					combinedStats.put(keyStr, stats);
 				}
 			}
 
-			if (combinedStats.containsKey(preciseQuery)){
-				System.out.println("Voici les stats pour "+preciseQuery);
-				System.out.println("Nombre total de tokens : "+combinedStats.get(preciseQuery)[0]);
-				System.out.println("Nombre d'occurrences de "+WORD+" : "+combinedStats.get(preciseQuery)[1]);
-				System.out.println("*******************************************************");
-				for (StatsTokens entry:statsPerDoc){
-					if (entry.getQuery().contains(preciseQuery)){
-						System.out.println("Nombre total de tokens pour le document "+entry.getDocName()+" : "+entry.getTotal());
-						System.out.println("Nombre d'occurrences de "+WORD+" pour le document "+entry.getDocName()+" : "+entry.getNbEntry());
-					}	
+			for (Entry<String, int[]>entry:combinedStats.entrySet()){
+				if (entry.getKey().contains(preciseQuery)){
+					System.out.println("Voici les stats pour "+preciseQuery);
+					System.out.println("Nombre total de tokens : "+entry.getValue()[1]);
+					System.out.println("Nombre d'occurrences de "+WORD+" : "+entry.getValue()[0]);
+					if (columnForQuery==3){
+						for (String []doc:statsPerDoc){
+							if (doc[3].contains(preciseQuery)){
+								System.out.println("\nPour le fichier : "+doc[5]);
+								System.out.println("Nombre total de tokens : "+doc[2]);
+								System.out.println("Nombre de matchs : "+doc[1]);
+							}
+						}
+					}
 				}
-			}
-
-			else {
-				System.err.println("Il n'y a pas d'entrée correspondant à votre demande");
 			}
 
 			System.out.println("\nSouhaitez-vous enregistrer votre requête dans un csv ? (oui/non)");
 			String save= word.next();	
 			if (save.equals("oui")){
-				ExportData.exportToCSV("./TargetCSV/",WORD.replaceAll("\\s", "_"),combinedStats);
+				ExportData.exportToCSV("./TargetCSV/",WORD.replaceAll("\\s", "_"),statsPerAuthor);
 			}
 			else{
 				System.out.println("Votre requête n'a pas été enregistrée");
@@ -275,15 +304,12 @@ public class GrepMultiWordExpressions {
 		}
 		if (nameOrYearOrTitle.equals("nom")){
 			columnForQuery=3;
-			System.out.println("Vous demandez les statistiques par nom, calcul en cours...");
 		}
 		else if (nameOrYearOrTitle.equals("date")){
 			columnForQuery=4;
-			System.out.println("Vous demandez les statistiques par date, calcul en cours...");
 		}
 		else if (nameOrYearOrTitle.equals("titre")){
 			columnForQuery=5;
-			System.out.println("Vous demandez les statistiques par titre, calcul en cours...");
 		}
 		return columnForQuery;
 	}
