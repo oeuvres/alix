@@ -157,7 +157,7 @@ public class GrepMultiWordExpressions {
 						sbToks.append(toks.getString()+" ");
 					}
 
-					Pattern p = Pattern.compile(" "+firstUsersWord+"[(\b\\w+\b)\\W*\\s*]{1,"+usersWindow+"}"+secondUsersWord, Pattern.CASE_INSENSITIVE);
+					Pattern p = Pattern.compile(" "+firstUsersWord+"[(\\s\b\\w+\b)+(\\s*\\W*)]{1,"+usersWindow+"}"+secondUsersWord, Pattern.CASE_INSENSITIVE);
 					Matcher m = p.matcher(sbToks.toString());
 
 					while(m.find()) {
@@ -165,7 +165,7 @@ public class GrepMultiWordExpressions {
 						countOccurrences++;
 					}
 
-					Pattern p2 = Pattern.compile(" "+secondUsersWord+"[(\b\\w+\b)\\W*\\s*]{1,"+usersWindow+"}"+firstUsersWord, Pattern.CASE_INSENSITIVE);
+					Pattern p2 = Pattern.compile(" "+secondUsersWord+"[(\\s\b\\w+\b)+(\\s*\\W*)]{1,"+usersWindow+"}"+firstUsersWord, Pattern.CASE_INSENSITIVE);
 					Matcher m2 = p2.matcher(sbToks.toString());
 
 					while(m2.find()) {
