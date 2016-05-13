@@ -847,6 +847,7 @@ Brunswick
 Brutus
 Bruxelles
 Bruxelles-Capitale
+Bruyère
 Bryan
 Brésil
 Brétigny-sur-Orge
@@ -1067,6 +1068,7 @@ Champs-sur-Marne
 Champs-Élysées
 Chanel
 Chantal
+Chapelain
 Charente
 Charente-Maritime
 Charenton-le-Pont
@@ -4408,6 +4410,7 @@ Pontault-Combault
 Pontoise
 Pontryagin
 Ponzi
+Pope
 Popper
 Porphyre
 Port

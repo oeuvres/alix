@@ -15,6 +15,7 @@ import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -47,16 +48,18 @@ import site.oeuvres.util.IntSlider;
  * @author glorieux-f
  */
 public class Dicovek {
-  /** Used as attribute in a token stream  */
-  public final static int STOPWORD = 1;
-  /** Size of left context */
-  final int left;
-  /** Size of right context */
-  final int right;
   /** Dictionary in order of indexing for int keys, should be kept private, no external modif */
   private Dico terms;
   /** Vectors of co-occurences for each term of dictionary */
   private IntObjectMap<Vek> vectors;
+  /** Used as attribute in a token stream  */
+  public final static int STOPWORD = 1;
+  /** Threshold for terms in vectors */
+  public final static int FREQMIN = 5;
+  /** Size of left context */
+  final int left;
+  /** Size of right context */
+  final int right;
   /** Sliding window */
   private IntSlider win;
   /** List of stop words, usually grammatical, do not modify during object life */
@@ -149,11 +152,17 @@ public class Dicovek {
     }
     return this;
   }
+  
+  public void remove( String term )
+  {
+    
+  }
   /**
    * Output most frequent words as String
    * TODO, best object packaging
    */
-  public String freqlist(boolean stop, int limit) {
+  public String freqlist(boolean stop, int limit)
+  {
     StringBuffer sb = new StringBuffer();
     boolean first = true;  
     for( String w: terms.byCount() ) {
@@ -171,7 +180,8 @@ public class Dicovek {
    * 
    * @throws IOException 
    */
-  public ArrayList<SimRow> syns( String term ) throws IOException {
+  public ArrayList<SimRow> syns( String term ) throws IOException
+  {
     // get vector for requested word
     int k = terms.index( term );
     if (k == 0) return null;
@@ -181,20 +191,21 @@ public class Dicovek {
     // Similarity
     double score;
     // list dico in freq order
-    int limit = 10000;
+    int limit = -1;
     ArrayList<SimRow> table = new ArrayList<SimRow>();
     SimRow row;
-    for( String w: terms.byCount() ) {
-      vek = vectors.get( terms.index( w ) );
+    String[] list = terms.byCount();
+    int max = list.length;
+    for ( int i = 0; i < max; i++) {
+      vek = vectors.get( terms.index( list[i] ) );
       if ( vek == null ) continue;
       score = vekterm.cosine( vek );
       // score differs 
-      if (score < 0.8) continue;
-      row = new SimRow(w, terms.count( w ), score);
+      if (score < 0.5) continue;
+      row = new SimRow( list[i], terms.count( list[i] ), score);
       table.add( row );
       if (limit-- == 0) break;
     }
-    // sort as a bug ? 
     Collections.sort(table);
     return table;
   }
@@ -203,7 +214,8 @@ public class Dicovek {
    * @author glorieux-f
    *
    */
-  class SimRow implements Comparable<SimRow> {
+  class SimRow implements Comparable<SimRow> 
+  {
     public final  String term;
     public final int count;
     public final double score;
@@ -217,16 +229,18 @@ public class Dicovek {
     }
     @Override
     public int compareTo(SimRow other) {
-      // score maybe be highly close and bug around 0
+      // score maybe be highly close and bug around 0, or with a NaN
       return Double.compare( other.score, score );
     }
   }
   
-  public void json(Path path) throws IOException {
+  public void json(Path path) throws IOException
+  {
     json(path, 0);
   }
   
-  public void json(Path path, int limit) throws IOException {
+  public void json(Path path, int limit) throws IOException
+  {
     BufferedWriter writer = Files.newBufferedWriter(
         path, 
         Charset.forName("UTF-8")
@@ -239,7 +253,8 @@ public class Dicovek {
    * TODO, make it loadable.
    * @throws IOException 
    */
-  public void json(Writer writer, int limit) throws IOException {
+  public void json(Writer writer, int limit) throws IOException
+  {
     try {
       writer.write("{\n");
       boolean first1 = true;
@@ -254,7 +269,8 @@ public class Dicovek {
       writer.close();
     }
   }
-  public String coocs( final String term ) {
+  public String coocs( final String term )
+  {
     return coocs( term, -1, false);
   }
   /**
@@ -265,7 +281,8 @@ public class Dicovek {
    * @param stop
    * @return
    */
-  public String coocs( final String term, int limit, final boolean stop) {
+  public String coocs( final String term, int limit, final boolean stop)
+  {
     StringBuffer sb = new StringBuffer();
     int index = terms.index( term );
     if (index == 0) return null;
@@ -300,7 +317,8 @@ public class Dicovek {
    * to feed the dico
    * @throws IOException 
    */
-  public void tokenize(Path file) throws IOException {
+  public void tokenize(Path file) throws IOException
+  {
     String text = new String(Files.readAllBytes( file ), StandardCharsets.UTF_8);
     Tokenizer toks = new Tokenizer(text);
     String w;
@@ -314,6 +332,11 @@ public class Dicovek {
         if ( !Char.isWord( w.charAt( 0 ) )) {
           continue;
         }
+        /*
+        if ( Lexik.STOPLIST.contains( w ) ) {
+          continue;
+        }
+        */
         add( lems.get( w ) );
       }
     }
@@ -328,13 +351,15 @@ public class Dicovek {
     // give some space after
     for ( int i=0; i < right; i++ )
       add("");
+    // suppress little vector here ?
   }
   /**
    * Explore 
    * @param glob
    * @throws IOException 
    */
-  public void walk( String glob ) throws IOException {
+  public void walk( String glob ) throws IOException
+  {
     // get the parent folder before the first glob star, needed for ../*/*.xml
     int before = glob.indexOf('*');
     if (before<0) before = glob.length()-1;
@@ -361,12 +386,23 @@ public class Dicovek {
         return FileVisitResult.CONTINUE;
       }
     });
+    // suppress small vectors is not efficient
+    /* 8,5% < FREQMIN not useful
+    String[] list = terms.byCount();
+    int id;
+    for ( int i=list.length - 1; i > -1; i-- ) {
+      if ( terms.count( list[i] ) > FREQMIN ) break; 
+      id = terms.index( list[i] );
+      vectors.remove( id );
+    }
+    */
   }
   
   /**
    * @throws IOException 
    */
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws IOException
+  {
     String usage = 
         "Usage: java -cp alix.jar site.oeuvres.muthovek.Dicovek texts/*\n"
        +"   texts maybe in txt or xml.\n"
@@ -376,10 +412,11 @@ public class Dicovek {
       System.exit( 0 );
     }
     // largeur avant-après
-    int wing = 3;
+    int wing = 5;
     // le chargeur de vecteur a besoin d'une liste de mots vides pour éviter de faire le vecteur de "de"
     // un lemmatiseur du pauvre sert à regrouper les entrées des vecteurs
-    Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST, new PoorLem());
+    // Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST, new PoorLem());
+    Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST);
     long start = System.nanoTime();
     // Boucler sur les fichiers
     for ( int i=0; i < args.length; i++) {
@@ -391,6 +428,7 @@ public class Dicovek {
     // Boucle de recherche
     BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
     List<SimRow> table;
+    DecimalFormat df = new DecimalFormat("0.0000");
     while (true) {
       System.out.println( "" );
       System.out.print("Mot: ");
@@ -405,34 +443,12 @@ public class Dicovek {
       table = veks.syns(word);
       if ( table == null ) continue;
       int limit = 30;
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
       // TODO optimiser 
       System.out.print( "SIMINYMES : " );
       for (SimRow row:table) {
         System.out.print( row.term );
-        /*
         System.out.print( ":" );
-        System.out.print( row.score );
-        */
+        System.out.print( df.format( row.score ) );
         System.out.print( ", " );
         if (--limit == 0 ) break;
       }
