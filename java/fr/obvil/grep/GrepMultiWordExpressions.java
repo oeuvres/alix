@@ -31,6 +31,7 @@ public class GrepMultiWordExpressions {
 	public static final String GITHUB_PATH="http:/obvil.github.io/critique2000/tei/";
 	public static String WORD="littérature";
 	String nameOrYearOrTitle="";
+	List<String[]>statsPerDoc;
 
 	public String getNameOrYear() {
 		return nameOrYearOrTitle;
@@ -38,6 +39,14 @@ public class GrepMultiWordExpressions {
 
 	public void setNameOrYear(String query) {
 		this.nameOrYearOrTitle = query;
+	}
+	
+	public List<String[]> getStatsPerDoc() {
+		return statsPerDoc;
+	}
+
+	public void setStatsPerDoc(List<String[]>stats) {
+		this.statsPerDoc = stats;
 	}
 
 	public static void main(String[] args) throws MalformedURLException, SAXException, IOException, ParserConfigurationException {
@@ -75,7 +84,7 @@ public class GrepMultiWordExpressions {
 
 		while (!doItAgain.equals("non")){
 			HashMap <String,String[]>statsPerAuthor=new HashMap<String, String[]>();
-			List <String[]>statsPerDoc=new ArrayList<String[]>();
+			maClasse.setStatsPerDoc(new ArrayList<String[]>());
 
 			System.out.println("Souhaitez-vous un tsv regroupé par par nom, par date ou par titre ? (réponses : nom/date/titre) :");
 			maClasse.setNameOrYear(word.next());
@@ -120,10 +129,10 @@ public class GrepMultiWordExpressions {
 						countOccurrences++;
 					}
 
-					statsPerAuthor=maClasse.mergeDatas(statsPerAuthor, statsPerDoc, cells, column, countOccurrences, toks, fileName);
+					statsPerAuthor=maClasse.mergeDatas(statsPerAuthor, maClasse.getStatsPerDoc(), cells, column, countOccurrences, toks, fileName);
 				}
 
-				columnForQuery=maClasse.rechercheParNomDateTitre(word);
+//				columnForQuery=maClasse.rechercheParNomDateTitrePourTSV();
 
 				System.out.println("\nQuel(le) "+maClasse.getNameOrYear()+" voulez-vous ?");
 				line=new Scanner(System.in);
@@ -173,10 +182,10 @@ public class GrepMultiWordExpressions {
 						countOccurrences++;
 					}
 
-					statsPerAuthor=maClasse.mergeDatas(statsPerAuthor, statsPerDoc, cells, column, countOccurrences, toks, fileName);
+					statsPerAuthor=maClasse.mergeDatas(statsPerAuthor, maClasse.getStatsPerDoc(), cells, column, countOccurrences, toks, fileName);
 				}	
 
-				columnForQuery=maClasse.rechercheParNomDateTitre(word);
+				column=maClasse.rechercheParNomDateTitre(word);
 
 				System.out.println("\nQuel(le) "+maClasse.getNameOrYear()+" voulez-vous ?");
 				line=new Scanner(System.in);
@@ -188,14 +197,14 @@ public class GrepMultiWordExpressions {
 			HashMap<String, int[]>combinedStats=new HashMap<String, int[]>();
 
 			for (Entry<String, String[]>entry:statsPerAuthor.entrySet()){
-				String keyStr=entry.getValue()[columnForQuery];
+				String keyStr=entry.getValue()[column];
 				if (combinedStats.isEmpty()==false&&combinedStats.containsKey(keyStr)){
 					int[]stats=new int[2];
 					int previousTotalInt=Integer.parseInt(entry.getValue()[1]);
 					int previousNbMatches=Integer.parseInt(entry.getValue()[2]);
 					stats[0]=previousTotalInt+combinedStats.get(keyStr)[0];
 					stats[1]=previousNbMatches+combinedStats.get(keyStr)[1];
-					combinedStats.put(entry.getValue()[columnForQuery], stats);
+					combinedStats.put(entry.getValue()[column], stats);
 				}
 				else{
 					int[]stats=new int[2];
@@ -210,8 +219,8 @@ public class GrepMultiWordExpressions {
 					System.out.println("Voici les stats pour "+preciseQuery);
 					System.out.println("Nombre total de tokens : "+entry.getValue()[1]);
 					System.out.println("Nombre d'occurrences de "+WORD+" : "+entry.getValue()[0]);
-					if (columnForQuery==3){
-						for (String []doc:statsPerDoc){
+					if (column==3){
+						for (String []doc:maClasse.getStatsPerDoc()){
 							if (doc[3].contains(preciseQuery)){
 								System.out.println("\nPour le fichier : "+doc[5]);
 								System.out.println("Nombre total de tokens : "+doc[2]);
@@ -229,7 +238,7 @@ public class GrepMultiWordExpressions {
 				ExportData.exportToCSV("./TargetCSV/",WORD.replaceAll("\\s", "_"),statsPerAuthor);
 			}
 			else if (save.equals("oui")&&(column==5)){
-				ExportData.exportListToCSV("./TargetCSV/",WORD.replaceAll("\\s", "_"),statsPerDoc);
+				ExportData.exportListToCSV("./TargetCSV/",WORD.replaceAll("\\s", "_"),maClasse.getStatsPerDoc());
 			}
 			else{
 				System.out.println("Votre requête n'a pas été enregistrée");
@@ -242,7 +251,7 @@ public class GrepMultiWordExpressions {
 	}
 
 	public int rechercheParNomDateTitre (Scanner usersChoice){
-		int columnForQuery=0;
+		int column=0;
 		
 		System.out.println("Recherche par nom, par date ou par titre (réponses : nom/date/titre) :");
 		setNameOrYear(usersChoice.next());
@@ -255,15 +264,12 @@ public class GrepMultiWordExpressions {
 			nameOrYearOrTitle = usersChoice.next();
 		}
 		if (nameOrYearOrTitle.equals("nom")){
-			columnForQuery=3;
+			column=3;
 		}
 		else if (nameOrYearOrTitle.equals("date")){
-			columnForQuery=4;
+			column=4;
 		}
-		else if (nameOrYearOrTitle.equals("titre")){
-			columnForQuery=5;
-		}
-		return columnForQuery;
+		return column;
 	}
 
 	public int rechercheParNomDateTitrePourTSV (String usersChoice){
@@ -308,14 +314,6 @@ public class GrepMultiWordExpressions {
 				mapOccurrences[6]=fileName;
 				statsPerAuthor.put(cells[column],mapOccurrences);
 			}
-			statsPourListeDocs[1]=String.valueOf(countOccurrences);
-			statsPourListeDocs[2]=String.valueOf(toks.size);
-			statsPourListeDocs[0]=String.valueOf((countOccurrences*1000000)/toks.size); //Relative Frequency
-			statsPourListeDocs[3]=cells[3]; //Authors name
-			statsPourListeDocs[4]=cells[4]; // Year
-			statsPourListeDocs[5]=cells[5]; // Title
-			statsPourListeDocs[6]=fileName;
-			statsPerDoc.add(statsPourListeDocs);
 			
 		case 4:
 			if (statsPerAuthor.containsKey(cells[column])){
@@ -339,8 +337,9 @@ public class GrepMultiWordExpressions {
 				mapOccurrences[5]=cells[5]; // Title
 				mapOccurrences[6]=fileName;
 				statsPerAuthor.put(cells[column],mapOccurrences);
-			}
+			}		
 			
+		case 5:
 			statsPourListeDocs[1]=String.valueOf(countOccurrences);
 			statsPourListeDocs[2]=String.valueOf(toks.size);
 			statsPourListeDocs[0]=String.valueOf((countOccurrences*1000000)/toks.size); //Relative Frequency
@@ -349,7 +348,11 @@ public class GrepMultiWordExpressions {
 			statsPourListeDocs[5]=cells[5]; // Title
 			statsPourListeDocs[6]=fileName;
 			statsPerDoc.add(statsPourListeDocs);
+			setStatsPerDoc(statsPerDoc);
 		}
+		
+			
+		
 		return statsPerAuthor;		
 	}
 }

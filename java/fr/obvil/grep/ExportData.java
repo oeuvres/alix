@@ -41,7 +41,7 @@ public class ExportData {
 	}
 	public static void exportListToCSV(String folderPath, String fileName,List <String []> stats)
 	{
-	
+	System.out.println(stats.size());
 		try
 		{
 			FileWriter writer = new FileWriter(folderPath+fileName+".tsv");
