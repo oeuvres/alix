@@ -25,7 +25,7 @@ import site.oeuvres.fr.Tokenizer;
 
 public class GrepMultiWordExpressions {
 
-	public static final String DEFAULT_PATH="/home/bilbo/Bureau/textes/";
+	public static final String DEFAULT_PATH="/home/odysseus/Bureau/textes/";
 	public static final String DEFAULT_TSV="./Source/critique2000.tsv";
 	public static final String OBVIL_PATH="http:/obvil-dev.paris-sorbonne.fr/corpus/critique/";
 	public static final String GITHUB_PATH="http:/obvil.github.io/critique2000/tei/";
@@ -42,7 +42,6 @@ public class GrepMultiWordExpressions {
 
 	public static void main(String[] args) throws MalformedURLException, SAXException, IOException, ParserConfigurationException {
 		GrepMultiWordExpressions maClasse=new GrepMultiWordExpressions();
-		@SuppressWarnings("resource")
 		Scanner line=new Scanner(System.in);
 		Scanner word=new Scanner(System.in);
 		List <String []>allRows=new ArrayList<String[]>();
@@ -78,7 +77,13 @@ public class GrepMultiWordExpressions {
 			HashMap <String,String[]>statsPerAuthor=new HashMap<String, String[]>();
 			List <String[]>statsPerDoc=new ArrayList<String[]>();
 
-			String preciseQuery="";
+			//			Scanner usersChoice=new Scanner(System.in);
+			System.out.println("Souhaitez-vous un tsv regroupé par par nom, par date ou par titre ? (réponses : nom/date/titre) :");
+			maClasse.setNameOrYear(word.next());
+
+			int column=maClasse.rechercheParNomDateTitrePourTSV(maClasse.getNameOrYear());
+
+					String preciseQuery="";
 
 			System.out.println("Quelle type de recherche voulez-vous effectuer ? (rentrer le numéro correspondant et taper \"entrée\")");
 			System.out.println("1 : rechercher un seul mot, une expression ou une expression régulière");
@@ -93,9 +98,9 @@ public class GrepMultiWordExpressions {
 				String usersWord = line.nextLine();
 
 				if (usersWord!=null)WORD=usersWord;
-		
+
 				System.out.println("Calcul des matchs en cours...");
-				
+
 				for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 					String []cells=allRows.get(counterRows);
 					int countOccurrences=0;
@@ -116,16 +121,18 @@ public class GrepMultiWordExpressions {
 						countOccurrences++;
 					}
 
-					if (statsPerAuthor.containsKey(cells[3])){
+
+
+					if (statsPerAuthor.containsKey(cells[column])){
 						String [] tmp=new String[7];
-						tmp[1]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[3])[1])+countOccurrences);
-						tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[3])[2])+toks.size);
-						tmp[0]=String.valueOf((Double.parseDouble(statsPerAuthor.get(cells[3])[1])+countOccurrences)/(Integer.parseInt(statsPerAuthor.get(cells[3])[2])+toks.size)); //Relative Frequency
+						tmp[1]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[column])[1])+countOccurrences);
+						tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[column])[2])+toks.size);
+						tmp[0]=String.valueOf((Double.parseDouble(statsPerAuthor.get(cells[column])[1])+countOccurrences)/(Integer.parseInt(statsPerAuthor.get(cells[column])[2])+toks.size)); //Relative Frequency
 						tmp[3]=cells[3]; //Authors name
 						tmp[4]=cells[4]; // Year
 						tmp[5]=statsPerAuthor.get(cells[3])[5]+" // "+cells[5]; // Title
 						tmp[6]=fileName;
-						statsPerAuthor.put(cells[3], tmp);
+						statsPerAuthor.put(cells[column], tmp);
 					}
 					else{
 						String mapOccurrences[]= new String[7];
@@ -136,7 +143,7 @@ public class GrepMultiWordExpressions {
 						mapOccurrences[4]=cells[4]; // Year
 						mapOccurrences[5]=cells[5]; // Title
 						mapOccurrences[6]=fileName;
-						statsPerAuthor.put(cells[3],mapOccurrences);
+						statsPerAuthor.put(cells[column],mapOccurrences);
 					}
 					String statsPourListeDocs []=new String[7];
 					statsPourListeDocs[1]=String.valueOf(countOccurrences);
@@ -150,7 +157,7 @@ public class GrepMultiWordExpressions {
 				}
 
 				columnForQuery=maClasse.rechercheParNomDateTitre(word);
-				
+
 				System.out.println("\nQuel(le) "+maClasse.getNameOrYear()+" voulez-vous ?");
 				line=new Scanner(System.in);
 				preciseQuery = line.nextLine();
@@ -199,16 +206,16 @@ public class GrepMultiWordExpressions {
 						countOccurrences++;
 					}
 
-					if (statsPerAuthor.containsKey(cells[3])){
+					if (statsPerAuthor.containsKey(cells[column])){
 						String [] tmp=new String[7];
-						tmp[1]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[3])[1])+countOccurrences);
-						tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[3])[2])+toks.size);
-						tmp[0]=String.valueOf((Float.parseFloat(statsPerAuthor.get(cells[3])[1])+(float)countOccurrences)/(Float.parseFloat(statsPerAuthor.get(cells[3])[2])+(float)toks.size)); //Relative Frequency
+						tmp[1]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[column])[1])+countOccurrences);
+						tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[column])[2])+toks.size);
+						tmp[0]=String.valueOf((Float.parseFloat(statsPerAuthor.get(cells[column])[1])+(float)countOccurrences)/(Float.parseFloat(statsPerAuthor.get(cells[column])[2])+(float)toks.size)); //Relative Frequency
 						tmp[3]=cells[3]; //Authors name
 						tmp[4]=cells[4]; // Year
-						tmp[5]=statsPerAuthor.get(cells[3])[5]+" // "+cells[5]; // Title
+						tmp[5]=statsPerAuthor.get(cells[column])[5]+" // "+cells[5]; // Title
 						tmp[6]=fileName;
-						statsPerAuthor.put(cells[3], tmp);
+						statsPerAuthor.put(cells[column], tmp);
 					}
 					else{
 						String mapOccurrences[]= new String[7];
@@ -219,7 +226,7 @@ public class GrepMultiWordExpressions {
 						mapOccurrences[4]=cells[4]; // Year
 						mapOccurrences[5]=cells[5]; // Title
 						mapOccurrences[6]=fileName;
-						statsPerAuthor.put(cells[3],mapOccurrences);
+						statsPerAuthor.put(cells[column],mapOccurrences);
 					}
 					String statsPourListeDocs []=new String[7];
 					statsPourListeDocs[1]=String.valueOf(countOccurrences);
@@ -317,4 +324,20 @@ public class GrepMultiWordExpressions {
 		}
 		return columnForQuery;
 	}
+
+	public int rechercheParNomDateTitrePourTSV (String usersChoice){
+		int columnForQuery=0;
+
+		if (usersChoice.equals("nom")){
+			columnForQuery=3;
+		}
+		else if (usersChoice.equals("date")){
+			columnForQuery=4;
+		}
+		else if (usersChoice.equals("titre")){
+			columnForQuery=5;
+		}
+		return columnForQuery;
+	}
+
 }
