@@ -25,7 +25,7 @@ import site.oeuvres.fr.Tokenizer;
 
 public class GrepMultiWordExpressions {
 
-	public static final String DEFAULT_PATH="/home/odysseus/Bureau/textes/";
+	public static final String DEFAULT_PATH="/home/etc/Bureau/textes/";
 	public static final String DEFAULT_TSV="./Source/critique2000.tsv";
 	public static final String OBVIL_PATH="http:/obvil-dev.paris-sorbonne.fr/corpus/critique/";
 	public static final String GITHUB_PATH="http:/obvil.github.io/critique2000/tei/";
@@ -105,7 +105,7 @@ public class GrepMultiWordExpressions {
 					int countOccurrences=0;
 					String fileName=cells[2]+".xml";
 					StringBuilder pathSB=new StringBuilder();
-					pathSB.append(DEFAULT_PATH);
+					pathSB.append(chosenPath);
 					pathSB.append(fileName);
 					Path path = Paths.get(pathSB.toString());
 					String text = new String(Files.readAllBytes( path ), StandardCharsets.UTF_8);
@@ -147,7 +147,7 @@ public class GrepMultiWordExpressions {
 					int countOccurrences=0;
 					String fileName=cells[2]+".xml";
 					StringBuilder pathSB=new StringBuilder();
-					pathSB.append(DEFAULT_PATH);
+					pathSB.append(chosenPath);
 					pathSB.append(fileName);
 					Path path = Paths.get(pathSB.toString());
 					String text = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
@@ -349,10 +349,7 @@ public class GrepMultiWordExpressions {
 			statsPourListeDocs[5]=cells[5]; // Title
 			statsPourListeDocs[6]=fileName;
 			statsPerDoc.add(statsPourListeDocs);
-			
-			
 		}
-		
 		return statsPerAuthor;
 		
 	}
