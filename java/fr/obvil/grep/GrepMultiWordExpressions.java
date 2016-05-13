@@ -242,27 +242,27 @@ public class GrepMultiWordExpressions {
 		System.out.println("Fin du programme");
 	}
 
-	public int rechercheParNomDateTitre (Scanner usersChoice){
-		int column=0;
-		
-		System.out.println("Recherche par nom, par date ou par titre (réponses : nom/date/titre) :");
-		setNameOrYearOrTitleString(usersChoice.next());
-
-		while(!nameOrYearOrTitle.equals("nom")&&!nameOrYearOrTitle.equals("date")&&!nameOrYearOrTitle.equals("titre")){
-			System.out.println("**********");
-			System.out.println("Veuillez rentrer le mot nom ou le mot date");
-			System.out.println("**********");
-			System.out.println("Recherche par nom ou par date (réponses : nom/date) :");
-			nameOrYearOrTitle = usersChoice.next();
-		}
-		if (nameOrYearOrTitle.equals("nom")){
-			column=3;
-		}
-		else if (nameOrYearOrTitle.equals("date")){
-			column=4;
-		}
-		return column;
-	}
+//	public int rechercheParNomDateTitre (Scanner usersChoice){
+//		int column=0;
+//		
+//		System.out.println("Recherche par nom, par date ou par titre (réponses : nom/date/titre) :");
+//		setNameOrYearOrTitleString(usersChoice.next());
+//
+//		while(!nameOrYearOrTitle.equals("nom")&&!nameOrYearOrTitle.equals("date")&&!nameOrYearOrTitle.equals("titre")){
+//			System.out.println("**********");
+//			System.out.println("Veuillez rentrer le mot nom ou le mot date");
+//			System.out.println("**********");
+//			System.out.println("Recherche par nom ou par date (réponses : nom/date) :");
+//			nameOrYearOrTitle = usersChoice.next();
+//		}
+//		if (nameOrYearOrTitle.equals("nom")){
+//			column=3;
+//		}
+//		else if (nameOrYearOrTitle.equals("date")){
+//			column=4;
+//		}
+//		return column;
+//	}
 
 	public int rechercheParNomDateTitrePourTSV (String usersChoice){
 		int columnForQuery=0;

@@ -1,18 +1,30 @@
 package fr.obvil.grep;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
 public class ExportData {
 	public static void exportToCSV(String folderPath, String fileName,HashMap <String, String []> stats)
-	{
 	
+	{	
 		try
 		{
-			FileWriter writer = new FileWriter(folderPath+fileName+".tsv");
+			Path path = Paths.get(folderPath);
+			
+			
+			File file =new File(folderPath+fileName+".tsv");
+			if (!file.getParentFile().isDirectory()){
+				Files.createDirectories(path);
+			}
+			
+			FileWriter writer = new FileWriter(file);
 
 			writer.append("Auteur\t");
 			writer.append("Total De Tokens\t");
