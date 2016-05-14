@@ -27,8 +27,6 @@ public class GrepMultiWordExpressions {
 
 	public static final String DEFAULT_PATH="/home/odysseus/Bureau/textes/";
 	public static final String DEFAULT_TSV="./Source/critique2000.tsv";
-	public static final String OBVIL_PATH="http:/obvil-dev.paris-sorbonne.fr/corpus/critique/";
-	public static final String GITHUB_PATH="http:/obvil.github.io/critique2000/tei/";
 	public static String WORD="littérature";
 	String nameOrYearOrTitle="";
 	int caseSensitivity=0;

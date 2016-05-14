@@ -76,12 +76,9 @@ public class Tokenizer
     int pos = text.indexOf( "</teiHeader>" );
     if (pos > 0) pointer = pos+12;
     this.text = new StringBuffer(text); 
-    this.text.append( ' ' ); // append a security space can cost 50ms for 16Mo file
-    size = text.length();
+    size = this.text.length();
   }
-  public boolean hasNext() {
-    return next() != 0;
-  }
+
   /**
    * Forwards pointer to next non space char
    */
@@ -123,12 +120,14 @@ public class Tokenizer
     if (Char.isPunctuation( c )) {
       end = ++pointer;
       if ( c != '.' ) return true;
+      if (end == size) return true;
       //  […]
       do { // ...
         c = text.charAt( pointer );
         if ( c != '.') return true;
         end = ++pointer;
-      } while( true );
+        if (end == size) return true;
+      } while ( true ); // end < size if no end char
     }
     // start of word 
     while (true) {
@@ -164,7 +163,8 @@ public class Tokenizer
         // test if word after should break on hyphen
         int i = 1;
         // take letters without hyphen or apos
-        while (Char.isLetter( text.charAt(  pointer + i ) )) i++;
+        // this test is necessary if no end char:  pointer + i < size
+        while (  pointer + i < size && Char.isLetter( text.charAt(  pointer + i ) )) i++;
         if ( HYPHEN_POST.contains( text.subSequence( pointer+1, pointer+i ) )) {
           end = pointer++; // return pointer on the hyphen
           // cria-t’il, cria-t-on
@@ -176,6 +176,7 @@ public class Tokenizer
         }
       }
       end = ++pointer;
+      if ( end >= size ) return true;
       c = text.charAt( pointer );
       if (Char.isPunctuationOrSpace( c )) return true;
     }
@@ -185,7 +186,6 @@ public class Tokenizer
    */
   public String getString() {
     String w = text.substring( start, end ); // more efficient for testing to get String here
-    if ( "".equals( w.trim() )) System.out.println( text.substring( start-10, end-10 ) );
     // not very efficient but…
     if ( "parce".equals( w ) || "Parce".equals( w ) || "tandis".equals( w ) || "Tandis".equals( w )) {
       read(); // go to next word after "que"

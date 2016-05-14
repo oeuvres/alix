@@ -50,7 +50,7 @@ public class Dico
   private HashMap<String, int[]> byString;
   /** List of terms, kept in index order, to get a term by int index */
   private String[] byIndex;
-  /** List of terms, kept in inverse count order */
+  /** Filled on demand, list of terms in inverse count order */
   private String[] byCount;
   /** Current working value */
   int[] value;
@@ -68,6 +68,7 @@ public class Dico
     byIndex = new String[32];
   }
 
+  
   /**
    * Get a term by index
    * 
@@ -174,6 +175,7 @@ public class Dico
     return value[INDEX_POS];
   }
 
+  
   /**
    * Size of the dictionary
    */
@@ -189,11 +191,18 @@ public class Dico
   {
     return occs;
   }
-  public String[] byCount() {
+  /**
+   * Get term list in inverse count order.
+   * @return 
+   */
+  public String[] byCount()
+  {
     return byCount( -1 );
   }
   /**
    * Used for freqlist, return a view of the map sorted by term count
+   * @param limit
+   * @return
    */
   public String[] byCount(int limit)
   {

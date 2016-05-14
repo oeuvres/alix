@@ -460,6 +460,7 @@ p
 P
 par
 parce
+parce que
 par-dessus
 parfois
 parmi
@@ -470,6 +471,7 @@ petite
 petites
 petits
 peu
+peut-être
 plus
 pluseurs
 plusieurs
