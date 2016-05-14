@@ -27,10 +27,18 @@ public class GrepMultiWordExpressions {
 
 	public static final String DEFAULT_PATH="C:/Users/Administrateur/Desktop/textes/";
 	public static final String DEFAULT_TSV="./Source/critique2000.tsv";
-	public static String WORD="littérature";
+	public String WORD="littérature";
 	String nameOrYearOrTitle="";
 	int caseSensitivity=0;
 	List<String[]>statsPerDoc;
+
+	public String getWordRequest() {
+		return WORD;
+	}
+
+	public void setWordRequest(String query) {
+		this.WORD = query;
+	}
 
 	public String getNameOrYearOrTitleString() {
 		return nameOrYearOrTitle;
@@ -39,7 +47,7 @@ public class GrepMultiWordExpressions {
 	public void setNameOrYearOrTitleString(String query) {
 		this.nameOrYearOrTitle = query;
 	}
-	
+
 	public int getCaseSensitivity() {
 		return caseSensitivity;
 	}
@@ -47,7 +55,7 @@ public class GrepMultiWordExpressions {
 	public void setCaseSensitivity(int query) {
 		this.caseSensitivity = query;
 	}
-	
+
 	public List<String[]> getStatsPerDoc() {
 		return statsPerDoc;
 	}
@@ -102,17 +110,17 @@ public class GrepMultiWordExpressions {
 			System.out.println("1 : rechercher un seul mot, une expression ou une expression régulière");
 			System.out.println("2 : rechercher deux mots dans une fenêtre à définir");
 			int chooseTypeRequest = Integer.valueOf(word.next());
-			
+
 			System.out.println("Votre requête doit-elle être sensible à la casse ? (sensible/insensible)");
 			String casse=word.next();
-			
+
 			if (casse.equals("sensible")){
 				maClasse.setCaseSensitivity(0);
 			}
 			else{
 				maClasse.setCaseSensitivity(Pattern.CASE_INSENSITIVE);
 			}
-			
+
 
 			switch (chooseTypeRequest){
 			case 1 :
@@ -121,7 +129,7 @@ public class GrepMultiWordExpressions {
 
 				String usersWord = line.nextLine();
 
-				if (usersWord!=null)WORD=usersWord;
+				if (usersWord!=null)maClasse.setWordRequest(usersWord);
 
 				System.out.println("Calcul des matchs en cours...");
 
@@ -139,7 +147,7 @@ public class GrepMultiWordExpressions {
 					while( toks.read() ) {		
 						sbToks.append(toks.getString()+" ");
 					}
-					Pattern p = Pattern.compile("\\s"+WORD+"\\s", maClasse.getCaseSensitivity());
+					Pattern p = Pattern.compile("\\s"+maClasse.getWordRequest()+"\\s", maClasse.getCaseSensitivity());
 					Matcher m = p.matcher(sbToks.toString());
 					while (m.find()){
 						countOccurrences++;
@@ -150,7 +158,7 @@ public class GrepMultiWordExpressions {
 
 				System.out.println("\nQuel(le) "+maClasse.getNameOrYearOrTitleString()+" voulez-vous ?");
 				preciseQuery = line.nextLine();
-				WORD=usersWord;
+				maClasse.setWordRequest(usersWord);
 				break;
 
 			case 2 :
@@ -200,7 +208,7 @@ public class GrepMultiWordExpressions {
 
 				System.out.println("\nQuel(le) "+maClasse.getNameOrYearOrTitleString()+" voulez-vous ?");
 				preciseQuery = line.nextLine();
-				WORD=firstUsersWord+" et "+secondUsersWord;
+				maClasse.setWordRequest(firstUsersWord+" et "+secondUsersWord);
 				break;
 			}
 
@@ -228,7 +236,7 @@ public class GrepMultiWordExpressions {
 				if (entry.getKey().contains(preciseQuery)){
 					System.out.println("Voici les stats pour "+preciseQuery);
 					System.out.println("Nombre total de tokens : "+entry.getValue()[1]);
-					System.out.println("Nombre d'occurrences de "+WORD+" : "+entry.getValue()[0]);
+					System.out.println("Nombre d'occurrences de "+maClasse.getWordRequest()+" : "+entry.getValue()[0]);
 					if (column==3){
 						for (String []doc:maClasse.getStatsPerDoc()){
 							if (doc[3].contains(preciseQuery)){
@@ -243,12 +251,13 @@ public class GrepMultiWordExpressions {
 			}
 			System.out.println("\nSouhaitez-vous enregistrer votre requête dans un csv ? (oui/non)");
 			String save= word.next();	
+			String nomFichier=maClasse.getWordRequest().replaceAll("\\\\", "");
+			nomFichier=nomFichier.replaceAll("\\s", "_");
 			if (save.equals("oui")&&(column==3||column==4)){
-				ExportData.exportToCSV("./TargetCSV/",WORD.replaceAll("\\s", "_"),statsPerAuthorOrYear);
+				ExportData.exportToCSV("./TargetCSV/",nomFichier,statsPerAuthorOrYear);
 			}
 			else if (save.equals("oui")&&(column==5)){
-				String nomFichier=WORD.replaceAll(("[^A-Za-z0-9 ]"), "");
-				ExportData.exportListToCSV("./TargetCSV/",nomFichier.replaceAll("\\s", "_"),maClasse.getStatsPerDoc());
+				ExportData.exportListToCSV("./TargetCSV/",nomFichier,maClasse.getStatsPerDoc());
 			}
 			else{
 				System.out.println("Votre requête n'a pas été enregistrée");
@@ -274,7 +283,7 @@ public class GrepMultiWordExpressions {
 		}
 		return columnForQuery;
 	}
-	
+
 	public HashMap <String, String[]> mergeDatas(HashMap <String, String[]>statsPerAuthorOrYear, List<String[]>statsPerDoc, String cells[], int column, int countOccurrences, Tokenizer toks, String fileName){
 		String statsPourListeDocs []=new String[7];
 		String [] tmp;
@@ -289,7 +298,7 @@ public class GrepMultiWordExpressions {
 				tmp[4]=statsPerAuthorOrYear.get(cells[column])[4]+" // "+cells[4]; // Year
 				tmp[5]=statsPerAuthorOrYear.get(cells[column])[5]+" // "+cells[5]; // Title
 				tmp[6]=fileName;
-				
+
 			}
 			else{
 				tmp=new String[7];
