@@ -31,6 +31,7 @@ public class GrepMultiWordExpressions {
 	public static final String GITHUB_PATH="http:/obvil.github.io/critique2000/tei/";
 	public static String WORD="littérature";
 	String nameOrYearOrTitle="";
+	int caseSensitivity=0;
 	List<String[]>statsPerDoc;
 
 	public String getNameOrYearOrTitleString() {
@@ -39,6 +40,14 @@ public class GrepMultiWordExpressions {
 
 	public void setNameOrYearOrTitleString(String query) {
 		this.nameOrYearOrTitle = query;
+	}
+	
+	public int getCaseSensitivity() {
+		return caseSensitivity;
+	}
+
+	public void setCaseSensitivity(int query) {
+		this.caseSensitivity = query;
 	}
 	
 	public List<String[]> getStatsPerDoc() {
@@ -95,6 +104,17 @@ public class GrepMultiWordExpressions {
 			System.out.println("1 : rechercher un seul mot, une expression ou une expression régulière");
 			System.out.println("2 : rechercher deux mots dans une fenêtre à définir");
 			int chooseTypeRequest = Integer.valueOf(word.next());
+			
+			System.out.println("Votre requête doit-elle être sensible à la casse ? (sensible/insensible)");
+			String casse=word.next();
+			
+			if (casse.equals("sensible")){
+				maClasse.setCaseSensitivity(0);
+			}
+			else{
+				maClasse.setCaseSensitivity(Pattern.CASE_INSENSITIVE);
+			}
+			
 
 			switch (chooseTypeRequest){
 			case 1 :
@@ -121,7 +141,7 @@ public class GrepMultiWordExpressions {
 					while( toks.read() ) {		
 						sbToks.append(toks.getString()+" ");
 					}
-					Pattern p = Pattern.compile(" "+WORD+" ");
+					Pattern p = Pattern.compile(" "+WORD+" ", maClasse.getCaseSensitivity());
 					Matcher m = p.matcher(sbToks.toString());
 					while (m.find()){
 						countOccurrences++;
@@ -163,14 +183,14 @@ public class GrepMultiWordExpressions {
 						sbToks.append(toks.getString()+" ");
 					}
 
-					Pattern p = Pattern.compile(firstUsersWord+"\\s[^\\p{L}]*(\\p{L}+(\\s[^\\w])*\\s){1,"+usersWindow+"}"+secondUsersWord, Pattern.CASE_INSENSITIVE);
+					Pattern p = Pattern.compile(firstUsersWord+"\\s[^\\p{L}]*(\\p{L}+(\\s[^\\w])*\\s){1,"+usersWindow+"}"+secondUsersWord, maClasse.getCaseSensitivity());
 					Matcher m = p.matcher(sbToks.toString());
 
 					while(m.find()) {
 						countOccurrences++;
 					}
 
-					Pattern p2 = Pattern.compile(secondUsersWord+"\\s[^\\p{L}]*(\\p{L}+(\\s[^\\w])*\\s){1,"+usersWindow+"}"+firstUsersWord, Pattern.CASE_INSENSITIVE);
+					Pattern p2 = Pattern.compile(secondUsersWord+"\\s[^\\p{L}]*(\\p{L}+(\\s[^\\w])*\\s){1,"+usersWindow+"}"+firstUsersWord, maClasse.getCaseSensitivity());
 					Matcher m2 = p2.matcher(sbToks.toString());
 
 					while(m2.find()) {
