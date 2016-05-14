@@ -25,7 +25,7 @@ import site.oeuvres.fr.Tokenizer;
 
 public class GrepMultiWordExpressions {
 
-	public static final String DEFAULT_PATH="/home/odysseus/Bureau/textes/";
+	public static final String DEFAULT_PATH="C:/Users/Administrateur/Desktop/textes/";
 	public static final String DEFAULT_TSV="./Source/critique2000.tsv";
 	public static String WORD="littérature";
 	String nameOrYearOrTitle="";
@@ -139,7 +139,7 @@ public class GrepMultiWordExpressions {
 					while( toks.read() ) {		
 						sbToks.append(toks.getString()+" ");
 					}
-					Pattern p = Pattern.compile(" "+WORD+" ", maClasse.getCaseSensitivity());
+					Pattern p = Pattern.compile("\\s"+WORD+"\\s", maClasse.getCaseSensitivity());
 					Matcher m = p.matcher(sbToks.toString());
 					while (m.find()){
 						countOccurrences++;
@@ -241,14 +241,14 @@ public class GrepMultiWordExpressions {
 					}
 				}
 			}
-
 			System.out.println("\nSouhaitez-vous enregistrer votre requête dans un csv ? (oui/non)");
 			String save= word.next();	
 			if (save.equals("oui")&&(column==3||column==4)){
 				ExportData.exportToCSV("./TargetCSV/",WORD.replaceAll("\\s", "_"),statsPerAuthorOrYear);
 			}
 			else if (save.equals("oui")&&(column==5)){
-				ExportData.exportListToCSV("./TargetCSV/",WORD.replaceAll("\\s", "_"),maClasse.getStatsPerDoc());
+				String nomFichier=WORD.replaceAll(("[^A-Za-z0-9 ]"), "");
+				ExportData.exportListToCSV("./TargetCSV/",nomFichier.replaceAll("\\s", "_"),maClasse.getStatsPerDoc());
 			}
 			else{
 				System.out.println("Votre requête n'a pas été enregistrée");
