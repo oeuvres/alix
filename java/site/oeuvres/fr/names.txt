@@ -1633,6 +1633,8 @@ Eaubonne
 Ebit
 Ebola
 Echternach
+Écosse
+Ecosse
 Ed
 Eddie
 Eddy
@@ -2254,6 +2256,7 @@ Haar
 Habacuc
 Habib
 Habsbourg
+Hachette
 Hadamard
 Hadrien
 Hadès

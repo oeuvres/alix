@@ -36,9 +36,14 @@ import site.oeuvres.util.Dico;
  */
 public class Tokenizer
 {
+  /** Common french words with dot abbreviation */
+  public static final HashSet<String> BREVIDOT = new HashSet<String>(Arrays.asList(
+      "A.",  "ann.", "B.", "C.", "c.-à-d.", "D.", "E.", "F.", "G.", "H.", "I.", "J.", "K.", "L.", "M.", "N.", "O.", 
+      "p.", "P.", "Q.", "R.", "S.", "T.", "U.", "V.", "W.", "X.", "Y.", "Z."
+  ));
   /** French, « vois-tu » hyphen is breakable before these words */
   public static final HashSet<String> HYPHEN_POST = new HashSet<String>(Arrays.asList(
-      "ce", "elle","en","eux", "il", "ils", "je", "Je",  "la", "là", "le", "lui", "m'", 
+      "ce", "elle","en","eux", "il", "ils", "je", "Je",  "la", "là", "le", "les", "lui", "m'", 
         "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y"
   ));
   /** French, « j’aime », break apostrophe after those words */
@@ -75,7 +80,8 @@ public class Tokenizer
     // useful for TEI files
     int pos = text.indexOf( "</teiHeader>" );
     if (pos > 0) pointer = pos+12;
-    this.text = new StringBuffer(text); 
+    this.text = new StringBuffer(text);
+    this.text.append( "   " );
     size = this.text.length();
   }
 
@@ -153,7 +159,7 @@ public class Tokenizer
             return true;
           }
           // if ( (pointer - start)  != 1 || text.charAt( start ) != 't' )  
-          text.setCharAt( end, 'e' );
+          // text.setCharAt( end, 'e' ); // keep apos
           end = ++pointer; // start next word after apos
           return true;
         }
@@ -175,10 +181,20 @@ public class Tokenizer
           return true;
         }
       }
+
+      // abbr M. Mmme C… Oh M… !
+      if (  text.charAt( pointer+1 ) == '.' ) {
+        if ( Char.isLetter( text.charAt( pointer+2 )) ) { // A.D.N.
+          pointer = pointer+2;
+        }
+        if (BREVIDOT.contains( text.subSequence( start, pointer+2 ) )) {
+          pointer++;
+        }
+      }
       end = ++pointer;
       if ( end >= size ) return true;
       c = text.charAt( pointer );
-      if (Char.isPunctuationOrSpace( c )) return true;
+      if ( Char.isPunctuationOrSpace( c ) ) return true;
     }
   }
   /**
@@ -194,10 +210,10 @@ public class Tokenizer
     // upper case ?
     if (Char.isUpperCase( w.charAt( 0 ) )) {
       // test first if upper case is know as a name (keep Paris: town, do not give paris: bets) 
-      if ( Lexik.NAMES.contains( w ) ) return w;
+      if ( Lexik.NAME.contains( w ) ) return w;
       // no sensible performance gain with the little lexicon
       // if ( LC.contains( s.toLowerCase() ) ) return s.toLowerCase();
-      if ( Lexik.WORDS.contains( w.toLowerCase() ) ) return w.toLowerCase();
+      if ( Lexik.WORD.containsKey( w.toLowerCase() ) ) return w.toLowerCase();
       return w;
     }
     else return w;
@@ -219,10 +235,11 @@ public class Tokenizer
     // Path context = Paths.get(Tokenizer.class.getClassLoader().getResource("").getPath()).getParent();
     if ( true || args.length < 1) {
       String text;
-      text = "D’abord, M., j’aime ce &amp; casse-tête parce \nque <i>Paris.</i>.. : \"Vois-tu ?\" s’écria-t-on, \"non.\" cria-t’il.";
-      text = "— D'abord, M. Fontaine, j’aime ce casse-tête parce que voyez-vous, c’est de <i>Paris.</i>.. \"Et voilà !\" s'écria-t'il.";
+      text = "D’abord, M., j’aime ce que C’était &amp; casse-tête parce \nque <i>Paris.</i>.. : \"Vois-tu ?\" s’écria-t-on, \"non.\" cria-t’il.";
+      // text = "— D'abord, M. Racine, j’aime ce casse-tête parce que voyez-vous, c’est de <i>Paris.</i>.. \"Et voilà !\" s'écria-t'il.";
       Tokenizer toks = new Tokenizer(text);
       while ( toks.read()) {
+        
         System.out.print( toks.getString()+"|" );
       }
       return;

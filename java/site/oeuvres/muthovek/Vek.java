@@ -433,7 +433,8 @@ public class Vek implements Cloneable
 
 
   /** 
-   * Returns the least power of two smaller than or equal to 2<sup>30</sup> and larger than or equal to <code>Math.ceil( expected / f )</code>.
+   * Returns the least power of two smaller than or equal to 2<sup>30</sup> 
+   * and larger than or equal to <code>Math.ceil( expected / f )</code>.
    *
    * @param expected the expected number of elements in a hash table.
    * @param f the load factor.
@@ -526,14 +527,14 @@ public class Vek implements Cloneable
    * @param vek2
    * @return the similarity score
    */
-  public double cosine( Vek vek)
+  public double cosine( Vek vek )
   {
     return dotProduct(vek) / (this.magnitude() * vek.magnitude());
   }
   
   /**
    * Calculation of magnitude with cache
-   * @return the maginitude
+   * @return the magnitude
    */
   public double magnitude()
   {
@@ -564,20 +565,7 @@ public class Vek implements Cloneable
     return sum;
   }  
 
-  /**
-   * Not really thought for now
-   */
-  @Override
-  public Vek clone()
-  {
-    Vek clone = null;
-    try {
-      clone = (Vek)super.clone();
-    } catch (CloneNotSupportedException e) {
-      e.printStackTrace();
-    }
-    return clone; 
-  }
+
   
   /**
    * Just for testing, no reasons to use this object in CLI

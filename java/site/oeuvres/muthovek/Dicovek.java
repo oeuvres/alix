@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -23,7 +24,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
-import site.oeuvres.fr.PoorLem;
 import site.oeuvres.fr.Lexik;
 import site.oeuvres.fr.Tokenizer;
 import site.oeuvres.util.Char;
@@ -64,8 +64,6 @@ public class Dicovek {
   private IntSlider win;
   /** List of stop words, usually grammatical, do not modify during object life */
   private final Set<String> stoplist;
-  /** A hash for a poor lemmatiser */
-  private final PoorLem lems;
   /** Current Vector to work on */
   private Vek vek;
   /**
@@ -153,10 +151,6 @@ public class Dicovek {
     return this;
   }
   
-  public void remove( String term )
-  {
-    
-  }
   /**
    * Output most frequent words as String
    * TODO, best object packaging
@@ -174,13 +168,14 @@ public class Dicovek {
     }
     return sb.toString();
   }
+  
   /**
    * List "siminymes" by vector proximity
    * TODO: better efficiency
    * 
    * @throws IOException 
    */
-  public ArrayList<SimRow> syns( String term ) throws IOException
+  public ArrayList<SimRow> sims( String term, int limit )
   {
     // get vector for requested word
     int k = terms.index( term );
@@ -191,7 +186,6 @@ public class Dicovek {
     // Similarity
     double score;
     // list dico in freq order
-    int limit = -1;
     ArrayList<SimRow> table = new ArrayList<SimRow>();
     SimRow row;
     String[] list = terms.byCount();
@@ -201,20 +195,20 @@ public class Dicovek {
       if ( vek == null ) continue;
       score = vekterm.cosine( vek );
       // score differs 
-      if (score < 0.5) continue;
-      row = new SimRow( list[i], terms.count( list[i] ), score);
+      if ( score < 0.5 ) continue;
+      row = new SimRow( list[i], terms.count( list[i] ), score );
       table.add( row );
-      if (limit-- == 0) break;
+      if ( limit-- == 0 ) break;
     }
-    Collections.sort(table);
+    Collections.sort( table );
     return table;
   }
+  
   /**
    * A row similar word with different info, used for sorting
    * @author glorieux-f
-   *
    */
-  class SimRow implements Comparable<SimRow> 
+  public class SimRow implements Comparable<SimRow> 
   {
     public final  String term;
     public final int count;
@@ -358,14 +352,16 @@ public class Dicovek {
    * @param glob
    * @throws IOException 
    */
-  public void walk( String glob ) throws IOException
+  public void walk( String glob, final PrintWriter out ) throws IOException
   {
+    if ( out != null ) out.println( "Walk through: "+glob );
     // get the parent folder before the first glob star, needed for ../*/*.xml
     int before = glob.indexOf('*');
     if (before<0) before = glob.length()-1;
     int pos = glob.substring( 0, before).lastIndexOf( '/' );
     Path dir = Paths.get(glob.substring( 0, pos+1 ));
     final PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:"+glob);
+    
     Files.walkFileTree( dir , new SimpleFileVisitor<Path>() {
       @Override
       public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
@@ -375,14 +371,14 @@ public class Dicovek {
       @Override
       public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
         if (matcher.matches(file)) {
-          System.out.println(file);
+          if (out != null) out.println(file);
           tokenize(file);
         }
         return FileVisitResult.CONTINUE;
       }
       @Override
       public FileVisitResult visitFileFailed(Path path, IOException exc) throws IOException {
-        System.out.println( path );
+        if (out != null) out.println( "File not found "+path.toAbsolutePath() );
         return FileVisitResult.CONTINUE;
       }
     });
@@ -396,6 +392,7 @@ public class Dicovek {
       vectors.remove( id );
     }
     */
+    if ( out  != null ) out.flush();
   }
   
   /**
@@ -415,12 +412,12 @@ public class Dicovek {
     int wing = 5;
     // le chargeur de vecteur a besoin d'une liste de mots vides pour éviter de faire le vecteur de "de"
     // un lemmatiseur du pauvre sert à regrouper les entrées des vecteurs
-    // Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST, new PoorLem());
-    Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST);
+    Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST, new PoorLem());
+    // Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST);
     long start = System.nanoTime();
     // Boucler sur les fichiers
     for ( int i=0; i < args.length; i++) {
-      veks.walk( args[i] );
+      veks.walk( args[i], new PrintWriter(System.out) );
     }
     
     System.out.println( "Chargé en "+((System.nanoTime() - start) / 1000000) + " ms");
@@ -436,20 +433,31 @@ public class Dicovek {
       if (word == null || "".equals(word)) {
         System.exit(0);
       }
+      word = word.trim();
+      int simsmax = 1000;
+      if ( word.contains( " " )) {
+        int pos = word.indexOf( ' ' );
+        simsmax = Integer.parseInt( word.substring( pos+1) );
+        word = word.substring( 0, pos );
+        if (simsmax < 1) simsmax = 1000;
+      }
       start = System.nanoTime();
       System.out.print( "COOCCURRENTS : " );
       System.out.println( veks.coocs( word, 30, true ) );
       System.out.println( "" );
-      table = veks.syns(word);
+      table = veks.sims(word, simsmax );
       if ( table == null ) continue;
       int limit = 30;
       // TODO optimiser 
-      System.out.print( "SIMINYMES : " );
+      System.out.println( "SIMINYMES : " );
+      System.out.println( "word\tcount\tdistance" );
       for (SimRow row:table) {
         System.out.print( row.term );
-        System.out.print( ":" );
+        System.out.print( "\t" );
+        System.out.print( row.count );
+        System.out.print( "\t" );
         System.out.print( df.format( row.score ) );
-        System.out.print( ", " );
+        System.out.println( "" );
         if (--limit == 0 ) break;
       }
       System.out.println( "" );

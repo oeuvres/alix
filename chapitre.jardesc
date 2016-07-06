@@ -4,13 +4,28 @@
     <options buildIfNeeded="true" compress="true" descriptionLocation="/Alix/chapitre.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="true" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
     <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
     <selectedProjects/>
-    <manifest generateManifest="false" manifestLocation="/Alix/java/META-INF/MANIFEST.MF" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
+    <manifest generateManifest="true" manifestLocation="/Alix/java/META-INF/MANIFEST.MF" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
         <sealing sealJar="false">
             <packagesToSeal/>
             <packagesToUnSeal/>
         </sealing>
     </manifest>
     <selectedElements exportClassFiles="false" exportJavaFiles="false" exportOutputFolder="true">
-        <javaElement handleIdentifier="=Alix/java"/>
+        <javaElement handleIdentifier="=Alix/java&lt;fr"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Tokenizer.java"/>
+        <folder path="/Alix/java/META-INF/services"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Lexik.java"/>
+        <file path="/Alix/java/site/oeuvres/fr/stoplist.txt"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.lucene"/>
+        <file path="/Alix/java/site/oeuvres/fr/words.csv"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Rewrite.java"/>
+        <javaElement handleIdentifier="=Alix/java&lt;fr.obvil.grep"/>
+        <javaElement handleIdentifier="=Alix/java&lt;fr.obvil"/>
+        <file path="/Alix/java/site/oeuvres/fr/names.txt"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.util"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.muthovek"/>
+        <file path="/Alix/java/site/oeuvres/fr/lc.txt"/>
     </selectedElements>
 </jardesc>

@@ -37,7 +37,7 @@ public class Rewrite
           if ( pointer > 1 && Char.isUpperCase( w.charAt( 1 ) ) ) w = w.charAt( 0 ) + w.toLowerCase().substring( 1 );
           // test first if upper case is know as a name (keep Paris: town, do not give paris: bets) 
           if ( Lexik.NAMES.contains( w ) );
-          else if ( Lexik.WORDS.contains( w.toLowerCase() ) ) w = w.toLowerCase();
+          else if ( Lexik.WORDS.containsKey( w.toLowerCase() ) ) w = w.toLowerCase();
         }
         writer.write( w );
         lb++;
