@@ -86,7 +86,7 @@ public class Lexik
 
   }
   /**
-   * Give a lem according to thedico
+   * Give a lem according to the dico
    * @param token
    * @return
    */

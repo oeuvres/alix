@@ -60,6 +60,8 @@ public class Dicovek {
   final int left;
   /** Size of right context */
   final int right;
+  /** Lemmatize vectors */
+  final boolean lemmatize;
   /** Sliding window */
   private IntSlider win;
   /** List of stop words, usually grammatical, do not modify during object life */
@@ -74,19 +76,9 @@ public class Dicovek {
    */
   public Dicovek(int contextLeft, int contextRight)
   {
-    this(contextLeft, contextRight, null, null);
+    this(contextLeft, contextRight, null, false);
   }
-  /**
-   * Constructor with Stopwords
-   * 
-   * @param contextLeft
-   * @param contextRight
-   * @param stoplist
-   */
-  public Dicovek(int contextLeft, int contextRight, Set<String> stoplist)
-  {
-    this(contextLeft, contextRight, stoplist, null);
-  }
+
   
   /**
    * Full constructor with all options
@@ -96,7 +88,7 @@ public class Dicovek {
    * @param stoplist
    * @param initialSize
    */
-  public Dicovek(int contextLeft, int contextRight, Set<String> stoplist, PoorLem lems)
+  public Dicovek(int contextLeft, int contextRight, Set<String> stoplist, boolean lemmatize)
   {    
     left = contextLeft;
     right = contextRight;
@@ -105,7 +97,7 @@ public class Dicovek {
     // 44960 is the size of all Zola vocabulary
     vectors = new IntObjectMap<Vek>(5000);
     win = new IntSlider(contextLeft, contextRight);
-    this.lems = lems;
+    this.lemmatize = lemmatize;
   }
   
   /**
@@ -319,7 +311,7 @@ public class Dicovek {
     // give some space before
     for ( int i=0; i < left; i++ )
       add("");
-    if ( lems != null ) { // ne faire le test qu’une fois
+    if ( lemmatize ) { // ne faire le test qu’une fois
       while( toks.read() ) {
         w = toks.getString();
         // ne pas ajouter la ponctuation
@@ -331,7 +323,7 @@ public class Dicovek {
           continue;
         }
         */
-        add( lems.get( w ) );
+        add( Lexik.lem( w ) );
       }
     }
     else {
@@ -412,7 +404,7 @@ public class Dicovek {
     int wing = 5;
     // le chargeur de vecteur a besoin d'une liste de mots vides pour éviter de faire le vecteur de "de"
     // un lemmatiseur du pauvre sert à regrouper les entrées des vecteurs
-    Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST, new PoorLem());
+    Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST, true);
     // Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST);
     long start = System.nanoTime();
     // Boucler sur les fichiers
