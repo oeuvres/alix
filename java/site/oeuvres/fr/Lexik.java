@@ -24,20 +24,21 @@ public class Lexik
 {
 
   /** French names on which keep Capitalization */
-  public static final HashSet<String> NAME;
+  private static final HashSet<String> NAME;
   /** French stopwords */
   public static final HashSet<String> STOPLIST;
-
   /** 130 000 types French lexicon seems not too bad for memory */
-  public static final HashMap<String,String[]> WORD;
+  private static final HashMap<String,String[]> WORD;
   /** Grammatical category  */
-  public static final int CAT=0;
+  private static final int CAT=0;
   /** Lemma form  */
-  public static final int LEM=1;
-  /** */
-  private static String[] word;
-  /** French common words at start of sentences, render to lower case */
-  // public static final HashSet<String> LC;
+  private static final int LEM=1;
+  /** Read current lexic line */
+  private static String[] line;
+  /** Last lem read */
+  private static String lem;
+  /** Last cat read */
+  private static String cat;
   
   static {
     String l;
@@ -85,43 +86,72 @@ public class Lexik
     }
 
   }
+  public static boolean isName( String orth) {
+    return NAME.contains( orth ) ;
+  }
+  /**
+   * Test orthographical form and update static fields
+   */
+  public static boolean isWord( String orth) {
+    if ( !Lexik.WORD.containsKey( orth ) ) return false;
+    line = Lexik.WORD.get( orth );
+    lem = line[LEM];
+    cat = line[CAT];
+    return true;
+  }
+  /**
+   * Last tested orth
+   * @return
+   */
+  public static String lem() {
+    return lem;
+  }
+  /**
+   * Last tested orth
+   * @return
+   */
+  public static String cat() {
+    return cat;
+  }
+  
   /**
    * Give a lem according to the dico
    * @param token
    * @return
    */
-  public static String lem( String form ) {
-    if ( Lexik.WORD.containsKey( form ) ) {
-      return Lexik.WORD.get( form )[LEM];
+  public static String lem( String orth ) {
+    if ( Lexik.WORD.containsKey( orth ) ) {
+      return Lexik.WORD.get( orth )[LEM];
     }
-    return form;
+    return orth;
   }
   /**
-   * 
-   * @param form
+   * Give a category according to the dico
+   * @param token
    * @return
    */
-  public static String tsv( String token ) {
-    char c0 = token.charAt( 0 );
-    if (Char.isPunctuation( c0 )) {
-      return token+"\tPUNKT\t"+token;
+  public static String cat( String orth ) {
+    if ( Lexik.WORD.containsKey( orth ) ) {
+      return Lexik.WORD.get( orth )[LEM];
     }
-    if ( Lexik.WORD.containsKey( token ) ) {
-      word = Lexik.WORD.get( token );
-      return token+"\t"+word[CAT]+"\t"+word[LEM];
-    }
-    if ( Char.isUpperCase( c0 )) {
-      return token+"\tNAME\t"+token;
-    }
-    return token+"\t???\t"+token;
+    return orth;
+  }
+  /**
+   * Give a lem according to the dico
+   * @param token
+   * @return
+   */
+  public static boolean isStop( String form ) {
+    return Lexik.STOPLIST.contains( form );
   }
     
   /**
    * For testing
    */
   public static void main(String[] args) throws IOException {
-    for (String token: "et depuis quand est il en cette ville ? de hier au soir . et quel sujet l’ amène ?".split( " " ) ) {
-      System.out.println( Lexik.tsv( token ) );
+    for (String token: "lorsqu' et depuis quand est il en cette ville ? 25 centimes de hier au soir . et quel sujet l’ y amène ?".split( " " ) ) {
+      // ?? 
+      // System.out.println( Lexik.tsv( token ) );
     }
   }
 

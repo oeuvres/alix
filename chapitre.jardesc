@@ -12,6 +12,7 @@
     </manifest>
     <selectedElements exportClassFiles="false" exportJavaFiles="false" exportOutputFolder="true">
         <javaElement handleIdentifier="=Alix/java&lt;fr"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Cat.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Tokenizer.java"/>
         <folder path="/Alix/java/META-INF/services"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Lexik.java"/>

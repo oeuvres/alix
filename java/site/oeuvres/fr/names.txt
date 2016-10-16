@@ -1135,6 +1135,7 @@ Chongqing
 Chopin
 Chostakovitch
 Chris
+Christ
 Christa
 Christel
 Christelle
@@ -3862,6 +3863,7 @@ Mâcon
 Mâconnais
 Médard
 Médicis
+Méditerranée
 Médée
 Médéric
 Mée-sur-Seine
@@ -4771,6 +4773,8 @@ Sabrina
 Saccard
 Sacha
 Sacramento
+Sacré-Cœur
+Sacré-Coeur
 Sade
 Safia
 Sagan

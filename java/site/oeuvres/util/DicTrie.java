@@ -15,7 +15,7 @@ import org.apache.lucene.analysis.util.CharArraySet;
 /**
  * 
  * A Trie where the possible letters of words are not predefined (ex: French, Greek).
- * It works, but is slower (/8) than an HashSet.
+ * It works, but is slower (/8) than an HashSet for a contains query.
  * 
  * @author glorieux-f
  *
