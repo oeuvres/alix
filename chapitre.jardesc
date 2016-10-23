@@ -17,14 +17,16 @@
         <folder path="/Alix/java/META-INF/services"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Lexik.java"/>
         <file path="/Alix/java/site/oeuvres/fr/stoplist.txt"/>
+        <file path="/Alix/java/site/oeuvres/fr/name.txt"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.lucene"/>
-        <file path="/Alix/java/site/oeuvres/fr/words.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Rewrite.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;fr.obvil.grep"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Grep.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;fr.obvil"/>
-        <file path="/Alix/java/site/oeuvres/fr/names.txt"/>
+        <file path="/Alix/java/site/oeuvres/fr/word.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;site"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres"/>
+        <file path="/Alix/java/site/oeuvres/fr/abbr.txt"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.util"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.muthovek"/>
         <file path="/Alix/java/site/oeuvres/fr/lc.txt"/>

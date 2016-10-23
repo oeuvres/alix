@@ -53,15 +53,16 @@ public class Tokenizer
   ));
   /** French, « parce que », test if next word is que */
   public static final HashSet<String> QUE_PRE = new HashSet<String>(Arrays.asList(
-      "afin", "Afin", "après", "Après", "cependant", "Cependant", "dès", "Dès", "parce", "Parce", "pour", "Pour", "tandis", "Tandis"
+      "afin", "Afin", "après", "Après", "cependant", "Cependant", "dès", "Dès", "parce", 
+      "Parce", "pour", "Pour", "tandis", "Tandis"
   ));
 
   /** Start of a word */
   public int start;
   /** End of a word */
   public int end;
-  /** The text, as a string */
-  public final StringBuffer text;
+  /** The text, as a non mutable string */
+  public final String text;
   /** Where we are in the text */
   private int pointer;
   /** Current char */
@@ -80,9 +81,9 @@ public class Tokenizer
     // useful for TEI files
     int pos = text.indexOf( "</teiHeader>" );
     if (pos > 0) pointer = pos+12;
-    this.text = new StringBuffer(text);
-    this.text.append( "   " );
+    this.text = text; // + "    "?
     size = this.text.length();
+    // Lexik.isStop( "no" ); // load lexik now ?? 100ms ?
   }
 
   /**
@@ -117,7 +118,7 @@ public class Tokenizer
    * Set start and end index of a token
    * Here is the most delicate logic
    */
-  public boolean read() 
+  public boolean hasNext() 
   {
     if (next() < 0) return false;
     char c = text.charAt( pointer );
@@ -144,7 +145,7 @@ public class Tokenizer
       
       // apos normalisation
       if ( c == '\'' || c == '’' ) {
-        text.setCharAt( pointer, '\'' ); // normalize apos
+        // text.setCharAt( pointer, '\'' ); // normalize apos ?
         // problem : ’’
         if ( end - start < 1 ) {
           start = ++pointer;
@@ -176,7 +177,7 @@ public class Tokenizer
           // cria-t’il, cria-t-on
           if ( i == 2) {
             c = text.charAt( pointer +1 );
-            if ( c == '’' || c  == '\'' || c  == '-')  text.setCharAt( pointer+1, ' ' );
+            // if ( c == '’' || c  == '\'' || c  == '-')  text.setCharAt( pointer+1, ' ' );
           }
           return true;
         }
@@ -204,7 +205,7 @@ public class Tokenizer
     String w = text.substring( start, end ); // more efficient for testing to get String here
     // not very efficient but…
     if ( "parce".equals( w ) || "Parce".equals( w ) || "tandis".equals( w ) || "Tandis".equals( w )) {
-      read(); // go to next word after "que"
+      hasNext(); // go to next word after "que"
       return w.toLowerCase()+" que";
     }
     // upper case ?
@@ -222,48 +223,54 @@ public class Tokenizer
    * Get current token 
    */
   public Tok tok() {
-    Tok tok = new Tok();
-    tok.graph = text.substring( start, end ); 
-    tok.orth = tok.graph;
-    tok.lem = tok.orth;
-    char c0 = tok.graph.charAt( 0 );
+    return tok ( new Tok() );
+  }  
+  /**
+   * Update a token object with current token
+   */
+  public Tok tok( Tok tok ) {
+    tok.graph( text, start, end - start );
+    tok.orth( tok.graph() );
+    tok.lem( tok.orth() );
+    if ( tok == null || tok.graph() == null || tok.graph().length() == 0 ) {
+      return tok;
+    }
+    char c0 = tok.graph().charAt( 0 );
     // ponctuation ?
     if (Char.isPunctuation( c0 )) {
-      tok.cat = Cat.PUNKT;
+      tok.cat( Cat.PUN );
       return tok;
     }
     // number ?
     else if (Char.isDigit( c0 )) {
-      tok.cat = Cat.NUM;
+      tok.cat ( Cat.NUM );
       return tok;
     }
     // upper case ?
     else if (Char.isUpperCase( c0 )) {
       // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
-      if ( Lexik.isName( tok.graph ) ) {
-        tok.cat = Cat.NAME;
+      if ( Lexik.isName( tok.graph() ) ) {
+        tok.cat ( Cat.NAME );
         return tok;
       }
       // start of a sentence ?
       else {
-        tok.orth = tok.graph.toLowerCase();
-        if ( Lexik.isWord( tok.orth ) ) {
-          tok.lem = Lexik.lem();
-          tok.cat = Lexik.cat();
+        // Try if word lower case is known as name
+        tok.orth().toLower() ;
+        // know word will update token
+        if ( Lexik.isWord( tok ) ) {
           return tok;
         }
         // unknow name
         else {
-          tok.orth = tok.graph;
-          tok.cat = Cat.NAME;
+          tok.orth( tok.graph() );
+          tok.cat( Cat.NAME );
           return tok;
         }
       }
     }
-    // known word
-    else if ( Lexik.isWord( tok.orth ) ) {
-      tok.lem = Lexik.lem();
-      tok.cat = Lexik.cat();
+    // known word, token will be updated
+    else if ( Lexik.isWord( tok ) ) {
       return tok;
     }
     // unknown word
@@ -275,7 +282,7 @@ public class Tokenizer
    * Get current token as a char sequence, with no test 
    * @return
    */
-  public CharSequence getCS() {
+  public CharSequence get() {
     return text.subSequence( start, end );
   }
   
@@ -288,12 +295,13 @@ public class Tokenizer
     // Path context = Paths.get(Tokenizer.class.getClassLoader().getResource("").getPath()).getParent();
     if ( true || args.length < 1) {
       String text;
-      text = "D’abord, M., lorsqu’on va j’aime ce que C’était &amp; casse-tête parce \nque <i>Paris.</i>.. : \"Vois-tu ?\" s’écria-t-on, \"non.\" cria-t’il.";
+      text = "D’où es-tu ? D’abord, M., lorsqu’on va j’aime ce que C’était &amp; "
+          + "casse-tête parce \nque <i>Paris.</i>.. : \"Vois-tu ?\" s’écria-t-on, \"non.\" cria-t’il. ";
       // text = "— D'abord, M. Racine, j’aime ce casse-tête parce que voyez-vous, c’est de <i>Paris.</i>.. \"Et voilà !\" s'écria-t'il.";
       Tokenizer toks = new Tokenizer(text);
-      while ( toks.read()) {
+      while ( toks.hasNext()) {
         
-        System.out.print( toks.getString()+"|" );
+        System.out.println( toks.tok() );
       }
       return;
     }
@@ -321,7 +329,7 @@ public class Tokenizer
           String text = new String(Files.readAllBytes( file ), StandardCharsets.UTF_8);
           Tokenizer toks = new Tokenizer(text);
           int n = 1;
-          while ( toks.read()) {
+          while ( toks.hasNext()) {
             dic.add( toks.getString() );
             n++;
           }
@@ -336,28 +344,7 @@ public class Tokenizer
       }
     });
     System.out.println( "Tokens: " + dic.occs() + " Types: " + dic.size() + "  " );
-    System.out.println( dic.csv( 100, Lexik.STOPLIST ) );
+    // System.out.println( dic.csv( 100, Lexik.STOP ) );
   }
   
-  /**
-   * A Token in a text flow with different properties.
-   * A token should allow to write a nice concordance.
-   * @author glorieux
-   *
-   */
-  public class Tok
-  {
-    /** Graphical form like encountered, caps/min, ellisions, could be used for a correct concordancer */
-    String graph;
-    /** Orthographic form, normalized graphical form */
-    String orth;
-    /** Grammatical category */
-    String cat;
-    /** Lemma form */
-    String lem;
-    /** Default String display */
-    public String toString() {
-      return graph+"\t"+orth+"\t"+cat+"\t"+lem;
-    }
-  }
 }

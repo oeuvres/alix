@@ -29,7 +29,7 @@ import site.oeuvres.fr.Tokenizer;
 import site.oeuvres.util.Char;
 import site.oeuvres.util.Dico;
 import site.oeuvres.util.IntObjectMap;
-import site.oeuvres.util.IntSlider;
+import site.oeuvres.util.SliderInt;
 
 /**
  * Started from code of Marianne Reboul.
@@ -63,7 +63,7 @@ public class Dicovek {
   /** Lemmatize vectors */
   final boolean lemmatize;
   /** Sliding window */
-  private IntSlider win;
+  private SliderInt win;
   /** List of stop words, usually grammatical, do not modify during object life */
   private final Set<String> stoplist;
   /** Current Vector to work on */
@@ -96,7 +96,7 @@ public class Dicovek {
     terms = new Dico();
     // 44960 is the size of all Zola vocabulary
     vectors = new IntObjectMap<Vek>(5000);
-    win = new IntSlider(contextLeft, contextRight);
+    win = new SliderInt(contextLeft, contextRight);
     this.lemmatize = lemmatize;
   }
   

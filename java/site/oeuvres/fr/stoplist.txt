@@ -387,6 +387,8 @@ loin
 longtemps
 lors
 lorsqu
+lorsqu'
+lorsqu’
 lorsque
 lui
 lui-même

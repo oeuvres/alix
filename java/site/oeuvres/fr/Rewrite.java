@@ -71,7 +71,7 @@ public class Rewrite
     boolean first = true;
     String w;
     String c;
-    while (toks.read()) {
+    while (toks.hasNext()) {
       w = toks.getString();
       if ( Lexik.STOPLIST.contains( w ) ) continue;
       if ( ! Char.isWord( w.charAt( 0 ) )) continue;
