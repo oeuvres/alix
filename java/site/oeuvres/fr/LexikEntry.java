@@ -5,7 +5,7 @@ import site.oeuvres.util.Term;
 public class LexikEntry
 {
   final Term lem;
-  final int cat;
+  final short cat;
   // ? score ?
   public LexikEntry( final String lem, final String cat )
   {

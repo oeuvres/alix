@@ -39,8 +39,9 @@ public class Char
   private static final short VOWEL = 0x0040;
   private static final short CONSONNANT = 0x0080;
   private static final short DIGIT = 0x0100;
+  private static final short PUNsent = 0x0200;
+  private static final short PUNcl = 0x0400;
   public static final HashMap<Character, String>FILENAME = new HashMap<Character, String>();
-  public static final HashMap<Character, Character>LOWER = new HashMap<Character, Character>();
   static {
     FILENAME.put( 'a', "a" );
     FILENAME.put( 'á', "a" );
@@ -169,7 +170,10 @@ public class Char
     FILENAME.put( '°', "" );
     FILENAME.put( '.', "," );
     FILENAME.put( '?', "" );
-
+  }
+  /*
+  public static final HashMap<Character, Character>LOWER = new HashMap<Character, Character>();
+  static {
     LOWER.put( 'A', 'a' );
     LOWER.put( 'B', 'b' );
     LOWER.put( 'C', 'c' );
@@ -223,6 +227,10 @@ public class Char
     LOWER.put( 'Û', 'û' );
     LOWER.put( 'Ü', 'ü' );
     LOWER.put( 'Ý', 'ý' );
+  }
+  */
+  static
+  {
     int type;
     // infinite loop when size = 65536, a char restart to 0
     for (char c = 0; c < SIZE; c++) {      
@@ -264,6 +272,8 @@ public class Char
             || type == Character.INITIAL_QUOTE_PUNCTUATION || type == Character.OTHER_PUNCTUATION
             || type == Character.START_PUNCTUATION)
           properties |= PUNCTUATION;
+        if ( '.' == c || '…' == c || '?' == c || '!' == c ) properties |= PUNsent;
+        else if ( ',' == c || ';' == c || ':' == c ) properties |= PUNcl;
       }
       CHARS[c] = properties;
     }
@@ -333,6 +343,27 @@ public class Char
   }
 
   /**
+   * Is a punctuation mark of sentence break level
+   * 
+   * @param ch
+   * @return
+   */
+  public static boolean isPUNsent( char c )
+  {
+    return (CHARS[c] & PUNsent) > 0;
+  }
+  /**
+   * Is a punctuation mark of clause level (insisde a sentence)
+   * 
+   * @param ch
+   * @return
+   */
+  public static boolean isPUNcl( char c )
+  {
+    return (CHARS[c] & PUNcl) > 0;
+  }
+
+  /**
    * Is a "whitespace" according to ISO (space, tabs, new lines) and also for
    * Unicode (non breakable spoaces)
    * 
@@ -391,6 +422,7 @@ public class Char
     System.out.println( ", Char.isWord: " + Char.isWord( ',' ) + " Character.isLetter:" + Character.isLetter( ',' ) + ", isPunctuation: " + Char.isPunctuation( ',' ));
     System.out.println( "_ isPunctuation: " + Char.isPunctuation( '_' ) );
     System.out.println( "- isPunctuation: " + Char.isPunctuation( '-' ) );
+    System.out.println( "< isPunctuation: " + Char.isPunctuation( '<' ) );
     System.out.println( "Œ isUpperCase: " + Char.isUpperCase( 'Œ' ) );
     System.out.println( "à isLowerCase: " + Char.isLowerCase( 'à' ) );
     System.out.println( "&nbsp; isSpace: " + Char.isSpace( ' ' ) );

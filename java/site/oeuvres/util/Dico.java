@@ -46,7 +46,7 @@ public class Dico
   private static final int INDEX_POS = 1;
   /** Pointer in the array, only growing when terms are added */
   private int pointer;
-  /** HashMap to find String fast, int array is a hack to have an object */
+  /** HashMap to find String fast, int array contains an int key and a count  */
   private HashMap<String, int[]> byString;
   /** List of terms, kept in index order, to get a term by int index */
   private String[] byIndex;

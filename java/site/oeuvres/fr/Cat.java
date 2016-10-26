@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import site.oeuvres.util.Term;
 
@@ -16,188 +17,228 @@ import site.oeuvres.util.Term;
  */
 public final class Cat
 {
-  final static int VERB = 0x0001;
-  final static String sVERB ="VERB";
-  final static int SUB  = 0x0002;
-  final static String sSUB="SUB";
-  final static int ADJ  = 0x0004;
-  final static String sADJ="ADJ";
-  final static int ADV  = 0x0008;
-  final static String sADV="ADV";
-  final static int DET  = 0x0010;
-  final static String sDET="DET";
-  final static int PRO  = 0x0020;
-  final static String sPRO="PRO";
-  final static int PREP = 0x0040;
-  final static String sPREP="PREP";
-  final static int CONJ = 0x0080;
-  final static String sCONJ="CONJ";
-  final static int EXCL = 0x0100;
-  final static String sEXCL="EXCL";
-  final static int NUM  = 0x0200;
-  final static String sNUM="NUM";
-  final static int NAME = 0x0400;
-  final static String sNAME="NAME";
-  final static int PUN  = 0x0800;
-  final static String sPUN="PUN";
-  final static int UNKNOWN = 0x4000; 
+  public static final HashMap<String, Short> CODE = new  HashMap<String, Short>(); 
+  public static final HashMap<Short, String> LABEL = new HashMap<Short, String>(); 
+  
+  final static short UNKNOWN = -1; 
   final static String sUNKNOWN="UNKNOWN";
-  
-  final static int indef  = 0x00010000;
-  final static int dem    = 0x00020000;
-  final static int poss   = 0x00040000;
-  final static int inter  = 0x00080000;
-  final static int pers   = 0x00100000;
-  final static int rel    = 0x00200000;
-  final static int art    = 0x00400000;
-  final static int coord  = 0x00800000;
-  final static int subord = 0x01000000;
-  final static int loc    = 0x02000000;
-  final static int temp   = 0x04000000;
-  final static int quant  = 0x08000000;
-  final static int neg    = 0x10000000;
-  final static int aux    = 0x20000000;
-  final static int sup    = 0x40000000;
-    
-  final static int VERBaux = VERB | aux; 
-  final static String sVERBaux="VERB:aux";
-  final static int VERBsup = VERB | sup; 
-  final static String sVERBsup="VERB:sup";
-
-  final static int CONJcoord = CONJ | coord; 
-  final static String sCONJcoord="CONJ:coord";
-  final static int CONJsubord = VERB | subord;
-  final static String sCONJsubord="CONJ:subord";
-  
-  final static int DETart = DET | art;
-  final static String sDETart="DET:art";
-  final static int DETprep = DET | PREP;
-  final static String sDETprep="DET:prep";
-  final static int DETdem = DET | dem;
-  final static String sDETdem="DET:dem";
-  final static int DETindef = DET | indef;
-  final static String sDETindef="DET:indef";
-  final static int DETint = DET | inter;
-  final static String sDETint="DET:int";
-  final static int DETposs = DET | poss;
-  final static String sDETposs="DET:poss";
-  
-  final static int PROdem = PRO | dem;
-  final static String sPROdem="PRO:dem";
-  final static int PROindef = PRO | indef;
-  final static String sPROindef="PRO:indef";
-  final static int PROint = PRO | inter;
-  final static String sPROint="PRO:int";
-  final static int PROposs = PRO | poss;
-  final static String sPROposs="PRO:poss";
-  final static int PROpers = PRO | pers;
-  final static String sPROpers="PRO:pers";
-  final static int PROrel = PRO | rel;
-  final static String sPROrel="PRO:rel";
-
-  final static int ADVint = ADV | inter;
-  final static String sADVint="ADV:int";
-  final static int ADVindef = ADV | indef;
-  final static String sADVindef="ADV:indef";
-  final static int ADVloc = ADV | loc;
-  final static String sADVloc="ADV:loc";
-  final static int ADVneg = ADV | neg;
-  final static String sADVneg="ADV:neg";
-  final static int ADVquant = ADV | quant;
-  final static String sADVquant="ADV:quant";
-  final static int ADVtemp = ADV | temp;
-  final static String sADVtemp="ADV:temp";
-  
-  public static final HashMap<String, Integer> CODE = new  HashMap<String, Integer>(); 
-  public static final HashMap<Integer, String> LABEL = new HashMap<Integer, String>(); 
-  
-  static
   {
-    CODE.put( sVERB,  VERB );
-    CODE.put( sSUB, SUB );
-    CODE.put( sADJ, ADJ );
-    CODE.put( sADV, ADV );
-    CODE.put( sDET, DET );
-    CODE.put( sPRO, PRO );
-    CODE.put( sPREP, PREP );
-    CODE.put( sCONJ, CONJ );
-    CODE.put( sEXCL, EXCL );
-    CODE.put( sNUM, NUM );
-    CODE.put( sNAME, NAME );
-    CODE.put( "NAM", NAME );
-    CODE.put( sPUN, PUN );
     CODE.put( sUNKNOWN, UNKNOWN );
     CODE.put( "UNKNOWN", UNKNOWN );
-    CODE.put( sCONJcoord, CONJcoord );
-    CODE.put( sCONJsubord, CONJsubord );
-    CODE.put( sVERBaux, VERBaux );
-    CODE.put( sVERBsup, VERBsup );
-    CODE.put( sDETart, DETart );
-    CODE.put( sDETprep, DETprep );
-    CODE.put( sDETdem, DETdem );
-    CODE.put( sDETindef, DETindef );
-    CODE.put( sDETint, DETint );
-    CODE.put( sDETposs, DETposs );
-    CODE.put( sPROdem, PROdem );
-    CODE.put( sPROindef, PROindef );
-    CODE.put( sPROint, PROint );
-    CODE.put( sPROposs, PROposs );
-    CODE.put( sPROpers, PROpers );
-    CODE.put( sPROrel, PROrel );
-    CODE.put( sADVint, ADVint );
-    CODE.put( sADVindef, ADVindef );
-    CODE.put( sADVloc, ADVloc );
-    CODE.put( sADVneg, ADVneg );
-    CODE.put( sADVquant, ADVquant );
-    CODE.put( sADVtemp, ADVtemp );
-
-    LABEL.put( VERB,  sVERB );
-    LABEL.put( SUB, sSUB );
-    LABEL.put( ADJ, sADJ );
-    LABEL.put( ADV, sADV );
-    LABEL.put( DET, sDET );
-    LABEL.put( PRO, sPRO );
-    LABEL.put( PREP, sPREP );
-    LABEL.put( CONJ, sCONJ );
-    LABEL.put( EXCL, sEXCL );
-    LABEL.put( NUM, sNUM );
-    LABEL.put( NAME, sNAME );
-    LABEL.put( PUN, sPUN );
     LABEL.put( UNKNOWN, sUNKNOWN );
-    LABEL.put( CONJcoord, sCONJcoord );
-    LABEL.put( CONJsubord, sCONJsubord );
+  }
+  final static short VERB = 0x10;
+  final static String sVERB ="VERB";
+  final static short VERBaux = 0x11; 
+  final static String sVERBaux="VERB:aux";
+  final static short VERBppass = 0x12; 
+  final static String sVERBppass ="VERB:ppass";
+  final static short VERBppres = 0x13; 
+  final static String sVERBppres ="VERB:ppres";
+  final static short VERBsup = 0x15;
+  final static String sVERBsup="VERB:sup";
+  static 
+  {
+    CODE.put( sVERB,  VERB );
+    LABEL.put( VERB,  sVERB );
+    CODE.put( sVERBaux, VERBaux );
     LABEL.put( VERBaux, sVERBaux );
+    CODE.put( sVERBppass, VERBppass );
+    LABEL.put( VERBppass, sVERBppass );
+    CODE.put( sVERBppres, VERBppres );
+    LABEL.put( VERBppres, sVERBppres );
+    CODE.put( sVERBsup, VERBsup );
     LABEL.put( VERBsup, sVERBsup );
-    LABEL.put( DETart, sDETart );
-    LABEL.put( DETdem, sDETdem );
-    LABEL.put( DETindef, sDETindef );
-    LABEL.put( DETint, sDETint );
-    LABEL.put( DETposs, sDETposs );
-    LABEL.put( PROdem, sPROdem );
-    LABEL.put( PROindef, sPROindef );
-    LABEL.put( PROint, sPROint );
-    LABEL.put( PROposs, sPROposs );
-    LABEL.put( PROpers, sPROpers );
-    LABEL.put( PROrel, sPROrel );
+  }
+  final static short SUB  = 0x20;
+  final static String sSUB="SUB";
+  static
+  {
+    CODE.put( sSUB, SUB );
+    LABEL.put( SUB, sSUB );    
+  }
+  final static short ADJ  = 0x30;
+  final static String sADJ="ADJ";
+  static
+  {
+    CODE.put( sADJ, ADJ );
+    LABEL.put( ADJ, sADJ );    
+  }
+  final static short ADV  = 0x40;
+  final static String sADV="ADV";
+  final static short ADVint = 0x41;
+  final static String sADVint="ADV:int";
+  final static short ADVindef = 0x42;
+  final static String sADVindef="ADV:indef";
+  final static short ADVloc = 0x43;
+  final static String sADVloc="ADV:loc";
+  final static short ADVneg = 0x44;
+  final static String sADVneg="ADV:neg";
+  final static short ADVquant = 0x45;
+  final static String sADVquant="ADV:quant";
+  final static short ADVtemp = 0x46;
+  final static String sADVtemp="ADV:temp";
+  static
+  {
+    CODE.put( sADV, ADV );
+    LABEL.put( ADV, sADV );
+    CODE.put( sADVint, ADVint );
     LABEL.put( ADVint, sADVint );
+    CODE.put( sADVindef, ADVindef );
     LABEL.put( ADVindef, sADVindef );
+    CODE.put( sADVloc, ADVloc );
     LABEL.put( ADVloc, sADVloc );
+    CODE.put( sADVneg, ADVneg );
     LABEL.put( ADVneg, sADVneg );
+    CODE.put( sADVquant, ADVquant );
     LABEL.put( ADVquant, sADVquant );
+    CODE.put( sADVtemp, ADVtemp );
     LABEL.put( ADVtemp, sADVtemp );
   }
+  final static short PREP = 0x50;
+  final static String sPREP="PREP";
+  static
+  {
+    CODE.put( sPREP, PREP );
+    LABEL.put( PREP, sPREP );
+  }
+  final static short DET  = 0x60;
+  final static String sDET="DET";
+  final static short DETart = 0x61;
+  final static String sDETart="DET:art";
+  final static short DETprep = 0x62;
+  final static String sDETprep="DET:prep";
+  final static short DETdem = 0x63;
+  final static String sDETdem="DET:dem";
+  final static short DETindef = 0x64;
+  final static String sDETindef="DET:indef";
+  final static short DETint = 0x65;
+  final static String sDETint="DET:int";
+  final static short DETposs = 0x66;
+  final static String sDETposs="DET:poss";
+  static
+  {
+    CODE.put( sDET, DET );
+    LABEL.put( DET, sDET );
+    CODE.put( sDETart, DETart );
+    LABEL.put( DETart, sDETart );
+    CODE.put( sDETprep, DETprep );
+    CODE.put( sDETdem, DETdem );
+    LABEL.put( DETdem, sDETdem );
+    CODE.put( sDETindef, DETindef );
+    LABEL.put( DETindef, sDETindef );
+    CODE.put( sDETint, DETint );
+    LABEL.put( DETint, sDETint );
+    CODE.put( sDETposs, DETposs );
+    LABEL.put( DETposs, sDETposs );
+  }
+  final static short PRO  = 0x70;
+  final static String sPRO="PRO";
+  final static short PROdem = 0x71;
+  final static String sPROdem="PRO:dem";
+  final static short PROindef = 0x72;
+  final static String sPROindef="PRO:indef";
+  final static short PROint = 0x73;
+  final static String sPROint="PRO:int";
+  final static short PROposs = 0x74;
+  final static String sPROposs="PRO:poss";
+  final static short PROpers = 0x75;
+  final static String sPROpers="PRO:pers";
+  final static short PROrel = 0x76;
+  final static String sPROrel="PRO:rel";
+  static
+  {
+    CODE.put( sPRO, PRO );
+    LABEL.put( PRO, sPRO );
+    CODE.put( sPROdem, PROdem );
+    LABEL.put( PROdem, sPROdem );
+    CODE.put( sPROindef, PROindef );
+    LABEL.put( PROindef, sPROindef );
+    CODE.put( sPROint, PROint );
+    LABEL.put( PROint, sPROint );
+    CODE.put( sPROposs, PROposs );
+    LABEL.put( PROposs, sPROposs );
+    CODE.put( sPROpers, PROpers );
+    LABEL.put( PROpers, sPROpers );
+    CODE.put( sPROrel, PROrel );
+    LABEL.put( PROrel, sPROrel );
+  }
+  final static short CONJ = 0x80;
+  final static String sCONJ="CONJ";
+  final static short CONJcoord = 0x81; 
+  final static String sCONJcoord="CONJ:coord";
+  final static short CONJsubord = 0x82;
+  final static String sCONJsubord="CONJ:subord";
+  static
+  {
+    CODE.put( sCONJ, CONJ );
+    LABEL.put( CONJ, sCONJ );
+    CODE.put( sCONJcoord, CONJcoord );
+    LABEL.put( CONJcoord, sCONJcoord );
+    CODE.put( sCONJsubord, CONJsubord );
+    LABEL.put( CONJsubord, sCONJsubord );    
+  }
+  final static short EXCL = 0x90;
+  final static String sEXCL="EXCL";
+  static
+  {
+    CODE.put( sEXCL, EXCL );
+    LABEL.put( EXCL, sEXCL );
+  }  
+  final static short NUM  = 0xA0;
+  final static String sNUM="NUM";
+  static
+  {
+    CODE.put( sNUM, NUM );
+    LABEL.put( NUM, sNUM );
+  }
+  final static short NAME = 0xB0;
+  final static String sNAME="NAME";
+  static
+  {
+    CODE.put( sNAME, NAME );
+    CODE.put( "NAM", NAME );
+    LABEL.put( NAME, sNAME );
+  }
+  final static short PUN  = 0xC0;
+  final static String sPUN="PUN";
+  final static short PUNsent  = 0xC1;
+  final static String sPUNsent="PUNsent";
+  final static short PUNcl  = 0xC2;
+  final static String sPUNcl ="PUNcl";
+  static
+  {
+    CODE.put( sPUN, PUN );
+    LABEL.put( PUN, sPUN );
+    CODE.put( sPUNsent, PUNsent );
+    LABEL.put( PUNsent, sPUNsent );
+    CODE.put( sPUNcl, PUNcl );
+    LABEL.put( PUNcl, sPUNcl );
+  }
   
-  public static int code ( String label )
+  public static short code ( final String label )
   {
     if ( !CODE.containsKey( label ))
       return UNKNOWN;
     return CODE.get( label );
   }
-  public static String label ( int code )
+  public static String label ( final short code )
   {
     if ( !LABEL.containsKey( code ))
       return sUNKNOWN;
     return LABEL.get( code );
+  }
+  public static boolean isDet( final short code )
+  {
+    return (( code >> 0x4 ) == 0x6 );
+  }
+  public static boolean isAdv( final short code )
+  {
+    return (( code >> 0x4 ) == 0x4 );
+  }
+  public static boolean isVerb( final short code )
+  {
+    return (( code >> 0x4 ) == 0x1 );
   }
   
   /**
@@ -206,6 +247,7 @@ public final class Cat
    */
   public static void main(String[] args) throws IOException 
   {
+    System.out.println( isVerb( ADV ) );
     String l;
     BufferedReader buf;
     buf = new BufferedReader( 
@@ -216,11 +258,15 @@ public final class Cat
     );
     String[] cell;
     buf.readLine(); // first line
+    int n = 0;
+    
     while ((l = buf.readLine()) != null) {
       cell = l.split( "\t" );
+      n++;
       if ( CODE.containsKey( cell[2] ) ) continue;
-      System.out.println( cell[2] );
+      System.out.println( l );
     }
     buf.close();    
+    System.out.println( n+" words" );
   }
 }

@@ -71,9 +71,9 @@ public class Rewrite
     boolean first = true;
     String w;
     String c;
-    while (toks.hasNext()) {
+    while (toks.next() >= 0) {
       w = toks.getString();
-      if ( Lexik.STOPLIST.contains( w ) ) continue;
+      if ( Lexik.isStop( w ) ) continue;
       if ( ! Char.isWord( w.charAt( 0 ) )) continue;
       if ( first ) first =false;
       else sb.append( '-' );

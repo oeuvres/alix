@@ -88,19 +88,19 @@ public class Lexik
     return WORD.containsKey( new Term( s ) );
   }
   /**
-   * Update a token with lexik informations
-   * @param t
-   * @return
+   * Update a token with lexical informations
+   * @param tok
+   * @return true if entry fond
    */
-  public static boolean isWord( Tok tok )
+  public static boolean isWord( Token tok )
   {
-    if ( !WORD.containsKey( tok.orth() ) )
-      return false;
-    LexikEntry entry = Lexik.WORD.get( tok.orth() );
+    Term orth = tok.orth();
+    LexikEntry entry = Lexik.WORD.get( orth );
+    if ( entry == null ) return false;
     tok.lem( entry.lem );
     tok.cat( entry.cat );
     return true;
-  }  
+  }
   /**
    * Give a lem according to the dico
    * @param token
@@ -108,6 +108,7 @@ public class Lexik
    */
   public static Term lem( Term orth )
   {
+    // not efficient to test presence and search
     if ( Lexik.WORD.containsKey( orth ) ) {
       return Lexik.WORD.get( orth ).lem;
     }
@@ -118,8 +119,9 @@ public class Lexik
    * @param token
    * @return
    */
-  public static int cat( Term orth )
+  public static short cat( Term orth )
   {
+    // not efficient to test presence and search
     if ( Lexik.WORD.containsKey( orth ) ) {
       return Lexik.WORD.get( orth ).cat;
     }
@@ -140,7 +142,7 @@ public class Lexik
    */
   public static void main(String[] args) throws IOException 
   {
-    Tok tok = new Tok(); 
+    Token tok = new Token(); 
     for (String token: "lui lorsqu' et depuis quand est il en cette ville ? 25 centimes de hier au soir . et quel sujet l’ y amène ?".split( " " ) ) {
       tok.orth( token );
       Lexik.isWord( tok );

@@ -1,11 +1,6 @@
 package site.oeuvres.util;
 
-import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-
-import site.oeuvres.fr.Lexik;
 
 /**
  * A mutable string implementation with convenient methods for token manipulation 
@@ -20,6 +15,10 @@ public class Term implements CharSequence, Comparable<Term>
   private int len;
   /** Cache the hash code for the string */
   private int hash; // Default to 0
+  /** A counter ? */
+  // private int counter;
+  /** An int code ? */
+  // private int code;
   
   /**
    * Empty constructor, value will be set later
@@ -76,7 +75,11 @@ public class Term implements CharSequence, Comparable<Term>
     return replace( cs, -1, -1);
   }
   /**
-   * Replace content
+   * Replace Term content by a span of String
+   * @param cs a char sequence
+   * @param offset index of the string from where to copy chars  
+   * @param count number of chars to copy -1
+   * @return
    */
   public Term replace( CharSequence cs, int offset, int count  ) 
   {
@@ -84,12 +87,15 @@ public class Term implements CharSequence, Comparable<Term>
       offset = 0;
       count = cs.length();
     }
-    if ( value.length < count ) value = new char[ count ];
+    if ( count <= 0) {
+      len = 0;
+      return this;
+    }
+    sizing( count );
     for (int i=0; i<count; i++) {
       value[i] = cs.charAt( offset++ );
     }
     len = count;
-    hash = 0;
     /*
     // longer
     value = s.toCharArray();
@@ -111,10 +117,13 @@ public class Term implements CharSequence, Comparable<Term>
       offset = 0;
       count = a.length;
     }
-    if ( value.length < count ) value = new char[ count ];
-    System.arraycopy( a, offset, value, 0, count );
+    if ( count <= 0) {
+      len = 0;
+      return this;
+    }
     len = count;
-    hash = 0;
+    sizing( count );
+    System.arraycopy( a, offset, value, 0, count );
     return this;
   }
   /**
@@ -123,13 +132,110 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term replace( Term t ) 
   {
-    if ( value.length < t.len ) value = new char[ t.len ];
-    System.arraycopy( t.value, 0, value, 0, t.len );
-    len = t.len;
+    int newlen = t.len;
+    // do not change len before sizing
+    sizing( newlen );
+    System.arraycopy( t.value, 0, value, 0, newlen );
+    len = newlen;
+    return this;
+  }
+  /**
+   * Append a character
+   */
+  public Term append( char c )
+  {
+    int newlen = len + 1;
+    sizing( newlen );
+    value[len] = c;
+    len = newlen;
+    return this;
+  }
+  /**
+   * Append a term
+   */
+  public Term append( Term t )
+  {
+    int newlen = len + t.len;
+    sizing( newlen );
+    System.arraycopy( t.value, 0, value, len, t.len);
+    len = newlen;
+    return this;
+  }
+  /**
+   * Append a string
+   */
+  public Term append( CharSequence cs )
+  {
+    int count = cs.length();
+    int newlen = len + count;
+    sizing( newlen );
+    int offset = len;
+    for (int i=0; i<count; i++) {
+      value[offset++] = cs.charAt( i );
+    }
+    len = newlen;
+    return this;
+  }
+  
+  /**
+   * Resize char array container if needed by new size
+   * @param newlen The new size to put in
+   * @return true if resized
+   */
+  private boolean sizing( final int newlen )
+  {
+    hash = 0; // resizing occurs when content change, uncache hashcode
+    if ( newlen <= value.length ) return false;
+    char[] a = new char[ square2( newlen ) ];
+    try {
+    System.arraycopy( value, 0, a, 0, len );
+    } catch (Exception e) {
+      System.out.println( Arrays.toString( value )+" "+len );
+      throw(e);
+    }
+    value = a;
+    return true;
+  }
+
+  /**
+   * Last char, will send an array out of bound, with no test
+   * @return last char
+   */
+  public char last()
+  {
+    return value[len-1];
+  }
+  /** 
+   * Set last char, will send an array out of bound, with no test
+   */
+  public Term last( char c )
+  {
+    value[len-1] = c;
     hash = 0;
     return this;
   }
-
+  /**
+   * Remove last char
+   */
+  public Term lastDel()
+  {
+    len--;
+    hash = 0;
+    return this;
+  }
+  /** 
+   * First char 
+   */
+  public char first()
+  {
+    return value[0];
+  }
+  public Term clear()
+  {
+    len = 0;
+    hash = 0;
+    return this;
+  }
 
   @Override
   public int length()
@@ -232,11 +338,35 @@ public class Term implements CharSequence, Comparable<Term>
     }
     return len - t.len;
   }
+  public static int square2( int n ) {
+    if ( n == 0 ) return 1;
+    // x--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    return n + 1;
+  }
   public static void main(String[] args)
   {
+    Term t = new Term();
+    Term a = new Term();
+    System.out.println( square2(17) );
+    System.out.println( new Term("des").compareTo( new Term("dese") ) );
+    System.out.println( t.replace( "abcde", 2, 1 ) );
+    t.clear();
+    for ( char c=33; c < 100; c++) t.append( c );
+    System.out.println( t );
+    t.clear();
+    for ( int i=0; i < 100; i++) {
+      t.append( " "+i );
+    }
+    System.out.println( t );
+    
+    /*
     HashMap<Term,String> dic = new HashMap<Term,String>();
     String text="de en le la les un une des";
-    Term t = null;
     for (String token: text.split( " " )) {
       t = new Term(token);
       dic.put( t, "_"+token );
@@ -244,9 +374,8 @@ public class Term implements CharSequence, Comparable<Term>
     System.out.println( dic );
     // doesn’t work because the Hash uses String.equals(), not Term.equals()
     System.out.println( dic.get( "des" ) );
-    System.out.println( new Term("des").compareTo( new Term("dese") ) );
     System.out.println( dic.get( new Term("des") ) );
-    System.out.println( t.replace( "abcde", 2, 1 ) );
+    */
     
     /*
     long time = System.nanoTime();

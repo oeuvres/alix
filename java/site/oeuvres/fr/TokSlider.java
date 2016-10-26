@@ -2,10 +2,6 @@ package site.oeuvres.fr;
 
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import site.oeuvres.util.Slider;
 
@@ -18,7 +14,7 @@ import site.oeuvres.util.Slider;
  */
 public class TokSlider extends Slider {
   /** Data of the sliding window */
-  private final Tok[] data;
+  private final Token[] data;
   
   /** 
    * Constructor, init data
@@ -26,8 +22,8 @@ public class TokSlider extends Slider {
   public TokSlider(final int left, final int right) 
   {
     super(left, right);
-    data = new Tok[width];
-    for (int i=0; i<width; i++) data[i] = new Tok();
+    data = new Token[width];
+    for (int i=0; i<width; i++) data[i] = new Token();
   }
   /**
    * Get a value by index, positive or negative, relative to center
@@ -35,14 +31,14 @@ public class TokSlider extends Slider {
    * @param pos
    * @return
    */
-  public Tok get(final int pos) 
+  public Token get(final int pos) 
   {
     return data[pointer(pos)];
   }
   /**
    * Give a pointer on the right Tok object that a Tokenizer can modify
    */
-  public Tok add()
+  public Token add()
   {
     center = pointer( +1 );
     return data[ pointer(right) ];
@@ -51,10 +47,10 @@ public class TokSlider extends Slider {
    * Add a value by the end
    * @return The left token 
    */
-  public Tok push(final Tok value) 
+  public Token push(final Token value) 
   {
     // modulo in java produce negatives
-    Tok ret = data[ pointer( -left ) ];
+    Token ret = data[ pointer( -left ) ];
     center = pointer( +1 );
     data[ pointer(right) ] = value;
     return ret;
@@ -82,19 +78,12 @@ public class TokSlider extends Slider {
     String text = "Son amant emmène un jour O se promener dans un quartier où"
       + " ils ne vont jamais."
     ;
-    Path file = Paths.get( "proust_recherche.xml" );
-    text = new String(Files.readAllBytes( file ), StandardCharsets.UTF_8);
     int right = 5;
     TokSlider win = new TokSlider(2, right);
     Tokenizer toks = new Tokenizer(text);
-    long time = System.nanoTime();
-    int n = 0;
-    while ( toks.hasNext()) {
-      if ( n == 1) time = System.nanoTime(); // Lexik and Char are loaded
-      toks.tok( win.add() );
-      // if ( n < 100 ) System.out.println( win.get( right ) );
-      n++;
+    while ( toks.next() > -1) {
+      toks.tag( win.add() );
+      System.out.println( win );
     }
-    System.out.println( " — "+n+" tokens in "+((System.nanoTime() - time) / 1000000) + " ms");
   }
 }
