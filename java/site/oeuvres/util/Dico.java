@@ -6,19 +6,16 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.Set;
 
 /**
@@ -40,48 +37,59 @@ import java.util.Set;
  */
 public class Dico
 {
-  /** Position of the term counter in the array of int values */
-  private static final int COUNT_POS = 0;
   /** Position of the term index in the array of int values */
-  private static final int INDEX_POS = 1;
-  /** Pointer in the array, only growing when terms are added */
-  private int pointer;
+  private static final int CODE = 0;
+  /** Position of the term counter in the array of int values */
+  private static final int COUNT1 = 1;
+  /** Position of the second counter in the array of int values */
+  private static final int COUNT2 = 2;
+  /** Pointer in the array, only growing when terms are added, used as code */
+  private int code;
   /** HashMap to find String fast, int array contains an int key and a count  */
-  private HashMap<String, int[]> byString;
+  private HashMap<Term,int[]> byTerm;
   /** List of terms, kept in index order, to get a term by int index */
-  private String[] byIndex;
-  /** Filled on demand, list of terms in inverse count order */
-  private String[] byCount;
+  private Term[] byIndex;
   /** Current working value */
   int[] value;
   /** Count of all occurrences */
   private int occs;
   /** Last occurrences count before some ops, for caching */
-  private int lastOccs;
+  // private int lastOccs;
 
   /**
    * Constructor
    */
   public Dico()
   {
-    byString = new HashMap<String, int[]>();
-    byIndex = new String[32];
+    byTerm = new HashMap<Term, int[]>();
+    byIndex = new Term[32];
   }
 
   
   /**
    * Get a term by index
+   * Be Careful, returned term is mutable, modification will affect the dictionary.
+   * Power is delicate.
    * 
    * @param index
    * @return the term
    */
-  public String term( int index )
+  private Term term( final int index )
   {
     if (index < 1)
       return null;
-    if (index > pointer)
+    if (index > code)
       return null;
     return byIndex[index];
+  }
+  /**
+   * Get a term by index 
+   * @param index
+   * @return The term as a string
+   */
+  public String string( final int index )
+  {
+    return term(index).toString();
   }
 
   /**
@@ -90,12 +98,12 @@ public class Dico
    * @param term
    * @return the key
    */
-  public int index( String term )
+  public int index( Term term )
   {
-    value = byString.get( term );
+    value = byTerm.get( term );
     if (value == null)
       return 0;
-    return value[INDEX_POS];
+    return value[CODE];
   }
 
   /**
@@ -106,10 +114,10 @@ public class Dico
    */
   public int count( String term )
   {
-    value = byString.get( term );
+    value = byTerm.get( term );
     if (value == null)
       return 0;
-    return value[COUNT_POS];
+    return value[COUNT1];
   }
 
   /**
@@ -121,10 +129,10 @@ public class Dico
    */
   public int count( int index )
   {
-    value = byString.get( byIndex[index] );
+    value = byTerm.get( byIndex[index] );
     if (value == null)
       return 0;
-    return value[COUNT_POS];
+    return value[COUNT1];
   }
 
   /**
@@ -133,9 +141,13 @@ public class Dico
    * @param term
    * @return the index created
    */
-  public int add( String term )
+  public int add( Term term )
   {
-    return add( term, 1 );
+    return add( term, 1, 0 );
+  }
+  public int add2( Term term )
+  {
+    return add( term, 0, 1);
   }
   /**
    * Add a list of terms
@@ -143,45 +155,85 @@ public class Dico
    * @param term
    * @return better idea than void ?
    */
+  /*
   public void add( String[] bag )
   {
     int length = bag.length;
     for ( int i=0; i<length; i++)
       add( bag[i], 1 );
   }
+  */
 
+  public int add ( final Term term, final int count)
+  {
+    return add( term, count, 0 );
+  }
   /**
    * Multiple occurrences to add, return its index, increment counter if already
-   * found Here, be fast!
+   * found here, be fast!
    */
-  public int add( String term, int count )
+  public int add( final Term term, final int count1, final int count2 )
   {
-    occs += count;
-    value = byString.get( term );
+    value = byTerm.get( term );
+    occs += count1;
+    occs += count2;
     if (value == null) {
-      pointer++;
-      // index is too short, extends it (not a big perf pb)
-      if (pointer >= byIndex.length) {
-        final int oldLength = byIndex.length;
-        final String[] oldData = byIndex;
-        byIndex = new String[oldLength * 2];
-        System.arraycopy( oldData, 0, byIndex, 0, oldLength );
-      }
-      byString.put( term, new int[] { count, pointer } );
-      byIndex[pointer] = term;
-      return pointer;
+      // copy the transmitted term or it will be a mess
+      return put ( new Term(term), count1, count2 );
     }
-    value[COUNT_POS] += count; // increment counter by reference
-    return value[INDEX_POS];
+    value[COUNT1] += count1; // increment counter by reference
+    value[COUNT2] += count2; // increment counter by reference
+    return value[CODE];
+  }
+  
+  private int put( final Term term, final int count1, final int count2 )
+  {
+    code++;
+    // index is too short, extends it (not a big perf pb)
+    if (code >= byIndex.length) {
+      final int oldLength = byIndex.length;
+      final Term[] oldData = byIndex;
+      byIndex = new Term[oldLength * 2];
+      System.arraycopy( oldData, 0, byIndex, 0, oldLength );
+    }
+    byTerm.put( term, new int[] { code, count1, count2 } );
+    byIndex[code] = term;
+    return code;
   }
 
+  public int add( final String s, int count1, int count2 )
+  {
+    // this code is repeated to not copy the transmitted term 
+    Term term = new Term( s );
+    value = byTerm.get( term );
+    occs += count1;
+    occs += count2;
+    if (value == null) {
+      return put ( term, count1, count2 );
+    }
+    value[COUNT1] += count1;
+    value[COUNT2] += count2;
+    return value[CODE];
+  }
+  public int add( final String term, int count )
+  {
+    return add( term, count, 0);
+  }
+  public int add( final String term )
+  {
+    return add( term, 1, 0);
+  }
+  public int add2( final String term )
+  {
+    return add( term, 0, 1);
+  }
   
   /**
    * Size of the dictionary
    */
   public int size()
   {
-    return pointer;
+    return code;
   }
 
   /**
@@ -195,35 +247,34 @@ public class Dico
    * Get term list in inverse count order.
    * @return 
    */
-  public String[] byCount()
+  public Term[] byCount()
   {
     return byCount( -1 );
   }
   /**
    * Used for freqlist, return a view of the map sorted by term count
+   * Shall we cache ?
    * @param limit
    * @return
    */
-  public String[] byCount(int limit)
+  public Term[] byCount(int limit)
   {
-    if (lastOccs == occs) return byCount; // already calculated, give it
     // Do not use LinkedList nere, very slow access by index list.get(i), arrayList is good
-    List<Map.Entry<String, int[]>> list = new ArrayList<Map.Entry<String, int[]>>( byString.entrySet() );
-    Collections.sort( list, new Comparator<Map.Entry<String, int[]>>()
+    List<Map.Entry<Term, int[]>> list = new ArrayList<Map.Entry<Term, int[]>>( byTerm.entrySet() );
+    Collections.sort( list, new Comparator<Map.Entry<Term, int[]>>()
     {
       @Override
-      public int compare( Map.Entry<String, int[]> o1, Map.Entry<String, int[]> o2 )
+      public int compare( Map.Entry<Term, int[]> o1, Map.Entry<Term, int[]> o2 )
       {
-        return o2.getValue()[COUNT_POS] - o1.getValue()[COUNT_POS];
+        return o2.getValue()[COUNT1] - o1.getValue()[COUNT1];
       }
     } );
     int size = Math.min( list.size(), limit ) ;
     if ( limit < 1 ) size = list.size();
-    byCount = new String[size];
+    Term[] byCount = new Term[size];
     for (int i = 0; i < size; i++) {
-      byCount[i] = list.get( i ).getKey();
+      byCount[i] = new Term(list.get( i ).getKey()) ;
     }
-    lastOccs = occs;
     return byCount;
   }
 
@@ -284,7 +335,7 @@ public class Dico
    */
   public Writer csv( Writer writer ) throws IOException
   {
-    return csv( writer, 0, null );
+    return csv( writer, -1, null );
   }
 
   /**
@@ -294,18 +345,23 @@ public class Dico
    */
   public Writer csv( Writer writer, int limit, Set<String> stoplist ) throws IOException
   {
-    byCount(); // be sure to have last sorted list
+    Term[] byCount = byCount();
     int length = byCount.length;
     int count;
     try {
-      writer.write( "TERM\tCOUNT\t%\tID\n" );
       for (int i = 0; i < length; i++) {
         if (stoplist != null && stoplist.contains( byCount[i] ))
           continue;
-        count = count( byCount[i] );
-        writer.write( byCount[i] + "\t" + count + "\t" + (1000000.0*count/occs)+"\t"+ index(byCount[i]) + "\n" );
         if (limit-- == 0)
           break;
+        int[] value = byTerm.get( byCount[i] );
+        writer.write( 
+                byCount[i]
+          +"\t"+value[COUNT1]
+          +"\t"+value[COUNT2]
+          +"\t"+NumberFormat.getInstance().format( 1.0*(value[COUNT1]-value[COUNT2]) / (value[COUNT1]+value[COUNT2]) )
+          // +"\t"+index(byCount[i])
+        +"\n" );
       }
     } finally {
       writer.close();
@@ -363,26 +419,14 @@ public class Dico
    */
   public static void main( String[] args ) throws IOException
   {
+    String text = "un texte court avec un peu des mots un peu pareils des";
+    // Term t = new Term();
     Dico dic = new Dico();
-    Path context = Paths.get( Dico.class.getClassLoader().getResource( "" ).getPath() ).getParent();
-    Path textfile = Paths.get( context.toString(), "/textes/zola.txt" );
-    System.out.print( "Parse: " + textfile + "... " );
-    String text = new String( Files.readAllBytes( textfile ), StandardCharsets.UTF_8 ).toLowerCase();
-    Scanner scan = new Scanner( text );
-    scan.useDelimiter( "\\PL+" ); // scanner is slower than Tokenizer in this package
-    long start = System.nanoTime();
-    while (scan.hasNext()) {
-      dic.add( scan.next() );
+    for ( String s: text.split( " " ) ) {
+      // t.replace( s ); // Mutable key is OK
+      dic.add( s );
     }
-    scan.close();
-    System.out.println( ((System.nanoTime() - start) / 1000000) + " ms" );
-    Path stopfile = Paths.get( context.toString(), "/res/fr-stop.txt" );
-    Set<String> stoplist = new HashSet<String>( Files.readAllLines( stopfile, StandardCharsets.UTF_8 ) );
-    System.out.println( "Tokens: " + dic.occs() + " Types: " + dic.size() + "  " );
-    System.out.println( dic.csv( 100, stoplist ) );
-    Path dicpath = Paths.get( context.toString(), "/zola-dic.csv" );
-    dic.csv( dicpath );
-    System.out.println( "Dico saved in: " + dicpath );
-    // TODO test reload
+    System.out.println( dic );
+    
   }
 }

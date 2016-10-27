@@ -15,17 +15,14 @@ public class Term implements CharSequence, Comparable<Term>
   private int len;
   /** Cache the hash code for the string */
   private int hash; // Default to 0
-  /** A counter ? */
-  // private int counter;
-  /** An int code ? */
-  // private int code;
+  /** Lock modification ?? */
+  // boolean lock;
   
   /**
    * Empty constructor, value will be set later
    */
-  public Term()
+  public Term( )
   {
-    
   }
   /**
    * Constructor from string. Char array is trimed to initial size.
@@ -50,6 +47,17 @@ public class Term implements CharSequence, Comparable<Term>
   {
     replace( cs, offset, count );
   }
+  /**
+   * Lock term, to avoid unwanted modification
+   * @return
+   */
+  /*
+  public Term lock()
+  {
+    this.lock = true;
+    return this;
+  }
+  */
   /**
    * Change case of the term
    * Shall we return the term for better chaining ?

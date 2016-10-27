@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import site.oeuvres.util.Dico;
 import site.oeuvres.util.Term;
 
 public class GN
@@ -27,8 +28,7 @@ public class GN
     toks = new Tokenizer( new String(Files.readAllBytes( src ), StandardCharsets.UTF_8) );
     out = new PrintWriter( dest.toString() );
   }
-  public void parse( )
-  {
+  public void htmlHead( PrintWriter out ) {
     out.println( "<!doctype html>" );
     out.println( "<html>" );
     out.println( "  <head>" );
@@ -46,15 +46,26 @@ public class GN
     out.println( "  </head>" );
     out.println( "  <body>" );
     out.println( "    <table class=\"conc\">" );
-    parse( toks );
+  }
+  public void htmlFoot( PrintWriter out )
+  {
     out.println( "    </table>" );
     out.println( "  </body>" );
     out.println( "</html>" );
     out.println();
     out.close();
   }
-  public void parse( Tokenizer toks )
+  public void parse( ) throws IOException
   {
+    Dico dic = parse( toks );
+    out.write( "ADJECTIF\tPOST\tANTE\tPOST % ANTE\n" );
+
+    dic.csv( out );
+    out.close();
+  }
+  public Dico parse( Tokenizer toks )
+  {
+    Dico dic = new Dico();
     TokSlider win = new TokSlider(left, right);
     while ( toks.next() >= 0 ) {
       toks.tag( win.add() );
@@ -64,11 +75,13 @@ public class GN
       while (lpos > -left) {
         short cat =  win.get( lpos -1 ).cat();
         if ( cat == Cat.ADJ ) {
+          dic.add2( win.get( lpos - 1 ).orth() );
           lpos--;
           ladj = true;
           continue;
         }
         else if ( cat == Cat.VERBppass ) {
+          dic.add2( win.get( lpos - 1 ).orth() );
           lpos--;
           win.get( lpos ).cat( Cat.ADJ );
           ladj = true;
@@ -106,12 +119,15 @@ public class GN
       while (rpos < right ) {
         final short cat =  win.get( rpos+1 ).cat();
         if ( cat == Cat.ADJ ) {
-          radj = true;
+          dic.add( win.get( rpos + 1 ).orth() );
           rpos++;
+          radj = true;
           continue;
         }
         else if ( cat == Cat.VERBppass ) {
+          dic.add( win.get( rpos + 1 ).orth() );
           rpos++;
+          // correct participle,seems adj
           win.get( rpos ).cat( Cat.ADJ );
           radj = true;
           continue;
@@ -139,8 +155,9 @@ public class GN
         break;
       }
       if ( !ladj && !radj) continue;
-      html( win, lpos, rpos );
+      // html( win, lpos, rpos );
     }
+    return dic;
   }
   /**
    * Write the window
@@ -191,7 +208,7 @@ public class GN
     for (String srcname:dir.list() ) {
       if ( srcname.startsWith( "." )) continue;
       if ( !srcname.endsWith( ".xml" )) continue;
-      String destname = srcname.substring( 0, srcname.length()-4 ) + ".html";
+      String destname = srcname.substring( 0, srcname.length()-4 ) + ".csv";
       Path srcpath = Paths.get( dir.toString(), srcname); 
       Path destpath = Paths.get( dir.toString(), destname); 
       System.out.println( srcpath+" > "+destpath );
