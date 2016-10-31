@@ -5,9 +5,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.HashSet;
 
 import site.oeuvres.util.Term;
+
 
 
 /**
@@ -134,10 +134,10 @@ public final class Cat
   }
   final static short PRO  = 0x70;
   final static String sPRO="PRO";
-  final static short PROdem = 0x71;
-  final static String sPROdem="PRO:dem";
-  final static short PROindef = 0x72;
+  final static short PROindef = 0x71;
   final static String sPROindef="PRO:indef";
+  final static short PROdem = 0x72;
+  final static String sPROdem="PRO:dem";
   final static short PROint = 0x73;
   final static String sPROint="PRO:int";
   final static short PROposs = 0x74;
@@ -215,18 +215,24 @@ public final class Cat
     CODE.put( sPUNcl, PUNcl );
     LABEL.put( PUNcl, sPUNcl );
   }
+  public static short code ( final Term label )
+  {
+    Short ret = CODE.get( label );
+    if (ret == null) return UNKNOWN;
+    return ret;
+  }
   
   public static short code ( final String label )
   {
-    if ( !CODE.containsKey( label ))
-      return UNKNOWN;
-    return CODE.get( label );
+    Short ret = CODE.get( label );
+    if (ret == null) return UNKNOWN;
+    return ret;
   }
   public static String label ( final short code )
   {
-    if ( !LABEL.containsKey( code ))
-      return sUNKNOWN;
-    return LABEL.get( code );
+    String ret = LABEL.get( code );
+    if ( ret == null ) return sUNKNOWN;
+    return ret;
   }
   public static boolean isDet( final short code )
   {
@@ -248,6 +254,10 @@ public final class Cat
   public static void main(String[] args) throws IOException 
   {
     System.out.println( isVerb( ADV ) );
+    System.out.println( code("TEST") );
+    Term t = new Term("ADV");
+    System.out.println( code( t ) );
+    
     String l;
     BufferedReader buf;
     buf = new BufferedReader( 

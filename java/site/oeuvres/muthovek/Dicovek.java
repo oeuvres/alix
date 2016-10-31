@@ -27,9 +27,10 @@ import java.util.Set;
 import site.oeuvres.fr.Lexik;
 import site.oeuvres.fr.Tokenizer;
 import site.oeuvres.util.Char;
-import site.oeuvres.util.Dico;
+import site.oeuvres.util.TermDic;
 import site.oeuvres.util.IntObjectMap;
-import site.oeuvres.util.SliderInt;
+import site.oeuvres.util.IntSlider;
+import site.oeuvres.util.IntVek;
 
 /**
  * Started from code of Marianne Reboul.
@@ -49,9 +50,9 @@ import site.oeuvres.util.SliderInt;
  */
 public class Dicovek {
   /** Dictionary in order of indexing for int keys, should be kept private, no external modif */
-  private Dico terms;
+  private TermDic terms;
   /** Vectors of co-occurences for each term of dictionary */
-  private IntObjectMap<Vek> vectors;
+  private IntObjectMap<IntVek> vectors;
   /** Used as attribute in a token stream  */
   public final static int STOPWORD = 1;
   /** Threshold for terms in vectors */
@@ -63,11 +64,11 @@ public class Dicovek {
   /** Lemmatize vectors */
   final boolean lemmatize;
   /** Sliding window */
-  private SliderInt win;
+  private IntSlider win;
   /** List of stop words, usually grammatical, do not modify during object life */
   private final Set<String> stoplist;
   /** Current Vector to work on */
-  private Vek vek;
+  private IntVek vek;
   /**
    * Simple constructor
    * 
@@ -93,10 +94,10 @@ public class Dicovek {
     left = contextLeft;
     right = contextRight;
     this.stoplist = stoplist;    
-    terms = new Dico();
+    terms = new TermDic();
     // 44960 is the size of all Zola vocabulary
-    vectors = new IntObjectMap<Vek>(5000);
-    win = new SliderInt(contextLeft, contextRight);
+    vectors = new IntObjectMap<IntVek>(5000);
+    win = new IntSlider(contextLeft, contextRight);
     this.lemmatize = lemmatize;
   }
   
@@ -131,7 +132,7 @@ public class Dicovek {
     vek = vectors.get(termid);
     // optimize ? term not yet encountered, create vector
     if (vek == null) {
-      vek = new Vek(10);
+      vek = new IntVek(10);
       vectors.put(termid, vek);
     }
     // try to use a boost factor, not interesting
@@ -172,7 +173,7 @@ public class Dicovek {
     // get vector for requested word
     int k = terms.index( term );
     if (k == 0) return null;
-    Vek vekterm = vectors.get( k );
+    IntVek vekterm = vectors.get( k );
     // some words of the dictionary has no vector but are recorded in co-occurrence (ex: stop)
     if ( vekterm == null ) return null;
     // Similarity

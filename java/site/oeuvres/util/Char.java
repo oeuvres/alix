@@ -411,7 +411,7 @@ public class Char
   /**
    * Testing
    */
-  public static void main( String args[] )
+  public static void main( Term args[] )
   {
     System.out.println( "6 Char.isWord:"+Char.isWord( '6' )+" Char.isPunctuationOrSpace: " + Char.isPunctuationOrSpace( '6' ) );
     System.out.println( "- Char.isWord: " + Char.isWord( '-' ) + " Character.isLetter:" + Character.isLetter( '-' ));

@@ -1,15 +1,14 @@
 package site.oeuvres.fr;
 
-import site.oeuvres.util.Term;
 
 public class LexikEntry
 {
-  final Term lem;
+  final String lem;
   final short cat;
   // ? score ?
   public LexikEntry( final String lem, final String cat )
   {
-    this.lem = new Term( lem );
+    this.lem = lem;
     this.cat = Cat.code( cat );
   }
   @Override

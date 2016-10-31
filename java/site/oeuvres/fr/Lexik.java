@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import site.oeuvres.util.Term;
+import site.oeuvres.util.TermTrie;
 
 /**
  * Preloaded list of words
@@ -18,81 +19,135 @@ import site.oeuvres.util.Term;
 public class Lexik
 {
 
-  /** French names on which keep Capitalization */
-  private static final HashSet<Term> NAME = new HashSet<Term>( (int)(6000 * 0.75) );
   /** French stopwords */
-  public static final HashSet<Term> STOP = new HashSet<Term>( (int)( 700 * 0.75 ) );
-  /** 130 000 types French lexicon seems not too bad for memory */
-  private static final HashMap<Term, LexikEntry> WORD = new HashMap<Term, LexikEntry>( (int)(150000 * 0.75) );
-
-  
+  public static final HashSet<String> STOP = new HashSet<String>( (int)( 700 * 0.75 ) );
   static {
     String l;
-    BufferedReader buf;
     try {
-      buf = new BufferedReader( 
+      BufferedReader buf = new BufferedReader( 
         new InputStreamReader(
           Tokenizer.class.getResourceAsStream( "stoplist.txt" ), 
           StandardCharsets.UTF_8
         )
       );
-      while ((l = buf.readLine()) != null) STOP.add( new Term(l) );
-      buf.close();
-      
-      
-      buf = new BufferedReader( 
-        new InputStreamReader(
-          Tokenizer.class.getResourceAsStream( "name.txt" ), 
-          StandardCharsets.UTF_8
-        )
-      );
-      while ((l = buf.readLine()) != null) NAME.add( new Term(l) );
-      buf.close();
-      
-      
-      buf = new BufferedReader( 
-        new InputStreamReader(
-          Tokenizer.class.getResourceAsStream( "word.csv" ), 
-          StandardCharsets.UTF_8
-        )
-      );
-      String[] cells;
-      buf.readLine(); // first line is labels
-      int i = 0;
-      while ((l = buf.readLine()) != null) {
-        i++;
-        cells = l.split( "\t" );
-        Term key =  new Term(cells[0]);
-        if ( WORD.containsKey( key ) ) continue;
-        WORD.put( key, new LexikEntry( cells[3], cells[2] ) );
-      }
+      while ((l = buf.readLine()) != null) STOP.add( l );
       buf.close();
     } 
     catch (IOException e) {
       e.printStackTrace();
     }
-
   }
-
-  public static boolean isName( CharSequence cs ) {
-    return NAME.contains( cs ) ;
+  /** French names on which keep Capitalization */
+  private static final HashSet<String> NAME = new HashSet<String>( (int)(6000 * 0.75) );
+  static {
+    try {
+      String l;
+      BufferedReader buf = new BufferedReader( 
+          new InputStreamReader(
+            Tokenizer.class.getResourceAsStream( "name.txt" ), 
+            StandardCharsets.UTF_8
+          )
+        );
+        while ((l = buf.readLine()) != null) NAME.add( l );
+        buf.close();
+    } 
+    catch (IOException e) {
+      e.printStackTrace();
+    }
+  }    
+  /** 130 000 types French lexicon seems not too bad for memory */
+  private static final HashMap<String, LexikEntry> WORD = new HashMap<String, LexikEntry>( (int)(150000 * 0.75) );
+  static {
+    String l = "";
+    String[] cells = null;
+    try {
+      BufferedReader buf = new BufferedReader( 
+        new InputStreamReader(
+          Tokenizer.class.getResourceAsStream( "word.csv" ), 
+          StandardCharsets.UTF_8
+        )
+      );
+      buf.readLine(); // first line is labels
+      int i = 0;
+      while ((l = buf.readLine()) != null) {
+        if ( l.charAt( 0 ) == '#' ) continue;
+        i++;
+        cells = l.split( "\t" );
+        if ( WORD.containsKey( cells[0] ) ) continue;
+        WORD.put( cells[0], new LexikEntry( cells[3], cells[2] ) );
+      }
+      buf.close();
+    } 
+    // ArrayIndexOutOfBoundsException
+    catch (Exception e) {
+      System.out.println( "line ? "+cells.length+" "+ l );
+      e.printStackTrace();
+    }
+  }
+  /** French locutions stored in a Trie */
+  public static TermTrie LOC;
+  static {
+    try {
+      LOC = new TermTrie( "loc.csv", "\t", TermTrie.CLASSPATH);
+    } 
+    catch (IOException e) {
+      e.printStackTrace();
+    }
   }
   /**
-   * Test orthographic form and update static fields
-   * Quite efficient with Strings, but not synchronized
-   * Less efficient tah tok update
+   * Is it a stop word?
+   * @param An orthographic form
+   * @return
+   */
+  public static boolean isStop( final String orth ) {
+    return STOP.contains( orth );
+  }
+  /**
+   * Is it a stop word?
+   * @param An orthographic form
+   * @return
+   */
+  public static boolean isStop( final Term orth ) {
+    return STOP.contains( orth );
+  }
+  /**
+   * Is it a know name?
+   * @param A form with initial cap
+   * @return
+   */
+  public static boolean isName( final String orth ) {
+    return NAME.contains( orth );
+  }
+  /**
+   * Is it a know name?
+   * @param A form with initial cap
+   * @return
+   */
+  public static boolean isName( final Term orth ) {
+    return NAME.contains( orth );
+  }
+
+
+  /**
+   * Test orthographic form
    */
   public static boolean isWord( String s )
   {
-    // 
-    return WORD.containsKey( new Term( s ) );
+    return WORD.containsKey( s );
+  }
+  /**
+   * Test orthographic form
+   */
+  public static boolean isWord( Term term )
+  {
+    return WORD.containsKey( term );
   }
   /**
    * Update a token with lexical informations
    * @param tok
    * @return true if entry fond
    */
-  public static boolean isWord( Token tok )
+  public static boolean tag( Occ tok )
   {
     Term orth = tok.orth();
     LexikEntry entry = Lexik.WORD.get( orth );
@@ -106,35 +161,23 @@ public class Lexik
    * @param token
    * @return
    */
-  public static Term lem( Term orth )
+  public static String lem( final String orth )
   {
-    // not efficient to test presence and search
-    if ( Lexik.WORD.containsKey( orth ) ) {
-      return Lexik.WORD.get( orth ).lem;
-    }
-    return orth;
+    LexikEntry entry = Lexik.WORD.get( orth );
+    // ? orth or null ?
+    if ( entry == null ) return orth;
+    return Lexik.WORD.get( orth ).lem;
   }
   /**
    * Give a category according to the dico
    * @param token
    * @return
    */
-  public static short cat( Term orth )
+  public static short cat( final String orth )
   {
-    // not efficient to test presence and search
-    if ( Lexik.WORD.containsKey( orth ) ) {
-      return Lexik.WORD.get( orth ).cat;
-    }
-    return Cat.UNKNOWN;
-  }
-  /**
-   * Give a lem according to the dico
-   * @param token
-   * @return
-   */
-  public static boolean isStop( String s ) {
-    Term orth = new Term( s );
-    return STOP.contains( orth );
+    LexikEntry entry = Lexik.WORD.get( orth );
+    if ( entry == null ) return Cat.UNKNOWN;
+    return entry.cat;
   }
       
   /**
@@ -142,11 +185,11 @@ public class Lexik
    */
   public static void main(String[] args) throws IOException 
   {
-    Token tok = new Token(); 
+    Occ occ = new Occ(); 
     for (String token: "lui lorsqu' et depuis quand est il en cette ville ? 25 centimes de hier au soir . et quel sujet l’ y amène ?".split( " " ) ) {
-      tok.orth( token );
-      Lexik.isWord( tok );
-      System.out.println( tok );
+      occ.orth( token );
+      Lexik.tag( occ );
+      System.out.println( occ );
     }
   }
 }

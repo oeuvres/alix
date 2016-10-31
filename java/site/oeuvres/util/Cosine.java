@@ -2,8 +2,6 @@ package site.oeuvres.util;
 
 import java.util.List;
 
-import site.oeuvres.muthovek.Vek;
-
 /**
  * A Cosine comparator taking different types in input 
  * Thanks  OdysseusPolymetis

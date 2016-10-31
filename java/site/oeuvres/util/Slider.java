@@ -33,10 +33,10 @@ public abstract class Slider
   protected int pointer(final int pos) 
   {
     if (pos < -left) throw(new ArrayIndexOutOfBoundsException(
-        pos+" < "+(-left)+", left context size."
+        pos+" < "+(-left)+", left context size.\n"+this.toString()
     ));
-    else if (pos < -left) throw(new ArrayIndexOutOfBoundsException(
-          pos+" > "+(+right)+", right context size."
+    else if (pos > right) throw(new ArrayIndexOutOfBoundsException(
+          pos+" > "+(+right)+", right context size.\n"+this.toString()
     ));
     return (((center + pos) % width) + width) % width;
   }

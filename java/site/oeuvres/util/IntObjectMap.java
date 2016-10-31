@@ -8,7 +8,6 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 
 import site.oeuvres.fr.Tokenizer;
-import site.oeuvres.muthovek.Vek;
 
 /**
  * An efficient int-Object Map implementation.
@@ -52,7 +51,7 @@ public class IntObjectMap<E>
 
   public IntObjectMap( final int size, final float fillFactor )
   {
-    if ( fillFactor <= 0 || fillFactor >= 1 ) throw new IllegalArgumentException( "FillFactor must be in (0, 1)" );
+    if ( fillFactor <= 0 || fillFactor >= 1 ) throw new IllegalArgumentException( "FillFactor must be between [0-1]" );
     if ( size <= 0 ) throw new IllegalArgumentException( "Size must be positive!" );
     final int capacity = arraySize( size, fillFactor );
     mask = capacity - 1;
@@ -361,12 +360,12 @@ public class IntObjectMap<E>
    * Testing the object performances
    * @throws IOException 
    */
-  public static void main(String[] args) throws IOException 
+  public static void main(Term[] args) throws IOException 
   {
     // french letter in frequency order
     String letters = "easitnrulodcmpévfqgbhàjxèêyMELCzIPDAçSâJBVOTûùRôNîFœHQUGÀÉÇïkZwKWXëYÊÔŒÈüÂÎæäÆ";
     // feel a HashMap with these letters
-    Vek alphabet = new Vek(letters.length());
+    IntVek alphabet = new IntVek(letters.length());
     for (int i=0; i < letters.length(); i++) {
       alphabet.put( letters.charAt( i ), 0);
     }

@@ -8,7 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import site.oeuvres.util.Dico;
+import site.oeuvres.util.TermDic;
 import site.oeuvres.util.Term;
 
 public class GN
@@ -18,15 +18,18 @@ public class GN
   /** Tokenizer */
   Tokenizer toks;
   /** File writer */
-  PrintWriter out;
+  PrintWriter htmlWriter;
+  /** File writer */
+  PrintWriter csvWriter;
   /** Size on the left */
   final int left = 10;
   /** Size on the right */
   final int right = 10;
-  public GN(Path src, Path dest) throws IOException
+  public GN(Path src, final Path destName ) throws IOException
   {
     toks = new Tokenizer( new String(Files.readAllBytes( src ), StandardCharsets.UTF_8) );
-    out = new PrintWriter( dest.toString() );
+    htmlWriter = new PrintWriter( destName.toString()+".html" );
+    csvWriter = new PrintWriter( destName.toString()+".csv" );
   }
   public void htmlHead( PrintWriter out ) {
     out.println( "<!doctype html>" );
@@ -57,31 +60,33 @@ public class GN
   }
   public void parse( ) throws IOException
   {
-    Dico dic = parse( toks );
-    out.write( "ADJECTIF\tPOST\tANTE\tPOST % ANTE\n" );
-
-    dic.csv( out );
-    out.close();
+    htmlHead( htmlWriter );
+    TermDic dic = parse( toks );
+    htmlFoot( htmlWriter );
+    /*
+    csvWriter.write( "ADJECTIF\tANTE\tPOST\tANTE+POST\t% ANTE\n" );
+    dic.csv( csvWriter );
+    csvWriter.close();
+    */
   }
-  public Dico parse( Tokenizer toks )
+  public TermDic parse( Tokenizer toks )
   {
-    Dico dic = new Dico();
-    TokSlider win = new TokSlider(left, right);
-    while ( toks.next() >= 0 ) {
-      toks.tag( win.add() );
+    TermDic dic = new TermDic();
+    OccSlider win = new OccSlider(left, right);
+    while ( toks.word( win.add() ) ) {
       if ( win.get( 0 ).cat() != Cat.SUB ) continue;
       int lpos = 0;
       boolean ladj = false;
       while (lpos > -left) {
         short cat =  win.get( lpos -1 ).cat();
         if ( cat == Cat.ADJ ) {
-          dic.add2( win.get( lpos - 1 ).orth() );
+          dic.add( win.get( lpos - 1 ).lem() );
           lpos--;
           ladj = true;
           continue;
         }
         else if ( cat == Cat.VERBppass ) {
-          dic.add2( win.get( lpos - 1 ).orth() );
+          dic.add( win.get( lpos - 1 ).lem() );
           lpos--;
           win.get( lpos ).cat( Cat.ADJ );
           ladj = true;
@@ -119,13 +124,13 @@ public class GN
       while (rpos < right ) {
         final short cat =  win.get( rpos+1 ).cat();
         if ( cat == Cat.ADJ ) {
-          dic.add( win.get( rpos + 1 ).orth() );
+          dic.add2( win.get( rpos + 1 ).lem() );
           rpos++;
           radj = true;
           continue;
         }
         else if ( cat == Cat.VERBppass ) {
-          dic.add( win.get( rpos + 1 ).orth() );
+          dic.add2( win.get( rpos + 1 ).lem() );
           rpos++;
           // correct participle,seems adj
           win.get( rpos ).cat( Cat.ADJ );
@@ -139,7 +144,8 @@ public class GN
         }
         // une chose vraiment obscure
         // si adverbe suivi d’un adjectif
-        else if ( Cat.isAdv( cat ) && win.get( rpos+2 ).cat() == Cat.ADJ) {
+        // un <vol> plus léger , plus immatériel , plus vertigineux , plus 
+        else if ( Cat.isAdv( cat ) && rpos < right - 1 &&  win.get( rpos+2 ).cat() == Cat.ADJ) {
           rpos++;
           continue;
         }
@@ -155,47 +161,47 @@ public class GN
         break;
       }
       if ( !ladj && !radj) continue;
-      // html( win, lpos, rpos );
+      html( win, lpos, rpos );
     }
     return dic;
   }
   /**
    * Write the window
    */
-  private void html( final TokSlider win, final int lpos, final int rpos) 
+  private void html( final OccSlider win, final int lpos, final int rpos) 
   {
     n++;
-    out.print( "<tr>" );
-    out.print( "<td class=\"num\">" );
-    out.print( n );
-    out.print( ".</td>" );
-    out.print( "<td class=\"left\">" );
+    htmlWriter.print( "<tr>" );
+    htmlWriter.print( "<td class=\"num\">" );
+    htmlWriter.print( n );
+    htmlWriter.print( ".</td>" );
+    htmlWriter.print( "<td class=\"left\">" );
     for ( int i=-left; i < 0; i++) {
-      if ( i == lpos ) out.print( "<b>" );
+      if ( i == lpos ) htmlWriter.print( "<b>" );
       short cat =  win.get( i ).cat();
-      if ( cat == Cat.ADJ ) out.print( "<i>" );
-      out.print( win.get( i ).graph() );
-      if ( cat == Cat.ADJ ) out.print( "</i>" );
-      if (i<-1) out.print( " " );
+      if ( cat == Cat.ADJ ) htmlWriter.print( "<i>" );
+      htmlWriter.print( win.get( i ).graph() );
+      if ( cat == Cat.ADJ ) htmlWriter.print( "</i>" );
+      if (i<-1) htmlWriter.print( " " );
     }
-    if ( lpos < 0) out.print( "</b>" );
-    out.print( "</td>" );
-    out.print( "<th>" );
-    out.print( win.get( 0 ).graph() );
-    out.print( "</th>" );
-    out.print( "<td class=\"right\">" );
-    if ( rpos > 0) out.print( "<b>" );
+    if ( lpos < 0) htmlWriter.print( "</b>" );
+    htmlWriter.print( "</td>" );
+    htmlWriter.print( "<th>" );
+    htmlWriter.print( win.get( 0 ).graph() );
+    htmlWriter.print( "</th>" );
+    htmlWriter.print( "<td class=\"right\">" );
+    if ( rpos > 0) htmlWriter.print( "<b>" );
     for ( int i=1; i <= right; i++) {
       short cat =  win.get( i ).cat();
-      if ( cat == Cat.ADJ ) out.print( "<i>" );
-      out.print( win.get( i ).graph() );
-      if ( cat == Cat.ADJ ) out.print( "</i>" );
-      if ( i == rpos ) out.print( "</b>" );
-      out.print( " " );
+      if ( cat == Cat.ADJ ) htmlWriter.print( "<i>" );
+      htmlWriter.print( win.get( i ).graph() );
+      if ( cat == Cat.ADJ ) htmlWriter.print( "</i>" );
+      if ( i == rpos ) htmlWriter.print( "</b>" );
+      htmlWriter.print( " " );
     }
-    out.print( "</td>" );
-    out.print( "</tr>" );
-    out.println();
+    htmlWriter.print( "</td>" );
+    htmlWriter.print( "</tr>" );
+    htmlWriter.println();
   }
   /**
    * Test the Class
@@ -208,7 +214,7 @@ public class GN
     for (String srcname:dir.list() ) {
       if ( srcname.startsWith( "." )) continue;
       if ( !srcname.endsWith( ".xml" )) continue;
-      String destname = srcname.substring( 0, srcname.length()-4 ) + ".csv";
+      String destname = srcname.substring( 0, srcname.length()-4 );
       Path srcpath = Paths.get( dir.toString(), srcname); 
       Path destpath = Paths.get( dir.toString(), destname); 
       System.out.println( srcpath+" > "+destpath );
