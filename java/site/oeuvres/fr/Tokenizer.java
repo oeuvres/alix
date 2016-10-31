@@ -107,37 +107,44 @@ public class Tokenizer
   }
   /**
    * Update an Occurrence object with the current word (maybe compound words)
-   * @param occ
+   * @param word
    * @return
    */
-  public boolean word( Occ occ ) {
-    occ.clear();
+  public boolean word( Occ word ) {
     // take an handle on the root of the dictionary
     Word node = Lexik.LOC.getRoot();
     int sliderpos = 0;
     short cat = 0;
     int lastpos = 0;
-    Occ morph; // a form, a simple word, complete or part of a compound
-    // loop to search in the dictionary
+    Occ token; // a form, a simple word, complete or part of a compound
+    // loop to concat tokens : from a compound dictionary, for proper names
+    
+    // TODO the NAME concat
     while( true ) {
       // get current token from buffer
-      morph = occbuf.get( sliderpos );
+      token = occbuf.get( sliderpos );
       // no more token in the buffer, get one
-      if ( morph.isEmpty() ) {
-        pointer = token( morph, pointer );
+      if ( token.isEmpty() ) {
+        pointer = token( token, pointer );
         if ( pointer < 1 ) return false;
         // tag the token to have a regular case
-        tag( morph );
+        tag( token );
       }
       // try token on the compound dico
-      node = node.get( morph.orth() );
+      node = node.get( token.orth() );
       // branch is finished, if a compound have been found, concat in one occurrence
       if (node == null ) {
-        for ( int i=0; i <= lastpos; i++ ) {
-          occ.apend( occbuf.get( i ) );
+        // first token, common case, is a word
+        word.replace( occbuf.get( 0 ) );
+        // other tokens ? append
+        for ( int i=1; i <= lastpos; i++ ) {
+          word.apend( occbuf.get( i ) );
         }
         // if a compound have been found, gram cat has been set
-        if ( cat != 0 ) occ.cat( cat );
+        if ( cat != 0 ) {
+          word.cat( cat );
+          word.lem( word.orth() );
+        }
         // move the slider to this position 
         occbuf.move( lastpos + 1 );
         return true;
@@ -186,7 +193,7 @@ public class Tokenizer
       while ( text.charAt( pos ) == '.' ) {
         pos++;
       }
-      graph.copy( "…" );
+      graph.replace( "…" );
       occ.end(pos);
       return pos;
     }
@@ -263,9 +270,9 @@ public class Tokenizer
   }
 
   /**
-   * Set a normalized orthographic form from a graphical token
-   * Give simple categories, especially, resolve upper case for proper names
-   * Give lem for a known word.
+   * Set a normalized orthographic form from a graphical token, especially, resolve upper case for proper names.
+   * Set typographical category (punctuation…), and a grammatical category according to a dictionary. 
+   * Set lem for a known word.
    * @param An occurrence to tag
    */
   public void tag( Occ occ ) {
@@ -339,7 +346,7 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = ""
-        + " M<hi rend=\"sup\">me</hi> Goupil"
+        + " M<hi rend=\"sup\">me</hi> Goupil 25 centimes"
         + " Tu es dans la merde et dans la maison, pour quelqu’un, à d’autres. " 
         + " Ce  travail obscurément réparateur est un chef-d'oeuvre d’emblée, à l'instar."
         + " Parce que s'il on en croit l’intrus, d’abord, M., lorsqu’on va j’aime ce que C’était &amp; D’où es-tu ? "

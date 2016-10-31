@@ -35,7 +35,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term( Term t ) 
   {
-    copy(t);
+    replace(t);
   }
   /**
    * Construct a term by copy of a char array  (modification of this Term object will NOT affect the source array)
@@ -43,7 +43,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term( final char[] a ) 
   {
-    copy(a, -1, -1);
+    replace(a, -1, -1);
   }
   /**
    * Construct a term by copy of a char sequence 
@@ -51,7 +51,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term( CharSequence cs ) 
   {
-    copy( cs, -1, -1 );
+    replace( cs, -1, -1 );
   }
   /*
    * Construct a term by copy of a section of char sequence (String, but also String buffers or builders)
@@ -61,7 +61,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term( CharSequence cs, int offset, int count ) 
   {
-    copy( cs, offset, count );
+    replace( cs, offset, count );
   }
   
   @Override
@@ -128,9 +128,9 @@ public class Term implements CharSequence, Comparable<Term>
    * @param cs a char sequence
    * @return the Term object for chaining
    */
-  public Term copy( CharSequence cs  ) 
+  public Term replace( CharSequence cs  ) 
   {
-    return copy( cs, -1, -1);
+    return replace( cs, -1, -1);
   }
   /**
    * Replace Term content by a span of String
@@ -139,7 +139,7 @@ public class Term implements CharSequence, Comparable<Term>
    * @param number of chars to copy -1
    * @return the Term object for chaining, or null if the String provided is null (for testing)
    */
-  public Term copy( CharSequence cs, int offset, int count  ) 
+  public Term replace( CharSequence cs, int offset, int count  ) 
   {
     if ( cs == null ) return null;
     if (offset <= 0 && count < 0) {
@@ -167,9 +167,9 @@ public class Term implements CharSequence, Comparable<Term>
    * @param a text as char array
    * @return the Term object for chaining
    */
-  public Term copy( char[] a  ) 
+  public Term replace( char[] a  ) 
   {
-    return copy( a, -1, -1);
+    return replace( a, -1, -1);
   }
   /**
    * Replace Term content by a span of a char array
@@ -178,7 +178,7 @@ public class Term implements CharSequence, Comparable<Term>
    * @param number of chars to copy -1
    * @return the Term object for chaining
    */
-  public Term copy( char[] a, int offset, int count ) 
+  public Term replace( char[] a, int offset, int count ) 
   {
     if (offset <= 0 && count < 0) {
       offset = 0;
@@ -199,7 +199,7 @@ public class Term implements CharSequence, Comparable<Term>
    * @param term
    * @return
    */
-  public Term copy( Term term ) 
+  public Term replace( Term term ) 
   {
     int newlen = term.len;
     // do not change len before sizing
@@ -208,19 +208,7 @@ public class Term implements CharSequence, Comparable<Term>
     len = newlen;
     return this;
   }
-  /**
-   * Change term content by reference to a char array, efficient but dangerous.
-   * The same char array may be modified by two terms.
-   * @param term
-   * @return
-   */
-  public Term share( Term term ) 
-  {
-    data = term.data;
-    start = term.start;
-    len = term.len;
-    return this;
-  }
+
   /**
    * Append a character
    * @param c
@@ -276,7 +264,7 @@ public class Term implements CharSequence, Comparable<Term>
   {
     hash = 0; // resizing occurs when content change, uncache hashcode
     if ( (start+newlen) <= data.length ) return false;
-    char[] a = new char[ square2( start+newlen ) ];
+    char[] a = new char[ Calcul.square2( start+newlen ) ];
     try {
       System.arraycopy( data, 0, a, 0, data.length );
     } catch (Exception e) {
@@ -549,21 +537,6 @@ public class Term implements CharSequence, Comparable<Term>
     }
     // System.out.println( this+" "+hash );
     return h;
-  }
-  /**
-   * Get the power of 2 equals or next to an Integer, useful for some efficient data structures.
-   * @param n
-   * @return the next power of 2
-   */
-  public static int square2( int n ) {
-    if ( n == 0 ) return 1;
-    // x--;
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-    return n + 1;
   }
   @Override
   public String toString( )

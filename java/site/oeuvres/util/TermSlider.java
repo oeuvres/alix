@@ -51,7 +51,7 @@ public class TermSlider extends Slider {
    */
   public Term set(final int pos, final String term) 
   {
-    return data[pointer(pos)].copy( term );
+    return data[pointer(pos)].replace( term );
   }
   /**
    * Modify a value by an index
@@ -61,7 +61,7 @@ public class TermSlider extends Slider {
    */
   public Term set(final int pos, final Term term) 
   {
-    return data[pointer(pos)].copy( term );
+    return data[pointer(pos)].replace( term );
   }
   /**
    * Move index to the next position and return a pointer on the Term
@@ -88,7 +88,7 @@ public class TermSlider extends Slider {
   {
     // Term ret = data[ pointer( -left ) ];
     center = pointer( +1 );
-    data[ pointer(right) ].copy( value );
+    data[ pointer(right) ].replace( value );
   }
   /**
    * Show window content

@@ -29,7 +29,10 @@ import java.util.Set;
  * keep their index. Ids are kept consistent during all life of Object, but may
  * be lost on saving (TODO) and dictionary merges (TODO).
  * 
- * TODO implement saving on SQL backend
+ * — TODO implement saving on SQL backend
+ * — TODO optimize double access
+ * 
+ * String->[code, counters]<-code, access by code need another jump to get the String
  * 
  * @author glorieux-f
  *
@@ -37,17 +40,17 @@ import java.util.Set;
 public class TermDic
 {
   /** Position of the term index in the array of int values */
-  private static final int CODE = 0;
+  private static final int ICODE = 0;
   /** Position of the term counter in the array of int values */
-  private static final int COUNT1 = 1;
+  private static final int ICOUNT1 = 1;
   /** Position of the second counter in the array of int values */
-  private static final int COUNT2 = 2;
-  /** Pointer in the array, only growing when terms are added, used as code */
-  private int code;
+  private static final int ICOUNT2 = 2;
+  /** Pointer in the array of terms, only growing when terms are added, used as code */
+  private int pointer;
   /** HashMap to find String fast, int array contains an int key and a count  */
-  private HashMap<String,int[]> byTerm;
+  private HashMap<String,int[]> byTerm = new HashMap<String, int[]>();
   /** List of terms, kept in index order, to get a term by int index */
-  private String[] byIndex;
+  private String[] byCode = new String[32];
   /** Count of all occurrences for this dico */
   private int occs;
   /** Last occurrences count before some ops, for caching */
@@ -58,26 +61,20 @@ public class TermDic
    */
   public TermDic()
   {
-    byTerm = new HashMap<String, int[]>();
-    byIndex = new String[32];
   }
 
   
   /**
-   * Get a term by index
-   * Be Careful, returned term is mutable, modification will affect the dictionary.
-   * Power is delicate.
+   * Get a term by code
    * 
    * @param index
    * @return the term
    */
-  private String term( final int index )
+  private String term( final int code )
   {
-    if (index < 1)
-      return null;
-    if (index > code)
-      return null;
-    return byIndex[index];
+    if (code < 1) return null;
+    if (code > pointer) return null;
+    return byCode[code];
   }
   /**
    * Get a term by index 
@@ -100,11 +97,11 @@ public class TermDic
     int[] value = byTerm.get( term );
     if (value == null)
       return 0;
-    return value[CODE];
+    return value[ICODE];
   }
 
   /**
-   * Get the count of a term, 0 if not found
+   * Get the count for a term, 0 if not found
    * 
    * @param term
    * @return the count of occurrences
@@ -114,53 +111,98 @@ public class TermDic
     int[] value = byTerm.get( term );
     if (value == null)
       return 0;
-    return value[COUNT1];
+    return value[ICOUNT1];
+  }
+  /**
+   * Get the count for a term, 0 if not found
+   * 
+   * @param term
+   * @return the count of occurrences
+   */
+  public int count( String term )
+  {
+    int[] value = byTerm.get( term );
+    if (value == null)
+      return 0;
+    return value[ICOUNT1];
   }
 
   /**
-   * Get the count of a term by index, 0 if not found
+   * Get the count of a term by code, 0 if not found
    * 
    * @param index
    *          a term index
    * @return the state of counter after increments
    */
-  public int count( int index )
+  public int count( int code )
   {
-    int[] value = byTerm.get( byIndex[index] );
+    int[] value = byTerm.get( byCode[code] );
     if (value == null)
       return 0;
-    return value[COUNT1];
+    return value[ICOUNT1];
   }
 
   /**
-   * Increment a term, create it if not exists
+   * Increment a term (by a String object), or create it if not exists
    * 
-   * @param term
-   * @return the index created
+   * @param term a word
+   * @return the code of term
    */
   public int add( final String term )
   {
     return add( term, 1, 0 );
   }
+  /**
+   * Increment a term (by a Term object), or create it if not exists
+   * 
+   * @param term a word
+   * @return the code of term
+   */
   public int add( final Term term )
   {
     return add( term, 1, 0 );
   }
+  /**
+   * Increment second counter for a term (by a String object), or create it if not exists
+   * 
+   * @param term a word
+   * @return the code of term
+   */
   public int add2( final String term )
   {
     return add( term, 0, 1);
   }
+  /**
+   * Increment second counter for a term (by a Term object), or create it if not exists
+   * 
+   * @param term a word
+   * @return the code of term
+   */
   public int add2( final Term term )
   {
     return add( term, 0, 1);
   }
-  public int add ( final String term, final int count)
+  /**
+   * Increment counter for a term (with a String object) of a specified amount, or create it if not exists
+   * 
+   * @param term a word
+   * @param amount add to counter
+   * @return the code of term
+   */
+  public int add ( final String term, final int amount)
   {
-    return add( term, count, 0 );
+    return add( term, amount, 0 );
   }
-  public int add ( final Term term, final int count)
+  /**
+   * Increment counter for a term (with a String object) of a specified amount, or create it if not exists
+   * 
+   * @param term a word
+   * @param amount add to counter
+   * @return the code of term
+   */
+  public int add ( final Term term, final int amount)
   {
-    return add( term, count, 0 );
+    return add( term, amount, 0 );
   }
   /**
    * Add a list of terms
@@ -180,36 +222,22 @@ public class TermDic
   /**
    * Add a term occurrence, increment if exist or create entry
    * @param term
-   * @param count1 first count
-   * @param count2 second counter
+   * @param count1 for first counter
+   * @param count2 for second counter
    * @return
    */
-  public int add( final String term, final int count1, final int count2 )
+  public int add( final String term, final int amount1, final int amount2 )
   {
     // this code is repeated to not copy the transmitted term 
     int[] value = byTerm.get( term );
-    occs += count1;
-    occs += count2;
-    if (value == null) return put( term, count1, count2);
-    value[COUNT1] += count1;
-    value[COUNT2] += count2;
-    return value[CODE];
+    occs += amount1;
+    occs += amount2;
+    if (value == null) return put( term, amount1, amount2);
+    value[ICOUNT1] += amount1;
+    value[ICOUNT2] += amount2;
+    return value[ICODE];
   }
   
-  private int put ( final String term, final int count1, final int count2 )
-  {
-    code++;
-    // index is too short, extends it (not a big perf pb)
-    if (code >= byIndex.length) {
-      final int oldLength = byIndex.length;
-      final String[] oldData = byIndex;
-      byIndex = new String[oldLength * 2];
-      System.arraycopy( oldData, 0, byIndex, 0, oldLength );
-    }
-    byTerm.put( term, new int[] { code, count1, count2 } );
-    byIndex[code] = term;
-    return code;
-  }
   /**
    * Add a term occurrence, increment if exist or create entry
    * @param term
@@ -224,9 +252,30 @@ public class TermDic
     occs += count1;
     occs += count2;
     if (value == null) return put( term.toString(), count1, count2);
-    value[COUNT1] += count1;
-    value[COUNT2] += count2;
-    return value[CODE];
+    value[ICOUNT1] += count1;
+    value[ICOUNT2] += count2;
+    return value[ICODE];
+  }
+  /**
+   * Create a term in the different data structures 
+   * @param term
+   * @param count1
+   * @param count2
+   * @return
+   */
+  private int put ( final String term, final int count1, final int count2 )
+  {
+    pointer++;
+    // index is too short, extends it (not a big perf pb)
+    if (pointer >= byCode.length) {
+      final int oldLength = byCode.length;
+      final String[] oldData = byCode;
+      byCode = new String[Calcul.square2( oldLength )];
+      System.arraycopy( oldData, 0, byCode, 0, oldLength );
+    }
+    byTerm.put( term, new int[] { pointer, count1, count2 } );
+    byCode[pointer] = term;
+    return pointer;
   }
   
   /**
@@ -234,7 +283,7 @@ public class TermDic
    */
   public int size()
   {
-    return code;
+    return pointer;
   }
 
   /**
@@ -248,17 +297,18 @@ public class TermDic
    * Get term list in inverse count order.
    * @return 
    */
-  public Term[] byCount()
+  public String[] byCount()
   {
     return byCount( -1 );
   }
   /**
    * Used for freqlist, return a view of the map sorted by term count
    * Shall we cache ?
+   * What is better, Term or String ?
    * @param limit
    * @return
    */
-  public Term[] byCount(int limit)
+  public String[] byCount(int limit)
   {
     // Do not use LinkedList nere, very slow access by index list.get(i), arrayList is good
     List<Map.Entry<String, int[]>> list = new ArrayList<Map.Entry<String, int[]>>( byTerm.entrySet() );
@@ -267,18 +317,27 @@ public class TermDic
       @Override
       public int compare( Map.Entry<String, int[]> o1, Map.Entry<String, int[]> o2 )
       {
-        return o2.getValue()[COUNT1] - o1.getValue()[COUNT1];
+        return o2.getValue()[ICOUNT1] - o1.getValue()[ICOUNT1];
       }
     } );
     int size = Math.min( list.size(), limit ) ;
     if ( limit < 1 ) size = list.size();
-    Term[] byCount = new Term[size];
+    String[] byCount = new String[size];
     for (int i = 0; i < size; i++) {
-      byCount[i] = new Term(list.get( i ).getKey()) ;
+      byCount[i] = new String(list.get( i ).getKey()) ;
     }
     return byCount;
   }
-
+  /**
+   * 
+   * @param limit
+   * @return
+   */
+  public int[] codesByCount(int limit)
+  {
+    
+    return null;
+  }
   /**
    * To save the dictionary, with some index consistency but… will not works on
    * merge
@@ -346,7 +405,7 @@ public class TermDic
    */
   public Writer csv( Writer writer, int limit, Set<Term> stoplist ) throws IOException
   {
-    Term[] byCount = byCount();
+    String[] byCount = byCount();
     int length = byCount.length;
     int count1;
     int count2;
@@ -357,8 +416,8 @@ public class TermDic
         if (limit-- == 0)
           break;
         int[] value = byTerm.get( byCount[i] );
-        count1 = value[COUNT1];
-        count2 = value[COUNT2];
+        count1 = value[ICOUNT1];
+        count2 = value[ICOUNT2];
         writer.write( 
                 byCount[i]
           +"\t"+ count1

@@ -118,8 +118,7 @@ public class OccSlider extends Slider {
     int right = 5;
     OccSlider win = new OccSlider(2, right);
     Tokenizer toks = new Tokenizer(text);
-    while ( toks.next() > -1) {
-      // toks.tag( win.add() );
+    while ( toks.word( win.add() ) != false ) {
       System.out.println( win );
     }
   }

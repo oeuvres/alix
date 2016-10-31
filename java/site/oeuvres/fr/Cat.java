@@ -17,8 +17,8 @@ import site.oeuvres.util.Term;
  */
 public final class Cat
 {
-  public static final HashMap<String, Short> CODE = new  HashMap<String, Short>(); 
-  public static final HashMap<Short, String> LABEL = new HashMap<Short, String>(); 
+  static final HashMap<String, Short> CODE = new  HashMap<String, Short>(); 
+  static final HashMap<Short, String> LABEL = new HashMap<Short, String>(); 
   
   final static short UNKNOWN = -1; 
   final static String sUNKNOWN="UNKNOWN";
@@ -27,15 +27,15 @@ public final class Cat
     CODE.put( "UNKNOWN", UNKNOWN );
     LABEL.put( UNKNOWN, sUNKNOWN );
   }
-  final static short VERB = 0x10;
+  public final static short VERB = 0x10;
   final static String sVERB ="VERB";
-  final static short VERBaux = 0x11; 
+  public final static short VERBaux = 0x11; 
   final static String sVERBaux="VERB:aux";
-  final static short VERBppass = 0x12; 
+  public final static short VERBppass = 0x12; 
   final static String sVERBppass ="VERB:ppass";
-  final static short VERBppres = 0x13; 
+  public final static short VERBppres = 0x13; 
   final static String sVERBppres ="VERB:ppres";
-  final static short VERBsup = 0x15;
+  public final static short VERBsup = 0x15;
   final static String sVERBsup="VERB:sup";
   static 
   {
@@ -50,33 +50,33 @@ public final class Cat
     CODE.put( sVERBsup, VERBsup );
     LABEL.put( VERBsup, sVERBsup );
   }
-  final static short SUB  = 0x20;
+  public final static short SUB  = 0x20;
   final static String sSUB="SUB";
   static
   {
     CODE.put( sSUB, SUB );
     LABEL.put( SUB, sSUB );    
   }
-  final static short ADJ  = 0x30;
+  public final static short ADJ  = 0x30;
   final static String sADJ="ADJ";
   static
   {
     CODE.put( sADJ, ADJ );
     LABEL.put( ADJ, sADJ );    
   }
-  final static short ADV  = 0x40;
+  public final static short ADV  = 0x40;
   final static String sADV="ADV";
-  final static short ADVint = 0x41;
+  public final static short ADVint = 0x41;
   final static String sADVint="ADV:int";
-  final static short ADVindef = 0x42;
+  public final static short ADVindef = 0x42;
   final static String sADVindef="ADV:indef";
-  final static short ADVloc = 0x43;
+  public final static short ADVloc = 0x43;
   final static String sADVloc="ADV:loc";
-  final static short ADVneg = 0x44;
+  public final static short ADVneg = 0x44;
   final static String sADVneg="ADV:neg";
-  final static short ADVquant = 0x45;
+  public final static short ADVquant = 0x45;
   final static String sADVquant="ADV:quant";
-  final static short ADVtemp = 0x46;
+  public final static short ADVtemp = 0x46;
   final static String sADVtemp="ADV:temp";
   static
   {
@@ -95,26 +95,26 @@ public final class Cat
     CODE.put( sADVtemp, ADVtemp );
     LABEL.put( ADVtemp, sADVtemp );
   }
-  final static short PREP = 0x50;
+  public final static short PREP = 0x50;
   final static String sPREP="PREP";
   static
   {
     CODE.put( sPREP, PREP );
     LABEL.put( PREP, sPREP );
   }
-  final static short DET  = 0x60;
+  public final static short DET  = 0x60;
   final static String sDET="DET";
-  final static short DETart = 0x61;
+  public final static short DETart = 0x61;
   final static String sDETart="DET:art";
-  final static short DETprep = 0x62;
+  public final static short DETprep = 0x62;
   final static String sDETprep="DET:prep";
-  final static short DETdem = 0x63;
+  public final static short DETdem = 0x63;
   final static String sDETdem="DET:dem";
-  final static short DETindef = 0x64;
+  public final static short DETindef = 0x64;
   final static String sDETindef="DET:indef";
-  final static short DETint = 0x65;
+  public final static short DETint = 0x65;
   final static String sDETint="DET:int";
-  final static short DETposs = 0x66;
+  public final static short DETposs = 0x66;
   final static String sDETposs="DET:poss";
   static
   {
@@ -132,19 +132,19 @@ public final class Cat
     CODE.put( sDETposs, DETposs );
     LABEL.put( DETposs, sDETposs );
   }
-  final static short PRO  = 0x70;
+  public final static short PRO  = 0x70;
   final static String sPRO="PRO";
-  final static short PROindef = 0x71;
+  public final static short PROindef = 0x71;
   final static String sPROindef="PRO:indef";
-  final static short PROdem = 0x72;
+  public final static short PROdem = 0x72;
   final static String sPROdem="PRO:dem";
-  final static short PROint = 0x73;
+  public final static short PROint = 0x73;
   final static String sPROint="PRO:int";
-  final static short PROposs = 0x74;
+  public final static short PROposs = 0x74;
   final static String sPROposs="PRO:poss";
-  final static short PROpers = 0x75;
+  public final static short PROpers = 0x75;
   final static String sPROpers="PRO:pers";
-  final static short PROrel = 0x76;
+  public final static short PROrel = 0x76;
   final static String sPROrel="PRO:rel";
   static
   {
@@ -163,11 +163,11 @@ public final class Cat
     CODE.put( sPROrel, PROrel );
     LABEL.put( PROrel, sPROrel );
   }
-  final static short CONJ = 0x80;
+  public final static short CONJ = 0x80;
   final static String sCONJ="CONJ";
-  final static short CONJcoord = 0x81; 
+  public final static short CONJcoord = 0x81; 
   final static String sCONJcoord="CONJ:coord";
-  final static short CONJsubord = 0x82;
+  public final static short CONJsubord = 0x82;
   final static String sCONJsubord="CONJ:subord";
   static
   {
@@ -178,21 +178,21 @@ public final class Cat
     CODE.put( sCONJsubord, CONJsubord );
     LABEL.put( CONJsubord, sCONJsubord );    
   }
-  final static short EXCL = 0x90;
+  public final static short EXCL = 0x90;
   final static String sEXCL="EXCL";
   static
   {
     CODE.put( sEXCL, EXCL );
     LABEL.put( EXCL, sEXCL );
   }  
-  final static short NUM  = 0xA0;
+  public final static short NUM  = 0xA0;
   final static String sNUM="NUM";
   static
   {
     CODE.put( sNUM, NUM );
     LABEL.put( NUM, sNUM );
   }
-  final static short NAME = 0xB0;
+  public final static short NAME = 0xB0;
   final static String sNAME="NAME";
   static
   {
@@ -200,11 +200,11 @@ public final class Cat
     CODE.put( "NAM", NAME );
     LABEL.put( NAME, sNAME );
   }
-  final static short PUN  = 0xC0;
+  public final static short PUN  = 0xC0;
   final static String sPUN="PUN";
-  final static short PUNsent  = 0xC1;
+  public final static short PUNsent  = 0xC1;
   final static String sPUNsent="PUNsent";
-  final static short PUNcl  = 0xC2;
+  public final static short PUNcl  = 0xC2;
   final static String sPUNcl ="PUNcl";
   static
   {

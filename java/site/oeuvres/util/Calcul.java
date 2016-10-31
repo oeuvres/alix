@@ -29,7 +29,8 @@ public class Calcul
       }
       return sqrtNewtonRaphson(c, xn1, precision);
   }
-  /** Return the least power of two greater than or equal to the specified value.
+  /** 
+   * Return the least power of two greater than or equal to the specified value.
    * Taken from FastUtil implementation
    * <p>Note that this function will return 1 when the argument is 0.
    *
@@ -45,6 +46,21 @@ public class Calcul
     x |= x >> 8;
     x |= x >> 16;
     return ( x | x >> 32 ) + 1;
+  }
+  /**
+   * Get the power of 2 equals or next to an Integer, useful for some efficient data structures.
+   * @param n
+   * @return the next power of 2
+   */
+  public static int square2( int n ) {
+    if ( n == 0 ) return 1;
+    // x--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    return n + 1;
   }
 
 

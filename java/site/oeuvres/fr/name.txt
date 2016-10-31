@@ -774,6 +774,7 @@ Boucherot
 Boucherville
 Bouches-du-Rhône
 Bouchra
+Bouddha
 Bougainville
 Boulogne
 Boulogne-Billancourt
@@ -2147,6 +2148,7 @@ Gordon
 Gorenstein
 Gorki
 Gounod
+Goupil
 Goursat
 Goussainville
 Goya

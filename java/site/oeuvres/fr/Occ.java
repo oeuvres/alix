@@ -34,12 +34,22 @@ public class Occ
    */
   public Occ( Occ occ )
   {
-    graph( occ.graph );
-    orth( occ.orth );
+    replace( occ );
+  }
+  /**
+   * Replace occurrence values by another
+   * @param occ
+   * @return a handle on the Occurrence object for chaining
+   */
+  public Occ replace( Occ occ )
+  {
+    graph.replace( occ.graph );
+    orth.replace( occ.orth );
     cat = occ.cat;
-    lem( occ.lem );
+    lem.replace( occ.lem );
     start = occ.start;
     end = occ.end;
+    return this;
   }
   /**
    * Append an occurrence to make a compound word
@@ -47,12 +57,25 @@ public class Occ
    */
   public Occ apend( Occ occ )
   {
+    char c;
     if ( !graph.isEmpty() ) {
-      graph.append( ' ' );
-      orth.append( ' ' );
+      c = graph.last();
+      if ( c != '\'' && c != '’')
+        graph.append( ' ' );
+    }
+    if ( !orth.isEmpty() ) {
+      c = orth.last();
+      if ( c != '\'' && c != '’')
+        orth.append( ' ' );
+    }
+    if ( !lem.isEmpty() ) {
+      c = lem.last();
+      if ( c != '\'' && c != '’')
+        lem.append( ' ' );
     }
     graph.append( occ.graph );
     orth.append( occ.orth );
+    lem.append( occ.lem );
     // no way to guess how cat will be changed
     if ( cat == 0 ) cat = occ.cat;
     // if occurrence was empty, take the index value of new Occ
@@ -62,7 +85,7 @@ public class Occ
   }
   /**
    * Clear Occurrence of all information
-   * @return a handle on the occurrence object
+   * @return a handle on the Occurrence object for chaining
    */
   public Occ clear()
   {
@@ -90,7 +113,7 @@ public class Occ
    */
   public Occ graph( CharSequence cs) 
   {
-    graph.copy( cs );
+    graph.replace( cs );
     return this;
   }
   /**
@@ -102,7 +125,7 @@ public class Occ
    */
   public Occ graph( CharSequence cs, int from, int length) 
   {
-    graph.copy( cs, from, length );
+    graph.replace( cs, from, length );
     return this;
   }
   /**
@@ -112,7 +135,7 @@ public class Occ
    */
   public Occ graph( Term t) 
   {
-    graph.copy( t );
+    graph.replace( t );
     return this;
   }
   /**
@@ -130,7 +153,7 @@ public class Occ
    */
   public Occ orth( CharSequence cs) 
   {
-    orth.copy( cs );
+    orth.replace( cs );
     return this;
   }
   /**
@@ -142,7 +165,7 @@ public class Occ
    */
   public Occ orth( CharSequence cs, int from, int length) 
   {
-    orth.copy( cs, from, length );
+    orth.replace( cs, from, length );
     return this;
   }
   /**
@@ -152,7 +175,7 @@ public class Occ
    */
   public Occ orth( Term t) 
   {
-    orth.copy( t );
+    orth.replace( t );
     return this;
   }
   /**
@@ -187,12 +210,12 @@ public class Occ
    */
   public Occ lem( final Term t ) 
   {
-    lem.copy( t );
+    lem.replace( t );
     return this;
   }
   public Occ lem( final CharSequence cs) 
   {
-    lem.copy( cs );
+    lem.replace( cs );
     return this;
   }
   /**

@@ -68,13 +68,13 @@ public class Lexik
         )
       );
       buf.readLine(); // first line is labels
-      int i = 0;
+      // int i = 0;
       while ((l = buf.readLine()) != null) {
         if ( l.charAt( 0 ) == '#' ) continue;
-        i++;
         cells = l.split( "\t" );
         if ( WORD.containsKey( cells[0] ) ) continue;
-        WORD.put( cells[0], new LexikEntry( cells[3], cells[2] ) );
+        // i++; counter ?
+        WORD.put( cells[0], new LexikEntry( cells[1], cells[2], cells[3], cells[4] ) );
       }
       buf.close();
     } 
@@ -157,6 +157,16 @@ public class Lexik
     return true;
   }
   /**
+   * Return the fields recorded for this orthographic form
+   * @param orth a word in correct orthographic form
+   * @return the lexical entry
+   */
+  public static LexikEntry entry( String orth )
+  {
+    return Lexik.WORD.get( orth );
+  }
+
+  /**
    * Give a lem according to the dico
    * @param token
    * @return
@@ -186,7 +196,8 @@ public class Lexik
   public static void main(String[] args) throws IOException 
   {
     Occ occ = new Occ(); 
-    for (String token: "lui lorsqu' et depuis quand est il en cette ville ? 25 centimes de hier au soir . et quel sujet l’ y amène ?".split( " " ) ) {
+    for (String token: "lui est lorsqu' et depuis quand est il en cette ville ? 25 centimes de hier au soir . et quel sujet l’ y amène ?".split( " " ) ) {
+      occ.clear();
       occ.orth( token );
       Lexik.tag( occ );
       System.out.println( occ );
