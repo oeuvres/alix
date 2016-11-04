@@ -6,7 +6,7 @@ import java.util.List;
  * A Cosine comparator taking different types in input 
  * Thanks  OdysseusPolymetis
  * 
- * @author glorieux-f
+ * @author frederic.glorieux@fictif.org
  *
  */
 public class Cosine {

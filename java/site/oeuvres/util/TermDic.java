@@ -40,11 +40,11 @@ import java.util.Set;
 public class TermDic
 {
   /** Position of the term index in the array of int values */
-  private static final int ICODE = 0;
+  public static final int ICODE = 0;
   /** Position of the term counter in the array of int values */
-  private static final int ICOUNT1 = 1;
+  public static final int ICOUNT1 = 1;
   /** Position of the second counter in the array of int values */
-  private static final int ICOUNT2 = 2;
+  public static final int ICOUNT2 = 2;
   /** Pointer in the array of terms, only growing when terms are added, used as code */
   private int pointer;
   /** HashMap to find String fast, int array contains an int key and a count  */
@@ -63,6 +63,15 @@ public class TermDic
   {
   }
 
+  /**
+   * Erase all
+   */
+  public void clear()
+  {
+    occs=0;
+    pointer = 0;
+    byTerm.clear();
+  }
   
   /**
    * Get a term by code
@@ -302,6 +311,14 @@ public class TermDic
     return byCount( -1 );
   }
   /**
+   * Not safe but useful to have a fast hand on data
+   * @return the data
+   */
+  public Set<Map.Entry<String,int[]>> entrySet()
+  {
+    return byTerm.entrySet();
+  }
+  /**
    * Used for freqlist, return a view of the map sorted by term count
    * Shall we cache ?
    * What is better, Term or String ?
@@ -404,6 +421,37 @@ public class TermDic
    * @throws IOException
    */
   public Writer csv( Writer writer, int limit, Set<Term> stoplist ) throws IOException
+  {
+    String[] byCount = byCount();
+    int length = byCount.length;
+    int count1;
+    try {
+      for (int i = 0; i < length; i++) {
+        if (stoplist != null && stoplist.contains( byCount[i] ))
+          continue;
+        if (limit-- == 0)
+          break;
+        int[] value = byTerm.get( byCount[i] );
+        count1 = value[ICOUNT1];
+        writer.write( 
+          byCount[i]
+          +"\t"+ count1
+          +"\t"+ 1000000*count1/occs
+        +"\n" );
+      }
+    } finally {
+      writer.close();
+    }
+    return writer;
+  }
+
+  /**
+   * DEPRECATED, use a CompDic nstead. 
+   * Give a csv view of all dictionary
+   * 
+   * @throws IOException
+   */
+  public Writer csvcomp( Writer writer, int limit, Set<Term> stoplist ) throws IOException
   {
     String[] byCount = byCount();
     int length = byCount.length;

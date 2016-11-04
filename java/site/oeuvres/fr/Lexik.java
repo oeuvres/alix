@@ -37,18 +37,49 @@ public class Lexik
       e.printStackTrace();
     }
   }
+  /** Graphic normalization (replacement) */
+  public static final HashMap<String,String> ORTH = new HashMap<String,String>( (int)( 100 * 0.75 ) );
+  static {
+    String l;
+    try {
+      BufferedReader buf = new BufferedReader( 
+        new InputStreamReader(
+          Tokenizer.class.getResourceAsStream( "orth.csv" ), 
+          StandardCharsets.UTF_8
+        )
+      );
+      String[] cells;
+      while ((l = buf.readLine()) != null) {
+        cells = l.split( "," );
+        ORTH.put( cells[0], cells[1] );
+      }
+      buf.close();
+    } 
+    catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
   /** French names on which keep Capitalization */
-  private static final HashSet<String> NAME = new HashSet<String>( (int)(6000 * 0.75) );
+  public static final HashMap<String, Tag> NAME = new HashMap<String, Tag>( (int)(6000 * 0.75) );
   static {
     try {
       String l;
       BufferedReader buf = new BufferedReader( 
           new InputStreamReader(
-            Tokenizer.class.getResourceAsStream( "name.txt" ), 
+            Tokenizer.class.getResourceAsStream( "name.csv" ), 
             StandardCharsets.UTF_8
           )
         );
-        while ((l = buf.readLine()) != null) NAME.add( l );
+        String[] cells = null;
+        Tag tag;
+        while ((l = buf.readLine()) != null) {
+          if ( l.trim().isEmpty() ) continue;
+          if ( l.charAt( 0 ) == '#' ) continue;
+          cells = l.split( "," );
+          if ( cells.length < 2 ) tag= new Tag( Tag.NAME );
+          else tag = new Tag( cells[1] );
+          NAME.put( cells[0].trim(), tag );
+        }
         buf.close();
     } 
     catch (IOException e) {
@@ -56,7 +87,7 @@ public class Lexik
     }
   }    
   /** 130 000 types French lexicon seems not too bad for memory */
-  private static final HashMap<String, LexikEntry> WORD = new HashMap<String, LexikEntry>( (int)(150000 * 0.75) );
+  public static final HashMap<String, LexikEntry> WORD = new HashMap<String, LexikEntry>( (int)(150000 * 0.75) );
   static {
     String l = "";
     String[] cells = null;
@@ -74,7 +105,7 @@ public class Lexik
         cells = l.split( "\t" );
         if ( WORD.containsKey( cells[0] ) ) continue;
         // i++; counter ?
-        WORD.put( cells[0], new LexikEntry( cells[1], cells[2], cells[3], cells[4] ) );
+        WORD.put( cells[0].trim(), new LexikEntry( cells ) );
       }
       buf.close();
     } 
@@ -88,7 +119,7 @@ public class Lexik
   public static TermTrie LOC;
   static {
     try {
-      LOC = new TermTrie( "loc.csv", "\t", TermTrie.CLASSPATH);
+      LOC = new TermTrie( "loc.csv", ",", TermTrie.CLASSPATH);
     } 
     catch (IOException e) {
       e.printStackTrace();
@@ -116,7 +147,7 @@ public class Lexik
    * @return
    */
   public static boolean isName( final String orth ) {
-    return NAME.contains( orth );
+    return NAME.containsKey( orth );
   }
   /**
    * Is it a know name?
@@ -124,7 +155,7 @@ public class Lexik
    * @return
    */
   public static boolean isName( final Term orth ) {
-    return NAME.contains( orth );
+    return NAME.containsKey( orth );
   }
 
 
@@ -143,17 +174,35 @@ public class Lexik
     return WORD.containsKey( term );
   }
   /**
-   * Update a token with lexical informations
+   * Update a token with lexical informations about a word
    * @param tok
    * @return true if entry fond
    */
-  public static boolean tag( Occ tok )
+  public static boolean word( Occ tok )
   {
     Term orth = tok.orth();
+    // normalize graphical form
+    if ( Lexik.ORTH.containsKey( orth ) ) tok.orth( Lexik.ORTH.get( orth ) );
     LexikEntry entry = Lexik.WORD.get( orth );
     if ( entry == null ) return false;
     tok.lem( entry.lem );
-    tok.cat( entry.cat );
+    tok.tag( entry.tag.code() );
+    return true;
+  }
+  /**
+   * Update a token with lexical informations about a name
+   * @param tok
+   * @return true if entry fond
+   */
+  public static boolean name( Occ tok )
+  {
+    Term orth = tok.orth();
+    // normalize graphical form ?
+    if ( Lexik.ORTH.containsKey( orth ) ) tok.orth( Lexik.ORTH.get( orth ) );
+    Tag tag = Lexik.NAME.get( orth );
+    if ( tag == null ) return false; // no change here the occurrence
+    // tok.lem( entry.lem ); ?? lemmatization of names ?
+    tok.tag( tag.code() );
     return true;
   }
   /**
@@ -186,8 +235,8 @@ public class Lexik
   public static short cat( final String orth )
   {
     LexikEntry entry = Lexik.WORD.get( orth );
-    if ( entry == null ) return Cat.UNKNOWN;
-    return entry.cat;
+    if ( entry == null ) return Tag.UNKNOWN;
+    return entry.tag.code();
   }
       
   /**
@@ -199,7 +248,7 @@ public class Lexik
     for (String token: "lui est lorsqu' et depuis quand est il en cette ville ? 25 centimes de hier au soir . et quel sujet l’ y amène ?".split( " " ) ) {
       occ.clear();
       occ.orth( token );
-      Lexik.tag( occ );
+      Lexik.word( occ );
       System.out.println( occ );
     }
   }

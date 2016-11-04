@@ -11,3 +11,5 @@ _*
 *.xml
 *.html
 /java/**.php
+noms/
+java/site/oeuvres/fr/out.csv

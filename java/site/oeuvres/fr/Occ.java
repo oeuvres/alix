@@ -15,7 +15,7 @@ public class Occ
   /** Orthographic form, normalized graphical form */
   private Term orth = new Term();
   /** Grammatical category */
-  private short cat;
+  private Tag tag = new Tag();
   /** Lemma form */
   private Term lem = new Term();
   /** Char index in the source file of the first char of the token */
@@ -45,7 +45,7 @@ public class Occ
   {
     graph.replace( occ.graph );
     orth.replace( occ.orth );
-    cat = occ.cat;
+    tag.code( occ.tag() );
     lem.replace( occ.lem );
     start = occ.start;
     end = occ.end;
@@ -77,7 +77,7 @@ public class Occ
     orth.append( occ.orth );
     lem.append( occ.lem );
     // no way to guess how cat will be changed
-    if ( cat == 0 ) cat = occ.cat;
+    if ( tag.equals( 0 ) ) tag( occ.tag );
     // if occurrence was empty, take the index value of new Occ
     if ( start < 0 ) start = occ.start;
     end = occ.end;
@@ -92,7 +92,7 @@ public class Occ
     graph.clear();
     orth.clear();
     lem.clear();
-    cat = 0;
+    tag.code(0);
     start = -1;
     end = -1;
     return this;
@@ -190,17 +190,27 @@ public class Occ
    * Get a grammar category code
    * @return a cat code like set
    */
-  public short cat()
+  public Tag tag()
   {
-    return cat;
+    return tag;
   }
   /**
    * Set a grammar category code
    * @return a handle on the occurrence object
    */
-  public Occ cat( final short code )
+  public Occ tag( final short code )
   {
-    cat = code;
+    tag.code( code );
+    return this;
+  }
+  /**
+   * Set a grammar category code
+   * @param tag
+   * @return
+   */
+  public Occ tag( final Tag tag )
+  {
+    tag.code( tag );
     return this;
   }
   /**
@@ -265,21 +275,21 @@ public class Occ
   /**
    * Constructor
    */
-  public Occ( final CharSequence graph, final CharSequence orth, final short cat, final CharSequence lem)
+  public Occ( final CharSequence graph, final CharSequence orth, final Tag tag, final CharSequence lem)
   {
     graph( graph );
     orth( orth );
-    cat( cat );
+    tag( tag );
     lem( lem );
   }
   /**
    * Constructor
    */
-  public Occ( final Term graph, final Term orth, final short cat, final Term lem)
+  public Occ( final Term graph, final Term orth, final short tag, final Term lem)
   {
     graph( graph );
     orth( orth );
-    cat( cat );
+    tag( tag );
     lem( lem );
   }
   /** 
@@ -287,6 +297,6 @@ public class Occ
    */
   public String toString()
   {
-    return graph+"\t"+orth+"\t"+Cat.label( cat )+"\t"+lem+"\t"+start;
+    return graph+"\t"+orth+"\t"+tag.label()+"\t"+lem+"\t"+start;
   }
 }

@@ -6,7 +6,7 @@ import java.util.HashSet;
 import site.oeuvres.util.Char;
 import site.oeuvres.util.Term;
 import site.oeuvres.util.TermSlider;
-import site.oeuvres.util.TermTrie.Word;
+import site.oeuvres.util.TermTrie.Token;
 
 /**
  * Not thread safe on pointer
@@ -71,7 +71,9 @@ public class Tokenizer
     // useful for TEI files
     int pos = text.indexOf( "</teiHeader>" );
     if (pos > 0) pointer = pos+12;
-    if ( !Char.isWord(text.charAt( text.length() - 1 ) )) this.text = text;
+    // on fait quoi ?
+    if ( text.isEmpty()) this.text="";
+    else if ( !Char.isWord(text.charAt( text.length() - 1 ) )) this.text = text;
     else this.text = text + "\n"; // this hack will avoid a test of end of String
   }
 
@@ -99,7 +101,7 @@ public class Tokenizer
       if ( tag && c == '>' ) tag = false; // end of tag
       else if ( tag ); // inside tag, go next
       else if ( c == '<' ) tag = true; // start tag
-      else if ( c == '-' || c == '\'' || c == '’' ); // words do not start by an hyphen or apos
+      else if ( c == '-' || c == '\'' || c == '’' || c == 0xAD ); // words do not start by an hyphen or apos
       else if (!Char.isSpace( c )) return pos;
       pos++;
     }
@@ -111,29 +113,36 @@ public class Tokenizer
    * @return
    */
   public boolean word( Occ word ) {
-    // take an handle on the root of the dictionary
-    Word node = Lexik.LOC.getRoot();
+    Token parent = Lexik.LOC.getRoot(); // take an handle on the root of the compound dictionary
+    Token child; // test the next token in the term
     int sliderpos = 0;
-    short cat = 0;
+    short tag = 0;
+    String orth = null; // graphic normalization of the term if needed (de avance > d’avance)
     int lastpos = 0;
-    Occ token; // a form, a simple word, complete or part of a compound
+    Occ occ; // a form, a simple word, complete or part of a compound
     // loop to concat tokens : from a compound dictionary, for proper names
     
     // TODO the NAME concat
     while( true ) {
       // get current token from buffer
-      token = occbuf.get( sliderpos );
+      occ = occbuf.get( sliderpos );
       // no more token in the buffer, get one
-      if ( token.isEmpty() ) {
-        pointer = token( token, pointer );
+      if ( occ.isEmpty() ) {
+        pointer = token( occ, pointer );
         if ( pointer < 1 ) return false;
         // tag the token to have a regular case
-        tag( token );
+        tag( occ );
       }
-      // try token on the compound dico
-      node = node.get( token.orth() );
+      // try to find a token
+      child = parent.get( occ.orth() );
+      // if not found, more generic, try gram cat in the compound dictionary
+      if ( child == null ) child = parent.get( occ.tag().prefix() );
+      // if not found, try lemma ? only for VERB ? s’écrier…
+      // if ( child == null) child = parent.get( occ.lem() );
+      // if not found try orth
       // branch is finished, if a compound have been found, concat in one occurrence
-      if (node == null ) {
+            
+      if ( child == null ) {
         // first token, common case, is a word
         word.replace( occbuf.get( 0 ) );
         // other tokens ? append
@@ -141,8 +150,9 @@ public class Tokenizer
           word.apend( occbuf.get( i ) );
         }
         // if a compound have been found, gram cat has been set
-        if ( cat != 0 ) {
-          word.cat( cat );
+        if ( tag != 0 ) {
+          word.tag( tag );
+          if ( orth != null ) word.orth( orth );
           word.lem( word.orth() );
         }
         // move the slider to this position 
@@ -150,13 +160,17 @@ public class Tokenizer
         return true;
       }
       // a compound found, remember the cat and the position in the slider
-      // we can hav a longer one
-      if ( node.cat() != 0) {
-        cat = node.cat();
+      // we can have a longer one
+      if ( child.tag() != 0) {
+        tag = child.tag();
+        orth = child.orth();
         lastpos = sliderpos;
       }
+      // search in compound tree from the child
+      parent = child;
       sliderpos++;
     }
+
   }
 
   /**
@@ -184,7 +198,8 @@ public class Tokenizer
     char c2;
     int pos2;
 
-    // word starting by a dot, check …
+    // token starting by a dot, check …
+    //  ??? !!! ?! 
     if ( c == '.' ) {
       graph.append( c );
       occ.end( ++pos );
@@ -199,6 +214,8 @@ public class Tokenizer
     }
     // segment on punctuation char, usually 1 char, except for ...
     if (Char.isPunctuation( c )) {
+      if ( c == '–' ) c='—';
+      if ( c == '«' || c == '»' ) c='"';
       graph.append( c );
       occ.end( ++pos );
       return pos;
@@ -206,9 +223,11 @@ public class Tokenizer
     
     // start of word 
     while (true) {
-      graph.append( c );
       // xml entity ?
       // if ( c == '&' && Char.isLetter( text.charAt(pointer+1)) ) { }
+      // &shy; soft hyphen do not append, go next
+      if ( c != 0xAD )
+        graph.append( c );
       
       // apos normalisation
       if ( c == '\'' || c == '’' ) {
@@ -241,7 +260,7 @@ public class Tokenizer
           */
         }
       }
-      // abbr M. Mmme C… Oh M… !
+      // abbr M. Mme C… Oh M… !
       if (  text.charAt( pos+1 ) == '.' && pos+2 < text.length() ) {
         c2 = text.charAt( pos+2 );
         if ( Char.isLetter( c2 ) || c2 == '-' ) { // A.D.N., c.-à-d.
@@ -277,47 +296,43 @@ public class Tokenizer
    */
   public void tag( Occ occ ) {
     occ.orth( occ.graph() );
-    if ( occ.orth().last() == '-' ) occ.orth().lastDel();
-    occ.cat( Cat.UNKNOWN );
+    occ.tag( Tag.UNKNOWN );
     char c = occ.graph().charAt( 0 );
     // ponctuation ?
     if (Char.isPunctuation( c ) ) {
-      if ( Char.isPUNsent( c ) ) occ.cat( Cat.PUNsent );
-      else if ( Char.isPUNcl( c ) ) occ.cat( Cat.PUNcl );
-      else occ.cat( Cat.PUN );
+      if ( Char.isPUNsent( c ) ) occ.tag( Tag.PUNsent );
+      else if ( Char.isPUNcl( c ) ) occ.tag( Tag.PUNcl );
+      else occ.tag( Tag.PUN );
       return;
     }
     // number ?
     else if (Char.isDigit( c )) {
-      occ.cat ( Cat.NUM );
+      occ.tag( Tag.NUM );
       return;
     }
     // upper case ?
     else if (Char.isUpperCase( c )) {
       // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
-      if ( Lexik.isName( occ.graph() ) ) {
-        occ.cat ( Cat.NAME );
-        return;
-      }
+      if ( Lexik.name( occ ) ) return;
       // start of a sentence ?
       else {
         // Try if word lower case is known as word
         occ.orth().toLower() ;
         // know word will update token
-        if ( Lexik.tag( occ ) ) {
+        if ( Lexik.word( occ ) ) {
           return;
         }
         // unknow name
         else {
           // restore the capital word
           occ.orth( occ.graph() );
-          occ.cat( Cat.NAME );
+          occ.tag( Tag.NAME );
           return;
         }
       }
     }
     // known word, token will be updated
-    else if ( Lexik.tag( occ ) ) {
+    else if ( Lexik.word( occ ) ) {
       return;
     }
     // unknown word
@@ -340,13 +355,21 @@ public class Tokenizer
    * Bugs
    * — François I er
    */
-  public static void main( String[] args) throws IOException {
+  public static void main( String[] args) 
+  {
     // maybe useful, the path of the project, but could be not consistent with 
     // Path context = Paths.get(Tokenizer.class.getClassLoader().getResource("").getPath()).getParent();
     if ( true || args.length < 1) {
       String text;
       text = ""
-        + " M<hi rend=\"sup\">me</hi> Goupil 25 centimes"
+        + " Les Caractères de La Bruyère, La Rochefoucauld, La Fontaine. Est ce OK ?"
+        + " D’abord, Je vois fort bien ce que tu veux dire."
+        + " <head> Livre I. <lb/>Les origines.</head>"
+        + " <div type=\"article\">"
+        + "   <head>Chapitre I. <lb/>Les Saxons.</head>"
+        + "   <div>"
+        + " M<hi rend=\"sup\">me</hi> de Maintenon l’a payé 25 centimes. C’est-à-dire parce qu’alors, non !!!"
+        + " au XIXe siècle. Chapitre II. "
         + " Tu es dans la merde et dans la maison, pour quelqu’un, à d’autres. " 
         + " Ce  travail obscurément réparateur est un chef-d'oeuvre d’emblée, à l'instar."
         + " Parce que s'il on en croit l’intrus, d’abord, M., lorsqu’on va j’aime ce que C’était &amp; D’où es-tu ? "

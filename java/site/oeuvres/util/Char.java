@@ -239,7 +239,7 @@ public class Char
         properties |= DIGIT;
       // DO NOT modify '<>' values
       // hacky, hyphen maybe part of compound word, or start of a separator like ---
-      if ( c == '-' || c == '\'' || c == '’' ) {
+      if ( c == '-' || c == 0xAD || c == '\'' || c == '’' ) {
         properties |= WORD;
       }
       else if ( c == '&') {
@@ -411,17 +411,21 @@ public class Char
   /**
    * Testing
    */
-  public static void main( Term args[] )
+  public static void main( String args[] )
   {
+    System.out.println( "Soft hyphen Char.isWord:"+Char.isWord( (char)0xAD ) // true
+      +" Char.isLetter: " + Char.isLetter( (char)0xAD ) // false
+      +" Char.isPunctuationOrSpace: " + Char.isPunctuationOrSpace( (char)0xAD ) // false
+    );
+    System.out.println( "- Char.isWord: " + Char.isWord( '-' ) // true
+      + " Char.isLetter:" + Char.isLetter( '-' ) // false
+    );
     System.out.println( "6 Char.isWord:"+Char.isWord( '6' )+" Char.isPunctuationOrSpace: " + Char.isPunctuationOrSpace( '6' ) );
-    System.out.println( "- Char.isWord: " + Char.isWord( '-' ) + " Character.isLetter:" + Character.isLetter( '-' ));
     System.out.println( "' Char.isWord: " + Char.isWord( '\'' ) + " Character.isLetter:" + Character.isLetter( '\'' ) );
     System.out.println( "’ Char.isWord: " + Char.isWord( '’' ) + " Character.isLetter:" + Character.isLetter( '’' ) );
     System.out.println( "& Char.isWord: " + Char.isWord( '&' ) + " Character.isLetter:" + Character.isLetter( '&' ));
     System.out.println( "~ Char.isWord: " + Char.isWord( '~' ) + " Character.isLetter:" + Character.isLetter( '~' ));
     System.out.println( ", Char.isWord: " + Char.isWord( ',' ) + " Character.isLetter:" + Character.isLetter( ',' ) + ", isPunctuation: " + Char.isPunctuation( ',' ));
-    System.out.println( "_ isPunctuation: " + Char.isPunctuation( '_' ) );
-    System.out.println( "- isPunctuation: " + Char.isPunctuation( '-' ) );
     System.out.println( "< isPunctuation: " + Char.isPunctuation( '<' ) );
     System.out.println( "Œ isUpperCase: " + Char.isUpperCase( 'Œ' ) );
     System.out.println( "à isLowerCase: " + Char.isLowerCase( 'à' ) );

@@ -220,6 +220,7 @@ en
 encore
 en_effet
 enfin
+ensuite
 entr
 entre
 er

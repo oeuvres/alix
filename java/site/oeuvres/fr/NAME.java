@@ -13,6 +13,9 @@ import site.oeuvres.util.Term;
 
 public class NAME
 {
+  /** Un hack pour la collecte de tous les termes */
+  static TermDic index = new TermDic();
+
   /** Counter */
   int n = 0;
   /** Tokenizer */
@@ -29,7 +32,7 @@ public class NAME
   {
     toks = new Tokenizer( new String(Files.readAllBytes( src ), StandardCharsets.UTF_8) );
     htmlWriter = new PrintWriter( destName.toString()+".html" );
-    csvWriter = new PrintWriter( destName.toString()+".csv" );
+    csvWriter = new PrintWriter( destName.toString()+".txt" );
   }
   public void htmlHead( PrintWriter out ) {
     out.println( "<!doctype html>" );
@@ -41,10 +44,12 @@ public class NAME
     out.println( ".conc td, .conc th { padding: 0; }" );
     out.println( "td.num { font-size: 70%; }" );
     out.println( "td.left { text-align:right; }" );
-    out.println( ".left b { padding: 0 1ex; margin-left: 1ex; }" );
-    out.println( ".right b { padding: 0 1ex; margin-right: 1ex; }" );
-    out.println( ".conc b, .conc th {  font-weight: normal; color: #000; background-color: #FFFFFF; }" );
-    out.println( ".conc i { font-style: normal; color: red;  }" );
+    out.println( ".conc th { color: #000; background: #FFFFFF}" );
+    out.println( ".conc i { font-style: normal; color: #000; }" );
+    out.println( ".conc th.NAMEplace { background: rgba(255, 0, 0, 0.2) ; }" );
+    out.println( ".conc i.NAMEplace { color:  rgba(255, 0, 0, 0.6); }" );
+    out.println( ".conc th.NAMEpers, .conc th.NAMEpersm, .conc th.NAMEpersf { background: rgba(0, 0, 255, 0.2) ; }" );
+    out.println( ".conc i.NAMEpers, .conc i.NAMEpersm, .conc i.NAMEpersf { color: rgba(0, 0, 255, 0.6) ; }" );
     out.println( "    </style>" );
     out.println( "  </head>" );
     out.println( "  <body>" );
@@ -63,19 +68,19 @@ public class NAME
     htmlHead( htmlWriter );
     TermDic dic = parse( toks );
     htmlFoot( htmlWriter );
-    /*
-    csvWriter.write( "ADJECTIF\tANTE\tPOST\tANTE+POST\t% ANTE\n" );
+    csvWriter.write( "FORM\toccs\tppm\n" );
     dic.csv( csvWriter );
     csvWriter.close();
-    */
   }
   public TermDic parse( Tokenizer toks )
   {
     TermDic dic = new TermDic();
     OccSlider win = new OccSlider(left, right);
     while ( toks.word( win.add() ) ) {
-      if ( win.get( 0 ).cat() != Cat.NAME ) continue;
+      if ( ! win.get( 0 ).tag().isName() ) continue;
       html( win, 0, 0 );
+      dic.add( win.get( 0 ).orth() );
+      index.add( win.get( 0 ).tag().label() + " " + win.get( 0 ).orth() );
     }
     return dic;
   }
@@ -84,6 +89,7 @@ public class NAME
    */
   private void html( final OccSlider win, final int lpos, final int rpos) 
   {
+    Tag tag;
     n++;
     htmlWriter.print( "<tr>" );
     htmlWriter.print( "<td class=\"num\">" );
@@ -91,26 +97,22 @@ public class NAME
     htmlWriter.print( ".</td>" );
     htmlWriter.print( "<td class=\"left\">" );
     for ( int i=-left; i < 0; i++) {
-      if ( i == lpos ) htmlWriter.print( "<b>" );
-      short cat =  win.get( i ).cat();
-      if ( cat == Cat.NAME ) htmlWriter.print( "<i>" );
+      tag =  win.get( i ).tag();
+      if ( tag.isName() ) htmlWriter.print( "<i class=\""+tag.label()+"\">" );
       htmlWriter.print( win.get( i ).graph() );
-      if ( cat == Cat.NAME ) htmlWriter.print( "</i>" );
+      if ( tag.isName() ) htmlWriter.print( "</i>" );
       if (i<-1) htmlWriter.print( " " );
     }
-    if ( lpos < 0) htmlWriter.print( "</b>" );
     htmlWriter.print( "</td>" );
-    htmlWriter.print( "<th>" );
+    htmlWriter.print( "<th class=\""+win.get( 0 ).tag().label()+"\">" );
     htmlWriter.print( win.get( 0 ).graph() );
     htmlWriter.print( "</th>" );
     htmlWriter.print( "<td class=\"right\">" );
-    if ( rpos > 0) htmlWriter.print( "<b>" );
     for ( int i=1; i <= right; i++) {
-      short cat =  win.get( i ).cat();
-      if ( cat == Cat.NAME ) htmlWriter.print( "<i>" );
+      tag =  win.get( i ).tag();
+      if ( tag.isName() ) htmlWriter.print( "<i class=\""+tag.label()+"\">" );
       htmlWriter.print( win.get( i ).graph() );
-      if ( cat == Cat.NAME ) htmlWriter.print( "</i>" );
-      if ( i == rpos ) htmlWriter.print( "</b>" );
+      if ( tag.isName() ) htmlWriter.print( "</i>" );
       htmlWriter.print( " " );
     }
     htmlWriter.print( "</td>" );
@@ -124,29 +126,22 @@ public class NAME
    */
   public static void main(String args[]) throws IOException 
   {
-    File dir = new File("../proust");
-    for (String srcname:dir.list() ) {
-      if ( srcname.startsWith( "." )) continue;
-      if ( !srcname.endsWith( ".xml" )) continue;
-      String destname = srcname.substring( 0, srcname.length()-4 );
-      Path srcpath = Paths.get( dir.toString(), srcname); 
-      Path destpath = Paths.get( dir.toString(), "NAME_"+destname); 
-      System.out.println( srcpath+" > "+destpath );
-      NAME gn = new NAME( srcpath, destpath );
-      gn.parse();
+    File root = new File("../critique/");
+    for (String dirname:root.list() ) {
+      if ( dirname.startsWith( "." )) continue;
+      File dir = new File( root, dirname);
+      if ( !dir.isDirectory() ) continue; 
+      for (String srcname:dir.list() ) {
+        if ( !srcname.endsWith( ".xml" )) continue;
+        String destname = srcname.substring( 0, srcname.length()-4 );
+        Path srcpath = Paths.get( dir.toString(), srcname); 
+        Path destpath = Paths.get( "noms", destname); 
+        System.out.println( srcpath+" > "+destpath );
+        NAME parser = new NAME( srcpath, destpath );
+        parser.parse();
+      }
     }
+    index.csv( Paths.get("noms", "_noms.txt") );
   }
 
-  /**
-   * Bugs
-   * — un ton modeste et vrai
-   * — à peu près
-   * — à peine
-   * — rendre compte
-   * — un tour [un peu particulier]
-   * — par exemple
-   * — à toute vitesse
-   * — au premier instant
-   * — son valet de chambre émerveillé
-   */
 }

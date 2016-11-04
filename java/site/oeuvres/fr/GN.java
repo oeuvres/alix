@@ -74,41 +74,41 @@ public class GN
     TermDic dic = new TermDic();
     OccSlider win = new OccSlider(left, right);
     while ( toks.word( win.add() ) ) {
-      if ( win.get( 0 ).cat() != Cat.SUB ) continue;
+      if ( !win.get( 0 ).tag().equals( Tag.SUB ) ) continue;
       int lpos = 0;
       boolean ladj = false;
       while (lpos > -left) {
-        short cat =  win.get( lpos -1 ).cat();
-        if ( cat == Cat.ADJ ) {
+        final short tag =  win.get( lpos -1 ).tag().code();
+        if ( tag == Tag.ADJ ) {
           dic.add( win.get( lpos - 1 ).lem() );
           lpos--;
           ladj = true;
           continue;
         }
-        else if ( cat == Cat.VERBppass ) {
+        else if ( tag == Tag.VERBppass ) {
           dic.add( win.get( lpos - 1 ).lem() );
           lpos--;
-          win.get( lpos ).cat( Cat.ADJ );
+          win.get( lpos ).tag( Tag.ADJ );
           ladj = true;
           continue;
         }
-        else if ( ladj && cat == Cat.CONJcoord ) {
+        else if ( ladj && tag == Tag.CONJcoord ) {
           lpos--;
           continue;
         }
-        else if ( ladj && Cat.isAdv( cat ) ) {
+        else if ( ladj && Tag.isAdv( tag ) ) {
           lpos--;
           continue;
         }
-        else if ( Cat.isDet( cat ) ) {
+        else if ( Tag.isDet( tag ) ) {
           lpos--;
           break;
         }
-        else if ( cat == Cat.NUM ) {
+        else if ( tag == Tag.NUM ) {
           lpos--;
           break;
         }
-        else if ( cat == Cat.PREP ) {
+        else if ( tag == Tag.PREP ) {
           lpos--;
           break;
         }
@@ -122,30 +122,30 @@ public class GN
       // Ou bien en dormant j’avais rejoint sans effort un âge à jamais révolu de … 
       // … [ma vie primitive, retrouvé] telle de mes terreurs enfantines comme celle que mon grand-oncle me tirât par mes boucles et qu’avait dissipée le jour — date pour moi d’une ère nouvelle — où on les avait coupées.
       while (rpos < right ) {
-        final short cat =  win.get( rpos+1 ).cat();
-        if ( cat == Cat.ADJ ) {
+        final short tag =  win.get( rpos+1 ).tag().code();
+        if ( tag == Tag.ADJ ) {
           dic.add2( win.get( rpos + 1 ).lem() );
           rpos++;
           radj = true;
           continue;
         }
-        else if ( cat == Cat.VERBppass ) {
+        else if ( tag == Tag.VERBppass ) {
           dic.add2( win.get( rpos + 1 ).lem() );
           rpos++;
           // correct participle,seems adj
-          win.get( rpos ).cat( Cat.ADJ );
+          win.get( rpos ).tag( Tag.ADJ );
           radj = true;
           continue;
         }
         // une femme belle mais redoutable
-        else if ( radj && cat == Cat.CONJcoord ) {
+        else if ( radj && tag == Tag.CONJcoord ) {
           rpos++;
           continue;
         }
         // une chose vraiment obscure
         // si adverbe suivi d’un adjectif
         // un <vol> plus léger , plus immatériel , plus vertigineux , plus 
-        else if ( Cat.isAdv( cat ) && rpos < right - 1 &&  win.get( rpos+2 ).cat() == Cat.ADJ) {
+        else if ( Tag.isAdv( tag ) && rpos < right - 1 &&  win.get( rpos+2 ).tag().equals( Tag.ADJ ) ) {
           rpos++;
           continue;
         }
@@ -157,7 +157,7 @@ public class GN
         // exclure la virgule finale
         if ( win.get( rpos ).orth().equals( "," ) ) rpos--;
         // exclure la conjonction finale
-        if ( win.get( rpos ).cat() == Cat.CONJcoord ) rpos--;
+        if ( win.get( rpos ).tag().equals( Tag.CONJcoord ) ) rpos--;
         break;
       }
       if ( !ladj && !radj) continue;
@@ -178,10 +178,9 @@ public class GN
     htmlWriter.print( "<td class=\"left\">" );
     for ( int i=-left; i < 0; i++) {
       if ( i == lpos ) htmlWriter.print( "<b>" );
-      short cat =  win.get( i ).cat();
-      if ( cat == Cat.ADJ ) htmlWriter.print( "<i>" );
+      if ( win.get( i ).tag().equals(Tag.ADJ)  ) htmlWriter.print( "<i>" );
       htmlWriter.print( win.get( i ).graph() );
-      if ( cat == Cat.ADJ ) htmlWriter.print( "</i>" );
+      if ( win.get( i ).tag().equals(Tag.ADJ) ) htmlWriter.print( "</i>" );
       if (i<-1) htmlWriter.print( " " );
     }
     if ( lpos < 0) htmlWriter.print( "</b>" );
@@ -192,10 +191,9 @@ public class GN
     htmlWriter.print( "<td class=\"right\">" );
     if ( rpos > 0) htmlWriter.print( "<b>" );
     for ( int i=1; i <= right; i++) {
-      short cat =  win.get( i ).cat();
-      if ( cat == Cat.ADJ ) htmlWriter.print( "<i>" );
+      if ( win.get( i ).tag().equals(Tag.ADJ) ) htmlWriter.print( "<i>" );
       htmlWriter.print( win.get( i ).graph() );
-      if ( cat == Cat.ADJ ) htmlWriter.print( "</i>" );
+      if ( win.get( i ).tag().equals(Tag.ADJ) ) htmlWriter.print( "</i>" );
       if ( i == rpos ) htmlWriter.print( "</b>" );
       htmlWriter.print( " " );
     }
