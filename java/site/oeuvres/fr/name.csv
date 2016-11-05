@@ -222,8 +222,8 @@ Ailín,NAMEpersm
 Ailís,NAMEpersf
 Ailpein,NAMEpersm
 Ailsa,NAMEpersf
-Aimé,NAMEpersm
-Aimée,NAMEpersf
+# Aimé,NAMEpersm
+# Aimée,NAMEpersf
 Aimo,NAMEpersm
 Aina,NAMEpersf
 Aindrea,NAMEpersm
@@ -510,10 +510,10 @@ Amerigo,NAMEpersm
 Amethyst,NAMEpersf
 Amhlaidh,NAMEpersm
 Amhlaoibh,NAMEpersm
-Ami,NAMEpersf
+# Ami,NAMEpersf
 Amias,NAMEpersm
 Amice,NAMEpersf
-Amie,NAMEpersf
+# Amie,NAMEpersf
 Amika,NAMEpersf
 Amilcar,NAMEpersm
 Amilia,NAMEpersf
@@ -536,8 +536,8 @@ Amrita,NAMEpersf
 Amy,NAMEpersf
 Amyas,NAMEpersm
 Amynta,NAMEpersf
-An,NAMEpers
-Ana,NAMEpersf
+# An,NAMEpers
+# Ana,NAMEpersf
 Anacleto,NAMEpersm
 Anacletus,NAMEpersm
 Anahid,NAMEpersf
@@ -699,7 +699,7 @@ Anshel,NAMEpersm
 Anson,NAMEpersm
 Antal,NAMEpersm
 Antanas,NAMEpersm
-Ante,NAMEpersm
+# Ante,NAMEpersm
 Antero,NAMEpersm
 Anthea,NAMEpersf
 Anthony,NAMEpersm
@@ -777,7 +777,7 @@ Aran,NAMEpersf
 Aranka,NAMEpersf
 Aranrhod,NAMEpersf
 Arantxa,NAMEpersf
-Aras,NAMEpersm
+# Aras,NAMEpersm
 Arata,NAMEpersm
 Aravinda,NAMEpersm
 Arcadia,NAMEpersf
@@ -798,7 +798,7 @@ Ares,NAMEpersm
 Aretha,NAMEpersf
 Arethusa,NAMEpersf
 Arevig,NAMEpersf
-Argus,NAMEpersm
+# Argus,NAMEpersm
 Argyris,NAMEpersm
 Argyros,NAMEpersm
 Ari,NAMEpersm
@@ -867,7 +867,7 @@ Arron,NAMEpersm
 Arsen,NAMEpersm
 Arseni,NAMEpersm
 Arsenios,NAMEpersm
-Art,NAMEpersm
+# Art,NAMEpersm
 Artair,NAMEpersm
 Artemidoros,NAMEpersm
 Artemis,NAMEpersf
@@ -982,8 +982,8 @@ Augustus,NAMEpersm
 Aukusti,NAMEpersm
 Aulay,NAMEpersm
 Aulus,NAMEpersm
-Aune,NAMEpersf
-Aura,NAMEpersf
+# Aune,NAMEpersf
+# Aura,NAMEpersf
 Aurangzeb,NAMEpersm
 Aurel,NAMEpersm
 Aurèle,NAMEpersm
@@ -1015,7 +1015,7 @@ Avice,NAMEpersf
 Avidan,NAMEpersm
 Avila,NAMEpersf
 Aviram,NAMEpersm
-Avis,NAMEpersf
+# Avis,NAMEpersf
 Avishai,NAMEpersm
 Avitus,NAMEpersm
 Aviv,NAMEpersm
@@ -1024,7 +1024,7 @@ Avner,NAMEpersm
 Avra,NAMEpersf
 Avraham,NAMEpersm
 Avram,NAMEpersm
-Avril,NAMEpersf
+# Avril,NAMEpersf
 Avrum,NAMEpersm
 Awotwi,NAMEpers
 Awstin,NAMEpersm
@@ -1078,7 +1078,7 @@ Bahija,NAMEpersf
 Bahiyya,NAMEpersf
 Bahman,NAMEpersm
 Bahram,NAMEpersm
-Bai,NAMEpersm
+# Bai,NAMEpersm
 Baila,NAMEpersf
 Bailee,NAMEpersf
 Bailey,NAMEpers
@@ -1142,7 +1142,7 @@ Bartolomé,NAMEpersm
 Bartolomeo,NAMEpersm
 Bartosz,NAMEpersm
 Baruch,NAMEpersm
-Bas,NAMEpersm
+# Bas,NAMEpersm
 Basajaun,NAMEpersm
 Basant,NAMEpersm
 Basemath,NAMEpersf
@@ -1181,7 +1181,7 @@ Beatrice,NAMEpersf
 Beatriu,NAMEpersf
 Beatrix,NAMEpersf
 Beatriz,NAMEpersf
-Beau,NAMEpersm
+# Beau,NAMEpersm
 Beaumont,NAMEpersm
 Beauregard,NAMEpersm
 Beavis,NAMEpersm
@@ -1213,7 +1213,7 @@ Belgin,NAMEpersf
 Beli,NAMEpersm
 Belinda,NAMEpersf
 Bella,NAMEpersf
-Belle,NAMEpersf
+# Belle,NAMEpersf
 Bellona,NAMEpersf
 Belphoebe,NAMEpersf
 Ben,NAMEpersm
@@ -1344,7 +1344,7 @@ Bidelia,NAMEpersf
 Bienvenida,NAMEpersf
 Bijay,NAMEpersm
 Bijoy,NAMEpersm
-Bile,NAMEpersm
+# Bile,NAMEpersm
 Bilge,NAMEpersf
 Bilhah,NAMEpersf
 Bill,NAMEpersm
@@ -1471,7 +1471,7 @@ Branko,NAMEpersm
 Brannon,NAMEpersm
 Brant,NAMEpersm
 Branwen,NAMEpersf
-Bras,NAMEpersm
+# Bras,NAMEpersm
 Bratumil,NAMEpersm
 Brava,NAMEpersf
 Braxton,NAMEpersm
@@ -1584,7 +1584,7 @@ Cäcilia,NAMEpersf
 Cade,NAMEpersm
 Cadell,NAMEpersm
 Caden,NAMEpersm
-Cadence,NAMEpers
+# Cadence,NAMEpers
 Cadeyrn,NAMEpersm
 Cadfael,NAMEpersm
 Cadfan,NAMEpersm
@@ -1618,7 +1618,7 @@ Caitríona,NAMEpersf
 Caitrìona,NAMEpersf
 Caius,NAMEpersm
 Cajsa,NAMEpersf
-Cal,NAMEpersm
+# Cal,NAMEpersm
 Calanthe,NAMEpersf
 Calanthia,NAMEpersf
 Calbhach,NAMEpersm
@@ -1764,7 +1764,7 @@ Cassie,NAMEpersf
 Cassiopea,NAMEpersf
 Cassiopeia,NAMEpersf
 Cassius,NAMEpersm
-Castor,NAMEpersm
+# Castor,NAMEpersm
 Catahecassa,NAMEpersm
 Cätälin,NAMEpersm
 Catalina,NAMEpersf
@@ -1806,7 +1806,7 @@ Cedric,NAMEpersm
 Cees,NAMEpersm
 Ceinwen,NAMEpersf
 Celandine,NAMEpersf
-Céleste,NAMEpersf
+# Céleste,NAMEpersf
 Celeste,NAMEpersf
 Célestin,NAMEpersm
 Celestina,NAMEpersf
@@ -1844,7 +1844,7 @@ Chaim,NAMEpersm
 Chalchiuhticue,NAMEpersf
 Chalice,NAMEpersf
 Chanah,NAMEpersf
-Chance,NAMEpers
+# Chance,NAMEpers
 Chanda,NAMEpers
 Chandan,NAMEpersm
 Chandana,NAMEpers
@@ -1859,7 +1859,7 @@ Chania,NAMEpersf
 Channah,NAMEpersf
 Channing,NAMEpersm
 Chantal,NAMEpersf
-Chanté,NAMEpersf
+# Chanté,NAMEpersf
 Chantel,NAMEpersf
 Chantelle,NAMEpersf
 Chao,NAMEpersm
@@ -1904,7 +1904,7 @@ Chelsie,NAMEpersf
 Chenaniah,NAMEpersm
 Chenda,NAMEpersf
 Cheng,NAMEpersm
-Cher,NAMEpersf
+# Cher,NAMEpersf
 Cherette,NAMEpersf
 Cheri,NAMEpersf
 Cherice,NAMEpersf
@@ -1992,7 +1992,7 @@ Ciaran,NAMEpersm
 Cibor,NAMEpersm
 Cicely,NAMEpersf
 Cicero,NAMEpersm
-Ciel,NAMEpersf
+# Ciel,NAMEpersf
 Ciera,NAMEpersf
 Cierra,NAMEpersf
 Cili,NAMEpersf
@@ -2141,7 +2141,7 @@ Conor,NAMEpersm
 Conrad,NAMEpersm
 Conrado,NAMEpersm
 Consolata,NAMEpersf
-Constance,NAMEpersf
+# Constance,NAMEpersf
 Constancia,NAMEpersf
 Constant,NAMEpersm
 Constanta,NAMEpersf
@@ -2303,7 +2303,7 @@ Daividh,NAMEpersm
 Dakarai,NAMEpersf
 Dakota,NAMEpers
 Dalal,NAMEpersf
-Dale,NAMEpers
+# Dale,NAMEpers
 Daley,NAMEpersm
 Dalia,NAMEpersf
 Dalibor,NAMEpersm
@@ -2462,7 +2462,7 @@ Delphine,NAMEpersf
 Delphinia,NAMEpersf
 Delroy,NAMEpersm
 Delshad,NAMEpersm
-Delta,NAMEpersf
+# Delta,NAMEpersf
 Delwyn,NAMEpers
 Delyth,NAMEpersf
 Dema,NAMEpersf
@@ -2472,7 +2472,7 @@ Demetria,NAMEpersf
 Demetrio,NAMEpersm
 Demetrios,NAMEpersm
 Demetrius,NAMEpersm
-Demi,NAMEpersf
+# Demi,NAMEpersf
 Democritus,NAMEpersm
 Demon,NAMEpersm
 Demosthenes,NAMEpersm
@@ -2542,7 +2542,7 @@ Deven,NAMEpersm
 Devereux,NAMEpersm
 Devi,NAMEpersf
 Devika,NAMEpersf
-Devin,NAMEpersm
+# Devin,NAMEpersm
 Devnet,NAMEpersf
 Devon,NAMEpers
 Dewayne,NAMEpersm
@@ -2744,7 +2744,7 @@ Duarte,NAMEpersm
 Dubaku,NAMEpers
 Dubhghall,NAMEpersm
 Dubhghlas,NAMEpersm
-Duc,NAMEpersm
+# Duc,NAMEpersm
 Duci,NAMEpersf
 Dudel,NAMEpersm
 Dudley,NAMEpersm
@@ -3118,7 +3118,7 @@ Enéas,NAMEpersm
 Enfys,NAMEpers
 Engel,NAMEpersm
 Engelbert,NAMEpersm
-Engin,NAMEpersm
+# Engin,NAMEpersm
 Enid,NAMEpersf
 Eniola,NAMEpersm
 Enitan,NAMEpersm
@@ -3230,7 +3230,7 @@ Esperanta,NAMEpersf
 Esperanza,NAMEpersf
 Espiridion,NAMEpersm
 Essa,NAMEpersf
-Essence,NAMEpersf
+# Essence,NAMEpersf
 Essie,NAMEpersf
 Esta,NAMEpersf
 Estachio,NAMEpersm
@@ -3526,7 +3526,7 @@ Ffion,NAMEpersf
 Ffraid,NAMEpersf
 Fiachna,NAMEpersm
 Fiachra,NAMEpersm
-Fiacre,NAMEpersm
+# Fiacre,NAMEpersm
 Fiammetta,NAMEpersf
 Fidan,NAMEpersf
 Fidda,NAMEpersf
@@ -3606,24 +3606,25 @@ Flavio,NAMEpersm
 Flavius,NAMEpersm
 Flemming,NAMEpersm
 Fletcher,NAMEpersm
-Fleur,NAMEpersf
+# Fleur,NAMEpersf
 Fleuretta,NAMEpersf
 Flick,NAMEpersf
 Flip,NAMEpersm
 Flo,NAMEpersf
 Floella,NAMEpersf
 Flora,NAMEpersf
-Florence,NAMEpersf
+# Florence,NAMEpersf
 Florencio,NAMEpersm
-Florentin,NAMEpersm
+# Florentin,NAMEpersm
 Florentina,NAMEpersf
+# Florentine,NAMEpersf
 Floretta,NAMEpersf
 Florette,NAMEpersf
 Florian,NAMEpersm
 Floriana,NAMEpersf
 Florianne,NAMEpersf
 Floriano,NAMEpersm
-Florin,NAMEpersm
+# Florin,NAMEpersm
 Florinda,NAMEpersf
 Florine,NAMEpersf
 Floris,NAMEpersm
@@ -3641,19 +3642,19 @@ Foma,NAMEpersm
 Fonsie,NAMEpersm
 Forbes,NAMEpersm
 Ford,NAMEpersm
-Forest,NAMEpersm
+# Forest,NAMEpersm
 Forrest,NAMEpersm
 Fortunata,NAMEpersf
 Fortunato,NAMEpersm
-Fortune,NAMEpersf
+# Fortune,NAMEpersf
 Foster,NAMEpersm
 Fotis,NAMEpersm
 Fouad,NAMEpersm
 Fox,NAMEpersm
 Fran,NAMEpersf
-Franc,NAMEpersm
+# Franc,NAMEpersm
 Franca,NAMEpersf
-#France,NAMEpersm
+# France,NAMEpersm
 Francene,NAMEpersf
 Frances,NAMEpersf
 Francesca,NAMEpersf
@@ -3776,7 +3777,7 @@ Gala,NAMEpersf
 Galadriel,NAMEpersf
 Galahad,NAMEpersm
 Galal,NAMEpersm
-Gale,NAMEpers
+# Gale,NAMEpers
 Galen,NAMEpersm
 Galia,NAMEpersf
 Galila,NAMEpersf
@@ -3829,7 +3830,7 @@ Gawahir,NAMEpersf
 Gawain,NAMEpersm
 Gawdat,NAMEpersm
 Gawel,NAMEpersm
-Gay,NAMEpersf
+# Gay,NAMEpersf
 Gaye,NAMEpersf
 Gayelord,NAMEpersm
 Gayla,NAMEpersf
@@ -4410,7 +4411,7 @@ Harland,NAMEpersm
 Harley,NAMEpers
 Harmon,NAMEpersm
 Harmonia,NAMEpersf
-Harmonie,NAMEpersf
+# Harmonie,NAMEpersf
 Harmony,NAMEpersf
 Harold,NAMEpersm
 Haroun,NAMEpersm
@@ -4648,11 +4649,11 @@ Holly,NAMEpersf
 Homer,NAMEpersm
 Honey,NAMEpersf
 Hòng,NAMEpersf
-Honor,NAMEpersf
-Honora,NAMEpersf
+# Honor,NAMEpersf
+# Honora,NAMEpersf
 Honorata,NAMEpersf
 Honoratus,NAMEpersm
-Honoré,NAMEpersm
+# Honoré,NAMEpersm
 Honoria,NAMEpersf
 Honorine,NAMEpersf
 Honorius,NAMEpersm
@@ -4661,7 +4662,7 @@ Hooda,NAMEpersf
 Hopcyn,NAMEpersm
 Hope,NAMEpersf
 Hopkin,NAMEpersm
-Horace,NAMEpersm
+# Horace,NAMEpersm
 Horacio,NAMEpersm
 Horatia,NAMEpersf
 Horatio,NAMEpersm
@@ -4833,9 +4834,9 @@ Ilya,NAMEpersm
 Ima,NAMEpersf
 Imaculada,NAMEpersf
 Imad,NAMEpersm
-Imam,NAMEpersm
+# Imam,NAMEpersm
 Imamu,NAMEpersm
-Iman,NAMEpersf
+# Iman,NAMEpersf
 Imani,NAMEpersf
 Imelda,NAMEpersf
 Imen,NAMEpersf
@@ -4888,7 +4889,7 @@ Inka,NAMEpersf
 Inkeri,NAMEpersf
 Inmaculada,NAMEpersf
 Innes,NAMEpers
-Innocent,NAMEpersm
+# Innocent,NAMEpersm
 Innocenzo,NAMEpersm
 Innokenti,NAMEpersm
 Inocencio,NAMEpersm
@@ -4909,7 +4910,7 @@ Iolo,NAMEpersm
 Iolyn,NAMEpersm
 Íomhar,NAMEpersm
 Iomhar,NAMEpersm
-Ion,NAMEpersm
+# Ion,NAMEpersm
 Iona,NAMEpersf
 Ionatán,NAMEpersm
 Ione,NAMEpersf
@@ -5478,7 +5479,7 @@ Jolánka,NAMEpersf
 Jolanta,NAMEpersf
 Joleen,NAMEpersf
 Jolene,NAMEpersf
-Jolie,NAMEpersf
+# Jolie,NAMEpersf
 Jolyon,NAMEpersm
 Jón,NAMEpersm
 Jon,NAMEpersm
@@ -5637,14 +5638,14 @@ Juno,NAMEpersf
 Juozas,NAMEpersm
 Jupiter,NAMEpersm
 Juraj,NAMEpersm
-Jure,NAMEpersm
+# Jure,NAMEpersm
 Jürgen,NAMEpersm
 Jurgis,NAMEpersm
 Jurij,NAMEpersm
 Juro,NAMEpersm
 Jussi,NAMEpersm
-Juste,NAMEpersm
-Justice,NAMEpers
+# Juste,NAMEpersm
+# Justice,NAMEpers
 Justin,NAMEpersm
 Justina,NAMEpersf
 Justine,NAMEpersf
@@ -6262,7 +6263,7 @@ Lamprecht,NAMEpersm
 Lamya,NAMEpersf
 Lan,NAMEpersf
 Lana,NAMEpersf
-Lance,NAMEpersm
+# Lance,NAMEpersm
 Lancelot,NAMEpersm
 Landon,NAMEpersm
 Lane,NAMEpersm
@@ -6290,7 +6291,7 @@ Lárus,NAMEpersm
 Laryn,NAMEpersf
 Lashawn,NAMEpers
 Lashonda,NAMEpersf
-Lasse,NAMEpersm
+# Lasse,NAMEpersm
 Lassi,NAMEpersm
 László,NAMEpersm
 Lata,NAMEpersf
@@ -6520,7 +6521,7 @@ Liddy,NAMEpersf
 Lidia,NAMEpersf
 Lidiya,NAMEpersf
 Lieber,NAMEpersm
-Lien,NAMEpersf
+# Lien,NAMEpersf
 Liesa,NAMEpersf
 Liesbeth,NAMEpersf
 Liese,NAMEpersf
@@ -6552,7 +6553,7 @@ Lilly,NAMEpersf
 Lilo,NAMEpersf
 Lily,NAMEpersf
 Lim,NAMEpers
-Lin,NAMEpers
+# Lin,NAMEpers
 Lina,NAMEpersf
 Linas,NAMEpersm
 Lincoln,NAMEpersm
@@ -6700,7 +6701,7 @@ Louis,NAMEpersm
 Louisa,NAMEpersf
 Louise,NAMEpersf
 Louiza,NAMEpersf
-Loup,NAMEpersm
+# Loup,NAMEpersm
 Lourdes,NAMEpersf
 Love,NAMEpersf
 Lovel,NAMEpersm
@@ -6934,7 +6935,7 @@ Mahmud,NAMEpersm
 Mahomet,NAMEpersm
 Mahon,NAMEpersm
 Mahvash,NAMEpersf
-Mai,NAMEpersf
+# Mai,NAMEpersf
 Maia,NAMEpersf
 Maighread,NAMEpersf
 Maija,NAMEpersf
@@ -6986,7 +6987,7 @@ Malia,NAMEpersf
 Malie,NAMEpersf
 Malik,NAMEpersm
 Malika,NAMEpersf
-Malin,NAMEpersf
+# Malin,NAMEpersf
 Malina,NAMEpersf
 Malinda,NAMEpersf
 Malka,NAMEpersf
@@ -6996,7 +6997,7 @@ Mallt,NAMEpersf
 Malone,NAMEpersm
 Malvina,NAMEpersf
 Malvolio,NAMEpersm
-Mamie,NAMEpersf
+# Mamie,NAMEpersf
 Manasseh,NAMEpersm
 Manasses,NAMEpersm
 Mandeep,NAMEpersm
@@ -7022,7 +7023,7 @@ Mansel,NAMEpersm
 Mansoor,NAMEpersm
 Mansur,NAMEpersm
 Manu,NAMEpersm
-Manuel,NAMEpersm
+# Manuel,NAMEpersm
 Manuela,NAMEpersf
 Manus,NAMEpersm
 Manya,NAMEpersf
@@ -7076,7 +7077,7 @@ Margarid,NAMEpersf
 Margarida,NAMEpersf
 Margarita,NAMEpersf
 Margaux,NAMEpersf
-Marge,NAMEpersf
+# Marge,NAMEpersf
 Marged,NAMEpersf
 Margery,NAMEpersf
 Margh,NAMEpersm
@@ -7088,7 +7089,7 @@ Margot,NAMEpersf
 Margrét,NAMEpersf
 Margrethe,NAMEpersf
 Marguerite,NAMEpersf
-Mari,NAMEpersf
+# Mari,NAMEpersf
 Mária,NAMEpersf
 María,NAMEpersf
 Maria,NAMEpersf
@@ -7154,16 +7155,16 @@ Marilene,NAMEpersf
 Marilou,NAMEpersf
 Marilyn,NAMEpersf
 Marilynn,NAMEpersf
-Marin,NAMEpersm
+# Marin,NAMEpersm
 Marina,NAMEpersf
 Marinda,NAMEpersf
-Marine,NAMEpersf
+# Marine,NAMEpersf
 Marino,NAMEpersm
 Marinus,NAMEpersm
 Mario,NAMEpersm
 Marion,NAMEpersf
 # Marion,NAMEpersm
-Maris,NAMEpersf
+# Maris,NAMEpersf
 Marisa,NAMEpersf
 Marise,NAMEpersf
 Mariska,NAMEpersf
@@ -7206,8 +7207,8 @@ Marmaduke,NAMEpersm
 Marna,NAMEpersf
 Marni,NAMEpersf
 Marnie,NAMEpersf
-Marquis,NAMEpersm
-Marquise,NAMEpersm
+# Marquis,NAMEpersm
+# Marquise,NAMEpersm
 Marquita,NAMEpersf
 Mars,NAMEpersm
 Marsaili,NAMEpersf
@@ -7262,7 +7263,7 @@ Massimo,NAMEpersm
 Masterman,NAMEpersm
 Mas'ud,NAMEpersm
 Masuyo,NAMEpersm
-Mat,NAMEpersm
+# Mat,NAMEpersm
 Máté,NAMEpersm
 Matej,NAMEpersm
 Mateja,NAMEpersf
@@ -7444,7 +7445,7 @@ Merilyn,NAMEpersf
 Merita,NAMEpersf
 Meriwether,NAMEpers
 Merla,NAMEpersf
-Merle,NAMEpers
+# Merle,NAMEpers
 Merletta,NAMEpersf
 Merlin,NAMEpersm
 Merlyn,NAMEpers
@@ -7589,7 +7590,7 @@ Miquel,NAMEpersm
 Mira,NAMEpersf
 Mirabella,NAMEpersf
 Mirabelle,NAMEpersf
-Miracle,NAMEpersf
+# Miracle,NAMEpersf
 Miranda,NAMEpersf
 Mircea,NAMEpersm
 Mireia,NAMEpersf
@@ -7705,7 +7706,7 @@ Morpheus,NAMEpersm
 Morrigan,NAMEpersf
 Mórríghan,NAMEpersf
 Morris,NAMEpersm
-Mort,NAMEpersm
+# Mort,NAMEpersm
 Morten,NAMEpersm
 Mortimer,NAMEpersm
 Morton,NAMEpersm
@@ -8069,7 +8070,7 @@ Noach,NAMEpersm
 Noah,NAMEpers
 Noak,NAMEpersm
 Noam,NAMEpersm
-Noble,NAMEpersm
+# Noble,NAMEpersm
 Nobu,NAMEpersm
 Noé,NAMEpersm
 Noel,NAMEpersm
@@ -8141,7 +8142,7 @@ Obed,NAMEpersm
 Oberon,NAMEpersm
 Obi,NAMEpersm
 Ocean,NAMEpers
-Océane,NAMEpersf
+# Océane,NAMEpersf
 Ochieng,NAMEpersm
 Octavia,NAMEpersf
 Octavian,NAMEpersm
@@ -8261,7 +8262,7 @@ Oprah,NAMEpersf
 Ora,NAMEpers
 Orabela,NAMEpersf
 Orah,NAMEpersf
-Oral,NAMEpersm
+# Oral,NAMEpersm
 Oralee,NAMEpersf
 Oralie,NAMEpersf
 Oran,NAMEpersm
@@ -8289,7 +8290,7 @@ Ormerod,NAMEpersm
 Ormond,NAMEpersm
 Ormonda,NAMEpersf
 Ormonde,NAMEpersm
-Orna,NAMEpersf
+# Orna,NAMEpersf
 Ornat,NAMEpersf
 Ornella,NAMEpersf
 Orpa,NAMEpersf
@@ -8387,7 +8388,7 @@ Pádraig,NAMEpersm
 Pàdraig,NAMEpersm
 Pàdraigín,NAMEpersf
 Padrig,NAMEpersm
-Page,NAMEpersf
+# Page,NAMEpersf
 Paget,NAMEpersf
 Paige,NAMEpersf
 Paise,NAMEpersm
@@ -8416,7 +8417,7 @@ Panayiotis,NAMEpersm
 Pancho,NAMEpersm
 Pancras,NAMEpersm
 Pancrazio,NAMEpersm
-Panda,NAMEpersf
+# Panda,NAMEpersf
 Pandora,NAMEpersf
 Panfilo,NAMEpersm
 Pankrati,NAMEpersm
@@ -8466,7 +8467,7 @@ Pasquale,NAMEpersm
 Pasqualina,NAMEpersf
 Pasqualino,NAMEpersm
 Pat,NAMEpers
-Patience,NAMEpersf
+# Patience,NAMEpersf
 Patrice,NAMEpersm
 Patricia,NAMEpersf
 Patricio,NAMEpersm
@@ -8540,7 +8541,7 @@ Pepita,NAMEpersf
 Pepito,NAMEpersm
 Peppi,NAMEpersf
 Per,NAMEpersm
-Perce,NAMEpersm
+# Perce,NAMEpersm
 Perceval,NAMEpersm
 Percival,NAMEpersm
 Percy,NAMEpersm
@@ -8550,7 +8551,7 @@ Peregrine,NAMEpersm
 Perele,NAMEpersf
 Pericles,NAMEpersm
 Perla,NAMEpersf
-Perle,NAMEpersf
+# Perle,NAMEpersf
 Perlie,NAMEpersf
 Pernel,NAMEpersf
 Pernilla,NAMEpersf
@@ -8570,7 +8571,7 @@ Perun,NAMEpersm
 Peta,NAMEpersf
 Petar,NAMEpersm
 Pete,NAMEpersm
-Péter,NAMEpersm
+# Péter,NAMEpersm
 Peter,NAMEpersm
 Petera,NAMEpersm
 Peterkin,NAMEpersm
@@ -8683,7 +8684,7 @@ Piritta,NAMEpersf
 Pirjo,NAMEpersf
 Pirkko,NAMEpersf
 Piroska,NAMEpersf
-Pista,NAMEpersm
+# Pista,NAMEpersm
 Pisti,NAMEpersm
 Pitambar,NAMEpersm
 Pius,NAMEpersm
@@ -8754,12 +8755,12 @@ Preston,NAMEpersm
 Priam,NAMEpersm
 Price,NAMEpersm
 Primitiva,NAMEpersf
-Primo,NAMEpersm
+# Primo,NAMEpersm
 Primrose,NAMEpersf
 Primula,NAMEpersf
-Prince,NAMEpersm
+# Prince,NAMEpersm
 Princess,NAMEpersf
-Pris,NAMEpersf
+# Pris,NAMEpersf
 Prisca,NAMEpersf
 Priscilla,NAMEpersf
 Prissy,NAMEpersf
@@ -8771,7 +8772,7 @@ Prosper,NAMEpersm
 Prospero,NAMEpersm
 Proteus,NAMEpersm
 Pru,NAMEpersf
-Prudence,NAMEpersf
+# Prudence,NAMEpersf
 Prudencio,NAMEpersm
 Prudentius,NAMEpersm
 Prudenzio,NAMEpersm
@@ -9192,7 +9193,7 @@ Robin,NAMEpers
 Robina,NAMEpersf
 Robyn,NAMEpersf
 Robynne,NAMEpersf
-Roc,NAMEpersm
+# Roc,NAMEpersm
 Rocco,NAMEpersm
 Roch,NAMEpersm
 Rochelle,NAMEpersf
@@ -9222,7 +9223,7 @@ Roger,NAMEpersm
 Rogerio,NAMEpersm
 Rohan,NAMEpers
 Rohesia,NAMEpersm
-Roi,NAMEpersm
+# Roi,NAMEpersm
 Roibeard,NAMEpersm
 Róis,NAMEpersf
 Róisín,NAMEpersf
@@ -9239,12 +9240,12 @@ Rollo,NAMEpersm
 Rolo,NAMEpersm
 Rolph,NAMEpersm
 Roly,NAMEpersm
-Roma,NAMEpersf
-Romain,NAMEpersm
-Romaine,NAMEpersf
-Roman,NAMEpersm
+# Roma,NAMEpersf
+# Romain,NAMEpersm
+# Romaine,NAMEpersf
+# Roman,NAMEpersm
 Romana,NAMEpersf
-Romane,NAMEpersf
+# Romane,NAMEpersf
 Romano,NAMEpersm
 Romayne,NAMEpersf
 Romeo,NAMEpersm
@@ -9300,7 +9301,7 @@ Rosannah,NAMEpersf
 Rosanne,NAMEpersf
 Rosario,NAMEpersf
 Roscoe,NAMEpersm
-Rose,NAMEpersf
+# Rose,NAMEpersf
 Roseann,NAMEpersf
 Roseanne,NAMEpersf
 Rosella,NAMEpersf
@@ -9338,9 +9339,9 @@ Roxanna,NAMEpersf
 Roxanne,NAMEpersf
 Roxie,NAMEpersf
 Roxy,NAMEpersf
-Roy,NAMEpersm
-Royal,NAMEpersm
-Royale,NAMEpersm
+# Roy,NAMEpersm
+# Royal,NAMEpersm
+# Royale,NAMEpersm
 Royce,NAMEpersm
 Roydon,NAMEpersm
 Royle,NAMEpersm
@@ -9379,7 +9380,7 @@ Rudolf,NAMEpersm
 Rudolph,NAMEpersm
 Rudy,NAMEpersm
 Rudyard,NAMEpersm
-Rue,NAMEpersf
+# Rue,NAMEpersf
 Rufina,NAMEpersf
 Rufino,NAMEpersm
 Rufus,NAMEpersm
@@ -9445,7 +9446,7 @@ Sadie,NAMEpersf
 Saffie,NAMEpersf
 Saffron,NAMEpersf
 Safira,NAMEpersf
-Sage,NAMEpers
+# Sage,NAMEpers
 Sahar,NAMEpersf
 Saibh,NAMEpersf
 Sa'id,NAMEpersm
@@ -9481,7 +9482,7 @@ Salome,NAMEpersf
 Salomea,NAMEpersf
 Salomon,NAMEpersm
 Salud,NAMEpersf
-Salut,NAMEpersf
+# Salut,NAMEpersf
 # Salvador,NAMEpersm
 Salvalus,NAMEpersm
 Salvatore,NAMEpersm
@@ -9511,7 +9512,7 @@ Samuil,NAMEpersm
 Samuli,NAMEpersm
 San,NAMEpers
 Sana',NAMEpersf
-Sana,NAMEpersf
+# Sana,NAMEpersf
 Sanaz,NAMEpersf
 Sancha,NAMEpersf
 Sanchia,NAMEpersf
@@ -9584,7 +9585,7 @@ Saturnino,NAMEpersm
 Saturninus,NAMEpersm
 Sauda,NAMEpersf
 Saul,NAMEpersm
-Saule,NAMEpersf
+# Saule,NAMEpersf
 Saundra,NAMEpersf
 Sava,NAMEpersm
 Savalus,NAMEpersm
@@ -9609,10 +9610,10 @@ Scheherazade,NAMEpersf
 Schwanhild,NAMEpersf
 Scilla,NAMEpersf
 Scot,NAMEpersm
-Scott,NAMEpersm
+# Scott,NAMEpersm
 Scottie,NAMEpersm
 Scotty,NAMEpersm
-Scout,NAMEpersf
+# Scout,NAMEpersf
 Seachnall,NAMEpersm
 Séafra,NAMEpersm
 Seaghdh,NAMEpersm
@@ -9660,7 +9661,7 @@ Sence,NAMEpersf
 Sender,NAMEpersm
 Seneca,NAMEpersm
 Senga,NAMEpersf
-Sens,NAMEpersf
+# Sens,NAMEpersf
 Seoc,NAMEpersm
 Seoirse,NAMEpersm
 Seona,NAMEpersf
@@ -9915,7 +9916,7 @@ Sigi,NAMEpers
 Sigismund,NAMEpersm
 Sigiswald,NAMEpersm
 Sigmund,NAMEpersm
-Signe,NAMEpersf
+# Signe,NAMEpersf
 Signy,NAMEpersf
 Sigrid,NAMEpersf
 Sigrún,NAMEpersf
@@ -10008,7 +10009,7 @@ Sofiya,NAMEpersf
 Sofronio,NAMEpersm
 Sohail,NAMEpersm
 Sohrab,NAMEpersm
-Sol,NAMEpers
+# Sol,NAMEpers
 Solange,NAMEpersf
 Soledad,NAMEpersf
 Solly,NAMEpersm
@@ -10141,12 +10142,12 @@ Stribog,NAMEpersm
 Stu,NAMEpersm
 Stuart,NAMEpersm
 Stylianos,NAMEpersm
-Su,NAMEpersf
+# Su,NAMEpersf
 Subhash,NAMEpersm
 Subira,NAMEpersf
 Sudarshana,NAMEpersm
 Sudhir,NAMEpersm
-Sue,NAMEpersf
+# Sue,NAMEpersf
 Suha,NAMEpersf
 Suhail,NAMEpersm
 Suhayl,NAMEpersm
@@ -10334,7 +10335,7 @@ Tanisha,NAMEpersf
 Tanit,NAMEpersf
 Tanith,NAMEpersf
 Tanja,NAMEpersf
-Tanner,NAMEpers
+# Tanner,NAMEpers
 Tansy,NAMEpersf
 Tanya,NAMEpersf
 Tanzi,NAMEpersf
@@ -10399,7 +10400,7 @@ Temel,NAMEpersm
 Temitope,NAMEpersf
 Temperance,NAMEpersf
 Tempest,NAMEpersf
-Temple,NAMEpers
+# Temple,NAMEpers
 Temujin,NAMEpersm
 Tendai,NAMEpersf
 Tennyson,NAMEpersm
@@ -10543,7 +10544,7 @@ Tibor,NAMEpersm
 Tiborc,NAMEpersm
 Tiburcio,NAMEpersm
 Tiede,NAMEpersm
-Tien,NAMEpersf
+# Tien,NAMEpersf
 Tiernan,NAMEpersm
 Tierney,NAMEpersm
 Tierra,NAMEpersf
@@ -10671,7 +10672,7 @@ Tova,NAMEpersf
 Tovah,NAMEpersf
 Tovia,NAMEpersf
 Toya,NAMEpersf
-Trace,NAMEpers
+# Trace,NAMEpers
 Tracee,NAMEpersf
 Tracey,NAMEpers
 Traci,NAMEpersf
@@ -10684,7 +10685,7 @@ Trai,NAMEpersm
 Traian,NAMEpersm
 Trajan,NAMEpersm
 Tranter,NAMEpersm
-Travers,NAMEpersm
+# Travers,NAMEpersm
 Travis,NAMEpersm
 Treasa,NAMEpersf
 Trecia,NAMEpersf
@@ -10696,7 +10697,7 @@ Trev,NAMEpersm
 Trevelyan,NAMEpersm
 Trevor,NAMEpersm
 Trey,NAMEpersm
-Tria,NAMEpersf
+# Tria,NAMEpersf
 Tricia,NAMEpersf
 Trijntje,NAMEpersf
 Trina,NAMEpersf
@@ -10735,7 +10736,7 @@ Tuathal,NAMEpersm
 Tucker,NAMEpersm
 Tudor,NAMEpersm
 Tudur,NAMEpersm
-Tue,NAMEpersm
+# Tue,NAMEpersm
 Tuija,NAMEpersf
 Tullia,NAMEpersf
 Tullio,NAMEpersm
@@ -10817,7 +10818,7 @@ Ume,NAMEpersf
 Una,NAMEpersf
 Undine,NAMEpersf
 Unice,NAMEpersf
-Unique,NAMEpersf
+# Unique,NAMEpersf
 Unity,NAMEpersf
 Upton,NAMEpersm
 Urania,NAMEpersf
@@ -10858,7 +10859,7 @@ Václav,NAMEpersm
 Václava,NAMEpersf
 Vadim,NAMEpersm
 Vahan,NAMEpersm
-Val,NAMEpers
+# Val,NAMEpers
 Valarie,NAMEpersf
 Valary,NAMEpersf
 Valda,NAMEpersf
@@ -10975,7 +10976,7 @@ Vespera,NAMEpersf
 Vesta,NAMEpersf
 Vester,NAMEpersm
 Veva,NAMEpersf
-Vi,NAMEpersf
+# Vi,NAMEpersf
 Vibeke,NAMEpersf
 Vibol,NAMEpersm
 Vic,NAMEpers
@@ -11019,12 +11020,12 @@ Vili,NAMEpersm
 Viljami,NAMEpersm
 Viljem,NAMEpersm
 Vilko,NAMEpersm
-Ville,NAMEpersm
+# Ville,NAMEpersm
 Vilma,NAMEpersf
 Vilmar,NAMEpersm
 Vilmos,NAMEpersm
 Vilppu,NAMEpersm
-Vin,NAMEpersm
+# Vin,NAMEpersm
 Vina,NAMEpersf
 Vinal,NAMEpersm
 Vinay,NAMEpersm
@@ -11040,10 +11041,10 @@ Vinko,NAMEpersm
 Vinnie,NAMEpersm
 Vinzenz,NAMEpersm
 Viola,NAMEpersf
-Violet,NAMEpersf
+# Violet,NAMEpersf
 Violeta,NAMEpersf
 Violetta,NAMEpersf
-Violette,NAMEpersf
+# Violette,NAMEpersf
 Viorel,NAMEpersm
 Viorica,NAMEpersf
 Vipul,NAMEpersm
@@ -11057,9 +11058,9 @@ Vishal,NAMEpersm
 Vishnu,NAMEpersm
 Visitacíon,NAMEpersf
 Visnja,NAMEpersf
-Vít,NAMEpersm
+# Vít,NAMEpersm
 Vita,NAMEpersf
-Vitale,NAMEpersm
+# Vitale,NAMEpersm
 Vitali,NAMEpersm
 Vitalia,NAMEpersf
 Vito,NAMEpersm
@@ -11724,6 +11725,7 @@ République dominicaine,NAMEplace
 Tanzanie,NAMEplace
 Roumanie,NAMEplace
 Royaume-Uni,NAMEplace
+Russie,NAMEplace
 Rwanda,NAMEplace
 Sainte-Lucie,NAMEplace
 Saint-Kitts-et-Nevis,NAMEplace
@@ -11866,349 +11868,350 @@ Hyères,NAMEplace
 Évreux,NAMEplace
 Maisons-Alfort,NAMEplace
 # ville du monde de plus de 1M h.
-Mumbai,NAMEPlace
-Bombay,NAMEPlace
-Karachi,NAMEPlace
-Delhi,NAMEPlace
-Shanghai,NAMEPlace
-Moscow,NAMEPlace
-Moscou,NAMEPlace
-São Paulo,NAMEPlace
-Seoul,NAMEPlace
-Istanbul,NAMEPlace
-Mexico City,NAMEPlace
-Jakarta,NAMEPlace
-New York,NAMEPlace
-Tokyo,NAMEPlace
-Lima,NAMEPlace
-Beijing,NAMEPlace
-Cairo,NAMEPlace
-Le Caire,NAMEPlace
-Tehran,NAMEPlace
-London,NAMEPlace
-Londres,NAMEPlace
-Santa Fé de Bogotá,NAMEPlace
-Lagos,NAMEPlace
-Hong Kong,NAMEPlace
-Rhein-Ruhr,NAMEPlace
-Bangkok,NAMEPlace
-Lahore,NAMEPlace
-Dhaka,NAMEPlace
-Rio de Janeiro,NAMEPlace
-Rio,NAMEPlace
-Baghdad,NAMEPlace
-Riyadh,NAMEPlace
-Bangalore,NAMEPlace
-Wuhan,NAMEPlace
-Tianjin,NAMEPlace
-Toronto,NAMEPlace
-Chongqing,NAMEPlace
-Santiago,NAMEPlace
-Calcutta,NAMEPlace
-Singapore,NAMEPlace
-Kinshasa,NAMEPlace
-Chennai,NAMEPlace
-Madras,NAMEPlace
-Saint Petersburg,NAMEPlace
-Saint Petersbourg,NAMEPlace
-Petersburg,NAMEPlace
-Petersbourg,NAMEPlace
-Shenyang,NAMEPlace
-Guangzhou,NAMEPlace
-Los Angeles,NAMEPlace
-Ahmadabad,NAMEPlace
-# Sydney,NAMEPlace
-Pusan,NAMEPlace
-Rhein-Main,NAMEPlace
-Alexandria,NAMEPlace
-Jidda,NAMEPlace
-Hyderabad,NAMEPlace
-Ankara,NAMEPlace
-Yokohama,NAMEPlace
-Montréal,NAMEPlace
-Casablanca,NAMEPlace
-Ho Chi Minh City,NAMEPlace
-Berlin,NAMEPlace
-Melbourne,NAMEPlace
-Pyongyang,NAMEPlace
-Kabul,NAMEPlace
-Pune,NAMEPlace
-Poona,NAMEPlace
-Yangon,NAMEPlace
-Medellín,NAMEPlace
-Omdurman,NAMEPlace
-Surat,NAMEPlace
-Madrid,NAMEPlace
-Abidjan,NAMEPlace
-Xian,NAMEPlace
-Chicago,NAMEPlace
-Nanjing,NAMEPlace
-Kanpur,NAMEPlace
-Kano,NAMEPlace
-Harbin,NAMEPlace
-Buenos Aires,NAMEPlace
-Addis Ababa,NAMEPlace
-East Rand,NAMEPlace
-Ekurhuleni,NAMEPlace
-Surabaja,NAMEPlace
-Jaipur,NAMEPlace
-Nairobi,NAMEPlace
-Salvador,NAMEPlace
-Inch'on,NAMEPlace
-Taegu,NAMEPlace
-Kiev,NAMEPlace
-Bekasi,NAMEPlace
-Chengdu,NAMEPlace
-Osaka-Kobe,NAMEPlace
-Al-Jizah,NAMEPlace
-Taipei,NAMEPlace
-Dar es Salaam,NAMEPlace
-Rome,NAMEPlace
-Lucknow,NAMEPlace
-Cali,NAMEPlace
-Quezon City,NAMEPlace
-Luanda,NAMEPlace
-Changchun,NAMEPlace
-Izmir,NAMEPlace
-Faisalabad,NAMEPlace
-Cape Town,NAMEPlace
-Belo Horizonte,NAMEPlace
-Ibadan,NAMEPlace
-Fortaleza,NAMEPlace
-Aleppo,NAMEPlace
-Dalian,NAMEPlace
-Nagpur,NAMEPlace
-Havana,NAMEPlace
-Taškent,NAMEPlace
-Bandung,NAMEPlace
-Nagoya,NAMEPlace
-Brasília,NAMEPlace
-Jinan,NAMEPlace
-Guayaquil,NAMEPlace
-Vancouver,NAMEPlace
-Chittagong,NAMEPlace
-Mashhad,NAMEPlace
-Qingdao,NAMEPlace
-Durban,NAMEPlace
-Taiyuan,NAMEPlace
-Medan,NAMEPlace
-Houston,NAMEPlace
-Medellin,NAMEPlace
-Jiulong,NAMEPlace
-Agadir,NAMEPlace
-Dakar,NAMEPlace
-Morelos,NAMEPlace
-Zhengzhou,NAMEPlace
-Kaesong,NAMEPlace
-Douala,NAMEPlace
-Baku,NAMEPlace
-Bucharest,NAMEPlace
-Santo-Domingo,NAMEPlace
-Indore,NAMEPlace
-Caracas,NAMEPlace
-Hai Phong,NAMEPlace
-Barranquilla,NAMEPlace
-Sapporo,NAMEPlace
-Rabat,NAMEPlace
-Shangqiu,NAMEPlace
-Kunming,NAMEPlace
-Maracaibo,NAMEPlace
-Si Racha,NAMEPlace
-Hamburg,NAMEPlace
-Rawalpindi,NAMEPlace
-Khartoum,NAMEPlace
-Budapest,NAMEPlace
-Al-Khartum Bahri,NAMEPlace
-Curitiba,NAMEPlace
-Minsk,NAMEPlace
-Zibo,NAMEPlace
-Shijiazhuang,NAMEPlace
-Xiantao,NAMEPlace
-Warsaw,NAMEPlace
-Damascus,NAMEPlace
-Guadalajara,NAMEPlace
-Lanzhou,NAMEPlace
-Accra,NAMEPlace
-Hangzhou,NAMEPlace
-Yaoundé,NAMEPlace
-Antananarivo,NAMEPlace
-Patna,NAMEPlace
-Bhopal,NAMEPlace
-Palembang,NAMEPlace
-Rhein-Neckar,NAMEPlace
-Changsha,NAMEPlace
-Tangerang,NAMEPlace
-Manaus,NAMEPlace
-Beirut,NAMEPlace
-Metro Manila,NAMEPlace
-Yulin, Guangxi,NAMEPlace
-Ludhiana,NAMEPlace
-Vienna,NAMEPlace
-Esfahan,NAMEPlace
-Semarang,NAMEPlace
-Kaohsiung,NAMEPlace
-Algiers,NAMEPlace
-Quito,NAMEPlace
-Kobe,NAMEPlace
-Thana,NAMEPlace
-Harare,NAMEPlace
-Recife,NAMEPlace
-Kharkov,NAMEPlace
-Depok,NAMEPlace
-Samut Prakan,NAMEPlace
-Kyoto,NAMEPlace
-Philadelphia,NAMEPlace
-Tijuana,NAMEPlace
-Mecca,NAMEPlace
-Barcelona,NAMEPlace
-Nanchang,NAMEPlace
-Johannesburg,NAMEPlace
-Taejon,NAMEPlace
-Ciudad Juárez,NAMEPlace
-Kwangju,NAMEPlace
-Novosibirsk,NAMEPlace
-Caloocan,NAMEPlace
-Agra,NAMEPlace
-Urumqi,NAMEPlace
-Phoenix-Mesa,NAMEPlace
-Sana'a,NAMEPlace
-Vadodara,NAMEPlace
-Guiyang,NAMEPlace
-Puebla,NAMEPlace
-Tabriz,NAMEPlace
-Conakry,NAMEPlace
-Belém,NAMEPlace
-Fukuoka-Kitakyushu,NAMEPlace
-Kuala Lumpur,NAMEPlace
-Multan,NAMEPlace
-Pôrto Alegre,NAMEPlace
-Santa Cruz,NAMEPlace
-Bursa,NAMEPlace
-Tangshan,NAMEPlace
-Montevideo,NAMEPlace
-Perth,NAMEPlace
-Gujranwala,NAMEPlace
-Valencia,NAMEPlace
-Lusaka,NAMEPlace
-Córdoba,NAMEPlace
-Nizhni Novgorod,NAMEPlace
-La Matanza,NAMEPlace
-Ekaterinburg,NAMEPlace
-Jilin,NAMEPlace
-Al-Madinah,NAMEPlace
-Fuzhou,NAMEPlace
-Fujian,NAMEPlace
-Nashik,NAMEPlace
-Anshan,NAMEPlace
-Pimpri-Chinchwad,NAMEPlace
-Dubai,NAMEPlace
-Abadan,NAMEPlace
-Bamako,NAMEPlace
-San Diego,NAMEPlace
-Kampala,NAMEPlace
-Kawasaki,NAMEPlace
-Kaduna,NAMEPlace
-Kalyan,NAMEPlace
-Hefei,NAMEPlace
-San Antonio,NAMEPlace
-Fushun,NAMEPlace
-Port-au-Prince,NAMEPlace
-Munich,NAMEPlace
-Shenzhen,NAMEPlace
-Xuzhou,NAMEPlace
-Meerut,NAMEPlace
-Dallas-Fort Worth,NAMEPlace
-Fès,NAMEPlace
-Baotou,NAMEPlace
-Milan,NAMEPlace
-Jamshedpur,NAMEPlace
-Bogor,NAMEPlace
-Shiraz,NAMEPlace
-Adana,NAMEPlace
-Faridabad,NAMEPlace
-Hanoi,NAMEPlace
-Karaj,NAMEPlace
-Amman,NAMEPlace
-Nezahualcóyotl,NAMEPlace
-Ad-Dammam,NAMEPlace
-Peshawar,NAMEPlace
-Guarulhos,NAMEPlace
-Tripoli,NAMEPlace
-Varanasi,NAMEPlace
-Benares,NAMEPlace
-Mosul,NAMEPlace
-Wuxi,NAMEPlace
-Kuwait City,NAMEPlace
-Goiânia,NAMEPlace
-León,NAMEPlace
-Zapopan,NAMEPlace
-Handan,NAMEPlace
-Glasgow,NAMEPlace
-Ghaziabad,NAMEPlace
-# Samara,NAMEPlace
-Suzhou,NAMEPlace
-Jiangsu,NAMEPlace
-Prague,NAMEPlace
-Omsk,NAMEPlace
-Hiroshima,NAMEPlace
-Qiqihar,NAMEPlace
-Luoyang,NAMEPlace
-Belgrade,NAMEPlace
-Yantai,NAMEPlace
-Kazan,NAMEPlace
-Monterrey,NAMEPlace
-Ottawa,NAMEPlace
-Nampho,NAMEPlace
-Suwon,NAMEPlace
-Amritsar,NAMEPlace
-Rajkot,NAMEPlace
-Basra,NAMEPlace
-Ujung Pandang,NAMEPlace
-Shantou,NAMEPlace
-Mogadishu,NAMEPlace
-Nanning,NAMEPlace
-Adelaide,NAMEPlace
-# Sofia,NAMEPlace
-Brazzaville,NAMEPlace
-Datong,NAMEPlace
-Pretoria,NAMEPlace
-Almaty,NAMEPlace
-Chelyabinsk,NAMEPlace
-Rostov-on-Don,NAMEPlace
-Yerevan,NAMEPlace
-Soweto,NAMEPlace
-Allahabad,NAMEPlace
-Maputo,NAMEPlace
-Goyang,NAMEPlace
-Visakhapatnam,NAMEPlace
-Dnepropetrovsk,NAMEPlace
-# Victoria,NAMEPlace
-Nanchong,NAMEPlace
-Zigong,NAMEPlace
-Benin City,NAMEPlace
-T'aichung,NAMEPlace
-Ahvaz,NAMEPlace
-Ufa,NAMEPlace
-Sendai,NAMEPlace
-Jabalpur,NAMEPlace
-Tbilisi,NAMEPlace
-Qom,NAMEPlace
-Calgary,NAMEPlace
-Haora,NAMEPlace
-Odessa,NAMEPlace
-Aurangabad,NAMEPlace
-Seongnam,NAMEPlace
-Shubra al-Khaymah,NAMEPlace
-Volgograd,NAMEPlace
-Donetsk,NAMEPlace
-Campinas,NAMEPlace
-Gaziantep,NAMEPlace
-Ulsan,NAMEPlace
-Sholapur,NAMEPlace
-Kitakyushu,NAMEPlace
-Ouagadougou,NAMEPlace
-Perm,NAMEPlace
-Sao Luis,NAMEPlace
+Mumbai,NAMEplace
+Bombay,NAMEplace
+Karachi,NAMEplace
+Delhi,NAMEplace
+Shanghai,NAMEplace
+Moscow,NAMEplace
+Moscou,NAMEplace
+São Paulo,NAMEplace
+Seoul,NAMEplace
+Istanbul,NAMEplace
+Mexico City,NAMEplace
+Jakarta,NAMEplace
+New York,NAMEplace
+Tokyo,NAMEplace
+Lima,NAMEplace
+Beijing,NAMEplace
+Cairo,NAMEplace
+Le Caire,NAMEplace
+Tehran,NAMEplace
+London,NAMEplace
+Londres,NAMEplace
+Santa Fé de Bogotá,NAMEplace
+Lagos,NAMEplace
+Hong Kong,NAMEplace
+Rhein-Ruhr,NAMEplace
+Bangkok,NAMEplace
+Lahore,NAMEplace
+Dhaka,NAMEplace
+Rio de Janeiro,NAMEplace
+Rio,NAMEplace
+Baghdad,NAMEplace
+Riyadh,NAMEplace
+Bangalore,NAMEplace
+Wuhan,NAMEplace
+Tianjin,NAMEplace
+Toronto,NAMEplace
+Chongqing,NAMEplace
+Santiago,NAMEplace
+Calcutta,NAMEplace
+Singapore,NAMEplace
+Kinshasa,NAMEplace
+Chennai,NAMEplace
+Madras,NAMEplace
+Saint Petersburg,NAMEplace
+Saint Petersbourg,NAMEplace
+Petersburg,NAMEplace
+Petersbourg,NAMEplace
+Shenyang,NAMEplace
+Guangzhou,NAMEplace
+Los Angeles,NAMEplace
+Ahmadabad,NAMEplace
+# Sydney,NAMEplace
+Pusan,NAMEplace
+Rhein-Main,NAMEplace
+Alexandria,NAMEplace
+Jidda,NAMEplace
+Hyderabad,NAMEplace
+Ankara,NAMEplace
+Yokohama,NAMEplace
+Montréal,NAMEplace
+Casablanca,NAMEplace
+Ho Chi Minh City,NAMEplace
+Berlin,NAMEplace
+Melbourne,NAMEplace
+Pyongyang,NAMEplace
+Kabul,NAMEplace
+Pune,NAMEplace
+Poona,NAMEplace
+Yangon,NAMEplace
+Medellín,NAMEplace
+Omdurman,NAMEplace
+Surat,NAMEplace
+Madrid,NAMEplace
+Abidjan,NAMEplace
+Xian,NAMEplace
+Chicago,NAMEplace
+Nanjing,NAMEplace
+Kanpur,NAMEplace
+Kano,NAMEplace
+Harbin,NAMEplace
+Buenos Aires,NAMEplace
+Addis Ababa,NAMEplace
+East Rand,NAMEplace
+Ekurhuleni,NAMEplace
+Surabaja,NAMEplace
+Jaipur,NAMEplace
+Nairobi,NAMEplace
+Salvador,NAMEplace
+Inch'on,NAMEplace
+Taegu,NAMEplace
+Kiev,NAMEplace
+Bekasi,NAMEplace
+Chengdu,NAMEplace
+Osaka-Kobe,NAMEplace
+Al-Jizah,NAMEplace
+Taipei,NAMEplace
+Dar es Salaam,NAMEplace
+Rome,NAMEplace
+Lucknow,NAMEplace
+Cali,NAMEplace
+Quezon City,NAMEplace
+Luanda,NAMEplace
+Changchun,NAMEplace
+Izmir,NAMEplace
+Faisalabad,NAMEplace
+Cape Town,NAMEplace
+Belo Horizonte,NAMEplace
+Ibadan,NAMEplace
+Fortaleza,NAMEplace
+Aleppo,NAMEplace
+Dalian,NAMEplace
+Nagpur,NAMEplace
+Havana,NAMEplace
+Taškent,NAMEplace
+Bandung,NAMEplace
+Nagoya,NAMEplace
+Brasília,NAMEplace
+Jinan,NAMEplace
+Guayaquil,NAMEplace
+Vancouver,NAMEplace
+Chittagong,NAMEplace
+Mashhad,NAMEplace
+Qingdao,NAMEplace
+Durban,NAMEplace
+Taiyuan,NAMEplace
+Medan,NAMEplace
+Houston,NAMEplace
+Medellin,NAMEplace
+Jiulong,NAMEplace
+Agadir,NAMEplace
+Dakar,NAMEplace
+Morelos,NAMEplace
+Zhengzhou,NAMEplace
+Kaesong,NAMEplace
+Douala,NAMEplace
+Baku,NAMEplace
+Bucharest,NAMEplace
+Santo-Domingo,NAMEplace
+Indore,NAMEplace
+Caracas,NAMEplace
+Hai Phong,NAMEplace
+Barranquilla,NAMEplace
+Sapporo,NAMEplace
+Rabat,NAMEplace
+Shangqiu,NAMEplace
+Kunming,NAMEplace
+Maracaibo,NAMEplace
+Si Racha,NAMEplace
+Hamburg,NAMEplace
+Rawalpindi,NAMEplace
+Khartoum,NAMEplace
+Budapest,NAMEplace
+Al-Khartum Bahri,NAMEplace
+Curitiba,NAMEplace
+Minsk,NAMEplace
+Zibo,NAMEplace
+Shijiazhuang,NAMEplace
+Xiantao,NAMEplace
+Warsaw,NAMEplace
+Damascus,NAMEplace
+Guadalajara,NAMEplace
+Lanzhou,NAMEplace
+Accra,NAMEplace
+Hangzhou,NAMEplace
+Yaoundé,NAMEplace
+Antananarivo,NAMEplace
+Patna,NAMEplace
+Bhopal,NAMEplace
+Palembang,NAMEplace
+Rhein-Neckar,NAMEplace
+Changsha,NAMEplace
+Tangerang,NAMEplace
+Manaus,NAMEplace
+Beirut,NAMEplace
+Metro Manila,NAMEplace
+Yulin, Guangxi,NAMEplace
+Ludhiana,NAMEplace
+Vienna,NAMEplace
+Esfahan,NAMEplace
+Semarang,NAMEplace
+Kaohsiung,NAMEplace
+Algiers,NAMEplace
+Quito,NAMEplace
+Kobe,NAMEplace
+Thana,NAMEplace
+Harare,NAMEplace
+Recife,NAMEplace
+Kharkov,NAMEplace
+Depok,NAMEplace
+Samut Prakan,NAMEplace
+Kyoto,NAMEplace
+Philadelphia,NAMEplace
+Tijuana,NAMEplace
+Mecca,NAMEplace
+Barcelona,NAMEplace
+Nanchang,NAMEplace
+Johannesburg,NAMEplace
+Taejon,NAMEplace
+Ciudad Juárez,NAMEplace
+Kwangju,NAMEplace
+Novosibirsk,NAMEplace
+Caloocan,NAMEplace
+Agra,NAMEplace
+Urumqi,NAMEplace
+Phoenix-Mesa,NAMEplace
+Sana'a,NAMEplace
+Vadodara,NAMEplace
+Guiyang,NAMEplace
+Puebla,NAMEplace
+Tabriz,NAMEplace
+Conakry,NAMEplace
+Belém,NAMEplace
+Fukuoka-Kitakyushu,NAMEplace
+Kuala Lumpur,NAMEplace
+Multan,NAMEplace
+Pôrto Alegre,NAMEplace
+Santa Cruz,NAMEplace
+Bursa,NAMEplace
+Tangshan,NAMEplace
+Montevideo,NAMEplace
+Perth,NAMEplace
+Gujranwala,NAMEplace
+Valencia,NAMEplace
+Lusaka,NAMEplace
+Córdoba,NAMEplace
+Nizhni Novgorod,NAMEplace
+La Matanza,NAMEplace
+Ekaterinburg,NAMEplace
+Jilin,NAMEplace
+Al-Madinah,NAMEplace
+Fuzhou,NAMEplace
+Fujian,NAMEplace
+Nashik,NAMEplace
+Anshan,NAMEplace
+Pimpri-Chinchwad,NAMEplace
+Dubai,NAMEplace
+Abadan,NAMEplace
+Bamako,NAMEplace
+San Diego,NAMEplace
+Kampala,NAMEplace
+Kawasaki,NAMEplace
+Kaduna,NAMEplace
+Kalyan,NAMEplace
+Hefei,NAMEplace
+San Antonio,NAMEplace
+Fushun,NAMEplace
+Port-au-Prince,NAMEplace
+Munich,NAMEplace
+Shenzhen,NAMEplace
+Xuzhou,NAMEplace
+Meerut,NAMEplace
+Dallas-Fort Worth,NAMEplace
+Fès,NAMEplace
+Baotou,NAMEplace
+Milan,NAMEplace
+Jamshedpur,NAMEplace
+Bogor,NAMEplace
+Shiraz,NAMEplace
+Adana,NAMEplace
+Faridabad,NAMEplace
+Hanoi,NAMEplace
+Karaj,NAMEplace
+Amman,NAMEplace
+Nezahualcóyotl,NAMEplace
+Ad-Dammam,NAMEplace
+Peshawar,NAMEplace
+Guarulhos,NAMEplace
+Tripoli,NAMEplace
+Varanasi,NAMEplace
+Benares,NAMEplace
+Mosul,NAMEplace
+Wuxi,NAMEplace
+Kuwait City,NAMEplace
+Goiânia,NAMEplace
+León,NAMEplace
+Zapopan,NAMEplace
+Handan,NAMEplace
+Glasgow,NAMEplace
+Ghaziabad,NAMEplace
+# Samara,NAMEplace
+Suzhou,NAMEplace
+Jiangsu,NAMEplace
+Prague,NAMEplace
+Omsk,NAMEplace
+Hiroshima,NAMEplace
+Qiqihar,NAMEplace
+Luoyang,NAMEplace
+Belgrade,NAMEplace
+Yantai,NAMEplace
+Kazan,NAMEplace
+Monterrey,NAMEplace
+Ottawa,NAMEplace
+Nampho,NAMEplace
+Suwon,NAMEplace
+Amritsar,NAMEplace
+Rajkot,NAMEplace
+Basra,NAMEplace
+Ujung Pandang,NAMEplace
+Shantou,NAMEplace
+Mogadishu,NAMEplace
+Nanning,NAMEplace
+Adelaide,NAMEplace
+# Sofia,NAMEplace
+Brazzaville,NAMEplace
+Datong,NAMEplace
+Pretoria,NAMEplace
+Almaty,NAMEplace
+Chelyabinsk,NAMEplace
+Rostov-on-Don,NAMEplace
+Yerevan,NAMEplace
+Soweto,NAMEplace
+Allahabad,NAMEplace
+Maputo,NAMEplace
+Goyang,NAMEplace
+Visakhapatnam,NAMEplace
+Dnepropetrovsk,NAMEplace
+# Victoria,NAMEplace
+Nanchong,NAMEplace
+Zigong,NAMEplace
+Benin City,NAMEplace
+T'aichung,NAMEplace
+Ahvaz,NAMEplace
+Ufa,NAMEplace
+Sendai,NAMEplace
+Jabalpur,NAMEplace
+Tbilisi,NAMEplace
+Qom,NAMEplace
+Calgary,NAMEplace
+Haora,NAMEplace
+Odessa,NAMEplace
+Aurangabad,NAMEplace
+Seongnam,NAMEplace
+Shubra al-Khaymah,NAMEplace
+Volgograd,NAMEplace
+Donetsk,NAMEplace
+Campinas,NAMEplace
+Gaziantep,NAMEplace
+Ulsan,NAMEplace
+Sholapur,NAMEplace
+Kitakyushu,NAMEplace
+Ouagadougou,NAMEplace
+Perm,NAMEplace
+Sao Luis,NAMEplace
+Athènes,NAMEplace
 
 # AUTEURS (nb de titres à la BNF)
 
@@ -12259,7 +12262,7 @@ Diderot,NAMEpers
 Verlaine,NAMEpers
 Tite-Live,NAMEpers
 Lamartine,NAMEpers
-Walter Scott,NAMEpers
+Scott,NAMEpers
 Schiller,NAMEpers
 Agatha Christie,NAMEpers
 Rolland,NAMEpers
@@ -12402,9 +12405,17 @@ Sarcey,NAMEpers
 Bonald,NAMEpers
 Beyle,NAMEpers
 Rochefoucauld,NAMEpers
+Virgile,NAMEpers
+Horace,NAMEpers
+Taine,NAMEpers
+Aristote,NAMEpers
+
+# Autres personne
+Jésus,NAMEpers
+Jésus-Christ,NAMEpers
+Christ,NAMEpers
 
 
-# Autres auteurs
 # DIVERS
 ABS
 ADN
@@ -12467,7 +12478,6 @@ Ahmedabad
 Aigoual
 Ain
 Airbus
-Aires
 Aisne
 Aix
 Aix-la-Chapelle
@@ -12545,7 +12555,6 @@ Angeles
 Angelino
 Angkor
 Anglet
-Angleterre
 Angoulême
 Angoumois
 Anguilla
@@ -12562,7 +12571,6 @@ Annecy
 Annemasse
 Anosov
 Anouilh
-Ans
 Anschluss
 Antalya
 Antarctique
@@ -12602,7 +12610,6 @@ Argovie
 Arion
 Aristarque
 Aristophane
-Aristote
 Arizona
 Ariège
 Arkansas
@@ -12647,7 +12654,6 @@ Athabasca
 Athalie
 Athanase
 Athis-Mons
-Athènes
 Athéna
 Atlanta
 Atlantide
@@ -12655,7 +12661,6 @@ Atlantique
 Atomium
 Atropos
 Aubagne
-Aube
 Aubin
 Aubrac
 Aubusson
@@ -12682,7 +12687,6 @@ Austrasie
 Autriche-Hongrie
 Auvergne
 Auxerre
-Ave
 Aventin
 Aveyron
 Avicenne
@@ -12697,7 +12701,6 @@ Aïcha
 Aïd-el-Adha
 Aïd-el-Kébir
 Aïssa
-B
 BASF
 BD
 BEF
@@ -12982,7 +12985,6 @@ Béthune
 Bétique
 Bézier
 Bézout
-C
 CA
 CAC
 CAD
@@ -13043,7 +13045,6 @@ Canton
 Cantons-de-l'Est
 Cantor
 Canyon
-Cap
 Cap-Vert
 Capet
 Capitale-Nationale
@@ -13085,7 +13086,6 @@ Caïphe
 Celle-Saint-Cloud
 Celsius
 Cenon
-Centre
 Centre-du-Québec
 Cervantès
 Cesàro
@@ -13163,7 +13163,6 @@ Châtellerault
 Châtenay-Malabry
 Châtillon
 Chénier
-Ci
 Cicéron
 Cid
 Cie
@@ -13261,7 +13260,6 @@ Crimée
 Critias
 Cro-Magnon
 Crohn
-Croix
 Cromwell
 Crusoé
 Crète
@@ -13527,7 +13525,6 @@ Eure
 Eure-et-Loir
 Euripide
 Eurogroupe
-Europe
 Europol
 Eurozone
 Eusèbe
@@ -13538,7 +13535,6 @@ Evergem
 Exbrayat
 Excalibur
 ExxonMobil
-F
 FAI
 FAQ
 FBI
@@ -13547,7 +13543,6 @@ FMI
 FRF
 FTP
 Fabergé
-Fagnes
 Fahrenheit
 Fairbanks
 Falkland
@@ -13570,7 +13565,6 @@ Fehling
 Feller
 Fermat
 Fermi
-Fétu
 Feuerbach
 Feydeau
 Feynman
@@ -13592,7 +13586,6 @@ Fleurus
 Fleury-les-Aubrais
 Flore
 Florent
-Florentine
 Floriane
 Floride
 Flémalle
@@ -13651,9 +13644,7 @@ Fukushima
 Fulcanelli
 Futuna
 Fécamp
-Félicité
 Féroé
-G
 GBP
 GDF
 GMT
@@ -13684,7 +13675,6 @@ Gantt
 Ganymède
 Gap
 Gard
-Garde
 Garenne-Colombes
 Gargantua
 Garges-lès-Gonesse
@@ -13748,7 +13738,6 @@ Giscard
 Gizeh
 Glaris
 Gluck
-Go
 Gobi
 Godefroid
 Godounov
@@ -13775,7 +13764,6 @@ Goussainville
 Goya
 Graal
 Gradignan
-Gram
 Gram-Schmidt
 Grammont
 Granby
@@ -13833,7 +13821,6 @@ Gênes
 Gödel
 Göring
 Göteborg
-H
 HD
 HDMI
 HIV
@@ -13956,7 +13943,6 @@ Hopper
 Horn
 Horner
 Horton
-Houilles
 Householder
 Houthalen-Helchteren
 Hubble
@@ -14033,7 +14019,6 @@ Ingres
 Inna
 Insulinde
 Intel
-Internet
 Interpol
 Iowa
 Iphigénie
@@ -14060,8 +14045,6 @@ Iwasawa
 Ixelles
 Ixion
 Izegem
-J
-J.-C
 JO
 JPY
 Jacksonville
@@ -14108,8 +14091,6 @@ Jéhovah
 Jéricho
 Jérusalem
 Jérémy
-Jésus
-Jésus-Christ
 K-O
 KGB
 KMF
@@ -14268,7 +14249,6 @@ Laponie
 Larousse
 Larsen
 Larzac
-Las
 Lascaux
 Lassay-les-Châteaux
 Latium
@@ -14311,10 +14291,8 @@ Libourne
 LibreOffice
 Libreville
 Liechtenstein
-Lierre
 Ligurie
 Likasi
-Lilas
 Lilongwe
 Lilou
 Limbourg
@@ -14399,9 +14377,7 @@ Lug
 Lugano
 Lulle
 Lully
-Lumière
 Lumpur
-Lune
 Lunel
 Lunéville
 Lusin
@@ -14503,7 +14479,6 @@ Mao
 Marat
 Marc-Antoine
 Marcelin
-Marche
 Marche-en-Famenne
 Marcion
 Marcq-en-Barœul
@@ -14566,7 +14541,6 @@ Maïwenn
 Mbit
 Mbuji-Mayi
 McKinley
-Me
 Meaux
 Mecklembourg
 Mecklembourg-Poméranie-Occidentale
@@ -14592,8 +14566,6 @@ Mercure
 Merelbeke
 Merkel
 Merleau-Ponty
-Mesdames
-Mesdemoiselles
 Messaline
 Messine
 Meudon
@@ -14626,7 +14598,6 @@ Miller
 Millerand
 Milne
 Milwaukee
-Mimas
 Minakshisundaram
 Minerve
 Minkowski
@@ -14649,7 +14620,6 @@ Moab
 Modigliani
 Mogadiscio
 Mohenjo-daro
-Moire
 Mol
 Moldavie
 Mole
@@ -14699,7 +14669,6 @@ Morel
 Morera
 Moresby
 Morphée
-Morse
 Morteau
 Mortsel
 Morvan
@@ -14993,7 +14962,7 @@ Pannonie
 Pantagruel
 Pantin
 Panurge
-Papa
+Papa,NAMEpers
 Papeete
 Papouasie
 Paracelse
@@ -15056,7 +15025,6 @@ Phénicie
 Phœbé
 Piave
 Pibit
-Picard
 Picardie
 Picasso
 Pie
@@ -15080,7 +15048,6 @@ Pittsburgh
 Pizarro
 Piémont
 Pl
-Plaisir
 Plancherel
 Planck
 Plemelj
@@ -15094,7 +15061,6 @@ Po
 Podgorica
 Poincaré
 Pointe-Claire
-Poisson
 Poissy
 Poitou
 Poitou-Charentes
@@ -15115,11 +15081,9 @@ Ponzi
 Pope
 Popper
 Porphyre
-Port
 Port-Gentil
 Porto
 Porto-Novo
-Possession
 Poséidon
 Potemkine
 Potsdam
@@ -15127,7 +15091,6 @@ Poutine
 Poznan
 Pr
 Praia
-Prairie
 Prandtl
 Praxitèle
 Pre
@@ -15137,7 +15100,6 @@ Priscille
 Pristina
 Privas
 Proche-Orient
-Professeure
 Prokofiev
 Prolog
 Prométhée
@@ -15185,7 +15147,6 @@ Quichotte
 Quirinal
 Qumran
 Québec
-R
 R'n'B
 RAM
 RATP
@@ -15326,9 +15287,7 @@ Rutishauser
 Râ
 Râmâyana
 Réaumur
-Réunion
 Rûmî
-S
 SA
 SARL
 SDF
@@ -15661,7 +15620,6 @@ Sérapis
 Sésostris
 Séverine
 Séville
-T
 TER
 TGV
 TMS
@@ -15678,7 +15636,6 @@ Tamagawa
 Tamerlan
 Tamise
 Tampico
-Tampon
 Tananarive
 Tancrède
 Tanger
@@ -15714,7 +15671,6 @@ Tenerife
 Tennessee
 Teotihuacán
 Termonde
-Terre
 Terre-Neuve
 Terre-Neuve-et-Labrador
 Terrebonne
@@ -15920,7 +15876,6 @@ Vaud
 Vaudreuil-Dorion
 Vaugirard
 Vaulx-en-Velin
-Ve
 Veda
 Vegas
 Velay
@@ -15974,7 +15929,6 @@ Vinciane
 Violaine
 Viollet-le-Duc
 Virasoro
-Virgile
 Virginie-Occidentale
 Virton
 Viry-Châtillon
@@ -16004,7 +15958,6 @@ Vénus
 Vénétie
 Vérone
 Vésuve
-W
 WASP
 WC
 Wadowice

@@ -76,11 +76,20 @@ public class NAME
   {
     TermDic dic = new TermDic();
     OccSlider win = new OccSlider(left, right);
+    Occ occ;
     while ( toks.word( win.add() ) ) {
-      if ( ! win.get( 0 ).tag().isName() ) continue;
+      occ = win.get( 0 );
+      if ( occ.tag().equals( Tag.SUB ) ) {
+        index.add(occ.orth() );
+        continue;
+      }
+      if ( ! occ.tag().isName() ) {
+        index.inc();
+        continue;
+      }
       html( win, 0, 0 );
-      dic.add( win.get( 0 ).orth() );
-      index.add( win.get( 0 ).tag().label() + " " + win.get( 0 ).orth() );
+      dic.add( occ.orth() );
+      index.add( occ.orth() );
     }
     return dic;
   }

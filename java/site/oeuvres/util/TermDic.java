@@ -52,7 +52,7 @@ public class TermDic
   /** List of terms, kept in index order, to get a term by int index */
   private String[] byCode = new String[32];
   /** Count of all occurrences for this dico */
-  private int occs;
+  private long occs;
   /** Last occurrences count before some ops, for caching */
   // private int lastOccs;
 
@@ -298,9 +298,25 @@ public class TermDic
   /**
    * Sum of all counts
    */
-  public int occs()
+  public long occs()
   {
     return occs;
+  }
+  /**
+   * Increment occurrences count with not stored terms (useful for filtered dictionary)
+   */
+  public TermDic inc( )
+  {
+    occs ++;
+    return this;
+  }
+  /**
+   * Increment occurrences count with not stored terms (useful for filtered dictionary)
+   */
+  public TermDic inc( int i )
+  {
+    occs += i;
+    return this;
   }
   /**
    * Get term list in inverse count order.
@@ -425,6 +441,7 @@ public class TermDic
     String[] byCount = byCount();
     int length = byCount.length;
     int count1;
+    writer.write( "TERM\tCOUNT\tPPM\n" );
     try {
       for (int i = 0; i < length; i++) {
         if (stoplist != null && stoplist.contains( byCount[i] ))
@@ -436,7 +453,7 @@ public class TermDic
         writer.write( 
           byCount[i]
           +"\t"+ count1
-          +"\t"+ 1000000*count1/occs
+          +"\t"+ (double)Math.round( 100000000.0*count1/occs )/100
         +"\n" );
       }
     } finally {

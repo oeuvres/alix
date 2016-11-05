@@ -6,6 +6,8 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import site.oeuvres.util.Term;
 import site.oeuvres.util.TermTrie;
@@ -238,12 +240,23 @@ public class Lexik
     if ( entry == null ) return Tag.UNKNOWN;
     return entry.tag.code();
   }
-      
+  /**
+   * Compare dics, names should not contain common words
+   */
+  private static void comp()
+  {
+    SortedSet<String> keys = new TreeSet<String>(NAME.keySet());
+    for ( String word:keys) {
+      if ( WORD.containsKey( word.toLowerCase() )) System.out.println( word );
+    }
+  }
+  
   /**
    * For testing
    */
   public static void main(String[] args) throws IOException 
   {
+    comp();
     Occ occ = new Occ(); 
     for (String token: "lui est lorsqu' et depuis quand est il en cette ville ? 25 centimes de hier au soir . et quel sujet l’ y amène ?".split( " " ) ) {
       occ.clear();

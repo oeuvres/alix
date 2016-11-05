@@ -288,10 +288,10 @@ modern style,ADJ,,0.68
 modern style,SUB,,0
 modus operandi,SUB,,0
 modus vivendi,SUB,,0.47
-monsieur de NAME,NAMEpers
-monsieur NAME,NAMEpers
-monsieur NAME de NAME,NAMEpers
-monsieur NAME NAME,NAMEpers
+# monsieur de NAME,NAMEpers
+# monsieur NAME,NAMEpers
+# monsieur NAME de NAME,NAMEpers
+# monsieur NAME NAME,NAMEpers
 motu proprio,ADV,,0.07
 music hall,SUB,,0
 mutatis mutandis,ADV,,0.07
@@ -410,3 +410,36 @@ week end,SUB,,0
 world music,SUB,,0
 yom kippour,SUB,,0.34
 yom kippur,SUB,,0
+une fois,ADV
+une bonne fois,ADV
+une fois pour toutes,ADV
+une bonne fois pour toutes,ADV
+encore une fois,ADV
+NUM fois par an,ADV
+NUM fois par semaine,ADV
+NUM fois par mois,ADV
+plutôt deux fois que une,ADV
+NUM fois,ADV
+à NUM fois,ADV
+la première fois,ADV
+cette fois-ci,ADV
+cette fois-là,ADV
+chaque fois,ADV
+à chaque fois,ADV
+toutes les fois,ADV
+une autre fois,ADV
+une fois,ADV
+il était une fois,ADV
+à la fois,ADV
+pour une fois,ADV
+pour cette fois,ADV
+la fois où,CONJ
+cette fois où,CONJ
+chaque fois que,CONJ
+à chaque fois que,CONJ
+toutes les fois que,CONJ
+les fois que,CONJ
+une fois que,CONJ
+pour une fois que,CONJ
+des fois que,CONJ
+

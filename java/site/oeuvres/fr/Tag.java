@@ -64,6 +64,7 @@ public final class Tag
   public final static short PUN  = 0xC0;
   public final static short PUNsent  = 0xC1;
   public final static short PUNcl  = 0xC2;
+  public final static short ABBR  = 0xD0;
   static final HashMap<String, Short> CODE = new  HashMap<String, Short>(); 
   static final HashMap<Short, String> LABEL = new HashMap<Short, String>(); 
   // loop on the static fields declared to populate the HashMaps
@@ -221,7 +222,7 @@ public final class Tag
    */
   public static void main(String[] args)
   {
-    System.out.println( new Tag(0).equals( 0 ) );
+    System.out.println( new Tag(Tag.SUB).equals( Tag.SUB ) );
     System.out.println( new Tag(0).equals( (short)0 ) );
     System.out.println( isName( NAMEplace ) );
     System.out.println( code("TEST") );
