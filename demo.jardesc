@@ -4,7 +4,7 @@
     <options buildIfNeeded="true" compress="true" descriptionLocation="/Alix/demo.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="true" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
     <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
     <selectedProjects/>
-    <manifest generateManifest="true" manifestLocation="/Alix/java/META-INF/MANIFEST.MF" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
+    <manifest generateManifest="false" manifestLocation="/Alix/java/META-INF/MANIFEST.MF" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
         <sealing sealJar="false">
             <packagesToSeal/>
             <packagesToUnSeal/>
@@ -13,13 +13,11 @@
     <selectedElements exportClassFiles="false" exportJavaFiles="false" exportOutputFolder="true">
         <javaElement handleIdentifier="=Alix/java&lt;fr"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{OccSlider.java"/>
-        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Cat.java"/>
         <file path="/Alix/java/site/oeuvres/fr/loc.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Tokenizer.java"/>
-        <folder path="/Alix/java/META-INF/services"/>
+        <file path="/Alix/java/site/oeuvres/fr/name.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Lexik.java"/>
         <file path="/Alix/java/site/oeuvres/fr/stoplist.txt"/>
-        <file path="/Alix/java/site/oeuvres/fr/name.txt"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{GN.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.lucene"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Rewrite.java"/>
@@ -28,6 +26,7 @@
         <file path="/Alix/java/site/oeuvres/fr/word.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;site"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres"/>
+        <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{Tag.java"/>
         <file path="/Alix/java/site/oeuvres/fr/orth.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.util"/>
         <javaElement handleIdentifier="=Alix/java&lt;site.oeuvres.fr{LexikEntry.java"/>

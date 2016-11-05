@@ -182,10 +182,10 @@ public class Lexik
    */
   public static boolean word( Occ tok )
   {
-    Term orth = tok.orth();
     // normalize graphical form
-    if ( Lexik.ORTH.containsKey( orth ) ) tok.orth( Lexik.ORTH.get( orth ) );
-    LexikEntry entry = Lexik.WORD.get( orth );
+    String corr = Lexik.ORTH.get( tok.orth );
+    if ( corr != null) tok.orth( corr );
+    LexikEntry entry = Lexik.WORD.get( tok.orth );
     if ( entry == null ) return false;
     tok.lem( entry.lem );
     tok.tag( entry.tag.code() );
@@ -198,10 +198,10 @@ public class Lexik
    */
   public static boolean name( Occ tok )
   {
-    Term orth = tok.orth();
-    // normalize graphical form ?
-    if ( Lexik.ORTH.containsKey( orth ) ) tok.orth( Lexik.ORTH.get( orth ) );
-    Tag tag = Lexik.NAME.get( orth );
+    // normalize graphical form
+    String corr = Lexik.ORTH.get( tok.orth );
+    if ( corr != null) tok.orth( corr );
+    Tag tag = Lexik.NAME.get( tok.orth );
     if ( tag == null ) return false; // no change here the occurrence
     // tok.lem( entry.lem ); ?? lemmatization of names ?
     tok.tag( tag.code() );
@@ -245,9 +245,9 @@ public class Lexik
    */
   private static void comp()
   {
-    SortedSet<String> keys = new TreeSet<String>(NAME.keySet());
+    SortedSet<String> keys = new TreeSet<String>(WORD.keySet());
     for ( String word:keys) {
-      if ( WORD.containsKey( word.toLowerCase() )) System.out.println( word );
+      if ( NAME.containsKey( word.toLowerCase() )) System.out.println( word );
     }
   }
   

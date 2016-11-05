@@ -134,9 +134,9 @@ public class Tokenizer
         tag( occ );
       }
       // try to find a token
-      child = parent.get( occ.orth() );
+      child = parent.get( occ.orth );
       // if not found, more generic, try gram cat in the compound dictionary
-      if ( child == null ) child = parent.get( occ.tag().prefix() );
+      if ( child == null ) child = parent.get( occ.tag.prefix() );
       // if not found, try lemma ? only for VERB ? s’écrier…
       // if ( child == null) child = parent.get( occ.lem() );
       // if not found try orth
@@ -153,7 +153,7 @@ public class Tokenizer
         if ( tag != 0 ) {
           word.tag( tag );
           if ( orth != null ) word.orth( orth );
-          word.lem( word.orth() );
+          word.lem( word.orth );
         }
         // move the slider to this position 
         occbuf.move( lastpos + 1 );
@@ -185,7 +185,7 @@ public class Tokenizer
   {
     // work with local variables to limit lookups (“avoid getfield opcode” read in String source code) 
     // reset the mutable String
-    Term graph = occ.graph().clear();
+    Term graph = occ.graph.clear();
     // go to start of first token
     pos = next( pos );
     // end of text, finish
@@ -295,9 +295,9 @@ public class Tokenizer
    * @param An occurrence to tag
    */
   public void tag( Occ occ ) {
-    occ.orth( occ.graph() );
+    occ.orth( occ.graph );
     occ.tag( Tag.UNKNOWN );
-    char c = occ.graph().charAt( 0 );
+    char c = occ.graph.charAt( 0 );
     // ponctuation ?
     if (Char.isPunctuation( c ) ) {
       if ( Char.isPUNsent( c ) ) occ.tag( Tag.PUNsent );
@@ -317,7 +317,7 @@ public class Tokenizer
       // start of a sentence ?
       else {
         // Try if word lower case is known as word
-        occ.orth().toLower() ;
+        occ.orth.toLower() ;
         // know word will update token
         if ( Lexik.word( occ ) ) {
           return;
@@ -325,7 +325,7 @@ public class Tokenizer
         // unknow name
         else {
           // restore the capital word
-          occ.orth( occ.graph() );
+          occ.orth( occ.graph );
           occ.tag( Tag.NAME );
           return;
         }

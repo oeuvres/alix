@@ -99,7 +99,7 @@ public class OccSlider extends Slider {
     StringBuilder sb = new StringBuilder();
     for (int i = -left; i <= right; i++) {
       if (i == 0) sb.append( "<" );
-      sb.append( get(i).graph() );
+      sb.append( get(i).graph );
       if (i == 0) sb.append( ">" );
       sb.append( " " );
     }

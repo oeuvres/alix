@@ -79,17 +79,17 @@ public class NAME
     Occ occ;
     while ( toks.word( win.add() ) ) {
       occ = win.get( 0 );
-      if ( occ.tag().equals( Tag.SUB ) ) {
-        index.add(occ.orth() );
+      if ( occ.tag.equals( Tag.SUB ) ) {
+        index.add(occ.orth );
         continue;
       }
-      if ( ! occ.tag().isName() ) {
+      if ( ! occ.tag.isName() ) {
         index.inc();
         continue;
       }
       html( win, 0, 0 );
-      dic.add( occ.orth() );
-      index.add( occ.orth() );
+      dic.add( occ.orth );
+      index.add( occ.orth );
     }
     return dic;
   }
@@ -106,21 +106,21 @@ public class NAME
     htmlWriter.print( ".</td>" );
     htmlWriter.print( "<td class=\"left\">" );
     for ( int i=-left; i < 0; i++) {
-      tag =  win.get( i ).tag();
+      tag =  win.get( i ).tag;
       if ( tag.isName() ) htmlWriter.print( "<i class=\""+tag.label()+"\">" );
-      htmlWriter.print( win.get( i ).graph() );
+      htmlWriter.print( win.get( i ).graph );
       if ( tag.isName() ) htmlWriter.print( "</i>" );
       if (i<-1) htmlWriter.print( " " );
     }
     htmlWriter.print( "</td>" );
-    htmlWriter.print( "<th class=\""+win.get( 0 ).tag().label()+"\">" );
-    htmlWriter.print( win.get( 0 ).graph() );
+    htmlWriter.print( "<th class=\""+win.get( 0 ).tag.label()+"\">" );
+    htmlWriter.print( win.get( 0 ).graph );
     htmlWriter.print( "</th>" );
     htmlWriter.print( "<td class=\"right\">" );
     for ( int i=1; i <= right; i++) {
-      tag =  win.get( i ).tag();
+      tag =  win.get( i ).tag;
       if ( tag.isName() ) htmlWriter.print( "<i class=\""+tag.label()+"\">" );
-      htmlWriter.print( win.get( i ).graph() );
+      htmlWriter.print( win.get( i ).graph );
       if ( tag.isName() ) htmlWriter.print( "</i>" );
       htmlWriter.print( " " );
     }

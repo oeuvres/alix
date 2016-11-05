@@ -11,17 +11,17 @@ import site.oeuvres.util.Term;
 public class Occ
 {
   /** Graphical form like encountered, caps/min, ellisions, could be used for a correct concordancer */
-  private Term graph = new Term();
+  public Term graph = new Term();
   /** Orthographic form, normalized graphical form */
-  private Term orth = new Term();
+  public Term orth = new Term();
   /** Grammatical category */
-  private Tag tag = new Tag();
+  public Tag tag = new Tag();
   /** Lemma form */
-  private Term lem = new Term();
+  public Term lem = new Term();
   /** Char index in the source file of the first char of the token */
-  private int start = -1;
+  public int start = -1;
   /** Char index in the source file (-1) like for String.substring(start, end) */
-  private int end = -1;
+  public int end = -1;
   /**
    * Empty constructor
    */
@@ -37,6 +37,26 @@ public class Occ
     replace( occ );
   }
   /**
+   * Constructor
+   */
+  public Occ( final CharSequence graph, final CharSequence orth, final Tag tag, final CharSequence lem)
+  {
+    graph( graph );
+    orth( orth );
+    tag( tag );
+    lem( lem );
+  }
+  /**
+   * Constructor
+   */
+  public Occ( final Term graph, final Term orth, final short tag, final Term lem)
+  {
+    graph( graph );
+    orth( orth );
+    tag( tag );
+    lem( lem );
+  }
+  /**
    * Replace occurrence values by another
    * @param occ
    * @return a handle on the Occurrence object for chaining
@@ -45,7 +65,7 @@ public class Occ
   {
     graph.replace( occ.graph );
     orth.replace( occ.orth );
-    tag.code( occ.tag() );
+    tag.code( occ.tag );
     lem.replace( occ.lem );
     start = occ.start;
     end = occ.end;
@@ -138,14 +158,7 @@ public class Occ
     graph.replace( t );
     return this;
   }
-  /**
-   * Get a handle on the graph object
-   * @return access to the mutable String
-   */
-  public Term graph()
-  {
-    return graph;
-  }
+
   /**
    * Set orth value by a String (or a mutable String)
    * @param cs
@@ -179,24 +192,8 @@ public class Occ
     return this;
   }
   /**
-   * Get a handle on the orthographic form as a mutable String object
-   * @return access to the mutable String
-   */
-  public Term orth()
-  {
-    return orth;
-  }
-  /**
-   * Get a grammar category code
-   * @return a cat code like set
-   */
-  public Tag tag()
-  {
-    return tag;
-  }
-  /**
    * Set a grammar category code
-   * @return a handle on the occurrence object
+   * @return a handle on the occurrence object for chaining
    */
   public Occ tag( final short code )
   {
@@ -229,14 +226,6 @@ public class Occ
     return this;
   }
   /**
-   * Get a handle on the lemma form as a mutable String object
-   * @return access to the mutable String
-   */
-  public Term lem()
-  {
-    return lem;
-  }
-  /**
    * Set a start pointer for the occurrence
    * @param i pointer, for example a char index in a String
    * @return
@@ -247,14 +236,6 @@ public class Occ
     return this;
   }
   /**
-   * Get the start pointer for the occurrence
-   * @return
-   */
-  public int start()
-  {
-    return start;
-  }
-  /**
    * Set an end pointer for the occurrence (last char + 1)
    * @param i pointer, for example a char index in a String
    * @return
@@ -263,34 +244,6 @@ public class Occ
   {
     this.end = i;
     return this;
-  }
-  /**
-   * Get the start pointer for the occurrence
-   * @return
-   */
-  public int end()
-  {
-    return end;
-  }
-  /**
-   * Constructor
-   */
-  public Occ( final CharSequence graph, final CharSequence orth, final Tag tag, final CharSequence lem)
-  {
-    graph( graph );
-    orth( orth );
-    tag( tag );
-    lem( lem );
-  }
-  /**
-   * Constructor
-   */
-  public Occ( final Term graph, final Term orth, final short tag, final Term lem)
-  {
-    graph( graph );
-    orth( orth );
-    tag( tag );
-    lem( lem );
   }
   /** 
    * Default String display 
