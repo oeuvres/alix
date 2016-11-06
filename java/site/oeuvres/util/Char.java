@@ -29,8 +29,8 @@ public class Char
   private static final short LETTER = 0x0001;
   /** Is a space (Unicode property) */
   private static final short SPACE = 0x0002;
-  /** Is word, specific, with '-' and ‘'’ */
-  private static final short WORD = 0x0004;
+  /** Is token, specific, with '-' and ‘'’ */
+  private static final short TOKEN = 0x0004;
   /** Punctuation, according to Unicode */
   private static final short PUNCTUATION = 0x0008;
   private static final short PUNCTUATION_OR_SPACE = SPACE | PUNCTUATION;
@@ -171,85 +171,30 @@ public class Char
     FILENAME.put( '.', "," );
     FILENAME.put( '?', "" );
   }
-  /*
-  public static final HashMap<Character, Character>LOWER = new HashMap<Character, Character>();
-  static {
-    LOWER.put( 'A', 'a' );
-    LOWER.put( 'B', 'b' );
-    LOWER.put( 'C', 'c' );
-    LOWER.put( 'D', 'd' );
-    LOWER.put( 'E', 'e' );
-    LOWER.put( 'F', 'f' );
-    LOWER.put( 'G', 'g' );
-    LOWER.put( 'H', 'h' );
-    LOWER.put( 'I', 'i' );
-    LOWER.put( 'J', 'j' );
-    LOWER.put( 'K', 'k' );
-    LOWER.put( 'L', 'l' );
-    LOWER.put( 'M', 'm' );
-    LOWER.put( 'N', 'n' );
-    LOWER.put( 'O', 'o' );
-    LOWER.put( 'P', 'p' );
-    LOWER.put( 'Q', 'q' );
-    LOWER.put( 'R', 'r' );
-    LOWER.put( 'S', 's' );
-    LOWER.put( 'T', 't' );
-    LOWER.put( 'U', 'u' );
-    LOWER.put( 'V', 'v' );
-    LOWER.put( 'W', 'w' );
-    LOWER.put( 'X', 'x' );
-    LOWER.put( 'Y', 'y' );
-    LOWER.put( 'Z', 'z' );
-    LOWER.put( 'Œ', 'æ' );
-    LOWER.put( 'À', 'à' );
-    LOWER.put( 'Á', 'á' );
-    LOWER.put( 'Â', 'â' );
-    LOWER.put( 'Ã', 'ã' );
-    LOWER.put( 'Ä', 'ä' );
-    LOWER.put( 'Å', 'å' );
-    LOWER.put( 'Æ', 'æ' );
-    LOWER.put( 'Ç', 'ç' );
-    LOWER.put( 'È', 'è' );
-    LOWER.put( 'É', 'é' );
-    LOWER.put( 'Ê', 'ê' );
-    LOWER.put( 'Ë', 'ë' );
-    LOWER.put( 'Ì', 'ì' );
-    LOWER.put( 'Í', 'í' );
-    LOWER.put( 'Î', 'î' );
-    LOWER.put( 'Ï', 'ï' );
-    LOWER.put( 'Ò', 'ò' );
-    LOWER.put( 'Ó', 'ó' );
-    LOWER.put( 'Ô', 'ô' );
-    LOWER.put( 'Õ', 'õ' );
-    LOWER.put( 'Ö', 'ö' );
-    LOWER.put( 'Ù', 'ù' );
-    LOWER.put( 'Ú', 'ú' );
-    LOWER.put( 'Û', 'û' );
-    LOWER.put( 'Ü', 'ü' );
-    LOWER.put( 'Ý', 'ý' );
-  }
-  */
   static
   {
     int type;
     // infinite loop when size = 65536, a char restart to 0
     for (char c = 0; c < SIZE; c++) {      
       short properties = 0x0;
-      if (Character.isDigit( c ))
+      if (Character.isDigit( c )) {
         properties |= DIGIT;
+        properties |= TOKEN;
+      }
       // DO NOT modify '<>' values
+      if ( c == '.' || c == ',' ) properties |= TOKEN;
       // hacky, hyphen maybe part of compound word, or start of a separator like ---
       if ( c == '-' || c == 0xAD || c == '\'' || c == '’' ) {
-        properties |= WORD;
+        properties |= TOKEN;
       }
       else if ( c == '&') {
-        properties |= WORD;
+        properties |= TOKEN;
       }
       else if ( c == '_') {
-        properties |= WORD;
+        properties |= TOKEN;
       }
       else if (Character.isLetter( c )) {
-        properties |= WORD;
+        properties |= TOKEN;
         properties |= LETTER;
         if (Character.isUpperCase( c )) {
           properties |= UPPERCASE;
@@ -268,10 +213,12 @@ public class Char
       else {
         type = Character.getType( c );
         if (type == Character.CONNECTOR_PUNCTUATION || type == Character.DASH_PUNCTUATION
-            || type == Character.END_PUNCTUATION || type == Character.FINAL_QUOTE_PUNCTUATION
-            || type == Character.INITIAL_QUOTE_PUNCTUATION || type == Character.OTHER_PUNCTUATION
-            || type == Character.START_PUNCTUATION)
+        || type == Character.END_PUNCTUATION || type == Character.FINAL_QUOTE_PUNCTUATION
+        || type == Character.INITIAL_QUOTE_PUNCTUATION || type == Character.OTHER_PUNCTUATION
+        || type == Character.START_PUNCTUATION) {
           properties |= PUNCTUATION;
+          
+        }
         if ( '.' == c || '…' == c || '?' == c || '!' == c ) properties |= PUNsent;
         else if ( ',' == c || ';' == c || ':' == c ) properties |= PUNcl;
       }
@@ -285,9 +232,9 @@ public class Char
    * 
    * @see Character#isLetter(char)
    */
-  public static boolean isWord( char c )
+  public static boolean isToken( char c )
   {
-    return (CHARS[c] & WORD) > 0;
+    return (CHARS[c] & TOKEN) > 0;
   }
 
   /**
@@ -413,26 +360,36 @@ public class Char
    */
   public static void main( String args[] )
   {
-    System.out.println( "Soft hyphen Char.isWord:"+Char.isWord( (char)0xAD ) // true
+    System.out.println( "Soft hyphen Char.isToken:"+Char.isToken( (char)0xAD ) // true
       +" Char.isLetter: " + Char.isLetter( (char)0xAD ) // false
       +" Char.isPunctuationOrSpace: " + Char.isPunctuationOrSpace( (char)0xAD ) // false
     );
-    System.out.println( "- Char.isWord: " + Char.isWord( '-' ) // true
+    System.out.println( "- Char.isToken: " + Char.isToken( '-' ) // true
       + " Char.isLetter:" + Char.isLetter( '-' ) // false
     );
-    System.out.println( "6 Char.isWord:"+Char.isWord( '6' )+" Char.isPunctuationOrSpace: " + Char.isPunctuationOrSpace( '6' ) );
-    System.out.println( "' Char.isWord: " + Char.isWord( '\'' ) + " Character.isLetter:" + Character.isLetter( '\'' ) );
-    System.out.println( "’ Char.isWord: " + Char.isWord( '’' ) + " Character.isLetter:" + Character.isLetter( '’' ) );
-    System.out.println( "& Char.isWord: " + Char.isWord( '&' ) + " Character.isLetter:" + Character.isLetter( '&' ));
-    System.out.println( "~ Char.isWord: " + Char.isWord( '~' ) + " Character.isLetter:" + Character.isLetter( '~' ));
-    System.out.println( ", Char.isWord: " + Char.isWord( ',' ) + " Character.isLetter:" + Character.isLetter( ',' ) + ", isPunctuation: " + Char.isPunctuation( ',' ));
+    System.out.println( ". Char.isToken: " + Char.isToken( '.' ) // true
+      + " Char.isLetter:" + Char.isLetter( '.' ) // false
+      + " Char.isPunctuation:" + Char.isPunctuation( '.' ) // true
+    );
+    System.out.println( ", Char.isToken: " + Char.isToken( ',' ) // true
+    + " Char.isLetter:" + Char.isLetter( ',' ) // false
+    + " Char.isPunctuation:" + Char.isPunctuation( ',' ) // true
+  );
+    System.out.println( "6 Char.isToken:"+Char.isToken( '6' ) // true
+       +  " Char.isPunctuationOrSpace: " + Char.isPunctuationOrSpace( '6' ) // false
+    );
+    System.out.println( "' Char.isToken: " + Char.isToken( '\'' ) + " Character.isLetter:" + Character.isLetter( '\'' ) );
+    System.out.println( "’ Char.isToken: " + Char.isToken( '’' ) + " Character.isLetter:" + Character.isLetter( '’' ) );
+    System.out.println( "& Char.isToken: " + Char.isToken( '&' ) + " Character.isLetter:" + Character.isLetter( '&' ));
+    System.out.println( "~ Char.isToken: " + Char.isToken( '~' ) + " Character.isLetter:" + Character.isLetter( '~' ));
+    System.out.println( ", Char.isToken: " + Char.isToken( ',' ) + " Character.isLetter:" + Character.isLetter( ',' ) + ", isPunctuation: " + Char.isPunctuation( ',' ));
     System.out.println( "< isPunctuation: " + Char.isPunctuation( '<' ) );
     System.out.println( "Œ isUpperCase: " + Char.isUpperCase( 'Œ' ) );
     System.out.println( "à isLowerCase: " + Char.isLowerCase( 'à' ) );
     System.out.println( "&nbsp; isSpace: " + Char.isSpace( ' ' ) );
     System.out.println( "\\n isSpace: " + Char.isSpace( '\n' ) );
     System.out.println( "  isSpace: " + Char.isSpace( ' ' ) );
-    System.out.println( "+ isPunctuation: " + Char.isPunctuation( '+' ) );
+    System.out.println( "+ isPunctuation: " + Char.isPunctuation( '+' ) ); // false
     System.out.println( "= isPunctuation: " + Char.isPunctuation( '=' ) );
     /*
     long time = System.nanoTime();

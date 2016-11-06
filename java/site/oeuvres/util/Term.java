@@ -5,8 +5,9 @@ import java.util.Arrays;
 
 /**
  * A mutable string implementation thought for efficiency more than security.
- * The hash function is same as String so that a Term could be efficiently found in a Set<String>.
- * The same internal char array could be shared by multiple Term object (with different offset and len).
+ * The hash function is same as String so that a Term can be found in a Set<String>.
+ * The same internal char array could be shared by multiple Term instances (with different offset and len),
+ * allowing to scan 
  * 
  * @author glorieux-f
  */
@@ -436,13 +437,27 @@ public class Term implements CharSequence, Comparable<Term>
     data[start+index] = c;
     return this;
   }
-
+  /**
+   * Test prefix
+   * @param prefix
+   * @return true if the Term starts by prefix
+   */
+  public boolean startsWith( final CharSequence prefix)
+  {
+    int lim = prefix.length();
+    if ( lim > len) return false;
+    for ( int i=0; i < lim; i++ ) {
+      if ( prefix.charAt( i ) != data[start+i]) return false;
+    }
+    return true;
+  }
   @Override
   public CharSequence subSequence( int start, int end )
   {
     System.out.println( "Term.subSequence() TODO Auto-generated method stub" );
     return null;
   }
+  
   @Override
   public boolean equals ( Object o ) {
     // System.out.println( this+" =? "+o );
@@ -581,9 +596,10 @@ public class Term implements CharSequence, Comparable<Term>
     System.out.println( "line: \""+line+"\"" );
     System.out.print( "Testing equals()" );
     long time = System.nanoTime();
+    // test equals perf with a long String
     String text = "java - CharBuffer vs. char[] - Stack Overflow stackoverflow.com/questions/294382/charbuffer-vs-char Traduire cette page 16 nov. 2008 - No, there's really no reason to prefer a CharBuffer in this case. In general, though ..... P.S If you use a backport remember to remove it once you catch up to the version containing the real version of the backported code.";
     term = new Term(text);
-    term.last( 'p' );
+    term.last( 'p' ); // modify the last char
     for ( int i=0; i < 10000000; i++) { 
       term.equals( text );
     }

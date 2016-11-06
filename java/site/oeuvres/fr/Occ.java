@@ -80,17 +80,17 @@ public class Occ
     char c;
     if ( !graph.isEmpty() ) {
       c = graph.last();
-      if ( c != '\'' && c != '’')
+      if ( c != '\'' && c != '’' && c != '-')
         graph.append( ' ' );
     }
     if ( !orth.isEmpty() ) {
       c = orth.last();
-      if ( c != '\'' && c != '’')
+      if ( c != '\'' && c != '’' && c != '-')
         orth.append( ' ' );
     }
     if ( !lem.isEmpty() ) {
       c = lem.last();
-      if ( c != '\'' && c != '’')
+      if ( c != '\'' && c != '’' && c != '-')
         lem.append( ' ' );
     }
     graph.append( occ.graph );

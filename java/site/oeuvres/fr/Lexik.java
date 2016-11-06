@@ -39,6 +39,28 @@ public class Lexik
       e.printStackTrace();
     }
   }
+  /** Abbreviations with a final dot */
+  public static final HashSet<String> BREVIDOT = new HashSet<String>( (int)( 100 * 0.75 ) );
+  static {
+    String l;
+    try {
+      BufferedReader buf = new BufferedReader( 
+        new InputStreamReader(
+          Tokenizer.class.getResourceAsStream( "brevidot.csv" ), 
+          StandardCharsets.UTF_8
+        )
+      );
+      buf.readLine(); // skip first line
+      while ((l = buf.readLine()) != null) {
+        if (l.charAt( 0 ) == '#' ) continue;
+        BREVIDOT.add( l.trim() );
+      }
+      buf.close();
+    } 
+    catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
   /** Graphic normalization (replacement) */
   public static final HashMap<String,String> ORTH = new HashMap<String,String>( (int)( 100 * 0.75 ) );
   static {

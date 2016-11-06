@@ -300,7 +300,8 @@ NAME NAME de NAME,NAMEpers
 NAME de NAME,NAMEpers
 NAME du NAME,NAMEpers
 NAME NUM,NAMEpers
-ne est-ce pas,ADV,n’est-ce pas,0
+ne est ce pas,ADV,n’est-ce pas,0
+ne importe qui,PROindef,n’importe qui
 ne varietur,ADV,,0.14
 negro spiritual,SUB,,0.07
 negro spirituals,SUB,,0.07
