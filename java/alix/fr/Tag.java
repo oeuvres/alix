@@ -26,6 +26,8 @@ public final class Tag
   public final static short VERBppres = 0x13; 
   public final static short VERBsup = 0x15;
   public final static short SUB  = 0x20;
+  public final static short SUBm  = 0x21;
+  public final static short SUBf  = 0x22;
   public final static short ADJ  = 0x30;
   public final static short ADV  = 0x40;
   public final static short ADVneg = 0x41;

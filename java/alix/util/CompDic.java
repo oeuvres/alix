@@ -25,12 +25,12 @@ public class CompDic
   public void add1( TermDic dic )
   {
     for (Map.Entry<String, int[]> entry : dic.entrySet())
-      add1( entry.getKey(), entry.getValue()[TermDic.ICOUNT1]);
+      add1( entry.getKey(), entry.getValue()[TermDic.ICOUNT]);
   }
   public void add2( TermDic dic )
   {
     for (Map.Entry<String, int[]> entry : dic.entrySet())
-      add2( entry.getKey(), entry.getValue()[TermDic.ICOUNT1]);
+      add2( entry.getKey(), entry.getValue()[TermDic.ICOUNT]);
   }
   public CompDic add1(final String term, final int count)
   {
@@ -157,11 +157,11 @@ public class CompDic
     String text;
     text = "un texte court avec un peu des mots un peu pareils des";
     TermDic dic = new TermDic();
-    for ( String s: text.split( " " ) ) dic.add( s );
+    for ( String s: text.split( " " ) ) dic.inc( s );
     comp.add1( dic );
     dic.clear();
     text = "un autre texte avec d’ autres mots arrangés un peu à la diable";
-    for ( String s: text.split( " " ) ) dic.add( s );
+    for ( String s: text.split( " " ) ) dic.inc( s );
     comp.add2( dic );
     System.out.println( comp );
   }

@@ -74,6 +74,9 @@ public class Lexik
       );
       String[] cells;
       while ((l = buf.readLine()) != null) {
+        l = l.trim();
+        if ( l.isEmpty() ) continue;
+        if ( l.startsWith( "#" )) continue;
         cells = l.split( "," );
         ORTH.put( cells[0], cells[1] );
       }
@@ -206,8 +209,6 @@ public class Lexik
   public static boolean word( Occ tok )
   {
     // normalize graphical form
-    String corr = Lexik.ORTH.get( tok.orth );
-    if ( corr != null) tok.orth( corr );
     LexikEntry entry = Lexik.WORD.get( tok.orth );
     if ( entry == null ) return false;
     tok.lem( entry.lem );
@@ -221,13 +222,21 @@ public class Lexik
    */
   public static boolean name( Occ tok )
   {
-    // normalize graphical form
-    String corr = Lexik.ORTH.get( tok.orth );
-    if ( corr != null) tok.orth( corr );
+    // normalize graphical form ?
     Tag tag = Lexik.NAME.get( tok.orth );
     if ( tag == null ) return false; // no change here the occurrence
     // tok.lem( entry.lem ); ?? lemmatization of names ?
     tok.tag( tag.code() );
+    return true;
+  }
+  /**
+   * Normalize graphical form of a term with a table of graphical variants
+   * @param term
+   * @return
+   */
+  public static boolean orth(Term term) {
+    if ( !ORTH.containsKey( term )) return false;
+    term.replace( ORTH.get( term ) );
     return true;
   }
   /**

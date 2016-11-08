@@ -48,12 +48,12 @@ public class Tokenizer
   public static final HashSet<String> ELLISION = new HashSet<String>();
   static {
     for (String w: new String[]{
-      "c’", "C’", "d’", "D’", "j’", "J’", "jusqu’", "Jusqu’", "l’", "L’", "lorsqu’", "Lorsqu’", 
-      "m’", "M’", "n’", "N’", "puisqu’", "Puisqu’", "qu’", "Qu’", "quoiqu’", "Quoiqu’", "s’", "S’", "t’", "-t’", "T’"
+      "c'", "C'", "d'", "D'", "j'", "J'", "jusqu'", "Jusqu'", "l'", "L'", "lorsqu'", "Lorsqu'", 
+      "m'", "M'", "n'", "N'", "puisqu'", "Puisqu'", "qu'", "Qu'", "quoiqu'", "Quoiqu'", "s'", "S'", "t'", "-t'", "T'"
     }) ELLISION.add( w );
   }
 
-
+ 
   
   /**
    * Constructor, give complete text in a String, release file handle.
@@ -93,8 +93,9 @@ public class Tokenizer
     if ( pos < 0 ) return pos;
     int size = this.text.length();
     boolean xml=false;
+    char c;
     while ( pos < size ) {
-      char c = text.charAt( pos );
+      c = text.charAt( pos );
       if ( xml && c == '>' ) { // end of tag
         xmltag.append( ' ' ); // easy tag test
         xml = false;
@@ -162,15 +163,6 @@ public class Tokenizer
     }
     
     occ.start( pos );
-    // if token start by an hyphen, it is the "-ci" in "cet homme-ci";
-    if ( c == '-') {
-      pos++;
-      graph.append( c );
-      c = text.charAt( pos );
-    }
-    // used to test the word after 
-    Term after = new Term();
-    char c2;
 
     // token starting by a dot, check …
     // TODO  ??? !!! ?! 
@@ -194,7 +186,23 @@ public class Tokenizer
       occ.end( ++pos );
       return pos;
     }
-    
+
+    // if token start by an hyphen, maybe "-ci" in "cet homme-ci";
+    if ( c == '-') {
+      pos++;
+      graph.append( c );
+      c = text.charAt( pos );
+      // hyphen used as quadratin
+      if ( !Char.isLetter( c ) ) {
+        graph.last( '–' );
+        occ.end(pos);
+        return pos;
+      }
+    }
+    // used to test the word after 
+    Term after = new Term();
+    char c2;
+
     // start of word 
     while (true) {
       // xml entity ?
@@ -205,7 +213,7 @@ public class Tokenizer
       
       // apos normalisation
       if ( c == '\'' || c == '’' ) {
-        graph.last( '’' );
+        graph.last( '\'' ); // normalize apos
         // word before apos is known, (ex: puisqu'), give it and put pointer after apos
         if ( ELLISION.contains( graph ) ) {
           pos++; // start next word after apos
@@ -226,13 +234,6 @@ public class Tokenizer
         if ( HYPHEN_POST.contains( after ) ) {
           graph.lastDel();
           break;
-          /*
-          // cria-t’il, cria-t-on
-          if ( i == 2) {
-            c = text.charAt( pointer +1 );
-            // if ( c == '’' || c  == '\'' || c  == '-')  text.setCharAt( pointer+1, ' ' );
-          }
-          */
         }
       }
       // go to next char
@@ -385,6 +386,10 @@ public class Tokenizer
           if ( orth != null ) word.orth( orth );
           word.lem( word.orth );
         }
+        // normalize graphical form after compound resolution
+        else {
+          Lexik.orth( word.orth );
+        }
         // move the slider to this position 
         occbuf.move( lastpos + 1 );
         return true;
@@ -400,9 +405,35 @@ public class Tokenizer
       parent = child;
       sliderpos++;
     }
-  
   }
-
+  /**
+   * A simple parser to strip xml tags from a char flow
+   * @param xml
+   * @return
+   */
+  static public String xml2txt( final String xml) {
+    StringBuilder txt = new StringBuilder();
+    int size = xml.length();
+    boolean intag=false;
+    int pos = 0;
+    char c;
+    while ( pos < size ) {
+      c = xml.charAt( pos );
+      if ( intag && c == '>' ) { // end of tag
+        intag = false;
+      }
+      else if ( intag ) { // inside tag, go next
+      }
+      else if ( c == '<' ) {  // start tag
+        intag = true;
+      }
+      else {
+        txt.append( c );
+      }
+      pos++;
+    }
+    return txt.toString();
+  }
   /**
    * For testing
    * Bugs
@@ -416,7 +447,8 @@ public class Tokenizer
       String text;
       text = ""
          // 123456789 123456789 123456789 123456789
-        + "Au XIX<hi rend=\"sup\">e</hi>, Non.</div> Va-t'en à <i>Paris</i>."
+        + " N'est-ce pas ? - La Rochefoucauld - Leibnitz…"
+        + " D’aventure au XIX<hi rend=\"sup\">e</hi>, Non.</div> Va-t'en à <i>Paris</i>."
         + " M. Toulemonde\n\n n’est pas n’importe qui, "
         + " Les Caractères de La Bruyère, La Rochefoucauld, La Fontaine. Es-tu OK ?"
         + " D’abord, Je vois fort bien ce que tu veux dire."

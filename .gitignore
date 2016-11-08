@@ -13,3 +13,5 @@ _*
 /java/**.php
 noms/
 java/site/oeuvres/fr/out.csv
+
+*.xlsx

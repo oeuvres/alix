@@ -366,6 +366,7 @@ public class Char
     );
     System.out.println( "- Char.isToken: " + Char.isToken( '-' ) // true
       + " Char.isLetter:" + Char.isLetter( '-' ) // false
+      + " Char.isPunctuation:" + Char.isPunctuation( '-' ) // false
     );
     System.out.println( ". Char.isToken: " + Char.isToken( '.' ) // true
       + " Char.isLetter:" + Char.isLetter( '.' ) // false

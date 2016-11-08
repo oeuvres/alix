@@ -1,3 +1,307 @@
+GRAPH,ORTH
+
+# variante graphique substituée par une forme orthographique standardisée
+# sections : mots de la langue, noms propres, abréviations (?)
+
+# NOMS PROPRES
+
+Abailard,Abélard
+Abailart,Abélard
+Abeilard,Abélard
+Abencerrages,Abencérages
+Académus,Académos
+Achmadova,Akhmatova
+Adenez,Adenet
+Affschensbourg,Aschaffenburg
+Alcestes,Alceste
+Apelles,Apelle
+Aspasies,Aspasie
+Assouci,Assoucy
+Balachova,Balachova
+Balieff,Baliev
+Balke,Balkh
+Barneveldt,Oldenbarnevelt
+Bartholos,Bartholo
+Bedfort,Bedford
+Bérangers,Béranger
+Bernard de Ribeiro,Bernardim Ribeiro
+Bertram,Bertrand
+Bobio,Bobbio
+Boccacio,Boccace
+Boëce,Boèce
+Bois-Robert,Boisrobert
+Bouterweck,Bouterwek
+Brequigny,Bréquigny
+Budapesth,Budapest
+Buenos-Ayres,Buenos Aires
+Bukarest,Bucarest
+Camoëns,Camoës
+Casaubah,Casbah
+Champmathieu,Champ-Mathieu
+Champy,Champi
+Child Harold,Childe-Harold
+Childe Harold,Childe-Harold
+Chloë,Chloé
+Cinires,Cinire
+Coïmbre,Coimbra
+Comène,Comnène
+Comines,Commynes
+Commines,Commynes
+Comynes,Commynes
+Corrége,Corrège
+Corynthienne,Corinthienne
+Créuse,Créüse
+Cufa,Koufa
+Czar,Tsar
+d'Israëli,Disraeli
+Daurat,Dorat
+de Foë,Defoe
+Demosthenes,Démosthène
+Démosthènes,Démosthène
+des Préaux,Boileau
+Des Préaux ,Boileau
+Desbarreaux,Des Barreaux
+Despréaux,Boileau
+Diaghilev,Diaghilev
+Dniéper,Dniepr
+Dostoïevsky,Dostoïevski
+Dostoïewski,Dostoïevski
+Dostoiewsky,Dostoievski
+Doubrovska,Doubrovska
+Dreyschok,Dreyschock
+Du Deffant,Du Deffand
+du Verney,Duverney
+Dubellay,Du Bellay
+Dubelloy,Belloy
+Duchâtelet,Du Châtelet
+Dudeffand,Du Deffand
+Duguesclin,Du Guesclin
+Dumarsais,Du Marsais
+Durer,Dürer
+Edgard,Edgar
+Éginhart,Éginhard
+Egorova,Egorova
+Éléonore de Guienne,Aliénor d'Aquitaine
+Éliogabale,Héliogabale
+Ericeira,Menezes
+Érinnyes,Érinyes
+Eryceira,Menezes
+Ésaïe,Isaïe
+Fénélon,Fénelon
+Fésoles,Fiesole
+Fœdorowna,Fédorovna
+Fokine,Fokine
+Foulcques,Foulques
+Fouquier-Tainville,Fouquier-Tinville
+Freyschütz,Freischütz
+Fuerbach,Feuerbach
+Fulde,Fulda
+Furestière,Furetière
+G.-Bernard Shaw,Bernard Shaw
+Georges Sand,George Sand
+Gillenormand,Gille Normand
+Glazounoff,Glazounov
+Godounof,Godounov
+Godounoff,Godounov
+Goëthe,Goethe
+Gœthe ,Goethe
+Gœtz,Goetz
+Göthe,Goethe
+Goubio,Gubbio
+Goumilev,Goumilev
+Gral,Graal
+Grandisson,Grandison
+Griffin,Vielé-Griffin
+Guienne,Guyenne
+Guilhen,Guillén
+Guy-Mannering,Guy Mannering
+Guymond,Guimond
+# Hardi,Hardy
+Haute-Fort,Hautefort
+Hegel,Hegel
+Helinant,Hélinand
+Heyermans,Heijermans
+Heyne,Heine
+Hok’saï,Hokusai
+Hokousai,Hokusai
+Houdar de La Motte,Lamothe-Houdard
+Hroswita,Hrosvita
+Hroswitha,Hrosvita
+Hroswithe,Hrosvita
+Hypatia,Hypatie
+Idzikovsky,Idzikovski
+Idzikowsky,Idzikovski
+Isolde,Iseult
+Jacovleff,Iakovlev
+Jasons,Jason
+Jean de Mena,Juan de Mena
+Jena,Iéna
+Jéna,Iéna
+Jordano,Giordano
+Joukoff,Joukov
+Kepler,Képler
+Khèyam,Khayyam
+Khovanschtina,Khovanchtchina
+Koran,Coran
+Krüdner,Krüdener
+Kubelick,Kubelik
+la Boëtie,La Boétie
+la Mennais,Lamennais
+la Mothe-le-Vayer,La Mothe Le Vayer
+la Motte,Lamothe
+la Rochefoucault,La Rochefoucauld
+la Rochejacquelin,La Rochejaquelein
+la Touche,La Touche
+Labruyère,La Bruyère
+Lafayette,La Fayette
+Laferronnais,La Ferronays
+Lafeuillade,La Feuillade
+Lafontaine,La Fontaine
+Laharpe,La Harpe
+Lamettrie,La Mettrie
+Lamothe,La Mothe
+Lamothe le Vayer,La Mothe Le Vayer
+Lamotte,La Mothe
+Landovska,Landovska
+Lapérouse,La Pérouse
+Lapeyrouse ,La Pérouse
+Larionoff,Larionov
+Larochefoucauld,La Rochefoucauld
+Larochefoucault,La Rochefoucauld
+Laurent Valla,Lorenzo Valla
+Lauzanne,Lausanne
+ldzikovsky,Idzikovski
+Le Peletier,Le Pelletier
+Leibnitz,Leibniz
+Leipsick,Leipzig
+Lemière,Le Mierre
+Lemierre,Le Mierre
+Leonidoff,Leonidov
+Léonidoff,Leonidov
+L'Espinasse,Lespinasse
+Litz,Listz
+Loëve-Veimars,Loève-Veimars
+Loève-Veymars,Loève-Veimars
+Lulli,Lully
+Luzan,Luzán
+lvanoff,Ivanov
+la Rochefoucauld,La Rochefoucauld
+Malaca,Malacca
+Malhouet,Malouet
+Malkovsky,Malkovsky
+Mallebranche,Malebranche
+Marcile,Marsile
+Mazoyer,Mazoïer
+Mécènes,Mécène
+Mendosa,Mendoza
+Mireio,Miréio
+Misantrope,Misanthrope
+Montchrétien,Montchrestien
+Monte-Christo,Monte-Cristo
+Montélimart,Montélimar
+Mosambique,Mozambique
+Moyen-Age,Moyen Âge
+Munster,Münster
+Murger,Mürger
+Napierkowska,Napierkovska
+Nemtchinova,Nemtchinova
+New-York,New York
+Nicolaeva,Nicolaïeva
+Niemtchinova,Nemtchinova
+Nijinska,Nijinska
+Nijinski,Nijinski
+Nijinsky,Nijinski
+Novikoff,Novikov
+Oghinska,Oginska
+Ormus,Ormuz
+Paderewsky,Paderewski
+Panza,Pança
+Pavlova,Pavlova
+Pawlova,Pavlova
+Pétrouchka,Petrouchka
+Philamintes,Philaminte
+Philelphe,Filelfo
+Pistoïa,Pistoia
+Pistoie,Pistoia
+Poë,Poe
+Poliziano,Politien
+Polovtsiennes,Polovtsiennes
+Poushkine,Pouchkine
+Pouskine,Pouchkine
+Prokofieff,Prokofiev
+Prudhomme,Sully-Prudhomme
+Rimski-Korsakoff,Rimski-Korsakov
+Rimsky,Rimski-Korsakov
+Rimsky-Korsakoff,Rimski-Korsakov
+Rob-Roy,Rob Roy
+Rocroy,Rocroi
+Romanoff,Romanov
+Rudbeuf,Rutebeuf
+Rutebœuf,Rutebeuf
+Saint Thomas,Saint Thomas d'Aquin
+Sadi,Saadi
+Sakharoff,Sakharov
+Sakharoffs,Sakharov
+Santillane,Santillana
+Scaron,Scarron
+Schéhérazade,Shéhérazade
+Schérer,Scherer
+Scudéri,Scudéry
+Sénancour,Senancour
+Sénancourt,Senancour
+Sforce,Sforza
+Shakspear ,Shakespeare
+Shakspeare,Shakespeare
+shakspearien,shakespearien
+Shakspere,Shakespeare
+Shylok,Shylock
+Smolzoff,Smolzov
+Souwaroff,Souvarov
+Spinoza,Spinosa
+St,Saint
+Stanislavsky,Stanislavski
+Ste,Sainte
+Stravinsky,Stravinsky
+Strawinsky,Stravinsky
+Sue,Suë
+Sunium,Sounion
+Svirskaya,Svirskaïa
+Swedemborg,Swedenborg
+Swédenborg,Swedenborg
+Taïroff,Tairov
+Tartufe,Tartuffe
+Tchaikovsky,Tchaïkovski
+Tchaikowsky,Tchaïkovski
+Tchaïkowsky,Tchaïkovski
+Tchernicheva,Tchernitcheva
+Tchernitcheva,Tchernitcheva
+Thangs,Tang
+Thibet,Tibet
+Tokio,Tokyo
+Tréfilova,Trefilova
+Tzar,Tsar
+Velasquez,Velázquez
+Vélasquez,Velázquez
+Verhæren,Verhaeren
+Vévey,Vevey
+Viellé-Griffin,Vielé-Griffin
+Ville-Hardouin,Villehardouin
+Villeroi,Villeroy
+Vladimiroff,Vladimirov
+Warrens,Warens
+Wawerley,Waverley
+Weymar,Weimar
+Wilhem,Wilhelm
+Wishnou,Vishnou
+Wladislas,Ladislas
+Xantippe,Xanthippe
+Xercès,Xerxès
+Yseult,Iseult
+Yurieva,Iourieva
+Zwéreff,Zverev
+
+
+# MOTS DE LA LANGUE
 –,—
 accroche-coeur,accroche-cœur
 accroche-coeurs,accroche-cœurs
@@ -221,3 +525,4 @@ tape-à-l'oeil,tape-à-l'œil
 trompe-l'oeil,trompe-l'œil
 voeu,vœu
 voeux,vœux
+

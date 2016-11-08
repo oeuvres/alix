@@ -1,7 +1,6 @@
 package alix.exos;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -9,11 +8,11 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
 
-import alix.util.TermDic;
 import alix.fr.Occ;
 import alix.fr.OccSlider;
 import alix.fr.Tag;
@@ -22,117 +21,172 @@ import alix.util.Term;
 
 public class NAME
 {
-  /** Un hack pour la collecte de tous les termes */
-  static TermDic index = new TermDic();
-  /** La liste des savants */
-  static HashSet<String> SAVANTS = new HashSet<String>();
+  /** Nombre de mots  */
+  private final int step;
+  /** Où on écrit la concordance */
+  private final PrintWriter html;
+  /** Où on écrit les arc */
+  private final PrintWriter csv;
+  /** Liste des mots nœuds  */
+  static HashSet<String> NODES = new HashSet<String>();
   static {
     String l;
     try {
       BufferedReader buf = new BufferedReader( 
          new InputStreamReader( new FileInputStream("savants.csv"), "UTF-8")
       );
-      while ((l = buf.readLine()) != null) SAVANTS.add( l.trim() );
+      while ((l = buf.readLine()) != null) {
+        l = l.trim();
+        if ( l.startsWith( "#" ) ) continue;
+        NODES.add( l.trim() );
+      }
       buf.close();
     } 
     catch (IOException e) {
       e.printStackTrace();
     }
   }
-  /** Dernière position en caractères */
-  int charpos;
-  /** Dernière position en mots */
-  /** Counter */
-  int n = 0;
-  /** Tokenizer */
-  Tokenizer toks;
-  /** File path */
-  String htmlpath;
-  /** File writer */
-  PrintWriter htmlWriter;
-  /** File writer */
-  String csvpath;
   /** Size on the left */
-  final int left = 10;
+  final int left = 20;
   /** Size on the right */
-  final int right = 10;
-  public NAME(Path src, final Path destName ) throws IOException
+  final int right = 20;
+  
+  public NAME( int step, PrintWriter html, PrintWriter csv )
   {
-    toks = new Tokenizer( new String(Files.readAllBytes( src ), StandardCharsets.UTF_8) );
-    htmlpath = destName.toString()+".html";
-    htmlWriter = new PrintWriter( htmlpath );
-    csvpath = destName.toString()+".txt";
+    this.step = step;
+    this.html = html;
+    this.csv = csv;
   }
-  public void htmlHead( PrintWriter out ) {
-    out.println( "<!doctype html>" );
-    out.println( "<html>" );
-    out.println( "  <head>" );
-    out.println( "    <meta charset=\"utf-8\">" );
-    out.println( "    <style>" );
-    out.println( "table.conc { font-family: sans-serif; color: #666; border-spacing : 2px; background-color: #EEEEEE; }" );
-    out.println( ".conc td, .conc th { padding: 0; }" );
-    out.println( "td.num { font-size: 70%; }" );
-    out.println( "td.left { text-align:right; }" );
-    out.println( ".conc th { color: #000; background: #FFFFFF}" );
-    out.println( ".conc i { font-style: normal; color: #000; }" );
-    out.println( ".conc th.NAMEplace { background: rgba(255, 0, 0, 0.2) ; }" );
-    out.println( ".conc i.NAMEplace { color:  rgba(255, 0, 0, 0.6); }" );
-    out.println( ".conc th.NAMEpers, .conc th.NAMEpersm, .conc th.NAMEpersf { background: rgba(0, 0, 255, 0.2) ; }" );
-    out.println( ".conc i.NAMEpers, .conc i.NAMEpersm, .conc i.NAMEpersf { color: rgba(0, 0, 255, 0.6) ; }" );
-    out.println( "    </style>" );
-    out.println( "  </head>" );
-    out.println( "  <body>" );
-    out.println( "    <table class=\"conc\">" );
-    out.println( "      <tr>");
-    out.println( "       <th>Char</th>");
-    out.println( "       <th>Diff</th>");
-    out.println( "      </tr>");
+  
+  public void head(  ) {
+    csv.println( "file\tdate\tSource\tTarget" );
+    html.println( "<!doctype html>" );
+    html.println( "<html>" );
+    html.println( "  <head>" );
+    html.println( "    <meta charset=\"utf-8\">" );
+    html.println( "    <style>" );
+    html.println( "table.conc { font-family: sans-serif; color: #666; border-spacing : 2px; background-color: #EEEEEE; }" );
+    html.println( ".conc td, .conc th { padding: 0 1ex; }" );
+    html.println( ".conc td { vertical-align: top; border-bottom: #FFF solid 1px; }" );
+    html.println( "td.num { font-size: 70%; }" );
+    html.println( "td.left { text-align:right; }" );
+    html.println( ".conc th { color: #000; background: #FFFFFF}" );
+    html.println( ".conc i { font-style: normal; color: #000; }" );
+    html.println( ".conc th.NAMEplace { background: rgba(255, 0, 0, 0.2) ; }" );
+    html.println( ".conc i.NAMEplace { color:  rgba(255, 0, 0, 0.6); }" );
+    html.println( ".conc th.NAMEpers, .conc th.NAMEpersm, .conc th.NAMEpersf { background: rgba(0, 0, 255, 0.2) ; }" );
+    html.println( ".conc i.NAMEpers, .conc i.NAMEpersm, .conc i.NAMEpersf { color: rgba(0, 0, 255, 0.6) ; }" );
+    html.println( "    </style>" );
+    html.println( "  </head>" );
+    html.println( "  <body>" );
+    html.println( "    <table class=\"conc\">" );
+    html.println( "      <tr>");
+    html.println( "       <th>Fichier</th>");
+    html.println( "       <th>Date</th>");
+    html.println( "       <th>Relation</th>");
+    html.println( "       <th>Contexte</th>");
+    html.println( "      </tr>");
   }
-  public void htmlFoot( PrintWriter out )
+  public void foot(  )
   {
-    out.println( "    </table>" );
-    out.println( "  </body>" );
-    out.println( "</html>" );
-    out.println();
-    out.close();
+    html.println( "    </table>" );
+    html.println( "  </body>" );
+    html.println( "</html>" );
+    html.println();
+    html.close();
+    csv.close();
   }
-  public void parse( ) throws IOException
+  /**
+   * Traverser le texte, ramasser les infos, cracher à la fin
+   * @param code
+   * @param text
+   * @throws IOException
+   */
+  public void parse( String filename, String date, String text ) throws IOException
   {
-    htmlHead( htmlWriter );
-    TermDic dic = parse( toks );
-    htmlFoot( htmlWriter );
-    System.out.println( dic.size() );
-    if ( dic.size() == 0 ) {
-      new File( htmlpath ).delete();
-      return;
-    }
-    PrintWriter csvWriter = new PrintWriter( csvpath );
-    csvWriter.write( "FORM\toccs\tppm\n" );
-    dic.csv( csvWriter );
-    csvWriter.close();
-  }
-  public TermDic parse( Tokenizer toks )
-  {
-    TermDic dic = new TermDic();
+    Tokenizer toks = new Tokenizer( text );
     OccSlider win = new OccSlider(left, right);
+    // une pile FIFO, 
+    LinkedList<Source> stack = new LinkedList<Source>();
+    int wn = 0; // le compteur de mots
+    Term term;
+    Source node;
     Occ occ;
     while ( toks.word( win.add() ) ) {
-      occ = win.get( 0 );
-      if ( occ.tag.isName() && SAVANTS.contains( occ.orth ) ) {
-        dic.add( occ.orth );
-        index.add( occ.orth );
-        html( win, 0, 0 );
-      }
-      else {
-        if ( occ.tag.equals( Tag.SUB ) ) {
-          index.add(occ.orth );
-          continue;
-        }
-        else index.inc();
+      wn ++;
+      // le mot n’est pas attendu on continue;
+      if ( !NODES.contains( win.get( 0 ).orth ) ) {
+        // if (win.get( 0 ).tag.isName()) win.get( 0 ).orth
         continue;
       }
+      // on normalise ?
+      occ = win.get( 0 );
+      // boucler sur la pile
+      for (Iterator<Source> iterator = stack.iterator(); iterator.hasNext();) {
+        node = iterator.next();
+        // ce nœud est trop loin, il n'y a plus rien à faire, on supprime
+        if ( wn - node.wn > step ) {
+          iterator.remove();
+          continue;
+        }
+        // ce nœud est le même que le précédent, on supprie le précédent
+        if ( win.get( 0 ).orth.equals( node.label ) ) {
+          iterator.remove();
+          continue;
+        }
+        // ici on peut écrire
+        html.println( "<tr>" );
+        html.print( "  <td>" );
+        html.print( filename );
+        csv.print( filename );
+        html.println( "</td>" );
+        html.print( "  <td>" );
+        html.print( date );
+        csv.print( "\t"+date );
+        html.println( "</td>" );
+        html.print( "  <td nowrap>" );
+        if ( occ.orth.compareTo( node.label ) > 0) {
+          csv.print( "\t"+node.label+"\t"+occ.orth );
+          html.print( node.label);
+          html.print( "<br/>" );
+          html.print( occ.orth );
+        }
+        else {
+          csv.print( "\t"+occ.orth+"\t"+node.label );
+          html.print( occ.orth );
+          html.print( "<br/>" );
+          html.print( node.label);
+        }
+        html.println( "</td>" );
+        html.print( "  <td>" );
+        // contexte gauche
+        html.print( node.left );
+        // nœud source
+        html.print( "<b>" );
+        html.print( node.label );
+        html.println( "</b>" );
+        // milieu
+        html.print( Tokenizer.xml2txt( text.substring( node.end, occ.start ) ) );
+        // html.println( (wn - node.wn)+" "+ node.end+" "+occ.start );
+        // nœud destination
+        html.print( "<b>" );
+        html.print( occ.orth );
+        html.println( "</b>" );
+        // contexte droit
+        html.print( Tokenizer.xml2txt( text.substring( occ.end, win.get( right ).end ) ) );
+        html.println( "</td>" );
+        html.println("</tr>");
+        csv.println();
+      }
+      // ouvrir un arc qui commence avec ce nœud
+      stack.add( new Source(
+          Tokenizer.xml2txt( text.substring( win.get( -left ).end, occ.start ) ),
+          occ.orth.toString(),
+          wn,
+          occ.end
+      ) );
     }
-    return dic;
+
   }
   /**
    * Write the window
@@ -140,38 +194,56 @@ public class NAME
   private void html( final OccSlider win, final int lpos, final int rpos) 
   {
     Tag tag;
-    n++;
-    htmlWriter.print( "<tr>" );
-    htmlWriter.print( "<td class=\"num\">" );
-    htmlWriter.print( win.get( 0 ).start );
-    htmlWriter.print( ".</td>" );
-    htmlWriter.print( "<td class=\"num\">" );
-    htmlWriter.print( win.get( 0 ).start - charpos );
-    charpos = win.get( 0 ).start;
-    htmlWriter.print( ".</td>" );
-    htmlWriter.print( "<td class=\"left\">" );
+    // n++;
+    html.print( "<tr>" );
+    html.print( "<td class=\"num\">" );
+    html.print( win.get( 0 ).start );
+    html.print( ".</td>" );
+    html.print( "<td class=\"num\">" );
+    // html.print( win.get( 0 ).start - charpos );
+    // charpos = win.get( 0 ).start;
+    html.print( ".</td>" );
+    html.print( "<td class=\"left\">" );
     for ( int i=-left; i < 0; i++) {
       tag =  win.get( i ).tag;
-      if ( tag.isName() ) htmlWriter.print( "<i class=\""+tag.label()+"\">" );
-      htmlWriter.print( win.get( i ).graph );
-      if ( tag.isName() ) htmlWriter.print( "</i>" );
-      if (i<-1) htmlWriter.print( " " );
+      if ( tag.isName() ) html.print( "<i class=\""+tag.label()+"\">" );
+      html.print( win.get( i ).graph );
+      if ( tag.isName() ) html.print( "</i>" );
+      if (i<-1) html.print( " " );
     }
-    htmlWriter.print( "</td>" );
-    htmlWriter.print( "<th class=\""+win.get( 0 ).tag.label()+"\">" );
-    htmlWriter.print( win.get( 0 ).graph );
-    htmlWriter.print( "</th>" );
-    htmlWriter.print( "<td class=\"right\">" );
+    html.print( "</td>" );
+    html.print( "<th class=\""+win.get( 0 ).tag.label()+"\">" );
+    html.print( win.get( 0 ).graph );
+    html.print( "</th>" );
+    html.print( "<td class=\"right\">" );
     for ( int i=1; i <= right; i++) {
       tag =  win.get( i ).tag;
-      if ( tag.isName() ) htmlWriter.print( "<i class=\""+tag.label()+"\">" );
-      htmlWriter.print( win.get( i ).graph );
-      if ( tag.isName() ) htmlWriter.print( "</i>" );
-      htmlWriter.print( " " );
+      if ( tag.isName() ) html.print( "<i class=\""+tag.label()+"\">" );
+      html.print( win.get( i ).graph );
+      if ( tag.isName() ) html.print( "</i>" );
+      html.print( " " );
     }
-    htmlWriter.print( "</td>" );
-    htmlWriter.print( "</tr>" );
-    htmlWriter.println();
+    html.print( "</td>" );
+    html.print( "</tr>" );
+    html.println();
+  }
+  class Source
+  {
+    /** contexte gauche **/
+    final String left;
+    /** label du nœud source */
+    final String label;
+    /** index en mot */
+    final int wn;
+    /** index caractère de fin de mot */
+    final int end;
+    Source (  final String left, final String label, final int wn, final int end )
+    {
+      this.left = left;
+      this.label = label;
+      this.wn = wn;
+      this.end = end;
+    }
   }
   /**
    * Test the Class
@@ -180,22 +252,26 @@ public class NAME
    */
   public static void main(String args[]) throws IOException 
   {
-    File root = new File("../critique/");
-    for (String dirname:root.list() ) {
-      if ( dirname.startsWith( "." )) continue;
-      File dir = new File( root, dirname);
-      if ( !dir.isDirectory() ) continue; 
-      for (String srcname:dir.list() ) {
-        if ( !srcname.endsWith( ".xml" )) continue;
-        String destname = srcname.substring( 0, srcname.length()-4 );
-        Path srcpath = Paths.get( dir.toString(), srcname); 
-        Path destpath = Paths.get( "noms", destname); 
-        System.out.println( srcpath+" > "+destpath );
-        NAME parser = new NAME( srcpath, destpath );
-        parser.parse();
+    // fixer la sortie
+    // new PrintWriter( "marine_savants.html" )
+    // print to out new PrintWriter(new OutputStreamWriter( System.out, "UTF-8"))
+    NAME parser = new NAME(  30, new PrintWriter( "marine_savants.html" ) , new PrintWriter( "marine_savants.csv" ) ) ;
+    
+    parser.head( );
+    try(BufferedReader br = new BufferedReader(new FileReader("marine_critique.csv"))) {
+      String[] cells;
+      int pos;
+      br.readLine(); // skip first line
+      for(String line; (line = br.readLine()) != null; ) {
+        cells = line.split( "\t" );
+        pos = cells[0].indexOf( '_' );
+        String src = "../critique/"+ cells[0].substring( 0, pos )+"/"+cells[0]+".xml";
+        System.out.println( src );
+        parser.parse( cells[0], cells[2], new String(Files.readAllBytes( Paths.get( src ) ), StandardCharsets.UTF_8) );
       }
     }
-    index.csv( Paths.get("noms", "_noms.txt") );
+    parser.foot();
+    
   }
 
 }

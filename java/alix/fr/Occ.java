@@ -19,9 +19,9 @@ public class Occ
   /** Lemma form */
   public Term lem = new Term();
   /** Char index in the source file of the first char of the token */
-  public int start = -1;
-  /** Char index in the source file (-1) like for String.substring(start, end) */
-  public int end = -1;
+  public int start = 0;
+  /** Char index in the source file  */
+  public int end = 0;
   /**
    * Empty constructor
    */
@@ -80,17 +80,17 @@ public class Occ
     char c;
     if ( !graph.isEmpty() ) {
       c = graph.last();
-      if ( c != '\'' && c != '’' && c != '-')
+      if ( c != '\'' && c != '’' && c != '-' && occ.graph.first() != '-')
         graph.append( ' ' );
     }
     if ( !orth.isEmpty() ) {
       c = orth.last();
-      if ( c != '\'' && c != '’' && c != '-')
+      if ( c != '\'' && c != '’' && c != '-' && occ.orth.first() != '-')
         orth.append( ' ' );
     }
     if ( !lem.isEmpty() ) {
       c = lem.last();
-      if ( c != '\'' && c != '’' && c != '-')
+      if ( c != '\'' && c != '’' && c != '-' && occ.orth.first() != '-')
         lem.append( ' ' );
     }
     graph.append( occ.graph );

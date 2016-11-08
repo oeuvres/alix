@@ -1,4 +1,80 @@
-graph,cat,orth,freq
+GRAPH,CAT,ORTH,FREQ
+
+# noms propres
+# les mots de la langue dans des noms propres ont été “cassés”
+
+de Foë,NAMEpers
+d'Israëli,NAMEpers
+du Deffand,NAMEpers
+du Deffant,NAMEpers
+du Verney,NAMEpers,Duverney
+la bruyère,NAMEpers
+la fayette,NAMEpers
+la Ferronays,NAMEpers
+la Feuillade,NAMEpers
+la fontaine,NAMEpers
+la harpe,NAMEpers
+la Mettrie,NAMEpers
+la Mothe,NAMEpers
+La Mothe Le Vayer,NAMEpers
+la Rochefoucault,NAMEpers
+la Rochefoucauld,NAMEpers
+la Touche,NAMEpers
+
+
+# TITULATURES
+
+bataille de NAME,NAMEevent
+collège de France,NAMEplace
+comte NAME,NAMEpers
+comte de NAME,NAMEpers
+comtesse NAME,NAMEpers
+comtesse de NAME,NAMEpers
+don NAME,NAMEpers
+don NAME de NAME,NAMEpers
+duc de NAME,NAMEpers
+duc NAME de NAME,NAMEpers
+duchesse de NAME,NAMEpers
+duchesse NAME de NAME,NAMEpers
+#de NAME,NAMEpers, il est de Paris
+fête de NAME,NAMEevent
+la NAME de NAME,NAMEtitle
+la duchesse de NAME,NAMEpers
+# l'esprit des lois,NAMEtitle,l'Esprit des Lois
+le NAME de NAME,NAMEtitle
+les mémoires de outre­tombe,NAMEtitle,Les Mémoires d'Outre-tombe
+lord NAME,NAMEpers
+madame de NAME,NAMEpers
+madame NAME,NAMEpers
+madame NAME de NAME,NAMEpers
+madame NAME NAME,NAMEpers
+mademoiselle de NAME,NAMEpers
+mademoiselle NAME,NAMEpers
+mademoiselle NAME de NAME,NAMEpers
+mademoiselle NAME NAME,NAMEpers
+# monsieur de NAME,NAMEpers
+# monsieur NAME,NAMEpers
+# monsieur NAME de NAME,NAMEpers
+# monsieur NAME NAME,NAMEpers
+NAME NAME,NAMEpers
+NAME NAME de NAME,NAMEpers
+NAME de NAME,NAMEpers
+NAME du NAME,NAMEpers
+NAME NUM,NAMEpers
+père NAME,NAMEpers
+prince de NAME,NAMEpers
+princesse de NAME,NAMEpers
+rue NAME,NAMEplace
+rue de NAME,NAMEplace
+rue de SUB,NAMEplace
+rue des NAME,NAMEplace
+rue des SUB,NAMEplace
+saint NAME,NAMEpers
+sainte NAME,NAMEpers
+sir NAME,NAMEpers
+
+# mots de la langue
+
 à brûle-pourpoint,ADV,,,1.22
 a capella,ADV,,0.07
 a cappella,ADV,,0.07
@@ -14,18 +90,18 @@ a giorno,ADV,,0.27
 à glagla,ADV,,0.07
 à jeun,ADV,,3.85
 à jeun,ADV,,0
-à le aveuglette,ADV,à l’aveuglette,2.16
-à le encontre,PREP,à l’encontre,1.89
-à le envi,ADV,à l’envi,0.61
-à le improviste,ADV,à l’improviste,4.53
-à le instar,PREP,à l’instar,6.42
+à l'aveuglette,ADV,,2.16
+à l'encontre,PREP,,1.89
+à l'envi,ADV,,0.61
+à l'improviste,ADV,,4.53
+à l'instar,PREP,,6.42
 à l'encan,ADV,,0.14
-à le aveuglette,ADV,à l’aveuglette,2.16
-à le encontre,PREP,à l’encontre,1.89
-à le envi,ADV,à l’envi,0.61
-à le improviste,ADV,à l’improviste,4.53
-à le instar,PREP,à l’instar,6.42
-à l’encan,ADV,,0.14
+à l'aveuglette,ADV,,2.16
+à l'encontre,PREP,,1.89
+à l'envi,ADV,,0.61
+à l'improviste,ADV,,4.53
+à l'instar,PREP,,6.42
+à l'encan,ADV,,0.14
 à la daumont,ADV,,0.07
 à la saint-glinglin,ADV,,0
 à leur encontre,ADV,,0.07
@@ -80,7 +156,6 @@ aux aguets,ADV,,5.88
 avant que,CONJsubord
 ayants droit,SUB,,0.14
 back up,SUB,,0
-bataille de NAME,NAMEevent
 beat generation,SUB,,0.14
 beaucoup de,DETindef
 bel canto,SUB,,0.41
@@ -95,12 +170,11 @@ bloody mary,SUB,,0.2
 blue jeans,SUB,,0
 blue note,SUB,,0
 boat people,SUB,,0.07
-bric et de broc,ADV,,0.47
 brown sugar,SUB,,0.07
 bubble gum,SUB,,0
 buen retiro,SUB,,0.14
 by night,ADJ,,0.41
-ce est-à-dire,ADV,c’est-à-dire,51.96
+c'est-à-dire,ADV,,51.96
 call girl,SUB,,0
 call girls,SUB,,0
 canadian river,SUB,,0.07
@@ -115,15 +189,10 @@ chewing gum,SUB,,0.07
 chop suey,SUB,,0
 citizen band,SUB,,0
 coffee shop,SUB,,0
-collège de France,NAMEplace
 comic book,SUB,,0
 comic books,SUB,,0.07
-comte NAME,NAMEpers
-comte de NAME,NAMEpers
-comtesse NAME,NAMEpers
-comtesse de NAME,NAMEpers
 commedia dell'arte,SUB,,0.14
-commedia dell’arte,SUB,,0.14
+commedia dell'arte,SUB,,0.14
 corn flakes,SUB,,0.07
 corpus delicti,SUB,,0
 cot cot codec,EXCL,,0.07
@@ -131,13 +200,12 @@ croa croa,ADV,,0.14
 curriculum vitae,SUB,,0.74
 dans la merde,ADJ,
 dare dare,ADV,,0.27
-de abord,ADVtemp,d’abord,169.32
-de accord,ADV,d’accord
-de ailleurs,ADV,d’ailleurs
-de autres,PROindef,d’autres,119.73
-de emblée,ADV,d’emblée,8.31
-#de NAME,NAMEpers, il est de Paris
-de ores et déjà,ADV,d’ores et déjà,1.28
+d'abord,ADVtemp,,169.32
+d'accord,ADV,,
+d'ailleurs,ADV,
+d'autres,PROindef,,119.73
+d'emblée,ADV,,8.31
+d'ores et déjà,ADV,,1.28
 de amicis,SUB,,0.07
 de auditu,ADV,,0.07
 de facto,ADV,,0.07
@@ -147,7 +215,7 @@ de plus,ADV
 de profundis,SUB,,0.41
 de santis,SUB,,0
 de traviole,ADV,,1.28
-de une part,ADV,d’une part
+d'une part,ADV,
 de visu,ADV,,0.54
 dehors !,EXCL,,0.61
 delirium tremens,SUB,,0.27
@@ -161,14 +229,8 @@ deutsche mark,ADJ,,0
 dies irae,SUB,,0.14
 dignus est intrare,ADV,,0.07
 dommage !,EXCL,,5.34
-don NAME,NAMEpers
-don NAME de NAME,NAMEpers
 downing street,SUB,,0.34
 dream team,SUB,,0
-duc de NAME,NAMEpers
-duc NAME de NAME,NAMEpers
-duchesse de NAME,NAMEpers
-duchesse NAME de NAME,NAMEpers
 east river,SUB,,0.07
 ecce homo,ADV,,0.2
 en catimini,ADV,,1.42
@@ -184,9 +246,8 @@ et seq,ADV,,0.07
 ex abrupto,ADV,,0.07
 ex nihilo,ADV,,0.14
 fast food,SUB,,0.07
-fête de NAME,NAMEevent
 five o'clock,SUB,,0.14
-five o’clock,SUB,,0.14
+five o'clock,SUB,,0.14
 flatus vocis,SUB,,0.07
 foreign office,SUB,,2.5
 fort bien,ADV
@@ -237,16 +298,10 @@ ipso facto,ADV,,0.61
 irish coffee,SUB,,0.14
 ite missa est,SUB,,0.14
 jet society,SUB,,0.07
-jusque à ce que,CONJsubord,jusqu’à ce que
+jusqu'à ce que,CONJsubord
 kung fu,SUB,,0
 kyrie eleison,SUB,,0.07
-le une,PROindef,l’une,93.58
-la bruyère,NAMEpers,La Bruyère
-la fontaine,NAMEpers,La Fontaine
-la Rochefoucault,NAMEpers,La Rochefoucault
-la Rochefoucauld,NAMEpers,La Rochefoucauld
-la fayette,NAMEpers,La Fayette
-la duchesse de NAME,NAMEpers
+l'une,PROindef,,93.58
 la mienne,PROposs,,41.28
 la plata,SUB,,0.14
 la plupart,PROindef,,23.24
@@ -256,15 +311,11 @@ la plupart du,DETindef,,7.91
 la sienne,PROposs,,40.68
 la tienne,PROposs,,5.81
 lacryma christi,SUB,,0.14
-le esprit des lois,NAMEtitle,l’Esprit des Lois
 le mien,PROposs,,36.08
-le NAME de NAME,NAMEtitle
-la NAME de NAME,NAMEtitle
 le nôtre,PROposs,,23.51
 le sien,PROposs,,36.08
 le tien,PROposs,,5.54
 le vôtre,PROposs,,11.69
-les mémoires de outre­tombe,NAMEtitle,Les Mémoires d’Outre-tombe
 les miennes,PROposs,,9.59
 les miens,PROposs,,21.15
 les nôtres,PROposs,,21.35
@@ -273,16 +324,7 @@ les siens,PROposs,,29.8
 les tiennes,PROposs,,0.95
 les tiens,PROposs,,2.5
 les vôtres,PROposs,,4.39
-lord NAME,NAMEpers
 lors de,PREP,,0
-mademoiselle de NAME,NAMEpers
-mademoiselle NAME,NAMEpers
-mademoiselle NAME de NAME,NAMEpers
-mademoiselle NAME NAME,NAMEpers
-madame de NAME,NAMEpers
-madame NAME,NAMEpers
-madame NAME de NAME,NAMEpers
-madame NAME NAME,NAMEpers
 made in,ADV,,0.88
 madre de dios,SUB,,0.07
 maître queux,SUB,,0.14
@@ -301,20 +343,11 @@ modern style,ADJ,,0.68
 modern style,SUB,,0
 modus operandi,SUB,,0
 modus vivendi,SUB,,0.47
-# monsieur de NAME,NAMEpers
-# monsieur NAME,NAMEpers
-# monsieur NAME de NAME,NAMEpers
-# monsieur NAME NAME,NAMEpers
 motu proprio,ADV,,0.07
 music hall,SUB,,0
 mutatis mutandis,ADV,,0.07
-NAME NAME,NAMEpers
-NAME NAME de NAME,NAMEpers
-NAME de NAME,NAMEpers
-NAME du NAME,NAMEpers
-NAME NUM,NAMEpers
-ne est ce pas,ADV,n’est-ce pas,0
-ne importe qui,PROindef,n’importe qui
+n'est ce pas,ADV,n'est-ce pas,0
+n'importe qui,PROindef,
 ne varietur,ADV,,0.14
 negro spiritual,SUB,,0.07
 negro spirituals,SUB,,0.07
@@ -322,7 +355,7 @@ new wave,SUB,,0.07
 night club,SUB,,0
 nihil obstat,ADV,,0.2
 no man's land,SUB,,1.49
-no man’s land,SUB,,1.49
+no man's land,SUB,,1.49
 non troppo,ADV,,0.07
 nota bene,ADV,,0.07
 numerus clausus,SUB,,0.07
@@ -336,7 +369,6 @@ paso doble,SUB,,0.81
 pater familias,SUB,,0.07
 pater noster,SUB,,0.41
 pax americana,SUB,,0
-père NAME,NAMEpers
 persona grata,ADJ,,0
 persona non grata,SUB,,0.07
 peu de,DETindef
@@ -345,8 +377,6 @@ pit bull,SUB,,0
 play back,SUB,,0
 pom-pom girl,SUB,,0
 pom-pom girls,SUB,,0
-prince de NAME,NAMEpers
-princesse de NAME,NAMEpers
 post it,SUB,,0
 post mortem,ADV,,0.2
 pour que,CONJsubord,,0
@@ -362,13 +392,6 @@ rhythm and blues,SUB,,0
 ric et rac,ADV,,0.61
 roast beef,SUB,,0
 rocking chair,SUB,,0
-rue NAME,NAMEplace
-rue de NAME,NAMEplace
-rue de SUB,NAMEplace
-rue des NAME,NAMEplace
-rue des SUB,NAMEplace
-saint NAME,NAMEpers
-sainte NAME,NAMEpers
 sainte nitouche,SUB,,0.14
 salut !,EXCL,,6.55
 san francisco,SUB,,0.07
@@ -406,7 +429,6 @@ tintin !,EXCL,,1.69
 too much,ADJ,,0.47
 top models,SUB,,0.07
 traveller's chèques,SUB,,0
-traveller’s chèques,SUB,,0
 tss tss,SUB,,0.07
 tu autem,SUB,,0.07
 tutti frutti,ADV,,0.41

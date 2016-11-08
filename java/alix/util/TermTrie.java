@@ -171,9 +171,27 @@ public class TermTrie
   public void add( String term, int cat, String orth )
   {
     Token node = getRoot();
-    for ( String word: term.split( " " ) ) {
-      node = node.append( word );
+    // parse the term, split on space and apos
+    char[] chars=term.toCharArray();
+    int lim=chars.length;
+    char c;
+    int offset = 0;
+    for ( int i=0; i<lim; i++) {
+      c = chars[i];
+      // split on apos ?
+      if ( c == '’' || c == '\'' ) {
+        chars[i] = '\'';
+        node = node.append( new String( chars, offset, i-offset + 1) );
+        offset = i+1;
+      }
+      // and space (be nice on double spaces, do not create empty words)
+      if (Char.isSpace( c )) {
+        if ( offset !=i ) node = node.append( new String( chars, offset, i-offset ) );
+        offset = i+1;
+      }
     }
+    // last word, trim spaces
+    if ( offset != lim ) node = node.append( new String( chars, offset, lim-offset ) );
     node.inc(); // update counter (this structure may be used as term counter)
     node.tag( cat ); // a category
     node.orth( orth );
@@ -345,8 +363,6 @@ public class TermTrie
       for ( String w: children.keySet() ) {
         if (first)
           first = false;
-        if ( this == root) 
-          sb.append( ", " );
         else
           sb.append( ", " );
         sb.append( w );
@@ -367,9 +383,9 @@ public class TermTrie
   {
     TermTrie dic = new TermTrie();
     String[] terms = new String[]{
-      "parce que", "afin que", "afin de", "afin", "ne pas ajouter", "parce"
+      "d’abord", "d'alors", "parce   que", "afin que    ", "afin de", "afin", "ne pas ajouter", "parce"
     };
-    int i = 5;
+    int i = 6;
     for (String term:terms ) {
       dic.add( term );
       if (--i <= 0) break;

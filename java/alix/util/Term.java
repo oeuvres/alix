@@ -551,6 +551,22 @@ public class Term implements CharSequence, Comparable<Term>
     }
     return len - t.len;
   }
+  public int compareTo( String string ) {
+    char chars[] = data;
+    int ichars = start;
+    int istring = 0;
+    int lim = Math.min( len, string.length() );
+    while ( istring < lim ) {
+        char c1 = chars[ichars];
+        char c2 = string.charAt( istring );
+        if (c1 != c2) {
+            return c1 - c2;
+        }
+        ichars++;
+        istring++;
+    }
+    return len - string.length();
+  }
 
   /**
    * Returns a hash code for this string. The hash code for a
