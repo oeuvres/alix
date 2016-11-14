@@ -286,7 +286,7 @@ public class Tokenizer
     }
     // number ?
     else if (Char.isDigit( c )) {
-      occ.tag( Tag.NUM );
+      occ.tag( Tag.DETnum );
       return;
     }
     // upper case ?

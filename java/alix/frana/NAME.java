@@ -1,4 +1,4 @@
-package alix.exos;
+package alix.frana;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;

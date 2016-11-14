@@ -40,6 +40,7 @@ public final class Tag
   public final static short DET  = 0x60;
   public final static short DETart = 0x61;
   public final static short DETprep = 0x62;
+  public final static short DETnum  = 0x63;
   public final static short DETindef = 0x6A;
   public final static short DETinter = 0x6B;
   public final static short DETdem = 0x6C;
@@ -55,7 +56,6 @@ public final class Tag
   public final static short CONJcoord = 0x81; 
   public final static short CONJsubord = 0x82;
   public final static short EXCL = 0x90;
-  public final static short NUM  = 0xA0;
   public final static short NAME = 0xB0;
   public final static short NAMEpers = 0xB1;
   public final static short NAMEpersm = 0xB2;

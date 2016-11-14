@@ -1,5 +1,74 @@
 GRAPH,CAT,ORTH,FREQ
 
+# EN TEST
+
+le premier,DETnum
+la première,DETnum
+les premiers,DETnum
+les premières,DETnum
+un premier,DETnum
+une première,DETnum
+le second,DETnum
+la seconde,DETnum
+les seconds,DETnum
+les secondes,DETnum
+un second,DETnum
+le second,DETnum
+le deuxième,DETnum
+la deuxième,DETnum
+les deuxièmes,DETnum
+un deuxième,DETnum
+une deuxième,DETnum
+le troisième,DETnum
+la troisième,DETnum
+un troisième,DETnum
+une troisième,DETnum
+le quatrième,DETnum
+la quatrième,DETnum
+un quatrième,DETnum
+une quatrième,DETnum
+le cinquième,DETnum
+la cinquième,DETnum
+un cinquième,DETnum
+une cinquième,DETnum
+le sixième,DETnum
+la sixième,DETnum
+un sixième,DETnum
+une sixième,DETnum
+le septième,DETnum
+la septième,DETnum
+un septième,DETnum
+une septième,DETnum
+le huitième,DETnum
+la huitième,DETnum
+un huitième,DETnum
+une huitième,DETnum
+le neuvième,DETnum
+la neuvième,DETnum
+un neuvième,DETnum
+une neuvième,DETnum
+le dixième,DETnum
+la dixième,DETnum
+un dixième,DETnum
+une dixième,DETnum
+le onzième,DETnum
+la onzième,DETnum
+un onzième,DETnum
+une onzième,DETnum
+le douzième,DETnum
+la douzième,DETnum
+un douzième,DETnum
+une douzième,DETnum
+le treizième,DETnum
+la treizième,DETnum
+un treizième,DETnum
+une treizième,DETnum
+le vingtième,DETnum
+la vingtième,DETnum
+un vingtième,DETnum
+une vingtième,DETnum
+
+
 # noms propres
 # les mots de la langue dans des noms propres ont été “cassés”
 
@@ -20,6 +89,13 @@ La Mothe Le Vayer,NAMEpers
 la Rochefoucault,NAMEpers
 la Rochefoucauld,NAMEpers
 la Touche,NAMEpers
+de Maistre,NAMEpers
+
+# BUGS
+
+M elle,SUB,mademoiselle
+M lle,SUB,mademoiselle
+M me,SUB,madame
 
 
 # TITULATURES
@@ -73,456 +149,489 @@ saint NAME,NAMEpers
 sainte NAME,NAMEpers
 sir NAME,NAMEpers
 
-# mots de la langue
+# locutions pronominales
 
-à brûle-pourpoint,ADV,,,1.22
-a capella,ADV,,0.07
-a cappella,ADV,,0.07
-à cloche-pied,ADV,,1.35
-a contrario,ADV,,0.27
-à cropetons,ADV,,0.07
-à croupetons,ADV,,0.95
-à fond,ADV
-a fortiori,ADV,,0.88
-à fortiori,ADV,,0.2
-a giorno,ADV,,0.27
-à giorno,ADV,,0.07
-à glagla,ADV,,0.07
-à jeun,ADV,,3.85
-à jeun,ADV,,0
-à l'aveuglette,ADV,,2.16
-à l'encontre,PREP,,1.89
-à l'envi,ADV,,0.61
-à l'improviste,ADV,,4.53
-à l'instar,PREP,,6.42
-à l'encan,ADV,,0.14
-à l'aveuglette,ADV,,2.16
-à l'encontre,PREP,,1.89
-à l'envi,ADV,,0.61
-à l'improviste,ADV,,4.53
-à l'instar,PREP,,6.42
-à l'encan,ADV,,0.14
-à la daumont,ADV,,0.07
-à la saint-glinglin,ADV,,0
-à leur encontre,ADV,,0.07
-à lurelure,ADV,,0.2
-à mon encontre,ADV,,0.14
-à notre encontre,ADV,,0.07
-a posteriori,ADV,,0.14
-à posteriori,ADV,,0.07
-a priori,ADV,,2.57
-a priori,SUB,,0.47
-à priori,ADV,,1.28
-à rebrousse-poil,ADV,,0.81
-à son encontre,ADV,,0.2
-à tâtons,ADV,,8.78
-à tire-larigot,ADV,,0.14
-à ton encontre,ADV,,0
-à touche-touche,ADV,,0.14
-à tue-tête,ADV,,3.72
-à votre encontre,ADV,,0
-ab absurdo,ADV,,0.07
-ab initio,ADV,,0.07
-ab ovo,ADV,,0.27
-acid jazz,SUB,,0
-action painting,SUB,,0.07
-ad hoc,ADJ,,0.81
-ad infinitum,ADV,,0
-ad libitum,ADV,,0.14
-ad limina,ADV,,0.07
-ad majorem dei gloriam,ADV,,0.14
-ad nutum,ADV,,0.07
-ad patres,ADV,,0.27
-ad vitam aeternam,ADV,,0.2
-afin d,PREP,,0.07
-afin de,PREP,,43.18
-afin qu,CONJsubord,,0
-afin que,CONJsubord,,14.93
-after shave,SUB,,0.07
-agnus dei,SUB,,0.14
-air bag,SUB,,0
-al dente,ADV,,0.14
-alea jacta est,ADV,,0.07
-alerte !,EXCL,,0.81
-all right,ADV,,0.2
-alléluia !,EXCL,,0.41
-alter ego,SUB,,0.54
-am stram gram,EXCL,,0.14
-après que,CONJsubord,,0
-arrière !,EXCL,,0.14
-attention !,EXCL,,21.35
-au delà,ADV
-aux aguets,ADV,,5.88
-avant que,CONJsubord
-ayants droit,SUB,,0.14
-back up,SUB,,0
-beat generation,SUB,,0.14
-beaucoup de,DETindef
-bel canto,SUB,,0.41
-belle lurette,SUB,,2.64
-best of,SUB,,0
-bien que,CONJsubord
-big band,SUB,,0
-big bang,SUB,,1.62
-birth control,SUB,,0.14
-bla bla,SUB,,0
-bloody mary,SUB,,0.2
-blue jeans,SUB,,0
-blue note,SUB,,0
-boat people,SUB,,0.07
-brown sugar,SUB,,0.07
-bubble gum,SUB,,0
-buen retiro,SUB,,0.14
-by night,ADJ,,0.41
-c'est-à-dire,ADV,,51.96
-call girl,SUB,,0
-call girls,SUB,,0
-canadian river,SUB,,0.07
-caput mortuum,SUB,,0.07
-casus belli,SUB,,0
-celui ci,PROdem,celui-ci
-celui là,PROdem,celui-là
-cependant que,CONJsubord,,13.51
-champs élysées,SUB,,0.14
-check up,SUB,,0
-chewing gum,SUB,,0.07
-chop suey,SUB,,0
-citizen band,SUB,,0
-coffee shop,SUB,,0
-comic book,SUB,,0
-comic books,SUB,,0.07
-commedia dell'arte,SUB,,0.14
-commedia dell'arte,SUB,,0.14
-corn flakes,SUB,,0.07
-corpus delicti,SUB,,0
-cot cot codec,EXCL,,0.07
-croa croa,ADV,,0.14
-curriculum vitae,SUB,,0.74
-dans la merde,ADJ,
-dare dare,ADV,,0.27
-d'abord,ADVtemp,,169.32
-d'accord,ADV,,
-d'ailleurs,ADV,
-d'autres,PROindef,,119.73
-d'emblée,ADV,,8.31
-d'ores et déjà,ADV,,1.28
-de amicis,SUB,,0.07
-de auditu,ADV,,0.07
-de facto,ADV,,0.07
-de guingois,ADV,,2.64
-de plano,ADV,,0
-de plus,ADV
-de profundis,SUB,,0.41
-de santis,SUB,,0
-de traviole,ADV,,1.28
-d'une part,ADV,
-de visu,ADV,,0.54
-dehors !,EXCL,,0.61
-delirium tremens,SUB,,0.27
-della francesca,SUB,,0.2
-della porta,SUB,,0.07
-della robbia,SUB,,0.07
-deo gratias,SUB,,0.2
-dès que,CONJsubord,,0
-deus ex machina,SUB,,0.47
-deutsche mark,ADJ,,0
-dies irae,SUB,,0.14
-dignus est intrare,ADV,,0.07
-dommage !,EXCL,,5.34
-downing street,SUB,,0.34
-dream team,SUB,,0
-east river,SUB,,0.07
-ecce homo,ADV,,0.2
-en catimini,ADV,,1.42
-en effet,ADV
-en loucedé,ADV,,0.47
-en tapinois,ADV,,0.68
-est-ce qu,ADV,,0.07
-et caetera,ADV,,0.88
-et cætera,ADVquant,,55
-et cetera,ADVquant,,55
-et cetera,ADV,,0.74
-et seq,ADV,,0.07
-ex abrupto,ADV,,0.07
-ex nihilo,ADV,,0.14
-fast food,SUB,,0.07
-five o'clock,SUB,,0.14
-five o'clock,SUB,,0.14
-flatus vocis,SUB,,0.07
-foreign office,SUB,,2.5
-fort bien,ADV
-free jazz,SUB,,0.07
-fur et à mesure,SUB,,17.84
-gengis khan,SUB,,0.14
-girl friend,SUB,,0
-gna gna,EXCL,,0.14
-gratis pro deo,ADV,,0.14
-grosso modo,ADV,,1.89
-happy end,SUB,,0.27
-happy ends,SUB,,0
-happy few,SUB,,0.14
-hard edge,SUB,,0
-hardi !,EXCL,,0.61
-has been,SUB,,0.2
-hic et nunc,ADV,,0.41
-high life,SUB,,0.41
-high tech,ADJ,,0.07
-hold up,SUB,,0
-homo erectus,SUB,,0
-homo habilis,SUB,,0.07
-hong kong,SUB,,0
-honoris causa,ADV,,0.27
-hot dog,SUB,,0.14
-hot dogs,SUB,,0
-house music,SUB,,0
-ice cream,SUB,,0
-in absentia,ADV,,0
-in abstracto,ADV,,0.2
-in anima vili,ADV,,0.07
-in cauda venenum,ADV,,0.14
-in extenso,ADV,,0.54
-in extremis,ADV,,2.64
-in memoriam,ADV,,0
-in pace,SUB,,0.07
-in petto,ADV,,1.22
-in utero,ADV,,0
-in utero,ADJ,,0
-in vino veritas,ADV,,0
-in vitro,ADJ,,0.34
-in vitro,ADV,,0
-in vivo,ADV,,0.07
-inch allah,EXCL,,0.47
-intra muros,ADV,,0.07
-invisible piston,SUB,,0.07
-ipso facto,ADV,,0.61
-irish coffee,SUB,,0.14
-ite missa est,SUB,,0.14
-jet society,SUB,,0.07
-jusqu'à ce que,CONJsubord
-kung fu,SUB,,0
-kyrie eleison,SUB,,0.07
-l'une,PROindef,,93.58
-la mienne,PROposs,,41.28
-la plata,SUB,,0.14
-la plupart,PROindef,,23.24
-la plupart de,DETindef,,7.3
-la plupart des,DETindef,,29.26
-la plupart du,DETindef,,7.91
-la sienne,PROposs,,40.68
-la tienne,PROposs,,5.81
-lacryma christi,SUB,,0.14
-le mien,PROposs,,36.08
-le nôtre,PROposs,,23.51
-le sien,PROposs,,36.08
-le tien,PROposs,,5.54
-le vôtre,PROposs,,11.69
-les miennes,PROposs,,9.59
-les miens,PROposs,,21.15
-les nôtres,PROposs,,21.35
-les siennes,PROposs,,9.73
-les siens,PROposs,,29.8
-les tiennes,PROposs,,0.95
-les tiens,PROposs,,2.5
-les vôtres,PROposs,,4.39
-lors de,PREP,,0
-made in,ADV,,0.88
-madre de dios,SUB,,0.07
-maître queux,SUB,,0.14
-manu militari,ADV,,0.2
-mass media,SUB,,0.07
-mater dolorosa,SUB,,0.47
-mea culpa,SUB,,0.68
-melting pot,SUB,,0.07
-même si,CONJsubord
-merci !,EXCL,,42.36
-mezza voce,ADV,,0.2
-middle class,SUB,,0.07
-milk shake,SUB,,0
-minus habens,SUB,,0.14
-modern style,ADJ,,0.68
-modern style,SUB,,0
-modus operandi,SUB,,0
-modus vivendi,SUB,,0.47
-motu proprio,ADV,,0.07
-music hall,SUB,,0
-mutatis mutandis,ADV,,0.07
-n'est ce pas,ADV,n'est-ce pas,0
-n'importe qui,PROindef,
-ne varietur,ADV,,0.14
-negro spiritual,SUB,,0.07
-negro spirituals,SUB,,0.07
-new wave,SUB,,0.07
-night club,SUB,,0
-nihil obstat,ADV,,0.2
-no man's land,SUB,,1.49
-no man's land,SUB,,1.49
-non troppo,ADV,,0.07
-nota bene,ADV,,0.07
-numerus clausus,SUB,,0.07
-olla podrida,SUB,,0.07
-osso buco,SUB,,0
-pan bagnat,SUB,,0.14
-par mégarde,ADV,,2.91
-parce que,CONJsubord,,327.43
-part time,SUB,,0.14
-paso doble,SUB,,0.81
-pater familias,SUB,,0.07
-pater noster,SUB,,0.41
-pax americana,SUB,,0
-persona grata,ADJ,,0
-persona non grata,SUB,,0.07
-peu de,DETindef
-peu ou prou,ADV,,0.68
-pit bull,SUB,,0
-play back,SUB,,0
-pom-pom girl,SUB,,0
-pom-pom girls,SUB,,0
-post it,SUB,,0
-post mortem,ADV,,0.2
-pour que,CONJsubord,,0
-près de,ADV,,16.35
-prime time,SUB,,0
-public schools,SUB,,0.07
-punching ball,SUB,,0
-quoi !,EXCL,,1.62
-recto tono,ADV,,0.2
-red river,SUB,,0.14
-requiescat in pace,SUB,,0.07
-rhythm and blues,SUB,,0
-ric et rac,ADV,,0.61
-roast beef,SUB,,0
-rocking chair,SUB,,0
-sainte nitouche,SUB,,0.14
-salut !,EXCL,,6.55
-san francisco,SUB,,0.07
-sans que,CONJsubord
-scenic railway,SUB,,0.2
-sedia gestatoria,SUB,,0.2
-self-made man,SUB,,0.07
-sex appeal,SUB,,0.07
-sex shop,SUB,,0
-sex shops,SUB,,0
-sic transit gloria mundi,ADV,,0.07
-sine die,ADV,,0.34
-sine qua non,ADV,,0.47
-soap opéra,SUB,,0
-souventes fois,ADV,,0.27
-sri lankais,ADJ,,0
-sri lankais,SUB,,0
-stabat mater,SUB,,0.07
-statu quo,SUB,,1.08
-story board,SUB,,0.07
-stricto sensu,ADV,,0
-struggle for life,SUB,,0.07
-sui generis,ADJ,,0.07
-sursum corda,ADV,,0.2
-taï chi,SUB,,0
-talavera de la reina,SUB,,0.07
-tandis que,CONJsubord,,136.15
-tandis que,ADV,,0.07
-tant de,DETindef
-tchin tchin,EXCL,,0.47
-te deum,SUB,,0.14
-terra incognita,SUB,,0.34
-tiens !,EXCL,,81.89
-tintin !,EXCL,,1.69
-too much,ADJ,,0.47
-top models,SUB,,0.07
-traveller's chèques,SUB,,0
-tss tss,SUB,,0.07
-tu autem,SUB,,0.07
-tutti frutti,ADV,,0.41
-tutti quanti,ADV,,0.2
-ultima ratio,SUB,,0.07
-urbi et orbi,ADV,,0.27
-vade retro,ADV,,0.68
-vae soli,ADV,,0.07
-vae victis,ADV,,0.07
-vomito negro,SUB,,0
-vox populi,SUB,,0.27
-vox populi,ADV,,0.14
-vulgum pecus,SUB,,0.07
-wait and see,SUB,,0
-wall street,SUB,,0.07
-way of life,SUB,,0.14
-week end,SUB,,0
-world music,SUB,,0
-yom kippour,SUB,,0.34
-yom kippur,SUB,,0
-une fois,ADV
-une bonne fois,ADV
-une fois pour toutes,ADV
-une bonne fois pour toutes,ADV
-encore une fois,ADV
-NUM fois par an,ADV
-NUM fois par semaine,ADV
-NUM fois par mois,ADV
-plutôt deux fois que une,ADV
-NUM fois,ADV
-à NUM fois,ADV
-la première fois,ADV
-cette fois-ci,ADV
-cette fois-là,ADV
-chaque fois,ADV
-à chaque fois,ADV
-toutes les fois,ADV
-un peu de,DETindef
-une autre fois,ADV
-une fois,ADV
-il était une fois,ADV
-à la fois,ADV
-pour une fois,ADV
-pour cette fois,ADV
-la fois où,CONJ
-cette fois où,CONJ
-chaque fois que,CONJ
+ce dernier,PROindef
+celui ci,PROdem
+celui là,PROdem
+ces derniers,PROindef
+cette dernière,PROindef
+d'autres,PROindef
+l’autre,PROindef
+la dernière,PROindef
+la même,PROindef
+la mienne,PROposs
+la sienne,PROposs
+la tienne,PROposs
+le dernier,PROindef
+le même,PROindef
+le mien,PROposs
+le nôtre,PROposs
+le sien,PROposs
+le tien,PROposs
+le vôtre,PROposs
+les mêmes,PROindef
+les miennes,PROposs
+les miens,PROposs
+les nôtres,PROposs
+les siennes,PROposs
+les siens,PROposs
+les tiennes,PROposs
+les tiens,PROposs
+les vôtres,PROposs
+n'importe qui,PROindef
+n'importe quoi,PROindef
+quoi que,PROindef
+tous deux,PROindef
+tous les deux,PROindef
+tous les trois,PROindef
+l'une,PROindef
+la plupart,PROindef
+
+
+# locutions conjonctives
+
 à chaque fois que,CONJ
-toutes les fois que,CONJ
-les fois que,CONJ
-une fois que,CONJ
-pour une fois que,CONJ
-des fois que,CONJ
-I e,NUM,Ie
-I er,NUM,Ier
-II e,NUM,IIe
-II nd,NUM,IInd
-III e,NUM,IIIe
-IV e,NUM,IVe
-V e,NUM,Ve
-VI e,NUM,VIe
-VII e,NUM,VIIe
-VIII e,NUM,VIIIe
-IX e,NUM,IXe
-X e,NUM,Xe
-XI e,NUM,XIe
-XII e,NUM,XIIe
-XIII e,NUM,XIIIe
-XIV e,NUM,XIVe
-XVI e,NUM,XVIe
-XVII e,NUM,XVIIe
-XVIII e,NUM,XVIIIe
-XIX e,NUM,XIXe
-XX e,NUM,XXe
-XXI e,NUM,XXIe
-XXII e,NUM,XXIIe
-XXIII e,NUM,XXIIIe
-XXIV e,NUM,XXIVe
-XXV e,NUM,XXVe
-XXVI e,NUM,XXVIe
-XXVII e,NUM,XXVIIe
-XXVIII e,NUM,XXVIIIe
-XXIX e,NUM,XXIXe
-XXX e,NUM,XXXe
-M elle,SUB,mademoiselle
-M lle,SUB,mademoiselle
-M me,SUB,madame
-en outre,ADV
-en sus,ADV
-par ailleurs,ADV
-du reste,ADV
-qui plus est,ADV
+afin qu,CONJsubord
+afin que,CONJsubord
+après que,CONJsubord
 au cas où,CONJ
 auquel cas,CONJ
+avant que,CONJsubord
+avant même que,CONJsubord
+bien que,CONJsubord
+cependant que,CONJsubord
+cette fois où,CONJ
+chaque fois que,CONJ
+d'autant que,CONJ
+de même que,CONJ
+des fois que,CONJ
+dès que,CONJsubord
+jusqu'à ce que,CONJsubord
+la fois où,CONJ
+les fois où,CONJ
+les fois que,CONJ
+même si,CONJsubord
+même quand,CONJ
+parce que,CONJsubord
+pour une fois que,CONJ
+pour que,CONJsubord
+sans que,CONJsubord
+toutes les fois que,CONJ
+tandis que,CONJsubord
+une fois que,CONJ
+
+
+# locution adverbiales
+
+à brûle-pourpoint,ADV,
+a capella,ADV,
+a cappella,ADV,
+à chaque fois,ADV,
+à cloche-pied,ADV,
+a contrario,ADV,
+à cropetons,ADV,
+à croupetons,ADV,
+à fond,ADV,
+à fond,ADV,
+a fortiori,ADV,
+à fortiori,ADV,
+a giorno,ADV,
+à giorno,ADV,
+à glagla,ADV,
+à jeun,ADV,
+à jeun,ADV,
+à l'aveuglette,ADV,
+à l'aveuglette,ADV,
+à l'encan,ADV,
+à l'encan,ADV,
+à l'envi,ADV,
+à l'envi,ADV,
+à l'improviste,ADV,
+à l'improviste,ADV,
+à la daumont,ADV,
+à la fois,ADV,
+à la saint-glinglin,ADV,
+à leur encontre,ADV,
+à lurelure,ADV,
+à mon encontre,ADV,
+à notre encontre,ADV,
+à NUM fois,ADV,
+a posteriori,ADV,
+à posteriori,ADV,
+a priori,ADV,
+à priori,ADV,
+à rebrousse-poil,ADV,
+à son encontre,ADV,
+à tâtons,ADV,
+à tire-larigot,ADV,
+à ton encontre,ADV,
+à touche-touche,ADV,
+à tue-tête,ADV,
+à votre encontre,ADV,
+ab absurdo,ADV,
+ab initio,ADV,
+ab ovo,ADV,
+ad infinitum,ADV,
+ad libitum,ADV,
+ad limina,ADV,
+ad majorem dei gloriam,ADV,
+ad nutum,ADV,
+ad patres,ADV,
+ad vitam aeternam,ADV,
+al dente,ADV,
+alea jacta est,ADV,
+all right,ADV,
+au delà,ADV,
+aux aguets,ADV,
+c'est-à-dire,ADV,
+cette fois-ci,ADV,
+cette fois-là,ADV,
+chaque fois,ADV,
+croa croa,ADV,
+d'abord,ADVtemp,
+d'accord,ADV,
+d'ailleurs,ADV,
+dare dare,ADV,
+de auditu,ADV,
+de facto,ADV,
+de guingois,ADV,
+d'emblée,ADV,
+de même,ADV
+d'ores et déjà,ADV,
+de plano,ADV,
+de plus,ADV,
+de traviole,ADV,
+d'une part,ADV,
+de visu,ADV,
+dignus est intrare,ADV,
+du reste,ADV,
+ecce homo,ADV,
+en catimini,ADV,
+en effet,ADV,
+en loucedé,ADV,
+en outre,ADV,
+en sus,ADV,
+en tapinois,ADV,
+en tous cas,ADV,
+encore une fois,ADV,
+est-ce qu,ADV,
+et cætera,ADVquant,
+et caetera,ADVquant,
+et cetera,ADVquant,
+et seq,ADV,
+ex abrupto,ADV,
+ex nihilo,ADV,
+fort bien,ADV,
+gratis pro deo,ADV,
+grosso modo,ADV,
+hic et nunc,ADV,
+honoris causa,ADV,
+il était une fois,ADV,
+in absentia,ADV,
+in abstracto,ADV,
+in anima vili,ADV,
+in cauda venenum,ADV,
+in extenso,ADV,
+in extremis,ADV,
+in memoriam,ADV,
+in petto,ADV,
+in utero,ADV,
+in vino veritas,ADV,
+in vitro,ADV,
+in vivo,ADV,
+intra muros,ADV,
+ipso facto,ADV,
+la première fois,ADV,
+made in,ADV,
+manu militari,ADV,
+mezza voce,ADV,
+motu proprio,ADV,
+mutatis mutandis,ADV,
+n'est ce pas,ADV,n'est-ce pas
+ne varietur,ADV,
+nihil obstat,ADV,
+non troppo,ADV,
+nota bene,ADV,
+NUM fois,ADV,
+NUM fois par an,ADV,
+NUM fois par mois,ADV,
+NUM fois par semaine,ADV,
+par ailleurs,ADV,
+par mégarde,ADV,
+peu ou prou,ADV,
+plutôt deux fois que une,ADV,
+post mortem,ADV,
+pour cette fois,ADV,
+pour une fois,ADV,
+près de,ADV,
+quand même,ADV
+qui plus est,ADV,
+recto tono,ADV,
+ric et rac,ADV,
+sic transit gloria mundi,ADV,
+sine die,ADV,
+sine qua non,ADV,
+souventes fois,ADV,
+stricto sensu,ADV,
+sursum corda,ADV,
+tandis que,ADV,
+tout de même,ADV
+toutes les fois,ADV,
+tutti frutti,ADV,
+tutti quanti,ADV,
+une autre fois,ADV,
+une bonne fois,ADV,
+une bonne fois pour toutes,ADV,
+une fois,ADV,
+une fois,ADV,
+une fois pour toutes,ADV,
+urbi et orbi,ADV,
+tout de même,ADV
+vade retro,ADV,
+vae soli,ADV,
+vae victis,ADV,
+
+# locutions nominales
+
+a priori,SUB
+acid jazz,SUB
+action painting,SUB
+after shave,SUB
+agnus dei,SUB
+air bag,SUB
+alter ego,SUB
+ayants droit,SUB
+back up,SUB
+beat generation,SUB
+bel canto,SUB
+belle lurette,SUB
+best of,SUB
+big band,SUB
+big bang,SUB
+birth control,SUB
+bla bla,SUB
+bloody mary,SUB
+blue jeans,SUB
+blue note,SUB
+boat people,SUB
+brown sugar,SUB
+bubble gum,SUB
+buen retiro,SUB
+call girl,SUB
+call girls,SUB
+canadian river,SUB
+caput mortuum,SUB
 cas particulier,SUB
-en tous cas,ADV
-à fond,ADV
+casus belli,SUB
+champs élysées,SUB
+check up,SUB
+chewing gum,SUB
+chop suey,SUB
+citizen band,SUB
+coffee shop,SUB
+comic book,SUB
+comic books,SUB
+commedia dell'arte,SUB
+commedia dell'arte,SUB
+corn flakes,SUB
+corpus delicti,SUB
+curriculum vitae,SUB
+de amicis,SUB
+de profundis,SUB
+de santis,SUB
+delirium tremens,SUB
+della francesca,SUB
+della porta,SUB
+della robbia,SUB
+deo gratias,SUB
+deus ex machina,SUB
+dies irae,SUB
+downing street,SUB
+dream team,SUB
+east river,SUB
+fast food,SUB
+five o'clock,SUB
+five o'clock,SUB
+flatus vocis,SUB
+foreign office,SUB
+free jazz,SUB
+fur et à mesure,SUB
+gengis khan,SUB
+girl friend,SUB
+happy end,SUB
+happy ends,SUB
+happy few,SUB
+hard edge,SUB
+has been,SUB
+high life,SUB
+hold up,SUB
+homo erectus,SUB
+homo habilis,SUB
+hong kong,SUB
+hot dog,SUB
+hot dogs,SUB
+house music,SUB
+ice cream,SUB
+in pace,SUB
+invisible piston,SUB
+irish coffee,SUB
+ite missa est,SUB
+jet society,SUB
+kung fu,SUB
+kyrie eleison,SUB
+la plata,SUB
+lacryma christi,SUB
+madre de dios,SUB
+maître queux,SUB
+mass media,SUB
+mater dolorosa,SUB
+mea culpa,SUB
+melting pot,SUB
+middle class,SUB
+milk shake,SUB
+minus habens,SUB
+modern style,SUB
+modus operandi,SUB
+modus vivendi,SUB
+music hall,SUB
+negro spiritual,SUB
+negro spirituals,SUB
+new wave,SUB
+night club,SUB
+no man's land,SUB
+no man's land,SUB
+numerus clausus,SUB
+olla podrida,SUB
+osso buco,SUB
+pan bagnat,SUB
+part time,SUB
+paso doble,SUB
+pater familias,SUB
+pater noster,SUB
+pax americana,SUB
+persona non grata,SUB
+pit bull,SUB
+play back,SUB
+pom-pom girl,SUB
+pom-pom girls,SUB
+post it,SUB
+prime time,SUB
+public schools,SUB
+punching ball,SUB
+red river,SUB
+requiescat in pace,SUB
+rhythm and blues,SUB
+roast beef,SUB
+rocking chair,SUB
+sainte nitouche,SUB
+san francisco,SUB
+scenic railway,SUB
+sedia gestatoria,SUB
+self-made man,SUB
+sex appeal,SUB
+sex shop,SUB
+sex shops,SUB
+soap opéra,SUB
+sri lankais,SUB
+stabat mater,SUB
+statu quo,SUB
+story board,SUB
+struggle for life,SUB
+taï chi,SUB
+talavera de la reina,SUB
+te deum,SUB
+terra incognita,SUB
+top models,SUB
+traveller's chèques,SUB
+tss tss,SUB
+tu autem,SUB
+ultima ratio,SUB
+vomito negro,SUB
+vox populi,SUB
+vulgum pecus,SUB
+wait and see,SUB
+wall street,SUB
+way of life,SUB
+week end,SUB
+world music,SUB
+yom kippour,SUB
+yom kippur,SUB
+
+
+# autres locutions
+
+ad hoc,ADJ
+by night,ADJ
+dans la merde,ADJ
+deutsche mark,ADJ
+high tech,ADJ
+in utero,ADJ
+in vitro,ADJ
+modern style,ADJ
+persona grata,ADJ
+sri lankais,ADJ
+sui generis,ADJ
+too much,ADJ
+beaucoup de,DETindef
+la plupart de,DETindef
+la plupart des,DETindef
+la plupart du,DETindef
+peu de,DETindef
+tant de,DETindef
+un peu de,DETindef
+I e,DETnum
+I er,DETnum
+II e,DETnum
+II nd,DETnum
+III e,DETnum
+IV e,DETnum
+IX e,DETnum
+V e,DETnum
+VI e,DETnum
+VII e,DETnum
+VIII e,DETnum
+X e,DETnum
+XI e,DETnum
+XII e,DETnum
+XIII e,DETnum
+XIV e,DETnum
+XIX e,DETnum
+XVI e,DETnum
+XVII e,DETnum
+XVIII e,DETnum
+XX e,DETnum
+XXI e,DETnum
+XXII e,DETnum
+XXIII e,DETnum
+XXIV e,DETnum
+XXIX e,DETnum
+XXV e,DETnum
+XXVI e,DETnum
+XXVII e,DETnum
+XXVIII e,DETnum
+XXX e,DETnum
+alerte !,EXCL
+alléluia !,EXCL
+am stram gram,EXCL
+arrière !,EXCL
+attention !,EXCL
+cot cot codec,EXCL
+dehors !,EXCL
+dommage !,EXCL
+gna gna,EXCL
+hardi !,EXCL
+inch allah,EXCL
+merci !,EXCL
+quoi !,EXCL
+salut !,EXCL
+tchin tchin,EXCL
+tiens !,EXCL
+tintin !,EXCL
+à l'encontre,PREP
+à l'encontre,PREP
+à l'instar,PREP
+à l'instar,PREP
+afin d,PREP
+afin de,PREP
+lors de,PREP

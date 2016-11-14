@@ -1,4 +1,4 @@
-package alix.exos;
+package alix.frana;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,19 +20,25 @@ public class GN
   int n = 0;
   /** Tokenizer */
   Tokenizer toks;
-  /** File writer */
-  PrintWriter htmlWriter;
-  /** File writer */
-  PrintWriter csvWriter;
+  /** Where to write results */
+  PrintWriter out;
   /** Size on the left */
   final int left = 10;
   /** Size on the right */
   final int right = 10;
-  public GN(Path src, final Path destName ) throws IOException
+  public GN(Path src ) throws IOException
   {
     toks = new Tokenizer( new String(Files.readAllBytes( src ), StandardCharsets.UTF_8) );
-    htmlWriter = new PrintWriter( destName.toString()+".html" );
-    csvWriter = new PrintWriter( destName.toString()+".csv" );
+  }
+  /**
+   * Contstructeur pour JSP
+   * @param text
+   * @param out
+   * @throws IOException
+   */
+  public GN (String text ) throws IOException
+  {
+    toks = new Tokenizer( text );
   }
   public void htmlHead( PrintWriter out ) {
     out.println( "<!doctype html>" );
@@ -61,35 +67,52 @@ public class GN
     out.println();
     out.close();
   }
+  /*
   public void parse( ) throws IOException
   {
     htmlHead( htmlWriter );
     TermDic dic = parse( toks );
     htmlFoot( htmlWriter );
-    /*
     csvWriter.write( "ADJECTIF\tANTE\tPOST\tANTE+POST\t% ANTE\n" );
     dic.csv( csvWriter );
     csvWriter.close();
-    */
   }
-  public TermDic parse( Tokenizer toks )
+  */
+  /**
+   * 
+   */
+  public TermDic parse( )
+  {
+    return parse(null);
+  }
+  /**
+   * If out not null, an html concordance will be written during parsing
+   * @param toks
+   * @return
+   */
+  public TermDic parse( PrintWriter out )
   {
     TermDic dic = new TermDic();
     OccSlider win = new OccSlider(left, right);
+    // loop on all tokens
     while ( toks.word( win.add() ) ) {
-      if ( !win.get( 0 ).tag.equals( Tag.SUB ) ) continue;
+      if ( !win.get( 0 ).tag.equals( Tag.SUB ) ) {
+        // increment global count of dictionary to calculate a frequency for the indexed term
+        dic.inc();
+        continue;
+      }
       int lpos = 0;
       boolean ladj = false;
       while (lpos > -left) {
         final short tag =  win.get( lpos -1 ).tag.code();
         if ( tag == Tag.ADJ ) {
-          dic.add( win.get( lpos - 1 ).lem );
+          dic.inc( win.get( lpos - 1 ).lem );
           lpos--;
           ladj = true;
           continue;
         }
         else if ( tag == Tag.VERBppass ) {
-          dic.add( win.get( lpos - 1 ).lem );
+          dic.inc( win.get( lpos - 1 ).orth ); // ? TODO lem
           lpos--;
           win.get( lpos ).tag( Tag.ADJ );
           ladj = true;
@@ -107,7 +130,7 @@ public class GN
           lpos--;
           break;
         }
-        else if ( tag == Tag.NUM ) {
+        else if ( tag == Tag.DETnum ) {
           lpos--;
           break;
         }
@@ -127,13 +150,13 @@ public class GN
       while (rpos < right ) {
         final short tag =  win.get( rpos+1 ).tag.code();
         if ( tag == Tag.ADJ ) {
-          dic.add2( win.get( rpos + 1 ).lem );
+          dic.inc2( win.get( rpos + 1 ).lem );
           rpos++;
           radj = true;
           continue;
         }
         else if ( tag == Tag.VERBppass ) {
-          dic.add2( win.get( rpos + 1 ).lem );
+          dic.inc2( win.get( rpos + 1 ).orth ); // TODO lem
           rpos++;
           // correct participle,seems adj
           win.get( rpos ).tag( Tag.ADJ );
@@ -164,45 +187,45 @@ public class GN
         break;
       }
       if ( !ladj && !radj) continue;
-      html( win, lpos, rpos );
+      if ( out != null) html( out, win, lpos, rpos );
     }
     return dic;
   }
   /**
    * Write the window
    */
-  private void html( final OccSlider win, final int lpos, final int rpos) 
+  private void html( PrintWriter out, final OccSlider win, final int lpos, final int rpos) 
   {
     n++;
-    htmlWriter.print( "<tr>" );
-    htmlWriter.print( "<td class=\"num\">" );
-    htmlWriter.print( n );
-    htmlWriter.print( ".</td>" );
-    htmlWriter.print( "<td class=\"left\">" );
+    out.print( "<tr>" );
+    out.print( "<td class=\"num\">" );
+    out.print( n );
+    out.print( ".</td>" );
+    out.print( "<td class=\"left\">" );
     for ( int i=-left; i < 0; i++) {
-      if ( i == lpos ) htmlWriter.print( "<b>" );
-      if ( win.get( i ).tag.equals(Tag.ADJ)  ) htmlWriter.print( "<i>" );
-      htmlWriter.print( win.get( i ).graph );
-      if ( win.get( i ).tag.equals(Tag.ADJ) ) htmlWriter.print( "</i>" );
-      if (i<-1) htmlWriter.print( " " );
+      if ( i == lpos ) out.print( "<b>" );
+      if ( win.get( i ).tag.equals(Tag.ADJ)  ) out.print( "<i>" );
+      out.print( win.get( i ).graph );
+      if ( win.get( i ).tag.equals(Tag.ADJ) ) out.print( "</i>" );
+      if (i<-1) out.print( " " );
     }
-    if ( lpos < 0) htmlWriter.print( "</b>" );
-    htmlWriter.print( "</td>" );
-    htmlWriter.print( "<th>" );
-    htmlWriter.print( win.get( 0 ).graph );
-    htmlWriter.print( "</th>" );
-    htmlWriter.print( "<td class=\"right\">" );
-    if ( rpos > 0) htmlWriter.print( "<b>" );
+    if ( lpos < 0) out.print( "</b>" );
+    out.print( "</td>" );
+    out.print( "<th>" );
+    out.print( win.get( 0 ).graph );
+    out.print( "</th>" );
+    out.print( "<td class=\"right\">" );
+    if ( rpos > 0) out.print( "<b>" );
     for ( int i=1; i <= right; i++) {
-      if ( win.get( i ).tag.equals(Tag.ADJ) ) htmlWriter.print( "<i>" );
-      htmlWriter.print( win.get( i ).graph );
-      if ( win.get( i ).tag.equals(Tag.ADJ) ) htmlWriter.print( "</i>" );
-      if ( i == rpos ) htmlWriter.print( "</b>" );
-      htmlWriter.print( " " );
+      if ( win.get( i ).tag.equals(Tag.ADJ) ) out.print( "<i>" );
+      out.print( win.get( i ).graph );
+      if ( win.get( i ).tag.equals(Tag.ADJ) ) out.print( "</i>" );
+      if ( i == rpos ) out.print( "</b>" );
+      out.print( " " );
     }
-    htmlWriter.print( "</td>" );
-    htmlWriter.print( "</tr>" );
-    htmlWriter.println();
+    out.print( "</td>" );
+    out.print( "</tr>" );
+    out.println();
   }
   /**
    * Test the Class
@@ -219,8 +242,10 @@ public class GN
       Path srcpath = Paths.get( dir.toString(), srcname); 
       Path destpath = Paths.get( dir.toString(), destname); 
       System.out.println( srcpath+" > "+destpath );
-      GN gn = new GN( srcpath, destpath );
-      gn.parse();
+      GN gn = new GN( srcpath );
+      // htmlWriter = new PrintWriter( destName.toString()+".html" );
+      // csvWriter = new PrintWriter( destName.toString()+".csv" );
+      // gn.parse();
     }
   }
 

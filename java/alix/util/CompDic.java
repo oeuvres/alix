@@ -15,54 +15,59 @@ public class CompDic
   /** Unit for frequences, by million, like Frantext */
   static final int unit = 1000000;
   /** Total count of terms for side 1, used to calculate frequences */
-  int total1;
+  private long total1;
   /** Total count of terms for side 2, used to calculate frequences */
-  int total2;
+  private long total2;
   /** Last total when freqs calculation has bee done  */
-  int freqsMark;
+  private long markFreqs;
   /** HashMap to access  */
   private HashMap<String,Balance> terms = new HashMap<String, Balance>();
   public void add1( TermDic dic )
   {
-    for (Map.Entry<String, int[]> entry : dic.entrySet())
-      add1( entry.getKey(), entry.getValue()[TermDic.ICOUNT]);
+    int[] value;
+    for (Map.Entry<String, int[]> entry : dic.entrySet()) {
+      value = entry.getValue();
+      add1( entry.getKey(), value[TermDic.ICOUNT], value[TermDic.ITAG]);
+    }
   }
   public void add2( TermDic dic )
   {
-    for (Map.Entry<String, int[]> entry : dic.entrySet())
-      add2( entry.getKey(), entry.getValue()[TermDic.ICOUNT]);
+    int[] value;
+    for (Map.Entry<String, int[]> entry : dic.entrySet()) {
+      value = entry.getValue();
+      add2( entry.getKey(), entry.getValue()[TermDic.ICOUNT], value[TermDic.ITAG]);
+    }
   }
-  public CompDic add1(final String term, final int count)
+  public CompDic add1(final String term, final int amount, final int tag)
   {
-    total1 += count;
+    total1 += amount;
     Balance value = terms.get( term );
     if ( value==null) {
-      value=new Balance( term );
-      value.add1( count );
+      value=new Balance( term, tag );
+      value.inc1( amount );
       terms.put( term, value );
       return this;
     }
-    value.add1( count );
-    total1 += count;
+    value.inc1( amount );
+    total1 += amount;
     return this;
   }
-  public CompDic add2(final String term, final int count)
+  public CompDic add2(final String term, final int count, final int tag)
   {
     total2 += count;
     Balance value = terms.get( term );
     if ( value==null) {
-      value=new Balance( term );
-      value.add2( count );
+      value=new Balance( term, tag );
+      value.inc2( count );
       terms.put( term, value );
       return this;
     }
-    value.add2( count );
+    value.inc2( count );
     return this;
   }
   public List<Balance> sort()
   {
     freqs();
-    // Do not use LinkedList nere, very slow access by index list.get(i), arrayList is good
     List<Balance> list = new ArrayList<Balance>( terms.values() );
     Collections.sort( list );
     return list;
@@ -72,11 +77,10 @@ public class CompDic
    */
   public void freqs()
   {
-    int tot1 = this.total1;
-    int tot2 = this.total2;
+    long tot1 = this.total1;
+    long tot2 = this.total2;
     // no change occurs since last freqs calculation
-    if ( freqsMark == tot1+tot2 ) return;
-    freqsMark = tot1+tot2;
+    if ( markFreqs == tot1+tot2 ) return;
     float unit = CompDic.unit;
     Balance balance;
     for( Map.Entry<String, Balance> entry: terms.entrySet()) {
@@ -86,6 +90,7 @@ public class CompDic
       if ( balance.count2 == 0 ) balance.freq2 = 0;
       else balance.freq2 =  unit*balance.count2 / tot2;
     }
+    markFreqs = tot1+tot2;
   }
   @Override
   public String toString()
@@ -106,13 +111,15 @@ public class CompDic
   public class Balance implements Comparable<Balance> {
     /** The term */
     public final String term;
+    /** A tag for filtering */
+    public final int tag;
     /** Count for a term on side 1 */
     public int count1 = 0;
-    /** Frequence by million occurrences for a term on side 1 */
+    /** Frequency by million occurrences for a term on side 1 */
     public float freq1 = -1;
     /** Count for a term on side 2 */
     public int count2 = 0;
-    /** Frequence by million occurrences for a term on side 2 */
+    /** Frequency by million occurrences for a term on side 2 */
     public float freq2 = -1;
     /**
      * Create a term balance
@@ -120,22 +127,31 @@ public class CompDic
     public Balance ( final String term )
     {
       this.term = term;
+      this.tag = 0;
+    }
+    /**
+     * Create a term balance with a filtering tag
+     */
+    public Balance ( final String term, int tag )
+    {
+      this.term = term;
+      this.tag = tag;
     }
     /**
      * Increment counter 1
      * @param count
      */
-    public void add1( final int count)
+    public void inc1( final int amount)
     {
-      count1 += count;
+      count1 += amount;
     }
     /**
      * Increment counter 2
      * @param count
      */
-    public void add2( final int count)
+    public void inc2( final int amount)
     {
-      count2 += count;
+      count2 += amount;
     }
 
     @Override
@@ -151,6 +167,12 @@ public class CompDic
       // because of float imprecision, compare could become insconsistant
       return Float.compare( ( o.freq1 + o.freq2 ), ( freq1 + freq2 ) ); 
     }
+    @Override
+    public int hashCode()
+    {
+      return term.hashCode();
+    }
+    
   }
   public static void main( String[] args)  {
     CompDic comp = new CompDic();

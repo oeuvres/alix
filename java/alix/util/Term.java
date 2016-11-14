@@ -23,7 +23,6 @@ public class Term implements CharSequence, Comparable<Term>
   private int hash; // Default to 0
   /** Internal pointer inside the scope of the string, used by csv scanner (value()) */
   private int pointer = -1;
-  // boolean lock;
   
   /**
    * Empty constructor, value will be set later
@@ -485,7 +484,6 @@ public class Term implements CharSequence, Comparable<Term>
   
   @Override
   public boolean equals ( Object o ) {
-    // System.out.println( this+" =? "+o );
     if (this == o) return true;
     char[] test;
     // limit field lookup

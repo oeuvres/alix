@@ -11846,450 +11846,452 @@ Zimbabwe,NAMEplace
 
 # 100 villes de France (en ordre de population)
 
-Paris,NAMEplace
-Marseille,NAMEplace
-Lyon,NAMEplace
-Toulouse,NAMEplace
-Nice,NAMEplace
-Nantes,NAMEplace
-Strasbourg,NAMEplace
-Montpellier,NAMEplace
-Bordeaux,NAMEplace
-Rennes,NAMEplace
-Le Havre,NAMEplace
-Reims,NAMEplace
-Lille,NAMEplace
-Saint-Étienne,NAMEplace
-Toulon,NAMEplace
-Grenoble,NAMEplace
-Angers,NAMEplace
-Dijon,NAMEplace
-Brest,NAMEplace
-Le Mans,NAMEplace
-Clermont-Ferrand,NAMEplace
-Amiens,NAMEplace
 Aix-en-Provence,NAMEplace
-Limoges,NAMEplace
-Nîmes,NAMEplace
-Tours,NAMEplace
-Saint-Denis,NAMEplace
-Villeurbanne,NAMEplace
-Metz,NAMEplace
-Besançon,NAMEplace
-Caen,NAMEplace
-Orléans,NAMEplace
-Mulhouse,NAMEplace
-Rouen,NAMEplace
-Boulogne-Billancourt,NAMEplace
-Perpignan,NAMEplace
-Nancy,NAMEplace
-Roubaix,NAMEplace
-Fort-de-France,NAMEplace
-Argenteuil,NAMEplace
-Tourcoing,NAMEplace
-Montreuil,NAMEplace
-Saint-Paul,NAMEplace
-Avignon,NAMEplace
-Versailles,NAMEplace
-Nanterre,NAMEplace
-Poitiers,NAMEplace
-Créteil,NAMEplace
-Aulnay-sous-Bois,NAMEplace
-Vitry-sur-Seine,NAMEplace
-Pau,NAMEplace
-Calais,NAMEplace
-La Rochelle,NAMEplace
-Colombes,NAMEplace
-Asnières-sur-Seine,NAMEplace
-Champigny-sur-Marne,NAMEplace
-Rueil-Malmaison,NAMEplace
-Saint-Maur-des-Fossés,NAMEplace
-Antibes,NAMEplace
-Bourges,NAMEplace
-Dunkerque,NAMEplace
-Courbevoie,NAMEplace
-Béziers,NAMEplace
-Saint-Pierre,NAMEplace
-Cannes,NAMEplace
-Saint-Nazaire,NAMEplace
-Colmar,NAMEplace
-Villeneuve-d'Ascq,NAMEplace
-Valence,NAMEplace
-Quimper,NAMEplace
-Aubervilliers,NAMEplace
-Les Abymes,NAMEplace
-Drancy,NAMEplace
-Mérignac,NAMEplace
-Troyes,NAMEplace
-Le Tampon,NAMEplace
-La Seyne-sur-Mer,NAMEplace
-Neuilly-sur-Seine,NAMEplace
-#Antony,NAMEplace
-Lorient,NAMEplace
-Saint-Quentin,NAMEplace
-Noisy-le-Grand,NAMEplace
-Sarcelles,NAMEplace
-Niort,NAMEplace
-Pessac,NAMEplace
-Vénissieux,NAMEplace
-Chambéry,NAMEplace
-Charleville-Mézières,NAMEplace
-Beauvais,NAMEplace
-Cergy,NAMEplace
-Levallois-Perret,NAMEplace
-Cholet,NAMEplace
 Ajaccio,NAMEplace
-Issy-les-Moulineaux,NAMEplace
-Montauban,NAMEplace
-Vannes,NAMEplace
-Hyères,NAMEplace
+Amiens,NAMEplace
+Angers,NAMEplace
+Antibes,NAMEplace
+# Antony,NAMEplace
+Argenteuil,NAMEplace
+Asnières-sur-Seine,NAMEplace
+Aubervilliers,NAMEplace
+Aulnay-sous-Bois,NAMEplace
+Avignon,NAMEplace
+Beauvais,NAMEplace
+Besançon,NAMEplace
+Béziers,NAMEplace
+Bordeaux,NAMEplace
+Boulogne-Billancourt,NAMEplace
+Bourges,NAMEplace
+Brest,NAMEplace
+Caen,NAMEplace
+Calais,NAMEplace
+Cannes,NAMEplace
+Cergy,NAMEplace
+Chambéry,NAMEplace
+Champigny-sur-Marne,NAMEplace
+Charleville-Mézières,NAMEplace
+Cholet,NAMEplace
+Clermont-Ferrand,NAMEplace
+Colmar,NAMEplace
+Colombes,NAMEplace
+Courbevoie,NAMEplace
+Créteil,NAMEplace
+Dijon,NAMEplace
+Drancy,NAMEplace
+Dunkerque,NAMEplace
 Évreux,NAMEplace
+Fort-de-France,NAMEplace
+Grenoble,NAMEplace
+Hyères,NAMEplace
+Issy-les-Moulineaux,NAMEplace
+La Rochelle,NAMEplace
+La Seyne-sur-Mer,NAMEplace
+Le Havre,NAMEplace
+Le Mans,NAMEplace
+Le Tampon,NAMEplace
+Les Abymes,NAMEplace
+Levallois-Perret,NAMEplace
+Lille,NAMEplace
+Limoges,NAMEplace
+Lorient,NAMEplace
+Lyon,NAMEplace
 Maisons-Alfort,NAMEplace
+Marseille,NAMEplace
+Mérignac,NAMEplace
+Metz,NAMEplace
+Montauban,NAMEplace
+Montpellier,NAMEplace
+Montreuil,NAMEplace
+Mulhouse,NAMEplace
+Nancy,NAMEplace
+Nanterre,NAMEplace
+Nantes,NAMEplace
+Neuilly-sur-Seine,NAMEplace
+Nice,NAMEplace
+Nîmes,NAMEplace
+Niort,NAMEplace
+Noisy-le-Grand,NAMEplace
+Orléans,NAMEplace
+Paris,NAMEplace
+Pau,NAMEplace
+Perpignan,NAMEplace
+Pessac,NAMEplace
+Poitiers,NAMEplace
+Quimper,NAMEplace
+Reims,NAMEplace
+Rennes,NAMEplace
+Roubaix,NAMEplace
+Rouen,NAMEplace
+Rueil-Malmaison,NAMEplace
+Saint-Denis,NAMEplace
+Saint-Étienne,NAMEplace
+Saint-Maur-des-Fossés,NAMEplace
+Saint-Nazaire,NAMEplace
+Saint-Paul,NAMEplace
+Saint-Pierre,NAMEplace
+Saint-Quentin,NAMEplace
+Sarcelles,NAMEplace
+Strasbourg,NAMEplace
+Toulon,NAMEplace
+Toulouse,NAMEplace
+Tourcoing,NAMEplace
+Tours,NAMEplace
+Troyes,NAMEplace
+Valence,NAMEplace
+Vannes,NAMEplace
+Vénissieux,NAMEplace
+Versailles,NAMEplace
+Villeneuve-d'Ascq,NAMEplace
+Villeurbanne,NAMEplace
+Vitry-sur-Seine,NAMEplace
+
 # ville du monde de plus de 1M h.
-Mumbai,NAMEplace
-Bombay,NAMEplace
-Karachi,NAMEplace
-Delhi,NAMEplace
-Shanghai,NAMEplace
-Moscow,NAMEplace
-Moscou,NAMEplace
-São Paulo,NAMEplace
-Seoul,NAMEplace
-Istanbul,NAMEplace
-Mexico City,NAMEplace
-Jakarta,NAMEplace
-New York,NAMEplace
-Tokyo,NAMEplace
-Lima,NAMEplace
+
+# Samara,NAMEplace
+# Sofia,NAMEplace
+# Sydney,NAMEplace
+# Victoria,NAMEplace
+Abadan,NAMEplace
+Abidjan,NAMEplace
+Accra,NAMEplace
+Ad-Dammam,NAMEplace
+Adana,NAMEplace
+Addis Ababa,NAMEplace
+Adelaide,NAMEplace
+Agadir,NAMEplace
+Agra,NAMEplace
+Ahmadabad,NAMEplace
+Ahvaz,NAMEplace
+Al-Jizah,NAMEplace
+Al-Khartum Bahri,NAMEplace
+Al-Madinah,NAMEplace
+Aleppo,NAMEplace
+Alexandria,NAMEplace
+Algiers,NAMEplace
+Allahabad,NAMEplace
+Almaty,NAMEplace
+Amman,NAMEplace
+Amritsar,NAMEplace
+Ankara,NAMEplace
+Anshan,NAMEplace
+Antananarivo,NAMEplace
+Athènes,NAMEplace
+Aurangabad,NAMEplace
+Baghdad,NAMEplace
+Baku,NAMEplace
+Bamako,NAMEplace
+Bandung,NAMEplace
+Bangalore,NAMEplace
+Bangkok,NAMEplace
+Baotou,NAMEplace
+Barcelona,NAMEplace
+Barranquilla,NAMEplace
+Basra,NAMEplace
 Beijing,NAMEplace
+Beirut,NAMEplace
+Bekasi,NAMEplace
+Belém,NAMEplace
+Belgrade,NAMEplace
+Belo Horizonte,NAMEplace
+Benares,NAMEplace
+Benin City,NAMEplace
+Berlin,NAMEplace
+Bhopal,NAMEplace
+Bogor,NAMEplace
+Bombay,NAMEplace
+Brasília,NAMEplace
+Brazzaville,NAMEplace
+Bucharest,NAMEplace
+Budapest,NAMEplace
+Buenos Aires,NAMEplace
+Bursa,NAMEplace
 Cairo,NAMEplace
+Calcutta,NAMEplace
+Calgary,NAMEplace
+Cali,NAMEplace
+Caloocan,NAMEplace
+Campinas,NAMEplace
+Cape Town,NAMEplace
+Caracas,NAMEplace
+Casablanca,NAMEplace
+Changchun,NAMEplace
+Changsha,NAMEplace
+Chelyabinsk,NAMEplace
+Chengdu,NAMEplace
+Chennai,NAMEplace
+Chicago,NAMEplace
+Chittagong,NAMEplace
+Chongqing,NAMEplace
+Ciudad Juárez,NAMEplace
+Conakry,NAMEplace
+Córdoba,NAMEplace
+Curitiba,NAMEplace
+Dakar,NAMEplace
+Dalian,NAMEplace
+Dallas-Fort Worth,NAMEplace
+Damascus,NAMEplace
+Dar es Salaam,NAMEplace
+Datong,NAMEplace
+Delhi,NAMEplace
+Depok,NAMEplace
+Dhaka,NAMEplace
+Dnepropetrovsk,NAMEplace
+Donetsk,NAMEplace
+Douala,NAMEplace
+Dubai,NAMEplace
+Durban,NAMEplace
+East Rand,NAMEplace
+Ekaterinburg,NAMEplace
+Ekurhuleni,NAMEplace
+Esfahan,NAMEplace
+Faisalabad,NAMEplace
+Faridabad,NAMEplace
+Fès,NAMEplace
+Fortaleza,NAMEplace
+Fujian,NAMEplace
+Fukuoka-Kitakyushu,NAMEplace
+Fushun,NAMEplace
+Fuzhou,NAMEplace
+Gaziantep,NAMEplace
+Ghaziabad,NAMEplace
+Glasgow,NAMEplace
+Goiânia,NAMEplace
+Goyang,NAMEplace
+Guadalajara,NAMEplace
+Guangzhou,NAMEplace
+Guarulhos,NAMEplace
+Guayaquil,NAMEplace
+Guiyang,NAMEplace
+Gujranwala,NAMEplace
+Hai Phong,NAMEplace
+Hamburg,NAMEplace
+Handan,NAMEplace
+Hangzhou,NAMEplace
+Hanoi,NAMEplace
+Haora,NAMEplace
+Harare,NAMEplace
+Harbin,NAMEplace
+Havana,NAMEplace
+Hefei,NAMEplace
+Hiroshima,NAMEplace
+Ho Chi Minh City,NAMEplace
+Hong Kong,NAMEplace
+Houston,NAMEplace
+Hyderabad,NAMEplace
+Ibadan,NAMEplace
+Inch'on,NAMEplace
+Indore,NAMEplace
+Istanbul,NAMEplace
+Izmir,NAMEplace
+Jabalpur,NAMEplace
+Jaipur,NAMEplace
+Jakarta,NAMEplace
+Jamshedpur,NAMEplace
+Jiangsu,NAMEplace
+Jidda,NAMEplace
+Jilin,NAMEplace
+Jinan,NAMEplace
+Jiulong,NAMEplace
+Johannesburg,NAMEplace
+Kabul,NAMEplace
+Kaduna,NAMEplace
+Kaesong,NAMEplace
+Kalyan,NAMEplace
+Kampala,NAMEplace
+Kano,NAMEplace
+Kanpur,NAMEplace
+Kaohsiung,NAMEplace
+Karachi,NAMEplace
+Karaj,NAMEplace
+Kawasaki,NAMEplace
+Kazan,NAMEplace
+Kharkov,NAMEplace
+Khartoum,NAMEplace
+Kiev,NAMEplace
+Kinshasa,NAMEplace
+Kitakyushu,NAMEplace
+Kobe,NAMEplace
+Kuala Lumpur,NAMEplace
+Kunming,NAMEplace
+Kuwait City,NAMEplace
+Kwangju,NAMEplace
+Kyoto,NAMEplace
+La Matanza,NAMEplace
+Lagos,NAMEplace
+Lahore,NAMEplace
+Lanzhou,NAMEplace
 Le Caire,NAMEplace
-Tehran,NAMEplace
+León,NAMEplace
+Lima,NAMEplace
 London,NAMEplace
 Londres,NAMEplace
-Santa Fé de Bogotá,NAMEplace
-Lagos,NAMEplace
-Hong Kong,NAMEplace
+Los Angeles,NAMEplace
+Luanda,NAMEplace
+Lucknow,NAMEplace
+Ludhiana,NAMEplace
+Luoyang,NAMEplace
+Lusaka,NAMEplace
+Madras,NAMEplace
+Madrid,NAMEplace
+Manaus,NAMEplace
+Maputo,NAMEplace
+Maracaibo,NAMEplace
+Mashhad,NAMEplace
+Mecca,NAMEplace
+Medan,NAMEplace
+Medellin,NAMEplace
+Medellín,NAMEplace
+Meerut,NAMEplace
+Melbourne,NAMEplace
+Metro Manila,NAMEplace
+Mexico City,NAMEplace
+Milan,NAMEplace
+Minsk,NAMEplace
+Mogadishu,NAMEplace
+Monterrey,NAMEplace
+Montevideo,NAMEplace
+Montréal,NAMEplace
+Morelos,NAMEplace
+Moscou,NAMEplace
+Moscow,NAMEplace
+Mosul,NAMEplace
+Multan,NAMEplace
+Mumbai,NAMEplace
+Munich,NAMEplace
+Nagoya,NAMEplace
+Nagpur,NAMEplace
+Nairobi,NAMEplace
+Nampho,NAMEplace
+Nanchang,NAMEplace
+Nanchong,NAMEplace
+Nanjing,NAMEplace
+Nanning,NAMEplace
+Nashik,NAMEplace
+New York,NAMEplace
+Nezahualcóyotl,NAMEplace
+Nizhni Novgorod,NAMEplace
+Novosibirsk,NAMEplace
+Odessa,NAMEplace
+Omdurman,NAMEplace
+Omsk,NAMEplace
+Osaka-Kobe,NAMEplace
+Ottawa,NAMEplace
+Ouagadougou,NAMEplace
+Palembang,NAMEplace
+Patna,NAMEplace
+Perm,NAMEplace
+Perth,NAMEplace
+Peshawar,NAMEplace
+Petersbourg,NAMEplace
+Petersburg,NAMEplace
+Philadelphia,NAMEplace
+Phoenix-Mesa,NAMEplace
+Pimpri-Chinchwad,NAMEplace
+Poona,NAMEplace
+Port-au-Prince,NAMEplace
+Pôrto Alegre,NAMEplace
+Prague,NAMEplace
+Pretoria,NAMEplace
+Puebla,NAMEplace
+Pune,NAMEplace
+Pusan,NAMEplace
+Pyongyang,NAMEplace
+Qingdao,NAMEplace
+Qiqihar,NAMEplace
+Qom,NAMEplace
+Quezon City,NAMEplace
+Quito,NAMEplace
+Rabat,NAMEplace
+Rajkot,NAMEplace
+Rawalpindi,NAMEplace
+Recife,NAMEplace
+Rhein-Main,NAMEplace
+Rhein-Neckar,NAMEplace
 Rhein-Ruhr,NAMEplace
-Bangkok,NAMEplace
-Lahore,NAMEplace
-Dhaka,NAMEplace
 Rio de Janeiro,NAMEplace
 Rio,NAMEplace
-Baghdad,NAMEplace
 Riyadh,NAMEplace
-Bangalore,NAMEplace
-Wuhan,NAMEplace
-Tianjin,NAMEplace
-Toronto,NAMEplace
-Chongqing,NAMEplace
-Santiago,NAMEplace
-Calcutta,NAMEplace
-Singapore,NAMEplace
-Kinshasa,NAMEplace
-Chennai,NAMEplace
-Madras,NAMEplace
-Saint Petersburg,NAMEplace
-Saint Petersbourg,NAMEplace
-Petersburg,NAMEplace
-Petersbourg,NAMEplace
-Shenyang,NAMEplace
-Guangzhou,NAMEplace
-Los Angeles,NAMEplace
-Ahmadabad,NAMEplace
-# Sydney,NAMEplace
-Pusan,NAMEplace
-Rhein-Main,NAMEplace
-Alexandria,NAMEplace
-Jidda,NAMEplace
-Hyderabad,NAMEplace
-Ankara,NAMEplace
-Yokohama,NAMEplace
-Montréal,NAMEplace
-Casablanca,NAMEplace
-Ho Chi Minh City,NAMEplace
-Berlin,NAMEplace
-Melbourne,NAMEplace
-Pyongyang,NAMEplace
-Kabul,NAMEplace
-Pune,NAMEplace
-Poona,NAMEplace
-Yangon,NAMEplace
-Medellín,NAMEplace
-Omdurman,NAMEplace
-Surat,NAMEplace
-Madrid,NAMEplace
-Abidjan,NAMEplace
-Xian,NAMEplace
-Chicago,NAMEplace
-Nanjing,NAMEplace
-Kanpur,NAMEplace
-Kano,NAMEplace
-Harbin,NAMEplace
-Buenos Aires,NAMEplace
-Addis Ababa,NAMEplace
-East Rand,NAMEplace
-Ekurhuleni,NAMEplace
-Surabaja,NAMEplace
-Jaipur,NAMEplace
-Nairobi,NAMEplace
-Salvador,NAMEplace
-Inch'on,NAMEplace
-Taegu,NAMEplace
-Kiev,NAMEplace
-Bekasi,NAMEplace
-Chengdu,NAMEplace
-Osaka-Kobe,NAMEplace
-Al-Jizah,NAMEplace
-Taipei,NAMEplace
-Dar es Salaam,NAMEplace
 Rome,NAMEplace
-Lucknow,NAMEplace
-Cali,NAMEplace
-Quezon City,NAMEplace
-Luanda,NAMEplace
-Changchun,NAMEplace
-Izmir,NAMEplace
-Faisalabad,NAMEplace
-Cape Town,NAMEplace
-Belo Horizonte,NAMEplace
-Ibadan,NAMEplace
-Fortaleza,NAMEplace
-Aleppo,NAMEplace
-Dalian,NAMEplace
-Nagpur,NAMEplace
-Havana,NAMEplace
-Taškent,NAMEplace
-Bandung,NAMEplace
-Nagoya,NAMEplace
-Brasília,NAMEplace
-Jinan,NAMEplace
-Guayaquil,NAMEplace
-Vancouver,NAMEplace
-Chittagong,NAMEplace
-Mashhad,NAMEplace
-Qingdao,NAMEplace
-Durban,NAMEplace
-Taiyuan,NAMEplace
-Medan,NAMEplace
-Houston,NAMEplace
-Medellin,NAMEplace
-Jiulong,NAMEplace
-Agadir,NAMEplace
-Dakar,NAMEplace
-Morelos,NAMEplace
-Zhengzhou,NAMEplace
-Kaesong,NAMEplace
-Douala,NAMEplace
-Baku,NAMEplace
-Bucharest,NAMEplace
-Santo-Domingo,NAMEplace
-Indore,NAMEplace
-Caracas,NAMEplace
-Hai Phong,NAMEplace
-Barranquilla,NAMEplace
-Sapporo,NAMEplace
-Rabat,NAMEplace
-Shangqiu,NAMEplace
-Kunming,NAMEplace
-Maracaibo,NAMEplace
-Si Racha,NAMEplace
-Hamburg,NAMEplace
-Rawalpindi,NAMEplace
-Khartoum,NAMEplace
-Budapest,NAMEplace
-Al-Khartum Bahri,NAMEplace
-Curitiba,NAMEplace
-Minsk,NAMEplace
-Zibo,NAMEplace
-Shijiazhuang,NAMEplace
-Xiantao,NAMEplace
-Warsaw,NAMEplace
-Damascus,NAMEplace
-Guadalajara,NAMEplace
-Lanzhou,NAMEplace
-Accra,NAMEplace
-Hangzhou,NAMEplace
-Yaoundé,NAMEplace
-Antananarivo,NAMEplace
-Patna,NAMEplace
-Bhopal,NAMEplace
-Palembang,NAMEplace
-Rhein-Neckar,NAMEplace
-Changsha,NAMEplace
-Tangerang,NAMEplace
-Manaus,NAMEplace
-Beirut,NAMEplace
-Metro Manila,NAMEplace
-Yulin, Guangxi,NAMEplace
-Ludhiana,NAMEplace
-Vienna,NAMEplace
-Esfahan,NAMEplace
-Semarang,NAMEplace
-Kaohsiung,NAMEplace
-Algiers,NAMEplace
-Quito,NAMEplace
-Kobe,NAMEplace
-Thana,NAMEplace
-Harare,NAMEplace
-Recife,NAMEplace
-Kharkov,NAMEplace
-Depok,NAMEplace
-Samut Prakan,NAMEplace
-Kyoto,NAMEplace
-Philadelphia,NAMEplace
-Tijuana,NAMEplace
-Mecca,NAMEplace
-Barcelona,NAMEplace
-Nanchang,NAMEplace
-Johannesburg,NAMEplace
-Taejon,NAMEplace
-Ciudad Juárez,NAMEplace
-Kwangju,NAMEplace
-Novosibirsk,NAMEplace
-Caloocan,NAMEplace
-Agra,NAMEplace
-Urumqi,NAMEplace
-Phoenix-Mesa,NAMEplace
-Sana'a,NAMEplace
-Vadodara,NAMEplace
-Guiyang,NAMEplace
-Puebla,NAMEplace
-Tabriz,NAMEplace
-Conakry,NAMEplace
-Belém,NAMEplace
-Fukuoka-Kitakyushu,NAMEplace
-Kuala Lumpur,NAMEplace
-Multan,NAMEplace
-Pôrto Alegre,NAMEplace
-Santa Cruz,NAMEplace
-Bursa,NAMEplace
-Tangshan,NAMEplace
-Montevideo,NAMEplace
-Perth,NAMEplace
-Gujranwala,NAMEplace
-Valencia,NAMEplace
-Lusaka,NAMEplace
-Córdoba,NAMEplace
-Nizhni Novgorod,NAMEplace
-La Matanza,NAMEplace
-Ekaterinburg,NAMEplace
-Jilin,NAMEplace
-Al-Madinah,NAMEplace
-Fuzhou,NAMEplace
-Fujian,NAMEplace
-Nashik,NAMEplace
-Anshan,NAMEplace
-Pimpri-Chinchwad,NAMEplace
-Dubai,NAMEplace
-Abadan,NAMEplace
-Bamako,NAMEplace
-San Diego,NAMEplace
-Kampala,NAMEplace
-Kawasaki,NAMEplace
-Kaduna,NAMEplace
-Kalyan,NAMEplace
-Hefei,NAMEplace
-San Antonio,NAMEplace
-Fushun,NAMEplace
-Port-au-Prince,NAMEplace
-Munich,NAMEplace
-Shenzhen,NAMEplace
-Xuzhou,NAMEplace
-Meerut,NAMEplace
-Dallas-Fort Worth,NAMEplace
-Fès,NAMEplace
-Baotou,NAMEplace
-Milan,NAMEplace
-Jamshedpur,NAMEplace
-Bogor,NAMEplace
-Shiraz,NAMEplace
-Adana,NAMEplace
-Faridabad,NAMEplace
-Hanoi,NAMEplace
-Karaj,NAMEplace
-Amman,NAMEplace
-Nezahualcóyotl,NAMEplace
-Ad-Dammam,NAMEplace
-Peshawar,NAMEplace
-Guarulhos,NAMEplace
-Tripoli,NAMEplace
-Varanasi,NAMEplace
-Benares,NAMEplace
-Mosul,NAMEplace
-Wuxi,NAMEplace
-Kuwait City,NAMEplace
-Goiânia,NAMEplace
-León,NAMEplace
-Zapopan,NAMEplace
-Handan,NAMEplace
-Glasgow,NAMEplace
-Ghaziabad,NAMEplace
-# Samara,NAMEplace
-Suzhou,NAMEplace
-Jiangsu,NAMEplace
-Prague,NAMEplace
-Omsk,NAMEplace
-Hiroshima,NAMEplace
-Qiqihar,NAMEplace
-Luoyang,NAMEplace
-Belgrade,NAMEplace
-Yantai,NAMEplace
-Kazan,NAMEplace
-Monterrey,NAMEplace
-Ottawa,NAMEplace
-Nampho,NAMEplace
-Suwon,NAMEplace
-Amritsar,NAMEplace
-Rajkot,NAMEplace
-Basra,NAMEplace
-Ujung Pandang,NAMEplace
-Shantou,NAMEplace
-Mogadishu,NAMEplace
-Nanning,NAMEplace
-Adelaide,NAMEplace
-# Sofia,NAMEplace
-Brazzaville,NAMEplace
-Datong,NAMEplace
-Pretoria,NAMEplace
-Almaty,NAMEplace
-Chelyabinsk,NAMEplace
 Rostov-on-Don,NAMEplace
-Yerevan,NAMEplace
-Soweto,NAMEplace
-Allahabad,NAMEplace
-Maputo,NAMEplace
-Goyang,NAMEplace
-Visakhapatnam,NAMEplace
-Dnepropetrovsk,NAMEplace
-# Victoria,NAMEplace
-Nanchong,NAMEplace
-Zigong,NAMEplace
-Benin City,NAMEplace
-T'aichung,NAMEplace
-Ahvaz,NAMEplace
-Ufa,NAMEplace
-Sendai,NAMEplace
-Jabalpur,NAMEplace
-Tbilisi,NAMEplace
-Qom,NAMEplace
-Calgary,NAMEplace
-Haora,NAMEplace
-Odessa,NAMEplace
-Aurangabad,NAMEplace
-Seongnam,NAMEplace
-Shubra al-Khaymah,NAMEplace
-Volgograd,NAMEplace
-Donetsk,NAMEplace
-Campinas,NAMEplace
-Gaziantep,NAMEplace
-Ulsan,NAMEplace
-Sholapur,NAMEplace
-Kitakyushu,NAMEplace
-Ouagadougou,NAMEplace
-Perm,NAMEplace
+Saint Petersbourg,NAMEplace
+Saint Petersburg,NAMEplace
+Salvador,NAMEplace
+Samut Prakan,NAMEplace
+San Antonio,NAMEplace
+San Diego,NAMEplace
+Sana'a,NAMEplace
+Santa Cruz,NAMEplace
+Santa Fé de Bogotá,NAMEplace
+Santiago,NAMEplace
+Santo-Domingo,NAMEplace
 Sao Luis,NAMEplace
-Athènes,NAMEplace
+São Paulo,NAMEplace
+Sapporo,NAMEplace
+Semarang,NAMEplace
+Sendai,NAMEplace
+Seongnam,NAMEplace
+Seoul,NAMEplace
+Shanghai,NAMEplace
+Shangqiu,NAMEplace
+Shantou,NAMEplace
+Shenyang,NAMEplace
+Shenzhen,NAMEplace
+Shijiazhuang,NAMEplace
+Shiraz,NAMEplace
+Sholapur,NAMEplace
+Shubra al-Khaymah,NAMEplace
+Si Racha,NAMEplace
+Singapore,NAMEplace
+Soweto,NAMEplace
+Surabaja,NAMEplace
+Surat,NAMEplace
+Suwon,NAMEplace
+Suzhou,NAMEplace
+T'aichung,NAMEplace
+Tabriz,NAMEplace
+Taegu,NAMEplace
+Taejon,NAMEplace
+Taipei,NAMEplace
+Taiyuan,NAMEplace
+Tangerang,NAMEplace
+Tangshan,NAMEplace
+Taškent,NAMEplace
+Tbilisi,NAMEplace
+Tehran,NAMEplace
+Thana,NAMEplace
+Tianjin,NAMEplace
+Tijuana,NAMEplace
+Tokyo,NAMEplace
+Toronto,NAMEplace
+Tripoli,NAMEplace
+Ufa,NAMEplace
+Ujung Pandang,NAMEplace
+Ulsan,NAMEplace
+Urumqi,NAMEplace
+Vadodara,NAMEplace
+Valencia,NAMEplace
+Vancouver,NAMEplace
+Varanasi,NAMEplace
+Vienna,NAMEplace
+Visakhapatnam,NAMEplace
+Volgograd,NAMEplace
+Warsaw,NAMEplace
+Wuhan,NAMEplace
+Wuxi,NAMEplace
+Xian,NAMEplace
+Xiantao,NAMEplace
+Xuzhou,NAMEplace
+Yangon,NAMEplace
+Yantai,NAMEplace
+Yaoundé,NAMEplace
+Yerevan,NAMEplace
+Yokohama,NAMEplace
+Yulin, Guangxi,NAMEplace
+Zapopan,NAMEplace
+Zhengzhou,NAMEplace
+Zibo,NAMEplace
+Zigong,NAMEplace
 
 # AUTEURS (nb de titres à la BNF)
 
@@ -12333,6 +12335,7 @@ Carroll,NAMEpers
 Cervantes,NAMEpers
 Chateaubriand,NAMEpers
 Chrysostome,NAMEpers
+Comte,NAMEpers
 Cooper,NAMEpers
 Corneille,NAMEpers
 Dante,NAMEpers

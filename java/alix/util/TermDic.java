@@ -19,7 +19,7 @@ import java.util.Set;
 
 /**
  * A specialized table for a dictionary of terms, with an int code, an int counter, and an int tag. 
- * Conceived for performances, for linguistic usage, but the object has absolutely no lexical informations.
+ * Conceived for performances, for linguistic usage, but the object do not requires lexical informations.
  * The int code is a way to optimize complex pattern storage (ex: wordgrams).
  * Access can be by a String tern (internal HashMap), by an int code (internal array, for optimized vector).
  * There are useful methods to get term list in inverse frequency order.
@@ -43,14 +43,23 @@ import java.util.Set;
  * But be careful, this tag is not used as a component for the key.
  * This dictionary do not distinguish homographs by gramcat (same String key, different int tag).
  * The experience shows that a tag is usually not sufficient to distinguish linguistic homography
- * (ex : suis<VERB,être>, suis<VERB,suivre>.). An int field is not enough, better approach
- * should be fr
+ * (ex: suis<VERB,être>, suis<VERB,suivre>.). 
+ * An int field is not enough to ensure disambiguation between homographs, 
+ * better approach is to forge String keys outside from this dictionary (ex: suis,être ; suis,suivre)
  * 
  * @author glorieux-f
  *
  */
 public class TermDic
 {
+  /** 
+   * HashMap to find by String. String is the best object for key (most common, not mutable).
+   * A custom object (like Term) will not match against String.
+   * The int array contains an int key and a count  
+   */
+  private HashMap<String,int[]> byTerm = new HashMap<String, int[]>();
+  /** List of terms, kept in index order, to get a term by int index */
+  private String[] byCode = new String[32];
   /** Position of the term index in the array of int values */
   public static final int ICODE = 0;
   /** Position of the tag info in the array of int values */
@@ -61,10 +70,6 @@ public class TermDic
   public static final int ICOUNT2 = 3;
   /** Pointer in the array of terms, only growing when terms are added, used as code */
   private int pointer;
-  /** HashMap to find String fast, int array contains an int key and a count  */
-  private HashMap<String,int[]> byTerm = new HashMap<String, int[]>();
-  /** List of terms, kept in index order, to get a term by int index */
-  private String[] byCode = new String[32];
   /** Count of all occurrences for this dico */
   private long occs;
   /** Last occurrences count before some ops, for caching */
@@ -456,6 +461,23 @@ public class TermDic
     return byTerm.entrySet();
   }
   /**
+   * Return an iterable object to get freqlist
+   * Not clean, TODO better (Term API ?)
+   * @return
+   */
+  public List<Map.Entry<String, int[]>> entriesByCount() {
+    // Do not use LinkedList nere, very slow access by index list.get(i), arrayList is good
+    List<Map.Entry<String, int[]>> list = new ArrayList<Map.Entry<String, int[]>>( byTerm.entrySet() );
+    Collections.sort( list, new Comparator<Map.Entry<String, int[]>>() {
+        @Override
+        public int compare( Map.Entry<String, int[]> o1, Map.Entry<String, int[]> o2 ) {
+          return (o2.getValue()[ICOUNT]+o2.getValue()[ICOUNT2]) - (o1.getValue()[ICOUNT] + o1.getValue()[ICOUNT2]);
+        }
+      } 
+    );
+    return list;
+  }
+  /**
    * Used for freqlist, return a view of the map sorted by term count
    * Shall we cache ?
    * What is better, Term or String ?
@@ -471,7 +493,7 @@ public class TermDic
       @Override
       public int compare( Map.Entry<String, int[]> o1, Map.Entry<String, int[]> o2 )
       {
-        return o2.getValue()[ICOUNT] - o1.getValue()[ICOUNT];
+        return (o2.getValue()[ICOUNT]+o2.getValue()[ICOUNT2]) - (o1.getValue()[ICOUNT] + o1.getValue()[ICOUNT2]);
       }
     } );
     int size = Math.min( list.size(), limit ) ;
@@ -489,7 +511,6 @@ public class TermDic
    */
   public int[] codesByCount(int limit)
   {
-    
     return null;
   }
   /**
