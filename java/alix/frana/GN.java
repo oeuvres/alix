@@ -83,19 +83,21 @@ public class GN
    */
   public TermDic parse( )
   {
-    return parse(null);
+    return parse(null, -1);
   }
   /**
    * If out not null, an html concordance will be written during parsing
    * @param toks
    * @return
    */
-  public TermDic parse( PrintWriter out )
+  public TermDic parse( PrintWriter out, int limit )
   {
     TermDic dic = new TermDic();
     OccSlider win = new OccSlider(left, right);
     // loop on all tokens
     while ( toks.word( win.add() ) ) {
+      // limited concordance
+      if ( limit > 0 && n >= limit ) return dic;
       if ( !win.get( 0 ).tag.equals( Tag.SUB ) ) {
         // increment global count of dictionary to calculate a frequency for the indexed term
         dic.inc();

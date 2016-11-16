@@ -70,26 +70,39 @@ une vingtième,DETnum
 
 
 # noms propres
-# les mots de la langue dans des noms propres ont été “cassés”
 
-de Foë,NAMEpers
+Agatha Christie,NAMEpers,Agatha Christie
+de Foë,NAMEpers,Defoe
+De Foë,NAMEpers,Defoe
+de Maistre,NAMEpers
 d'Israëli,NAMEpers
-du Deffand,NAMEpers
-du Deffant,NAMEpers
+Du Bellay,NAMEpers
+Du Deffand,NAMEpers
+Du Deffant,NAMEpers,Du Deffand
 du Verney,NAMEpers,Duverney
-la bruyère,NAMEpers
-la fayette,NAMEpers
-la Ferronays,NAMEpers
-la Feuillade,NAMEpers
-la fontaine,NAMEpers
+Geoffroy Saint-Hilaire,NAMEpers
+La Bruyère,NAMEpers
+La Fayette,NAMEpers
+La Ferronays,NAMEpers
+La Feuillade,NAMEpers
+La Fontaine,NAMEpers
+Jean de La Fontaine,NAMEpers,La Fontaine
+la Boëtie,NAMEpers,La Boétie
+La Boëtie,NAMEpers,La Boétie
+la Mennais,NAMEpers,Lamennais
+la Mothe-le-Vayer,NAMEpers,La Mothe Le Vayer
+la Motte,NAMEpers,Lamothe
 la harpe,NAMEpers
 la Mettrie,NAMEpers
 la Mothe,NAMEpers
 La Mothe Le Vayer,NAMEpers
-la Rochefoucault,NAMEpers
-la Rochefoucauld,NAMEpers
-la Touche,NAMEpers
-de Maistre,NAMEpers
+la Rochefoucault,NAMEpers,La Rochefoucault
+La Rochefoucault,NAMEpers
+La Rochefoucauld,NAMEpers
+La Touche,NAMEpers
+Le Dantec,NAMEpers
+L'Espinasse,NAMEpers,Lespinasse
+Saint-John Perse,NAMEpers
 
 # BUGS
 
@@ -135,6 +148,8 @@ mademoiselle NAME NAME,NAMEpers
 NAME NAME,NAMEpers
 NAME NAME de NAME,NAMEpers
 NAME de NAME,NAMEpers
+NAME de La NAME,NAMEpers
+NAME Le NAME,NAMEpers
 NAME du NAME,NAMEpers
 NAME NUM,NAMEpers
 père NAME,NAMEpers

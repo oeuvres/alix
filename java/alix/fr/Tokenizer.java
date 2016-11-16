@@ -1,11 +1,9 @@
 package alix.fr;
 
-import java.io.IOException;
 import java.util.HashSet;
 
 import alix.util.Char;
 import alix.util.Term;
-import alix.util.TermSlider;
 import alix.util.TermTrie.Token;
 
 /**
@@ -35,7 +33,7 @@ public class Tokenizer
   /** Where we are in the text */
   private int pointer;
   /** A buffer of token, populated for multi-words test */
-  private OccSlider occbuf = new OccSlider(0, 10);
+  private OccSlider occbuf = new OccSlider(2, 10);
   /** French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel */
   public static final HashSet<String> HYPHEN_POST = new HashSet<String>();
   static {
@@ -51,6 +49,13 @@ public class Tokenizer
       "c'", "C'", "d'", "D'", "j'", "J'", "jusqu'", "Jusqu'", "l'", "L'", "lorsqu'", "Lorsqu'", 
       "m'", "M'", "n'", "N'", "puisqu'", "Puisqu'", "qu'", "Qu'", "quoiqu'", "Quoiqu'", "s'", "S'", "t'", "-t'", "T'"
     }) ELLISION.add( w );
+  }
+  /** Name particles lower case */
+  public static final HashSet<String> PARTICLE = new HashSet<String>();
+  static {
+    for (String w: new String[]{
+        "D'", "De", "Des", "Du", "La", "Le", "Les" // "d'","de", "des", "du", "la", "le", "les"
+    }) PARTICLE.add( w );
   }
 
  
@@ -89,7 +94,7 @@ public class Tokenizer
    * @param pos 
    * @return the position of next token char 
    */
-  private int next( int pos, Term xmltag ) {
+  private int position( int pos, Term xmltag ) {
     if ( pos < 0 ) return pos;
     int size = this.text.length();
     boolean xml=false;
@@ -133,7 +138,7 @@ public class Tokenizer
     // The xml tag to inform (TODO better has a class field ?)
     Term xmltag = new Term();
     // go to start of first token
-    pos = next( pos, xmltag);
+    pos = position( pos, xmltag);
     // end of text, finish
     if ( pos < 0 ) return pos;
     // flag of inside tag
@@ -265,8 +270,10 @@ public class Tokenizer
   }
 
   /**
-   * Set a normalized orthographic form from a graphical token, especially, resolve upper case for proper names.
-   * Set typographical category (punctuation…), and a grammatical category according to a dictionary. 
+   * Set a normalized orthographic form, and grammatical category, from a graphical token,
+   * without information on context, just dictionaries.
+   * For example, upper case for proper names is not guessed from previous punctuation,
+   * this approach is especially useful for poetry.
    * Set lem for a known word.
    * 
    * @param An occurrence to tag
@@ -317,18 +324,29 @@ public class Tokenizer
       return;
     }
   }
-  /**
-   * Get current token as a char sequence, with no test 
-   * @return
-   */
-  /*
-  public CharSequence get() {
-    // return text.subSequence( start, end );
-  }
-  */
   
   /**
-   * Update an Occurrence object with the current word (maybe compound words)
+   * Get a pointer on an occurrence in the slider, update from text if needed
+   * ?? what should I do for stop ?
+   */
+  private Occ getOcc( int pos )
+  {
+    Occ occ;
+    occ = occbuf.get( pos );
+    // if position is empty, and pos is forward, try to go ahead
+    // be careful if negative and at start of text, it will consume one position
+    if ( occ.isEmpty() && pos >= 0 ) {
+      pointer = token( occ, pointer );
+      // is occ OK here ?
+      if ( pointer < 1 ) return null;
+      // tag the token to have a regular case
+      tag( occ );
+    }
+    return occ;
+  }
+  
+  /**
+   * Update an Occurrence object with the current word, here is the compound resolution.
    * 
    * TODO
    * — "le" "l’" "la" "les" "leur" suivis d’un VERB ou d’un PROpers sont PROpers et non DET ("il le leur a donné")
@@ -352,20 +370,33 @@ public class Tokenizer
     String orth = null; // graphic normalization of the term if needed (de avance > d’avance)
     int lastpos = 0;
     Occ occ; // a form, a simple word, complete or part of a compound
+    Occ occ2; // a pointer in slider for some tests
     // loop to concat tokens : from a compound dictionary, for proper names
     
     while( true ) {
       // get current token from buffer
-      occ = occbuf.get( sliderpos );
-      // no more token in the buffer, get one
-      if ( occ.isEmpty() ) {
-        pointer = token( occ, pointer );
-        if ( pointer < 1 ) return false;
-        // tag the token to have a regular case
-        tag( occ );
+      occ = getOcc( sliderpos );
+      // TODO, verify here if compound is finished ?
+      if ( occ == null ) return false;
+      // Fix some case problems for compound proper names
+      // is it start of a name particle ? La Bruyère
+      if ( PARTICLE.contains( occ.graph )  ) {
+        // keep token uppercase if not start of sentence
+        occ2 = getOcc( sliderpos - 1 );
+        if ( !occ2.isEmpty() && !occ2.tag.equals( Tag.PUNsent ) ) occ.orth.firstUpper();
+        // check next token
+        occ2 = getOcc( sliderpos + 1 );
+        if ( occ2 == null ) return false; // strange end " Monsieur De "
+        if ( occ2.graph.isFirstUpper() ) { 
+          // keep upper case the orthographic form
+          if ( !occ2.orth.isFirstUpper() ) occ2.orth.firstUpper();
+          // for sentence starting by a proper name with particle
+          if ( !occ.orth.isFirstUpper()) occ.orth.firstUpper();
+        }
       }
       // try to find a token
       child = parent.get( occ.orth );
+      // do not try on case here, "de" and "De" mays start compound
       // if not found, more generic, try gram cat in the compound dictionary
       if ( child == null ) child = parent.get( occ.tag.prefix() );
       // if not found, try lemma ? only for VERB ? s’écrier…
@@ -375,10 +406,10 @@ public class Tokenizer
             
       if ( child == null ) {
         // first token, common case, is a word
-        word.replace( occbuf.get( 0 ) );
+        word.replace( getOcc( 0 ) );
         // other tokens ? append
         for ( int i=1; i <= lastpos; i++ ) {
-          word.apend( occbuf.get( i ) );
+          word.apend( getOcc( i ) );
         }
         // if a compound have been found, gram cat has been set
         if ( tag != 0 ) {
@@ -387,9 +418,8 @@ public class Tokenizer
           word.lem( word.orth );
         }
         // normalize graphical form after compound resolution
-        else {
-          Lexik.orth( word.orth );
-        }
+        // some compound may need normalisation (ex: Auguste Comte > Comte > Auguste Comte) 
+        Lexik.orth( word.orth );
         // move the slider to this position 
         occbuf.move( lastpos + 1 );
         return true;
@@ -441,13 +471,38 @@ public class Tokenizer
    */
   public static void main( String[] args) 
   {
+    /*
+    String mots = " le la les des de du d' ";
+    long loops = 100000000;
+    HashSet<String> set = new HashSet<String>(7); 
+    for ( String mot: mots.split( " " )) set.add( mot );
+    long test=0;
+    long time = System.nanoTime();
+    for ( int i = 0 ; i < loops; i++) {
+      if (mots.contains( " d' " )) test++;
+    }
+    System.out.println( test+" en "+ 1000000*(System.nanoTime() - time)+" ms" );
+    // 1279928744000000 ms
+    
+    
+    time = System.nanoTime();
+    for ( int i = 0 ; i < loops; i++) {
+      if ( set.contains( "d'" ) ) test++;
+    }
+    System.out.println( test+" en "+ (System.nanoTime() - time) +" ms" );
+    // 137814735 ms
+    
+    System.exit( 1 );
+    */
     // maybe useful, the path of the project, but could be not consistent with 
     // Path context = Paths.get(Tokenizer.class.getClassLoader().getResource("").getPath()).getParent();
     if ( true || args.length < 1) {
       String text;
       text = ""
          // 123456789 123456789 123456789 123456789
-        + " N'est-ce pas ? - La Rochefoucauld - Leibnitz…"
+        + " La Bruyère, écrit-il ? Geoffroy Saint-Hilaire"
+        + " Félix Le Dantec, Le Dantec, Jean de La Fontaine. La Fontaine. N'est-ce pas ? - La Rochefoucauld - Leibnitz… Descartes, René Descartes."
+        + " , Francis Bacon, Stuart Mill, Maine de Biran, Claude Bernard. Auguste Comte, Comte. Joseph de Maistre, Geoffroy Saint-Hilaire."
         + " D’aventure au XIX<hi rend=\"sup\">e</hi>, Non.</div> Va-t'en à <i>Paris</i>."
         + " M. Toulemonde\n\n n’est pas n’importe qui, "
         + " Les Caractères de La Bruyère, La Rochefoucauld, La Fontaine. Es-tu OK ?"

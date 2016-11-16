@@ -309,8 +309,9 @@ public class Term implements CharSequence, Comparable<Term>
   {
     return data[start];
   }
-  /** 
-   * Del first char 
+  /**
+   * Delete first char (just by modification of pointers)
+   * @return the Term for chaining
    */
   public Term firstDel()
   {
@@ -318,6 +319,24 @@ public class Term implements CharSequence, Comparable<Term>
     start++;
     len--;
     return this;
+  }
+  /**
+   * Put first char upperCase
+   * @return the Term for chaining
+   */
+  public Term firstUpper()
+  {
+    hash = 0;
+    data[start] = Character.toUpperCase( data[start] );
+    return this;
+  }
+  /**
+   * Is first letter Upper case ?
+   * @return true for Titlecase, UPPERCASE; false for lowercase
+   */
+  public boolean isFirstUpper()
+  {
+    return Char.isUpperCase( data[start] );
   }
   /**
    * Change case of the chars in scope of the term.

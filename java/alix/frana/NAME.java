@@ -188,45 +188,6 @@ public class NAME
     }
 
   }
-  /**
-   * Write the window
-   */
-  private void html( final OccSlider win, final int lpos, final int rpos) 
-  {
-    Tag tag;
-    // n++;
-    html.print( "<tr>" );
-    html.print( "<td class=\"num\">" );
-    html.print( win.get( 0 ).start );
-    html.print( ".</td>" );
-    html.print( "<td class=\"num\">" );
-    // html.print( win.get( 0 ).start - charpos );
-    // charpos = win.get( 0 ).start;
-    html.print( ".</td>" );
-    html.print( "<td class=\"left\">" );
-    for ( int i=-left; i < 0; i++) {
-      tag =  win.get( i ).tag;
-      if ( tag.isName() ) html.print( "<i class=\""+tag.label()+"\">" );
-      html.print( win.get( i ).graph );
-      if ( tag.isName() ) html.print( "</i>" );
-      if (i<-1) html.print( " " );
-    }
-    html.print( "</td>" );
-    html.print( "<th class=\""+win.get( 0 ).tag.label()+"\">" );
-    html.print( win.get( 0 ).graph );
-    html.print( "</th>" );
-    html.print( "<td class=\"right\">" );
-    for ( int i=1; i <= right; i++) {
-      tag =  win.get( i ).tag;
-      if ( tag.isName() ) html.print( "<i class=\""+tag.label()+"\">" );
-      html.print( win.get( i ).graph );
-      if ( tag.isName() ) html.print( "</i>" );
-      html.print( " " );
-    }
-    html.print( "</td>" );
-    html.print( "</tr>" );
-    html.println();
-  }
   class Source
   {
     /** contexte gauche **/

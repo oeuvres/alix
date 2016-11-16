@@ -1,3 +1,209 @@
+# AUTEURS (nb de titres à la BNF)
+
+Balzac,NAMEpers
+# Joanne,NAMEpers
+Aïvanhov,NAMEpers
+Alphonse de Liguori,NAMEpers
+Andersen,NAMEpers
+Apollinaire,NAMEpers
+Arioste,NAMEpers
+Aristote,NAMEpers
+Aubinais,NAMEpers
+Augustin,NAMEpers
+Aulnoy,NAMEpers
+Auque,NAMEpers
+Bacon,NAMEpers
+Barbey d'Aurevilly,NAMEpers
+Baudelaire,NAMEpers
+Beaumarchais,NAMEpers
+Beethoven,NAMEpers
+Bellini,NAMEpers
+Bernard de Clairvaux,NAMEpers
+Bernardin de Saint-Pierre,NAMEpers
+Berquin,NAMEpers
+Beyle,NAMEpers
+Blyton,NAMEpers
+Boccace,NAMEpers
+Boileau,NAMEpers
+Boireau,NAMEpers
+Bonald,NAMEpers
+Bonaventure,NAMEpers
+Bossuet,NAMEpers
+Brecht,NAMEpers
+Brunhoff,NAMEpers
+Buffon,NAMEpers
+Byron,NAMEpers
+Calderon,NAMEpers
+Calderón,NAMEpers
+Carroll,NAMEpers
+Čehov,NAMEpers
+Cervantes,NAMEpers
+Chateaubriand,NAMEpers
+Chrysostome,NAMEpers
+Comte,NAMEpers
+Cooper,NAMEpers
+Corneille,NAMEpers
+Cuvier,NAMEpers
+Dante,NAMEpers
+Daudet,NAMEpers
+Defoe,NAMEpers
+Delahaye,NAMEpers
+Delly,NAMEpers
+Descartes,NAMEpers
+Dickens,NAMEpers
+Diderot,NAMEpers
+Dostoevskij,NAMEpers
+Dostoïevski,NAMEpers
+Doyle,NAMEpers
+Du Bellay,NAMEpers
+Du Châtelet,NAMEpers
+Du Deffand,NAMEpers
+Du Guesclin,NAMEpers
+Dumas,NAMEpers
+Engels,NAMEpers
+Épictète,NAMEpers
+Érasme,NAMEpers
+Erckmann-Chatrian,NAMEpers
+Eugène Sue,NAMEpers
+Fénelon,NAMEpers
+Féval,NAMEpers
+Flaubert,NAMEpers
+Fleury,NAMEpers
+Freud,NAMEpers
+Galien,NAMEpers
+García Lorca,NAMEpers
+Gerson,NAMEpers
+Gide,NAMEpers
+Giugno,NAMEpers
+Goethe,NAMEpers
+Gogol,NAMEpers
+Goldoni,NAMEpers
+Goldsmith,NAMEpers
+Goscinny,NAMEpers
+Grimm,NAMEpers
+Hargreaves,NAMEpers
+Hegel,NAMEpers
+Heidegger,NAMEpers
+Heine,NAMEpers
+Hergé,NAMEpers
+Hoffmann,NAMEpers
+Homère,NAMEpers
+Horace,NAMEpers
+Jung,NAMEpers
+JustinienLenin,NAMEpers
+Juvénal,NAMEpers
+Kafka,NAMEpers
+Kant,NAMEpers
+Kempis,NAMEpers
+Kipling,NAMEpers
+Kock,NAMEpers
+Lamartine,NAMEpers
+Leibniz,NAMEpers
+Lemarchand,NAMEpers
+Lenin,NAMEpers
+Lénine,NAMEpers
+Leprince de Beaumont,NAMEpers
+Lesage,NAMEpers
+Lessing,NAMEpers
+Lhomond,NAMEpers
+Linné,NAMEpers
+Loti,NAMEpers
+Louÿs,NAMEpers
+Luther,NAMEpers
+Machiavel,NAMEpers
+Mallarmé,NAMEpers
+Marivaux,NAMEpers
+Marx,NAMEpers
+Maupassant,NAMEpers
+Melville,NAMEpers
+Mérimée,NAMEpers
+Michelet,NAMEpers
+Milton,NAMEpers
+Molière,NAMEpers
+Montaigne,NAMEpers
+Montesquieu,NAMEpers
+Mozart,NAMEpers
+Musset,NAMEpers
+Napoléon,NAMEpers
+Nerval,NAMEpers
+Nietzsche,NAMEpers
+Nodier,NAMEpers
+Ovide,NAMEpers
+Perrault,NAMEpers
+Pétrarque,NAMEpers
+Platon,NAMEpers
+Pline,NAMEpers
+Plutarque,NAMEpers
+Poe,NAMEpers
+Pouchkine,NAMEpers
+Prévost,NAMEpers
+Proust,NAMEpers
+Puškin,NAMEpers
+Quine,NAMEpers
+Quinte-Curce,NAMEpers
+Rabelais,NAMEpers
+Racine,NAMEpers
+Reid,NAMEpers
+Rilke,NAMEpers
+Rimbaud,NAMEpers
+Rochefoucauld,NAMEpers
+Rolland,NAMEpers
+Ronsard,NAMEpers
+Rousseau,NAMEpers
+Sade,NAMEpers
+Saint-Exupéry,NAMEpers
+Sainte-Beuve,NAMEpers
+Samain,NAMEpers
+Sand,NAMEpers
+Sarcey,NAMEpers
+Scarron,NAMEpers
+Schiller,NAMEpers
+Schmid,NAMEpers
+Scott,NAMEpers
+Ségur,NAMEpers
+Sénèque,NAMEpers
+Sévigné,NAMEpers
+Shakespeare,NAMEpers
+Simenon,NAMEpers
+Socrate,NAMEpers
+Steiner,NAMEpers
+Stendhal,NAMEpers
+Stevenson,NAMEpers
+Suétone,NAMEpers
+Swift,NAMEpers
+Tacite,NAMEpers
+Taine,NAMEpers
+Tasse,NAMEpers
+Tchékov,NAMEpers
+Tezuka,NAMEpers
+Théophile Gautier,NAMEpers
+Thomas d'Aquin,NAMEpers
+Tite-Live,NAMEpers
+Tolstoj,NAMEpers
+Turgenev,NAMEpers
+Twain,NAMEpers
+Valéry,NAMEpers
+Vega,NAMEpers
+Verlaine,NAMEpers
+Verne,NAMEpers
+Victor Hugo,NAMEpers
+Vigny,NAMEpers
+Villon,NAMEpers
+Virgile,NAMEpers
+Voltaire,NAMEpers
+Wagner,NAMEpers
+Weber,NAMEpers
+Wilde,NAMEpers
+William James,NAMEpers
+Zola,NAMEpers
+Zweig,NAMEpers
+
+# Autres personne
+
+Jésus,NAMEpers
+Jésus-Christ,NAMEpers
+Christ,NAMEpers
+
 # chiffres romains
 
 I,NUM,1
@@ -12293,221 +12499,6 @@ Zhengzhou,NAMEplace
 Zibo,NAMEplace
 Zigong,NAMEplace
 
-# AUTEURS (nb de titres à la BNF)
-
-Balzac,NAMEpers
-# Joanne,NAMEpers
-Agatha Christie,NAMEpers
-Aïvanhov,NAMEpers
-Alphonse de Liguori,NAMEpers
-Andersen,NAMEpers
-Apollinaire,NAMEpers
-Arioste,NAMEpers
-Aristote,NAMEpers
-Aubinais,NAMEpers
-Augustin,NAMEpers
-Aulnoy,NAMEpers
-Auque,NAMEpers
-Barbey d'Aurevilly,NAMEpers
-Baudelaire,NAMEpers
-Beaumarchais,NAMEpers
-Beethoven,NAMEpers
-Bellini,NAMEpers
-Bernard de Clairvaux,NAMEpers
-Bernardin de Saint-Pierre,NAMEpers
-Berquin,NAMEpers
-Beyle,NAMEpers
-Blyton,NAMEpers
-Boccace,NAMEpers
-Boileau,NAMEpers
-Boireau,NAMEpers
-Bonald,NAMEpers
-Bonaventure,NAMEpers
-Bossuet,NAMEpers
-Brecht,NAMEpers
-Brunhoff,NAMEpers
-Buffon,NAMEpers
-Byron,NAMEpers
-Calderon,NAMEpers
-Calderón,NAMEpers
-Carroll,NAMEpers
-Čehov,NAMEpers
-Cervantes,NAMEpers
-Chateaubriand,NAMEpers
-Chrysostome,NAMEpers
-Comte,NAMEpers
-Cooper,NAMEpers
-Corneille,NAMEpers
-Dante,NAMEpers
-Daudet,NAMEpers
-Defoe,NAMEpers
-Delahaye,NAMEpers
-Delly,NAMEpers
-Descartes,NAMEpers
-Dickens,NAMEpers
-Diderot,NAMEpers
-Dostoevskij,NAMEpers
-Dostoïevski,NAMEpers
-Doyle,NAMEpers
-Du Bellay,NAMEpers
-Du Châtelet,NAMEpers
-Du Deffand,NAMEpers
-Du Guesclin,NAMEpers
-Dumas,NAMEpers
-Engels,NAMEpers
-Épictète,NAMEpers
-Érasme,NAMEpers
-Erckmann-Chatrian,NAMEpers
-Eugène Sue,NAMEpers
-Fénelon,NAMEpers
-Féval,NAMEpers
-Flaubert,NAMEpers
-Fleury,NAMEpers
-Freud,NAMEpers
-Galien,NAMEpers
-García Lorca,NAMEpers
-Gerson,NAMEpers
-Gide,NAMEpers
-Giugno,NAMEpers
-Goethe,NAMEpers
-Gogol,NAMEpers
-Goldoni,NAMEpers
-Goldsmith,NAMEpers
-Goscinny,NAMEpers
-Grimm,NAMEpers
-Hargreaves,NAMEpers
-Hegel,NAMEpers
-Heidegger,NAMEpers
-Heine,NAMEpers
-Hergé,NAMEpers
-Hoffmann,NAMEpers
-Homère,NAMEpers
-Horace,NAMEpers
-Jung,NAMEpers
-JustinienLenin,NAMEpers
-Juvénal,NAMEpers
-Kafka,NAMEpers
-Kant,NAMEpers
-Kempis,NAMEpers
-Kipling,NAMEpers
-Kock,NAMEpers
-La Bruyère,NAMEpers
-La Ferronays,NAMEpers
-La Feuillade,NAMEpers
-La Fontaine,NAMEpers
-La Harpe,NAMEpers
-La Mettrie,NAMEpers
-La Mothe,NAMEpers
-La Mothe Le Vayer,NAMEpers
-Lamartine,NAMEpers
-La Pérouse,NAMEpers
-La Rochefoucauld,NAMEpers
-Leibniz,NAMEpers
-Lemarchand,NAMEpers
-Lenin,NAMEpers
-Lénine,NAMEpers
-Leprince de Beaumont,NAMEpers
-Lesage,NAMEpers
-Lessing,NAMEpers
-Lhomond,NAMEpers
-Linné,NAMEpers
-Loti,NAMEpers
-Louÿs,NAMEpers
-Luther,NAMEpers
-Machiavel,NAMEpers
-Mallarmé,NAMEpers
-Marivaux,NAMEpers
-Marx,NAMEpers
-Maupassant,NAMEpers
-Melville,NAMEpers
-Mérimée,NAMEpers
-Michelet,NAMEpers
-Milton,NAMEpers
-Molière,NAMEpers
-Montaigne,NAMEpers
-Montesquieu,NAMEpers
-Mozart,NAMEpers
-Musset,NAMEpers
-Napoléon,NAMEpers
-Nerval,NAMEpers
-Nietzsche,NAMEpers
-Nodier,NAMEpers
-Ovide,NAMEpers
-Perrault,NAMEpers
-Pétrarque,NAMEpers
-Platon,NAMEpers
-Pline,NAMEpers
-Plutarque,NAMEpers
-Poe,NAMEpers
-Pouchkine,NAMEpers
-Prévost,NAMEpers
-Proust,NAMEpers
-Puškin,NAMEpers
-Quine,NAMEpers
-Quinte-Curce,NAMEpers
-Rabelais,NAMEpers
-Racine,NAMEpers
-Reid,NAMEpers
-Rilke,NAMEpers
-Rimbaud,NAMEpers
-Rochefoucauld,NAMEpers
-Rolland,NAMEpers
-Ronsard,NAMEpers
-Rousseau,NAMEpers
-Sade,NAMEpers
-Saint-Exupéry,NAMEpers
-Saint-John Perse,NAMEpers
-Sainte-Beuve,NAMEpers
-Samain,NAMEpers
-Sand,NAMEpers
-Sarcey,NAMEpers
-Scarron,NAMEpers
-Schiller,NAMEpers
-Schmid,NAMEpers
-Scott,NAMEpers
-Ségur,NAMEpers
-Sénèque,NAMEpers
-Sévigné,NAMEpers
-Shakespeare,NAMEpers
-Simenon,NAMEpers
-Socrate,NAMEpers
-Steiner,NAMEpers
-Stendhal,NAMEpers
-Stevenson,NAMEpers
-Suétone,NAMEpers
-Swift,NAMEpers
-Tacite,NAMEpers
-Taine,NAMEpers
-Tasse,NAMEpers
-Tchékov,NAMEpers
-Tezuka,NAMEpers
-Théophile Gautier,NAMEpers
-Thomas d'Aquin,NAMEpers
-Tite-Live,NAMEpers
-Tolstoj,NAMEpers
-Turgenev,NAMEpers
-Twain,NAMEpers
-Valéry,NAMEpers
-Vega,NAMEpers
-Verlaine,NAMEpers
-Verne,NAMEpers
-Victor Hugo,NAMEpers
-Vigny,NAMEpers
-Villon,NAMEpers
-Virgile,NAMEpers
-Voltaire,NAMEpers
-Wagner,NAMEpers
-Weber,NAMEpers
-Wilde,NAMEpers
-William James,NAMEpers
-Zola,NAMEpers
-Zweig,NAMEpers
-
-# Autres personne
-
-Jésus,NAMEpers
-Jésus-Christ,NAMEpers
-Christ,NAMEpers
 
 
 # DIVERS

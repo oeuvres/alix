@@ -131,14 +131,19 @@ public final class Tag
    * Set code value
    * @return
    */
-  public Tag code( final int code )
+  public Tag set( final int code )
   {
     this.code = (short)code;
     return this;
   }
-  public Tag code( Tag tag )
+  public Tag set( Tag tag )
   {
     this.code = tag.code;
+    return this;
+  }
+  public Tag set( String label )
+  {
+    this.code = Tag.code( label );
     return this;
   }
   public static short code ( final Term label )
@@ -216,6 +221,10 @@ public final class Tag
     if ( o instanceof String ) return ( code == Tag.code( (String) o ) );
     if ( o instanceof Term ) return ( code == Tag.code( (Term) o ) );
     return false;
+  }
+  @Override
+  public String toString() {
+    return Tag.label( code );
   }
   
   /**

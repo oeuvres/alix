@@ -65,7 +65,7 @@ public class Occ
   {
     graph.replace( occ.graph );
     orth.replace( occ.orth );
-    tag.code( occ.tag );
+    tag.set( occ.tag );
     lem.replace( occ.lem );
     start = occ.start;
     end = occ.end;
@@ -78,6 +78,12 @@ public class Occ
   public Occ apend( Occ occ )
   {
     char c;
+    // strip firstname is better for name matching
+    if ( this.tag.equals( Tag.NAMEpersf ) || this.tag.equals( Tag.NAMEpersm ) ) {
+      this.orth.reset();
+      // "Joseph de Maistre" will become "Maistre" if "de" is said to be firstName
+      this.tag.set( 0 );
+    }
     if ( !graph.isEmpty() ) {
       c = graph.last();
       if ( c != '\'' && c != '’' && c != '-' && occ.graph.first() != '-')
@@ -112,7 +118,7 @@ public class Occ
     graph.reset();
     orth.reset();
     lem.reset();
-    tag.code(0);
+    tag.set(0);
     start = -1;
     end = -1;
     return this;
@@ -197,7 +203,7 @@ public class Occ
    */
   public Occ tag( final short code )
   {
-    tag.code( code );
+    tag.set( code );
     return this;
   }
   /**
@@ -207,7 +213,7 @@ public class Occ
    */
   public Occ tag( final Tag tag )
   {
-    tag.code( tag );
+    tag.set( tag );
     return this;
   }
   /**
