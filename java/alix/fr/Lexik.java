@@ -40,7 +40,7 @@ public class Lexik
     }
   }
   /** Abbreviations with a final dot */
-  public static final HashSet<String> BREVIDOT = new HashSet<String>( (int)( 100 * 0.75 ) );
+  public static final HashMap<String,String> BREVIDOT = new HashMap<String,String>( (int)( 100 * 0.75 ) );
   static {
     String l;
     try {
@@ -50,10 +50,15 @@ public class Lexik
           StandardCharsets.UTF_8
         )
       );
+      String[] cells;
       buf.readLine(); // skip first line
       while ((l = buf.readLine()) != null) {
+        l = l.trim();
+        if ( l.isEmpty() ) continue;
         if (l.charAt( 0 ) == '#' ) continue;
-        BREVIDOT.add( l.trim() );
+        cells = l.split( "," );
+        if ( cells.length > 1 ) BREVIDOT.put( cells[0].trim(), cells[1].trim() );
+        else if ( cells.length == 1 ) BREVIDOT.put( cells[0].trim(), cells[0].trim() );
       }
       buf.close();
     } 

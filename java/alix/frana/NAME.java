@@ -15,7 +15,6 @@ import java.util.LinkedList;
 
 import alix.fr.Occ;
 import alix.fr.OccSlider;
-import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.Term;
 

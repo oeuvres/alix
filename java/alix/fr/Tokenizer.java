@@ -131,22 +131,15 @@ public class Tokenizer
    */
   private int token( Occ occ, int pos )
   {
-    // we should clear here, isn‘t it ?
-    occ.clear();
-    // work with local variables to limit lookups (“avoid getfield opcode”, read in String source code) 
-    Term graph = occ.graph;
-    // The xml tag to inform (TODO better has a class field ?)
-    Term xmltag = new Term();
-    // go to start of first token
-    pos = position( pos, xmltag);
-    // end of text, finish
-    if ( pos < 0 ) return pos;
-    // flag of inside tag
-    boolean insidetag = false;
-    // should be start of a token
-    char c = text.charAt( pos );
-    // test if last xml tag is a sentence separator
-    if ( xmltag.startsWith( "p " ) 
+    String s;
+    occ.clear(); // we should clear here, isn‘t it ?
+    Term graph = occ.graph; // work with local variables to limit lookups (“avoid getfield opcode”, read in String source code) 
+    Term xmltag = new Term(); // The xml tag to inform (TODO better has a class field ?)
+    pos = position( pos, xmltag); // go to start of first token
+    if ( pos < 0 ) return pos; // end of text, finish
+    boolean insidetag = false; // flag of inside tag
+    char c = text.charAt( pos ); // should be start of a token
+    if ( xmltag.startsWith( "p " ) // test if last xml tag is a sentence separator
         || xmltag.startsWith( "head " ) 
         || xmltag.startsWith( "l " ) 
         || xmltag.startsWith( "br " )
@@ -257,9 +250,15 @@ public class Tokenizer
             pos--;
             graph.lastDel();
           }
-          if ( !Lexik.BREVIDOT.contains( graph )) {
+          // keep last dot, it is  abbrv
+          s = Lexik.BREVIDOT.get( graph );
+          if ( s == null ) {
             pos--;
             graph.lastDel();
+          }
+          // expand abreviation
+          else {
+            occ.orth( s );
           }
         }
         break;
@@ -279,9 +278,9 @@ public class Tokenizer
    * @param An occurrence to tag
    */
   public void tag( Occ occ ) {
-    occ.orth( occ.graph );
     if ( occ.isEmpty() ) return; // Should not arrive
-    else if ( occ.orth.first() == '-' ) occ.orth.firstDel();
+    if ( occ.orth.isEmpty() ) occ.orth( occ.graph );
+    if ( occ.orth.first() == '-' ) occ.orth.firstDel();
     occ.tag( Tag.UNKNOWN );
     char c = occ.graph.charAt( 0 );
     // ponctuation ?
@@ -500,7 +499,8 @@ public class Tokenizer
       String text;
       text = ""
          // 123456789 123456789 123456789 123456789
-        + " La Bruyère, écrit-il ? Geoffroy Saint-Hilaire"
+        + " La Bruyère de ce M. Claude Bernard, d’Artagnan."
+        + " écrit-il ? Geoffroy Saint-Hilaire"
         + " Félix Le Dantec, Le Dantec, Jean de La Fontaine. La Fontaine. N'est-ce pas ? - La Rochefoucauld - Leibnitz… Descartes, René Descartes."
         + " , Francis Bacon, Stuart Mill, Maine de Biran, Claude Bernard. Auguste Comte, Comte. Joseph de Maistre, Geoffroy Saint-Hilaire."
         + " D’aventure au XIX<hi rend=\"sup\">e</hi>, Non.</div> Va-t'en à <i>Paris</i>."

@@ -81,7 +81,14 @@ public class TermDic
   public TermDic()
   {
   }
-
+  /**
+   * Open a dictionary with a list of terms
+   * @param terms
+   */
+  public TermDic( final String[] terms )
+  {
+    for (String term: terms) add( term, 0, 1, 0 );
+  }
   /**
    * Erase all, for object reuse, and not too much memory reallocation.
    */
@@ -349,6 +356,7 @@ public class TermDic
   {
     return add( term, tag, amount, 0 );
   }
+  
 
   /**
    * Add a term occurrence, increment if exist or create entry
