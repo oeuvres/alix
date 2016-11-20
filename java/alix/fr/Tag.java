@@ -55,7 +55,6 @@ public final class Tag
   public final static short CONJ = 0x80;
   public final static short CONJcoord = 0x81; 
   public final static short CONJsubord = 0x82;
-  public final static short EXCL = 0x90;
   public final static short NAME = 0xB0;
   public final static short NAMEpers = 0xB1;
   public final static short NAMEpersm = 0xB2;
@@ -63,6 +62,8 @@ public final class Tag
   public final static short NAMEplace = 0xB5;
   public final static short NAMEevent = 0xB6;
   public final static short NAMEtitle = 0xB7;
+  public final static short EXCL = 0x90;
+  public final static short NUM = 0xA0;
   public final static short PUN  = 0xC0;
   public final static short PUNsent  = 0xC1;
   public final static short PUNcl  = 0xC2;

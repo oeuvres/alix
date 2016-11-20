@@ -69,7 +69,7 @@ un vingtième,DETnum
 une vingtième,DETnum
 
 
-# noms propres
+# Personnes
 
 Agatha Christie,NAMEpers,Agatha Christie
 de Foë,NAMEpers,Defoe
@@ -106,6 +106,17 @@ Le Dantec,NAMEpers
 L'Espinasse,NAMEpers,Lespinasse
 Saint-John Perse,NAMEpers
 
+# Lieux
+
+Saint-Pierre et Miquelon,NAMEplace
+collège de France,NAMEplace
+
+
+
+
+# EXCL 
+mon Dieu,EXCL
+
 # BUGS
 
 M elle,SUB,mademoiselle
@@ -113,10 +124,31 @@ M lle,SUB,mademoiselle
 M me,SUB,madame
 
 
+# LIEUX
+
+bourg de NAME,NAMEplace
+château de NAME,NAMEplace
+forêt de NAME,NAMEplace
+île d’NAME,NAMEplace
+île de NAME,NAMEplace
+l’île d’NAME,NAMEplace
+l’île de NAME,NAMEplace
+mer de NAME,PLACEname
+palais de,NAMEplace
+rue NAME,NAMEplace
+rue de NAME,NAMEplace
+rue de SUB,NAMEplace
+rue des NAME,NAMEplace
+rue des SUB,NAMEplace
+ville de,NAMPEplace
+
+
 # TITULATURES
 
-bataille de NAME,NAMEevent
-collège de France,NAMEplace
+# Monsieur (frère du roi)
+
+Altesse,NAMEpers
+Altesse Royale,NAMEpers
 comte NAME,NAMEpers
 comte de NAME,NAMEpers
 comtesse NAME,NAMEpers
@@ -127,13 +159,10 @@ duc de NAME,NAMEpers
 duc NAME de NAME,NAMEpers
 duchesse de NAME,NAMEpers
 duchesse NAME de NAME,NAMEpers
-#de NAME,NAMEpers, il est de Paris
-fête de NAME,NAMEevent
+#de NAME,NAMEpers,il est de Paris
+évêque de NAME,NAMEpers
 la NAME de NAME,NAMEtitle
 la duchesse de NAME,NAMEpers
-# l'esprit des lois,NAMEtitle,l'Esprit des Lois
-le NAME de NAME,NAMEtitle
-les mémoires de outre­tombe,NAMEtitle,Les Mémoires d'Outre-tombe
 lord NAME,NAMEpers
 madame de NAME,NAMEpers
 madame NAME,NAMEpers
@@ -147,24 +176,41 @@ mademoiselle NAME NAME,NAMEpers
 # monsieur NAME,NAMEpers
 # monsieur NAME de NAME,NAMEpers
 # monsieur NAME NAME,NAMEpers
+Monseigneur NAME,NAMEpers
+Monseigneur de NAME,NAMEpers
 NAME NAME,NAMEpers
 NAME NAME de NAME,NAMEpers
 NAME de NAME,NAMEpers
 NAME de La NAME,NAMEpers
-NAME Le NAME,NAMEpers
 NAME du NAME,NAMEpers
+NAME Le NAME,NAMEpers
+NAME en NAME,NAMEplace
 NAME NUM,NAMEpers
 père NAME,NAMEpers
 prince de NAME,NAMEpers
 princesse de NAME,NAMEpers
-rue NAME,NAMEplace
-rue de NAME,NAMEplace
-rue de SUB,NAMEplace
-rue des NAME,NAMEplace
-rue des SUB,NAMEplace
 saint NAME,NAMEpers
 sainte NAME,NAMEpers
 sir NAME,NAMEpers
+Son Excellence,NAMEpers
+vicomte de NAME,NAMEpers
+vicomtesse de NAME,NAMEpers
+vidame de NAME,NAMEpers
+Votre Excellence,NAMEpers
+
+# EVENTS
+
+bataille de NAME,NAMEevent
+fête de NAME,NAMEevent
+
+
+
+# TITLE
+
+# l'esprit des lois,NAMEtitle,l'Esprit des Lois
+le NAME de NAME,NAMEtitle
+les mémoires de outre­tombe,NAMEtitle,Les Mémoires d'Outre-tombe
+
 
 # locutions pronominales
 

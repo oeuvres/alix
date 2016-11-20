@@ -57,6 +57,13 @@ public class Tokenizer
         "D'", "De", "Des", "Du", "La", "Le", "Les" // "d'","de", "des", "du", "la", "le", "les"
     }) PARTICLE.add( w );
   }
+  /** Préfxes  de noms de personnes */
+  public static final HashSet<String> PREPERS = new HashSet<String>();
+  static {
+    for (String w: new String[]{
+        "capitaine", "cher", "dit", "monsieur", "répondit", "sir"
+    }) PREPERS.add( w );
+  }
 
  
   
@@ -419,6 +426,8 @@ public class Tokenizer
         // normalize graphical form after compound resolution
         // some compound may need normalisation (ex: Auguste Comte > Comte > Auguste Comte) 
         Lexik.orth( word.orth );
+        // titulatures
+        if ( PREPERS.contains( getOcc( lastpos - 1 ).orth ) && word.tag.isName()) word.tag( Tag.NAMEpers );
         // move the slider to this position 
         occbuf.move( lastpos + 1 );
         return true;
@@ -499,6 +508,7 @@ public class Tokenizer
       String text;
       text = ""
          // 123456789 123456789 123456789 123456789
+        + " Henti III. Pardon, monsieur Morrel, dit Dantès "
         + " La Bruyère de ce M. Claude Bernard, d’Artagnan."
         + " écrit-il ? Geoffroy Saint-Hilaire"
         + " Félix Le Dantec, Le Dantec, Jean de La Fontaine. La Fontaine. N'est-ce pas ? - La Rochefoucauld - Leibnitz… Descartes, René Descartes."

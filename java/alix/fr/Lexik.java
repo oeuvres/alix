@@ -295,10 +295,11 @@ public class Lexik
   {
     comp();
     Occ occ = new Occ(); 
-    for (String token: "lui est lorsqu' et depuis quand est il en cette ville ? 25 centimes de hier au soir . et quel sujet l’ y amène ?".split( " " ) ) {
+    for (String token: "Henri III est lorsqu' et depuis quand est il en cette ville ? 25 centimes de hier au soir . et quel sujet l’ y amène ?".split( " " ) ) {
       occ.clear();
       occ.orth( token );
       Lexik.word( occ );
+      if ( occ.tag.equals( Tag.NULL )) Lexik.name( occ );
       System.out.println( occ );
     }
   }
