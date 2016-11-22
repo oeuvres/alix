@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 
 import alix.fr.Lexik;
+import alix.fr.Occ;
 import alix.fr.Tokenizer;
 import alix.util.Char;
 import alix.util.IntObjectMap;
@@ -114,20 +115,14 @@ public class Dicovek {
     // default is an empty position
     int termid = 0;
     // add term to the dictionary and gets its int id
-    if ( !term.equals("") ) termid = terms.add(term);
-    // no stop list, add simple term
-    if (stoplist == null) win.addRight(termid);
-    // term is a stop word, add an attribute to the window position
-    else if(stoplist.contains(term)) win.addRight(termid, STOPWORD);
-    // don’t forget default 
-    else win.addRight(termid);
+    if ( !term.equals("") ) termid = terms.inc(term);
+    win.push(termid);
     
     // get center of window, and work around
     termid = win.get(0);
     // center is not set, crossing an empty sequence, maybe: start, end, paragraph break...  
     if (termid == 0) return this;
-    // do not record stopword vector
-    if (win.getAtt(0) == STOPWORD) return this;
+    // do not record stopword vector (?)
     // get the vector for this center term
     vek = vectors.get(termid);
     // optimize ? term not yet encountered, create vector
@@ -171,7 +166,7 @@ public class Dicovek {
   public ArrayList<SimRow> sims( String term, int limit )
   {
     // get vector for requested word
-    int k = terms.index( term );
+    int k = terms.code( term );
     if (k == 0) return null;
     IntVek vekterm = vectors.get( k );
     // some words of the dictionary has no vector but are recorded in co-occurrence (ex: stop)
@@ -184,7 +179,7 @@ public class Dicovek {
     String[] list = terms.byCount();
     int max = list.length;
     for ( int i = 0; i < max; i++) {
-      vek = vectors.get( terms.index( list[i] ) );
+      vek = vectors.get( terms.code( list[i] ) );
       if ( vek == null ) continue;
       score = vekterm.cosine( vek );
       // score differs 
@@ -271,7 +266,7 @@ public class Dicovek {
   public String coocs( final String term, int limit, final boolean stop)
   {
     StringBuffer sb = new StringBuffer();
-    int index = terms.index( term );
+    int index = terms.code( term );
     if (index == 0) return null;
     vek = vectors.get(index);
     // some words on dictionary has no vector, like stop words
@@ -310,30 +305,12 @@ public class Dicovek {
     Tokenizer toks = new Tokenizer(text);
     String w;
     // give some space before
-    for ( int i=0; i < left; i++ )
-      add("");
-    if ( lemmatize ) { // ne faire le test qu’une fois
-      while( toks.read() ) {
-        w = toks.getString();
-        // ne pas ajouter la ponctuation
-        if ( !Char.isWord( w.charAt( 0 ) )) {
-          continue;
-        }
-        /*
-        if ( Lexik.STOPLIST.contains( w ) ) {
-          continue;
-        }
-        */
-        add( Lexik.lem( w ) );
-      }
-    }
-    else {
-      while( toks.read() ) {
-        w = toks.getString();
-        // ne pas ajouter la ponctuation
-        if ( !Char.isWord( w.charAt( 0 ) )) continue;
-        add( w );
-      }
+    for ( int i=0; i < left; i++ ) add("");
+    Occ occ = new Occ();
+    while( toks.word( occ ) ) {
+      if (occ.tag.isPun()) continue;
+      if ( occ.tag.isName() ) add( "ONOMA" );
+      else add( occ.lem.toString() );
     }
     // give some space after
     for ( int i=0; i < right; i++ )
@@ -390,22 +367,42 @@ public class Dicovek {
   
   /**
    * @throws IOException 
+   * 
+   * TODO: dictionnaire 
    */
   public static void main(String[] args) throws IOException
   {
+    /*
     String usage = 
         "Usage: java -cp alix.jar site.oeuvres.muthovek.Dicovek texts/*\n"
        +"   texts maybe in txt or xml.\n"
     ;
     if ( args.length == 0 ) {
       System.out.println( usage );
-      System.exit( 0 );
+      // System.exit( 0 );
+      args = new String[]{ "/Local/word2vec/levistrauss.txt" };
+      // "../alix-demo/WEB-INF/textes/zola.xml"
     }
+    */
+    BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+    System.out.print("Corpus: ");
+    String corpus = keyboard.readLine().trim();
+    System.out.println( '"'+corpus+'"' );
+    if ( corpus.equals( "zola") ) 
+      args = new String[]{ "/Library/WebServer/Documents/alix-demo/WEB-INF/textes/zola.xml" };
+    else if ( corpus.equals("levistrauss") ) 
+      args = new String[]{ "/Library/WebServer/Documents/alix-demo/WEB-INF/textes/levi-strauss_anthropologie-structurale.xml" };
+    else if ( corpus.equals("barthes") ) 
+      args = new String[]{ "/Library/WebServer/Documents/alix-demo/WEB-INF/textes/barthes_compilationstructurale.html" };
+    else if ( corpus.equals("lacan") ) 
+      args = new String[]{ "/Library/WebServer/Documents/alix-demo/WEB-INF/textes/lacan_ecrits.xml" };
+    else if ( corpus.equals("zola") ) 
+      args = new String[]{ "/Library/WebServer/Documents/alix-demo/WEB-INF/textes/zola.xml" };
     // largeur avant-après
     int wing = 5;
     // le chargeur de vecteur a besoin d'une liste de mots vides pour éviter de faire le vecteur de "de"
     // un lemmatiseur du pauvre sert à regrouper les entrées des vecteurs
-    Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST, true);
+    Dicovek veks = new Dicovek(wing, wing, Lexik.STOP, true);
     // Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST);
     long start = System.nanoTime();
     // Boucler sur les fichiers
@@ -416,7 +413,6 @@ public class Dicovek {
     System.out.println( "Chargé en "+((System.nanoTime() - start) / 1000000) + " ms");
     System.out.println( veks.freqlist(true, 100) );
     // Boucle de recherche
-    BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
     List<SimRow> table;
     DecimalFormat df = new DecimalFormat("0.0000");
     while (true) {
@@ -445,6 +441,7 @@ public class Dicovek {
       System.out.println( "SIMINYMES : " );
       System.out.println( "word\tcount\tdistance" );
       for (SimRow row:table) {
+        if ( Lexik.isStop( row.term )) continue;
         System.out.print( row.term );
         System.out.print( "\t" );
         System.out.print( row.count );
