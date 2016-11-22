@@ -542,7 +542,7 @@ public class TermDic
    */
   public String csv()
   {
-    return csv( 0, null );
+    return csv( -1, null );
   }
 
   /**

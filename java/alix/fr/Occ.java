@@ -1,5 +1,9 @@
 package alix.fr;
 
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+
 import alix.util.Term;
 
 /**
@@ -251,6 +255,28 @@ public class Occ
     this.end = i;
     return this;
   }
+  public void print( PrintWriter out ) {
+    print( out, null );
+  }
+  /**
+   * Write the occurrence to a printer in respect of 
+   * french punctuation spacing.
+   * @return 
+   */
+  public void print( PrintWriter out, Occ prev ) {
+    if ( graph.isEmpty() ) return;
+    char first = graph.first();
+    char last = 0;
+    if ( prev == null);
+    else if ( prev.isEmpty() ) last = '-';
+    else last = prev.graph.last();
+    
+    if ( first == ';' || first == ':' || first == '?' || first == '!' ) out.print( ' ' );
+    else if ( first == ',' || first == '.' || first == '-' );
+    else if ( last == '-' || last == '\'');
+    else out.print( ' ' );
+    graph.print( out );
+  }
   /** 
    * Default String display 
    */
@@ -258,4 +284,25 @@ public class Occ
   {
     return graph+"\t"+orth+"\t"+tag.label()+"\t"+lem+"\t"+start;
   }
+  /**
+   * Test the Class
+   * @param args
+   * @throws IOException 
+   */
+  public static void main(String args[]) throws IOException 
+  {
+    String text = "Son amant l' emmène un jour , O se promener dans un quartier où ?"
+      + " remarquons -le ils ne vont jamais se promener ."
+    ;
+    Occ occ = new Occ();
+    Occ last = new Occ().graph( "" );
+    PrintWriter out=new PrintWriter(new OutputStreamWriter( System.out, "UTF-8"));
+    for ( String tok: text.split( " " ) ) {
+      occ.graph( tok );
+      occ.print( out, last );
+      last.graph(occ.graph);
+    }
+    out.close();
+  }
+
 }

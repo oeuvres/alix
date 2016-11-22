@@ -1,5 +1,6 @@
 package alix.util;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -610,6 +611,10 @@ public class Term implements CharSequence, Comparable<Term>
     }
     // System.out.println( this+" "+hash );
     return h;
+  }
+  public void print(PrintWriter out) {
+    int len = this.len;
+    for ( int i =start; i < len; i++ ) out.print( data[i] );
   }
   @Override
   public String toString( )

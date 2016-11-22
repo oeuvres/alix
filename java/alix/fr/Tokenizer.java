@@ -159,13 +159,15 @@ public class Tokenizer
       occ.graph( "/");
       return pos;
     }
-    // start of text plain verse
+    // start of text plain verse ?
+    /*
     if ( xmltag.endsWith( "\n" ) && Char.isUpperCase( c ) ) {
       occ.start( pos -1 );
       occ.end( pos );
       occ.graph( "/");
       return pos;
     }
+    */
     
     occ.start( pos );
 
@@ -425,7 +427,7 @@ public class Tokenizer
         }
         // normalize graphical form after compound resolution
         // some compound may need normalisation (ex: Auguste Comte > Comte > Auguste Comte) 
-        Lexik.orth( word.orth );
+        if (Lexik.orth( word.orth )) word.lem( word.orth );
         // titulatures
         if ( PREPERS.contains( getOcc( lastpos - 1 ).orth ) && word.tag.isName()) word.tag( Tag.NAMEpers );
         // move the slider to this position 
@@ -508,7 +510,7 @@ public class Tokenizer
       String text;
       text = ""
          // 123456789 123456789 123456789 123456789
-        + " Henti III. Pardon, monsieur Morrel, dit Dantès "
+        + " Henti III. mlle Pardon, monsieur Morrel, dit Dantès "
         + " La Bruyère de ce M. Claude Bernard, d’Artagnan."
         + " écrit-il ? Geoffroy Saint-Hilaire"
         + " Félix Le Dantec, Le Dantec, Jean de La Fontaine. La Fontaine. N'est-ce pas ? - La Rochefoucauld - Leibnitz… Descartes, René Descartes."

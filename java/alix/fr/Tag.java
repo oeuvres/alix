@@ -182,6 +182,22 @@ public final class Tag
   {
     return (( code >> 0x4 ) == 0x1 );
   }
+  public boolean isSub( )
+  {
+    return (( code >> 0x4 ) == 0x1 );
+  }
+  public static boolean isSub( final int code )
+  {
+    return (( code >> 0x4 ) == 0x1 );
+  }
+  public boolean isAdj( )
+  {
+    return (( (short)code >> 0x4 ) == 0x3 );
+  }
+  public static boolean isAdj( final int code )
+  {
+    return (( (short)code >> 0x4 ) == 0x3 );
+  }
   public boolean isAdv( )
   {
     return (( code >> 0x4 ) == 0x4 );
