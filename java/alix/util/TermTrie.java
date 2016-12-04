@@ -107,42 +107,36 @@ public class TermTrie
     );
     buf.readLine(); // first line is labels and should give number of cells to find
     int i = 0;
+    String[] cells;
     while ( (line=buf.readLine()) != null ) {
-      if ( readLine( line, separator ) ) i++;
+      line = line.trim( );
+      if ( line.isEmpty() ) continue;
+      if ( line.charAt( 0 ) == '#' ) continue;
+      cells = line.split( separator );
+      if ( add( cells ) ) i++;
     }
     buf.close();
   }
 
 
-  public boolean readLine( String line, String separator )
+  public boolean add( String[] cells )
   {
-    if ( line == null ) return false;
-    line.trim( );
-    if ( line.isEmpty() ) return false;
-    if ( line.charAt( 0 ) == '#' ) return false;
-    String[] cells;
-    String orth;
     int cat;
-    if ( separator != null && !separator.isEmpty() ) {
-      cells = line.split( separator );
-      // log if no cat found
-      if ( cells.length < 2) {
-        log.println( "TermTrie loading "+path+" NO CAT FOUND with sep=\""+separator+"\" in "+line );
-        cat = Tag.UNKNOWN;
-      }
-      else {
-        cat = Tag.code( cells[1] ) ;
-      }
-      // optional normalized form
-      if ( cells.length > 2 && cells[2] != null && !cells[2].isEmpty() ) 
-        add( cells[0], cat, cells[2]);
-      else
-        add( cells[0], cat);
+    if ( cells == null) return false;
+    if ( cells.length == 0) return false;
+    if ( cells[0] == null || cells[0].isEmpty() ) return false;
+    if ( cells.length == 1) {
+      add( cells[0], Tag.UNKNOWN );
+      return true;
     }
-    else {
-      add( line, Tag.UNKNOWN );
+    cat = Tag.code( cells[1] ) ;
+    if ( cells.length == 2 ) {
+      add( cells[0], cat);
+      return true;
     }
-    return false;
+    if ( cells[2] == null || cells[2].isEmpty() ) add( cells[0], cat);
+    else add( cells[0], cat, cells[2]);
+    return true;
   }
 
   /**

@@ -1,0 +1,392 @@
+# AUTEURS (nb de titres à la BNF);;
+Abailard;NAMEauthor;Abélard
+Abailart;NAMEauthor;Abélard
+Abeilard;NAMEauthor;Abélard
+Agatha Christie;NAMEauthor
+Aïvanhov;NAMEauthor;
+Alphonse de Liguori;NAMEauthor;
+Anacréon;NAMEauthor;
+Andersen;NAMEauthor;
+Apollinaire;NAMEauthor;
+Arioste;NAMEauthor;
+Aristote;NAMEauthor;
+Arnaud;NAMEauthor;
+Aubert;NAMEauthor;
+Aubinais;NAMEauthor;
+Augustin;NAMEauthor;
+Aulnoy;NAMEauthor;
+Auque;NAMEauthor;
+Bacon;NAMEauthor;
+Balzac;NAMEauthor;
+Balze;NAMEauthor;
+Baour-Lormian;NAMEauthor;
+Barbey d'Aurevilly;NAMEauthor;
+Barthe;NAMEauthor;
+Baudelaire;NAMEauthor;
+Beauharnois;NAMEauthor;
+Beaumarchais;NAMEauthor;
+Beethoven;NAMEauthor;
+Bellini;NAMEauthor;
+Bérenger;NAMEauthor;
+Bernard de Clairvaux;NAMEauthor;
+Bernard de Ribeiro;NAMEauthor;Bernardim Ribeiro
+Bernardin de Saint-Pierre;NAMEauthor;
+Bernis;NAMEauthor;
+Berquin;NAMEauthor;
+Beyle;NAMEauthor;
+Bion;NAMEauthor;
+Blin de Sainmore;NAMEauthor;
+Blyton;NAMEauthor;
+Boccace;NAMEauthor;
+Boccacio;NAMEauthor;Boccace
+Boëce;NAMEauthor;Boèce
+Boileau;NAMEauthor;
+Boireau;NAMEauthor;
+Bonald;NAMEauthor;
+Bonaventure;NAMEauthor;
+Bossuet;NAMEauthor;
+Boufflers;NAMEauthor;
+Bouhier;NAMEauthor;
+Bourdic;NAMEauthor;
+Brecht;NAMEauthor;
+Brunhoff;NAMEauthor;
+Buffon;NAMEauthor;
+Byron;NAMEauthor;
+Calderon;NAMEauthor;
+Calderón;NAMEauthor;Calderon
+Carroll;NAMEauthor;
+Čehov;NAMEauthor;Tchékov
+Cérutti;NAMEauthor;
+Cervantes;NAMEauthor;
+César;NAMEauthor;
+Chabanon;NAMEauthor;
+Chateaubriand;NAMEauthor;
+Chrysostome;NAMEauthor;
+Claude Bernard;NAMEauthor
+Colardeau;NAMEauthor;
+Comte;NAMEauthor;
+Cooper;NAMEauthor;
+Corneille;NAMEauthor;
+Cournand;NAMEauthor;
+Crébillon;NAMEauthor;
+Cubières;NAMEauthor;
+Cuvier;NAMEauthor;
+d'Artagnan;NAMEauthor;D'Artagnan
+D'Artagnan;NAMEauthor;
+d'Israëli;NAMEauthor;
+Dante;NAMEauthor;
+Daudet;NAMEauthor;
+de Foë;NAMEauthor;Defoe
+de Foë;NAMEauthor;Defoe
+De Foë;NAMEauthor;Defoe
+de Maistre;NAMEauthor;
+Defoe;NAMEauthor;
+Deguerle;NAMEauthor;
+Delahaye;NAMEauthor;
+Delille;NAMEauthor;
+Delly;NAMEauthor;
+Démosthène;NAMEauthor;
+Demosthenes;NAMEauthor;Démosthène
+Démosthènes;NAMEauthor;Démosthène
+Demoustier;NAMEauthor;
+des Préaux;NAMEauthor;Boileau
+Des Préaux;NAMEauthor;Boileau
+Desbarreaux;NAMEauthor;Des Barreaux
+Descartes;NAMEauthor;
+Deshoulières;NAMEauthor;
+Desmortier;NAMEauthor;
+Despréaux;NAMEauthor;Boileau
+d'Israëli;NAMEauthor;Disraeli
+Dickens;NAMEauthor;
+Diderot;NAMEauthor;
+Diodore;NAMEauthor;
+Domergue;NAMEauthor;
+Dorat;NAMEauthor;
+Dostoevskij;NAMEauthor;Dostoïevski
+Dostoïevski;NAMEauthor;
+Dostoïevsky;NAMEauthor;Dostoïevski
+Dostoïewski;NAMEauthor;Dostoïevski
+Dostoiewsky;NAMEauthor;Dostoievski
+Doyle;NAMEauthor;
+Du Bellay;NAMEauthor;
+Dubellay;NAMEauthor;Du Bellay
+Dubelloy;NAMEauthor;Belloy
+Duchâtelet;NAMEauthor;Du Châtelet
+Ducis;NAMEauthor;
+Du Châtelet;NAMEauthor;
+Dudeffand;NAMEauthor;Du Deffand
+Du Deffand;NAMEauthor;
+Du Deffant;NAMEauthor;Du Deffand
+du Verney;NAMEauthor;Duverney
+Dumas;NAMEauthor;
+Dumarsais;NAMEauthor;Du Marsais
+Edom;NAMEauthor;
+Engels;NAMEauthor;
+Épictète;NAMEauthor;
+Érasme;NAMEauthor;
+Erckmann-Chatrian;NAMEauthor;
+Eschyle;NAMEauthor;
+Eugène Sue;NAMEauthor;
+Euripide;NAMEauthor;
+Fallet;NAMEauthor;
+Fénelon;NAMEauthor;
+Ferlus;NAMEauthor;
+Feuerbach;NAMEauthor
+Féval;NAMEauthor;
+Flaubert;NAMEauthor;
+Fleury;NAMEauthor;
+Florian;NAMEauthor;
+Fontenelle;NAMEauthor;
+Freud;NAMEauthor;
+Fuerbach;NAMEauthor;Feuerbach
+Furestière;NAMEauthor;Furetière
+Galien;NAMEauthor;
+Gallus;NAMEauthor;
+García Lorca;NAMEauthor;Lorca
+G.-Bernard Shaw;NAMEauthor;Bernard Shaw
+Geoffroy Saint-Hilaire;NAMEauthor;
+Georges Sand;NAMEauthor;George Sand
+Gerson;NAMEauthor;
+Gide;NAMEauthor;
+Giugno;NAMEauthor;
+Goethe;NAMEauthor;
+Goëthe;NAMEauthor;Goethe
+Gogol;NAMEauthor;
+Goldoni;NAMEauthor;
+Goldsmith;NAMEauthor;
+Goscinny;NAMEauthor;
+Gœthe;NAMEauthor;Goethe
+Gœtz;NAMEauthor;Goetz
+Göthe;NAMEauthor;Goethe
+Gouvé;NAMEauthor;
+Gresset;NAMEauthor;
+Grimm;NAMEauthor;
+Guyétand;NAMEauthor;
+Hargreaves;NAMEauthor;
+Hegel;NAMEauthor;
+Hégel;NAMEauthor;Hegel
+Heidegger;NAMEauthor;
+Heine;NAMEauthor;
+Hergé;NAMEauthor;
+Hérodote;NAMEauthor;
+Hésiode;NAMEauthor;
+Hoffmann;NAMEauthor;
+Homère;NAMEauthor;
+Horace;NAMEauthor;
+Houdar de La Motte;NAMEauthor;Lamothe-Houdard
+Imbert;NAMEauthor;
+J. Racine;NAMEauthor;Racine
+Jean de La Fontaine;NAMEauthor;La Fontaine
+Jossaud;NAMEauthor;
+Julie Laurencin;NAMEauthor;
+Jung;NAMEauthor;
+Justinien;NAMEauthor;
+Juvénal;NAMEauthor;
+Kafka;NAMEauthor;
+Kant;NAMEauthor;
+Kempis;NAMEauthor;
+Kipling;NAMEauthor;
+Kock;NAMEauthor;
+L'Espinasse;NAMEauthor;Lespinasse
+la Boëtie;NAMEauthor;La Boétie
+La Boëtie;NAMEauthor;La Boétie
+Labruyère;NAMEauthor;La Bruyère
+La Bruyère;NAMEauthor;
+Lafayette;NAMEauthor;La Fayette
+La Fayette;NAMEauthor;
+La Ferronays;NAMEauthor;
+La Feuillade;NAMEauthor;
+La Fontaine;NAMEauthor;
+Lafontaine;NAMEauthor;La Fontaine
+Laharpe;NAMEauthor;La Harpe
+la harpe;NAMEauthor;
+la Mennais;NAMEauthor;Lamennais
+Lamettrie;NAMEauthor;La Mettrie
+la Mettrie;NAMEauthor;
+Lamothe;;La Mothe
+la Mothe;NAMEauthor;
+Lamothe le Vayer;NAMEauthor;La Mothe Le Vayer
+La Mothe Le Vayer;NAMEauthor;
+la Mothe-le-Vayer;NAMEauthor;La Mothe Le Vayer
+Lamotte;NAMEauthor;La Mothe
+la Motte;NAMEauthor;La Mothe
+Larochefoucauld;NAMEauthor;La Rochefoucauld
+Larochefoucault;NAMEauthor;La Rochefoucauld
+La Rochefoucauld;NAMEauthor;
+la Rochefoucault;NAMEauthor;La Rochefoucault
+La Rochefoucault;NAMEauthor;
+La Touche;NAMEauthor;
+Lachabeaussière;NAMEauthor;
+Lamartine;NAMEauthor;
+Lamotte;NAMEauthor;
+Latouche;NAMEauthor;
+Laugier;NAMEauthor;
+Laurès;NAMEauthor;
+Le Dantec;NAMEauthor;
+Lebailly;NAMEauthor;
+Lebrun;NAMEauthor;
+Lefranc;NAMEauthor;
+Légier;NAMEauthor;
+Legouvé;NAMEauthor;
+Leibniz;NAMEauthor;
+Leibnitz;NAMEauthor;Leibniz
+Lemarchand;NAMEauthor;
+Lenin;NAMEauthor;Lénine
+Lénine;NAMEauthor;
+Léonard;NAMEauthor;
+Leprince de Beaumont;NAMEauthor;
+Lesage;NAMEauthor;
+Lessing;NAMEauthor;
+Lhomond;NAMEauthor;
+Linné;NAMEauthor;
+Livani;NAMEauthor;
+Loti;NAMEauthor;
+Louÿs;NAMEauthor;
+L. Racine;NAMEauthor;Louis Racine
+Lucrèce;NAMEauthor;
+Luther;NAMEauthor;
+Machiavel;NAMEauthor;
+Maine de Biran;NAMEauthor;
+Malfilatre;NAMEauthor;
+Malebranche;NAMEauthor
+Mallarmé;NAMEauthor;
+Mallebranche;NAMEauthor;Malebranche
+Marivaux;NAMEauthor;
+Marx;NAMEauthor;
+Maupassant;NAMEauthor;
+Melville;NAMEauthor;
+Mérimée;NAMEauthor;
+Michelet;NAMEauthor;
+Milton;NAMEauthor;
+Molière;NAMEauthor;
+Montaigne;NAMEauthor;
+Montesquieu;NAMEauthor;
+Monti;NAMEauthor;
+Mozart;NAMEauthor;
+Musset;NAMEauthor;
+Mutel;NAMEauthor;
+Myro;NAMEauthor;
+Myro de Corinthe;NAMEauthor;
+Napoléon;NAMEauthor;
+Nerval;NAMEauthor;
+Nietzsche;NAMEauthor;
+Nodier;NAMEauthor;
+Ovide;NAMEauthor;
+Perrault;NAMEauthor;
+Pesselier;NAMEauthor;
+Pétrarque;NAMEauthor;
+Pétrone;NAMEauthor;
+Pétronne;NAMEauthor;Pétrone
+Phidias;NAMEauthor;
+Pindare;NAMEauthor;
+Platon;NAMEauthor;
+Pline;NAMEauthor;
+Plutarque;NAMEauthor;
+Poe;NAMEauthor;
+Poë;NAMEauthor;Poe
+Polybe;NAMEauthor;
+Pouchkine;NAMEauthor;
+Poushkine;NAMEauthor;Pouchkine
+Pouskine;NAMEauthor;Pouchkine
+Praxitèle;NAMEauthor;
+Prélong;NAMEauthor;
+Prévost;NAMEauthor;
+Proust;NAMEauthor;
+Puškin;NAMEauthor;
+Quinault;NAMEauthor;
+Quine;NAMEauthor;
+Quinte-Curce;NAMEauthor;
+Rabelais;NAMEauthor;
+Racine;NAMEauthor;
+Reid;NAMEauthor;
+Richard-Castel;NAMEauthor;
+Rilke;NAMEauthor;
+Rimbaud;NAMEauthor;
+Rochefort;NAMEauthor;
+Rochefoucauld;NAMEauthor;
+Rolland;NAMEauthor;
+Rollin;NAMEauthor;
+Ronsard;NAMEauthor;
+Roucher;NAMEauthor;
+Rousseau;NAMEauthor;
+Rudbeuf;NAMEauthor;Rutebeuf
+Rutebœuf;NAMEauthor;Rutebeuf
+Rutebeuf;NAMEauthor
+Sabatier;NAMEauthor;
+Sade;NAMEauthor;
+Sadi;NAMEauthor;Saadi
+Saint Augustin;NAMEauthor;
+Saint-Ange;NAMEauthor;
+Saint-Exupéry;NAMEauthor;
+Saint-John Perse;NAMEauthor;
+Sainte-Beuve;NAMEauthor;
+Saint Thomas;NAMEauthor;Saint Thomas d'Aquin
+Saint Thomas d'Aquin;NAMEauthor
+Samain;NAMEauthor;
+Sand;NAMEauthor;
+Saphos;NAMEauthor;
+Sarcey;NAMEauthor;
+Scaron;NAMEauthor;
+Scarron;NAMEauthor;
+Schiller;NAMEauthor;
+Schmid;NAMEauthor;
+Scaron;NAMEauthor;Scarron
+Scarron;NAMEauthor
+Scott;NAMEauthor;
+Ségur;NAMEauthor;
+Sénèque;NAMEauthor;
+Sévigné;NAMEauthor;
+Shakespeare;NAMEauthor;
+Shakspear;NAMEauthor;Shakespeare
+Shakspeare;NAMEauthor;Shakespeare
+Shakspere;NAMEauthor;Shakespeare
+Simenon;NAMEauthor;
+Sivry;NAMEauthor;
+Socrate;NAMEauthor;
+Solon;NAMEauthor;
+Steiner;NAMEauthor;
+Stendhal;NAMEauthor;
+Stevenson;NAMEauthor;
+Sue;NAMEauthor;Suë
+Suë;NAMEauthor
+Suétone;NAMEauthor;
+Swedenborg;NAMEauthor
+Swedemborg;NAMEauthor;Swedenborg
+Swédenborg;NAMEauthor;Swedenborg
+Swift;NAMEauthor;
+Tacite;NAMEauthor;
+Taine;NAMEauthor;
+Tasse;NAMEauthor;
+Tasse;NAMEauthor;
+Tchékov;NAMEauthor;
+Tezuka;NAMEauthor;
+Théophile Gautier;NAMEauthor;
+Thomas d'Aquin;NAMEauthor;
+Tibulle;NAMEauthor;
+Tite-Live;NAMEauthor;
+Tolstoj;NAMEauthor;
+Tressan;NAMEauthor;
+Tresséol;NAMEauthor;
+Turgenev;NAMEauthor;
+Twain;NAMEauthor;
+Valéry;NAMEauthor;
+Varron;NAMEauthor;
+Vega;NAMEauthor;
+Verhaeren;NAMEauthor
+Verhæren;NAMEauthor;Verhaeren
+Verlaine;NAMEauthor;
+Verne;NAMEauthor;
+Victor Hugo;NAMEauthor;
+Vigny;NAMEauthor;
+Villard;NAMEauthor;
+Villon;NAMEauthor;
+Virgil;NAMEauthor;Virgile
+Virgile;NAMEauthor;
+Voltaire;NAMEauthor;
+Wagner;NAMEauthor;
+Weber;NAMEauthor;
+Wilde;NAMEauthor;
+William James;NAMEauthor;
+Young;NAMEauthor;
+Zola;NAMEauthor;
+Zweig;NAMEauthor;

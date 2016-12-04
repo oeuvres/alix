@@ -1,0 +1,37 @@
+# liste de tokens qui peuvent finir par un point qui n’est pas une ponctuation
+A.
+av.;;avant
+B.
+C.
+c.-à-d.;;c'est à dire
+D.
+E.
+ed.;;édition
+éd.;;édition
+F.
+G.
+H.
+J.
+J.-J.;;Jean-Jacques
+J.-C.;;Jésus-Christ
+K.
+L.
+l.
+M.;;monsieur
+Mlle.;;mademoiselle
+Melle.;;mademoiselle
+MM.;;messieurs
+N.
+O.
+P.
+p.;;page
+Q.
+R.
+S.
+T.
+U.
+V.
+W.
+X.
+Y.
+Z.

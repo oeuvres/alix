@@ -260,7 +260,7 @@ public class Tokenizer
             graph.lastDel();
           }
           // keep last dot, it is  abbrv
-          s = Lexik.BREVIDOT.get( graph );
+          s = Lexik.brevidot( graph );
           if ( s == null ) {
             pos--;
             graph.lastDel();
@@ -307,13 +307,17 @@ public class Tokenizer
     // upper case ?
     else if (Char.isUpperCase( c )) {
       // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
-      if ( Lexik.name( occ ) ) return;
+      if ( Lexik.name( occ ) ) {
+        return;
+      }
       // start of a sentence ?
       else {
         // Try if word lower case is known as word
         occ.orth.toLower() ;
         // know word will update token
-        if ( Lexik.word( occ ) ) return;
+        if ( Lexik.word( occ ) ) {
+          return;
+        }
         // unknow name
         else {
           // restore the capital word
@@ -395,6 +399,7 @@ public class Tokenizer
         // check next token
         occ2 = getOcc( sliderpos + 1 );
         if ( occ2 == null ) return false; // strange end " Monsieur De "
+        // For La Bruyère, 
         if ( occ2.graph.isFirstUpper() ) { 
           // keep upper case the orthographic form
           if ( !occ2.orth.isFirstUpper() ) occ2.orth.firstUpper();
@@ -510,11 +515,12 @@ public class Tokenizer
       String text;
       text = ""
          // 123456789 123456789 123456789 123456789
-        + " Henti III. mlle Pardon, monsieur Morrel, dit Dantès "
-        + " La Bruyère de ce M. Claude Bernard, d’Artagnan."
+        + " Claude Bernard. Auguste Comte, Comte. Joseph de Maistre, Geoffroy Saint-Hilaire."
+        + " Vient honorer ce beau jour  De son Auguste présence. "
+        + " Henri III. mlle Pardon, monsieur Morrel, dit Dantès "
+        + " De La Bruyère de ce M. Claude Bernard, d’Artagnan."
         + " écrit-il ? Geoffroy Saint-Hilaire"
         + " Félix Le Dantec, Le Dantec, Jean de La Fontaine. La Fontaine. N'est-ce pas ? - La Rochefoucauld - Leibnitz… Descartes, René Descartes."
-        + " , Francis Bacon, Stuart Mill, Maine de Biran, Claude Bernard. Auguste Comte, Comte. Joseph de Maistre, Geoffroy Saint-Hilaire."
         + " D’aventure au XIX<hi rend=\"sup\">e</hi>, Non.</div> Va-t'en à <i>Paris</i>."
         + " M. Toulemonde\n\n n’est pas n’importe qui, "
         + " Les Caractères de La Bruyère, La Rochefoucauld, La Fontaine. Es-tu OK ?"

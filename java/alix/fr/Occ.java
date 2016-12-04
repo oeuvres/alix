@@ -217,7 +217,7 @@ public class Occ
    */
   public Occ tag( final Tag tag )
   {
-    tag.set( tag );
+    this.tag.set( tag );
     return this;
   }
   /**

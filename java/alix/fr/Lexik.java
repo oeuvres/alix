@@ -1,13 +1,15 @@
 package alix.fr;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.Set;
 
 import alix.util.Term;
 import alix.util.TermTrie;
@@ -23,140 +25,132 @@ public class Lexik
 
   /** French stopwords */
   public static final HashSet<String> STOP = new HashSet<String>( (int)( 700 * 0.75 ) );
-  static {
-    String l;
-    try {
-      BufferedReader buf = new BufferedReader( 
-        new InputStreamReader(
-          Tokenizer.class.getResourceAsStream( "stoplist.csv" ), 
-          StandardCharsets.UTF_8
-        )
-      );
-      while ((l = buf.readLine()) != null) STOP.add( l );
-      buf.close();
-    } 
-    catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
+  public static short _STOP = 1;
+  /** 130 000 types French lexicon seems not too bad for memory */
+  public static final HashMap<String, WordEntry> WORD = new HashMap<String, WordEntry>( (int)(150000 * 0.75) );
+  public static short _WORD = 2;
+  /** French names on which keep Capitalization */
+  public static final HashMap<String, NameEntry> NAME = new HashMap<String, NameEntry>( (int)(50000 * 0.75) );
+  public static short _NAME = 3;
   /** Abbreviations with a final dot */
-  public static final HashMap<String,String> BREVIDOT = new HashMap<String,String>( (int)( 100 * 0.75 ) );
-  static {
-    String l;
-    try {
-      BufferedReader buf = new BufferedReader( 
-        new InputStreamReader(
-          Tokenizer.class.getResourceAsStream( "brevidot.csv" ), 
-          StandardCharsets.UTF_8
-        )
-      );
-      String[] cells;
-      buf.readLine(); // skip first line
-      while ((l = buf.readLine()) != null) {
-        l = l.trim();
-        if ( l.isEmpty() ) continue;
-        if (l.charAt( 0 ) == '#' ) continue;
-        cells = l.split( "," );
-        if ( cells.length > 1 ) BREVIDOT.put( cells[0].trim(), cells[1].trim() );
-        else if ( cells.length == 1 ) BREVIDOT.put( cells[0].trim(), cells[0].trim() );
-      }
-      buf.close();
-    } 
-    catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
+  private static final HashMap<String,String> BREVIDOT = new HashMap<String,String>( (int)( 100 * 0.75 ) );
+  public static short _BREVIDOT = 4;
   /** Graphic normalization (replacement) */
   public static final HashMap<String,String> ORTH = new HashMap<String,String>( (int)( 100 * 0.75 ) );
-  static {
-    String l;
-    try {
-      BufferedReader buf = new BufferedReader( 
-        new InputStreamReader(
-          Tokenizer.class.getResourceAsStream( "orth.csv" ), 
-          StandardCharsets.UTF_8
-        )
-      );
-      String[] cells;
-      while ((l = buf.readLine()) != null) {
-        l = l.trim();
-        if ( l.isEmpty() ) continue;
-        if ( l.startsWith( "#" )) continue;
-        cells = l.split( "," );
-        ORTH.put( cells[0], cells[1] );
-      }
-      buf.close();
-    } 
-    catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-  /** French names on which keep Capitalization */
-  public static final HashMap<String, Tag> NAME = new HashMap<String, Tag>( (int)(6000 * 0.75) );
-  static {
-    try {
-      String l;
-      BufferedReader buf = new BufferedReader( 
-          new InputStreamReader(
-            Tokenizer.class.getResourceAsStream( "name.csv" ), 
-            StandardCharsets.UTF_8
-          )
-        );
-        String[] cells = null;
-        Tag tag;
-        while ((l = buf.readLine()) != null) {
-          if ( l.trim().isEmpty() ) continue;
-          if ( l.charAt( 0 ) == '#' ) continue;
-          cells = l.split( "," );
-          if ( cells.length < 2 ) tag= new Tag( Tag.NAME );
-          else tag = new Tag( cells[1] );
-          NAME.put( cells[0].trim(), tag );
-        }
-        buf.close();
-    } 
-    catch (IOException e) {
-      e.printStackTrace();
-    }
-  }    
-  /** 130 000 types French lexicon seems not too bad for memory */
-  public static final HashMap<String, LexikEntry> WORD = new HashMap<String, LexikEntry>( (int)(150000 * 0.75) );
-  static {
-    String l = "";
-    String[] cells = null;
-    try {
-      BufferedReader buf = new BufferedReader( 
-        new InputStreamReader(
-          Tokenizer.class.getResourceAsStream( "word.csv" ), 
-          StandardCharsets.UTF_8
-        )
-      );
-      buf.readLine(); // first line is labels
-      // int i = 0;
-      while ((l = buf.readLine()) != null) {
-        if ( l.isEmpty() ) continue;
-        if ( l.charAt( 0 ) == '#' ) continue;
-        cells = l.split( "\t" );
-        if ( WORD.containsKey( cells[0] ) ) continue;
-        // i++; counter ?
-        WORD.put( cells[0].trim(), new LexikEntry( cells ) );
-      }
-      buf.close();
-    } 
-    // ArrayIndexOutOfBoundsException
-    catch (Exception e) {
-      System.out.println( "line ? "+cells.length+" "+ l );
-      e.printStackTrace();
-    }
-  }
+  public static short _ORTH = 5;
   /** French locutions stored in a Trie */
-  public static TermTrie LOC;
+  public static TermTrie LOC = new TermTrie();
+  public static short _LOC = 6;
+  /* Load dictionaries */
   static {
     try {
-      LOC = new TermTrie( "loc.csv", ",", TermTrie.CLASSPATH);
+      loadRes( "dic/stop.csv", _STOP );
+      loadRes( "dic/commune.csv", _NAME );
+      loadRes( "dic/forename.csv", _NAME );
+      loadRes( "dic/word.csv", _WORD );
+      loadRes( "dic/loc.csv", _LOC );
+      loadRes( "dic/orth.csv", _ORTH );
+      loadRes( "dic/brevidot.csv", _BREVIDOT );
+      loadRes( "dic/name.csv", _NAME );
+      loadRes( "dic/author.csv", _NAME );
     } 
     catch (IOException e) {
       e.printStackTrace();
+    } 
+    catch (ParseException e) {
+      e.printStackTrace();
     }
+  }
+  /**
+   * Load a dictionary in the correct hash map
+   * @throws IOException 
+   * @throws ParseException 
+   */
+  public static void loadRes( String res, int mode ) throws IOException, ParseException 
+  {
+    BufferedReader buf = new BufferedReader( 
+      new InputStreamReader(
+        Tokenizer.class.getResourceAsStream( res ), 
+        StandardCharsets.UTF_8
+      )
+    );
+    load( buf, mode );
+  }
+  /**
+   * Load a dictionary in the correct hash map
+   * @throws IOException 
+   * @throws ParseException 
+   */
+  public static void loadFile( String file, int mode ) throws IOException, ParseException 
+  {
+    BufferedReader buf = new BufferedReader( 
+        new InputStreamReader(new FileInputStream(file), "UTF-8")
+    );
+    load( buf, mode );
+  }
+  /**
+   * Loading a file
+   * @param buf
+   * @param mode
+   * @throws IOException
+   * @throws ParseException 
+   */
+  public static void load( BufferedReader buf, final int mode ) throws IOException, ParseException
+  {
+    String sep = ";";
+    String l;
+    String[] cells;
+    buf.readLine(); // skip first line
+    int tag;
+    int action = 0;
+    while ((l = buf.readLine()) != null) {
+      l = l.trim();
+      if ( l.isEmpty() ) continue;
+      if ( l.charAt( 0 ) == '#' ) continue;
+      cells = l.split( sep );
+      if ( cells.length < 1 ) continue;
+      cells[0] = cells[0].trim();
+      tag = 0;
+      if ( cells.length >= 2 && cells[1] != null && !cells[1].trim().isEmpty() ) tag = Tag.code( cells[1].trim() ); 
+      // une table de nome peut contenir des locutions de plusieurs noms
+      if ( cells[0].indexOf( ' ' ) > 0 ) action = _LOC;
+      else if ( mode != 0 ) action = mode; // mode fixé à l’appel
+      else if ( cells[0].charAt( cells[0].length() - 1 ) == '.' ) action = _BREVIDOT;
+      else if ( Tag.isName( tag ) ) action = _NAME;
+
+      // Les logiques d’insertions dans les dictionnaires
+      if ( action == _WORD) {
+        // default logic for first dico is first win
+        if ( WORD.containsKey( cells[0] ) ) continue;
+        WORD.put( cells[0], new WordEntry( cells ) );
+        continue;
+      }
+      else if ( action == _LOC) {
+        LOC.add( cells );
+        continue;
+      }
+      else if ( action == _STOP) {
+        STOP.add( cells[0] );
+        continue;
+      }
+      else if ( action == _ORTH ) {
+        ORTH.put( cells[0], cells[2] );
+        continue;
+      }
+      else if ( action == _NAME ) {
+        if ( tag == 0 ) tag = Tag.NAME; // liste de noms sans tag
+        NAME.put(  cells[0], new NameEntry(tag, cells) );
+        continue;
+      }
+      else if ( action == _BREVIDOT ) {
+        if ( cells.length == 1 ) BREVIDOT.put( cells[0], cells[0] );
+        else if ( cells.length > 2 ) BREVIDOT.put( cells[0], cells[2].trim() );
+      }
+      else {
+        System.err.println( "LOAD ? "+l );
+      }
+    }
+    buf.close();
   }
   /**
    * Is it a stop word?
@@ -211,13 +205,12 @@ public class Lexik
    * @param tok
    * @return true if entry fond
    */
-  public static boolean word( Occ tok )
+  public static boolean word( Occ occ )
   {
-    // normalize graphical form
-    LexikEntry entry = Lexik.WORD.get( tok.orth );
+    WordEntry entry = Lexik.WORD.get( occ.orth );
     if ( entry == null ) return false;
-    tok.lem( entry.lem );
-    tok.tag( entry.tag.code() );
+    occ.lem( entry.lem );
+    occ.tag( entry.tag.code() );
     return true;
   }
   /**
@@ -225,13 +218,12 @@ public class Lexik
    * @param tok
    * @return true if entry fond
    */
-  public static boolean name( Occ tok )
+  public static boolean name( Occ occ )
   {
-    // normalize graphical form ?
-    Tag tag = Lexik.NAME.get( tok.orth );
-    if ( tag == null ) return false; // no change here the occurrence
-    // tok.lem( entry.lem ); ?? lemmatization of names ?
-    tok.tag( tag.code() );
+    NameEntry entry = Lexik.NAME.get( occ.graph );
+    if ( entry == null ) return false;
+    if ( entry.orth != null ) occ.orth( entry.orth );
+    occ.tag( entry.tag );
     return true;
   }
   /**
@@ -245,11 +237,19 @@ public class Lexik
     return true;
   }
   /**
+   * Normalize graphical form of a term with a table of graphical variants
+   * @param term
+   * @return
+   */
+  public static String brevidot(Term graph) {
+    return Lexik.BREVIDOT.get( graph );
+  }
+  /**
    * Return the fields recorded for this orthographic form
    * @param orth a word in correct orthographic form
    * @return the lexical entry
    */
-  public static LexikEntry entry( String orth )
+  public static WordEntry entry( String orth )
   {
     return Lexik.WORD.get( orth );
   }
@@ -261,7 +261,7 @@ public class Lexik
    */
   public static String lem( final String orth )
   {
-    LexikEntry entry = Lexik.WORD.get( orth );
+    WordEntry entry = Lexik.WORD.get( orth );
     // ? orth or null ?
     if ( entry == null ) return orth;
     return Lexik.WORD.get( orth ).lem;
@@ -273,31 +273,88 @@ public class Lexik
    */
   public static short cat( final String orth )
   {
-    LexikEntry entry = Lexik.WORD.get( orth );
+    WordEntry entry = Lexik.WORD.get( orth );
     if ( entry == null ) return Tag.UNKNOWN;
     return entry.tag.code();
   }
+  public static Set<String> loadSet( String res ) throws IOException, ParseException
+  {
+    Set<String> set = new HashSet<String>();
+    BufferedReader buf = new BufferedReader( 
+      new InputStreamReader(
+        Tokenizer.class.getResourceAsStream( res ), 
+        StandardCharsets.UTF_8
+      )
+    );
+    String sep = ";";
+    String l;
+    String[] cells;
+    buf.readLine(); // skip first line
+    while ((l = buf.readLine()) != null) {
+      l = l.trim();
+      if ( l.isEmpty() ) continue;
+      if ( l.charAt( 0 ) == '#' ) continue;
+      cells = l.split( sep );
+      if ( cells.length < 1 ) continue;
+      cells[0] = cells[0].trim();
+      set.add( cells[0] );
+    }
+    buf.close();
+    return set;
+  }
+  
   /**
    * Compare dics, names should not contain common words
+   * @throws ParseException 
+   * @throws IOException 
    */
-  private static void comp()
+  private static void comp() throws IOException, ParseException
   {
-    SortedSet<String> keys = new TreeSet<String>(WORD.keySet());
-    for ( String word:keys) {
-      if ( NAME.containsKey( word.toLowerCase() )) System.out.println( word );
+    BufferedReader read = new BufferedReader( 
+      new InputStreamReader(
+        Tokenizer.class.getResourceAsStream( "dic/commune.csv" ), 
+        StandardCharsets.UTF_8
+      )
+    );
+    FileWriter writer = new FileWriter("commune.csv" );
+    String sep = ";";
+    String l;
+    String[] cells;
+    while ((l = read.readLine()) != null) {
+      l = l.trim();
+      if ( l.isEmpty() ) continue;
+      if ( l.charAt( 0 ) == '#' );
+      else {
+        cells = l.split( sep );
+        if ( cells.length < 1 ) continue;
+        cells[0] = cells[0].trim();
+        if ( WORD.containsKey( cells[0].toLowerCase() ) ) {
+          writer.write( "# "+l+"\n" );
+          continue;
+        }
+        writer.write( l+"\n" );
+      }
     }
+    read.close();
+    writer.close();
   }
   
   /**
    * For testing
+   * @throws ParseException 
    */
-  public static void main(String[] args) throws IOException 
+  public static void main(String[] args) throws IOException, ParseException 
   {
-    comp();
+    System.out.println( NAME.size() );
+    // comp();
     Occ occ = new Occ(); 
-    for (String token: "Henri III est lorsqu' et depuis quand est il en cette ville ? 25 centimes de hier au soir . et quel sujet l’ y amène ?".split( " " ) ) {
+    for (String token: (
+        "Henri III Abailart est lorsqu' et depuis quand est il en cette ville ?"
+        +" 25 centimes de hier au soir . et quel sujet l’ y amène ?"
+        ).split( " " ) ) {
+      token.replace( '_', ' ' );
       occ.clear();
-      occ.orth( token );
+      occ.graph( token );
       Lexik.word( occ );
       if ( occ.tag.equals( Tag.NULL )) Lexik.name( occ );
       System.out.println( occ );
