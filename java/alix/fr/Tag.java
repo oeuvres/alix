@@ -28,6 +28,7 @@ public final class Tag
   public final static short SUB  = 0x20;
   public final static short SUBm  = 0x21;
   public final static short SUBf  = 0x22;
+  public final static short SUBtit = 0x28;
   public final static short ADJ  = 0x30;
   public final static short ADV  = 0x40;
   public final static short ADVneg = 0x41;
@@ -59,12 +60,12 @@ public final class Tag
   public final static short NAMEpers = 0xB1;
   public final static short NAMEpersm = 0xB2;
   public final static short NAMEpersf = 0xB3;
-  public final static short NAMEauthor = 0xB4;
-  public final static short NAMEplace = 0xB5;
-  public final static short NAMEevent = 0xB6;
-  public final static short NAMEtitle = 0xB7;
-  public final static short NAMEgod = 0xB8;
-  public final static short NAMEpeople = 0xB9;
+  public final static short NAMEauthor = 0xB6;
+  public final static short NAMEplace = 0xB7;
+  public final static short NAMEevent = 0xB8;
+  public final static short NAMEtitle = 0xB9;
+  public final static short NAMEpeople = 0xBC;
+  public final static short NAMEgod = 0xBD;
   public final static short NAMEdemhum = 0xBE;
   public final static short NAMEanimal = 0xBF;
   public final static short EXCL = 0x90;
@@ -98,14 +99,14 @@ public final class Tag
   /**
    * Empty constructor, needed by some consumer
    */
-  Tag( ) 
+  public Tag( ) 
   {
   }
   /**
    * Build a category by code
    * @param code
    */
-  Tag( int code ) 
+  public Tag( int code ) 
   {
     this.code = (short)code;
   }
@@ -113,7 +114,7 @@ public final class Tag
    * Build a category by label
    * @param code
    */
-  Tag( String label ) 
+  public Tag( String label ) 
   {
     this.code = Tag.code( label );
   }
@@ -239,9 +240,10 @@ public final class Tag
   @Override
   public boolean equals( Object o ){
     if ( o == this ) return true;
+    if ( o instanceof String ) return ( code == Tag.code( (String) o ) );
+    if ( o instanceof Tag ) return (((Tag)o).code == code );
     if ( o instanceof Integer ) return o.equals( (int)code );
     if ( o instanceof Short ) return o.equals( code );
-    if ( o instanceof String ) return ( code == Tag.code( (String) o ) );
     if ( o instanceof Term ) return ( code == Tag.code( (Term) o ) );
     return false;
   }

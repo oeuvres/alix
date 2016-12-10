@@ -26,73 +26,34 @@ public class TermTrie
 {
   /** Root node  */
   final Token root = new Token( );
-  /** For resource to loas from ClassPath */
-  public static final boolean CLASSPATH = true;
-  /** Stream where to log, default to System.out, can be changed outside */
-  static public PrintWriter log;
-  static {
-    try {
-      log = new PrintWriter(new PrintStream(System.err, true, "UTF-8"), true);
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
-  }
-  /** Path being loaded, only for log */
-  String path;
+  /** A mapping table to solve some exceptions ? 
+  final HashMap<String, String> mapper;
+  */
 
   /**
-   * Empty constructor, will be populate after
+   * Empty constructor
    */
   public TermTrie()
   {
-    
+    // mapper = new HashMap<String, String>();
   }
-  /**
-   * Build a compound dictionary with a file with one term by line.
-   * @param path the file path
-   * @throws IOException 
-   */
-  public TermTrie( String path ) throws IOException
+  /*
+  public TermTrie( HashMap<String, String> mapper)
   {
-    this( path, null, false);
+    this.mapper = mapper;
   }
-  /**
-   * Build a compound dictionary from a file 
-   * (or a java resource if cp param is set to true)
-   * @param path a resource path, file by default, maybe a ClassPath resource if cp=true
-   * @param separator maybe: null = no grammatical category,  one character = efficient separator, Regexp = used for String.split()
-   * @throws IOException 
-   */
-  public TermTrie( final String path, final String separator ) throws IOException
+  */
+  public void loadFile( final String path, final String separator ) throws IOException
   {
-    this( path, separator, false );
-  }
-  /**
-   * Build a compound dictionary from a file 
-   * (or a java resource if cp param is set to true)
-   * @param path a resource path, file by default, maybe a ClassPath resource if cp=true
-   * @param separator maybe: null = no grammatical category,  one character = efficient separator, Regexp = used for String.split()
-   * @param cp is path denoting a resource in the ClassPath ?
-   * @throws IOException 
-   */
-  public TermTrie( final String path, final String separator, final boolean cp ) throws IOException
-  {
-    InputStream stream;
-    this.path = path;
-    if ( cp ) stream = Tokenizer.class.getResourceAsStream( path );
-    else stream = new FileInputStream( path );
+    InputStream stream = new FileInputStream( path );
     load( stream, separator );
   }
-  /**
-   * Build a compound dictionary from a stream
-   * @param stream
-   * @param separator
-   * @throws IOException
-   */
-  public TermTrie(InputStream stream, final String separator ) throws IOException
+  public void loadRes( final String path, final String separator ) throws IOException
   {
+    InputStream stream = Tokenizer.class.getResourceAsStream( path );
     load( stream, separator );
   }
+
   /**
    * Load a list of compounds from a stream
    * @param stream 
@@ -170,22 +131,28 @@ public class TermTrie
     int lim=chars.length;
     char c;
     int offset = 0;
+    String token;
     for ( int i=0; i<lim; i++) {
       c = chars[i];
       // split on apos ?
       if ( c == '’' || c == '\'' ) {
         chars[i] = '\'';
-        node = node.append( new String( chars, offset, i-offset + 1) );
+        token = new String( chars, offset, i-offset + 1);
+        node = node.append( token );
         offset = i+1;
       }
       // and space (be nice on double spaces, do not create empty words)
       if (Char.isSpace( c )) {
-        if ( offset !=i ) node = node.append( new String( chars, offset, i-offset ) );
+        token = new String( chars, offset, i-offset );
+        if ( offset !=i ) node = node.append( token );
         offset = i+1;
       }
     }
     // last word, trim spaces
-    if ( offset != lim ) node = node.append( new String( chars, offset, lim-offset ) );
+    if ( offset != lim ) {
+      token = new String( chars, offset, lim-offset );
+      node = node.append( token );
+    }
     node.inc(); // update counter (this structure may be used as term counter)
     node.tag( cat ); // a category
     node.orth( orth );
@@ -316,30 +283,40 @@ public class TermTrie
       return this.orth;
     }
     /**
-     * Append a word to this one
+     * Append a token to this one
      * @param word
      */
-    public Token append( final String word )
+    public Token append( String form )
     {
+      // String map = mapper.get( form );
+      // if ( map != null ) form = map;
       Token child = null;
       if ( children == null ) children = new HashMap<String,Token>();
-      else child = children.get( word );
+      else child = children.get( form );
       if (child == null) {
         child = new Token( );
-        children.put( word, child );
+        children.put( form, child );
       }
       return child;
     }
-    
-    public Token get ( final String word )
+    /**
+     * Have an handle on next token
+     * @param form
+     * @return
+     */
+    public Token get ( String form )
     {
+      // String map = mapper.get( form );
+      // if ( map != null ) form = map;
       if ( children == null ) return null;
-      return children.get( word );
+      return children.get( form );
     }
-    public Token get ( final Term word )
+    public Token get ( Term form )
     {
+      // String map = mapper.get( form );
+      // if ( map != null ) form.replace( map );
       if ( children == null ) return null;
-      return children.get( word );
+      return children.get( form );
     }
 
     /**

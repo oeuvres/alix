@@ -3,9 +3,12 @@ package alix.util;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.NumberFormat;
@@ -16,6 +19,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import alix.fr.Lexik;
 
 /**
  * A specialized table for a dictionary of terms, with an int code, an int counter, and an int tag. 
@@ -90,9 +95,9 @@ public class TermDic
     for (String term: terms) add( term, 0, 1, 0 );
   }
   /**
-   * Erase all, for object reuse, and not too much memory reallocation.
+   * For object reuse, and not too much memory reallocation, reset counters (objects are kept)
    */
-  public void clear()
+  public void reset()
   {
     occs=0;
     pointer = 0;
@@ -113,7 +118,7 @@ public class TermDic
   }
 
   /**
-   * Get the code of a term, 0 if not found
+   * Get the code of a term, -1 if not found
    * 
    * @param term
    * @return the key
@@ -121,12 +126,11 @@ public class TermDic
   public int code( Term term )
   {
     int[] value = byTerm.get( term );
-    if (value == null)
-      return 0;
+    if (value == null) return -1;
     return value[ICODE];
   }
   /**
-   * Get the code of a term, 0 if not found
+   * Get the code of a term, -1 if not found
    * 
    * @param term
    * @return the key
@@ -134,8 +138,7 @@ public class TermDic
   public int code( String term )
   {
     int[] value = byTerm.get( term );
-    if (value == null)
-      return 0;
+    if (value == null) return -1;
     return value[ICODE];
   }
   /**
@@ -147,8 +150,7 @@ public class TermDic
   public int tag( Term term )
   {
     int[] value = byTerm.get( term );
-    if (value == null)
-      return 0;
+    if (value == null) return 0;
     return value[ITAG];
   }
   /**
@@ -160,8 +162,7 @@ public class TermDic
   public int tag( String term )
   {
     int[] value = byTerm.get( term );
-    if (value == null)
-      return 0;
+    if (value == null) return 0;
     return value[ITAG];
   }
   /**
@@ -174,13 +175,12 @@ public class TermDic
   public int tag( int code )
   {
     int[] value = byTerm.get( byCode[code] );
-    if (value == null)
-      return 0;
+    if (value == null) return 0;
     return value[ITAG];
   }
 
   /**
-   * Get the count for a term by String, 0 if not found
+   * Get the count for a term by String, -1 if not found
    * 
    * @param term
    * @return the count of occurrences
@@ -188,13 +188,12 @@ public class TermDic
   public int count( String term )
   {
     int[] value = byTerm.get( term );
-    if (value == null)
-      return 0;
+    if (value == null) return -1;
     return value[ICOUNT];
   }
   
   /**
-   * Get the count for a term by Term (a mutable String), 0 if not found
+   * Get the count for a term by Term (a mutable String), -1 if not found
    * 
    * @param term
    * @return the count of occurrences
@@ -202,14 +201,13 @@ public class TermDic
   public int count( Term term )
   {
     int[] value = byTerm.get( term );
-    if (value == null)
-      return 0;
+    if (value == null) return -1;
     return value[ICOUNT];
   }
 
 
   /**
-   * Get the count of a term by code, 0 if not found
+   * Get the count of a term by code, -1 if not found
    * 
    * @param code
    *          a term index
@@ -218,9 +216,18 @@ public class TermDic
   public int count( int code )
   {
     int[] value = byTerm.get( byCode[code] );
-    if (value == null)
-      return 0;
+    if (value == null) return -1;
     return value[ICOUNT];
+  }
+  /**
+   * Create a term with no tag, set its count at 1, or increment if exists
+   * 
+   * @param term a word
+   * @return the code of term
+   */
+  public int add( final String term )
+  {
+    return add( term, 0, 1, 0 );
   }
 
   /**
@@ -230,6 +237,16 @@ public class TermDic
    * @return the code of term
    */
   public int inc( final String term )
+  {
+    return add( term, 0, 1, 0 );
+  }
+  /**
+   * Create a term with no tag (by a Term object), set its count at 1, or increment if exists
+   * 
+   * @param term a word
+   * @return the code of term
+   */
+  public int add( final Term term )
   {
     return add( term, 0, 1, 0 );
   }
@@ -367,11 +384,10 @@ public class TermDic
    */
   public int add( final String term, final int tag, final int amount1, final int amount2 )
   {
-    // this code is repeated to not copy the transmitted term 
     int[] value = byTerm.get( term );
+    if (value == null) return put( term, tag, amount1, amount2);
     occs += amount1;
     occs += amount2;
-    if (value == null) return put( term, tag, amount1, amount2);
     value[ICOUNT] += amount1;
     value[ICOUNT2] += amount2;
     return value[ICODE];
@@ -389,7 +405,6 @@ public class TermDic
    */
   public int add( final Term term, final int tag, final int amount, final int amount2 )
   {
-    // this code is repeated to avoid the copy of 
     int[] value = byTerm.get( term );
     if (value == null) return put( term.toString(), tag, amount, amount2);
     occs += amount;
@@ -413,7 +428,7 @@ public class TermDic
     if (pointer >= byCode.length) {
       final int oldLength = byCode.length;
       final String[] oldData = byCode;
-      byCode = new String[Calcul.square2( oldLength )];
+      byCode = new String[Calcul.nextSquare( oldLength )];
       System.arraycopy( oldData, 0, byCode, 0, oldLength );
     }
     byTerm.put( term, new int[] { pointer, tag, amount, amount2 } );
@@ -583,7 +598,7 @@ public class TermDic
 
   /**
    * Give a csv view of all dictionary
-   * 
+   * TODO a top filter
    * @throws IOException
    */
   public Writer csv( Writer writer, int limit, Set<Term> stoplist ) throws IOException
@@ -591,7 +606,7 @@ public class TermDic
     String[] byCount = byCount();
     int length = byCount.length;
     int count1;
-    writer.write( "TERM\tCOUNT\tPPM\n" );
+    writer.write( "TERM\tCOUNT\tPPM\tTAG\n" );
     try {
       for (int i = 0; i < length; i++) {
         if (stoplist != null && stoplist.contains( byCount[i] ))
@@ -604,6 +619,7 @@ public class TermDic
           byCount[i]
           +"\t"+ count1
           +"\t"+ (double)Math.round( 100000000.0*count1/occs )/100
+          +"\t"+ value[ITAG]
         +"\n" );
       }
     } finally {
@@ -696,16 +712,18 @@ public class TermDic
    * 
    * @throws IOException
    */
-  public static void main( Term[] args ) throws IOException
+  public static void main( String[] args ) throws IOException
   {
-    String text = "un texte court avec un peu des mots un peu pareils des";
-    // Term t = new Term();
+    BufferedReader buf = new BufferedReader(
+      new InputStreamReader( Lexik.class.getResourceAsStream(  "dic/noloc.csv" ), StandardCharsets.UTF_8 )
+    );
+    String l;
     TermDic dic = new TermDic();
-    for ( String s: text.split( " " ) ) {
-      // t.replace( s ); // Mutable key is OK
-      dic.inc( s );
+    while ((l = buf.readLine()) != null) {
+      for ( String s: l.split( " " ) ) {
+        dic.inc( s );
+      }
     }
-    System.out.println( dic );
-    
+    dic.csv( new PrintWriter(System.out) );
   }
 }

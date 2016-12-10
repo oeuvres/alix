@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
@@ -24,21 +25,21 @@ public class Lexik
 {
 
   /** French stopwords */
-  public static final HashSet<String> STOP = new HashSet<String>( (int)( 700 * 0.75 ) );
+  public static HashSet<String> STOP = new HashSet<String>( (int)( 700 * 0.75 ) );
   public static short _STOP = 1;
   /** 130 000 types French lexicon seems not too bad for memory */
-  public static final HashMap<String, WordEntry> WORD = new HashMap<String, WordEntry>( (int)(150000 * 0.75) );
+  public static HashMap<String, WordEntry> WORD = new HashMap<String, WordEntry>( (int)(150000 * 0.75) );
   public static short _WORD = 2;
   /** French names on which keep Capitalization */
-  public static final HashMap<String, NameEntry> NAME = new HashMap<String, NameEntry>( (int)(50000 * 0.75) );
+  public static HashMap<String, NameEntry> NAME = new HashMap<String, NameEntry>( (int)(50000 * 0.75) );
   public static short _NAME = 3;
   /** Abbreviations with a final dot */
-  private static final HashMap<String,String> BREVIDOT = new HashMap<String,String>( (int)( 100 * 0.75 ) );
+  private static HashMap<String,String> BREVIDOT = new HashMap<String,String>( (int)( 100 * 0.75 ) );
   public static short _BREVIDOT = 4;
   /** Graphic normalization (replacement) */
-  public static final HashMap<String,String> ORTH = new HashMap<String,String>( (int)( 100 * 0.75 ) );
+  public static HashMap<String,String> ORTH = new HashMap<String,String>( (int)( 100 * 0.75 ) );
   public static short _ORTH = 5;
-  /** French locutions stored in a Trie */
+  /** Locutions stored in a Trie */
   public static TermTrie LOC = new TermTrie();
   public static short _LOC = 6;
   /* Load dictionaries */
@@ -46,12 +47,13 @@ public class Lexik
     try {
       loadRes( "dic/stop.csv", _STOP );
       loadRes( "dic/commune.csv", _NAME );
+      loadRes( "dic/france.csv", _NAME );
       loadRes( "dic/forename.csv", _NAME );
       loadRes( "dic/word.csv", _WORD );
       loadRes( "dic/loc.csv", _LOC );
       loadRes( "dic/orth.csv", _ORTH );
       loadRes( "dic/brevidot.csv", _BREVIDOT );
-      loadRes( "dic/name.csv", _NAME );
+      loadRes( "dic/name.csv", _NAME ); // Monsieur devient un titre
       loadRes( "dic/author.csv", _NAME );
     } 
     catch (IOException e) {
@@ -68,13 +70,8 @@ public class Lexik
    */
   public static void loadRes( String res, int mode ) throws IOException, ParseException 
   {
-    BufferedReader buf = new BufferedReader( 
-      new InputStreamReader(
-        Tokenizer.class.getResourceAsStream( res ), 
-        StandardCharsets.UTF_8
-      )
-    );
-    load( buf, mode );
+
+    load( Lexik.class.getResourceAsStream( res ), mode );
   }
   /**
    * Load a dictionary in the correct hash map
@@ -83,10 +80,7 @@ public class Lexik
    */
   public static void loadFile( String file, int mode ) throws IOException, ParseException 
   {
-    BufferedReader buf = new BufferedReader( 
-        new InputStreamReader(new FileInputStream(file), "UTF-8")
-    );
-    load( buf, mode );
+    load( new FileInputStream(file), mode );
   }
   /**
    * Loading a file
@@ -95,8 +89,11 @@ public class Lexik
    * @throws IOException
    * @throws ParseException 
    */
-  public static void load( BufferedReader buf, final int mode ) throws IOException, ParseException
+  public static void load( InputStream stream, final int mode ) throws IOException, ParseException
   {
+    BufferedReader buf = new BufferedReader(
+      new InputStreamReader( stream, StandardCharsets.UTF_8 )
+    );
     String sep = ";";
     String l;
     String[] cells;
@@ -207,6 +204,7 @@ public class Lexik
    */
   public static boolean word( Occ occ )
   {
+    if ( ORTH.containsKey( occ.graph ) ) occ.orth( ORTH.get( occ.graph ) );
     WordEntry entry = Lexik.WORD.get( occ.orth );
     if ( entry == null ) return false;
     occ.lem( entry.lem );

@@ -1,5 +1,193 @@
 GRAPH;CAT;ORTH;FREQ
 
+# TODO
+# encore que
+
+# TITULATURES
+
+# Monsieur (frère du roi)
+
+Abbé NAME,NAMEpers
+abbé NAME,NAMEpers
+Altesse;NAMEpers
+Altesse Royale;NAMEpers
+baron NAME;NAMEpers
+baron de NAME;NAMEpers
+baronne NAME;NAMEpers
+baronne de NAME;NAMEpers
+capitaine NAME;NAMEpers
+capitaine de NAME;NAMEpers
+capitaine du NAME;NAMEpers
+chevalier NAME;NAMEpers
+colonel NAME;NAMEpers
+colonel de NAME;NAMEpers
+colonel du NAME;NAMEpers
+commandant NAME;NAMEpers
+commandant de NAME;NAMEpers
+commandant du NAME;NAMEpers
+comte NAME;NAMEpers
+comte de NAME;NAMEpers
+comtesse NAME;NAMEpers
+comtesse de NAME;NAMEpers
+don NAME;NAMEpers
+don NAME de NAME;NAMEpers
+duc de NAME;NAMEpers
+duc NAME de NAME;NAMEpers
+duchesse de NAME;NAMEpers
+duchesse NAME de NAME;NAMEpers
+évêque de NAME;NAMEpers
+général NAME;NAMEpers
+général de NAME;NAMEpers
+la NAME de NAME;NAMEtitle
+la duchesse de NAME;NAMEpers
+lord NAME;NAMEpers
+madame de NAME;NAMEpers
+madame La NAME;NAMEpers
+madame Le NAME;NAMEpers
+madame NAME;NAMEpers
+madame NAME de NAME;NAMEpers
+madame NAME du NAME;NAMEpers
+madame NAME NAME;NAMEpers
+mademoiselle de NAME;NAMEpers
+mademoiselle NAME;NAMEpers
+mademoiselle NAME de NAME;NAMEpers
+mademoiselle NAME du NAME;NAMEpers
+mademoiselle NAME NAME;NAMEpers
+monsieur de NAME;NAMEpers
+monsieur La NAME;NAMEpers
+monsieur Le NAME;NAMEpers
+monsieur NAME;NAMEpers
+monsieur NAME de NAME;NAMEpers
+monsieur NAME du NAME;NAMEpers
+monsieur NAME NAME;NAMEpers
+Monseigneur NAME;NAMEpers
+Monseigneur de NAME;NAMEpers
+NAME NAME;NAMEpers
+NAME NAME de NAME;NAMEpers
+NAME de NAME;NAMEpers
+NAME de La NAME;NAMEpers
+NAME du NAME;NAMEpers
+NAME Le NAME;NAMEpers
+NAME en NAME;NAMEplace
+NAME NUM;NAMEpers
+père NAME;NAMEpers
+prince de NAME;NAMEpers
+princesse de NAME;NAMEpers
+saint NAME;NAMEpers
+sainte NAME;NAMEpers
+sir NAME;NAMEpers
+Son Excellence;NAMEpers
+vicomte de NAME;NAMEpers
+vicomtesse de NAME;NAMEpers
+vidame de NAME;NAMEpers
+Votre Excellence;NAMEpers
+
+
+# Lieux
+
+Saint-Pierre et Miquelon;NAMEplace
+collège de France;NAMEplace
+
+
+
+
+# EXCL 
+mon Dieu;EXCL
+
+
+# LIEUX
+
+avenue NAME;NAMEplace
+avenue de NAME;NAMEplace
+boulevard	NAME;NAMEplace
+boulevard de	NAME;NAMEplace
+bourg de NAME;NAMEplace
+bois NAME;NAMEplace
+bois de NAME;NAMEplace
+bois des SUB;NAMEplace
+bois du SUB;NAMEplace
+buttes NAME;NAMEplace
+buttes de NAME;NAMEplace
+buttes des SUB;NAMEplace
+buttes du SUB;NAMEplace
+caserne NAME;NAMEplace
+chapelle NAME;NAMEplace
+château de NAME;NAMEplace
+faubourg NAME;NAMEplace
+faubourg de NAME;NAMEplace
+faubourg du NAME;NAMEplace
+forêt de NAME;NAMEplace
+île d’NAME;NAMEplace
+île de NAME;NAMEplace
+l’île NAME;NAMEplace
+l’île d’NAME;NAMEplace
+l’île de NAME;NAMEplace
+la forêt de NAME;NAMEplace
+mer NAME;PLACEname
+mer de NAME;PLACEname
+place NAME;PLACEname
+place de NAME;PLACEname
+place des NAME;PLACEname
+place du NAME;PLACEname
+place le NAME;PLACEname
+place la NAME;PLACEname
+pont NAME;PLACEname
+pont d’NAME;PLACEname
+pont de NAME;PLACEname
+port NAME;PLACEname
+port de NAME;PLACEname
+port des NAME;PLACEname
+port du NAME;PLACEname
+port le NAME;PLACEname
+port la NAME;PLACEname
+porte NAME;PLACEname
+porte de NAME;PLACEname
+porte des NAME;PLACEname
+porte du NAME;PLACEname
+porte le NAME;PLACEname
+porte la NAME;PLACEname
+quartier NAME;PLACEname
+quartier de NAME;PLACEname
+quartier des NAME;PLACEname
+quartier du NAME;PLACEname
+quartier le NAME;PLACEname
+quartier la NAME;PLACEname
+palais de NAME;NAMEplace
+passage NAME;NAMEplace
+rue NAME;NAMEplace
+rue d' NAME;NAMEplace
+rue de NAME;NAMEplace
+rue d' SUB;NAMEplace
+rue de SUB;NAMEplace
+rue des NAME;NAMEplace
+rue des SUB;NAMEplace
+tour NAME;PLACEname
+tour le NAME;PLACEname
+tour la NAME;PLACEname
+quartier la NAME;PLACEname
+ville NAME;NAMEplace
+ville de NAME;NAMEplace
+NAME du Nord;NAMEplace
+NAME du nord;NAMEplace
+NAME du Sud;NAMEplace
+NAME du sud;NAMEplace
+
+
+
+# EVENTS
+
+bataille de NAME;NAMEevent
+fête de NAME;NAMEevent
+
+
+
+# TITLE
+
+# l'esprit des lois;NAMEtitle;l'Esprit des Lois
+le NAME de NAME;NAMEtitle
+les mémoires de outre­tombe;NAMEtitle;Les Mémoires d'Outre-tombe
+
+
 # EN TEST
 
 le premier;DETnum
@@ -12,6 +200,7 @@ le second;DETnum
 la seconde;DETnum
 les seconds;DETnum
 les secondes;DETnum
+les deux;DETnum
 un second;DETnum
 le second;DETnum
 le deuxième;DETnum
@@ -19,6 +208,7 @@ la deuxième;DETnum
 les deuxièmes;DETnum
 un deuxième;DETnum
 une deuxième;DETnum
+les trois;DETnum
 le troisième;DETnum
 la troisième;DETnum
 un troisième;DETnum
@@ -67,116 +257,291 @@ le vingtième;DETnum
 la vingtième;DETnum
 un vingtième;DETnum
 une vingtième;DETnum
-
-
-# Personnes
-
-
-# Lieux
-
-Saint-Pierre et Miquelon;NAMEplace
-collège de France;NAMEplace
+un tas de;DETnum
 
 
 
+# locutions préposiotionnelles
 
-# EXCL 
-mon Dieu;EXCL
-
-# BUGS
-
-M elle;SUB;mademoiselle
-M lle;SUB;mademoiselle
-M me;SUB;madame
-
-
-# LIEUX
-
-bourg de NAME;NAMEplace
-château de NAME;NAMEplace
-forêt de NAME;NAMEplace
-île d’NAME;NAMEplace
-île de NAME;NAMEplace
-l’île d’NAME;NAMEplace
-l’île de NAME;NAMEplace
-mer de NAME;PLACEname
-palais de;NAMEplace
-rue NAME;NAMEplace
-rue de NAME;NAMEplace
-rue de SUB;NAMEplace
-rue des NAME;NAMEplace
-rue des SUB;NAMEplace
-ville de;NAMPEplace
-
-
-# TITULATURES
-
-# Monsieur (frère du roi)
-
-Altesse;NAMEpers
-Altesse Royale;NAMEpers
-comte NAME;NAMEpers
-comte de NAME;NAMEpers
-comtesse NAME;NAMEpers
-comtesse de NAME;NAMEpers
-don NAME;NAMEpers
-don NAME de NAME;NAMEpers
-duc de NAME;NAMEpers
-duc NAME de NAME;NAMEpers
-duchesse de NAME;NAMEpers
-duchesse NAME de NAME;NAMEpers
-#de NAME;NAMEpers;il est de Paris
-évêque de NAME;NAMEpers
-la NAME de NAME;NAMEtitle
-la duchesse de NAME;NAMEpers
-lord NAME;NAMEpers
-madame de NAME;NAMEpers
-madame NAME;NAMEpers
-madame NAME de NAME;NAMEpers
-madame NAME NAME;NAMEpers
-mademoiselle de NAME;NAMEpers
-mademoiselle NAME;NAMEpers
-mademoiselle NAME de NAME;NAMEpers
-mademoiselle NAME NAME;NAMEpers
-# monsieur de NAME;NAMEpers
-# monsieur NAME;NAMEpers
-# monsieur NAME de NAME;NAMEpers
-# monsieur NAME NAME;NAMEpers
-Monseigneur NAME;NAMEpers
-Monseigneur de NAME;NAMEpers
-NAME NAME;NAMEpers
-NAME NAME de NAME;NAMEpers
-NAME de NAME;NAMEpers
-NAME de La NAME;NAMEpers
-NAME du NAME;NAMEpers
-NAME Le NAME;NAMEpers
-NAME en NAME;NAMEplace
-NAME NUM;NAMEpers
-père NAME;NAMEpers
-prince de NAME;NAMEpers
-princesse de NAME;NAMEpers
-saint NAME;NAMEpers
-sainte NAME;NAMEpers
-sir NAME;NAMEpers
-Son Excellence;NAMEpers
-vicomte de NAME;NAMEpers
-vicomtesse de NAME;NAMEpers
-vidame de NAME;NAMEpers
-Votre Excellence;NAMEpers
-
-# EVENTS
-
-bataille de NAME;NAMEevent
-fête de NAME;NAMEevent
-
-
-
-# TITLE
-
-# l'esprit des lois;NAMEtitle;l'Esprit des Lois
-le NAME de NAME;NAMEtitle
-les mémoires de outre­tombe;NAMEtitle;Les Mémoires d'Outre-tombe
-
+à bas de;PREP
+à bout de;PREP
+à cause de;PREP
+à cet égard;PREP
+à compter de;PREP
+à condition de;PREP
+à côté de;PREP
+à coup de;PREP
+à défaut de;PREP
+à dessein de;PREP
+à destination de;PREP
+à fin de;PREP
+à force de;PREP
+à grand renfort de;PREP
+à la condition de;PREP
+à la lumière d’;PREP
+à la lumière de;PREP
+à la lumière des;PREP
+à la lumière du;PREP
+à la manière d’;PREP
+à la manière de;PREP
+à la manière des;PREP
+à la mémoire de;PREP
+à la place de;PREP
+à la réserve de;PREP
+à la sortie de;PREP
+à la suite de;PREP
+à la vue de;PREP
+à la zeub;PREP
+à l’adresse de;PREP
+à l’aide de;PREP
+à l’appui de;PREP
+à l’aulne de;PREP
+à l’aune de;PREP
+à l’avenant;PREP
+à l’effet de;PREP
+à l’égal de;PREP
+à l’égard de;PREP
+à l’encontre;PREP
+à l’endroit de;PREP
+à l’entour de;PREP
+à l’épreuve de;PREP
+à l’exemple de;PREP
+à l’extérieur de;PREP
+à l’imitation de;PREP
+à l’instar de;PREP
+à l’intérieur de;PREP
+à l’ombre de;PREP
+à l’opposé de;PREP
+à l’unisson;PREP
+à part;PREP
+à part ça;PREP
+à partir de;PREP
+à partir de là;PREP
+à peine de;PREP
+à propos de;PREP
+à raison de;PREP
+à rebours de;PREP
+à terme;PREP
+à titre de;PREP
+à travers;PREP
+à valeurs dans;PREP
+à voir;PREP
+afin de;PREP
+au beau milieu de;PREP
+au bord de;PREP
+au bout de;PREP
+au contraire de;PREP
+au droit de;PREP
+au détriment de;PREP
+au lieu et place de;PREP
+au milieu de;PREP
+au moment de;PREP
+au moment où;PREP
+au moyen de;PREP
+au niveau de;PREP
+au nom d’;PREP
+au nom de;PREP
+au nom du;PREP
+au point de;PREP
+au préjudice de;PREP
+au prétexte de;PREP
+au prix de;PREP
+au ras de;PREP
+au rebours de;PREP
+au regard de;PREP
+au risque de;PREP
+au sein d’;PREP
+au sein de;PREP
+au sein du;PREP
+au sortir de;PREP
+au spectacle de;PREP
+au sujet de;PREP
+au temps de;PREP
+au travers de;PREP
+au vu de;PREP
+au vu et au su de;PREP
+au vu et su de;PREP
+au-dedans de;PREP
+au-dessous de;PREP
+auprès de;PREP
+aussi peu que;PREP
+autour de;PREP
+aux dépens de;PREP
+aux fins de;PREP
+aux lieu et place de;PREP
+aux portes de;PREP
+avant de;PREP
+avant que de;PREP
+bien loin de;PREP
+cela supposé;PREP
+compte tenu de;PREP
+conformément à;PREP
+conséquemment à;PREP
+crainte de;PREP
+dans la crainte de;PREP
+dans le moment où;PREP
+dans le moment que;PREP
+dans le viseur de;PREP
+dans l’optique de;PREP
+d’après;PREP
+d’au milieu de;PREP
+d’avec;PREP
+de chez;PREP
+de crainte de;PREP
+de façon à;PREP
+de la part d’;PREP
+de la part de;PREP
+de la part du;PREP
+de manière;PREP
+de mon côté;PREP
+de niveau avec;PREP
+de par;PREP
+de parmi;PREP
+de peur de;PREP
+de préférence à;PREP
+défense de;PREP
+défini sur;PREP
+d’entre;PREP
+devant notaire;PREP
+d’ici;PREP
+Dieu sait;PREP
+du milieu de;PREP
+du temps que;PREP
+du vivant de;PREP
+en amont d’;PREP
+en amont de;PREP
+en amont des;PREP
+en amont du;PREP
+en arrière de;PREP
+en aval d’;PREP
+en aval de;PREP
+en aval des;PREP
+en aval du;PREP
+en avant de;PREP
+en ce qui concerne;PREP
+en compagnie de;PREP
+en comparaison de;PREP
+en conformité de;PREP
+en conséquence de;PREP
+en considération de;PREP
+en deçà de;PREP
+en dépit de;PREP
+en dessous;PREP
+en exécution de;PREP
+en face de;PREP
+en fait de;PREP
+en fonction de;PREP
+en forme de;PREP
+en lieu et place de;PREP
+en matière de;PREP
+en même temps que;PREP
+en mémoire de;PREP
+en partant;PREP
+en passant;PREP
+en passe de;PREP
+en présence de;PREP
+en raison de;PREP
+en regard de;PREP
+en sus de;PREP
+en termes de;PREP
+en train de;PREP
+en vertu de;PREP
+en vue de;PREP
+entenant de;PREP
+étant donné;PREP
+eu égard à;PREP
+face à;PREP
+faute de;PREP
+foi de;PREP
+grâce à;PREP
+grâces à;PREP
+hors de;PREP
+il est de fait que;PREP
+il est possible que;PREP
+il n’empêche que;PREP
+il n’en reste pas moins que;PREP
+il pourrait bien se faire que;PREP
+il se pourrait que;PREP
+il serait possible que;PREP
+il y a;PREP
+il y a eut;PREP
+il y avait;PREP
+il y aura;PREP
+in illo tempore;PREP
+jusqu’à;PREP
+jusques à;PREP
+jusques et y compris;PREP
+le diable soit de;PREP
+le long de;PREP
+loin de;PREP
+lors de;PREP
+manque de;PREP
+mort à;PREP
+n’empêche que;PREP
+non content de;PREP
+non plus que;PREP
+non sans;PREP
+par certains côtés;PREP
+par comparaison à;PREP
+par crainte de;PREP
+par devers;PREP
+par l’intermédiaire de;PREP
+par manque de;PREP
+par opposition à;PREP
+par préférence à;PREP
+par rapport à;PREP
+par suite de;PREP
+par-devant notaire;PREP
+pas de;PREP
+pas plus que;PREP
+pas plus tard que;PREP
+pour autant que;PREP
+pour ce qui est de;PREP
+pour des prunes;PREP
+pour ma part;PREP
+pour tout;PREP
+pour un peu;PREP
+près de;PREP
+prêt à;PREP
+proche de;PREP
+quand et quand;PREP
+quant à;PREP
+quant aux;PREP
+quel que soit;PREP
+quoi qu’il en fût;PREP
+s’agissant de;PREP
+sans compter;PREP
+sans plus de;PREP
+sans pour autant;PREP
+sans préjudice de;PREP
+sauf à;PREP
+si peu que;PREP
+sous couleur de;PREP
+sous couvert de;PREP
+sous forme de;PREP
+sous la houlette de;PREP
+sous la plume de;PREP
+sous le couvert de;PREP
+sous le prétexte de;PREP
+sous le rapport de;PREP
+sous les yeux de;PREP
+sous l’ombre de;PREP
+sous peine de;PREP
+sous prétexte de;PREP
+sous réserve de;PREP
+sous un nouveau jour;PREP
+suite à;PREP
+supposé que;PREP
+sur le plan;PREP
+sur le point de;PREP
+sus le sujet de;PREP
+tant et si bien que;PREP
+tant qu’à;PREP
+une fois;PREP
+va pour;PREP
+vent debout contre;PREP
+vis-à-vis de;PREP
+y compris;PREP
 
 # locutions pronominales
 
@@ -190,6 +555,7 @@ l’autre;PROindef
 la dernière;PROindef
 la même;PROindef
 la mienne;PROposs
+la plupart;PROindef
 la sienne;PROposs
 la tienne;PROposs
 le dernier;PROindef
@@ -208,14 +574,15 @@ les siens;PROposs
 les tiennes;PROposs
 les tiens;PROposs
 les vôtres;PROposs
+l'une;PROindef
 n'importe qui;PROindef
 n'importe quoi;PROindef
+quelque chose;PROindef
+qu'est-ce que;PROinter
 quoi que;PROindef
 tous deux;PROindef
 tous les deux;PROindef
 tous les trois;PROindef
-l'une;PROindef
-la plupart;PROindef
 
 
 # locutions conjonctives
@@ -236,15 +603,23 @@ d'autant que;CONJ
 de même que;CONJ
 des fois que;CONJ
 dès que;CONJsubord
+dès lors que;CONJsubord
+de sorte que;CONJ
+en sorte que;CONJ
 jusqu'à ce que;CONJsubord
 la fois où;CONJ
 les fois où;CONJ
 les fois que;CONJ
 même si;CONJsubord
 même quand;CONJ
+ou bien;CONJcoord
+pendant que;CONJsubord
 parce que;CONJsubord
+parce qu;CONJsubord
+parce qu';CONJsubord
 pour une fois que;CONJ
 pour que;CONJsubord
+sans cela;CONJcoord
 sans que;CONJsubord
 toutes les fois que;CONJ
 tandis que;CONJsubord
@@ -259,8 +634,7 @@ a cappella;ADV;
 à chaque fois;ADV;
 à cloche-pied;ADV;
 a contrario;ADV;
-à cropetons;ADV;
-à croupetons;ADV;
+à coup sûr;ADV
 à fond;ADV;
 à fond;ADV;
 a fortiori;ADV;
@@ -282,14 +656,18 @@ a giorno;ADV;
 à la fois;ADV;
 à la saint-glinglin;ADV;
 à leur encontre;ADV;
+à l'instant même;ADV
 à lurelure;ADV;
 à mon encontre;ADV;
 à notre encontre;ADV;
 à NUM fois;ADV;
+à peu près;ADV
 a posteriori;ADV;
 à posteriori;ADV;
+à présent;ADV;
 a priori;ADV;
 à priori;ADV;
+à quoi bon;ADVinter
 à rebrousse-poil;ADV;
 à son encontre;ADV;
 à tâtons;ADV;
@@ -297,54 +675,52 @@ a priori;ADV;
 à ton encontre;ADV;
 à touche-touche;ADV;
 à tue-tête;ADV;
-à votre encontre;ADV;
-ab absurdo;ADV;
-ab initio;ADV;
-ab ovo;ADV;
-ad infinitum;ADV;
-ad libitum;ADV;
-ad limina;ADV;
-ad majorem dei gloriam;ADV;
-ad nutum;ADV;
-ad patres;ADV;
-ad vitam aeternam;ADV;
-al dente;ADV;
-alea jacta est;ADV;
-all right;ADV;
 au delà;ADV;
+aujourd'hui;ADV
+au moins;ADV;
 aux aguets;ADV;
+à votre encontre;ADV;
+à vrai dire;ADV
+bien entendu;ADV
+bien sûr;ADV
+bras dessus bras dessous;ADV
 c'est-à-dire;ADV;
 cette fois-ci;ADV;
 cette fois-là;ADV;
 chaque fois;ADV;
-croa croa;ADV;
 d'abord;ADVtemp;
 d'accord;ADV;
 d'ailleurs;ADV;
+d'autre part;ADV;
 dare dare;ADV;
 de auditu;ADV;
 de facto;ADV;
 de guingois;ADV;
 d'emblée;ADV;
 de même;ADV
-d'ores et déjà;ADV;
 de plano;ADV;
 de plus;ADV;
+d'ores et déjà;ADV;
 de traviole;ADV;
-d'une part;ADV;
+dès lors;ADVtemp
+de temps en temps;ADVtemp
 de visu;ADV;
 dignus est intrare;ADV;
+d'une part;ADV;
 du reste;ADV;
 ecce homo;ADV;
 en catimini;ADV;
 en effet;ADV;
 en loucedé;ADV;
 en outre;ADV;
+en quelque sorte;ADV
 en sus;ADV;
 en tapinois;ADV;
 en tous cas;ADV;
 encore une fois;ADV;
 est-ce qu;ADV;
+est-ce qu';ADV;
+est-ce que;ADV;
 et cætera;ADVquant;
 et caetera;ADVquant;
 et cetera;ADVquant;
@@ -371,12 +747,16 @@ in vitro;ADV;
 in vivo;ADV;
 intra muros;ADV;
 ipso facto;ADV;
+jusqu’au bout;ADV;
+jusqu’ici;ADV
 la première fois;ADV;
 made in;ADV;
+malgré tout;ADV
 manu militari;ADV;
 mezza voce;ADV;
 motu proprio;ADV;
 mutatis mutandis;ADV;
+n'est-ce pas;ADV
 n'est ce pas;ADV;n'est-ce pas
 ne varietur;ADV;
 nihil obstat;ADV;
@@ -398,6 +778,8 @@ quand même;ADV
 qui plus est;ADV;
 recto tono;ADV;
 ric et rac;ADV;
+sans cesse;ADV
+sans doute;ADV
 sic transit gloria mundi;ADV;
 sine die;ADV;
 sine qua non;ADV;
@@ -405,6 +787,7 @@ souventes fois;ADV;
 stricto sensu;ADV;
 sursum corda;ADV;
 tandis que;ADV;
+tant pis;ADV;
 tout de même;ADV
 toutes les fois;ADV;
 tutti frutti;ADV;
@@ -455,6 +838,10 @@ cas particulier;SUB
 casus belli;SUB
 champs élysées;SUB
 check up;SUB
+chef d'oeuvre;SUB
+chef d'œuvre;SUB
+chefs d'oeuvre;SUB
+chefs d'œuvre;SUB
 chewing gum;SUB
 chop suey;SUB
 citizen band;SUB
@@ -465,6 +852,8 @@ commedia dell'arte;SUB
 commedia dell'arte;SUB
 corn flakes;SUB
 corpus delicti;SUB
+coup d'œil;SUB
+coup d'oeil;SUB
 curriculum vitae;SUB
 de amicis;SUB
 de profundis;SUB
@@ -506,6 +895,11 @@ in pace;SUB
 invisible piston;SUB
 irish coffee;SUB
 ite missa est;SUB
+jeune fille;SUB
+jeunes filles;SUB
+jeunes gens;SUB
+jeune homme;SUB
+jeunes hommes;SUB
 jet society;SUB
 kung fu;SUB
 kyrie eleison;SUB
@@ -513,6 +907,7 @@ la plata;SUB
 lacryma christi;SUB
 madre de dios;SUB
 maître queux;SUB
+maître d'hôtel;SUB
 mass media;SUB
 mater dolorosa;SUB
 mea culpa;SUB
@@ -548,12 +943,14 @@ post it;SUB
 prime time;SUB
 public schools;SUB
 punching ball;SUB
+quart d'heure;SUB
 red river;SUB
 requiescat in pace;SUB
 rhythm and blues;SUB
 roast beef;SUB
 rocking chair;SUB
 sainte nitouche;SUB
+salle à manger;SUB
 san francisco;SUB
 scenic railway;SUB
 sedia gestatoria;SUB
@@ -572,6 +969,7 @@ talavera de la reina;SUB
 te deum;SUB
 terra incognita;SUB
 top models;SUB
+tout le monde;SUB
 traveller's chèques;SUB
 tss tss;SUB
 tu autem;SUB
@@ -587,10 +985,11 @@ world music;SUB
 yom kippour;SUB
 yom kippur;SUB
 
-
-# autres locutions
+# locutions adjectivales
 
 ad hoc;ADJ
+à ras;ADJ
+bon marché;ADJ
 by night;ADJ
 dans la merde;ADJ
 deutsche mark;ADJ
@@ -602,6 +1001,10 @@ persona grata;ADJ
 sri lankais;ADJ
 sui generis;ADJ
 too much;ADJ
+
+
+# autres locutions
+
 beaucoup de;DETindef
 la plupart de;DETindef
 la plupart des;DETindef
@@ -640,23 +1043,6 @@ XXVI e;DETnum
 XXVII e;DETnum
 XXVIII e;DETnum
 XXX e;DETnum
-alerte !;EXCL
-alléluia !;EXCL
-am stram gram;EXCL
-arrière !;EXCL
-attention !;EXCL
-cot cot codec;EXCL
-dehors !;EXCL
-dommage !;EXCL
-gna gna;EXCL
-hardi !;EXCL
-inch allah;EXCL
-merci !;EXCL
-quoi !;EXCL
-salut !;EXCL
-tchin tchin;EXCL
-tiens !;EXCL
-tintin !;EXCL
 à l'encontre;PREP
 à l'encontre;PREP
 à l'instar;PREP
@@ -664,3 +1050,4 @@ tintin !;EXCL
 afin d;PREP
 afin de;PREP
 lors de;PREP
+qui aime bien châtie bien;SUB

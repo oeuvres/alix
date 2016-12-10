@@ -1,5 +1,18 @@
 GRAPH;TAG ?;ORTH
 
+Dr;SUB;docteur
+Mgr;SUB;monseigneur
+Mlle;SUB;mademoiselle
+mlle;SUB;mademoiselle
+Mlles;SUB;mesdemoiselles
+mlles;SUB;mesdemoiselles
+Mme;SUB;madame
+mme;SUB;madame
+Mmes;SUB;mesdames
+mmes;SUB;mesdames
+Vve;SUB;veuve
+vve;SUB;veuve
+
 # variante graphique substituée par une forme orthographique standardisée
 # sections : mots de la langue;; noms propres;; abréviations (?)
 
@@ -172,7 +185,6 @@ Sakharoffs;;Sakharov
 Santillane;;Santillana
 Schéhérazade;;Shéhérazade
 Schérer;;Scherer
-Scudéri;;Scudéry
 Sénancour;;Senancour
 Sénancourt;;Senancour
 Sforce;;Sforza
@@ -180,7 +192,6 @@ shakspearien;;shakespearien
 Shylok;;Shylock
 Smolzoff;;Smolzov
 Souwaroff;;Souvarov
-Spinosa;;Spinoza
 St;;Saint
 Stanislavsky;;Stanislavski
 Ste;;Sainte
@@ -330,11 +341,6 @@ manoeuvrière;;manœuvrière
 manoeuvrières;;manœuvrières
 manoeuvriers;;manœuvriers
 manoeuvrons;;manœuvrons
-Mgr;;Monseigneur
-Mlle;;mademoiselle
-mlle;;mademoiselle
-Mme;;madame
-mme;;madame
 moeur;;mœur
 moeurs;;mœurs
 noeud;;nœud

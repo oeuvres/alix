@@ -266,7 +266,7 @@ public class Term implements CharSequence, Comparable<Term>
   {
     hash = 0; // resizing occurs when content change, uncache hashcode
     if ( (start+newlen) <= data.length ) return false;
-    char[] a = new char[ Calcul.square2( start+newlen ) ];
+    char[] a = new char[ Calcul.nextSquare( start+newlen ) ];
     try {
       System.arraycopy( data, 0, a, 0, data.length );
     } catch (Exception e) {
@@ -621,7 +621,7 @@ public class Term implements CharSequence, Comparable<Term>
   {
     // for debug only
     // System.out.println( "length="+data.length+" start="+start+" len="+len );
-    return new String( data, start+0, len );
+    return new String( data, start, len );
   }
   /**
    * No reason to use in CLI, except for testing.

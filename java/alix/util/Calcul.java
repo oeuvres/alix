@@ -52,7 +52,7 @@ public class Calcul
    * @param n
    * @return the next power of 2
    */
-  public static int square2( int n ) {
+  public static int nextSquare( int n ) {
     if ( n == 0 ) return 1;
     // x--;
     n |= n >> 1;

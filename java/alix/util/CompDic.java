@@ -181,7 +181,7 @@ public class CompDic
     TermDic dic = new TermDic();
     for ( String s: text.split( " " ) ) dic.inc( s );
     comp.add1( dic );
-    dic.clear();
+    dic.reset();
     text = "un autre texte avec d’ autres mots arrangés un peu à la diable";
     for ( String s: text.split( " " ) ) dic.inc( s );
     comp.add2( dic );

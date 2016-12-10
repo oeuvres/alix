@@ -317,7 +317,7 @@ public class IntObjectMap<E>
    * @return the minimum possible size for a backing array.
    * @throws IllegalArgumentException if the necessary size is larger than 2<sup>30</sup>.
    */
-  public static int arraySize( final int expected, final float f ) {
+  private static int arraySize( final int expected, final float f ) {
     final long s = Math.max( 2, Calcul.nextSquare( (long)Math.ceil( expected / f ) ) );
     if ( s > (1 << 30) ) throw new IllegalArgumentException( "Too large (" + expected + " expected elements with load factor " + f + ")" );
     return (int)s;
@@ -326,7 +326,7 @@ public class IntObjectMap<E>
   //taken from FastUtil
   private static final int INT_PHI = 0x9E3779B9;
 
-  public static int phiMix( final int x ) {
+  private static int phiMix( final int x ) {
     final int h = x * INT_PHI;
     return h ^ (h >> 16);
   }

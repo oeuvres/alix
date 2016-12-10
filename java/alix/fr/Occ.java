@@ -26,6 +26,8 @@ public class Occ
   public int start = 0;
   /** Char index in the source file  */
   public int end = 0;
+  /** Number of parts in a compound */
+  public short parts;
   /**
    * Empty constructor
    */
@@ -82,6 +84,8 @@ public class Occ
   public Occ apend( Occ occ )
   {
     char c;
+    // ?? Monsieur Claude Bernard
+    if ( this.orth.equals( "monsieur" ) ) this.orth.reset();
     // strip firstname is better for name matching
     if ( this.tag.equals( Tag.NAMEpersf ) || this.tag.equals( Tag.NAMEpersm ) ) {
       this.orth.reset();
