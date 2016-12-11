@@ -1,8 +1,11 @@
-package alix.util;
+package alix.fail;
 
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Random;
+
+import alix.util.Calcul;
+import alix.util.IntVek;
 
 /**
  * 
@@ -340,7 +343,7 @@ public class IntBtree
     long time;
     time = System.nanoTime();
     Random rng = new Random();
-    int max = 30000;
+    int max = 300000;
     int req = 1000000;
     int size;
     // fill a vek with random keys and entries

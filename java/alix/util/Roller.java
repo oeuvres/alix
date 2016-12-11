@@ -7,24 +7,24 @@ package alix.util;
  * @author glorieux-f
  *
  */
-public abstract class Slider
+public abstract class Roller
 {
   /** Size of left wing */
   protected final int left; 
   /** Size of right wing */
   protected final int right; 
   /** Size of the widow */
-  protected final int width;
+  protected final int size;
   /** Index of center cell */
   protected int center;
   /** 
    * Constructor 
    */
-  public Slider(final int left, final int right) 
+  public Roller(final int left, final int right) 
   {
     this.left = left;
     this.right = right;
-    width = left + right + 1;
+    size = left + right + 1;
     center = left;
   }
   /**
@@ -38,7 +38,7 @@ public abstract class Slider
     else if (pos > right) throw(new ArrayIndexOutOfBoundsException(
           pos+" > "+(+right)+", right context size.\n"+this.toString()
     ));
-    return (((center + pos) % width) + width) % width;
+    return (((center + pos) % size) + size) % size;
   }
 
 }

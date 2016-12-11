@@ -29,7 +29,7 @@ import alix.fr.Occ;
 import alix.fr.Tokenizer;
 import alix.util.Char;
 import alix.util.IntObjectMap;
-import alix.util.SliderInt;
+import alix.util.IntRoller;
 import alix.util.IntVek;
 import alix.util.TermDic;
 
@@ -65,7 +65,7 @@ public class Dicovek {
   /** Lemmatize vectors */
   final boolean lemmatize;
   /** Sliding window */
-  private SliderInt win;
+  private IntRoller win;
   /** List of stop words, usually grammatical, do not modify during object life */
   private final Set<String> stoplist;
   /** Current Vector to work on */
@@ -98,7 +98,7 @@ public class Dicovek {
     terms = new TermDic();
     // 44960 is the size of all Zola vocabulary
     vectors = new IntObjectMap<IntVek>(5000);
-    win = new SliderInt(contextLeft, contextRight);
+    win = new IntRoller(contextLeft, contextRight);
     this.lemmatize = lemmatize;
   }
   

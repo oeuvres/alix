@@ -3,8 +3,9 @@ package alix.fr;
 
 import java.io.IOException;
 
-import alix.util.Slider;
+import alix.util.Roller;
 import alix.util.Term;
+import alix.util.TermDic;
 
 /**
  * A sliding window of tokens
@@ -13,7 +14,7 @@ import alix.util.Term;
  *
  * @param <T>
  */
-public class OccSlider extends Slider {
+public class OccSlider extends Roller {
   /** Data of the sliding window */
   private final Occ[] data;
   
@@ -23,8 +24,8 @@ public class OccSlider extends Slider {
   public OccSlider(final int left, final int right) 
   {
     super(left, right);
-    data = new Occ[width];
-    for (int i=0; i<width; i++) data[i] = new Occ();
+    data = new Occ[size];
+    for (int i=0; i<size; i++) data[i] = new Occ();
   }
   /**
    * Move index to the next position and return a pointer on the new current Object,

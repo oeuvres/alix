@@ -54,7 +54,7 @@ public class Term implements CharSequence, Comparable<Term>
   {
     replace( cs, -1, -1 );
   }
-  /*
+  /**
    * Construct a term by copy of a section of char sequence (String, but also String buffers or builders)
    * @param cs a char sequence (String, but also String buffers or builders)
    * @param offset start index from source string
@@ -71,7 +71,7 @@ public class Term implements CharSequence, Comparable<Term>
     return len;
   }
   /**
-   * Link by reference to a section of a term (modification of one of the Term WILL the 2 Term)
+   * Link by reference to a section of a term (modification of one of the Term WILL affect the 2 Term)
    * @param term the source term
    * @param offset start index from source term 
    * @param count number of chars from offset
@@ -510,9 +510,12 @@ public class Term implements CharSequence, Comparable<Term>
     int offset = start;
     int lim = len;
     if (o instanceof Term) {
-      if ( ((Term)o).len != lim ) return false;
-      test = ((Term)o).data;
-      int offset2 = ((Term)o).start;
+      Term oTerm = (Term)o;
+      if ( oTerm.len != lim ) return false;
+      // hashcode already calculated, if different, not same strings
+      if (hash != 0 && oTerm.hash != 0 && hash != oTerm.hash) return false; 
+      test = oTerm.data;
+      int offset2 = oTerm.start;
       for ( int i=0 ; i < lim ; i++ ) {
         if ( data[offset+i] != test[offset2+i] ) return false;
       }

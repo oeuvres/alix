@@ -9,19 +9,19 @@ package alix.util;
  *
  * @param <T>
  */
-public class SliderTerm extends Slider {
+public class TermRoller extends Roller {
   /** Data of the sliding window */
   private final Term[] data;
   
   /** 
    * Constructor, init data
    */
-  public SliderTerm(final int left, final int right) 
+  public TermRoller(final int left, final int right) 
   {
     super(left, right);
-    data = new Term[width];
+    data = new Term[size];
     // Arrays.fill will repeat a reference to the same object but do not create it 
-    for (int i=0; i<width; i++) data[i] = new Term();
+    for (int i=0; i < size; i++) data[i] = new Term();
   }
   /**
    * Get a value by index, positive or negative, relative to center
@@ -114,7 +114,7 @@ public class SliderTerm extends Slider {
     String text = "Son amant emmène un jour O se promener dans un quartier où"
       + " ils ne vont jamais."
     ;
-    SliderTerm win = new SliderTerm(2, 5);
+    TermRoller win = new TermRoller(2, 5);
     for (String token: text.split( " " )) {
       win.push( token );
       System.out.println(win);

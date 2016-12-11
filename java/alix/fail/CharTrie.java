@@ -1,4 +1,4 @@
-package alix.util;
+package alix.fail;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -10,6 +10,8 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.apache.lucene.analysis.util.CharArraySet;
+
+import alix.util.IntObjectMap;
 
 
 /**

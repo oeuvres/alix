@@ -275,6 +275,9 @@ un tas de;DETnum
 à dessein de;PREP
 à destination de;PREP
 à fin de;PREP
+afin d;PREP
+afin d';PREP
+afin de;PREP
 à force de;PREP
 à grand renfort de;PREP
 à la condition de;PREP
@@ -386,7 +389,6 @@ dans l’optique de;PREP
 d’après;PREP
 d’au milieu de;PREP
 d’avec;PREP
-de chez;PREP
 de crainte de;PREP
 de façon à;PREP
 de la part d’;PREP
@@ -405,6 +407,7 @@ d’entre;PREP
 devant notaire;PREP
 d’ici;PREP
 Dieu sait;PREP
+du côté de;PREP
 du milieu de;PREP
 du temps que;PREP
 du vivant de;PREP
@@ -652,7 +655,6 @@ a giorno;ADV;
 à l'envi;ADV;
 à l'improviste;ADV;
 à l'improviste;ADV;
-à la daumont;ADV;
 à la fois;ADV;
 à la saint-glinglin;ADV;
 à leur encontre;ADV;
@@ -679,6 +681,7 @@ au delà;ADV;
 aujourd'hui;ADV
 au moins;ADV;
 aux aguets;ADV;
+à voix basse;ADV
 à votre encontre;ADV;
 à vrai dire;ADV
 bien entendu;ADV
@@ -694,6 +697,7 @@ d'ailleurs;ADV;
 d'autre part;ADV;
 dare dare;ADV;
 de auditu;ADV;
+de bonne heure;ADVtemp
 de facto;ADV;
 de guingois;ADV;
 d'emblée;ADV;
@@ -810,12 +814,19 @@ a priori;SUB
 acid jazz;SUB
 action painting;SUB
 after shave;SUB
+affaires étrangères;SUB
+agent de change;SUB
+agents de change;SUB
 agnus dei;SUB
 air bag;SUB
 alter ego;SUB
 ayants droit;SUB
+assemblée générale;SUB
 back up;SUB
+bain de mer;SUB
+bains de mer;SUB
 beat generation;SUB
+bec de gaz;SUB
 bel canto;SUB
 belle lurette;SUB
 best of;SUB
@@ -827,6 +838,7 @@ bloody mary;SUB
 blue jeans;SUB
 blue note;SUB
 boat people;SUB
+bouton d’or;SUB
 brown sugar;SUB
 bubble gum;SUB
 buen retiro;SUB
@@ -837,11 +849,14 @@ caput mortuum;SUB
 cas particulier;SUB
 casus belli;SUB
 champs élysées;SUB
+chapeau haut de forme;SUB
 check up;SUB
 chef d'oeuvre;SUB
 chef d'œuvre;SUB
 chefs d'oeuvre;SUB
 chefs d'œuvre;SUB
+chemin de fer;SUB
+chemins de fer;SUB
 chewing gum;SUB
 chop suey;SUB
 citizen band;SUB
@@ -849,11 +864,19 @@ coffee shop;SUB
 comic book;SUB
 comic books;SUB
 commedia dell'arte;SUB
-commedia dell'arte;SUB
 corn flakes;SUB
 corpus delicti;SUB
+coup de pied;SUB
 coup d'œil;SUB
 coup d'oeil;SUB
+coups d'œil;SUB
+coups d'oeil;SUB
+coup de main;SUB
+coups de main;SUB
+coup de pied;SUB
+coups de pied;SUB
+coup de poing;SUB
+coups de poings;SUB
 curriculum vitae;SUB
 de amicis;SUB
 de profundis;SUB
@@ -870,18 +893,20 @@ dream team;SUB
 east river;SUB
 fast food;SUB
 five o'clock;SUB
-five o'clock;SUB
 flatus vocis;SUB
 foreign office;SUB
 free jazz;SUB
 fur et à mesure;SUB
 gengis khan;SUB
 girl friend;SUB
+grand'mère;SUB
 happy end;SUB
 happy ends;SUB
 happy few;SUB
 hard edge;SUB
 has been;SUB
+haut de forme;SUB
+haut-de-forme;SUB
 high life;SUB
 hold up;SUB
 homo erectus;SUB
@@ -905,9 +930,11 @@ kung fu;SUB
 kyrie eleison;SUB
 la plata;SUB
 lacryma christi;SUB
+légion d'honneur;SUB
 madre de dios;SUB
 maître queux;SUB
 maître d'hôtel;SUB
+maître de maison;SUB
 mass media;SUB
 mater dolorosa;SUB
 mea culpa;SUB
@@ -926,6 +953,7 @@ night club;SUB
 no man's land;SUB
 no man's land;SUB
 numerus clausus;SUB
+officier de la légion d'honneur;SUB
 olla podrida;SUB
 osso buco;SUB
 pan bagnat;SUB
@@ -935,8 +963,11 @@ pater familias;SUB
 pater noster;SUB
 pax americana;SUB
 persona non grata;SUB
+pied de grue;SUB
 pit bull;SUB
 play back;SUB
+poignée de main;SUB
+poignées de main;SUB
 pom-pom girl;SUB
 pom-pom girls;SUB
 post it;SUB
@@ -949,6 +980,7 @@ requiescat in pace;SUB
 rhythm and blues;SUB
 roast beef;SUB
 rocking chair;SUB
+robe de chambre;SUB
 sainte nitouche;SUB
 salle à manger;SUB
 san francisco;SUB
@@ -974,6 +1006,8 @@ traveller's chèques;SUB
 tss tss;SUB
 tu autem;SUB
 ultima ratio;SUB
+valet de chambre;SUB
+valet de pied;SUB
 vomito negro;SUB
 vox populi;SUB
 vulgum pecus;SUB
@@ -1043,11 +1077,5 @@ XXVI e;DETnum
 XXVII e;DETnum
 XXVIII e;DETnum
 XXX e;DETnum
-à l'encontre;PREP
-à l'encontre;PREP
-à l'instar;PREP
-à l'instar;PREP
-afin d;PREP
-afin de;PREP
 lors de;PREP
 qui aime bien châtie bien;SUB

@@ -4,12 +4,16 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -17,6 +21,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import alix.fr.Lexik;
+import alix.fr.Tokenizer;
 
 
 /**
@@ -32,65 +37,53 @@ public class PhraseDic
   /** Access by phrase */
   private HashMap<Phrase, Ref> phraseMap = new HashMap<Phrase, Ref>();
   /** A local mutable Phrase for testing in the Map of phrases, efficient but not thread safe */
-  private Phrase phrase = new Phrase(0, 0, 0, 0, 0);
+  private Phrase phrase = new Phrase( 5 );
   /** A local mutable String for locution insertion, not thread safe  */
   private Term token = new Term();
 
+  public boolean add( final TermDic words, String compound )
+  {
+    return add( words, compound, -1);
+  }
   /**
    * Add a compound to the dictionary of compounds
    * @param compound space separated words
    */
-  public void add( TermDic dic, String compound )
+  public boolean add( final TermDic words, String compound, final int senselevel )
   {
+    if ( compound == null ) return false;
+    compound = compound.trim();
+    if ( compound.startsWith( "#" )) return false;
     // parse the term, split on space and apos
-    int lim = compound.length();
-    char c;
+    final int lim = compound.length();
+    if ( lim == 0) return false;
+    int code;
     Phrase phrase = this.phrase.reset(); // a temp compound, reset
     Term token = this.token.reset(); // a temp mutable string
-    for ( int i=0; i<lim; i++) {
-      c = compound.charAt( i );
+    for ( int i=0; i< lim; i++) {
+      char c = compound.charAt( i );
+      if ( c == '’' ) c = '\'';
       // split on apos
-      if ( c == '’' || c == '\'' ) {
-        c = '\'';
+      if ( c == '’' || c == '\'' || Char.isSpace( c ) || c == '\t' || c == ';' || i == lim-1   ) {
+        if ( c == '’' || c == '\'' || i == lim-1 ) 
+          token.append( c );
+        code = words.add(token);
+        if ( code > senselevel ) phrase.append( code );
+        token.reset();
+        if ( c == '\t' || c == ';' ) break;
+      }
+      else {
         token.append( c );
-        phrase.append( dic.add(token) );
-        token.reset();
-        continue;
       }
-      // and space 
-      if ( Char.isSpace( c ) ) {
-        // (be nice on double spaces, do not create empty words)
-        if ( token.isEmpty() ) continue;
-        phrase.append( dic.add(token) );
-        token.reset();
-        continue;
-      }
-      if ( c == '\t' || c == ';' ) {
-        break;
-      }
-      // other chars, append to token
-      token.append( c );
     }
-    // last token, append to phrase
-    if ( !token.isEmpty() ) phrase.append( dic.add(token) );
+    // ?? allow simple words ?
+    if ( phrase.size() < 1 ) return false;
     // Add phrase to dictionary
     inc( phrase );
     // here we could add more info on the compound
+    return true;
   }
   
-  public int inc( final int a, final int b) {
-    return inc( phrase.set(a, b) );
-  }
-  public int inc( final int a, final int b, final int c) {
-    return inc( phrase.set(a, b, c) );
-  }
-  public int inc( final int a, final int b, final int c, final int d) {
-    phrase.set(a, b, c, d);
-    return inc( phrase );
-  }
-  public int inc( final int a, final int b, final int c, final int d, final int e ) {
-    return inc( phrase.set(a, b, c, d, e) );
-  }
   public int inc( final Phrase key ) {
     Ref ref = phraseMap.get( key );
     occs++;
@@ -107,6 +100,11 @@ public class PhraseDic
     if ( ref == null ) return false;
     return true;
   }
+  public boolean contains( final IntRoller win ) {
+    Ref ref = phraseMap.get( win );
+    if ( ref == null ) return false;
+    return true;
+  }
 
   public Iterator<Map.Entry<Phrase, Ref>> freqlist( )
   {
@@ -119,6 +117,20 @@ public class PhraseDic
         }
     } );
     return list.iterator();
+  }
+  
+  public void  print( Writer writer, final int limit, final TermDic words) throws IOException
+  {
+    Iterator<Entry<Phrase, Ref>> it = freqlist();
+    Map.Entry<Phrase, Ref> entry;
+    int no = 1;
+    while ( it.hasNext() ) {
+      entry = it.next();
+      writer.write(entry.getKey().toString( words )+" ("+entry.getValue().count()+")\n");
+      no++;
+      if ( no >= 1000 ) break;
+    }
+    writer.flush();
   }
   /**
    * References for a phrase
@@ -139,20 +151,21 @@ public class PhraseDic
     }
   }
   
-  public static void main( String[] args ) throws IOException {
+  public static void main( String[] args ) throws IOException
+  {
     TermDic words = new TermDic();
     PhraseDic phrases = new PhraseDic();
     PhraseDic locutions = new PhraseDic();
     // HashSet<String> nosense = new HashSet<String>();
     // pas à pas ?
     BufferedReader buf = new BufferedReader(
-      new InputStreamReader( Lexik.class.getResourceAsStream(  "dic/locno.csv" ), StandardCharsets.UTF_8 )
+      new InputStreamReader( Lexik.class.getResourceAsStream(  "dic/stop.csv" ), StandardCharsets.UTF_8 )
     );
     String l;
     // define a "sense level" in the dictionary, by inserting a stoplist at first
-    int senseLevel = -1;
+    int senselevel = -1;
     while ((l = buf.readLine()) != null) {
-      senseLevel = words.add( l.trim() );
+      senselevel = words.add( l.trim() );
     }
     buf.close();
     
@@ -163,109 +176,68 @@ public class PhraseDic
       locutions.add( words, l );
     }
     buf.close();
-    System.out.println( locutions.phraseMap.size()+" "+words.term( 1 ) );
+    /*
+    PrintWriter pw = new PrintWriter( new File("test.csv") );
+    locutions.print( pw, 10000, words );
+    System.exit( 1 );
+    */
+    IntRoller zip = new IntRoller(0, 4);
+    IntRoller gram3 = new IntRoller(0, 2);
     
-
-    SliderInt win = new SliderInt(0, 3);
-    String dir="../dumas/";
-    int toks = 0;
-    int lastnc = 0;
+    String dir="../proust/";
+    int size = 3; // taille des expressions
     int code;
-    int senses;
     for (File src : new File( dir ).listFiles()) {
       if ( src.isDirectory() ) continue;
       if ( src.getName().startsWith( "." )) continue;
       if ( !src.getName().endsWith( ".xml" ) ) continue;
-      System.out.print( src );
-      // String src = "../zola/zola.xml";
+      System.out.println( src );
       String xml = new String(Files.readAllBytes( Paths.get( src.toString() ) ), StandardCharsets.UTF_8);
       int pos = xml.indexOf( "</teiHeader>");
       if ( pos < 0 ) pos = 0;
-      int max = xml.length();
       boolean intag = false;
       Term token = new Term();
-      Phrase phr = new Phrase();
-      for (; pos < max; pos++) {
-        char c = xml.charAt( pos );
-        if ( c == '<' ) {
-          intag =true;
-          continue;
-        }
-        if ( c == '>' && intag == true ) {
-          intag = false;
-          continue;
-        }
-        if (intag) continue;
-        if ( Char.isLetter( c )) {
-          token.append( c );
-          continue;
-        }
-        if ( c == '-' ) {
-          token.append( c );
-          continue;
-        }
-        if ( c == '\'' || c == '’') {
-          token.append( '\'' );
-        }
-        // add a word
+      Phrase phr = new Phrase( size );
+      Phrase loc = new Phrase( 5 );
+      int max = xml.length();
+      int occs = 0;
+      Tokenizer toks = new Tokenizer( xml );
+      int exit = 100;
+      int grand = 0;
+      while ( toks.token(token) ) {
         if ( token.isEmpty() ) continue;
-        toks++;
-        code = words.add( token.toLower() );
-        token.reset();
-        win.push( code );
-        // pas encore assez de mots on continue
-        if ( win.get( 0 ) == 0) continue;
-        if ( win.get( 0 ) <= senseLevel ) continue;
+        if ( token.isFirstUpper() ) continue;
+        code = words.add( token );
+        zip.push( code );
+        if ( zip.get( 0 ) == 0 ) continue; 
         
-        senses = 0;
-        phr.reset();
-        
-        // do work with the rolling window
-        phr.append( win.get( 0 ) );
-        if ( win.get( 0 ) > senseLevel ) senses = senses | 0b1;
-        phr.append( win.get( 1 ) );
-        if ( win.get( 1 ) > senseLevel ) senses = senses | 0b10;
-        if ( locutions.contains( phr )) {
-          win.set( 1, 0 );
+        // known expression, delete (replace by something ?)
+        loc.set( zip.get(0), zip.get(1) );
+        if (locutions.contains( loc ) ) {
+          zip.put( 0, 0 ).put( 1, 0 );
           continue;
         }
-        
-        phr.append( win.get( 2 ) );
-        if ( win.get( 2 ) > senseLevel ) senses = senses | 0b100;
-        if ( locutions.contains( phr )) {
-          win.set( 1, 0 );
-          win.set( 2, 0 );
+        if (locutions.contains( loc.append( zip.get(2) ) ) ) {
+          zip.put( 0, 0 ).put( 1, 0 ).put( 2, 0 );
           continue;
         }
-        phr.append( win.get( 3 ) );
-        if ( win.get( 3 ) > senseLevel ) senses = senses | 0b1000;
-        if ( locutions.contains( phr )) {
-          win.set( 1, 0 );
-          win.set( 2, 0 );
+        if (locutions.contains( loc.append( zip.get(3) ) ) ) {
+          zip.put( 0, 0 ).put( 1, 0 ).put( 2, 0 ).put( 3, 0 );
           continue;
         }
-        // if ( (senses & 0b11) == 0b11) 
-        // phrases.inc( win.get(0), win.get(1) );
-        // if ( (senses & 0b111) == 0b111) 
-        // phrases.inc( win.get(0), win.get(1), win.get(2) );
-        // if ( (senses & 0b1111) == 0b1111) 
-        phrases.inc( win.get(0), win.get(1), win.get(2), win.get(3) );
+        if ( zip.get( 0 ) < senselevel ) {
+          continue;
+        }
+        gram3.push( zip.get( 0 ) );
+        if ( gram3.get( 0 ) == 0 ) continue;
+        phr.set( gram3 );
+        phrases.inc( phr );
+        // System.out.println( phrase.toString( words ) );
+        // if ( --exit < 0 ) System.exit( 1 );
       }
-      System.out.println( " "+toks+" tokens" );
-      lastnc = phrases.occs;
     }
     System.out.println( "Parsé" );
     System.out.println( phrases.phraseMap.size()+" ngrams" );
-    
-    Iterator<Entry<Phrase, Ref>> it = phrases.freqlist();
-    Map.Entry<Phrase, Ref> entry;
-    int no = 1;
-    while ( it.hasNext() ) {
-      entry = it.next();
-      // System.out.println( no+". "+entry.getKey()+" ("+entry.getValue().count+")" );
-      System.out.println(entry.getKey().toString( words )+" ("+entry.getValue().count()+")");
-      no++;
-      if ( no >= 1000 ) break;
-    }
+    phrases.print( new PrintWriter(System.out), 1000, words );
   }
 }
