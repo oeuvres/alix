@@ -209,7 +209,7 @@ public class Phrase
   {
     StringBuffer sb = new StringBuffer();
     for (int i=0; i < size; i++ ) {
-      if ( i > 0 ) sb.append( " " );
+      if ( i > 0 && sb.charAt( sb.length()-1 ) != '\'' ) sb.append( " " );
       sb.append( dic.term( data[i]) );
     }
     return sb.toString();

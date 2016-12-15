@@ -92,8 +92,10 @@ collège de France;NAMEplace
 
 
 # EXCL 
-mon Dieu;EXCL
 
+mon Dieu;EXCL
+allons allons;EXCL
+que le diable l'emporte;EXCL
 
 # LIEUX
 
@@ -345,7 +347,7 @@ au niveau de;PREP
 au nom d’;PREP
 au nom de;PREP
 au nom du;PREP
-au point de;PREP
+# au point de;PREP
 au préjudice de;PREP
 au prétexte de;PREP
 au prix de;PREP
@@ -394,7 +396,7 @@ de façon à;PREP
 de la part d’;PREP
 de la part de;PREP
 de la part du;PREP
-de manière;PREP
+de manière à;PREP
 de mon côté;PREP
 de niveau avec;PREP
 de par;PREP
@@ -472,6 +474,7 @@ il y avait;PREP
 il y aura;PREP
 in illo tempore;PREP
 jusqu’à;PREP
+jusqu'à la fin;PREP
 jusques à;PREP
 jusques et y compris;PREP
 le diable soit de;PREP
@@ -682,6 +685,7 @@ aujourd'hui;ADV
 au moins;ADV;
 aux aguets;ADV;
 à voix basse;ADV
+à voix haute;ADV
 à votre encontre;ADV;
 à vrai dire;ADV
 bien entendu;ADV
@@ -691,6 +695,7 @@ c'est-à-dire;ADV;
 cette fois-ci;ADV;
 cette fois-là;ADV;
 chaque fois;ADV;
+côte à côte;ADV
 d'abord;ADVtemp;
 d'accord;ADV;
 d'ailleurs;ADV;
@@ -714,9 +719,12 @@ d'une part;ADV;
 du reste;ADV;
 ecce homo;ADV;
 en catimini;ADV;
+en connaissance de cause;ADV
 en effet;ADV;
 en loucedé;ADV;
 en outre;ADV;
+en pleine connaissance de cause;ADV
+en plein jour;ADV
 en quelque sorte;ADV
 en sus;ADV;
 en tapinois;ADV;
@@ -751,6 +759,7 @@ in vitro;ADV;
 in vivo;ADV;
 intra muros;ADV;
 ipso facto;ADV;
+jour après jour;ADV
 jusqu’au bout;ADV;
 jusqu’ici;ADV
 la première fois;ADV;
@@ -766,6 +775,7 @@ ne varietur;ADV;
 nihil obstat;ADV;
 non troppo;ADV;
 nota bene;ADV;
+nulle part;ADV
 NUM fois;ADV;
 NUM fois par an;ADV;
 NUM fois par mois;ADV;
@@ -792,6 +802,7 @@ stricto sensu;ADV;
 sursum corda;ADV;
 tandis que;ADV;
 tant pis;ADV;
+tour à tour;ADV
 tout de même;ADV
 toutes les fois;ADV;
 tutti frutti;ADV;
@@ -807,6 +818,29 @@ tout de même;ADV
 vade retro;ADV;
 vae soli;ADV;
 vae victis;ADV;
+
+# locutions verbales
+
+aller droit;SUB
+devoir dir;SUB
+donner l'ordre;SUB
+entendre parler;VERB
+entendu parler;VERB
+entrer en ligne de compte;VERB
+mettre la table;VERB
+veut dire;VERB
+vouloir dire;VERB
+voulu dire;VERB
+prendre garde;VERB
+prendre part;VERB
+prendre place;VERB
+savoir bien;VERB
+se rendre compte;VERB
+rendre compte;VERB
+rendait compte;VERB
+rendre service;VERB
+rendu compte;VERB
+tomber à genoux;VERB
 
 # locutions nominales
 
@@ -825,8 +859,11 @@ assemblée générale;SUB
 back up;SUB
 bain de mer;SUB
 bains de mer;SUB
+bande à part;SUB;
 beat generation;SUB
+beau temps;SUB
 bec de gaz;SUB
+becs de gaz;SUB
 bel canto;SUB
 belle lurette;SUB
 best of;SUB
@@ -838,46 +875,74 @@ bloody mary;SUB
 blue jeans;SUB
 blue note;SUB
 boat people;SUB
+bonne volonté;SUB
+bon sens;SUB
 bouton d’or;SUB
 brown sugar;SUB
 bubble gum;SUB
 buen retiro;SUB
+cabinet de toilette;SUB
+café au lait;SUB
 call girl;SUB
 call girls;SUB
 canadian river;SUB
 caput mortuum;SUB
 cas particulier;SUB
 casus belli;SUB
-champs élysées;SUB
+chambre à coucher;SUB
+champ de bataille;SUB
 chapeau haut de forme;SUB
 check up;SUB
-chef d'oeuvre;SUB
-chef d'œuvre;SUB
+chef d'oeuvre;SUB;chef-d'œuvre
+chef d'œuvre;SUB;chef-d'œuvre
+chef-d'oeuvre;SUB;chef-d'œuvre
+chef-d'œuvre;SUB
 chefs d'oeuvre;SUB
 chefs d'œuvre;SUB
+chefs-d'oeuvre;SUB
+chefs-d'œuvre;SUB
 chemin de fer;SUB
+chemin de fer d'intérêt local;SUB
 chemins de fer;SUB
 chewing gum;SUB
 chop suey;SUB
 citizen band;SUB
+clair de lune;SUB
 coffee shop;SUB
+coin de l’œil;SUB
+coin de l’oeil;SUB
 comic book;SUB
 comic books;SUB
 commedia dell'arte;SUB
+connaissance de cause;SUB
 corn flakes;SUB
 corpus delicti;SUB
-coup de pied;SUB
+coup de balai;SUB
+coups de balai;SUB
+coup de feu;SUB
+coups de feu;SUB
+coup de fusil;SUB
+coups de fusil;SUB
+coup de main;SUB
+coups de main;SUB
+coup d'épée;SUB
+coups d'épée;SUB
+coup de pistolet;SUB
+coups de pistolet;SUB
 coup d'œil;SUB
 coup d'oeil;SUB
 coups d'œil;SUB
 coups d'oeil;SUB
-coup de main;SUB
-coups de main;SUB
 coup de pied;SUB
 coups de pied;SUB
 coup de poing;SUB
 coups de poings;SUB
+coup de vent;SUB
+coups de vent;SUB
+cri de joie;SUB
 curriculum vitae;SUB
+dame patronnesse;SUB
+dames patronnesses;SUB
 de amicis;SUB
 de profundis;SUB
 de santis;SUB
@@ -888,18 +953,30 @@ della robbia;SUB
 deo gratias;SUB
 deus ex machina;SUB
 dies irae;SUB
+dîner en ville;SUB
 downing street;SUB
 dream team;SUB
 east river;SUB
+enfant de chœur;SUB
+enfants de chœur;SUB
+enfant de choeur;SUB;enfant de chœur
+enfants de choeur;SUB;enfants de chœur
+face à face;SUB
 fast food;SUB
 five o'clock;SUB
 flatus vocis;SUB
 foreign office;SUB
 free jazz;SUB
 fur et à mesure;SUB
+garde nationale;SUB
+garde national;SUB
+gardes nationaux;SUB
 gengis khan;SUB
+gens du monde;SUB
+garde champêtre;SUB
 girl friend;SUB
 grand'mère;SUB
+grand'tante;SUB
 happy end;SUB
 happy ends;SUB
 happy few;SUB
@@ -926,17 +1003,27 @@ jeunes gens;SUB
 jeune homme;SUB
 jeunes hommes;SUB
 jet society;SUB
+jour de l'an;SUB
+juge d’instruction;SUB
 kung fu;SUB
 kyrie eleison;SUB
 la plata;SUB
 lacryma christi;SUB
 légion d'honneur;SUB
+ligne de compte;SUB
+lit de sangle;SUB
 madre de dios;SUB
+maison de passe;SUB
+maisons de passe;SUB
 maître queux;SUB
 maître d'hôtel;SUB
 maître de maison;SUB
+maîtresse de maison;SUB
+marchand de vin;SUB
+marchands de vin;SUB
 mass media;SUB
 mater dolorosa;SUB
+mauvaise humeur;SUB
 mea culpa;SUB
 melting pot;SUB
 middle class;SUB
@@ -953,29 +1040,46 @@ night club;SUB
 no man's land;SUB
 no man's land;SUB
 numerus clausus;SUB
+œuvre d'art;SUB
+oeuvre d'art;SUB
+œuvres d'art;SUB
+œuvre d'art;SUB
 officier de la légion d'honneur;SUB
 olla podrida;SUB
 osso buco;SUB
+lieutenant de police;SUB
 pan bagnat;SUB
+parole d'honneur;SUB
 part time;SUB
 paso doble;SUB
 pater familias;SUB
 pater noster;SUB
+pauvre diable;SUB
 pax americana;SUB
 persona non grata;SUB
+peu de chose;SUB
 pied de grue;SUB
+pied de lit;SUB
+pieds de lit;SUB
 pit bull;SUB
 play back;SUB
+plein air;SUB;
 poignée de main;SUB
 poignées de main;SUB
+point de vue;SUB
 pom-pom girl;SUB
 pom-pom girls;SUB
+porte de derrière;SUB
 post it;SUB
+premier âge;SUB
+premier consul;SUB
 prime time;SUB
+procureur du roi;SUB
 public schools;SUB
 punching ball;SUB
 quart d'heure;SUB
 red river;SUB
+reine mère;SUB
 requiescat in pace;SUB
 rhythm and blues;SUB
 roast beef;SUB
@@ -985,12 +1089,15 @@ sainte nitouche;SUB
 salle à manger;SUB
 san francisco;SUB
 scenic railway;SUB
+secrétaire général;SUB
 sedia gestatoria;SUB
 self-made man;SUB
 sex appeal;SUB
 sex shop;SUB
 sex shops;SUB
 soap opéra;SUB
+signe de tête;SUB
+signe de croix;SUB
 sri lankais;SUB
 stabat mater;SUB
 statu quo;SUB
@@ -999,6 +1106,7 @@ struggle for life;SUB
 taï chi;SUB
 talavera de la reina;SUB
 te deum;SUB
+temps à perdre;SUB
 terra incognita;SUB
 top models;SUB
 tout le monde;SUB
@@ -1008,7 +1116,9 @@ tu autem;SUB
 ultima ratio;SUB
 valet de chambre;SUB
 valet de pied;SUB
-vomito negro;SUB
+verre à vin;SUB
+verres à vin;SUB
+vieille dame;SUB
 vox populi;SUB
 vulgum pecus;SUB
 wait and see;SUB
@@ -1021,6 +1131,7 @@ yom kippur;SUB
 
 # locutions adjectivales
 
+à bout de force;ADJ
 ad hoc;ADJ
 à ras;ADJ
 bon marché;ADJ

@@ -153,9 +153,16 @@ public class PhraseDic
   
   public static void main( String[] args ) throws IOException
   {
+    final String dir="../proust/";
+    final int size = 3; // taille des expressions
+    IntRoller gram3 = new IntRoller(0, size - 1);
+
+    
     TermDic words = new TermDic();
     PhraseDic phrases = new PhraseDic();
     PhraseDic locutions = new PhraseDic();
+    
+    int NOM = words.add( "NOM" );
     // HashSet<String> nosense = new HashSet<String>();
     // pas à pas ?
     BufferedReader buf = new BufferedReader(
@@ -168,6 +175,8 @@ public class PhraseDic
       senselevel = words.add( l.trim() );
     }
     buf.close();
+    
+
     
     buf = new BufferedReader(
       new InputStreamReader( Lexik.class.getResourceAsStream(  "dic/loc.csv" ), StandardCharsets.UTF_8 )
@@ -182,10 +191,9 @@ public class PhraseDic
     System.exit( 1 );
     */
     IntRoller zip = new IntRoller(0, 4);
-    IntRoller gram3 = new IntRoller(0, 2);
+    IntRoller label = new IntRoller(12, 0);
+    IntRoller mort = new IntRoller(0, 2).push( 959 ).push( 959 ).push( 959 );
     
-    String dir="../proust/";
-    int size = 3; // taille des expressions
     int code;
     for (File src : new File( dir ).listFiles()) {
       if ( src.isDirectory() ) continue;
@@ -195,44 +203,68 @@ public class PhraseDic
       String xml = new String(Files.readAllBytes( Paths.get( src.toString() ) ), StandardCharsets.UTF_8);
       int pos = xml.indexOf( "</teiHeader>");
       if ( pos < 0 ) pos = 0;
-      boolean intag = false;
       Term token = new Term();
       Phrase phr = new Phrase( size );
       Phrase loc = new Phrase( 5 );
-      int max = xml.length();
       int occs = 0;
       Tokenizer toks = new Tokenizer( xml );
       int exit = 100;
-      int grand = 0;
+      int labeli = 0;
       while ( toks.token(token) ) {
         if ( token.isEmpty() ) continue;
-        if ( token.isFirstUpper() ) continue;
-        code = words.add( token );
+        if ( token.isFirstUpper() ) code = NOM;
+        else code = words.add( token );
         zip.push( code );
+        
         if ( zip.get( 0 ) == 0 ) continue; 
         
-        // known expression, delete (replace by something ?)
+        // known expression, group
         loc.set( zip.get(0), zip.get(1) );
         if (locutions.contains( loc ) ) {
-          zip.put( 0, 0 ).put( 1, 0 );
+          code = words.add( loc.toString( words ) );
+          zip.set( 0, 0 ).set( 1, code );
           continue;
         }
         if (locutions.contains( loc.append( zip.get(2) ) ) ) {
-          zip.put( 0, 0 ).put( 1, 0 ).put( 2, 0 );
+          code = words.add( loc.toString( words ) );
+          zip.set( 0, 0 ).set( 1, 0 ).set( 2, code );
           continue;
         }
         if (locutions.contains( loc.append( zip.get(3) ) ) ) {
-          zip.put( 0, 0 ).put( 1, 0 ).put( 2, 0 ).put( 3, 0 );
+          code = words.add( loc.toString( words ) );
+          zip.set( 0, 0 ).set( 1, 0 ).set( 2, 0 ).set( 3, code );
           continue;
         }
+        if ( zip.get( 0 ) == 0 ) continue;
+        // on nettoie après chaque nom propre
+        if ( zip.get( 0 ) == NOM) {
+          /*
+          System.out.println( zip.toString( words ) );
+          if ( --exit < 0 ) System.exit( 1 );
+          */
+          gram3.clear();
+          label.clear();
+          continue;
+        }
+        // garder la mémoire de tous les mots, même vide
+        label.push( zip.get( 0 ) );
+        // maintenant passer les mots vides 
+        // à partir d'ici cela peut devenir une expression, enregistrer les mots vides
         if ( zip.get( 0 ) < senselevel ) {
           continue;
         }
         gram3.push( zip.get( 0 ) );
         if ( gram3.get( 0 ) == 0 ) continue;
+        
+        // System.out.println( label.toString( words ) );
+        // System.out.println( "— "+gram3.toString( words ) );
+        if ( mort.equals( gram3 )) System.out.println( label.toString(words) );
         phr.set( gram3 );
         phrases.inc( phr );
-        // System.out.println( phrase.toString( words ) );
+        // label.clear();
+        // if (beginIndex==0 || endIndex==0 ) continue;
+        // System.out.println( beginIndex+" "+endIndex );
+        // System.out.println( xml.substring( beginIndex, endIndex ) );
         // if ( --exit < 0 ) System.exit( 1 );
       }
     }

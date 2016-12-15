@@ -28,16 +28,19 @@ public abstract class Roller
     center = left;
   }
   /**
-   * Get pointer on the data array from a position
+   * Get pointer on the data array from a position.
+   * Will roll around array if out the limits
    */
   protected int pointer(final int pos) 
   {
+    /*
     if (pos < -left) throw(new ArrayIndexOutOfBoundsException(
         pos+" < "+(-left)+", left context size.\n"+this.toString()
     ));
     else if (pos > right) throw(new ArrayIndexOutOfBoundsException(
           pos+" > "+(+right)+", right context size.\n"+this.toString()
     ));
+    */
     return (((center + pos) % size) + size) % size;
   }
 

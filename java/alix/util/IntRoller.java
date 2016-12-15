@@ -25,7 +25,7 @@ public class IntRoller extends Roller {
     data = new int[size];
   }
   /**
-   * Return a primary value for a position, positive or negative, relative to center
+   * Return a value for a position, positive or negative, relative to center
    * 
    * @param pos
    * @return the primary value
@@ -40,7 +40,7 @@ public class IntRoller extends Roller {
    * @param pos
    * @return the primary value
    */
-  public IntRoller put(final int pos, final int value) 
+  public IntRoller set(final int pos, final int value) 
   {
     onWrite();
     int index = pointer(pos);
@@ -51,14 +51,25 @@ public class IntRoller extends Roller {
   /**
    * Add a value by the end
    */
-  public int push(final int value) 
+  public IntRoller push(final int value) 
   {
     onWrite();
-    int ret = data[ pointer( -left ) ];
+    // int ret = data[ pointer( -left ) ];
     center = pointer( +1 );
     data[ pointer(right) ] = value;
-    return ret;
+    return this;
   }
+  public IntRoller clear()
+  {
+    int length = data.length;
+    for ( int i = 0; i < length; i++ ) {
+      data[i] = 0;
+    }
+    return this;
+  }
+  /**
+   * 
+   */
   public void onWrite()
   {
     hash = 0;
@@ -93,11 +104,14 @@ public class IntRoller extends Roller {
     if (o instanceof IntRoller) {
       IntRoller roller = (IntRoller)o;
       if ( roller.size != size ) return false;
-      int i=size-1;
-      do {
-        if ( data[i] == roller.data[i] ) return false;
-        i--;
-      } while( i >= 0 );
+      int pos1=-left;
+      int pos2=-roller.left;
+      int max1=right;
+      while(pos1 <= max1) {
+        if ( get(pos1) != roller.get( pos2 ) ) return false;
+        pos1++;
+        pos2++;
+      }
       return true;
     }
     return false;
@@ -121,10 +135,11 @@ public class IntRoller extends Roller {
   public String toString( TermDic words ) {
     StringBuilder sb = new StringBuilder();
     for (int i = -left; i <= right; i++) {
+      int val = get(i);
       if (i == 0) sb.append( "<" );
-      sb.append( words.term( get(i) ) );
+      if ( val != 0 ) sb.append( words.term( val ) );
       if (i == 0) sb.append( ">" );
-      sb.append( " " );
+      if ( val != 0 ) sb.append( " " );
     }
     return sb.toString();
   }
