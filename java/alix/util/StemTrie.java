@@ -22,27 +22,17 @@ import alix.fr.Tokenizer;
  * @author Frédéric Glorieux
  *
  */
-public class TermTrie
+public class StemTrie
 {
   /** Root node  */
-  final Token root = new Token( );
-  /** A mapping table to solve some exceptions ? 
-  final HashMap<String, String> mapper;
-  */
+  final Stem root = new Stem( );
 
   /**
    * Empty constructor
    */
-  public TermTrie()
+  public StemTrie()
   {
-    // mapper = new HashMap<String, String>();
   }
-  /*
-  public TermTrie( HashMap<String, String> mapper)
-  {
-    this.mapper = mapper;
-  }
-  */
   public void loadFile( final String path, final String separator ) throws IOException
   {
     InputStream stream = new FileInputStream( path );
@@ -125,7 +115,7 @@ public class TermTrie
    */
   public void add( String term, int cat, String orth )
   {
-    Token node = getRoot();
+    Stem node = getRoot();
     // parse the term, split on space and apos
     char[] chars=term.toCharArray();
     int lim=chars.length;
@@ -210,7 +200,7 @@ public class TermTrie
    * @author user
    *
    */
-  public Token getRoot()
+  public Stem getRoot()
   {
     return root;
   }
@@ -220,10 +210,10 @@ public class TermTrie
     return root.toString();
   }
 
-  public class Token
+  public class Stem
   {
     /** List of children  */
-    private HashMap<String,Token> children;
+    private HashMap<String,Stem> children;
     /** Word count, incremented each time the same compound is added */
     private int count;
     /** Grammatical category */
@@ -231,7 +221,7 @@ public class TermTrie
     /** A correct graphical form for this token sequence */
     private String orth ;
     /** Constructor */
-    public Token( )
+    public Stem( )
     {
       // this.word = word;
     }
@@ -256,7 +246,7 @@ public class TermTrie
      * Set a grammatical category for this node 
      * @param cat a grammatical category code
      */
-    public Token tag( final int cat ) {
+    public Stem tag( final int cat ) {
       this.tag = (short)cat;
       return this;
     }
@@ -271,7 +261,7 @@ public class TermTrie
      * Set a normalized graphical version for the term
      * @return the category
      */
-    public Token orth( final String orth ) {
+    public Stem orth( final String orth ) {
       this.orth = orth;
       return this;
     }
@@ -286,15 +276,15 @@ public class TermTrie
      * Append a token to this one
      * @param word
      */
-    public Token append( String form )
+    public Stem append( String form )
     {
       // String map = mapper.get( form );
       // if ( map != null ) form = map;
-      Token child = null;
-      if ( children == null ) children = new HashMap<String,Token>();
+      Stem child = null;
+      if ( children == null ) children = new HashMap<String,Stem>();
       else child = children.get( form );
       if (child == null) {
-        child = new Token( );
+        child = new Stem( );
         children.put( form, child );
       }
       return child;
@@ -304,14 +294,14 @@ public class TermTrie
      * @param form
      * @return
      */
-    public Token get ( String form )
+    public Stem get ( String form )
     {
       // String map = mapper.get( form );
       // if ( map != null ) form = map;
       if ( children == null ) return null;
       return children.get( form );
     }
-    public Token get ( Term form )
+    public Stem get ( Term form )
     {
       // String map = mapper.get( form );
       // if ( map != null ) form.replace( map );
@@ -352,7 +342,7 @@ public class TermTrie
    */
   public static void main( String[] args ) throws IOException
   {
-    TermTrie dic = new TermTrie();
+    StemTrie dic = new StemTrie();
     String[] terms = new String[]{
       "d’abord", "d'alors", "parce   que", "afin que    ", "afin de", "afin", "ne pas ajouter", "parce"
     };
@@ -363,7 +353,7 @@ public class TermTrie
     }
     System.out.println( dic );
     for (String term:terms ) {
-      Token node = dic.getRoot();
+      Stem node = dic.getRoot();
       for ( String word: term.split( " " ) ) {
         node = node.get( word );
         if ( node == null ) break;

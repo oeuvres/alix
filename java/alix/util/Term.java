@@ -325,7 +325,7 @@ public class Term implements CharSequence, Comparable<Term>
    * Put first char upperCase
    * @return the Term for chaining
    */
-  public Term firstUpper()
+  public Term firstToUpper()
   {
     hash = 0;
     data[start] = Character.toUpperCase( data[start] );
@@ -622,8 +622,6 @@ public class Term implements CharSequence, Comparable<Term>
   @Override
   public String toString( )
   {
-    // for debug only
-    // System.out.println( "length="+data.length+" start="+start+" len="+len );
     return new String( data, start, len );
   }
   /**

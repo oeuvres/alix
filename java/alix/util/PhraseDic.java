@@ -153,9 +153,10 @@ public class PhraseDic
   
   public static void main( String[] args ) throws IOException
   {
-    final String dir="../proust/";
-    final int size = 3; // taille des expressions
+    final String dir="../dumas/";
+    final int size = 2; // taille des expressions
     IntRoller gram3 = new IntRoller(0, size - 1);
+    Phrase phr = new Phrase( size, false );
 
     
     TermDic words = new TermDic();
@@ -198,13 +199,14 @@ public class PhraseDic
     for (File src : new File( dir ).listFiles()) {
       if ( src.isDirectory() ) continue;
       if ( src.getName().startsWith( "." )) continue;
-      if ( !src.getName().endsWith( ".xml" ) ) continue;
+      if ( src.getName().endsWith( ".txt" ) );
+      else if ( src.getName().endsWith( ".xml" ) );
+      else continue;
       System.out.println( src );
       String xml = new String(Files.readAllBytes( Paths.get( src.toString() ) ), StandardCharsets.UTF_8);
       int pos = xml.indexOf( "</teiHeader>");
       if ( pos < 0 ) pos = 0;
       Term token = new Term();
-      Phrase phr = new Phrase( size );
       Phrase loc = new Phrase( 5 );
       int occs = 0;
       Tokenizer toks = new Tokenizer( xml );
@@ -218,6 +220,18 @@ public class PhraseDic
         
         if ( zip.get( 0 ) == 0 ) continue; 
         
+        loc.set( zip.get(0), zip.get(1), zip.get(2), zip.get(3) );
+        if (locutions.contains( loc ) ) {
+          code = words.add( loc.toString( words ) );
+          zip.set( 0, 0 ).set( 1, 0 ).set( 2, 0 ).set( 3, code );
+          continue;
+        }
+        loc.set( zip.get(0), zip.get(1), zip.get(2) );
+        if (locutions.contains( loc ) ) {
+          code = words.add( loc.toString( words ) );
+          zip.set( 0, 0 ).set( 1, 0 ).set( 2, code );
+          continue;
+        }
         // known expression, group
         loc.set( zip.get(0), zip.get(1) );
         if (locutions.contains( loc ) ) {
@@ -225,19 +239,9 @@ public class PhraseDic
           zip.set( 0, 0 ).set( 1, code );
           continue;
         }
-        if (locutions.contains( loc.append( zip.get(2) ) ) ) {
-          code = words.add( loc.toString( words ) );
-          zip.set( 0, 0 ).set( 1, 0 ).set( 2, code );
-          continue;
-        }
-        if (locutions.contains( loc.append( zip.get(3) ) ) ) {
-          code = words.add( loc.toString( words ) );
-          zip.set( 0, 0 ).set( 1, 0 ).set( 2, 0 ).set( 3, code );
-          continue;
-        }
         if ( zip.get( 0 ) == 0 ) continue;
         // on nettoie après chaque nom propre
-        if ( zip.get( 0 ) == NOM) {
+        if ( zip.get( 0 ) == NOM || zip.get( 0 ) == zip.get( 1 ) ) {
           /*
           System.out.println( zip.toString( words ) );
           if ( --exit < 0 ) System.exit( 1 );

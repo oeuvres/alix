@@ -43,9 +43,9 @@ public class Phrase
     data = new int[capacity];
     size = 0;
   }
-  public Phrase( final int capacity, final boolean bool )
+  public Phrase( final int capacity, final boolean bag )
   {
-    bag = bool;
+    this.bag = bag;
     data = new int[capacity];
     size = 0;
   }

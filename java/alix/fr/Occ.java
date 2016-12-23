@@ -26,6 +26,12 @@ public class Occ
   public int start = 0;
   /** Char index in the source file  */
   public int end = 0;
+  /** Link to next Occurrence if used in a linked list */
+  private Occ next;
+  /** Link to previous Occurrence if used in a linked list */
+  private Occ prev;
+  /** Pointer to an OccChain if Occ is inside it */
+  protected OccChain chain;
   /** Number of parts in a compound */
   public short parts;
   /**
@@ -40,7 +46,7 @@ public class Occ
    */
   public Occ( Occ occ )
   {
-    replace( occ );
+    set( occ );
   }
   /**
    * Constructor
@@ -67,7 +73,7 @@ public class Occ
    * @param occ
    * @return a handle on the Occurrence object for chaining
    */
-  public Occ replace( Occ occ )
+  public Occ set( Occ occ )
   {
     graph.replace( occ.graph );
     orth.replace( occ.orth );
@@ -85,10 +91,9 @@ public class Occ
   {
     char c;
     // ?? Monsieur Claude Bernard
-    if ( this.orth.equals( "monsieur" ) ) this.orth.reset();
     // strip firstname is better for name matching
     if ( this.tag.equals( Tag.NAMEpersf ) || this.tag.equals( Tag.NAMEpersm ) ) {
-      this.orth.reset();
+      // this.orth.reset();
       // "Joseph de Maistre" will become "Maistre" if "de" is said to be firstName
       this.tag.set( 0 );
     }
@@ -258,6 +263,18 @@ public class Occ
   {
     this.end = i;
     return this;
+  }
+  public Occ next() {
+    return this.next;
+  }
+  public void next( Occ occ) {
+    this.next = occ;
+  }
+  public Occ prev() {
+    return this.prev;
+  }
+  public void prev( Occ occ) {
+    this.prev = occ;
   }
   public void print( PrintWriter out ) {
     print( out, null );

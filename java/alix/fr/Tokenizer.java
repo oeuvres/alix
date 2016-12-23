@@ -3,8 +3,8 @@ package alix.fr;
 import java.util.HashSet;
 
 import alix.util.Char;
+import alix.util.StemTrie.Stem;
 import alix.util.Term;
-import alix.util.TermTrie.Token;
 
 /**
  * Not thread safe on pointer
@@ -32,8 +32,18 @@ public class Tokenizer
   private int length; 
   /** Where we are in the text */
   private int pointer;
-  /** A buffer of token, populated for multi-words test */
-  private OccSlider occbuf = new OccSlider(2, 10);
+  /** If we want a substring for last token found */
+  private int beginIndex;
+  /** If we want a substring for last token found */
+  private int endIndex;
+  /** For the simple tokenizer */
+  boolean dot;
+  /** A buffer of tokens, populated for multi-words test */
+  private OccChain occline = new OccChain( 10 );
+  /** Pointer on the current occurrence in the chain */
+  private Occ occhere;
+  /** Handle on root of compound dictionary */
+  private Stem locroot = Lexik.LOC.getRoot();
   /** French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel */
   public static final HashSet<String> HYPHEN_POST = new HashSet<String>();
   static {
@@ -49,23 +59,7 @@ public class Tokenizer
       "c'", "C'", "d'", "D'", "j'", "J'", "jusqu'", "Jusqu'", "l'", "L'", "lorsqu'", "Lorsqu'", 
       "m'", "M'", "n'", "N'", "puisqu'", "Puisqu'", "qu'", "Qu'", "quoiqu'", "Quoiqu'", "s'", "S'", "t'", "-t'", "T'"
     }) ELLISION.add( w );
-  }
-  /** Name particles lower case */
-  public static final HashSet<String> PARTICLE = new HashSet<String>();
-  static {
-    for (String w: new String[]{
-        "D'", "De", "Des", "Du", "La", "Le", "Les" // "d'","de", "des", "du", "la", "le", "les"
-    }) PARTICLE.add( w );
-  }
-  /** Préfxes  de noms de personnes */
-  public static final HashSet<String> PREPERS = new HashSet<String>();
-  static {
-    for (String w: new String[]{
-        "capitaine", "cher", "dit", "monsieur", "répondit", "sir"
-    }) PREPERS.add( w );
-  }
-
- 
+  } 
   
   /**
    * Constructor, give complete text in a String, release file handle.
@@ -81,18 +75,164 @@ public class Tokenizer
     if ( text.isEmpty()) this.text="";
     else if ( !Char.isToken(text.charAt( length - 1 ) )) this.text = text;
     else this.text = text + "\n"; // this hack will avoid lots of tests 
+    occhere = occline.front();
+  }
+  /**
+   * Update occurrence with next occurrence
+   * @param occ
+   * @return
+   */
+  public boolean word( Occ occ ) 
+  {
+    if ( word() == null ) return false;
+    occ.set( occhere );
+    return true;
+  }
+  
+  /**
+   * Return a pointer on the occurrence buffer, after compound resolution.
+   * 
+   * TODO
+   * — "le" "l’" "la" "les" "leur" suivis d’un VERB ou d’un PROpers sont PROpers et non DET ("il le leur a donné")
+   * — "en" suivi d’un VERB est PRO et non PREP ("j’en ai")
+   * — "ce" suivi d’un VERB est PRO et non DETdem ("c’est")
+   * — "si" suivi d’un ADJ est ADV et non CONJsubord
+   * — "aucun" non suivi d’un SUB ou d’un ADJ est PROindef et non DETindef
+   * — "même" précédé d’un DET est ADJ et non ADVindef
+   * — un participe passé précédé d’un SUB est ADJ et non VERB 
+   *   ("la gloire acquise à ses travaux") – ou distinguer au moins verbe conjugué, 
+   *   participe (quand le participe n’est pas homographe d’une forme conjuguée) et infinitif
+   *   
+   * @param word
+   * @return
+   */
+  public Occ word( ) {
+    // pointer is front token, get one more to have next, or stop if end of text;
+    if ( occhere == occline.front() && !token(occline.push())) return null;
+    occhere = occhere.next();
+    // no compound with punctuation
+    if ( occhere.tag.isPun() ) return occhere;
+    Stem stem;
+    // start of sentence
+    if ( occhere.prev().tag.equals( Tag.PUNsent ) || occhere.prev().isEmpty() ) {
+      // will not match « sentence. La Fontaine »
+      stem = locroot.get( occhere.orth );
+    }
+    else {
+      stem = locroot.get( occhere.graph );
+    }
+    // is there a compound ?
+    if( stem != null ) {
+      if(locsearch( stem ));
+    }
+    if ( occhere.orth.last() == '\'' ) occhere.orth.last('e');
+    return occhere;
   }
 
   /**
-   * Forwards pointer to next non space char
+   * Explore tree of locutions, return the longest
+   * compound is already set with first word, and position in the buffer is incremented
    */
-  /*
-  private int next() 
+  private boolean locsearch( Stem stem )
   {
-    pointer = next( pointer );
+    short tag = 0;
+    String orth = null;
+    Occ ranger = occhere; // an occurrence launch to serach for compound
+    while ( true ) {
+      // front of buffer, have a token more
+      if ( ranger == occline.front() ) token(occline.push());
+      ranger = ranger.next();
+      stem = stem.get( ranger.graph ); // is it known in compound dictionary ?
+      if ( stem == null ) {
+        // branch end, but nothing found, do nothing, go away
+        if ( tag == 0 ) {
+          return false;
+        }
+        // merge occurrencies, means, append next token to current, till the compound end
+        while ( occhere.next() != ranger ) { 
+          // normalize orth, compound test has been down on graph
+          occhere.next().orth( occhere.next().graph );
+          occhere.apend( occhere.next() );
+          occline.remove( occhere.next() ); // will relink the chain at this point
+        }
+        // Normalize graphical form, for example La Bruyère (is : la bruyère)
+        if ( orth != null ) occhere.orth( orth );
+        occhere.tag.set( tag );
+        // impossible to merge lems, get it from dic or set it as orth 
+        occhere.lem( occhere.orth );
+        if ( !occhere.lem.isEmpty() && occhere.lem.last() == '\'' ) occhere.lem.last('e');
+        return true;
+      }
+      if ( stem.tag() != 0) {
+        tag = stem.tag();
+        orth = stem.orth();
+      }
+    }
+  }
+
+
+  /**
+   * Set a normalized orthographic form, and grammatical category, from a graphical token,
+   * without information on context, just dictionaries.
+   * For example, upper case for proper names is not guessed from previous punctuation,
+   * this approach is especially useful for poetry.
+   * Set lem for a known word.
+   * 
+   * @param An occurrence to tag
+   */
+  public boolean token( Occ occ ) {
+    pointer = next( occ, pointer ); // parse the text at pointer position
+    if ( pointer < 0 ) return false; // end of text
+    if ( occ.orth.isEmpty() ) occ.orth( occ.graph );
+    if ( occ.orth.first() == '-' ) occ.orth.firstDel();
+    occ.tag( Tag.UNKNOWN );
+    char c = occ.graph.charAt( 0 );
+    // ponctuation ?
+    if (Char.isPunctuation( c ) ) {
+      if ( Char.isPUNsent( c ) ) occ.tag( Tag.PUNsent );
+      else if ( Char.isPUNcl( c ) ) occ.tag( Tag.PUNcl );
+      else occ.tag( Tag.PUN );
+      return true;
+    }
+    // number ?
+    else if (Char.isDigit( c )) {
+      occ.tag( Tag.DETnum );
+      return true;
+    }
+    // upper case ?
+    else if (Char.isUpperCase( c )) {
+      // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
+      if ( Lexik.name( occ ) ) return true;
+      // TODO SAINT-ANGE -> Saint-Ange
+      // start of a sentence ?
+      // Try if word lower case is known as word
+      occ.orth.toLower() ;
+      // known word will update token
+      if ( Lexik.word( occ ) ) return true;
+      // unknow name
+      // restore the initial capital word
+      occ.orth.firstToUpper();
+      occ.tag( Tag.NAME );
+      return true;
+    }
+    // known word, token will be updated
+    else if ( Lexik.word( occ ) ) {
+      return true;
+    }
+    // unknown word
+    else {
+      return true;
+    }
+  }
+
+  /**
+   * Give pointer position in the String (unit char)
+   */
+  public int position() 
+  {
     return pointer;
   }
-  */
+  
   /**
    * Find position of next token char (not space, jump XML tags)
    * If char at pos is token char, return same value
@@ -101,7 +241,7 @@ public class Tokenizer
    * @param pos 
    * @return the position of next token char 
    */
-  private int position( int pos, Term xmltag ) {
+  private int fw( int pos, Term xmltag ) {
     if ( pos < 0 ) return pos;
     int size = this.text.length();
     boolean xml=false;
@@ -136,15 +276,15 @@ public class Tokenizer
    * @param pos Pointer in the text from where to start 
    * @return
    */
-  private int token( Occ occ, int pos )
+  private int next( Occ occ, int pos )
   {
     String s;
     occ.clear(); // we should clear here, isn‘t it ?
     Term graph = occ.graph; // work with local variables to limit lookups (“avoid getfield opcode”, read in String source code) 
     Term xmltag = new Term(); // The xml tag to inform (TODO better has a class field ?)
-    pos = position( pos, xmltag); // go to start of first token
+    pos = fw( pos, xmltag); // go to start of first token
     if ( pos < 0 ) return pos; // end of text, finish
-    boolean insidetag = false; // flag of inside tag
+    boolean supsc = false; // xml tag inside word like <sup>, <sc>…
     char c = text.charAt( pos ); // should be start of a token
     if ( xmltag.startsWith( "p " ) // test if last xml tag is a sentence separator
         || xmltag.startsWith( "head " ) 
@@ -233,8 +373,8 @@ public class Tokenizer
         // test if word after should break on hyphen
         int i = pos+1;
         while( true ) {
-          c2 = text.charAt( i );
-          if (!Char.isLetter( c2 )) break;
+          c2 = text.charAt( i ); 
+          if (!Char.isLetter( c2 ) && c2 != '-') break; // Joinville-le-Pont
           after.append( c2 );
           i++;
         }
@@ -246,6 +386,30 @@ public class Tokenizer
       // go to next char
       ++pos;
       c = text.charAt( pos );
+      // M<sup>me</sup> H<sc>ugo</sc>
+      if ( c == '<') {
+        int i=pos;
+        int max=pos+300;
+        while ( i < length ) {
+          i++;
+          if ( i > max ) break; // bad XML
+          c2 = text.charAt( i );
+          if ( c2 != '>') continue;
+          // test if tag is inside word
+          c2 = text.charAt( i+1 );
+          if ( Char.isLetter( c2 ) ) {
+            c = c2;
+            pos = i + 1;
+            supsc = true; // put ending tag inside the token 
+          }
+          if ( supsc ) {
+            pos = i+1;
+            c = c2;
+          }
+          break;
+        }
+      }
+
       // test if token is finished; handle final dot and comma  (',' is a token in 16,5; '.' is token in A.D.N.)
       if ( ! Char.isToken( c ) ) {
         c2 = text.charAt( pos-1 );
@@ -278,185 +442,73 @@ public class Tokenizer
   }
 
   /**
-   * Set a normalized orthographic form, and grammatical category, from a graphical token,
-   * without information on context, just dictionaries.
-   * For example, upper case for proper names is not guessed from previous punctuation,
-   * this approach is especially useful for poetry.
-   * Set lem for a known word.
-   * 
-   * @param An occurrence to tag
+   * A simple tokenizer, not precise but fast
+   * return false when finished
    */
-  public void tag( Occ occ ) {
-    if ( occ.isEmpty() ) return; // Should not arrive
-    if ( occ.orth.isEmpty() ) occ.orth( occ.graph );
-    if ( occ.orth.first() == '-' ) occ.orth.firstDel();
-    occ.tag( Tag.UNKNOWN );
-    char c = occ.graph.charAt( 0 );
-    // ponctuation ?
-    if (Char.isPunctuation( c ) ) {
-      if ( Char.isPUNsent( c ) ) occ.tag( Tag.PUNsent );
-      else if ( Char.isPUNcl( c ) ) occ.tag( Tag.PUNcl );
-      else occ.tag( Tag.PUN );
-      return;
-    }
-    // number ?
-    else if (Char.isDigit( c )) {
-      occ.tag( Tag.DETnum );
-      return;
-    }
-    // upper case ?
-    else if (Char.isUpperCase( c )) {
-      // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
-      if ( Lexik.name( occ ) ) {
-        return;
+  public boolean token( Term t) {
+    t.reset();
+    int pos = pointer;
+    int max = length;
+    boolean first = true;
+    char c;
+    boolean intag = false;
+    while( ++pos < max ) {
+      c = text.charAt( pos );
+      if ( c == '<' ) {
+        intag =true;
+        continue;
       }
-      // start of a sentence ?
-      else {
-        // Try if word lower case is known as word
-        occ.orth.toLower() ;
-        // know word will update token
-        if ( Lexik.word( occ ) ) {
-          return;
-        }
-        // unknow name
-        else {
-          // restore the capital word
-          occ.orth( occ.graph );
-          occ.tag( Tag.NAME );
-          return;
-        }
+      if ( c == '>' && intag == true ) {
+        intag = false;
+        continue;
       }
+      if (intag) continue;
+      if ( Char.isLetter( c )) {
+        if ( first ) {
+          beginIndex = pos;
+          first = false;
+        }
+        if ( dot ) {
+          c = Character.toLowerCase( c );
+          dot = false;
+        }
+        t.append( c );
+        continue;
+      }
+      if ( c == '-' ) {
+        t.append( c );
+        continue;
+      }
+      if ( c == '\'' || c == '’') {
+        t.append( '\'' );
+      }
+      if ( c == '.' || c == '«' ) {
+        dot = true;
+      }
+      if ( t.length() == 0 ) continue;
+      pointer = pos;
+      endIndex = pos;
+      return true;
     }
-    // known word, token will be updated
-    else if ( Lexik.word( occ ) ) {
-      return;
-    }
-    // unknown word
-    else {
-      return;
-    }
+    return false;
   }
-  
   /**
-   * Get a pointer on an occurrence in the slider, update from text if needed
-   * ?? what should I do for stop ?
-   */
-  private Occ getOcc( int pos )
-  {
-    Occ occ;
-    occ = occbuf.get( pos );
-    // if position is empty, and pos is forward, try to go ahead
-    // be careful if negative and at start of text, it will consume one position
-    if ( occ.isEmpty() && pos >= 0 ) {
-      pointer = token( occ, pointer );
-      // is occ OK here ?
-      if ( pointer < 1 ) return null;
-      // tag the token to have a regular case
-      tag( occ );
-    }
-    return occ;
-  }
-  
-  /**
-   * Update an Occurrence object with the current word, here is the compound resolution.
-   * 
-   * TODO
-   * — "le" "l’" "la" "les" "leur" suivis d’un VERB ou d’un PROpers sont PROpers et non DET ("il le leur a donné")
-   * — "en" suivi d’un VERB est PRO et non PREP ("j’en ai")
-   * — "ce" suivi d’un VERB est PRO et non DETdem ("c’est")
-   * — "si" suivi d’un ADJ est ADV et non CONJsubord
-   * — "aucun" non suivi d’un SUB ou d’un ADJ est PROindef et non DETindef
-   * — "même" précédé d’un DET est ADJ et non ADVindef
-   * — un participe passé précédé d’un SUB est ADJ et non VERB 
-   *   ("la gloire acquise à ses travaux") – ou distinguer au moins verbe conjugué, 
-   *   participe (quand le participe n’est pas homographe d’une forme conjuguée) et infinitif
-   *   
-   * @param word
+   * A String wrapper for the simple  tokenizer, less efficient than the term version
+   * (a new String is instantiate)
    * @return
    */
-  public boolean word( Occ word ) {
-    Token parent = Lexik.LOC.getRoot(); // take an handle on the root of the compound dictionary
-    Token child; // test the next token in the term
-    int sliderpos = 0;
-    short tag = 0;
-    String orth = null; // graphic normalization of the term if needed (de avance > d’avance)
-    int lastpos = 0;
-    Occ occ; // a form, a simple word, complete or part of a compound
-    Occ occ2; // a pointer in slider for some tests
-    // loop to concat tokens : from a compound dictionary, for proper names
-    
-    while( true ) {
-      // get current token from buffer
-      occ = getOcc( sliderpos );
-      // TODO, verify here if compound is finished ?
-      if ( occ == null ) return false;
-      // Fix some case problems for compound proper names
-      // is it start of a name particle ? La Bruyère
-      if ( PARTICLE.contains( occ.graph )  ) {
-        // keep token uppercase if not start of sentence
-        occ2 = getOcc( sliderpos - 1 );
-        if ( !occ2.isEmpty() && !occ2.tag.equals( Tag.PUNsent ) ) occ.orth.firstUpper();
-        // check next token
-        occ2 = getOcc( sliderpos + 1 );
-        if ( occ2 == null ) return false; // strange end " Monsieur De "
-        // For La Bruyère, 
-        if ( occ2.graph.isFirstUpper() ) { 
-          // keep upper case the orthographic form
-          if ( !occ2.orth.isFirstUpper() ) occ2.orth.firstUpper();
-          // for sentence starting by a proper name with particle
-          if ( !occ.orth.isFirstUpper()) occ.orth.firstUpper();
-        }
-      }
-      // try to find a token
-      child = parent.get( occ.orth );
-      // do not try on case here, "de" and "De" mays start compound
-      // if not found, more generic, try gram cat in the compound dictionary
-      if ( child == null ) child = parent.get( occ.tag.prefix() );
-      // if not found, try lemma ? only for VERB ? s’écrier…
-      // if ( child == null) child = parent.get( occ.lem() );
-      // if not found try orth
-      // branch is finished, if a compound have been found, concat in one occurrence
-            
-      if ( child == null ) {
-        // first token, common case, is a word
-        word.replace( getOcc( 0 ) );
-        // other tokens ? append
-        for ( int i=1; i <= lastpos; i++ ) {
-          word.apend( getOcc( i ) );
-        }
-        // if a compound have been found, gram cat has been set
-        if ( tag != 0 ) {
-          word.tag( tag );
-          if ( orth != null ) word.orth( orth );
-          word.lem( word.orth );
-        }
-        // normalize graphical form after compound resolution
-        // some compound may need normalisation (ex: Auguste Comte > Comte > Auguste Comte) 
-        if (Lexik.orth( word.orth )) word.lem( word.orth );
-        // titulatures
-        if ( PREPERS.contains( getOcc( lastpos - 1 ).orth ) && word.tag.isName()) word.tag( Tag.NAMEpers );
-        // move the slider to this position 
-        occbuf.move( lastpos + 1 );
-        return true;
-      }
-      // a compound found, remember the cat and the position in the slider
-      // we can have a longer one
-      if ( child.tag() != 0) {
-        tag = child.tag();
-        orth = child.orth();
-        lastpos = sliderpos;
-      }
-      // search in compound tree from the child
-      parent = child;
-      sliderpos++;
-    }
+  public String token() {
+    Term t = new Term();
+    if ( token(t)) return t.toString();
+    else return null;
   }
   /**
    * A simple parser to strip xml tags from a char flow
    * @param xml
    * @return
    */
-  static public String xml2txt( final String xml) {
+  static public String xml2txt( final String xml) 
+  {
     StringBuilder txt = new StringBuilder();
     int size = xml.length();
     boolean intag=false;
@@ -515,30 +567,32 @@ public class Tokenizer
       String text;
       text = ""
          // 123456789 123456789 123456789 123456789
-        + " Claude Bernard. Auguste Comte, Comte. Joseph de Maistre, Geoffroy Saint-Hilaire."
-        + " Vient honorer ce beau jour  De son Auguste présence. "
-        + " Henri III. mlle Pardon, monsieur Morrel, dit Dantès "
-        + " De La Bruyère de ce M. Claude Bernard, d’Artagnan."
-        + " écrit-il ? Geoffroy Saint-Hilaire"
-        + " Félix Le Dantec, Le Dantec, Jean de La Fontaine. La Fontaine. N'est-ce pas ? - La Rochefoucauld - Leibnitz… Descartes, René Descartes."
-        + " D’aventure au XIX<hi rend=\"sup\">e</hi>, Non.</div> Va-t'en à <i>Paris</i>."
-        + " M. Toulemonde\n\n n’est pas n’importe qui, "
-        + " Les Caractères de La Bruyère, La Rochefoucauld, La Fontaine. Es-tu OK ?"
-        + " D’abord, Je vois fort bien ce que tu veux dire."
-        + " <head> Livre I. <lb/>Les origines.</head>"
-        + " <div type=\"article\">"
-        + "   <head>Chapitre I. <lb/>Les Saxons.</head>"
-        + "   <div>"
-        + " M<hi rend=\"sup\">me</hi> de Maintenon l’a payé 25 centimes. C’est-à-dire parce qu’alors, non !!!"
+        + " l'animal c’est-à-dire parce qu’alors, non !!! Il n’y a vu que du feu."
+      //  + " De temps en temps, Claude Lantier promenait sa flânerie  "
+      //  + " avec Claude Bernard, Auguste Comte, et Joseph de Maistre. Geoffroy Saint-Hilaire."
+      //  + " Vient honorer ce beau jour  De son Auguste présence. "
+      //  + " Henri III. mlle Pardon, monsieur Morrel, dit Dantès "
+        + " De La Bruyère à La Rochefoucauld ce M. Claude Bernard, d’Artagnan."
+      //  + " écrit-il ? Geoffroy Saint-Hilaire"
+      //  + " Félix Le Dantec, Le Dantec, Jean de La Fontaine. La Fontaine. N'est-ce pas ? - La Rochefoucauld - Leibnitz… Descartes, René Descartes."
+      //  + " D’aventure au XIX<hi rend=\"sup\">e</hi>, Non.</div> Va-t'en à <i>Paris</i>."
+      //  + " M. Toulemonde\n\n n’est pas n’importe qui, "
+      //  + " Les Caractères de La Bruyère, La Rochefoucauld, La Fontaine. Es-tu OK ?"
+      //  + " D’abord, Je vois fort bien ce que tu veux dire."
+      //  + " <head> Livre I. <lb/>Les origines.</head>"
+      //  + " <div type=\"article\">"
+      //  + "   <head>Chapitre I. <lb/>Les Saxons.</head>"
+      //  + "   <div>"
+        + " M<hi rend=\"sup\">me</hi> de Maintenon l’a payé 25 centimes. "
         + " au XIXe siècle. Chapitre II. "
-        + " Tu es dans la merde et dans la maison, pour quelqu’un, à d’autres. " 
-        + " Ce  travail obscurément réparateur est un chef-d'oeuvre d’emblée, à l'instar."
-        + " Parce que s'il on en croit l’intrus, d’abord, M., lorsqu’on va j’aime ce que C’était &amp; D’où es-tu ? "
+      //  + " Tu es dans la merde et dans la maison, pour quelqu’un, à d’autres. " 
+      //  + " Ce  travail obscurément réparateur est un chef-d'oeuvre d’emblée, à l'instar."
+      //   + " Parce que s'il on en croit l’intrus, d’abord, M., lorsqu’on va j’aime ce que C’était &amp; D’où es-tu ? "
       ;
       // text = "— D'abord, M. Racine, j’aime ce casse-tête parce que voyez-vous, c’est de <i>Paris.</i>.. \"Et voilà !\" s'écria-t'il.";
       Tokenizer toks = new Tokenizer(text);
-      Occ occ = new Occ();
-      while ( toks.word( occ ) != false ) {
+      Occ occ;
+      while ( (occ =toks.word( )) != null ) {
         System.out.println( occ );
       }
       return;

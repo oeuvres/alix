@@ -13,7 +13,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import alix.util.Term;
-import alix.util.TermTrie;
+import alix.util.StemTrie;
 
 /**
  * Preloaded list of words
@@ -40,7 +40,7 @@ public class Lexik
   public static HashMap<String,String> ORTH = new HashMap<String,String>( (int)( 100 * 0.75 ) );
   public static short _ORTH = 5;
   /** Locutions stored in a Trie */
-  public static TermTrie LOC = new TermTrie();
+  public static StemTrie LOC = new StemTrie();
   public static short _LOC = 6;
   /* Load dictionaries */
   static {
@@ -53,7 +53,7 @@ public class Lexik
       loadRes( "dic/loc.csv", _LOC );
       loadRes( "dic/orth.csv", _ORTH );
       loadRes( "dic/brevidot.csv", _BREVIDOT );
-      loadRes( "dic/name.csv", _NAME ); // Monsieur devient un titre
+      loadRes( "dic/name.csv", _NAME );
       loadRes( "dic/author.csv", _NAME );
     } 
     catch (IOException e) {
@@ -103,14 +103,25 @@ public class Lexik
     while ((l = buf.readLine()) != null) {
       l = l.trim();
       if ( l.isEmpty() ) continue;
-      if ( l.charAt( 0 ) == '#' ) continue;
+      if ( l.charAt( 0 ) == '#' ) {
+        if (  mode == _STOP ) STOP.add( l );
+        continue;
+      }
       cells = l.split( sep );
+      if (  mode == _STOP && cells.length == 0 ) {
+        STOP.add( sep );
+        continue;
+      }
       if ( cells.length < 1 ) continue;
       cells[0] = cells[0].trim();
       tag = 0;
+
       if ( cells.length >= 2 && cells[1] != null && !cells[1].trim().isEmpty() ) tag = Tag.code( cells[1].trim() ); 
-      // une table de nome peut contenir des locutions de plusieurs noms
-      if ( cells[0].indexOf( ' ' ) > 0 ) action = _LOC;
+      // une table de noms peut contenir des locutions de plusieurs noms
+      if ( mode == _WORD ) action = _WORD; // specific loader
+      else if ( mode == _STOP ) action = _STOP; // do not register locutions from stop words
+      // be careful on apos here for d' or l' in dico
+      else if ( cells[0].indexOf( ' ' ) > 0 || cells[0].indexOf( '\'' ) >= 0 ) action = _LOC;
       else if ( mode != 0 ) action = mode; // mode fixé à l’appel
       else if ( cells[0].charAt( cells[0].length() - 1 ) == '.' ) action = _BREVIDOT;
       else if ( Tag.isName( tag ) ) action = _NAME;
@@ -122,12 +133,12 @@ public class Lexik
         WORD.put( cells[0], new WordEntry( cells ) );
         continue;
       }
-      else if ( action == _LOC) {
-        LOC.add( cells );
-        continue;
-      }
       else if ( action == _STOP) {
         STOP.add( cells[0] );
+        continue;
+      }
+      else if ( action == _LOC) {
+        LOC.add( cells );
         continue;
       }
       else if ( action == _ORTH ) {
@@ -343,16 +354,15 @@ public class Lexik
    */
   public static void main(String[] args) throws IOException, ParseException 
   {
-    System.out.println( NAME.size() );
     // comp();
     Occ occ = new Occ(); 
     for (String token: (
-        "Henri III Abailart est lorsqu' et depuis quand est il en cette ville ?"
+        " l' animal Henri III Abailart  est lorsqu' et depuis quand est il en cette ville ?"
         +" 25 centimes de hier au soir . et quel sujet l’ y amène ?"
         ).split( " " ) ) {
       token.replace( '_', ' ' );
       occ.clear();
-      occ.graph( token );
+      occ.orth( token );
       Lexik.word( occ );
       if ( occ.tag.equals( Tag.NULL )) Lexik.name( occ );
       System.out.println( occ );

@@ -306,8 +306,8 @@ public class Dicovek {
     String w;
     // give some space before
     for ( int i=0; i < left; i++ ) add("");
-    Occ occ = new Occ();
-    while( toks.word( occ ) ) {
+    Occ occ;
+    while( (occ= toks.word()) != null ) {
       if (occ.tag.isPun()) continue;
       if ( occ.tag.isName() ) add( "ONOMA" );
       else add( occ.lem.toString() );

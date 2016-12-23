@@ -11,7 +11,6 @@ import java.nio.file.Paths;
 import alix.fr.OccSlider;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
-import alix.util.Term;
 import alix.util.TermDic;
 
 public class GN

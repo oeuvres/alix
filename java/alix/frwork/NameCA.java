@@ -45,10 +45,10 @@ public class NameCA
   {
     Tokenizer toks = new Tokenizer( text );
     // current occurrence
-    Occ occ = new Occ();
+    Occ occ;
     Integer col;
     int[] line;
-    while ( toks.word( occ ) ) {
+    while ( (occ=toks.word()) != null ) {
       if ( occ.orth.startsWith( "Schwann" ) ) System.out.println( occ );
       col = cols.get( occ.orth );
       // le mot n’est pas attendu on continue ?

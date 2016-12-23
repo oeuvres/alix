@@ -1,4 +1,4 @@
-# AUTEURS (nb de titres à la BNF);;
+# AUTEURS;;
 Abailard;NAMEauthor;Abélard
 Abailart;NAMEauthor;Abélard
 Abeilard;NAMEauthor;Abélard
@@ -14,6 +14,7 @@ Arnaud;NAMEauthor;
 Aubert;NAMEauthor;
 Aubinais;NAMEauthor;
 Augustin;NAMEauthor;
+Auguste Comte;NAMEauthor;
 Aulnoy;NAMEauthor;
 Auque;NAMEauthor;
 Bacon;NAMEauthor;
@@ -71,11 +72,11 @@ Cournand;NAMEauthor;
 Crébillon;NAMEauthor;
 Cubières;NAMEauthor;
 Cuvier;NAMEauthor;
-d'Artagnan;NAMEauthor;D'Artagnan
-D'Artagnan;NAMEauthor;
 d'Israëli;NAMEauthor;
 Dante;NAMEauthor;
 Daudet;NAMEauthor;
+d'Artagnan;NAMEfict;D'Artagnan
+D'Artagnan;NAMEfict;
 de Foë;NAMEauthor;Defoe
 de Foë;NAMEauthor;Defoe
 De Foë;NAMEauthor;Defoe
@@ -191,12 +192,12 @@ L'Espinasse;NAMEauthor;Lespinasse
 la Boëtie;NAMEauthor;La Boétie
 La Boëtie;NAMEauthor;La Boétie
 Labruyère;NAMEauthor;La Bruyère
-La Bruyère;NAMEauthor;
+La Bruyère;NAMEauthor;La Bruyère
 Lafayette;NAMEauthor;La Fayette
 La Fayette;NAMEauthor;
 La Ferronays;NAMEauthor;
 La Feuillade;NAMEauthor;
-La Fontaine;NAMEauthor;
+La Fontaine;NAMEauthor;La Fontaine
 Lafontaine;NAMEauthor;La Fontaine
 Laharpe;NAMEauthor;La Harpe
 la harpe;NAMEauthor;
@@ -212,9 +213,7 @@ Lamotte;NAMEauthor;La Mothe
 la Motte;NAMEauthor;La Mothe
 Larochefoucauld;NAMEauthor;La Rochefoucauld
 Larochefoucault;NAMEauthor;La Rochefoucauld
-La Rochefoucauld;NAMEauthor;
-la Rochefoucault;NAMEauthor;La Rochefoucault
-La Rochefoucault;NAMEauthor;
+La Rochefoucauld;NAMEauthor;La Rochefoucauld
 La Touche;NAMEauthor;
 Lachabeaussière;NAMEauthor;
 Lamartine;NAMEauthor;

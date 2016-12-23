@@ -39,8 +39,8 @@ public class Mythographies
   public void parse( String text, String source ) throws IOException
   {
     Tokenizer toks = new Tokenizer( text );
-    Occ occ = new Occ();
-    while ( toks.word( occ ) ) {
+    Occ occ;;
+    while ( (occ = toks.word()) != null ) {
       if ( !occ.tag.isName() ) continue;
       if ( occ.tag.equals( Tag.NAMEauthor )) csv.println( source+";"+occ.orth );
       if ( occ.tag.equals( Tag.NAME )) System.out.println( occ );

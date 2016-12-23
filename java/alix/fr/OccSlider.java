@@ -119,8 +119,5 @@ public class OccSlider extends Roller {
     int right = 5;
     OccSlider win = new OccSlider(2, right);
     Tokenizer toks = new Tokenizer(text);
-    while ( toks.word( win.add() ) != false ) {
-      System.out.println( win );
-    }
   }
 }

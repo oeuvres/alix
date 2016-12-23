@@ -33,10 +33,9 @@ public class Balinoms
   public void parse( String xml, PrintWriter out ) throws IOException
   {
     Tokenizer toks = new Tokenizer( xml );
-    // est-ce qu’on a besoin d’une fenêtre glissante ?
-    Occ occ = new Occ();
     int begin = 0;
-    while ( toks.word( occ ) ) {
+    Occ occ;
+    while ( ( occ =toks.word()) != null ) {
       if ( !occ.tag.isName() ) continue;
       out.print( xml.substring( begin, occ.start ) );
       begin = occ.end;
