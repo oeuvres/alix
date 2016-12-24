@@ -61,11 +61,12 @@ public final class Tag
   public final static short NAMEpersm = 0xB2;
   public final static short NAMEpersf = 0xB3;
   public final static short NAMEplace = 0xB4;
-  public final static short NAMEpeople = 0xB5;
-  public final static short NAMEauthor = 0xB6;
-  public final static short NAMEfict = 0xB7;
-  public final static short NAMEevent = 0xB8;
-  public final static short NAMEtitle = 0xB9;
+  public final static short NAMEorg = 0xB5;
+  public final static short NAMEpeople = 0xB6;
+  public final static short NAMEevent = 0xB7;
+  public final static short NAMEauthor = 0xB8;
+  public final static short NAMEfict = 0xB9;
+  public final static short NAMEtitle = 0xBA;
   public final static short NAMEanimal = 0xBD;
   public final static short NAMEdemhum = 0xBE;
   public final static short NAMEgod = 0xBF;

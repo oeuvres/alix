@@ -575,7 +575,7 @@ public class TermDic
    * 
    * @return a CSV string
    */
-  public String csv( int size, Set<Term> stoplist )
+  public String csv( int size, Set<String> stoplist )
   {
     String ret = null;
     try {
@@ -595,13 +595,17 @@ public class TermDic
   {
     return csv( writer, -1, null );
   }
+  public Writer csv( Writer writer, final int limit ) throws IOException
+  {
+    return csv( writer, limit, null );
+  }
 
   /**
    * Give a csv view of all dictionary
    * TODO a top filter
    * @throws IOException
    */
-  public Writer csv( Writer writer, int limit, Set<Term> stoplist ) throws IOException
+  public Writer csv( Writer writer, int limit, Set<String> stoplist ) throws IOException
   {
     String[] byCount = byCount();
     int length = byCount.length;

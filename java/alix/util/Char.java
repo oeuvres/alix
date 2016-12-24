@@ -177,23 +177,10 @@ public class Char
     // infinite loop when size = 65536, a char restart to 0
     for (char c = 0; c < SIZE; c++) {      
       short properties = 0x0;
-      if (Character.isDigit( c )) {
-        properties |= DIGIT;
-        properties |= TOKEN;
-      }
       // DO NOT modify '<>' values
-      if ( c == '.' || c == ',' ) properties |= TOKEN;
-      // hacky, hyphen maybe part of compound word, or start of a separator like ---
-      if ( c == '-' || c == 0xAD || c == '\'' || c == '’' ) {
-        properties |= TOKEN;
-      }
-      else if ( c == '&') {
-        properties |= TOKEN;
-      }
-      else if ( c == '_') {
-        properties |= TOKEN;
-      }
-      else if (Character.isLetter( c )) {
+      
+      
+      if (Character.isLetter( c )) {
         properties |= TOKEN;
         properties |= LETTER;
         if (Character.isUpperCase( c )) {
@@ -202,7 +189,10 @@ public class Char
         if (Character.isLowerCase( c )) {
           properties |= LOWERCASE;
         }
-        
+      }
+      else if (Character.isDigit( c )) {
+        properties |= DIGIT;
+        properties |= TOKEN;
       }
       else if (Character.isSpaceChar( c )) {
         properties |= SPACE; // Unicode classes, with unbreakable
@@ -217,7 +207,15 @@ public class Char
         || type == Character.INITIAL_QUOTE_PUNCTUATION || type == Character.OTHER_PUNCTUATION
         || type == Character.START_PUNCTUATION) {
           properties |= PUNCTUATION;
-          
+        }
+        // TOKEN is a property to continue a token word (but not start)
+        if ( c == '.' || c == ',' ) properties |= TOKEN;
+        // hacky, hyphen maybe part of compound word, or start of a separator like ---
+        if ( c == '-' || c == 0xAD || c == '\'' || c == '’' ) {
+          properties |= TOKEN;
+        }
+        else if ( c == '&' || c == '_') {
+          properties |= TOKEN;
         }
         if ( '.' == c || '…' == c || '?' == c || '!' == c ) properties |= PUNsent;
         else if ( ',' == c || ';' == c || ':' == c ) properties |= PUNcl;
@@ -385,6 +383,9 @@ public class Char
     System.out.println( "> isPunctuation: " + Char.isPunctuation( '>' ) // false
       + " isToken: " + Char.isToken( '>' ) // false
     );
+    System.out.println( "\\ isLetter: " + Char.isLetter( '\\' ) // false
+    + " isToken: " + Char.isToken( '\\' ) // false
+  );
     System.out.println( "' Char.isToken: " + Char.isToken( '\'' ) + " Character.isLetter:" + Character.isLetter( '\'' ) );
     System.out.println( "’ Char.isToken: " + Char.isToken( '’' ) + " Character.isLetter:" + Character.isLetter( '’' ) );
     System.out.println( "& Char.isToken: " + Char.isToken( '&' ) + " Character.isLetter:" + Character.isLetter( '&' ));

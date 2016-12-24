@@ -1,6 +1,6 @@
 GRAPH
-0
 1
+10
 2
 3
 4
@@ -9,10 +9,17 @@ GRAPH
 7
 8
 9
+0
+00
+000
 °
+~
 –
 —
+_
++
 ,
+„
 ;
 :
 !
@@ -22,6 +29,8 @@ GRAPH
 ...
 …
 …
+^
+|
 ''
 'ai
 'avais
@@ -33,6 +42,7 @@ GRAPH
 ’en
 ’étais
 ’y
+‘
 "
 "
 “
@@ -45,6 +55,8 @@ GRAPH
 ]
 {
 }
+<
+>
 *
 /
 \
@@ -55,6 +67,8 @@ GRAPH
 &gt;
 &lt
 &lt;
+£
+$
 #
 ##
 ###
@@ -64,13 +78,19 @@ GRAPH
 #vie
 %
 •
+®
+©
 =
 ==
 ===
 ====
 ■
+A
+A.
 a
+a.
 à
+â
 abbé
 ad
 afin
@@ -83,11 +103,15 @@ ailleurs
 ainsi
 ait
 alors
+an
+ans
 ap
+à peu près
 apres
 après
 as
 assez
+a-t
 au
 au-dehors
 au-dessous
@@ -100,7 +124,9 @@ audit
 aujourd
 aujourd'hui
 aujourd’hui
+au milieu de
 auprès
+auprès de
 auquel
 aura
 aurai
@@ -119,6 +145,7 @@ ausquelz
 aussi
 autant
 autour
+autour de
 autre
 autrefois
 autres
@@ -146,10 +173,16 @@ B
 b
 beaucoup
 bien
+bien que
+C
+C.
 c
-c_est
+c.
 c'
 c’
+c_est
+c'est
+c’est
 ca
 ça
 car
@@ -170,6 +203,10 @@ certaine
 certaines
 certains
 ces
+c'est
+c’est
+c'est-à-dire
+c’est-à-dire
 cest
 ceste
 cet
@@ -191,7 +228,10 @@ combien
 comme
 comment
 contre
+D
+D.
 d
+d.
 d'
 d'abord
 d’
@@ -202,9 +242,11 @@ d’autre
 d’autres
 dans
 de
+dé
 dedans
 dehors
 déjà
+de plus
 depuis
 des
 dès
@@ -220,11 +262,9 @@ dessusdictes
 dessusdiz
 deux
 devant
-disait
-dit
-dire
 dix
 dix-huit
+do
 doit
 donc
 dont
@@ -244,6 +284,7 @@ eme
 ème
 en
 en_effet
+en effet
 encore
 enfin
 ensuite
@@ -294,6 +335,10 @@ eut
 eût
 eux
 eux-mêmes
+F
+F.
+f
+f.
 faire
 fait
 faisait
@@ -302,6 +347,7 @@ femme
 fit
 fois
 fr
+fr.
 francs
 fûmes
 furent
@@ -314,6 +360,10 @@ fussions
 fut
 fût
 fûtes
+G
+G.
+g
+g.
 grace
 grand
 grande
@@ -321,6 +371,7 @@ grandes
 grands
 grant
 h
+h.
 H
 ha
 hé
@@ -335,7 +386,11 @@ http
 hui
 huit
 i
+i.
 I
+I.
+î
+ï
 icelle
 icelles
 icellui
@@ -360,6 +415,7 @@ iij
 ij
 il
 il_y_a
+il y a
 ils
 ilz
 in
@@ -372,9 +428,12 @@ ix
 IX
 ixe
 IXe
-j
 J
+J.
+j
+j.
 j'
+j’
 j'ai
 j'avais
 j'en
@@ -389,12 +448,20 @@ j’y
 jadis
 jamais
 je
+jour
+jours
 jusqu
 jusqu'
 jusque
 jusques
-l
+K
+K.
+k.
+k
 L
+L.
+l
+l.
 l'
 l'ai
 l’
@@ -406,13 +473,21 @@ là-dedans
 là-dessus
 ladicte
 ladite
+la première
 laquelle
 lat
+l'autre
+l’autre
 le
 ledict
 ledit
 le même
+le mien
+le premier
 lequel
+le second
+le sien
+le tien
 les
 lesdict
 lesdictes
@@ -434,15 +509,20 @@ lorsqu’
 lorsque
 lui
 lui-même
+l'un
+l’un
 m
 M
+M.
 m'
 m'en
 m’
 m’en
 ma
 madame
+Madame
 mademoiselle
+Mademoiselle
 maintenant
 mais
 malgré
@@ -450,6 +530,7 @@ me
 melle
 même
 mêmes
+ment
 mes
 mien
 mienne
@@ -466,6 +547,7 @@ moins
 mois
 mon
 monsieur
+Monsieur
 ms
 n
 n'
@@ -501,6 +583,7 @@ oh
 on
 ont
 onze
+or
 ou
 où
 ouais
@@ -509,7 +592,9 @@ oudit
 oudiz
 oui
 p
+p.
 P
+P.
 par
 par-dessus
 parce
@@ -523,6 +608,7 @@ petite
 petites
 petits
 peu
+peu de
 peut
 peut-être
 plus
@@ -543,6 +629,10 @@ puisqu
 puisqu'
 puisqu’
 puisque
+Q
+Q.
+q
+q.
 qu
 qu'
 qu'il
@@ -567,6 +657,7 @@ quelqu’
 quelqu’un
 quelqu’une
 quelque
+quelque chose
 quelquefois
 quelques
 quelques-unes
@@ -578,9 +669,15 @@ quinze
 quoi
 quoique
 quoy
+R
+R.
+r
+r.
 re
 rien
 rue
+S
+S.
 s
 s'
 s'est
@@ -590,6 +687,7 @@ s’est
 s’était
 sa
 sans
+sans doute
 sanz
 se
 sept
@@ -626,7 +724,10 @@ soyez
 soyons
 suis
 sur
+T
+T.
 t
+t.
 t'
 t'avais
 t'en
@@ -638,11 +739,13 @@ t’avais
 t’en
 t’es
 t’étais
+tion
 t’y
 ta
 tandis
 tandis que
 tant
+tant de
 te
 tel
 telle
@@ -655,6 +758,7 @@ toi-même
 ton
 toujours
 tous
+tous deux
 tousjours
 tout
 toute
@@ -666,7 +770,13 @@ très
 trois
 trop
 tu
+U
+U.
+u
+u.
+ù
 un
+un peu de
 une
 ut
 v
@@ -698,6 +808,7 @@ vostre
 votre
 vôtres
 vous
+vous-même
 vous-mêmes
 voz
 www

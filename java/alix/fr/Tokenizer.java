@@ -28,20 +28,22 @@ public class Tokenizer
 {
   /** The text, as a non mutable string. Same text could be shared as reference by multiple Tokenizer. */
   public final String text;
-  /** Get the size of the text */
-  private int length; 
   /** Where we are in the text */
   private int pointer;
+  /** An end index, may be set after init  */
+  private int end; 
+  /** Is it xml ? */
+  boolean xml;
   /** If we want a substring for last token found */
   private int beginIndex;
   /** If we want a substring for last token found */
   private int endIndex;
   /** For the simple tokenizer */
-  boolean dot;
+  boolean sent;
   /** A buffer of tokens, populated for multi-words test */
   private OccChain occline = new OccChain( 10 );
   /** Pointer on the current occurrence in the chain */
-  private Occ occhere;
+  private Occ occhere = occline.front();
   /** Handle on root of compound dictionary */
   private Stem locroot = Lexik.LOC.getRoot();
   /** French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel */
@@ -70,12 +72,40 @@ public class Tokenizer
     // useful for TEI files
     int pos = text.indexOf( "</teiHeader>" );
     if (pos > 0) pointer = pos+12;
-    length = text.length();
+    end = text.length();
+    if ( text.charAt( 0 ) == '<') xml = true;
     // on fait quoi ?
     if ( text.isEmpty()) this.text="";
-    else if ( !Char.isToken(text.charAt( length - 1 ) )) this.text = text;
+    else if ( !Char.isToken(text.charAt( end - 1 ) )) this.text = text;
     else this.text = text + "\n"; // this hack will avoid lots of tests 
-    occhere = occline.front();
+  }
+  /**
+   * Set pointer position, especially to forward after an header
+   * @param pos
+   */
+  public Tokenizer pointer( int pos )
+  {
+    if (pos > 0 && pos < end ) pointer = pos;
+    return this;
+  }
+  /**
+   * Set an end index, to stop parsing before an header
+   * @param pos
+   */
+  public Tokenizer end( int pos )
+  {
+    if (pos > pointer && pos < text.length() ) end = pos;
+    return this;
+  }
+  /**
+   * Set xml parsing if text do not start by a '<'
+   * @param bool
+   * @return
+   */
+  public Tokenizer xml( boolean bool )
+  {
+    this.xml = bool;
+    return this;
   }
   /**
    * Update occurrence with next occurrence
@@ -203,6 +233,11 @@ public class Tokenizer
     else if (Char.isUpperCase( c )) {
       // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
       if ( Lexik.name( occ ) ) return true;
+      // U.R.S.S.
+      if ( occ.graph.length() > 1 && occ.graph.charAt( 1 ) == '.') {
+        occ.tag( Tag.NAME );
+        return true;
+      }
       // TODO SAINT-ANGE -> Saint-Ange
       // start of a sentence ?
       // Try if word lower case is known as word
@@ -243,28 +278,47 @@ public class Tokenizer
    */
   private int fw( int pos, Term xmltag ) {
     if ( pos < 0 ) return pos;
-    int size = this.text.length();
-    boolean xml=false;
+    int end = this.end;
+    boolean xml = this.xml; // jum xml tags ?
+    boolean intag=false;
     char c;
-    while ( pos < size ) {
+    char c2;
+    while ( pos < end ) {
       c = text.charAt( pos );
-      if ( xml && c == '>' ) { // end of tag
+      pos++;
+      if (Char.isSpace( c )) continue;
+      // not XML, stop test chain here
+      if ( !xml );
+      // TODO a nicer XML parser stack
+      else if ( intag && c == '>' ) { // end of tag
         xmltag.append( ' ' ); // easy tag test
-        xml = false;
+        intag = false;
+        continue;
       }
-      else if ( xml ) { // inside tag, go next
+      else if ( intag ) { // inside tag, go next
         xmltag.append( c );
+        continue;
       }
       else if ( c == '<' ) {  // start tag
-        xml = true;
+        intag = true;
         xmltag.reset();
+        continue;
       }
-      else if ( c == '\n' ) { // for plain text, maybe useful
+      // do not create a token on \n, but let \"
+      if ( c == '\\' ) {
+        c2 = text.charAt( pos );
+        if (Char.isLetter( c2 )) pos++;
+        continue;
+      }
+      /*
+      if ( c == '\n' ) { // for plain text, maybe useful
         xmltag.append( c );
+        continue;
       }
-      else if ( c == '\'' || c == '’' || c == 0xAD ); // words do not start by an hyphen or apos
-      else if (!Char.isSpace( c )) return pos;
-      pos++;
+      */
+      // words do not start by an hyphen or apos
+      if ( c == '\'' || c == '’' || c == 0xAD || c == '-' ) continue; 
+      return pos-1;
     }
     return -1;
   }
@@ -390,7 +444,7 @@ public class Tokenizer
       if ( c == '<') {
         int i=pos;
         int max=pos+300;
-        while ( i < length ) {
+        while ( i < end ) {
           i++;
           if ( i > max ) break; // bad XML
           c2 = text.charAt( i );
@@ -426,6 +480,8 @@ public class Tokenizer
           // keep last dot, it is  abbrv
           s = Lexik.brevidot( graph );
           if ( s == null ) {
+            // U.R.S.S. (! MM.)
+            if (Char.isUpperCase( text.charAt( pos-2 ) )) break;
             pos--;
             graph.lastDel();
           }
@@ -448,7 +504,7 @@ public class Tokenizer
   public boolean token( Term t) {
     t.reset();
     int pos = pointer;
-    int max = length;
+    int max = end;
     boolean first = true;
     char c;
     boolean intag = false;
@@ -468,9 +524,9 @@ public class Tokenizer
           beginIndex = pos;
           first = false;
         }
-        if ( dot ) {
+        if ( sent ) {
           c = Character.toLowerCase( c );
-          dot = false;
+          sent = false;
         }
         t.append( c );
         continue;
@@ -482,8 +538,8 @@ public class Tokenizer
       if ( c == '\'' || c == '’') {
         t.append( '\'' );
       }
-      if ( c == '.' || c == '«' ) {
-        dot = true;
+      if ( Char.isPUNsent( c ) ) {
+        sent = true;
       }
       if ( t.length() == 0 ) continue;
       pointer = pos;
@@ -567,7 +623,8 @@ public class Tokenizer
       String text;
       text = ""
          // 123456789 123456789 123456789 123456789
-        + " l'animal c’est-à-dire parce qu’alors, non !!! Il n’y a vu que du feu."
+        + " S'est voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
+        + " l'animal\\nc’est-à-dire parce qu’alors, non !!! Il n’y a vu que du feu."
       //  + " De temps en temps, Claude Lantier promenait sa flânerie  "
       //  + " avec Claude Bernard, Auguste Comte, et Joseph de Maistre. Geoffroy Saint-Hilaire."
       //  + " Vient honorer ce beau jour  De son Auguste présence. "

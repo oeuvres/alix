@@ -150,6 +150,7 @@ public class Lexik
         NAME.put(  cells[0], new NameEntry(tag, cells) );
         continue;
       }
+      // ?? REGISTER, as ORTH also ?
       else if ( action == _BREVIDOT ) {
         if ( cells.length == 1 ) BREVIDOT.put( cells[0], cells[0] );
         else if ( cells.length > 2 ) BREVIDOT.put( cells[0], cells[2].trim() );

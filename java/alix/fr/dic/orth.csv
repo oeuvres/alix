@@ -1,6 +1,18 @@
 GRAPH;TAG ?;ORTH
 
+avr;;avril
 Dr;SUB;docteur
+déc;;décembre
+dec;;décembre
+fev;;février
+fév;;février
+fevr;;février
+févr;;février
+juil;;juillet
+juill;;juillet
+Etat;;État
+jan;;janvier
+janv;;janvier
 Mgr;SUB;monseigneur
 Mlle;SUB;mademoiselle
 mlle;SUB;mademoiselle
@@ -10,8 +22,13 @@ Mme;SUB;madame
 mme;SUB;madame
 Mmes;SUB;mesdames
 mmes;SUB;mesdames
+oct;;octobre
+nov;;novembre
+sep;;septembre
+sept;;septembre
 Vve;SUB;veuve
 vve;SUB;veuve
+
 
 # variante graphique substituée par une forme orthographique standardisée
 # sections : mots de la langue;; noms propres;; abréviations (?)
@@ -19,7 +36,7 @@ vve;SUB;veuve
 # ANCIENS FRANÇAIS
 
 tems;;temps
-
+quoi que;;quoique
 
 # NOMS PROPRES
 

@@ -322,7 +322,6 @@ par préférence à;PREP
 par rapport à;PREP
 par suite de;PREP
 par-devant notaire;PREP
-pas de;PREP
 pas plus que;PREP
 pas plus tard que;PREP
 pour autant que;PREP
@@ -508,6 +507,7 @@ a priori;ADV;
 au delà;ADV;
 aujourd'hui;ADV
 au moins;ADV;
+autre part;ADV
 aux aguets;ADV;
 à voix basse;ADV
 à voix haute;ADV
@@ -553,6 +553,7 @@ ecce homo;ADV;
 en catimini;ADV;
 en connaissance de cause;ADV
 en effet;ADV;
+en général;ADV
 en loucedé;ADV;
 en outre;ADV;
 en pleine connaissance de cause;ADV
@@ -618,6 +619,7 @@ pour cette fois;ADV;
 pour une fois;ADV;
 près de;ADV;
 quand même;ADV
+quelque part;ADV
 qui plus est;ADV;
 recto tono;ADV;
 ric et rac;ADV;
@@ -656,9 +658,9 @@ vae victis;ADV;
 
 # locutions verbales
 
-aller droit;SUB
-devoir dir;SUB
-donner l'ordre;SUB
+aller droit;VERB
+devoir dire;VERB
+donner l'ordre;VERB
 entendre parler;VERB
 entendu parler;VERB
 entrer en ligne de compte;VERB
@@ -682,6 +684,7 @@ tomber à genoux;VERB
 a priori;SUB
 acid jazz;SUB
 action painting;SUB
+administrateur général;SUB
 after shave;SUB
 affaires étrangères;SUB
 agent de change;SUB
@@ -691,6 +694,7 @@ air bag;SUB
 alter ego;SUB
 ayants droit;SUB
 assemblée générale;SUB
+avocat général;SUB
 back up;SUB
 bain de mer;SUB
 bains de mer;SUB
@@ -751,6 +755,8 @@ comic book;SUB
 comic books;SUB
 commedia dell'arte;SUB
 connaissance de cause;SUB
+conseil général;SUB
+conseiller général;SUB
 corn flakes;SUB
 corpus delicti;SUB
 coup de balai;SUB
@@ -783,16 +789,11 @@ de amicis;SUB
 de profundis;SUB
 de santis;SUB
 delirium tremens;SUB
-della francesca;SUB
-della porta;SUB
-della robbia;SUB
-deo gratias;SUB
 deus ex machina;SUB
 dies irae;SUB
 dîner en ville;SUB
-downing street;SUB
-dream team;SUB
-east river;SUB
+directeur général;SUB
+direction générale;SUB
 enfant de chœur;SUB
 enfants de chœur;SUB
 enfant de choeur;SUB;enfant de chœur
@@ -813,6 +814,7 @@ garde champêtre;SUB
 girl friend;SUB
 grand'mère;SUB
 grand'tante;SUB
+grève générale;SUB
 happy end;SUB
 happy ends;SUB
 happy few;SUB
@@ -830,6 +832,7 @@ hot dogs;SUB
 house music;SUB
 ice cream;SUB
 in pace;SUB
+intérêt général;SUB
 invisible piston;SUB
 irish coffee;SUB
 ite missa est;SUB
@@ -849,6 +852,7 @@ lacryma christi;SUB
 légion d'honneur;SUB
 ligne de compte;SUB
 lit de sangle;SUB
+lutte des classes;SUB
 madre de dios;SUB
 maison de passe;SUB
 maisons de passe;SUB
@@ -918,8 +922,10 @@ procureur du roi;SUB
 public schools;SUB
 punching ball;SUB
 quart d'heure;SUB
+quartier général;SUB
 red river;SUB
 reine mère;SUB
+répétition générale;SUB
 requiescat in pace;SUB
 rhythm and blues;SUB
 roast beef;SUB
@@ -950,8 +956,10 @@ te deum;SUB
 temps à perdre;SUB
 terra incognita;SUB
 top models;SUB
+total général;SUB
 tout le monde;SUB
 traveller's chèques;SUB
+trésorier général;SUB
 tribunal de commerce;SUB
 tss tss;SUB
 tu autem;SUB
@@ -960,6 +968,7 @@ valet de chambre;SUB
 valet de pied;SUB
 verre à vin;SUB
 verres à vin;SUB
+vice-président général;SUB
 vieille dame;SUB
 vox populi;SUB
 vulgum pecus;SUB
@@ -979,7 +988,7 @@ ad hoc;ADJ
 bon marché;ADJ
 by night;ADJ
 dans la merde;ADJ
-deutsche mark;ADJ
+d'ordre général;ADJ
 high tech;ADJ
 in utero;ADJ
 in vitro;ADJ

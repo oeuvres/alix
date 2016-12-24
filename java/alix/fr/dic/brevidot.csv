@@ -1,17 +1,34 @@
 # liste de tokens qui peuvent finir par un point qui n’est pas une ponctuation
 A.
 av.;;avant
+avr.;;avril
 B.
 C.
+Cpt.;;compte
+cpt.;;compte
 c.-à-d.;;c'est à dire
+ch.
+cl.
 D.
+dec.;;décembre
+déc.;;décembre
 E.
 ed.;;édition
 éd.;;édition
 F.
+fev.;;février
+fevr.;;février
+fr.;;francs
 G.
 H.
+h.;;heure
+id.
+Id.
 J.
+jan.;;janvier
+janv.;;janvier
+juil.;;juillet
+juill.;;juillet
 J.-J.;;Jean-Jacques
 J.-C.;;Jésus-Christ
 K.
@@ -21,16 +38,29 @@ M.;;Monsieur
 Mlle.;;Mademoiselle
 Melle.;;Mademoiselle
 MM.;;Messieurs
+Mm.;;Messieurs
 N.
+nov.;;novembre
+ncpt.;;numéro de compte
+nCpt.;;numéro de compte
+oct.;;octobre
 O.
+oct.;;octobre
 P.
-p.;;page
+p.
 Pr.;;Professeur
 Prs.;;Professeur
 Q.
 R.
 S.
+sept.;;septembre
 T.
+tél.;;tél.
+tel.;;tél.
+télép;;tél.
+téléph;;tél.
+téleph;;tél.
+teleph;;tél.
 U.
 V.
 W.
