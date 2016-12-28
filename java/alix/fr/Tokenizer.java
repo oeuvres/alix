@@ -287,7 +287,7 @@ public class Tokenizer
       c = text.charAt( pos );
       pos++;
       if (Char.isSpace( c )) continue;
-      // not XML, stop test chain here
+      // not XML, do not enter in tests after
       if ( !xml );
       // TODO a nicer XML parser stack
       else if ( intag && c == '>' ) { // end of tag
@@ -408,6 +408,22 @@ public class Tokenizer
     while (true) {
       // xml entity ?
       // if ( c == '&' && Char.isLetter( text.charAt(pointer+1)) ) { }
+      
+      if ( c == '&' && xml && !Char.isSpace( text.charAt( pos+1 )) ) {
+        int i = pos;
+        after.reset();
+        while ( true ) {
+          c2 = text.charAt(i);
+          if ( Char.isSpace( c2 )) break;
+          after.append( c2 );
+          if ( c2 == ';' ) {
+            c = Char.htmlent( after );
+            pos = i;
+            break;
+          }
+          i++;
+        }
+      }
       
       // &shy; soft hyphen do not append, go next
       if ( c != 0xAD ) graph.append( c );
@@ -623,7 +639,7 @@ public class Tokenizer
       String text;
       text = ""
          // 123456789 123456789 123456789 123456789
-        + " S'est voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
+        + "<> S'est &amp; t&eacute;l&eacute; voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
         + " l'animal\\nc’est-à-dire parce qu’alors, non !!! Il n’y a vu que du feu."
       //  + " De temps en temps, Claude Lantier promenait sa flânerie  "
       //  + " avec Claude Bernard, Auguste Comte, et Joseph de Maistre. Geoffroy Saint-Hilaire."

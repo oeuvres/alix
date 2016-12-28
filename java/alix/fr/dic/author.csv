@@ -1,3 +1,12 @@
+#PERSONNAGES
+
+d'Artagnan;NAMEfict;D'Artagnan
+D'Artagnan;NAMEfict;
+Gavroche;NAMEfict;
+Plassans;NAMEplace
+Verrières;NAMEplace
+
+
 # AUTEURS;;
 Abailard;NAMEauthor;Abélard
 Abailart;NAMEauthor;Abélard
@@ -75,8 +84,6 @@ Cuvier;NAMEauthor;
 d'Israëli;NAMEauthor;
 Dante;NAMEauthor;
 Daudet;NAMEauthor;
-d'Artagnan;NAMEfict;D'Artagnan
-D'Artagnan;NAMEfict;
 de Foë;NAMEauthor;Defoe
 de Foë;NAMEauthor;Defoe
 De Foë;NAMEauthor;Defoe

@@ -1,8 +1,14 @@
 package alix.util;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 import com.sun.org.apache.regexp.internal.CharacterArrayCharacterIterator;
+
+import alix.fr.Lexik;
 
 /**
  * Efficient character categorizer, about 500x faster than
@@ -41,6 +47,31 @@ public class Char
   private static final short DIGIT = 0x0100;
   private static final short PUNsent = 0x0200;
   private static final short PUNcl = 0x0400;
+  public static final HashMap<String, Character>HTMLENT = new HashMap<String, Character>();
+  static {
+    BufferedReader buf = new BufferedReader(
+      new InputStreamReader( Lexik.class.getResourceAsStream( "dic/htmlent.csv" ), StandardCharsets.UTF_8 )
+    );
+    String l;
+    String ent;
+    Character c;
+    int pos;
+    try {
+      while ((l = buf.readLine()) != null) {
+        l = l.trim();
+        if (l.charAt( 0 ) == '#' ) continue;
+        pos = l.indexOf( ',' );
+        if (pos < 3) continue;
+        if ( pos+1 >= l.length()) continue;
+        ent = l.substring( 0, pos );
+        c = l.charAt( pos+1 );
+        HTMLENT.put( ent, c );
+      }
+    }
+    catch (IOException e) {
+      e.printStackTrace();
+    } 
+  }
   public static final HashMap<Character, String>FILENAME = new HashMap<Character, String>();
   static {
     FILENAME.put( 'a', "a" );
@@ -181,8 +212,7 @@ public class Char
       
       
       if (Character.isLetter( c )) {
-        properties |= TOKEN;
-        properties |= LETTER;
+        properties |= LETTER | TOKEN;
         if (Character.isUpperCase( c )) {
           properties |= UPPERCASE;
         }
@@ -191,8 +221,7 @@ public class Char
         }
       }
       else if (Character.isDigit( c )) {
-        properties |= DIGIT;
-        properties |= TOKEN;
+        properties |= DIGIT | TOKEN;
       }
       else if (Character.isSpaceChar( c )) {
         properties |= SPACE; // Unicode classes, with unbreakable
@@ -202,10 +231,18 @@ public class Char
       }
       else {
         type = Character.getType( c );
-        if (type == Character.CONNECTOR_PUNCTUATION || type == Character.DASH_PUNCTUATION
-        || type == Character.END_PUNCTUATION || type == Character.FINAL_QUOTE_PUNCTUATION
-        || type == Character.INITIAL_QUOTE_PUNCTUATION || type == Character.OTHER_PUNCTUATION
-        || type == Character.START_PUNCTUATION) {
+        // & is considered as Po OTHER_PUNCTUATION by unicode 
+        if ( c == '&') {
+          properties |= LETTER | TOKEN;
+        }
+        else if ( type == Character.CONNECTOR_PUNCTUATION 
+            || type == Character.DASH_PUNCTUATION
+            || type == Character.END_PUNCTUATION 
+            || type == Character.FINAL_QUOTE_PUNCTUATION
+            || type == Character.INITIAL_QUOTE_PUNCTUATION 
+            || type == Character.OTHER_PUNCTUATION
+            || type == Character.START_PUNCTUATION
+        ) {
           properties |= PUNCTUATION;
         }
         // TOKEN is a property to continue a token word (but not start)
@@ -214,9 +251,10 @@ public class Char
         if ( c == '-' || c == 0xAD || c == '\'' || c == '’' ) {
           properties |= TOKEN;
         }
-        else if ( c == '&' || c == '_') {
+        else if ( c == '_') {
           properties |= TOKEN;
         }
+        if ( c == '�' ) properties |= LETTER | TOKEN;
         if ( '.' == c || '…' == c || '?' == c || '!' == c ) properties |= PUNsent;
         else if ( ',' == c || ';' == c || ':' == c ) properties |= PUNcl;
       }
@@ -224,7 +262,19 @@ public class Char
     }
 
   }
-
+  public static char htmlent( String ent)
+  {
+    Character c = HTMLENT.get( ent );
+    if ( c == null ) return '�';
+    return c;
+  }
+  public static char htmlent( Term ent)
+  {
+    Character c = HTMLENT.get( ent );
+    if ( c == null ) return '�';
+    return c;
+  }
+  
   /**
    * Is a word character (letter, but also, '’-_)
    * 
@@ -358,6 +408,15 @@ public class Char
    */
   public static void main( String args[] )
   {
+    System.out.println( "� Char.isToken:"+Char.isToken( '�' ) // true
+      +" Char.isLetter: " + Char.isLetter( '�' ) // true
+      +" Char.isPunctuationOrSpace: " + Char.isPunctuationOrSpace( '�' ) // false
+    );
+    System.out.println( "& Char.isToken:"+Char.isToken( '&' ) // true
+      +" Char.isLetter: " + Char.isLetter( '&' ) // true
+      +" Char.isPunctuationOrSpace: " + Char.isPunctuationOrSpace( '&' ) // false
+      +" Character type: " + Character.getType( '&' ) // Po ???
+    );
     System.out.println( "Soft hyphen Char.isToken:"+Char.isToken( (char)0xAD ) // true
       +" Char.isLetter: " + Char.isLetter( (char)0xAD ) // false
       +" Char.isPunctuationOrSpace: " + Char.isPunctuationOrSpace( (char)0xAD ) // false
@@ -388,7 +447,6 @@ public class Char
   );
     System.out.println( "' Char.isToken: " + Char.isToken( '\'' ) + " Character.isLetter:" + Character.isLetter( '\'' ) );
     System.out.println( "’ Char.isToken: " + Char.isToken( '’' ) + " Character.isLetter:" + Character.isLetter( '’' ) );
-    System.out.println( "& Char.isToken: " + Char.isToken( '&' ) + " Character.isLetter:" + Character.isLetter( '&' ));
     System.out.println( "~ Char.isToken: " + Char.isToken( '~' ) + " Character.isLetter:" + Character.isLetter( '~' ));
     System.out.println( ", Char.isToken: " + Char.isToken( ',' ) + " Character.isLetter:" + Character.isLetter( ',' ) + ", isPunctuation: " + Char.isPunctuation( ',' ));
     System.out.println( "Œ isUpperCase: " + Char.isUpperCase( 'Œ' ) );

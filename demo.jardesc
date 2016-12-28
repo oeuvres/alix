@@ -34,6 +34,7 @@
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{NameEntry.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{OccChain.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Tokenizer.java"/>
+        <file path="/Alix/java/alix/fr/dic/htmlent.csv"/>
         <file path="/Alix/java/alix/fr/dic/word.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.grep"/>
     </selectedElements>

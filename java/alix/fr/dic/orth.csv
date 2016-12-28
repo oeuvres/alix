@@ -1,9 +1,13 @@
 GRAPH;TAG ?;ORTH
 
+&;;et
+&c;;etc.
 avr;;avril
+cf;;cf.
 Dr;SUB;docteur
 déc;;décembre
 dec;;décembre
+et cætera;;et cetera
 fev;;février
 fév;;février
 fevr;;février
@@ -35,8 +39,13 @@ vve;SUB;veuve
 
 # ANCIENS FRANÇAIS
 
-tems;;temps
+déja;;déjà
+différens;;différents
+espece;;espèce
+françois;;français
+maniere;;manière
 quoi que;;quoique
+tems;;temps
 
 # NOMS PROPRES
 

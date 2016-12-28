@@ -10,6 +10,7 @@ Altesse;NAMEpers
 Altesse Royale;NAMEpers
 Son Excellence;NAMEpers
 Votre Excellence;NAMEpers
+le bon Dieu;NAMEgod
 
 
 # EN TEST
@@ -88,6 +89,7 @@ un tas de;DETnum
 # locutions préposiotionnelles
 
 à bas de;PREP
+à bord de;PREP
 à bout de;PREP
 à cause de;PREP
 à cet égard;PREP
@@ -155,6 +157,7 @@ afin de;PREP
 à valeurs dans;PREP
 à voir;PREP
 afin de;PREP
+au bas de;ADV
 au beau milieu de;PREP
 au bord de;PREP
 au bout de;PREP
@@ -303,6 +306,8 @@ jusques à;PREP
 jusques et y compris;PREP
 le diable soit de;PREP
 le long de;PREP
+le long des;PREP
+le long du;PREP
 loin de;PREP
 lors de;PREP
 manque de;PREP
@@ -457,6 +462,7 @@ une fois que;CONJ
 
 # locution adverbiales
 
+à bord;ADV
 à brûle-pourpoint;ADV;
 a capella;ADV;
 a cappella;ADV;
@@ -473,6 +479,7 @@ a giorno;ADV;
 à glagla;ADV;
 à jeun;ADV;
 à jeun;ADV;
+à la longue;ADV
 à l'aveuglette;ADV;
 à l'aveuglette;ADV;
 à l'encan;ADV;
@@ -497,6 +504,8 @@ a posteriori;ADV;
 a priori;ADV;
 à priori;ADV;
 à quoi bon;ADVinter
+à ras bord;ADV
+à rebours;ADV
 à rebrousse-poil;ADV;
 à son encontre;ADV;
 à tâtons;ADV;
@@ -504,6 +513,7 @@ a priori;ADV;
 à ton encontre;ADV;
 à touche-touche;ADV;
 à tue-tête;ADV;
+au bas;ADV
 au delà;ADV;
 aujourd'hui;ADV
 au moins;ADV;
@@ -541,19 +551,22 @@ deux fois par an;ADV;
 deux fois par mois;ADV;
 deux fois par semaine;ADV;
 d'ores et déjà;ADV;
+de haut en bas;ADV
 de long en large;ADV
 de traviole;ADV;
 dès lors;ADVtemp
 de temps en temps;ADVtemp
 de visu;ADV;
-dignus est intrare;ADV;
+du haut en bas;ADV
 d'une part;ADV;
 du reste;ADV;
 ecce homo;ADV;
+en bas;ADV
 en catimini;ADV;
 en connaissance de cause;ADV
 en effet;ADV;
 en général;ADV
+en haut;ADV
 en loucedé;ADV;
 en outre;ADV;
 en pleine connaissance de cause;ADV
@@ -617,7 +630,6 @@ plutôt deux fois que une;ADV;
 post mortem;ADV;
 pour cette fois;ADV;
 pour une fois;ADV;
-près de;ADV;
 quand même;ADV
 quelque part;ADV
 qui plus est;ADV;
@@ -888,6 +900,7 @@ oeuvre d'art;SUB
 œuvre d'art;SUB
 officier de la légion d'honneur;SUB
 olla podrida;SUB
+op. cit.;SUB
 osso buco;SUB
 lieutenant de police;SUB
 pan bagnat;SUB

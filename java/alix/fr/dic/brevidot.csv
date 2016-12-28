@@ -1,4 +1,6 @@
 # liste de tokens qui peuvent finir par un point qui n’est pas une ponctuation
+&amp;c.;;et cetera
+&c.;;et cetera
 A.
 av.;;avant
 avr.;;avril
@@ -8,6 +10,8 @@ Cpt.;;compte
 cpt.;;compte
 c.-à-d.;;c'est à dire
 ch.
+cf.
+cit.
 cl.
 D.
 dec.;;décembre
@@ -15,6 +19,7 @@ déc.;;décembre
 E.
 ed.;;édition
 éd.;;édition
+etc.;;et cetera
 F.
 fev.;;février
 fevr.;;février
@@ -24,6 +29,11 @@ H.
 h.;;heure
 id.
 Id.
+I.
+II.;;2
+III.;;3
+IV.;;4
+IX.;;9
 J.
 jan.;;janvier
 janv.;;janvier
@@ -48,6 +58,8 @@ O.
 oct.;;octobre
 P.
 p.
+pag.;;p.
+pp.
 Pr.;;Professeur
 Prs.;;Professeur
 Q.
@@ -61,8 +73,13 @@ télép;;tél.
 téléph;;tél.
 téleph;;tél.
 teleph;;tél.
+trad.;;traduction
+Trad.;;traduction
 U.
 V.
+VI.;;6
+VII.;;7
+VIII.;;8
 W.
 X.
 Y.
