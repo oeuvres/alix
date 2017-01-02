@@ -124,7 +124,7 @@ public class Lexik
       else if ( cells[0].indexOf( ' ' ) > 0 || cells[0].indexOf( '\'' ) >= 0 ) action = _LOC;
       else if ( mode != 0 ) action = mode; // mode fixé à l’appel
       else if ( cells[0].charAt( cells[0].length() - 1 ) == '.' ) action = _BREVIDOT;
-      else if ( Tag.isName( tag ) ) action = _NAME;
+      else if ( Tag.NAME( tag ) ) action = _NAME;
 
       // Les logiques d’insertions dans les dictionnaires
       if ( action == _WORD) {

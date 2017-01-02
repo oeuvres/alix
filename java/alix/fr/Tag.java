@@ -183,59 +183,67 @@ public final class Tag
   {
     return label( (short)(code >> 0x4 << 0x4) );
   }
-  public boolean isVerb( )
+  public boolean VERB( )
   {
     return (( code >> 0x4 ) == 0x1 );
   }
-  public static boolean isVerb( final int code )
+  public static boolean VERB( final int code )
   {
     return (( code >> 0x4 ) == 0x1 );
   }
-  public boolean isSub( )
+  public boolean SUB( )
   {
     return (( code >> 0x4 ) == 0x1 );
   }
-  public static boolean isSub( final int code )
+  public static boolean SUB( final int code )
   {
     return (( code >> 0x4 ) == 0x1 );
   }
-  public boolean isAdj( )
+  public boolean ADJ( )
   {
     return (( (short)code >> 0x4 ) == 0x3 );
   }
-  public static boolean isAdj( final int code )
+  public static boolean ADJ( final int code )
   {
     return (( (short)code >> 0x4 ) == 0x3 );
   }
-  public boolean isAdv( )
+  public boolean ADV( )
   {
     return (( code >> 0x4 ) == 0x4 );
   }
-  public static boolean isAdv( final int code )
+  public static boolean ADV( final int code )
   {
     return (( code >> 0x4 ) == 0x4 );
   }
-  public boolean isDet( )
+  public boolean DET( )
   {
     return (( code >> 0x4 ) == 0x6 );
   }
-  public static boolean isDet( final int code )
+  public static boolean DET( final int code )
   {
     return (( code >> 0x4 ) == 0x6 );
   }
-  public boolean isName( )
+  public boolean PRO( )
+  {
+    return (( code >> 0x4 ) == 0x7 );
+  }
+  public static boolean PRO( final int code )
+  {
+    return (( code >> 0x4 ) == 0x7 );
+  }
+  public boolean NAME( )
   {
     return (( (short)code >> 0x4 ) == 0xB );
   }
-  public static boolean isName( final int code )
+  public static boolean NAME( final int code )
   {
     return (( (short)code >> 0x4 ) == 0xB );
   }
-  public boolean isPun( )
+  public boolean PUN( )
   {
     return (( code >> 0x4 ) == 0xC );
   }
-  public static boolean isPun( final int code )
+  public static boolean PUN( final int code )
   {
     return (( code >> 0x4 ) == 0xC );
   }
@@ -262,7 +270,7 @@ public final class Tag
   {
     System.out.println( new Tag(Tag.SUB).equals( Tag.SUB ) );
     System.out.println( new Tag(0).equals( (short)0 ) );
-    System.out.println( isName( NAMEplace ) );
+    System.out.println( NAME( NAMEplace ) );
     System.out.println( code("TEST") );
     Term t = new Term("ADV");
     System.out.println( code( t ) );

@@ -77,7 +77,7 @@ public class Castlist
     // est-ce qu’on a besoin d’une fenêtre glissante ?
     Occ occ = new Occ();
     while ( toks.word( occ ) ) {
-      if ( !occ.tag.isName() ) continue;
+      if ( !occ.tag.NAME() ) continue;
       if ( occ.tag.equals( Tag.NAMEpers ) ) {
         dic.inc( occ.orth, Tag.NAMEpers );
       }
@@ -100,7 +100,7 @@ public class Castlist
     Occ occ = new Occ();
     int begin = 0;
     while ( toks.word( occ ) ) {
-      if ( !occ.tag.isName() ) continue;
+      if ( !occ.tag.NAME() ) continue;
       out.print( xml.substring( begin, occ.start ) );
       begin = occ.end;
       if ( occ.tag.equals( Tag.NAMEpers ) ) {

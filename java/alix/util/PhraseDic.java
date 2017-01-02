@@ -19,6 +19,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.regex.Pattern;
 
 import alix.fr.Lexik;
 import alix.fr.Tokenizer;
@@ -63,8 +64,8 @@ public class PhraseDic
     for ( int i=0; i< lim; i++) {
       char c = compound.charAt( i );
       if ( c == '’' ) c = '\'';
-      // split on apos
-      if ( c == '’' || c == '\'' || Char.isSpace( c ) || c == '\t' || c == ';' || i == lim-1   ) {
+      // split on apos or hyphen
+      if ( c == '’' || c == '\'' || Char.isSpace( c )  || c == '-' || c == '\t' || c == ';' || i == lim-1   ) {
         if ( c == '’' || c == '\'' || i == lim-1 ) 
           token.append( c );
         code = words.add(token);
@@ -153,17 +154,19 @@ public class PhraseDic
   
   public static void main( String[] args ) throws IOException
   {
-    final String dir="../dumas/";
+    final String dir="../alix-demo/WEB-INF/textes/";
+    // final Pattern filematch = Pattern.compile("millet_vie-sexuelle.xml");
+    final Pattern filematch = Pattern.compile("james-el_50-nuances.xml");
     final int size = 2; // taille des expressions
-    IntRoller gram3 = new IntRoller(0, size - 1);
+    IntRoller gram = new IntRoller(0, size - 1);
     Phrase phr = new Phrase( size, false );
 
     
-    TermDic words = new TermDic();
+    TermDic dic = new TermDic();
     PhraseDic phrases = new PhraseDic();
     PhraseDic locutions = new PhraseDic();
     
-    int NOM = words.add( "NOM" );
+    int NOM = dic.add( "NOM" );
     // HashSet<String> nosense = new HashSet<String>();
     // pas à pas ?
     BufferedReader buf = new BufferedReader(
@@ -173,17 +176,24 @@ public class PhraseDic
     // define a "sense level" in the dictionary, by inserting a stoplist at first
     int senselevel = -1;
     while ((l = buf.readLine()) != null) {
-      senselevel = words.add( l.trim() );
+      int code = dic.add( l.trim() );
+      if ( code > senselevel ) senselevel = code;
     }
     buf.close();
-    
+    // add some more words to the stoplits
+    for (String w: new String[]{
+         "chère", "dis", "dit", "jeune", "jeunes", "yeux"
+    }) {
+      int code = dic.add( w );
+      if ( code > senselevel ) senselevel = code;
+    }
 
     
     buf = new BufferedReader(
       new InputStreamReader( Lexik.class.getResourceAsStream(  "dic/loc.csv" ), StandardCharsets.UTF_8 )
     );
     while ((l = buf.readLine()) != null) {
-      locutions.add( words, l );
+      locutions.add( dic, l );
     }
     buf.close();
     /*
@@ -199,6 +209,7 @@ public class PhraseDic
     for (File src : new File( dir ).listFiles()) {
       if ( src.isDirectory() ) continue;
       if ( src.getName().startsWith( "." )) continue;
+      if ( !filematch.matcher(  src.getName() ).matches() ) continue; 
       if ( src.getName().endsWith( ".txt" ) );
       else if ( src.getName().endsWith( ".xml" ) );
       else continue;
@@ -215,27 +226,27 @@ public class PhraseDic
       while ( toks.token(token) ) {
         if ( token.isEmpty() ) continue;
         if ( token.isFirstUpper() ) code = NOM;
-        else code = words.add( token );
+        else code = dic.add( token );
         zip.push( code );
         
         if ( zip.get( 0 ) == 0 ) continue; 
         
         loc.set( zip.get(0), zip.get(1), zip.get(2), zip.get(3) );
         if (locutions.contains( loc ) ) {
-          code = words.add( loc.toString( words ) );
+          code = dic.add( loc.toString( dic ) );
           zip.set( 0, 0 ).set( 1, 0 ).set( 2, 0 ).set( 3, code );
           continue;
         }
         loc.set( zip.get(0), zip.get(1), zip.get(2) );
         if (locutions.contains( loc ) ) {
-          code = words.add( loc.toString( words ) );
+          code = dic.add( loc.toString( dic ) );
           zip.set( 0, 0 ).set( 1, 0 ).set( 2, code );
           continue;
         }
         // known expression, group
         loc.set( zip.get(0), zip.get(1) );
         if (locutions.contains( loc ) ) {
-          code = words.add( loc.toString( words ) );
+          code = dic.add( loc.toString( dic ) );
           zip.set( 0, 0 ).set( 1, code );
           continue;
         }
@@ -246,24 +257,23 @@ public class PhraseDic
           System.out.println( zip.toString( words ) );
           if ( --exit < 0 ) System.exit( 1 );
           */
-          gram3.clear();
+          gram.clear();
           label.clear();
           continue;
         }
         // garder la mémoire de tous les mots, même vide
         label.push( zip.get( 0 ) );
-        // maintenant passer les mots vides 
-        // à partir d'ici cela peut devenir une expression, enregistrer les mots vides
-        if ( zip.get( 0 ) < senselevel ) {
+        // passer les mots vides 
+        if ( zip.get( 0 ) <= senselevel ) {
           continue;
         }
-        gram3.push( zip.get( 0 ) );
-        if ( gram3.get( 0 ) == 0 ) continue;
+        gram.push( zip.get( 0 ) );
+        if ( gram.get( 0 ) == 0 ) continue;
         
         // System.out.println( label.toString( words ) );
         // System.out.println( "— "+gram3.toString( words ) );
-        if ( mort.equals( gram3 )) System.out.println( label.toString(words) );
-        phr.set( gram3 );
+        if ( mort.equals( gram )) System.out.println( label.toString(dic) );
+        phr.set( gram );
         phrases.inc( phr );
         // label.clear();
         // if (beginIndex==0 || endIndex==0 ) continue;
@@ -274,6 +284,6 @@ public class PhraseDic
     }
     System.out.println( "Parsé" );
     System.out.println( phrases.phraseMap.size()+" ngrams" );
-    phrases.print( new PrintWriter(System.out), 1000, words );
+    phrases.print( new PrintWriter(System.out), 1000, dic );
   }
 }

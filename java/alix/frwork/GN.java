@@ -123,11 +123,11 @@ public class GN
           lpos--;
           continue;
         }
-        else if ( ladj && Tag.isAdv( tag ) ) {
+        else if ( ladj && Tag.ADV( tag ) ) {
           lpos--;
           continue;
         }
-        else if ( Tag.isDet( tag ) ) {
+        else if ( Tag.DET( tag ) ) {
           lpos--;
           break;
         }
@@ -172,7 +172,7 @@ public class GN
         // une chose vraiment obscure
         // si adverbe suivi d’un adjectif
         // un <vol> plus léger , plus immatériel , plus vertigineux , plus 
-        else if ( Tag.isAdv( tag ) && rpos < right - 1 &&  win.get( rpos+2 ).tag.equals( Tag.ADJ ) ) {
+        else if ( Tag.ADV( tag ) && rpos < right - 1 &&  win.get( rpos+2 ).tag.equals( Tag.ADJ ) ) {
           rpos++;
           continue;
         }

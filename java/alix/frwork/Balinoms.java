@@ -36,7 +36,7 @@ public class Balinoms
     int begin = 0;
     Occ occ;
     while ( ( occ =toks.word()) != null ) {
-      if ( !occ.tag.isName() ) continue;
+      if ( !occ.tag.NAME() ) continue;
       out.print( xml.substring( begin, occ.start ) );
       begin = occ.end;
       if ( occ.tag.equals( Tag.NAMEpers ) ) {

@@ -731,3 +731,8 @@ public class TermDic
     dic.csv( new PrintWriter(System.out) );
   }
 }
+/*
+Ideas…
+https://en.wikipedia.org/wiki/Bayes_estimator#Practical_example_of_Bayes_estimators
+*/
+
