@@ -32,17 +32,17 @@ public class Castlist
     Tokenizer toks = new Tokenizer( xml );
     while ( toks.word( win.add() ) ) {
       System.out.println( win.get( 0 ) );
-      if ( ! win.get( 0 ).tag.equals( tag )) continue;
+      if ( ! win.get( 0 ).tag().equals( tag )) continue;
       boolean first= true;
       for ( int i=-left; i<=right; i++) {
         if ( first ) first=false;
         else out.print( "\t" );
-        if ( i == 0 ) out.print( win.get( i ).orth );
+        if ( i == 0 ) out.print( win.get( i ).orth() );
         else {
-          out.print( win.get( i ).tag );
+          out.print( win.get( i ).tag() );
           out.print( "\t" );
-          if ( win.get( i ).graph.equals( "\"" ) ) out.print('«');
-          else out.print( win.get( i ).orth );
+          if ( win.get( i ).graph().equals( "\"" ) ) out.print('«');
+          else out.print( win.get( i ).orth() );
         }
       }
       out.print( "\n" );
@@ -54,17 +54,17 @@ public class Castlist
     OccSlider win = new OccSlider( left, right);
     Tokenizer toks = new Tokenizer( xml );
     while ( toks.word( win.add() ) ) {
-      if ( ! win.get( 0 ).orth.equals( pivot )) continue;
+      if ( ! win.get( 0 ).orth().equals( pivot )) continue;
       boolean first= true;
       for ( int i=-left; i<=right; i++) {
         if ( first ) first=false;
         else out.print( "\t" );
-        if ( i == 0 ) out.print( win.get( i ).orth );
+        if ( i == 0 ) out.print( win.get( i ).orth() );
         else {
-          out.print( win.get( i ).tag );
+          out.print( win.get( i ).tag() );
           out.print( "\t" );
-          if ( win.get( i ).graph.equals( "\"" ) ) out.print('«');
-          else out.print( win.get( i ).orth );
+          if ( win.get( i ).graph().equals( "\"" ) ) out.print('«');
+          else out.print( win.get( i ).orth() );
         }
       }
       out.print( "\n" );
@@ -77,12 +77,12 @@ public class Castlist
     // est-ce qu’on a besoin d’une fenêtre glissante ?
     Occ occ = new Occ();
     while ( toks.word( occ ) ) {
-      if ( !occ.tag.NAME() ) continue;
-      if ( occ.tag.equals( Tag.NAMEpers ) ) {
-        dic.inc( occ.orth, Tag.NAMEpers );
+      if ( !occ.tag().name() ) continue;
+      if ( occ.tag().equals( Tag.NAMEpers ) ) {
+        dic.inc( occ.orth(), Tag.NAMEpers );
       }
-      else if ( occ.tag.equals( Tag.NAME ) ) {
-        dic.inc( occ.orth, Tag.NAME );
+      else if ( occ.tag().equals( Tag.NAME ) ) {
+        dic.inc( occ.orth(), Tag.NAME );
       }
     }
   }
@@ -100,22 +100,22 @@ public class Castlist
     Occ occ = new Occ();
     int begin = 0;
     while ( toks.word( occ ) ) {
-      if ( !occ.tag.NAME() ) continue;
-      out.print( xml.substring( begin, occ.start ) );
-      begin = occ.end;
-      if ( occ.tag.equals( Tag.NAMEpers ) ) {
+      if ( !occ.tag().name() ) continue;
+      out.print( xml.substring( begin, occ.start() ) );
+      begin = occ.end();
+      if ( occ.tag().equals( Tag.NAMEpers ) ) {
         out.print( "<persName>" );
-        out.print( occ.graph );
+        out.print( occ.graph() );
         out.print( "</persName>" );
       }
-      else if ( occ.tag.equals( Tag.NAMEplace ) ) {
+      else if ( occ.tag().equals( Tag.NAMEplace ) ) {
         out.print( "<placeName>" );
-        out.print( occ.graph );
+        out.print( occ.graph() );
         out.print( "</placeName>" );
       }
       else {
         out.print( "<name>" );
-        out.print( occ.graph );
+        out.print( occ.graph() );
         out.print( "</name>" );
       }
     }

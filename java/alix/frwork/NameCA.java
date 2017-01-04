@@ -49,8 +49,8 @@ public class NameCA
     Integer col;
     int[] line;
     while ( (occ=toks.word()) != null ) {
-      if ( occ.orth.startsWith( "Schwann" ) ) System.out.println( occ );
-      col = cols.get( occ.orth );
+      if ( occ.orth().startsWith( "Schwann" ) ) System.out.println( occ );
+      col = cols.get( occ.orth() );
       // le mot n’est pas attendu on continue ?
       if ( col == null ) continue; 
       // boucler sur les propriétés de ligne à modifier

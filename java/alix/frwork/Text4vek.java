@@ -37,14 +37,14 @@ public class Text4vek
     // est-ce qu’on a besoin d’une fenêtre glissante ?
     Occ occ = new Occ();
     while ( toks.word( occ ) ) {
-      if ( occ.graph.equals( "/" ) ) {
+      if ( occ.graph().equals( "/" ) ) {
         out.println("");
         continue;
       }
-      else if ( occ.tag.PUN() ) continue;
-      else if ( occ.tag.NAME() ) out.print( "ONOMA" );
+      else if ( occ.tag().pun() ) continue;
+      else if ( occ.tag().name() ) out.print( "ONOMA" );
       // else if ( occ.tag.isVerb() || occ.tag.isAdj() || occ.tag.isSub() ) out.print( occ.lem );
-      else out.print( occ.lem );
+      else out.print( occ.lem() );
       out.print( ' ' );
     }
     out.close();

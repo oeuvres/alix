@@ -1,7 +1,5 @@
 package alix.util;
 
-import java.util.Arrays;
-
 /**
  * Efficient Object to handle a sliding window of ints.
  * 
@@ -35,6 +33,22 @@ public class IntRoller extends Roller {
     return data[ pointer(pos) ];
   }
   /**
+   * Return first value
+   * @return
+   */
+  public int first() 
+  {
+    return data[ pointer(right) ];
+  }
+  /**
+   * Return last value
+   * @return
+   */
+  public int last() 
+  {
+    return data[ pointer(left) ];
+  }
+  /**
    * Set value at position
    * 
    * @param pos
@@ -49,7 +63,7 @@ public class IntRoller extends Roller {
     return this;
   }
   /**
-   * Add a value by the end
+   * Add a value at front
    */
   public IntRoller push(final int value) 
   {
@@ -59,6 +73,10 @@ public class IntRoller extends Roller {
     data[ pointer(right) ] = value;
     return this;
   }
+  /**
+   * Clear all value
+   * @return
+   */
   public IntRoller clear()
   {
     int length = data.length;
@@ -68,9 +86,32 @@ public class IntRoller extends Roller {
     return this;
   }
   /**
+   * Increment all values
+   * @return
+   */
+  public IntRoller inc()
+  {
+    for( int i=0; i < size; i++) {
+      data[i]++;
+    }
+    return this;
+  }
+  /**
+   * Decrement all values
+   * @return
+   */
+  public IntRoller dec()
+  {
+    for( int i=0; i < size; i++) {
+      data[i]--;
+    }
+    return this;
+  }
+
+  /**
    * 
    */
-  public void onWrite()
+  private void onWrite()
   {
     hash = 0;
   }
@@ -117,11 +158,9 @@ public class IntRoller extends Roller {
     return false;
   }
 
-  /**
-   * Show window content
-   */
+  @Override
   public String toString() {
-    StringBuffer sb = new StringBuffer();
+    StringBuilder sb = new StringBuilder();
     for (int i = -left; i <= right; i++) {
       if (i == 0) sb.append( " <" );
       sb.append( get(i) );
@@ -132,14 +171,15 @@ public class IntRoller extends Roller {
     }
     return sb.toString();
   }
+  
   public String toString( TermDic words ) {
+    return toString( words, -left, right );
+  }
+  public String toString( TermDic words, int from, int to ) {
     StringBuilder sb = new StringBuilder();
-    for (int i = -left; i <= right; i++) {
+    for (int i = from; i <= to; i++) {
       int val = get(i);
-      if (i == 0) sb.append( "<" );
-      if ( val != 0 ) sb.append( words.term( val ) );
-      if (i == 0) sb.append( ">" );
-      if ( val != 0 ) sb.append( " " );
+      if ( val != 0 ) sb.append( words.term( val ) ).append( " " );
     }
     return sb.toString();
   }
@@ -148,14 +188,12 @@ public class IntRoller extends Roller {
    * Test the Class
    * @param args
    */
-  public static void main(Term args[]) 
+  public static void main(String args[]) 
   {
     IntRoller win = new IntRoller(2,3);
     for(int i=1; i< 20; i++) {
       win.push(i);
       System.out.println(win);
-      System.out.println(win.get(-2)+" "+win.get(-1)+" –"
-      +win.get(0)+"– "+win.get(1)+" "+win.get(2)+" "+win.get(3));
     }
   }
 }

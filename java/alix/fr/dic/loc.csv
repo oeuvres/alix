@@ -300,17 +300,14 @@ foi de;PREP
 grâce à;PREP
 grâces à;PREP
 hors de;PREP
-il est de fait que;PREP
-il est possible que;PREP
+il être possible que;PREP
 il n’empêche que;PREP
 il n’en reste pas moins que;PREP
 il pourrait bien se faire que;PREP
 il se pourrait que;PREP
 il serait possible que;PREP
-il y a;PREP
-il y a eut;PREP;il y a
-il y avait;PREP;il y a
-il y aura;PREP;il y a
+il y avoir;PREP;il y a
+il y avoir avoir;PREP;il y a
 in illo tempore;PREP
 # jusqu’à;PREP
 jusqu'à la fin;PREP
@@ -500,6 +497,7 @@ a fortiori;ADV;
 a giorno;ADV;
 à giorno;ADV;
 à glagla;ADV;
+à haute voix;ADV
 à jeun;ADV;
 à jeun;ADV;
 à la longue;ADV
@@ -607,8 +605,8 @@ est-ce qu;ADV;
 est-ce qu';ADV;
 est-ce que;ADV;
 et cætera;ADVquant;
-et caetera;ADVquant;
-et cetera;ADVquant;
+et caetera;ADVquant;etc.
+et cetera;ADVquant;etc.
 et seq;ADV;
 ex abrupto;ADV;
 ex nihilo;ADV;
@@ -699,25 +697,35 @@ vae victis;ADV;
 
 # locutions verbales
 
-# aller droit;VERB
-# devoir dire;VERB
-# donner l'ordre;VERB
-# entendre parler;VERB
-# entendu parler;VERB
-# entrer en ligne de compte;VERB
-# mettre la table;VERB
-# veut dire;VERB
-# vouloir dire;VERB
-# voulu dire;VERB
-# prendre garde;VERB
-# prendre part;VERB
-# prendre place;VERB
-# savoir bien;VERB
-# se rendre compte;VERB
-# tomber à genoux;VERB
+avoir l'air;VERB
+aller droit;VERB
+devoir dire;VERB
+donner l'ordre;VERB
+donner l’impression;VERB
+entendre parler;VERB
+entrer en ligne de compte;VERB
+laisser passer;VERB
+laisser tomber;VERB
+mettre la table;VERB
+prendre garde;VERB
+prendre l’air;VERB
+prendre la peine;VERB
+prendre part;VERB
+prendre place;VERB
+prendre ses jambes à son cou;VERB
+rendre compte;VERB
+savoir bien;VERB
+tenir compte;VERB
+vouloir dire;VERB
 
 # locutions nominales
 
+académie des sciences;SUB;Académie des Sciences
+Académie des Sciences;SUB
+académie des sciences morales;SUB;Académie des Sciences morales et politiques
+Académie des Sciences morales;SUB
+académie des sciences morales et politiques;SUB;Académie des Sciences morales et politiques
+Académie des Sciences morales et politiques;SUB
 acte sexuel;SUB
 actes sexuels;SUB;acte sexuel
 a priori;SUB
@@ -729,11 +737,14 @@ affaires étrangères;SUB
 agent de change;SUB
 agents de change;SUB
 agnus dei;SUB
+aide de camp;SUB
 air bag;SUB
 alter ego;SUB
+amour propre;SUB
 arrière-train;SUB
 ayants droit;SUB
 assemblée générale;SUB
+assemblée nationale;SUB
 avocat général;SUB
 back up;SUB
 bain de mer;SUB
@@ -743,10 +754,16 @@ bas-ventre;SUB
 bas ventre;SUB;bas-ventre
 beat generation;SUB
 beau temps;SUB
+beau fils;SUB;beau-fils
+beau frère;SUB;beau-frère
+beau père;SUB;beau-père
 bec de gaz;SUB
 becs de gaz;SUB
 bel canto;SUB
+belle fille;SUB;belle-fille
 belle lurette;SUB
+belle mère;SUB;belle-mère
+belle sœur;SUB;belle-sœur
 best of;SUB
 big band;SUB
 big bang;SUB
@@ -839,6 +856,7 @@ dies irae;SUB
 dîner en ville;SUB
 directeur général;SUB
 direction générale;SUB
+éclat de rire;SUB
 enfant de chœur;SUB
 enfants de chœur;SUB
 enfant de choeur;SUB;enfant de chœur
@@ -857,9 +875,20 @@ gardes nationaux;SUB
 gengis khan;SUB
 gens du monde;SUB
 garde champêtre;SUB
+garde du roi;SUB
+gardes du roi;SUB;garde du roi
+général en chef;SUB
 girl friend;SUB
 grain de beauté;SUB
-grand'mère;SUB
+grand'chose;SUB;grand-chose
+grand chose;SUB;grand-chose
+grand mère;SUB;grand-mère
+grand'mère;SUB;grand-mère
+grand oncle;SUB;grand-oncle
+grand père;SUB;grand-père
+grand'père;SUB;grand-père
+grand seigneur;SUB
+grands seigneurs;SUB;grand seigneur
 grand'tante;SUB
 grève générale;SUB
 happy end;SUB
@@ -867,7 +896,7 @@ happy ends;SUB
 happy few;SUB
 hard edge;SUB
 has been;SUB
-haut de forme;SUB
+haut de forme;SUB;haut-de-forme
 haut-de-forme;SUB
 high life;SUB
 hold up;SUB
@@ -877,6 +906,7 @@ honnêtes gens;SUB
 hong kong;SUB
 hot dog;SUB
 hot dogs;SUB
+hôtel de ville;SUB
 house music;SUB
 ice cream;SUB
 in pace;SUB
@@ -900,6 +930,7 @@ lacryma christi;SUB
 légion d'honneur;SUB
 ligne de compte;SUB
 lit de sangle;SUB
+loc. cit.;SUB
 lutte des classes;SUB
 madre de dios;SUB
 maison de passe;SUB
@@ -919,10 +950,16 @@ mea culpa;SUB
 melting pot;SUB
 middle class;SUB
 milk shake;SUB
+ministre des affaires étrangères;SUB;Ministre des Affaires étrangères
+ministre des Affaires étrangères;SUB;Ministre des Affaires étrangères
+Ministre des Affaires étrangères;SUB
 minus habens;SUB
 modern style;SUB
 modus operandi;SUB
 modus vivendi;SUB
+mot d’ordre;SUB
+moyen âge;SUB;moyen-âge
+moyen-âge;SUB;
 music hall;SUB
 negro spiritual;SUB
 negro spirituals;SUB
@@ -940,6 +977,7 @@ officier de la légion d'honneur;SUB
 olla podrida;SUB
 op. cit.;SUB
 osso buco;SUB
+ouvr. cit.;SUB
 lieutenant de police;SUB
 pan bagnat;SUB
 parole d'honneur;SUB
@@ -991,8 +1029,10 @@ robe de chambre;SUB
 sainte nitouche;SUB
 salle à manger;SUB
 salle de bains;SUB
-san francisco;SUB
 scenic railway;SUB
+s. d.;SUB
+s. l.;SUB
+s. l. n. d.;SUB
 secrétaire général;SUB
 sedia gestatoria;SUB
 self-made man;SUB
@@ -1103,10 +1143,12 @@ qui aime bien châtie bien;SUB
 
 # EXCL 
 
+allons allons;EXCL
 bon Dieu;EXCL
 bordel de merde;EXCL
 mon Dieu;EXCL
 allons allons;EXCL
+aller aller;EXCL
 juste ciel;EXCL
 Juste ciel;EXCL
 que le diable l'emporte;EXCL

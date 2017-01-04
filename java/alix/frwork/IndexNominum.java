@@ -33,11 +33,11 @@ public class IndexNominum
     // est-ce qu’on a besoin d’une fenêtre glissante ?
     Occ occ = new Occ();
     while ( toks.word( occ ) ) {
-      if ( !occ.tag.NAME() ) {
+      if ( !occ.tag().name() ) {
         dic.inc();
         continue;
       }
-      dic.inc( occ.graph );
+      dic.inc( occ.graph() );
     }
   }
 

@@ -43,7 +43,7 @@ public class Tokenizer
   /** A buffer of tokens, populated for multi-words test */
   private OccChain occline = new OccChain( 10 );
   /** Pointer on the current occurrence in the chain */
-  private Occ occhere = occline.front();
+  private Occ occhere = occline.first();
   /** Handle on root of compound dictionary */
   private Stem locroot = Lexik.LOC.getRoot();
   /** French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel */
@@ -138,24 +138,30 @@ public class Tokenizer
    */
   public Occ word( ) {
     // pointer is front token, get one more to have next, or stop if end of text;
-    if ( occhere == occline.front() && !token(occline.push())) return null;
+    if ( occhere == occline.first() && !token(occline.push())) return null;
     occhere = occhere.next();
     // no compound with punctuation
-    if ( occhere.tag.PUN() ) return occhere;
+    if ( occhere.tag().pun() ) return occhere;
     Stem stem;
+    // verb, test lem for locution
+    if ( occhere.tag().verb() ) {
+      stem = locroot.get( occhere.lem() );
+      // ??
+      // if ( stem == null ) stem = locroot.get( occhere.orth() );
+    }
     // start of sentence
-    if ( occhere.prev().tag.equals( Tag.PUNsent ) || occhere.prev().isEmpty() ) {
+    else if ( occhere.prev().tag().equals( Tag.PUNsent ) || occhere.prev().isEmpty() ) {
       // will not match « sentence. La Fontaine »
-      stem = locroot.get( occhere.orth );
+      stem = locroot.get( occhere.orth() );
     }
     else {
-      stem = locroot.get( occhere.graph );
+      stem = locroot.get( occhere.graph() );
     }
     // is there a compound ?
     if( stem != null ) {
       if(locsearch( stem ));
     }
-    if ( occhere.orth.last() == '\'' ) occhere.orth.last('e');
+    if ( occhere.orth().last() == '\'' ) occhere.orth().last('e');
     return occhere;
   }
 
@@ -166,13 +172,22 @@ public class Tokenizer
   private boolean locsearch( Stem stem )
   {
     short tag = 0;
+    Stem child;
     String orth = null;
     Occ ranger = occhere; // an occurrence launch to serach for compound
     while ( true ) {
       // front of buffer, have a token more
-      if ( ranger == occline.front() ) token(occline.push());
+      if ( ranger == occline.first() ) token(occline.push());
       ranger = ranger.next();
-      stem = stem.get( ranger.graph ); // is it known in compound dictionary ?
+      if ( ranger.tag().verb()) {
+        child = stem.get( ranger.lem() );
+        // il y a ?
+        if ( child == null ) child = stem.get( ranger.orth() );
+        stem = child;
+      }
+      else {
+        stem = stem.get( ranger.graph() ); // is it known in compound dictionary ?
+      }
       if ( stem == null ) {
         // branch end, but nothing found, do nothing, go away
         if ( tag == 0 ) {
@@ -181,16 +196,16 @@ public class Tokenizer
         // merge occurrencies, means, append next token to current, till the compound end
         while ( occhere.next() != ranger ) { 
           // normalize orth, compound test has been down on graph
-          occhere.next().orth( occhere.next().graph );
+          occhere.next().orth( occhere.next().graph() );
           occhere.apend( occhere.next() );
           occline.remove( occhere.next() ); // will relink the chain at this point
         }
         // Normalize graphical form, for example La Bruyère (is : la bruyère)
         if ( orth != null ) occhere.orth( orth );
-        occhere.tag.set( tag );
-        // impossible to merge lems, get it from dic or set it as orth 
-        occhere.lem( occhere.orth );
-        if ( !occhere.lem.isEmpty() && occhere.lem.last() == '\'' ) occhere.lem.last('e');
+        occhere.tag().set( tag );
+        // what about 
+        // if ( occhere.lem().isEmpty() ) occhere.lem( occhere.orth() );
+        // if ( !occhere.lem().isEmpty() && occhere.lem().last() == '\'' ) occhere.lem().last('e');
         return true;
       }
       if ( stem.tag() != 0) {
@@ -213,10 +228,10 @@ public class Tokenizer
   public boolean token( Occ occ ) {
     pointer = next( occ, pointer ); // parse the text at pointer position
     if ( pointer < 0 ) return false; // end of text
-    if ( occ.orth.isEmpty() ) occ.orth( occ.graph );
-    if ( occ.orth.first() == '-' ) occ.orth.firstDel();
+    if ( occ.orth().isEmpty() ) occ.orth( occ.graph() );
+    if ( occ.orth().first() == '-' ) occ.orth().firstDel();
     occ.tag( Tag.UNKNOWN );
-    char c = occ.graph.charAt( 0 );
+    char c = occ.graph().charAt( 0 );
     // ponctuation ?
     if (Char.isPunctuation( c ) ) {
       if ( Char.isPUNsent( c ) ) occ.tag( Tag.PUNsent );
@@ -234,19 +249,19 @@ public class Tokenizer
       // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
       if ( Lexik.name( occ ) ) return true;
       // U.R.S.S.
-      if ( occ.graph.length() > 1 && occ.graph.charAt( 1 ) == '.') {
+      if ( occ.graph().length() > 1 && occ.graph().charAt( 1 ) == '.') {
         occ.tag( Tag.NAME );
         return true;
       }
       // TODO SAINT-ANGE -> Saint-Ange
       // start of a sentence ?
       // Try if word lower case is known as word
-      occ.orth.toLower() ;
+      occ.orth().toLower() ;
       // known word will update token
       if ( Lexik.word( occ ) ) return true;
       // unknow name
       // restore the initial capital word
-      occ.orth.firstToUpper();
+      occ.orth().firstToUpper();
       occ.tag( Tag.NAME );
       return true;
     }
@@ -334,7 +349,7 @@ public class Tokenizer
   {
     String s;
     occ.clear(); // we should clear here, isn‘t it ?
-    Term graph = occ.graph; // work with local variables to limit lookups (“avoid getfield opcode”, read in String source code) 
+    Term graph = occ.graph(); // work with local variables to limit lookups (“avoid getfield opcode”, read in String source code) 
     Term xmltag = new Term(); // The xml tag to inform (TODO better has a class field ?)
     pos = fw( pos, xmltag); // go to start of first token
     if ( pos < 0 ) return pos; // end of text, finish
@@ -644,7 +659,7 @@ public class Tokenizer
       String text;
       text = "<>"
          // 123456789 123456789 123456789 123456789
-        + " ceux-ci, ceux-là S'est &amp; t&eacute;l&eacute; murmure-t-elle rendez-vous voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
+        + " J’en tiens compte à l’Académie des Sciences morales. Mais il y a &amp; t&eacute;l&eacute; murmure-t-elle rendez-vous voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
         + " , l'animal\\nc’est-à-dire parce qu’alors, non !!! Il n’y a vu que du feu."
       //  + " De temps en temps, Claude Lantier promenait sa flânerie  "
       //  + " avec Claude Bernard, Auguste Comte, et Joseph de Maistre. Geoffroy Saint-Hilaire."

@@ -114,7 +114,7 @@ public class NAME
     while ( toks.word( win.add() ) ) {
       wn ++;
       // le mot n’est pas attendu on continue;
-      if ( !NODES.contains( win.get( 0 ).orth ) ) {
+      if ( !NODES.contains( win.get( 0 ).orth() ) ) {
         // if (win.get( 0 ).tag.isName()) win.get( 0 ).orth
         continue;
       }
@@ -129,7 +129,7 @@ public class NAME
           continue;
         }
         // ce nœud est le même que le précédent, on supprie le précédent
-        if ( win.get( 0 ).orth.equals( node.label ) ) {
+        if ( win.get( 0 ).orth().equals( node.label ) ) {
           iterator.remove();
           continue;
         }
@@ -144,15 +144,15 @@ public class NAME
         csv.print( "\t"+date );
         html.println( "</td>" );
         html.print( "  <td nowrap>" );
-        if ( occ.orth.compareTo( node.label ) > 0) {
-          csv.print( "\t"+node.label+"\t"+occ.orth );
+        if ( occ.orth().compareTo( node.label ) > 0) {
+          csv.print( "\t"+node.label+"\t"+occ.orth() );
           html.print( node.label);
           html.print( "<br/>" );
-          html.print( occ.orth );
+          html.print( occ.orth() );
         }
         else {
-          csv.print( "\t"+occ.orth+"\t"+node.label );
-          html.print( occ.orth );
+          csv.print( "\t"+occ.orth()+"\t"+node.label );
+          html.print( occ.orth() );
           html.print( "<br/>" );
           html.print( node.label);
         }
@@ -165,24 +165,24 @@ public class NAME
         html.print( node.label );
         html.println( "</b>" );
         // milieu
-        html.print( Tokenizer.xml2txt( text.substring( node.end, occ.start ) ) );
+        html.print( Tokenizer.xml2txt( text.substring( node.end, occ.start() ) ) );
         // html.println( (wn - node.wn)+" "+ node.end+" "+occ.start );
         // nœud destination
         html.print( "<b>" );
-        html.print( occ.orth );
+        html.print( occ.orth() );
         html.println( "</b>" );
         // contexte droit
-        html.print( Tokenizer.xml2txt( text.substring( occ.end, win.get( right ).end ) ) );
+        html.print( Tokenizer.xml2txt( text.substring( occ.end(), win.get( right ).end() ) ) );
         html.println( "</td>" );
         html.println("</tr>");
         csv.println();
       }
       // ouvrir un arc qui commence avec ce nœud
       stack.add( new Source(
-          Tokenizer.xml2txt( text.substring( win.get( -left ).end, occ.start ) ),
-          occ.orth.toString(),
+          Tokenizer.xml2txt( text.substring( win.get( -left ).end(), occ.start() ) ),
+          occ.orth().toString(),
           wn,
-          occ.end
+          occ.end()
       ) );
     }
 

@@ -177,75 +177,83 @@ public final class Tag
   }
   public String prefix()
   {
-    return label( (short)(code >> 0x4 << 0x4) );
+    return prefix ( code );
   }
   public static String prefix( final int code)
   {
     return label( (short)(code >> 0x4 << 0x4) );
   }
-  public boolean VERB( )
+  public boolean verb( )
+  {
+    return verb( code );
+  }
+  public static boolean verb( final int code )
   {
     return (( code >> 0x4 ) == 0x1 );
   }
-  public static boolean VERB( final int code )
+  public boolean sub( )
+  {
+    return sub( code );
+  }
+  public static boolean sub( final int code )
   {
     return (( code >> 0x4 ) == 0x1 );
   }
-  public boolean SUB( )
+  public boolean adj( )
   {
-    return (( code >> 0x4 ) == 0x1 );
+    return adj( code );
   }
-  public static boolean SUB( final int code )
-  {
-    return (( code >> 0x4 ) == 0x1 );
-  }
-  public boolean ADJ( )
+  public static boolean adj( final int code )
   {
     return (( (short)code >> 0x4 ) == 0x3 );
   }
-  public static boolean ADJ( final int code )
+  public boolean adv( )
   {
-    return (( (short)code >> 0x4 ) == 0x3 );
+    return adv( code );
   }
-  public boolean ADV( )
+  public static boolean adv( final int code )
   {
     return (( code >> 0x4 ) == 0x4 );
   }
-  public static boolean ADV( final int code )
+  public boolean det( )
   {
-    return (( code >> 0x4 ) == 0x4 );
+    return det( code );
   }
-  public boolean DET( )
+  public static boolean det( final int code )
   {
     return (( code >> 0x4 ) == 0x6 );
   }
-  public static boolean DET( final int code )
+  public boolean pro( )
   {
-    return (( code >> 0x4 ) == 0x6 );
+    return pro( code );
   }
-  public boolean PRO( )
+  public static boolean pro( final int code )
   {
     return (( code >> 0x4 ) == 0x7 );
   }
-  public static boolean PRO( final int code )
+  public boolean name( )
   {
-    return (( code >> 0x4 ) == 0x7 );
+    return name( code );
   }
-  public boolean NAME( )
+  public static boolean name( final int code )
   {
     return (( (short)code >> 0x4 ) == 0xB );
   }
-  public static boolean NAME( final int code )
+  public boolean pun( )
   {
-    return (( (short)code >> 0x4 ) == 0xB );
+    return pun( code );
   }
-  public boolean PUN( )
+  public static boolean pun( final int code )
   {
     return (( code >> 0x4 ) == 0xC );
   }
-  public static boolean PUN( final int code )
+  public boolean num()
   {
-    return (( code >> 0x4 ) == 0xC );
+    return num( code );
+  }
+  public static boolean num( final int code )
+  {
+    return (code == NUM || code == DETnum);
   }
   @Override
   public boolean equals( Object o ){
@@ -270,7 +278,7 @@ public final class Tag
   {
     System.out.println( new Tag(Tag.SUB).equals( Tag.SUB ) );
     System.out.println( new Tag(0).equals( (short)0 ) );
-    System.out.println( NAME( NAMEplace ) );
+    System.out.println( name( NAMEplace ) );
     System.out.println( code("TEST") );
     Term t = new Term("ADV");
     System.out.println( code( t ) );

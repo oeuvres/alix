@@ -97,7 +97,7 @@ public class GN
     while ( toks.word( win.add() ) ) {
       // limited concordance
       if ( limit > 0 && n >= limit ) return dic;
-      if ( !win.get( 0 ).tag.equals( Tag.SUB ) ) {
+      if ( !win.get( 0 ).tag().equals( Tag.SUB ) ) {
         // increment global count of dictionary to calculate a frequency for the indexed term
         dic.inc();
         continue;
@@ -105,15 +105,15 @@ public class GN
       int lpos = 0;
       boolean ladj = false;
       while (lpos > -left) {
-        final short tag =  win.get( lpos -1 ).tag.code();
+        final short tag =  win.get( lpos -1 ).tag().code();
         if ( tag == Tag.ADJ ) {
-          dic.inc( win.get( lpos - 1 ).lem );
+          dic.inc( win.get( lpos - 1 ).lem() );
           lpos--;
           ladj = true;
           continue;
         }
         else if ( tag == Tag.VERBppass ) {
-          dic.inc( win.get( lpos - 1 ).orth ); // ? TODO lem
+          dic.inc( win.get( lpos - 1 ).orth() ); // ? TODO lem
           lpos--;
           win.get( lpos ).tag( Tag.ADJ );
           ladj = true;
@@ -123,11 +123,11 @@ public class GN
           lpos--;
           continue;
         }
-        else if ( ladj && Tag.ADV( tag ) ) {
+        else if ( ladj && Tag.adv( tag ) ) {
           lpos--;
           continue;
         }
-        else if ( Tag.DET( tag ) ) {
+        else if ( Tag.det( tag ) ) {
           lpos--;
           break;
         }
@@ -149,15 +149,15 @@ public class GN
       // Ou bien en dormant j’avais rejoint sans effort un âge à jamais révolu de … 
       // … [ma vie primitive, retrouvé] telle de mes terreurs enfantines comme celle que mon grand-oncle me tirât par mes boucles et qu’avait dissipée le jour — date pour moi d’une ère nouvelle — où on les avait coupées.
       while (rpos < right ) {
-        final short tag =  win.get( rpos+1 ).tag.code();
+        final short tag =  win.get( rpos+1 ).tag().code();
         if ( tag == Tag.ADJ ) {
-          dic.inc2( win.get( rpos + 1 ).lem );
+          dic.inc2( win.get( rpos + 1 ).lem() );
           rpos++;
           radj = true;
           continue;
         }
         else if ( tag == Tag.VERBppass ) {
-          dic.inc2( win.get( rpos + 1 ).orth ); // TODO lem
+          dic.inc2( win.get( rpos + 1 ).orth() ); // TODO lem
           rpos++;
           // correct participle,seems adj
           win.get( rpos ).tag( Tag.ADJ );
@@ -172,19 +172,19 @@ public class GN
         // une chose vraiment obscure
         // si adverbe suivi d’un adjectif
         // un <vol> plus léger , plus immatériel , plus vertigineux , plus 
-        else if ( Tag.ADV( tag ) && rpos < right - 1 &&  win.get( rpos+2 ).tag.equals( Tag.ADJ ) ) {
+        else if ( Tag.adv( tag ) && rpos < right - 1 &&  win.get( rpos+2 ).tag().equals( Tag.ADJ ) ) {
           rpos++;
           continue;
         }
         // si déjà adj, puis virgule, voir après
-        else if ( radj && win.get( rpos+1 ).orth.equals( "," ) ) {
+        else if ( radj && win.get( rpos+1 ).orth().equals( "," ) ) {
           rpos++;
           continue;
         }
         // exclure la virgule finale
-        if ( win.get( rpos ).orth.equals( "," ) ) rpos--;
+        if ( win.get( rpos ).orth().equals( "," ) ) rpos--;
         // exclure la conjonction finale
-        if ( win.get( rpos ).tag.equals( Tag.CONJcoord ) ) rpos--;
+        if ( win.get( rpos ).tag().equals( Tag.CONJcoord ) ) rpos--;
         break;
       }
       if ( !ladj && !radj) continue;
@@ -205,22 +205,22 @@ public class GN
     out.print( "<td class=\"left\">" );
     for ( int i=-left; i < 0; i++) {
       if ( i == lpos ) out.print( "<b>" );
-      if ( win.get( i ).tag.equals(Tag.ADJ)  ) out.print( "<i>" );
-      out.print( win.get( i ).graph );
-      if ( win.get( i ).tag.equals(Tag.ADJ) ) out.print( "</i>" );
+      if ( win.get( i ).tag().equals(Tag.ADJ)  ) out.print( "<i>" );
+      out.print( win.get( i ).graph() );
+      if ( win.get( i ).tag().equals(Tag.ADJ) ) out.print( "</i>" );
       if (i<-1) out.print( " " );
     }
     if ( lpos < 0) out.print( "</b>" );
     out.print( "</td>" );
     out.print( "<th>" );
-    out.print( win.get( 0 ).graph );
+    out.print( win.get( 0 ).graph() );
     out.print( "</th>" );
     out.print( "<td class=\"right\">" );
     if ( rpos > 0) out.print( "<b>" );
     for ( int i=1; i <= right; i++) {
-      if ( win.get( i ).tag.equals(Tag.ADJ) ) out.print( "<i>" );
-      out.print( win.get( i ).graph );
-      if ( win.get( i ).tag.equals(Tag.ADJ) ) out.print( "</i>" );
+      if ( win.get( i ).tag().equals(Tag.ADJ) ) out.print( "<i>" );
+      out.print( win.get( i ).graph() );
+      if ( win.get( i ).tag().equals(Tag.ADJ) ) out.print( "</i>" );
       if ( i == rpos ) out.print( "</b>" );
       out.print( " " );
     }

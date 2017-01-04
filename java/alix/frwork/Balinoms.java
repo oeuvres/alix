@@ -36,22 +36,22 @@ public class Balinoms
     int begin = 0;
     Occ occ;
     while ( ( occ =toks.word()) != null ) {
-      if ( !occ.tag.NAME() ) continue;
-      out.print( xml.substring( begin, occ.start ) );
-      begin = occ.end;
-      if ( occ.tag.equals( Tag.NAMEpers ) ) {
+      if ( !occ.tag().name() ) continue;
+      out.print( xml.substring( begin, occ.start() ) );
+      begin = occ.end();
+      if ( occ.tag().equals( Tag.NAMEpers ) ) {
         out.print( "<persName>" );
-        out.print( occ.graph );
+        out.print( occ.graph() );
         out.print( "</persName>" );
       }
-      else if ( occ.tag.equals( Tag.NAMEplace ) ) {
+      else if ( occ.tag().equals( Tag.NAMEplace ) ) {
         out.print( "<placeName>" );
-        out.print( occ.graph );
+        out.print( occ.graph() );
         out.print( "</placeName>" );
       }
       else {
         out.print( "<name>" );
-        out.print( occ.graph );
+        out.print( occ.graph() );
         out.print( "</name>" );
       }
     }

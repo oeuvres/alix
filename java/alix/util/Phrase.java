@@ -55,12 +55,33 @@ public class Phrase
     hash = 0;
     return this;
   }
+  /**
+   * Increment all values
+   * @return
+   */
+  public Phrase inc()
+  {
+    for( int i=0; i < size; i++) {
+      data[i]++;
+    }
+    return this;
+  }
+  /**
+   * Decrement all values
+   * @return
+   */
+  public Phrase dec()
+  {
+    for( int i=0; i < size; i++) {
+      data[i]--;
+    }
+    return this;
+  }
   public Phrase append( int value )
   {
     onWrite( size);
     data[size] = value;
     size++;
-    hash = 0;
     return this;
   }
   public int size()
@@ -205,7 +226,7 @@ public class Phrase
     }
     return sb.toString();
   }
-  public String toString( TermDic dic)
+  public String toString( TermDic dic )
   {
     StringBuffer sb = new StringBuffer();
     for (int i=0; i < size; i++ ) {

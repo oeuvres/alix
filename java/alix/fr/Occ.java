@@ -15,17 +15,17 @@ import alix.util.Term;
 public class Occ
 {
   /** Graphical form like encountered, caps/min, ellisions, could be used for a correct concordancer */
-  public Term graph = new Term();
+  private Term graph = new Term();
   /** Orthographic form, normalized graphical form */
-  public Term orth = new Term();
+  private Term orth = new Term();
   /** Grammatical category */
-  public Tag tag = new Tag();
+  private Tag tag = new Tag();
   /** Lemma form */
-  public Term lem = new Term();
+  private Term lem = new Term();
   /** Char index in the source file of the first char of the token */
-  public int start = 0;
+  private int start = 0;
   /** Char index in the source file  */
-  public int end = 0;
+  private int end = 0;
   /** Link to next Occurrence if used in a linked list */
   private Occ next;
   /** Link to previous Occurrence if used in a linked list */
@@ -67,6 +67,30 @@ public class Occ
     orth( orth );
     tag( tag );
     lem( lem );
+  }
+  public Term graph()
+  {
+    return graph;
+  }
+  public Term orth()
+  {
+    return orth;
+  }
+  public Term lem()
+  {
+    return lem;
+  }
+  public Tag tag()
+  {
+    return tag;
+  }
+  public int start()
+  {
+    return start;
+  }
+  public int end()
+  {
+    return end;
   }
   /**
    * Replace occurrence values by another

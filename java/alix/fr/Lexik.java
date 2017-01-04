@@ -124,7 +124,7 @@ public class Lexik
       else if ( cells[0].indexOf( ' ' ) > 0 || cells[0].indexOf( '\'' ) >= 0 ) action = _LOC;
       else if ( mode != 0 ) action = mode; // mode fixé à l’appel
       else if ( cells[0].charAt( cells[0].length() - 1 ) == '.' ) action = _BREVIDOT;
-      else if ( Tag.NAME( tag ) ) action = _NAME;
+      else if ( Tag.name( tag ) ) action = _NAME;
 
       // Les logiques d’insertions dans les dictionnaires
       if ( action == _WORD) {
@@ -216,8 +216,8 @@ public class Lexik
    */
   public static boolean word( Occ occ )
   {
-    if ( ORTH.containsKey( occ.graph ) ) occ.orth( ORTH.get( occ.graph ) );
-    WordEntry entry = Lexik.WORD.get( occ.orth );
+    if ( ORTH.containsKey( occ.graph() ) ) occ.orth( ORTH.get( occ.graph() ) );
+    WordEntry entry = Lexik.WORD.get( occ.orth() );
     if ( entry == null ) return false;
     occ.lem( entry.lem );
     occ.tag( entry.tag.code() );
@@ -230,7 +230,7 @@ public class Lexik
    */
   public static boolean name( Occ occ )
   {
-    NameEntry entry = Lexik.NAME.get( occ.graph );
+    NameEntry entry = Lexik.NAME.get( occ.graph() );
     if ( entry == null ) return false;
     if ( entry.orth != null ) occ.orth( entry.orth );
     occ.tag( entry.tag );
@@ -365,7 +365,7 @@ public class Lexik
       occ.clear();
       occ.orth( token );
       Lexik.word( occ );
-      if ( occ.tag.equals( Tag.NULL )) Lexik.name( occ );
+      if ( occ.tag().equals( Tag.NULL )) Lexik.name( occ );
       System.out.println( occ );
     }
   }

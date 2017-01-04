@@ -22,6 +22,8 @@ import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
 import alix.fr.Lexik;
+import alix.fr.Occ;
+import alix.fr.Tag;
 import alix.fr.Tokenizer;
 
 
@@ -96,6 +98,16 @@ public class PhraseDic
     }
     return ref.inc();
   }
+  /**
+   * 
+   * @param phrase
+   * @return ???
+   */
+  public void label( final Phrase key, final String label ) {
+    Ref ref = phraseMap.get( key );
+    if ( ref == null ) return; // create it ?
+    ref.label = label;
+  }
   public boolean contains( final Phrase phrase ) {
     Ref ref = phraseMap.get( phrase );
     if ( ref == null ) return false;
@@ -125,9 +137,13 @@ public class PhraseDic
     Iterator<Entry<Phrase, Ref>> it = freqlist();
     Map.Entry<Phrase, Ref> entry;
     int no = 1;
+    String label;
     while ( it.hasNext() ) {
       entry = it.next();
-      writer.write(entry.getKey().toString( words )+" ("+entry.getValue().count()+")\n");
+      label = entry.getValue().label;
+      if ( label !=  null) writer.write( label );
+      else writer.write(entry.getKey().toString( words ));
+      writer.write(" ("+entry.getValue().count()+")\n");
       no++;
       if ( no >= 1000 ) break;
     }
@@ -141,7 +157,11 @@ public class PhraseDic
    */
   public class Ref {
     private int count;
-    public Ref( int count ) {
+    private String label;
+    public Ref( final String label ) {
+      this.label = label;
+    }
+    public Ref( final int count ) {
       this.count = count;
     }
     public int inc() {
@@ -156,19 +176,21 @@ public class PhraseDic
   {
     final String dir="../alix-demo/WEB-INF/textes/";
     // final Pattern filematch = Pattern.compile("millet_vie-sexuelle.xml");
-    final Pattern filematch = Pattern.compile("james-el_50-nuances.xml");
-    final int size = 2; // taille des expressions
-    IntRoller gram = new IntRoller(0, size - 1);
-    Phrase phr = new Phrase( size, false );
-
+    // final Pattern filematch = Pattern.compile("proust_recherche.xml");
+    final Pattern filematch = Pattern.compile("dumas.xml");
+    // final Pattern filematch = Pattern.compile("james-el_50-nuances.xml");
+    final int size = 3; // taille des expressions
+    
+    
+    Phrase key = new Phrase( size, false ); // collocation key (series or bag)
+    IntRoller gram = new IntRoller(0, size - 1); // collocation wheel
+    IntRoller wordmarks = new IntRoller(0, size - 1); // positions of words recorded in the collocation key
     
     TermDic dic = new TermDic();
     PhraseDic phrases = new PhraseDic();
-    PhraseDic locutions = new PhraseDic();
     
-    int NOM = dic.add( "NOM" );
-    // HashSet<String> nosense = new HashSet<String>();
-    // pas à pas ?
+    int NAME = dic.add( "NOM" );
+    int NUM = dic.add( "NUM" );
     BufferedReader buf = new BufferedReader(
       new InputStreamReader( Lexik.class.getResourceAsStream(  "dic/stop.csv" ), StandardCharsets.UTF_8 )
     );
@@ -182,30 +204,17 @@ public class PhraseDic
     buf.close();
     // add some more words to the stoplits
     for (String w: new String[]{
-         "chère", "dis", "dit", "jeune", "jeunes", "yeux"
+         "chère", "dire", "dis", "dit", "jeune", "jeunes", "yeux"
     }) {
       int code = dic.add( w );
       if ( code > senselevel ) senselevel = code;
     }
 
-    
-    buf = new BufferedReader(
-      new InputStreamReader( Lexik.class.getResourceAsStream(  "dic/loc.csv" ), StandardCharsets.UTF_8 )
-    );
-    while ((l = buf.readLine()) != null) {
-      locutions.add( dic, l );
-    }
-    buf.close();
-    /*
-    PrintWriter pw = new PrintWriter( new File("test.csv") );
-    locutions.print( pw, 10000, words );
-    System.exit( 1 );
-    */
-    IntRoller zip = new IntRoller(0, 4);
-    IntRoller label = new IntRoller(12, 0);
-    IntRoller mort = new IntRoller(0, 2).push( 959 ).push( 959 ).push( 959 );
-    
+
+    IntRoller wordflow = new IntRoller(15, 0);
     int code;
+    int exit = 1000;
+    StringBuffer label = new StringBuffer();
     for (File src : new File( dir ).listFiles()) {
       if ( src.isDirectory() ) continue;
       if ( src.getName().startsWith( "." )) continue;
@@ -217,68 +226,50 @@ public class PhraseDic
       String xml = new String(Files.readAllBytes( Paths.get( src.toString() ) ), StandardCharsets.UTF_8);
       int pos = xml.indexOf( "</teiHeader>");
       if ( pos < 0 ) pos = 0;
-      Term token = new Term();
-      Phrase loc = new Phrase( 5 );
-      int occs = 0;
+      Occ occ = new Occ(); // pointer on current occurrence in the tokenizer flow
       Tokenizer toks = new Tokenizer( xml );
-      int exit = 100;
-      int labeli = 0;
-      while ( toks.token(token) ) {
-        if ( token.isEmpty() ) continue;
-        if ( token.isFirstUpper() ) code = NOM;
-        else code = dic.add( token );
-        zip.push( code );
-        
-        if ( zip.get( 0 ) == 0 ) continue; 
-        
-        loc.set( zip.get(0), zip.get(1), zip.get(2), zip.get(3) );
-        if (locutions.contains( loc ) ) {
-          code = dic.add( loc.toString( dic ) );
-          zip.set( 0, 0 ).set( 1, 0 ).set( 2, 0 ).set( 3, code );
-          continue;
-        }
-        loc.set( zip.get(0), zip.get(1), zip.get(2) );
-        if (locutions.contains( loc ) ) {
-          code = dic.add( loc.toString( dic ) );
-          zip.set( 0, 0 ).set( 1, 0 ).set( 2, code );
-          continue;
-        }
-        // known expression, group
-        loc.set( zip.get(0), zip.get(1) );
-        if (locutions.contains( loc ) ) {
-          code = dic.add( loc.toString( dic ) );
-          zip.set( 0, 0 ).set( 1, code );
-          continue;
-        }
-        if ( zip.get( 0 ) == 0 ) continue;
-        // on nettoie après chaque nom propre
-        if ( zip.get( 0 ) == NOM || zip.get( 0 ) == zip.get( 1 ) ) {
-          /*
-          System.out.println( zip.toString( words ) );
-          if ( --exit < 0 ) System.exit( 1 );
-          */
+      while ( (occ = toks.word()) != null ) {
+        // clear after sentences
+        if ( occ.tag().equals( Tag.PUNsent )) {
+          wordflow.clear();
           gram.clear();
-          label.clear();
+          wordmarks.clear();
           continue;
         }
-        // garder la mémoire de tous les mots, même vide
-        label.push( zip.get( 0 ) );
-        // passer les mots vides 
-        if ( zip.get( 0 ) <= senselevel ) {
-          continue;
-        }
-        gram.push( zip.get( 0 ) );
-        if ( gram.get( 0 ) == 0 ) continue;
         
-        // System.out.println( label.toString( words ) );
-        // System.out.println( "— "+gram3.toString( words ) );
-        if ( mort.equals( gram )) System.out.println( label.toString(dic) );
-        phr.set( gram );
-        phrases.inc( phr );
-        // label.clear();
-        // if (beginIndex==0 || endIndex==0 ) continue;
-        // System.out.println( beginIndex+" "+endIndex );
-        // System.out.println( xml.substring( beginIndex, endIndex ) );
+        if (occ.tag().pun()) continue; // do not record punctuation
+        else if ( occ.tag().name() ) code = NAME; // simplify names
+        else if ( occ.tag().num() ) code = NUM; // simplify names
+        else if ( occ.tag().verb() ) code = dic.add( occ.lem() );
+        else code = dic.add( occ.orth() );
+        // clear to avoid repetitions 
+        // « Voulez vous sortir, grand pied de grue, grand pied de grue, grand pied de grue »
+        if ( code == wordflow.first()) {
+          wordflow.clear();
+          gram.clear();
+          wordmarks.clear();
+          continue;
+        }
+
+        wordflow.push( code ); // add this token to the word flow
+        wordmarks.dec(); // decrement positions of the recorded plain words
+        if ( wordflow.get( 0 ) <= senselevel ) continue; // do not record empty words
+        wordmarks.push( 0 ); // record a new position of full word
+        gram.push( wordflow.get( 0 ) ); // store a signficant word as a collocation key
+        if ( gram.get( 0 ) == 0 ) continue; // the collocation key is not complete
+        
+        key.set( gram ); // transfer the collocation wheel to a phrase key
+        int count = phrases.inc( key );
+        // new value, add a label to the collocation
+        if ( count == 1 ) {
+          label.setLength( 0 );
+          for ( int i = wordmarks.get( 0 ); i <= 0 ; i++) {
+            label.append( dic.term( wordflow.get( i )) );
+            if ( i != 0 && label.charAt( label.length()-1 ) != '\'' ) label.append( " " );
+          }
+          // System.out.println( label );
+          phrases.label( key, label.toString() );
+        }
         // if ( --exit < 0 ) System.exit( 1 );
       }
     }

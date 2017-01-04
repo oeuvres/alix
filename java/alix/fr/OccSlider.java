@@ -74,6 +74,23 @@ public class OccSlider extends Roller {
     return data[pointer(pos)];
   }
   /**
+   * Get first value
+   * 
+   * @return
+   */
+  public Occ first() 
+  {
+    return data[pointer(right)];
+  }
+  /**
+   * Return last value
+   * @return
+   */
+  public Occ last() 
+  {
+    return data[pointer(left)];
+  }
+  /**
    * Give a pointer on the right Tok object that a Tokenizer can modify
    */
   public Occ add()
@@ -100,7 +117,7 @@ public class OccSlider extends Roller {
     StringBuilder sb = new StringBuilder();
     for (int i = -left; i <= right; i++) {
       if (i == 0) sb.append( "<" );
-      sb.append( get(i).graph );
+      sb.append( get(i).graph() );
       if (i == 0) sb.append( ">" );
       sb.append( " " );
     }

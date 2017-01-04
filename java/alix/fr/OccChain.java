@@ -19,8 +19,8 @@ import java.io.PrintWriter;
 public class OccChain
 {
   private final Occ[] data;
-  private Occ back;
-  private Occ front;
+  private Occ first;
+  private Occ last;
   public OccChain( int size) 
   {
     data = new Occ[size];
@@ -28,22 +28,22 @@ public class OccChain
       data[i] = new Occ();
       data[i].chain = this;
       if ( i == 0) {
-        back = data[i];
+        last = data[i];
       }
       else {
         data[i].prev( data[i-1] );
         data[i-1].next( data[i] );
       }
     }
-    front = data[size-1];
+    first = data[size-1];
   }
-  public Occ front()
+  public Occ first()
   {
-    return front;
+    return first;
   }
-  public Occ back()
+  public Occ last()
   {
-    return back;
+    return last;
   }
   /**
    * Remove Occurrence pointer from the list, link together left and right, 
@@ -55,23 +55,23 @@ public class OccChain
     // Could be unpredictable if occ is not from the pool
     if ( occ.chain != this ) throw new IllegalArgumentException( "This Occ object does not belong to this chain" );
     occ.clear();
-    if ( occ == back ) return; // already at the end, all links are OK
+    if ( occ == last ) return; // already at the end, all links are OK
     Occ prev = occ.prev();
-    if ( occ == front ) { // has no next
+    if ( occ == first ) { // has no next
       prev.next( null );
-      front = prev;
+      first = prev;
     }
     else {
       Occ next = occ.next();
       prev.next( next );
       next.prev( prev );
-      occ.next( back );
+      occ.next( last );
       occ.prev( null );
-      back = occ;
+      last = occ;
       return;
     }
-    occ.next( back );
-    back = occ;
+    occ.next( last );
+    last = occ;
     occ.clear();
   }
   /**
@@ -79,12 +79,12 @@ public class OccChain
    */
   public Occ push()
   {
-    Occ push = back;
-    back = back.next();
+    Occ push = last;
+    last = last.next();
     push.next(null);
-    push.prev( front );
-    front.next( push );
-    front = push;
+    push.prev( first );
+    first.next( push );
+    first = push;
     push.clear();
     return push;
   }
@@ -95,13 +95,13 @@ public class OccChain
   public String toString()
   {
     StringBuffer sb = new StringBuffer();
-    Occ occ = back;
+    Occ occ = last;
     int i = 1;
     while( occ != null) {
       sb.append( ""+i+". " );
-      sb.append( occ.graph );
+      sb.append( occ.graph() );
       if ( !occ.isEmpty() ) {
-        if ( occ != front ) sb.append( " " );
+        if ( occ != first ) sb.append( " " );
       }
       occ = occ.next();
       i++; 
@@ -122,12 +122,12 @@ public class OccChain
     Occ cent = null;
     for ( String tok: text.split( " " ) ) {
       chain.push().graph( tok );
-      if ( cent != null && cent.graph.length() < 3 ) {
+      if ( cent != null && cent.graph().length() < 3 ) {
         cent.apend( cent.next() );
         chain.remove( cent.next() );
       }
       System.out.println( chain );
-      cent = chain.front().prev();
+      cent = chain.first().prev();
     }
   }
 

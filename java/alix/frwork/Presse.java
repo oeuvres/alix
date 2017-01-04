@@ -53,7 +53,7 @@ public class Presse
       Occ occ;
       while( ( occ=toks.word()) != null) {
         if ( false );
-        else if ( occ.tag.equals( Tag.DETnum ) );
+        else if ( occ.tag().equals( Tag.DETnum ) );
         // if ( occ.tag.isAdj() || occ.tag.isVerb() ) dic.add( occ.lem );
         /*
         else if ( occ.orth.isEmpty() ) {
@@ -62,7 +62,7 @@ public class Presse
           dic.add( occ.graph ); // ? TODO
         }
         */
-        else dic.add( occ.orth );
+        else dic.add( occ.orth() );
       }
     }
 

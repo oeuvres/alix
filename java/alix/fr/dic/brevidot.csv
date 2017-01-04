@@ -2,7 +2,8 @@
 &amp;c.;;et cetera
 &c.;;et cetera
 A.
-av.;;avant
+ap.;
+av.;
 avr.;;avril
 B.
 C.
@@ -11,27 +12,37 @@ cpt.;;compte
 c.-à-d.;;c'est à dire
 ch.
 cf.
+Cf.;;cf.
+ch.
+chap.
 cit.
 cl.
+coll.
+d.
 D.
 dec.;;décembre
 déc.;;décembre
 E.
-ed.;;édition
-éd.;;édition
-etc.;;et cetera
+ed.;;éd.
+éd.;;
+etc.
+f.
 F.
+fasc.
 fev.;;février
 fevr.;;février
+fig.
 fr.;;francs
 G.
 H.
 h.;;heure
-id.
-Id.
 I.
+ibid.
+id.
+Id.;;id.
 II.;;2
 III.;;3
+introd.;;
 IV.;;4
 IX.;;9
 J.
@@ -40,21 +51,26 @@ janv.;;janvier
 juil.;;juillet
 juill.;;juillet
 J.-J.;;Jean-Jacques
-J.-C.;;Jésus-Christ
+J.-C.
 K.
-L.
 l.
+L.
+liv.
+loc.
 M.;;Monsieur
 Mlle.;;Mademoiselle
 Melle.;;Mademoiselle
 MM.;;Messieurs
 Mm.;;Messieurs
+ms.
+n.
 N.
 nov.;;novembre
 ncpt.;;numéro de compte
 nCpt.;;numéro de compte
 oct.;;octobre
 O.
+op.
 oct.;;octobre
 P.
 p.
@@ -64,8 +80,16 @@ Pr.;;Professeur
 Prs.;;Professeur
 Q.
 R.
+s.
 S.
+sc.
+Sect.
+sect.
 sept.;;septembre
+sq.
+sqq.
+suppl.
+t.
 T.
 tél.;;tél.
 tel.;;tél.
@@ -77,9 +101,11 @@ trad.;;traduction
 Trad.;;traduction
 U.
 V.
+v.
 VI.;;6
 VII.;;7
 VIII.;;8
+vol.
 W.
 X.
 Y.
