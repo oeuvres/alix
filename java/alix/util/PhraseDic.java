@@ -36,11 +36,11 @@ import alix.fr.Tokenizer;
 public class PhraseDic
 {
   /** Count of nodes */
-  private int occs = 1;
+  private long occs = 1;
   /** Access by phrase */
-  private HashMap<Phrase, Ref> phraseMap = new HashMap<Phrase, Ref>();
+  private HashMap<Phrase, Ref> phrases = new HashMap<Phrase, Ref>();
   /** A local mutable Phrase for testing in the Map of phrases, efficient but not thread safe */
-  private Phrase phrase = new Phrase( 5 );
+  private Phrase phrase = new Phrase( 8 );
   /** A local mutable String for locution insertion, not thread safe  */
   private Term token = new Term();
 
@@ -87,13 +87,20 @@ public class PhraseDic
     return true;
   }
   
+  public long occs() {
+    return occs;
+  }
+  public long size() {
+    return phrases.size();
+  }
+  
   public int inc( final Phrase key ) {
-    Ref ref = phraseMap.get( key );
+    Ref ref = phrases.get( key );
     occs++;
     if ( ref == null ) {
       ref = new Ref( 1 );
       Phrase phr = new Phrase( key );
-      phraseMap.put( phr, ref );
+      phrases.put( phr, ref );
       return 1;
     }
     return ref.inc();
@@ -104,24 +111,24 @@ public class PhraseDic
    * @return ???
    */
   public void label( final Phrase key, final String label ) {
-    Ref ref = phraseMap.get( key );
+    Ref ref = phrases.get( key );
     if ( ref == null ) return; // create it ?
     ref.label = label;
   }
   public boolean contains( final Phrase phrase ) {
-    Ref ref = phraseMap.get( phrase );
+    Ref ref = phrases.get( phrase );
     if ( ref == null ) return false;
     return true;
   }
   public boolean contains( final IntRoller win ) {
-    Ref ref = phraseMap.get( win );
+    Ref ref = phrases.get( win );
     if ( ref == null ) return false;
     return true;
   }
 
   public Iterator<Map.Entry<Phrase, Ref>> freqlist( )
   {
-    List<Map.Entry<Phrase, Ref>> list = new LinkedList<Map.Entry<Phrase, Ref>>( phraseMap.entrySet() );
+    List<Map.Entry<Phrase, Ref>> list = new LinkedList<Map.Entry<Phrase, Ref>>( phrases.entrySet() );
     Collections.sort( list, new Comparator<Map.Entry<Phrase, Ref>>()
     {
         public int compare( Map.Entry<Phrase, Ref> o1, Map.Entry<Phrase, Ref> o2 )
@@ -132,20 +139,31 @@ public class PhraseDic
     return list.iterator();
   }
   
-  public void  print( Writer writer, final int limit, final TermDic words) throws IOException
+  
+  public void  html( final Writer writer, final int limit, final TermDic words) throws IOException
+  {
+    print(writer, limit, words, true);
+  }
+  public void  print( final Writer writer, final int limit, final TermDic words) throws IOException
+  {
+    print(writer, limit, words, false);
+  }
+  
+  
+  public void  print( final Writer writer, int limit, final TermDic words, boolean html) throws IOException
   {
     Iterator<Entry<Phrase, Ref>> it = freqlist();
     Map.Entry<Phrase, Ref> entry;
-    int no = 1;
     String label;
     while ( it.hasNext() ) {
       entry = it.next();
       label = entry.getValue().label;
+      writer.write( "\n" );
       if ( label !=  null) writer.write( label );
       else writer.write(entry.getKey().toString( words ));
-      writer.write(" ("+entry.getValue().count()+")\n");
-      no++;
-      if ( no >= 1000 ) break;
+      writer.write(" ("+entry.getValue().count()+")");
+      if ( html ) writer.write( "<br/>" );
+      if (--limit == 0 ) break;
     }
     writer.flush();
   }
@@ -175,11 +193,16 @@ public class PhraseDic
   public static void main( String[] args ) throws IOException
   {
     final String dir="../alix-demo/WEB-INF/textes/";
+    // final String dir="../textes/";
     // final Pattern filematch = Pattern.compile("millet_vie-sexuelle.xml");
     // final Pattern filematch = Pattern.compile("proust_recherche.xml");
-    final Pattern filematch = Pattern.compile("dumas.xml");
+    // final Pattern filematch = Pattern.compile("dumas.xml");
+    // final Pattern filematch = Pattern.compile("galland_1001nuits.xml");
+    final Pattern filematch = Pattern.compile("larsson_millenium.xml");
+    // final Pattern filematch = Pattern.compile("zola.*.xml");
     // final Pattern filematch = Pattern.compile("james-el_50-nuances.xml");
-    final int size = 3; // taille des expressions
+    final int size = 2; // taille des expressions
+    boolean locs = true;
     
     
     Phrase key = new Phrase( size, false ); // collocation key (series or bag)
@@ -219,16 +242,21 @@ public class PhraseDic
       if ( src.isDirectory() ) continue;
       if ( src.getName().startsWith( "." )) continue;
       if ( !filematch.matcher(  src.getName() ).matches() ) continue; 
-      if ( src.getName().endsWith( ".txt" ) );
-      else if ( src.getName().endsWith( ".xml" ) );
-      else continue;
+      if ( !src.getName().endsWith( ".txt" ) && !src.getName().endsWith( ".xml" ) ) continue;
       System.out.println( src );
       String xml = new String(Files.readAllBytes( Paths.get( src.toString() ) ), StandardCharsets.UTF_8);
       int pos = xml.indexOf( "</teiHeader>");
       if ( pos < 0 ) pos = 0;
       Occ occ = new Occ(); // pointer on current occurrence in the tokenizer flow
       Tokenizer toks = new Tokenizer( xml );
-      while ( (occ = toks.word()) != null ) {
+      while(true) {
+        if ( locs ) {
+          occ = toks.word();
+          if (occ == null ) break;
+        }
+        else {
+          if ( ! toks.token(occ) ) break;
+        }
         // clear after sentences
         if ( occ.tag().equals( Tag.PUNsent )) {
           wordflow.clear();
@@ -274,7 +302,7 @@ public class PhraseDic
       }
     }
     System.out.println( "Parsé" );
-    System.out.println( phrases.phraseMap.size()+" ngrams" );
+    System.out.println( phrases.phrases.size()+" ngrams" );
     phrases.print( new PrintWriter(System.out), 1000, dic );
   }
 }
