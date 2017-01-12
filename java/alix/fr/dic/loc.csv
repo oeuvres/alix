@@ -672,6 +672,7 @@ stricto sensu;ADV;
 sursum corda;ADV;
 tantôt à droite tantôt à gauche;ADV
 tant pis;ADV;
+tôt ou tard;ADV
 tour à tour;ADV
 tout de même;ADV
 toutes les fois;ADV;
@@ -792,6 +793,7 @@ bonne humeur;SUB
 boat people;SUB
 bonne volonté;SUB
 bon sens;SUB
+bouche bée;SUB
 bouton d’or;SUB
 brown sugar;SUB
 bubble gum;SUB
@@ -806,6 +808,7 @@ caput mortuum;SUB
 cas particulier;SUB
 casus belli;SUB
 chambre à coucher;SUB
+Chambre des députés;SUB
 champ de bataille;SUB
 chapeau haut de forme;SUB
 check up;SUB
@@ -825,9 +828,10 @@ chewing gum;SUB
 chien de fusil;SUB
 chop suey;SUB
 chute libre;SUB
-citizen band;SUB
 chemise de nuit;SUB
+citizen band;SUB
 clair de lune;SUB
+clin d'œil;SUB
 coffee shop;SUB
 coin de l’œil;SUB
 coin de l’oeil;SUB
@@ -840,6 +844,7 @@ conseil d'administration;SUB
 conseil général;SUB
 conseiller général;SUB
 corn flakes;SUB
+corps de garde;SUB
 corpus delicti;SUB
 coup de balai;SUB
 coups de balai;SUB
@@ -885,6 +890,8 @@ disque dur;SUB
 eau minérale;SUB
 éclat de rire;SUB
 éclats de rire;SUB;éclat de rire
+École polytechnique;SUB;École Polytechnique
+École Polytechnique;SUB
 empreinte digitale;SUB
 empreintes digitales;SUB;empreinte digitale
 enfant de chœur;SUB
@@ -895,6 +902,8 @@ face à face;SUB
 fast food;SUB
 fauteuil roulant;SUB
 faux monnayeurs;SUB
+femme de chambre;SUB
+femmes de chambre;SUB;femme de chambre
 five o'clock;SUB
 flatus vocis;SUB
 foreign office;SUB
@@ -946,6 +955,7 @@ hôtel de ville;SUB
 house music;SUB
 ice cream;SUB
 in pace;SUB
+inspecteur de police;SUB
 intérêt général;SUB
 invisible piston;SUB
 irish coffee;SUB
@@ -969,6 +979,7 @@ ligne de compte;SUB
 lit de sangle;SUB
 livre sterling;SUB
 livres sterling;SUB;livre sterling
+livres de rente;SUB
 loc. cit.;SUB
 lutte des classes;SUB
 madre de dios;SUB
@@ -981,16 +992,20 @@ maître queux;SUB
 maître d'école;SUB
 maître d'hôtel;SUB
 maître de maison;SUB
+maître de poste;SUB
+maître des requêtes;SUB
 maîtresse de maison;SUB
 malade mental;SUB
 maladie mentale;SUB
 marchand de vin;SUB
 marchands de vin;SUB
+maréchal des logis;SUB
 mass media;SUB
 mater dolorosa;SUB
 mauvaise conscience;SUB
 mauvaise foi;SUB
 mauvaise humeur;SUB
+mauvais goût;SUB
 maux de tête;SUB
 mea culpa;SUB
 melting pot;SUB
@@ -998,10 +1013,19 @@ mètres carrés;SUB
 middle class;SUB
 milk shake;SUB
 ministère public;SUB
+ministère de l'Intérieur;SUB
+ministère de l'intérieur;SUB;ministère de l'Intérieur
+ministère des finances;SUB;ministère des Finances
+ministère des Finances;SUB
+ministre de la guerre;SUB
 ministre de la justice;SUB
+ministre de l'Intérieur;SUB
+ministre de l'intérieur;SUB;ministre de l'Intérieur
 ministre des affaires étrangères;SUB;Ministre des Affaires étrangères
 ministre des Affaires étrangères;SUB;Ministre des Affaires étrangères
 Ministre des Affaires étrangères;SUB
+ministre des finances;SUB;ministre des Finances
+ministre des Finances;SUB
 minus habens;SUB
 modern style;SUB
 modus operandi;SUB
@@ -1031,6 +1055,7 @@ olla podrida;SUB
 op. cit.;SUB
 osso buco;SUB
 ouvr. cit.;SUB
+pieds de haut;SUB
 plaque d'immatriculation;SUB
 pompes funèbres;SUB
 porte cochère;SUB
@@ -1082,6 +1107,7 @@ relations sexuelles;SUB
 rendez vous;SUB;rendez-vous
 répétition générale;SUB
 requiescat in pace;SUB
+révérende mère;SUB
 rhythm and blues;SUB
 roast beef;SUB
 rocking chair;SUB
