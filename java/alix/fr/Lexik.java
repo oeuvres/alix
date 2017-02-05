@@ -28,7 +28,7 @@ public class Lexik
   public static HashSet<String> STOP = new HashSet<String>( (int)( 700 * 0.75 ) );
   public static short _STOP = 1;
   /** 130 000 types French lexicon seems not too bad for memory */
-  public static HashMap<String, WordEntry> WORD = new HashMap<String, WordEntry>( (int)(150000 * 0.75) );
+  public static HashMap<String, Lexentry> WORD = new HashMap<String, Lexentry>( (int)(150000 * 0.75) );
   public static short _WORD = 2;
   /** French names on which keep Capitalization */
   public static HashMap<String, NameEntry> NAME = new HashMap<String, NameEntry>( (int)(50000 * 0.75) );
@@ -42,6 +42,8 @@ public class Lexik
   /** Locutions stored in a Trie */
   public static StemTrie LOC = new StemTrie();
   public static short _LOC = 6;
+  public static StemTrie RULES = new StemTrie();
+  public static short _RULES = 7;
   /* Load dictionaries */
   static {
     try {
@@ -51,6 +53,7 @@ public class Lexik
       loadRes( "dic/forename.csv", _NAME );
       loadRes( "dic/word.csv", _WORD );
       loadRes( "dic/loc.csv", _LOC );
+      loadRes( "dic/rules.csv", _RULES );
       loadRes( "dic/orth.csv", _ORTH );
       loadRes( "dic/brevidot.csv", _BREVIDOT );
       loadRes( "dic/name.csv", _NAME );
@@ -120,6 +123,7 @@ public class Lexik
       // une table de noms peut contenir des locutions de plusieurs noms
       if ( mode == _WORD ) action = _WORD; // specific loader
       else if ( mode == _STOP ) action = _STOP; // do not register locutions from stop words
+      else if ( mode == _RULES ) action = _RULES; // do not register locutions from stop words
       // be careful on apos here for d' or l' in dico
       else if ( cells[0].indexOf( ' ' ) > 0 || cells[0].indexOf( '\'' ) >= 0 ) action = _LOC;
       else if ( mode != 0 ) action = mode; // mode fixé à l’appel
@@ -130,11 +134,15 @@ public class Lexik
       if ( action == _WORD) {
         // default logic for first dico is first win
         if ( WORD.containsKey( cells[0] ) ) continue;
-        WORD.put( cells[0], new WordEntry( cells ) );
+        WORD.put( cells[0], new Lexentry( cells ) );
         continue;
       }
       else if ( action == _STOP) {
         STOP.add( cells[0] );
+        continue;
+      }
+      else if ( action == _RULES) {
+        RULES.add( cells );
         continue;
       }
       else if ( action == _LOC) {
@@ -217,7 +225,7 @@ public class Lexik
   public static boolean word( Occ occ )
   {
     if ( ORTH.containsKey( occ.graph() ) ) occ.orth( ORTH.get( occ.graph() ) );
-    WordEntry entry = Lexik.WORD.get( occ.orth() );
+    Lexentry entry = Lexik.WORD.get( occ.orth() );
     if ( entry == null ) return false;
     occ.lem( entry.lem );
     occ.tag( entry.tag.code() );
@@ -259,7 +267,7 @@ public class Lexik
    * @param orth a word in correct orthographic form
    * @return the lexical entry
    */
-  public static WordEntry entry( String orth )
+  public static Lexentry entry( String orth )
   {
     return Lexik.WORD.get( orth );
   }
@@ -271,7 +279,7 @@ public class Lexik
    */
   public static String lem( final String orth )
   {
-    WordEntry entry = Lexik.WORD.get( orth );
+    Lexentry entry = Lexik.WORD.get( orth );
     // ? orth or null ?
     if ( entry == null ) return orth;
     return Lexik.WORD.get( orth ).lem;
@@ -283,7 +291,7 @@ public class Lexik
    */
   public static short cat( final String orth )
   {
-    WordEntry entry = Lexik.WORD.get( orth );
+    Lexentry entry = Lexik.WORD.get( orth );
     if ( entry == null ) return Tag.UNKNOWN;
     return entry.tag.code();
   }

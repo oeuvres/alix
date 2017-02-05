@@ -197,7 +197,7 @@ public final class Tag
   }
   public static boolean sub( final int code )
   {
-    return (( code >> 0x4 ) == 0x1 );
+    return (( code >> 0x4 ) == 0x2 );
   }
   public boolean adj( )
   {

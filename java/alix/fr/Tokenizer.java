@@ -46,6 +46,8 @@ public class Tokenizer
   private Occ occhere = occline.first();
   /** Handle on root of compound dictionary */
   private Stem locroot = Lexik.LOC.getRoot();
+  /** Handle on root of rules dictionary */
+  private Stem rulesroot = Lexik.RULES.getRoot();
   /** French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel */
   public static final HashSet<String> HYPHEN_POST = new HashSet<String>();
   static {
@@ -138,8 +140,10 @@ public class Tokenizer
    */
   public Occ word( ) {
     // pointer is front token, get one more to have next, or stop if end of text;
-    if ( occhere == occline.first() && !token(occline.push())) return null;
+    if ( occhere == occline.first() && !token( occline.push() ) ) return null;
     occhere = occhere.next();
+    // BUG, http://lesjoiesducode.fr/post/137539735754/quand-on-a-la-flemme-de-contourner-un-message
+    if ( occhere.isEmpty() ) return null;
     // no compound with punctuation
     if ( occhere.tag().pun() ) return occhere;
     Stem stem;
@@ -157,10 +161,13 @@ public class Tokenizer
     else {
       stem = locroot.get( occhere.graph() );
     }
-    // is there a compound ?
-    if( stem != null ) {
-      if(locsearch( stem ));
+    // try rules
+    if ( stem == null ) {
+      if ( occhere.tag().name() ) stem =  rulesroot.get( "NAME" );
+      else stem = rulesroot.get( occhere.orth() );
     }
+    // if there is a compound, the locution explorer will merge the compound
+    if( stem != null )  locsearch( stem );
     if ( occhere.orth().last() == '\'' ) occhere.orth().last('e');
     return occhere;
   }
@@ -179,7 +186,11 @@ public class Tokenizer
       // front of buffer, have a token more
       if ( ranger == occline.first() ) token(occline.push());
       ranger = ranger.next();
-      if ( ranger.tag().verb()) {
+      // names compound
+      if ( ranger.tag().name() ) {
+        stem = stem.get( "NAME" );
+      }
+      else if ( ranger.tag().verb()) {
         child = stem.get( ranger.lem() );
         // il y a ?
         if ( child == null ) child = stem.get( ranger.orth() );
@@ -659,7 +670,7 @@ public class Tokenizer
       String text;
       text = "<>"
          // 123456789 123456789 123456789 123456789
-        + " D’Artagnan J’en tiens compte à l’Académie des Sciences morales. Mais il y a &amp; t&eacute;l&eacute; murmure-t-elle rendez-vous voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
+        + " Et alors, Monsieur Claude Bernard, D’Artagnan J’en tiens compte à l’Académie des Sciences morales. Mais il y a &amp; t&eacute;l&eacute; murmure-t-elle rendez-vous voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
         + " , l'animal\\nc’est-à-dire parce qu’alors, non !!! Il n’y a vu que du feu."
       //  + " De temps en temps, Claude Lantier promenait sa flânerie  "
       //  + " avec Claude Bernard, Auguste Comte, et Joseph de Maistre. Geoffroy Saint-Hilaire."
@@ -677,7 +688,7 @@ public class Tokenizer
       //  + "   <head>Chapitre I. <lb/>Les Saxons.</head>"
       //  + "   <div>"
         + " M<hi rend=\"sup\">me</hi> de Maintenon l’a payé 25 centimes. "
-        + " au XIXe siècle. Chapitre II. "
+        + " au XIXe siècle. Chapitre II."
       //  + " Tu es dans la merde et dans la maison, pour quelqu’un, à d’autres. " 
       //  + " Ce  travail obscurément réparateur est un chef-d'oeuvre d’emblée, à l'instar."
       //   + " Parce que s'il on en croit l’intrus, d’abord, M., lorsqu’on va j’aime ce que C’était &amp; D’où es-tu ? "

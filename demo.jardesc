@@ -14,6 +14,7 @@
         <file path="/Alix/java/alix/fr/dic/orth.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Occ.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.util"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.viz"/>
         <file path="/Alix/java/alix/fr/dic/commune.csv"/>
         <file path="/Alix/java/alix/fr/dic/loc.csv"/>
         <file path="/Alix/java/alix/fr/dic/name.csv"/>
@@ -21,6 +22,7 @@
         <javaElement handleIdentifier="=Alix/java&lt;alix.muthovek"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
         <file path="/Alix/java/alix/fr/dic/rules.csv"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Lexentry.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.frwork"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Lexik.java"/>
         <file path="/Alix/java/alix/fr/dic/brevidot.csv"/>
@@ -30,7 +32,6 @@
         <file path="/Alix/java/alix/fr/dic/stop.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{OccSlider.java"/>
         <file path="/Alix/java/alix/fr/dic/author.csv"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.fr{WordEntry.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{NameEntry.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{OccChain.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Tokenizer.java"/>

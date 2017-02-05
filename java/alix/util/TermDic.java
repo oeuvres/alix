@@ -26,7 +26,7 @@ import alix.fr.Lexik;
  * A specialized table for a dictionary of terms, with an int code, an int counter, and an int tag. 
  * Conceived for performances, for linguistic usage, but the object do not requires lexical informations.
  * The int code is a way to optimize complex pattern storage (ex: wordgrams).
- * Access can be by a String tern (internal HashMap), by an int code (internal array, for optimized vector).
+ * Access possible by a String term (internal HashMap), or by an int code (internal array, for optimized vector).
  * There are useful methods to get term list in inverse frequency order.
  * 
  * Each term added will create an entry or increment a counter if already
@@ -62,17 +62,9 @@ public class TermDic
    * A custom object (like Term) will not match against String.
    * The int array contains an int key and a count  
    */
-  private HashMap<String,int[]> byTerm = new HashMap<String, int[]>();
-  /** List of terms, kept in index order, to get a term by int index */
+  private HashMap<String,Terminfos> byTerm = new HashMap<String, Terminfos>();
+  /** List of terms, kept in index order, to get a term by int code */
   private String[] byCode = new String[32];
-  /** Position of the term index in the array of int values */
-  public static final int ICODE = 0;
-  /** Position of the tag info in the array of int values */
-  public static final int ITAG = 1;
-  /** Position of the term counter in the array of int values */
-  public static final int ICOUNT = 2;
-  /** Position of the second counter in the array of int values */
-  public static final int ICOUNT2 = 3;
   /** Pointer in the array of terms, only growing when terms are added, used as code */
   private int pointer;
   /** Count of all occurrences for this dico */
@@ -80,6 +72,32 @@ public class TermDic
   /** Last occurrences count before some ops, for caching */
   // private int lastOccs;
 
+  /**
+   * Informations about a term
+   * @author glorieux-f
+   */
+  public class Terminfos
+  {
+    /** Internal code for the term */ 
+    private final int code;
+    /** A tag ex gram cat */
+    private final int tag;
+    /** A counter */
+    private int count;
+    /** A secondary counter (for comparisons) */
+    private int count2;
+    private Terminfos( int code, int tag, int count, int count2 )
+    {
+      this.code = code;
+      this.tag = tag;
+      this.count = count;
+      this.count2 = count2;
+    }
+    public int code() { return code; }
+    public int tag() { return tag; }
+    public int count() { return count; }
+    public int count2() { return count2; }
+  }
   /**
    * Constructor
    */
@@ -125,9 +143,9 @@ public class TermDic
    */
   public int code( Term term )
   {
-    int[] value = byTerm.get( term );
-    if (value == null) return -1;
-    return value[ICODE];
+    Terminfos vals = byTerm.get( term );
+    if (vals == null) return -1;
+    return vals.code;
   }
   /**
    * Get the code of a term, -1 if not found
@@ -137,9 +155,9 @@ public class TermDic
    */
   public int code( String term )
   {
-    int[] value = byTerm.get( term );
-    if (value == null) return -1;
-    return value[ICODE];
+    Terminfos vals = byTerm.get( term );
+    if (vals == null) return -1;
+    return vals.code;
   }
   /**
    * Get the tag of a term, 0 if not found
@@ -149,9 +167,9 @@ public class TermDic
    */
   public int tag( Term term )
   {
-    int[] value = byTerm.get( term );
-    if (value == null) return 0;
-    return value[ITAG];
+    Terminfos vals = byTerm.get( term );
+    if (vals == null) return 0;
+    return vals.tag;
   }
   /**
    * Get the code of a term, 0 if not found
@@ -161,9 +179,9 @@ public class TermDic
    */
   public int tag( String term )
   {
-    int[] value = byTerm.get( term );
-    if (value == null) return 0;
-    return value[ITAG];
+    Terminfos vals = byTerm.get( term );
+    if (vals == null) return 0;
+    return vals.tag;
   }
   /**
    * Get the tag of a term by code, 0 if not found
@@ -174,9 +192,9 @@ public class TermDic
    */
   public int tag( int code )
   {
-    int[] value = byTerm.get( byCode[code] );
-    if (value == null) return 0;
-    return value[ITAG];
+    Terminfos vals = byTerm.get( byCode[code] );
+    if (vals == null) return 0;
+    return vals.tag;
   }
 
   /**
@@ -187,9 +205,9 @@ public class TermDic
    */
   public int count( String term )
   {
-    int[] value = byTerm.get( term );
-    if (value == null) return -1;
-    return value[ICOUNT];
+    Terminfos values = byTerm.get( term );
+    if (values == null) return -1;
+    return values.count;
   }
   
   /**
@@ -200,9 +218,9 @@ public class TermDic
    */
   public int count( Term term )
   {
-    int[] value = byTerm.get( term );
-    if (value == null) return -1;
-    return value[ICOUNT];
+    Terminfos values = byTerm.get( term );
+    if (values == null) return -1;
+    return values.count;
   }
 
 
@@ -215,9 +233,9 @@ public class TermDic
    */
   public int count( int code )
   {
-    int[] value = byTerm.get( byCode[code] );
-    if (value == null) return -1;
-    return value[ICOUNT];
+    Terminfos values = byTerm.get( byCode[code] );
+    if (values == null) return -1;
+    return values.count;
   }
   /**
    * Create a term with no tag, set its count at 1, or increment if exists
@@ -384,13 +402,13 @@ public class TermDic
    */
   public int add( final String term, final int tag, final int amount1, final int amount2 )
   {
-    int[] value = byTerm.get( term );
-    if (value == null) return put( term, tag, amount1, amount2);
+    Terminfos values = byTerm.get( term );
+    if (values == null) return put( term, tag, amount1, amount2);
     occs += amount1;
     occs += amount2;
-    value[ICOUNT] += amount1;
-    value[ICOUNT2] += amount2;
-    return value[ICODE];
+    values.count += amount1;
+    values.count2 += amount2;
+    return values.code;
   }
   
   /**
@@ -405,13 +423,13 @@ public class TermDic
    */
   public int add( final Term term, final int tag, final int amount, final int amount2 )
   {
-    int[] value = byTerm.get( term );
-    if (value == null) return put( term.toString(), tag, amount, amount2);
+    Terminfos values = byTerm.get( term );
+    if (values == null) return put( term.toString(), tag, amount, amount2);
     occs += amount;
     occs += amount2;
-    value[ICOUNT] += amount;
-    value[ICOUNT2] += amount2;
-    return value[ICODE];
+    values.count += amount;
+    values.count2 += amount2;
+    return values.code;
   }
   /**
    * Create a term in the different data structures 
@@ -431,7 +449,7 @@ public class TermDic
       byCode = new String[Calcul.nextSquare( oldLength )];
       System.arraycopy( oldData, 0, byCode, 0, oldLength );
     }
-    byTerm.put( term, new int[] { pointer, tag, amount, amount2 } );
+    byTerm.put( term, new Terminfos( pointer, tag, amount, amount2 ) );
     byCode[pointer] = term;
     return pointer;
   }
@@ -468,6 +486,32 @@ public class TermDic
     return this;
   }
   /**
+   * Not safe but useful to have a fast hand on data
+   * @return the data
+   */
+  public Set<Map.Entry<String,Terminfos>> entrySet()
+  {
+    return byTerm.entrySet();
+  }
+  /**
+   * Return an iterable object to get freqlist
+   * Not clean, but better 
+   * @return
+   */
+  public List<Map.Entry<String,Terminfos>> entriesByCount() {
+    // Do not use LinkedList here, very slow access by index list.get(i), arrayList is good
+    List<Map.Entry<String,Terminfos>> list = new ArrayList<Map.Entry<String, Terminfos>>( byTerm.entrySet() );
+    Collections.sort( list, new Comparator<Map.Entry<String,Terminfos>>() {
+        @Override
+        public int compare( Map.Entry<String,Terminfos> o1, Map.Entry<String,Terminfos> o2 ) {
+          return ( o2.getValue().count+o2.getValue().count2) - (o1.getValue().count + o1.getValue().count2 );
+        }
+      } 
+    );
+    return list;
+  }
+  
+  /**
    * Get term list in inverse count order.
    * @return 
    */
@@ -476,66 +520,32 @@ public class TermDic
     return byCount( -1 );
   }
   /**
-   * Not safe but useful to have a fast hand on data
-   * @return the data
-   */
-  public Set<Map.Entry<String,int[]>> entrySet()
-  {
-    return byTerm.entrySet();
-  }
-  /**
-   * Return an iterable object to get freqlist
-   * Not clean, TODO better (Term API ?)
-   * @return
-   */
-  public List<Map.Entry<String, int[]>> entriesByCount() {
-    // Do not use LinkedList nere, very slow access by index list.get(i), arrayList is good
-    List<Map.Entry<String, int[]>> list = new ArrayList<Map.Entry<String, int[]>>( byTerm.entrySet() );
-    Collections.sort( list, new Comparator<Map.Entry<String, int[]>>() {
-        @Override
-        public int compare( Map.Entry<String, int[]> o1, Map.Entry<String, int[]> o2 ) {
-          return (o2.getValue()[ICOUNT]+o2.getValue()[ICOUNT2]) - (o1.getValue()[ICOUNT] + o1.getValue()[ICOUNT2]);
-        }
-      } 
-    );
-    return list;
-  }
-  /**
    * Used for freqlist, return a view of the map sorted by term count
    * Shall we cache ?
-   * What is better, Term or String ?
    * @param limit
    * @return
    */
   public String[] byCount(int limit)
   {
     // Do not use LinkedList nere, very slow access by index list.get(i), arrayList is good
-    List<Map.Entry<String, int[]>> list = new ArrayList<Map.Entry<String, int[]>>( byTerm.entrySet() );
-    Collections.sort( list, new Comparator<Map.Entry<String, int[]>>()
+    List<Map.Entry<String,Terminfos>> list = new ArrayList<Map.Entry<String,Terminfos>>( byTerm.entrySet() );
+    Collections.sort( list, new Comparator<Map.Entry<String,Terminfos>>()
     {
       @Override
-      public int compare( Map.Entry<String, int[]> o1, Map.Entry<String, int[]> o2 )
+      public int compare( Map.Entry<String,Terminfos> o1, Map.Entry<String,Terminfos> o2 )
       {
-        return (o2.getValue()[ICOUNT]+o2.getValue()[ICOUNT2]) - (o1.getValue()[ICOUNT] + o1.getValue()[ICOUNT2]);
+        return (o2.getValue().count+o2.getValue().count2) - (o1.getValue().count + o1.getValue().count2 );
       }
     } );
     int size = Math.min( list.size(), limit ) ;
     if ( limit < 1 ) size = list.size();
     String[] byCount = new String[size];
     for (int i = 0; i < size; i++) {
-      byCount[i] = new String(list.get( i ).getKey()) ;
+      byCount[i] = list.get( i ).getKey() ;
     }
     return byCount;
   }
-  /**
-   * 
-   * @param limit
-   * @return
-   */
-  public int[] codesByCount(int limit)
-  {
-    return null;
-  }
+
   /**
    * To save the dictionary, with some index consistency but… will not works on
    * merge
@@ -617,13 +627,13 @@ public class TermDic
           continue;
         if (limit-- == 0)
           break;
-        int[] value = byTerm.get( byCount[i] );
-        count1 = value[ICOUNT];
+        Terminfos values = byTerm.get( byCount[i] );
+        count1 = values.count;
         writer.write( 
           byCount[i]
           +"\t"+ count1
           +"\t"+ (double)Math.round( 100000000.0*count1/occs )/100
-          +"\t"+ value[ITAG]
+          +"\t"+ values.tag
         +"\n" );
       }
     } finally {
@@ -650,9 +660,9 @@ public class TermDic
           continue;
         if (limit-- == 0)
           break;
-        int[] value = byTerm.get( byCount[i] );
-        count1 = value[ICOUNT];
-        count2 = value[ICOUNT2];
+        Terminfos values = byTerm.get( byCount[i] );
+        count1 = values.count;
+        count2 = values.count2;
         writer.write( 
                 byCount[i]
           +"\t"+ count1

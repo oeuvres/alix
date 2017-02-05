@@ -3,13 +3,13 @@ package alix.fr;
 import java.text.ParseException;
 import java.util.Arrays;
 
-public class WordEntry
+public class Lexentry
 {
   public final String lem;
   public final Tag tag;
   public final float orthfreq;
   public final float lemfreq;
-  public WordEntry( final String[] cells ) throws ParseException
+  public Lexentry( final String[] cells ) throws ParseException
   {
     int length = cells.length;
     if ( length < 2 ) throw new ParseException("LexicalEntry : a gramcat and a lem are required "+Arrays.toString( cells ), 2);
@@ -24,7 +24,7 @@ public class WordEntry
     else this.lemfreq = 0;
   }
   // ? score ?
-  public WordEntry( final String cat, final String lem, final String orthfreq, final String lemfreq )
+  public Lexentry( final String cat, final String lem, final String orthfreq, final String lemfreq )
   {
     this.tag = new Tag( cat );
     this.lem = lem;
