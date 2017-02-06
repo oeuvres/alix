@@ -67,9 +67,9 @@ public class Cloud
   /** Default font for size calculations */
   private String font = "Dialog";
   /** minimum font size */
-  private int fontmin = 10;
+  private int fontmin = 12;
   /** maximum font size */
-  private int fontmax = 72;
+  private int fontmax = 80;
   /** Optional, an url prefix for links */
   private String href;
   /** Default font Color in PNG export */

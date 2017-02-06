@@ -21,6 +21,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
 
+import alix.fr.Occ;
 import alix.fr.Tokenizer;
 
 public class GrepMultiWordExpressions {
@@ -143,9 +144,17 @@ public class GrepMultiWordExpressions {
 					Path path = Paths.get(pathSB.toString());
 					String text = new String(Files.readAllBytes( path ), StandardCharsets.UTF_8);
 					Tokenizer toks = new Tokenizer(text);
+					long occs = 0; // nombre d’occurrences retenues  
 					StringBuilder sbToks=new StringBuilder();
-					while( toks.read() ) {		
-						sbToks.append(toks.getString()+" ");
+          Occ occ; // pointeur sur l’occurrence courante dans le tokeniseur 
+					// Ici je me demande ce que tu veux. Lemme ? forme ? graphie ?
+					while ( (occ = toks.word( )) != null ) {
+					  if ( occ.tag().pun() ) continue; // on ne compte pas la ponctuation
+					  // on contrôle nous-mêmes ce qu'on compte (pas la ponctuation)
+					  occs++;
+						sbToks.append( occ.orth() +" "); // si je comprends tu refais une chaîne avec des tokens normalisés
+						// ici tu aurais pu tester directement tes mots, un à un, un peu comme une requête TXM
+						// tu pouvais demander un lemme
 					}
 					Pattern p = Pattern.compile("\\s"+maClasse.getWordRequest()+"\\s", maClasse.getCaseSensitivity());
 					Matcher m = p.matcher(sbToks.toString());
@@ -153,7 +162,7 @@ public class GrepMultiWordExpressions {
 						countOccurrences++;
 					}
 
-					statsPerAuthorOrYear=maClasse.mergeDatas(statsPerAuthorOrYear, maClasse.getStatsPerDoc(), cells, column, countOccurrences, toks, fileName);
+					statsPerAuthorOrYear=maClasse.mergeDatas(statsPerAuthorOrYear, maClasse.getStatsPerDoc(), cells, column, countOccurrences, occs, fileName);
 				}
 
 				System.out.println("\nQuel(le) "+maClasse.getNameOrYearOrTitleString()+" voulez-vous ?");
@@ -184,9 +193,14 @@ public class GrepMultiWordExpressions {
 					Tokenizer toks = new Tokenizer(text);
 					LinkedList<String>listTokens=new LinkedList<String>();
 					StringBuilder sbToks=new StringBuilder();
-					while( toks.read() ) {		
-						listTokens.add(toks.getString());
-						sbToks.append(toks.getString()+" ");
+					Occ occ; // occurrence courante
+					long occs = 0; // compteur d’occurrence
+					while ( (occ = toks.word( )) != null ) {
+            if ( occ.tag().pun() ) continue; // on ne compte pas la ponctuation
+            occs++;
+            // pour cet usgae peut-être que l’objet TermDic peut t’aider
+					  listTokens.add( occ.orth().toString() ); // 
+						sbToks.append( occ.orth()+" ");
 					}
 
 					Pattern p = Pattern.compile(firstUsersWord+"\\s[^\\p{L}]*(\\p{L}+(\\s[^\\w])*\\s){1,"+usersWindow+"}"+secondUsersWord, maClasse.getCaseSensitivity());
@@ -203,7 +217,7 @@ public class GrepMultiWordExpressions {
 						countOccurrences++;
 					}
 
-					statsPerAuthorOrYear=maClasse.mergeDatas(statsPerAuthorOrYear, maClasse.getStatsPerDoc(), cells, column, countOccurrences, toks, fileName);
+					statsPerAuthorOrYear=maClasse.mergeDatas(statsPerAuthorOrYear, maClasse.getStatsPerDoc(), cells, column, countOccurrences, occs, fileName);
 				}
 
 				System.out.println("\nQuel(le) "+maClasse.getNameOrYearOrTitleString()+" voulez-vous ?");
@@ -284,7 +298,8 @@ public class GrepMultiWordExpressions {
 		return columnForQuery;
 	}
 
-	public HashMap <String, String[]> mergeDatas(HashMap <String, String[]>statsPerAuthorOrYear, List<String[]>statsPerDoc, String cells[], int column, int countOccurrences, Tokenizer toks, String fileName){
+	public HashMap <String, String[]> mergeDatas(HashMap <String, String[]>statsPerAuthorOrYear,
+	    List<String[]>statsPerDoc, String cells[], int column, int countOccurrences, long occs, String fileName){
 		String statsPourListeDocs []=new String[7];
 		String [] tmp;
 		switch (column){		
@@ -292,8 +307,8 @@ public class GrepMultiWordExpressions {
 			if (statsPerAuthorOrYear.containsKey(cells[column])){	
 				tmp=new String[7];
 				tmp[1]=String.valueOf(Integer.parseInt(statsPerAuthorOrYear.get(cells[column])[1])+countOccurrences);
-				tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthorOrYear.get(cells[column])[2])+toks.size);
-				tmp[0]=String.valueOf(((Double.parseDouble(statsPerAuthorOrYear.get(cells[column])[1])+countOccurrences)*1000000)/(Integer.parseInt(statsPerAuthorOrYear.get(cells[column])[2])+toks.size)); //Relative Frequency
+				tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthorOrYear.get(cells[column])[2])+ occs );
+				tmp[0]=String.valueOf(((Double.parseDouble(statsPerAuthorOrYear.get(cells[column])[1])+countOccurrences)*1000000)/(Integer.parseInt(statsPerAuthorOrYear.get(cells[column])[2])+ occs )); //Relative Frequency
 				tmp[column]=cells[column]; //Authors name
 				tmp[4]=statsPerAuthorOrYear.get(cells[column])[4]+" // "+cells[4]; // Year
 				tmp[5]=statsPerAuthorOrYear.get(cells[column])[5]+" // "+cells[5]; // Title
@@ -303,8 +318,8 @@ public class GrepMultiWordExpressions {
 			else{
 				tmp=new String[7];
 				tmp[1]=String.valueOf(countOccurrences);
-				tmp[2]=String.valueOf(toks.size);
-				tmp[0]=String.valueOf((countOccurrences*1000000)/toks.size); //Relative Frequency
+				tmp[2]=String.valueOf( occs );
+				tmp[0]=String.valueOf((countOccurrences*1000000)/ occs ); //Relative Frequency
 				tmp[column]=cells[column]; //Authors name
 				tmp[4]=cells[4]; // Year
 				tmp[5]=cells[5]; // Title
@@ -316,8 +331,8 @@ public class GrepMultiWordExpressions {
 			if (statsPerAuthorOrYear.containsKey(cells[column])){
 				tmp=new String[7];
 				tmp[1]=String.valueOf(Integer.parseInt(statsPerAuthorOrYear.get(cells[column])[1])+countOccurrences);
-				tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthorOrYear.get(cells[column])[2])+toks.size);
-				tmp[0]=String.valueOf(((Double.parseDouble(statsPerAuthorOrYear.get(cells[column])[1])+countOccurrences)*1000000)/(Integer.parseInt(statsPerAuthorOrYear.get(cells[column])[2])+toks.size)); //Relative Frequency
+				tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthorOrYear.get(cells[column])[2])+ occs );
+				tmp[0]=String.valueOf(((Double.parseDouble(statsPerAuthorOrYear.get(cells[column])[1])+countOccurrences)*1000000)/(Integer.parseInt(statsPerAuthorOrYear.get(cells[column])[2]) + occs )); //Relative Frequency
 				tmp[3]=statsPerAuthorOrYear.get(cells[column])[3]+" // "+cells[3]; //Authors name
 				tmp[4]=cells[column]; // Year
 				tmp[5]=statsPerAuthorOrYear.get(cells[column])[5]+" // "+cells[5]; // Title
@@ -326,8 +341,8 @@ public class GrepMultiWordExpressions {
 			else{
 				tmp=new String[7];
 				tmp[1]=String.valueOf(countOccurrences);
-				tmp[2]=String.valueOf(toks.size);
-				tmp[0]=String.valueOf((countOccurrences*1000000)/toks.size); //Relative Frequency
+				tmp[2]=String.valueOf( occs );
+				tmp[0]=String.valueOf((countOccurrences*1000000)/ occs ); //Relative Frequency
 				tmp[3]=cells[3]; //Authors name
 				tmp[4]=cells[column]; // Year
 				tmp[5]=cells[5]; // Title
@@ -337,8 +352,8 @@ public class GrepMultiWordExpressions {
 			break;
 		case 5:
 			statsPourListeDocs[1]=String.valueOf(countOccurrences);
-			statsPourListeDocs[2]=String.valueOf(toks.size);
-			statsPourListeDocs[0]=String.valueOf((countOccurrences*1000000)/toks.size); //Relative Frequency
+			statsPourListeDocs[2]=String.valueOf( occs );
+			statsPourListeDocs[0]=String.valueOf((countOccurrences*1000000)/ occs ); //Relative Frequency
 			statsPourListeDocs[3]=cells[3]; //Authors name
 			statsPourListeDocs[4]=cells[4]; // Year
 			statsPourListeDocs[5]=cells[5]; // Title
