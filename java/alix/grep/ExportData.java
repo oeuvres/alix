@@ -11,6 +11,10 @@ import java.util.List;
 import java.util.Map.Entry;
 
 public class ExportData {
+	int colAuthor=2;
+	static int colCode=1;
+	static int colYear=3;
+	static int colTitle=4;
 	public static void exportToCSV(String folderPath, String fileName,HashMap <String, String []> stats)
 	
 	{	
@@ -56,6 +60,8 @@ public class ExportData {
 	System.out.println(stats.size());
 		try
 		{
+			File directory=new File(folderPath);
+			if(!directory.exists()) directory.mkdir();
 			FileWriter writer = new FileWriter(folderPath+fileName+".tsv");
 
 			writer.append("Auteur\t");
