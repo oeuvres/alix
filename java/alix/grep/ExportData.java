@@ -11,10 +11,7 @@ import java.util.List;
 import java.util.Map.Entry;
 
 public class ExportData {
-	int colAuthor=2;
-	static int colCode=1;
-	static int colYear=3;
-	static int colTitle=4;
+	
 	public static void exportToCSV(String folderPath, String fileName,HashMap <String, String []> stats)
 	
 	{	
