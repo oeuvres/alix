@@ -107,8 +107,9 @@ public class GrepMultiWordExpressions {
 			if (column==colTitle)valueAsked=5;
 
 			System.out.println("Quelle type de recherche voulez-vous effectuer ? (rentrer le numéro correspondant et taper \"entrée\")");
-			System.out.println("1 : rechercher un seul mot, une expression ou une expression régulière");
-			System.out.println("2 : rechercher deux mots dans une fenêtre à définir");
+			System.out.println("1 : rechercher un seul mot ou une expression régulière");
+			System.out.println("2 : rechercher une liste de mots dans une fenêtre à définir");
+			System.out.println("3 : rechercher un mot et au moins un tag !!!! NE PAS UTILISER, EN DEVELOPPEMENT");
 			int chooseTypeRequest = Integer.valueOf(word.next());
 
 			System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
@@ -124,6 +125,8 @@ public class GrepMultiWordExpressions {
 			WordLookUp wordLookUp=new WordLookUp();
 			CombineStats combine=new CombineStats();
 			
+			String wordRegTag="";
+			
 			switch (chooseTypeRequest){
 			case 1 :
 				wordLookUp.oneWord(line, wordLookUp.getPreciseQuery(), chosenPath, 
@@ -133,11 +136,24 @@ public class GrepMultiWordExpressions {
 				break;
 
 			case 2 :
-				wordLookUp.twoWords(line, word, wordLookUp.getPreciseQuery(), chosenPath, 
+				wordRegTag="word";
+				wordLookUp.severalWords(wordRegTag, word, wordLookUp.getPreciseQuery(), chosenPath, 
 						column, allRows, statsPerAuthorOrYear, 
 						grep, combine);
+				preciseQuery=wordLookUp.getPreciseQuery();
 				break;
+			
+			case 3:
+				wordRegTag="tag";
+				wordLookUp.severalWords(wordRegTag, word, preciseQuery, chosenPath, 
+						column, allRows, statsPerAuthorOrYear, grep, combine);
+				preciseQuery=wordLookUp.getPreciseQuery();
+				break;	
+				
 			}
+			
+			
+				
 	
 			HashMap<String, int[]>combinedStats=combine.combine(statsPerAuthorOrYear, valueAsked);
 			

@@ -6,8 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -16,13 +16,13 @@ import alix.fr.Occ;
 import alix.fr.Tokenizer;
 
 public class WordLookUp {
-	
+
 	static final int colCode=1;
 	static final int colAuthor=2;
 	static final int colYear=3;
 	static final int colTitle=4;
 	String preciseQuery;
-	
+
 	public String getPreciseQuery() {
 		return preciseQuery;
 	}
@@ -30,9 +30,9 @@ public class WordLookUp {
 	public void setPreciseQuery(String query) {
 		this.preciseQuery = query;
 	}
-	
-	
-	
+
+
+
 	public void oneWord(Scanner answer, String query,String chosenPath, 
 			int chosenColumn, 
 			List <String []>allRows,HashMap <String,String[]>statsPerAuthorOrYear,
@@ -56,9 +56,9 @@ public class WordLookUp {
 			String text = new String(Files.readAllBytes( path ), StandardCharsets.UTF_8);
 			Tokenizer toks = new Tokenizer(text);
 			long occs = 0;
-			Occ occ; // pointeur sur l’occurrence courante dans le tokeniseur 
-			// Ici je me demande ce que tu veux. Lemme ? forme ? graphie ?
-			while ( (occ = toks.word( )) != null ) {
+			Occ occ=new Occ();
+
+			while ( toks.token(occ ) ) {
 				if ( occ.tag().pun() ) continue;
 				occs++;
 				Pattern p = Pattern.compile(grep.getWordRequest(), grep.getCaseSensitivity());
@@ -74,17 +74,27 @@ public class WordLookUp {
 		setPreciseQuery(answer.nextLine());
 		grep.setWordRequest(usersWord);
 	}
-	
-	public void twoWords(Scanner answerLine,Scanner answerWord, String query,String chosenPath, 
+
+	@SuppressWarnings("resource")
+	public void severalWords(String wordRegTag,Scanner answerWord, String query,String chosenPath, 
 			int chosenColumn, 
 			List <String []>allRows,HashMap <String,String[]>statsPerAuthorOrYear,
 			GrepMultiWordExpressions grep,CombineStats combine) throws IOException{
-		System.out.println("Quel premier mot voulez-vous chercher ?");
-		String firstUsersWord = answerWord.next();
-		System.out.println("Quel second mot voulez-vous chercher ?");
-		String secondUsersWord = answerWord.next();
-		System.out.println("Quelle est l'étendue de votre fenêtre (en nombre de mots) ?");
-		int usersWindow = Integer.valueOf(answerWord.next());
+		System.out.println("Quel(s) mot(s) voulez-vous chercher ? (si plusieurs, séparez par un espace)");
+		Scanner motsUtil=new Scanner (System.in);
+		String ligneDeMots = motsUtil.nextLine();
+		HashMap<String, WordFlag>listToCheck=new HashMap<String, WordFlag>();
+		String tabDeMots[]=ligneDeMots.split("\\s");
+		for (String mot:tabDeMots){
+			listToCheck.put(mot, new WordFlag());
+		}
+
+		int window=0;
+		if (listToCheck.keySet().size()>1){
+			System.out.println("Quelle est l'étendue de votre fenêtre (en nombre de mots) ?");
+			window = Integer.valueOf(answerWord.next());
+		}
+
 
 		System.out.println("Calcul des matchs en cours...");
 
@@ -99,38 +109,91 @@ public class WordLookUp {
 			Path path = Paths.get(pathSB.toString());
 			String text = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
 			Tokenizer toks = new Tokenizer(text);
-			LinkedList<String>listTokens=new LinkedList<String>();
-			StringBuilder sbToks=new StringBuilder();
-			Occ occ; // occurrence courante
-			long occs = 0; // compteur d’occurrence
-			while ( (occ = toks.word( )) != null ) {
-				if ( occ.tag().pun() ) continue;
-				occs++;
-				// pour cet usage peut-être que l’objet TermDic peut t’aider
-				listTokens.add( occ.orth().toString() ); // 
-				sbToks.append( occ.orth()+" ");
+			Occ occ=new Occ();
+			long occs = 0;
+
+			int innerWin=-1;
+			if (wordRegTag.contains("word")){
+				while (toks.token(occ) ) {
+					if ( occ.tag().pun() ) continue;
+					occs++;
+
+
+					WordFlag test = listToCheck.get( occ.orth() );
+
+
+					if ( test != null ) {
+						test.value = true;
+						if (innerWin<0) innerWin = 0;
+					}
+
+					if (innerWin==window) {
+						int nbTrue=0;
+						for (Entry <String, WordFlag>entry:listToCheck.entrySet()){
+							if (entry.getValue().value == true){
+								nbTrue++;
+								entry.getValue().value = false;
+							}
+						}
+						if (nbTrue==listToCheck.keySet().size()){
+							countOccurrences++;
+							innerWin=-1;
+						}
+					}
+
+					if (innerWin>-1){
+						innerWin++;
+					}
+				}
 			}
+			
+			if (wordRegTag.contains("tag")){
+				
+				while (toks.token(occ) ) {
+					if ( occ.tag().pun() ) continue;
+					occs++;
 
-			Pattern p = Pattern.compile(firstUsersWord+"\\s[^\\p{L}]*(\\p{L}+(\\s[^\\w])*\\s){1,"+usersWindow+"}"+secondUsersWord, grep.getCaseSensitivity());
-			Matcher m = p.matcher(sbToks.toString());
+					WordFlag test = listToCheck.get( occ.orth() );
 
-			while(m.find()) {
-				countOccurrences++;
-			}
+					if ( test != null ) {
+						test.value = true;
+						
+						if (innerWin<0) innerWin = 0;
+					}
 
-			Pattern p2 = Pattern.compile(secondUsersWord+"\\s[^\\p{L}]*(\\p{L}+(\\s[^\\w])*\\s){1,"+usersWindow+"}"+firstUsersWord, grep.getCaseSensitivity());
-			Matcher m2 = p2.matcher(sbToks.toString());
+					if (innerWin==window) {
+						int nbTrue=0;
+						for (Entry <String, WordFlag>entry:listToCheck.entrySet()){
+							if (entry.getValue().value == true){
+								nbTrue++;
+								entry.getValue().value = false;
+							}
+						}
+						if (nbTrue==listToCheck.keySet().size()){
+							countOccurrences++;
+							innerWin=-1;
+						}
+					}
 
-			while(m2.find()) {
-				countOccurrences++;
+					if (innerWin>-1){
+						innerWin++;
+					}
+				}
+				
+				
 			}
 			
 			statsPerAuthorOrYear=combine.mergeData(grep,statsPerAuthorOrYear, cells, chosenColumn, countOccurrences, occs, fileName);
 		}
 
 		System.out.println("\nQuel(le) "+grep.getNameOrYearOrTitleString()+" voulez-vous ?");
+		Scanner answerLine=new Scanner(System.in);
 		setPreciseQuery(answerLine.nextLine());
-		grep.setWordRequest(firstUsersWord+" et "+secondUsersWord);
+		grep.setWordRequest(ligneDeMots);
 	}
-	
+
+	private class WordFlag {
+		private boolean value = false; 
+	}
+
 }
