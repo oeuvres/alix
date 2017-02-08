@@ -48,6 +48,7 @@ public class WordLookUp {
 		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 			String []cells=allRows.get(counterRows);
 			int countOccurrences=0;
+			System.out.println(cells[colCode]);
 			String fileName=cells[colCode]+".xml";
 			StringBuilder pathSB=new StringBuilder();
 			pathSB.append(chosenPath);
