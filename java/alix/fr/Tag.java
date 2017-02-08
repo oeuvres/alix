@@ -110,7 +110,7 @@ public final class Tag
    */
   public Tag( int code ) 
   {
-    this.code = (short)code;
+    set( code);
   }
   /**
    * Build a category by label
@@ -118,7 +118,7 @@ public final class Tag
    */
   public Tag( String label ) 
   {
-    this.code = Tag.code( label );
+    set(Tag.code( label ));
   }
 
   /**
@@ -148,12 +148,12 @@ public final class Tag
   }
   public Tag set( Tag tag )
   {
-    this.code = tag.code;
+    set(tag.code);
     return this;
   }
   public Tag set( String label )
   {
-    this.code = Tag.code( label );
+    set( Tag.code( label ) );
     return this;
   }
   public static short code ( final Term label )
@@ -172,86 +172,100 @@ public final class Tag
   public static String label ( final int code )
   {
     String ret = LABEL.get( (short)code );
-    if ( ret == null ) return "UNKNOWN";
+    if ( ret == null ) return LABEL.get( UNKNOWN );
     return ret;
   }
-  public String prefix()
+  public boolean isEmpty()
+  {
+    return (code == NULL);
+  }
+  public boolean isPrefix()
+  {
+    if ( code == NULL || code == UNKNOWN ) return false;
+    return (code & 0xF) == 0;
+  }
+  static public boolean isPrefix( final int code )
+  {
+    if ( code == NULL || code == UNKNOWN ) return false;
+    return (code & 0xF) == 0;
+  }
+  public int prefix()
   {
     return prefix ( code );
   }
-  public static String prefix( final int code)
+  public static int prefix( final int code)
   {
-    return label( (short)(code >> 0x4 << 0x4) );
+    return code >> 0x4 << 0x4 ;
   }
-  public boolean verb( )
+  public boolean isVerb( )
   {
-    return verb( code );
+    return isVerb( code );
   }
-  public static boolean verb( final int code )
+  public static boolean isVerb( final int code )
   {
     return (( code >> 0x4 ) == 0x1 );
   }
-  public boolean sub( )
+  public boolean isSub( )
   {
-    return sub( code );
+    return isSub( code );
   }
-  public static boolean sub( final int code )
+  public static boolean isSub( final int code )
   {
     return (( code >> 0x4 ) == 0x2 );
   }
-  public boolean adj( )
+  public boolean isAdj( )
   {
-    return adj( code );
+    return isAdj( code );
   }
-  public static boolean adj( final int code )
+  public static boolean isAdj( final int code )
   {
     return (( (short)code >> 0x4 ) == 0x3 );
   }
-  public boolean adv( )
+  public boolean isAdv( )
   {
-    return adv( code );
+    return isAdv( code );
   }
-  public static boolean adv( final int code )
+  public static boolean isAdv( final int code )
   {
     return (( code >> 0x4 ) == 0x4 );
   }
-  public boolean det( )
+  public boolean isDet( )
   {
-    return det( code );
+    return isDet( code );
   }
-  public static boolean det( final int code )
+  public static boolean isDet( final int code )
   {
     return (( code >> 0x4 ) == 0x6 );
   }
-  public boolean pro( )
+  public boolean isPro( )
   {
-    return pro( code );
+    return isPro( code );
   }
-  public static boolean pro( final int code )
+  public static boolean isPro( final int code )
   {
     return (( code >> 0x4 ) == 0x7 );
   }
-  public boolean name( )
+  public boolean isName( )
   {
-    return name( code );
+    return isName( code );
   }
-  public static boolean name( final int code )
+  public static boolean isName( final int code )
   {
     return (( (short)code >> 0x4 ) == 0xB );
   }
-  public boolean pun( )
+  public boolean isPun( )
   {
-    return pun( code );
+    return isPun( code );
   }
-  public static boolean pun( final int code )
+  public static boolean isPun( final int code )
   {
     return (( code >> 0x4 ) == 0xC );
   }
-  public boolean num()
+  public boolean isNum()
   {
-    return num( code );
+    return isNum( code );
   }
-  public static boolean num( final int code )
+  public static boolean isNum( final int code )
   {
     return (code == NUM || code == DETnum);
   }
@@ -276,13 +290,11 @@ public final class Tag
    */
   public static void main(String[] args)
   {
-    System.out.println( new Tag(Tag.SUB).equals( Tag.SUB ) );
-    System.out.println( new Tag(0).equals( (short)0 ) );
-    System.out.println( name( NAMEplace ) );
-    System.out.println( code("TEST") );
-    Term t = new Term("ADV");
-    System.out.println( code( t ) );
+    System.out.println( "test equals "+new Tag(Tag.SUB).equals( Tag.SUB ) );
+    System.out.println( isName( NAMEplace ) );
+    System.out.println( "is NAMEplace a prefix ? "+isPrefix( NAMEplace ) );
+    System.out.println( "is NAME a prefix ? "+isPrefix( NAME ) );
+    System.out.println( "UNKNOW tag "+code("TEST") );
     System.out.println( "prefix label by number category ADVint : "+ prefix( Tag.ADVinter ) );
-    
   }
 }

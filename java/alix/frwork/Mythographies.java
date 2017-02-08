@@ -41,7 +41,7 @@ public class Mythographies
     Tokenizer toks = new Tokenizer( text );
     Occ occ;;
     while ( (occ = toks.word()) != null ) {
-      if ( !occ.tag().name() ) continue;
+      if ( !occ.tag().isName() ) continue;
       if ( occ.tag().equals( Tag.NAMEauthor )) csv.println( source+";"+occ.orth() );
       if ( occ.tag().equals( Tag.NAME )) System.out.println( occ );
     }

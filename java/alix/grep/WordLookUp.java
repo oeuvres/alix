@@ -59,7 +59,7 @@ public class WordLookUp {
 			Occ occ=new Occ();
 
 			while ( toks.token(occ ) ) {
-				if ( occ.tag().pun() ) continue;
+				if ( occ.tag().isPun() ) continue;
 				occs++;
 				Pattern p = Pattern.compile(grep.getWordRequest(), grep.getCaseSensitivity());
 				Matcher m = p.matcher(occ.orth());
@@ -116,7 +116,7 @@ public class WordLookUp {
 			int innerWin=-1;
 			if (wordRegTag.contains("word")){
 				while (toks.token(occ) ) {
-					if ( occ.tag().pun() ) continue;
+					if ( occ.tag().isPun() ) continue;
 					occs++;
 
 
@@ -151,7 +151,7 @@ public class WordLookUp {
 			if (wordRegTag.contains("tag")){
 				
 				while (toks.token(occ) ) {
-					if ( occ.tag().pun() ) continue;
+					if ( occ.tag().isPun() ) continue;
 					occs++;
 
 					WordFlag test = listToCheck.get( occ.orth() );
