@@ -145,10 +145,10 @@ public class Tokenizer
     // BUG, http://lesjoiesducode.fr/post/137539735754/quand-on-a-la-flemme-de-contourner-un-message
     if ( occhere.isEmpty() ) return null;
     // no compound with punctuation
-    if ( occhere.tag().pun() ) return occhere;
+    if ( occhere.tag().isPun() ) return occhere;
     Stem stem;
     // verb, test lem for locution
-    if ( occhere.tag().verb() ) {
+    if ( occhere.tag().isVerb() ) {
       stem = locroot.get( occhere.lem() );
       // ??
       // if ( stem == null ) stem = locroot.get( occhere.orth() );
@@ -163,7 +163,7 @@ public class Tokenizer
     }
     // try rules
     if ( stem == null ) {
-      if ( occhere.tag().name() ) stem =  rulesroot.get( "NAME" );
+      if ( occhere.tag().isName() ) stem =  rulesroot.get( "NAME" );
       else stem = rulesroot.get( occhere.orth() );
     }
     // if there is a compound, the locution explorer will merge the compound
@@ -187,10 +187,10 @@ public class Tokenizer
       if ( ranger == occline.first() ) token(occline.push());
       ranger = ranger.next();
       // names compound
-      if ( ranger.tag().name() ) {
+      if ( ranger.tag().isName() ) {
         stem = stem.get( "NAME" );
       }
-      else if ( ranger.tag().verb()) {
+      else if ( ranger.tag().isVerb()) {
         child = stem.get( ranger.lem() );
         // il y a ?
         if ( child == null ) child = stem.get( ranger.orth() );

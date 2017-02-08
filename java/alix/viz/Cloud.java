@@ -471,12 +471,12 @@ public class Cloud
     time = System.nanoTime();
     System.out.print( file );
     Occ occ;
-    while ( (occ =toks.word( )) != null ) {
+    while ( (occ = toks.word( )) != null ) {
       // ne pas incrémenter le compteur global pour la ponctuation
-      if ( occ.tag().pun() ) {
+      if ( occ.tag().isPun() ) {
         words.add( occ.orth(), occ.tag().code(), 0 );
       }
-      else if ( occ.tag().verb() || occ.tag().adj() ) {
+      else if ( occ.tag().isVerb() || occ.tag().isAdj() ) {
         words.inc( occ.lem(), occ.tag().code() );
       }
       else words.inc( occ.orth(), occ.tag().code() );
@@ -492,8 +492,8 @@ public class Cloud
     long occs = words.occs();
     for( Map.Entry<String,Terminfos> dicentry: words.entriesByCount() ) {
       int tag = dicentry.getValue().tag();
-      if ( Tag.num( tag ) ) continue;
-      if ( Tag.name( tag ) ) continue;
+      if ( Tag.isNum( tag ) ) continue;
+      if ( Tag.isName( tag ) ) continue;
       String term = dicentry.getKey();
       int count = dicentry.getValue().count();
       if ("devoir".equals( term )) lexentry = Lexik.entry( "doit" );
@@ -502,10 +502,10 @@ public class Cloud
       
       float ratio = 4F;
       if ( Lexik.isStop( term ) ) ratio = 10F;
-      else if ( Tag.sub( tag ) ) ratio = 12F;
-      else if ( Tag.verb( tag ) ) ratio = 6F;
+      else if ( Tag.isSub( tag ) ) ratio = 12F;
+      else if ( Tag.isVerb( tag ) ) ratio = 6F;
       if ( lexentry == null ) franfreq = 0;
-      else if ( Tag.sub( tag ) ) {
+      else if ( Tag.isSub( tag ) ) {
         franfreq = lexentry.orthfreq;
       }
       else {
@@ -516,11 +516,11 @@ public class Cloud
 
       // if ( Lexik.isStop( term ) ) continue;
       wc = word;
-      if ( Tag.sub( tag ) ) wc = sub;
-      else if ( Tag.verb( tag ) ) wc = verb;
-      else if ( Tag.name( tag ) ) wc = name;
-      else if ( Tag.adj( tag ) ) wc = adj;
-      else if ( Tag.adv( tag ) ) wc = adv;
+      if ( Tag.isSub( tag ) ) wc = sub;
+      else if ( Tag.isVerb( tag ) ) wc = verb;
+      else if ( Tag.isName( tag ) ) wc = name;
+      else if ( Tag.isAdj( tag ) ) wc = adj;
+      else if ( Tag.isAdv( tag ) ) wc = adv;
       
       cloud.add( new Word( dicentry.getKey(), count,  wc ) );
       if ( ++n >= limit ) break;

@@ -265,10 +265,10 @@ public class PhraseDic
           continue;
         }
         
-        if (occ.tag().pun()) continue; // do not record punctuation
-        else if ( occ.tag().name() ) code = NAME; // simplify names
-        else if ( occ.tag().num() ) code = NUM; // simplify names
-        else if ( occ.tag().verb() ) code = dic.add( occ.lem() );
+        if (occ.tag().isPun()) continue; // do not record punctuation
+        else if ( occ.tag().isName() ) code = NAME; // simplify names
+        else if ( occ.tag().isNum() ) code = NUM; // simplify names
+        else if ( occ.tag().isVerb() ) code = dic.add( occ.lem() );
         else code = dic.add( occ.orth() );
         // clear to avoid repetitions 
         // « Voulez vous sortir, grand pied de grue, grand pied de grue, grand pied de grue »

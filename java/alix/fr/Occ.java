@@ -51,7 +51,7 @@ public class Occ
   /**
    * Constructor
    */
-  public Occ( final CharSequence graph, final CharSequence orth, final Tag tag, final CharSequence lem)
+  public Occ( final CharSequence graph, final CharSequence orth, final short tag, final CharSequence lem)
   {
     graph( graph );
     orth( orth );
@@ -61,7 +61,7 @@ public class Occ
   /**
    * Constructor
    */
-  public Occ( final Term graph, final Term orth, final short tag, final Term lem)
+  public Occ( final Term graph, final Term orth, final Tag tag, final Term lem)
   {
     graph( graph );
     orth( orth );
@@ -254,6 +254,17 @@ public class Occ
     return this;
   }
   /**
+   * Set a grammar category by label
+   * @param tag
+   * @return
+   */
+  public Occ tag( final String tag )
+  {
+    this.tag.set( tag );
+    return this;
+  }  
+  
+  /**
    * Set lem value by copy of a term
    * @param t
    * @return a handle on the occurrence object
@@ -322,6 +333,18 @@ public class Occ
     else out.print( ' ' );
     graph.print( out );
   }
+  /**
+   *  A kind of equals, especially useful to test tag only
+   */
+  public boolean fit( Occ occ ) {
+    // test Prefix only, is it dangerous ?
+    if ( tag.isPrefix() && lem.isEmpty() && orth.isEmpty() && tag.equals( occ.tag.prefix() ) ) 
+      return true;
+    if ( !tag.isEmpty() && !tag.equals( occ.tag ) ) return false;
+    if ( !lem.isEmpty() && !lem.equals( occ.lem ) ) return false;
+    if ( !orth.isEmpty() && !orth.equals( occ.orth ) ) return false;
+    return true;
+  }
   /** 
    * Default String display 
    */
@@ -336,16 +359,22 @@ public class Occ
    */
   public static void main(String args[]) throws IOException 
   {
-    String text = "Son amant l' emmène un jour , O se promener dans un quartier où ?"
-      + " remarquons -le ils ne vont jamais se promener ."
+    Occ test1 = new Occ(null, null, Tag.DET, null);
+    Occ test2 = new Occ(null, null, Tag.DETart, null);
+    String text = "Son:DETposs amant:SUB l':PRO emmène:VERB un:DETart jour:SUB ,:PUN O:NAME se:PRO promener:VERB"
+        + " dans:CONJ un:DETart quartier:SUB où:PRO ?:PUNsent "
+      + " remarquons:VERB -le:PRO ils:PROpers ne:ADVneg vont:VERB jamais:ADVneg se:PRO promener:VERB .:PUNsent"
     ;
     Occ occ = new Occ();
-    Occ last = new Occ().graph( "" );
     PrintWriter out=new PrintWriter(new OutputStreamWriter( System.out, "UTF-8"));
+    String[] parts;
     for ( String tok: text.split( " " ) ) {
-      occ.graph( tok );
-      occ.print( out, last );
-      last.graph(occ.graph);
+      if ( tok.trim().isEmpty() ) continue;
+      parts=tok.split( ":" );
+      occ.graph( parts[0] ).tag( parts[1] );
+      System.out.println( occ );
+      if ( test1.fit( occ )) System.out.println( " —— fit( "+test1.tag+" )" );
+      if ( test2.fit( occ )) System.out.println( " —— fit( "+test2.tag+" )" );
     }
     out.close();
   }

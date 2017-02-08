@@ -41,8 +41,8 @@ public class Text4vek
         out.println("");
         continue;
       }
-      else if ( occ.tag().pun() ) continue;
-      else if ( occ.tag().name() ) out.print( "ONOMA" );
+      else if ( occ.tag().isPun() ) continue;
+      else if ( occ.tag().isName() ) out.print( "ONOMA" );
       // else if ( occ.tag.isVerb() || occ.tag.isAdj() || occ.tag.isSub() ) out.print( occ.lem );
       else out.print( occ.lem() );
       out.print( ' ' );
