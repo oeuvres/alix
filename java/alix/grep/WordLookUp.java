@@ -17,10 +17,10 @@ import alix.fr.Tokenizer;
 
 public class WordLookUp {
 
-	static final int colCode=1;
-	static final int colAuthor=2;
-	static final int colYear=3;
-	static final int colTitle=4;
+	static final int colCode=GrepMultiWordExpressions.colCode;
+	static final int colAuthor=GrepMultiWordExpressions.colAuthor;
+	static final int colYear=GrepMultiWordExpressions.colYear;
+	static final int colTitle=GrepMultiWordExpressions.colTitle;
 	String preciseQuery;
 
 	public String getPreciseQuery() {
@@ -102,6 +102,7 @@ public class WordLookUp {
 			String []cells=allRows.get(counterRows);
 
 			int countOccurrences=0;
+			System.out.println(cells[colCode]);
 			String fileName=cells[colCode]+".xml";
 			StringBuilder pathSB=new StringBuilder();
 			pathSB.append(chosenPath);

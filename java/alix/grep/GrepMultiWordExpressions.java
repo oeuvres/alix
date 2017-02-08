@@ -24,10 +24,10 @@ public class GrepMultiWordExpressions {
 	int caseSensitivity=0;
 	List<String[]>statsPerDoc;
 
-	static final int colCode=1;
-	static final int colAuthor=2;
-	static final int colYear=3;
-	static final int colTitle=4;
+	static final int colCode=2;
+	static final int colAuthor=3;
+	static final int colYear=4;
+	static final int colTitle=5;
 
 	public String getWordRequest() {
 		return WORD;
