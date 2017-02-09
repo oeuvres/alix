@@ -43,10 +43,10 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import alix.fr.Lexik;
+import alix.fr.Lexik.Lexentry;
 import alix.fr.Occ;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
-import alix.fr.Lexentry;
 import alix.util.TermDic;
 import alix.util.TermDic.Terminfos;
 

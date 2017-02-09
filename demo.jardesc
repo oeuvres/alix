@@ -22,7 +22,6 @@
         <javaElement handleIdentifier="=Alix/java&lt;alix.muthovek"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
         <file path="/Alix/java/alix/fr/dic/rules.csv"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Lexentry.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.frwork"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Lexik.java"/>
         <file path="/Alix/java/alix/fr/dic/brevidot.csv"/>

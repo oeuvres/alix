@@ -148,7 +148,8 @@ public final class Tag
   }
   public Tag set( Tag tag )
   {
-    set(tag.code);
+    if ( tag == null ) set( Tag.NULL);
+    else set(tag.code);
     return this;
   }
   public Tag set( String label )

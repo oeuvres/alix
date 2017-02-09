@@ -2,6 +2,7 @@ package alix.fr;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 
 import alix.util.Term;
@@ -51,7 +52,14 @@ public class Occ
   /**
    * Constructor
    */
-  public Occ( final CharSequence graph, final CharSequence orth, final short tag, final CharSequence lem)
+  public Occ( final CharSequence graph, final CharSequence orth, final int tag, final CharSequence lem)
+  {
+    graph( graph );
+    orth( orth );
+    tag( tag );
+    lem( lem );
+  }
+  public Occ( final CharSequence graph, final CharSequence orth, final Tag tag, final CharSequence lem)
   {
     graph( graph );
     orth( orth );
@@ -238,7 +246,7 @@ public class Occ
    * Set a grammar category code
    * @return a handle on the occurrence object for chaining
    */
-  public Occ tag( final short code )
+  public Occ tag( final int code )
   {
     tag.set( code );
     return this;
@@ -313,6 +321,13 @@ public class Occ
   }
   public void print( PrintWriter out ) {
     print( out, null );
+  }
+  /**
+   * Output to System.out
+   * @param out
+   */
+  public void print( PrintStream out ) {
+    print( new PrintWriter(out), null );
   }
   /**
    * Write the occurrence to a printer in respect of 

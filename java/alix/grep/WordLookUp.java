@@ -1,10 +1,13 @@
 package alix.grep;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -12,9 +15,11 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import alix.fr.Lexik;
 import alix.fr.Occ;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.frwork.Presse;
 
 public class WordLookUp {
 
@@ -240,5 +245,82 @@ public class WordLookUp {
 
 
 	}
+	/**
+	 * Séquence de test légère, parce que je ne suis pas sûr de comprendre
+	 * tous tes besoins pour le renseignement des fichiers
+	 * @param text
+	 * @param query
+	 */
+	static public void grep( String text, Occ[] query) 
+	{
+    Tokenizer toks = new Tokenizer(text);
+    int qlength = query.length;
+    int qlevel = 0;
+    Occ occ = new Occ();
+    while (toks.token(occ) ) {
+      if ( occ.tag().isPun() ) continue;
+      // on touche
+      if ( query[qlevel].fit( occ )) {
+        // System.out.println( occ );
+        System.out.print( occ.orth()+" " );
+        qlevel++;
+        // fin de requête
+        if ( qlevel == qlength ) {
+          qlevel = 0;
+          System.out.println( "" );
+        }
+      }
+      // on redémarre à 0 à chaque fois si rien trouvé
+      else qlevel = 0;
+    }
+	}
+	/**
+	 * Query parser
+	 */
+	static public Occ[] qparse (String q) {
+	  String[] parts = q.split( "\\s+" );
+	  Occ[] query = new Occ[parts.length];
+	  String s;
+	  String lem;
+	  int tag;
+	  for ( int i =0; i < parts.length; i++ ) {
+	    s = parts[i];
+	    // un mot entre guillemets, une forme orthographique
+	    if ( s.charAt( 0 ) == '"') {
+	      // une occurrence avec juste un orth
+	      query[i] = new Occ( null, s.substring( 1, s.length()-2 ), null, null );
+	      continue;
+	    }
+	    // un Tag connu ?
+	    if ( (tag = Tag.code( s )) != Tag.UNKNOWN ) {
+	      query[i] = new Occ( null, null, tag, null );
+	      continue;
+	    }
+	    // un lemme connu ?
+	    if ( s.equals( Lexik.lem( s ) )) {
+        query[i] = new Occ( null, null, null, s );
+	      continue;
+	    }
+	    // cas par défaut, une forme graphique
+	    query[i] = new Occ( null, s, null, null );
+	  }
+	  return query;
+	}
+	
+  /**
+   * Test the Class
+   * @param args
+   * @throws IOException 
+   */
+  public static void main(String args[]) throws IOException 
+  {
+    String text = " Je vous trouve très beau. — Mais je ne suis pas beau ! "
+        + " — au moins vous n’êtes pas idiot ";
+    String q = "être ADV ADJ";
+    Occ[] query = qparse(q);
+    // for (Occ occ: query) System.out.println( occ );
+    grep( text, query);
+  }
+
 
 }
