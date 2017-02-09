@@ -125,8 +125,6 @@ public class GrepMultiWordExpressions {
 			WordLookUp wordLookUp=new WordLookUp();
 			CombineStats combine=new CombineStats();
 			
-			String wordRegTag="";
-			
 			switch (chooseTypeRequest){
 			case 1 :
 				wordLookUp.oneWord(line, wordLookUp.getPreciseQuery(), chosenPath, 
@@ -136,16 +134,14 @@ public class GrepMultiWordExpressions {
 				break;
 
 			case 2 :
-				wordRegTag="word";
-				wordLookUp.severalWords(wordRegTag, word, wordLookUp.getPreciseQuery(), chosenPath, 
+				wordLookUp.severalWords(word, wordLookUp.getPreciseQuery(), chosenPath, 
 						column, allRows, statsPerAuthorOrYear, 
 						grep, combine);
 				preciseQuery=wordLookUp.getPreciseQuery();
 				break;
 			
 			case 3:
-				wordRegTag="tag";
-				wordLookUp.severalWords(wordRegTag, word, preciseQuery, chosenPath, 
+				wordLookUp.wordAndTags( word, preciseQuery, chosenPath, 
 						column, allRows, statsPerAuthorOrYear, grep, combine);
 				preciseQuery=wordLookUp.getPreciseQuery();
 				break;	
