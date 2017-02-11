@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +29,7 @@ public class WordLookUp {
 	static final int colYear=GrepMultiWordExpressions.colYear;
 	static final int colTitle=GrepMultiWordExpressions.colTitle;
 	String preciseQuery;
+	long nbOccs;
 
 	public String getPreciseQuery() {
 		return preciseQuery;
@@ -37,6 +39,9 @@ public class WordLookUp {
 		this.preciseQuery = query;
 	}
 
+	public void setNbOcc(long occs) {
+		this.nbOccs = occs;
+	}
 
 
 	public void oneWord(Scanner answer, String query,String chosenPath, 
@@ -54,7 +59,7 @@ public class WordLookUp {
 		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 			String []cells=allRows.get(counterRows);
 			int countOccurrences=0;
-			System.out.println(cells[colCode]);
+			//			System.out.println(cells[colCode]);
 			String fileName=cells[colCode]+".xml";
 			StringBuilder pathSB=new StringBuilder();
 			pathSB.append(chosenPath);
@@ -64,15 +69,24 @@ public class WordLookUp {
 			Tokenizer toks = new Tokenizer(text);
 			long occs = 0;
 			Occ occ=new Occ();
+			String request=grep.getWordRequest();
+			if (cells[colCode].contains("0_1821_voltaire")){
+				System.out.println(text);
+			}
 
-			while ( toks.token(occ ) ) {
+			while ( toks.token(occ) ) {
 				if ( occ.tag().isPun() ) continue;
 				occs++;
+
 				Pattern p = Pattern.compile(grep.getWordRequest(), grep.getCaseSensitivity());
-				Matcher m = p.matcher(occ.orth());
+				Matcher m = p.matcher(occ.orth().toString());
+
 				if (m.find()){
 					countOccurrences++;
 				}
+			}
+			if (cells[colCode].contains("0_1821_voltaire")){
+				System.out.println(countOccurrences);
 			}
 			statsPerAuthorOrYear=combine.mergeData(grep,statsPerAuthorOrYear, cells, chosenColumn, countOccurrences, occs, fileName);
 		}
@@ -174,11 +188,6 @@ public class WordLookUp {
 		Scanner motsUtil=new Scanner (System.in);
 		String ligneDeMots = motsUtil.nextLine();
 
-		String[] tabMotsUtil=ligneDeMots.split("\\s");
-
-		HashMap <Occ,Boolean>mapOcc=new HashMap();
-		int window=tabMotsUtil.length;
-
 		System.out.println("Calcul des matchs en cours...");
 
 		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
@@ -194,48 +203,13 @@ public class WordLookUp {
 
 			String text = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
 
-			Tokenizer toks = new Tokenizer(text);
-			Occ occ=new Occ();
-			long occs = 0;
-			int inner=-1;
+			Occ queryUtil []=qparse(ligneDeMots);
 
-			while (toks.token(occ) ) {
+			List<String> nbFound=grep (text,queryUtil);
 
-				if ( occ.tag().isPun() ) continue;
-				occs++;
-				
-				for (String test:tabMotsUtil){
-					
-					if (occ.tag().toString().contains(test)){				
-						mapOcc.put(occ, true);
-						if (inner<0) inner = 0;
-					}
-					else if (occ.orth().toString().contains(test)){
-						mapOcc.put(occ, true);
-						if (inner<0) inner = 0;
-					}
-				}
-				
-				if (inner==window){
-					int nbTrue=0;
-					for (Entry <Occ, Boolean>entry:mapOcc.entrySet()){			
-						if (entry.getValue() == true){
-							nbTrue++;
-							entry.setValue(false);
-						}
-					}
-					if (nbTrue==window){
-						countOccurrences++;
-						inner=-1;
-					}
-				}
-				if (inner>-1){
-					inner++;
-				}
+			countOccurrences+=nbFound.size();
 
-			}
-
-			statsPerAuthorOrYear=combine.mergeData(grep,statsPerAuthorOrYear, cells, chosenColumn, countOccurrences, occs, fileName);
+			statsPerAuthorOrYear=combine.mergeData(grep,statsPerAuthorOrYear, cells, chosenColumn, countOccurrences, nbOccs, fileName);
 		}
 
 		System.out.println("\nQuel(le) "+grep.getNameOrYearOrTitleString()+" voulez-vous ?");
@@ -246,81 +220,80 @@ public class WordLookUp {
 
 	}
 	/**
-	 * Séquence de test légère, parce que je ne suis pas sûr de comprendre
-	 * tous tes besoins pour le renseignement des fichiers
 	 * @param text
 	 * @param query
 	 */
-	static public void grep( String text, Occ[] query) 
+	public List<String> grep( String text, Occ[] query) 
 	{
-    Tokenizer toks = new Tokenizer(text);
-    int qlength = query.length;
-    int qlevel = 0;
-    Occ occ = new Occ();
-    while (toks.token(occ) ) {
-      if ( occ.tag().isPun() ) continue;
-      // on touche
-      if ( query[qlevel].fit( occ )) {
-        // System.out.println( occ );
-        System.out.print( occ.orth()+" " );
-        qlevel++;
-        // fin de requête
-        if ( qlevel == qlength ) {
-          qlevel = 0;
-          System.out.println( "" );
-        }
-      }
-      // on redémarre à 0 à chaque fois si rien trouvé
-      else qlevel = 0;
-    }
+		long occs=0;
+		List<String>found=new ArrayList<String>();
+		Tokenizer toks = new Tokenizer(text);
+		int qlength = query.length;
+		int qlevel = 0;
+		Occ occ = new Occ();
+		while (toks.token(occ) ) {
+			if ( occ.tag().isPun() ) continue;
+			occs++;
+			if ( query[qlevel].fit( occ )) {
+				found.add(occ.orth().toString());
+
+				qlevel++;
+				if ( qlevel == qlength ) {
+					qlevel = 0;
+				}
+			}
+			else qlevel = 0;
+		}
+		setNbOcc(occs);
+		return found;
 	}
 	/**
 	 * Query parser
 	 */
 	static public Occ[] qparse (String q) {
-	  String[] parts = q.split( "\\s+" );
-	  Occ[] query = new Occ[parts.length];
-	  String s;
-	  String lem;
-	  int tag;
-	  for ( int i =0; i < parts.length; i++ ) {
-	    s = parts[i];
-	    // un mot entre guillemets, une forme orthographique
-	    if ( s.charAt( 0 ) == '"') {
-	      // une occurrence avec juste un orth
-	      query[i] = new Occ( null, s.substring( 1, s.length()-2 ), null, null );
-	      continue;
-	    }
-	    // un Tag connu ?
-	    if ( (tag = Tag.code( s )) != Tag.UNKNOWN ) {
-	      query[i] = new Occ( null, null, tag, null );
-	      continue;
-	    }
-	    // un lemme connu ?
-	    if ( s.equals( Lexik.lem( s ) )) {
-        query[i] = new Occ( null, null, null, s );
-	      continue;
-	    }
-	    // cas par défaut, une forme graphique
-	    query[i] = new Occ( null, s, null, null );
-	  }
-	  return query;
+		String[] parts = q.split( "\\s+" );
+		Occ[] query = new Occ[parts.length];
+		String s;
+		String lem;
+		int tag;
+		for ( int i =0; i < parts.length; i++ ) {
+			s = parts[i];
+			// un mot entre guillemets, une forme orthographique
+			if ( s.charAt( 0 ) == '"') {
+				// une occurrence avec juste un orth
+				query[i] = new Occ( null, s.substring( 1, s.length()-2 ), null, null );
+				continue;
+			}
+			// un Tag connu ?
+			if ( (tag = Tag.code( s )) != Tag.UNKNOWN ) {
+				query[i] = new Occ( null, null, tag, null );
+				continue;
+			}
+			// un lemme connu ?
+			if ( s.equals( Lexik.lem( s ) )) {
+				query[i] = new Occ( null, null, null, s );
+				continue;
+			}
+			// cas par défaut, une forme graphique
+			query[i] = new Occ( null, s, null, null );
+		}
+		return query;
 	}
-	
-  /**
-   * Test the Class
-   * @param args
-   * @throws IOException 
-   */
-  public static void main(String args[]) throws IOException 
-  {
-    String text = " Je vous trouve très beau. — Mais je ne suis pas beau ! "
-        + " — au moins vous n’êtes pas idiot ";
-    String q = "être ADV ADJ";
-    Occ[] query = qparse(q);
-    // for (Occ occ: query) System.out.println( occ );
-    grep( text, query);
-  }
+
+	/**
+	 * Test the Class
+	 * @param args
+	 * @throws IOException 
+	 */
+	public static void main(String args[]) throws IOException 
+	{
+		String text = " Je vous trouve très beau. — Mais je ne suis pas beau ! "
+				+ " — au moins vous n’êtes pas idiot ";
+		String q = "être ADV ADJ";
+		Occ[] query = qparse(q);
+		// for (Occ occ: query) System.out.println( occ );
+		//		grep( text, query);
+	}
 
 
 }
