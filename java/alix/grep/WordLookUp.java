@@ -2,13 +2,11 @@ package alix.grep;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -18,9 +16,17 @@ import java.util.regex.Pattern;
 
 import alix.fr.Lexik;
 import alix.fr.Occ;
+import alix.fr.OccSlider;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
-import alix.frwork.Presse;
+
+/**
+ * Quel est le contrat de cet objet ?
+ * Sur quelle données est-il construit ?
+ * Que sort-il ?
+ * @author user
+ *
+ */
 
 public class WordLookUp {
 
@@ -220,25 +226,37 @@ public class WordLookUp {
 
 	}
 	/**
+	 * 
 	 * @param text
 	 * @param query
 	 */
 	public List<String> grep( String text, Occ[] query) 
 	{
+	  // fenêtre de mots pour sortir une concordance
+	  OccSlider win = new OccSlider( 10, 10 );
+
 		long occs=0;
 		List<String>found=new ArrayList<String>();
 		Tokenizer toks = new Tokenizer(text);
 		int qlength = query.length;
 		int qlevel = 0;
-		Occ occ = new Occ();
-		while (toks.token(occ) ) {
+		Occ occ;
+		// ici la ligne délicate, le tokenize met à jour une occurrence dans fenêtre
+		while (toks.token( win.add() ) ) {
+		  occ = win.get( 0 ); // pointeur sur l’occurrence courante
 			if ( occ.tag().isPun() ) continue;
 			occs++;
 			if ( query[qlevel].fit( occ )) {
+			  // comment arrives-tu à reconstruire la locution trouvée de 1 à plusieurs mots ? 
 				found.add(occ.orth().toString());
-
 				qlevel++;
 				if ( qlevel == qlength ) {
+				  // juste pour déboguage, la sortie d'une concordance peut avoir trois sortie différentes
+				  //  — console
+				  //  — fichier
+				  //  — web
+				  // pourrait être fixé par le constructuer de l’objet
+				  System.out.println( win );
 					qlevel = 0;
 				}
 			}
@@ -287,12 +305,23 @@ public class WordLookUp {
 	 */
 	public static void main(String args[]) throws IOException 
 	{
-		String text = " Je vous trouve très beau. — Mais je ne suis pas beau ! "
-				+ " — au moins vous n’êtes pas idiot ";
-		String q = "être ADV ADJ";
-		Occ[] query = qparse(q);
-		// for (Occ occ: query) System.out.println( occ );
-		//		grep( text, query);
+	  // loop on a test folder for all files
+	  String dir = "test/";
+    String[] queries = { "littérature ADJ", "littérature", "litterature" };
+    // test if query is correctly parsed
+    // for (Occ occ: query) System.out.println( occ );
+    WordLookUp thing = new WordLookUp();
+    for (final File src : new File( dir ).listFiles()) {
+      if ( src.isDirectory() ) continue;
+      if ( src.getName().startsWith( "." )) continue;
+      if ( src.getName().startsWith( "_" )) continue;
+      String xml = new String(Files.readAllBytes( Paths.get( src.toString() ) ), StandardCharsets.UTF_8);
+      System.out.println( src );
+      for ( String q: queries) {
+        System.out.println( "  —— "+q );
+        thing.grep( xml, qparse(q) );
+      }
+    }
 	}
 
 
