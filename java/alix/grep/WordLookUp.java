@@ -21,20 +21,24 @@ import alix.fr.Tag;
 import alix.fr.Tokenizer;
 
 /**
- * Quel est le contrat de cet objet ?
- * Sur quelle données est-il construit ?
- * Que sort-il ?
+ * La classe contient les méthodes qui ramassent les fichiers, appellent le tokenizer 
+ * et appellent le classe de compilation des données
+ * Les méthodes de la classe ont besoin des demandes de l'utilisateur, 
+ * et modifient au fur et à mesure la map des données pour chaque auteur
+ * Après utilisation, la map des données statistiques pour chaque auteur est mise à jour
  * @author user
  *
  */
 
 public class WordLookUp {
 
-	static final int colCode=GrepMultiWordExpressions.colCode;
-	static final int colAuthor=GrepMultiWordExpressions.colAuthor;
-	static final int colYear=GrepMultiWordExpressions.colYear;
-	static final int colTitle=GrepMultiWordExpressions.colTitle;
 	String preciseQuery;
+	String query;
+	int caseSensitivity;
+	String nameYearTitle;
+	HashMap<String, String[]>statsPerAuthorYear;
+
+	List<String[]>statsPerDoc;
 	long nbOccs;
 
 	public String getPreciseQuery() {
@@ -48,25 +52,59 @@ public class WordLookUp {
 	public void setNbOcc(long occs) {
 		this.nbOccs = occs;
 	}
+	
+	public String getQuery() {
+		return query ;	
+	}
+	
+	public void setStatsPerDoc(List<String[]>statsPerDoc){
+		this.statsPerDoc=statsPerDoc;
+	}
+	
+	public List<String[]> getStatsPerDoc(){
+		return statsPerDoc;
+	}
+	
+	public int getCaseSensitivity() {
+		return caseSensitivity;
+	}
 
+	public void setCaseSensitivity(int query) {
+		this.caseSensitivity = query;
+	}
+	
+	public String getNameYearTitle() {
+		return nameYearTitle;
+	}
 
-	public void oneWord(Scanner answer, String query,String chosenPath, 
-			int chosenColumn, 
-			List <String []>allRows,HashMap <String,String[]>statsPerAuthorOrYear,
-			GrepMultiWordExpressions grep, CombineStats combine) throws IOException{
+	public void setNameYearTitle(String query) {
+		this.nameYearTitle = query;
+	}
+	
+	public HashMap<String, String[]> getStatsAuthorYear() {
+		return statsPerAuthorYear;
+	}
+
+	public void setStatsPerAuthorYear(HashMap<String, String[]> stats) {
+		this.statsPerAuthorYear = stats;
+	}
+	
+	
+
+	@SuppressWarnings("resource")
+	public HashMap<String, String[]> oneWord(String chosenPath, int chosenColumn,
+			List <String []>allRows) throws IOException{
 		System.out.println("Quel mot voulez-vous chercher ?");
-
-		String usersWord = answer.nextLine();
-
-		if (usersWord!=null)grep.setWordRequest(usersWord);
+		
+		Scanner answer=new Scanner(System.in);
+		query = answer.nextLine();
 
 		System.out.println("Calcul des matchs en cours...");
 
 		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 			String []cells=allRows.get(counterRows);
 			int countOccurrences=0;
-			//			System.out.println(cells[colCode]);
-			String fileName=cells[colCode]+".xml";
+			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
 			StringBuilder pathSB=new StringBuilder();
 			pathSB.append(chosenPath);
 			pathSB.append(fileName);
@@ -75,43 +113,43 @@ public class WordLookUp {
 			Tokenizer toks = new Tokenizer(text);
 			long occs = 0;
 			Occ occ=new Occ();
-			String request=grep.getWordRequest();
-			if (cells[colCode].contains("0_1821_voltaire")){
-				System.out.println(text);
-			}
 
 			while ( toks.token(occ) ) {
 				if ( occ.tag().isPun() ) continue;
 				occs++;
 
-				Pattern p = Pattern.compile(grep.getWordRequest(), grep.getCaseSensitivity());
+				Pattern p = Pattern.compile(query, caseSensitivity);
 				Matcher m = p.matcher(occ.orth().toString());
 
 				if (m.find()){
 					countOccurrences++;
 				}
 			}
-			if (cells[colCode].contains("0_1821_voltaire")){
-				System.out.println(countOccurrences);
-			}
-			statsPerAuthorOrYear=combine.mergeData(grep,statsPerAuthorOrYear, cells, chosenColumn, countOccurrences, occs, fileName);
+			
+			CombineStats combine=new CombineStats();
+			combine.setStatsPerDoc(getStatsPerDoc());
+			combine.setStatsPerAuthorYear(getStatsAuthorYear());
+			statsPerAuthorYear=combine.mergeData( cells, 
+					chosenColumn, countOccurrences, occs, fileName);
+			statsPerDoc=combine.getStatsPerDoc();
 		}
 
-		System.out.println("\nQuel(le) "+grep.getNameOrYearOrTitleString()+" voulez-vous ?");
+		System.out.println("\nQuel(le) "+nameYearTitle+" voulez-vous ?");
 		setPreciseQuery(answer.nextLine());
-		grep.setWordRequest(usersWord);
+		return statsPerAuthorYear;
+		
 	}
 
+	
+
 	@SuppressWarnings("resource")
-	public void severalWords(Scanner answerWord, String query,String chosenPath, 
-			int chosenColumn, 
-			List <String []>allRows,HashMap <String,String[]>statsPerAuthorOrYear,
-			GrepMultiWordExpressions grep,CombineStats combine) throws IOException{
+	public HashMap<String, String[]> severalWords(String chosenPath, 
+			int chosenColumn,List <String []>allRows) throws IOException{
 		System.out.println("Quel(s) mot(s) voulez-vous chercher ? (si plusieurs, séparez par un espace)");
 		Scanner motsUtil=new Scanner (System.in);
-		String ligneDeMots = motsUtil.nextLine();
+		query = motsUtil.nextLine();
 		HashMap<String, WordFlag>listToCheck=new HashMap<String, WordFlag>();
-		String tabDeMots[]=ligneDeMots.split("\\s");
+		String tabDeMots[]=query.split("\\s");
 		for (String mot:tabDeMots){
 			listToCheck.put(mot, new WordFlag());
 		}
@@ -119,6 +157,7 @@ public class WordLookUp {
 		int window=0;
 		if (listToCheck.keySet().size()>1){
 			System.out.println("Quelle est l'étendue de votre fenêtre (en nombre de mots) ?");
+			Scanner answerWord=new Scanner(System.in);
 			window = Integer.valueOf(answerWord.next());
 		}
 
@@ -129,8 +168,7 @@ public class WordLookUp {
 			String []cells=allRows.get(counterRows);
 
 			int countOccurrences=0;
-			System.out.println(cells[colCode]);
-			String fileName=cells[colCode]+".xml";
+			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
 			StringBuilder pathSB=new StringBuilder();
 			pathSB.append(chosenPath);
 			pathSB.append(fileName);
@@ -171,14 +209,18 @@ public class WordLookUp {
 				}
 			}
 
-
-			statsPerAuthorOrYear=combine.mergeData(grep,statsPerAuthorOrYear, cells, chosenColumn, countOccurrences, occs, fileName);
+			CombineStats combine=new CombineStats();
+			combine.setStatsPerDoc(getStatsPerDoc());
+			combine.setStatsPerAuthorYear(getStatsAuthorYear());
+			statsPerAuthorYear=combine.mergeData( cells, 
+					chosenColumn, countOccurrences, occs, fileName);
+			statsPerDoc=combine.getStatsPerDoc();
 		}
 
-		System.out.println("\nQuel(le) "+grep.getNameOrYearOrTitleString()+" voulez-vous ?");
+		System.out.println("\nQuel(le) "+nameYearTitle+" voulez-vous ?");
 		Scanner answerLine=new Scanner(System.in);
 		setPreciseQuery(answerLine.nextLine());
-		grep.setWordRequest(ligneDeMots);
+		return statsPerAuthorYear;
 	}
 
 	private class WordFlag {
@@ -186,13 +228,12 @@ public class WordLookUp {
 	}
 
 
-	public void wordAndTags(Scanner answerWord, String query,String chosenPath, 
-			int chosenColumn, 
-			List <String []>allRows,HashMap <String,String[]>statsPerAuthorOrYear,
-			GrepMultiWordExpressions grep,CombineStats combine) throws IOException{
+	@SuppressWarnings("resource")
+	public HashMap<String, String[]> wordAndTags(String chosenPath, int chosenColumn, List <String []>allRows) 
+			throws IOException{
 		System.out.println("Quel(s) mot(s) voulez-vous chercher ? (si plusieurs, séparez par un espace)");
 		Scanner motsUtil=new Scanner (System.in);
-		String ligneDeMots = motsUtil.nextLine();
+		query = motsUtil.nextLine();
 
 		System.out.println("Calcul des matchs en cours...");
 
@@ -200,8 +241,7 @@ public class WordLookUp {
 			String []cells=allRows.get(counterRows);
 
 			int countOccurrences=0;
-			System.out.println(cells[colCode]);
-			String fileName=cells[colCode]+".xml";
+			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
 			StringBuilder pathSB=new StringBuilder();
 			pathSB.append(chosenPath);
 			pathSB.append(fileName);
@@ -209,19 +249,24 @@ public class WordLookUp {
 
 			String text = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
 
-			Occ queryUtil []=qparse(ligneDeMots);
+			Occ queryUtil []=qparse(query);
 
 			List<String> nbFound=grep (text,queryUtil);
 
 			countOccurrences+=nbFound.size();
 
-			statsPerAuthorOrYear=combine.mergeData(grep,statsPerAuthorOrYear, cells, chosenColumn, countOccurrences, nbOccs, fileName);
+			CombineStats combine=new CombineStats();
+			combine.setStatsPerDoc(getStatsPerDoc());
+			combine.setStatsPerAuthorYear(getStatsAuthorYear());
+			statsPerAuthorYear=combine.mergeData( cells, 
+					chosenColumn, countOccurrences, nbOccs, fileName);
+			statsPerDoc=combine.getStatsPerDoc();
 		}
 
-		System.out.println("\nQuel(le) "+grep.getNameOrYearOrTitleString()+" voulez-vous ?");
+		System.out.println("\nQuel(le) "+nameYearTitle+" voulez-vous ?");
 		Scanner answerLine=new Scanner(System.in);
 		setPreciseQuery(answerLine.nextLine());
-		grep.setWordRequest(ligneDeMots);
+		return statsPerAuthorYear;
 
 
 	}
@@ -248,7 +293,7 @@ public class WordLookUp {
 			occs++;
 			if ( query[qlevel].fit( occ )) {
 			  // comment arrives-tu à reconstruire la locution trouvée de 1 à plusieurs mots ? 
-				found.add(occ.orth().toString());
+				
 				qlevel++;
 				if ( qlevel == qlength ) {
 				  // juste pour déboguage, la sortie d'une concordance peut avoir trois sortie différentes
@@ -256,7 +301,7 @@ public class WordLookUp {
 				  //  — fichier
 				  //  — web
 				  // pourrait être fixé par le constructuer de l’objet
-				  System.out.println( win );
+				  found.add(occ.orth().toString());
 					qlevel = 0;
 				}
 			}
@@ -307,7 +352,7 @@ public class WordLookUp {
 	{
 	  // loop on a test folder for all files
 	  String dir = "test/";
-    String[] queries = { "littérature ADJ", "littérature", "litterature" };
+    String[] queries = { "littérature ADJ" };
     // test if query is correctly parsed
     // for (Occ occ: query) System.out.println( occ );
     WordLookUp thing = new WordLookUp();
@@ -318,11 +363,10 @@ public class WordLookUp {
       String xml = new String(Files.readAllBytes( Paths.get( src.toString() ) ), StandardCharsets.UTF_8);
       System.out.println( src );
       for ( String q: queries) {
-        System.out.println( "  —— "+q );
-        thing.grep( xml, qparse(q) );
+//        System.out.println( "  —— "+q );
+        List <String>myList=thing.grep( xml, qparse(q) );
+        System.out.println(myList.size());
       }
     }
 	}
-
-
 }
