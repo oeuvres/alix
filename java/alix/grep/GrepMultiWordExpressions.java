@@ -15,6 +15,9 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
 
+import alix.fr.Occ;
+import alix.util.Term;
+
 /**
  * Classe d'interface utilisation (les demandes sont faites et les queries enregistrées)
  * Les informations de base d'entrée tsv de l'utilisateur sont enregistrées dans cette classe
@@ -31,6 +34,7 @@ public class GrepMultiWordExpressions {
 	int caseSensitivity;
 	List<String[]>statsPerDoc;
 	HashMap <String,String[]>statsPerAuthorYear;
+	String form;
 
 	static final int colCode=2;
 	static final int colAuthor=3;
@@ -76,6 +80,14 @@ public class GrepMultiWordExpressions {
 
 	public void setStatsPerAuthorYear(HashMap<String, String[]> stats) {
 		this.statsPerAuthorYear = stats;
+	}
+	
+	public String getFormPreference() {
+		return form;
+	}
+
+	public void setFormPreference (String form) {
+		this.form = form;
 	}
 
 	@SuppressWarnings("resource")
@@ -128,6 +140,14 @@ public class GrepMultiWordExpressions {
 			if (column==colAuthor)valueAsked=3;
 			if (column==colTitle)valueAsked=5;
 
+			System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
+			if (word.next().contains("l")){
+				grep.form="lem";
+			}
+			else{
+				grep.form="orth";
+			}
+			
 			System.out.println("Quelle type de recherche voulez-vous effectuer ? "
 					+ "(rentrer le numéro correspondant et taper \"entrée\")");
 			System.out.println("1 : rechercher un seul mot ou une expression régulière");
@@ -138,7 +158,7 @@ public class GrepMultiWordExpressions {
 			System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
 			String casse=word.next();
 
-			if (casse.equals("o")){
+			if (casse.contains("o")){
 				grep.caseSensitivity=0;
 			}
 			else{
@@ -151,6 +171,7 @@ public class GrepMultiWordExpressions {
 			wordLookUp.setNameYearTitle(grep.nameYearTitle);
 			wordLookUp.setStatsPerDoc(new ArrayList<String[]>());
 			wordLookUp.setStatsPerAuthorYear(new HashMap<>());
+			wordLookUp.setFormPreference(grep.form);
 			
 			
 			switch (chooseTypeRequest){

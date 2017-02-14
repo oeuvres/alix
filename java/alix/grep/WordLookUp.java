@@ -19,6 +19,7 @@ import alix.fr.Occ;
 import alix.fr.OccSlider;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.util.Term;
 
 /**
  * La classe contient les méthodes qui ramassent les fichiers, appellent le tokenizer 
@@ -37,6 +38,7 @@ public class WordLookUp {
 	int caseSensitivity;
 	String nameYearTitle;
 	HashMap<String, String[]>statsPerAuthorYear;
+	String form;
 
 	List<String[]>statsPerDoc;
 	long nbOccs;
@@ -89,6 +91,13 @@ public class WordLookUp {
 		this.statsPerAuthorYear = stats;
 	}
 	
+	public String getFormPreference() {
+		return form;
+	}
+
+	public void setFormPreference (String form) {
+		this.form = form;
+	}
 	
 
 	@SuppressWarnings("resource")
@@ -116,10 +125,17 @@ public class WordLookUp {
 
 			while ( toks.token(occ) ) {
 				if ( occ.tag().isPun() ) continue;
+				Term term=null;
+				if (form.contains("l")){
+					term=occ.lem();
+				}
+				else {
+					term=occ.orth();
+				}
 				occs++;
 
 				Pattern p = Pattern.compile(query, caseSensitivity);
-				Matcher m = p.matcher(occ.orth().toString());
+				Matcher m = p.matcher(term.toString());
 
 				if (m.find()){
 					countOccurrences++;
@@ -182,8 +198,14 @@ public class WordLookUp {
 			while (toks.token(occ) ) {
 				if ( occ.tag().isPun() ) continue;
 				occs++;
-
-				WordFlag test = listToCheck.get( occ.orth() );
+				Term term=null;
+				if (form.contains("l")){
+					term=occ.lem();
+				}
+				else {
+					term=occ.orth();
+				}
+				WordFlag test = listToCheck.get( term );
 
 				if ( test != null ) {
 					test.value = true;
