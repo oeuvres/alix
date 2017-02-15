@@ -27,8 +27,8 @@ import alix.util.Term;
 
 public class GrepMultiWordExpressions {
 
-	public static final String DEFAULT_PATH="/home/odysseus/Téléchargements/critique2000-gh-pages/tei/";
-	public static final String DEFAULT_TSV="/home/odysseus/Téléchargements/critique2000-gh-pages/biblio.tsv";
+	public static final String DEFAULT_PATH="/home/odysseus/Téléchargements/critique2000-gh-pages/txt/";
+	public static final String DEFAULT_TSV="/home/odysseus/Téléchargements/critique2000-gh-pages/biblio3.tsv";
 	public String query;
 	String nameYearTitle;
 	int caseSensitivity;
@@ -157,7 +157,7 @@ public class GrepMultiWordExpressions {
 				grep.caseSensitivity=0;
 			}
 			else{
-				grep.caseSensitivity=Pattern.CASE_INSENSITIVE;
+				grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
 			}
 
 			WordLookUp wordLookUp=new WordLookUp();
@@ -202,6 +202,16 @@ public class GrepMultiWordExpressions {
 					if (valueAsked==3){
 						for (String []doc:grep.statsPerDoc){
 							if (doc[3].contains(preciseQuery)){
+								System.out.println("\nPour le fichier : "+doc[5]);
+								System.out.println("Nombre total de tokens : "+doc[2]);
+								System.out.println("Nombre de matchs : "+doc[1]);
+								System.out.println("Fréquence Relative : "+doc[0]);
+							}
+						}
+					}
+					else if (valueAsked==4){
+						for (String []doc:grep.statsPerDoc){
+							if (doc[4].contains(preciseQuery)){
 								System.out.println("\nPour le fichier : "+doc[5]);
 								System.out.println("Nombre total de tokens : "+doc[2]);
 								System.out.println("Nombre de matchs : "+doc[1]);
