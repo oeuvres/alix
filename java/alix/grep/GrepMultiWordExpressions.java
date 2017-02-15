@@ -219,14 +219,15 @@ public class GrepMultiWordExpressions {
 			
 			System.out.println("\nSouhaitez-vous enregistrer votre requête dans un csv ? (o/n)");
 			String save= word.next();	
-			String nomFichier=grep.query.replaceAll("\\\\", "");
+			String nomFichier=grep.query.replaceAll("\\\\", "")+"_"+grep.nameYearTitle+"_"+grep.form;
 			nomFichier=nomFichier.replaceAll("\\s", "_");
+			String pathToSave=tsvPath.substring(0, tsvPath.lastIndexOf("/")+1);
 			if (save.equals("o")&&(column==colAuthor||column==colYear)){
-				ExportData.exportToCSV("./tsv/",nomFichier,statsPerAuthorOrYear);
+				ExportData.exportToCSV(pathToSave,nomFichier,grep.statsPerAuthorYear);
 				System.out.println("Votre requête a été sauvegardée");
 			}
 			else if (save.equals("o")&&(column==colTitle)){
-				ExportData.exportListToCSV("./tsv/",nomFichier,grep.getStatsPerDoc());
+				ExportData.exportListToCSV(pathToSave,nomFichier,grep.statsPerDoc);
 				System.out.println("Votre requête a été sauvegardée");
 			}
 			else{
