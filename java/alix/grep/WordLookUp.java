@@ -139,10 +139,6 @@ public class WordLookUp {
 
 				if (m.matches()){
 					countOccurrences++;
-					if (fileName.contains("1900")){
-						System.out.println("forme graphique : "+occ.graph());
-						System.out.println("forme lemma : "+occ.lem());
-					}
 				}
 			}
 			
