@@ -502,8 +502,103 @@ public class Term implements CharSequence, Comparable<Term>
     return null;
   }
   
+  
+  /**
+   * 
+   * @return
+   */
+  private static boolean globsearch( char[] globdata, int globstart, int globend, 
+      char[] textdata, int textstart, int textend ) {
+    /*
+    for ( int i=globstart; i <= globend; i++ ) System.out.print( globdata[i] );
+    System.out.print( ' ' );
+    for ( int i=textstart; i <= textend; i++ ) System.out.print( textdata[i] );
+    System.out.println();
+    */
+    char globc;
+    char textc;
+    // test if finish
+    // prefix search
+    final int inc;
+    // pat*, prefix search, go forward from start
+    if ( ( globc = globdata[ globstart ] ) != '*' ) {
+      textc = textdata[ textstart ];
+      inc = 1;
+    }
+    // *pat, suffix search, go backward from end
+    else if ( ( globc = globdata[ globend ] ) != '*' ) {
+      textc = textdata[ textend ];
+      inc = -1;
+    }
+    // *, just one star, we are OK
+    else if ( globend == globstart ) {
+      return true;
+    }
+    // *pat*, more than one star, progress by start
+    else {
+      int globi = globstart+1;
+      for (;;) {
+        globc = globdata[ globi ];
+        if ( globc == '*' ) 
+          return globsearch( globdata, globi, globend, textdata, textstart, textend );
+        // '?' not handled
+        // find the first 
+        while ( textdata[ textstart ] != globc ) {
+          if ( textstart == textend ) return false;
+          textstart++;
+        }
+        // 
+        for (;;) {
+          globi++;
+          textstart++;
+          if ( textstart >= textend && globi+1 == globend ) return true;
+          if ( textstart >= textend || globi+1 == globend 
+               || textdata[ textstart ] != globdata[globi] )
+            // not found, forward inside texte, restart from the joker
+            return globsearch( globdata, globi, globend, textdata, textstart, textend );
+        }
+      }
+      
+    }
+    // *pat or pat*
+    for (;;) {
+      if ( globc == '*' ) return globsearch( globdata, globstart, globend, textdata, textstart, textend );
+      else if ( globc == '?' );
+      // TODO, char class [éju…]
+      else if ( globc != textc ) return false;
+      if ( globstart == globend && textstart == textend ) return true;
+      // ??? unuseful ?
+      // if ( globstart >= globend || textstart >= textend ) return false;
+      if ( inc > 0 ) {
+        globc = globdata[ ++globstart ];
+        textc = textdata[ ++textstart ];
+      }
+      else {
+        globc = globdata[ --globend ];
+        textc = textdata[ --textend ];
+      }
+    }
+  }
+
+  
+  
+  /**
+   * http://lxr.free-electrons.com/source/lib/glob.c
+   * @param text
+   * @return
+   */
+  public boolean glob( Term text )
+  {
+    // empty pattern will never found things
+    if ( len < 1 ) return false;
+    // empty text will never match
+    if ( text.len < 1 ) return false;
+    return  globsearch( this.data, this.start, this.start+this.len-1, text.data, text.start, text.start+text.len-1 );
+  }
+  
   @Override
-  public boolean equals ( Object o ) {
+  public boolean equals ( Object o ) 
+  {
     if (this == o) return true;
     char[] test;
     // limit field lookup
@@ -630,6 +725,23 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public static void main(String[] args)
   {
+    Term glob = new Term( "*ent*" );
+    Term test = new Term( "présentement" );
+    System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
+    glob = new Term( "*ent*ent" );
+    System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
+    glob = new Term( "présentement" );
+    System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
+    glob = new Term( "prés*ent" );
+    System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
+    glob = new Term( "présentement*" );
+    System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
+    glob = new Term( "present" );
+    System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
+    glob = new Term( "présent" );
+    System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
+    
+    System.exit( 1 );
     Term term;
     term = new Term("123456");
     term.lastDel();
