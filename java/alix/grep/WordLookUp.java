@@ -130,15 +130,19 @@ public class WordLookUp {
 					term=occ.lem();
 				}
 				else {
-					term=occ.orth();
+					term=occ.graph();
 				}
 				occs++;
 
 				Pattern p = Pattern.compile(query, caseSensitivity);
 				Matcher m = p.matcher(term.toString());
 
-				if (m.find()){
+				if (m.matches()){
 					countOccurrences++;
+					if (fileName.contains("1900")){
+						System.out.println("forme graphique : "+occ.graph());
+						System.out.println("forme lemma : "+occ.lem());
+					}
 				}
 			}
 			
@@ -203,7 +207,7 @@ public class WordLookUp {
 					term=occ.lem();
 				}
 				else {
-					term=occ.orth();
+					term=occ.graph();
 				}
 				WordFlag test = listToCheck.get( term );
 

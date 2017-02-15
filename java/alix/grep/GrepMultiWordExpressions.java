@@ -141,12 +141,7 @@ public class GrepMultiWordExpressions {
 			if (column==colTitle)valueAsked=5;
 
 			System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
-			if (word.next().contains("l")){
-				grep.form="lem";
-			}
-			else{
-				grep.form="orth";
-			}
+			grep.form=word.next();
 			
 			System.out.println("Quelle type de recherche voulez-vous effectuer ? "
 					+ "(rentrer le numéro correspondant et taper \"entrée\")");

@@ -398,9 +398,10 @@ public class Dicovek {
       args = new String[]{ "/Library/WebServer/Documents/alix-demo/WEB-INF/textes/lacan_ecrits.xml" };
     else if ( corpus.equals("zola") ) 
       args = new String[]{ "/Library/WebServer/Documents/alix-demo/WEB-INF/textes/zola.xml" };
+    
     else args= new String[]{"/home/odysseus/Téléchargements/critique2000-gh-pages/txt/*.xml"};
     // largeur avant-après
-    int wing = 5;
+    int wing = 20;
     // le chargeur de vecteur a besoin d'une liste de mots vides pour éviter de faire le vecteur de "de"
     // un lemmatiseur du pauvre sert à regrouper les entrées des vecteurs
     Dicovek veks = new Dicovek(wing, wing, Lexik.STOP, true);
