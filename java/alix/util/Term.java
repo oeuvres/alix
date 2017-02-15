@@ -509,6 +509,12 @@ public class Term implements CharSequence, Comparable<Term>
    */
   private static boolean globsearch( char[] globdata, int globstart, int globend, 
       char[] textdata, int textstart, int textend ) {
+    /*
+    for ( int i=globstart; i <= globend; i++ ) System.out.print( globdata[i] );
+    System.out.print( ' ' );
+    for ( int i=textstart; i <= textend; i++ ) System.out.print( textdata[i] );
+    System.out.println();
+    */
     char globc;
     char textc;
     // test if finish
@@ -533,7 +539,8 @@ public class Term implements CharSequence, Comparable<Term>
       int globi = globstart+1;
       for (;;) {
         globc = globdata[ globi ];
-        if ( globc == '*' ) return globsearch( globdata, globi, globend, textdata, textstart, textend );
+        if ( globc == '*' ) 
+          return globsearch( globdata, globi, globend, textdata, textstart, textend );
         // '?' not handled
         // find the first 
         while ( textdata[ textstart ] != globc ) {
@@ -548,7 +555,7 @@ public class Term implements CharSequence, Comparable<Term>
           if ( textstart >= textend || globi+1 == globend 
                || textdata[ textstart ] != globdata[globi] )
             // not found, forward inside texte, restart from the joker
-            return globsearch( globdata, globstart, globend, textdata, textstart, textend );
+            return globsearch( globdata, globi, globend, textdata, textstart, textend );
         }
       }
       
@@ -560,7 +567,8 @@ public class Term implements CharSequence, Comparable<Term>
       // TODO, char class [éju…]
       else if ( globc != textc ) return false;
       if ( globstart == globend && textstart == textend ) return true;
-      if ( globstart == globend || textstart == textend ) return false;
+      // ??? unuseful ?
+      // if ( globstart >= globend || textstart >= textend ) return false;
       if ( inc > 0 ) {
         globc = globdata[ ++globstart ];
         textc = textdata[ ++textstart ];
@@ -720,10 +728,17 @@ public class Term implements CharSequence, Comparable<Term>
     Term glob = new Term( "*ent*" );
     Term test = new Term( "présentement" );
     System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
-    // DO NOT WORK
     glob = new Term( "*ent*ent" );
     System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
+    glob = new Term( "présentement" );
+    System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
     glob = new Term( "prés*ent" );
+    System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
+    glob = new Term( "présentement*" );
+    System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
+    glob = new Term( "present" );
+    System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
+    glob = new Term( "présent" );
     System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
     
     System.exit( 1 );
