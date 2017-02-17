@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import alix.util.TermDic.Terminfos;
+import alix.util.TermDic.DicEntry;
 
 /**
  * Merge two dictionaries entries and keep counts
@@ -26,18 +26,14 @@ public class CompDic
   private HashMap<String,Balance> terms = new HashMap<String, Balance>();
   public void add1( TermDic dic )
   {
-    Terminfos values;
-    for (Map.Entry<String,Terminfos> entry : dic.entrySet()) {
-      values = entry.getValue();
-      add1( entry.getKey(), values.count(), values.tag());
+    for ( DicEntry entry : dic.entries() ) {
+      add1( entry.label(), entry.count(), entry.tag() );
     }
   }
   public void add2( TermDic dic )
   {
-    Terminfos values;
-    for (Map.Entry<String,Terminfos> entry : dic.entrySet()) {
-      values = entry.getValue();
-      add2( entry.getKey(), values.count(), values.tag() );
+    for  ( DicEntry entry : dic.entries() ) {
+      add2( entry.label(), entry.count(), entry.tag() );
     }
   }
   public CompDic add1(final String term, final int amount, final int tag)

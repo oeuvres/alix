@@ -43,12 +43,12 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import alix.fr.Lexik;
-import alix.fr.Lexik.Lexentry;
+import alix.fr.Lexik.LexEntry;
 import alix.fr.Occ;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.TermDic;
-import alix.util.TermDic.Terminfos;
+import alix.util.TermDic.DicEntry;
 
 /**
  * Word Cloud in HTML
@@ -487,29 +487,29 @@ public class Cloud
     // loop on dictionary
     int n=0;
     Wordclass wc;
-    Lexentry lexentry;
+    LexEntry lexEntry;
     float franfreq;
     long occs = words.occs();
-    for( Map.Entry<String,Terminfos> dicentry: words.entriesByCount() ) {
-      int tag = dicentry.getValue().tag();
+    for( DicEntry entry: words.byCount() ) {
+      int tag = entry.tag();
       if ( Tag.isNum( tag ) ) continue;
       if ( Tag.isName( tag ) ) continue;
-      String term = dicentry.getKey();
-      int count = dicentry.getValue().count();
-      if ("devoir".equals( term )) lexentry = Lexik.entry( "doit" );
-      else lexentry = Lexik.entry( term );
-      if ( lexentry == null && Lexik.isStop( term ) ) continue;
+      String term = entry.label();
+      int count = entry.count();
+      if ("devoir".equals( term )) lexEntry = Lexik.entry( "doit" );
+      else lexEntry = Lexik.entry( term );
+      if ( lexEntry == null && Lexik.isStop( term ) ) continue;
       
       float ratio = 4F;
       if ( Lexik.isStop( term ) ) ratio = 10F;
       else if ( Tag.isSub( tag ) ) ratio = 12F;
       else if ( Tag.isVerb( tag ) ) ratio = 6F;
-      if ( lexentry == null ) franfreq = 0;
+      if ( lexEntry == null ) franfreq = 0;
       else if ( Tag.isSub( tag ) ) {
-        franfreq = lexentry.orthfreq;
+        franfreq = lexEntry.orthfreq;
       }
       else {
-        franfreq = lexentry.lemfreq;
+        franfreq = lexEntry.lemfreq;
       }
       double myfreq = 1.0*count*1000000/occs;
       if ( franfreq > 0 && myfreq/franfreq < ratio ) continue;
@@ -522,7 +522,7 @@ public class Cloud
       else if ( Tag.isAdj( tag ) ) wc = adj;
       else if ( Tag.isAdv( tag ) ) wc = adv;
       
-      cloud.add( new Word( dicentry.getKey(), count,  wc ) );
+      cloud.add( new Word( term, count,  wc ) );
       if ( ++n >= limit ) break;
     }
     System.out.println( ((System.nanoTime() - time) / 1000000)+" ms. pour remplir le nuage"  );

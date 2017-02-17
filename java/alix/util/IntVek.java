@@ -2,7 +2,8 @@ package alix.util;
 
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 
@@ -26,6 +27,8 @@ public class IntVek implements Cloneable
   static { // build FREE_CELL value, to avoid errors
     FREE_CELL = entry( NO_KEY, NO_VALUE );
   }
+  /** An automat to parse a String version of the Map */
+  private static Pattern loadre = Pattern.compile("([0-9]+):([0-9]+)");
 
   /** An int rowid */
   final int id;
@@ -87,25 +90,39 @@ public class IntVek implements Cloneable
   }
   
   /**
+   * Get an entry by key
+   * FREE_CELL if not found
+   */
+  private long entry( final int key )
+  {
+    if ( key == NO_KEY ) return FREE_CELL;
+    int idx = getStartIndex( key );
+    long c = data[ idx ];
+    // end of chain already
+    if ( c == FREE_CELL ) return FREE_CELL;
+    // we check FREE prior to this call
+    if ( key( c ) == key )  return c;
+    while ( true )
+    {
+      idx = getNextIndex( idx );
+      c = data[ idx ];
+      if ( c == FREE_CELL ) return FREE_CELL;
+      if ( key( c ) == key ) return c;
+    }
+  }
+  
+  /**
    * Check if a key is used
    * @param key
    * @return
    */
-  public boolean contains(final int key)
+  public boolean contains( final int key )
   {
-    if ( key == NO_KEY ) return false;
-    int idx = getStartIndex(key);
-    long c = data[ idx ];
+    long c = entry( key );
     if ( c == FREE_CELL ) return false;
-    if ( key(c) == key )  return true;
-    while ( true )
-    {
-      idx = getNextIndex(idx);
-      c = data[ idx ];
-      if ( c == FREE_CELL ) return false;
-      if ( key(c) == key ) return true;
-    }
+    return true;
   }
+  
   /**
    * Get a value by key
    * @param key
@@ -113,20 +130,9 @@ public class IntVek implements Cloneable
    */
   public int get( final int key )
   {
-    if ( key == NO_KEY ) return hasFreeKey ? freeValue : NO_VALUE;
-    int idx = getStartIndex(key);
-    long c = data[ idx ];
-    //end of chain already
+    long c = entry( key );
     if ( c == FREE_CELL ) return NO_VALUE;
-    //we check FREE prior to this call
-    if ( key(c) == key )  return value(c);
-    while ( true )
-    {
-      idx = getNextIndex(idx);
-      c = data[ idx ];
-      if ( c == FREE_CELL ) return NO_VALUE;
-      if ( key(c) == key ) return value(c);
-    }
+    return value( c );
   }
   
   /**
@@ -214,14 +220,14 @@ public class IntVek implements Cloneable
 
     int idx = getStartIndex( key );
     long c = data[idx];
-    if ( c == FREE_CELL ) { //end of chain already
+    if ( c == FREE_CELL ) { // end of chain already
       data[ idx ] = entry( key, value );
-      //size is set inside
+      // size is set inside
       if ( size >= threshold ) rehash( data.length * 2 ); 
       else ++size;
       return NO_VALUE;
     }
-    //we check FREE prior to this call
+    // we check FREE prior to this call
     else if ( key(c) == key ) {
       if (add) value += value(c);
       data[ idx ] = entry( key, value );
@@ -232,16 +238,16 @@ public class IntVek implements Cloneable
       idx = getNextIndex( idx );
       c = data[ idx ];
       if ( c == FREE_CELL ) {
-        data[ idx ] = entry(key, value);
-        //size is set inside
+        data[ idx ] = entry( key, value );
+        // size is set inside
         if ( size >= threshold )  rehash( data.length * 2 ); 
         else  ++size;
         return NO_VALUE;
       }
-      else if ( key(c) == key ) {
-        if (add) value += value(c); 
-        data[ idx ] = entry(key, value);
-        return value(c);
+      else if ( key( c ) == key ) {
+        if ( add ) value += value( c ); 
+        data[ idx ] = entry( key, value );
+        return value( c );
       }
     }
   }
@@ -264,9 +270,9 @@ public class IntVek implements Cloneable
 
     int idx = getStartIndex( key );
     long c = data[ idx ];
-    if ( c == FREE_CELL ) return NO_VALUE;  //end of chain already
+    if ( c == FREE_CELL ) return NO_VALUE;  // end of chain already
     if ( key(c) == key ) { 
-      //we check FREE prior to this call
+      // we check FREE prior to this call
       --size;
       shiftKeys( idx );
       return value(c);
@@ -467,19 +473,39 @@ public class IntVek implements Cloneable
     }
     return ret;
   }
-
+  
   /**
-   * Nicer output for debug
+   * Load a String like saved by toString()
+   * a space separated intKey:intValue
+   * @param line
+   */
+  public IntVek load( CharSequence line )
+  {
+    Matcher m = loadre.matcher( line );
+    while(m.find()) {
+      this.add( Integer.parseInt( m.group(1) ), Integer.parseInt( m.group(2) ) );
+    }
+    return this;
+  }
+  
+  /**
+   * A String view of the vector, thought for efficiency to decode
+   * Usage of a DataOutputStream has been excluded, a text format is preferred to a binary format
+   * A space separated of key:value pair
+   * 2:4 6:2 14:4
    */
   @Override
   public String toString()
   {
     StringBuffer sb = new StringBuffer();
     int key;
+    boolean first = true;
     for (long  entry : data) {
       key = key(entry);
       if (key == NO_KEY) continue;
-      sb.append(key +"\t"+value(entry));
+      if ( first ) first = false;
+      else sb.append( " " );
+      sb.append(key +":"+value(entry));
     }
     return sb.toString();
   }
@@ -567,9 +593,11 @@ public class IntVek implements Cloneable
    */
   public static void main(String[] args)
   {
+    // test loading a string version
+    System.out.println( (new IntVek( 10 )).load( " 1:1 5:5 2:2 6:6 3:3 4:4 1:1 " ) );
     long time;
     time = System.nanoTime();
-    Random rng = new Random();
+    java.util.Random rng = new java.util.Random();
     int max = 30000;
     int size;
     IntVek[] dic= new IntVek[max];

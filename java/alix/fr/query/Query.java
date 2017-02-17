@@ -1,5 +1,7 @@
 package alix.fr.query;
 
+import java.util.ArrayList;
+
 import alix.fr.Lexik;
 import alix.fr.Occ;
 import alix.fr.Tag;
@@ -10,16 +12,68 @@ public class Query
   Test first;
   /** The current test to apply in sequence order */
   Test current;
-  
+  /**
+   * An util class to have a picture of the Tree
+   */
+  class Node {
+    String token;
+    Node next;
+    ArrayList<Node> or;
+    public Node add( Node n ) 
+    {
+      if ( or == null ) or = new ArrayList<Node>();
+      or.add( n );
+      return this;
+    }
+    @Override
+    public String toString() {
+      StringBuffer sb = new StringBuffer();
+      if ( or != null) {
+        boolean first = true;
+        for ( Node n:or ) {
+          if ( first ) first = false;
+          else sb.append( ", " );
+          sb.append( n );
+        }
+        return sb.toString();
+      }
+      else {
+        sb.append( token );
+        if ( next != null ) {
+          sb.append( " " );
+          sb.append( next );
+        }
+        return sb.toString();
+      }
+    }
+  }
   /**
    * Parse a human query to build 
    * @param q
    */
   public Query( String q )
   {
-    q = q.replaceAll( "\\s+", " " ).trim();
-    StringBuilder term = new StringBuilder();
-    // char parser
+    // parse query to build a tree
+    String[] tokens = q.split( "\\s+" );
+    Node or;
+    Node last;
+    for ( String tok: tokens ) {
+      // first char
+      char first = tok.charAt( 0 );
+      // add last test to or
+      if ( first == ',' ) {
+        
+      }
+      else if ( first == '(' ) {
+        
+      }
+      else if ( first == ')' ) {
+        
+      }
+      else if ( first == '"' ) {
+        
+      }
+    }
     for ( int i = 0, n = q.length() ; i < n ; i++ ) {
       
       /*
@@ -61,5 +115,13 @@ public class Query
       return true;
     }
     return false;
+  }
+  /**
+   * For testing
+   * @throws IOException 
+   */
+  public static void main(String[] args)
+  {
+  
   }
 }

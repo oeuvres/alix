@@ -29,7 +29,7 @@ public class Lexik
   public static HashSet<String> STOP = new HashSet<String>( (int)( 700 * 0.75 ) );
   public static short _STOP = 1;
   /** 130 000 types French lexicon seems not too bad for memory */
-  public static HashMap<String, Lexentry> WORD = new HashMap<String, Lexentry>( (int)(150000 * 0.75) );
+  public static HashMap<String, LexEntry> WORD = new HashMap<String, LexEntry>( (int)(150000 * 0.75) );
   public static short _WORD = 2;
   /** French names on which keep Capitalization */
   public static HashMap<String, NameEntry> NAME = new HashMap<String, NameEntry>( (int)(50000 * 0.75) );
@@ -135,7 +135,7 @@ public class Lexik
       if ( action == _WORD) {
         // default logic for first dico is first win
         if ( WORD.containsKey( cells[0] ) ) continue;
-        WORD.put( cells[0], new Lexentry( cells ) );
+        WORD.put( cells[0], new LexEntry( cells ) );
         continue;
       }
       else if ( action == _STOP) {
@@ -226,7 +226,7 @@ public class Lexik
   public static boolean word( Occ occ )
   {
     if ( ORTH.containsKey( occ.graph() ) ) occ.orth( ORTH.get( occ.graph() ) );
-    Lexentry entry = Lexik.WORD.get( occ.orth() );
+    LexEntry entry = Lexik.WORD.get( occ.orth() );
     if ( entry == null ) return false;
     occ.lem( entry.lem );
     occ.tag( entry.tag.code() );
@@ -268,7 +268,7 @@ public class Lexik
    * @param orth a word in correct orthographic form
    * @return the lexical entry
    */
-  public static Lexentry entry( String orth )
+  public static LexEntry entry( String orth )
   {
     return Lexik.WORD.get( orth );
   }
@@ -280,7 +280,7 @@ public class Lexik
    */
   public static String lem( final String orth )
   {
-    Lexentry entry = Lexik.WORD.get( orth );
+    LexEntry entry = Lexik.WORD.get( orth );
     // ? orth or null ?
     if ( entry == null ) return null;
     return Lexik.WORD.get( orth ).lem;
@@ -292,7 +292,7 @@ public class Lexik
    */
   public static short cat( final String orth )
   {
-    Lexentry entry = Lexik.WORD.get( orth );
+    LexEntry entry = Lexik.WORD.get( orth );
     if ( entry == null ) return Tag.UNKNOWN;
     return entry.tag.code();
   }
@@ -358,13 +358,32 @@ public class Lexik
     writer.close();
   }
   
-  public static class Lexentry
+  public static class NameEntry
+  {
+    public final String orth;
+    public final Tag tag;
+    public NameEntry( final int tag, final String[] cells )
+    {
+      if ( tag == 0 ) this.tag = new Tag( Tag.NAME );
+      else this.tag = new Tag( tag );
+      int length = cells.length;
+      if ( length > 2 && !cells[2].trim().isEmpty() ) this.orth = cells[2].trim();
+      else orth = null;
+    }
+    @Override
+    public String toString( )
+    {
+      return tag.label();
+    }
+  }
+  
+  public static class LexEntry
   {
     public final String lem;
     public final Tag tag;
     public final float orthfreq;
     public final float lemfreq;
-    public Lexentry( final String[] cells ) throws ParseException
+    public LexEntry( final String[] cells ) throws ParseException
     {
       int length = cells.length;
       if ( length < 2 ) throw new ParseException("LexicalEntry : a gramcat and a lem are required "+Arrays.toString( cells ), 2);
@@ -379,7 +398,7 @@ public class Lexik
       else this.lemfreq = 0;
     }
     // ? score ?
-    public Lexentry( final String cat, final String lem, final String orthfreq, final String lemfreq )
+    public LexEntry( final String cat, final String lem, final String orthfreq, final String lemfreq )
     {
       this.tag = new Tag( cat );
       this.lem = lem;

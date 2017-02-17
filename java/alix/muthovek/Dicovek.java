@@ -32,6 +32,7 @@ import alix.util.IntObjectMap;
 import alix.util.IntRoller;
 import alix.util.IntVek;
 import alix.util.TermDic;
+import alix.util.TermDic.DicEntry;
 
 /**
  * Started from code of Marianne Reboul.
@@ -147,11 +148,11 @@ public class Dicovek {
   {
     StringBuffer sb = new StringBuffer();
     boolean first = true;  
-    for( String w: terms.byCount() ) {
-      if (stoplist.contains( w )) continue;
+    for( DicEntry entry: terms.byCount() ) {
+      if ( stoplist.contains( entry.label() ) ) continue;
       if (first) first = false;
       else sb.append( ", " );
-      sb.append( w+":"+ terms.count( w )); 
+      sb.append( entry.label()+":"+entry.count() ); 
       if (--limit == 0) break;
     }
     return sb.toString();
@@ -241,7 +242,7 @@ public class Dicovek {
       writer.write("{\n");
       boolean first1 = true;
       int count1 = 1;
-      for( String w: terms.byCount() ) {
+      for( DicEntry entry: terms.byCount() ) {
         // TODO, write vector
         if (--count1 == 0) break;
       }

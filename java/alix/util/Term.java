@@ -109,9 +109,11 @@ public class Term implements CharSequence, Comparable<Term>
   @Override
   public char charAt( int index )
   {
+    /* no test and no exception
     if ((index < 0) || (index >= len)) {
         throw new StringIndexOutOfBoundsException(index);
     }
+    */
     return data[start+index];
   }
   /**
@@ -507,8 +509,12 @@ public class Term implements CharSequence, Comparable<Term>
    * 
    * @return
    */
-  private static boolean globsearch( char[] globdata, int globstart, int globend, 
-      char[] textdata, int textstart, int textend ) {
+  private static boolean globsearch( CharSequence glob, int globstart, int globend, 
+      CharSequence text, int textstart, int textend ) {
+    // empty pattern will never found things
+    if ( glob.length() < 1 ) return false;
+    // empty text will never match
+    if ( text.length() < 1 ) return false;
     /*
     for ( int i=globstart; i <= globend; i++ ) System.out.print( globdata[i] );
     System.out.print( ' ' );
@@ -521,13 +527,13 @@ public class Term implements CharSequence, Comparable<Term>
     // prefix search
     final int inc;
     // pat*, prefix search, go forward from start
-    if ( ( globc = globdata[ globstart ] ) != '*' ) {
-      textc = textdata[ textstart ];
+    if ( ( globc = glob.charAt( globstart ) ) != '*' ) {
+      textc = text.charAt( textstart );
       inc = 1;
     }
     // *pat, suffix search, go backward from end
-    else if ( ( globc = globdata[ globend ] ) != '*' ) {
-      textc = textdata[ textend ];
+    else if ( ( globc = glob.charAt(  globend ) ) != '*' ) {
+      textc = text.charAt( textend );
       inc = -1;
     }
     // *, just one star, we are OK
@@ -538,12 +544,12 @@ public class Term implements CharSequence, Comparable<Term>
     else {
       int globi = globstart+1;
       for (;;) {
-        globc = globdata[ globi ];
+        globc = glob.charAt( globi );
         if ( globc == '*' ) 
-          return globsearch( globdata, globi, globend, textdata, textstart, textend );
+          return globsearch( glob, globi, globend, text, textstart, textend );
         // '?' not handled
         // find the first 
-        while ( textdata[ textstart ] != globc ) {
+        while ( text.charAt( textstart ) != globc ) {
           if ( textstart == textend ) return false;
           textstart++;
         }
@@ -553,16 +559,17 @@ public class Term implements CharSequence, Comparable<Term>
           textstart++;
           if ( textstart >= textend && globi+1 == globend ) return true;
           if ( textstart >= textend || globi+1 == globend 
-               || textdata[ textstart ] != globdata[globi] )
-            // not found, forward inside texte, restart from the joker
-            return globsearch( globdata, globi, globend, textdata, textstart, textend );
+               || text.charAt( textstart ) != glob.charAt( globi ) )
+            // not found, forward inside text, restart from the joker
+            return globsearch( glob, globi, globend, text, textstart, textend );
         }
       }
       
     }
     // *pat or pat*
     for (;;) {
-      if ( globc == '*' ) return globsearch( globdata, globstart, globend, textdata, textstart, textend );
+      if ( globc == '*' ) 
+        return globsearch( glob, globstart, globend, text, textstart, textend );
       else if ( globc == '?' );
       // TODO, char class [éju…]
       else if ( globc != textc ) return false;
@@ -570,12 +577,12 @@ public class Term implements CharSequence, Comparable<Term>
       // ??? unuseful ?
       // if ( globstart >= globend || textstart >= textend ) return false;
       if ( inc > 0 ) {
-        globc = globdata[ ++globstart ];
-        textc = textdata[ ++textstart ];
+        globc = glob.charAt( ++globstart );
+        textc = text.charAt( ++textstart );
       }
       else {
-        globc = globdata[ --globend ];
-        textc = textdata[ --textend ];
+        globc = glob.charAt( --globend );
+        textc = text.charAt( --textend );
       }
     }
   }
@@ -583,17 +590,12 @@ public class Term implements CharSequence, Comparable<Term>
   
   
   /**
-   * http://lxr.free-electrons.com/source/lib/glob.c
    * @param text
    * @return
    */
-  public boolean glob( Term text )
+  public boolean glob( CharSequence text )
   {
-    // empty pattern will never found things
-    if ( len < 1 ) return false;
-    // empty text will never match
-    if ( text.len < 1 ) return false;
-    return  globsearch( this.data, this.start, this.start+this.len-1, text.data, text.start, text.start+text.len-1 );
+    return  globsearch( this, 0, len-1, text, 0, text.length()-1 );
   }
   
   @Override
