@@ -177,15 +177,13 @@ public class Dicovek {
     // list dico in freq order
     ArrayList<SimRow> table = new ArrayList<SimRow>();
     SimRow row;
-    String[] list = terms.byCount();
-    int max = list.length;
-    for ( int i = 0; i < max; i++) {
-      vek = vectors.get( terms.code( list[i] ) );
+    for ( DicEntry entry: terms.byCount() ) {
+      vek = vectors.get( entry.code() );
       if ( vek == null ) continue;
       score = vekterm.cosine( vek );
       // score differs 
       if ( score < 0.5 ) continue;
-      row = new SimRow( list[i], terms.count( list[i] ), score );
+      row = new SimRow( entry.label(), entry.count(), score );
       table.add( row );
       if ( limit-- == 0 ) break;
     }

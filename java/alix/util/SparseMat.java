@@ -1,8 +1,6 @@
 package alix.util;
 
-import java.io.IOException;
 import java.util.HashMap;
-import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -45,7 +43,7 @@ public class SparseMat
     return row.get( colno );
   }
   /** Put value */
-  public void add( String rowname, String colname, int count)
+  public SparseMat add( String rowname, String colname, int count)
   {
     IntVek row = rows.get( rowname );
     if ( row == null ) {
@@ -58,6 +56,7 @@ public class SparseMat
       colnames.put( colname, col );
     }
     row.add( col, count );
+    return this;
   }
   @Override
   public String toString()
