@@ -1,9 +1,21 @@
 package alix.grep;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.net.MalformedURLException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +28,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.xml.sax.SAXException;
 
 import alix.fr.Occ;
+import alix.util.SparseMat;
 import alix.util.Term;
 
 /**
@@ -36,9 +49,9 @@ public class GrepMultiWordExpressions {
 	HashMap <String,String[]>statsPerAuthorYear;
 	String form;
 
-	static final int colCode=2;
-	static final int colAuthor=3;
-	static final int colYear=4;
+	public static final int colCode=2;
+	public static final int colAuthor=3;
+	public static final int colYear=4;
 	static final int colTitle=5;
 	String usersWord;
 
@@ -148,6 +161,7 @@ public class GrepMultiWordExpressions {
 			System.out.println("1 : rechercher un seul mot ou une expression régulière");
 			System.out.println("2 : rechercher une liste de mots dans une fenêtre à définir");
 			System.out.println("3 : rechercher un mot et au moins un tag");
+			System.out.println("4 : faire une recherche globale et individuelle sur les patterns les plus fréquents autour d'un mot ?");
 			int chooseTypeRequest = Integer.valueOf(word.next());
 
 			System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
@@ -189,7 +203,15 @@ public class GrepMultiWordExpressions {
 				preciseQuery=wordLookUp.getPreciseQuery();
 				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
 				grep.query=wordLookUp.getQuery();
-				break;					
+				break;	
+				
+			case 4:
+				System.out.println("Quel(s) mot(s) voulez-vous chercher ? (si plusieurs, séparez par un espace)");
+				Scanner motsUtil=new Scanner (System.in);
+				String queryUtil = motsUtil.nextLine();
+				String query[]={ queryUtil };
+				wordLookUp.tsvStats(tsvPath, chosenPath, column, queryUtil);
+			
 			}
 			
 			HashMap<String, int[]>combinedStats=combine.combine(grep.statsPerAuthorYear, valueAsked);
@@ -238,7 +260,8 @@ public class GrepMultiWordExpressions {
 			else{
 				System.out.println("Votre requête n'a pas été enregistrée");
 			}
-
+		    
+		    
 			System.out.println("\nVoulez-vous faire une nouvelle requête ? (o/n)");
 			doItAgain= word.next();	
 		}

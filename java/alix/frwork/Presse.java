@@ -85,7 +85,7 @@ public class Presse
     Presse walker = new Presse();
     walker.walk( new File( new File (root, journal), year) );
     System.out.println();
-    walker.dic.csv( new PrintWriter(System.out), 200, Lexik.STOP);
+//    walker.dic.csv( new PrintWriter(System.out), 200, Lexik.STOP);
   }
 
 

@@ -199,8 +199,8 @@ public class Query
    */
   public static void main(String[] args)
   {
-    String text = "A B A B C C D C";
-    Query q1 = new Query("A B C");
+    String text = "Je suis en vacances";
+    Query q1 = new Query("Je VERB");
     Query q2 = new Query("A * C");
     Query q3 = new Query("A ** C");
     Query q4 = new Query("C");
@@ -209,7 +209,7 @@ public class Query
     for (String tok:text.split( " " )) {
       occ.orth( tok );
       if ( q1.test(occ) ) {
-        System.out.println( q1+" FOUND: "+q1.found() );
+        System.out.println( "query 1 : "+q1+" FOUND: "+q1.found() );
       }
       if ( q2.test(occ) ) {
         System.out.println( q2+" FOUND: "+q2.found() );
