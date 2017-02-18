@@ -29,6 +29,7 @@
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Tag.java"/>
         <file path="/Alix/java/alix/fr/dic/france.csv"/>
         <file path="/Alix/java/alix/fr/dic/stop.csv"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.fr{OccList.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{OccSlider.java"/>
         <file path="/Alix/java/alix/fr/dic/author.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr.query"/>

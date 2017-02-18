@@ -27,7 +27,7 @@ public class IntVek implements Cloneable
   static { // build FREE_CELL value, to avoid errors
     FREE_CELL = entry( NO_KEY, NO_VALUE );
   }
-  /** An automat to parse a String version of the Map */
+  /** An automaton to parse a String version of the Map */
   private static Pattern loadre = Pattern.compile("([0-9]+):([0-9]+)");
 
   /** An int rowid */

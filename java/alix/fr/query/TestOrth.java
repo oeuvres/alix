@@ -2,7 +2,7 @@ package alix.fr.query;
 
 import alix.fr.Occ;
 
-public abstract class TestOrth extends TestTerm
+public class TestOrth extends TestTerm
 {
   public TestOrth(String term)
   {

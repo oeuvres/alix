@@ -1,8 +1,6 @@
 package alix.fr;
 
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 
 /**
  * A specialized data structure for word flow.

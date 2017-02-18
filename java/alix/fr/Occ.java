@@ -76,26 +76,50 @@ public class Occ
     tag( tag );
     lem( lem );
   }
+  /**
+   * Returns the graph value
+   * @return
+   */
   public Term graph()
   {
     return graph;
   }
+  /**
+   * Returns the orth value
+   * @return
+   */
   public Term orth()
   {
     return orth;
   }
+  /**
+   * Returns the lem value
+   * @return
+   */
   public Term lem()
   {
     return lem;
   }
+  /**
+   * Returns the tag value
+   * @return
+   */
   public Tag tag()
   {
     return tag;
   }
+  /**
+   * Returns the start index
+   * @return
+   */
   public int start()
   {
     return start;
   }
+  /**
+   * Returns the start index
+   * @return
+   */
   public int end()
   {
     return end;
@@ -113,6 +137,9 @@ public class Occ
     lem.replace( occ.lem );
     start = occ.start;
     end = occ.end;
+    // to think, shall we copy prev/next links ?
+    prev = null;
+    next = null;
     return this;
   }
   /**
@@ -166,6 +193,8 @@ public class Occ
     tag.set(0);
     start = -1;
     end = -1;
+    prev = null;
+    next = null;
     return this;
   }
   /**
@@ -282,6 +311,11 @@ public class Occ
     lem.replace( t );
     return this;
   }
+  /**
+   * Set lem value by copy of a String
+   * @param t
+   * @return a handle on the occurrence object
+   */
   public Occ lem( final CharSequence cs) 
   {
     lem.replace( cs );
@@ -307,18 +341,38 @@ public class Occ
     this.end = i;
     return this;
   }
+  /**
+   * Return a next Occ pointer if user have set one 
+   * @return
+   */
   public Occ next() {
     return this.next;
   }
+  /**
+   * Set a next Occ pointer. Nothing returns, no relevant chaining.
+   * @param occ
+   */
   public void next( Occ occ) {
     this.next = occ;
   }
+  /**
+   * Return previous Occ if user have set one
+   * @return
+   */
   public Occ prev() {
     return this.prev;
   }
+  /**
+   * Set a previous occurrence
+   * @param occ
+   */
   public void prev( Occ occ) {
     this.prev = occ;
   }
+  /**
+   * Print content to a printer
+   * @param out
+   */
   public void print( PrintWriter out ) {
     print( out, null );
   }
