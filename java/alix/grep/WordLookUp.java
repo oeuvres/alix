@@ -392,7 +392,6 @@ public class WordLookUp {
 			}
 
 			LinkedHashMap<String,Integer>findings=new LinkedHashMap<String,Integer>();
-			System.out.println(queryEntry);
 			if (mapAuthor.containsKey(queryEntry)){
 				findings=mapAuthor.get(queryEntry);
 				for (String key:orderedGlobalResults.keySet()){
