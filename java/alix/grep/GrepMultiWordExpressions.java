@@ -140,7 +140,6 @@ public class GrepMultiWordExpressions {
 		if(chosenPath.equals(null)||chosenPath.equals(""))chosenPath=DEFAULT_PATH;
 
 		while (!doItAgain.equals("n")){
-			HashMap <String,String[]>statsPerAuthorOrYear=new HashMap<String, String[]>();
 			grep.setStatsPerDoc(new ArrayList<String[]>());
 
 			System.out.println("Souhaitez-vous un tsv regroupé par par nom, par date ou par titre ? "

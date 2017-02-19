@@ -398,7 +398,6 @@ public class WordLookUp {
 			Query q1 = new Query(queries);
 			Path path = Paths.get(pathCorpus+"/"+fileName);
 			if (Files.exists(path)) {
-				System.out.println(path);
 				String xml = new String(Files.readAllBytes( Paths.get( pathCorpus+fileName ) ), StandardCharsets.UTF_8);
 				Tokenizer toks = new Tokenizer(xml);
 				Occ occ=new Occ();
