@@ -306,238 +306,240 @@ public class WordLookUp {
 
 	}
 
-	
+
 	public void tsvStats(String pathTSV, String pathCorpus, int col, String queries) throws IOException{
-	BufferedReader TSVFile = new BufferedReader(new FileReader(pathTSV));
+		BufferedReader TSVFile = new BufferedReader(new FileReader(pathTSV));
+		List<String>globalResults=new ArrayList<String>();
+		LinkedHashMap<String,Integer>orderedGlobalResults=new LinkedHashMap<String,Integer>();
+		File directory=new File(pathCorpus);
 
-	
+		File []alltexts=directory.listFiles();
 
-	List<String>globalResults=new ArrayList<String>();
-	LinkedHashMap<String,Integer>orderedGlobalResults=new LinkedHashMap();
-	
-	
-	
-	File directory=new File(pathCorpus);
-	
-    File []alltexts=directory.listFiles();
-    
-    File file=new File("./test/1828_Feletz_Melanges_de_philosophie_dhistoire_et_de_litterat_97_GALLICA.xml");
-//    for (File file:alltexts){
-    	System.out.println(file.getName());
-    	Query q1 = new Query(queries);
-    	String xmlTest = new String(Files.readAllBytes(  file.toPath()) , StandardCharsets.UTF_8);
-    	Tokenizer toks = new Tokenizer(xmlTest);
-		Occ occ=new Occ();
+		for (File file:alltexts){
+			Query q1 = new Query(queries);
+			String xmlTest = new String(Files.readAllBytes(  file.toPath()) , StandardCharsets.UTF_8);
+			Tokenizer toks = new Tokenizer(xmlTest);
+			Occ occ=new Occ();
 
-		while (toks.token(occ) ) {
-			System.out.println(occ.toString());
-    		if ( q1.test(occ) ) {
-    			System.out.println(q1.found());
-    			globalResults.addAll(q1.found());
-    		}
-        }
-//    }
-    System.out.println(globalResults);
-    Set<String> uniqueSet = new HashSet<String>(globalResults);
-	for (String temp : uniqueSet) {
-		orderedGlobalResults.put(temp, Collections.frequency(globalResults, temp));
-	}
+			while (toks.token(occ) ) {
+				if ( q1.test(occ) ) {
+					globalResults.add(q1.found().toString());
+				}
+			}
+		}
+		Set<String> uniqueSet = new HashSet<String>(globalResults);
+		for (String temp : uniqueSet) {
+			orderedGlobalResults.put(temp, Collections.frequency(globalResults, temp));
+		}
 
-	orderedGlobalResults=sortMyMapByValue(orderedGlobalResults);
-	File fileGlobal =new File("./test/myTestGlobal.tsv");
-	FileWriter writerGlobal = new FileWriter(fileGlobal);
-	Path path1=Paths.get("./test/");
-	if (!fileGlobal.getParentFile().isDirectory()){
-		Files.createDirectories(path1);
-	}
+		orderedGlobalResults=sortMyMapByValue(orderedGlobalResults);
+		String queryForFile=queries.replaceAll("\\W+", "_");
+		File fileGlobal =new File("./test/"+queryForFile+"_globalPatterns.tsv");
+		FileWriter writerGlobal = new FileWriter(fileGlobal);
+		Path path1=Paths.get("./test/");
+		if (!fileGlobal.getParentFile().isDirectory()){
+			Files.createDirectories(path1);
+		}
 
-	writerGlobal.append("Pattern\t");
-	writerGlobal.append("Nombre\t");
-	writerGlobal.append('\n');
-	for (Entry<String,Integer>entry:orderedGlobalResults.entrySet()){
-		System.out.println(entry.getKey());		
-		writerGlobal.append(entry.getKey()+"\t");
-		writerGlobal.append(entry.getValue()+"\t");
+		writerGlobal.append("Pattern\t");
+		writerGlobal.append("Nombre\t");
 		writerGlobal.append('\n');
-	}
-	writerGlobal.flush();
-	writerGlobal.close();	
-	
-	String dataRow = TSVFile.readLine();
-	List <String []>allRows=new ArrayList<String[]>();
-	String[] dataArray = null;
-	while (dataRow != null){
+		for (Entry<String,Integer>entry:orderedGlobalResults.entrySet()){
+			writerGlobal.append(entry.getKey()+"\t");
+			writerGlobal.append(entry.getValue()+"\t");
+			writerGlobal.append('\n');
+		}
+		writerGlobal.flush();
+		writerGlobal.close();	
 
-		dataArray = dataRow.split("\t");
-		allRows.add(dataArray);
-		dataRow = TSVFile.readLine();
+		String dataRow = TSVFile.readLine();
+		List <String []>allRows=new ArrayList<String[]>();
+		String[] dataArray = null;
+		while (dataRow != null){
 
-	}
+			dataArray = dataRow.split("\t");
+			allRows.add(dataArray);
+			dataRow = TSVFile.readLine();
 
-	TSVFile.close();
-	
-	
-	
-	HashMap<String,LinkedHashMap<String,Integer>>mapAuthor=new HashMap<String,LinkedHashMap<String,Integer>>();
-	for (int counterRows=1; counterRows<allRows.size(); counterRows++){
-		List<String>indivResults=new ArrayList<String>();
-		String []cells=allRows.get(counterRows);
-		String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
-		String queryEntry=cells[col];
-
-		String xml = new String(Files.readAllBytes( Paths.get( pathCorpus+fileName ) ), StandardCharsets.UTF_8);
+		}
+		TSVFile.close();
 		
-//		for ( String q: queries) {
-//    		indivResults.addAll(grep(xml,qparse(q)));
-//        }
-		
-		LinkedHashMap<String,Integer>findings=new LinkedHashMap<String,Integer>();
-		for (String key:orderedGlobalResults.keySet()){
-			if (indivResults.contains(key)){
-					findings.put(key, Collections.frequency(indivResults, key));	
+		HashMap<String,LinkedHashMap<String,Integer>>mapAuthor=new HashMap<String,LinkedHashMap<String,Integer>>();
+		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
+			List<String>indivResults=new ArrayList<String>();
+			String []cells=allRows.get(counterRows);
+			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
+			String queryEntry=cells[col];
+			Query q1 = new Query(queries);
+			String xml = new String(Files.readAllBytes( Paths.get( pathCorpus+fileName ) ), StandardCharsets.UTF_8);
+			Tokenizer toks = new Tokenizer(xml);
+			Occ occ=new Occ();
+
+			while (toks.token(occ) ) {
+				if (q1.test(occ) ) {
+					indivResults.add(q1.found().toString());
+				}
+			}
+
+			LinkedHashMap<String,Integer>findings=new LinkedHashMap<String,Integer>();
+			if (mapAuthor.containsKey(queryEntry)){
+				findings=mapAuthor.get(queryEntry);
+				for (String key:orderedGlobalResults.keySet()){
+					if (!findings.containsKey(key)) {
+						findings.put(key, Collections.frequency(indivResults, key));
+					}
+					else{
+						int previous=findings.get(key);
+						findings.put(key, Collections.frequency(indivResults, key)+previous);
+					}
+				}
+			}
+			mapAuthor.put(queryEntry, findings);
+		}
+		String nameOrYear="";
+		if (col==3){
+			nameOrYear="name";
+		}
+		else{
+			nameOrYear="year";
+		}
+		File fileTSV =new File("./test/"+queryForFile+"_"+nameOrYear+"_indivPatterns.tsv");
+		FileWriter writer = new FileWriter(fileTSV);
+		if (!fileTSV.getParentFile().isDirectory()){
+			Files.createDirectories(path1);
+		}
+
+		writer.append("Auteur\t");
+		writer.append("Pattern\t");
+		writer.append("Nombre\t");
+		writer.append('\n');
+		for (Entry<String,LinkedHashMap<String,Integer>>entry:mapAuthor.entrySet()){	
+
+			for (Entry<String,Integer>values:entry.getValue().entrySet()){
+				String value=values.getKey();		
+				Integer nb=values.getValue();
+				writer.append(entry.getKey()+"\t");
+				writer.append(value+"\t");
+				writer.append(nb+"\t");
+				writer.append('\n');
 			}
 		}
-		mapAuthor.put(queryEntry, findings);
-		
-	}
-	File fileTSV =new File("./test/myTestIndiv.tsv");
-	FileWriter writer = new FileWriter(fileTSV);
-	if (!fileTSV.getParentFile().isDirectory()){
-		Files.createDirectories(path1);
+		writer.flush();
+		writer.close();	
 	}
 
-	writer.append("Auteur\t");
-	writer.append("Pattern\t");
-	writer.append("Nombre\t");
-	writer.append('\n');
-	for (Entry<String,LinkedHashMap<String,Integer>>entry:mapAuthor.entrySet()){
-		System.out.println(entry.getKey());		
+	public static LinkedHashMap<String, Integer>sortMyMapByValue(LinkedHashMap<String, Integer>map){
+		LinkedHashMap<String, Integer> sortedMap = 
+				map.entrySet().stream().
+				sorted(Map.Entry.<String, Integer>comparingByValue().reversed()) 
+				.limit(11).
+				collect(Collectors.toMap(Entry::getKey, Entry::getValue,
+						(e1, e2) -> e1, LinkedHashMap::new));
+		return sortedMap;
+	}
 
-		for (Entry<String,Integer>values:entry.getValue().entrySet()){
-			String value=values.getKey();		
-			Integer nb=values.getValue();
-			writer.append(entry.getKey()+"\t");
-			writer.append(value+"\t");
-			writer.append(nb+"\t");
-			writer.append('\n');
+
+	/**
+	 * 
+	 * @param text
+	 * @param query
+	 */
+	public List<String> grep( String text, Occ[] query) 
+	{
+		// fenêtre de mots pour sortir une concordance
+		OccSlider win = new OccSlider( 1, 1 );
+
+		long occs=0;
+		List<String>found=new ArrayList<String>();
+		Tokenizer toks = new Tokenizer(text);
+		int qlength = query.length;
+		int qlevel = 0;
+		Occ occ;
+		Set<String>chainOfOcc=new HashSet();
+		// ici la ligne délicate, le tokenize met à jour une occurrence dans fenêtre
+		while (toks.token( win.add() ) ) {
+
+			occ = win.get( 0 ); // pointeur sur l’occurrence courante
+			if ( occ.tag().isPun() ) continue;
+			occs++;
+			if ( query[qlevel].fit( occ )) {
+				// comment arrives-tu à reconstruire la locution trouvée de 1 à plusieurs mots ? 
+				int index=qlevel;
+				qlevel++;
+
+				if ( qlevel == qlength ) {
+					// juste pour déboguage, la sortie d'une concordance peut avoir trois sortie différentes
+					//  — console
+					//  — fichier
+					//  — web
+					// pourrait être fixé par le constructuer de l’objet
+					found.add(occ.prev().orth().toString()+ " "+ occ.orth().toString());
+					qlevel = 0;
+				}
+			}
+			else qlevel = 0;
+
 		}
+		setNbOcc(occs);
+		return found;
 	}
-	writer.flush();
-	writer.close();	
-}
+	/**
+	 * Query parser
+	 */
+	static public Occ[] qparse (String q) {
+		String[] parts = q.split( "\\s+" );
+		Occ[] query = new Occ[parts.length];
+		String s;
+		String lem;
+		int tag;
+		for ( int i =0; i < parts.length; i++ ) {
+			s = parts[i];
+			// un mot entre guillemets, une forme orthographique
+			if ( s.charAt( 0 ) == '"') {
+				// une occurrence avec juste un orth
+				query[i] = new Occ( null, s.substring( 1, s.length()-2 ), null, null );
+				continue;
+			}
+			// un Tag connu ?
+			if ( (tag = Tag.code( s )) != Tag.UNKNOWN ) {
+				query[i] = new Occ( null, null, tag, null );
+				continue;
+			}
+			// un lemme connu ?
+			if ( s.equals( Lexik.lem( s ) )) {
+				query[i] = new Occ( null, null, null, s );
+				continue;
+			}
+			// cas par défaut, une forme graphique
+			query[i] = new Occ( null, s, null, null );
+		}
+		return query;
+	}
 
-public static LinkedHashMap<String, Integer>sortMyMapByValue(LinkedHashMap<String, Integer>map){
-	LinkedHashMap<String, Integer> sortedMap = 
-			map.entrySet().stream().
-			sorted(Map.Entry.<String, Integer>comparingByValue().reversed()) 
-			.limit(10).
-			collect(Collectors.toMap(Entry::getKey, Entry::getValue,
-					(e1, e2) -> e1, LinkedHashMap::new));
-	return sortedMap;
-}
-
-
-/**
- * 
- * @param text
- * @param query
- */
-public List<String> grep( String text, Occ[] query) 
-{
-	// fenêtre de mots pour sortir une concordance
-	OccSlider win = new OccSlider( 1, 1 );
-
-	long occs=0;
-	List<String>found=new ArrayList<String>();
-	Tokenizer toks = new Tokenizer(text);
-	int qlength = query.length;
-	int qlevel = 0;
-	Occ occ;
-	Set<String>chainOfOcc=new HashSet();
-	// ici la ligne délicate, le tokenize met à jour une occurrence dans fenêtre
-	while (toks.token( win.add() ) ) {
-		
-		occ = win.get( 0 ); // pointeur sur l’occurrence courante
-		if ( occ.tag().isPun() ) continue;
-		occs++;
-		if ( query[qlevel].fit( occ )) {
-			// comment arrives-tu à reconstruire la locution trouvée de 1 à plusieurs mots ? 
-			int index=qlevel;
-			qlevel++;
-			
-			if ( qlevel == qlength ) {
-				// juste pour déboguage, la sortie d'une concordance peut avoir trois sortie différentes
-				//  — console
-				//  — fichier
-				//  — web
-				// pourrait être fixé par le constructuer de l’objet
-				found.add(occ.prev().orth().toString()+ " "+ occ.orth().toString());
-				qlevel = 0;
+	/**
+	 * Test the Class
+	 * @param args
+	 * @throws IOException 
+	 */
+	public static void main(String args[]) throws IOException 
+	{
+		// loop on a test folder for all files
+		String dir = "test/";
+		String[] queries = { "littérature ADJ" };
+		// test if query is correctly parsed
+		// for (Occ occ: query) System.out.println( occ );
+		WordLookUp thing = new WordLookUp();
+		for (final File src : new File( dir ).listFiles()) {
+			if ( src.isDirectory() ) continue;
+			if ( src.getName().startsWith( "." )) continue;
+			if ( src.getName().startsWith( "_" )) continue;
+			String xml = new String(Files.readAllBytes( Paths.get( src.toString() ) ), StandardCharsets.UTF_8);
+			System.out.println( src );
+			for ( String q: queries) {
+				//        System.out.println( "  —— "+q );
+				List <String>myList=thing.grep( xml, qparse(q) );
+				System.out.println(myList.size());
 			}
 		}
-		else qlevel = 0;
-		
 	}
-	setNbOcc(occs);
-	return found;
-}
-/**
- * Query parser
- */
-static public Occ[] qparse (String q) {
-	String[] parts = q.split( "\\s+" );
-	Occ[] query = new Occ[parts.length];
-	String s;
-	String lem;
-	int tag;
-	for ( int i =0; i < parts.length; i++ ) {
-		s = parts[i];
-		// un mot entre guillemets, une forme orthographique
-		if ( s.charAt( 0 ) == '"') {
-			// une occurrence avec juste un orth
-			query[i] = new Occ( null, s.substring( 1, s.length()-2 ), null, null );
-			continue;
-		}
-		// un Tag connu ?
-		if ( (tag = Tag.code( s )) != Tag.UNKNOWN ) {
-			query[i] = new Occ( null, null, tag, null );
-			continue;
-		}
-		// un lemme connu ?
-		if ( s.equals( Lexik.lem( s ) )) {
-			query[i] = new Occ( null, null, null, s );
-			continue;
-		}
-		// cas par défaut, une forme graphique
-		query[i] = new Occ( null, s, null, null );
-	}
-	return query;
-}
-
-/**
- * Test the Class
- * @param args
- * @throws IOException 
- */
-public static void main(String args[]) throws IOException 
-{
-	// loop on a test folder for all files
-	String dir = "test/";
-	String[] queries = { "littérature ADJ" };
-	// test if query is correctly parsed
-	// for (Occ occ: query) System.out.println( occ );
-	WordLookUp thing = new WordLookUp();
-	for (final File src : new File( dir ).listFiles()) {
-		if ( src.isDirectory() ) continue;
-		if ( src.getName().startsWith( "." )) continue;
-		if ( src.getName().startsWith( "_" )) continue;
-		String xml = new String(Files.readAllBytes( Paths.get( src.toString() ) ), StandardCharsets.UTF_8);
-		System.out.println( src );
-		for ( String q: queries) {
-			//        System.out.println( "  —— "+q );
-			List <String>myList=thing.grep( xml, qparse(q) );
-			System.out.println(myList.size());
-		}
-	}
-}
 }

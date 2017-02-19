@@ -214,52 +214,55 @@ public class GrepMultiWordExpressions {
 			
 			}
 			
-			HashMap<String, int[]>combinedStats=combine.combine(grep.statsPerAuthorYear, valueAsked);
-			
-			for (Entry<String, int[]>entry:combinedStats.entrySet()){
-				if (entry.getKey().contains(preciseQuery)){
-					System.out.println("Voici les stats pour "+preciseQuery);
-					System.out.println("Nombre total de tokens : "+entry.getValue()[1]);
-					System.out.println("Nombre d'occurrences de "+grep.query+" : "+entry.getValue()[0]);
-					if (valueAsked==3){
-						for (String []doc:grep.statsPerDoc){
-							if (doc[3].contains(preciseQuery)){
-								System.out.println("\nPour le fichier : "+doc[5]);
-								System.out.println("Nombre total de tokens : "+doc[2]);
-								System.out.println("Nombre de matchs : "+doc[1]);
-								System.out.println("Fréquence Relative : "+doc[0]);
+			if (grep.statsPerAuthorYear!=null&&!grep.statsPerAuthorYear.isEmpty()){
+				HashMap<String, int[]>combinedStats=combine.combine(grep.statsPerAuthorYear, valueAsked);
+				
+				for (Entry<String, int[]>entry:combinedStats.entrySet()){
+					if (entry.getKey().contains(preciseQuery)){
+						System.out.println("Voici les stats pour "+preciseQuery);
+						System.out.println("Nombre total de tokens : "+entry.getValue()[1]);
+						System.out.println("Nombre d'occurrences de "+grep.query+" : "+entry.getValue()[0]);
+						if (valueAsked==3){
+							for (String []doc:grep.statsPerDoc){
+								if (doc[3].contains(preciseQuery)){
+									System.out.println("\nPour le fichier : "+doc[5]);
+									System.out.println("Nombre total de tokens : "+doc[2]);
+									System.out.println("Nombre de matchs : "+doc[1]);
+									System.out.println("Fréquence Relative : "+doc[0]);
+								}
 							}
 						}
-					}
-					else if (valueAsked==4){
-						for (String []doc:grep.statsPerDoc){
-							if (doc[4].contains(preciseQuery)){
-								System.out.println("\nPour le fichier : "+doc[5]);
-								System.out.println("Nombre total de tokens : "+doc[2]);
-								System.out.println("Nombre de matchs : "+doc[1]);
-								System.out.println("Fréquence Relative : "+doc[0]);
+						else if (valueAsked==4){
+							for (String []doc:grep.statsPerDoc){
+								if (doc[4].contains(preciseQuery)){
+									System.out.println("\nPour le fichier : "+doc[5]);
+									System.out.println("Nombre total de tokens : "+doc[2]);
+									System.out.println("Nombre de matchs : "+doc[1]);
+									System.out.println("Fréquence Relative : "+doc[0]);
+								}
 							}
 						}
 					}
 				}
+				
+				System.out.println("\nSouhaitez-vous enregistrer votre requête dans un csv ? (o/n)");
+				String save= word.next();	
+				String nomFichier=grep.query.replaceAll("\\\\", "")+"_"+grep.nameYearTitle+"_"+grep.form;
+				nomFichier=nomFichier.replaceAll("\\s", "_");
+				String pathToSave=tsvPath.substring(0, tsvPath.lastIndexOf("/")+1);
+				if (save.equals("o")&&(column==colAuthor||column==colYear)){
+					ExportData.exportToCSV(pathToSave,nomFichier,grep.statsPerAuthorYear);
+					System.out.println("Votre requête a été sauvegardée");
+				}
+				else if (save.equals("o")&&(column==colTitle)){
+					ExportData.exportListToCSV(pathToSave,nomFichier,grep.statsPerDoc);
+					System.out.println("Votre requête a été sauvegardée");
+				}
+				else{
+					System.out.println("Votre requête n'a pas été enregistrée");
+				}
 			}
 			
-			System.out.println("\nSouhaitez-vous enregistrer votre requête dans un csv ? (o/n)");
-			String save= word.next();	
-			String nomFichier=grep.query.replaceAll("\\\\", "")+"_"+grep.nameYearTitle+"_"+grep.form;
-			nomFichier=nomFichier.replaceAll("\\s", "_");
-			String pathToSave=tsvPath.substring(0, tsvPath.lastIndexOf("/")+1);
-			if (save.equals("o")&&(column==colAuthor||column==colYear)){
-				ExportData.exportToCSV(pathToSave,nomFichier,grep.statsPerAuthorYear);
-				System.out.println("Votre requête a été sauvegardée");
-			}
-			else if (save.equals("o")&&(column==colTitle)){
-				ExportData.exportListToCSV(pathToSave,nomFichier,grep.statsPerDoc);
-				System.out.println("Votre requête a été sauvegardée");
-			}
-			else{
-				System.out.println("Votre requête n'a pas été enregistrée");
-			}
 		    
 		    
 			System.out.println("\nVoulez-vous faire une nouvelle requête ? (o/n)");
