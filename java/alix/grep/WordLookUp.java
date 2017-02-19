@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
@@ -27,6 +28,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import alix.fr.Lexik;
 import alix.fr.Occ;
@@ -324,15 +327,16 @@ public class WordLookUp {
 		List<String>globalResults=new ArrayList<String>();
 		LinkedHashMap<String,Integer>orderedGlobalResults=new LinkedHashMap<String,Integer>();
 		File directory=new File(pathCorpus);
-
-		File []alltexts=directory.listFiles();
+		
+		File []alltexts=directory.listFiles(new FilenameFilter() {
+		    public boolean accept(File dir, String name) {
+		        return name.toLowerCase().endsWith(".xml");
+		    }
+		});
 
 		for (File file:alltexts){
 			Query q1 = new Query(queries);
-			PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:*.xml");
-			Path filepath = Paths.get(file.getAbsolutePath());
-			if (matcher.matches(filepath)) {
-				String xmlTest = new String(Files.readAllBytes(  filepath) , StandardCharsets.UTF_8);
+				String xmlTest = new String(Files.readAllBytes(  file.toPath()) , StandardCharsets.UTF_8);
 				Tokenizer toks = new Tokenizer(xmlTest);
 				Occ occ=new Occ();
 
@@ -348,7 +352,7 @@ public class WordLookUp {
 				}
 			}
 			
-		}
+		
 		Set<String> uniqueSet = new HashSet<String>(globalResults);
 		for (String temp : uniqueSet) {
 			orderedGlobalResults.put(temp, Collections.frequency(globalResults, temp));
@@ -392,8 +396,9 @@ public class WordLookUp {
 			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
 			String queryEntry=cells[col];
 			Query q1 = new Query(queries);
-			Path path = Paths.get(pathCorpus+fileName);
+			Path path = Paths.get(pathCorpus+"/"+fileName);
 			if (Files.exists(path)) {
+				System.out.println(path);
 				String xml = new String(Files.readAllBytes( Paths.get( pathCorpus+fileName ) ), StandardCharsets.UTF_8);
 				Tokenizer toks = new Tokenizer(xml);
 				Occ occ=new Occ();

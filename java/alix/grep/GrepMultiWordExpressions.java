@@ -40,7 +40,7 @@ import alix.util.Term;
 
 public class GrepMultiWordExpressions {
 
-	public static final String DEFAULT_PATH="/home/odysseus/Téléchargements/critique2000-gh-pages/txt/";
+	public static final String DEFAULT_PATH="/home/odysseus/Téléchargements/critique2000-gh-pages/tei/";
 	public static final String DEFAULT_TSV="/home/odysseus/Téléchargements/critique2000-gh-pages/biblio3.tsv";
 	public String query;
 	String nameYearTitle;
