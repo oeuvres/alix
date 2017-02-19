@@ -566,6 +566,8 @@ public class Term implements CharSequence, Comparable<Term>
       }
       
     }
+    // not enough chars in text to find glob
+    if ( (globend - globstart) > ( textend - textstart ) + 1 ) return false; 
     // *pat or pat*
     for (;;) {
       if ( globc == '*' ) 
@@ -727,9 +729,10 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public static void main(String[] args)
   {
-    Term glob = new Term( "*ent*" );
-    Term test = new Term( "présentement" );
+    Term glob = new Term( "*ent" );
+    Term test = new Term( "t" );
     System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
+    test = new Term( "présentement" );
     glob = new Term( "*ent*ent" );
     System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
     glob = new Term( "présentement" );

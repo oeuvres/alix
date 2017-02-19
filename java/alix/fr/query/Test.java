@@ -28,6 +28,8 @@ public abstract class Test
     // a known tag ?
     int tag;
     if ( ( tag = Tag.code( term ) ) != Tag.UNKNOWN ) {
+      if ( quotes ) return new TestTag( tag );
+      if ( Tag.prefix( tag ) == tag ) new TestTagPrefix( tag );
       // todo test prefix tag *
       return new TestTag( tag );
     }
