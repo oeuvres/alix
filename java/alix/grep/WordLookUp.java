@@ -385,46 +385,51 @@ public class WordLookUp {
 			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
 			String queryEntry=cells[col];
 			Query q1 = new Query(queries);
-			String xml = new String(Files.readAllBytes( Paths.get( pathCorpus+fileName ) ), StandardCharsets.UTF_8);
-			Tokenizer toks = new Tokenizer(xml);
-			Occ occ=new Occ();
+			Path path = Paths.get(pathCorpus+fileName);
+			if (Files.exists(path)) {
+				String xml = new String(Files.readAllBytes( Paths.get( pathCorpus+fileName ) ), StandardCharsets.UTF_8);
+				Tokenizer toks = new Tokenizer(xml);
+				Occ occ=new Occ();
 
-			while (toks.token(occ) ) {
-				if (q1.test(occ) ) {
-					if (occ.tag().toString().contains("NAME")){
-						indivResults.add(q1.found().toString());
-					}
-					else{
-						indivResults.add(q1.found().toString().toLowerCase());
+				while (toks.token(occ) ) {
+					if (q1.test(occ) ) {
+						if (occ.tag().toString().contains("NAME")){
+							indivResults.add(q1.found().toString());
+						}
+						else{
+							indivResults.add(q1.found().toString().toLowerCase());
+						}
 					}
 				}
+
+				LinkedHashMap<String,Integer>findings=new LinkedHashMap<String,Integer>();
+				if (mapAuthor.containsKey(queryEntry)){
+					findings=mapAuthor.get(queryEntry);
+					for (String key:orderedGlobalResults.keySet()){
+						if (!findings.containsKey(key)) {
+							findings.put(key, Collections.frequency(indivResults, key));
+						}
+						else{
+							int previous=findings.get(key);
+							findings.put(key, Collections.frequency(indivResults, key)+previous);
+						}
+					}
+				}
+				else{
+					for (String key:orderedGlobalResults.keySet()){
+						if (!findings.containsKey(key)) {
+							findings.put(key, Collections.frequency(indivResults, key));
+						}
+						else{
+							int previous=findings.get(key);
+							findings.put(key, Collections.frequency(indivResults, key)+previous);
+						}
+					}
+				}
+				mapAuthor.put(queryEntry, findings);
 			}
 
-			LinkedHashMap<String,Integer>findings=new LinkedHashMap<String,Integer>();
-			if (mapAuthor.containsKey(queryEntry)){
-				findings=mapAuthor.get(queryEntry);
-				for (String key:orderedGlobalResults.keySet()){
-					if (!findings.containsKey(key)) {
-						findings.put(key, Collections.frequency(indivResults, key));
-					}
-					else{
-						int previous=findings.get(key);
-						findings.put(key, Collections.frequency(indivResults, key)+previous);
-					}
-				}
-			}
-			else{
-				for (String key:orderedGlobalResults.keySet()){
-					if (!findings.containsKey(key)) {
-						findings.put(key, Collections.frequency(indivResults, key));
-					}
-					else{
-						int previous=findings.get(key);
-						findings.put(key, Collections.frequency(indivResults, key)+previous);
-					}
-				}
-			}
-			mapAuthor.put(queryEntry, findings);
+			
 		}
 		
 		// ça, ça pue, faut changer
