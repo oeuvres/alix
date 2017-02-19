@@ -382,8 +382,21 @@ public class WordLookUp {
 			}
 
 			LinkedHashMap<String,Integer>findings=new LinkedHashMap<String,Integer>();
+			System.out.println(queryEntry);
 			if (mapAuthor.containsKey(queryEntry)){
 				findings=mapAuthor.get(queryEntry);
+				for (String key:orderedGlobalResults.keySet()){
+					if (!findings.containsKey(key)) {
+						findings.put(key, Collections.frequency(indivResults, key));
+					}
+					else{
+						int previous=findings.get(key);
+						findings.put(key, Collections.frequency(indivResults, key)+previous);
+					}
+				}
+				
+			}
+			else{
 				for (String key:orderedGlobalResults.keySet()){
 					if (!findings.containsKey(key)) {
 						findings.put(key, Collections.frequency(indivResults, key));
