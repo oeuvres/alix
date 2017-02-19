@@ -8,8 +8,10 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -327,20 +329,25 @@ public class WordLookUp {
 
 		for (File file:alltexts){
 			Query q1 = new Query(queries);
-			String xmlTest = new String(Files.readAllBytes(  file.toPath()) , StandardCharsets.UTF_8);
-			Tokenizer toks = new Tokenizer(xmlTest);
-			Occ occ=new Occ();
+			PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:*.xml");
+			Path filepath = Paths.get(file.getAbsolutePath());
+			if (matcher.matches(filepath)) {
+				String xmlTest = new String(Files.readAllBytes(  filepath) , StandardCharsets.UTF_8);
+				Tokenizer toks = new Tokenizer(xmlTest);
+				Occ occ=new Occ();
 
-			while (toks.token(occ) ) {
-				if ( q1.test(occ) ) {
-					if (occ.tag().toString().contains("NAME")){
-						globalResults.add(q1.found().toString());
-					}
-					else{
-						globalResults.add(q1.found().toString().toLowerCase());
+				while (toks.token(occ) ) {
+					if ( q1.test(occ) ) {
+						if (occ.tag().toString().contains("NAME")){
+							globalResults.add(q1.found().toString());
+						}
+						else{
+							globalResults.add(q1.found().toString().toLowerCase());
+						}
 					}
 				}
 			}
+			
 		}
 		Set<String> uniqueSet = new HashSet<String>(globalResults);
 		for (String temp : uniqueSet) {
