@@ -323,7 +323,12 @@ public class WordLookUp {
 
 			while (toks.token(occ) ) {
 				if ( q1.test(occ) ) {
-					globalResults.add(q1.found().toString());
+					if (occ.tag().toString().contains("NAME")){
+						globalResults.add(q1.found().toString());
+					}
+					else{
+						globalResults.add(q1.found().toString().toLowerCase());
+					}
 				}
 			}
 		}
@@ -377,7 +382,12 @@ public class WordLookUp {
 
 			while (toks.token(occ) ) {
 				if (q1.test(occ) ) {
-					indivResults.add(q1.found().toString());
+					if (occ.tag().toString().contains("NAME")){
+						indivResults.add(q1.found().toString());
+					}
+					else{
+						indivResults.add(q1.found().toString().toLowerCase());
+					}
 				}
 			}
 
