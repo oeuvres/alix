@@ -306,8 +306,18 @@ public class WordLookUp {
 
 	}
 
-
+	/**
+	 * 
+	 * @param path to source tsv
+	 * @param path to source corpus
+	 * @param column asked by user
+	 * @param user's queries
+	 * 
+	 * @return tsv file with patterns count
+	 */
 	public void tsvStats(String pathTSV, String pathCorpus, int col, String queries) throws IOException{
+		
+		
 		BufferedReader TSVFile = new BufferedReader(new FileReader(pathTSV));
 		List<String>globalResults=new ArrayList<String>();
 		LinkedHashMap<String,Integer>orderedGlobalResults=new LinkedHashMap<String,Integer>();
@@ -360,12 +370,11 @@ public class WordLookUp {
 		String dataRow = TSVFile.readLine();
 		List <String []>allRows=new ArrayList<String[]>();
 		String[] dataArray = null;
+		
 		while (dataRow != null){
-
 			dataArray = dataRow.split("\t");
 			allRows.add(dataArray);
 			dataRow = TSVFile.readLine();
-
 		}
 		TSVFile.close();
 		
@@ -403,7 +412,6 @@ public class WordLookUp {
 						findings.put(key, Collections.frequency(indivResults, key)+previous);
 					}
 				}
-				
 			}
 			else{
 				for (String key:orderedGlobalResults.keySet()){
@@ -418,6 +426,8 @@ public class WordLookUp {
 			}
 			mapAuthor.put(queryEntry, findings);
 		}
+		
+		// ça, ça pue, faut changer
 		String nameOrYear="";
 		if (col==3){
 			nameOrYear="name";
@@ -435,8 +445,7 @@ public class WordLookUp {
 		writer.append("Pattern\t");
 		writer.append("Nombre\t");
 		writer.append('\n');
-		for (Entry<String,LinkedHashMap<String,Integer>>entry:mapAuthor.entrySet()){	
-
+		for (Entry<String,LinkedHashMap<String,Integer>>entry:mapAuthor.entrySet()){
 			for (Entry<String,Integer>values:entry.getValue().entrySet()){
 				String value=values.getKey();		
 				Integer nb=values.getValue();
