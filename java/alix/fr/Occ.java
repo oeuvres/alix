@@ -137,9 +137,7 @@ public class Occ
     lem.replace( occ.lem );
     start = occ.start;
     end = occ.end;
-    // to think, shall we copy prev/next links ?
-    prev = null;
-    next = null;
+    // KEEP prev-next links of source, do not import them from target
     return this;
   }
   /**
@@ -193,8 +191,7 @@ public class Occ
     tag.set(0);
     start = -1;
     end = -1;
-    prev = null;
-    next = null;
+    // DO NOT modify linking for OccChain
     return this;
   }
   /**

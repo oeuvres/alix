@@ -154,7 +154,8 @@ public class Tokenizer
       // if ( stem == null ) stem = locroot.get( occhere.orth() );
     }
     // start of sentence
-    else if ( occhere.prev().tag().equals( Tag.PUNsent ) || occhere.prev().isEmpty() ) {
+    else if ( occhere.prev() == null || occhere.prev().isEmpty() 
+        || occhere.prev().tag().equals( Tag.PUNsent ) ) {
       // will not match « sentence. La Fontaine »
       stem = locroot.get( occhere.orth() );
     }
