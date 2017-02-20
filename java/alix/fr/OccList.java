@@ -1,4 +1,6 @@
 package alix.fr;
+import java.util.ArrayList;
+
 import alix.util.Calcul;
 
 /**

@@ -57,6 +57,7 @@ public class WordLookUp {
 	String nameYearTitle;
 	HashMap<String, String[]>statsPerAuthorYear;
 	String form;
+	static int limit;
 
 	List<String[]>statsPerDoc;
 	long nbOccs;
@@ -115,6 +116,14 @@ public class WordLookUp {
 
 	public void setFormPreference (String form) {
 		this.form = form;
+	}
+	
+	public int getLimit() {
+		return limit ;	
+	}
+	
+	public void setLimit (int limit) {
+		this.limit = limit;
 	}
 
 
@@ -322,7 +331,6 @@ public class WordLookUp {
 	 */
 	public void tsvStats(String pathTSV, String pathCorpus, int col, String queries) throws IOException{
 		
-		
 		BufferedReader TSVFile = new BufferedReader(new FileReader(pathTSV));
 		List<String>globalResults=new ArrayList<String>();
 		LinkedHashMap<String,Integer>orderedGlobalResults=new LinkedHashMap<String,Integer>();
@@ -398,6 +406,7 @@ public class WordLookUp {
 			Query q1 = new Query(queries);
 			Path path = Paths.get(pathCorpus+"/"+fileName);
 			if (Files.exists(path)) {
+				
 				String xml = new String(Files.readAllBytes( Paths.get( pathCorpus+fileName ) ), StandardCharsets.UTF_8);
 				Tokenizer toks = new Tokenizer(xml);
 				Occ occ=new Occ();
@@ -479,7 +488,7 @@ public class WordLookUp {
 		LinkedHashMap<String, Integer> sortedMap = 
 				map.entrySet().stream().
 				sorted(Map.Entry.<String, Integer>comparingByValue().reversed()) 
-				.limit(11).
+				.limit(limit).
 				collect(Collectors.toMap(Entry::getKey, Entry::getValue,
 						(e1, e2) -> e1, LinkedHashMap::new));
 		return sortedMap;

@@ -23,6 +23,7 @@ import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
+import javax.swing.JOptionPane;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
@@ -40,7 +41,7 @@ import alix.util.Term;
 
 public class GrepMultiWordExpressions {
 
-	public static final String DEFAULT_PATH="/home/odysseus/Téléchargements/critique2000-gh-pages/tei/";
+	public static final String DEFAULT_PATH="/home/odysseus/Téléchargements/critique2000-gh-pages/txt/";
 	public static final String DEFAULT_TSV="/home/odysseus/Téléchargements/critique2000-gh-pages/biblio3.tsv";
 	public String query;
 	String nameYearTitle;
@@ -48,6 +49,7 @@ public class GrepMultiWordExpressions {
 	List<String[]>statsPerDoc;
 	HashMap <String,String[]>statsPerAuthorYear;
 	String form;
+	int limit;
 
 	public static final int colCode=2;
 	public static final int colAuthor=3;
@@ -106,6 +108,7 @@ public class GrepMultiWordExpressions {
 	@SuppressWarnings("resource")
 	public static void main(String[] args) throws MalformedURLException, SAXException, 
 	IOException, ParserConfigurationException {
+		String infoTags = new String(Files.readAllBytes( Paths.get( "./doc/tagsTable.txt") ), StandardCharsets.UTF_8);
 		GrepMultiWordExpressions grep=new GrepMultiWordExpressions();
 		Scanner line=new Scanner(System.in);
 		Scanner word=new Scanner(System.in);
@@ -134,7 +137,7 @@ public class GrepMultiWordExpressions {
 		TSVFile.close();
 
 		System.out.println("Définissez le chemin vers vos fichiers à analyser "
-				+ "(exemple : /home/bilbo/Téléchargements/critique2000-gh-pages/tei/)");
+				+ "(exemple : /home/bilbo/Téléchargements/critique2000-gh-pages/txt/)");
 		chosenPath=line.nextLine();
 
 		if(chosenPath.equals(null)||chosenPath.equals(""))chosenPath=DEFAULT_PATH;
@@ -152,26 +155,24 @@ public class GrepMultiWordExpressions {
 			if (column==colAuthor)valueAsked=3;
 			if (column==colTitle)valueAsked=5;
 
-			System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
-			grep.form=word.next();
+			
 			
 			System.out.println("Quelle type de recherche voulez-vous effectuer ? "
 					+ "(rentrer le numéro correspondant et taper \"entrée\")");
-			System.out.println("1 : rechercher un seul mot ou une expression régulière");
-			System.out.println("2 : rechercher une liste de mots dans une fenêtre à définir");
-			System.out.println("3 : rechercher un mot et au moins un tag");
-			System.out.println("4 : faire une recherche globale et individuelle sur les patterns les plus fréquents autour d'un mot ?");
+			System.out.println("1 : rechercher un seul mot ou une expression régulière"
+					+ "\n(exemple : \"littérature\" ou \"littér(.)*\\s\"");
+			System.out.println("2 : rechercher une liste de mots dans une fenêtre à définir"
+					+ "\n(exemple : \"littérature poésie art\" (à séparer par des espaces)");
+			System.out.println("3 : rechercher un mot et au moins un tag"
+					+ "\n(exemple : \"littérature VERB DETart\" (à séparer par des espaces)");
+			System.out.println("4 : faire une recherche globale et individuelle sur les "
+					+ "patterns les plus fréquents autour d'un mot"
+					+ "\n(exemple : \"littérature VERB DETart\" (à séparer par des espaces)"
+					+ "\nLa recherche aboutira à un csv avec les 10 patterns les plus utilisés"
+					+ "sur tout le corpus, et leur utilisation pour chaque date ou auteur");
 			int chooseTypeRequest = Integer.valueOf(word.next());
 
-			System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
-			String casse=word.next();
-
-			if (casse.contains("o")){
-				grep.caseSensitivity=0;
-			}
-			else{
-				grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
-			}
+			
 
 			WordLookUp wordLookUp=new WordLookUp();
 			CombineStats combine=new CombineStats();
@@ -180,10 +181,21 @@ public class GrepMultiWordExpressions {
 			wordLookUp.setStatsPerDoc(new ArrayList<String[]>());
 			wordLookUp.setStatsPerAuthorYear(new HashMap<>());
 			wordLookUp.setFormPreference(grep.form);
-			
+			String casse="";
 			
 			switch (chooseTypeRequest){
 			case 1 :
+				System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
+				grep.form=word.next();
+				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
+				casse=word.next();
+
+				if (casse.contains("o")){
+					grep.caseSensitivity=0;
+				}
+				else{
+					grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
+				}
 				grep.statsPerAuthorYear=wordLookUp.oneWord(chosenPath, column, allRows);
 				preciseQuery=wordLookUp.getPreciseQuery();
 				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
@@ -191,6 +203,17 @@ public class GrepMultiWordExpressions {
 				break;
 
 			case 2 :
+				System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
+				grep.form=word.next();
+				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
+				casse=word.next();
+
+				if (casse.contains("o")){
+					grep.caseSensitivity=0;
+				}
+				else{
+					grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
+				}
 				grep.statsPerAuthorYear=wordLookUp.severalWords(chosenPath, column, allRows);
 				preciseQuery=wordLookUp.getPreciseQuery();
 				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
@@ -198,6 +221,17 @@ public class GrepMultiWordExpressions {
 				break;
 			
 			case 3:
+				System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
+				grep.form=word.next();
+				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
+				casse=word.next();
+
+				if (casse.contains("o")){
+					grep.caseSensitivity=0;
+				}
+				else{
+					grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
+				}
 				grep.statsPerAuthorYear=wordLookUp.wordAndTags(chosenPath, column, allRows);
 				preciseQuery=wordLookUp.getPreciseQuery();
 				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
@@ -205,10 +239,15 @@ public class GrepMultiWordExpressions {
 				break;	
 				
 			case 4:
+				
+				JOptionPane.showMessageDialog(null, infoTags, "TAGS", JOptionPane.PLAIN_MESSAGE);
 				System.out.println("Quel(s) mot(s) voulez-vous chercher ? (si plusieurs, séparez par un espace)");
 				Scanner motsUtil=new Scanner (System.in);
 				String queryUtil = motsUtil.nextLine();
-				String query[]={ queryUtil };
+				System.out.println("Quel est le nombre maximum d'occurrences du pattern que vous souhaitez chercher ?");
+				Scanner nbUtil=new Scanner (System.in);
+				grep.limit=Integer.parseInt(nbUtil.nextLine());
+				wordLookUp.setLimit(grep.limit);
 				wordLookUp.tsvStats(tsvPath, chosenPath, column, queryUtil);
 			
 			}
