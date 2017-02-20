@@ -1,13 +1,11 @@
 package alix.fr;
-import java.util.ArrayList;
-
 import alix.util.Calcul;
 
 /**
  * A sequence of mutable Occs. avoi
  * @author user
  */
-public class OccList extends ArrayList
+public class OccList
 {
   /** Array container */
   private Occ[] data;

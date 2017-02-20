@@ -16,11 +16,15 @@ import alix.util.Char;
 public class Query
 {
   /** The root test, go back to root after a fail */
-  private Test first;
+  private final Test first;
   /** The current test to apply in sequence order */
   private Test current;
-  /** The last Occ sequence been tested */
+  /** The pattern found */
   OccList found = new OccList();
+  /** position in the query parser */
+  private int pos = 0;
+  /** a static value for query parsing */
+  static final int OR = 1;
   /**
    * Parse a human query to build a test object tree
    * @param q
@@ -30,17 +34,79 @@ public class Query
     first = parse( q );
     current = first;
   }
-  int pos = 0;
-  static final int OR = 1;
+  /**
+   * Test an Occurrence, return true if current test succeed and if it is the last one.
+   * This method is bottleneck to optimize.
+   * @return
+   */
+  public boolean test( Occ occ )
+  {
+    // something found after a restart of the test chain, reset the found buffer
+    if ( current == first && found.size() > 0 ) found.reset(); 
+    // ** operator
+    if ( current instanceof TestGap ) {
+      found.add( occ );
+      // no next, works like a simple joker
+      if ( current.next() == null ) {
+        current = first;
+        return true;
+      }
+      // next test success, jump the gap, and works like a test success  
+      else if ( current.next().test( occ ) ) {
+        current = current.next().next();
+        if ( current == null ) {
+          current = first;
+          return true;
+        }
+        return false;
+      }
+      // not yet end of gap, continue
+      else if ( ((TestGap) current).dec() > 0 ) {
+        return false;
+      }
+      // end of gap, restart
+      current = first;
+      found.reset();
+      return false;
+    }
+    // test success, set next
+    if ( current.test( occ ) ) {
+      found.add( occ );
+      current = current.next();
+      if ( current == null ) {
+        current = first;
+        return true;
+      }
+      return false;
+    }
+    // first fail, go away
+    if ( current == first ) return false; 
+    // fail in the chain, A B C found in A B A B C
+    if ( first.test( occ )) {
+      found.reset();
+      found.add( occ );
+      current = first.next();
+      return false;
+    }
+    // restart
+    current = first;
+    found.reset();
+    return false;
+  }
+  /**
+   * Parse a query String, return a test object
+   * @param q
+   * @return
+   */
   private Test parse( String q )
   {
-    // first pass, normalize query to simplify tests
-    if ( pos == 0 ) q = q.replace( "\\s+", " " ).replace( "\\s+,\\s+", ", " ).trim();
+    // first pass, normalize query String to simplify tests
+    if ( pos == 0 ) q = q.replaceAll( "\\s+", " " ).replaceAll( "\\s*,\\s*", ", " ).replaceAll( "([^\\s])\\(", "$1 (" ).trim();
     int length = q.length();
     Test orphan = null;
     Test root = null;
     Test next = null;
-    StringBuffer sb = new StringBuffer();
+    StringBuffer term = new StringBuffer();
     boolean quote = false;
     char c;
     int op = 0;
@@ -51,60 +117,59 @@ public class Query
       // append char to term ?
       // in quotes, always append char
       if ( quote ) {
-        sb.append( c );
+        term.append( c );
+        // close quote
         if ( c == '"' ) quote = false;
         continue;
       }
-      // quote, open or close quote
+      // open quote
       else if ( c == '"' ) {
-        sb.append( c );
+        term.append( c );
         quote = true;
         continue;
       }
       // not a space or a special char, append to term
       else if (  !Char.isSpace( c ) && c != 0 && c != ',' && c != '(' && c != ')') {
-        sb.append( c );
+        term.append( c );
         continue;
       }
       
       
       // now, the complex work, should be end of term
       // a term is set, build an orphan query
-      if ( sb.length() > 0 ) {
-        orphan = Test.create( sb.toString() );
-        sb.setLength( 0 );
+      if ( term.length() > 0 ) {
+        orphan = Test.create( term.toString() );
+        term.setLength( 0 ); // reset term buffer
       }
-      while ( true ) {
-        // an orphan to connect
-        if ( orphan != null ) {
-          // orphan may children 
-          Test child = orphan;
-          while ( child.next != null ) child = child.next;
-          // root should be OK here
-          if ( op == OR ) {
-            ((TestOr) root).add( orphan );
-            next = child;
-            op = 0;
-          }
-          else if ( root == null ) {
-            root = orphan;
-            next = child;
-          }
-          else {
-            next.next = orphan;
-            next = child;
-          }
-          orphan = null;
-        }
-        // another orphan Test to connect
-        if ( c == '(' ) {
-          orphan = parse(q); // pointer should be after ')' now
-          c = ' '; // avoid infinite loop
-          continue;
-        }
-        break;
+      // another orphan Test to connect
+      if ( c == '(' ) {
+        if ( orphan != null ) System.out.println( "Error of the program" );
+        orphan = parse(q); // pointer should be after ')' now
       }
-      // OR test to open
+      // an orphan to connect
+      if ( orphan != null ) {
+        // if coming from a () expression, orphan may have descendants, take the last descendant  
+        Test child = orphan;
+        while ( child.next != null ) child = child.next;
+        // root should have been set
+        if ( op == OR ) {
+          ((TestOr) root).add( orphan );
+          next = child;
+          op = 0;
+        }
+        // new test
+        else if ( root == null ) {
+          root = orphan;
+          next = child;
+        }
+        // append to last
+        else {
+          next.next = orphan;
+          next = child;
+        }
+        orphan = null;
+      }
+      // resolve OR test after orphan connection 
       if ( c == ',' ) {
         if ( root == null ) root = new TestOr();
         else if ( !( root instanceof TestOr) ) {
@@ -115,7 +180,7 @@ public class Query
         // for next turn
         op = OR;
       }
-      // end of parenthesis or query, break
+      // end of parenthesis or end of query, break after Test parsing
       if ( c == ')' ) {
         break;
       }
@@ -138,58 +203,6 @@ public class Query
   public int foundSize() {
     return found.size();
   }
-  /**
-   * Test an Occurrence, return true if current test succeed and if it is last 
-   * @return
-   */
-  public boolean test( Occ occ )
-  {
-    if ( current == first ) found.reset(); // reset after found
-    if ( current instanceof TestGap ) {
-      found.add( occ );
-      // no next, works like a simple joker
-      if ( current.next() == null ) {
-        current = first;
-        return true;
-      }
-      // next test success, jump the gap, and works like a test success  
-      else if ( current.next().test( occ ) ) {
-        current = current.next().next();
-        if ( current == null ) {
-          current = first;
-          return true;
-        }
-        return false;
-      }
-      // not yet end of gap, continue
-      else if ( ((TestGap) current).dec() > 0 ) {
-        return false;
-      }
-      // end of gap, will work like reset to first below
-    }
-    // test success, set next
-    else if ( current.test( occ ) ) {
-      found.add( occ );
-      current = current.next();
-      if ( current == null ) {
-        current = first;
-        return true;
-      }
-      return false;
-    }
-    // test fail or end of gap
-    if ( current == first ); 
-    // fail, but may be start of a pattern
-    else if ( first.test( occ )) {
-      found.reset();
-      found.add( occ );
-      current = first.next();
-    }
-    // restart
-    else current = first;
-    
-    return false;
-  }
   @Override
   public String toString() {
     return first.toString();
@@ -199,17 +212,18 @@ public class Query
    */
   public static void main(String[] args)
   {
-    String text = "Je suis en vacances";
-    Query q1 = new Query("Je VERB");
+    String text = "A B A B C A B C C C D";
+    Query q1 = new Query("A B(A ,C)");
     Query q2 = new Query("A * C");
     Query q3 = new Query("A ** C");
     Query q4 = new Query("C");
+    Query q5 = new Query("A B C");
     Occ occ = new Occ();
     System.out.println( text );
     for (String tok:text.split( " " )) {
       occ.orth( tok );
       if ( q1.test(occ) ) {
-        System.out.println( "query 1 : "+q1+" FOUND: "+q1.found() );
+        System.out.println( q1+" FOUND: "+q1.found() );
       }
       if ( q2.test(occ) ) {
         System.out.println( q2+" FOUND: "+q2.found() );
@@ -219,6 +233,9 @@ public class Query
       }
       if ( q4.test(occ) ) {
         System.out.println( q4+" FOUND: "+q4.found() );
+      }
+      if ( q5.test(occ) ) {
+        System.out.println( q5+" FOUND: "+q5.found() );
       }
     }
   }
