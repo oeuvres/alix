@@ -1,5 +1,6 @@
 package alix.grep;
 
+import java.awt.Insets;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -23,7 +24,10 @@ import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextPane;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
@@ -155,6 +159,12 @@ public class GrepMultiWordExpressions {
 			if (column==colAuthor)valueAsked=3;
 			if (column==colTitle)valueAsked=5;
 
+			JFrame pane=new JFrame("TAGS");
+			JTextArea mytext=new JTextArea(infoTags);
+			mytext.setMargin(new Insets(10,10,10,10));
+			pane.add(mytext);
+			pane.pack();
+			pane.show();
 			
 			
 			System.out.println("Quelle type de recherche voulez-vous effectuer ? "
@@ -173,6 +183,7 @@ public class GrepMultiWordExpressions {
 			int chooseTypeRequest = Integer.valueOf(word.next());
 
 			
+			
 
 			WordLookUp wordLookUp=new WordLookUp();
 			CombineStats combine=new CombineStats();
@@ -182,7 +193,7 @@ public class GrepMultiWordExpressions {
 			wordLookUp.setStatsPerAuthorYear(new HashMap<>());
 			wordLookUp.setFormPreference(grep.form);
 			String casse="";
-			
+
 			switch (chooseTypeRequest){
 			case 1 :
 				System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
@@ -240,7 +251,7 @@ public class GrepMultiWordExpressions {
 				
 			case 4:
 				
-				JOptionPane.showMessageDialog(null, infoTags, "TAGS", JOptionPane.PLAIN_MESSAGE);
+//				JOptionPane.showMessageDialog(null, infoTags, "TAGS", JOptionPane.PLAIN_MESSAGE);
 				System.out.println("Quel(s) mot(s) voulez-vous chercher ? (si plusieurs, séparez par un espace)");
 				Scanner motsUtil=new Scanner (System.in);
 				String queryUtil = motsUtil.nextLine();
