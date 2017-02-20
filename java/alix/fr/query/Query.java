@@ -52,7 +52,7 @@ public class Query
         return true;
       }
       // next test success, jump the gap, and works like a test success  
-      else if ( current.next().test( occ ) ) {
+      if ( current.next().test( occ ) ) {
         current = current.next().next();
         if ( current == null ) {
           current = first;
@@ -69,29 +69,31 @@ public class Query
       found.reset();
       return false;
     }
-    // test success, set next
-    if ( current.test( occ ) ) {
-      found.add( occ );
-      current = current.next();
-      if ( current == null ) {
-        current = first;
-        return true;
+    else {
+      // test success, set next
+      if ( current.test( occ ) ) {
+        found.add( occ );
+        current = current.next();
+        if ( current == null ) {
+          current = first;
+          return true;
+        }
+        return false;
       }
-      return false;
-    }
-    // first fail, go away
-    if ( current == first ) return false; 
-    // fail in the chain, A B C found in A B A B C
-    if ( first.test( occ )) {
+      // first fail, go away
+      if ( current == first ) return false; 
+      // fail in the chain, A B C found in A B A B C
+      if ( first.test( occ )) {
+        found.reset();
+        found.add( occ );
+        current = first.next();
+        return false;
+      }
+      // restart
+      current = first;
       found.reset();
-      found.add( occ );
-      current = first.next();
       return false;
     }
-    // restart
-    current = first;
-    found.reset();
-    return false;
   }
   /**
    * Parse a query String, return a test object

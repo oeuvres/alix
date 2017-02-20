@@ -8,7 +8,7 @@ public class TestOrth extends TestTerm
   {
     super( term );
   }
-
+  @Override
   public boolean test( Occ occ )
   {
     return term.glob( occ.orth() );

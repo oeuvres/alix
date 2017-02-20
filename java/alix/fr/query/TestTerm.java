@@ -12,13 +12,7 @@ public abstract class TestTerm extends Test
     this.term = new Term( term );
   }
   @Override
-  public String toString() {
-    StringBuffer sb = new StringBuffer();
-    sb.append( term );
-    if ( next != null ) {
-      sb.append( " " );
-      sb.append( next );
-    }
-    return sb.toString();
+  public String label() {
+    return term.toString();
   }
 }

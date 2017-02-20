@@ -3,7 +3,13 @@ package alix.fr.query;
 import java.util.ArrayList;
 
 import alix.fr.Occ;
-
+/**
+ * 
+ * Do not works well for now, no backtracking of things like that
+ * (A B, A C) will not find "A C"
+ * @author glorieux-f
+ *
+ */
 public class TestOr extends Test
 {
   /**  */
@@ -26,7 +32,8 @@ public class TestOr extends Test
     return false;
   }
   @Override
-  public String toString() {
+  public String label()
+  {
     StringBuffer sb = new StringBuffer();
     boolean first = true;
     sb.append( "( " );
@@ -36,10 +43,6 @@ public class TestOr extends Test
       sb.append( test.toString() );
     }
     sb.append( " )" );
-    if ( next != null ) {
-      sb.append( " " );
-      sb.append( next );
-    }
     return sb.toString();
   }
 

@@ -6,9 +6,9 @@ import alix.fr.Tag;
 
 public abstract class Test
 {
-  /** Next test, if null this test is last */
+  /** Next test */
   public Test next = null;
-  /** Factory, buid a test with a string */
+  /** Factory, build a test with a string */
   public static Test create( String term )
   {
     if ( term.equals( "*" )) {
@@ -29,8 +29,7 @@ public abstract class Test
     int tag;
     if ( ( tag = Tag.code( term ) ) != Tag.UNKNOWN ) {
       if ( quotes ) return new TestTag( tag );
-      if ( Tag.prefix( tag ) == tag ) new TestTagPrefix( tag );
-      // todo test prefix tag *
+      if ( Tag.prefix( tag ) == tag ) return new TestTagPrefix( tag );
       return new TestTag( tag );
     }
     // a known lemma ?
@@ -53,6 +52,29 @@ public abstract class Test
   {
     return next;
   }
-  /** get result of this test */
+  @Override
+  public String toString() {
+    StringBuffer sb = new StringBuffer();
+    sb.append( label() );
+    if ( next != null ) {
+      sb.append( " " );
+      sb.append( next );
+    }
+    return sb.toString();
+  }
+  /** A string view for the Test */
+  abstract public String label( );
+  /**
+   * @param occ test present occurrence 
+   * @return null if test failed, the next Test if in a chain, a TestEnd 
+   */
   abstract public boolean test( Occ occ );
+  /**
+   * No reason to use in cli, for testing only
+   */
+  public static void main(String[] args)
+  {
+    System.out.println( Test.create( "NAME" ) );
+  }
+
 }

@@ -13,14 +13,8 @@ public class TestTrue extends Test
     return true;
   }
   @Override
-  public String toString() {
-    StringBuffer sb = new StringBuffer();
-    sb.append( "*" );
-    if ( next != null ) {
-      sb.append( " " );
-      sb.append( next );
-    }
-    return sb.toString();
+  public String label() {
+    return "*";
   }
 
 }
