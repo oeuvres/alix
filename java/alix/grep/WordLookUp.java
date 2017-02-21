@@ -334,13 +334,14 @@ public class WordLookUp {
 		        return name.toLowerCase().endsWith(".xml");
 		    }
 		});
-
+		int numberOccs=0;
 		for (File file:alltexts){
 			Query q1 = new Query(queries);
 				String xmlTest = new String(Files.readAllBytes(  file.toPath()) , StandardCharsets.UTF_8);
 				Tokenizer toks = new Tokenizer(xmlTest);
 				Occ occ=new Occ();
-
+				
+				
 				while (toks.token(occ) ) {
 					if ( q1.test(occ) ) {
 						if (occ.tag().toString().contains("NAME")){
@@ -350,6 +351,7 @@ public class WordLookUp {
 							globalResults.add(q1.found().toString().toLowerCase());
 						}
 					}
+					numberOccs++;
 				}
 			}
 			
@@ -361,19 +363,23 @@ public class WordLookUp {
 
 		orderedGlobalResults=sortMyMapByValue(orderedGlobalResults);
 		String queryForFile=queries.replaceAll("\\W+", "_");
-		File fileGlobal =new File("./test/"+queryForFile+"_globalPatterns.tsv");
+		String saveFolder=new File(pathTSV).getParentFile().getAbsolutePath()+"/";
+		System.out.println(saveFolder);
+		File fileGlobal =new File(saveFolder+queryForFile+"_globalPatterns.tsv");
 		FileWriter writerGlobal = new FileWriter(fileGlobal);
-		Path path1=Paths.get("./test/");
+		Path path1=Paths.get(saveFolder);
 		if (!fileGlobal.getParentFile().isDirectory()){
 			Files.createDirectories(path1);
 		}
 
 		writerGlobal.append("Pattern\t");
 		writerGlobal.append("Nombre\t");
+		writerGlobal.append("TotalTokens");
 		writerGlobal.append('\n');
 		for (Entry<String,Integer>entry:orderedGlobalResults.entrySet()){
 			writerGlobal.append(entry.getKey()+"\t");
 			writerGlobal.append(entry.getValue()+"\t");
+			writerGlobal.append(numberOccs+"");
 			writerGlobal.append('\n');
 		}
 		writerGlobal.flush();
@@ -400,7 +406,6 @@ public class WordLookUp {
 			Query q1 = new Query(queries);
 			Path path = Paths.get(pathCorpus+"/"+fileName);
 			if (Files.exists(path)) {
-				
 				String xml = new String(Files.readAllBytes( Paths.get( pathCorpus+fileName ) ), StandardCharsets.UTF_8);
 				Tokenizer toks = new Tokenizer(xml);
 				Occ occ=new Occ();
@@ -442,8 +447,6 @@ public class WordLookUp {
 				}
 				mapAuthor.put(queryEntry, findings);
 			}
-
-			
 		}
 		
 		// ça, ça pue, faut changer
@@ -454,15 +457,18 @@ public class WordLookUp {
 		else{
 			nameOrYear="year";
 		}
-		File fileTSV =new File("./test/"+queryForFile+"_"+nameOrYear+"_indivPatterns.tsv");
+		File fileTSV =new File(saveFolder+queryForFile+"_"+nameOrYear+"_indivPatterns.tsv");
 		FileWriter writer = new FileWriter(fileTSV);
 		if (!fileTSV.getParentFile().isDirectory()){
 			Files.createDirectories(path1);
 		}
 
-		writer.append("Auteur\t");
+		HashMap<String, Integer>secondMap=countTokens(pathCorpus, col, allRows);
+		
+		writer.append(nameOrYear+"\t");
 		writer.append("Pattern\t");
 		writer.append("Nombre\t");
+		writer.append("TotalTokens\t");
 		writer.append('\n');
 		for (Entry<String,LinkedHashMap<String,Integer>>entry:mapAuthor.entrySet()){
 			for (Entry<String,Integer>values:entry.getValue().entrySet()){
@@ -471,6 +477,9 @@ public class WordLookUp {
 				writer.append(entry.getKey()+"\t");
 				writer.append(value+"\t");
 				writer.append(nb+"\t");
+				if (secondMap.containsKey(entry.getKey())){
+					writer.append(secondMap.get(entry.getKey())+"");
+				}
 				writer.append('\n');
 			}
 		}
@@ -486,6 +495,37 @@ public class WordLookUp {
 				collect(Collectors.toMap(Entry::getKey, Entry::getValue,
 						(e1, e2) -> e1, LinkedHashMap::new));
 		return sortedMap;
+	}
+	
+	public HashMap<String, Integer>countTokens(String chosenPath, int chosenColumn, List <String []>allRows) throws IOException{
+		HashMap<String, Integer>map=new HashMap<String, Integer>();
+		
+		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
+			String []cells=allRows.get(counterRows);
+			int indivNbTokens=0;
+			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
+			StringBuilder pathSB=new StringBuilder();
+			pathSB.append(chosenPath);
+			pathSB.append(fileName);
+			Path path = Paths.get(pathSB.toString());
+			String text = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+			Tokenizer toks = new Tokenizer(text);
+			Occ occ=new Occ();
+
+			while (toks.token(occ) ) {
+				indivNbTokens++;
+			}
+		
+			if (map.containsKey(cells[chosenColumn])){
+				int previous=map.get(cells[chosenColumn]);
+				map.put(cells[chosenColumn], previous+indivNbTokens);
+			}
+			else{
+				map.put(cells[chosenColumn], indivNbTokens);
+			}
+		}
+		
+		return map;
 	}
 
 

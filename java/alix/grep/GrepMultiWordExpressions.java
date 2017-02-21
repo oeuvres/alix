@@ -166,10 +166,7 @@ public class GrepMultiWordExpressions {
 					+ "\nLa recherche aboutira à un csv avec les 10 patterns les plus utilisés"
 					+ " sur tout le corpus, et leur utilisation pour chaque date ou auteur");
 			int chooseTypeRequest = Integer.valueOf(word.next());
-
 			
-			
-
 			WordLookUp wordLookUp=new WordLookUp();
 			CombineStats combine=new CombineStats();
 			wordLookUp.setCaseSensitivity(grep.caseSensitivity);
@@ -236,7 +233,6 @@ public class GrepMultiWordExpressions {
 				
 			case 4:
 				
-//				JOptionPane.showMessageDialog(null, infoTags, "TAGS", JOptionPane.PLAIN_MESSAGE);
 				System.out.println("Quel(s) mot(s) voulez-vous chercher ? (si plusieurs, séparez par un espace)");
 				Scanner motsUtil=new Scanner (System.in);
 				String queryUtil = motsUtil.nextLine();
@@ -296,8 +292,6 @@ public class GrepMultiWordExpressions {
 					System.out.println("Votre requête n'a pas été enregistrée");
 				}
 			}
-			
-		    
 		    
 			System.out.println("\nVoulez-vous faire une nouvelle requête ? (o/n)");
 			doItAgain= word.next();	
