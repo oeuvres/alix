@@ -403,6 +403,7 @@ public class WordLookUp {
 			String []cells=allRows.get(counterRows);
 			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
 			String queryEntry=cells[col];
+			
 			Query q1 = new Query(queries);
 			Path path = Paths.get(pathCorpus+"/"+fileName);
 			if (Files.exists(path)) {

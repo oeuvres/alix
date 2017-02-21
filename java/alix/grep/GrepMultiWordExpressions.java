@@ -179,7 +179,7 @@ public class GrepMultiWordExpressions {
 					+ "patterns les plus fréquents autour d'un mot"
 					+ "\n(exemple : \"littérature VERB DETart\" (à séparer par des espaces)"
 					+ "\nLa recherche aboutira à un csv avec les 10 patterns les plus utilisés"
-					+ "sur tout le corpus, et leur utilisation pour chaque date ou auteur");
+					+ " sur tout le corpus, et leur utilisation pour chaque date ou auteur");
 			int chooseTypeRequest = Integer.valueOf(word.next());
 
 			

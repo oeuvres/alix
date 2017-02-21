@@ -86,7 +86,7 @@ public final class Tag
     for (Field field : declaredFields) {
       if (! java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
       name = field.getName();
-      if ( name.equals( "CODE" ) || name.equals("LABEL")) continue;
+      if ( name.equals( "CODE" ) || name.contains("LABEL")) continue;
       try {
         value = field.getShort( null );
       } catch (IllegalArgumentException e) {
