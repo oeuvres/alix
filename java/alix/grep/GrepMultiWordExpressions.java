@@ -2,21 +2,12 @@ package alix.grep;
 
 import java.awt.Insets;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,16 +16,10 @@ import java.util.Scanner;
 import java.util.regex.Pattern;
 
 import javax.swing.JFrame;
-import javax.swing.JOptionPane;
 import javax.swing.JTextArea;
-import javax.swing.JTextPane;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
-
-import alix.fr.Occ;
-import alix.util.SparseMat;
-import alix.util.Term;
 
 /**
  * Classe d'interface utilisation (les demandes sont faites et les queries enregistrées)
@@ -164,7 +149,7 @@ public class GrepMultiWordExpressions {
 			mytext.setMargin(new Insets(10,10,10,10));
 			pane.add(mytext);
 			pane.pack();
-			pane.show();
+			pane.setVisible(true);
 			
 			
 			System.out.println("Quelle type de recherche voulez-vous effectuer ? "

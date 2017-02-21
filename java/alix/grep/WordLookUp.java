@@ -2,19 +2,14 @@ package alix.grep;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,8 +23,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import javax.swing.filechooser.FileNameExtensionFilter;
 
 import alix.fr.Lexik;
 import alix.fr.Occ;
@@ -123,7 +116,7 @@ public class WordLookUp {
 	}
 	
 	public void setLimit (int limit) {
-		this.limit = limit;
+		WordLookUp.limit = limit;
 	}
 
 
@@ -512,7 +505,6 @@ public class WordLookUp {
 		int qlength = query.length;
 		int qlevel = 0;
 		Occ occ;
-		Set<String>chainOfOcc=new HashSet();
 		// ici la ligne délicate, le tokenize met à jour une occurrence dans fenêtre
 		while (toks.token( win.add() ) ) {
 
@@ -521,7 +513,6 @@ public class WordLookUp {
 			occs++;
 			if ( query[qlevel].fit( occ )) {
 				// comment arrives-tu à reconstruire la locution trouvée de 1 à plusieurs mots ? 
-				int index=qlevel;
 				qlevel++;
 
 				if ( qlevel == qlength ) {
@@ -547,7 +538,6 @@ public class WordLookUp {
 		String[] parts = q.split( "\\s+" );
 		Occ[] query = new Occ[parts.length];
 		String s;
-		String lem;
 		int tag;
 		for ( int i =0; i < parts.length; i++ ) {
 			s = parts[i];
