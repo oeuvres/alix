@@ -355,7 +355,7 @@ public class WordLookUp {
 				}
 			}
 			
-		
+		System.out.println(numberOccs);
 		Set<String> uniqueSet = new HashSet<String>(globalResults);
 		for (String temp : uniqueSet) {
 			orderedGlobalResults.put(temp, Collections.frequency(globalResults, temp));
@@ -374,12 +374,14 @@ public class WordLookUp {
 
 		writerGlobal.append("Pattern\t");
 		writerGlobal.append("Nombre\t");
+		writerGlobal.append("Frequence Relative\t");
 		writerGlobal.append("TotalTokens");
 		writerGlobal.append('\n');
 		for (Entry<String,Integer>entry:orderedGlobalResults.entrySet()){
 			writerGlobal.append(entry.getKey()+"\t");
 			writerGlobal.append(entry.getValue()+"\t");
 			writerGlobal.append((float)entry.getValue()*1000000/ numberOccs +"");
+			writerGlobal.append(numberOccs+"\t");
 			writerGlobal.append('\n');
 		}
 		writerGlobal.flush();
@@ -468,6 +470,7 @@ public class WordLookUp {
 		writer.append(nameOrYear+"\t");
 		writer.append("Pattern\t");
 		writer.append("Nombre\t");
+		writer.append("Frequence Relative\t");
 		writer.append("TotalTokens\t");
 		writer.append('\n');
 		for (Entry<String,LinkedHashMap<String,Integer>>entry:mapAuthor.entrySet()){
@@ -479,7 +482,8 @@ public class WordLookUp {
 				writer.append(nb+"\t");
 				if (secondMap.containsKey(entry.getKey())){
 					
-					writer.append((float)nb*1000000/ (float)secondMap.get(entry.getKey())+"");
+					writer.append((float)nb*1000000/ (float)secondMap.get(entry.getKey())+"\t");
+					writer.append(secondMap.get(entry.getKey())+"");
 				}
 				writer.append('\n');
 			}
