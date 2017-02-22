@@ -380,8 +380,8 @@ public class WordLookUp {
 		for (Entry<String,Integer>entry:orderedGlobalResults.entrySet()){
 			writerGlobal.append(entry.getKey()+"\t");
 			writerGlobal.append(entry.getValue()+"\t");
-			writerGlobal.append((float)entry.getValue()*1000000/ numberOccs +"");
-			writerGlobal.append(numberOccs+"\t");
+			writerGlobal.append((float)entry.getValue()*1000000/ numberOccs +"\t");
+			writerGlobal.append(numberOccs+"");
 			writerGlobal.append('\n');
 		}
 		writerGlobal.flush();
