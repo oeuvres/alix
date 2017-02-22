@@ -334,7 +334,7 @@ public class WordLookUp {
 		        return name.toLowerCase().endsWith(".xml");
 		    }
 		});
-		int numberOccs=0;
+		float numberOccs=0;
 		for (File file:alltexts){
 			Query q1 = new Query(queries);
 				String xmlTest = new String(Files.readAllBytes(  file.toPath()) , StandardCharsets.UTF_8);
@@ -366,7 +366,7 @@ public class WordLookUp {
 		String saveFolder=new File(pathTSV).getParentFile().getAbsolutePath()+"/";
 		System.out.println(saveFolder);
 		File fileGlobal =new File(saveFolder+queryForFile+"_globalPatterns.tsv");
-		FileWriter writerGlobal = new FileWriter(fileGlobal);
+		FileWriter writerGlobal = new FileWriter(fileGlobal,false);
 		Path path1=Paths.get(saveFolder);
 		if (!fileGlobal.getParentFile().isDirectory()){
 			Files.createDirectories(path1);
@@ -379,7 +379,7 @@ public class WordLookUp {
 		for (Entry<String,Integer>entry:orderedGlobalResults.entrySet()){
 			writerGlobal.append(entry.getKey()+"\t");
 			writerGlobal.append(entry.getValue()+"\t");
-			writerGlobal.append(numberOccs+"");
+			writerGlobal.append((float)entry.getValue()*1000000/ numberOccs +"");
 			writerGlobal.append('\n');
 		}
 		writerGlobal.flush();
@@ -458,12 +458,12 @@ public class WordLookUp {
 			nameOrYear="year";
 		}
 		File fileTSV =new File(saveFolder+queryForFile+"_"+nameOrYear+"_indivPatterns.tsv");
-		FileWriter writer = new FileWriter(fileTSV);
+		FileWriter writer = new FileWriter(fileTSV, false);
 		if (!fileTSV.getParentFile().isDirectory()){
 			Files.createDirectories(path1);
 		}
 
-		HashMap<String, Integer>secondMap=countTokens(pathCorpus, col, allRows);
+		HashMap<String, Float>secondMap=countTokens(pathCorpus, col, allRows);
 		
 		writer.append(nameOrYear+"\t");
 		writer.append("Pattern\t");
@@ -473,12 +473,13 @@ public class WordLookUp {
 		for (Entry<String,LinkedHashMap<String,Integer>>entry:mapAuthor.entrySet()){
 			for (Entry<String,Integer>values:entry.getValue().entrySet()){
 				String value=values.getKey();		
-				Integer nb=values.getValue();
+				long nb=values.getValue();
 				writer.append(entry.getKey()+"\t");
 				writer.append(value+"\t");
 				writer.append(nb+"\t");
 				if (secondMap.containsKey(entry.getKey())){
-					writer.append(secondMap.get(entry.getKey())+"");
+					
+					writer.append((float)nb*1000000/ (float)secondMap.get(entry.getKey())+"");
 				}
 				writer.append('\n');
 			}
@@ -497,12 +498,12 @@ public class WordLookUp {
 		return sortedMap;
 	}
 	
-	public HashMap<String, Integer>countTokens(String chosenPath, int chosenColumn, List <String []>allRows) throws IOException{
-		HashMap<String, Integer>map=new HashMap<String, Integer>();
+	public HashMap<String, Float>countTokens(String chosenPath, int chosenColumn, List <String []>allRows) throws IOException{
+		HashMap<String, Float>map=new HashMap<String, Float>();
 		
 		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 			String []cells=allRows.get(counterRows);
-			int indivNbTokens=0;
+			float indivNbTokens=0;
 			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
 			StringBuilder pathSB=new StringBuilder();
 			pathSB.append(chosenPath);
@@ -517,7 +518,7 @@ public class WordLookUp {
 			}
 		
 			if (map.containsKey(cells[chosenColumn])){
-				int previous=map.get(cells[chosenColumn]);
+				float previous=map.get(cells[chosenColumn]);
 				map.put(cells[chosenColumn], previous+indivNbTokens);
 			}
 			else{

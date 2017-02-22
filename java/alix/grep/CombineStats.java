@@ -73,7 +73,6 @@ public class CombineStats {
 				tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthorYear.get(cells[column])[2])+ occs );
 				tmp[0]=String.valueOf(((Double.parseDouble(statsPerAuthorYear.get(cells[column])[1])+countOccurrences)*1000000)/(Integer.parseInt(statsPerAuthorYear.get(cells[column])[2])+ occs )); //Relative Frequency
 				tmp[3]=cells[column]; //Authors name
-				tmp[4]=statsPerAuthorYear.get(cells[column])[4]+" // "+cells[GrepMultiWordExpressions.colYear]; // Year
 				tmp[5]=statsPerAuthorYear.get(cells[column])[5]+" // "+cells[GrepMultiWordExpressions.colTitle]; // Title
 				tmp[6]=fileName;
 			}
