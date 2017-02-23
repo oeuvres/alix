@@ -23,6 +23,17 @@ public class OccList
     for (int i=0; i<capacity; i++) data[i] = new Occ(); 
   }
   
+  /**
+   * Get value by index
+   * @param index
+   * @return
+   */
+  public Occ get( int index )
+  {
+    if ( index < 0 || index >= size ) throw new IndexOutOfBoundsException( ""+index+" >= "+size );
+    return data[index];
+  }
+  
   public OccList add( Occ occ )
   {
     // index is too short, extends data array

@@ -53,15 +53,19 @@ public class Query
       }
       // next test success, jump the gap, and works like a test success  
       if ( current.next().test( occ ) ) {
-        current = current.next().next();
-        if ( current == null ) {
+        // end of chain
+        if ( current.next().next() == null ) {
           current = first;
           return true;
         }
-        return false;
+        else {
+          current = current.next().next();
+          return false;
+        }
       }
       // not yet end of gap, continue
-      else if ( ((TestGap) current).dec() > 0 ) {
+      if ( ((TestGap) current).dec() > 0 ) {
+        System.out.println( occ );
         return false;
       }
       // end of gap, restart
@@ -214,7 +218,7 @@ public class Query
    */
   public static void main(String[] args)
   {
-    String text = "A B A B C A B C C C D";
+    String text = "A B A B C A B C C A C A D D D C";
     Query q1 = new Query("A B(A ,C)");
     Query q2 = new Query("A * C");
     Query q3 = new Query("A ** C");
