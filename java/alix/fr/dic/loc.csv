@@ -582,6 +582,7 @@ de traviole;ADV;
 dès lors;ADVtemp
 de temps en temps;ADVtemp
 de visu;ADV;
+du fond du cœur;ADV
 du haut en bas;ADV
 d'une part;ADV;
 du reste;ADV;
@@ -665,6 +666,7 @@ recto tono;ADV;
 ric et rac;ADV;
 sans cesse;ADV
 sans doute;ADV
+sans perdre de temps;ADV
 sine die;ADV;
 sine qua non;ADV;
 souventes fois;ADV;
@@ -701,8 +703,11 @@ vae victis;ADV;
 # locutions verbales
 
 avoir l'air;VERB
+avoir lieu;VERB
 aller droit;VERB
+demander pardon;VERB
 devoir dire;VERB
+donner la main;VERB
 donner l'ordre;VERB
 donner l’impression;VERB
 éclater de rire;VERB
@@ -713,18 +718,28 @@ laisser passer;VERB
 laisser tomber;VERB
 mettre la table;VERB
 mettre en examen;VERB
+mettre en peine;VERB
 prendre contact;VERB
+prendre du plaisir;VERB
 prendre garde;VERB
 prendre l’air;VERB
 prendre la peine;VERB
+prendre le soin de;VERB
 prendre part;VERB
 prendre place;VERB
 prendre ses jambes à son cou;VERB
+prendre soin;VERB
 rendre compte;VERB
+rendre grâce;VERB
+rendre hommage;VERB
+rendre justice;VERB
+rendre service;VERB
+rendre un service;VERB
 rendre visite;VERB
 savoir bien;VERB
 serrer la main;VERB
 tenir compte;VERB
+venir à bout;VERB
 vouloir dire;VERB
 
 # locutions nominales
@@ -773,6 +788,8 @@ beau père;SUB;beau-père
 bec de gaz;SUB
 becs de gaz;SUB
 bel canto;SUB
+bel esprit;SUB
+beaux esprits;SUB;bel esprit
 belle fille;SUB;belle-fille
 belle lurette;SUB
 belle mère;SUB;belle-mère
@@ -788,9 +805,10 @@ blue jeans;SUB
 blue note;SUB
 boîte aux lettres;SUB
 bon cœur;SUB
+bon goût;SUB
 bonne foi;SUB
+bonne fortune;SUB
 bonne humeur;SUB
-boat people;SUB
 bonne volonté;SUB
 bon sens;SUB
 bouche bée;SUB
@@ -845,14 +863,15 @@ conseil général;SUB
 conseiller général;SUB
 corn flakes;SUB
 corps de garde;SUB
-corpus delicti;SUB
 coup de balai;SUB
-coups de balai;SUB
+coups de balai;SUB;coup de balai
+coup de bâton;SUB
+coups de bâton;SUB;coup de bâton
 coup de feu;SUB
 coups de feu;SUB
 coup de fil;SUB
 coup de fusil;SUB
-coups de fusil;SUB
+coups de fusil;SUB;coup de fusil
 coup de main;SUB
 coups de main;SUB
 coup d'épée;SUB
@@ -881,12 +900,14 @@ de amicis;SUB
 de profundis;SUB
 de santis;SUB
 delirium tremens;SUB
+dernier soupir;SUB
 deus ex machina;SUB
 dies irae;SUB
 dîner en ville;SUB
 directeur général;SUB
 direction générale;SUB
 disque dur;SUB
+droit d’ainesse;SUB
 eau minérale;SUB
 éclat de rire;SUB
 éclats de rire;SUB;éclat de rire
@@ -906,6 +927,7 @@ femme de chambre;SUB
 femmes de chambre;SUB;femme de chambre
 five o'clock;SUB
 flatus vocis;SUB
+fond de l’âme;SUB
 foreign office;SUB
 free jazz;SUB
 fur et à mesure;SUB
@@ -925,6 +947,7 @@ girl friend;SUB
 grain de beauté;SUB
 grand'chose;SUB;grand-chose
 grand chose;SUB;grand-chose
+grand dieu;SUB
 grande partie;SUB
 grand mère;SUB;grand-mère
 grand'mère;SUB;grand-mère
@@ -933,6 +956,7 @@ grand père;SUB;grand-père
 grand'père;SUB;grand-père
 grand seigneur;SUB
 grands seigneurs;SUB;grand seigneur
+grands dieux;SUB
 grand'tante;SUB
 grève générale;SUB
 happy end;SUB
@@ -942,6 +966,10 @@ hard edge;SUB
 has been;SUB
 haut de forme;SUB;haut-de-forme
 haut-de-forme;SUB
+haut fait;SUB
+haut rang;SUB
+haute vertu;SUB
+hauts faits;SUB;haut fait
 high life;SUB
 hold up;SUB
 homo erectus;SUB
@@ -969,6 +997,7 @@ jet society;SUB
 jour de l'an;SUB
 juge de paix;SUB
 juge d’instruction;SUB
+juste ciel;SUB
 kung fu;SUB
 kyrie eleison;SUB
 la plata;SUB
@@ -1003,9 +1032,11 @@ maréchal des logis;SUB
 mass media;SUB
 mater dolorosa;SUB
 mauvaise conscience;SUB
+mauvaise grâce;SUB
 mauvaise foi;SUB
 mauvaise humeur;SUB
 mauvais goût;SUB
+mauvais sort;SUB
 maux de tête;SUB
 mea culpa;SUB
 melting pot;SUB
@@ -1098,6 +1129,8 @@ quart d'heure;SUB
 quartier général;SUB
 red river;SUB
 reine mère;SUB
+raison d'état;SUB
+raisons d'état;SUB;raison d'état
 rapport sexuel;SUB
 rapports sexuels;SUB
 rédacteur en chef;SUB
@@ -1118,21 +1151,15 @@ sainte nitouche;SUB
 salle à manger;SUB
 salle de bains;SUB
 scenic railway;SUB
-s. d.;SUB
 secrétaire de rédaction;SUB
 secrétaire général;SUB
 sedia gestatoria;SUB
 self-made man;SUB
+sens commun;SUB
 services sociaux;SUB
-sex appeal;SUB
-sex shop;SUB
-sex shops;SUB
-soap opéra;SUB
 signe de tête;SUB
 signe de croix;SUB
 signe de la croix;SUB
-s. l.;SUB
-s. l. n. d.;SUB
 soutien-gorge;SUB
 soutien gorge;SUB;soutien-gorge
 sri lankais;SUB
@@ -1144,6 +1171,7 @@ table de chevet;SUB
 table d’écoute;SUB
 taï chi;SUB
 talavera de la reina;SUB
+tarte à la crème;SUB
 te deum;SUB
 téléphone portable;SUB
 temps à perdre;SUB
@@ -1243,13 +1271,18 @@ qui aime bien châtie bien;SUB
 
 # EXCL 
 
+aller aller;EXCL
+allez allez;EXCL
 allons allons;EXCL
 bon Dieu;EXCL
 bordel de merde;EXCL
-mon Dieu;EXCL
-allons allons;EXCL
-aller aller;EXCL
+drelin drelin;EXCL
+hay hay;EXCL
+hi hi;EXCL
+hi hi hi;EXCL
+hi hi hi hi;EXCL
 juste ciel;EXCL
 Juste ciel;EXCL
-que le diable l'emporte;EXCL
+mon Dieu;EXCL
 Oh ! ciel;EXCL
+que le diable l'emporte;EXCL

@@ -7,6 +7,7 @@ import alix.fr.Occ;
  * 
  * Do not works well for now, no backtracking of things like that
  * (A B, A C) will not find "A C"
+ * TODO: a query compilator, transforming (A B, D B, A C, D C) => (A (B, C), D (B, C))
  * @author glorieux-f
  *
  */

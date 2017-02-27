@@ -9,6 +9,7 @@ import alix.util.Char;
  * TODO document query syntax
  * 
  * Possible backtracking silences "A A B B", "A * B" => will not fire 2x
+ * 
  * Idea, the shortest path size (**=0, OR=shortest)
  * 
  * @author glorieux-f
