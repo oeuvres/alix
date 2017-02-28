@@ -344,18 +344,24 @@ public class WordLookUp {
 				
 				while (toks.token(occ) ) {
 					if ( q1.test(occ) ) {
-						if (occ.tag().toString().contains("NAME")){
-							globalResults.add(q1.found().toString());
+						StringBuilder sb=new StringBuilder();
+						if (occ.tag().isName() ){
+							for (int indexOcc=0;indexOcc<q1.foundSize();indexOcc++){
+								sb.append(q1.found().get(indexOcc).lem().toString()+" ");
+							}
+							
 						}
 						else{
-							globalResults.add(q1.found().toString().toLowerCase());
+							for (int indexOcc=0;indexOcc<q1.found().size();indexOcc++){
+								sb.append(q1.found().get(indexOcc).lem().toString().toLowerCase()+" ");
+							}
 						}
+						globalResults.add(sb.toString());
 					}
 					numberOccs++;
 				}
 			}
 			
-		System.out.println(numberOccs);
 		Set<String> uniqueSet = new HashSet<String>(globalResults);
 		for (String temp : uniqueSet) {
 			orderedGlobalResults.put(temp, Collections.frequency(globalResults, temp));
@@ -364,7 +370,6 @@ public class WordLookUp {
 		orderedGlobalResults=sortMyMapByValue(orderedGlobalResults);
 		String queryForFile=queries.replaceAll("\\W+", "_");
 		String saveFolder=new File(pathTSV).getParentFile().getAbsolutePath()+"/";
-		System.out.println(saveFolder);
 		File fileGlobal =new File(saveFolder+queryForFile+"_globalPatterns.tsv");
 		FileWriter writerGlobal = new FileWriter(fileGlobal,false);
 		Path path1=Paths.get(saveFolder);
@@ -414,12 +419,19 @@ public class WordLookUp {
 
 				while (toks.token(occ) ) {
 					if (q1.test(occ) ) {
+						StringBuilder sb=new StringBuilder();
 						if (occ.tag().toString().contains("NAME")){
-							indivResults.add(q1.found().toString());
+							
+							for (int indexOcc=0;indexOcc<q1.foundSize();indexOcc++){
+								sb.append(q1.found().get(indexOcc).lem().toString()+" ");
+							}
 						}
 						else{
-							indivResults.add(q1.found().toString().toLowerCase());
+							for (int indexOcc=0;indexOcc<q1.foundSize();indexOcc++){
+								sb.append(q1.found().get(indexOcc).lem().toString().toLowerCase()+" ");
+							}
 						}
+						indivResults.add(sb.toString());
 					}
 				}
 
