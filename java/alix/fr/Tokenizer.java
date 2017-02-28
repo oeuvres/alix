@@ -147,8 +147,13 @@ public class Tokenizer
     // no compound with punctuation
     if ( occhere.tag().isPun() ) return occhere;
     Stem stem;
+    // NAME resolutions
+    if ( occhere.tag().isName() ) {
+      // will not match « sentence. La Fontaine »
+      stem = locroot.get( "NAME" );
+    }
     // verb, test lem for locution
-    if ( occhere.tag().isVerb() ) {
+    else if ( occhere.tag().isVerb() ) {
       stem = locroot.get( occhere.lem() );
       // ??
       // if ( stem == null ) stem = locroot.get( occhere.orth() );
@@ -161,11 +166,6 @@ public class Tokenizer
     }
     else {
       stem = locroot.get( occhere.graph() );
-    }
-    // try rules
-    if ( stem == null ) {
-      if ( occhere.tag().isName() ) stem =  rulesroot.get( "NAME" );
-      else stem = rulesroot.get( occhere.orth() );
     }
     // if there is a compound, the locution explorer will merge the compound
     if( stem != null )  locsearch( stem );
@@ -206,7 +206,7 @@ public class Tokenizer
           return false;
         }
         // merge occurrencies, means, append next token to current, till the compound end
-        while ( occhere.next() != ranger ) { 
+        while ( occhere.next() != ranger ) {
           // normalize orth, compound test has been down on graph
           occhere.next().orth( occhere.next().graph() );
           occhere.apend( occhere.next() );
@@ -260,8 +260,8 @@ public class Tokenizer
     else if (Char.isUpperCase( c )) {
       // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
       if ( Lexik.name( occ ) ) return true;
-      // U.R.S.S.
-      if ( occ.graph().length() > 1 && occ.graph().charAt( 1 ) == '.') {
+      // U.R.S.S. but not M.
+      if ( occ.graph().length() > 2 && occ.graph().charAt( 1 ) == '.') {
         occ.tag( Tag.NAME );
         return true;
       }
@@ -671,7 +671,7 @@ public class Tokenizer
       String text;
       text = "<>"
          // 123456789 123456789 123456789 123456789
-        + " Et alors, Monsieur Claude Bernard, D’Artagnan J’en tiens compte à l’Académie des Sciences morales. Mais il y a &amp; t&eacute;l&eacute; murmure-t-elle rendez-vous voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
+        + " Et alors, M. Claude Bernard, D’Artagnan J’en tiens compte à l’Académie des Sciences morales. Mais il y a &amp; t&eacute;l&eacute; murmure-t-elle rendez-vous voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
         + " , l'animal\\nc’est-à-dire parce qu’alors, non !!! Il n’y a vu que du feu."
       //  + " De temps en temps, Claude Lantier promenait sa flânerie  "
       //  + " avec Claude Bernard, Auguste Comte, et Joseph de Maistre. Geoffroy Saint-Hilaire."

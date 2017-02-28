@@ -147,6 +147,7 @@ public class Occ
   public Occ apend( Occ occ )
   {
     char c;
+    /*
     // ?? Monsieur Claude Bernard
     // strip firstname is better for name matching
     if ( this.tag.equals( Tag.NAMEpersf ) || this.tag.equals( Tag.NAMEpersm ) ) {
@@ -154,6 +155,7 @@ public class Occ
       // "Joseph de Maistre" will become "Maistre" if "de" is said to be firstName
       this.tag.set( 0 );
     }
+    */
     if ( !graph.isEmpty() ) {
       c = graph.last();
       if ( c != '\'' && c != '’' && c != '-' && occ.graph.first() != '-')

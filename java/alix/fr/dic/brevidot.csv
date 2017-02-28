@@ -57,11 +57,11 @@ l.
 L.
 liv.
 loc.
-M.;;Monsieur
-Mlle.;;Mademoiselle
-Melle.;;Mademoiselle
-MM.;;Messieurs
-Mm.;;Messieurs
+M.;SUB;monsieur
+Mlle.;SUB;mademoiselle
+Melle.;SUB;mademoiselle
+MM.;SUB;messieurs
+Mm.;SUB;messieurs
 ms.
 n.
 N.
@@ -76,8 +76,8 @@ P.
 p.
 pag.;;p.
 pp.
-Pr.;;Professeur
-Prs.;;Professeur
+Pr.;SUB;Professeur
+Prs.;SUB;Professeur
 Q.
 R.
 s.

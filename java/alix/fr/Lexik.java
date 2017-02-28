@@ -54,7 +54,7 @@ public class Lexik
       loadRes( "dic/forename.csv", _NAME );
       loadRes( "dic/word.csv", _WORD );
       loadRes( "dic/loc.csv", _LOC );
-      loadRes( "dic/rules.csv", _RULES );
+      // loadRes( "dic/rules.csv", _RULES );
       loadRes( "dic/orth.csv", _ORTH );
       loadRes( "dic/brevidot.csv", _BREVIDOT );
       loadRes( "dic/name.csv", _NAME );
@@ -241,7 +241,10 @@ public class Lexik
   {
     NameEntry entry = Lexik.NAME.get( occ.graph() );
     if ( entry == null ) return false;
-    if ( entry.orth != null ) occ.orth( entry.orth );
+    if ( entry.orth != null ) {
+      occ.orth( entry.orth );
+    }
+    occ.lem( occ.orth() );
     occ.tag( entry.tag );
     return true;
   }
