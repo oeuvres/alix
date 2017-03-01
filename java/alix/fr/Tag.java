@@ -8,8 +8,6 @@ import alix.util.Term;
  */
 public final class Tag
 {
-  /** Category */
-  private short code;
   /** Connu comme inconnu (selon les dictionnaires) */
   public final static short UNKNOWN = -1;
   /** Valeur par défaut, aucune information */
@@ -126,7 +124,11 @@ public final class Tag
   public final static short PUNcl  = 0xC2;
   /** Abréviation (encore non résolue) */
   public final static short ABBR  = 0xD0;
+  /** Category */
+  private short code;
+  /** Dictionnaire des codes par nom */
   static final HashMap<String, Short> CODE = new  HashMap<String, Short>(); 
+  /** Dictionnaire des noms par code */
   static final HashMap<Short, String> LABEL = new HashMap<Short, String>(); 
   // loop on the static fields declared to populate the HashMaps
   static {

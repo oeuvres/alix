@@ -7,11 +7,7 @@ import alix.util.StemTrie.Stem;
 import alix.util.Term;
 
 /**
- * Not thread safe on pointer
- * 
  * A tokenizer for French, build for efficiency AND precision.
- * Faster than a String Scanner.
- * useful for poetry or for modern French (1600-1800)
  * 
  * Design
  * Token is extracted by a char loop on a big internal string of the text to tokenize
@@ -185,7 +181,7 @@ public class Tokenizer
     Occ ranger = occhere; // an occurrence launch to serach for compound
     while ( true ) {
       // front of buffer, have a token more
-      if ( ranger == occline.first() ) token(occline.push());
+      if ( ranger == occline.first() ) token( occline.push() );
       ranger = ranger.next();
       // names compound
       if ( ranger.tag().isName() ) {
@@ -274,6 +270,7 @@ public class Tokenizer
       // unknow name
       // restore the initial capital word
       occ.orth().firstToUpper();
+      if ( occ.lem().isEmpty() ) occ.lem( occ.orth() );
       occ.tag( Tag.NAME );
       return true;
     }
