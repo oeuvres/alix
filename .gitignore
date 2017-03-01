@@ -13,3 +13,5 @@ res/
 /*.txt
 /*.xlsx
 /*.xml
+
+.settings/org.eclipse.jdt.core.prefs

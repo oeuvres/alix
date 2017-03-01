@@ -1,80 +1,130 @@
 package alix.fr;
-
-
 import java.lang.reflect.Field;
 import java.util.HashMap;
-
 import alix.util.Term;
-
-
-
 /**
- * Tagset
+ * Jeu d’étiquettes morphosyntaxique pour le français.
  * @author glorieux
- *
  */
 public final class Tag
 {
   /** Category */
   private short code;
-  
-  public final static short UNKNOWN = -1; 
+  /** Connu comme inconnu (selon les dictionnaires) */
+  public final static short UNKNOWN = -1;
+  /** Valeur par défaut, aucune information */
   public final static short NULL = 0; 
+  /** Verbe, qui n'est pas l'une des catégories ci-dessous */
   public final static short VERB = 0x10;
+  /** Auxilliaire, conjugaison d’être et avoir */
   public final static short VERBaux = 0x11; 
-  public final static short VERBppass = 0x12; 
+  /** Participe passé, peut avoir un emploi adjectif, voire substantif */
+  public final static short VERBppass = 0x12;
+  /** Participe présent, a souvent un emploi adjectif ou substantif */
   public final static short VERBppres = 0x13; 
+  /** Verbe support, fréquent mais peut significatif, comme aller (je vais faire) */
   public final static short VERBsup = 0x15;
+  /** Substantif */
   public final static short SUB  = 0x20;
+  /** Substantif masculin (pas encore renseigné) */
   public final static short SUBm  = 0x21;
+  /** Substantif féminin (pas encore renseigné) */
   public final static short SUBf  = 0x22;
+  /** Catégorie un peu adhoc pour monsieur, madame, prince… */
   public final static short SUBtit = 0x28;
+  /** Adjectif */
   public final static short ADJ  = 0x30;
+  /** Adverbe */
   public final static short ADV  = 0x40;
+  /** Adverbe de négation : ne, pas, point… */
   public final static short ADVneg = 0x41;
+  /** Adverbe de lieu */
   public final static short ADVplace = 0x42;
+  /** Adverbe de temps */
   public final static short ADVtemp = 0x43;
+  /** Adverbe de quantité */
   public final static short ADVquant = 0x44;
+  /** Adverbe indéfini : aussi, même… */
   public final static short ADVindef = 0x4A;
+  /** Adverbe interrogatif : est-ce que, comment… */
   public final static short ADVinter = 0x4B;
+  /** Préposition */
   public final static short PREP = 0x50;
+  /** Déterminant */
   public final static short DET  = 0x60;
+  /** Déterminant article : le, la, un, des… */
   public final static short DETart = 0x61;
+  /** Déterminant prépositionnel : du, au (?? non comptable ?) */
   public final static short DETprep = 0x62;
+  /** Déterminant numéral : deux, trois */  
   public final static short DETnum  = 0x63;
+  /** Déterminant indéfini : tout, tous, quelques… */  
   public final static short DETindef = 0x6A;
+  /** Déterminant interrogatif : quel, quelles… */  
   public final static short DETinter = 0x6B;
+  /** Déterminant démonstratif : ce, cette, ces… */  
   public final static short DETdem = 0x6C;
+  /** Déterminant possessif : son, mas, leurs… */    
   public final static short DETposs = 0x6D;
+  /** Pronom */
   public final static short PRO  = 0x70;
+  /** Pronom personnel : il, je, se, me… */
   public final static short PROpers = 0x71;
+  /** Pronom relatif : qui, que, où… */
   public final static short PROrel = 0x72;
+  /** Pronom indéfini : y, rien, tout… */
   public final static short PROindef = 0x7A;
+  /** Pronom interrogatif : y, rien, tout… */
   public final static short PROint = 0x7B;
+  /** Pronom démonstratif : c', ça, cela… */
   public final static short PROdem = 0x7C;
+  /** Pronom possessif : le mien, la sienne… */
   public final static short PROposs = 0x7D;
+  /** Conjonction */
   public final static short CONJ = 0x80;
-  public final static short CONJcoord = 0x81; 
+  /** Conjonction de coordination : et, mais, ou… */  
+  public final static short CONJcoord = 0x81;
+  /** Conjonction de subordination : comme, si, parce que… */
   public final static short CONJsubord = 0x82;
+  /** Nom propre */
   public final static short NAME = 0xB0;
+  /** Nom de personne */
   public final static short NAMEpers = 0xB1;
+  /** Prénom masculin */
   public final static short NAMEpersm = 0xB2;
+  /** Prénom féminin */
   public final static short NAMEpersf = 0xB3;
+  /** Nom de lieu */
   public final static short NAMEplace = 0xB4;
+  /** Nom d’organisation */
   public final static short NAMEorg = 0xB5;
+  /** Nom de peuple */
   public final static short NAMEpeople = 0xB6;
+  /** Nom d’événement : la Révolution, la Seconde Guerre mondiale… */
   public final static short NAMEevent = 0xB7;
+  /** Nom de personne auteur */
   public final static short NAMEauthor = 0xB8;
+  /** Nom de personnage fictif */
   public final static short NAMEfict = 0xB9;
+  /** Titre d’œuvre */
   public final static short NAMEtitle = 0xBA;
+  /** Animal : Pégase… */
   public final static short NAMEanimal = 0xBD;
+  /** Demi-humain : Hercule… */
   public final static short NAMEdemhum = 0xBE;
+  /** Noms de dieux : Dieu, Vénus… */
   public final static short NAMEgod = 0xBF;
+  /** Exclamation */
   public final static short EXCL = 0x90;
+  /** Numéro */
   public final static short NUM = 0xA0;
+  /** Ponctuation */
   public final static short PUN  = 0xC0;
+  /** Ponctuation de phrase : . ? ! */
   public final static short PUNsent  = 0xC1;
+  /** Ponctuation de clause : , ; ( */
   public final static short PUNcl  = 0xC2;
+  /** Abréviation (encore non résolue) */
   public final static short ABBR  = 0xD0;
   static final HashMap<String, Short> CODE = new  HashMap<String, Short>(); 
   static final HashMap<Short, String> LABEL = new HashMap<Short, String>(); 
