@@ -1,7 +1,6 @@
 # Alix
-## Tool for French tokenization, lemmatization, POStagging ; corpus analysis ; distributional semantics
+Tool for French tokenization, lemmatization, POStagging ; corpus analysis ; distributional semantics
 
-#### Alix provides :
 - a tokenizer/lemmatizer/POStagger for French
 - a one hot encoding vectorizer (muthoVek)
 - a corpus statistical analyzer (Grep) that searches for single/multiple occurrences and syntactical patterns
