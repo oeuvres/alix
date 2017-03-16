@@ -6,55 +6,64 @@
 - a one hot encoding vectorizer (muthoVek)
 - a corpus statistical analyzer (Grep) that searches for single/multiple occurrences and syntactical patterns
 
-#### Tags used in Alix :
-  Verb : VERB
-  <br>Verbal Auxiliary : VERBaux
-  <br>Past Participal : VERBppass
-  <br>Present Participal : VERBppres
-  <br>Substantive : SUB
-  <br>Masculine Substantive : SUBm
-  <br>Feminine Substantive : SUBf
-  <br>Adjective : ADJ
-  <br>Adverb : ADV
-  <br>Negative Adverb : ADVneg
-  <br>Location Adverb :  ADVplace
-  <br>Temporal Adverb : ADVtemp
-  <br>Quantitative Adverb : ADVquant
-  <br>Indefinite Adverb : ADVindef
-  <br>Interrogative Adverb : ADVinter
-  <br>Preposition : PREP
-  <br>"Déterminant" (qualifier) : DET
-  <br>"Article Défini" : DETart
-  <br>"Article Contracté" : DETprep
-  <br>"Article Numéral" : DETnum
-  <br>"Article Indéfini" : DETindef
-  <br>"Article Interrogatif" : DETinter
-  <br>"Article Démonstratif" : DETdem
-  <br>"Article Possessif" : DETposs
-  <br>Pronoun : PRO
-  <br>Personal Pronoun : PROpers
-  <br>Relative Pronoun : PROrel
-  <br>Indefinite Pronoun : PROindef
-  <br>Interrogative Pronoun : PROint
-  <br>Demonstrative Pronoun : PROdem
-  <br>Possessive Pronoun : PROposs
-  <br>Conjunction : CONJ
-  <br>Coordinate Conjunction : CONJcoord
-  <br>Subordinate Conjunction : CONJsubord
-  <br>Proper Noun : NAME
-  <br>Human Proper Noun : NAMEpers
-  <br>Human Male Proper Noun : NAMEpersm
-  <br>Human Female Proper Noun : NAMEpersf
-  <br>Place Proper Noun : NAMEplace
-  <br>People Proper Noun : NAMEpeople
-  <br>Event Proper Noun : NAMEevent
-  <br>Author Proper Noun : NAMEauthor
-  <br>Title Proper Noun : NAMEtitle
-  <br>Animal Proper Noun : NAMEanimal
-  <br>Half-Human Proper Noun : NAMEdemhum
-  <br>God Proper Noun : NAMEgod
-  <br>Number : NUM
-  <br>Punctuation : PUN
-  <br>Sentence Punctuation : PUNsent
-  <br>Light Punctuation : PUNcl
-  <br>Abbreviation : ABBR
+#### Étiquettes morphosyntaxiques
+
+* UNKNOWN — connu comme inconnu (selon les dictionnaires) 
+* NULL — valeur par défaut, aucune information
+* VERB — verbe, qui n'est pas l'une des catégories ci-dessous
+  * VERBaux — auxilliaire, conjugaison d’être et avoir
+  * VERBppass — participe passé, peut avoir un emploi adjectif, voire substantif
+  * VERBppres — participe présent, a souvent un emploi adjectif ou substantif 
+  * VERBsup — verbe support, fréquent mais peut significatif, comme aller (je vais faire) 
+* SUB — substantif
+  * SUBm — substantif masculin (pas encore renseigné)
+  * SUBf — substantif féminin (pas encore renseigné)
+* ADJ — adjectif
+* ADV — adverbe
+  * ADVneg — adverbe de négation : ne, pas, point… 
+  * ADVplace — adverbe de lieu
+  * ADVtemp — adverbe de temps
+  * ADVquant — adverbe de quantité
+  * ADVindef — Averbe indéfini : aussi, même…
+  * ADVinter — adverbe interrogatif : est-ce que, comment… 
+* PREP — préposition
+* DET — déterminant
+  * DETart — déterminant article : le, la, un, des… 
+  * DETprep — déterminant prépositionnel : du, au (?? non comptable ?) 
+  * DETnum — déterminant numéral : deux, trois
+  * DETindef — déterminant indéfini : tout, tous, quelques…
+  * DETinetr — déterminant interrogatif : quel, quelles…
+  * DETdem — déterminant démonstratif : ce, cette, ces…
+  * DETposs — déterminant possessif : son, mas, leurs…
+* PRO — pronom  
+  * PROpers — pronom personnel : il, je, se, me…
+  * PROrel — pronom relatif : qui, que, où… 
+  * PROindef — pronom indéfini : y, rien, tout…
+  * PROinter — pronom interrogatif : où, que, qui…
+  * PROdem — pronom démonstratif : c', ça, cela…
+  * PROposs — pronom possessif : le mien, la sienne…
+* CONJ — conjonction
+  * CONJcoord — conjonction de coordination : et, mais, ou…
+  * CONJsubord — conjonction de subordination : comme, si, parce que…
+* NAME — nom propre
+  * NAMEpers — nom de personne
+  * NAMEpersm — prénom masculin
+  * NAMEpersf — prénom féminin
+  * NAMEplace — nom de lieu
+  * NAMEorg — nom d’organisation
+  * NAMEpeople — nom de peuple
+  * NAMEevent — nom d’événement : la Révolution, la Seconde Guerre mondiale…
+  * NAMEauthor — nom de personne auteur
+  * NAMEfict — nom de personnage fictif
+  * NAMEtitle — titre d’œuvre
+  * NAMEanimal — animal : Pégase…
+  * NAMEdemhum — demi-humain : Hercule…
+  * NAMEgod — noms de dieux : Dieu, Vénus…
+* EXCL — exclamation
+* NUM — numéro
+* PUN — ponctuation
+  * PUNsent — ponctuation de phrase : . ? ! 
+  * PUNcl — ponctuation de clause : , ; (
+* ABBR — abréviation (encore non résolue)
+
+
