@@ -48,9 +48,15 @@ public class WordLookUp {
 	String query;
 	int caseSensitivity;
 	String nameYearTitle;
-	HashMap<String, String[]>statsPerAuthorYear;
+	HashMap<String, String[]>statsPerAuthor;
+	HashMap<String, String[]>statsPerYear;
 	String form;
 	static int limit;
+
+	public static final int colCode=2;
+	public static final int colAuthor=3;
+	public static final int colYear=4;
+	static final int colTitle=5;
 
 	List<String[]>statsPerDoc;
 	long nbOccs;
@@ -95,12 +101,20 @@ public class WordLookUp {
 		this.nameYearTitle = query;
 	}
 
-	public HashMap<String, String[]> getStatsAuthorYear() {
-		return statsPerAuthorYear;
+	public HashMap<String, String[]> getStatsAuthor() {
+		return statsPerAuthor;
 	}
 
-	public void setStatsPerAuthorYear(HashMap<String, String[]> stats) {
-		this.statsPerAuthorYear = stats;
+	public void setStatsPerAuthor(HashMap<String, String[]> stats) {
+		this.statsPerAuthor = stats;
+	}
+
+	public HashMap<String, String[]> getStatsYear() {
+		return statsPerYear;
+	}
+
+	public void setStatsPerYear(HashMap<String, String[]> stats) {
+		this.statsPerYear = stats;
 	}
 
 	public String getFormPreference() {
@@ -110,18 +124,18 @@ public class WordLookUp {
 	public void setFormPreference (String form) {
 		this.form = form;
 	}
-	
+
 	public int getLimit() {
 		return limit ;	
 	}
-	
+
 	public void setLimit (int limit) {
 		WordLookUp.limit = limit;
 	}
 
 
 	@SuppressWarnings("resource")
-	public HashMap<String, String[]> oneWord(String chosenPath, int chosenColumn,
+	public void oneWord(String chosenPath,
 			List <String []>allRows) throws IOException{
 		System.out.println("Quel mot voulez-vous chercher ?");
 
@@ -164,23 +178,21 @@ public class WordLookUp {
 
 			CombineStats combine=new CombineStats();
 			combine.setStatsPerDoc(getStatsPerDoc());
-			combine.setStatsPerAuthorYear(getStatsAuthorYear());
-			statsPerAuthorYear=combine.mergeData( cells, 
-					chosenColumn, countOccurrences, occs, fileName);
+			combine.setStatsPerAuthor(getStatsAuthor());
+			combine.setStatsPerYear(getStatsYear());
+			combine.mergeData( cells,countOccurrences, occs, fileName);
+			statsPerAuthor=combine.statsPerAuthor;
+			statsPerYear=combine.statsPerYear;
 			statsPerDoc=combine.getStatsPerDoc();
 		}
-
-		System.out.println("\nQuel(le) "+nameYearTitle+" voulez-vous ?");
-		setPreciseQuery(answer.nextLine());
-		return statsPerAuthorYear;
+		System.out.println("Fin des calculs");
 
 	}
 
 
 
 	@SuppressWarnings("resource")
-	public HashMap<String, String[]> severalWords(String chosenPath, 
-			int chosenColumn,List <String []>allRows) throws IOException{
+	public void severalWords(String chosenPath,List <String []>allRows) throws IOException{
 		System.out.println("Quel(s) mot(s) voulez-vous chercher ? (si plusieurs, séparez par un espace)");
 		Scanner motsUtil=new Scanner (System.in);
 		query = motsUtil.nextLine();
@@ -253,16 +265,17 @@ public class WordLookUp {
 
 			CombineStats combine=new CombineStats();
 			combine.setStatsPerDoc(getStatsPerDoc());
-			combine.setStatsPerAuthorYear(getStatsAuthorYear());
-			statsPerAuthorYear=combine.mergeData( cells, 
-					chosenColumn, countOccurrences, occs, fileName);
+			combine.setStatsPerAuthor(getStatsAuthor());
+			combine.setStatsPerYear(getStatsYear());
+			combine.mergeData( cells,countOccurrences, occs, fileName);
+			statsPerAuthor=combine.statsPerAuthor;
+			statsPerYear=combine.statsPerYear;
 			statsPerDoc=combine.getStatsPerDoc();
 		}
 
 		System.out.println("\nQuel(le) "+nameYearTitle+" voulez-vous ?");
 		Scanner answerLine=new Scanner(System.in);
 		setPreciseQuery(answerLine.nextLine());
-		return statsPerAuthorYear;
 	}
 
 	private class WordFlag {
@@ -271,7 +284,7 @@ public class WordLookUp {
 
 
 	@SuppressWarnings("resource")
-	public HashMap<String, String[]> wordAndTags(String chosenPath, int chosenColumn, List <String []>allRows) 
+	public void wordAndTags(String chosenPath, List <String []>allRows) 
 			throws IOException{
 		System.out.println("Quel(s) mot(s) voulez-vous chercher ? (si plusieurs, séparez par un espace)");
 		Scanner motsUtil=new Scanner (System.in);
@@ -299,16 +312,17 @@ public class WordLookUp {
 
 			CombineStats combine=new CombineStats();
 			combine.setStatsPerDoc(getStatsPerDoc());
-			combine.setStatsPerAuthorYear(getStatsAuthorYear());
-			statsPerAuthorYear=combine.mergeData( cells, 
-					chosenColumn, countOccurrences, nbOccs, fileName);
+			combine.setStatsPerAuthor(getStatsAuthor());
+			combine.setStatsPerYear(getStatsYear());
+			combine.mergeData( cells,countOccurrences, nbOccs, fileName);
+			statsPerAuthor=combine.statsPerAuthor;
+			statsPerYear=combine.statsPerYear;
 			statsPerDoc=combine.getStatsPerDoc();
 		}
 
 		System.out.println("\nQuel(le) "+nameYearTitle+" voulez-vous ?");
 		Scanner answerLine=new Scanner(System.in);
 		setPreciseQuery(answerLine.nextLine());
-		return statsPerAuthorYear;
 
 
 	}
@@ -322,50 +336,51 @@ public class WordLookUp {
 	 * 
 	 * @return tsv file with patterns count
 	 */
-	public void tsvStats(String pathTSV, String pathCorpus, int col, String queries) throws IOException{
-		
+	public void tsvStats(String pathTSV, String pathCorpus, String queries) throws IOException{
+
 		BufferedReader TSVFile = new BufferedReader(new FileReader(pathTSV));
 		List<String>globalResults=new ArrayList<String>();
 		LinkedHashMap<String,Integer>orderedGlobalResults=new LinkedHashMap<String,Integer>();
 		File directory=new File(pathCorpus);
-		
+
 		File []alltexts=directory.listFiles(new FilenameFilter() {
-		    public boolean accept(File dir, String name) {
-		        return name.toLowerCase().endsWith(".xml");
-		    }
+			public boolean accept(File dir, String name) {
+				return name.toLowerCase().endsWith(".xml");
+			}
 		});
+		System.out.println("Calcul des matchs en cours...");
 		float numberOccs=0;
 		for (File file:alltexts){
 			Query q1 = new Query(queries);
-				String xmlTest = new String(Files.readAllBytes(  file.toPath()) , StandardCharsets.UTF_8);
-				Tokenizer toks = new Tokenizer(xmlTest);
-				Occ occ=new Occ();
-				
-				
-				while (toks.token(occ) ) {
-					if ( q1.test(occ) ) {
-						StringBuilder sb=new StringBuilder();
-						if (occ.tag().isName() ){
-							for (int indexOcc=0;indexOcc<q1.foundSize();indexOcc++){
-								sb.append(q1.found().get(indexOcc).lem().toString()+" ");
-							}
-							
+			String xmlTest = new String(Files.readAllBytes(  file.toPath()) , StandardCharsets.UTF_8);
+			Tokenizer toks = new Tokenizer(xmlTest);
+			Occ occ=new Occ();
+
+			while (toks.token(occ) ) {
+				if ( q1.test(occ) ) {
+					StringBuilder sb=new StringBuilder();
+					if (occ.tag().isName() ){
+						for (int indexOcc=0;indexOcc<q1.foundSize();indexOcc++){
+							sb.append(q1.found().get(indexOcc).lem().toString()+" ");
 						}
-						else{
-							for (int indexOcc=0;indexOcc<q1.found().size();indexOcc++){
-								sb.append(q1.found().get(indexOcc).lem().toString().toLowerCase()+" ");
-							}
-						}
-						globalResults.add(sb.toString());
 					}
-					numberOccs++;
+					else{
+						for (int indexOcc=0;indexOcc<q1.found().size();indexOcc++){
+							sb.append(q1.found().get(indexOcc).lem().toString().toLowerCase()+" ");
+						}
+					}
+					globalResults.add(sb.toString());
 				}
+				numberOccs++;
 			}
-			
+		}
+
 		Set<String> uniqueSet = new HashSet<String>(globalResults);
 		for (String temp : uniqueSet) {
 			orderedGlobalResults.put(temp, Collections.frequency(globalResults, temp));
 		}
+
+		System.out.println("Fin des calculs globaux, début des calculs individuels");
 
 		orderedGlobalResults=sortMyMapByValue(orderedGlobalResults);
 		String queryForFile=queries.replaceAll("\\W+", "_");
@@ -395,21 +410,21 @@ public class WordLookUp {
 		String dataRow = TSVFile.readLine();
 		List <String []>allRows=new ArrayList<String[]>();
 		String[] dataArray = null;
-		
+
 		while (dataRow != null){
 			dataArray = dataRow.split("\t");
 			allRows.add(dataArray);
 			dataRow = TSVFile.readLine();
 		}
 		TSVFile.close();
-		
+
 		HashMap<String,LinkedHashMap<String,Integer>>mapAuthor=new HashMap<String,LinkedHashMap<String,Integer>>();
 		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 			List<String>indivResults=new ArrayList<String>();
 			String []cells=allRows.get(counterRows);
 			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
-			String queryEntry=cells[col];
-			
+			String queryName=cells[GrepMultiWordExpressions.colAuthor];
+
 			Query q1 = new Query(queries);
 			Path path = Paths.get(pathCorpus+"/"+fileName);
 			if (Files.exists(path)) {
@@ -421,7 +436,7 @@ public class WordLookUp {
 					if (q1.test(occ) ) {
 						StringBuilder sb=new StringBuilder();
 						if (occ.tag().toString().contains("NAME")){
-							
+
 							for (int indexOcc=0;indexOcc<q1.foundSize();indexOcc++){
 								sb.append(q1.found().get(indexOcc).lem().toString()+" ");
 							}
@@ -436,8 +451,8 @@ public class WordLookUp {
 				}
 
 				LinkedHashMap<String,Integer>findings=new LinkedHashMap<String,Integer>();
-				if (mapAuthor.containsKey(queryEntry)){
-					findings=mapAuthor.get(queryEntry);
+				if (mapAuthor.containsKey(queryName)){
+					findings=mapAuthor.get(queryName);
 					for (String key:orderedGlobalResults.keySet()){
 						if (!findings.containsKey(key)) {
 							findings.put(key, Collections.frequency(indivResults, key));
@@ -459,27 +474,20 @@ public class WordLookUp {
 						}
 					}
 				}
-				mapAuthor.put(queryEntry, findings);
+				mapAuthor.put(queryName, findings);
 			}
 		}
-		
-		// ça, ça pue, faut changer
-		String nameOrYear="";
-		if (col==3){
-			nameOrYear="name";
-		}
-		else{
-			nameOrYear="year";
-		}
-		File fileTSV =new File(saveFolder+queryForFile+"_"+nameOrYear+"_indivPatterns.tsv");
+		System.out.println("Fin des calculs");
+
+		File fileTSV =new File(saveFolder+queryForFile+"_name_indivPatterns.tsv");
 		FileWriter writer = new FileWriter(fileTSV, false);
 		if (!fileTSV.getParentFile().isDirectory()){
 			Files.createDirectories(path1);
 		}
 
-		HashMap<String, Float>secondMap=countTokens(pathCorpus, col, allRows);
-		
-		writer.append(nameOrYear+"\t");
+		HashMap<String, Float>secondMap=countTokens(pathCorpus, colAuthor, allRows);
+
+		writer.append("name \t");
 		writer.append("Pattern\t");
 		writer.append("Nombre\t");
 		writer.append("Frequence Relative\t");
@@ -493,7 +501,7 @@ public class WordLookUp {
 				writer.append(value+"\t");
 				writer.append(nb+"\t");
 				if (secondMap.containsKey(entry.getKey())){
-					
+
 					writer.append((float)nb*1000000/ (float)secondMap.get(entry.getKey())+"\t");
 					writer.append(secondMap.get(entry.getKey())+"");
 				}
@@ -513,10 +521,10 @@ public class WordLookUp {
 						(e1, e2) -> e1, LinkedHashMap::new));
 		return sortedMap;
 	}
-	
+
 	public HashMap<String, Float>countTokens(String chosenPath, int chosenColumn, List <String []>allRows) throws IOException{
 		HashMap<String, Float>map=new HashMap<String, Float>();
-		
+
 		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 			String []cells=allRows.get(counterRows);
 			float indivNbTokens=0;
@@ -532,7 +540,7 @@ public class WordLookUp {
 			while (toks.token(occ) ) {
 				indivNbTokens++;
 			}
-		
+
 			if (map.containsKey(cells[chosenColumn])){
 				float previous=map.get(cells[chosenColumn]);
 				map.put(cells[chosenColumn], previous+indivNbTokens);
@@ -541,7 +549,7 @@ public class WordLookUp {
 				map.put(cells[chosenColumn], indivNbTokens);
 			}
 		}
-		
+
 		return map;
 	}
 
@@ -562,22 +570,15 @@ public class WordLookUp {
 		int qlength = query.length;
 		int qlevel = 0;
 		Occ occ;
-		// ici la ligne délicate, le tokenize met à jour une occurrence dans fenêtre
 		while (toks.token( win.add() ) ) {
 
 			occ = win.get( 0 ); // pointeur sur l’occurrence courante
 			if ( occ.tag().isPun() ) continue;
 			occs++;
 			if ( query[qlevel].fit( occ )) {
-				// comment arrives-tu à reconstruire la locution trouvée de 1 à plusieurs mots ? 
 				qlevel++;
 
 				if ( qlevel == qlength ) {
-					// juste pour déboguage, la sortie d'une concordance peut avoir trois sortie différentes
-					//  — console
-					//  — fichier
-					//  — web
-					// pourrait être fixé par le constructuer de l’objet
 					found.add(occ.prev().orth().toString()+ " "+ occ.orth().toString());
 					qlevel = 0;
 				}

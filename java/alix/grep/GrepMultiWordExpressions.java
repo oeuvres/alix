@@ -36,7 +36,8 @@ public class GrepMultiWordExpressions {
 	String nameYearTitle;
 	int caseSensitivity;
 	List<String[]>statsPerDoc;
-	HashMap <String,String[]>statsPerAuthorYear;
+	HashMap <String,String[]>statsPerAuthor;
+	HashMap <String,String[]>statsPerYear;
 	String form;
 	int limit;
 
@@ -78,12 +79,20 @@ public class GrepMultiWordExpressions {
 		this.statsPerDoc = stats;
 	}
 	
-	public HashMap<String, String[]> getStatsAuthorYear() {
-		return statsPerAuthorYear;
+	public HashMap<String, String[]> getStatsAuthor() {
+		return statsPerAuthor;
 	}
 
-	public void setStatsPerAuthorYear(HashMap<String, String[]> stats) {
-		this.statsPerAuthorYear = stats;
+	public void setStatsPerAuthor(HashMap<String, String[]> stats) {
+		this.statsPerAuthor = stats;
+	}
+	
+	public HashMap<String, String[]> getStatsYear() {
+		return statsPerYear;
+	}
+
+	public void setStatsPerYear(HashMap<String, String[]> stats) {
+		this.statsPerYear = stats;
 	}
 	
 	public String getFormPreference() {
@@ -104,7 +113,7 @@ public class GrepMultiWordExpressions {
 		
 		String doItAgain="";
 		String chosenPath="";
-		String preciseQuery="";
+//		String preciseQuery="";
 		List <String []>allRows=new ArrayList<String[]>();
 
 		System.out.println("Définissez le chemin de votre fichier tsv (./Source/critique2000.tsv)");
@@ -134,16 +143,6 @@ public class GrepMultiWordExpressions {
 		while (!doItAgain.equals("n")){
 			grep.setStatsPerDoc(new ArrayList<String[]>());
 
-			System.out.println("Souhaitez-vous un tsv regroupé par par nom, par date ou par titre ? "
-					+ "(réponses : nom/date/titre) :");
-			grep.nameYearTitle=word.next();
-
-			int column=grep.rechercheParNomDateTitrePourTSV(grep.getNameOrYearOrTitleString());		
-			int valueAsked=0;
-			if (column==colYear)valueAsked=4;
-			if (column==colAuthor)valueAsked=3;
-			if (column==colTitle)valueAsked=5;
-
 			JFrame pane=new JFrame("TAGS");
 			JTextArea mytext=new JTextArea(infoTags);
 			mytext.setMargin(new Insets(10,10,10,10));
@@ -168,11 +167,11 @@ public class GrepMultiWordExpressions {
 			int chooseTypeRequest = Integer.valueOf(word.next());
 			
 			WordLookUp wordLookUp=new WordLookUp();
-			CombineStats combine=new CombineStats();
 			wordLookUp.setCaseSensitivity(grep.caseSensitivity);
 			wordLookUp.setNameYearTitle(grep.nameYearTitle);
 			wordLookUp.setStatsPerDoc(new ArrayList<String[]>());
-			wordLookUp.setStatsPerAuthorYear(new HashMap<>());
+			wordLookUp.setStatsPerAuthor(new HashMap<>());
+			wordLookUp.setStatsPerYear(new HashMap<>());
 			wordLookUp.setFormPreference(grep.form);
 			String casse="";
 
@@ -180,8 +179,8 @@ public class GrepMultiWordExpressions {
 			case 1 :
 				System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
 				grep.form=word.next();
-				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
-				casse=word.next();
+//				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
+//				casse=word.next();
 
 				if (casse.contains("o")){
 					grep.caseSensitivity=0;
@@ -189,8 +188,12 @@ public class GrepMultiWordExpressions {
 				else{
 					grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
 				}
-				grep.statsPerAuthorYear=wordLookUp.oneWord(chosenPath, column, allRows);
-				preciseQuery=wordLookUp.getPreciseQuery();
+				
+				wordLookUp.setFormPreference(grep.form);
+				wordLookUp.oneWord(chosenPath, allRows);
+				grep.statsPerAuthor=wordLookUp.statsPerAuthor;
+				grep.statsPerYear=wordLookUp.statsPerYear;
+//				preciseQuery=wordLookUp.getPreciseQuery();
 				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
 				grep.query=wordLookUp.getQuery();
 				break;
@@ -198,8 +201,8 @@ public class GrepMultiWordExpressions {
 			case 2 :
 				System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
 				grep.form=word.next();
-				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
-				casse=word.next();
+//				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
+//				casse=word.next();
 
 				if (casse.contains("o")){
 					grep.caseSensitivity=0;
@@ -207,8 +210,10 @@ public class GrepMultiWordExpressions {
 				else{
 					grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
 				}
-				grep.statsPerAuthorYear=wordLookUp.severalWords(chosenPath, column, allRows);
-				preciseQuery=wordLookUp.getPreciseQuery();
+				wordLookUp.severalWords(chosenPath, allRows);
+				grep.statsPerAuthor=wordLookUp.statsPerAuthor;
+				grep.statsPerYear=wordLookUp.statsPerYear;
+//				preciseQuery=wordLookUp.getPreciseQuery();
 				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
 				grep.query=wordLookUp.getQuery();				
 				break;
@@ -225,8 +230,10 @@ public class GrepMultiWordExpressions {
 				else{
 					grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
 				}
-				grep.statsPerAuthorYear=wordLookUp.wordAndTags(chosenPath, column, allRows);
-				preciseQuery=wordLookUp.getPreciseQuery();
+				wordLookUp.wordAndTags(chosenPath,  allRows);
+				grep.statsPerAuthor=wordLookUp.statsPerAuthor;
+				grep.statsPerYear=wordLookUp.statsPerYear;
+//				preciseQuery=wordLookUp.getPreciseQuery();
 				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
 				grep.query=wordLookUp.getQuery();
 				break;	
@@ -240,57 +247,24 @@ public class GrepMultiWordExpressions {
 				Scanner nbUtil=new Scanner (System.in);
 				grep.limit=Integer.parseInt(nbUtil.nextLine());
 				wordLookUp.setLimit(grep.limit);
-				wordLookUp.tsvStats(tsvPath, chosenPath, column, queryUtil);
+				wordLookUp.tsvStats(tsvPath, chosenPath, queryUtil);
 			
 			}
 			
-			if (grep.statsPerAuthorYear!=null&&!grep.statsPerAuthorYear.isEmpty()){
-				HashMap<String, int[]>combinedStats=combine.combine(grep.statsPerAuthorYear, valueAsked);
+			if (grep.statsPerAuthor!=null&&!grep.statsPerAuthor.isEmpty()){
 				
-				for (Entry<String, int[]>entry:combinedStats.entrySet()){
-					if (entry.getKey().contains(preciseQuery)){
-						System.out.println("Voici les stats pour "+preciseQuery);
-						System.out.println("Nombre total de tokens : "+entry.getValue()[1]);
-						System.out.println("Nombre d'occurrences de "+grep.query+" : "+entry.getValue()[0]);
-						if (valueAsked==3){
-							for (String []doc:grep.statsPerDoc){
-								if (doc[3].contains(preciseQuery)){
-									System.out.println("\nPour le fichier : "+doc[5]);
-									System.out.println("Nombre total de tokens : "+doc[2]);
-									System.out.println("Nombre de matchs : "+doc[1]);
-									System.out.println("Fréquence Relative : "+doc[0]);
-								}
-							}
-						}
-						else if (valueAsked==4){
-							for (String []doc:grep.statsPerDoc){
-								if (doc[4].contains(preciseQuery)){
-									System.out.println("\nPour le fichier : "+doc[5]);
-									System.out.println("Nombre total de tokens : "+doc[2]);
-									System.out.println("Nombre de matchs : "+doc[1]);
-									System.out.println("Fréquence Relative : "+doc[0]);
-								}
-							}
-						}
-					}
-				}
-				
-				System.out.println("\nSouhaitez-vous enregistrer votre requête dans un csv ? (o/n)");
-				String save= word.next();	
 				String nomFichier=grep.query.replaceAll("\\\\", "")+"_"+grep.nameYearTitle+"_"+grep.form;
 				nomFichier=nomFichier.replaceAll("\\s", "_");
 				String pathToSave=tsvPath.substring(0, tsvPath.lastIndexOf("/")+1);
-				if (save.equals("o")&&(column==colAuthor||column==colYear)){
-					ExportData.exportToCSV(pathToSave,nomFichier,grep.statsPerAuthorYear);
+				
+					ExportData.exportToCSV(pathToSave,nomFichier,grep.statsPerAuthor, grep.statsPerYear);
 					System.out.println("Votre requête a été sauvegardée");
-				}
-				else if (save.equals("o")&&(column==colTitle)){
-					ExportData.exportListToCSV(pathToSave,nomFichier,grep.statsPerDoc);
-					System.out.println("Votre requête a été sauvegardée");
-				}
-				else{
-					System.out.println("Votre requête n'a pas été enregistrée");
-				}
+				
+//				else if (save.equals("o")&&(column==colTitle)){
+//					ExportData.exportListToCSV(pathToSave,nomFichier,grep.statsPerDoc);
+//					System.out.println("Votre requête a été sauvegardée");
+//				}
+				
 			}
 		    
 			System.out.println("\nVoulez-vous faire une nouvelle requête ? (o/n)");
