@@ -20,6 +20,8 @@ cl.
 coll.
 d.
 D.
+Dec.;;décembre
+Déc.;;décembre
 dec.;;décembre
 déc.;;décembre
 E.
@@ -30,7 +32,9 @@ f.
 F.
 fasc.
 fev.;;février
+Fev.;;février
 fevr.;;février
+Fevr.;;février
 fig.
 fr.;;francs
 G.
@@ -48,8 +52,12 @@ IX.;NUM;9
 J.
 jan.;;janvier
 janv.;;janvier
+Jan.;;janvier
+Janv.;;janvier
 juil.;;juillet
 juill.;;juillet
+Juil.;;juillet
+Juill.;;juillet
 J.-J.;;Jean-Jacques
 J.-C.
 K.
@@ -59,15 +67,19 @@ liv.
 loc.
 M.;SUB;monsieur
 Mlle.;SUB;mademoiselle
+Me.;SUB;maître
 Melle.;SUB;mademoiselle
 MM.;SUB;messieurs
 Mm.;SUB;messieurs
+Mr.;SUB;monsieur
 ms.
 n.
 N.
+Nov.;;novembre
 nov.;;novembre
 ncpt.;;numéro de compte
 nCpt.;;numéro de compte
+Oct.;;octobre
 oct.;;octobre
 O.
 op.

@@ -48,7 +48,7 @@ public class Tokenizer
   public static final HashSet<String> HYPHEN_POST = new HashSet<String>();
   static {
     for (String w: new String[]{
-      "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "Je",  "la", "là", "le", "les", "lui", "m'", 
+      "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "Je", "la", "là", "le", "les", "lui", "m'", 
         "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y"
     }) HYPHEN_POST.add( w );
   }
@@ -256,6 +256,13 @@ public class Tokenizer
     else if (Char.isUpperCase( c )) {
       // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
       if ( Lexik.name( occ ) ) return true;
+      // Evolution ? > évolution
+      String lc = Lexik.CAPS.get( occ.graph() );
+      if ( lc != null ) {
+        occ.orth( lc );
+        Lexik.word( occ );
+        return true;
+      }
       // U.R.S.S. but not M.
       if ( occ.graph().length() > 2 && occ.graph().charAt( 1 ) == '.') {
         occ.tag( Tag.NAME );
@@ -449,8 +456,10 @@ public class Tokenizer
         }
       }
       
-      // &shy; soft hyphen do not append, go next
-      if ( c != 0xAD ) graph.append( c );
+      
+      if ( c == '[' && !graph.isEmpty() ); // [rue] E[mile] D[esvaux]
+      else if ( c == 0xAD ); // &shy; soft hyphen do not append, go next
+      else graph.append( c ); 
       
       // apos normalisation
       if ( c == '\'' || c == '’' ) {

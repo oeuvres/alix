@@ -33,6 +33,7 @@ import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -81,9 +82,11 @@ public class Cloud
   /** Decimal format for CSS values */
   static DecimalFormat dfdec1 = new DecimalFormat("#.0", dfus);
   /** Radius steps to go outside */
-  private double dRadius = 10.0;
+  private double dRadius = 2.0;
+  /**  */
+  private double ratio = 1.3;
   /** spirograph angle for tests */
-  private int dDeg = 195;
+  private int dDeg = 17;
 
   
   private Random rand = new Random();
@@ -91,7 +94,6 @@ public class Cloud
   private boolean useArea = false;
 
   private Integer outputWidth = null;
-  private boolean allowRotate = false;
 
 
   public class CSS 
@@ -192,7 +194,8 @@ public class Cloud
     for ( Word w: this.words ) {
       String font = this.font;
       if ( w.wclass != null && w.wclass.font != null ) font = w.wclass.font;
-      int fontsize = (int) (((w.weight - low) / (high - low)) * (this.fontmax - this.fontmin)) + this.fontmin;
+      double rate =  ( 2 - 2*1/( 1 + (w.weight-low) / (high-low) ) );
+      int fontsize = (int) ( (float)(this.fontmax - this.fontmin)* rate) + this.fontmin;
       w.fontsize = fontsize;
       // TODO Bold ? Italic ? padding with spaces ?
       TextLayout textLayout = new TextLayout( w.text, new Font( font, 0, fontsize ), frc );
@@ -235,8 +238,8 @@ public class Cloud
       Rectangle2D bounds = current.bounds;
 
       boolean done = false;
-      double radx = 0.7 * Math.min( first.bounds.getWidth(), first.bounds.getHeight() );
-      double rady = 0.4 * Math.min( first.bounds.getWidth(), first.bounds.getHeight() );
+      double radx = ratio * Math.min( first.bounds.getWidth(), first.bounds.getHeight() );
+      double rady = ratio * Math.min( first.bounds.getWidth(), first.bounds.getHeight() );
 
       while (!done) {
         // System.err.println( "" + i + "/" + words.size() + " rad:" + radius );
@@ -245,7 +248,9 @@ public class Cloud
         int prev_x = -1;
         int prev_y = -1;
         for (int deg = startDeg; deg < startDeg + 360; deg += dDeg) {
+          double sq =  Math.abs(deg%90 - 45 )/45.0;
           double rad = (deg / Math.PI) * 180.0;
+          // 1+0.5*sq *
           int cx = (int) (center.x + radx * Math.cos( rad ));
           int cy = (int) (center.y + rady * Math.sin( rad ));
           if (prev_x == cx && prev_y == cy)
@@ -287,8 +292,8 @@ public class Cloud
             break;
           }
         }
-        radx += this.dRadius * 0.7;
-        rady += this.dRadius * 0.4;
+        radx += this.dRadius * ratio;
+        rady += this.dRadius / ratio;
       }
     }
 
@@ -424,6 +429,10 @@ public class Cloud
     xml.writeStartElement( HTML, "div" );
     xml.writeAttribute( "style", "height:100%;" );
     xml.writeAttribute( "class", "wordcloud" );
+    
+    double width = this.imageSize.getWidth();
+    double height = this.imageSize.getHeight();
+
 
     for (Word w : this.words) {
       xml.writeCharacters( "\n" );
@@ -432,7 +441,11 @@ public class Cloud
         xml.writeAttribute( "href", this.href+w.text );
       if ( w.wclass != null )
         xml.writeAttribute( "class", w.wclass.name );
-      xml.writeAttribute( "style", "left:"+ dfdec1.format(w.bounds.getX() )+"px; top:"+ dfdec1.format( 1.0*w.bounds.getY() )+"px; font-size:"+ dfdec1.format( 1.0* w.fontsize / this.fontmin )+"em" );
+      xml.writeAttribute( "style", 
+        "left:" + dfdec1.format(100.0*w.bounds.getX()/width )+"%;"
+        + " top:"+ dfdec1.format( 100.0*w.bounds.getY()/height )+"%;"
+        + " font-size:"+ dfdec1.format( 100.0* w.fontsize / this.fontmin )+"%" 
+      );
       xml.writeCharacters( w.text );
       xml.writeEndElement();
     }
@@ -456,6 +469,13 @@ public class Cloud
       System.out.println( font );
     }
     */
+    HashSet<String> filter = new HashSet<String>(); 
+    for (String w: new String[]{
+        "abbé", "baron", "docteur", "chapitre", "cher", "comte", "coup d'œil", "duc", "duchesse", "évêque", "jeune fille", "jeune homme", 
+        "lord", "madame", "mademoiselle", 
+        "maître", "marquis", "marquise", "miss", "pauvre", "point", "prince", "princesse", "professeur", "sir", "tout le monde"
+    }) filter.add( w );
+
     Cloud cloud=new Cloud();
     Wordclass sub = new Wordclass( "sub", "Arial", new Color(32, 32, 128, 144), null);
     Wordclass name = new Wordclass( "name", "Georgia", new Color(0, 0, 0, 255), null);
@@ -463,8 +483,9 @@ public class Cloud
     Wordclass adj = new Wordclass( "adj", "Georgia",  new Color(64, 128, 64, 200), null);
     Wordclass adv = new Wordclass( "adv", "Georgia", new Color(32, 32, 32, 128), null);
     Wordclass word = new Wordclass( "word", "Georgia", new Color(32, 32, 32, 128), null);
-    String file = "../alix-demo/WEB-INF/textes/zola_bonheur.xml";
-    String xml = new String(Files.readAllBytes( Paths.get( file ) ), StandardCharsets.UTF_8);
+    String file = "../alix-demo/WEB-INF/textes/zola.xml";
+    // String file = "../alix-demo/WEB-INF/textes/proust_recherche.xml";
+    String xml = new String(Files.readAllBytes( Paths.get( file ) ), StandardCharsets.UTF_8 );
     TermDic words = new TermDic();
     Tokenizer toks = new Tokenizer( xml );
     long time;
@@ -486,43 +507,62 @@ public class Cloud
     int limit=300;
     // loop on dictionary
     int n=0;
-    Wordclass wc;
-    LexEntry lexEntry;
+    Wordclass wclass;
+    LexEntry dicw;
     float franfreq;
     long occs = words.occs();
-    for( DicEntry entry: words.byCount() ) {
-      int tag = entry.tag();
+    for( DicEntry form: words.byCount() ) {
+      if ( filter.contains( form.label() ) ) continue;
+      int tag = form.tag();
       if ( Tag.isNum( tag ) ) continue;
       if ( Tag.isName( tag ) ) continue;
-      String term = entry.label();
-      int count = entry.count();
-      if ("devoir".equals( term )) lexEntry = Lexik.entry( "doit" );
-      else lexEntry = Lexik.entry( term );
-      if ( lexEntry == null && Lexik.isStop( term ) ) continue;
+      String term = form.label();
+      int count = form.count();
+      if ("devoir".equals( term )) dicw = Lexik.entry( "doit" );
+      else dicw = Lexik.entry( term );
+      if ( dicw == null && Lexik.isStop( term ) ) continue;
       
-      float ratio = 4F;
+      // if ( Tag.isPrep() )
+      float ratio = 5F;
       if ( Lexik.isStop( term ) ) ratio = 10F;
-      else if ( Tag.isSub( tag ) ) ratio = 12F;
+      else if ( Tag.isSub( tag ) ) ratio = 10F;
+      else if ( Tag.isAdj( tag ) ) ratio = 6F;
       else if ( Tag.isVerb( tag ) ) ratio = 6F;
-      if ( lexEntry == null ) franfreq = 0;
+      
+      
+      // locutions adverbiales sans stats
+      if ( dicw == null && tag == Tag.ADV) continue;
+      // if ( dicw == null && tag == Tag.VERB) continue; // compound verbs, no stats
+      // locutions inconnues du dictionnaire, sans stats
+      if ( dicw == null ) {
+        // ne garder que les locutions substantives
+        if ( !Tag.isSub( tag ) ) continue;
+        franfreq = 0;
+        System.out.println( form );
+      }
+      
+      
       else if ( Tag.isSub( tag ) ) {
-        franfreq = lexEntry.orthfreq;
+        franfreq = dicw.orthfreq;
       }
       else {
-        franfreq = lexEntry.lemfreq;
+        franfreq = dicw.lemfreq;
       }
       double myfreq = 1.0*count*1000000/occs;
+
+      
       if ( franfreq > 0 && myfreq/franfreq < ratio ) continue;
 
       // if ( Lexik.isStop( term ) ) continue;
-      wc = word;
-      if ( Tag.isSub( tag ) ) wc = sub;
-      else if ( Tag.isVerb( tag ) ) wc = verb;
-      else if ( Tag.isName( tag ) ) wc = name;
-      else if ( Tag.isAdj( tag ) ) wc = adj;
-      else if ( Tag.isAdv( tag ) ) wc = adv;
+      wclass = word;
+      if ( Tag.isSub( tag ) ) wclass = sub;
+      else if ( Tag.isVerb( tag ) ) wclass = verb;
+      else if ( Tag.isName( tag ) ) wclass = name;
+      else if ( Tag.isAdj( tag ) ) wclass = adj;
+      else if ( Tag.isAdv( tag ) ) wclass = adv;
+      else if ( Tag.isName( tag ) ) wclass = name;
       
-      cloud.add( new Word( term, count,  wc ) );
+      cloud.add( new Word( term, count,  wclass ) );
       if ( ++n >= limit ) break;
     }
     System.out.println( ((System.nanoTime() - time) / 1000000)+" ms. pour remplir le nuage"  );

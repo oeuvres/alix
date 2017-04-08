@@ -1,12 +1,16 @@
 package alix.fr.query;
 
 import alix.fr.Occ;
-
+/**
+ * Zero or n words, except sentence punctuation
+ * @author user
+ *
+ */
 public class TestGap extends Test
 {
   /** Default size of gap  */
   public final int DEFAULT = 5;
-  /** Initial size of gap, maybe used for a restet */
+  /** Initial size of gap, maybe used for a reset */
   public final int initial;
   /** Max size of gap */
   private int gap;

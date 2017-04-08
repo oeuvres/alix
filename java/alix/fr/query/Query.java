@@ -44,8 +44,45 @@ public class Query
   {
     // something found after a restart of the test chain, reset the found buffer
     if ( current == first && found.size() > 0 ) found.reset(); 
-    // ** operator
+    // ## operator, zero or more stopwords
     if ( current instanceof TestGap ) {
+      // no next, works like a stopword suffix
+      if ( current.next() == null ) {
+        // end of stop sequence, return true if at least one word found
+        if ( !current.test( occ ) ) {
+          current = first;
+          return (found.size() > 0);
+        }
+        // stopword, add it to found chain
+        found.add( occ );
+        // query sequence may continue
+        return false;
+      }
+      // next test success, jump the gap, and works like a test success  
+      if ( current.next().test( occ ) ) {
+        found.add( occ );
+        // end of chain
+        if ( current.next().next() == null ) {
+          current = first;
+          return true;
+        }
+        else {
+          current = current.next().next();
+          return false;
+        }
+      }
+      // not yet end of gap, continue
+      if ( ((TestGap) current).dec() > 0 ) {
+        System.out.println( occ );
+        return false;
+      }
+      // end of gap, restart
+      current = first;
+      found.reset();
+      return false;
+    }
+    // ** operator
+    else if ( current instanceof TestGap ) {
       found.add( occ );
       // no next, works like a simple joker
       if ( current.next() == null ) {
@@ -74,6 +111,7 @@ public class Query
       found.reset();
       return false;
     }
+    // unary tests
     else {
       // test success, set next
       if ( current.test( occ ) ) {

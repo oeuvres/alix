@@ -1,5 +1,10 @@
 GRAPH;TAG;ORTH
 
+# Abréviations
+T.S.F.;SUB
+D.C.A.;SUB
+P.S.;EXCL
+
 # Organisation
 action française;NAMEorg;Action Française
 Action française;NAMEorg;Action Française
@@ -981,4 +986,3 @@ Zapopan;NAMEplace
 Zhengzhou;NAMEplace
 Zibo;NAMEplace
 Zigong;NAMEplace
-

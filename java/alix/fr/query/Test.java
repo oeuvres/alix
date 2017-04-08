@@ -17,6 +17,9 @@ public abstract class Test
     if ( term.equals( "**" )) {
       return new TestGap();
     }
+    if ( term.equals( "##" )) {
+      return new TestStop();
+    }
     boolean quotes = false;
     // quotes, maybe an orth or an exact tag
     if ( term.charAt( 0 ) == '"' ) {

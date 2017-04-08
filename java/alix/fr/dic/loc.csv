@@ -5,11 +5,18 @@ NAME NAME;NAMEpers
 NAME NUM;NAMEpers
 NAME NAME de NAME;NAMEpers
 NAME de NAME;NAMEpers
+NAME d'NAME;NAME
 NAME de La NAME;NAMEpers
 NAME du NAME;NAMEpers
 NAME Le NAME;NAMEpers
 NAME en NAME;NAMEplace
-d'NAME;NAMEpers
+# d'NAME;NAMEpers
+place NAME;NAMEplace
+place NAME NAME;NAMEplace
+place NAME NUM;NAMEplace
+rue NAME;NAMEplace
+rue NAME NAME;NAMEplace
+rue NAME NUM;NAMEplace
 
 # TITULATURES
 
@@ -710,7 +717,7 @@ vae victis;ADV;
 
 # locutions verbales
 
-avoir l'air;VERB
+avoir l'air;VERB;avoir l’air
 avoir lieu;VERB
 aller droit;VERB
 demander pardon;VERB
@@ -1177,6 +1184,7 @@ story board;SUB
 struggle for life;SUB
 table de chevet;SUB
 table d’écoute;SUB
+table des matières;SUB
 taï chi;SUB
 talavera de la reina;SUB
 tarte à la crème;SUB

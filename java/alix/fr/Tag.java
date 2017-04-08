@@ -286,6 +286,14 @@ public final class Tag
   {
     return isDet( code );
   }
+  public static boolean isPrep( final int code )
+  {
+    return (( code >> 0x4 ) == 0x5 );
+  }
+  public boolean isPrep( )
+  {
+    return isPrep( code );
+  }
   public static boolean isDet( final int code )
   {
     return (( code >> 0x4 ) == 0x6 );

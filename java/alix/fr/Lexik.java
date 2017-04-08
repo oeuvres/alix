@@ -45,12 +45,17 @@ public class Lexik
   public static short _LOC = 6;
   public static StemTrie RULES = new StemTrie();
   public static short _RULES = 7;
+  /** Words with initial accentuated cap  */
+  public static HashMap<String,String> CAPS = new HashMap<String,String>();
+  public static short _CAPS = 7;
+  /** */
   /* Load dictionaries */
   static {
     try {
       loadRes( "dic/stop.csv", _STOP );
       loadRes( "dic/commune.csv", _NAME );
       loadRes( "dic/france.csv", _NAME );
+      // personnes passe sur les lieux
       loadRes( "dic/forename.csv", _NAME );
       loadRes( "dic/word.csv", _WORD );
       loadRes( "dic/loc.csv", _LOC );
@@ -59,6 +64,7 @@ public class Lexik
       loadRes( "dic/brevidot.csv", _BREVIDOT );
       loadRes( "dic/name.csv", _NAME );
       loadRes( "dic/author.csv", _NAME );
+      loadRes( "dic/caps.csv", _CAPS );
     } 
     catch (IOException e) {
       e.printStackTrace();
@@ -75,7 +81,7 @@ public class Lexik
   public static void loadRes( String res, int mode ) throws IOException, ParseException 
   {
 
-    load( Lexik.class.getResourceAsStream( res ), mode );
+    load( Lexik.class.getResourceAsStream( res ), mode, res );
   }
   /**
    * Load a dictionary in the correct hash map
@@ -84,7 +90,7 @@ public class Lexik
    */
   public static void loadFile( String file, int mode ) throws IOException, ParseException 
   {
-    load( new FileInputStream(file), mode );
+    load( new FileInputStream(file), mode, file );
   }
   /**
    * Loading a file
@@ -93,32 +99,39 @@ public class Lexik
    * @throws IOException
    * @throws ParseException 
    */
-  public static void load( InputStream stream, final int mode ) throws IOException, ParseException
+  public static void load( InputStream stream, final int mode, String src ) throws IOException, ParseException
   {
     BufferedReader buf = new BufferedReader(
       new InputStreamReader( stream, StandardCharsets.UTF_8 )
     );
     String sep = ";";
+    int n=0;
     String l;
     String[] cells;
     buf.readLine(); // skip first line
     int tag;
     int action = 0;
     while ((l = buf.readLine()) != null) {
+      n++;
       l = l.trim();
       if ( l.isEmpty() ) continue;
       if ( l.charAt( 0 ) == '#' ) {
-        if (  mode == _STOP ) STOP.add( l );
+        if (  mode == _STOP ) STOP.add( l ); // ? #
         continue;
       }
       cells = l.split( sep );
-      if (  mode == _STOP && cells.length == 0 ) {
+      if (  mode == _STOP && cells.length == 0 ) { // ? ;
         STOP.add( sep );
         continue;
       }
       if ( cells.length < 1 ) continue;
       cells[0] = cells[0].trim();
       tag = 0;
+      // Evolution > évolution
+      if ( action == _CAPS ) {
+        if ( cells.length > 1 ) CAPS.put( cells[0], cells[1].trim() );
+        continue;
+      }
 
       if ( cells.length >= 2 && cells[1] != null && !cells[1].trim().isEmpty() ) tag = Tag.code( cells[1].trim() ); 
       // une table de noms peut contenir des locutions de plusieurs noms
@@ -151,6 +164,10 @@ public class Lexik
         continue;
       }
       else if ( action == _ORTH ) {
+        if ( cells.length < 3 ) {
+          System.err.println( src+"#"+n+" "+l );
+          continue;
+        }
         ORTH.put( cells[0], cells[2] );
         continue;
       }
