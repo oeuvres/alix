@@ -11,7 +11,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
@@ -28,7 +27,7 @@ import org.xml.sax.SAXException;
  *
  */
 
-public class GrepMultiWordExpressions {
+public class UserInterface {
 
 	public static final String DEFAULT_PATH="/home/odysseus/Téléchargements/critique2000-gh-pages/txt/";
 	public static final String DEFAULT_TSV="/home/odysseus/Téléchargements/critique2000-gh-pages/biblio3.tsv";
@@ -51,63 +50,42 @@ public class GrepMultiWordExpressions {
 		return query;
 	}
 
-	public void setQuery(String query) {
-		this.query = query;
-	}
 
 	public String getNameOrYearOrTitleString() {
 		return nameYearTitle;
 	}
 
-	public void setNameOrYearOrTitleString(String query) {
-		this.nameYearTitle = query;
-	}
 
 	public int getCaseSensitivity() {
 		return caseSensitivity;
 	}
 
-	public void setCaseSensitivity(int query) {
-		this.caseSensitivity = query;
-	}
 
 	public List<String[]> getStatsPerDoc() {
 		return statsPerDoc;
 	}
 
-	public void setStatsPerDoc(List<String[]>stats) {
-		this.statsPerDoc = stats;
-	}
 	
 	public HashMap<String, String[]> getStatsAuthor() {
 		return statsPerAuthor;
 	}
 
-	public void setStatsPerAuthor(HashMap<String, String[]> stats) {
-		this.statsPerAuthor = stats;
-	}
 	
 	public HashMap<String, String[]> getStatsYear() {
 		return statsPerYear;
 	}
 
-	public void setStatsPerYear(HashMap<String, String[]> stats) {
-		this.statsPerYear = stats;
-	}
 	
 	public String getFormPreference() {
 		return form;
 	}
 
-	public void setFormPreference (String form) {
-		this.form = form;
-	}
 
 	@SuppressWarnings("resource")
 	public static void main(String[] args) throws MalformedURLException, SAXException, 
 	IOException, ParserConfigurationException {
 		String infoTags = new String(Files.readAllBytes( Paths.get( "./doc/tagsTable.txt") ), StandardCharsets.UTF_8);
-		GrepMultiWordExpressions grep=new GrepMultiWordExpressions();
+		UserInterface grep=new UserInterface();
 		Scanner line=new Scanner(System.in);
 		Scanner word=new Scanner(System.in);
 		
@@ -122,7 +100,6 @@ public class GrepMultiWordExpressions {
 		if(tsvPath.equals(null)||tsvPath.equals(""))tsvPath=DEFAULT_TSV;
 
 		BufferedReader TSVFile = new BufferedReader(new FileReader(tsvPath));
-
 		String dataRow = TSVFile.readLine();
 
 		while (dataRow != null){
@@ -140,7 +117,7 @@ public class GrepMultiWordExpressions {
 		if(chosenPath.equals(null)||chosenPath.equals(""))chosenPath=DEFAULT_PATH;
 
 		while (!doItAgain.equals("n")){
-			grep.setStatsPerDoc(new ArrayList<String[]>());
+			grep.statsPerDoc=new ArrayList<String[]>();
 
 			JFrame pane=new JFrame("TAGS");
 			JTextArea mytext=new JTextArea(infoTags);
@@ -149,15 +126,18 @@ public class GrepMultiWordExpressions {
 			pane.pack();
 			pane.setVisible(true);
 			
-			
 			System.out.println("Quelle type de recherche voulez-vous effectuer ? "
 					+ "(rentrer le numéro correspondant et taper \"entrée\")");
+			
 			System.out.println("1 : rechercher un seul mot ou une expression régulière"
 					+ "\n(exemple : \"littérature\" ou \"littér(.)*\\s\"");
+			
 			System.out.println("2 : rechercher une liste de mots dans une fenêtre à définir"
 					+ "\n(exemple : \"littérature poésie art\" (à séparer par des espaces)");
+			
 			System.out.println("3 : rechercher un mot et au moins un tag"
 					+ "\n(exemple : \"littérature VERB DETart\" (à séparer par des espaces)");
+			
 			System.out.println("4 : faire une recherche globale et individuelle sur les "
 					+ "patterns les plus fréquents autour d'un mot"
 					+ "\n(exemple : \"littérature VERB DETart\" (à séparer par des espaces)"
@@ -168,49 +148,33 @@ public class GrepMultiWordExpressions {
 			System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
 			grep.form=word.next();
 			
-			WordLookUp wordLookUp=new WordLookUp();
+			Queries wordLookUp=new Queries();
 			wordLookUp.setCaseSensitivity(grep.caseSensitivity);
-			wordLookUp.setNameYearTitle(grep.nameYearTitle);
 			wordLookUp.setStatsPerDoc(new ArrayList<String[]>());
 			wordLookUp.setStatsPerAuthor(new HashMap<>());
 			wordLookUp.setStatsPerYear(new HashMap<>());
 			wordLookUp.setFormPreference(grep.form);
 			String casse="";
+			System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
+			casse=word.next();
 
-			
-			
+			if (casse.contains("o")){
+				grep.caseSensitivity=0;
+			}
+			else{
+				grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
+			}
+
 			switch (chooseTypeRequest){
-			case 1 :
-				
-//				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
-//				casse=word.next();
-
-				if (casse.contains("o")){
-					grep.caseSensitivity=0;
-				}
-				else{
-					grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
-				}
-				
-				
+			case 1 :				
 				wordLookUp.oneWord(chosenPath, allRows);
 				grep.statsPerAuthor=wordLookUp.statsPerAuthor;
 				grep.statsPerYear=wordLookUp.statsPerYear;
-//				preciseQuery=wordLookUp.getPreciseQuery();
 				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
 				grep.query=wordLookUp.getQuery();
 				break;
 
 			case 2 :
-//				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
-//				casse=word.next();
-
-				if (casse.contains("o")){
-					grep.caseSensitivity=0;
-				}
-				else{
-					grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
-				}
 				wordLookUp.severalWords(chosenPath, allRows);
 				grep.statsPerAuthor=wordLookUp.statsPerAuthor;
 				grep.statsPerYear=wordLookUp.statsPerYear;
@@ -219,15 +183,6 @@ public class GrepMultiWordExpressions {
 				break;
 			
 			case 3:
-				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
-				casse=word.next();
-
-				if (casse.contains("o")){
-					grep.caseSensitivity=0;
-				}
-				else{
-					grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
-				}
 				wordLookUp.wordAndTags(chosenPath,  allRows);
 				grep.statsPerAuthor=wordLookUp.statsPerAuthor;
 				grep.statsPerYear=wordLookUp.statsPerYear;
@@ -236,7 +191,6 @@ public class GrepMultiWordExpressions {
 				break;	
 				
 			case 4:
-				
 				System.out.println("Quel(s) mot(s) voulez-vous chercher ? (si plusieurs, séparez par un espace)");
 				Scanner motsUtil=new Scanner (System.in);
 				String queryUtil = motsUtil.nextLine();
@@ -244,23 +198,18 @@ public class GrepMultiWordExpressions {
 				Scanner nbUtil=new Scanner (System.in);
 				grep.limit=Integer.parseInt(nbUtil.nextLine());
 				wordLookUp.setLimit(grep.limit);
-				wordLookUp.tsvStats(tsvPath, chosenPath, queryUtil);
+				wordLookUp.freqPatterns(tsvPath, chosenPath, queryUtil);
 			
 			}
 			
 			if (grep.statsPerAuthor!=null&&!grep.statsPerAuthor.isEmpty()){
 				
-				String nomFichier=grep.query.replaceAll("\\\\", "")+"_"+grep.nameYearTitle+"_"+grep.form;
+				String nomFichier=grep.query.replaceAll("\\\\", "")+"_"+grep.form;
 				nomFichier=nomFichier.replaceAll("\\s", "_");
 				String pathToSave=tsvPath.substring(0, tsvPath.lastIndexOf("/")+1);
 				
 					ExportData.exportToCSV(pathToSave,nomFichier,grep.statsPerAuthor, grep.statsPerYear);
 					System.out.println("Votre requête a été sauvegardée");
-				
-//				else if (save.equals("o")&&(column==colTitle)){
-//					ExportData.exportListToCSV(pathToSave,nomFichier,grep.statsPerDoc);
-//					System.out.println("Votre requête a été sauvegardée");
-//				}
 				
 			}
 		    
@@ -268,21 +217,7 @@ public class GrepMultiWordExpressions {
 			doItAgain= word.next();	
 		}
 		System.out.println("Fin du programme");
-	}
-
-	public int rechercheParNomDateTitrePourTSV (String usersChoice){
-		int columnForQuery=0;
-
-		if (usersChoice.equals("nom")){
-			columnForQuery=colAuthor;
-		}
-		else if (usersChoice.equals("date")){
-			columnForQuery=colYear;
-		}
-		else if (usersChoice.equals("titre")){
-			columnForQuery=colTitle;
-		}
-		return columnForQuery;
+		System.exit(0);
 	}
 
 }

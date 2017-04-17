@@ -32,7 +32,7 @@ public class ExportData {
 			writer.append("Total De Tokens\t");
 			writer.append("Occurrences du Mot\t");
 			writer.append("Fréquence Relative\t");
-			writer.append("Date\t");
+//			writer.append("Date\t");
 			writer.append("Titre\t");
 			writer.append('\n');
 			
@@ -41,7 +41,7 @@ public class ExportData {
 				writer.append(entry.getValue()[2]+"\t");
 				writer.append(entry.getValue()[1]+"\t");
 				writer.append(entry.getValue()[0]+"\t");
-				writer.append(entry.getValue()[4]+"\t");
+//				writer.append(entry.getValue()[4]+"\t");
 				writer.append(entry.getValue()[5]+"\t");
 				writer.append('\n');
 			}
@@ -66,40 +66,6 @@ public class ExportData {
 				writer.append('\n');
 			}
 			
-			writer.flush();
-			writer.close();
-		}
-		catch(IOException e)
-		{
-			e.printStackTrace();
-		} 
-	}
-	public static void exportListToCSV(String folderPath, String fileName,List <String []> stats)
-	{
-	System.out.println(stats.size());
-		try
-		{
-			File directory=new File(folderPath);
-			if(!directory.exists()) directory.mkdir();
-			FileWriter writer = new FileWriter(folderPath+fileName+".tsv");
-
-			writer.append("Auteur\t");
-			writer.append("Total De Tokens\t");
-			writer.append("Occurrences du Mot\t");
-			writer.append("Fréquence Relative\t");
-			writer.append("Date\t");
-			writer.append("Titre\t");
-			writer.append('\n');
-			
-			for (String entry[]:stats){
-				writer.append(entry[3]+"\t");
-				writer.append(entry[2]+"\t");
-				writer.append(entry[1]+"\t");
-				writer.append(entry[0]+"\t");
-				writer.append(entry[4]+"\t");
-				writer.append(entry[5]+"\t");
-				writer.append('\n');
-			}
 			writer.flush();
 			writer.close();
 		}

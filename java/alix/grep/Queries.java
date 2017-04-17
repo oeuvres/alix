@@ -24,10 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import alix.fr.Lexik;
 import alix.fr.Occ;
-import alix.fr.OccSlider;
-import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.fr.query.Query;
 import alix.util.Term;
@@ -42,7 +39,7 @@ import alix.util.Term;
  *
  */
 
-public class WordLookUp {
+public class Queries {
 
 	String preciseQuery;
 	String query;
@@ -59,7 +56,6 @@ public class WordLookUp {
 	static final int colTitle=5;
 
 	List<String[]>statsPerDoc;
-	long nbOccs;
 
 	public String getPreciseQuery() {
 		return preciseQuery;
@@ -67,10 +63,6 @@ public class WordLookUp {
 
 	public void setPreciseQuery(String query) {
 		this.preciseQuery = query;
-	}
-
-	public void setNbOcc(long occs) {
-		this.nbOccs = occs;
 	}
 
 	public String getQuery() {
@@ -91,14 +83,6 @@ public class WordLookUp {
 
 	public void setCaseSensitivity(int query) {
 		this.caseSensitivity = query;
-	}
-
-	public String getNameYearTitle() {
-		return nameYearTitle;
-	}
-
-	public void setNameYearTitle(String query) {
-		this.nameYearTitle = query;
 	}
 
 	public HashMap<String, String[]> getStatsAuthor() {
@@ -130,7 +114,7 @@ public class WordLookUp {
 	}
 
 	public void setLimit (int limit) {
-		WordLookUp.limit = limit;
+		Queries.limit = limit;
 	}
 
 
@@ -147,7 +131,7 @@ public class WordLookUp {
 		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 			String []cells=allRows.get(counterRows);
 			int countOccurrences=0;
-			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
+			String fileName=cells[UserInterface.colCode]+".xml";
 			StringBuilder pathSB=new StringBuilder();
 			pathSB.append(chosenPath);
 			pathSB.append(fileName);
@@ -176,7 +160,7 @@ public class WordLookUp {
 				}
 			}
 
-			CombineStats combine=new CombineStats();
+			CombineMaps combine=new CombineMaps();
 			combine.setStatsPerDoc(getStatsPerDoc());
 			combine.setStatsPerAuthor(getStatsAuthor());
 			combine.setStatsPerYear(getStatsYear());
@@ -186,7 +170,6 @@ public class WordLookUp {
 			statsPerDoc=combine.getStatsPerDoc();
 		}
 		System.out.println("Fin des calculs");
-
 	}
 
 
@@ -216,7 +199,7 @@ public class WordLookUp {
 			String []cells=allRows.get(counterRows);
 
 			int countOccurrences=0;
-			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
+			String fileName=cells[UserInterface.colCode]+".xml";
 			StringBuilder pathSB=new StringBuilder();
 			pathSB.append(chosenPath);
 			pathSB.append(fileName);
@@ -263,7 +246,7 @@ public class WordLookUp {
 				}
 			}
 
-			CombineStats combine=new CombineStats();
+			CombineMaps combine=new CombineMaps();
 			combine.setStatsPerDoc(getStatsPerDoc());
 			combine.setStatsPerAuthor(getStatsAuthor());
 			combine.setStatsPerYear(getStatsYear());
@@ -272,20 +255,17 @@ public class WordLookUp {
 			statsPerYear=combine.statsPerYear;
 			statsPerDoc=combine.getStatsPerDoc();
 		}
-
-		System.out.println("\nQuel(le) "+nameYearTitle+" voulez-vous ?");
-		Scanner answerLine=new Scanner(System.in);
-		setPreciseQuery(answerLine.nextLine());
 	}
 
-	private class WordFlag {
-		private boolean value = false;
+	public class WordFlag {
+		public boolean value = false;
 	}
 
 
 	@SuppressWarnings("resource")
 	public void wordAndTags(String chosenPath, List <String []>allRows) 
 			throws IOException{
+
 		System.out.println("Quel(s) mot(s) voulez-vous chercher ? (si plusieurs, séparez par un espace)");
 		Scanner motsUtil=new Scanner (System.in);
 		query = motsUtil.nextLine();
@@ -294,37 +274,43 @@ public class WordLookUp {
 
 		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 			String []cells=allRows.get(counterRows);
-
-			int countOccurrences=0;
-			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
+			int occurrences=0;
+			int countFound=0;
+			String fileName=cells[UserInterface.colCode]+".xml";
 			StringBuilder pathSB=new StringBuilder();
 			pathSB.append(chosenPath);
 			pathSB.append(fileName);
 			Path path = Paths.get(pathSB.toString());
 
 			String text = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+			Tokenizer toks = new Tokenizer(text);
+			Query q1 = new Query(query);
+			Occ occ=new Occ();
+			List<String> nbFound=new ArrayList<String>();
+			while (toks.token(occ) ) {
+				if ( q1.test(occ) ) {
+					StringBuilder sb=new StringBuilder();
 
-			Occ queryUtil []=qparse(query);
+					for (int indexOcc=0;indexOcc<q1.found().size();indexOcc++){
+						sb.append(q1.found().get(indexOcc).lem().toString().toLowerCase()+" ");
+					}
 
-			List<String> nbFound=grep (text,queryUtil);
+					nbFound.add(sb.toString());
+				}
+				occurrences++;
+			}
+			
+			countFound+=nbFound.size();
 
-			countOccurrences+=nbFound.size();
-
-			CombineStats combine=new CombineStats();
+			CombineMaps combine=new CombineMaps();
 			combine.setStatsPerDoc(getStatsPerDoc());
 			combine.setStatsPerAuthor(getStatsAuthor());
 			combine.setStatsPerYear(getStatsYear());
-			combine.mergeData( cells,countOccurrences, nbOccs, fileName);
+			combine.mergeData( cells,countFound, occurrences, fileName);
 			statsPerAuthor=combine.statsPerAuthor;
 			statsPerYear=combine.statsPerYear;
 			statsPerDoc=combine.getStatsPerDoc();
 		}
-
-		System.out.println("\nQuel(le) "+nameYearTitle+" voulez-vous ?");
-		Scanner answerLine=new Scanner(System.in);
-		setPreciseQuery(answerLine.nextLine());
-
-
 	}
 
 	/**
@@ -336,7 +322,7 @@ public class WordLookUp {
 	 * 
 	 * @return tsv file with patterns count
 	 */
-	public void tsvStats(String pathTSV, String pathCorpus, String queries) throws IOException{
+	public void freqPatterns(String pathTSV, String pathCorpus, String queries) throws IOException{
 
 		BufferedReader TSVFile = new BufferedReader(new FileReader(pathTSV));
 		List<String>globalResults=new ArrayList<String>();
@@ -422,8 +408,8 @@ public class WordLookUp {
 		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 			List<String>indivResults=new ArrayList<String>();
 			String []cells=allRows.get(counterRows);
-			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
-			String queryName=cells[GrepMultiWordExpressions.colAuthor];
+			String fileName=cells[UserInterface.colCode]+".xml";
+			String queryName=cells[UserInterface.colAuthor];
 
 			Query q1 = new Query(queries);
 			Path path = Paths.get(pathCorpus+"/"+fileName);
@@ -528,7 +514,7 @@ public class WordLookUp {
 		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 			String []cells=allRows.get(counterRows);
 			float indivNbTokens=0;
-			String fileName=cells[GrepMultiWordExpressions.colCode]+".xml";
+			String fileName=cells[UserInterface.colCode]+".xml";
 			StringBuilder pathSB=new StringBuilder();
 			pathSB.append(chosenPath);
 			pathSB.append(fileName);
@@ -551,100 +537,5 @@ public class WordLookUp {
 		}
 
 		return map;
-	}
-
-
-	/**
-	 * 
-	 * @param text
-	 * @param query
-	 */
-	public List<String> grep( String text, Occ[] query) 
-	{
-		// fenêtre de mots pour sortir une concordance
-		OccSlider win = new OccSlider( 1, 1 );
-
-		long occs=0;
-		List<String>found=new ArrayList<String>();
-		Tokenizer toks = new Tokenizer(text);
-		int qlength = query.length;
-		int qlevel = 0;
-		Occ occ;
-		while (toks.token( win.add() ) ) {
-
-			occ = win.get( 0 ); // pointeur sur l’occurrence courante
-			if ( occ.tag().isPun() ) continue;
-			occs++;
-			if ( query[qlevel].fit( occ )) {
-				qlevel++;
-
-				if ( qlevel == qlength ) {
-					found.add(occ.prev().orth().toString()+ " "+ occ.orth().toString());
-					qlevel = 0;
-				}
-			}
-			else qlevel = 0;
-
-		}
-		setNbOcc(occs);
-		return found;
-	}
-	/**
-	 * Query parser
-	 */
-	static public Occ[] qparse (String q) {
-		String[] parts = q.split( "\\s+" );
-		Occ[] query = new Occ[parts.length];
-		String s;
-		int tag;
-		for ( int i =0; i < parts.length; i++ ) {
-			s = parts[i];
-			// un mot entre guillemets, une forme orthographique
-			if ( s.charAt( 0 ) == '"') {
-				// une occurrence avec juste un orth
-				query[i] = new Occ( null, s.substring( 1, s.length()-2 ), null, null );
-				continue;
-			}
-			// un Tag connu ?
-			if ( (tag = Tag.code( s )) != Tag.UNKNOWN ) {
-				query[i] = new Occ( null, null, tag, null );
-				continue;
-			}
-			// un lemme connu ?
-			if ( s.equals( Lexik.lem( s ) )) {
-				query[i] = new Occ( null, null, null, s );
-				continue;
-			}
-			// cas par défaut, une forme graphique
-			query[i] = new Occ( null, s, null, null );
-		}
-		return query;
-	}
-
-	/**
-	 * Test the Class
-	 * @param args
-	 * @throws IOException 
-	 */
-	public static void main(String args[]) throws IOException 
-	{
-		// loop on a test folder for all files
-		String dir = "test/";
-		String[] queries = { "littérature ADJ" };
-		// test if query is correctly parsed
-		// for (Occ occ: query) System.out.println( occ );
-		WordLookUp thing = new WordLookUp();
-		for (final File src : new File( dir ).listFiles()) {
-			if ( src.isDirectory() ) continue;
-			if ( src.getName().startsWith( "." )) continue;
-			if ( src.getName().startsWith( "_" )) continue;
-			String xml = new String(Files.readAllBytes( Paths.get( src.toString() ) ), StandardCharsets.UTF_8);
-			System.out.println( src );
-			for ( String q: queries) {
-				//        System.out.println( "  —— "+q );
-				List <String>myList=thing.grep( xml, qparse(q) );
-				System.out.println(myList.size());
-			}
-		}
 	}
 }

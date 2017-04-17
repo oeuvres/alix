@@ -13,7 +13,7 @@ import java.util.Map.Entry;
  *
  */
 
-public class CombineStats {
+public class CombineMaps {
 	
 	public static final int colCode=2;
 	public static final int colAuthor=3;
@@ -79,13 +79,13 @@ public class CombineStats {
 		
 //		List<String[]>statsPerDoc=grep.getStatsPerDoc();		
 			
-			if (statsPerAuthor.containsKey(cells[GrepMultiWordExpressions.colAuthor])){	
+			if (statsPerAuthor.containsKey(cells[UserInterface.colAuthor])){	
 				tmp=new String[7];
-				tmp[1]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[GrepMultiWordExpressions.colAuthor])[1])+countOccurrences);
-				tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[GrepMultiWordExpressions.colAuthor])[2])+ occs );
-				tmp[0]=String.valueOf(((Double.parseDouble(statsPerAuthor.get(cells[GrepMultiWordExpressions.colAuthor])[1])+countOccurrences)*1000000)/(Integer.parseInt(statsPerAuthor.get(cells[GrepMultiWordExpressions.colAuthor])[2])+ occs )); //Relative Frequency
-				tmp[3]=cells[GrepMultiWordExpressions.colAuthor]; //Authors name
-				tmp[5]=statsPerAuthor.get(cells[GrepMultiWordExpressions.colAuthor])[5]+" // "+cells[GrepMultiWordExpressions.colTitle]; // Title
+				tmp[1]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[UserInterface.colAuthor])[1])+countOccurrences);
+				tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[UserInterface.colAuthor])[2])+ occs );
+				tmp[0]=String.valueOf(((Double.parseDouble(statsPerAuthor.get(cells[UserInterface.colAuthor])[1])+countOccurrences)*1000000)/(Integer.parseInt(statsPerAuthor.get(cells[UserInterface.colAuthor])[2])+ occs )); //Relative Frequency
+				tmp[3]=cells[UserInterface.colAuthor]; //Authors name
+				tmp[5]=statsPerAuthor.get(cells[UserInterface.colAuthor])[5]+" // "+cells[UserInterface.colTitle]; // Title
 				tmp[6]=fileName;
 			}
 			else{
@@ -93,30 +93,30 @@ public class CombineStats {
 				tmp[1]=String.valueOf(countOccurrences);
 				tmp[2]=String.valueOf( occs );
 				tmp[0]=String.valueOf((countOccurrences*1000000)/ occs ); //Relative Frequency
-				tmp[3]=cells[GrepMultiWordExpressions.colAuthor]; //Authors name
-				tmp[4]=cells[GrepMultiWordExpressions.colYear]; // Year
-				tmp[5]=cells[GrepMultiWordExpressions.colTitle]; // Title
+				tmp[3]=cells[UserInterface.colAuthor]; //Authors name
+				tmp[4]=cells[UserInterface.colYear]; // Year
+				tmp[5]=cells[UserInterface.colTitle]; // Title
 				tmp[6]=fileName;
 
 			}
 			statsPourListeDocs[1]=String.valueOf(countOccurrences);
 			statsPourListeDocs[2]=String.valueOf( occs );
 			statsPourListeDocs[0]=String.valueOf((countOccurrences*1000000)/ occs ); //Relative Frequency
-			statsPourListeDocs[3]=cells[GrepMultiWordExpressions.colAuthor]; //Authors name
-			statsPourListeDocs[4]=cells[GrepMultiWordExpressions.colYear]; // Year
-			statsPourListeDocs[5]=cells[GrepMultiWordExpressions.colTitle]; // Title
+			statsPourListeDocs[3]=cells[UserInterface.colAuthor]; //Authors name
+			statsPourListeDocs[4]=cells[UserInterface.colYear]; // Year
+			statsPourListeDocs[5]=cells[UserInterface.colTitle]; // Title
 			statsPourListeDocs[6]=fileName;
 			statsPerDoc.add(statsPourListeDocs);
 			statsPerAuthor.put(cells[colAuthor], tmp);
 
-			if (statsPerYear.containsKey(cells[GrepMultiWordExpressions.colYear])){
+			if (statsPerYear.containsKey(cells[UserInterface.colYear])){
 				tmp=new String[7];
-				tmp[1]=String.valueOf(Integer.parseInt(statsPerYear.get(cells[GrepMultiWordExpressions.colYear])[1])+countOccurrences);
-				tmp[2]=String.valueOf(Integer.parseInt(statsPerYear.get(cells[GrepMultiWordExpressions.colYear])[2])+ occs );
-				tmp[0]=String.valueOf(((Double.parseDouble(statsPerYear.get(cells[GrepMultiWordExpressions.colYear])[1])+countOccurrences)*1000000)/(Integer.parseInt(statsPerYear.get(cells[GrepMultiWordExpressions.colYear])[2]) + occs )); //Relative Frequency
-				tmp[3]=statsPerYear.get(cells[GrepMultiWordExpressions.colYear])[3]+" // "+cells[GrepMultiWordExpressions.colAuthor]; //Authors name
-				tmp[4]=cells[GrepMultiWordExpressions.colYear]; // Year
-				tmp[5]=statsPerYear.get(cells[GrepMultiWordExpressions.colYear])[5]+" // "+cells[GrepMultiWordExpressions.colTitle]; // Title
+				tmp[1]=String.valueOf(Integer.parseInt(statsPerYear.get(cells[UserInterface.colYear])[1])+countOccurrences);
+				tmp[2]=String.valueOf(Integer.parseInt(statsPerYear.get(cells[UserInterface.colYear])[2])+ occs );
+				tmp[0]=String.valueOf(((Double.parseDouble(statsPerYear.get(cells[UserInterface.colYear])[1])+countOccurrences)*1000000)/(Integer.parseInt(statsPerYear.get(cells[UserInterface.colYear])[2]) + occs )); //Relative Frequency
+				tmp[3]=statsPerYear.get(cells[UserInterface.colYear])[3]+" // "+cells[UserInterface.colAuthor]; //Authors name
+				tmp[4]=cells[UserInterface.colYear]; // Year
+				tmp[5]=statsPerYear.get(cells[UserInterface.colYear])[5]+" // "+cells[UserInterface.colTitle]; // Title
 				tmp[6]=fileName;
 			}
 			else{
@@ -124,29 +124,29 @@ public class CombineStats {
 				tmp[1]=String.valueOf(countOccurrences);
 				tmp[2]=String.valueOf( occs );
 				tmp[0]=String.valueOf((countOccurrences*1000000)/ occs ); //Relative Frequency
-				tmp[3]=cells[GrepMultiWordExpressions.colAuthor]; //Authors name
-				tmp[4]=cells[GrepMultiWordExpressions.colYear]; // Year
-				tmp[5]=cells[GrepMultiWordExpressions.colTitle]; // Title
+				tmp[3]=cells[UserInterface.colAuthor]; //Authors name
+				tmp[4]=cells[UserInterface.colYear]; // Year
+				tmp[5]=cells[UserInterface.colTitle]; // Title
 				tmp[6]=fileName;
 
 			}		
 			statsPourListeDocs[1]=String.valueOf(countOccurrences);
 			statsPourListeDocs[2]=String.valueOf( occs );
 			statsPourListeDocs[0]=String.valueOf((countOccurrences*1000000)/ occs ); //Relative Frequency
-			statsPourListeDocs[3]=cells[GrepMultiWordExpressions.colAuthor]; //Authors name
-			statsPourListeDocs[4]=cells[GrepMultiWordExpressions.colYear]; // Year
-			statsPourListeDocs[5]=cells[GrepMultiWordExpressions.colTitle]; // Title
+			statsPourListeDocs[3]=cells[UserInterface.colAuthor]; //Authors name
+			statsPourListeDocs[4]=cells[UserInterface.colYear]; // Year
+			statsPourListeDocs[5]=cells[UserInterface.colTitle]; // Title
 			statsPourListeDocs[6]=fileName;
 			statsPerDoc.add(statsPourListeDocs);
-			statsPerYear.put(cells[GrepMultiWordExpressions.colYear],tmp);
+			statsPerYear.put(cells[UserInterface.colYear],tmp);
 			
 
 			statsPourListeDocs[1]=String.valueOf(countOccurrences);
 			statsPourListeDocs[2]=String.valueOf( occs );
 			statsPourListeDocs[0]=String.valueOf((countOccurrences*1000000)/ occs ); //Relative Frequency
-			statsPourListeDocs[3]=cells[GrepMultiWordExpressions.colAuthor]; //Authors name
-			statsPourListeDocs[4]=cells[GrepMultiWordExpressions.colYear]; // Year
-			statsPourListeDocs[5]=cells[GrepMultiWordExpressions.colTitle]; // Title
+			statsPourListeDocs[3]=cells[UserInterface.colAuthor]; //Authors name
+			statsPourListeDocs[4]=cells[UserInterface.colYear]; // Year
+			statsPourListeDocs[5]=cells[UserInterface.colTitle]; // Title
 			statsPourListeDocs[6]=fileName;
 			statsPerDoc.add(statsPourListeDocs);
 		}			
