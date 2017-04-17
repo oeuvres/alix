@@ -113,7 +113,6 @@ public class GrepMultiWordExpressions {
 		
 		String doItAgain="";
 		String chosenPath="";
-//		String preciseQuery="";
 		List <String []>allRows=new ArrayList<String[]>();
 
 		System.out.println("Définissez le chemin de votre fichier tsv (./Source/critique2000.tsv)");
@@ -166,6 +165,9 @@ public class GrepMultiWordExpressions {
 					+ " sur tout le corpus, et leur utilisation pour chaque date ou auteur");
 			int chooseTypeRequest = Integer.valueOf(word.next());
 			
+			System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
+			grep.form=word.next();
+			
 			WordLookUp wordLookUp=new WordLookUp();
 			wordLookUp.setCaseSensitivity(grep.caseSensitivity);
 			wordLookUp.setNameYearTitle(grep.nameYearTitle);
@@ -175,10 +177,11 @@ public class GrepMultiWordExpressions {
 			wordLookUp.setFormPreference(grep.form);
 			String casse="";
 
+			
+			
 			switch (chooseTypeRequest){
 			case 1 :
-				System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
-				grep.form=word.next();
+				
 //				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
 //				casse=word.next();
 
@@ -189,7 +192,7 @@ public class GrepMultiWordExpressions {
 					grep.caseSensitivity=Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
 				}
 				
-				wordLookUp.setFormPreference(grep.form);
+				
 				wordLookUp.oneWord(chosenPath, allRows);
 				grep.statsPerAuthor=wordLookUp.statsPerAuthor;
 				grep.statsPerYear=wordLookUp.statsPerYear;
@@ -199,8 +202,6 @@ public class GrepMultiWordExpressions {
 				break;
 
 			case 2 :
-				System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
-				grep.form=word.next();
 //				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
 //				casse=word.next();
 
@@ -213,14 +214,11 @@ public class GrepMultiWordExpressions {
 				wordLookUp.severalWords(chosenPath, allRows);
 				grep.statsPerAuthor=wordLookUp.statsPerAuthor;
 				grep.statsPerYear=wordLookUp.statsPerYear;
-//				preciseQuery=wordLookUp.getPreciseQuery();
 				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
 				grep.query=wordLookUp.getQuery();				
 				break;
 			
 			case 3:
-				System.out.println("Souhaitez-vous une recherche sur les lemmes ou sur les formes ? (l/f)");
-				grep.form=word.next();
 				System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");
 				casse=word.next();
 
@@ -233,7 +231,6 @@ public class GrepMultiWordExpressions {
 				wordLookUp.wordAndTags(chosenPath,  allRows);
 				grep.statsPerAuthor=wordLookUp.statsPerAuthor;
 				grep.statsPerYear=wordLookUp.statsPerYear;
-//				preciseQuery=wordLookUp.getPreciseQuery();
 				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
 				grep.query=wordLookUp.getQuery();
 				break;	
