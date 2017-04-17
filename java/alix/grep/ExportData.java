@@ -7,7 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map.Entry;
 
 public class ExportData {
@@ -32,7 +31,7 @@ public class ExportData {
 			writer.append("Total De Tokens\t");
 			writer.append("Occurrences du Mot\t");
 			writer.append("Fréquence Relative\t");
-//			writer.append("Date\t");
+			writer.append("Date\t");
 			writer.append("Titre\t");
 			writer.append('\n');
 			
@@ -41,7 +40,7 @@ public class ExportData {
 				writer.append(entry.getValue()[2]+"\t");
 				writer.append(entry.getValue()[1]+"\t");
 				writer.append(entry.getValue()[0]+"\t");
-//				writer.append(entry.getValue()[4]+"\t");
+				writer.append(entry.getValue()[4]+"\t");
 				writer.append(entry.getValue()[5]+"\t");
 				writer.append('\n');
 			}

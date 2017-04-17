@@ -85,6 +85,7 @@ public class CombineMaps {
 				tmp[2]=String.valueOf(Integer.parseInt(statsPerAuthor.get(cells[UserInterface.colAuthor])[2])+ occs );
 				tmp[0]=String.valueOf(((Double.parseDouble(statsPerAuthor.get(cells[UserInterface.colAuthor])[1])+countOccurrences)*1000000)/(Integer.parseInt(statsPerAuthor.get(cells[UserInterface.colAuthor])[2])+ occs )); //Relative Frequency
 				tmp[3]=cells[UserInterface.colAuthor]; //Authors name
+				tmp[4]=statsPerAuthor.get(cells[UserInterface.colAuthor])[4]+" // "+cells[UserInterface.colYear];
 				tmp[5]=statsPerAuthor.get(cells[UserInterface.colAuthor])[5]+" // "+cells[UserInterface.colTitle]; // Title
 				tmp[6]=fileName;
 			}
