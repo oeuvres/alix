@@ -34,7 +34,7 @@ public class UserInterface {
 	public String query;
 	String nameYearTitle;
 	int caseSensitivity;
-	List<String[]>statsPerDoc;
+	HashMap <String,String[]>statsPerTitle;
 	HashMap <String,String[]>statsPerAuthor;
 	HashMap <String,String[]>statsPerYear;
 	String form;
@@ -61,8 +61,8 @@ public class UserInterface {
 	}
 
 
-	public List<String[]> getStatsPerDoc() {
-		return statsPerDoc;
+	public HashMap <String,String[]> getStatsPerDoc() {
+		return statsPerTitle;
 	}
 
 	
@@ -117,7 +117,7 @@ public class UserInterface {
 		if(chosenPath.equals(null)||chosenPath.equals(""))chosenPath=DEFAULT_PATH;
 
 		while (!doItAgain.equals("n")){
-			grep.statsPerDoc=new ArrayList<String[]>();
+			grep.statsPerTitle=new HashMap <String,String[]>();
 
 			JFrame pane=new JFrame("TAGS");
 			JTextArea mytext=new JTextArea(infoTags);
@@ -150,7 +150,7 @@ public class UserInterface {
 			
 			Queries wordLookUp=new Queries();
 			wordLookUp.setCaseSensitivity(grep.caseSensitivity);
-			wordLookUp.setStatsPerDoc(new ArrayList<String[]>());
+			wordLookUp.setStatsPerTitle(new HashMap<>());
 			wordLookUp.setStatsPerAuthor(new HashMap<>());
 			wordLookUp.setStatsPerYear(new HashMap<>());
 			wordLookUp.setFormPreference(grep.form);
@@ -170,7 +170,7 @@ public class UserInterface {
 				wordLookUp.oneWord(chosenPath, allRows);
 				grep.statsPerAuthor=wordLookUp.statsPerAuthor;
 				grep.statsPerYear=wordLookUp.statsPerYear;
-				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
+				grep.statsPerTitle=wordLookUp.getStatsTitle();
 				grep.query=wordLookUp.getQuery();
 				break;
 
@@ -178,7 +178,7 @@ public class UserInterface {
 				wordLookUp.severalWords(chosenPath, allRows);
 				grep.statsPerAuthor=wordLookUp.statsPerAuthor;
 				grep.statsPerYear=wordLookUp.statsPerYear;
-				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
+				grep.statsPerTitle=wordLookUp.getStatsTitle();
 				grep.query=wordLookUp.getQuery();				
 				break;
 			
@@ -186,7 +186,7 @@ public class UserInterface {
 				wordLookUp.wordAndTags(chosenPath,  allRows);
 				grep.statsPerAuthor=wordLookUp.statsPerAuthor;
 				grep.statsPerYear=wordLookUp.statsPerYear;
-				grep.statsPerDoc=wordLookUp.getStatsPerDoc();
+				grep.statsPerTitle=wordLookUp.getStatsTitle();
 				grep.query=wordLookUp.getQuery();
 				break;	
 				
@@ -208,7 +208,7 @@ public class UserInterface {
 				nomFichier=nomFichier.replaceAll("\\s", "_");
 				String pathToSave=tsvPath.substring(0, tsvPath.lastIndexOf("/")+1);
 				
-					ExportData.exportToCSV(pathToSave,nomFichier,grep.statsPerAuthor, grep.statsPerYear);
+					ExportData.exportToCSV(pathToSave,nomFichier,grep.statsPerAuthor, grep.statsPerYear, grep.statsPerTitle);
 					System.out.println("Votre requête a été sauvegardée");
 				
 			}

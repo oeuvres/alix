@@ -20,15 +20,15 @@ public class CombineMaps {
 	public static final int colYear=4;
 	static final int colTitle=5;
 	
-	List<String[]>statsPerDoc;
+	HashMap<String,String[]>statsPerTitle;
 	HashMap<String, String[]>statsPerAuthor;
 	HashMap<String, String[]>statsPerYear;
-	public void setStatsPerDoc(List<String[]>statsPerDoc){
-		this.statsPerDoc=statsPerDoc;
+	public void setStatsPerTitle(HashMap<String,String[]>statsPerDoc){
+		this.statsPerTitle=statsPerDoc;
 	}
 	
-	public List<String[]> getStatsPerDoc(){
-		return statsPerDoc;
+	public HashMap<String,String[]> getStatsPerDoc(){
+		return statsPerTitle;
 	}
 	
 	public HashMap<String, String[]> getStatsAuthor() {
@@ -107,7 +107,7 @@ public class CombineMaps {
 			statsPourListeDocs[4]=cells[UserInterface.colYear]; // Year
 			statsPourListeDocs[5]=cells[UserInterface.colTitle]; // Title
 			statsPourListeDocs[6]=fileName;
-			statsPerDoc.add(statsPourListeDocs);
+			statsPerTitle.put(statsPourListeDocs[5],statsPourListeDocs);
 			statsPerAuthor.put(cells[colAuthor], tmp);
 
 			if (statsPerYear.containsKey(cells[UserInterface.colYear])){
@@ -138,18 +138,18 @@ public class CombineMaps {
 			statsPourListeDocs[4]=cells[UserInterface.colYear]; // Year
 			statsPourListeDocs[5]=cells[UserInterface.colTitle]; // Title
 			statsPourListeDocs[6]=fileName;
-			statsPerDoc.add(statsPourListeDocs);
+			statsPerTitle.put(statsPourListeDocs[5],statsPourListeDocs);
 			statsPerYear.put(cells[UserInterface.colYear],tmp);
 			
 
-			statsPourListeDocs[1]=String.valueOf(countOccurrences);
-			statsPourListeDocs[2]=String.valueOf( occs );
-			statsPourListeDocs[0]=String.valueOf((countOccurrences*1000000)/ occs ); //Relative Frequency
-			statsPourListeDocs[3]=cells[UserInterface.colAuthor]; //Authors name
-			statsPourListeDocs[4]=cells[UserInterface.colYear]; // Year
-			statsPourListeDocs[5]=cells[UserInterface.colTitle]; // Title
-			statsPourListeDocs[6]=fileName;
-			statsPerDoc.add(statsPourListeDocs);
+//			statsPourListeDocs[1]=String.valueOf(countOccurrences);
+//			statsPourListeDocs[2]=String.valueOf( occs );
+//			statsPourListeDocs[0]=String.valueOf((countOccurrences*1000000)/ occs ); //Relative Frequency
+//			statsPourListeDocs[3]=cells[UserInterface.colAuthor]; //Authors name
+//			statsPourListeDocs[4]=cells[UserInterface.colYear]; // Year
+//			statsPourListeDocs[5]=cells[UserInterface.colTitle]; // Title
+//			statsPourListeDocs[6]=fileName;
+//			statsPerDoc.add(statsPourListeDocs);
 		}			
 	}
 	

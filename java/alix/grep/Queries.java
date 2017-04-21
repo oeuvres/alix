@@ -47,6 +47,7 @@ public class Queries {
 	String nameYearTitle;
 	HashMap<String, String[]>statsPerAuthor;
 	HashMap<String, String[]>statsPerYear;
+	HashMap<String, String[]>statsPerTitle;
 	String form;
 	static int limit;
 
@@ -55,7 +56,7 @@ public class Queries {
 	public static final int colYear=4;
 	static final int colTitle=5;
 
-	List<String[]>statsPerDoc;
+//	List<String[]>statsPerDoc;
 
 	public String getPreciseQuery() {
 		return preciseQuery;
@@ -69,13 +70,13 @@ public class Queries {
 		return query ;	
 	}
 
-	public void setStatsPerDoc(List<String[]>statsPerDoc){
-		this.statsPerDoc=statsPerDoc;
-	}
-
-	public List<String[]> getStatsPerDoc(){
-		return statsPerDoc;
-	}
+//	public void setStatsPerDoc(List<String[]>statsPerDoc){
+//		this.statsPerDoc=statsPerDoc;
+//	}
+//
+//	public List<String[]> getStatsPerDoc(){
+//		return statsPerDoc;
+//	}
 
 	public int getCaseSensitivity() {
 		return caseSensitivity;
@@ -99,6 +100,14 @@ public class Queries {
 
 	public void setStatsPerYear(HashMap<String, String[]> stats) {
 		this.statsPerYear = stats;
+	}
+	
+	public HashMap<String, String[]> getStatsTitle() {
+		return statsPerTitle;
+	}
+
+	public void setStatsPerTitle(HashMap<String, String[]> stats) {
+		this.statsPerTitle = stats;
 	}
 
 	public String getFormPreference() {
@@ -161,13 +170,13 @@ public class Queries {
 			}
 
 			CombineMaps combine=new CombineMaps();
-			combine.setStatsPerDoc(getStatsPerDoc());
+			combine.setStatsPerTitle(getStatsTitle());
 			combine.setStatsPerAuthor(getStatsAuthor());
 			combine.setStatsPerYear(getStatsYear());
 			combine.mergeData( cells,countOccurrences, occs, fileName);
 			statsPerAuthor=combine.statsPerAuthor;
 			statsPerYear=combine.statsPerYear;
-			statsPerDoc=combine.getStatsPerDoc();
+			statsPerTitle=combine.getStatsPerDoc();
 		}
 		System.out.println("Fin des calculs");
 	}
@@ -247,13 +256,13 @@ public class Queries {
 			}
 
 			CombineMaps combine=new CombineMaps();
-			combine.setStatsPerDoc(getStatsPerDoc());
+			combine.setStatsPerTitle(getStatsTitle());
 			combine.setStatsPerAuthor(getStatsAuthor());
 			combine.setStatsPerYear(getStatsYear());
 			combine.mergeData( cells,countOccurrences, occs, fileName);
 			statsPerAuthor=combine.statsPerAuthor;
 			statsPerYear=combine.statsPerYear;
-			statsPerDoc=combine.getStatsPerDoc();
+			statsPerTitle=combine.statsPerTitle;
 		}
 	}
 
@@ -303,13 +312,13 @@ public class Queries {
 			countFound+=nbFound.size();
 
 			CombineMaps combine=new CombineMaps();
-			combine.setStatsPerDoc(getStatsPerDoc());
+			combine.setStatsPerTitle(getStatsTitle());
 			combine.setStatsPerAuthor(getStatsAuthor());
 			combine.setStatsPerYear(getStatsYear());
 			combine.mergeData( cells,countFound, occurrences, fileName);
 			statsPerAuthor=combine.statsPerAuthor;
 			statsPerYear=combine.statsPerYear;
-			statsPerDoc=combine.getStatsPerDoc();
+			statsPerTitle=combine.getStatsPerDoc();
 		}
 	}
 
@@ -371,27 +380,8 @@ public class Queries {
 		orderedGlobalResults=sortMyMapByValue(orderedGlobalResults);
 		String queryForFile=queries.replaceAll("\\W+", "_");
 		String saveFolder=new File(pathTSV).getParentFile().getAbsolutePath()+"/";
-		File fileGlobal =new File(saveFolder+queryForFile+"_globalPatterns.tsv");
-		FileWriter writerGlobal = new FileWriter(fileGlobal,false);
-		Path path1=Paths.get(saveFolder);
-		if (!fileGlobal.getParentFile().isDirectory()){
-			Files.createDirectories(path1);
-		}
-
-		writerGlobal.append("Pattern\t");
-		writerGlobal.append("Nombre\t");
-		writerGlobal.append("Frequence Relative\t");
-		writerGlobal.append("TotalTokens");
-		writerGlobal.append('\n');
-		for (Entry<String,Integer>entry:orderedGlobalResults.entrySet()){
-			writerGlobal.append(entry.getKey()+"\t");
-			writerGlobal.append(entry.getValue()+"\t");
-			writerGlobal.append((float)entry.getValue()*1000000/ numberOccs +"\t");
-			writerGlobal.append(numberOccs+"");
-			writerGlobal.append('\n');
-		}
-		writerGlobal.flush();
-		writerGlobal.close();	
+		
+			
 
 		String dataRow = TSVFile.readLine();
 		List <String []>allRows=new ArrayList<String[]>();
@@ -404,12 +394,13 @@ public class Queries {
 		}
 		TSVFile.close();
 
-		HashMap<String,LinkedHashMap<String,Integer>>mapAuthor=new HashMap<String,LinkedHashMap<String,Integer>>();
+		HashMap<String[],LinkedHashMap<String,Integer>>mapTitle=new HashMap<String[],LinkedHashMap<String,Integer>>();
 		for (int counterRows=1; counterRows<allRows.size(); counterRows++){
 			List<String>indivResults=new ArrayList<String>();
 			String []cells=allRows.get(counterRows);
 			String fileName=cells[UserInterface.colCode]+".xml";
-			String queryName=cells[UserInterface.colAuthor];
+			String query[]=cells;
+			String queryName=cells[UserInterface.colTitle];
 
 			Query q1 = new Query(queries);
 			Path path = Paths.get(pathCorpus+"/"+fileName);
@@ -437,8 +428,8 @@ public class Queries {
 				}
 
 				LinkedHashMap<String,Integer>findings=new LinkedHashMap<String,Integer>();
-				if (mapAuthor.containsKey(queryName)){
-					findings=mapAuthor.get(queryName);
+				if (mapTitle.containsKey(queryName)){
+					findings=mapTitle.get(queryName);
 					for (String key:orderedGlobalResults.keySet()){
 						if (!findings.containsKey(key)) {
 							findings.put(key, Collections.frequency(indivResults, key));
@@ -460,42 +451,14 @@ public class Queries {
 						}
 					}
 				}
-				mapAuthor.put(queryName, findings);
+				mapTitle.put(query, findings);
 			}
 		}
 		System.out.println("Fin des calculs");
 
-		File fileTSV =new File(saveFolder+queryForFile+"_name_indivPatterns.tsv");
-		FileWriter writer = new FileWriter(fileTSV, false);
-		if (!fileTSV.getParentFile().isDirectory()){
-			Files.createDirectories(path1);
-		}
-
 		HashMap<String, Float>secondMap=countTokens(pathCorpus, colAuthor, allRows);
 
-		writer.append("name \t");
-		writer.append("Pattern\t");
-		writer.append("Nombre\t");
-		writer.append("Frequence Relative\t");
-		writer.append("TotalTokens\t");
-		writer.append('\n');
-		for (Entry<String,LinkedHashMap<String,Integer>>entry:mapAuthor.entrySet()){
-			for (Entry<String,Integer>values:entry.getValue().entrySet()){
-				String value=values.getKey();		
-				long nb=values.getValue();
-				writer.append(entry.getKey()+"\t");
-				writer.append(value+"\t");
-				writer.append(nb+"\t");
-				if (secondMap.containsKey(entry.getKey())){
-
-					writer.append((float)nb*1000000/ (float)secondMap.get(entry.getKey())+"\t");
-					writer.append(secondMap.get(entry.getKey())+"");
-				}
-				writer.append('\n');
-			}
-		}
-		writer.flush();
-		writer.close();	
+		ExportData.doubleMapExport(saveFolder, queryForFile, numberOccs, mapTitle, orderedGlobalResults, secondMap);
 	}
 
 	public static LinkedHashMap<String, Integer>sortMyMapByValue(LinkedHashMap<String, Integer>map){
