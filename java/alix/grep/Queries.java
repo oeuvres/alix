@@ -456,9 +456,11 @@ public class Queries {
 		}
 		System.out.println("Fin des calculs");
 
-		HashMap<String, Float>secondMap=countTokens(pathCorpus, colAuthor, allRows);
+//		HashMap<String, Float>countAuthor=countTokens(pathCorpus, colAuthor, allRows);
+//		HashMap<String, Float>countDate=countTokens(pathCorpus, colYear, allRows);
+		HashMap<String, Float>countTitle=countTokens(pathCorpus, colTitle, allRows);
 
-		ExportData.doubleMapExport(saveFolder, queryForFile, numberOccs, mapTitle, orderedGlobalResults, secondMap);
+		ExportData.doubleMapExport(saveFolder, queryForFile, numberOccs, mapTitle, orderedGlobalResults, countTitle);
 	}
 
 	public static LinkedHashMap<String, Integer>sortMyMapByValue(LinkedHashMap<String, Integer>map){

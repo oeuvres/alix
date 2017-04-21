@@ -132,7 +132,9 @@ public class ExportData {
 	public static void doubleMapExport(String saveFolder, String queryForFile,float numberOccs,
 			HashMap<String[], LinkedHashMap<String,Integer>>mapAuthor,
 			LinkedHashMap<String,Integer>orderedGlobalResults,
-			HashMap<String, Float>secondMap) throws IOException{
+//			HashMap<String, Float>countAuthor,
+//			HashMap<String, Float>countDate,
+			HashMap<String, Float>countTitle) throws IOException{
 		
 		File fileGlobal =new File(saveFolder+queryForFile+"_globalPatterns.tsv");
 		FileWriter writerGlobal = new FileWriter(fileGlobal,false);
@@ -157,7 +159,7 @@ public class ExportData {
 		writerGlobal.close();
 		
 		
-		File fileTSV =new File(saveFolder+queryForFile+"_name_indivPatterns.tsv");
+		File fileTSV =new File(saveFolder+queryForFile+"_indivPatterns.tsv");
 		FileWriter writer = new FileWriter(fileTSV, false);
 		if (!fileTSV.getParentFile().isDirectory()){
 			Files.createDirectories(path1);
@@ -180,10 +182,9 @@ public class ExportData {
 				writer.append(entry.getKey()[UserInterface.colYear]+"\t");
 				writer.append(value+"\t");
 				writer.append(nb+"\t");
-				if (secondMap.containsKey(entry.getKey())){
-
-					writer.append((float)nb*1000000/ (float)secondMap.get(entry.getKey())+"\t");
-					writer.append(secondMap.get(entry.getKey())+"");
+				if (countTitle.containsKey(entry.getKey()[UserInterface.colTitle])){
+					writer.append((float)nb*1000000/ (float)countTitle.get(entry.getKey()[UserInterface.colTitle])+"\t");
+					writer.append(countTitle.get(entry.getKey()[UserInterface.colTitle])+"");
 				}
 				writer.append('\n');
 			}
