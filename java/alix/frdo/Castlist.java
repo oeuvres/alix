@@ -1,4 +1,4 @@
-package alix.frwork;
+package alix.frdo;
 
 import java.io.File;
 import java.io.IOException;

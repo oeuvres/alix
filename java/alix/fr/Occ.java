@@ -418,7 +418,7 @@ public class Occ
    */
   public String toString()
   {
-    return graph+"\t"+orth+"\t"+tag.label()+"\t"+lem+"\t"+start;
+    return graph+"\t"+orth+"\t"+tag.label()+"\t"+lem+"\t"+start+"\t"+end;
   }
   /**
    * Test the Class

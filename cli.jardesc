@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <jardesc>
-    <jar path="Alix-demo/WEB-INF/lib/alix.jar"/>
-    <options buildIfNeeded="true" compress="true" descriptionLocation="/Alix/demo.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="true" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
+    <jar path="Alix/build/alix.jar"/>
+    <options buildIfNeeded="true" compress="true" descriptionLocation="/Alix/cli.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="true" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
     <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
     <selectedProjects/>
     <manifest generateManifest="false" manifestLocation="/Alix/java/META-INF/MANIFEST.MF" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
@@ -21,18 +21,19 @@
         <file path="/Alix/java/alix/fr/dic/locno.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.muthovek"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
-        <file path="/Alix/java/alix/fr/dic/rules.csv"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Lexentry.java"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.frwork"/>
+        <file path="/Alix/java/META-INF/MANIFEST.MF"/>
+        <file path="/Alix/java/alix/fr/dic/caps.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Lexik.java"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.frdo"/>
         <file path="/Alix/java/alix/fr/dic/brevidot.csv"/>
         <file path="/Alix/java/alix/fr/dic/forename.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Tag.java"/>
         <file path="/Alix/java/alix/fr/dic/france.csv"/>
         <file path="/Alix/java/alix/fr/dic/stop.csv"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.fr{OccList.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{OccSlider.java"/>
         <file path="/Alix/java/alix/fr/dic/author.csv"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.fr{NameEntry.java"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.fr.query"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{OccChain.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Tokenizer.java"/>
         <file path="/Alix/java/alix/fr/dic/htmlent.csv"/>

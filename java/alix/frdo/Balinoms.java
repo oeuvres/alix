@@ -1,4 +1,4 @@
-package alix.frwork;
+package alix.frdo;
 
 import java.io.File;
 import java.io.IOException;
@@ -79,7 +79,7 @@ public class Balinoms
       if ( new File(dest).exists() ) continue;
       System.out.println( src+" > "+dest );
       parser.parse(
-          new String(Files.readAllBytes( Paths.get( src.toString() ) ), StandardCharsets.UTF_8) 
+          new String( Files.readAllBytes( Paths.get( src.toString() ) ), StandardCharsets.UTF_8) 
         , new PrintWriter( dest ) 
       );
     }
