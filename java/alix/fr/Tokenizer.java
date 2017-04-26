@@ -74,7 +74,7 @@ public class Tokenizer
     if ( text.charAt( 0 ) == '<') xml = true;
     // on fait quoi ?
     if ( text.isEmpty()) this.text="";
-    else if ( !Char.isToken(text.charAt( end - 1 ) )) this.text = text;
+    else if ( !Char.isToken( text.charAt( end - 1 ) )) this.text = text;
     else this.text = text + "\n"; // this hack will avoid lots of tests 
   }
   /**
@@ -371,6 +371,7 @@ public class Tokenizer
     if ( pos < 0 ) return pos; // end of text, finish
     boolean supsc = false; // xml tag inside word like <sup>, <sc>…
     char c = text.charAt( pos ); // should be start of a token
+    /* pose des problèmes
     if ( xmltag.startsWith( "p " ) // test if last xml tag is a sentence separator
         || xmltag.startsWith( "head " ) 
         || xmltag.startsWith( "l " ) 
@@ -384,6 +385,7 @@ public class Tokenizer
       occ.graph( "/");
       return pos;
     }
+    */
     // start of text plain verse ?
     /*
     if ( xmltag.endsWith( "\n" ) && Char.isUpperCase( c ) ) {
@@ -490,56 +492,60 @@ public class Tokenizer
       // go to next char
       ++pos;
       c = text.charAt( pos );
-      // M<sup>me</sup> H<sc>ugo</sc>
-      if ( c == '<') {
-        int i=pos;
-        int max=pos+300;
-        while ( i < end ) {
-          i++;
-          if ( i > max ) break; // bad XML
-          c2 = text.charAt( i );
-          if ( c2 != '>') continue;
-          // test if tag is inside word
-          c2 = text.charAt( i+1 );
-          if ( Char.isLetter( c2 ) ) {
-            c = c2;
-            pos = i + 1;
-            supsc = true; // put ending tag inside the token 
-          }
-          if ( supsc ) {
-            pos = i+1;
-            c = c2;
-          }
-          break;
-        }
-      }
 
       // test if token is finished; handle final dot and comma  (',' is a token in 16,5; '.' is token in A.D.N.)
       if ( ! Char.isToken( c ) ) {
         c2 = text.charAt( pos-1 );
+        // System.out.println( " —"+c2+c );
         if ( c2 == ',' ) {
           pos--;
           graph.lastDel();
+          break;
         }
         if ( c2 == '.' ) {
           // Attention...!
           while ( text.charAt( pos-2 ) == '.' ) {
             pos--;
             graph.lastDel();
+            break;
           }
           // keep last dot, it is  abbrv
           s = Lexik.brevidot( graph );
-          if ( s == null ) {
-            // U.R.S.S. (! MM.)
-            if (Char.isUpperCase( text.charAt( pos-2 ) )) break;
+          if ( s != null ) {
+            occ.orth( s );
+            break;
+          }
+          else {
             pos--;
             graph.lastDel();
-          }
-          // expand abreviation
-          else {
-            occ.orth( s );
+            break;
           }
         }
+        /*
+        // M<sup>me</sup> H<sc>ugo</sc> ??? peut casser la balisage XML
+        if ( c == '<') {
+          int i=pos;
+          int max=pos+300;
+          while ( i < end ) {
+            i++;
+            if ( i > max ) break; // bad XML
+            c2 = text.charAt( i );
+            if ( c2 != '>') continue;
+            // test if tag is inside word
+            c2 = text.charAt( i+1 );
+            if ( Char.isLetter( c2 ) ) {
+              c = c2;
+              pos = i + 1;
+              supsc = true; // put ending tag inside the token 
+            }
+            if ( supsc ) {
+              pos = i+1;
+              c = c2;
+            }
+            break;
+          }
+        }
+        */
         break;
       }
     }
@@ -676,8 +682,10 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = "<>"
+        + "\n<speaker>PERSÉE.</speaker>"
+        + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, s’il m’est permis d’entendre votre oracle,</l>"
          // 123456789 123456789 123456789 123456789
-        + " Et alors, romans de É. Cantat, M. Claude Bernard, D’Artagnan J’en tiens compte à l’Académie des Sciences morales. Mais il y a &amp; t&eacute;l&eacute; murmure-t-elle rendez-vous voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
+        + " <i>\nQuoiqu’</i>on en dise, romans de É. Cantat, M. Claude Bernard, D’Artagnan J’en tiens compte à l’Académie des Sciences morales. Mais il y a &amp; t&eacute;l&eacute; murmure-t-elle rendez-vous voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
         + " , l'animal\\nc’est-à-dire parce qu’alors, non !!! Il n’y a vu que du feu."
       //  + " De temps en temps, Claude Lantier promenait sa flânerie  "
       //  + " avec Claude Bernard, Auguste Comte, et Joseph de Maistre. Geoffroy Saint-Hilaire."
