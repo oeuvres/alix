@@ -202,7 +202,7 @@ public class Occ
    */
   public boolean isEmpty()
   {
-    return graph.isEmpty();
+    return (graph.isEmpty()&orth.isEmpty());
   }
   
   /**

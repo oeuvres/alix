@@ -11,16 +11,16 @@ import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.Char;
 
-public class Teiw
+public class Tokxml
 {
 
   public static void parse( String xml, PrintWriter out ) throws IOException
   {
     Tokenizer toks = new Tokenizer( xml );
-    Occ occ = new Occ();
     int lasti=0;
     CharSequence inter;
-    while ( toks.word( occ ) ) {
+    Occ occ;
+    while ( (occ =toks.word( )) != null ) {
       inter = xml.subSequence( lasti, occ.start() );
       int len = inter.length();
       if ( len > 0 ) {

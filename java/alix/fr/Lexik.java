@@ -1,11 +1,13 @@
 package alix.fr;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.Arrays;
@@ -24,7 +26,6 @@ import alix.util.StemTrie;
  */
 public class Lexik
 {
-
   /** French stopwords */
   public static HashSet<String> STOP = new HashSet<String>( (int)( 700 * 0.75 ) );
   public static short _STOP = 1;
@@ -65,11 +66,16 @@ public class Lexik
       loadRes( "dic/name.csv", _NAME );
       loadRes( "dic/author.csv", _NAME );
       loadRes( "dic/caps.csv", _CAPS );
+      // dictionnaire local
+      File f = new File( Lexik.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath() );
+
     } 
-    catch (IOException e) {
+    catch ( IOException e ) {
       e.printStackTrace();
     } 
-    catch (ParseException e) {
+    catch ( ParseException e ) {
+      e.printStackTrace();
+    } catch ( URISyntaxException e ) {
       e.printStackTrace();
     }
   }
@@ -437,8 +443,9 @@ public class Lexik
   /**
    * For testing
    * @throws ParseException 
+   * @throws URISyntaxException 
    */
-  public static void main(String[] args) throws IOException, ParseException 
+  public static void main(String[] args) throws IOException, ParseException, URISyntaxException 
   {
     // comp();
     Occ occ = new Occ(); 

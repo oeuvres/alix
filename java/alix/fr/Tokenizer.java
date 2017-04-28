@@ -51,6 +51,7 @@ public class Tokenizer
   /** XML  */
   private static final int EVNUL = 0;
   private static final int EVP=1;
+  private static final int EVL=2;
   private static final HashSet<String> EVP_TAG = new HashSet<String>();
   static {
     for (String w: new String[]{
@@ -61,7 +62,7 @@ public class Tokenizer
   public static final HashSet<String> HYPHEN_POST = new HashSet<String>();
   static {
     for (String w: new String[]{
-      "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "Je", "la", "là", "le", "les", "lui", "m'", 
+      "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "Je", "la", "là", "le", "les", "leur", "lui", "m'", 
         "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y"
     }) HYPHEN_POST.add( w );
   }
@@ -152,7 +153,7 @@ public class Tokenizer
     if ( occhere == occline.first() && !token( occline.push() ) ) return null;
     occhere = occhere.next();
     // BUG, http://lesjoiesducode.fr/post/137539735754/quand-on-a-la-flemme-de-contourner-un-message
-    if ( occhere.isEmpty() ) return null;
+    // if ( occhere.isEmpty() ) return null;
     // no compound with punctuation
     if ( occhere.tag().isPun() ) return occhere;
     Stem stem;
@@ -341,6 +342,7 @@ public class Tokenizer
       else if ( tagrec && c == '>' ) { // end of tag
         tagrec = false;
         if ( EVP_TAG.contains( elname ) ) evstruct |= EVP;
+        if ( elname.equals( "l" ) ) evstruct |= EVL;
         continue;
       }
       else if ( tagrec ) { // inside tag
@@ -366,7 +368,6 @@ public class Tokenizer
         continue;
       }
       if ( lastchar == '\n' && c == '\n' ) { // for plain text, maybe useful
-        System.out.println( "Dble saut ?" );
         evstruct |= EVP;
         continue;
       }
@@ -394,28 +395,16 @@ public class Tokenizer
     if ( pos < 0 ) return pos; // end of text, finish
     boolean supsc = false; // xml tag inside word like <sup>, <sc>…
     char c = text.charAt( pos ); // should be start of a token
-    if ( (evstruct & 1) > 0 ) {
+    
+    if ( evstruct != EVNUL ) {
       // create a token here
       occ.start( lastpos );
       occ.end( lastpos );
-      occ.graph( "¶");
+      if ( (evstruct & EVP) > 0 ) occ.graph( "¶" );
+      else if ( (evstruct & EVL) > 0 ) occ.graph( "/" );
       occ.tag( Tag.PUNdiv );
       return pos;
     }
-    /*
-        || xmltag.startsWith( "l " ) 
-        || xmltag.startsWith( "br " )
-        || xmltag.startsWith( "lb " )
-    */
-    // start of text plain verse ?
-    /*
-    if ( xmltag.endsWith( "\n" ) && Char.isUpperCase( c ) ) {
-      occ.start( pos -1 );
-      occ.end( pos );
-      occ.graph( "/");
-      return pos;
-    }
-    */
     
     occ.start( pos );
 
@@ -703,8 +692,9 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = "<>"
-        + "\nIII. Là RODOGUNE.\n\n"
-        + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, s’il m’est permis d’entendre votre oracle,</l>"
+        + "Viens sur-le-champ, à grand'peine " 
+        // + "\nIII. Là RODOGUNE.\n\n"
+        + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, <p>s’il m’est permis d’entendre votre oracle,</l>"
          // 123456789 123456789 123456789 123456789
         + " <i>\nQuoiqu’</i>on en dise, romans de É. Cantat, M. Claude Bernard, D’Artagnan J’en tiens compte à l’Académie des Sciences morales. Mais il y a &amp; t&eacute;l&eacute; murmure-t-elle rendez-vous voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
         + " , l'animal\\nc’est-à-dire parce qu’alors, non !!! Il n’y a vu que du feu."
