@@ -44,6 +44,19 @@ public class Tokenizer
   private Stem locroot = Lexik.LOC.getRoot();
   /** Handle on root of rules dictionary */
   private Stem rulesroot = Lexik.RULES.getRoot();
+  /** Keep memory of tag found */
+  private Term elname = new Term();
+  /** Some none word events, like XML tags, should break token flow : </p>, <div>… Update this state flag when the cursor is forwarding to next word */
+  private int evstruct;
+  /** XML  */
+  private static final int EVNUL = 0;
+  private static final int EVP=1;
+  private static final HashSet<String> EVP_TAG = new HashSet<String>();
+  static {
+    for (String w: new String[]{
+      "div", "head", "h1", "h2", "h3", "h4", "h5", "h6", "p", "q", "quote", "sp", "speaker"
+    }) EVP_TAG.add( w );
+  }
   /** French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel */
   public static final HashSet<String> HYPHEN_POST = new HashSet<String>();
   static {
@@ -234,15 +247,16 @@ public class Tokenizer
    * @param An occurrence to tag
    */
   public boolean token( Occ occ ) {
+    occ.tag( Tag.UNKNOWN );
     pointer = next( occ, pointer ); // parse the text at pointer position
     if ( pointer < 0 ) return false; // end of text
     if ( occ.orth().isEmpty() ) occ.orth( occ.graph() );
     if ( occ.orth().first() == '-' ) occ.orth().firstDel();
-    occ.tag( Tag.UNKNOWN );
-    char c = occ.graph().charAt( 0 );
+    char c = occ.orth().charAt( 0 ); // si III. -> 3
     // ponctuation ?
     if (Char.isPunctuation( c ) ) {
-      if ( Char.isPUNsent( c ) ) occ.tag( Tag.PUNsent );
+      if ( !occ.tag().isEmpty() ); // déjà fixé, evstruct
+      else if ( Char.isPUNsent( c ) ) occ.tag( Tag.PUNsent );
       else if ( Char.isPUNcl( c ) ) occ.tag( Tag.PUNcl );
       else occ.tag( Tag.PUN );
       return true;
@@ -307,46 +321,55 @@ public class Tokenizer
    * @param pos 
    * @return the position of next token char 
    */
-  private int fw( int pos, Term xmltag ) {
+  private int fw( int pos ) {
+    evstruct = EVNUL; 
     if ( pos < 0 ) return pos;
     int end = this.end;
-    boolean xml = this.xml; // jum xml tags ?
-    boolean intag=false;
-    char c;
-    char c2;
+    boolean xml = this.xml; // jump xml tags ?
+    boolean tagrec = false; // inside an xml tag, record
+    boolean namerec = false; // inside an xml element name, record
+    char c = 0;
+    char lastchar;
     while ( pos < end ) {
+      lastchar = c;
       c = text.charAt( pos );
       pos++;
       if (Char.isSpace( c )) continue;
       // not XML, do not enter in tests after
       if ( !xml );
       // TODO a nicer XML parser stack
-      else if ( intag && c == '>' ) { // end of tag
-        xmltag.append( ' ' ); // easy tag test
-        intag = false;
+      else if ( tagrec && c == '>' ) { // end of tag
+        tagrec = false;
+        if ( EVP_TAG.contains( elname ) ) evstruct |= EVP;
         continue;
       }
-      else if ( intag ) { // inside tag, go next
-        xmltag.append( c );
+      else if ( tagrec ) { // inside tag
+        if ( c == '/' ) continue;
+        else if ( !namerec ) continue;
+        else if ( c == ' ' ) {
+          namerec = false;
+          continue;
+        }
+        elname.append( c );
         continue;
       }
       else if ( c == '<' ) {  // start tag
-        intag = true;
-        xmltag.reset();
+        elname.reset();
+        tagrec = true;
+        namerec = true;
         continue;
       }
       // do not create a token on \n, but let \"
       if ( c == '\\' ) {
-        c2 = text.charAt( pos );
+        char c2 = text.charAt( pos );
         if (Char.isLetter( c2 )) pos++;
         continue;
       }
-      /*
-      if ( c == '\n' ) { // for plain text, maybe useful
-        xmltag.append( c );
+      if ( lastchar == '\n' && c == '\n' ) { // for plain text, maybe useful
+        System.out.println( "Dble saut ?" );
+        evstruct |= EVP;
         continue;
       }
-      */
       // words do not start by an hyphen or apos
       if ( c == '\'' || c == '’' || c == 0xAD || c == '-' ) continue; 
       return pos-1;
@@ -366,25 +389,23 @@ public class Tokenizer
     String s;
     occ.clear(); // we should clear here, isn‘t it ?
     Term graph = occ.graph(); // work with local variables to limit lookups (“avoid getfield opcode”, read in String source code) 
-    Term xmltag = new Term(); // The xml tag to inform (TODO better has a class field ?)
-    pos = fw( pos, xmltag); // go to start of first token
+    int lastpos = pos; // va servir 
+    pos = fw( pos ); // go to start of first token
     if ( pos < 0 ) return pos; // end of text, finish
     boolean supsc = false; // xml tag inside word like <sup>, <sc>…
     char c = text.charAt( pos ); // should be start of a token
-    /* pose des problèmes
-    if ( xmltag.startsWith( "p " ) // test if last xml tag is a sentence separator
-        || xmltag.startsWith( "head " ) 
+    if ( (evstruct & 1) > 0 ) {
+      // create a token here
+      occ.start( lastpos );
+      occ.end( lastpos );
+      occ.graph( "¶");
+      occ.tag( Tag.PUNdiv );
+      return pos;
+    }
+    /*
         || xmltag.startsWith( "l " ) 
         || xmltag.startsWith( "br " )
         || xmltag.startsWith( "lb " )
-        || xmltag.endsWith( "\n\n" ) 
-     ){
-      // create a token here
-      occ.start( pos -1 );
-      occ.end( pos );
-      occ.graph( "/");
-      return pos;
-    }
     */
     // start of text plain verse ?
     /*
@@ -682,7 +703,7 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = "<>"
-        + "\n<speaker>PERSÉE.</speaker>"
+        + "\nIII. Là RODOGUNE.\n\n"
         + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, s’il m’est permis d’entendre votre oracle,</l>"
          // 123456789 123456789 123456789 123456789
         + " <i>\nQuoiqu’</i>on en dise, romans de É. Cantat, M. Claude Bernard, D’Artagnan J’en tiens compte à l’Académie des Sciences morales. Mais il y a &amp; t&eacute;l&eacute; murmure-t-elle rendez-vous voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
