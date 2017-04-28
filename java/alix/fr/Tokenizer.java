@@ -692,7 +692,7 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = "<>"
-        + "Viens sur-le-champ, à grand'peine " 
+        + "viens pour sur-le-champ, à grand'peine. C’est-à-dire qu'en pense-t-il " 
         // + "\nIII. Là RODOGUNE.\n\n"
         + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, <p>s’il m’est permis d’entendre votre oracle,</l>"
          // 123456789 123456789 123456789 123456789

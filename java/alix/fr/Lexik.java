@@ -26,6 +26,8 @@ import alix.util.StemTrie;
  */
 public class Lexik
 {
+  /** Personal dictionary */
+  public static String ALIX_DIC_CSV = "alix.dic.csv";
   /** French stopwords */
   public static HashSet<String> STOP = new HashSet<String>( (int)( 700 * 0.75 ) );
   public static short _STOP = 1;
@@ -68,7 +70,15 @@ public class Lexik
       loadRes( "dic/caps.csv", _CAPS );
       // dictionnaire local
       File f = new File( Lexik.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath() );
-
+      if ( f.isFile() ) f = f.getParentFile();
+      f = new File( f, ALIX_DIC_CSV );
+      if ( f.exists() ) {
+        loadFile( f.toString(), 0 );
+      }
+      f =  new File( ALIX_DIC_CSV );
+      if ( f.exists() ) {
+        loadFile( f.toString(), 0 );
+      }
     } 
     catch ( IOException e ) {
       e.printStackTrace();
@@ -132,13 +142,13 @@ public class Lexik
       }
       if ( cells.length < 1 ) continue;
       cells[0] = cells[0].trim();
-      tag = 0;
       // Evolution > évolution
-      if ( action == _CAPS ) {
+      if ( mode == _CAPS ) {
         if ( cells.length > 1 ) CAPS.put( cells[0], cells[1].trim() );
         continue;
       }
 
+      tag = 0;
       if ( cells.length >= 2 && cells[1] != null && !cells[1].trim().isEmpty() ) tag = Tag.code( cells[1].trim() ); 
       // une table de noms peut contenir des locutions de plusieurs noms
       if ( mode == _WORD ) action = _WORD; // specific loader
@@ -149,6 +159,7 @@ public class Lexik
       else if ( mode != 0 ) action = mode; // mode fixé à l’appel
       else if ( cells[0].charAt( cells[0].length() - 1 ) == '.' ) action = _BREVIDOT;
       else if ( Tag.isName( tag ) ) action = _NAME;
+
 
       // Les logiques d’insertions dans les dictionnaires
       if ( action == _WORD) {
@@ -188,7 +199,8 @@ public class Lexik
         else if ( cells.length > 2 ) BREVIDOT.put( cells[0], cells[2].trim() );
       }
       else {
-        System.err.println( "LOAD ? "+l );
+        WORD.put( cells[0], new LexEntry( cells ) );
+        continue;
       }
     }
     buf.close();
