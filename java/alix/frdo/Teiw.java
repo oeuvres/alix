@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import alix.fr.Occ;
+import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.Char;
 
@@ -34,6 +35,7 @@ public class Teiw
         // espace
         if( i==len ) out.print( "\n<c> </c>" );
       }
+      // if ( occ.tag().equals( Tag.PUNdiv ) ); // on ne sort pas les tokens de structuration ¶, §
       if ( occ.tag().isPun() ) {
         out.print( "\n<pc tag=\""+occ.tag()+"\">"+occ.graph()+"</pc>" );
       }

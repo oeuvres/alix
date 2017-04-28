@@ -122,6 +122,8 @@ public final class Tag
   public final static short PUNsent  = 0xC1;
   /** Ponctuation de clause : , ; ( */
   public final static short PUNcl  = 0xC2;
+  /** Ponctuation structurante : ¶, § */
+  public final static short PUNdiv  = 0xC3;
   /** Abréviation (encore non résolue) */
   public final static short ABBR  = 0xD0;
   /** Category */
@@ -230,7 +232,7 @@ public final class Tag
   }
   public boolean isEmpty()
   {
-    return (code == NULL);
+    return ( code == NULL );
   }
   public boolean isPrefix()
   {
@@ -351,6 +353,7 @@ public final class Tag
    */
   public static void main(String[] args)
   {
+    System.out.println( CODE );
     System.out.println( "test equals "+new Tag(Tag.SUB).equals( Tag.SUB ) );
     System.out.println( isName( NAMEplace ) );
     System.out.println( "is NAMEplace a prefix ? "+isPrefix( NAMEplace ) );
