@@ -35,8 +35,8 @@ public class Teiw
         // espace
         if( i==len ) out.print( "\n<c> </c>" );
       }
-      // if ( occ.tag().equals( Tag.PUNdiv ) ); // on ne sort pas les tokens de structuration ¶, §
-      if ( occ.tag().isPun() ) {
+      if ( occ.tag().equals( Tag.PUNdiv ) ); // on ne sort pas les tokens de structuration ¶, §
+      else if ( occ.tag().isPun() ) {
         out.print( "\n<pc tag=\""+occ.tag()+"\">"+occ.graph()+"</pc>" );
       }
       else {
