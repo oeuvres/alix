@@ -17,10 +17,10 @@ public class Teiw
   public static void parse( String xml, PrintWriter out ) throws IOException
   {
     Tokenizer toks = new Tokenizer( xml );
-    Occ occ;
+    Occ occ = new Occ();
     int lasti=0;
     CharSequence inter;
-    while ( (occ =toks.word( )) != null ) {
+    while ( toks.word( occ ) ) {
       inter = xml.subSequence( lasti, occ.start() );
       int len = inter.length();
       if ( len > 0 ) {
