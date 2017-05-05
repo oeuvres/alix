@@ -446,7 +446,6 @@ n'importe qui;PROindef
 n'importe quoi;PROindef
 quelque chose;PROindef
 qu'est-ce que;PROinter
-quoi que;PROindef
 tous deux;PROindef
 tous les deux;PROindef
 tous les trois;PROindef
@@ -487,6 +486,8 @@ parce qu';CONJsubord
 parce que;CONJsubord
 pour une fois que;CONJsubord
 pour que;CONJsubord
+quoi que;CONJsubord
+qui que;CONJsubord
 sans cela;CONJcoord
 sans que;CONJsubord
 toutes les fois que;CONJsubord
