@@ -168,14 +168,21 @@ public class Tokenizer
       // ??
       // if ( stem == null ) stem = locroot.get( occhere.orth() );
     }
-    // start of sentence
+    // La Fontaine
+    else if ( occhere.orth().isFirstUpper() ) {
+      stem = locroot.get( occhere.graph() );
+      if ( stem == null ) stem = locroot.get( occhere.orth() );
+    }
+    /*
+    // start of sentence ? pb La Fontaine
     else if ( occhere.prev() == null || occhere.prev().isEmpty() 
         || occhere.prev().tag().equals( Tag.PUNsent ) ) {
       // will not match « sentence. La Fontaine »
       stem = locroot.get( occhere.orth() );
     }
+    */
     else {
-      stem = locroot.get( occhere.graph() );
+      stem = locroot.get( occhere.orth() );
     }
     // if there is a compound, the locution explorer will merge the compound
     if( stem != null )  locsearch( stem );
@@ -692,7 +699,8 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = "<>"
-        + "viens pour sur-le-champ, à grand'peine. C’est-à-dire qu'en pense-t-il " 
+        + " Et pour nouvelle pompe à ces nobles ébats ton"
+        + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. C’est-à-dire qu'en pense-t-il " 
         // + "\nIII. Là RODOGUNE.\n\n"
         + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, <p>s’il m’est permis d’entendre votre oracle,</l>"
          // 123456789 123456789 123456789 123456789
