@@ -19593,10 +19593,7 @@ Lyaud;NAMEplace
 Lye;NAMEplace
 Lynde;NAMEplace
 Lyoffans;NAMEplace
-Lyon;69001 69002 69004 69009;69123;;
-Lyon;69002 69008 69007 69005 69009;69123;;
-Lyon;69003 69006 69008;69123;;
-Lyon;69003 69007 69008;69123;;
+Lyon;NAMEplace
 Lyons-la-Forêt;NAMEplace
 Lys-lez-Lannoy;NAMEplace
 Lys-Saint-Georges;NAMEplace
@@ -20350,14 +20347,7 @@ Marseillan;NAMEplace
 Marseillan;NAMEplace
 Marseillan;NAMEplace
 Marseille-en-Beauvaisis;NAMEplace
-Marseille;13001 13002 13007;13055;;
-Marseille;13001 13004 13012 ;13055;;
-Marseille;13003 13015 13016;13055;;
-Marseille;13005 13006 13010;13055;;
-Marseille;13008 13006;13055;;
-Marseille;13009 13010 13011;13055;;
-Marseille;13011 13012 13013;13055;;
-Marseille;13013 13014 13015;13055;;
+Marseille;Marseille
 Marseilles-lès-Aubigny;NAMEplace
 Marseillette;NAMEplace
 Marsillargues;NAMEplace
