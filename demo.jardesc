@@ -21,9 +21,9 @@
         <file path="/Alix/java/alix/fr/dic/locno.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.muthovek"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
-        <file path="/Alix/java/alix/fr/dic/rules.csv"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.frwork"/>
+        <file path="/Alix/java/alix/fr/dic/caps.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Lexik.java"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.frdo"/>
         <file path="/Alix/java/alix/fr/dic/brevidot.csv"/>
         <file path="/Alix/java/alix/fr/dic/forename.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Tag.java"/>
@@ -35,7 +35,6 @@
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr.query"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{OccChain.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Tokenizer.java"/>
-        <file path="/Alix/java/alix/fr/dic/htmlent.csv"/>
         <file path="/Alix/java/alix/fr/dic/word.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.grep"/>
     </selectedElements>

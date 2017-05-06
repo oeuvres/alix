@@ -10,6 +10,7 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
@@ -26,6 +27,14 @@ public class StemTrie
 {
   /** Root node  */
   final Stem root = new Stem( );
+  /** French, « j’aime », break apostrophe after those words */
+  public static final HashSet<String> ELLISION = new HashSet<String>();
+  static {
+    for (String w: new String[]{
+      "c'", "C'", "d'", "D'", "j'", "J'", "jusqu'", "Jusqu'", "l'", "L'", "lorsqu'", "Lorsqu'", 
+      "m'", "M'", "n'", "N'", "puisqu'", "Puisqu'", "qu'", "Qu'", "quoiqu'", "Quoiqu'", "s'", "S'", "t'", "-t'", "T'"
+    }) ELLISION.add( w );
+  }
 
   /**
    * Empty constructor
@@ -69,7 +78,12 @@ public class StemTrie
     buf.close();
   }
 
-
+  /**
+   * Load a line of a csv file in format
+   * {"a compound expression", "TAG"}
+   * @param cells
+   * @return
+   */
   public boolean add( String[] cells )
   {
     int cat;
@@ -128,6 +142,7 @@ public class StemTrie
       if ( c == '’' || c == '\'' ) {
         chars[i] = '\'';
         token = new String( chars, offset, i-offset + 1);
+        if ( !ELLISION.contains( token ) ) continue;
         node = node.append( token );
         offset = i+1;
       }
@@ -145,7 +160,8 @@ public class StemTrie
     }
     node.inc(); // update counter (this structure may be used as term counter)
     node.tag( cat ); // a category
-    node.orth( orth );
+    if ( orth != null ) node.orth( orth );
+    else node.orth( term );
   }
   /**
    * Populate dictionary with a list of multi-words terms
@@ -344,7 +360,7 @@ public class StemTrie
   {
     StemTrie dic = new StemTrie();
     String[] terms = new String[]{
-      "d’abord", "d'alors", "parce   que", "afin que    ", "afin de", "afin", "ne pas ajouter", "parce"
+      "d' abord", "n'importe quoi", "d'alors", "de abord", "parce   que", "afin que    ", "afin de", "afin", "ne pas ajouter", "parce"
     };
     int i = 6;
     for (String term:terms ) {
@@ -355,11 +371,12 @@ public class StemTrie
     for (String term:terms ) {
       Stem node = dic.getRoot();
       for ( String word: term.split( " " ) ) {
+        if ( word.isEmpty() ) continue;
         node = node.get( word );
         if ( node == null ) break;
       }
-      if ( node != null && node.tag() != 0 ) System.out.println( term + " FOUND" );
-      else System.out.println( term + " NOT FOUND" );
+      if ( node != null && node.tag() != 0 ) System.out.println( term + " OK" );
+      else System.out.println( term + " UNFOUND" );
     }
     
   }

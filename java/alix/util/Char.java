@@ -50,7 +50,7 @@ public class Char
   public static final HashMap<String, Character>HTMLENT = new HashMap<String, Character>();
   static {
     BufferedReader buf = new BufferedReader(
-      new InputStreamReader( Lexik.class.getResourceAsStream( "dic/htmlent.csv" ), StandardCharsets.UTF_8 )
+      new InputStreamReader( Char.class.getResourceAsStream( "htmlent.csv" ), StandardCharsets.UTF_8 )
     );
     String l;
     String ent;
@@ -423,7 +423,7 @@ public class Char
     );
     System.out.println( "- Char.isToken: " + Char.isToken( '-' ) // true
       + " Char.isLetter:" + Char.isLetter( '-' ) // false
-      + " Char.isPunctuation:" + Char.isPunctuation( '-' ) // false
+      + " Char.isPunctuation:" + Char.isPunctuation( '-' ) // true
     );
     System.out.println( ". Char.isToken: " + Char.isToken( '.' ) // true
       + " Char.isLetter:" + Char.isLetter( '.' ) // false

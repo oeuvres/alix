@@ -44,6 +44,8 @@ public class Tokenizer
   private Stem locroot = Lexik.LOC.getRoot();
   /** Handle on root of rules dictionary */
   private Stem rulesroot = Lexik.RULES.getRoot();
+  /** used to test the word after */ 
+  private Term after = new Term();
   /** Keep memory of tag found */
   private Term elname = new Term();
   /** Some none word events, like XML tags, should break token flow : </p>, <div>… Update this state flag when the cursor is forwarding to next word */
@@ -62,8 +64,8 @@ public class Tokenizer
   public static final HashSet<String> HYPHEN_POST = new HashSet<String>();
   static {
     for (String w: new String[]{
-      "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "Je", "la", "là", "le", "les", "leur", "lui", "m'", 
-        "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y"
+      "-ce", "-ci", "-elle", "-elles", "en", "-eux", "-il", "-ils", "-je", "-la", "-là", "-le", "-les", "-leur", "-lui", 
+        "-me", "-moi", "-nous", "-on", "-t", "-t-", "-te", "-toi", "-tu", "-vous", "-y"
     }) HYPHEN_POST.add( w );
   }
   /** French, « j’aime », break apostrophe after those words */
@@ -156,38 +158,54 @@ public class Tokenizer
     // if ( occhere.isEmpty() ) return null;
     // no compound with punctuation
     if ( occhere.tag().isPun() ) return occhere;
-    Stem stem;
+    // is this occurrence the first token of a compound ?
+    Stem stem = stemsearch( locroot, occhere );
+    // if yes, search in compound dictionary
+    if( stem != null ) {
+      locsearch( stem );
+    }
+    // if not, return current occurrence
+    return occhere;
+  }
+  
+  /**
+   * 
+   */
+  private Stem stemsearch( Stem stem, Occ occ)
+  {
+    Stem tmp;
     // NAME resolutions
-    if ( occhere.tag().isName() ) {
-      // will not match « sentence. La Fontaine »
-      stem = locroot.get( "NAME" );
+    if ( occ.tag().isName() ) {
+      return stem.get( "NAME" );
     }
     // verb, test lem for locution
-    else if ( occhere.tag().isVerb() ) {
-      stem = locroot.get( occhere.lem() );
-      // ??
-      // if ( stem == null ) stem = locroot.get( occhere.orth() );
+    else if ( occ.tag().isVerb() ) {
+      tmp = stem.get( occ.lem() );
+      // n’importe quoi
+      if ( tmp == null ) tmp = stem.get( occ.orth() );
+      return tmp;
+    }
+    // D’alors
+    else if ( occ.graph().last() == '\'' ) {
+      if ( occ.graph().isFirstUpper() ) {
+        String test = occ.graph().toLower().toString();
+        tmp = stem.get( test );
+      }
+      else {
+        tmp = stem.get( occ.graph() );
+      }
+      if ( tmp == null ) tmp = stem.get( occ.orth() );
+      return tmp;
     }
     // La Fontaine
-    else if ( occhere.orth().isFirstUpper() ) {
-      stem = locroot.get( occhere.graph() );
-      if ( stem == null ) stem = locroot.get( occhere.orth() );
+    else if ( occ.graph().isFirstUpper() ) {
+      tmp = stem.get( occ.graph() );
+      if ( tmp == null ) tmp = stem.get( occ.orth() );
+      return tmp;
     }
-    /*
-    // start of sentence ? pb La Fontaine
-    else if ( occhere.prev() == null || occhere.prev().isEmpty() 
-        || occhere.prev().tag().equals( Tag.PUNsent ) ) {
-      // will not match « sentence. La Fontaine »
-      stem = locroot.get( occhere.orth() );
-    }
-    */
     else {
-      stem = locroot.get( occhere.orth() );
+      return stem.get( occ.orth() );
     }
-    // if there is a compound, the locution explorer will merge the compound
-    if( stem != null )  locsearch( stem );
-    if ( occhere.orth().last() == '\'' ) occhere.orth().last('e');
-    return occhere;
   }
 
   /**
@@ -199,38 +217,37 @@ public class Tokenizer
     short tag = 0;
     Stem child;
     String orth = null;
-    Occ ranger = occhere; // an occurrence launch to serach for compound
+    Occ ranger = occhere; // an occurrence launch to search for compound
+    Occ end = null;
     while ( true ) {
       // front of buffer, have a token more
       if ( ranger == occline.first() ) token( occline.push() );
       ranger = ranger.next();
-      // names compound
-      if ( ranger.tag().isName() ) {
-        stem = stem.get( "NAME" );
-      }
-      else if ( ranger.tag().isVerb()) {
-        child = stem.get( ranger.lem() );
-        // il y a ?
-        if ( child == null ) child = stem.get( ranger.orth() );
-        stem = child;
-      }
-      else {
-        stem = stem.get( ranger.graph() ); // is it known in compound dictionary ?
-      }
+      
+      stem = stemsearch( stem, ranger );
+
       if ( stem == null ) {
         // branch end, but nothing found, do nothing, go away
         if ( tag == 0 ) {
           return false;
         }
         // merge occurrencies, means, append next token to current, till the compound end
-        while ( occhere.next() != ranger ) {
+        while ( true ) {
+          Occ next = occhere.next();
+          // if ( next == null ) break; // ??? should not arrive
+          boolean stop = ( next == end );
           // normalize orth, compound test has been down on graph
-          occhere.next().orth( occhere.next().graph() );
-          occhere.apend( occhere.next() );
-          occline.remove( occhere.next() ); // will relink the chain at this point
+          next.orth( next.graph() );
+          occhere.apend( next );
+          // remove the a token will relink the chain  
+          occline.remove( next );
+          if ( stop ) break;
         }
-        // Normalize graphical form, for example La Bruyère (is : la bruyère)
-        if ( orth != null ) occhere.orth( orth );
+        // Set the normalized graphical form from the compound dictionary
+        if ( orth != null ) {
+          occhere.orth( orth );
+          occhere.lem( orth );
+        }
         occhere.tag().set( tag );
         // what about 
         // if ( occhere.lem().isEmpty() ) occhere.lem( occhere.orth() );
@@ -240,6 +257,7 @@ public class Tokenizer
       if ( stem.tag() != 0) {
         tag = stem.tag();
         orth = stem.orth();
+        end = ranger;
       }
     }
   }
@@ -259,7 +277,10 @@ public class Tokenizer
     pointer = next( occ, pointer ); // parse the text at pointer position
     if ( pointer < 0 ) return false; // end of text
     if ( occ.orth().isEmpty() ) occ.orth( occ.graph() );
-    if ( occ.orth().first() == '-' ) occ.orth().firstDel();
+    // qu' > que
+    if ( occ.orth().last() == '\'' ) occ.orth().last('e');
+    // if ( occ.orth().first() == '-' ) occ.orth().firstDel();
+    
     char c = occ.orth().charAt( 0 ); // si III. -> 3
     // ponctuation ?
     if (Char.isPunctuation( c ) ) {
@@ -379,7 +400,7 @@ public class Tokenizer
         continue;
       }
       // words do not start by an hyphen or apos
-      if ( c == '\'' || c == '’' || c == 0xAD || c == '-' ) continue; 
+      // if ( c == '\'' || c == '’' || c == 0xAD || c == '-' ) continue; 
       return pos-1;
     }
     return -1;
@@ -415,6 +436,7 @@ public class Tokenizer
     
     occ.start( pos );
 
+    char c2;
     // token starting by a dot, check …
     // TODO  ??? !!! ?! 
     if ( c == '.' ) {
@@ -429,8 +451,19 @@ public class Tokenizer
       occ.end(pos);
       return pos;
     }
+    // - unicode HYPHEN-MINUS is punctuation & mathematical, and also a token char
+    // test if there is a letter after, if not, it could be part of a word
+    else if ( c == '-' ) { 
+      c2 = text.charAt( pos+1 );
+      if ( Char.isSpace( c2 )) {
+        graph.append( c );
+        occ.end( ++pos );
+        return pos;
+      }
+      // continue default
+    }
     // segment on punctuation char, usually 1 char, except for ...
-    if (Char.isPunctuation( c )) {
+    else if (Char.isPunctuation( c ) ) { // 
       if ( c == '–' ) c='—';
       if ( c == '«' || c == '»' ) c='"';
       graph.append( c );
@@ -438,21 +471,6 @@ public class Tokenizer
       return pos;
     }
 
-    // if token start by an hyphen, maybe "-ci" in "cet homme-ci";
-    if ( c == '-') {
-      pos++;
-      graph.append( c );
-      c = text.charAt( pos );
-      // hyphen used as quadratin
-      if ( !Char.isLetter( c ) ) {
-        graph.last( '–' );
-        occ.end(pos);
-        return pos;
-      }
-    }
-    // used to test the word after 
-    Term after = new Term();
-    char c2;
 
     // start of word 
     while (true) {
@@ -475,9 +493,37 @@ public class Tokenizer
         }
       }
       
+
       
       if ( c == '[' && !graph.isEmpty() ); // [rue] E[mile] D[esvaux]
       else if ( c == 0xAD ); // &shy; soft hyphen do not append, go next
+      // hyphen, TODO, instead of go forward, why not work at end of token, and go back to '-' position if needed ?  
+      else if ( c == '-' && !graph.isEmpty() ) {
+        // test if word after should break on hyphen
+        after.reset();
+        after.append( c );
+        int i = pos+1;
+        // -t- ? -ci ?
+        while( true ) {
+          c2 = text.charAt( i ); 
+          if ( c2 == '-' ) {
+            after.append( c2 );
+            break; 
+          }
+          // Joinville-le-Pont FALSE, murmura-t-elle OK
+          if (!Char.isLetter( c2 ) ) break;
+          after.append( c2 );
+          i++;
+        }
+        // -t-
+        if ( HYPHEN_POST.contains( graph ) ) {
+          graph.append( c );
+          pos++;
+          break;
+        }
+        if ( HYPHEN_POST.contains( after ) ) break;
+        graph.append( c );  // c’est-à-dire
+      }
       else graph.append( c ); 
       
       // apos normalisation
@@ -486,23 +532,6 @@ public class Tokenizer
         // word before apos is known, (ex: puisqu'), give it and put pointer after apos
         if ( ELLISION.contains( graph ) ) {
           pos++; // start next word after apos
-          break;
-        }
-      }
-      // hyphen, TODO, instead of go forward, why not work at end of token, and go back to '-' position if needed ?  
-      else if (c == '-') {
-        after.reset();
-        // test if word after should break on hyphen
-        int i = pos+1;
-        while( true ) {
-          c2 = text.charAt( i ); 
-          // Joinville-le-Pont FALSE, murmura-t-elle OK
-          if (!Char.isLetter( c2 ) ) break;
-          after.append( c2 );
-          i++;
-        }
-        if ( HYPHEN_POST.contains( after ) ) {
-          graph.lastDel();
           break;
         }
       }
@@ -699,8 +728,10 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = "<>"
-        + " Et pour nouvelle pompe à ces nobles ébats ton"
-        + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. C’est-à-dire qu'en pense-t-il " 
+        + "C’est-à-dire qu'en pense-t-il de ces gens-là ?" 
+        + " N’importe qui "
+        + "Et quoi que il t’aurais bien mangée toute crue"
+        + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. "
         // + "\nIII. Là RODOGUNE.\n\n"
         + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, <p>s’il m’est permis d’entendre votre oracle,</l>"
          // 123456789 123456789 123456789 123456789
@@ -729,10 +760,15 @@ public class Tokenizer
       ;
       // text = "— D'abord, M. Racine, j’aime ce casse-tête parce que voyez-vous, c’est de <i>Paris.</i>.. \"Et voilà !\" s'écria-t'il.";
       Tokenizer toks = new Tokenizer(text);
-      Occ occ;
+      Occ occ = new Occ();
       while ( (occ =toks.word( )) != null ) {
         System.out.println( occ );
       }
+      /*
+      while ( toks.token( occ ) ) {
+        System.out.println( occ );
+      }
+      */
       return;
     }
   }
