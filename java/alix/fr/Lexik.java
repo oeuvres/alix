@@ -73,10 +73,12 @@ public class Lexik
       if ( f.isFile() ) f = f.getParentFile();
       f = new File( f, ALIX_DIC_CSV );
       if ( f.exists() ) {
+        System.out.println( "Load "+f.getCanonicalPath() );
         loadFile( f.toString(), 0 );
       }
       f =  new File( ALIX_DIC_CSV );
       if ( f.exists() ) {
+        System.out.println( "Load "+f.getCanonicalPath() );
         loadFile( f.toString(), 0 );
       }
     } 

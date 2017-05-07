@@ -64,7 +64,7 @@ public class Tokenizer
   public static final HashSet<String> HYPHEN_POST = new HashSet<String>();
   static {
     for (String w: new String[]{
-      "-ce", "-ci", "-elle", "-elles", "en", "-eux", "-il", "-ils", "-je", "-la", "-là", "-le", "-les", "-leur", "-lui", 
+      "-ce", "-ci", "-elle", "-elles", "-en", "-eux", "-il", "-ils", "-je", "-la", "-là", "-le", "-les", "-leur", "-lui", 
         "-me", "-moi", "-nous", "-on", "-t", "-t-", "-te", "-toi", "-tu", "-vous", "-y"
     }) HYPHEN_POST.add( w );
   }
@@ -150,7 +150,8 @@ public class Tokenizer
    * @param word
    * @return
    */
-  public Occ word( ) {
+  public Occ word( )
+  {
     // pointer is front token, get one more to have next, or stop if end of text;
     if ( occhere == occline.first() && !token( occline.push() ) ) return null;
     occhere = occhere.next();
@@ -272,18 +273,31 @@ public class Tokenizer
    * 
    * @param An occurrence to tag
    */
-  public boolean token( Occ occ ) {
+  public boolean token( Occ occ )
+  {
     occ.tag( Tag.UNKNOWN );
     pointer = next( occ, pointer ); // parse the text at pointer position
     if ( pointer < 0 ) return false; // end of text
     if ( occ.orth().isEmpty() ) occ.orth( occ.graph() );
     // qu' > que
     if ( occ.orth().last() == '\'' ) occ.orth().last('e');
-    // if ( occ.orth().first() == '-' ) occ.orth().firstDel();
+    // test hyphen before punctuation
+    if ( occ.orth().first() == '-' ) {
+      // keep hyphen in demonstrative particles
+      if ( occ.orth().equals( "-là" ) || occ.orth().equals( "-ci" ) ) {
+        occ.lem( occ.orth() );
+        occ.tag( Tag.PARTdem );
+        return true;
+      }
+      // delete t euphonique
+      else if ( occ.orth().startsWith( "-t-" ) ) occ.orth().del( 3 );
+      // other junctions
+      else occ.orth().firstDel();
+    }
     
-    char c = occ.orth().charAt( 0 ); // si III. -> 3
-    // ponctuation ?
-    if (Char.isPunctuation( c ) ) {
+    char c = occ.orth().first(); // si III. -> 3
+    // ponctuation, after -
+    if ( Char.isPunctuation( c ) ) {
       if ( !occ.tag().isEmpty() ); // déjà fixé, evstruct
       else if ( Char.isPUNsent( c ) ) occ.tag( Tag.PUNsent );
       else if ( Char.isPUNcl( c ) ) occ.tag( Tag.PUNcl );
@@ -291,12 +305,12 @@ public class Tokenizer
       return true;
     }
     // number ?
-    else if (Char.isDigit( c )) {
+    else if ( Char.isDigit( c ) ) {
       occ.tag( Tag.DETnum );
       return true;
     }
     // upper case ?
-    else if (Char.isUpperCase( c )) {
+    else if ( Char.isUpperCase( c ) ) {
       // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
       if ( Lexik.name( occ ) ) return true;
       // Evolution ? > évolution
@@ -516,13 +530,9 @@ public class Tokenizer
           i++;
         }
         // -t-
-        if ( HYPHEN_POST.contains( graph ) ) {
-          graph.append( c );
-          pos++;
-          break;
-        }
-        if ( HYPHEN_POST.contains( after ) ) break;
-        graph.append( c );  // c’est-à-dire
+        if ( graph.equals( "-t" ) ) graph.append( c );
+        else if ( HYPHEN_POST.contains( after ) ) break;
+        else graph.append( c );  // c’est-à-dire
       }
       else graph.append( c ); 
       
@@ -729,8 +739,8 @@ public class Tokenizer
       String text;
       text = "<>"
         + "C’est-à-dire qu'en pense-t-il de ces gens-là ?" 
-        + " N’importe qui "
-        + "Et quoi que il t’aurais bien mangée toute crue"
+        + " N’importe qui, pensez-y et prenez-en ?"
+        + " Et quoi que il t’aurais bien mangée toute crue"
         + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. "
         // + "\nIII. Là RODOGUNE.\n\n"
         + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, <p>s’il m’est permis d’entendre votre oracle,</l>"

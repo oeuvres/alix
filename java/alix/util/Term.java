@@ -324,6 +324,27 @@ public class Term implements CharSequence, Comparable<Term>
     return this;
   }
   /**
+   * Delete some chars to term, if i>0, deletion start from left, if i<0, deletion start from right
+   * @param i
+   * @return the Term for chaining
+   */
+  public Term del( int i )
+  {
+    hash = 0;
+    if ( i >= len || -i >= len ) {
+      len = 0;
+      return this;
+    }
+    if ( i > 0 ) {
+      start = start + i;
+      len = len - i;
+    }
+    else if ( i < 0 ) {
+      len = len + i;
+    }
+    return this;
+  }
+  /**
    * Put first char upperCase
    * @return the Term for chaining
    */

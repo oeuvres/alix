@@ -112,10 +112,6 @@ public final class Tag
   public final static short NAMEdemhum = 0xBE;
   /** Noms de dieux : Dieu, Vénus… */
   public final static short NAMEgod = 0xBF;
-  /** Exclamation */
-  public final static short EXCL = 0x90;
-  /** Numéro */
-  public final static short NUM = 0xA0;
   /** Ponctuation */
   public final static short PUN  = 0xC0;
   /** Ponctuation de phrase : . ? ! */
@@ -124,8 +120,16 @@ public final class Tag
   public final static short PUNcl  = 0xC2;
   /** Ponctuation structurante : ¶, § */
   public final static short PUNdiv  = 0xC3;
+  /** Catégories diverses */
+  public final static short MISC  = 0xF0;
   /** Abréviation (encore non résolue) */
-  public final static short ABBR  = 0xD0;
+  public final static short ABBR  = 0xF1;
+  /** Numéro */
+  public final static short NUM = 0xF2;
+  /** Exclamation */
+  public final static short EXCL = 0xF3;
+  /** Particules démonstratives -ci, -là */
+  public final static short PARTdem = 0xFC;
   /** Category */
   private short code;
   /** Dictionnaire des codes par nom */
