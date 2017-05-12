@@ -166,15 +166,14 @@ public class Tokenizer
     // BUG, http://lesjoiesducode.fr/post/137539735754/quand-on-a-la-flemme-de-contourner-un-message
     // if ( occhere.isEmpty() ) return null;
     // no compound with punctuation
-    if ( occhere.tag().isPun() ) return occhere;
-    // is this occurrence the first token of a compound ?
-    Stem stem = stemsearch( locroot, occhere );
-    // if yes, search in compound dictionary
-    if( stem != null ) {
-      locsearch( stem );
+    if ( !occhere.tag().isPun() ) {
+      // is this occurrence the first token of a compound ?
+      Stem stem = stemsearch( locroot, occhere );
+      // if yes, search in compound dictionary
+      if( stem != null ) locsearch( stem );
     }
     if ( lexer.apply( occhere ) ) {
-      // todo correct lema, according to rule
+      // todo correct lem, according to rule
     }
     // if not, return current occurrence
     return occhere;

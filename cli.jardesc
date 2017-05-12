@@ -21,6 +21,7 @@
         <file path="/Alix/java/alix/fr/dic/locno.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.muthovek"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
+        <file path="/Alix/java/alix/fr/dic/rules.csv"/>
         <file path="/Alix/java/META-INF/MANIFEST.MF"/>
         <file path="/Alix/java/alix/fr/dic/caps.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Lexik.java"/>
