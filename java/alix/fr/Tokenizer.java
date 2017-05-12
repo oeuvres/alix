@@ -2,6 +2,7 @@ package alix.fr;
 
 import java.util.HashSet;
 
+import alix.fr.query.Lexer;
 import alix.util.Char;
 import alix.util.StemTrie.Stem;
 import alix.util.Term;
@@ -37,13 +38,24 @@ public class Tokenizer
   /** For the simple tokenizer */
   boolean sent;
   /** A buffer of tokens, populated for multi-words test */
-  private OccChain occline = new OccChain( 10 );
+  private OccChain occbuf = new OccChain( 10 );
+  /** The right context needed to resolve rules */
+  private int maxright;
+  /** Present right context width */
+  private int right;
   /** Pointer on the current occurrence in the chain */
-  private Occ occhere = occline.first();
+  private Occ occhere; 
   /** Handle on root of compound dictionary */
   private Stem locroot = Lexik.LOC.getRoot();
   /** Handle on root of rules dictionary */
-  private Stem rulesroot = Lexik.RULES.getRoot();
+  static private Lexer lexer = new Lexer();
+  static {
+    try {
+      lexer.loadRes( "/alix/fr/dic/rules.csv" );
+    }
+    catch ( Exception e ) {
+    }
+  }
   /** used to test the word after */ 
   private Term after = new Term();
   /** Keep memory of tag found */
@@ -91,7 +103,10 @@ public class Tokenizer
     // on fait quoi ?
     if ( text.isEmpty()) this.text="";
     else if ( !Char.isToken( text.charAt( end - 1 ) )) this.text = text;
-    else this.text = text + "\n"; // this hack will avoid lots of tests 
+    else this.text = text + "\n"; // this hack will avoid lots of tests
+    // start the buffer of occurrences, fill it with the needed occurrences for the larger rule on the right size 
+    occhere = occbuf.first();
+    maxright = lexer.maxright();
   }
   /**
    * Set pointer position, especially to forward after an header
@@ -136,25 +151,18 @@ public class Tokenizer
   /**
    * Return a pointer on the occurrence buffer, after compound resolution.
    * 
-   * TODO
-   * — "le" "l’" "la" "les" "leur" suivis d’un VERB ou d’un PROpers sont PROpers et non DET ("il le leur a donné")
-   * — "en" suivi d’un VERB est PRO et non PREP ("j’en ai")
-   * — "ce" suivi d’un VERB est PRO et non DETdem ("c’est")
-   * — "si" suivi d’un ADJ est ADV et non CONJsubord
-   * — "aucun" non suivi d’un SUB ou d’un ADJ est PROindef et non DETindef
-   * — "même" précédé d’un DET est ADJ et non ADVindef
-   * — un participe passé précédé d’un SUB est ADJ et non VERB 
-   *   ("la gloire acquise à ses travaux") – ou distinguer au moins verbe conjugué, 
-   *   participe (quand le participe n’est pas homographe d’une forme conjuguée) et infinitif
-   *   
    * @param word
    * @return
    */
   public Occ word( )
   {
-    // pointer is front token, get one more to have next, or stop if end of text;
-    if ( occhere == occline.first() && !token( occline.push() ) ) return null;
+    while ( right < maxright ) {
+      if ( !token( occbuf.push() ) ) break;
+      right++;
+    }
     occhere = occhere.next();
+    if ( occhere == null || occhere.start() < 0 ) return null; // end of text
+    right--;
     // BUG, http://lesjoiesducode.fr/post/137539735754/quand-on-a-la-flemme-de-contourner-un-message
     // if ( occhere.isEmpty() ) return null;
     // no compound with punctuation
@@ -164,6 +172,9 @@ public class Tokenizer
     // if yes, search in compound dictionary
     if( stem != null ) {
       locsearch( stem );
+    }
+    if ( lexer.apply( occhere ) ) {
+      // todo correct lema, according to rule
     }
     // if not, return current occurrence
     return occhere;
@@ -175,8 +186,11 @@ public class Tokenizer
   private Stem stemsearch( Stem stem, Occ occ)
   {
     Stem tmp;
+    if ( occ.isEmpty() ) {
+      return null;
+    }
     // NAME resolutions
-    if ( occ.tag().isName() ) {
+    else if ( occ.tag().isName() ) {
       return stem.get( "NAME" );
     }
     // verb, test lem for locution
@@ -222,7 +236,10 @@ public class Tokenizer
     Occ end = null;
     while ( true ) {
       // front of buffer, have a token more
-      if ( ranger == occline.first() ) token( occline.push() );
+      if ( ranger == occbuf.first() ) {
+        if (!token( occbuf.push() )); // do what here ?
+        right--;
+      }
       ranger = ranger.next();
       
       stem = stemsearch( stem, ranger );
@@ -241,7 +258,7 @@ public class Tokenizer
           next.orth( next.graph() );
           occhere.apend( next );
           // remove the a token will relink the chain  
-          occline.remove( next );
+          occbuf.remove( next );
           if ( stop ) break;
         }
         // Set the normalized graphical form from the compound dictionary
@@ -737,10 +754,10 @@ public class Tokenizer
     // Path context = Paths.get(Tokenizer.class.getClassLoader().getResource("").getPath()).getParent();
     if ( true || args.length < 1) {
       String text;
-      text = "<>"
-        + "C’est-à-dire qu'en pense-t-il de ces gens-là ?" 
+      text = ""
+        + " Dieu te le rendra."
+        + " C’est-à-dire qu'en pense-t-il de ces gens-là ?" 
         + " N’importe qui, pensez-y et prenez-en ?"
-        + " Et quoi que il t’aurais bien mangée toute crue"
         + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. "
         // + "\nIII. Là RODOGUNE.\n\n"
         + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, <p>s’il m’est permis d’entendre votre oracle,</l>"

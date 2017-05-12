@@ -12,7 +12,8 @@ public abstract class TestTerm extends Test
     this.term = new Term( term );
   }
   @Override
-  public String label() {
+  public String label() 
+  {
     return term.toString();
   }
 }

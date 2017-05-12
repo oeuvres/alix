@@ -23,6 +23,8 @@ public class Occ
   private Tag tag = new Tag();
   /** Lemma form */
   private Term lem = new Term();
+  /** An index */
+  private int n = -1;
   /** Char index in the source file of the first char of the token */
   private int start = 0;
   /** Char index in the source file  */
@@ -75,54 +77,6 @@ public class Occ
     orth( orth );
     tag( tag );
     lem( lem );
-  }
-  /**
-   * Returns the graph value
-   * @return
-   */
-  public Term graph()
-  {
-    return graph;
-  }
-  /**
-   * Returns the orth value
-   * @return
-   */
-  public Term orth()
-  {
-    return orth;
-  }
-  /**
-   * Returns the lem value
-   * @return
-   */
-  public Term lem()
-  {
-    return lem;
-  }
-  /**
-   * Returns the tag value
-   * @return
-   */
-  public Tag tag()
-  {
-    return tag;
-  }
-  /**
-   * Returns the start index
-   * @return
-   */
-  public int start()
-  {
-    return start;
-  }
-  /**
-   * Returns the start index
-   * @return
-   */
-  public int end()
-  {
-    return end;
   }
   /**
    * Replace occurrence values by another
@@ -206,6 +160,14 @@ public class Occ
   }
   
   /**
+   * Returns the graph value
+   * @return
+   */
+  public Term graph()
+  {
+    return graph;
+  }
+  /**
    * Set graph value by a String (or a mutable String)
    * @param cs
    * @return a handle on the occurrence object
@@ -239,6 +201,14 @@ public class Occ
   }
 
   /**
+   * Returns the orth value
+   * @return
+   */
+  public Term orth()
+  {
+    return orth;
+  }
+  /**
    * Set orth value by a String (or a mutable String)
    * @param cs
    * @return a handle on the occurrence
@@ -271,6 +241,14 @@ public class Occ
     return this;
   }
   /**
+   * Returns the tag value
+   * @return
+   */
+  public Tag tag()
+  {
+    return tag;
+  }
+  /**
    * Set a grammar category code
    * @return a handle on the occurrence object for chaining
    */
@@ -301,6 +279,14 @@ public class Occ
   }  
   
   /**
+   * Returns the lem value
+   * @return
+   */
+  public Term lem()
+  {
+    return lem;
+  }
+  /**
    * Set lem value by copy of a term
    * @param t
    * @return a handle on the occurrence object
@@ -321,6 +307,32 @@ public class Occ
     return this;
   }
   /**
+   * Returns an order index
+   * @return
+   */
+  public int n()
+  {
+    return n;
+  }
+  /**
+   * Set a start pointer for the occurrence
+   * @param i pointer, for example a char index in a String
+   * @return
+   */
+  public Occ n(final int i)
+  {
+    this.n = i;
+    return this;
+  }
+  /**
+   * Returns the start index
+   * @return
+   */
+  public int start()
+  {
+    return start;
+  }
+  /**
    * Set a start pointer for the occurrence
    * @param i pointer, for example a char index in a String
    * @return
@@ -329,6 +341,14 @@ public class Occ
   {
     this.start = i;
     return this;
+  }
+  /**
+   * Returns the start index
+   * @return
+   */
+  public int end()
+  {
+    return end;
   }
   /**
    * Set an end pointer for the occurrence (last char + 1)
@@ -404,7 +424,8 @@ public class Occ
   /**
    *  A kind of equals, especially useful to test tag only
    */
-  public boolean fit( Occ occ ) {
+  public boolean match( Occ occ ) {
+    
     // test Prefix only, is it dangerous ?
     if ( tag.isPrefix() && lem.isEmpty() && orth.isEmpty() && tag.equals( occ.tag.prefix() ) ) 
       return true;
@@ -441,8 +462,8 @@ public class Occ
       parts=tok.split( ":" );
       occ.graph( parts[0] ).tag( parts[1] );
       System.out.println( occ );
-      if ( test1.fit( occ )) System.out.println( " —— fit( "+test1.tag+" )" );
-      if ( test2.fit( occ )) System.out.println( " —— fit( "+test2.tag+" )" );
+      if ( test1.match( occ )) System.out.println( " —— fit( "+test1.tag+" )" );
+      if ( test2.match( occ )) System.out.println( " —— fit( "+test2.tag+" )" );
     }
     out.close();
   }

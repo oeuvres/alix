@@ -195,7 +195,7 @@ public class Query
       if ( orphan != null ) {
         // if coming from a () expression, orphan may have descendants, take the last descendant  
         Test child = orphan;
-        while ( child.next != null ) child = child.next;
+        while ( child.next() != null ) child = child.next();
         // root should have been set
         if ( op == OR ) {
           ((TestOr) root).add( orphan );
@@ -209,7 +209,7 @@ public class Query
         }
         // append to last
         else {
-          next.next = orphan;
+          next.next( orphan );
           next = child;
         }
         orphan = null;

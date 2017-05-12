@@ -7,7 +7,9 @@ import alix.fr.Tag;
 public abstract class Test
 {
   /** Next test */
-  public Test next = null;
+  private Test next = null;
+  /** Prev test */
+  private Test prev = null;
   /** Factory, build a test with a string */
   public static Test create( String term )
   {
@@ -54,6 +56,17 @@ public abstract class Test
   public Test next() 
   {
     return next;
+  }
+  /** Set a prev Test  */
+  public Test prev( Test test )
+  {
+    this.prev = test;
+    return this;
+  }
+  /** get next Test */
+  public Test prev() 
+  {
+    return prev;
   }
   @Override
   public String toString() {

@@ -73,12 +73,12 @@ public class Lexik
       if ( f.isFile() ) f = f.getParentFile();
       f = new File( f, ALIX_DIC_CSV );
       if ( f.exists() ) {
-        System.out.println( "Load "+f.getCanonicalPath() );
+        // System.out.println( "Load "+f.getCanonicalPath() );
         loadFile( f.toString(), 0 );
       }
       f =  new File( ALIX_DIC_CSV );
       if ( f.exists() ) {
-        System.out.println( "Load "+f.getCanonicalPath() );
+        // System.out.println( "Load "+f.getCanonicalPath() );
         loadFile( f.toString(), 0 );
       }
     } 
@@ -98,8 +98,7 @@ public class Lexik
    */
   public static void loadRes( String res, int mode ) throws IOException, ParseException 
   {
-
-    load( Lexik.class.getResourceAsStream( res ), mode, res );
+    load( new BufferedReader( new InputStreamReader( Lexik.class.getResourceAsStream( res ), StandardCharsets.UTF_8 )), mode, res );
   }
   /**
    * Load a dictionary in the correct hash map
@@ -108,7 +107,7 @@ public class Lexik
    */
   public static void loadFile( String file, int mode ) throws IOException, ParseException 
   {
-    load( new FileInputStream(file), mode, file );
+    load( new BufferedReader( new InputStreamReader( new FileInputStream(file), StandardCharsets.UTF_8 )), mode, file );
   }
   /**
    * Loading a file
@@ -117,11 +116,8 @@ public class Lexik
    * @throws IOException
    * @throws ParseException 
    */
-  public static void load( InputStream stream, final int mode, String src ) throws IOException, ParseException
+  public static void load( BufferedReader buf, final int mode, String src ) throws IOException, ParseException
   {
-    BufferedReader buf = new BufferedReader(
-      new InputStreamReader( stream, StandardCharsets.UTF_8 )
-    );
     String sep = ";";
     int n=0;
     String l;
@@ -129,7 +125,7 @@ public class Lexik
     buf.readLine(); // skip first line
     int tag;
     int action = 0;
-    while ((l = buf.readLine()) != null) {
+    while ( (l = buf.readLine()) != null ) {
       n++;
       l = l.trim();
       if ( l.isEmpty() ) continue;
@@ -459,7 +455,7 @@ public class Lexik
    * @throws ParseException 
    * @throws URISyntaxException 
    */
-  public static void main(String[] args) throws IOException, ParseException, URISyntaxException 
+  public static void main( String[] args ) throws IOException, ParseException, URISyntaxException 
   {
     // comp();
     Occ occ = new Occ(); 
