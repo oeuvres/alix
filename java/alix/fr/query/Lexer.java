@@ -3,18 +3,15 @@ package alix.fr.query;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.Reader;
 import java.io.StringReader;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 
 import alix.fr.Lexik;
-import alix.fr.Occ;
 import alix.fr.Tag;
+import alix.util.Occ;
 
 /**
  * Rules to correct an occurrence chain according to context.

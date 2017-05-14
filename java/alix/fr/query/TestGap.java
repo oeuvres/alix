@@ -1,6 +1,6 @@
 package alix.fr.query;
 
-import alix.fr.Occ;
+import alix.util.Occ;
 /**
  * Zero or n words, except sentence punctuation
  * @author user

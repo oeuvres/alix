@@ -4,6 +4,8 @@ import java.util.HashSet;
 
 import alix.fr.query.Lexer;
 import alix.util.Char;
+import alix.util.Occ;
+import alix.util.OccChain;
 import alix.util.StemTrie.Stem;
 import alix.util.Term;
 

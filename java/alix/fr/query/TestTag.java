@@ -1,7 +1,7 @@
 package alix.fr.query;
 
-import alix.fr.Occ;
 import alix.fr.Tag;
+import alix.util.Occ;
 
 public class TestTag extends Test
 {

@@ -1,4 +1,4 @@
-package alix.fr;
+package alix.util;
 
 import java.io.IOException;
 

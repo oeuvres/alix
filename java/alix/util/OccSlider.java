@@ -1,11 +1,9 @@
-package alix.fr;
+package alix.util;
 
 
 import java.io.IOException;
 
-import alix.util.Roller;
-import alix.util.Term;
-import alix.util.TermDic;
+import alix.fr.Tokenizer;
 
 /**
  * A sliding window of tokens

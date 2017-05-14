@@ -1,6 +1,6 @@
 package alix.fr.query;
 
-import alix.fr.Occ;
+import alix.util.Occ;
 
 public class TestLem extends TestTerm
 {

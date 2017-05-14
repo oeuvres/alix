@@ -1,9 +1,9 @@
 package alix.fr.query;
 
 
-import alix.fr.Occ;
-import alix.fr.OccList;
 import alix.util.Char;
+import alix.util.Occ;
+import alix.util.OccList;
 /**
  * A query builder of Occ events
  * TODO document query syntax

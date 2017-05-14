@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import alix.util.Term;
+import alix.util.Occ;
 import alix.util.StemTrie;
 
 /**

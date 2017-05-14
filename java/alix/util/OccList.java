@@ -1,10 +1,7 @@
-package alix.fr;
-import java.util.ArrayList;
-
-import alix.util.Calcul;
+package alix.util;
 
 /**
- * A sequence of mutable Occs. avoi
+ * A sequence of mutable Occs. 
  * @author user
  */
 public class OccList

@@ -2,7 +2,7 @@ package alix.fr.query;
 
 import java.util.ArrayList;
 
-import alix.fr.Occ;
+import alix.util.Occ;
 /**
  * 
  * Do not works well for now, no backtracking of things like that

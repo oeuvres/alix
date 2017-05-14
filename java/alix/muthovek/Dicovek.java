@@ -25,12 +25,12 @@ import java.util.List;
 import java.util.Set;
 
 import alix.fr.Lexik;
-import alix.fr.Occ;
 import alix.fr.Tokenizer;
 import alix.util.Char;
 import alix.util.IntObjectMap;
 import alix.util.IntRoller;
 import alix.util.IntVek;
+import alix.util.Occ;
 import alix.util.TermDic;
 import alix.util.TermDic.DicEntry;
 

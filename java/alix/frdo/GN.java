@@ -8,9 +8,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import alix.fr.OccSlider;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.util.OccSlider;
 import alix.util.TermDic;
 
 public class GN

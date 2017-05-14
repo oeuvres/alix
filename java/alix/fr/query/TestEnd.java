@@ -1,6 +1,6 @@
 package alix.fr.query;
 
-import alix.fr.Occ;
+import alix.util.Occ;
 /**
  * An always false test, especially used as a default end of chain test
  * @author glorieux-f

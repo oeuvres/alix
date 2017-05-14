@@ -1,8 +1,8 @@
 package alix.fr.query;
 
 import alix.fr.Lexik;
-import alix.fr.Occ;
 import alix.fr.Tag;
+import alix.util.Occ;
 /**
  * Zero or more stop words
  * @author user

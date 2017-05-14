@@ -1,11 +1,11 @@
-package alix.fr;
+package alix.util;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 
-import alix.util.Term;
+import alix.fr.Tag;
 
 /**
  * A Token in a text flow with different properties.
@@ -101,15 +101,6 @@ public class Occ
   public Occ apend( Occ occ )
   {
     char c;
-    /*
-    // ?? Monsieur Claude Bernard
-    // strip firstname is better for name matching
-    if ( this.tag.equals( Tag.NAMEpersf ) || this.tag.equals( Tag.NAMEpersm ) ) {
-      // this.orth.reset();
-      // "Joseph de Maistre" will become "Maistre" if "de" is said to be firstName
-      this.tag.set( 0 );
-    }
-    */
     if ( !graph.isEmpty() ) {
       c = graph.last();
       if ( c != '\'' && c != '’' && c != '-' && occ.graph.first() != '-')
@@ -388,39 +379,7 @@ public class Occ
   public void prev( Occ occ) {
     this.prev = occ;
   }
-  /**
-   * Print content to a printer
-   * @param out
-   */
-  public void print( PrintWriter out ) {
-    print( out, null );
-  }
-  /**
-   * Output to System.out
-   * @param out
-   */
-  public void print( PrintStream out ) {
-    print( new PrintWriter(out), null );
-  }
-  /**
-   * Write the occurrence to a printer in respect of 
-   * french punctuation spacing.
-   * @return 
-   */
-  public void print( PrintWriter out, Occ prev ) {
-    if ( graph.isEmpty() ) return;
-    char first = graph.first();
-    char last = 0;
-    if ( prev == null);
-    else if ( prev.isEmpty() ) last = '-';
-    else last = prev.graph.last();
-    
-    if ( first == ';' || first == ':' || first == '?' || first == '!' ) out.print( ' ' );
-    else if ( first == ',' || first == '.' || first == '-' );
-    else if ( last == '-' || last == '\'');
-    else out.print( ' ' );
-    graph.print( out );
-  }
+  
   /**
    *  A kind of equals, especially useful to test tag only
    */

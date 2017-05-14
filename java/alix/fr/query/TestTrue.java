@@ -1,6 +1,6 @@
 package alix.fr.query;
 
-import alix.fr.Occ;
+import alix.util.Occ;
 /**
  * An always true test, any word, for example "*"
  * @author glorieux-f

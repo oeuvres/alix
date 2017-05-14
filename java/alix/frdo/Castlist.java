@@ -7,10 +7,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import alix.fr.Occ;
-import alix.fr.OccSlider;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.util.Occ;
+import alix.util.OccSlider;
 import alix.util.TermDic;
 
 public class Castlist

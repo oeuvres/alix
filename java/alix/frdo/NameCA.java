@@ -10,8 +10,8 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import alix.fr.Occ;
 import alix.fr.Tokenizer;
+import alix.util.Occ;
 
 public class NameCA
 {

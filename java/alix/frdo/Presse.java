@@ -10,9 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import alix.fr.Lexik;
-import alix.fr.Occ;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.util.Occ;
 import alix.util.TermDic;
 
 /**

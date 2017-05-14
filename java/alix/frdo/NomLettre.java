@@ -23,9 +23,9 @@ import javax.xml.stream.events.EndElement;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
 
-import alix.fr.Occ;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.util.Occ;
 
 public class NomLettre
 {

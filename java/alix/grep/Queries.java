@@ -24,9 +24,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import alix.fr.Occ;
 import alix.fr.Tokenizer;
 import alix.fr.query.Query;
+import alix.util.Occ;
 import alix.util.Term;
 
 /**

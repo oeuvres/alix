@@ -13,9 +13,9 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import alix.fr.Occ;
-import alix.fr.OccSlider;
 import alix.fr.Tokenizer;
+import alix.util.Occ;
+import alix.util.OccSlider;
 import alix.util.Term;
 
 public class NAME

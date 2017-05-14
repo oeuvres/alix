@@ -22,7 +22,6 @@ import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
 import alix.fr.Lexik;
-import alix.fr.Occ;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
 

@@ -6,8 +6,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import alix.fr.Occ;
 import alix.fr.Tokenizer;
+import alix.util.Occ;
 
 /**
  * Optimise du texte pour la vectorisation
