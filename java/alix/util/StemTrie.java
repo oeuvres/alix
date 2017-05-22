@@ -161,7 +161,7 @@ public class StemTrie
     node.inc(); // update counter (this structure may be used as term counter)
     node.tag( cat ); // a category
     if ( orth != null ) node.orth( orth );
-    else node.orth( term );
+    // else node.orth( term ); // Bad for names NAME NAME 
   }
   /**
    * Populate dictionary with a list of multi-words terms

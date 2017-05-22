@@ -78,6 +78,8 @@ n.
 N.
 Nov.;;novembre
 nov.;;novembre
+N.R.F.;NAMEorg
+N.r.f.;NAMEorg
 ncpt.;;numéro de compte
 nCpt.;;numéro de compte
 Oct.;;octobre
@@ -89,8 +91,11 @@ P.
 p.
 pag.;;p.
 pp.
+P.P.;;pp.
 Pr.;SUB;Professeur
 Prs.;SUB;Professeur
+P.S.;SUB
+PS.;SUB
 Q.
 R.
 s.
@@ -113,6 +118,7 @@ teleph;;tél.
 trad.;;traduction
 Trad.;;traduction
 U.
+U.S.A.
 V.
 v.
 VI.;NUM;6

@@ -273,11 +273,8 @@ public class Lexik
    */
   public static boolean name( Occ occ )
   {
-    NameEntry entry = Lexik.NAME.get( occ.graph() );
+    NameEntry entry = Lexik.NAME.get( occ.orth() );
     if ( entry == null ) return false;
-    if ( entry.orth != null ) {
-      occ.orth( entry.orth );
-    }
     occ.lem( occ.orth() );
     occ.tag( entry.tag );
     return true;

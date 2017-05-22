@@ -5099,6 +5099,7 @@ Boulleret;NAMEplace
 Boulleville;NAMEplace
 Bouloc;NAMEplace
 Bouloc;NAMEplace
+Boulogne;NAMEplace
 Boulogne-Billancourt;NAMEplace
 Boulogne-Billancourt;NAMEplace
 Boulogne-la-Grasse;NAMEplace
@@ -5106,7 +5107,6 @@ Boulogne-sur-Gesse;NAMEplace
 Boulogne-sur-Helpe;NAMEplace
 Boulogne-sur-Mer;NAMEplace
 Boulogne-sur-Mer;NAMEplace
-Boulogne;NAMEplace
 Bouloire;NAMEplace
 Boult-aux-Bois;NAMEplace
 Boult-sur-Suippe;NAMEplace
@@ -25352,6 +25352,7 @@ Porri;NAMEplace
 Porspoder;NAMEplace
 Port Lesney;NAMEplace
 Port-Brillet;NAMEplace
+Port-Cros;NAMEplace
 Port-d'Envaux;NAMEplace
 Port-de-Bouc;NAMEplace
 Port-de-Lanne;NAMEplace
@@ -35627,6 +35628,7 @@ Villaz;NAMEplace
 Ville-au-Montois;NAMEplace
 Ville-au-Val;NAMEplace
 Ville-d'Avray;NAMEplace
+Ville d'Avray;NAMEplace
 Ville-devant-Belrain;NAMEplace
 Ville-devant-Chaumont;NAMEplace
 Ville-di-Paraso;NAMEplace

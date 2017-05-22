@@ -296,6 +296,11 @@ public class Tokenizer
     occ.tag( Tag.UNKNOWN );
     pointer = next( occ, pointer ); // parse the text at pointer position
     if ( pointer < 0 ) return false; // end of text
+    if ( occ.graph().isEmpty() ) { // ??? Should not arrive
+      pointer = next( occ, pointer ); // parse the text at pointer position
+      if ( pointer < 0 ) return false; // end of text
+    }
+
     if ( occ.orth().isEmpty() ) occ.orth( occ.graph() );
     // qu' > que
     if ( occ.orth().last() == '\'' ) occ.orth().last('e');
@@ -319,6 +324,7 @@ public class Tokenizer
       if ( !occ.tag().isEmpty() ); // déjà fixé, evstruct
       else if ( Char.isPUNsent( c ) ) occ.tag( Tag.PUNsent );
       else if ( Char.isPUNcl( c ) ) occ.tag( Tag.PUNcl );
+      else if ( c == '/' || c=='¶' ) occ.tag( Tag.PUNdiv );
       else occ.tag( Tag.PUN );
       return true;
     }
@@ -329,6 +335,8 @@ public class Tokenizer
     }
     // upper case ?
     else if ( Char.isUpperCase( c ) ) {
+      // BOULOGNE -> Boulogne, U.S.A.
+      if ( occ.orth().last()!= '.' ) occ.orth().toLower().firstToUpper();
       // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
       if ( Lexik.name( occ ) ) return true;
       // Evolution ? > évolution
@@ -503,12 +511,10 @@ public class Tokenizer
       return pos;
     }
 
-
     // start of word 
     while (true) {
       // xml entity ?
       // if ( c == '&' && Char.isLetter( text.charAt(pointer+1)) ) { }
-      
       if ( c == '&' && xml && !Char.isSpace( text.charAt( pos+1 )) ) {
         int i = pos;
         after.reset();
@@ -524,7 +530,6 @@ public class Tokenizer
           i++;
         }
       }
-      
 
       
       if ( c == '[' && !graph.isEmpty() ); // [rue] E[mile] D[esvaux]
@@ -756,9 +761,9 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = ""
-        + " Dieu te le rendra."
+        + " l’agenda Guillaume Tell / Sainte-Bibiane ¶ et, selon le calendrier des P.T.T. Sainte Viviane."
         + " C’est-à-dire qu'en pense-t-il de ces gens-là ?" 
-        + " N’importe qui, pensez-y et prenez-en ?"
+        + " Jean Arabia. 67, rue de Billancourt, BOULOGNE (Seine)"
         + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. "
         // + "\nIII. Là RODOGUNE.\n\n"
         + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, <p>s’il m’est permis d’entendre votre oracle,</l>"

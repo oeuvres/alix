@@ -10,7 +10,7 @@ import java.nio.file.Paths;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.Occ;
-import alix.util.OccSlider;
+import alix.util.OccRoller;
 import alix.util.TermDic;
 
 public class Castlist
@@ -28,7 +28,7 @@ public class Castlist
 
   public void pivot( String xml, PrintWriter out, Tag tag, int left, int right)
   {
-    OccSlider win = new OccSlider( left, right);
+    OccRoller win = new OccRoller( left, right);
     Tokenizer toks = new Tokenizer( xml );
     while ( toks.word( win.add() ) ) {
       System.out.println( win.get( 0 ) );
@@ -51,7 +51,7 @@ public class Castlist
   }
   public void pivot( String xml, PrintWriter out, String pivot, int left, int right)
   {
-    OccSlider win = new OccSlider( left, right);
+    OccRoller win = new OccRoller( left, right);
     Tokenizer toks = new Tokenizer( xml );
     while ( toks.word( win.add() ) ) {
       if ( ! win.get( 0 ).orth().equals( pivot )) continue;

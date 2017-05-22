@@ -12,11 +12,15 @@ NAME Le NAME;NAMEpers
 NAME en NAME;NAMEplace
 # d'NAME;NAMEpers
 place NAME;NAMEplace
+place de NAME;NAMEplace
 place NAME NAME;NAMEplace
 place NAME NUM;NAMEplace
 rue NAME;NAMEplace
+rue de NAME;NAMEplace
 rue NAME NAME;NAMEplace
 rue NAME NUM;NAMEplace
+saint NAME;NAMEpers
+sainte NAME;NAMEpers
 
 # TITULATURES
 

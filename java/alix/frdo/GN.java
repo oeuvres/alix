@@ -10,7 +10,7 @@ import java.nio.file.Paths;
 
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
-import alix.util.OccSlider;
+import alix.util.OccRoller;
 import alix.util.TermDic;
 
 public class GN
@@ -92,7 +92,7 @@ public class GN
   public TermDic parse( PrintWriter out, int limit )
   {
     TermDic dic = new TermDic();
-    OccSlider win = new OccSlider(left, right);
+    OccRoller win = new OccRoller(left, right);
     // loop on all tokens
     while ( toks.word( win.add() ) ) {
       // limited concordance
@@ -195,7 +195,7 @@ public class GN
   /**
    * Write the window
    */
-  private void html( PrintWriter out, final OccSlider win, final int lpos, final int rpos) 
+  private void html( PrintWriter out, final OccRoller win, final int lpos, final int rpos) 
   {
     n++;
     out.print( "<tr>" );

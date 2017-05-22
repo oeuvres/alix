@@ -285,6 +285,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public char last()
   {
+    if ( len == 0 ) return 0;
     return data[len-1];
   }
   /** 

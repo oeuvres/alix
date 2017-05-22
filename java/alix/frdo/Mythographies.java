@@ -19,7 +19,7 @@ import alix.fr.Lexik;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.Occ;
-import alix.util.OccSlider;
+import alix.util.OccRoller;
 import alix.util.Term;
 
 public class Mythographies
