@@ -468,12 +468,30 @@ public class TermDic
     return line.code;
   }
   /**
+   * Create a term if not exists, but do not modify counts.
+   * @param term
+   * @return index code
+   */
+  public int put( final String term )
+  {
+    return add( term, 0, 0, 0 );
+  }
+  /**
+   * Create a term if not exists, but do not modify counts
+   * @param term
+   * @return index code
+   */
+  public int put( final Term term )
+  {
+    return add( term, 0, 0, 0 );
+  }
+  /**
    * Create a term in the different data structures 
    * @param term
    * @param tag An int tag for output filtering
    * @param count initial value for counter  
    * @param count2 initial value for secondary counter
-   * @return
+   * @return 
    */
   private int put ( final String term, final int tag, final int amount, final int amount2 )
   {

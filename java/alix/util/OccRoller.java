@@ -56,7 +56,7 @@ public class OccRoller extends Roller {
    * clear the last left Object to not find it at extreme right
    * @return the new current term
    */
-  public Occ next()
+  public Occ __next()
   {
     return move(1);
   }
@@ -132,7 +132,7 @@ public class OccRoller extends Roller {
       + " ils ne vont jamais."
     ;
     int right = 5;
-    OccRoller win = new OccRoller(2, right);
-    Tokenizer toks = new Tokenizer(text);
+    OccRoller win = new OccRoller( 2, right );
+    Tokenizer toks = new Tokenizer( text );
   }
 }

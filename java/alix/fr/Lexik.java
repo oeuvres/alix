@@ -218,6 +218,7 @@ public class Lexik
    * @return
    */
   public static boolean isStop( final Term orth ) {
+    if ( orth.isEmpty() ) return true;
     return STOP.contains( orth );
   }
   /**
@@ -466,7 +467,9 @@ public class Lexik
       occ.orth( token );
       Lexik.word( occ );
       if ( occ.tag().equals( Tag.NULL )) Lexik.name( occ );
-      System.out.println( occ );
+      System.out.print( occ );
+      if ( Lexik.isStop( occ.orth() ) ) System.out.println( " — STOP" );
+      else System.out.println();
     }
   }
 }

@@ -133,9 +133,9 @@ public final class Tag
   /** Category */
   private short code;
   /** Dictionnaire des codes par nom */
-  static final HashMap<String, Short> CODE = new  HashMap<String, Short>(); 
+  public static final HashMap<String, Short> CODE = new  HashMap<String, Short>(); 
   /** Dictionnaire des noms par code */
-  static final HashMap<Short, String> LABEL = new HashMap<Short, String>(); 
+  public static final HashMap<Short, String> LABEL = new HashMap<Short, String>(); 
   // loop on the static fields declared to populate the HashMaps
   static {
     String name;

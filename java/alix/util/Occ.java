@@ -35,8 +35,6 @@ public class Occ
   private Occ prev;
   /** Pointer to an OccChain if Occ is inside it */
   protected OccChain chain;
-  /** Number of parts in a compound */
-  public short parts;
   /**
    * Empty constructor
    */

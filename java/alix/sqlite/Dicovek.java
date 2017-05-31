@@ -25,12 +25,15 @@ import java.util.List;
 import java.util.Set;
 
 import alix.fr.Lexik;
+import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.Char;
 import alix.util.IntObjectMap;
 import alix.util.IntRoller;
 import alix.util.IntVek;
 import alix.util.Occ;
+import alix.util.OccRoller;
+import alix.util.Term;
 import alix.util.TermDic;
 import alix.util.TermDic.DicEntry;
 
@@ -52,104 +55,121 @@ import alix.util.TermDic.DicEntry;
  */
 public class Dicovek {
   /** Dictionary in order of indexing for int keys, should be kept private, no external modif */
-  private TermDic terms;
+  private TermDic dic;
   /** Vectors of co-occurences for each term of dictionary */
   private IntObjectMap<IntVek> vectors;
-  /** Used as attribute in a token stream  */
-  public final static int STOPWORD = 1;
-  /** Threshold for terms in vectors */
-  public final static int FREQMIN = 5;
   /** Size of left context */
   final int left;
   /** Size of right context */
   final int right;
-  /** Lemmatize vectors */
-  final boolean lemmatize;
-  /** Sliding window */
-  private IntRoller win;
-  /** List of stop words, usually grammatical, do not modify during object life */
-  // private final Set<String> stoplist;
+  /** Sliding window of occurrences */
+  private OccRoller occs;
+  /** Precalculated values for vector */
+  private IntRoller values;
   /** Current Vector to work on */
   private IntVek vek;
-  /**
-   * Simple constructor
-   * 
-   * @param contextLeft
-   * @param contextRight
-   */
-  public Dicovek(int contextLeft, int contextRight)
-  {
-    this(contextLeft, contextRight, false);
-  }
-
+  /** threshold of non stop words */
+  final int stopoffset; 
   
   /**
-   * Full constructor with all options
+   * Constructor
    * 
-   * @param contextLeft
-   * @param contextRight
-   * @param stoplist
-   * @param initialSize
+   * @param left
+   * @param right
+   * TODO, create different modes
    */
-  public Dicovek(int contextLeft, int contextRight, boolean lemmatize)
+  public Dicovek( final int left, final int right )
   {    
-    left = contextLeft;
-    right = contextRight;
+    this.left = left;
+    this.right = right;
     // this.stoplist = stoplist;
-    terms = new TermDic();
+    dic = new TermDic();
+    // ajouter d’avance tous les mots vides au dictionnaire
+    dic.put("");
+    for ( String word : Tag.CODE.keySet() ) dic.put( word );
+    for ( String word : Lexik.STOP ) dic.put( word );
+    this.stopoffset = dic.put( "STOPOFFSET" );
+    
     // 44960 is the size of all Zola vocabulary
     vectors = new IntObjectMap<IntVek>(5000);
-    win = new IntRoller(contextLeft, contextRight);
-    this.lemmatize = lemmatize;
   }
   
   /**
-   * Add an occurrence and do good work
-   * Most of the logic is here
-   * Add empty positions with ""
+   * For each occurrence, choose what to put as a key for head of a vector
+   * @param occ
+   * @return a code from a dicitonary of unique value
+   */
+  private int key( Occ occ )
+  {
+    // pas de vecteur pour une occurrence vide
+    if ( occ.isEmpty() ) return -1;
+    // pas de vecteur pour un mot vide
+    if ( Lexik.isStop( occ.orth() )) {
+      // si pas ponctuation, incrémenter tout de même le dictionnaire
+      if ( !occ.tag().isPun() ) dic.inc( occ.orth() );
+      return -1;
+    }
+    if ( occ.tag().isSub() ) return dic.inc( occ.orth() );
+    return dic.inc( occ.lem() );
+  }
+  
+  /**
+   * For each occurrence, choose what to put in the vector,
+   * do not increment value in dictionary.
+   * @param occ
+   * @return a code from a dictionary of unique value
+   */
+  private int value( Occ occ )
+  {
+    if ( occ.isEmpty() ) return 0;
+    // ponctuation, stocker le type (bloc, phrase, mot) 
+    if ( occ.tag().isPun() ) return dic.put( occ.tag().label() );
+    // mot vide, stocker la catégorie générale : déterminant, pronom…
+    if ( Lexik.isStop( occ.orth() ) ) return dic.put( Tag.label( occ.tag().prefix() ) );
+    // nom prope générique
+    if ( occ.tag().isName() ) return dic.put( "NAME" );
+    // autre catégories, le lemme ?
+    return dic.put( occ.lem() );
+  }
+  
+  /**
+   * Update the vectors from the current state
    * 
    * @param term A token
    */
-  public Dicovek add(Occ occ)
+  public boolean update()
   {
-    // if ( term == null ) term = ""; // do something ?
-    // default is an empty position
-    int termid = 0;
-    // add term to the dictionary and gets its int id
-    if ( !term.equals("") ) termid = terms.inc(term);
-    win.push(termid);
     
-    // get center of window, and work around
-    termid = win.get(0);
-    // center is not set, crossing an empty sequence, maybe: start, end, paragraph break...  
-    if (termid == 0) return this;
-    // do not record stopword vector (?)
+    Occ center = occs.get( 0 );
+    int key = key( center );
+    if ( key < 0 ) return false; 
     // get the vector for this center term
-    vek = vectors.get( termid );
+    vek = vectors.get( key );
     // optimize ? term not yet encountered, create vector
     if (vek == null) {
       vek = new IntVek(10);
-      vectors.put(termid, vek);
+      // A vector is mutable in its dictionary
+      vectors.put( key, vek );
     }
-    // try to use a boost factor, not interesting
+    // try to use a boost factor by position ?
     // fill the vector, using the convenient add method
     for ( int i=-left; i<=right; i++ ) {
-      if (i==0) continue;
-      vek.inc( win.get(i) );
+      if ( i==0 ) continue;
+      vek.inc( values.get(i) );
     }
-    return this;
+    return true;
   }
   
   /**
    * Output most frequent words as String
    * TODO, best object packaging
    */
-  public String freqlist(boolean stop, int limit)
+  public String freqlist( boolean stop, int limit )
   {
     StringBuffer sb = new StringBuffer();
     boolean first = true;  
-    for( DicEntry entry: terms.byCount() ) {
-      if ( stoplist.contains( entry.label() ) ) continue;
+    for( DicEntry entry: dic.byCount() ) {
+      if ( Lexik.isStop( entry.label() ) ) continue;
       if (first) first = false;
       else sb.append( ", " );
       sb.append( entry.label()+":"+entry.count() ); 
@@ -167,7 +187,7 @@ public class Dicovek {
   public ArrayList<SimRow> sims( String term, int limit )
   {
     // get vector for requested word
-    int k = terms.code( term );
+    int k = dic.code( term );
     if (k == 0) return null;
     IntVek vekterm = vectors.get( k );
     // some words of the dictionary has no vector but are recorded in co-occurrence (ex: stop)
@@ -177,7 +197,7 @@ public class Dicovek {
     // list dico in freq order
     ArrayList<SimRow> table = new ArrayList<SimRow>();
     SimRow row;
-    for ( DicEntry entry: terms.byCount() ) {
+    for ( DicEntry entry: dic.byCount() ) {
       vek = vectors.get( entry.code() );
       if ( vek == null ) continue;
       score = vekterm.cosine( vek );
@@ -240,7 +260,7 @@ public class Dicovek {
       writer.write("{\n");
       boolean first1 = true;
       int count1 = 1;
-      for( DicEntry entry: terms.byCount() ) {
+      for( DicEntry entry: dic.byCount() ) {
         // TODO, write vector
         if (--count1 == 0) break;
       }
@@ -265,7 +285,7 @@ public class Dicovek {
   public String coocs( final String term, int limit, final boolean stop)
   {
     StringBuffer sb = new StringBuffer();
-    int index = terms.code( term );
+    int index = dic.code( term );
     if (index == 0) return null;
     vek = vectors.get(index);
     // some words on dictionary has no vector, like stop words
@@ -284,8 +304,7 @@ public class Dicovek {
     boolean first = true;
     String w;
     for ( int j = 0; j < size; j++ ) {
-      w = terms.term(coocs[j][0]);
-      if (stop && stoplist.contains( w )) continue;
+      w = dic.term(coocs[j][0]);
       if (first) first = false;
       else sb.append(", ");
       sb.append(w+":"+coocs[j][1]);
@@ -293,27 +312,33 @@ public class Dicovek {
     }
     return sb.toString();
   }
+  
+  
+  
   /**
-   * Use default tokenizer of the package (French)
-   * to feed the dico
+   * Tokenize a text, update a roller of occurrences, with the configured context.
+   * Call the vector builder on the context state.
    * @throws IOException 
    */
   public void tokenize( Path file ) throws IOException
   {
+    occs = new OccRoller( left, right );
+    values = new IntRoller( left, right );
     String text = new String( Files.readAllBytes( file ), StandardCharsets.UTF_8 );
     Tokenizer toks = new Tokenizer( text );
-    String w;
-    // give some space before
-    for ( int i=0; i < left; i++ ) add("");
+    Occ space = new Occ();
+    for ( int i=0; i < left; i++ ) occs.push( space ); // envoyer des espaces avant
     Occ occ;
-    while( (occ= toks.word()) != null ) {
-      if ( occ.tag().isPun() ) continue;
-      // if ( occ.tag().isName() ) add( "ONOMA" );
-      else add( occ.lem().toString() );
+    while( ( occ = toks.word() ) != null ) {
+      occs.push( occ ); // envoyer l’occurrence
+      values.push( value( occ ) );
+      update();
     }
-    // give some space after
-    for ( int i=0; i < right; i++ )
-      add("");
+    for ( int i=0; i < right; i++ ) {
+      occs.push( space );
+      values.push( -1 ); 
+      update();
+    }
     // suppress little vector here ?
   }
   /**
@@ -371,34 +396,17 @@ public class Dicovek {
    */
   public static void main(String[] args) throws IOException
   {
-    /*
     String usage = 
         "Usage: java -cp alix.jar site.oeuvres.muthovek.Dicovek texts/*\n"
        +"   texts maybe in txt or xml.\n"
     ;
-    if ( args.length == 0 ) {
-      System.out.println( usage );
-      // System.exit( 0 );
-      args = new String[]{ "/Local/word2vec/levistrauss.txt" };
-      // "../alix-demo/WEB-INF/textes/zola.xml"
-    }
-    */
     BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
-    System.out.print("Corpus: ");
-    String corpus = keyboard.readLine().trim();
-    System.out.println( '"'+corpus+'"' );
-    if ( corpus.equals( "zola") ) 
-      args = new String[]{ "/Library/WebServer/Documents/alix-demo/WEB-INF/textes/zola.xml" };
-    else if ( corpus.equals("levistrauss") ) 
-      args = new String[]{ "/Library/WebServer/Documents/alix-demo/WEB-INF/textes/levi-strauss_anthropologie-structurale.xml" };
-    else if ( corpus.equals("barthes") ) 
-      args = new String[]{ "/Library/WebServer/Documents/alix-demo/WEB-INF/textes/barthes_compilationstructurale.html" };
-    else if ( corpus.equals("lacan") ) 
-      args = new String[]{ "/Library/WebServer/Documents/alix-demo/WEB-INF/textes/lacan_ecrits.xml" };
-    else if ( corpus.equals("zola") ) 
-      args = new String[]{ "/Library/WebServer/Documents/alix-demo/WEB-INF/textes/zola.xml" };
-    
-    else args= new String[]{"/home/odysseus/Téléchargements/critique2000-gh-pages/txt/*.xml"};
+    if ( args.length == 0 ) {
+      System.out.print("Fichiers ? : ");
+      String glob = keyboard.readLine().trim();
+      System.out.println( '"'+glob+'"' );
+      args= new String[]{ glob };
+    }
     // largeur avant-après
     int wing = 5;
     // le chargeur de vecteur a besoin d'une liste de mots vides pour éviter de faire le vecteur de "de"
@@ -442,7 +450,7 @@ public class Dicovek {
       System.out.println( "SIMINYMES : " );
       System.out.println( "word\tcount\tdistance" );
       for (SimRow row:table) {
-        if ( Lexik.isStop( row.term )) continue;
+        // if ( Lexik.isStop( row.term )) continue;
         System.out.print( row.term );
         System.out.print( "\t" );
         System.out.print( row.count );
