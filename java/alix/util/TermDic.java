@@ -696,7 +696,14 @@ public class TermDic
   @Override
   public String toString()
   {
-    return csv( 10 );
+    StringWriter writer = new StringWriter();
+    try {
+      csv( writer, 100 );
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    return writer.toString();
   }
 
   /**

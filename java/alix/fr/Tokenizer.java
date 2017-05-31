@@ -761,7 +761,7 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = ""
-        + " l’agenda Guillaume Tell / Sainte-Bibiane ¶ et, selon le calendrier des P.T.T. Sainte Viviane."
+        + "Bien qu’à l’agenda Guillaume Tell / Sainte-Bibiane ¶ et, selon le calendrier des P.T.T. Sainte Viviane."
         + " C’est-à-dire qu'en pense-t-il de ces gens-là ?" 
         + " Jean Arabia. 67, rue de Billancourt, BOULOGNE (Seine)"
         + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. "

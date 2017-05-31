@@ -85,32 +85,44 @@ public class Dicovek {
     // this.stoplist = stoplist;
     dic = new TermDic();
     // ajouter d’avance tous les mots vides au dictionnaire
-    dic.put("");
+    dic.put(""); // rien=1
     for ( String word : Tag.CODE.keySet() ) dic.put( word );
     for ( String word : Lexik.STOP ) dic.put( word );
     this.stopoffset = dic.put( "STOPOFFSET" );
-    
     // 44960 is the size of all Zola vocabulary
     vectors = new IntObjectMap<IntVek>(5000);
   }
   
   /**
-   * For each occurrence, choose what to put as a key for head of a vector
+   * For each occurrence, choose what to put as a key for head of a vector.
+   * Increment occurrence dictionary.
    * @param occ
    * @return a code from a dicitonary of unique value
    */
   private int key( Occ occ )
   {
+    int ret = -1;
     // pas de vecteur pour une occurrence vide
     if ( occ.isEmpty() ) return -1;
-    // pas de vecteur pour un mot vide
-    if ( Lexik.isStop( occ.orth() )) {
-      // si pas ponctuation, incrémenter tout de même le dictionnaire
-      if ( !occ.tag().isPun() ) dic.inc( occ.orth() );
+    if ( occ.tag().isPun() ) return -1;
+    // nombre
+    if ( occ.tag().equals( Tag.DETnum ) ) {
+      ret = dic.inc("NUM");
       return -1;
     }
-    if ( occ.tag().isSub() ) return dic.inc( occ.orth() );
-    return dic.inc( occ.lem() );
+    // pas de vecteur pour un mot vide
+    if ( Lexik.isStop( occ.orth() ) ) {
+      // incrémenter tout de même le dictionnaire
+      ret = dic.inc( occ.orth() );
+      return -1;
+    }
+    if ( occ.tag().isSub() ) ret = dic.inc( occ.orth() );
+    // pas de lemme connu
+    else if ( occ.lem().isEmpty() ) ret = dic.inc( occ.orth() );
+    else ret = dic.inc( occ.lem() );
+    // le lemme peut être un mot vide VERBsup je fis -> faire
+    if ( ret < stopoffset ) return -1;
+    return ret;
   }
   
   /**
@@ -121,14 +133,19 @@ public class Dicovek {
    */
   private int value( Occ occ )
   {
-    if ( occ.isEmpty() ) return 0;
-    // ponctuation, stocker le type (bloc, phrase, mot) 
-    if ( occ.tag().isPun() ) return dic.put( occ.tag().label() );
+    
+    if ( occ.isEmpty() ) return -1;
+    // la ponctuation, ajoute à la résolution
+    if ( occ.tag().isPun() ) return dic.put( occ.orth() );
     // mot vide, stocker la catégorie générale : déterminant, pronom…
-    if ( Lexik.isStop( occ.orth() ) ) return dic.put( Tag.label( occ.tag().prefix() ) );
+    // if ( Lexik.isStop( occ.orth() ) ) return dic.put( occ.tag().label() );
+    if ( occ.tag().isPrep() ) return dic.put( occ.tag().label() );
     // nom prope générique
-    if ( occ.tag().isName() ) return dic.put( "NAME" );
+    if ( occ.tag().isName() ) return dic.put( occ.tag().label() );
+    // numéraux
+    if ( occ.tag().equals( Tag.DETnum ) ) return dic.put( "NUM" );
     // autre catégories, le lemme ?
+    if ( occ.lem().isEmpty() ) return dic.put( occ.orth() );
     return dic.put( occ.lem() );
   }
   
@@ -154,7 +171,10 @@ public class Dicovek {
     // try to use a boost factor by position ?
     // fill the vector, using the convenient add method
     for ( int i=-left; i<=right; i++ ) {
+      // centre de contexte, ne pas ajouter
       if ( i==0 ) continue;
+      // valeur exclue, ne pas ajouter
+      if ( values.get(i) < 1 ) continue; 
       vek.inc( values.get(i) );
     }
     return true;
@@ -188,7 +208,10 @@ public class Dicovek {
   {
     // get vector for requested word
     int k = dic.code( term );
-    if (k == 0) return null;
+    if (k < 1) {
+      System.out.println( term );
+      return null;
+    }
     IntVek vekterm = vectors.get( k );
     // some words of the dictionary has no vector but are recorded in co-occurrence (ex: stop)
     if ( vekterm == null ) return null;
@@ -200,9 +223,10 @@ public class Dicovek {
     for ( DicEntry entry: dic.byCount() ) {
       vek = vectors.get( entry.code() );
       if ( vek == null ) continue;
+      if ( vek.size() < 4 ) continue;
       score = vekterm.cosine( vek );
       // score differs 
-      if ( score < 0.5 ) continue;
+      // if ( score < 0.5 ) continue;
       row = new SimRow( entry.label(), entry.count(), score );
       table.add( row );
       if ( limit-- == 0 ) break;
@@ -348,7 +372,10 @@ public class Dicovek {
    */
   public void walk( String glob, final PrintWriter out ) throws IOException
   {
-    if ( out != null ) out.println( "Walk through: "+glob );
+    if ( out != null ) {
+      out.println( "Walk through: "+glob );
+      out.flush();
+    }
     // get the parent folder before the first glob star, needed for ../*/*.xml
     int before = glob.indexOf( '*' );
     if ( before < 0 ) before = glob.length()-1;
@@ -365,14 +392,20 @@ public class Dicovek {
       @Override
       public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
         if (matcher.matches(file)) {
-          if (out != null) out.println(file);
+          if (out != null) {
+            out.println(file);
+            out.flush();
+          }
           tokenize( file );
         }
         return FileVisitResult.CONTINUE;
       }
       @Override
       public FileVisitResult visitFileFailed(Path path, IOException exc) throws IOException {
-        if (out != null) out.println( "File not found "+path.toAbsolutePath() );
+        if (out != null) {
+          out.println( "File not found "+path.toAbsolutePath() );
+          out.flush();
+        }
         return FileVisitResult.CONTINUE;
       }
     });
@@ -432,13 +465,7 @@ public class Dicovek {
         System.exit(0);
       }
       word = word.trim();
-      int simsmax = 1000;
-      if ( word.contains( " " )) {
-        int pos = word.indexOf( ' ' );
-        simsmax = Integer.parseInt( word.substring( pos+1) );
-        word = word.substring( 0, pos );
-        if (simsmax < 1) simsmax = 1000;
-      }
+      int simsmax = -1; // pas de limite
       start = System.nanoTime();
       System.out.print( "COOCCURRENTS : " );
       System.out.println( veks.coocs( word, 30, true ) );

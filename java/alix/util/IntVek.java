@@ -550,6 +550,7 @@ public class IntVek implements Cloneable
    */
   public double cosine( IntVek vek )
   {
+    if ( vek.magnitude() == 0 ) return 0; // isNaN()
     return dotProduct(vek) / (this.magnitude() * vek.magnitude());
   }
   
