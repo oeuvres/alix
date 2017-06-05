@@ -96,7 +96,7 @@ public class OccChain
     Occ occ = last;
     int i = 1;
     while( occ != null) {
-      sb.append( ""+i+". " );
+      sb.append( ""+i+"|" );
       sb.append( occ.graph() );
       if ( !occ.isEmpty() ) {
         if ( occ != first ) sb.append( " " );

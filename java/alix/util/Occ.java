@@ -98,25 +98,27 @@ public class Occ
    */
   public Occ apend( Occ occ )
   {
-    char c;
-    if ( !graph.isEmpty() ) {
-      c = graph.last();
-      if ( c != '\'' && c != '’' && c != '-' && occ.graph.first() != '-')
-        graph.append( ' ' );
+    char c = 0;
+    
+    if ( !graph.isEmpty() ) c = graph.last();
+    if ( c == '\'' || c == '’' ) {
+      graph.append( occ.graph );
+      // de abord > d’abord
+      if ( !orth.isEmpty() && orth.last() != '\'' && orth.last() != '’'  ) orth.last('\'');
+      orth.append( occ.orth );
+      if ( !lem.isEmpty() && lem.last() != '\'' && lem.last() != '’'  ) lem.last('\'');
+      lem.append( occ.lem );
     }
-    if ( !orth.isEmpty() ) {
-      c = orth.last();
-      if ( c != '\'' && c != '’' && c != '-' && occ.orth.first() != '-')
-        orth.append( ' ' );
+    else if ( c == '-' || occ.graph.first() == '-') {
+      graph.append( occ.graph );
+      orth.append( occ.orth );
+      lem.append( occ.lem );
     }
-    if ( !lem.isEmpty() ) {
-      c = lem.last();
-      if ( c != '\'' && c != '’' && c != '-' && occ.orth.first() != '-')
-        lem.append( ' ' );
+    else {
+      graph.append( ' ' ).append( occ.graph );
+      orth.append( ' ' ).append( occ.orth );
+      lem.append( ' ' ).append( occ.lem );
     }
-    graph.append( occ.graph );
-    orth.append( occ.orth );
-    lem.append( occ.lem );
     // no way to guess how cat will be changed
     if ( tag.equals( 0 ) ) tag( occ.tag );
     // if occurrence was empty, take the index value of new Occ

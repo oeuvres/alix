@@ -12,6 +12,7 @@
     </manifest>
     <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
         <file path="/Alix/java/alix/fr/dic/orth.csv"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.sqlite"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Lexik.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.frdo"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.util"/>
@@ -26,7 +27,6 @@
         <file path="/Alix/java/alix/fr/dic/name.csv"/>
         <file path="/Alix/java/alix/fr/dic/locno.csv"/>
         <file path="/Alix/java/alix/fr/dic/author.csv"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.muthovek"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr.query"/>
         <file path="/Alix/java/alix/fr/dic/rules.csv"/>

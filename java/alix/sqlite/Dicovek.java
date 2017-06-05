@@ -22,18 +22,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
 
 import alix.fr.Lexik;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
-import alix.util.Char;
 import alix.util.IntObjectMap;
 import alix.util.IntRoller;
 import alix.util.IntVek;
 import alix.util.Occ;
 import alix.util.OccRoller;
-import alix.util.Term;
 import alix.util.TermDic;
 import alix.util.TermDic.DicEntry;
 
@@ -69,7 +66,9 @@ public class Dicovek {
   /** Current Vector to work on */
   private IntVek vek;
   /** threshold of non stop words */
-  final int stopoffset; 
+  final int stopoffset;
+  /** Time finished */
+  private long modified;
   
   /**
    * Constructor
@@ -139,7 +138,6 @@ public class Dicovek {
     if ( occ.tag().isPun() ) return dic.put( occ.orth() );
     // mot vide, stocker la catégorie générale : déterminant, pronom…
     // if ( Lexik.isStop( occ.orth() ) ) return dic.put( occ.tag().label() );
-    if ( occ.tag().isPrep() ) return dic.put( occ.tag().label() );
     // nom prope générique
     if ( occ.tag().isName() ) return dic.put( occ.tag().label() );
     // numéraux
@@ -192,7 +190,7 @@ public class Dicovek {
       if ( Lexik.isStop( entry.label() ) ) continue;
       if (first) first = false;
       else sb.append( ", " );
-      sb.append( entry.label()+":"+entry.count() ); 
+      sb.append( entry.label()+" ("+entry.count()+")" ); 
       if (--limit == 0) break;
     }
     return sb.toString();
@@ -318,20 +316,20 @@ public class Dicovek {
     int[][] coocs; // will receive the co-occurrences to sort
     coocs = vek.toArray();
     // sort coocs by count
-    Arrays.sort(coocs, new Comparator<int[]>() {
+    Arrays.sort( coocs, new Comparator<int[]>() {
       @Override
       public int compare(int[] o1, int[] o2) {
         return Integer.compare(o2[1], o1[1]);
       }
-    });
+    } );
     int size = coocs.length;
     boolean first = true;
     String w;
     for ( int j = 0; j < size; j++ ) {
       w = dic.term(coocs[j][0]);
-      if (first) first = false;
-      else sb.append(", ");
-      sb.append(w+":"+coocs[j][1]);
+      // if (first) first = false;
+      // else sb.append(", ");
+      sb.append(" "+w+" ("+coocs[j][1]+")");
       if (--limit == 0) break;
     }
     return sb.toString();
@@ -364,6 +362,11 @@ public class Dicovek {
       update();
     }
     // suppress little vector here ?
+    modified = System.currentTimeMillis();
+  }
+  public long modified()
+  {
+    return modified;
   }
   /**
    * Explore 

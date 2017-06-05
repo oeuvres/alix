@@ -39,8 +39,9 @@ public class Tokenizer
   private int endIndex;
   /** For the simple tokenizer */
   boolean sent;
-  /** A buffer of tokens, populated for multi-words test */
-  private OccChain occbuf = new OccChain( 10 );
+  /** A buffer of tokens, populated for multi-words test. 10 seems not enough, 20 seems better
+   *  (il n’en reste pas moins un coquin assez complet) */
+  private OccChain occbuf = new OccChain( 20 );
   /** The right context needed to resolve rules */
   private int maxright;
   /** Present right context width */
@@ -163,7 +164,11 @@ public class Tokenizer
       right++;
     }
     occhere = occhere.next();
-    if ( occhere == null || occhere.start() < 0 ) return null; // end of text
+    // occChain maybe broken here when searching for too long expression "il n’en reste pas moins un …"
+    if ( occhere == null || occhere.start() < 0 ) {
+      if ( pointer > 0  && pointer < end ) throw new RuntimeException("Bug involontaire");
+      return null; // end of text
+    }
     right--;
     // BUG, http://lesjoiesducode.fr/post/137539735754/quand-on-a-la-flemme-de-contourner-un-message
     // if ( occhere.isEmpty() ) return null;
@@ -233,17 +238,17 @@ public class Tokenizer
     short tag = 0;
     Stem child;
     String orth = null;
-    Occ ranger = occhere; // an occurrence launch to search for compound
+    Occ scout = occhere; // an occurrence launch to search for compound
     Occ end = null;
     while ( true ) {
       // front of buffer, have a token more
-      if ( ranger == occbuf.first() ) {
+      if ( scout == occbuf.first() ) {
         if (!token( occbuf.push() )); // do what here ?
         right--;
       }
-      ranger = ranger.next();
+      scout = scout.next();
       
-      stem = stemsearch( stem, ranger );
+      stem = stemsearch( stem, scout );
 
       if ( stem == null ) {
         // branch end, but nothing found, do nothing, go away
@@ -258,9 +263,12 @@ public class Tokenizer
           // normalize orth, compound test has been down on graph
           next.orth( next.graph() );
           occhere.apend( next );
-          // remove the a token will relink the chain  
+          // remove the next token to relink the chain  
           occbuf.remove( next );
-          if ( stop ) break;
+          if ( stop ) {
+            if ( occhere.orth().last() == '\'' ) occhere.orth().last('e');
+            break;
+          }
         }
         // Set the normalized graphical form from the compound dictionary
         if ( orth != null ) {
@@ -276,7 +284,7 @@ public class Tokenizer
       if ( stem.tag() != 0) {
         tag = stem.tag();
         orth = stem.orth();
-        end = ranger;
+        end = scout;
       }
     }
   }
@@ -302,8 +310,8 @@ public class Tokenizer
     }
 
     if ( occ.orth().isEmpty() ) occ.orth( occ.graph() );
-    // qu' > que
-    if ( occ.orth().last() == '\'' ) occ.orth().last('e');
+    // qu' > que (fait à Ellision)
+    // if ( occ.orth().last() == '\'' ) occ.orth().last('e');
     // test hyphen before punctuation
     if ( occ.orth().first() == '-' ) {
       // keep hyphen in demonstrative particles
@@ -564,6 +572,7 @@ public class Tokenizer
         graph.last( '\'' ); // normalize apos
         // word before apos is known, (ex: puisqu'), give it and put pointer after apos
         if ( ELLISION.contains( graph ) ) {
+          occ.orth( graph ).orth().last( 'e' );
           pos++; // start next word after apos
           break;
         }
@@ -761,7 +770,7 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = ""
-        + "Bien qu’à l’agenda Guillaume Tell / Sainte-Bibiane ¶ et, selon le calendrier des P.T.T. Sainte Viviane."
+        + "D’abord et Bien qu’à l’agenda Guillaume Tell / Sainte-Bibiane ¶ et, selon le calendrier des P.T.T. Sainte Viviane."
         + " C’est-à-dire qu'en pense-t-il de ces gens-là ?" 
         + " Jean Arabia. 67, rue de Billancourt, BOULOGNE (Seine)"
         + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. "

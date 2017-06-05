@@ -100,12 +100,13 @@ public class OccRoller extends Roller {
    * Add a value by the end
    * @return The left token 
    */
-  public Occ push(final Occ value) 
+  public Occ push( final Occ value ) 
   {
     // modulo in java produce negatives
     Occ ret = data[ pointer( -left ) ];
     center = pointer( +1 );
-    data[ pointer(right) ] = value;
+    // copy content !!!, the source occ may run in another chain  
+    data[ pointer(right) ].set( value ); 
     return ret;
   }
   /**
@@ -128,11 +129,26 @@ public class OccRoller extends Roller {
    */
   public static void main(String args[]) throws IOException 
   {
-    String text = "Son amant emmène un jour O se promener dans un quartier où"
-      + " ils ne vont jamais."
+    String text = "<> On a exagéré bien probablement sur Cartouche, "
+        + "mais il n’en reste pas moins un coquin assez complet, et si on a exagéré sur "
+        + "M<hi rend=\"sup\">me</hi> Du Barry, nous croyons qu’elle restera aussi une coquine assez complète. "
+        + "L’histoire de M. Capefigue changera peu de chose à cela, et comment le pourrait-elle ? "
+        + "À part l’admiration pour la femme et l’attendrissement continu pour sa destinée, "
+        + "il n’y a pas un fait ou une manière de regarder les faits qui puisse modifier d’un iota "
+        + "l’opinion générale sur une femmelette dont M. Capefigue avait cru repétrir la statuette, "
+        + "j’imagine, pour le seul plaisir d’y toucher. M. Capefigue qui, depuis longtemps,"
+        + "n’appuie plus l’histoire, n’avait pas le pouce qu’il fallait pour laisser n’importe "
+        + "quelle empreinte sur ce petit bronze libertin du <num>xviii<hi rend=\"sup\">e</hi></num> siècle, "
+        + "dans lequel la Postérité continuera de voir — tout simplement — l’image à voiler de la Frétillon "
+        + "d’un roi qui ne pétillait plus, de l’indécente Sunamite d’un Salomon qui ne fut jamais "
+        + "Salomon que par la vieillesse !"
     ;
-    int right = 5;
-    OccRoller win = new OccRoller( 2, right );
+    OccRoller win = new OccRoller( 10, 10 );
     Tokenizer toks = new Tokenizer( text );
+    Occ occ;
+    while ( (occ = toks.word()) != null ) {
+      win.push( occ );
+      System.out.println( win );
+    }
   }
 }

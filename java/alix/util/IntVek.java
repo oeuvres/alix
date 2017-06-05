@@ -594,29 +594,19 @@ public class IntVek implements Cloneable
    */
   public static void main(String[] args)
   {
+    int max = 5;
+    IntVek[] veks = new IntVek[max];
     // test loading a string version
-    System.out.println( (new IntVek( 10 )).load( " 1:1 5:5 2:2 6:6 3:3 4:4 1:1 " ) );
-    long time;
-    time = System.nanoTime();
-    java.util.Random rng = new java.util.Random();
-    int max = 30000;
-    int size;
-    IntVek[] dic= new IntVek[max];
-    System.out.print( max+" vectors" );
-    for ( int i=0 ; i < max; i++ ) {
-      size = 50 + rng.nextInt(3000) + 1;
-      dic[i] = new IntVek(i, "", size);
-      for ( int j=0; j < size; j++) {
-        dic[i].put( j, rng.nextInt(30000) );
+    veks[0] =  (new IntVek( 3 )).load( " 1:1 2:1 3:1" );
+    veks[1] =  (new IntVek( 3 )).load( " 1:1 2:1 3:0" );
+    veks[2] =  (new IntVek( 3 )).load( " 1:1 2:1 3:2" );
+    veks[3] =  (new IntVek( 3 )).load( " 1:1 2:1 4:1" );
+    veks[4] =  (new IntVek( 3 )).load( " 1:1 2:1 4:2" );
+    for ( int i=0; i < max; i++ ) {
+      for ( int j=0; j < max; j++ ) {
+        System.out.println( ""+i+"–"+j+"   "+veks[i].cosine( veks[j] ) );
       }
     }
-    System.out.print( " filled in "+((System.nanoTime() - time) / 1000000)+" ms. Cosine for one vector against all "  );
-    time = System.nanoTime();
-    // Cosine for one 
-    for ( int i=0 ; i < max; i++ ) {
-      dic[0].cosine( dic[i] );
-    }
-    System.out.println( " in "+((System.nanoTime() - time) / 1000000)+" ms."  );
   }
 
 }
