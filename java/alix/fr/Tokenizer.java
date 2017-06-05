@@ -98,11 +98,15 @@ public class Tokenizer
    */
   public Tokenizer(String text) 
   {
+    if ( text.charAt( 0 ) == '<') xml = true;
     // useful for TEI files
     int pos = text.indexOf( "</teiHeader>" );
-    if (pos > 0) pointer = pos+12;
+    if (pos > 0) {
+      xml = true;
+      pointer = pos+12;
+    }
     end = text.length();
-    if ( text.charAt( 0 ) == '<') xml = true;
+    // if ( !xml ) System.out.println( "Pas XML ?" );
     // on fait quoi ?
     if ( text.isEmpty()) this.text="";
     else if ( !Char.isToken( text.charAt( end - 1 ) )) this.text = text;
@@ -769,8 +773,9 @@ public class Tokenizer
     // Path context = Paths.get(Tokenizer.class.getClassLoader().getResource("").getPath()).getParent();
     if ( true || args.length < 1) {
       String text;
-      text = ""
-        + "D’abord et Bien qu’à l’agenda Guillaume Tell / Sainte-Bibiane ¶ et, selon le calendrier des P.T.T. Sainte Viviane."
+      text = "<>"
+        + " Vous avez remarqué, murmura mademoiselle Saget, la charcuterie est vide. La belle Lisa n’est pas une femme à se compromettre."
+        + " D’abord et Bien qu’à l’agenda Guillaume Tell / Sainte-Bibiane ¶ et, selon le calendrier des P.T.T. Sainte Viviane."
         + " C’est-à-dire qu'en pense-t-il de ces gens-là ?" 
         + " Jean Arabia. 67, rue de Billancourt, BOULOGNE (Seine)"
         + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. "

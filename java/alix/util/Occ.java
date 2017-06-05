@@ -107,7 +107,9 @@ public class Occ
       if ( !orth.isEmpty() && orth.last() != '\'' && orth.last() != '’'  ) orth.last('\'');
       orth.append( occ.orth );
       if ( !lem.isEmpty() && lem.last() != '\'' && lem.last() != '’'  ) lem.last('\'');
-      lem.append( occ.lem );
+      if ( !occ.lem().isEmpty() ) lem.append( occ.lem );
+      // c’est-à-dire
+      else lem.append( occ.orth );
     }
     else if ( c == '-' || occ.graph.first() == '-') {
       graph.append( occ.graph );

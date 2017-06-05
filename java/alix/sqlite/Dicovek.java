@@ -109,18 +109,13 @@ public class Dicovek {
       ret = dic.inc("NUM");
       return -1;
     }
-    // pas de vecteur pour un mot vide
-    if ( Lexik.isStop( occ.orth() ) ) {
-      // incrémenter tout de même le dictionnaire
-      ret = dic.inc( occ.orth() );
-      return -1;
-    }
-    if ( occ.tag().isSub() ) ret = dic.inc( occ.orth() );
-    // pas de lemme connu
-    else if ( occ.lem().isEmpty() ) ret = dic.inc( occ.orth() );
+    // return all substantives with no lem
+    if ( occ.tag().isSub() ) return dic.inc( occ.orth() );
+    // lem is empty
+    if ( occ.lem().isEmpty() ) ret = dic.inc( occ.orth() );
     else ret = dic.inc( occ.lem() );
-    // le lemme peut être un mot vide VERBsup je fis -> faire
-    if ( ret < stopoffset ) return -1;
+    // what about stopwords ? VERBsup je fis -> faire
+    // if ( ret < stopoffset ) return -1;
     return ret;
   }
   
@@ -156,6 +151,9 @@ public class Dicovek {
   {
     
     Occ center = occs.get( 0 );
+    if ( center.orth().equals( "femme" ) ) {
+      // System.out.println( occs );
+    }
     int key = key( center );
     if ( key < 0 ) return false; 
     // get the vector for this center term
@@ -327,10 +325,10 @@ public class Dicovek {
     String w;
     for ( int j = 0; j < size; j++ ) {
       w = dic.term(coocs[j][0]);
-      // if (first) first = false;
-      // else sb.append(", ");
-      sb.append(" "+w+" ("+coocs[j][1]+")");
-      if (--limit == 0) break;
+      if (first) first = false;
+      else sb.append(", ");
+      sb.append( ""+w+" ("+coocs[j][1]+")" );
+      if ( --limit == 0 ) break;
     }
     return sb.toString();
   }
@@ -338,7 +336,8 @@ public class Dicovek {
   
   
   /**
-   * Tokenize a text, update a roller of occurrences, with the configured context.
+   * Tokenize a text. 
+   * Update 2 parallels gears, one with full occurrences, second with precalculate value to put in vector 
    * Call the vector builder on the context state.
    * @throws IOException 
    */
@@ -352,10 +351,11 @@ public class Dicovek {
     for ( int i=0; i < left; i++ ) occs.push( space ); // envoyer des espaces avant
     Occ occ;
     while( ( occ = toks.word() ) != null ) {
-      occs.push( occ ); // envoyer l’occurrence
-      values.push( value( occ ) );
+      occs.push( occ ); // record occurrence
+      values.push( value( occ ) ); // precalculate value
       update();
     }
+    // send some spaces
     for ( int i=0; i < right; i++ ) {
       occs.push( space );
       values.push( -1 ); 
