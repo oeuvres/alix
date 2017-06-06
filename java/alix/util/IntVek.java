@@ -461,17 +461,36 @@ public class IntVek implements Cloneable
   /**
    * Output a two dimensions array in random order
    */
-  public int[][] toArray()
+  public Pair[] toArray()
   {
-    int[][] ret = new int[size][2];
+    Pair[] ret = new Pair[size];
     int i = 0;
     for (long  entry : data) {
       if (entry == FREE_CELL) continue;
-      ret[i][0] = key(entry);
-      ret[i][1] = value(entry);
+      ret[i] = new Pair( key(entry), value(entry) );
       i++;
     }
+    Arrays.sort( ret );
     return ret;
+  }
+  
+  public class Pair implements Comparable<Pair>
+  {
+    public final int key;
+    public final int value;
+    public Pair ( final int key, final int value ) {
+      this.key = key;
+      this.value = value;
+    }
+    /**
+     * Default sort by value, biggest first
+     */
+    @Override
+    public int compareTo( Pair o )
+    {
+      return Integer.compare( o.value, value );
+    }
+    
   }
   
   /**
@@ -513,6 +532,7 @@ public class IntVek implements Cloneable
   /**
    * Equality 
    */
+  /*
   @Override
   public boolean equals(Object obj) 
   {
@@ -541,6 +561,7 @@ public class IntVek implements Cloneable
     }
     return true;
   }
+  */
   
   /**
    * Cosine similarity with vector

@@ -29,6 +29,7 @@ import alix.fr.Tokenizer;
 import alix.util.IntObjectMap;
 import alix.util.IntRoller;
 import alix.util.IntVek;
+import alix.util.IntVek.Pair;
 import alix.util.Occ;
 import alix.util.OccRoller;
 import alix.util.TermDic;
@@ -129,14 +130,16 @@ public class Dicovek {
   {
     
     if ( occ.isEmpty() ) return -1;
-    // la ponctuation, ajoute à la résolution
-    if ( occ.tag().isPun() ) return dic.put( occ.orth() );
+    // Punctuation produce more noise than resolution
+    if ( occ.tag().isPun() ) return -1; // dic.put( occ.orth() );
     // mot vide, stocker la catégorie générale : déterminant, pronom…
     // if ( Lexik.isStop( occ.orth() ) ) return dic.put( occ.tag().label() );
-    // nom prope générique
+    // proper name, be generic
     if ( occ.tag().isName() ) return dic.put( occ.tag().label() );
-    // numéraux
+    // numbers
     if ( occ.tag().equals( Tag.DETnum ) ) return dic.put( "NUM" );
+    // no substantives ?
+    // if ( occ.tag().isSub() ) return -1;
     // autre catégories, le lemme ?
     if ( occ.lem().isEmpty() ) return dic.put( occ.orth() );
     return dic.put( occ.lem() );
@@ -149,11 +152,7 @@ public class Dicovek {
    */
   public boolean update()
   {
-    
     Occ center = occs.get( 0 );
-    if ( center.orth().equals( "femme" ) ) {
-      // System.out.println( occs );
-    }
     int key = key( center );
     if ( key < 0 ) return false; 
     // get the vector for this center term
@@ -176,6 +175,7 @@ public class Dicovek {
     return true;
   }
   
+  
   /**
    * Output most frequent words as String
    * TODO, best object packaging
@@ -192,6 +192,16 @@ public class Dicovek {
       if (--limit == 0) break;
     }
     return sb.toString();
+  }
+  
+  public IntVek vector( int code )
+  {
+    return vectors.get( code );
+  }
+  public IntVek vector( String term )
+  {
+    int code = dic.code( term );
+    return vector( code );
   }
   
   /**
@@ -223,7 +233,7 @@ public class Dicovek {
       score = vekterm.cosine( vek );
       // score differs 
       // if ( score < 0.5 ) continue;
-      row = new SimRow( entry.label(), entry.count(), score );
+      row = new SimRow( entry.code(), entry.label(), entry.count(), score );
       table.add( row );
       if ( limit-- == 0 ) break;
     }
@@ -237,20 +247,22 @@ public class Dicovek {
    */
   public class SimRow implements Comparable<SimRow> 
   {
+    public final  int code;
     public final  String term;
     public final int count;
     public final double score;
-    public SimRow(String term, int count, double score) {
+    public SimRow( final int code, final String term, final int count, final double score ) {
+      this.code = code;
       this.term = term;
       this.count = count;
       this.score = score;
     }
     public String toString() {
-      return term+"\t"+count+"\t"+score;
+      return code+"\t"+term+"\t"+count+"\t"+score;
     }
     @Override
     public int compareTo(SimRow other) {
-      // score maybe be highly close and bug around 0, or with a NaN
+      // do not use >, score maybe be highly close and bug around 0, or with a NaN
       return Double.compare( other.score, score );
     }
   }
@@ -311,23 +323,16 @@ public class Dicovek {
     // some words on dictionary has no vector, like stop words
     if ( vek == null ) return null;
     // get vector as an array
-    int[][] coocs; // will receive the co-occurrences to sort
-    coocs = vek.toArray();
-    // sort coocs by count
-    Arrays.sort( coocs, new Comparator<int[]>() {
-      @Override
-      public int compare(int[] o1, int[] o2) {
-        return Integer.compare(o2[1], o1[1]);
-      }
-    } );
+    // will receive the co-occurrences to sort
+    Pair[] coocs = vek.toArray();
     int size = coocs.length;
     boolean first = true;
     String w;
     for ( int j = 0; j < size; j++ ) {
-      w = dic.term(coocs[j][0]);
+      w = dic.term( coocs[j].key );
       if (first) first = false;
       else sb.append(", ");
-      sb.append( ""+w+" ("+coocs[j][1]+")" );
+      sb.append( ""+w+" ("+coocs[j].value+")" );
       if ( --limit == 0 ) break;
     }
     return sb.toString();
