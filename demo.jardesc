@@ -23,6 +23,7 @@
         <file path="/Alix/java/alix/fr/dic/loc.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Tag.java"/>
         <file path="/Alix/java/alix/fr/dic/france.csv"/>
+        <file path="/Alix/java/alix/fr/dic/place.csv"/>
         <file path="/Alix/java/alix/fr/dic/stop.csv"/>
         <file path="/Alix/java/alix/fr/dic/name.csv"/>
         <file path="/Alix/java/alix/fr/dic/locno.csv"/>
@@ -30,7 +31,6 @@
         <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr.query"/>
         <file path="/Alix/java/alix/fr/dic/rules.csv"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Spacer.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Tokenizer.java"/>
         <file path="/Alix/java/alix/fr/dic/word.csv"/>
         <file path="/Alix/java/alix/fr/dic/caps.csv"/>

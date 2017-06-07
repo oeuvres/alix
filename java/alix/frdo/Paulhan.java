@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 
 import javax.xml.namespace.QName;
@@ -54,7 +55,7 @@ public class Paulhan
   public Paulhan( Writer out ) throws IOException
   {
     this.out = out;
-    out.write( "FICHIER\tLETTRE\tDATE\tSOURCE\tDESTINATION\tNOM\tTYPE\n" );
+    out.write( "fichier\tlettre\tdate\tSource\tdest\tTarget\tclass\n" );
   }
   
   /**
@@ -83,8 +84,6 @@ public class Paulhan
     boolean div = false;
     // lettre en cours, soit dans le bloc de meta, soit dans le corps de texte
     Letter letter = null;
-    // liste de lettres
-    HashMap<String, Letter> corr = new HashMap<String, Letter>();
     
     while( events.hasNext() ) {
       XMLEvent e = events.nextEvent();
@@ -92,36 +91,24 @@ public class Paulhan
       if ( e.isStartElement() ) {
         StartElement startElement = e.asStartElement();
         String name = startElement.getName().getLocalPart();
-        // récupérer les métadonnées de lettres
-        if ( name.equals( "correspDesc" ) ) {
-          letter = new Letter();
-          String corresp = startElement.getAttributeByName( qcorresp ).getValue();
-          if ( corresp.charAt( 0 ) == '#' ) letter.id = corresp.substring( 1 );
-          else letter.id = corresp.substring( 1 );
-        }
-        else if ( name.equals( "correspAction" ) ) {
-          String type = startElement.getAttributeByName( qtype ).getValue();
-          if ( "sending".equals( type ) ) state = SENDING;
-          else if ( "receiving".equals( type ) ) state = RECEIVING;
-          else state = UNKNOWN;
-        }
-        else if ( name.equals( "persName" ) ) {
-          String key = startElement.getAttributeByName( qkey ).getValue();
-          if ( state == SENDING ) letter.sender = key;
-          else if ( state == RECEIVING ) letter.adressee = key;
-        }
-        else if ( name.equals( "date" ) ) {
-          if ( state == SENDING || state == RECEIVING ) {
-            if (  startElement.getAttributeByName( qwhen ) == null ) continue;
-            String date = startElement.getAttributeByName( qwhen ).getValue();
-            letter.date = date;
-          }
-        }
-        else if ( name.equals( "note" ) ) {
+        if ( name.equals( "note" ) ) {
           note = true;
         }
         else if ( name.equals( "p" ) ) {
           if ( div && !note ) state = P;
+        }
+        else if ( name.equals( "index" ) ) {
+          Attribute att = startElement.getAttributeByName( qiname );
+          if ( att == null ) continue;
+          String type = att.getValue();
+          String n = startElement.getAttributeByName( qn ).getValue();
+          if ( type.equals( "date" ) ) letter.date = n;
+          else if ( type.equals( "sender" ) ) {
+            letter.sender = n;
+          }
+          else if ( type.equals( "addressee" ) ) {
+            letter.addressee = n;
+          }
         }
         // début de lettre, charger les métas, remettre le texte à 0
         else if ( name.equals( "div" ) ) {
@@ -130,8 +117,8 @@ public class Paulhan
           String type = att.getValue();
           if ( !type.equals( "letter" ) ) continue;
           div = true ;
-          String id = startElement.getAttributeByName( qid ).getValue();
-          letter = corr.get( id );
+          letter = new Letter();
+          letter.id = startElement.getAttributeByName( qid ).getValue();
           sb.setLength( 0 );
         }
       }
@@ -144,10 +131,7 @@ public class Paulhan
         EndElement endElement = e.asEndElement();
         String name = endElement.getName().getLocalPart();
         
-        if ( name.equals( "correspDesc" ) ) {
-          corr.put( letter.id, letter );
-        }
-        else if ( name.equals( "teiHeader" ) ) {
+        if ( name.equals( "teiHeader" ) ) {
         }
         else if ( name.equals( "note" ) ) {
           note = false;
@@ -161,12 +145,26 @@ public class Paulhan
           if ( !div ) continue;
           // out.write( "\n\n——"+sb.toString()+"——\n\n" );
           if ( sb.length() < 10 ) continue;
+          HashSet<String> done = new HashSet<String>();
           Tokenizer toks = new Tokenizer( sb.toString() );
           Occ occ = new Occ();
           try {
             while ( toks.word( occ ) ) {
               if ( !occ.tag().isName() ) continue;
-              out.write( filename+"\t"+letter.id+"\t"+letter.date+"\t"+letter.sender+"\t"+letter.adressee+"\t"+occ.orth()+"\t"+occ.tag()+"\n" );
+              if ( occ.orth().toString().trim().isEmpty() ) {
+                System.out.println( occ );
+                continue;
+              }
+              if ( done.contains( occ.orth() )) {
+                continue;
+              }
+              if ( letter.date.trim().isEmpty() ) {
+                System.out.println( letter );
+              }
+              String date = "";
+              if ( letter.date.length() >= 4 ) date = letter.date.substring( 0, 4 );
+              out.write( filename+"\t"+letter.id+"\t"+date+"\t"+letter.sender+"\t"+letter.addressee+"\t"+occ.orth()+"\t"+occ.tag()+"\n" );
+              done.add( occ.orth().toString() );
             }
           }
           finally {
@@ -184,10 +182,10 @@ public class Paulhan
     String id;
     String date;
     String sender;
-    String adressee;
+    String addressee;
     @Override
     public String toString() {
-      return id+" "+date+" de "+sender+" à "+adressee;
+      return id+" "+date+" de "+sender+" à "+addressee;
     }
   }
   
@@ -201,7 +199,7 @@ public class Paulhan
   {
     // boucler sur les fichiers Paulhan
     String dir = "../paulhan/xml/";
-    String dest = "../paulhan/names.csv";
+    String dest = "../paulhan/paulhan_names.tsv";
     Writer out = new BufferedWriter( new OutputStreamWriter( new FileOutputStream( dest ), "UTF-8") );
     Paulhan parser = new Paulhan( out );
     for ( final File src : new File( dir ).listFiles() ) {

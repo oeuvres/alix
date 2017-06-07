@@ -81,6 +81,7 @@ public class IntRoller extends Roller {
    */
   public IntRoller clear()
   {
+    onWrite();
     int length = data.length;
     for ( int i = 0; i < length; i++ ) {
       data[i] = 0;
@@ -93,6 +94,7 @@ public class IntRoller extends Roller {
    */
   public IntRoller inc()
   {
+    onWrite();
     for( int i=0; i < size; i++) {
       data[i]++;
     }
@@ -104,6 +106,7 @@ public class IntRoller extends Roller {
    */
   public IntRoller dec()
   {
+    onWrite();
     for( int i=0; i < size; i++) {
       data[i]--;
     }

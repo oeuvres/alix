@@ -23,6 +23,8 @@ public class IntBuffer
   public static final boolean BAG = true;
   /** Avoid too much sort, only after a write */
   private boolean sorted;
+  /** Precalculate hash */
+  private int hash;
   
   public IntBuffer( )
   {
@@ -73,6 +75,7 @@ public class IntBuffer
    */
   private boolean onWrite( final int position )
   {
+    hash = 0;
     sorted = false;
     if ( position < data.length ) return false;
     final int oldLength = data.length;

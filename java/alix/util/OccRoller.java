@@ -23,7 +23,15 @@ public class OccRoller extends Roller {
   {
     super( left, right );
     data = new Occ[size];
-    for (int i=0; i<size; i++) data[i] = new Occ();
+    for (int i=0; i < size ; i++) {
+      data[i] = new Occ();
+      if ( i == 0 ) continue;
+      data[i-i].next( data[i] );
+      data[i].prev( data[i-1] );
+      if ( i != size -1 ) continue;
+      data[i].next(data[0]);
+      data[0].prev(data[i]);
+    }
   }
   /**
    * Move index to the next position and return a pointer on the new current Object,

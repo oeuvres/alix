@@ -2004,7 +2004,7 @@ Arignac;NAMEplace
 Arinthod;NAMEplace
 Arith;NAMEplace
 Arjuzanx;NAMEplace
-Arlanc;NAMEplace
+# Arlanc;NAMEplace
 Arlay;NAMEplace
 Arlebosc;NAMEplace
 Arlempdes;NAMEplace
@@ -2362,8 +2362,7 @@ Aubignan;NAMEplace
 Aubignas;NAMEplace
 Aubigné-Racan;NAMEplace
 Aubigné-sur-Layon;NAMEplace
-Aubigné;NAMEplace
-Aubigné;NAMEplace
+# Aubigné;NAMEplace
 Aubignosc;NAMEplace
 Aubigny-au-Bac;NAMEplace
 Aubigny-aux-Kaisnes;NAMEplace
@@ -2849,7 +2848,7 @@ Ayron;NAMEplace
 Ayros-Arbouix;NAMEplace
 Ayse;NAMEplace
 Ayssènes;NAMEplace
-Aytré;NAMEplace
+# Aytré;NAMEplace
 Ayzac-Ost;NAMEplace
 Ayzieu;NAMEplace
 Azannes-et-Soumazannes;NAMEplace
@@ -3365,7 +3364,7 @@ Bavinchove;NAMEplace
 Bavincourt;NAMEplace
 Bax;NAMEplace
 Bay-sur-Aube;NAMEplace
-Bay;NAMEplace
+# Bay;NAMEplace
 Bayac;NAMEplace
 Bayard-sur-Marne;NAMEplace
 Bayas;NAMEplace
@@ -3755,7 +3754,7 @@ Belhomert-Guéhouville;NAMEplace
 Béligneux;NAMEplace
 Belin-Béliet;NAMEplace
 Bélis;NAMEplace
-Bellac;NAMEplace
+# Bellac;NAMEplace
 Bellaffaire;NAMEplace
 Bellaing;NAMEplace
 Bellancourt;NAMEplace
@@ -3832,7 +3831,7 @@ Bellignat;NAMEplace
 Belligné;NAMEplace
 Bellignies;NAMEplace
 Belloc-Saint-Clamens;NAMEplace
-Belloc;NAMEplace
+# Belloc;NAMEplace
 Bellocq;NAMEplace
 Bellon;NAMEplace
 Bellonne;NAMEplace
@@ -6130,7 +6129,7 @@ Caden;NAMEplace
 Cadenet;NAMEplace
 Caderousse;NAMEplace
 Cadillac-en-Fronsadais;NAMEplace
-Cadillac;NAMEplace
+# Cadillac;NAMEplace
 Cadillon;NAMEplace
 Cadix;NAMEplace
 Cadolive;NAMEplace
@@ -9402,7 +9401,7 @@ Couziers;NAMEplace
 Couzon-au-Mont-d'Or;NAMEplace
 Couzon;NAMEplace
 Couzou;NAMEplace
-Cox;NAMEplace
+# Cox;NAMEplace
 Coye-la-Forêt;NAMEplace
 Coyecques;NAMEplace
 Coyolles;NAMEplace
@@ -10564,7 +10563,7 @@ Duran;NAMEplace
 Durance;NAMEplace
 Duranus;NAMEplace
 Duranville;NAMEplace
-Duras;NAMEplace
+# Duras;NAMEplace
 Duravel;NAMEplace
 Durban-Corbières;NAMEplace
 Durban-sur-Arize;NAMEplace
@@ -19028,7 +19027,7 @@ Lizy-sur-Ourcq;NAMEplace
 Lizy;NAMEplace
 Llauro;NAMEplace
 Llo;NAMEplace
-Llupia;NAMEplace
+# Llupia;NAMEplace
 Lobsann;NAMEplace
 Loc-Brévalaire;NAMEplace
 Loc-Eguiner-Saint-Thégonnec;NAMEplace
@@ -20556,7 +20555,7 @@ Mauriac;NAMEplace
 Mauriac;NAMEplace
 Mauries;NAMEplace
 Maurines;NAMEplace
-Maurois;NAMEplace
+# Maurois;NAMEplace
 Mauron;NAMEplace
 Mauroux;NAMEplace
 Mauroux;NAMEplace
@@ -22401,7 +22400,7 @@ Morainvilliers;NAMEplace
 Morancé;NAMEplace
 Morancez;NAMEplace
 Morancourt;NAMEplace
-Morand;NAMEplace
+# Morand;NAMEplace
 Morangis;NAMEplace
 Morangis;NAMEplace
 Morangles;NAMEplace
@@ -24129,7 +24128,7 @@ Pailharès;NAMEplace
 Pailherols;NAMEplace
 Pailhès;NAMEplace
 Pailhès;NAMEplace
-Paillart;NAMEplace
+# Paillart;NAMEplace
 Paillencourt;NAMEplace
 Paillet;NAMEplace
 Pailloles;NAMEplace
@@ -24338,7 +24337,7 @@ Paulhac;NAMEplace
 Paulhac;NAMEplace
 Paulhac;NAMEplace
 Paulhaguet;NAMEplace
-Paulhan;NAMEplace
+# Paulhan;NAMEplace
 Paulhe;NAMEplace
 Paulhenc;NAMEplace
 Paulhiac;NAMEplace
@@ -25352,6 +25351,7 @@ Porri;NAMEplace
 Porspoder;NAMEplace
 Port Lesney;NAMEplace
 Port-Brillet;NAMEplace
+Port-cros;NAMEplace;Port-Cros
 Port-Cros;NAMEplace
 Port-d'Envaux;NAMEplace
 Port-de-Bouc;NAMEplace
@@ -26068,7 +26068,7 @@ Raival;NAMEplace
 Raix;NAMEplace
 Raizeux;NAMEplace
 Ramatuelle;NAMEplace
-Rambaud;NAMEplace
+# Rambaud;NAMEplace
 Rambervillers;NAMEplace
 Rambluzin-et-Benoite-Vaux;NAMEplace
 Rambouillet;NAMEplace
@@ -26232,7 +26232,7 @@ Rédange;NAMEplace
 Rédené;NAMEplace
 Redessan;NAMEplace
 Réding;NAMEplace
-Redon;NAMEplace
+# Redon;NAMEplace
 Redortiers;NAMEplace
 Réez-Fosse-Martin;NAMEplace
 Reffannes;NAMEplace
@@ -33524,7 +33524,7 @@ Thiepval;NAMEplace
 Thiergeville;NAMEplace
 Thiernu;NAMEplace
 Thiers-sur-Thève;NAMEplace
-Thiers;NAMEplace
+# Thiers;NAMEplace
 Thierville-sur-Meuse;NAMEplace
 Thierville;NAMEplace
 Thiéry;NAMEplace

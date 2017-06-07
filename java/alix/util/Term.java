@@ -1,6 +1,7 @@
 package alix.util;
 
-import java.io.PrintWriter;
+import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -79,6 +80,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term link( final Term term, final int offset, final int count )
   {
+    onWrite();
     data = term.data;
     start = term.start + offset;
     len = count;
@@ -92,6 +94,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term link( final char[] a, final int offset, final int count ) 
   {
+    onWrite();
     data = a;
     start = offset;
     len = count;
@@ -122,8 +125,8 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term reset()
   {
+    onWrite();
     len = 0;
-    hash = 0;
     return this;
   }
   /**
@@ -153,7 +156,7 @@ public class Term implements CharSequence, Comparable<Term>
       len = 0;
       return this;
     }
-    sizing( count );
+    onWrite( count );
     for (int i=start; i<count; i++) {
       data[i] = cs.charAt( offset++ );
     }
@@ -192,7 +195,7 @@ public class Term implements CharSequence, Comparable<Term>
       return this;
     }
     len = count;
-    sizing( count );
+    onWrite( count );
     System.arraycopy( a, offset, data, start, count );
     return this;
   }
@@ -206,7 +209,7 @@ public class Term implements CharSequence, Comparable<Term>
   {
     int newlen = term.len;
     // do not change len before sizing
-    sizing( newlen );
+    onWrite( newlen );
     start = 0;
     System.arraycopy( term.data, term.start, data, start, newlen );
     len = newlen;
@@ -221,7 +224,7 @@ public class Term implements CharSequence, Comparable<Term>
   public Term append( char c )
   {
     int newlen = len + 1;
-    sizing( newlen );
+    onWrite( newlen );
     data[len] = c;
     len = newlen;
     return this;
@@ -234,7 +237,7 @@ public class Term implements CharSequence, Comparable<Term>
   public Term append( Term term )
   {
     int newlen = len + term.len;
-    sizing( newlen );
+    onWrite( newlen );
     System.arraycopy( term.data, term.start, data, start+len, term.len);
     len = newlen;
     return this;
@@ -248,7 +251,7 @@ public class Term implements CharSequence, Comparable<Term>
   {
     int count = cs.length();
     int newlen = len + count;
-    sizing( newlen );
+    onWrite( newlen );
     int offset = start+len;
     for (int i=0; i<count; i++) {
       data[offset++] = cs.charAt( i );
@@ -257,27 +260,6 @@ public class Term implements CharSequence, Comparable<Term>
     return this;
   }
   
-  /**
-   * Test if char array container is big enough to contain a new size 
-   * If resized, chars outside the scope are kept, maybe they are needed by
-   * other users of the char array
-   * @param newlen The new size to put in
-   * @return true if resized
-   */
-  private boolean sizing( final int newlen )
-  {
-    hash = 0; // resizing occurs when content change, uncache hashcode
-    if ( (start+newlen) <= data.length ) return false;
-    char[] a = new char[ Calcul.nextSquare( start+newlen ) ];
-    try {
-      System.arraycopy( data, 0, a, 0, data.length );
-    } catch (Exception e) {
-      System.out.println( new String( data )+" "+len );
-      throw(e);
-    }
-    data = a;
-    return true;
-  }
 
   /**
    * Last char, will send an array out of bound, with no test
@@ -293,8 +275,8 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term last( char c )
   {
+    onWrite();
     data[len-1] = c;
-    hash = 0;
     return this;
   }
   /**
@@ -302,8 +284,8 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term lastDel()
   {
+    onWrite();
     len--;
-    hash = 0;
     return this;
   }
   /** 
@@ -319,7 +301,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term firstDel()
   {
-    hash = 0;
+    onWrite();
     start++;
     len--;
     return this;
@@ -331,7 +313,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term del( int i )
   {
-    hash = 0;
+    onWrite();
     if ( i >= len || -i >= len ) {
       len = 0;
       return this;
@@ -351,7 +333,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term firstToUpper()
   {
-    hash = 0;
+    onWrite();
     data[start] = Character.toUpperCase( data[start] );
     return this;
   }
@@ -369,6 +351,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term toLower()
   {
+    onWrite();
     char c;
     for ( int i=start; i < len; i++ ) {
       c = data[i];
@@ -377,7 +360,41 @@ public class Term implements CharSequence, Comparable<Term>
       // if ( LOWER.containsKey( c )) s.setCharAt( i, LOWER.get( c ) );
       data[i] = Character.toLowerCase( c );
     }
-    hash = 0;
+    return this;
+  }
+  /**
+   * Change case of the chars according to different rules
+   * @return the Term object for chaining
+   */
+  public Term normCase()
+  {
+    onWrite();
+    char last;
+    char c = 0;
+    for ( int i=start; i < len; i++ ) {
+      last = c;
+      c = data[i];
+      if ( i == start ) continue;
+      if ( Char.isLowerCase( c ) ) continue;
+      if ( last == '-' || last == '.' || last == '\'' || last == '’' || last == ' ' ) continue;
+      data[i] = Character.toLowerCase( c );
+    }
+    return this;
+  }
+  
+  public Term capitalize()
+  {    
+    onWrite();
+    char last;
+    char c = 0;
+    for ( int i=start; i < len; i++ ) {
+      last = c;
+      c = data[i];
+      if ( i == start ) data[i] = Character.toUpperCase( c );
+      else if ( last == '-' || last == '.' || last == '\'' || last == '’' || last == ' ' ) data[i] = Character.toUpperCase( c );
+      // ?
+      else data[i] = Character.toLowerCase( c );
+    }
     return this;
   }
   /**
@@ -388,6 +405,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term trim()
   {
+    onWrite();
     int from = start;
     char[] dat = data;
     int to = start + len;
@@ -406,6 +424,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term trim( String chars)
   {
+    onWrite();
     int from = start;
     char[] dat = data;
     int to = start + len;
@@ -513,6 +532,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term setCharAt( int index, char c )
   {
+    onWrite();
     if ( (index < 0) || (index >= len) ) {
         throw new StringIndexOutOfBoundsException(index);
     }
@@ -532,7 +552,8 @@ public class Term implements CharSequence, Comparable<Term>
    * @return
    */
   private static boolean globsearch( CharSequence glob, int globstart, int globend, 
-      CharSequence text, int textstart, int textend ) {
+      CharSequence text, int textstart, int textend ) 
+  {
     // empty pattern will never found things
     if ( glob.length() < 1 ) return false;
     // empty text will never match
@@ -736,9 +757,37 @@ public class Term implements CharSequence, Comparable<Term>
     // System.out.println( this+" "+hash );
     return h;
   }
-  public void print(PrintWriter out) {
+  public void write( Writer out ) throws IOException {
     int len = this.len;
-    for ( int i =start; i < len; i++ ) out.print( data[i] );
+    for ( int i =start; i < len; i++ ) out.append( data[i] );
+  }
+  /**
+   * Event before all modification of term, especially on hashCode cache
+   */
+  private void onWrite()
+  {
+    hash = 0;
+  }
+  /**
+   * Test if char array container is big enough to contain a new size 
+   * If resized, chars outside the scope are kept, maybe they are needed by
+   * other users of the char array
+   * @param newlen The new size to put in
+   * @return true if resized
+   */
+  private boolean onWrite( final int newlen )
+  {
+    hash = 0;
+    if ( (start+newlen) <= data.length ) return false;
+    char[] a = new char[ Calcul.nextSquare( start+newlen ) ];
+    try {
+      System.arraycopy( data, 0, a, 0, data.length );
+    } catch (Exception e) {
+      System.out.println( new String( data )+" "+len );
+      throw(e);
+    }
+    data = a;
+    return true;
   }
   @Override
   public String toString( )
@@ -751,8 +800,11 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public static void main(String[] args)
   {
+    Term test;
+    System.out.println( new Term( " Charles-Albert Cingria" ).normCase() );
+    System.out.println( new Term( "charles-albert" ).capitalize() );
     Term glob = new Term( "*ent" );
-    Term test = new Term( "t" );
+    test = new Term( "t" );
     System.out.println( glob+" GLOB "+test+" : "+glob.glob( test ) );
     test = new Term( "présentement" );
     glob = new Term( "*ent*ent" );

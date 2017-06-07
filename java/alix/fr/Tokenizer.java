@@ -1,5 +1,8 @@
 package alix.fr;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.HashSet;
 
 import alix.fr.query.Lexer;
@@ -348,16 +351,12 @@ public class Tokenizer
     // upper case ?
     else if ( Char.isUpperCase( c ) ) {
       // BOULOGNE -> Boulogne, U.S.A.
-      if ( occ.orth().last()!= '.' ) occ.orth().toLower().firstToUpper();
+      occ.orth().normCase();
+      // Evolution ? > évolution ; TODO FREDERIC > Frédéric
+      String lc = Lexik.CAPS.get( occ.graph() );
+      if ( lc != null ) occ.orth( lc );
       // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
       if ( Lexik.name( occ ) ) return true;
-      // Evolution ? > évolution
-      String lc = Lexik.CAPS.get( occ.graph() );
-      if ( lc != null ) {
-        occ.orth( lc );
-        Lexik.word( occ );
-        return true;
-      }
       // U.R.S.S. but not M.
       if ( occ.graph().length() > 2 && occ.graph().charAt( 1 ) == '.') {
         occ.tag( Tag.NAME );
@@ -370,8 +369,8 @@ public class Tokenizer
       // known word will update token
       if ( Lexik.word( occ ) ) return true;
       // unknow name
-      // restore the initial capital word
-      occ.orth().firstToUpper();
+      // restore the capitalisation
+      occ.orth().capitalize();
       if ( occ.lem().isEmpty() ) occ.lem( occ.orth() );
       occ.tag( Tag.NAME );
       return true;
@@ -740,6 +739,27 @@ public class Tokenizer
     return txt.toString();
   }
   /**
+   * Write the occurrence to a printer in respect of 
+   * french punctuation spacing.
+   * @return 
+   * @throws IOException 
+   */
+  static public void write( Writer out, Occ occ ) throws IOException 
+  {
+    if ( occ.isEmpty() ) return;
+    char first = occ.graph().first();
+    char last = 0;
+    if ( occ.prev() == null);
+    else last = occ.prev().graph().last();
+    
+    if ( first == ';' || first == ':' || first == '?' || first == '!' ) out.append( ' ' );
+    else if ( first == ',' || first == '.' || first == '-' );
+    else if ( last == '-' || last == '\'');
+    else out.append( ' ' );
+    occ.graph().write( out );
+  }
+
+  /**
    * For testing
    * Bugs
    * — François I er
@@ -774,7 +794,7 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = "<>"
-        + " Vous avez remarqué, murmura mademoiselle Saget, la charcuterie est vide. La belle Lisa n’est pas une femme à se compromettre."
+        + " N.R.F, Charente-Maritime,  Charles-Albert Cingria, Vous avez remarqué, murmura mademoiselle Saget, la charcuterie est vide. La belle Lisa n’est pas une femme à se compromettre."
         + " D’abord et Bien qu’à l’agenda Guillaume Tell / Sainte-Bibiane ¶ et, selon le calendrier des P.T.T. Sainte Viviane."
         + " C’est-à-dire qu'en pense-t-il de ces gens-là ?" 
         + " Jean Arabia. 67, rue de Billancourt, BOULOGNE (Seine)"

@@ -67,6 +67,7 @@ public class Lexik
       loadRes( "dic/orth.csv", _ORTH );
       loadRes( "dic/brevidot.csv", _BREVIDOT );
       loadRes( "dic/name.csv", _NAME );
+      loadRes( "dic/place.csv", _NAME );
       loadRes( "dic/author.csv", _NAME );
       loadRes( "dic/caps.csv", _CAPS );
       // dictionnaire local

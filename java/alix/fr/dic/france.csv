@@ -4,6 +4,8 @@ Aisne;NAMEplace
 Allier;NAMEplace
 Alpes-de-Haute-Provence;NAMEplace
 Alpes-Maritimes;NAMEplace
+Alpes-maritimes;NAMEplace;Alpes-Maritimes
+Alpilles;NAMEplace
 Alsace;NAMEplace
 Angoumois;NAMEplace
 Anjou;NAMEplace
@@ -44,7 +46,11 @@ Cévennes;NAMEplace
 Chalosse;NAMEplace
 Champagne-Ardenne;NAMEplace
 Charente;NAMEplace
+Charente;NAMEplaces;Charente
 Charente-Maritime;NAMEplace
+Charente-maritime;NAMEplace;Charente-Maritime
+Charente-Maritimes;NAMEplace;Charente-Maritime
+Charente-maritimes;NAMEplace;Charente-Maritime
 Charollais;NAMEplace
 # Cher;NAMEplace
 Comminges;NAMEplace
@@ -202,6 +208,7 @@ Saône-et-Loire;NAMEplace
 Sarthe;NAMEplace
 Savoie;NAMEplace
 Ségalas;NAMEplace
+Seine;NAMEplace
 Seine-et-Marne;NAMEplace
 Seine-Maritime;NAMEplace
 Seine-Saint-Denis;NAMEplace
