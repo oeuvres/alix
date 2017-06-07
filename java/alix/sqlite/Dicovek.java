@@ -56,9 +56,9 @@ public class Dicovek {
   private TermDic dic;
   /** Vectors of co-occurences for each term of dictionary */
   private IntObjectMap<IntVek> vectors;
-  /** Size of left context */
+  /** Index of left context */
   final int left;
-  /** Size of right context */
+  /** Index of right context */
   final int right;
   /** Sliding window of occurrences */
   private OccRoller occs;
@@ -165,7 +165,7 @@ public class Dicovek {
     }
     // try to use a boost factor by position ?
     // fill the vector, using the convenient add method
-    for ( int i=-left; i<=right; i++ ) {
+    for ( int i = left; i <= right; i++ ) {
       // centre de contexte, ne pas ajouter
       if ( i==0 ) continue;
       // valeur exclue, ne pas ajouter
@@ -353,7 +353,7 @@ public class Dicovek {
     String text = new String( Files.readAllBytes( file ), StandardCharsets.UTF_8 );
     Tokenizer toks = new Tokenizer( text );
     Occ space = new Occ();
-    for ( int i=0; i < left; i++ ) occs.push( space ); // envoyer des espaces avant
+    for ( int i = left ; i <= 0; i++ ) occs.push( space ); // envoyer des espaces avant
     Occ occ;
     while( ( occ = toks.word() ) != null ) {
       occs.push( occ ); // record occurrence
@@ -452,7 +452,7 @@ public class Dicovek {
     int wing = 5;
     // le chargeur de vecteur a besoin d'une liste de mots vides pour éviter de faire le vecteur de "de"
     // un lemmatiseur du pauvre sert à regrouper les entrées des vecteurs
-    Dicovek veks = new Dicovek(wing, wing );
+    Dicovek veks = new Dicovek( -wing, wing );
     // Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST);
     long start = System.nanoTime();
     // Boucler sur les fichiers

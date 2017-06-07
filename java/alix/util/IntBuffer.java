@@ -4,80 +4,58 @@ import java.io.IOException;
 import java.util.Arrays;
 
 /**
- * A mutable list of ints, maybe backed on a dictionary to become a “Phrase” (word expression).
- * Has a hashCode implementation, such object is a good key for HashMaps.
- * But be careful, if you keep an handle on an instance used as key, it is mutable and may produce odds effects.
- * Can become a “bag”, with no order on equals or hashCode() (internal data are sorted before tests).
+ * A mutable list of ints, used to record int events.
+ * Return a new int array at the right size when needed.
+ * Not suitable gor a key in a hash (mutable).
+ *
  * @author glorieux-f
  *
  */
-public class Phrase 
+public class IntBuffer 
 {
   /** Internal data */
-  private int[] data;
-  /** Is it a bag (no order kept) ? */
-  private final boolean bag;
+  protected int[] data;
   /** The mobile size */
   private short size;
-  /** HashCode cache */
-  private int hash;
-  /** Need a resort ? */
+  /** If bag, values will be sorted before all operation  */
+  public final boolean bag;
+  /** For code readability */
+  public static final boolean BAG = true;
+  /** Avoid too much sort, only after a write */
   private boolean sorted;
-  public Phrase( )
+  
+  public IntBuffer( )
   {
-    bag = false;
     data = new int[8];
+    bag = false;
   }
-  public Phrase( Phrase phr)
+  public IntBuffer( final IntBuffer buf )
   {
-    bag = phr.bag;
-    short max = phr.size;
+    bag = buf.bag;
+    short max = buf.size;
     this.size = max;
     data = new int[max];
-    int[] newdata = phr.data;
+    int[] newdata = buf.data; // perfs, avoid a lookup
     for ( int i=0; i < max; i++ ) data[i] = newdata[i];
   }
-  public Phrase( final int capacity )
+  public IntBuffer( final int capacity )
   {
     bag = false;
     data = new int[capacity];
     size = 0;
   }
-  public Phrase( final int capacity, final boolean bag )
+  public IntBuffer( final int capacity, final boolean bag )
   {
     this.bag = bag;
     data = new int[capacity];
     size = 0;
   }
-  protected Phrase reset()
+  protected IntBuffer reset()
   {
     size = 0;
-    hash = 0;
     return this;
   }
-  /**
-   * Increment all values
-   * @return
-   */
-  public Phrase inc()
-  {
-    for( int i=0; i < size; i++) {
-      data[i]++;
-    }
-    return this;
-  }
-  /**
-   * Decrement all values
-   * @return
-   */
-  public Phrase dec()
-  {
-    for( int i=0; i < size; i++) {
-      data[i]--;
-    }
-    return this;
-  }
-  public Phrase append( int value )
+  public IntBuffer append( int value )
   {
     onWrite( size);
     data[size] = value;
@@ -95,7 +73,6 @@ public class Phrase
    */
   private boolean onWrite( final int position )
   {
-    hash = 0;
     sorted = false;
     if ( position < data.length ) return false;
     final int oldLength = data.length;
@@ -105,35 +82,11 @@ public class Phrase
     System.arraycopy( oldData, 0, data, 0, oldLength );
     return true;
   }
-  public Phrase put( int pos, int value )
+  public IntBuffer put( int pos, int value )
   {
     if (onWrite( pos )) ;
     if ( pos >= size) size = (short)(pos+1);
     data[pos] = value;
-    return this;
-  }
-  public Phrase set( int a, int b )
-  {
-    data[0] = a;
-    data[1] = b;
-    size = 2;
-    return this;
-  }
-  public Phrase set( int a, int b, int c )
-  {
-    data[0] = a;
-    data[1] = b;
-    data[2] = c;
-    size = 3;
-    return this;
-  }
-  public Phrase set( int a, int b, int c, int d )
-  {
-    data[0] = a;
-    data[1] = b;
-    data[2] = c;
-    data[3] = d;
-    size = 4;
     return this;
   }
   /**
@@ -141,7 +94,7 @@ public class Phrase
    * @param phr
    * @return
    */
-  public Phrase set( final Phrase phr )
+  public IntBuffer set( final IntBuffer phr )
   {
     short newSize = phr.size;
     onWrite( newSize-1 );
@@ -149,20 +102,28 @@ public class Phrase
     System.arraycopy( phr.data, 0, data, 0, newSize );
     return this;
   }
-  public Phrase set( final IntRoller roll )
+  public int[] toArray()
   {
-    short newSize = (short)roll.size;
+    int[] ret = new int[size];
+    System.arraycopy( data, 0, ret, 0, size );
+    return ret;
+  }
+
+  public IntBuffer set( final IntRoller roller )
+  {
+    short newSize = (short)roller.size();
     onWrite( newSize-1 );
     size = newSize;
     int i=0;
-    int iroll=roll.left;
+    int iroll = roller.left;
     while( i < size) {
-      data[i] = roll.get( iroll );
+      data[i] = roller.get( iroll );
       i++;
       iroll++;
     }
     return this;
   }
+
   /**
    * Check value before test
    * @return
@@ -179,18 +140,19 @@ public class Phrase
   @Override
   public boolean equals(Object o)
   {
-    if (o == null) return false;
+    if ( o == null ) return false;
     if ( o == this ) return true;
-    if ( o instanceof Phrase ) {
-      Phrase phr = (Phrase)o;
-      if ( phr.size != size ) return false;
-      onTest();
+    if ( o instanceof IntBuffer ) {
+      IntBuffer buf = (IntBuffer)o;
+      if ( buf.size != size ) return false;
+      onTest(); // sort if bag
+      buf.onTest(); // sort if bag
       for (short i=0; i < size; i++ ) {
-        if ( phr.data[i] != data[i] ) return false;
+        if ( buf.data[i] != data[i] ) return false;
       }
       return true;
     }
-    if (o instanceof IntRoller) {
+    if ( o instanceof IntRoller ) {
       IntRoller roll = (IntRoller)o;
       if ( roll.size != size ) return false;
       int i=size - 1;
@@ -204,17 +166,7 @@ public class Phrase
     }
     return false;
   }
-  @Override 
-  public int hashCode() 
-  {
-    onTest();
-    if ( hash != 0 ) return hash;
-    int res = 17;
-    for ( int i=0; i < size; i++ ) {
-      res = 31 * res + data[i];
-    }
-    return res;
-  }
+
   @Override
   public String toString()
   {
@@ -226,19 +178,11 @@ public class Phrase
     }
     return sb.toString();
   }
-  public String toString( TermDic dic )
-  {
-    StringBuffer sb = new StringBuffer();
-    for (int i=0; i < size; i++ ) {
-      if ( i > 0 && sb.charAt( sb.length()-1 ) != '\'' ) sb.append( " " );
-      sb.append( dic.term( data[i]) );
-    }
-    return sb.toString();
-  }
+
   public static void main( String[] args ) throws IOException
   {
-    Phrase seq = new Phrase(4);
-    Phrase bag = new Phrase(4, true);
+    IntBuffer seq = new IntBuffer(4);
+    IntBuffer bag = new IntBuffer(4, true);
     seq.append(4).append( 2 ).append( 3 );
     System.out.println( seq );
     bag.append(4).append( 2 ).append( 3 );

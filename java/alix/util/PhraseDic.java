@@ -37,9 +37,9 @@ public class PhraseDic
   /** Count of nodes */
   private long occs = 1;
   /** Access by phrase */
-  private HashMap<Phrase, Ref> phrases = new HashMap<Phrase, Ref>();
+  private HashMap<IntTuple, Ref> tupleDic = new HashMap<IntTuple, Ref>();
   /** A local mutable Phrase for testing in the Map of phrases, efficient but not thread safe */
-  private Phrase phrase = new Phrase( 8 );
+  private IntBuffer buffer = new IntBuffer( 8 );
   /** A local mutable String for locution insertion, not thread safe  */
   private Term token = new Term();
 
@@ -60,7 +60,7 @@ public class PhraseDic
     final int lim = compound.length();
     if ( lim == 0) return false;
     int code;
-    Phrase phrase = this.phrase.reset(); // a temp compound, reset
+    IntBuffer buffer = this.buffer.reset(); // take a ref to avoid a lookup
     Term token = this.token.reset(); // a temp mutable string
     for ( int i=0; i< lim; i++) {
       char c = compound.charAt( i );
@@ -70,7 +70,7 @@ public class PhraseDic
         if ( c == '’' || c == '\'' || i == lim-1 ) 
           token.append( c );
         code = words.add(token);
-        if ( code > senselevel ) phrase.append( code );
+        if ( code > senselevel ) buffer.append( code );
         token.reset();
         if ( c == '\t' || c == ';' ) break;
       }
@@ -79,9 +79,9 @@ public class PhraseDic
       }
     }
     // ?? allow simple words ?
-    if ( phrase.size() < 1 ) return false;
+    if ( buffer.size() < 1 ) return false;
     // Add phrase to dictionary
-    inc( phrase );
+    inc( buffer );
     // here we could add more info on the compound
     return true;
   }
@@ -90,47 +90,63 @@ public class PhraseDic
     return occs;
   }
   public long size() {
-    return phrases.size();
+    return tupleDic.size();
   }
   
-  public int inc( final Phrase key ) {
-    Ref ref = phrases.get( key );
+  public int inc( final IntBuffer key ) {
+    Ref ref = tupleDic.get( key );
     occs++;
     if ( ref == null ) {
       ref = new Ref( 1 );
-      Phrase phr = new Phrase( key );
-      phrases.put( phr, ref );
+      IntTuple tuple = new IntTuple( key );
+      tupleDic.put( tuple, ref );
+      return 1;
+    }
+    return ref.inc();
+  }
+  public int inc( final IntRoller key ) {
+    Ref ref = tupleDic.get( key );
+    occs++;
+    if ( ref == null ) {
+      ref = new Ref( 1 );
+      IntTuple tuple = new IntTuple( key );
+      tupleDic.put( tuple, ref );
       return 1;
     }
     return ref.inc();
   }
   /**
    * 
-   * @param phrase
+   * @param buffer
    * @return ???
    */
-  public void label( final Phrase key, final String label ) {
-    Ref ref = phrases.get( key );
+  public void label( final IntBuffer key, final String label ) {
+    Ref ref = tupleDic.get( key );
     if ( ref == null ) return; // create it ?
     ref.label = label;
   }
-  public boolean contains( final Phrase phrase ) {
-    Ref ref = phrases.get( phrase );
+  public void label( final IntRoller key, final String label ) {
+    Ref ref = tupleDic.get( key );
+    if ( ref == null ) return; // create it ?
+    ref.label = label;
+  }
+  public boolean contains( final IntBuffer intBuffer ) {
+    Ref ref = tupleDic.get( intBuffer );
     if ( ref == null ) return false;
     return true;
   }
   public boolean contains( final IntRoller win ) {
-    Ref ref = phrases.get( win );
+    Ref ref = tupleDic.get( win );
     if ( ref == null ) return false;
     return true;
   }
 
-  public Iterator<Map.Entry<Phrase, Ref>> freqlist( )
+  public Iterator<Map.Entry<IntTuple, Ref>> freqlist( )
   {
-    List<Map.Entry<Phrase, Ref>> list = new LinkedList<Map.Entry<Phrase, Ref>>( phrases.entrySet() );
-    Collections.sort( list, new Comparator<Map.Entry<Phrase, Ref>>()
+    List<Map.Entry<IntTuple, Ref>> list = new LinkedList<Map.Entry<IntTuple, Ref>>( tupleDic.entrySet() );
+    Collections.sort( list, new Comparator<Map.Entry<IntTuple, Ref>>()
     {
-        public int compare( Map.Entry<Phrase, Ref> o1, Map.Entry<Phrase, Ref> o2 )
+        public int compare( Map.Entry<IntTuple, Ref> o1, Map.Entry<IntTuple, Ref> o2 )
         {
             return (o2.getValue().count -  o1.getValue().count );
         }
@@ -151,15 +167,15 @@ public class PhraseDic
   
   public void  print( final Writer writer, int limit, final TermDic words, boolean html) throws IOException
   {
-    Iterator<Entry<Phrase, Ref>> it = freqlist();
-    Map.Entry<Phrase, Ref> entry;
+    Iterator<Entry<IntTuple, Ref>> it = freqlist();
+    Map.Entry<IntTuple, Ref> entry;
     String label;
     while ( it.hasNext() ) {
       entry = it.next();
       label = entry.getValue().label;
       writer.write( "\n" );
       if ( label !=  null) writer.write( label );
-      else writer.write(entry.getKey().toString( words ));
+      else writer.write( entry.getKey().toString( ) );
       writer.write(" ("+entry.getValue().count()+")");
       if ( html ) writer.write( "<br/>" );
       if (--limit == 0 ) break;
@@ -204,8 +220,7 @@ public class PhraseDic
     boolean locs = true;
     
     
-    Phrase key = new Phrase( size, false ); // collocation key (series or bag)
-    IntRoller gram = new IntRoller(0, size - 1); // collocation wheel
+    IntRoller gram = new IntRoller( 0, size - 1); // collocation wheel
     IntRoller wordmarks = new IntRoller(0, size - 1); // positions of words recorded in the collocation key
     
     TermDic dic = new TermDic();
@@ -233,7 +248,7 @@ public class PhraseDic
     }
 
 
-    IntRoller wordflow = new IntRoller(15, 0);
+    IntRoller wordflow = new IntRoller( -15, 0 );
     int code;
     int exit = 1000;
     StringBuffer label = new StringBuffer();
@@ -271,7 +286,7 @@ public class PhraseDic
         else code = dic.add( occ.orth() );
         // clear to avoid repetitions 
         // « Voulez vous sortir, grand pied de grue, grand pied de grue, grand pied de grue »
-        if ( code == wordflow.first()) {
+        if ( code == wordflow.first() ) {
           wordflow.clear();
           gram.clear();
           wordmarks.clear();
@@ -285,8 +300,7 @@ public class PhraseDic
         gram.push( wordflow.get( 0 ) ); // store a signficant word as a collocation key
         if ( gram.get( 0 ) == 0 ) continue; // the collocation key is not complete
         
-        key.set( gram ); // transfer the collocation wheel to a phrase key
-        int count = phrases.inc( key );
+        int count = phrases.inc( gram );
         // new value, add a label to the collocation
         if ( count == 1 ) {
           label.setLength( 0 );
@@ -295,13 +309,13 @@ public class PhraseDic
             if ( i != 0 && label.charAt( label.length()-1 ) != '\'' ) label.append( " " );
           }
           // System.out.println( label );
-          phrases.label( key, label.toString() );
+          phrases.label( gram, label.toString() );
         }
         // if ( --exit < 0 ) System.exit( 1 );
       }
     }
     System.out.println( "Parsé" );
-    System.out.println( phrases.phrases.size()+" ngrams" );
+    System.out.println( phrases.tupleDic.size()+" ngrams" );
     phrases.print( new PrintWriter(System.out), 1000, dic );
   }
 }

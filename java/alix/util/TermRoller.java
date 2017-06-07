@@ -69,7 +69,7 @@ public class TermRoller extends Roller {
    */
   public Term next()
   {
-    data[pointer(-left)].reset(); // clear the last term to find it as first one
+    data[pointer(left)].reset(); // clear the last term to find it as first one
     center = pointer( +1 );
     return data[center];
   }
@@ -95,7 +95,7 @@ public class TermRoller extends Roller {
    */
   public String toString() {
     StringBuffer sb = new StringBuffer();
-    for (int i = -left; i <= right; i++) {
+    for (int i = left; i <= right; i++) {
       if (i == 0) sb.append( " <" );
       sb.append( get(i) );
       if (i == 0) sb.append( "> " );
@@ -114,7 +114,7 @@ public class TermRoller extends Roller {
     String text = "Son amant emmène un jour O se promener dans un quartier où"
       + " ils ne vont jamais."
     ;
-    TermRoller win = new TermRoller(2, 5);
+    TermRoller win = new TermRoller(-2, 5);
     for (String token: text.split( " " )) {
       win.push( token );
       System.out.println(win);

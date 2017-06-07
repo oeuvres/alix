@@ -1,5 +1,7 @@
 package alix.util;
 
+import java.util.HashSet;
+
 /**
  * Efficient Object to handle a sliding window of ints.
  * 
@@ -120,8 +122,8 @@ public class IntRoller extends Roller {
   {
     if ( hash != 0 ) return hash;
     int res = 17;
-    for ( int i=-left; i <= right; i++ ) {
-      res = 31 * res + data[pointer(i)];
+    for ( int i = left; i <= right; i++ ) {
+      res = 31 * res + get(i);
     }
     return res;
   }
@@ -130,8 +132,20 @@ public class IntRoller extends Roller {
   {
     if (o == null) return false;
     if ( o == this ) return true;
-    if (o instanceof Phrase) {
-      Phrase phr = (Phrase)o;
+    if (o instanceof IntTuple) {
+      IntTuple tuple = (IntTuple)o;
+      if ( tuple.size() != size ) return false;
+      int ituple = tuple.size() - 1;
+      int i = right;
+      do {
+        if ( get( i ) != tuple.get( ituple ) ) return false;
+        i--;
+        ituple--;
+      } while( ituple >= 0 );
+      return true;
+    }
+    if (o instanceof IntBuffer) {
+      IntBuffer phr = (IntBuffer)o;
       if ( phr.size() != size ) return false;
       int iphr=phr.size() - 1;
       int i=right;
@@ -145,8 +159,8 @@ public class IntRoller extends Roller {
     if (o instanceof IntRoller) {
       IntRoller roller = (IntRoller)o;
       if ( roller.size != size ) return false;
-      int pos1=-left;
-      int pos2=-roller.left;
+      int pos1 = left;
+      int pos2 = roller.left;
       int max1=right;
       while(pos1 <= max1) {
         if ( get(pos1) != roller.get( pos2 ) ) return false;
@@ -161,7 +175,7 @@ public class IntRoller extends Roller {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    for (int i = -left; i <= right; i++) {
+    for (int i = left; i <= right; i++) {
       if (i == 0) sb.append( " <" );
       sb.append( get(i) );
       if (i == 0) sb.append( "> " );
@@ -173,7 +187,7 @@ public class IntRoller extends Roller {
   }
   
   public String toString( TermDic words ) {
-    return toString( words, -left, right );
+    return toString( words, left, right );
   }
   public String toString( TermDic words, int from, int to ) {
     StringBuilder sb = new StringBuilder();
@@ -184,16 +198,29 @@ public class IntRoller extends Roller {
     return sb.toString();
   }
 
+  
   /**
    * Test the Class
    * @param args
    */
   public static void main(String args[]) 
   {
-    IntRoller win = new IntRoller(2,3);
+    IntRoller win = new IntRoller( -2, 3 );
     for(int i=1; i< 20; i++) {
       win.push(i);
       System.out.println(win);
     }
+    HashSet<IntTuple> set = new HashSet<IntTuple>();
+    set.add( new IntTuple( 1, 2) );
+    System.out.println( set );
+    set.add( new IntTuple( 1, 2) );
+    System.out.println( set );
+    set.add( new IntTuple( 1, 3) );
+    System.out.println( set );
+    IntRoller roller = new IntRoller( 0, 1 );
+    roller.push( 1 ).push( 2 );
+    System.out.println( roller+" "+set.contains( roller ) );
+    roller.push( 3 );
+    System.out.println( roller+" "+set.contains( roller ) );
   }
 }

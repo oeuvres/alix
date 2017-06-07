@@ -46,7 +46,7 @@ public class NAME
     }
   }
   /** Size on the left */
-  final int left = 20;
+  final int left = -20;
   /** Size on the right */
   final int right = 20;
   
@@ -179,7 +179,7 @@ public class NAME
       }
       // ouvrir un arc qui commence avec ce nœud
       stack.add( new Source(
-          Tokenizer.xml2txt( text.substring( win.get( -left ).end(), occ.start() ) ),
+          Tokenizer.xml2txt( text.substring( win.get( left ).end(), occ.start() ) ),
           occ.orth().toString(),
           wn,
           occ.end()

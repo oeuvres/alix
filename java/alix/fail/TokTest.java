@@ -24,7 +24,7 @@ public class TokTest
     // >Il
     String text = new String( Files.readAllBytes( path ), StandardCharsets.UTF_8 );
     Tokenizer toks = new Tokenizer( text );
-    OccRoller occs = new OccRoller( 10, 10 );
+    OccRoller occs = new OccRoller( -10, 10 );
     int i = 0;
     Occ occ;
     while( ( occ = toks.word() ) != null ) {

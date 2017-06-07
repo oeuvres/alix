@@ -22,10 +22,20 @@ public abstract class Roller
    */
   public Roller(final int left, final int right) 
   {
+    if ( left > 0 ) throw new IndexOutOfBoundsException( "Roller, left context should be negative or zero." );
     this.left = left;
+    if ( right < 0 ) throw new IndexOutOfBoundsException( "Roller, right context should be positive or zero." );
     this.right = right;
-    size = left + right + 1;
+    size = -left + right + 1;
     center = left;
+  }
+  /**
+   * Retrun the size of the roller
+   * @return
+   */
+  public int size()
+  {
+    return size;
   }
   /**
    * Get pointer on the data array from a position.

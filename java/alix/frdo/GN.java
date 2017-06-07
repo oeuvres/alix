@@ -22,7 +22,7 @@ public class GN
   /** Where to write results */
   PrintWriter out;
   /** Size on the left */
-  final int left = 10;
+  final int left = -10;
   /** Size on the right */
   final int right = 10;
   public GN(Path src ) throws IOException
@@ -92,7 +92,7 @@ public class GN
   public TermDic parse( PrintWriter out, int limit )
   {
     TermDic dic = new TermDic();
-    OccRoller win = new OccRoller(left, right);
+    OccRoller win = new OccRoller( left, right );
     // loop on all tokens
     while ( toks.word( win.add() ) ) {
       // limited concordance
@@ -104,7 +104,7 @@ public class GN
       }
       int lpos = 0;
       boolean ladj = false;
-      while (lpos > -left) {
+      while ( lpos > left ) {
         final short tag =  win.get( lpos -1 ).tag().code();
         if ( tag == Tag.ADJ ) {
           dic.inc( win.get( lpos - 1 ).lem() );
@@ -203,7 +203,7 @@ public class GN
     out.print( n );
     out.print( ".</td>" );
     out.print( "<td class=\"left\">" );
-    for ( int i=-left; i < 0; i++) {
+    for ( int i = left; i < 0; i++) {
       if ( i == lpos ) out.print( "<b>" );
       if ( win.get( i ).tag().equals(Tag.ADJ)  ) out.print( "<i>" );
       out.print( win.get( i ).graph() );

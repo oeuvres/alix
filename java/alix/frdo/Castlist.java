@@ -136,10 +136,10 @@ public class Castlist
     Tag tag = new Tag("NAME");
     dest = "_NAME/"+tag+".csv";
     PrintWriter out = new PrintWriter( dest, "UTF-8" );
-    short left = 5;
+    short left = -5;
     short right = 5;
     boolean first = true;
-    for ( int i=-left; i<=right; i++) {
+    for ( int i = left; i <= right; i++) {
       if ( first ) first = false;
       else out.print( "\t" );
       if ( i == 0) out.print( pivot );

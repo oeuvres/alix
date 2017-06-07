@@ -19,9 +19,9 @@ public class OccRoller extends Roller {
   /** 
    * Constructor, init data
    */
-  public OccRoller(final int left, final int right) 
+  public OccRoller( final int left, final int right ) 
   {
-    super(left, right);
+    super( left, right );
     data = new Occ[size];
     for (int i=0; i<size; i++) data[i] = new Occ();
   }
@@ -39,7 +39,7 @@ public class OccRoller extends Roller {
     if ( count > 0) {
       for ( int i=0; i < count ; i++ ) {
         // if left = 0, center will become right and will be cleared
-        data[ pointer( -left ) ].clear();
+        data[ pointer( left ) ].clear();
         center = pointer( 1 );
       }
     }
@@ -103,7 +103,7 @@ public class OccRoller extends Roller {
   public Occ push( final Occ value ) 
   {
     // modulo in java produce negatives
-    Occ ret = data[ pointer( -left ) ];
+    Occ ret = data[ pointer( left ) ];
     center = pointer( +1 );
     // copy content !!!, the source occ may run in another chain  
     data[ pointer(right) ].set( value ); 
@@ -114,7 +114,7 @@ public class OccRoller extends Roller {
    */
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    for (int i = -left; i <= right; i++) {
+    for (int i = left; i <= right; i++) {
       if (i == 0) sb.append( "<" );
       sb.append( get(i).graph() );
       if (i == 0) sb.append( ">" );
@@ -143,7 +143,7 @@ public class OccRoller extends Roller {
         + "d’un roi qui ne pétillait plus, de l’indécente Sunamite d’un Salomon qui ne fut jamais "
         + "Salomon que par la vieillesse !"
     ;
-    OccRoller win = new OccRoller( 10, 10 );
+    OccRoller win = new OccRoller( -10, 10 );
     Tokenizer toks = new Tokenizer( text );
     Occ occ;
     while ( (occ = toks.word()) != null ) {
