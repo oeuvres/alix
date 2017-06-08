@@ -30,7 +30,7 @@ public abstract class Roller
     center = left;
   }
   /**
-   * Retrun the size of the roller
+   * Return the size of the roller
    * @return
    */
   public int size()

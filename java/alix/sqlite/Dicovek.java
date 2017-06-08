@@ -67,7 +67,7 @@ public class Dicovek {
   /** Current Vector to work on */
   private IntVek vek;
   /** threshold of non stop words */
-  final int stopoffset;
+  public final int stopoffset;
   /** Time finished */
   private long modified;
   
@@ -147,7 +147,10 @@ public class Dicovek {
     return dic.put( occ.lem() );
   }
   
-  
+  public TermDic dic()
+  {
+    return dic;
+  }
   
   /**
    * Update the vectors from the current state
@@ -335,7 +338,7 @@ public class Dicovek {
     boolean first = true;
     String w;
     for ( int j = 0; j < size; j++ ) {
-      w = dic.term( coocs[j].key );
+      w = dic.label( coocs[j].key );
       if (first) first = false;
       else sb.append(", ");
       sb.append( ""+w+" ("+coocs[j].value+")" );

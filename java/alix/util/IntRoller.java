@@ -196,7 +196,7 @@ public class IntRoller extends Roller {
     StringBuilder sb = new StringBuilder();
     for (int i = from; i <= to; i++) {
       int val = get(i);
-      if ( val != 0 ) sb.append( words.term( val ) ).append( " " );
+      if ( val != 0 ) sb.append( words.label( val ) ).append( " " );
     }
     return sb.toString();
   }

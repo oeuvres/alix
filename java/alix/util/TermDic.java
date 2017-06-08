@@ -162,7 +162,7 @@ public class TermDic
    * @param index
    * @return the term
    */
-  public String term( final int code )
+  public String label( final int code )
   {
     if (code < 1) return null;
     if (code > pointer) return null;

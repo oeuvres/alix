@@ -2,6 +2,7 @@ package alix.util;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashSet;
 
 /**
  * A fixed list of ints.
@@ -123,7 +124,7 @@ public class IntTuple implements Comparable<IntTuple>
   @Override
   public boolean equals(Object o)
   {
-    if (o == null) return false;
+    if ( o == null ) return false;
     if ( o == this ) return true;
     if ( o instanceof IntTuple ) {
       IntTuple phr = (IntTuple)o;
@@ -133,9 +134,19 @@ public class IntTuple implements Comparable<IntTuple>
       }
       return true;
     }
-    if (o instanceof IntRoller) {
+    if ( o instanceof IntBuffer ) {
+      IntBuffer buf = (IntBuffer)o;
+      if ( buf.size() != size ) return false;
+      int i=size - 1;
+      do {
+        if ( buf.data[i] != data[i] ) return false;
+        i--;
+      } while( i >= 0 );
+      return true;
+    }
+    if ( o instanceof IntRoller ) {
       IntRoller roll = (IntRoller)o;
-      if ( roll.size != size ) return false;
+      if ( roll.size() != size ) return false;
       int i=size - 1;
       int iroll=roll.right;
       do {
@@ -159,7 +170,6 @@ public class IntTuple implements Comparable<IntTuple>
     return 0;
   }
 
-  
   @Override 
   public int hashCode() 
   {
@@ -186,11 +196,18 @@ public class IntTuple implements Comparable<IntTuple>
 
   public static void main( String[] args ) throws IOException
   {
-    int[] a={1,2};
-    IntTuple b = new IntTuple(a);
-    System.out.println( b );
-    a[0] = 3;
-    System.out.println( b );
+    HashSet<IntTuple> set = new HashSet<IntTuple>();
+    IntRoller roller = new IntRoller( 0, 1 );
+    IntBuffer buf = new IntBuffer();
+    for ( int i=-5; i<=5; i++ ) {
+      IntTuple tuple = new IntTuple( i, i+1 );
+      set.add( tuple );
+      roller.push( i ).push( i+1 );
+      buf.reset();
+      buf.set( 0, i ).set( 1, i+1 );
+      System.out.println( tuple.equals( roller )+" "+roller.equals( tuple )+" "+tuple.equals( buf )
+      +" "+set.contains( buf )+" "+set.contains( roller )+" "+tuple.hashCode()+" = "+roller.hashCode()+" = "+buf.hashCode() );
+    }
   }
 
 }

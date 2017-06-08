@@ -305,7 +305,7 @@ public class PhraseDic
         if ( count == 1 ) {
           label.setLength( 0 );
           for ( int i = wordmarks.get( 0 ); i <= 0 ; i++) {
-            label.append( dic.term( wordflow.get( i )) );
+            label.append( dic.label( wordflow.get( i )) );
             if ( i != 0 && label.charAt( label.length()-1 ) != '\'' ) label.append( " " );
           }
           // System.out.println( label );

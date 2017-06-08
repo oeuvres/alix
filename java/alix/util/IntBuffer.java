@@ -85,7 +85,7 @@ public class IntBuffer
     System.arraycopy( oldData, 0, data, 0, oldLength );
     return true;
   }
-  public IntBuffer put( int pos, int value )
+  public IntBuffer set( int pos, int value )
   {
     if (onWrite( pos )) ;
     if ( pos >= size) size = (short)(pos+1);
@@ -97,12 +97,12 @@ public class IntBuffer
    * @param phr
    * @return
    */
-  public IntBuffer set( final IntBuffer phr )
+  public IntBuffer set( final IntBuffer buf )
   {
-    short newSize = phr.size;
+    short newSize = buf.size;
     onWrite( newSize-1 );
     size = newSize;
-    System.arraycopy( phr.data, 0, data, 0, newSize );
+    System.arraycopy( buf.data, 0, data, 0, newSize );
     return this;
   }
   public int[] toArray()
@@ -155,6 +155,15 @@ public class IntBuffer
       }
       return true;
     }
+    if ( o instanceof IntTuple ) {
+      IntTuple tuple = (IntTuple)o;
+      if ( tuple.size() != size ) return false;
+      onTest(); // sort if bag
+      for (short i=0; i < size; i++ ) {
+        if ( tuple.data[i] != data[i] ) return false;
+      }
+      return true;
+    }
     if ( o instanceof IntRoller ) {
       IntRoller roll = (IntRoller)o;
       if ( roll.size != size ) return false;
@@ -168,6 +177,17 @@ public class IntBuffer
       return true;
     }
     return false;
+  }
+  
+  @Override 
+  public int hashCode() 
+  {
+    if ( hash != 0 ) return hash;
+    int res = 17;
+    for ( int i=0; i < size; i++ ) {
+      res = 31 * res + data[i];
+    }
+    return res;
   }
 
   @Override
