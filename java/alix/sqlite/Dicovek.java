@@ -102,13 +102,13 @@ public class Dicovek {
   private int key( Occ occ )
   {
     int ret = -1;
-    // pas de vecteur pour une occurrence vide
+    // TOFIX 
     if ( occ.isEmpty() ) return -1;
     if ( occ.tag().isPun() ) return -1;
+    if ( occ.tag().equals( Tag.NULL ) ) return -1;
     // nombre
-    if ( occ.tag().equals( Tag.DETnum ) ) {
-      ret = dic.inc("NUM");
-      return -1;
+    if ( occ.tag().equals( Tag.DETnum ) || occ.tag().equals( Tag.DETnum ) ) {
+      return dic.inc("NUM");
     }
     // return all substantives with no lem
     if ( occ.tag().isSub() ) return dic.inc( occ.orth() );
@@ -128,12 +128,14 @@ public class Dicovek {
    */
   private int value( Occ occ )
   {
-    
+    // TOFIX
     if ( occ.isEmpty() ) return -1;
     // Punctuation produce more noise than resolution
     if ( occ.tag().isPun() ) return -1; // dic.put( occ.orth() );
-    // mot vide, stocker la catégorie générale : déterminant, pronom…
-    // if ( Lexik.isStop( occ.orth() ) ) return dic.put( occ.tag().label() );
+    // not recognize, maybe typo or OCR
+    if ( occ.tag().equals( Tag.NULL ) ) {
+      return -1;
+    }
     // proper name, be generic
     if ( occ.tag().isName() ) return dic.put( occ.tag().label() );
     // numbers
@@ -144,6 +146,8 @@ public class Dicovek {
     if ( occ.lem().isEmpty() ) return dic.put( occ.orth() );
     return dic.put( occ.lem() );
   }
+  
+  
   
   /**
    * Update the vectors from the current state
@@ -227,9 +231,11 @@ public class Dicovek {
     ArrayList<SimRow> table = new ArrayList<SimRow>();
     SimRow row;
     for ( DicEntry entry: dic.byCount() ) {
+      if ( entry.count() < 3 ) break;
       vek = vectors.get( entry.code() );
       if ( vek == null ) continue;
-      if ( vek.size() < 4 ) continue;
+      // System.out.print( ", "+vek.size() );
+      // if ( vek.size() < 20 ) break;
       score = vekterm.cosine( vek );
       // score differs 
       // if ( score < 0.5 ) continue;
@@ -462,23 +468,31 @@ public class Dicovek {
     
     System.out.println( "Chargé en "+((System.nanoTime() - start) / 1000000) + " ms");
     System.out.println( veks.freqlist(true, 100) );
+    System.out.println("\nSeuil syminymes, -1= tout (parfois long), 2000 = parmi les 2000 mots les plus fréquents: ");
+    String line = keyboard.readLine().trim();
+    int simsmax = 5000;
+    try { simsmax = Integer.parseInt( line ); } catch ( Exception e ) { };
     // Boucle de recherche
     List<SimRow> table;
     DecimalFormat df = new DecimalFormat("0.0000");
     while (true) {
       System.out.println( "" );
-      System.out.print("Mot: ");
-      String word = keyboard.readLine().trim();
-      if (word == null || "".equals(word)) {
-        System.exit(0);
-      }
-      word = word.trim();
-      int simsmax = -1; // pas de limite
+      System.out.print("Mot (seuil = "+simsmax+") : ");
+      line = keyboard.readLine().trim();
+      line = line.trim();
+      if ( line.isEmpty() ) System.exit(0);
+      try { 
+        simsmax = Integer.parseInt( line ); 
+        continue;
+      } 
+      catch ( Exception e ) { };
       start = System.nanoTime();
       System.out.print( "COOCCURRENTS : " );
-      System.out.println( veks.coocs( word, 30, true ) );
+      System.out.println( veks.coocs( line, 30, true ) );
       System.out.println( "" );
-      table = veks.sims(word, simsmax );
+      start = System.nanoTime();
+      table = veks.sims( line, simsmax );
+      System.out.println( "Calculé en "+((System.nanoTime() - start) / 1000000) + " ms");
       if ( table == null ) continue;
       int limit = 30;
       // TODO optimiser 
