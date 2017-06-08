@@ -211,7 +211,11 @@ public class Char
       // DO NOT modify '<>' values
       
       
-      if (Character.isLetter( c )) {
+      // inside a word ?
+      if ( Character.isISOControl( c ) ) {
+        properties |= SPACE; // \n, \r, \t…
+      }
+      else if (Character.isLetter( c )) {
         properties |= LETTER | TOKEN;
         if (Character.isUpperCase( c )) {
           properties |= UPPERCASE;
@@ -408,6 +412,8 @@ public class Char
    */
   public static void main( String args[] )
   {
+    // '. .'
+    System.out.println( Character.getType( ' ' ) + " " + Character.isISOControl( ' ' )+ " "+ Char.isSpace( ' ' ));
     System.out.println( "� Char.isToken:"+Char.isToken( '�' ) // true
       +" Char.isLetter: " + Char.isLetter( '�' ) // true
       +" Char.isPunctuationOrSpace: " + Char.isPunctuationOrSpace( '�' ) // false

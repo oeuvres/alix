@@ -83,10 +83,10 @@ public class Occ
    */
   public Occ set( Occ occ )
   {
-    graph.replace( occ.graph );
-    orth.replace( occ.orth );
+    graph.set( occ.graph );
+    orth.set( occ.orth );
     tag.set( occ.tag );
-    lem.replace( occ.lem );
+    lem.set( occ.lem );
     start = occ.start;
     end = occ.end;
     // KEEP prev-next links of source, do not import them from target
@@ -189,7 +189,7 @@ public class Occ
    */
   public Occ graph( Term t) 
   {
-    graph.replace( t );
+    graph.set( t );
     return this;
   }
 
@@ -230,7 +230,7 @@ public class Occ
    */
   public Occ orth( Term t) 
   {
-    orth.replace( t );
+    orth.set( t );
     return this;
   }
   /**
@@ -286,7 +286,7 @@ public class Occ
    */
   public Occ lem( final Term t ) 
   {
-    lem.replace( t );
+    lem.set( t );
     return this;
   }
   /**

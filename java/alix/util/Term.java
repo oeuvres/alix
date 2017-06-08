@@ -37,7 +37,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term( Term t ) 
   {
-    replace(t);
+    set(t);
   }
   /**
    * Construct a term by copy of a char array  (modification of this Term object will NOT affect the source array)
@@ -45,7 +45,7 @@ public class Term implements CharSequence, Comparable<Term>
    */
   public Term( final char[] a ) 
   {
-    replace(a, -1, -1);
+    set(a, -1, -1);
   }
   /**
    * Construct a term by copy of a char sequence 
@@ -173,9 +173,9 @@ public class Term implements CharSequence, Comparable<Term>
    * @param a text as char array
    * @return the Term object for chaining
    */
-  public Term replace( char[] a  ) 
+  public Term set( char[] a  ) 
   {
-    return replace( a, -1, -1);
+    return set( a, -1, -1);
   }
   /**
    * Replace Term content by a span of a char array
@@ -184,7 +184,7 @@ public class Term implements CharSequence, Comparable<Term>
    * @param number of chars to copy -1
    * @return the Term object for chaining
    */
-  public Term replace( char[] a, int offset, int count ) 
+  public Term set( char[] a, int offset, int count ) 
   {
     if (offset <= 0 && count < 0) {
       offset = 0;
@@ -205,7 +205,7 @@ public class Term implements CharSequence, Comparable<Term>
    * @param term
    * @return
    */
-  public Term replace( Term term ) 
+  public Term set( Term term ) 
   {
     int newlen = term.len;
     // do not change len before sizing

@@ -61,7 +61,7 @@ public class TermRoller extends Roller {
    */
   public Term set(final int pos, final Term term) 
   {
-    return data[pointer(pos)].replace( term );
+    return data[pointer(pos)].set( term );
   }
   /**
    * Move index to the next position and return a pointer on the Term

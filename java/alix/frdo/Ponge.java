@@ -12,6 +12,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.Iterator;
 
 import javax.xml.namespace.QName;
@@ -44,9 +45,20 @@ public class Ponge
   public Ponge( Writer out ) throws IOException
   {
     this.out = out;
-    out.write( "LETTRE\tDATE\tSIGNATURE\tCORRESPONDANT\tNOM\tTYPE\n" );
+    out.write( "lettre\tdate\tdest\tSource\tTarget\tclass\n" );
   }
   
+  private class Letter
+  {
+    String id;
+    String date;
+    String sender;
+    String addressee;
+    @Override
+    public String toString() {
+      return id+" "+date+" de "+sender+" à "+addressee;
+    }
+  }
   /**
    * Parcourir un fichier
    * @throws XMLStreamException 
@@ -60,13 +72,10 @@ public class Ponge
     QName qtype = new QName( "type" );
     QName qiname = new QName( "indexName" );
     QName qid = new QName( "http://www.w3.org/XML/1998/namespace", "id" );
-    String id="";
-    String date="";
-    String signed="";
-    String corr="";
     boolean note = false;
     boolean p = false;
-    boolean letter = false;
+    boolean divlet = false;
+    Letter letter = null;
     
     while( events.hasNext() ) {
       XMLEvent e = events.nextEvent();
@@ -74,38 +83,46 @@ public class Ponge
       if ( e.isStartElement() ) {
         StartElement startElement = e.asStartElement();
         String name = startElement.getName().getLocalPart();
-        if ( name.equals( "note" ) ) {
-          note = true;
-        }
-        else if ( name.equals( "p" ) ) {
-          p = true;
-        }
-        else if ( name.equals( "index" ) ) {
-          String type = startElement.getAttributeByName( qiname ).getValue();
-          String n = startElement.getAttributeByName( qn ).getValue();
-          if ( type.equals( "date" ) ) date = n;
-          else if ( type.equals( "sender" ) ) {
-            signed = n;
-            if ( !"Ponge, Francis".equals( n ) ) corr = n;
-          }
-          else if ( type.equals( "addressee" ) ) {
-            if ( !"Ponge, Francis".equals( n ) ) corr = n;
-          }
-        }
-        else if ( name.equals( "div" ) ) {
+        if ( name.equals( "div" ) ) {
           Attribute att = startElement.getAttributeByName( qtype );
           if ( att == null ) continue;
           String type = att.getValue();
           if ( !type.equals( "letter" ) ) continue;
-          letter = true;
-          id = startElement.getAttributeByName( qid ).getValue();
+          letter = new Letter();
+          letter.id = startElement.getAttributeByName( qid ).getValue();
           sb.setLength( 0 );
+          divlet = true;
+        }
+        else if ( name.equals( "index" ) ) {
+          String type = startElement.getAttributeByName( qiname ).getValue();
+          String n = startElement.getAttributeByName( qn ).getValue();
+          if ( type.equals( "date" ) ) {
+            if ( letter == null ) {
+              System.out.println( "date ? "+n );
+            }
+            else {
+              letter.date = n;
+            }
+          }
+          else if ( type.equals( "sender" ) ) {
+            letter.sender = n;
+          }
+          else if ( type.equals( "addressee" ) ) {
+            letter.addressee = n;
+          }
+        }
+        // évite head, selute, dateline, signed…
+        else if ( name.equals( "p" ) ) {
+          p = true;
+        }
+        else if ( name.equals( "note" ) ) {
+          note = true;
         }
       }
       // TEXT 
       else if ( e.isCharacters() ) {
         if ( note ) continue;
-        if ( p && letter ) sb.append( e.asCharacters().getData() );
+        if ( p && divlet ) sb.append( e.asCharacters().getData() );
       }
       // </EL>
       else if ( e.isEndElement() ) {
@@ -120,22 +137,36 @@ public class Ponge
         }
         // record 
         else if ( name.equals( "div" ) ) {
-          if ( !letter ) continue;
+          if ( !divlet ) continue;
           // System.out.println( id+"\t"+date+"\t"+signed+"\t"+corr+"\t"+sb+"\n" );
           if ( sb.length() < 10 ) continue;
+          HashSet<String> done = new HashSet<String>();
           Tokenizer toks = new Tokenizer( sb.toString() );
           Occ occ = new Occ();
           while ( toks.word( occ ) ) {
             if ( !occ.tag().isName() ) continue;
-            out.write( id+"\t"+date+"\t"+signed+"\t"+corr+"\t"+occ.orth()+"\t"+occ.tag()+"\n" );
+            if ( occ.orth().toString().trim().isEmpty() ) {
+              System.out.println( occ );
+              continue;
+            }
+            if ( done.contains( occ.orth() )) {
+              continue;
+            }
+            String date = "";
+            if ( letter.date == null ) System.out.println( "Date = null, "+letter.id );
+            else if ( letter.date.length() >= 4 ) date = letter.date.substring( 0, 4 );
+            // if ( !"Ponge, Francis".equals( n ) ) corr = n;
+            out.write( letter.id+"\t"+date+"\t"+letter.addressee+"\t"+letter.sender+"\t"+occ.orth()+"\t"+occ.tag()+"\n" );
+            done.add( occ.orth().toString() );
           }
-          letter = false;
+          divlet = false;
         }
         
       }
     }
   }
-  
+
+
   /**
    * Test the Class
    * @param args
@@ -146,7 +177,7 @@ public class Ponge
   {
     // boucler sur les fichiers Ponge
     String dir = "../ponge/corr/";
-    String dest = "../ponge/corr/names.csv";
+    String dest = "../ponge/ponge_names.tsv";
     Writer out = new BufferedWriter( new OutputStreamWriter( new FileOutputStream( dest ), "UTF-8") );
     Ponge ponge = new Ponge( out );
     for ( final File src : new File( dir ).listFiles() ) {
@@ -156,6 +187,7 @@ public class Ponge
       System.out.println( src );
       ponge.parse( src );
     }
+    out.flush();
     out.close();
   }
 

@@ -9,7 +9,7 @@ NAME d'NAME;NAME
 NAME de La NAME;NAMEpers
 NAME du NAME;NAMEpers
 NAME Le NAME;NAMEpers
-NAME en NAME;NAMEplace
+# NAME en NAME;NAMEplace # "Vienne en Autriche", trop de bruit, mieux vaut liste
 # d'NAME;NAMEpers
 place NAME;NAMEplace
 place de NAME;NAMEplace
@@ -1294,7 +1294,7 @@ XXVIII e;DETnum
 XXX e;DETnum
 qui aime bien châtie bien;SUB
 
-# EXCL 
+# EXCL
 
 aller aller;EXCL
 allez allez;EXCL

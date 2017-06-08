@@ -6,7 +6,15 @@ Louvre;NAMEplace
 
 # AIRES
 
+Abruzzes;NAMEplace
 Afrique;NAMEplace
+Alaska;NAMEplace
+Alsace-Lorraine;NAMEplace
+Amérique;NAMEplace
+Amériques;NAMEplace
+Andalousie;NAMEplace
+Arizona;NAMEplace
+Arkansas;NAMEplace
 Asie;NAMEplace
 Australia;NAMEplace;Australie
 Baléares;NAMEplace
@@ -30,6 +38,7 @@ Tahiti;NAMEplace
 # Sydney;NAMEplace
 # Victoria;NAMEplace
 Abadan;NAMEplace
+Aberdeen;NAMEplace
 Abidjan;NAMEplace
 Accra;NAMEplace
 Ad-Dammam;NAMEplace
@@ -49,7 +58,9 @@ Alexandria;NAMEplace
 Algiers;NAMEplace
 Allahabad;NAMEplace
 Almaty;NAMEplace
+Amalfi;NAMEplace
 Amman;NAMEplace
+Amsterdam;NAMEplace
 Amritsar;NAMEplace
 Ankara;NAMEplace
 Anshan;NAMEplace
@@ -60,11 +71,13 @@ Anvers;NAMEplace
 Aurangabad;NAMEplace
 Baghdad;NAMEplace
 Baku;NAMEplace
+Bâle;NAMEplace
 Bamako;NAMEplace
 Bandung;NAMEplace
 Bangalore;NAMEplace
 Bangkok;NAMEplace
 Baotou;NAMEplace
+Barcelone;NAMEplace
 Barcelona;NAMEplace
 Barranquilla;NAMEplace
 Basra;NAMEplace
@@ -85,9 +98,11 @@ Bombay;NAMEplace
 Brasília;NAMEplace
 Brazzaville;NAMEplace
 Bruxelles;NAMEplace
+Bruxelles-Midi;NAMEplace
 Bucharest;NAMEplace
 Budapest;NAMEplace
-Buenos Aires;NAMEplace
+Buenos Aires;NAMEplace;Buenos-Aires
+Buenos-Aires;NAMEplace
 Bursa;NAMEplace
 Cairo;NAMEplace
 Calcutta;NAMEplace

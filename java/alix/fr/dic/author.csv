@@ -21,10 +21,12 @@ Abailard;NAMEauthor;Abélard
 Abailart;NAMEauthor;Abélard
 Abeilard;NAMEauthor;Abélard
 Adamov;NAMEauthor
+Adorno;NAMEauthor
 Agatha Christie;NAMEauthor
 Aïvanhov;NAMEauthor;
 Albalat;NAMEauthor;
 Alphonse de Liguori;NAMEauthor;
+Amrouche;NAMEauthor;
 Anacréon;NAMEauthor;
 Andersen;NAMEauthor;
 André Gide;NAMEauthor;Gide
@@ -33,6 +35,7 @@ Apollinaire;NAMEauthor;
 Arabia;NAMEauthor
 Aragon;NAMEauthor;
 Arioste;NAMEauthor;
+Aristophane;NAMEauthor;
 Aristote;NAMEauthor;
 Arland;NAMEauthor;
 Arnaud;NAMEauthor;
@@ -40,6 +43,7 @@ Artaud;NAMEauthor;
 Aubert;NAMEauthor;
 Aubinais;NAMEauthor;
 Audiberti;NAMEauthor;
+Audisio;NAMEauthor;
 Augustin;NAMEauthor;
 Auguste Comte;NAMEauthor;
 Aulnoy;NAMEauthor;
@@ -48,12 +52,15 @@ Aury;NAMEauthor;
 Aymé;NAMEauthor;
 Bacon;NAMEauthor;
 Bachelard;NAMEauthor;
+Balthus;NAMEauthor;
 Balzac;NAMEauthor;
 Balze;NAMEauthor;
 Baour-Lormian;NAMEauthor;
 Barrès;NAMEauthor;
 Barbey d'Aurevilly;NAMEauthor;
-Barthe;NAMEauthor;
+Barthes;NAMEauthor;
+Bayle;NAMEauthor;
+Bazaine;NAMEauthor;
 Baudelaire;NAMEauthor;
 Beauharnois;NAMEauthor;
 Beaumarchais;NAMEauthor;
@@ -84,13 +91,17 @@ Boileau;NAMEauthor;
 Boireau;NAMEauthor;
 Bonald;NAMEauthor;
 Bonaventure;NAMEauthor;
+Borges;NAMEauthor;
+Borgès;NAMEauthor;Borges
 Bossuet;NAMEauthor;
+Bottéro;NAMEauthor;
 Boufflers;NAMEauthor;
 Bouhier;NAMEauthor;
 Boulez;NAMEauthor
 Bounoure;NAMEauthor
 Bourdic;NAMEauthor;
 Bousquet;NAMEauthor
+Brancusi;NAMEauthor;
 Brecht;NAMEauthor;
 Bremond;NAMEauthor;
 Brunhoff;NAMEauthor;
@@ -100,17 +111,21 @@ Caillois;NAMEauthor;
 Calderon;NAMEauthor;
 Calderón;NAMEauthor;Calderon
 Carroll;NAMEauthor;
+Casanova;NAMEauthor;
 Cassou;NAMEauthor;
+Castiglione;NAMEauthor;
 Čehov;NAMEauthor;Tchékov
 Cérutti;NAMEauthor;
 Cervantes;NAMEauthor;
 César;NAMEauthor;
 Cézanne;NAMEauthor;
 Chabanon;NAMEauthor;
+Chardin;NAMEauthor;
 Chagall;NAMEauthor;
 Chardonne;NAMEauthor
 Chateaubriand;NAMEauthor;
 Chrysostome;NAMEauthor;
+Cicéron;NAMEauthor
 Cingria;NAMEauthor
 Cioran;NAMEauthor
 Claude Bernard;NAMEauthor
@@ -118,6 +133,8 @@ Claudel;NAMEauthor
 Colardeau;NAMEauthor;
 Comte;NAMEauthor;
 Cocteau;NAMEauthor;
+Condillac;NAMEauthor;
+Condorcet;NAMEauthor;
 Cooper;NAMEauthor;
 Corneille;NAMEauthor;
 Corot;NAMEauthor;
@@ -353,6 +370,7 @@ Loti;NAMEauthor;
 Louÿs;NAMEauthor;
 L. Racine;NAMEauthor;Louis Racine
 Lucrèce;NAMEauthor;
+Lully;NAMEauthor;
 Luther;NAMEauthor;
 M. Jouhandeau;NAMEauthor;Jouhandeau
 Machiavel;NAMEauthor;

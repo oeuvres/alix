@@ -1,7 +1,6 @@
 package alix.fr;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.HashSet;
 
@@ -308,6 +307,7 @@ public class Tokenizer
    */
   public boolean token( Occ occ )
   {
+    Term copy = new Term();
     occ.tag( Tag.UNKNOWN );
     pointer = next( occ, pointer ); // parse the text at pointer position
     if ( pointer < 0 ) return false; // end of text
@@ -350,29 +350,40 @@ public class Tokenizer
     }
     // upper case ?
     else if ( Char.isUpperCase( c ) ) {
+      // known as name, get it
+      if ( Lexik.name( occ ) ) return true;
+      // test to lower, to see if it is a know word
+      occ.orth().toLower();
+      if ( Lexik.word( occ ) ) return true;
+      // restore original graph, and do better job
+      occ.orth( occ.graph() );
+      occ.orth().capitalize();
+      occ.lem( occ.orth() );
+      occ.tag( Tag.NAME );
+      /*
       // BOULOGNE -> Boulogne, U.S.A.
       occ.orth().normCase();
       // Evolution ? > évolution ; TODO FREDERIC > Frédéric
       String lc = Lexik.CAPS.get( occ.graph() );
       if ( lc != null ) occ.orth( lc );
       // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
-      if ( Lexik.name( occ ) ) return true;
+      
       // U.R.S.S. but not M.
       if ( occ.graph().length() > 2 && occ.graph().charAt( 1 ) == '.') {
         occ.tag( Tag.NAME );
         return true;
       }
+      */
       // TODO SAINT-ANGE -> Saint-Ange
       // start of a sentence ?
       // Try if word lower case is known as word
-      occ.orth().toLower() ;
-      // known word will update token
-      if ( Lexik.word( occ ) ) return true;
+      /*
       // unknow name
       // restore the capitalisation
-      occ.orth().capitalize();
+      //  occ.orth().capitalize();
       if ( occ.lem().isEmpty() ) occ.lem( occ.orth() );
       occ.tag( Tag.NAME );
+      */
       return true;
     }
     // known word, token will be updated
@@ -545,6 +556,7 @@ public class Tokenizer
       
       if ( c == '[' && !graph.isEmpty() ); // [rue] E[mile] D[esvaux]
       else if ( c == 0xAD ); // &shy; soft hyphen do not append, go next
+      else if ( c == ' ' ) { System.out.println( "?? CTRL" );} // unknown char inside XML flow, breaking Excel copy/paste
       // hyphen, TODO, instead of go forward, why not work at end of token, and go back to '-' position if needed ?  
       else if ( c == '-' && !graph.isEmpty() ) {
         // test if word after should break on hyphen
@@ -568,7 +580,8 @@ public class Tokenizer
         else if ( HYPHEN_POST.contains( after ) ) break;
         else graph.append( c );  // c’est-à-dire
       }
-      else graph.append( c ); 
+      else graph.append( c );
+      
       
       // apos normalisation
       if ( c == '\'' || c == '’' ) {
@@ -794,10 +807,9 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = "<>"
-        + " N.R.F, Charente-Maritime,  Charles-Albert Cingria, Vous avez remarqué, murmura mademoiselle Saget, la charcuterie est vide. La belle Lisa n’est pas une femme à se compromettre."
-        + " D’abord et Bien qu’à l’agenda Guillaume Tell / Sainte-Bibiane ¶ et, selon le calendrier des P.T.T. Sainte Viviane."
+        + "  de moto. J J. Chevrier que je vous ferai connaître "
         + " C’est-à-dire qu'en pense-t-il de ces gens-là ?" 
-        + " Jean Arabia. 67, rue de Billancourt, BOULOGNE (Seine)"
+        + "  67, rue de Billancourt, BOULOGNE (Seine)"
         + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. "
         // + "\nIII. Là RODOGUNE.\n\n"
         + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, <p>s’il m’est permis d’entendre votre oracle,</l>"
@@ -830,6 +842,9 @@ public class Tokenizer
       Occ occ = new Occ();
       while ( (occ =toks.word( )) != null ) {
         System.out.println( occ );
+        if ( occ.orth().toString().contains( " " )) {
+          System.out.println( "Ctrl char ? "+ occ );
+        }
       }
       /*
       while ( toks.token( occ ) ) {
