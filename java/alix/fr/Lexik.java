@@ -39,7 +39,7 @@ public class Lexik
   public static HashMap<String, NameEntry> NAME = new HashMap<String, NameEntry>( (int)(50000 * 0.75) );
   public static short _NAME = 3;
   /** Abbreviations with a final dot */
-  private static HashMap<String,String> BREVIDOT = new HashMap<String,String>( (int)( 100 * 0.75 ) );
+  protected static HashMap<String,String> BREVIDOT = new HashMap<String,String>( (int)( 100 * 0.75 ) );
   public static short _BREVIDOT = 4;
   /** Graphic normalization (replacement) */
   public static HashMap<String,String> ORTH = new HashMap<String,String>( (int)( 100 * 0.75 ) );

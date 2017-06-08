@@ -357,7 +357,7 @@ public class Tokenizer
       if ( Lexik.word( occ ) ) return true;
       // restore original graph, and do better job
       occ.orth( occ.graph() );
-      occ.orth().capitalize();
+      // occ.orth().capitalize(); // do not normalize, keep ADN, NRF
       occ.lem( occ.orth() );
       occ.tag( Tag.NAME );
       /*
@@ -553,10 +553,37 @@ public class Tokenizer
         }
       }
 
-      
+      c2 = text.charAt( pos+1 );
       if ( c == '[' && !graph.isEmpty() ); // [rue] E[mile] D[esvaux]
       else if ( c == 0xAD ); // &shy; soft hyphen do not append, go next
       else if ( c == ' ' ) { System.out.println( "?? CTRL" );} // unknown char inside XML flow, breaking Excel copy/paste
+      // test if there is a number after comma, if not, break here
+      else if ( c == ',' ) {
+        if ( Char.isDigit( c2 ) ) graph.append( c ); // 15,5
+        else break; // word,word
+      }
+      else if ( c == '.' ) {
+        if ( Char.isLetter( c2 ) ) graph.append( c ); // U.K.N.O.W.N
+        // TODO Fin de Phr. La phrase recommence.
+        else if ( !Char.isToken( c2 ) || c2 == ',' ) { // end 
+          graph.append( c );
+          s = Lexik.brevidot( graph );
+          // test if ending dot should be happened
+          if ( s != null ) {
+            pos++;
+            occ.orth( s );
+            break;
+          }
+          if ( c2 == ',') { // A.D.N.,
+            pos++;
+            break;
+          }
+          // let sentence dot
+          graph.lastDel();
+          break;
+        }
+        else break;
+      }
       // hyphen, TODO, instead of go forward, why not work at end of token, and go back to '-' position if needed ?  
       else if ( c == '-' && !graph.isEmpty() ) {
         // test if word after should break on hyphen
@@ -599,32 +626,6 @@ public class Tokenizer
 
       // test if token is finished; handle final dot and comma  (',' is a token in 16,5; '.' is token in A.D.N.)
       if ( ! Char.isToken( c ) ) {
-        c2 = text.charAt( pos-1 );
-        // System.out.println( " —"+c2+c );
-        if ( c2 == ',' ) {
-          pos--;
-          graph.lastDel();
-          break;
-        }
-        if ( c2 == '.' ) {
-          // Attention...!
-          while ( text.charAt( pos-2 ) == '.' ) {
-            pos--;
-            graph.lastDel();
-            break;
-          }
-          // keep last dot, it is  abbrv
-          s = Lexik.brevidot( graph );
-          if ( s != null ) {
-            occ.orth( s );
-            break;
-          }
-          else {
-            pos--;
-            graph.lastDel();
-            break;
-          }
-        }
         /*
         // M<sup>me</sup> H<sc>ugo</sc> ??? peut casser la balisage XML
         if ( c == '<') {
@@ -807,9 +808,7 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = "<>"
-        + "  de moto. J J. Chevrier que je vous ferai connaître "
-        + " C’est-à-dire qu'en pense-t-il de ces gens-là ?" 
-        + "  67, rue de Billancourt, BOULOGNE (Seine)"
+        + " P.S.,T.A.T., ADN, 67, rue de Billancourt, BOULOGNE (Seine)."
         + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. "
         // + "\nIII. Là RODOGUNE.\n\n"
         + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, <p>s’il m’est permis d’entendre votre oracle,</l>"
