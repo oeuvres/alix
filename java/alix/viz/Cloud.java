@@ -456,26 +456,9 @@ public class Cloud
     fout.flush();
     fout.close();
   }
-
-  /**
-   * For testing
-   * @throws IOException 
-   * @throws XMLStreamException 
-   */
-  public static void main( String[] args) throws IOException, XMLStreamException 
+  
+  public static Cloud cloud( TermDic words, int limit )
   {
-    /* get list of available fonts on this system
-    for ( String font : GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames() ) {
-      System.out.println( font );
-    }
-    */
-    HashSet<String> filter = new HashSet<String>(); 
-    for (String w: new String[]{
-        "abbé", "baron", "docteur", "chapitre", "cher", "comte", "coup d'œil", "duc", "duchesse", "évêque", "jeune fille", "jeune homme", 
-        "lord", "madame", "mademoiselle", 
-        "maître", "marquis", "marquise", "miss", "pauvre", "point", "prince", "princesse", "professeur", "sir", "tout le monde"
-    }) filter.add( w );
-
     Cloud cloud=new Cloud();
     Wordclass sub = new Wordclass( "sub", "Arial", new Color(32, 32, 128, 144), null);
     Wordclass name = new Wordclass( "name", "Georgia", new Color(0, 0, 0, 255), null);
@@ -483,28 +466,6 @@ public class Cloud
     Wordclass adj = new Wordclass( "adj", "Georgia",  new Color(64, 128, 64, 200), null);
     Wordclass adv = new Wordclass( "adv", "Georgia", new Color(32, 32, 32, 128), null);
     Wordclass word = new Wordclass( "word", "Georgia", new Color(32, 32, 32, 128), null);
-    String file = "../alix-demo/WEB-INF/textes/zola.xml";
-    // String file = "../alix-demo/WEB-INF/textes/proust_recherche.xml";
-    String xml = new String(Files.readAllBytes( Paths.get( file ) ), StandardCharsets.UTF_8 );
-    TermDic words = new TermDic();
-    Tokenizer toks = new Tokenizer( xml );
-    long time;
-    time = System.nanoTime();
-    System.out.print( file );
-    Occ occ;
-    while ( (occ = toks.word( )) != null ) {
-      // ne pas incrémenter le compteur global pour la ponctuation
-      if ( occ.tag().isPun() ) {
-        words.add( occ.orth(), occ.tag().code(), 0 );
-      }
-      else if ( occ.tag().isVerb() || occ.tag().isAdj() ) {
-        words.inc( occ.lem(), occ.tag().code() );
-      }
-      else words.inc( occ.orth(), occ.tag().code() );
-    }
-    System.out.println( " parsé en "+((System.nanoTime() - time) / 1000000)+" ms."  );
-    time = System.nanoTime();
-    int limit=300;
     // loop on dictionary
     int n=0;
     Wordclass wclass;
@@ -512,10 +473,11 @@ public class Cloud
     float franfreq;
     long occs = words.occs();
     for( DicEntry form: words.byCount() ) {
-      if ( filter.contains( form.label() ) ) continue;
+      // TODO
+      // if ( filter.contains( form.label() ) ) continue;
       int tag = form.tag();
       if ( Tag.isNum( tag ) ) continue;
-      if ( Tag.isName( tag ) ) continue;
+      // if ( Tag.isName( tag ) ) continue;
       String term = form.label();
       int count = form.count();
       if ("devoir".equals( term )) dicw = Lexik.entry( "doit" );
@@ -549,7 +511,11 @@ public class Cloud
         franfreq = dicw.lemfreq;
       }
       double myfreq = 1.0*count*1000000/occs;
-
+      
+      if ( form.label().equals( "que" )) {
+        System.out.println( form+" "+myfreq+" "+Tag.label( tag )+" "+franfreq );
+        System.out.println( Lexik.entry( "de" ).orthfreq );
+      }
       
       if ( franfreq > 0 && myfreq/franfreq < ratio ) continue;
 
@@ -565,6 +531,51 @@ public class Cloud
       cloud.add( new Word( term, count,  wclass ) );
       if ( ++n >= limit ) break;
     }
+    return cloud;
+  }
+
+  /**
+   * For testing
+   * @throws IOException 
+   * @throws XMLStreamException 
+   */
+  public static void main( String[] args) throws IOException, XMLStreamException 
+  {
+    /* get list of available fonts on this system
+    for ( String font : GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames() ) {
+      System.out.println( font );
+    }
+    */
+    HashSet<String> filter = new HashSet<String>(); 
+    for (String w: new String[]{
+        "abbé", "baron", "docteur", "chapitre", "cher", "comte", "coup d'œil", "duc", "duchesse", "évêque", "jeune fille", "jeune homme", 
+        "lord", "madame", "mademoiselle", 
+        "maître", "marquis", "marquise", "miss", "pauvre", "point", "prince", "princesse", "professeur", "sir", "tout le monde"
+    }) filter.add( w );
+
+    // String file = "../alix-demo/WEB-INF/textes/zola.xml";
+    // String file = "../alix-demo/WEB-INF/textes/proust_recherche.xml";
+    String file = "../alix-demo/WEB-INF/textes/verlaine_poesies.xml";
+    String xml = new String(Files.readAllBytes( Paths.get( file ) ), StandardCharsets.UTF_8 );
+    TermDic words = new TermDic();
+    Tokenizer toks = new Tokenizer( xml );
+    long time;
+    time = System.nanoTime();
+    System.out.print( file );
+    Occ occ;
+    while ( (occ = toks.word( )) != null ) {
+      // ne pas incrémenter le compteur global pour la ponctuation
+      if ( occ.tag().isPun() ) {
+        words.add( occ.orth(), occ.tag().code(), 0 );
+      }
+      else if ( occ.tag().isVerb() || occ.tag().isAdj() ) {
+        words.inc( occ.lem(), occ.tag().code() );
+      }
+      else words.inc( occ.orth(), occ.tag().code() );
+    }
+    System.out.println( " parsé en "+((System.nanoTime() - time) / 1000000)+" ms."  );
+    time = System.nanoTime();
+    Cloud cloud = Cloud.cloud( words, 300 );
     System.out.println( ((System.nanoTime() - time) / 1000000)+" ms. pour remplir le nuage"  );
     
     /*

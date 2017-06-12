@@ -63,7 +63,7 @@ public class Dicovek {
   /** Sliding window of occurrences */
   private OccRoller occs;
   /** Precalculated values for vector */
-  private IntRoller values;
+  // private IntRoller values;
   /** Current Vector to work on */
   private IntVek vek;
   /** threshold of non stop words */
@@ -111,10 +111,10 @@ public class Dicovek {
       return dic.inc("NUM");
     }
     // return all substantives with no lem
-    if ( occ.tag().isSub() ) return dic.inc( occ.orth() );
+    if ( occ.tag().isSub() ) return dic.inc( occ.orth(), occ.tag().code() );
     // lem is empty
-    if ( occ.lem().isEmpty() ) ret = dic.inc( occ.orth() );
-    else ret = dic.inc( occ.lem() );
+    if ( occ.lem().isEmpty() ) ret = dic.inc( occ.orth(), occ.tag().code() );
+    else ret = dic.inc( occ.lem(), occ.tag().code() );
     // what about stopwords ? VERBsup je fis -> faire
     // if ( ret < stopoffset ) return -1;
     return ret;
@@ -126,7 +126,7 @@ public class Dicovek {
    * @param occ
    * @return a code from a dictionary of unique value
    */
-  private int value( Occ occ )
+  private int value2( Occ occ )
   {
     // TOFIX
     if ( occ.isEmpty() ) return -1;
@@ -146,7 +146,50 @@ public class Dicovek {
     if ( occ.lem().isEmpty() ) return dic.put( occ.orth() );
     return dic.put( occ.lem() );
   }
-  
+  /**
+   * Increment the vector of cooccurrence.
+   * Compared to value2(), time+30% (recalculation of keys foreach occ),
+   * but allow more than one value on each position.
+   * @param vek
+   * @param occ
+   */
+  private void value( IntVek vek, Occ occ )
+  {
+    // TOFIX
+    if ( occ.isEmpty() ) {
+      return;
+    }
+    // Punctuation produce more noise than resolution
+    else if ( occ.tag().isPun() ) {
+      return; // dic.put( occ.orth() );
+    }
+    // not recognize, maybe typo or OCR, add ?
+    else if ( occ.tag().equals( Tag.NULL ) ) {
+      return;
+    }
+    // proper name, generic, and resolved (Dieu)
+    else if ( occ.tag().isName() ) {
+      vek.inc( dic.put( occ.tag().label() ) );
+      vek.inc( dic.put( occ.orth() ) );
+    }
+    // numbers
+    else if ( occ.tag().equals( Tag.DETnum ) ) {
+      vek.inc( dic.put( "NUM" ) );
+    }
+    // SUB : lemma+orth
+    else if ( occ.tag().isSub() ) {
+      vek.inc( dic.put( occ.orth() ) );
+      vek.inc( dic.put( occ.lem() ) );
+    }
+    // no lemma ?
+    else if ( occ.lem().isEmpty() ) {
+      vek.inc( dic.put( occ.orth() ) );
+    }
+    else {
+      vek.inc(  dic.put( occ.lem() ) );
+    }
+  }
+
   public TermDic dic()
   {
     return dic;
@@ -176,8 +219,9 @@ public class Dicovek {
       // centre de contexte, ne pas ajouter
       if ( i==0 ) continue;
       // valeur exclue, ne pas ajouter
-      if ( values.get(i) < 1 ) continue; 
-      vek.inc( values.get(i) );
+      // if ( values.get(i) < 1 ) continue; 
+      // vek.inc( values.get(i) );
+      value( vek, occs.get( i ) );
     }
     return true;
   }
@@ -210,19 +254,22 @@ public class Dicovek {
     int code = dic.code( term );
     return vector( code );
   }
-  
+  public ArrayList<CosineRow> sims( String term, int limit )
+  {
+    return sims( term, limit, false);
+  }
   /**
    * List "siminymes" by vector proximity
    * TODO: better efficiency
    * 
    * @throws IOException 
    */
-  public ArrayList<SimRow> sims( String term, int limit )
+  public ArrayList<CosineRow> sims( String term, int limit, boolean inter )
   {
     // get vector for requested word
     int k = dic.code( term );
     if (k < 1) {
-      System.out.println( term );
+      System.out.println( "Dicovek, term not found: "+term );
       return null;
     }
     IntVek vekterm = vectors.get( k );
@@ -231,36 +278,72 @@ public class Dicovek {
     // Similarity
     double score;
     // list dico in freq order
-    ArrayList<SimRow> table = new ArrayList<SimRow>();
-    SimRow row;
+    ArrayList<CosineRow> table = new ArrayList<CosineRow>();
+    CosineRow row;
     for ( DicEntry entry: dic.byCount() ) {
       if ( entry.count() < 3 ) break;
       vek = vectors.get( entry.code() );
       if ( vek == null ) continue;
       // System.out.print( ", "+vek.size() );
-      // if ( vek.size() < 20 ) break;
-      score = vekterm.cosine( vek );
+      if ( vek.size() < 50 ) break;
+      if ( inter ) score = vekterm.cosine2( vek );
+      else score = vekterm.cosine( vek );
       // score differs 
       // if ( score < 0.5 ) continue;
-      row = new SimRow( entry.code(), entry.label(), entry.count(), score );
+      row = new CosineRow( entry.code(), entry.label(), entry.count(), score );
       table.add( row );
       if ( limit-- == 0 ) break;
     }
     Collections.sort( table );
     return table;
   }
-  
+
+  /**
+   * List "siminymes" by vector proximity
+   * TODO: better efficiency
+   * 
+   * @throws IOException 
+   */
+  public ArrayList<TextcatRow> textcat( String term )
+  {
+    int limit = -1;
+    // get vector for requested word
+    int k = dic.code( term );
+    if (k < 1) {
+      System.out.println( "Dicovek, term not found: "+term );
+      return null;
+    }
+    IntVek doc = vectors.get( k );
+    // list dico in freq order
+    ArrayList<TextcatRow> table = new ArrayList<TextcatRow>();
+    for ( DicEntry entry: dic.byCount() ) {
+      if ( entry.count() < 3 ) break;
+      IntVek cat = vectors.get( entry.code() );
+      if ( vek == null ) continue;
+      // System.out.print( ", "+vek.size() );
+      // if ( vek.size() < 20 ) break;
+      int score = doc.textcat( cat );
+      // score differs 
+      // if ( score < 0.5 ) continue;
+      TextcatRow row = new TextcatRow( entry.code(), entry.label(), entry.count(), score );
+      table.add( row );
+      if ( limit-- == 0 ) break;
+    }
+    Collections.sort( table );
+    return table;
+  }
+
   /**
    * A row similar word with different info, used for sorting
    * @author glorieux-f
    */
-  public class SimRow implements Comparable<SimRow> 
+  public class TextcatRow implements Comparable<TextcatRow> 
   {
     public final  int code;
     public final  String term;
     public final int count;
-    public final double score;
-    public SimRow( final int code, final String term, final int count, final double score ) {
+    public final int score;
+    public TextcatRow( final int code, final String term, final int count, final int score ) {
       this.code = code;
       this.term = term;
       this.count = count;
@@ -270,7 +353,32 @@ public class Dicovek {
       return code+"\t"+term+"\t"+count+"\t"+score;
     }
     @Override
-    public int compareTo(SimRow other) {
+    public int compareTo( TextcatRow other) {
+      return Integer.compare( score, other.score );
+    }
+  }
+  
+  /**
+   * A row similar word with different info, used for sorting
+   * @author glorieux-f
+   */
+  public class CosineRow implements Comparable<CosineRow> 
+  {
+    public final  int code;
+    public final  String term;
+    public final int count;
+    public final double score;
+    public CosineRow( final int code, final String term, final int count, final double score ) {
+      this.code = code;
+      this.term = term;
+      this.count = count;
+      this.score = score;
+    }
+    public String toString() {
+      return code+"\t"+term+"\t"+count+"\t"+score;
+    }
+    @Override
+    public int compareTo(CosineRow other) {
       // do not use >, score maybe be highly close and bug around 0, or with a NaN
       return Double.compare( other.score, score );
     }
@@ -338,6 +446,7 @@ public class Dicovek {
     boolean first = true;
     String w;
     for ( int j = 0; j < size; j++ ) {
+      if ( coocs[j].key < stopoffset ) continue;
       w = dic.label( coocs[j].key );
       if (first) first = false;
       else sb.append(", ");
@@ -358,7 +467,7 @@ public class Dicovek {
   public void tokenize( Path file ) throws IOException
   {
     occs = new OccRoller( left, right );
-    values = new IntRoller( left, right );
+    // values = new IntRoller( left, right );
     String text = new String( Files.readAllBytes( file ), StandardCharsets.UTF_8 );
     Tokenizer toks = new Tokenizer( text );
     Occ space = new Occ();
@@ -366,13 +475,13 @@ public class Dicovek {
     Occ occ;
     while( ( occ = toks.word() ) != null ) {
       occs.push( occ ); // record occurrence
-      values.push( value( occ ) ); // precalculate value
+      // values.push( value( occ ) ); // precalculate value
       update();
     }
     // send some spaces
     for ( int i=0; i < right; i++ ) {
       occs.push( space );
-      values.push( -1 ); 
+      // values.push( -1 ); 
       update();
     }
     // suppress little vector here ?
@@ -476,7 +585,7 @@ public class Dicovek {
     int simsmax = 5000;
     try { simsmax = Integer.parseInt( line ); } catch ( Exception e ) { };
     // Boucle de recherche
-    List<SimRow> table;
+    List<CosineRow> table;
     DecimalFormat df = new DecimalFormat("0.0000");
     while (true) {
       System.out.println( "" );
@@ -499,19 +608,39 @@ public class Dicovek {
       if ( table == null ) continue;
       int limit = 30;
       // TODO optimiser 
-      System.out.println( "SIMINYMES : " );
-      System.out.println( "word\tcount\tdistance" );
-      for (SimRow row:table) {
+      System.out.println( "SIMINYMES (cosine) " );
+      boolean first = true;
+      for (CosineRow row:table) {
         // if ( Lexik.isStop( row.term )) continue;
+        if ( first ) first = false;
+        else System.out.print( ", " );
         System.out.print( row.term );
-        System.out.print( "\t" );
+        System.out.print( " (" );
         System.out.print( row.count );
-        System.out.print( "\t" );
-        System.out.print( df.format( row.score ) );
-        System.out.println( "" );
+        System.out.print( ")" );
         if (--limit == 0 ) break;
       }
-      System.out.println( "" );
+      System.out.println( "." );
+      
+      // similarity textcat
+      start = System.nanoTime();
+      List<TextcatRow> res = veks.textcat( line );
+      System.out.println( "Calculé en "+((System.nanoTime() - start) / 1000000) + " ms");
+      System.out.println( "SIMINYMES (textcat) " );
+      first = true;
+      limit = 30;
+      for ( TextcatRow row:res ) {
+        // if ( Lexik.isStop( row.term )) continue;
+        if ( first ) first = false;
+        else System.out.print( ", " );
+        System.out.print( row.term );
+        System.out.print( " (" );
+        System.out.print( row.count );
+        System.out.print( ")" );
+        if (--limit == 0 ) break;
+      }
+      System.out.println( "." );
+      
     }
 
   }

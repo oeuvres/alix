@@ -1,5 +1,6 @@
 package alix.util;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.regex.Matcher;
@@ -56,10 +57,16 @@ public class IntVek implements Cloneable
   private int pointer = -1;
   /** The current entry of the pointer */
   private int[] entry = new int[2];
-  /** Memory of size when last magnitude have been calculated */
-  private int magsize;
+  
+  /** A flag for recalculation */
+  private boolean decache = true;
   /** Used for cosine */
   private double magnitude;
+  /** Array of keys, sorted by value order, biggest first, used as source to calculate distances with catprint */
+  private int[] docprint;
+  /** {key, sort order} view of data, used for textcat distance */
+  private IntVek catprint;
+
 
   /**
    * Constructor 
@@ -209,6 +216,7 @@ public class IntVek implements Cloneable
    */
   private int put( final int key, int value, boolean add )
   {
+    decache = true;
     if ( key == NO_KEY )
     {
       final int ret = freeValue;
@@ -259,6 +267,7 @@ public class IntVek implements Cloneable
    */
   public int remove( final int key )
   {
+    decache = true;
     if ( key == NO_KEY ) {
       if ( !hasFreeKey ) return NO_VALUE;
       hasFreeKey = false;
@@ -463,15 +472,15 @@ public class IntVek implements Cloneable
    */
   public Pair[] toArray()
   {
-    Pair[] ret = new Pair[size];
+    Pair[] list = new Pair[size];
     int i = 0;
     for (long  entry : data) {
       if (entry == FREE_CELL) continue;
-      ret[i] = new Pair( key(entry), value(entry) );
+      list[i] = new Pair( key(entry), value(entry) );
       i++;
     }
-    Arrays.sort( ret );
-    return ret;
+    Arrays.sort( list );
+    return list;
   }
   
   public class Pair implements Comparable<Pair>
@@ -491,6 +500,14 @@ public class IntVek implements Cloneable
       return Integer.compare( o.value, value );
     }
     
+  }
+  /**
+   * Return an hash<key, order> optimized for textcat
+   */
+  private IntVek catprint()
+  {
+    if ( decache ) cache(); 
+    return catprint;
   }
   
   /**
@@ -564,6 +581,35 @@ public class IntVek implements Cloneable
   */
   
   /**
+   * Cosine similarity with vector reduction to intersection only
+   * @param vek1
+   * @param vek2
+   * @return the similarity score
+   */
+  public double cosine2( IntVek vek )
+  {
+
+    double sum = 0;
+    double mag1 = 0;
+    int val1;
+    double mag2 = 0;
+    int val2;
+    reset();
+    while( next() ) {
+      val2 = vek.get( key() );
+      if ( val2 < 1 ) continue;
+      val1 = value();
+      sum += val1 * val2;
+      mag1 += val1 * val1;
+      mag2 += val2 * val2;
+    }
+    if ( mag1 == 0 || mag2 == 0 ) return 0;
+    mag1 = Math.sqrt(mag1);
+    mag2 = Math.sqrt(mag2);
+    return sum / (mag1 * mag2);
+  }
+  
+  /**
    * Cosine similarity with vector
    * @param vek1
    * @param vek2
@@ -581,16 +627,35 @@ public class IntVek implements Cloneable
    */
   public double magnitude()
   {
-    if (magnitude != 0 && magsize == size) return magnitude;
+    if ( decache ) cache(); 
+    return magnitude;
+  }
+  
+  private void cache()
+  {
+    // magnitude
     reset();
-    // here there is no
     long mag = 0;
     while( next() ) {
       mag += (long)value() * (long)value();
     }
-    magsize = size;
     magnitude = (double)Math.sqrt(mag);
-    return magnitude;
+    // System.out.println( " —— magnitude "+this+" "+magnitude );
+    
+    // textcat
+    Pair[] pairs = toArray();
+    int [] docprint = new int[size];
+    int max = size;
+    IntVek catprint = new IntVek( size );
+    if ( max != pairs.length ) System.out.println( "What ? size do no match: "+max+" != "+docprint.length );
+    for ( int i=0; i < max; i++ ) {
+      docprint[i] = pairs[i].key;
+      catprint.put( pairs[i].key, i+1 ); // 0==NULL
+    }
+    this.docprint = docprint;
+    this.catprint = catprint;
+
+    decache = false;
   }
   
   /**
@@ -608,6 +673,24 @@ public class IntVek implements Cloneable
     return sum;
   }  
 
+  /**
+   * 
+   */
+  public int textcat( IntVek vek ) 
+  {
+    if ( decache ) cache();
+    IntVek catprint = vek.catprint(); // will update cache 
+    int[] docprint = this.docprint;
+    int max = docprint.length;
+    int dist = 0;
+    for ( int i = 0; i < max ; i++ ) {
+      int rank = catprint.get( docprint[i] ) - 1;
+      if ( rank < 0 ) dist += max; // no value
+      if ( rank > i ) dist += rank - i;
+      else if ( i < rank ) dist += i -rank;
+    }
+    return dist;
+  }
 
   
   /**
@@ -615,17 +698,17 @@ public class IntVek implements Cloneable
    */
   public static void main(String[] args)
   {
-    int max = 5;
-    IntVek[] veks = new IntVek[max];
+    ArrayList<IntVek> list = new ArrayList<IntVek>();
     // test loading a string version
-    veks[0] =  (new IntVek( 3 )).load( " 1:1 2:1 3:1" );
-    veks[1] =  (new IntVek( 3 )).load( " 1:1 2:1 3:0" );
-    veks[2] =  (new IntVek( 3 )).load( " 1:1 2:1 3:2" );
-    veks[3] =  (new IntVek( 3 )).load( " 1:1 2:1 4:1" );
-    veks[4] =  (new IntVek( 3 )).load( " 1:1 2:1 4:2" );
+    list.add( (new IntVek( 3 )).load( "1:1 2:1" ) );
+    list.add( (new IntVek( 3 )).load( "1:1 2:1" ) );
+    list.add( (new IntVek( 3 )).load( "1:10 2:11" ) );
+    list.add( (new IntVek( 3 )).load( "1:20 2:20 3:1" ) );
+    list.add( (new IntVek( 3 )).load( "1:1 2:1 3:1" ) );
+    int max = list.size();
     for ( int i=0; i < max; i++ ) {
       for ( int j=0; j < max; j++ ) {
-        System.out.println( ""+i+"–"+j+"   "+veks[i].cosine( veks[j] ) );
+        System.out.println( ""+i+"–"+j+"   "+list.get( i ).cosine2( list.get( j ) )+" "+list.get( i ).cosine( list.get( j ) ) );
       }
     }
   }

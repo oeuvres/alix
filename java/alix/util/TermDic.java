@@ -267,9 +267,9 @@ public class TermDic
    */
   public int count( int code )
   {
-    DicEntry line = byTerm.get( byCode[code] );
-    if ( line  == null ) return -1;
-    return line.count;
+    if (code < 1) return -1;
+    if (code > pointer) return -1;
+    return byCode[code].count;
   }
   /**
    * Create a term with no tag, set its count at 1, or increment if exists
