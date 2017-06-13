@@ -23,6 +23,7 @@ Du Guesclin;NAMEpers
 Durer;NAMEpers;Dürer
 Éléonore de Guienne;NAMEpers;Aliénor d'Aquitaine
 Éliogabale;NAMEpers;Héliogabale
+Empire;NAMEorg
 État;NAMEorg
 Gandhi;NAMEpers;
 Halévy;NAMEpers;
@@ -36,7 +37,9 @@ Lefebvre;NAMEpers;
 Lefèvre;NAMEpers;
 Maurois;NAMEpers;
 Mussolini;NAMEpers;
+Renaissance;NAMEevent;
 République;NAMEorg
+Révolution;NAMEevent
 Seigneur;NAMEgod
 Thiers;NAMEpers
 

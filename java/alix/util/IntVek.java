@@ -2,9 +2,11 @@ package alix.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+
 
 /**
  * 
@@ -32,8 +34,8 @@ public class IntVek implements Cloneable
   private static Pattern loadre = Pattern.compile("([0-9]+):([0-9]+)");
 
   /** An int rowid */
-  final int id;
-  /** Fields  */
+  final int code;
+  /** Name  */
   final String label;
   
 
@@ -67,23 +69,17 @@ public class IntVek implements Cloneable
   /** {key, sort order} view of data, used for textcat distance */
   private IntVek catprint;
 
-
-  /**
-   * Constructor 
-   * @param size
-   */
-  public IntVek( int size )
+  public IntVek( )
   {
-    this( -1, null, size );
+    this( 10, -1, null );
   }
-  
   /**
    * Constructor with default fillFactor
    * @param size
    */
-  public IntVek( final int id, final String label, int size )
+  public IntVek( final int size, final int id, final String label )
   {
-    this.id = id;
+    this.code = id;
     this.label = label;
     /*
     if ( fillFactor <= 0 || fillFactor >= 1 )  throw new IllegalArgumentException( "FillFactor must be in (0, 1)" );
@@ -506,8 +502,27 @@ public class IntVek implements Cloneable
    */
   private IntVek catprint()
   {
-    if ( decache ) cache(); 
+    if ( decache ) decache();
+    if ( catprint != null ) return catprint;
+    // textcat
+    Pair[] pairs = toArray();
+    int [] docprint = new int[size];
+    int max = size;
+    IntVek catprint = new IntVek( size, this.code, this.label );
+    if ( max != pairs.length ) System.out.println( "What ? size do no match: "+max+" != "+docprint.length );
+    for ( int i=0; i < max; i++ ) {
+      docprint[i] = pairs[i].key;
+      catprint.put( pairs[i].key, i+1 ); // 0==NULL
+    }
+    this.docprint = docprint;
+    this.catprint = catprint;
     return catprint;
+  }
+  
+  private int[] docprint()
+  {
+    catprint();
+    return docprint;
   }
   
   /**
@@ -588,7 +603,6 @@ public class IntVek implements Cloneable
    */
   public double cosine2( IntVek vek )
   {
-
     double sum = 0;
     double mag1 = 0;
     int val1;
@@ -617,7 +631,7 @@ public class IntVek implements Cloneable
    */
   public double cosine( IntVek vek )
   {
-    if ( vek.magnitude() == 0 ) return 0; // isNaN()
+    if ( vek.magnitude() < 0 ) return 0; // isNaN()
     return dotProduct(vek) / (this.magnitude() * vek.magnitude());
   }
   
@@ -627,34 +641,26 @@ public class IntVek implements Cloneable
    */
   public double magnitude()
   {
-    if ( decache ) cache(); 
-    return magnitude;
-  }
-  
-  private void cache()
-  {
+    if ( decache ) decache(); 
+    if ( magnitude >= 0 ) return magnitude;
     // magnitude
     reset();
     long mag = 0;
     while( next() ) {
       mag += (long)value() * (long)value();
     }
-    magnitude = (double)Math.sqrt(mag);
-    // System.out.println( " —— magnitude "+this+" "+magnitude );
-    
-    // textcat
-    Pair[] pairs = toArray();
-    int [] docprint = new int[size];
-    int max = size;
-    IntVek catprint = new IntVek( size );
-    if ( max != pairs.length ) System.out.println( "What ? size do no match: "+max+" != "+docprint.length );
-    for ( int i=0; i < max; i++ ) {
-      docprint[i] = pairs[i].key;
-      catprint.put( pairs[i].key, i+1 ); // 0==NULL
-    }
-    this.docprint = docprint;
-    this.catprint = catprint;
-
+    magnitude = (double)Math.sqrt( mag );
+    return magnitude;
+  }
+  
+  /**
+   * Delete all cached values
+   */
+  private void decache()
+  {
+    magnitude = -1;
+    docprint =null;
+    catprint = null; 
     decache = false;
   }
   
@@ -663,24 +669,33 @@ public class IntVek implements Cloneable
    * @param vek
    * @return
    */
-  private double dotProduct(IntVek vek)
+  private double dotProduct( IntVek other )
   {
     double sum = 0;
-    reset();
-    while( next() ) {
-      sum += value() * vek.get( key() );
+    // loop on the smallest vector
+    if ( size < other.size ) {
+      reset();
+      while( next() ) {
+        sum += value() * other.get( key() );
+      }
+    }
+    else {
+      other.reset();
+      while( other.next() ) {
+        sum += other.value() * get( other.key() );
+      }
     }
     return sum;
   }  
 
   /**
+   * An alternative distance calculation, good for little 
    * 
    */
   public int textcat( IntVek vek ) 
   {
-    if ( decache ) cache();
     IntVek catprint = vek.catprint(); // will update cache 
-    int[] docprint = this.docprint;
+    int[] docprint = docprint();
     int max = docprint.length;
     int dist = 0;
     for ( int i = 0; i < max ; i++ ) {
@@ -692,6 +707,75 @@ public class IntVek implements Cloneable
     return dist;
   }
 
+  /**
+   * A data row to sort the important values in a cosine 
+   * @author glorieux-f
+   */
+  public class SpecRow implements Comparable<SpecRow> 
+  {
+    public final int key;
+    public final int source;
+    public final int sval;
+    public final int target;
+    public final int tval;
+    public final double spec;
+    
+    public SpecRow( final int key, final int source, final int sval, final int target, final int tval, double spec ) {
+      this.key = key;
+      this.source = source;
+      this.sval = sval;
+      this.target = target;
+      this.tval = tval;
+      this.spec = spec;
+    }
+    @Override
+    public int compareTo( SpecRow other) {
+      return Double.compare( other.spec, spec );
+    }
+    @Override
+    public String toString() {
+      return key+":("+sval+","+tval+","+spec+")";
+    }
+  }
+  /**
+   * 
+   * @return
+   */
+  public ArrayList<SpecRow> specs( IntVek other )
+  {
+    ArrayList<SpecRow> table = new ArrayList<SpecRow>();
+    int key;
+    final int source = this.code;
+    int sval;
+    final int target = other.code;
+    int tval;
+    double div = magnitude() * other.magnitude();
+    // loop on the smallest vector
+    if ( size < other.size ) {
+      reset();
+      while( next() ) {
+        key = key();
+        tval = other.get( key );
+        if ( tval < 1 ) continue;
+        sval = value();
+        table.add( new SpecRow( key, source, sval, target, tval, 1000000.0*sval*tval/div ) );
+      }
+    }
+    else {
+      other.reset();
+      while( other.next() ) {
+        key = other.key();
+        sval = get( key );
+        if ( sval < 1 ) continue;
+        tval = other.value();
+        table.add( new SpecRow( key, source, sval, target, tval, 1000000.0*sval*tval/div ) );
+      }
+    }
+    Collections.sort( table );
+    return table;
+  }
+  
+
   
   /**
    * Just for testing, no reasons to use this object in CLI
@@ -700,15 +784,15 @@ public class IntVek implements Cloneable
   {
     ArrayList<IntVek> list = new ArrayList<IntVek>();
     // test loading a string version
-    list.add( (new IntVek( 3 )).load( "1:1 2:1" ) );
-    list.add( (new IntVek( 3 )).load( "1:1 2:1" ) );
-    list.add( (new IntVek( 3 )).load( "1:10 2:11" ) );
-    list.add( (new IntVek( 3 )).load( "1:20 2:20 3:1" ) );
-    list.add( (new IntVek( 3 )).load( "1:1 2:1 3:1" ) );
+    list.add( new IntVek().load( "1:1 2:1" ) );
+    list.add( new IntVek().load( "1:1 2:1" ) );
+    list.add( new IntVek().load( "1:10 2:10" ) );
+    list.add( new IntVek().load( "1:20 2:20 3:1" ) );
     int max = list.size();
     for ( int i=0; i < max; i++ ) {
       for ( int j=0; j < max; j++ ) {
         System.out.println( ""+i+"–"+j+"   "+list.get( i ).cosine2( list.get( j ) )+" "+list.get( i ).cosine( list.get( j ) ) );
+        System.out.println( list.get( i ).specs( list.get( j ) ) );
       }
     }
   }

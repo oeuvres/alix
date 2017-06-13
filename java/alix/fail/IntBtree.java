@@ -348,7 +348,7 @@ public class IntBtree
     int size;
     // fill a vek with random keys and entries
     System.out.print( "IntVek "+4*max+" inserts"  );
-    IntVek vek = new IntVek(max);
+    IntVek vek = new IntVek();
     for (int i=0 ; i < 4*max; i++) {
       vek.put( rng.nextInt(max), rng.nextInt(1000)^2 );
     }

@@ -57,15 +57,13 @@ public class Dicovek {
   /** Vectors of co-occurences for each term of dictionary */
   private IntObjectMap<IntVek> vectors;
   /** Index of left context */
-  final int left;
+  public final int left;
   /** Index of right context */
-  final int right;
+  public final int right;
   /** Sliding window of occurrences */
   private OccRoller occs;
-  /** Precalculated values for vector */
-  // private IntRoller values;
   /** Current Vector to work on */
-  private IntVek vek;
+  // private IntVek vek;
   /** threshold of non stop words */
   public final int stopoffset;
   /** Time finished */
@@ -206,10 +204,10 @@ public class Dicovek {
     int key = key( center );
     if ( key < 0 ) return false; 
     // get the vector for this center term
-    vek = vectors.get( key );
+    IntVek vek = vectors.get( key );
     // optimize ? term not yet encountered, create vector
     if (vek == null) {
-      vek = new IntVek(10);
+      vek = new IntVek( 10, key, null );
       // A vector is mutable in its dictionary
       vectors.put( key, vek );
     }
@@ -258,6 +256,8 @@ public class Dicovek {
   {
     return sims( term, limit, false);
   }
+  
+  
   /**
    * List "siminymes" by vector proximity
    * TODO: better efficiency
@@ -280,12 +280,13 @@ public class Dicovek {
     // list dico in freq order
     ArrayList<CosineRow> table = new ArrayList<CosineRow>();
     CosineRow row;
+    IntVek vek;
     for ( DicEntry entry: dic.byCount() ) {
       if ( entry.count() < 3 ) break;
       vek = vectors.get( entry.code() );
       if ( vek == null ) continue;
       // System.out.print( ", "+vek.size() );
-      if ( vek.size() < 50 ) break;
+      if ( vek.size() < 30 ) break;
       if ( inter ) score = vekterm.cosine2( vek );
       else score = vekterm.cosine( vek );
       // score differs 
@@ -319,12 +320,7 @@ public class Dicovek {
     for ( DicEntry entry: dic.byCount() ) {
       if ( entry.count() < 3 ) break;
       IntVek cat = vectors.get( entry.code() );
-      if ( vek == null ) continue;
-      // System.out.print( ", "+vek.size() );
-      // if ( vek.size() < 20 ) break;
       int score = doc.textcat( cat );
-      // score differs 
-      // if ( score < 0.5 ) continue;
       TextcatRow row = new TextcatRow( entry.code(), entry.label(), entry.count(), score );
       table.add( row );
       if ( limit-- == 0 ) break;
@@ -436,7 +432,7 @@ public class Dicovek {
     StringBuffer sb = new StringBuffer();
     int index = dic.code( term );
     if (index == 0) return null;
-    vek = vectors.get(index);
+    IntVek vek = vectors.get(index);
     // some words on dictionary has no vector, like stop words
     if ( vek == null ) return null;
     // get vector as an array
@@ -577,6 +573,8 @@ public class Dicovek {
     for ( int i=0; i < args.length; i++) {
       veks.walk( args[i], new PrintWriter(System.out) );
     }
+    
+    System.out.println( veks.dic().code( "NUM" )+" "+veks.dic().code( "STOPOFFSET" ) );
     
     System.out.println( "Chargé en "+((System.nanoTime() - start) / 1000000) + " ms");
     System.out.println( veks.freqlist(true, 100) );
