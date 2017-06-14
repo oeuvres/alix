@@ -114,6 +114,7 @@ public class IntObjectMap<E>
     return prev;
   }
 
+  
   public Object remove( final int key )
   {
     if ( key == NO_KEY ) {
@@ -146,34 +147,49 @@ public class IntObjectMap<E>
     pointer = -1;
   }
   /**
-   * Current key, 
-   */
-  public int currentKey() {
-    if (pointer < 0 ) return nextKey();
-    if (keys[pointer] == NO_KEY) return nextKey();
-    return keys[pointer];
-  }
-  /**
-   * Current value
-   */
-  @SuppressWarnings("unchecked")
-  public E currentValue() {
-    if (pointer < 0 ) return nextValue();
-    if (keys[pointer] == NO_KEY) return nextValue();
-    return (E)values[pointer];
-  }
-  /**
    * A light iterator implementation
    * @return
    */
-  public int nextKey() {
-    while ( pointer+1 < keys.length) {
+  public boolean next() {
+    int length = keys.length;
+    while ( pointer+1 < length) {
       pointer++;
-      if (keys[pointer] != NO_KEY) return keys[pointer];
+      if ( keys[pointer] != NO_KEY ) return true;
     }
     reset();
-    return NO_KEY;
+    return false;
   }
+
+  /**
+   * Current key, for efficiency, no test, use it after next()
+   */
+  public int key() {
+    return keys[pointer];
+  }
+  /**
+   * Current value, for efficiency, no test, use it after next()
+   */
+  @SuppressWarnings("unchecked")
+  public E value() {
+    return (E)values[pointer];
+  }
+  /**
+   * A fast remove by pointer, in a big loop
+   * @return
+   */
+  public E remove( )
+  {
+    // if ( pointer == -1 ) return NO_VALUE;
+    // if ( pointer > keys.length ) return NO_VALUE;
+    // be carful, be consistent
+    if ( keys[pointer] == NO_KEY ) return NO_VALUE;
+    Object res = values[ pointer ];
+    values[ pointer ] = NO_VALUE;
+    shiftKeys( pointer );
+    --size;
+    return (E)res;
+  }
+  
   /**
    * Give keys as a sorted Array of int
    */
@@ -181,7 +197,8 @@ public class IntObjectMap<E>
     int[] ret = new int[size];
     reset();
     for (int i=0; i < size; i++) {
-      ret[i] = nextKey();
+      next();
+      ret[i] = keys[pointer];
     }
     Arrays.sort( ret );
     return ret;
@@ -347,11 +364,10 @@ public class IntObjectMap<E>
     }
     */
     reset();
-    int k;
-    while( (k=nextKey()) != NO_KEY) {
+    while( next() ) {
       if (!first) sb.append(", ");
       else first = false;
-      sb.append(k+":\""+currentValue()+'"');
+      sb.append( key()+":\""+value()+'"' );
     }
     sb.append(" } \n");
     return sb.toString();

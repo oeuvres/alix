@@ -34,9 +34,9 @@ public class IntVek implements Cloneable
   private static Pattern loadre = Pattern.compile("([0-9]+):([0-9]+)");
 
   /** An int rowid */
-  final int code;
+  public final int code;
   /** Name  */
-  final String label;
+  public final String label;
   
 
   /** Keys and values */
@@ -337,7 +337,7 @@ public class IntVek implements Cloneable
    */
   public void reset() 
   {
-    pointer = -1;    
+    pointer = -1;
   }
   
   /**
@@ -631,7 +631,6 @@ public class IntVek implements Cloneable
    */
   public double cosine( IntVek vek )
   {
-    if ( vek.magnitude() < 0 ) return 0; // isNaN()
     return dotProduct(vek) / (this.magnitude() * vek.magnitude());
   }
   

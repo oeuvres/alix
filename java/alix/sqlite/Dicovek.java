@@ -95,7 +95,7 @@ public class Dicovek {
    * For each occurrence, choose what to put as a key for head of a vector.
    * Increment occurrence dictionary.
    * @param occ
-   * @return a code from a dicitonary of unique value
+   * @return a code from a dictionary of unique value
    */
   private int key( Occ occ )
   {
@@ -198,7 +198,7 @@ public class Dicovek {
    * 
    * @param term A token
    */
-  public boolean update()
+  private boolean update()
   {
     Occ center = occs.get( 0 );
     int key = key( center );
@@ -252,26 +252,63 @@ public class Dicovek {
     int code = dic.code( term );
     return vector( code );
   }
-  public ArrayList<CosineRow> sims( String term, int limit )
+  public ArrayList<SimRow> sims( String term )
   {
-    return sims( term, limit, false);
+    ArrayList<SimRow> table = new ArrayList<SimRow>();
+    SimRow row;
+    // get vector for requested word
+    int k = dic.code( term );
+    if (k < 1) return null;
+    IntVek vekterm = vectors.get( k );
+    // Similarity
+    double score;
+    // list dico in freq order
+    vectors.reset();
+    while ( vectors.next() ) {
+      IntVek vek = vectors.value();
+      score = vekterm.cosine( vek );
+      if ( Double.isNaN( score ) ) continue;
+      // score differs 
+      // if ( score < 0.5 ) continue;
+      row = new SimRow( vek.code, score );
+      table.add( row );
+    }
+    Collections.sort( table );
+    return table;
   }
-  
-  
+  /**
+   * A row similar word with different info, used for sorting
+   * @author glorieux-f
+   */
+  public class SimRow implements Comparable<SimRow> 
+  {
+    public final  int code;
+    public final double score;
+    public SimRow( final int code, final double score ) {
+      this.code = code;
+      this.score = score;
+    }
+    @Override
+    public int compareTo( SimRow other ) {
+      // do not use >, score maybe be highly close and bug around 0, or with a NaN
+      return Double.compare( other.score, score );
+    }
+  }
+  public ArrayList<CosineRow> sims( final String term, final int limit )
+  {
+    return sims( term, limit, true );
+  }
   /**
    * List "siminymes" by vector proximity
    * TODO: better efficiency
    * 
    * @throws IOException 
    */
-  public ArrayList<CosineRow> sims( String term, int limit, boolean inter )
+  public ArrayList<CosineRow> sims( final String term, int limit, final boolean inter )
   {
     // get vector for requested word
     int k = dic.code( term );
-    if (k < 1) {
-      System.out.println( "Dicovek, term not found: "+term );
-      return null;
-    }
+    if (k < 1) return null;
     IntVek vekterm = vectors.get( k );
     // some words of the dictionary has no vector but are recorded in co-occurrence (ex: stop)
     if ( vekterm == null ) return null;
@@ -452,7 +489,18 @@ public class Dicovek {
     return sb.toString();
   }
   
-  
+  public IntVek vek( final String term )
+  {
+    int code = dic.code( term );
+    if ( code == 0 ) return null;
+    return vek( code );
+  }
+
+  public IntVek vek( final int code )
+  {
+    return vectors.get( code );
+  }
+
   
   /**
    * Tokenize a text. 
@@ -545,6 +593,24 @@ public class Dicovek {
   }
   
   /**
+   * Suppress vectors of words 
+   */
+  public int prune( final int count )
+  {
+    int ops = 0;
+    // list dico in freq order
+    vectors.reset();
+    while ( vectors.next() ) {
+      IntVek vek = vectors.value();
+      if ( dic.count( vek.code ) < count ) {
+        ops++;
+        vectors.remove();
+      }
+    }
+    return ops;
+  }
+  
+  /**
    * @throws IOException 
    * 
    * TODO: dictionnaire 
@@ -573,8 +639,7 @@ public class Dicovek {
     for ( int i=0; i < args.length; i++) {
       veks.walk( args[i], new PrintWriter(System.out) );
     }
-    
-    System.out.println( veks.dic().code( "NUM" )+" "+veks.dic().code( "STOPOFFSET" ) );
+    veks.prune( 5 );
     
     System.out.println( "Chargé en "+((System.nanoTime() - start) / 1000000) + " ms");
     System.out.println( veks.freqlist(true, 100) );
@@ -620,24 +685,6 @@ public class Dicovek {
       }
       System.out.println( "." );
       
-      // similarity textcat
-      start = System.nanoTime();
-      List<TextcatRow> res = veks.textcat( line );
-      System.out.println( "Calculé en "+((System.nanoTime() - start) / 1000000) + " ms");
-      System.out.println( "SIMINYMES (textcat) " );
-      first = true;
-      limit = 30;
-      for ( TextcatRow row:res ) {
-        // if ( Lexik.isStop( row.term )) continue;
-        if ( first ) first = false;
-        else System.out.print( ", " );
-        System.out.print( row.term );
-        System.out.print( " (" );
-        System.out.print( row.count );
-        System.out.print( ")" );
-        if (--limit == 0 ) break;
-      }
-      System.out.println( "." );
       
     }
 
