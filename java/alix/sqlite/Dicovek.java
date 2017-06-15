@@ -254,12 +254,16 @@ public class Dicovek {
   }
   public ArrayList<SimRow> sims( String term )
   {
+    // get vector for requested word
+    int code = dic.code( term );
+    if ( code < 1 ) return null;
+    return sims( code );
+  }
+  public ArrayList<SimRow> sims( int code )
+  {
     ArrayList<SimRow> table = new ArrayList<SimRow>();
     SimRow row;
-    // get vector for requested word
-    int k = dic.code( term );
-    if (k < 1) return null;
-    IntVek vekterm = vectors.get( k );
+    IntVek vekterm = vectors.get( code );
     // Similarity
     double score;
     // list dico in freq order
