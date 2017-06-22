@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 
 import alix.fr.Lexik;
+import alix.fr.Tag;
 
 /**
  * A specialized table for a dictionary of terms, with an int code, an int counter, and an int tag. 
@@ -118,6 +119,8 @@ public class TermDic
         .append( code )
         .append( SEP )
         .append( tag )
+        .append( SEP )
+        .append( Tag.label( tag ) )
         .append( SEP )
         .append( count2 )
       ;
@@ -437,7 +440,7 @@ public class TermDic
   public int add( final String term, final int tag, final int amount1, final int amount2 )
   {
     DicEntry line = byTerm.get( term );
-    if ( line == null ) return put( term, tag, amount1, amount2);
+    if ( line == null ) return create( term, tag, amount1, amount2);
     // repeated code with add(Term, …)
     occs += amount1;
     occs += amount2;
@@ -445,7 +448,77 @@ public class TermDic
     line.count2 += amount2;
     return line.code;
   }
-  
+  /**
+   * Return full entry if exists, or create it
+   * @param term
+   * @return
+   */
+  public DicEntry entry( final Term term )
+  {
+    DicEntry entry = byTerm.get( term );
+    if ( entry != null ) return entry;
+    return entryNew( term.toString() );
+  }
+  /**
+   * Return full entry if exists, or create it
+   * @param term
+   * @return
+   */
+  public DicEntry entry( final String term )
+  {
+    DicEntry entry = byTerm.get( term );
+    if ( entry != null ) return entry;
+    return entryNew( term );
+  }
+  /**
+   * Create new entry, shared by entry( String|Term )
+   * @param term
+   * @return
+   */
+  private DicEntry entryNew( final String term )
+  {
+    int code = create( term, 0, 0, 0 );
+    return byCode[code];
+  }
+  /**
+   * Put values in an entry
+   * @param term
+   * @param tag
+   * @param count
+   * @param count2
+   * @return
+   */
+  public int put( final Term term, final int tag, final int count, final int count2 )
+  {
+    occs += count;
+    occs += count2;
+    DicEntry entry = byTerm.get( term );
+    if ( entry == null ) return create( term.toString(), tag, count, count2);
+    // repeated code with add(String, …)
+    entry.count = count;
+    entry.count2 = count2;
+    return entry.code;
+  }
+  /**
+   * Put values in an entry
+   * @param term
+   * @param tag
+   * @param count
+   * @param count2
+   * @return
+   */
+  public int put( final String term, final int tag, final int count, final int count2 )
+  {
+    occs += count;
+    occs += count2;
+    DicEntry entry = byTerm.get( term );
+    if ( entry == null ) return create( term.toString(), tag, count, count2);
+    // repeated code with add(String, …)
+    entry.count = count;
+    entry.count2 = count2;
+    return entry.code;
+  }
+
   /**
    * Add a term occurrence, increment if exist or create entry, 
    * does not create a String object for increment, 
@@ -458,14 +531,13 @@ public class TermDic
    */
   public int add( final Term term, final int tag, final int amount, final int amount2 )
   {
-    DicEntry line = byTerm.get( term );
-    if ( line == null ) return put( term.toString(), tag, amount, amount2);
-    // repeated code with add(String, …)
     occs += amount;
     occs += amount2;
-    line.count += amount;
-    line.count2 += amount2;
-    return line.code;
+    DicEntry entry = byTerm.get( term );
+    if ( entry == null ) return create( term.toString(), tag, amount, amount2);
+    entry.count += amount;
+    entry.count2 += amount2;
+    return entry.code;
   }
   /**
    * Create a term if not exists, but do not modify counts.
@@ -474,7 +546,7 @@ public class TermDic
    */
   public int put( final String term )
   {
-    return add( term, 0, 0, 0 );
+    return put( term, 0, 0, 0 );
   }
   /**
    * Create a term if not exists, but do not modify counts
@@ -485,6 +557,14 @@ public class TermDic
   {
     return add( term, 0, 0, 0 );
   }
+  public int put( final Term term, final int tag )
+  {
+    return add( term, tag, 0, 0 );
+  }
+  public int put( final String term, final int tag )
+  {
+    return add( term, tag, 0, 0 );
+  }
   /**
    * Create a term in the different data structures 
    * @param term
@@ -493,7 +573,7 @@ public class TermDic
    * @param count2 initial value for secondary counter
    * @return 
    */
-  private int put ( final String term, final int tag, final int amount, final int amount2 )
+  private int create( final String term, final int tag, final int amount, final int amount2 )
   {
     pointer++;
     // index is too short, extends it (not a big perf pb)
@@ -503,10 +583,10 @@ public class TermDic
       byCode = new DicEntry[Calcul.nextSquare( oldLength )];
       System.arraycopy( oldData, 0, byCode, 0, oldLength );
     }
-    DicEntry line = new DicEntry( term, pointer, tag, amount, amount2 );
+    DicEntry entry = new DicEntry( term, pointer, tag, amount, amount2 );
     // put the same line object by reference in HashMap and Array
-    byTerm.put( term, line );
-    byCode[pointer] = line;
+    byTerm.put( term, entry );
+    byCode[pointer] = entry;
     return pointer;
   }
   

@@ -43,7 +43,9 @@ G.
 H.
 h.;;heure
 I.
-ibid.
+Ib.;;ibid.
+ib.;;ibid.
+ibid.;;ibid.
 id.
 Id.;;id.
 II.;NUM;2
@@ -52,6 +54,7 @@ introd.;;
 IV.;NUM;4
 IX.;NUM;9
 J.
+j.
 jan.;;janvier
 janv.;;janvier
 Jan.;;janvier

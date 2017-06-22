@@ -336,6 +336,14 @@ public final class Tag
   {
     return (code == NUM || code == DETnum);
   }
+  public boolean isMisc( )
+  {
+    return isMisc( code );
+  }
+  public static boolean isMisc( final int code )
+  {
+    return (( code >> 0x4 ) == 0xF );
+  }
   @Override
   public boolean equals( Object o ){
     if ( o == this ) return true;

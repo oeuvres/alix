@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -93,6 +92,7 @@ public class Lexik
       e.printStackTrace();
     }
   }
+  static String url;
   /**
    * Load a dictionary in the correct hash map
    * @throws IOException 
@@ -118,7 +118,7 @@ public class Lexik
    * @throws IOException
    * @throws ParseException 
    */
-  public static void load( BufferedReader buf, final int mode, String src ) throws IOException, ParseException
+  public static void load( BufferedReader buf, final int mode, final String src ) throws IOException, ParseException
   {
     String sep = ";";
     int n=0;
@@ -331,7 +331,7 @@ public class Lexik
    * @param token
    * @return
    */
-  public static short cat( final String orth )
+  public static int cat( final String orth )
   {
     LexEntry entry = Lexik.WORD.get( orth );
     if ( entry == null ) return Tag.UNKNOWN;

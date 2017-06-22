@@ -21,8 +21,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -71,8 +74,6 @@ public class Cloud
   private int fontmin = 12;
   /** maximum font size */
   private int fontmax = 80;
-  /** Optional, an url prefix for links */
-  private String href;
   /** Default font Color in PNG export */
   private Color fill = Color.GRAY;
   /** Default font strokes in PNG export */
@@ -87,7 +88,7 @@ public class Cloud
   private double ratio = 1.3;
   /** spirograph angle for tests */
   private int dDeg = 17;
-
+  /** Random series */
   
   private Random rand = new Random();
   private Rectangle2D imageSize = null;
@@ -108,11 +109,11 @@ public class Cloud
   static public class Word
   {
     /** Required, a word to display */
-    private final String text;
+    public final String label;
     /** Required, a relative weight */
-    private final int weight;
+    public final int weight;
     /** Optional, a wordclass for endering properties of this word */
-    private Wordclass wclass;
+    public final Wordclass wclass;
     /** The full path of the TTF word */
     private Shape shape;
     /** A bounding rectangle, not optimal https://www.jasondavies.com/wordcloud/about/ */
@@ -121,13 +122,18 @@ public class Cloud
     private int fontsize;
     
 
-    public Word(String text, int weight, Wordclass wclass)
+    public Word(String label, int weight, Wordclass wclass)
     {
-      this.text = text;
+      this.label = label;
       this.weight = weight;
       if (this.weight <= 0)
         throw new IllegalArgumentException( "bad weight " + weight );
       this.wclass = wclass;
+    }
+
+    @Override
+    public String toString() {
+      return label+" ("+weight+")";
     }
 
   }
@@ -198,7 +204,7 @@ public class Cloud
       int fontsize = (int) ( (float)(this.fontmax - this.fontmin)* rate) + this.fontmin;
       w.fontsize = fontsize;
       // TODO Bold ? Italic ? padding with spaces ?
-      TextLayout textLayout = new TextLayout( w.text, new Font( font, 0, fontsize ), frc );
+      TextLayout textLayout = new TextLayout( w.label, new Font( font, 0, fontsize ), frc );
       Shape shape = textLayout.getOutline( null );
       /*
       if (this.allowRotate && this.rand.nextBoolean()) {
@@ -355,7 +361,7 @@ public class Cloud
       @Override
       public int compare( Word w1, Word w2 )
       {
-        return w1.text.compareTo( w2.text );
+        return w1.label.compareTo( w2.label );
       }
     } );
 
@@ -413,21 +419,47 @@ public class Cloud
     ImageIO.write( img, "png", file );
   }
 
+  public void html( File file, final String href ) throws IOException, XMLStreamException
+  {
+    FileWriter writer = new FileWriter( file );
+    html( writer, href );
+    writer.close();
+  }
+
+  public String html( final String href ) throws  XMLStreamException, IOException
+  {
+    StringWriter writer = new StringWriter();
+    html( writer, href );
+    writer.close();
+    return writer.toString();
+  }
+  public String html( ) throws  XMLStreamException, IOException
+  {
+    StringWriter writer = new StringWriter();
+    html( writer, null );
+    writer.close();
+    return writer.toString();
+  }
+  public void html( File file ) throws  XMLStreamException, IOException
+  {
+    FileWriter writer = new FileWriter( file );
+    html( writer, null );
+    writer.close();
+  }
+
   /**
    * Output an html file
    * @param file
    * @throws IOException
    * @throws XMLStreamException
    */
-  public void html( File file ) throws IOException, XMLStreamException
+  public void html( Writer writer, final String href ) throws IOException, XMLStreamException
   {
     final String HTML = "http://www.w3.org/1999/xhtml";
     XMLOutputFactory xmlfactory = XMLOutputFactory.newInstance();
-    FileOutputStream fout = new FileOutputStream( file );
-    XMLStreamWriter xml = xmlfactory.createXMLStreamWriter( fout, "UTF-8" );
+    XMLStreamWriter xml = xmlfactory.createXMLStreamWriter( writer );
     xml.setPrefix( "", HTML );
     xml.writeStartElement( HTML, "div" );
-    xml.writeAttribute( "style", "height:100%;" );
     xml.writeAttribute( "class", "wordcloud" );
     
     double width = this.imageSize.getWidth();
@@ -437,8 +469,9 @@ public class Cloud
     for (Word w : this.words) {
       xml.writeCharacters( "\n" );
       xml.writeStartElement( HTML, "a" );
-      if ( this.href != null )
-        xml.writeAttribute( "href", this.href+w.text );
+      if ( href != null )
+        xml.writeAttribute( "href", href+w.label );
+      xml.writeAttribute( "title", w.toString() );
       if ( w.wclass != null )
         xml.writeAttribute( "class", w.wclass.name );
       xml.writeAttribute( "style", 
@@ -446,18 +479,20 @@ public class Cloud
         + " top:"+ dfdec1.format( 100.0*w.bounds.getY()/height )+"%;"
         + " font-size:"+ dfdec1.format( 100.0* w.fontsize / this.fontmin )+"%" 
       );
-      xml.writeCharacters( w.text );
+      xml.writeCharacters( w.label );
       xml.writeEndElement();
     }
     xml.writeCharacters( "\n" );
     xml.writeEndDocument();
     xml.flush();
     xml.close();
-    fout.flush();
-    fout.close();
+    writer.flush();
   }
-  
   public static Cloud cloud( TermDic words, int limit )
+  {
+    return cloud( words, limit, null );
+  }
+  public static Cloud cloud( TermDic words, int limit, final HashSet<String> filter )
   {
     Cloud cloud=new Cloud();
     Wordclass sub = new Wordclass( "sub", "Arial", new Color(32, 32, 128, 144), null);
@@ -474,36 +509,28 @@ public class Cloud
     long occs = words.occs();
     for( DicEntry form: words.byCount() ) {
       // TODO
-      // if ( filter.contains( form.label() ) ) continue;
+      if ( filter != null && filter.contains( form.label() ) ) continue;
       int tag = form.tag();
+      
+
+      if ( Tag.isMisc( tag ) ) continue;
       if ( Tag.isNum( tag ) ) continue;
-      // if ( Tag.isName( tag ) ) continue;
+      if ( tag == Tag.NULL ) continue; // foreign, OCR…
+
+      
       String term = form.label();
       int count = form.count();
       if ("devoir".equals( term )) dicw = Lexik.entry( "doit" );
       else dicw = Lexik.entry( term );
-      if ( dicw == null && Lexik.isStop( term ) ) continue;
-      
-      // if ( Tag.isPrep() )
-      float ratio = 5F;
-      if ( Lexik.isStop( term ) ) ratio = 10F;
-      else if ( Tag.isSub( tag ) ) ratio = 10F;
-      else if ( Tag.isAdj( tag ) ) ratio = 6F;
-      else if ( Tag.isVerb( tag ) ) ratio = 6F;
       
       
-      // locutions adverbiales sans stats
-      if ( dicw == null && tag == Tag.ADV) continue;
-      // if ( dicw == null && tag == Tag.VERB) continue; // compound verbs, no stats
-      // locutions inconnues du dictionnaire, sans stats
+      // mot inconnu du dictionnaire, différents traitements
       if ( dicw == null ) {
-        // ne garder que les locutions substantives
-        if ( !Tag.isSub( tag ) ) continue;
+        if ( Lexik.isStop( term ) ) continue;
+        // locutions adverbiales sans stats
+        if ( tag == Tag.ADV) continue;
         franfreq = 0;
-        System.out.println( form );
       }
-      
-      
       else if ( Tag.isSub( tag ) ) {
         franfreq = dicw.orthfreq;
       }
@@ -512,21 +539,22 @@ public class Cloud
       }
       double myfreq = 1.0*count*1000000/occs;
       
-      if ( form.label().equals( "que" )) {
-        System.out.println( form+" "+myfreq+" "+Tag.label( tag )+" "+franfreq );
-        System.out.println( Lexik.entry( "de" ).orthfreq );
-      }
+      // compare actual 
+      float ratio = 5F;
+      if ( Lexik.isStop( term ) ) ratio = 10F;
+      else if ( Tag.isSub( tag ) ) ratio = 10F;
+      else if ( Tag.isAdj( tag ) ) ratio = 6F;
+      else if ( Tag.isVerb( tag ) ) ratio = 6F;
       
+      // filter not distinctive words
       if ( franfreq > 0 && myfreq/franfreq < ratio ) continue;
 
-      // if ( Lexik.isStop( term ) ) continue;
       wclass = word;
       if ( Tag.isSub( tag ) ) wclass = sub;
       else if ( Tag.isVerb( tag ) ) wclass = verb;
       else if ( Tag.isName( tag ) ) wclass = name;
       else if ( Tag.isAdj( tag ) ) wclass = adj;
       else if ( Tag.isAdv( tag ) ) wclass = adv;
-      else if ( Tag.isName( tag ) ) wclass = name;
       
       cloud.add( new Word( term, count,  wclass ) );
       if ( ++n >= limit ) break;
@@ -546,12 +574,6 @@ public class Cloud
       System.out.println( font );
     }
     */
-    HashSet<String> filter = new HashSet<String>(); 
-    for (String w: new String[]{
-        "abbé", "baron", "docteur", "chapitre", "cher", "comte", "coup d'œil", "duc", "duchesse", "évêque", "jeune fille", "jeune homme", 
-        "lord", "madame", "mademoiselle", 
-        "maître", "marquis", "marquise", "miss", "pauvre", "point", "prince", "princesse", "professeur", "sir", "tout le monde"
-    }) filter.add( w );
 
     // String file = "../alix-demo/WEB-INF/textes/zola.xml";
     // String file = "../alix-demo/WEB-INF/textes/proust_recherche.xml";
@@ -589,7 +611,7 @@ public class Cloud
     cloud.doLayout();
     System.out.println( ((System.nanoTime() - time) / 1000000)+" ms. pour le positionner"  );
     time = System.nanoTime();
-    cloud.html( new File("test.html") );
+    cloud.html( new File( "test.html" ), "" );
     System.out.println( ((System.nanoTime() - time) / 1000000)+" ms. pour html"  );
     time = System.nanoTime();
     cloud.png( new File("test.png") );

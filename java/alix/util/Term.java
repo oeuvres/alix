@@ -759,7 +759,11 @@ public class Term implements CharSequence, Comparable<Term>
   }
   public void write( Writer out ) throws IOException {
     int len = this.len;
-    for ( int i =start; i < len; i++ ) out.append( data[i] );
+    for ( int i =start; i < len; i++ ) {
+      if ( data[i] == '<' ) out.append( "&lt;" );
+      else if ( data[i] == '>' ) out.append( "&gt;" );
+      else out.append( data[i] );
+    }
   }
   /**
    * Event before all modification of term, especially on hashCode cache
