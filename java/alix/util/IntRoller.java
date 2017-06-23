@@ -191,10 +191,10 @@ public class IntRoller extends Roller {
     return sb.toString();
   }
   
-  public String toString( TermDic words ) {
+  public String toString( DicFreq words ) {
     return toString( words, left, right );
   }
-  public String toString( TermDic words, int from, int to ) {
+  public String toString( DicFreq words, int from, int to ) {
     StringBuilder sb = new StringBuilder();
     for (int i = from; i <= to; i++) {
       int val = get(i);

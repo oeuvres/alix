@@ -3,7 +3,6 @@ package alix.util;
 /**
  * Efficient Object to handle a sliding window of mutable String (Term), 
  * Works like a circular array that you can roll on a token line.
- * could also be used against a HashMap of strings,
  * 
  * @author glorieux-f
  *

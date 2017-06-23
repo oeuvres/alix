@@ -279,6 +279,22 @@ public class Char
     return c;
   }
   
+  static public String props( char c )
+  {
+    short props = CHARS[c];
+    StringBuilder sb = new StringBuilder();
+    if ( (props & TOKEN) > 0 ) sb.append( "TOKEN " );
+    if ( (props & LETTER) > 0 ) sb.append( "LETTER " );
+    if ( (props & SPACE) > 0 ) sb.append( "SPACE " );
+    if ( (props & PUNCTUATION) > 0 ) sb.append( "PUNCTUATION " );
+    if ( (props & PUNsent) > 0 ) sb.append( "PUNsent " );
+    if ( (props & PUNcl) > 0 ) sb.append( "PUNcl " );
+    if ( (props & DIGIT) > 0 ) sb.append( "DIGIT " );
+    if ( (props & LOWERCASE) > 0 ) sb.append( "LOWERCASE " );
+    if ( (props & UPPERCASE) > 0 ) sb.append( "UPPERCASE " );
+    return sb.toString().trim();
+  }
+  
   /**
    * Is a word character (letter, but also, '’-_)
    * 
@@ -412,6 +428,8 @@ public class Char
    */
   public static void main( String args[] )
   {
+    // -
+    System.out.println( Char.props( '-' )+" "+Character.getType('-') );
     // '. .'
     System.out.println( Character.getType( ' ' ) + " " + Character.isISOControl( ' ' )+ " "+ Char.isSpace( ' ' ));
     System.out.println( "� Char.isToken:"+Char.isToken( '�' ) // true

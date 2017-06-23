@@ -6,7 +6,8 @@ import java.util.Arrays;
 /**
  * A mutable list of ints, used to record int events.
  * Return a new int array at the right size when needed.
- * Not suitable gor a key in a hash (mutable).
+ * Not suitable as a key for a hash (mutable),
+ * but implements an hashCode() compatible with IntTuple for testing presence in a HashMap.
  *
  * @author glorieux-f
  *

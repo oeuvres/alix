@@ -9,8 +9,6 @@ import java.util.regex.Pattern;
 
 
 /**
- * 
- * 
  * An efficient int-int Map implementation, encoded in a long array for key and value.
  * A special method is used to modify a value by addition.
  * Used for word vectors indexed by int.

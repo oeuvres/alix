@@ -32,7 +32,7 @@ import alix.fr.Tokenizer;
  * @author glorieux-f
  *
  */
-public class PhraseDic
+public class DicPhrase
 {
   /** Count of nodes */
   private long occs = 1;
@@ -43,7 +43,7 @@ public class PhraseDic
   /** A local mutable String for locution insertion, not thread safe  */
   private Term token = new Term();
 
-  public boolean add( final TermDic words, String compound )
+  public boolean add( final DicFreq words, String compound )
   {
     return add( words, compound, -1);
   }
@@ -51,7 +51,7 @@ public class PhraseDic
    * Add a compound to the dictionary of compounds
    * @param compound space separated words
    */
-  public boolean add( final TermDic words, String compound, final int senselevel )
+  public boolean add( final DicFreq words, String compound, final int senselevel )
   {
     if ( compound == null ) return false;
     compound = compound.trim();
@@ -155,17 +155,17 @@ public class PhraseDic
   }
   
   
-  public void  html( final Writer writer, final int limit, final TermDic words) throws IOException
+  public void  html( final Writer writer, final int limit, final DicFreq words) throws IOException
   {
     print(writer, limit, words, true);
   }
-  public void  print( final Writer writer, final int limit, final TermDic words) throws IOException
+  public void  print( final Writer writer, final int limit, final DicFreq words) throws IOException
   {
     print(writer, limit, words, false);
   }
   
   
-  public void  print( final Writer writer, int limit, final TermDic words, boolean html) throws IOException
+  public void  print( final Writer writer, int limit, final DicFreq words, boolean html) throws IOException
   {
     Iterator<Entry<IntTuple, Ref>> it = freqlist();
     Map.Entry<IntTuple, Ref> entry;
@@ -223,8 +223,8 @@ public class PhraseDic
     IntRoller gram = new IntRoller( 0, size - 1); // collocation wheel
     IntRoller wordmarks = new IntRoller(0, size - 1); // positions of words recorded in the collocation key
     
-    TermDic dic = new TermDic();
-    PhraseDic phrases = new PhraseDic();
+    DicFreq dic = new DicFreq();
+    DicPhrase phrases = new DicPhrase();
     
     int NAME = dic.add( "NOM" );
     int NUM = dic.add( "NUM" );

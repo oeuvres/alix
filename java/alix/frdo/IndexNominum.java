@@ -16,11 +16,11 @@ import java.util.LinkedList;
 
 import alix.fr.Tokenizer;
 import alix.util.Occ;
-import alix.util.TermDic;
+import alix.util.DicFreq;
 
 public class IndexNominum
 {
-  TermDic dic = new TermDic();
+  DicFreq dic = new DicFreq();
   /**
    * Traverser le texte, ramasser les infos, cracher à la fin
    * @param code

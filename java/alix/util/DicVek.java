@@ -25,7 +25,7 @@ import alix.fr.Lexik;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.IntVek.Pair;
-import alix.util.TermDic.DicEntry;
+import alix.util.DicFreq.Entry;
 
 /**
  * A data structure for sparse matrix of terms, optimized for cosine similarity.
@@ -50,11 +50,11 @@ import alix.util.TermDic.DicEntry;
  * Idea from Google word2vek
  * @author glorieux-f
  */
-public class Dicovek {
+public class DicVek {
   /** Dictionary in order of indexing for int keys, should be kept private, no external modif */
-  private TermDic dic;
+  private DicFreq dic;
   /** Vectors of co-occurences for each term of dictionary */
-  private IntObjectMap<IntVek> vectors;
+  private IntOMap<IntVek> vectors;
   /** Index of left context */
   public final int left;
   /** Index of right context */
@@ -75,19 +75,19 @@ public class Dicovek {
    * @param right
    * TODO, create different modes
    */
-  public Dicovek( final int left, final int right )
+  public DicVek( final int left, final int right )
   {    
     this.left = left;
     this.right = right;
     // this.stoplist = stoplist;
-    dic = new TermDic();
+    dic = new DicFreq();
     // ajouter d’avance tous les mots vides au dictionnaire
     dic.put(""); // rien=1
     for ( String word : Tag.CODE.keySet() ) dic.put( word );
     for ( String word : Lexik.STOP ) dic.put( word, Lexik.cat( word ) );
     this.stopoffset = dic.put( "STOPOFFSET" );
     // 44960 is the size of all Zola vocabulary
-    vectors = new IntObjectMap<IntVek>(5000);
+    vectors = new IntOMap<IntVek>(5000);
   }
   
   /**
@@ -161,7 +161,7 @@ public class Dicovek {
     }
   }
 
-  public TermDic dic()
+  public DicFreq dic()
   {
     return dic;
   }
@@ -206,7 +206,7 @@ public class Dicovek {
   {
     StringBuffer sb = new StringBuffer();
     boolean first = true;  
-    for( DicEntry entry: dic.byCount() ) {
+    for( Entry entry: dic.byCount() ) {
       if ( Lexik.isStop( entry.label() ) ) continue;
       if (first) first = false;
       else sb.append( ", " );
@@ -295,7 +295,7 @@ public class Dicovek {
     ArrayList<CosineRow> table = new ArrayList<CosineRow>();
     CosineRow row;
     IntVek vek;
-    for ( DicEntry entry: dic.byCount() ) {
+    for ( Entry entry: dic.byCount() ) {
       if ( entry.count() < 3 ) break;
       vek = vectors.get( entry.code() );
       if ( vek == null ) continue;
@@ -331,7 +331,7 @@ public class Dicovek {
     IntVek doc = vectors.get( k );
     // list dico in freq order
     ArrayList<TextcatRow> table = new ArrayList<TextcatRow>();
-    for ( DicEntry entry: dic.byCount() ) {
+    for ( Entry entry: dic.byCount() ) {
       if ( entry.count() < 3 ) break;
       IntVek cat = vectors.get( entry.code() );
       int score = doc.textcat( cat );
@@ -419,7 +419,7 @@ public class Dicovek {
       writer.write("{\n");
       boolean first1 = true;
       int count1 = 1;
-      for( DicEntry entry: dic.byCount() ) {
+      for( Entry entry: dic.byCount() ) {
         // TODO, write vector
         if (--count1 == 0) break;
       }
@@ -609,7 +609,7 @@ public class Dicovek {
     int wing = 5;
     // le chargeur de vecteur a besoin d'une liste de mots vides pour éviter de faire le vecteur de "de"
     // un lemmatiseur du pauvre sert à regrouper les entrées des vecteurs
-    Dicovek veks = new Dicovek( -wing, wing );
+    DicVek veks = new DicVek( -wing, wing );
     // Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST);
     long start = System.nanoTime();
     // Boucler sur les fichiers
@@ -617,7 +617,7 @@ public class Dicovek {
       veks.walk( args[i], new PrintWriter(System.out) );
     }
     veks.prune( 5 );
-    TermDic dic = veks.dic();
+    DicFreq dic = veks.dic();
     System.out.println( dic );
     
     System.out.println( "Chargé en "+((System.nanoTime() - start) / 1000000) + " ms");

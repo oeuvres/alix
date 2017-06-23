@@ -11,19 +11,12 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-import alix.fr.Lexik;
-import alix.fr.Tag;
 
 /**
  * A specialized table for a dictionary of terms, with an int code, an int counter, and an int tag. 
@@ -58,16 +51,16 @@ import alix.fr.Tag;
  * @author glorieux-f
  *
  */
-public class TermDic
+public class DicFreq
 {
   /** 
    * HashMap to find by String. String is the best object for key (most common, not mutable).
    * A custom object (like Term) will not match against String.
    * The int array contains an int key and a count  
    */
-  private HashMap<String, DicEntry> byTerm = new HashMap<String, DicEntry>();
+  private HashMap<String, Entry> byTerm = new HashMap<String, Entry>();
   /** List of terms, kept in index order, to get a term by int code */
-  private DicEntry[] byCode = new DicEntry[32];
+  private Entry[] byCode = new Entry[32];
   /** Pointer in the array of terms, only growing when terms are added, used as code */
   private int pointer;
   /** Count of all occurrences for this dico */
@@ -79,7 +72,7 @@ public class TermDic
    * A term record in the dictionary, obtained by String or by code
    * @author glorieux-f
    */
-  public class DicEntry implements Comparable<DicEntry>
+  public class Entry implements Comparable<Entry>
   {
     /** The String form of Term */ 
     private final String label;
@@ -91,7 +84,7 @@ public class TermDic
     private int count;
     /** A secondary counter (for comparisons) */
     private int count2;
-    private DicEntry( String label, int code, int tag, int count, int count2 )
+    private Entry( String label, int code, int tag, int count, int count2 )
     {
       this.label = label;
       this.code = code;
@@ -120,8 +113,6 @@ public class TermDic
         .append( SEP )
         .append( tag )
         .append( SEP )
-        .append( Tag.label( tag ) )
-        .append( SEP )
         .append( count2 )
       ;
       return sb.toString();
@@ -130,7 +121,7 @@ public class TermDic
     /**
      * Default comparator for term informations, 
      */
-    public int compareTo( DicEntry o )
+    public int compareTo( Entry o )
     {
       return ( o.count + o.count2) - ( count + count2 );
     }    
@@ -138,14 +129,14 @@ public class TermDic
   /**
    * Constructor
    */
-  public TermDic()
+  public DicFreq()
   {
   }
   /**
    * Open a dictionary with a list of terms
    * @param terms
    */
-  public TermDic( final String[] terms )
+  public DicFreq( final String[] terms )
   {
     for (String term: terms) add( term, 0, 1, 0 );
   }
@@ -180,7 +171,7 @@ public class TermDic
    */
   public int code( Term term )
   {
-    DicEntry vals = byTerm.get( term );
+    Entry vals = byTerm.get( term );
     if (vals == null) return -1;
     return vals.code;
   }
@@ -192,7 +183,7 @@ public class TermDic
    */
   public int code( String term )
   {
-    DicEntry line = byTerm.get( term );
+    Entry line = byTerm.get( term );
     if ( line == null ) return -1;
     return line.code;
   }
@@ -204,7 +195,7 @@ public class TermDic
    */
   public int tag( Term term )
   {
-    DicEntry line = byTerm.get( term );
+    Entry line = byTerm.get( term );
     if ( line == null ) return 0;
     return line.tag;
   }
@@ -216,7 +207,7 @@ public class TermDic
    */
   public int tag( String term )
   {
-    DicEntry line = byTerm.get( term );
+    Entry line = byTerm.get( term );
     if ( line == null ) return 0;
     return line.tag;
   }
@@ -229,7 +220,7 @@ public class TermDic
    */
   public int tag( int code )
   {
-    DicEntry line =  byCode[code];
+    Entry line =  byCode[code];
     if ( line == null ) return 0;
     return line.tag;
   }
@@ -242,7 +233,7 @@ public class TermDic
    */
   public int count( String term )
   {
-    DicEntry line = byTerm.get( term );
+    Entry line = byTerm.get( term );
     if ( line == null) return -1;
     return line.count;
   }
@@ -255,7 +246,7 @@ public class TermDic
    */
   public int count( Term term )
   {
-    DicEntry line = byTerm.get( term );
+    Entry line = byTerm.get( term );
     if ( line == null ) return -1;
     return line.count;
   }
@@ -439,7 +430,7 @@ public class TermDic
    */
   public int add( final String term, final int tag, final int amount1, final int amount2 )
   {
-    DicEntry line = byTerm.get( term );
+    Entry line = byTerm.get( term );
     if ( line == null ) return create( term, tag, amount1, amount2);
     // repeated code with add(Term, …)
     occs += amount1;
@@ -453,9 +444,9 @@ public class TermDic
    * @param term
    * @return
    */
-  public DicEntry entry( final Term term )
+  public Entry entry( final Term term )
   {
-    DicEntry entry = byTerm.get( term );
+    Entry entry = byTerm.get( term );
     if ( entry != null ) return entry;
     return entryNew( term.toString() );
   }
@@ -464,9 +455,9 @@ public class TermDic
    * @param term
    * @return
    */
-  public DicEntry entry( final String term )
+  public Entry entry( final String term )
   {
-    DicEntry entry = byTerm.get( term );
+    Entry entry = byTerm.get( term );
     if ( entry != null ) return entry;
     return entryNew( term );
   }
@@ -475,7 +466,7 @@ public class TermDic
    * @param term
    * @return
    */
-  private DicEntry entryNew( final String term )
+  private Entry entryNew( final String term )
   {
     int code = create( term, 0, 0, 0 );
     return byCode[code];
@@ -492,7 +483,7 @@ public class TermDic
   {
     occs += count;
     occs += count2;
-    DicEntry entry = byTerm.get( term );
+    Entry entry = byTerm.get( term );
     if ( entry == null ) return create( term.toString(), tag, count, count2);
     // repeated code with add(String, …)
     entry.count = count;
@@ -511,7 +502,7 @@ public class TermDic
   {
     occs += count;
     occs += count2;
-    DicEntry entry = byTerm.get( term );
+    Entry entry = byTerm.get( term );
     if ( entry == null ) return create( term.toString(), tag, count, count2);
     // repeated code with add(String, …)
     entry.count = count;
@@ -533,7 +524,7 @@ public class TermDic
   {
     occs += amount;
     occs += amount2;
-    DicEntry entry = byTerm.get( term );
+    Entry entry = byTerm.get( term );
     if ( entry == null ) return create( term.toString(), tag, amount, amount2);
     entry.count += amount;
     entry.count2 += amount2;
@@ -579,11 +570,11 @@ public class TermDic
     // index is too short, extends it (not a big perf pb)
     if (pointer >= byCode.length) {
       final int oldLength = byCode.length;
-      final DicEntry[] oldData = byCode;
-      byCode = new DicEntry[Calcul.nextSquare( oldLength )];
+      final Entry[] oldData = byCode;
+      byCode = new Entry[Calcul.nextSquare( oldLength )];
       System.arraycopy( oldData, 0, byCode, 0, oldLength );
     }
-    DicEntry entry = new DicEntry( term, pointer, tag, amount, amount2 );
+    Entry entry = new Entry( term, pointer, tag, amount, amount2 );
     // put the same line object by reference in HashMap and Array
     byTerm.put( term, entry );
     byCode[pointer] = entry;
@@ -608,7 +599,7 @@ public class TermDic
   /**
    * Increment occurrences count with not stored terms (useful for filtered dictionary)
    */
-  public TermDic inc( )
+  public DicFreq inc( )
   {
     occs ++;
     return this;
@@ -616,7 +607,7 @@ public class TermDic
   /**
    * Increment occurrences count with not stored terms (useful for filtered dictionary)
    */
-  public TermDic inc( int i )
+  public DicFreq inc( int i )
   {
     occs += i;
     return this;
@@ -626,13 +617,13 @@ public class TermDic
    * Return an iterable object to get freqlist
    * @return
    */
-  public List<DicEntry> byCount() {
-    List<DicEntry> list = new ArrayList<DicEntry>( byTerm.values() ); // will copy entries (?)
+  public List<Entry> byCount() {
+    List<Entry> list = new ArrayList<Entry>( byTerm.values() ); // will copy entries (?)
     Collections.sort( list );
     return list;
   }
 
-  public Collection<DicEntry> entries() {
+  public Collection<Entry> entries() {
     return byTerm.values();
   }
 
@@ -703,7 +694,7 @@ public class TermDic
    * @param writer
    * @return
    */
-  public TermDic save( Writer writer )
+  public DicFreq save( Writer writer )
   {
     return this;
   }
@@ -718,7 +709,7 @@ public class TermDic
     // TODO total occs
     writer.write( "("+occs+")"+SEP+"COUNT"+SEP+"CODE"+SEP+"TAG"+SEP+"COUNT2"+SEP+"PPM"+"\n" );
     try {
-      for (DicEntry entry: byCount()) {
+      for (Entry entry: byCount()) {
         if (limit-- == 0)
           break;
         writer.write( entry.toString() );
@@ -828,10 +819,10 @@ public class TermDic
   public static void main( String[] args ) throws IOException
   {
     BufferedReader buf = new BufferedReader(
-      new InputStreamReader( Lexik.class.getResourceAsStream(  "dic/loc.csv" ), StandardCharsets.UTF_8 )
+      new InputStreamReader( DicFreq.class.getResourceAsStream(  "/alix/fr/dic/loc.csv" ), StandardCharsets.UTF_8 )
     );
     String l;
-    TermDic dic = new TermDic();
+    DicFreq dic = new DicFreq();
     while ((l = buf.readLine()) != null) {
       if ( l.isEmpty() ) continue;
       for ( String s: l.split( "[ ;]+" ) ) {
@@ -841,8 +832,4 @@ public class TermDic
     dic.csv( new PrintWriter(System.out) );
   }
 }
-/*
-Ideas…
-https://en.wikipedia.org/wiki/Bayes_estimator#Practical_example_of_Bayes_estimators
-*/
 

@@ -51,8 +51,8 @@ import alix.fr.Lexik.LexEntry;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.Occ;
-import alix.util.TermDic;
-import alix.util.TermDic.DicEntry;
+import alix.util.DicFreq;
+import alix.util.DicFreq.Entry;
 
 /**
  * Word Cloud in HTML
@@ -488,11 +488,11 @@ public class Cloud
     xml.close();
     writer.flush();
   }
-  public static Cloud cloud( TermDic words, int limit )
+  public static Cloud cloud( DicFreq words, int limit )
   {
     return cloud( words, limit, null );
   }
-  public static Cloud cloud( TermDic words, int limit, final HashSet<String> filter )
+  public static Cloud cloud( DicFreq words, int limit, final HashSet<String> filter )
   {
     Cloud cloud=new Cloud();
     Wordclass sub = new Wordclass( "sub", "Arial", new Color(32, 32, 128, 144), null);
@@ -507,7 +507,7 @@ public class Cloud
     LexEntry dicw;
     float franfreq;
     long occs = words.occs();
-    for( DicEntry form: words.byCount() ) {
+    for( Entry form: words.byCount() ) {
       // TODO
       if ( filter != null && filter.contains( form.label() ) ) continue;
       int tag = form.tag();
@@ -579,7 +579,7 @@ public class Cloud
     // String file = "../alix-demo/WEB-INF/textes/proust_recherche.xml";
     String file = "../alix-demo/WEB-INF/textes/verlaine_poesies.xml";
     String xml = new String(Files.readAllBytes( Paths.get( file ) ), StandardCharsets.UTF_8 );
-    TermDic words = new TermDic();
+    DicFreq words = new DicFreq();
     Tokenizer toks = new Tokenizer( xml );
     long time;
     time = System.nanoTime();

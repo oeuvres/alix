@@ -808,7 +808,7 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = "<>"
-        + " Qui que ce soit ?"
+        + " travers. -Le roman de sa jeunesse"
         + " P.S.,T.A.T., ADN, 67, rue de Billancourt, BOULOGNE (Seine)."
         + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. "
         // + "\nIII. Là RODOGUNE.\n\n"

@@ -11,11 +11,10 @@ import alix.fr.Tokenizer;
 
 /**
  * An efficient int-Object Map implementation.
- * For a list of chars, is 2.3x faster than "abcde".indexOf()
  * source: http://java-performance.info/implementing-world-fastest-java-int-to-int-hash-map/
  *  
  */
-public class IntObjectMap<E>
+public class IntOMap<E>
 {
   public static final int NO_KEY = 0;
   public final E NO_VALUE = null;
@@ -45,11 +44,11 @@ public class IntObjectMap<E>
    * Constructor with default fillFactor
    * @param size
    */
-  public IntObjectMap( final int size) {
+  public IntOMap( final int size) {
     this(size, (float)0.75);
   }
 
-  public IntObjectMap( final int size, final float fillFactor )
+  public IntOMap( final int size, final float fillFactor )
   {
     if ( fillFactor <= 0 || fillFactor >= 1 ) throw new IllegalArgumentException( "FillFactor must be between [0-1]" );
     if ( size <= 0 ) throw new IllegalArgumentException( "Size must be positive!" );

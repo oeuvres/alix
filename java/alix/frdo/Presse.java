@@ -13,7 +13,7 @@ import alix.fr.Lexik;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.Occ;
-import alix.util.TermDic;
+import alix.util.DicFreq;
 
 /**
  * http://data.theeuropeanlibrary.org/download/newspapers-by-country/FRA/
@@ -22,12 +22,12 @@ import alix.util.TermDic;
  */
 public class Presse
 {
-  TermDic dic;
+  DicFreq dic;
   Tokenizer toks;
   int filecount;
   public Presse()
   {
-    dic = new TermDic();
+    dic = new DicFreq();
   }
   public void walk( File dir) throws IOException
   {
@@ -49,7 +49,7 @@ public class Presse
       toks = new Tokenizer( text ).pointer( start );
       int end = text.indexOf( "\"rights\"" );
       if ( end > start) toks.end( end );
-      TermDic dic = this.dic;
+      DicFreq dic = this.dic;
       Occ occ;
       while( ( occ=toks.word()) != null) {
         if ( false );

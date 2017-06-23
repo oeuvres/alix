@@ -6,13 +6,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import alix.util.TermDic.DicEntry;
+import alix.util.DicFreq.Entry;
 
 /**
  * Merge two dictionaries entries and keep counts
  * @author frederic.glorieux@fictif.org
  */
-public class CompDic
+public class DicBalance
 {
   /** Unit for frequences, by million, like Frantext */
   static final int unit = 1000000;
@@ -24,19 +24,19 @@ public class CompDic
   private long markFreqs;
   /** HashMap to access  */
   private HashMap<String,Balance> terms = new HashMap<String, Balance>();
-  public void add1( TermDic dic )
+  public void add1( DicFreq dic )
   {
-    for ( DicEntry entry : dic.entries() ) {
+    for ( Entry entry : dic.entries() ) {
       add1( entry.label(), entry.count(), entry.tag() );
     }
   }
-  public void add2( TermDic dic )
+  public void add2( DicFreq dic )
   {
-    for  ( DicEntry entry : dic.entries() ) {
+    for  ( Entry entry : dic.entries() ) {
       add2( entry.label(), entry.count(), entry.tag() );
     }
   }
-  public CompDic add1(final String term, final int amount, final int tag)
+  public DicBalance add1(final String term, final int amount, final int tag)
   {
     total1 += amount;
     Balance value = terms.get( term );
@@ -50,7 +50,7 @@ public class CompDic
     total1 += amount;
     return this;
   }
-  public CompDic add2(final String term, final int count, final int tag)
+  public DicBalance add2(final String term, final int count, final int tag)
   {
     total2 += count;
     Balance value = terms.get( term );
@@ -79,7 +79,7 @@ public class CompDic
     long tot2 = this.total2;
     // no change occurs since last freqs calculation
     if ( markFreqs == tot1+tot2 ) return;
-    float unit = CompDic.unit;
+    float unit = DicBalance.unit;
     Balance balance;
     for( Map.Entry<String, Balance> entry: terms.entrySet()) {
       balance = entry.getValue();
@@ -173,10 +173,10 @@ public class CompDic
     
   }
   public static void main( String[] args)  {
-    CompDic comp = new CompDic();
+    DicBalance comp = new DicBalance();
     String text;
     text = "un texte court avec un peu des mots un peu pareils des";
-    TermDic dic = new TermDic();
+    DicFreq dic = new DicFreq();
     for ( String s: text.split( " " ) ) dic.inc( s );
     comp.add1( dic );
     dic.reset();

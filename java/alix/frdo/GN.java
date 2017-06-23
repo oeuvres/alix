@@ -11,7 +11,7 @@ import java.nio.file.Paths;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.OccRoller;
-import alix.util.TermDic;
+import alix.util.DicFreq;
 
 public class GN
 {
@@ -80,7 +80,7 @@ public class GN
   /**
    * 
    */
-  public TermDic parse( )
+  public DicFreq parse( )
   {
     return parse(null, -1);
   }
@@ -89,9 +89,9 @@ public class GN
    * @param toks
    * @return
    */
-  public TermDic parse( PrintWriter out, int limit )
+  public DicFreq parse( PrintWriter out, int limit )
   {
-    TermDic dic = new TermDic();
+    DicFreq dic = new DicFreq();
     OccRoller win = new OccRoller( left, right );
     // loop on all tokens
     while ( toks.word( win.add() ) ) {

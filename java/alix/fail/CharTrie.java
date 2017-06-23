@@ -11,7 +11,7 @@ import java.util.List;
 
 import org.apache.lucene.analysis.util.CharArraySet;
 
-import alix.util.IntObjectMap;
+import alix.util.IntOMap;
 
 
 /**
@@ -85,7 +85,7 @@ public class CharTrie
   private class DicNode
   {
     /** List of letters */
-    private IntObjectMap<DicNode> children = new IntObjectMap<DicNode>( 35 );
+    private IntOMap<DicNode> children = new IntOMap<DicNode>( 35 );
     /** Char */
     char c;
     /** Word count, how many word stopping at this node ? */

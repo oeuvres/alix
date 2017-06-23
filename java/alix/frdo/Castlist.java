@@ -11,11 +11,11 @@ import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.Occ;
 import alix.util.OccRoller;
-import alix.util.TermDic;
+import alix.util.DicFreq;
 
 public class Castlist
 {
-  TermDic dic = new TermDic();  
+  DicFreq dic = new DicFreq();  
   /**
    * Un jour on pourra passer des listes prédéfinies au parseur, 
    * exemple, une liste de personnages poour un roman (résolution des prénoms)
