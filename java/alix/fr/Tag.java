@@ -128,6 +128,8 @@ public final class Tag
   public final static short NUM = 0xF2;
   /** Exclamation */
   public final static short EXCL = 0xF3;
+  /** Mathematical operator */
+  public final static short MATH = 0xF4;
   /** Particules démonstratives -ci, -là */
   public final static short PARTdem = 0xFC;
   /** Category */

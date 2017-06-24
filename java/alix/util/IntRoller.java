@@ -149,8 +149,8 @@ public class IntRoller extends Roller {
       } while( ituple >= 0 );
       return true;
     }
-    if (o instanceof IntBuffer) {
-      IntBuffer phr = (IntBuffer)o;
+    if (o instanceof IntStack) {
+      IntStack phr = (IntStack)o;
       if ( phr.size() != size ) return false;
       int iphr=phr.size() - 1;
       int i=right;

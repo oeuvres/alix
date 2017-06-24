@@ -5,7 +5,6 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics2D;
-import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.Stroke;
@@ -13,17 +12,12 @@ import java.awt.font.FontRenderContext;
 import java.awt.font.TextLayout;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
-import java.awt.geom.PathIterator;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -39,7 +33,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Random;
 import javax.imageio.ImageIO;
 import javax.xml.stream.XMLOutputFactory;
@@ -87,7 +80,7 @@ public class Cloud
   /**  */
   private double ratio = 1.3;
   /** spirograph angle for tests */
-  private int dDeg = 17;
+  private int dDeg = 10;
   /** Random series */
   
   private Random rand = new Random();
@@ -112,7 +105,7 @@ public class Cloud
     public final String label;
     /** Required, a relative weight */
     public final int weight;
-    /** Optional, a wordclass for endering properties of this word */
+    /** Optional, a wordclass for rendering properties of this word */
     public final Wordclass wclass;
     /** The full path of the TTF word */
     private Shape shape;
@@ -178,6 +171,7 @@ public class Cloud
   public void doLayout() throws InvalidParameterException
   {
     if (this.words.isEmpty())  throw new InvalidParameterException( "No words to display" );
+    this.shuffle();
     // ? size ?
     this.imageSize = new Rectangle2D.Double( 0, 0, 0, 0 );
     
@@ -189,7 +183,7 @@ public class Cloud
       high = Math.max( high, w.weight );
       low = Math.min( low, w.weight );
     }
-
+    
     // create small image (?)
     BufferedImage img = new BufferedImage( 1, 1, BufferedImage.TYPE_INT_RGB );
     // get graphics from this image
@@ -200,7 +194,8 @@ public class Cloud
     for ( Word w: this.words ) {
       String font = this.font;
       if ( w.wclass != null && w.wclass.font != null ) font = w.wclass.font;
-      double rate =  ( 2 - 2*1/( 1 + (w.weight-low) / (high-low) ) );
+      
+      double rate = (w.weight-low) / (high-low);
       int fontsize = (int) ( (float)(this.fontmax - this.fontmin)* rate) + this.fontmin;
       w.fontsize = fontsize;
       // TODO Bold ? Italic ? padding with spaces ?
@@ -331,7 +326,7 @@ public class Cloud
       @Override
       public int compare( Word w1, Word w2 )
       {
-        return w1.weight - w2.weight;
+        return Integer.compare( w1.weight, w2.weight );
       }
     } );
     
@@ -346,7 +341,7 @@ public class Cloud
       @Override
       public int compare( Word w1, Word w2 )
       {
-        return w2.weight - w1.weight;
+        return Integer.compare( w2.weight, w1.weight );
       }
     } );
   }
@@ -492,15 +487,23 @@ public class Cloud
   {
     return cloud( words, limit, null );
   }
+  /**
+   * Alix specific, linguistic logic to filter interesting words.
+   * TODO refactor to be less language specific
+   * @param words
+   * @param limit
+   * @param filter
+   * @return
+   */
   public static Cloud cloud( DicFreq words, int limit, final HashSet<String> filter )
   {
     Cloud cloud=new Cloud();
     Wordclass sub = new Wordclass( "sub", "Arial", new Color(32, 32, 128, 144), null);
-    Wordclass name = new Wordclass( "name", "Georgia", new Color(0, 0, 0, 255), null);
-    Wordclass verb = new Wordclass( "verb", "Georgia", new Color(255, 0, 0, 255), null);
-    Wordclass adj = new Wordclass( "adj", "Georgia",  new Color(64, 128, 64, 200), null);
-    Wordclass adv = new Wordclass( "adv", "Georgia", new Color(32, 32, 32, 128), null);
-    Wordclass word = new Wordclass( "word", "Georgia", new Color(32, 32, 32, 128), null);
+    Wordclass name = new Wordclass( "name", "Arial", new Color(0, 0, 0, 255), null);
+    Wordclass verb = new Wordclass( "verb", "Arial", new Color(255, 0, 0, 255), null);
+    Wordclass adj = new Wordclass( "adj", "Arial",  new Color(64, 128, 64, 200), null);
+    Wordclass adv = new Wordclass( "adv", "Arial", new Color(32, 32, 32, 128), null);
+    Wordclass word = new Wordclass( "word", "Arial", new Color(32, 32, 32, 128), null);
     // loop on dictionary
     int n=0;
     Wordclass wclass;
@@ -508,8 +511,8 @@ public class Cloud
     float franfreq;
     long occs = words.occs();
     for( Entry form: words.byCount() ) {
-      // TODO
       if ( filter != null && filter.contains( form.label() ) ) continue;
+      if ( form.label().contains( " " )) continue; // no compound
       int tag = form.tag();
       
 
@@ -556,7 +559,7 @@ public class Cloud
       else if ( Tag.isAdj( tag ) ) wclass = adj;
       else if ( Tag.isAdv( tag ) ) wclass = adv;
       
-      cloud.add( new Word( term, count,  wclass ) );
+      cloud.add( new Word( term, count, wclass ) );
       if ( ++n >= limit ) break;
     }
     return cloud;

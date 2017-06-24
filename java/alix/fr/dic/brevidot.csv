@@ -37,6 +37,7 @@ Fev.;;février
 fevr.;;février
 Fevr.;;février
 fig.
+fol.
 fr.;;francs
 Fr.;;francs
 G.
@@ -77,7 +78,8 @@ Melle.;SUB;mademoiselle
 MM.;SUB;messieurs
 Mm.;SUB;messieurs
 Mr.;SUB;monsieur
-ms.
+ms.;SUB;
+Ms.;SUB;ms.
 n.
 N.
 Nov.;;novembre
@@ -129,6 +131,8 @@ VI.;NUM;6
 VII.;NUM;7
 VIII.;NUM;8
 vol.
+voy.
+Voy.;;voy.
 W.
 X.
 Y.

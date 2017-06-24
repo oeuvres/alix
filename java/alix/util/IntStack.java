@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 
 /**
- * A mutable list of ints, used to record int events.
+ * A mutable list of ints.
  * Return a new int array at the right size when needed.
  * Not suitable as a key for a hash (mutable),
  * but implements an hashCode() compatible with IntTuple for testing presence in a HashMap.
@@ -12,53 +12,69 @@ import java.util.Arrays;
  * @author glorieux-f
  *
  */
-public class IntBuffer 
+public class IntStack 
 {
   /** Internal data */
   protected int[] data;
   /** The mobile size */
-  private short size;
+  private int size;
+  /** Precalculate hash */
+  private int hash;
+  /** Full sum, for sorting */
+  public long sum;
+  /** Min value */
+  public int min;
+  /** Max value */
+  public int max;
+  /** Average */
+  public double avg;
+  /** Maybe used to keep some event memory */
+  public int last = -1;
+  /** A name, useful for collection  */
+  public String label;
+  /** A code, maybe used for a collection of stack */
+  public int code;
+  
   /** If bag, values will be sorted before all operation  */
   public final boolean bag;
   /** For code readability */
   public static final boolean BAG = true;
   /** Avoid too much sort, only after a write */
   private boolean sorted;
-  /** Precalculate hash */
-  private int hash;
   
-  public IntBuffer( )
+  public IntStack( )
   {
     data = new int[8];
     bag = false;
   }
-  public IntBuffer( final IntBuffer buf )
+  public IntStack( final IntStack stack )
   {
-    bag = buf.bag;
-    short max = buf.size;
+    bag = stack.bag;
+    int max = stack.size;
     this.size = max;
     data = new int[max];
-    int[] newdata = buf.data; // perfs, avoid a lookup
+    int[] newdata = stack.data; // perfs, avoid a lookup
     for ( int i=0; i < max; i++ ) data[i] = newdata[i];
   }
-  public IntBuffer( final int capacity )
+  public IntStack( final int capacity )
   {
     bag = false;
     data = new int[capacity];
     size = 0;
   }
-  public IntBuffer( final int capacity, final boolean bag )
+  public IntStack( final int capacity, final boolean bag )
   {
     this.bag = bag;
     data = new int[capacity];
     size = 0;
   }
-  protected IntBuffer reset()
+  protected IntStack reset()
   {
     size = 0;
+    hash = 0;
     return this;
   }
-  public IntBuffer append( int value )
+  public IntStack push( int value )
   {
     onWrite( size);
     data[size] = value;
@@ -77,7 +93,6 @@ public class IntBuffer
   private boolean onWrite( final int position )
   {
     hash = 0;
-    sorted = false;
     if ( position < data.length ) return false;
     final int oldLength = data.length;
     final int[] oldData = data;
@@ -86,7 +101,7 @@ public class IntBuffer
     System.arraycopy( oldData, 0, data, 0, oldLength );
     return true;
   }
-  public IntBuffer set( int pos, int value )
+  public IntStack set( int pos, int value )
   {
     if (onWrite( pos )) ;
     if ( pos >= size) size = (short)(pos+1);
@@ -98,12 +113,12 @@ public class IntBuffer
    * @param phr
    * @return
    */
-  public IntBuffer set( final IntBuffer buf )
+  public IntStack set( final IntStack stack )
   {
-    short newSize = buf.size;
+    int newSize = stack.size;
     onWrite( newSize-1 );
     size = newSize;
-    System.arraycopy( buf.data, 0, data, 0, newSize );
+    System.arraycopy( stack.data, 0, data, 0, newSize );
     return this;
   }
   public int[] toArray()
@@ -113,14 +128,14 @@ public class IntBuffer
     return ret;
   }
 
-  public IntBuffer set( final IntRoller roller )
+  public IntStack set( final IntRoller roller )
   {
     short newSize = (short)roller.size();
     onWrite( newSize-1 );
     size = newSize;
     int i=0;
     int iroll = roller.left;
-    while( i < size) {
+    while( i < size ) {
       data[i] = roller.get( iroll );
       i++;
       iroll++;
@@ -146,13 +161,13 @@ public class IntBuffer
   {
     if ( o == null ) return false;
     if ( o == this ) return true;
-    if ( o instanceof IntBuffer ) {
-      IntBuffer buf = (IntBuffer)o;
-      if ( buf.size != size ) return false;
+    if ( o instanceof IntStack ) {
+      IntStack stack = (IntStack)o;
+      if ( stack.size != size ) return false;
       onTest(); // sort if bag
-      buf.onTest(); // sort if bag
+      stack.onTest(); // sort if bag
       for (short i=0; i < size; i++ ) {
-        if ( buf.data[i] != data[i] ) return false;
+        if ( stack.data[i] != data[i] ) return false;
       }
       return true;
     }
@@ -179,6 +194,35 @@ public class IntBuffer
     }
     return false;
   }
+
+  
+  public void cache()
+  {
+    int size = this.size;
+    if ( size == 0 ) {
+      min = 0;
+      max = 0;
+      sum = 0;
+      avg = 0;
+      return;
+    }
+    int min = data[0];
+    int max = data[0];
+    long sum = data[0];
+    int val;
+    if ( size > 1 ) { 
+      for ( int i = 1; i < size; i++ ) {
+        val = data[i];
+        min = Math.min( min, val );
+        max = Math.max( max, val );
+        sum += val;
+      }
+    }
+    this.min = min;
+    this.max = max;
+    this.sum = sum;
+    avg = (double)sum/(double)size;
+  }
   
   @Override 
   public int hashCode() 
@@ -188,6 +232,7 @@ public class IntBuffer
     for ( int i=0; i < size; i++ ) {
       res = 31 * res + data[i];
     }
+    hash = res;
     return res;
   }
 
@@ -205,15 +250,15 @@ public class IntBuffer
 
   public static void main( String[] args ) throws IOException
   {
-    IntBuffer seq = new IntBuffer(4);
-    IntBuffer bag = new IntBuffer(4, true);
-    seq.append(4).append( 2 ).append( 3 );
+    IntStack seq = new IntStack(4);
+    IntStack bag = new IntStack(4, true);
+    seq.push(4).push( 2 ).push( 3 );
     System.out.println( seq );
-    bag.append(4).append( 2 ).append( 3 );
+    bag.push(4).push( 2 ).push( 3 );
     System.out.println( bag );
-    bag.append( 1 );
+    bag.push( 1 );
     System.out.println( bag );
-    bag.append( 3 );
+    bag.push( 3 );
     System.out.println( bag );
   }
 }

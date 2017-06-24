@@ -275,7 +275,7 @@ public class Lexik
    */
   public static boolean name( Occ occ )
   {
-    occ.orth( occ.graph() );
+    // if ( occ.orth().isEmpty() ) occ.orth( occ.graph() ); // ?
     NameEntry entry = Lexik.NAME.get( occ.orth() );
     if ( entry == null ) {
       occ.orth().capitalize();

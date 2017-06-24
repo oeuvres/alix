@@ -61,6 +61,8 @@ public class Tokenizer
     catch ( Exception e ) {
     }
   }
+  /** A term used for some testing */
+  private Term test = new Term();
   /** used to test the word after */ 
   private Term after = new Term();
   /** Keep memory of tag found */
@@ -188,6 +190,7 @@ public class Tokenizer
     if ( lexer.apply( occhere ) ) {
       // todo correct lem, according to rule
     }
+
     // if not, return current occurrence
     return occhere;
   }
@@ -215,7 +218,7 @@ public class Tokenizer
     // D’alors
     else if ( occ.graph().last() == '\'' ) {
       if ( occ.graph().isFirstUpper() ) {
-        String test = occ.graph().toLower().toString();
+        test = test.set( occ.graph() ).toLower();
         tmp = stem.get( test );
       }
       else {
@@ -329,6 +332,11 @@ public class Tokenizer
       }
       // delete t euphonique
       else if ( occ.orth().startsWith( "-t-" ) ) occ.orth().del( 3 );
+      // minus ?
+      else if ( occ.orth().length() == 1 ) {
+        occ.lem( "-" );
+        occ.tag( Tag.MATH );
+      }
       // other junctions
       else occ.orth().firstDel();
     }
@@ -346,6 +354,12 @@ public class Tokenizer
     // number ?
     else if ( Char.isDigit( c ) ) {
       occ.tag( Tag.DETnum );
+      return true;
+    }
+    // number ?
+    else if ( Char.isMath( c ) ) {
+      occ.tag( Tag.MATH );
+      occ.lem( occ.orth() );
       return true;
     }
     // upper case ?
@@ -808,29 +822,7 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = "<>"
-        + " travers. -Le roman de sa jeunesse"
-        + " P.S.,T.A.T., ADN, 67, rue de Billancourt, BOULOGNE (Seine)."
-        + " À l'envi de la terre étaler leurs appas. à l’envi pour sur-le-champ, à grand'peine. "
-        // + "\nIII. Là RODOGUNE.\n\n"
-        + "\n<l n=\"312\" xml:id=\"l312\">Seigneur, <p>s’il m’est permis d’entendre votre oracle,</l>"
-         // 123456789 123456789 123456789 123456789
-        + " <i>\nQuoiqu’</i>on en dise, romans de É. Cantat, M. Claude Bernard, D’Artagnan J’en tiens compte à l’Académie des Sciences morales. Mais il y a &amp; t&eacute;l&eacute; murmure-t-elle rendez-vous voulu pour 30 vous plaire, U.R.S.S. - attacher autre part"
-        + " , l'animal\\nc’est-à-dire parce qu’alors, non !!! Il n’y a vu que du feu."
-      //  + " De temps en temps, Claude Lantier promenait sa flânerie  "
-      //  + " avec Claude Bernard, Auguste Comte, et Joseph de Maistre. Geoffroy Saint-Hilaire."
-      //  + " Vient honorer ce beau jour  De son Auguste présence. "
-      //  + " Henri III. mlle Pardon, monsieur Morrel, dit Dantès "
-        + " De La Bruyère à La Rochefoucauld ce M. Claude Bernard, d’Artagnan."
-      //  + " écrit-il ? Geoffroy Saint-Hilaire"
-      //  + " Félix Le Dantec, Le Dantec, Jean de La Fontaine. La Fontaine. N'est-ce pas ? - La Rochefoucauld - Leibnitz… Descartes, René Descartes."
-      //  + " D’aventure au XIX<hi rend=\"sup\">e</hi>, Non.</div> Va-t'en à <i>Paris</i>."
-      //  + " M. Toulemonde\n\n n’est pas n’importe qui, "
-      //  + " Les Caractères de La Bruyère, La Rochefoucauld, La Fontaine. Es-tu OK ?"
-      //  + " D’abord, Je vois fort bien ce que tu veux dire."
-      //  + " <head> Livre I. <lb/>Les origines.</head>"
-      //  + " <div type=\"article\">"
-      //  + "   <head>Chapitre I. <lb/>Les Saxons.</head>"
-      //  + "   <div>"
+        + " J’aime, - j’aime."
         + " M<hi rend=\"sup\">me</hi> de Maintenon l’a payé 25 centimes. "
         + " au XIXe siècle. Chapitre II."
       //  + " Tu es dans la merde et dans la maison, pour quelqu’un, à d’autres. " 

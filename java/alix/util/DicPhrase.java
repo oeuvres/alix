@@ -39,7 +39,7 @@ public class DicPhrase
   /** Access by phrase */
   private HashMap<IntTuple, Ref> tupleDic = new HashMap<IntTuple, Ref>();
   /** A local mutable Phrase for testing in the Map of phrases, efficient but not thread safe */
-  private IntBuffer buffer = new IntBuffer( 8 );
+  private IntStack buffer = new IntStack( 8 );
   /** A local mutable String for locution insertion, not thread safe  */
   private Term token = new Term();
 
@@ -60,7 +60,7 @@ public class DicPhrase
     final int lim = compound.length();
     if ( lim == 0) return false;
     int code;
-    IntBuffer buffer = this.buffer.reset(); // take a ref to avoid a lookup
+    IntStack buffer = this.buffer.reset(); // take a ref to avoid a lookup
     Term token = this.token.reset(); // a temp mutable string
     for ( int i=0; i< lim; i++) {
       char c = compound.charAt( i );
@@ -70,7 +70,7 @@ public class DicPhrase
         if ( c == '’' || c == '\'' || i == lim-1 ) 
           token.append( c );
         code = words.add(token);
-        if ( code > senselevel ) buffer.append( code );
+        if ( code > senselevel ) buffer.push( code );
         token.reset();
         if ( c == '\t' || c == ';' ) break;
       }
@@ -93,7 +93,7 @@ public class DicPhrase
     return tupleDic.size();
   }
   
-  public int inc( final IntBuffer key ) {
+  public int inc( final IntStack key ) {
     Ref ref = tupleDic.get( key );
     occs++;
     if ( ref == null ) {
@@ -120,7 +120,7 @@ public class DicPhrase
    * @param buffer
    * @return ???
    */
-  public void label( final IntBuffer key, final String label ) {
+  public void label( final IntStack key, final String label ) {
     Ref ref = tupleDic.get( key );
     if ( ref == null ) return; // create it ?
     ref.label = label;
@@ -130,8 +130,8 @@ public class DicPhrase
     if ( ref == null ) return; // create it ?
     ref.label = label;
   }
-  public boolean contains( final IntBuffer intBuffer ) {
-    Ref ref = tupleDic.get( intBuffer );
+  public boolean contains( final IntStack intStack ) {
+    Ref ref = tupleDic.get( intStack );
     if ( ref == null ) return false;
     return true;
   }

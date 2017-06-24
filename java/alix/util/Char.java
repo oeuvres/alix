@@ -47,6 +47,7 @@ public class Char
   private static final short DIGIT = 0x0100;
   private static final short PUNsent = 0x0200;
   private static final short PUNcl = 0x0400;
+  private static final short MATH = 0x0800;
   public static final HashMap<String, Character>HTMLENT = new HashMap<String, Character>();
   static {
     BufferedReader buf = new BufferedReader(
@@ -206,7 +207,8 @@ public class Char
   {
     int type;
     // infinite loop when size = 65536, a char restart to 0
-    for (char c = 0; c < SIZE; c++) {      
+    for (char c = 0; c < SIZE; c++) {
+      type = Character.getType( c );
       short properties = 0x0;
       // DO NOT modify '<>' values
       
@@ -226,6 +228,9 @@ public class Char
       }
       else if (Character.isDigit( c )) {
         properties |= DIGIT | TOKEN;
+      }
+      else if ( type == Character.MATH_SYMBOL ) {
+        properties |= MATH;
       }
       else if (Character.isSpaceChar( c )) {
         properties |= SPACE; // Unicode classes, with unbreakable
@@ -292,6 +297,7 @@ public class Char
     if ( (props & DIGIT) > 0 ) sb.append( "DIGIT " );
     if ( (props & LOWERCASE) > 0 ) sb.append( "LOWERCASE " );
     if ( (props & UPPERCASE) > 0 ) sb.append( "UPPERCASE " );
+    if ( (props & MATH) > 0 ) sb.append( "MATH " );
     return sb.toString().trim();
   }
   
@@ -314,7 +320,15 @@ public class Char
   {
     return (CHARS[c] & LETTER) > 0;
   }
-  
+
+  /**
+   * Is a Mathematic symbol
+   */
+  public static boolean isMath( char c )
+  {
+    return (CHARS[c] & MATH) > 0;
+  }
+
   /**
    * Is Numeric
    * 
@@ -429,7 +443,7 @@ public class Char
   public static void main( String args[] )
   {
     // -
-    System.out.println( Char.props( '-' )+" "+Character.getType('-') );
+    System.out.println( Char.props( '+' )+" "+Character.getType('+') );
     // '. .'
     System.out.println( Character.getType( ' ' ) + " " + Character.isISOControl( ' ' )+ " "+ Char.isSpace( ' ' ));
     System.out.println( "� Char.isToken:"+Char.isToken( '�' ) // true
