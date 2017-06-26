@@ -4,77 +4,88 @@ import java.io.IOException;
 import java.util.Arrays;
 
 /**
- * A mutable list of ints.
- * Return a new int array at the right size when needed.
- * Not suitable as a key for a hash (mutable),
- * but implements an hashCode() compatible with IntTuple for testing presence in a HashMap.
+ * A mutable list of ints with useful metatdata, for example to calculate average.
+ * This object is not protected, for fast acess to fields, be careful to enjoy speed.
+ * Not suitable as a key for a hash (mutable).
  *
  * @author glorieux-f
- *
  */
-public class IntStack 
+public class IntSeries 
 {
   /** Internal data */
-  protected int[] data;
+  protected int[] data = new int[8];
   /** The mobile size */
   private int size;
   /** Precalculate hash */
   private int hash;
-  /** Full sum, for sorting */
-  public long sum;
+  /** Record a count event */
+  public int count;
+  /** Maybe used to keep some event memory */
+  public int last = -1;
+  /** A code, maybe used for a collection of stack */
+  final public int code;
+  /** Record a name, useful for collection  */
+  final public String label;
+  /** A class */
+  final public int cat;
   /** Min value */
   public int min;
   /** Max value */
   public int max;
+  /** Median value */
+  public int median;
+  /** Full sum, for average */
+  public long sum;
   /** Average */
   public double avg;
-  /** Maybe used to keep some event memory */
-  public int last = -1;
-  /** A name, useful for collection  */
-  public String label;
-  /** A code, maybe used for a collection of stack */
-  public int code;
+  /** standard deviation */
+  public double devstd;
   
-  /** If bag, values will be sorted before all operation  */
-  public final boolean bag;
-  /** For code readability */
-  public static final boolean BAG = true;
-  /** Avoid too much sort, only after a write */
-  private boolean sorted;
-  
-  public IntStack( )
+  public IntSeries( )
   {
-    data = new int[8];
-    bag = false;
+    label = null;
+    code = -1;
+    cat = -1;
   }
-  public IntStack( final IntStack stack )
+  public IntSeries( final String label )
   {
-    bag = stack.bag;
-    int max = stack.size;
-    this.size = max;
-    data = new int[max];
-    int[] newdata = stack.data; // perfs, avoid a lookup
-    for ( int i=0; i < max; i++ ) data[i] = newdata[i];
+    this.label = label;
+    code = -1;
+    cat = -1;
   }
-  public IntStack( final int capacity )
+  public IntSeries( final int code )
   {
-    bag = false;
-    data = new int[capacity];
-    size = 0;
+    this.label = null;
+    this.code = code;
+    cat = -1;
   }
-  public IntStack( final int capacity, final boolean bag )
+  public IntSeries( final int code, final int cat )
   {
-    this.bag = bag;
-    data = new int[capacity];
-    size = 0;
+    this.label = null;
+    this.code = code;
+    this.cat = cat;
   }
-  protected IntStack reset()
+  public IntSeries( final String label, final int cat )
+  {
+    this.label = label;
+    this.code = -1;
+    this.cat = cat;
+  }
+  public IntSeries( final String label, final int code, final int cat )
+  {
+    this.label = label;
+    this.code = code;
+    this.cat = cat;
+  }
+
+  protected IntSeries reset()
   {
     size = 0;
     hash = 0;
+    // todo recache ?
     return this;
   }
-  public IntStack push( int value )
+  public IntSeries push( int value )
   {
     onWrite( size);
     data[size] = value;
@@ -101,7 +112,7 @@ public class IntStack
     System.arraycopy( oldData, 0, data, 0, oldLength );
     return true;
   }
-  public IntStack set( int pos, int value )
+  public IntSeries set( int pos, int value )
   {
     if (onWrite( pos )) ;
     if ( pos >= size) size = (short)(pos+1);
@@ -113,12 +124,12 @@ public class IntStack
    * @param phr
    * @return
    */
-  public IntStack set( final IntStack stack )
+  public IntSeries set( final IntSeries series )
   {
-    int newSize = stack.size;
+    int newSize = series.size;
     onWrite( newSize-1 );
     size = newSize;
-    System.arraycopy( stack.data, 0, data, 0, newSize );
+    System.arraycopy( series.data, 0, data, 0, newSize );
     return this;
   }
   public int[] toArray()
@@ -128,7 +139,7 @@ public class IntStack
     return ret;
   }
 
-  public IntStack set( final IntRoller roller )
+  public IntSeries set( final IntRoller roller )
   {
     short newSize = (short)roller.size();
     onWrite( newSize-1 );
@@ -143,14 +154,6 @@ public class IntStack
     return this;
   }
 
-  /**
-   * Check value before test
-   * @return
-   */
-  private void onTest( )
-  {
-    if ( bag && !sorted ) Arrays.sort( data, 0, size );
-  }
 
   public int get(int pos)
   {
@@ -161,11 +164,9 @@ public class IntStack
   {
     if ( o == null ) return false;
     if ( o == this ) return true;
-    if ( o instanceof IntStack ) {
-      IntStack stack = (IntStack)o;
+    if ( o instanceof IntSeries ) {
+      IntSeries stack = (IntSeries)o;
       if ( stack.size != size ) return false;
-      onTest(); // sort if bag
-      stack.onTest(); // sort if bag
       for (short i=0; i < size; i++ ) {
         if ( stack.data[i] != data[i] ) return false;
       }
@@ -174,7 +175,6 @@ public class IntStack
     if ( o instanceof IntTuple ) {
       IntTuple tuple = (IntTuple)o;
       if ( tuple.size() != size ) return false;
-      onTest(); // sort if bag
       for (short i=0; i < size; i++ ) {
         if ( tuple.data[i] != data[i] ) return false;
       }
@@ -204,6 +204,7 @@ public class IntStack
       max = 0;
       sum = 0;
       avg = 0;
+      devstd = 0;
       return;
     }
     int min = data[0];
@@ -221,7 +222,23 @@ public class IntStack
     this.min = min;
     this.max = max;
     this.sum = sum;
-    avg = (double)sum/(double)size;
+    double avg = (double)sum/(double)size;
+    this.avg = avg;
+    double dev = 0;
+    for ( int i = 0; i < size; i++ ) {
+      long val2 = data[i];
+      dev += (avg-val2)*(avg-val2);
+    }
+    dev = Math.sqrt( dev / size );
+    this.devstd = dev;
+    // median
+    int[] dest = new int[size];
+    System.arraycopy( data, 0, dest, 0, size );
+    Arrays.sort( dest );
+    if ( dest.length % 2 == 0 )
+      median = ( dest[dest.length/2] + dest[dest.length/2 - 1]) / 2;
+    else
+      median = dest[dest.length/2];
   }
   
   @Override 
@@ -239,7 +256,6 @@ public class IntStack
   @Override
   public String toString()
   {
-    onTest();
     StringBuffer sb = new StringBuffer();
     for (int i=0; i < size; i++ ) {
       if ( i > 0 ) sb.append( ", " );
@@ -250,15 +266,5 @@ public class IntStack
 
   public static void main( String[] args ) throws IOException
   {
-    IntStack seq = new IntStack(4);
-    IntStack bag = new IntStack(4, true);
-    seq.push(4).push( 2 ).push( 3 );
-    System.out.println( seq );
-    bag.push(4).push( 2 ).push( 3 );
-    System.out.println( bag );
-    bag.push( 1 );
-    System.out.println( bag );
-    bag.push( 3 );
-    System.out.println( bag );
   }
 }

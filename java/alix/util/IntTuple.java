@@ -45,7 +45,7 @@ public class IntTuple implements Comparable<IntTuple>
    * Take a copy of an int buffer
    * @param tuple
    */
-  public IntTuple( IntStack buffer )
+  public IntTuple( IntSeries buffer )
   {
     int size = buffer.size();
     this.size = size;
@@ -134,8 +134,8 @@ public class IntTuple implements Comparable<IntTuple>
       }
       return true;
     }
-    if ( o instanceof IntStack ) {
-      IntStack buf = (IntStack)o;
+    if ( o instanceof IntSeries ) {
+      IntSeries buf = (IntSeries)o;
       if ( buf.size() != size ) return false;
       int i=size - 1;
       do {
@@ -198,7 +198,7 @@ public class IntTuple implements Comparable<IntTuple>
   {
     HashSet<IntTuple> set = new HashSet<IntTuple>();
     IntRoller roller = new IntRoller( 0, 1 );
-    IntStack buf = new IntStack();
+    IntSeries buf = new IntSeries();
     for ( int i=-5; i<=5; i++ ) {
       IntTuple tuple = new IntTuple( i, i+1 );
       set.add( tuple );

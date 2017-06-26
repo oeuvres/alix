@@ -58,9 +58,8 @@ public class IntRoller extends Roller {
    * @param pos
    * @return the primary value
    */
-  public IntRoller set(final int pos, final int value) 
+  public IntRoller set( final int pos, final int value )
   {
-    onWrite();
     int index = pointer(pos);
     // int old = data[ index ];
     data[ index ] = value;
@@ -69,9 +68,8 @@ public class IntRoller extends Roller {
   /**
    * Add a value at front
    */
-  public IntRoller push(final int value) 
+  public IntRoller push( final int value ) 
   {
-    onWrite();
     // int ret = data[ pointer( -left ) ];
     center = pointer( +1 );
     data[ pointer(right) ] = value;
@@ -83,7 +81,6 @@ public class IntRoller extends Roller {
    */
   public IntRoller clear()
   {
-    onWrite();
     int length = data.length;
     for ( int i = 0; i < length; i++ ) {
       data[i] = 0;
@@ -96,7 +93,6 @@ public class IntRoller extends Roller {
    */
   public IntRoller inc()
   {
-    onWrite();
     for( int i=0; i < size; i++) {
       data[i]++;
     }
@@ -108,24 +104,16 @@ public class IntRoller extends Roller {
    */
   public IntRoller dec()
   {
-    onWrite();
     for( int i=0; i < size; i++) {
       data[i]--;
     }
     return this;
   }
 
-  /**
-   * 
-   */
-  private void onWrite()
-  {
-    hash = 0;
-  }
   @Override 
   public int hashCode() 
   {
-    if ( hash != 0 ) return hash;
+    // no cache for hash, such roller change a lot
     int res = 17;
     for ( int i = left; i <= right; i++ ) {
       res = 31 * res + get(i);
@@ -135,9 +123,16 @@ public class IntRoller extends Roller {
   @Override
   public boolean equals(Object o)
   {
-    if (o == null) return false;
+    if ( o == null ) return false;
     if ( o == this ) return true;
-    if (o instanceof IntTuple) {
+    if ( o instanceof IntPair ) {
+      IntPair pair = (IntPair)o;
+      if ( size != 2 ) return false;
+      if ( get(0) != pair.val0 ) return false;
+      if ( get(1) != pair.val1 ) return false;
+      return true;
+    }
+    if ( o instanceof IntTuple ) {
       IntTuple tuple = (IntTuple)o;
       if ( tuple.size() != size ) return false;
       int ituple = tuple.size() - 1;
@@ -149,8 +144,8 @@ public class IntRoller extends Roller {
       } while( ituple >= 0 );
       return true;
     }
-    if (o instanceof IntStack) {
-      IntStack phr = (IntStack)o;
+    if ( o instanceof IntSeries ) {
+      IntSeries phr = (IntSeries)o;
       if ( phr.size() != size ) return false;
       int iphr=phr.size() - 1;
       int i=right;
@@ -161,7 +156,7 @@ public class IntRoller extends Roller {
       } while( iphr >= 0 );
       return true;
     }
-    if (o instanceof IntRoller) {
+    if ( o instanceof IntRoller ) {
       IntRoller roller = (IntRoller)o;
       if ( roller.size != size ) return false;
       int pos1 = left;

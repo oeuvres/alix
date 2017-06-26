@@ -39,7 +39,7 @@ public class DicPhrase
   /** Access by phrase */
   private HashMap<IntTuple, Ref> tupleDic = new HashMap<IntTuple, Ref>();
   /** A local mutable Phrase for testing in the Map of phrases, efficient but not thread safe */
-  private IntStack buffer = new IntStack( 8 );
+  private IntSeries buffer = new IntSeries();
   /** A local mutable String for locution insertion, not thread safe  */
   private Term token = new Term();
 
@@ -60,7 +60,7 @@ public class DicPhrase
     final int lim = compound.length();
     if ( lim == 0) return false;
     int code;
-    IntStack buffer = this.buffer.reset(); // take a ref to avoid a lookup
+    IntSeries buffer = this.buffer.reset(); // take a ref to avoid a lookup
     Term token = this.token.reset(); // a temp mutable string
     for ( int i=0; i< lim; i++) {
       char c = compound.charAt( i );
@@ -93,7 +93,7 @@ public class DicPhrase
     return tupleDic.size();
   }
   
-  public int inc( final IntStack key ) {
+  public int inc( final IntSeries key ) {
     Ref ref = tupleDic.get( key );
     occs++;
     if ( ref == null ) {
@@ -120,7 +120,7 @@ public class DicPhrase
    * @param buffer
    * @return ???
    */
-  public void label( final IntStack key, final String label ) {
+  public void label( final IntSeries key, final String label ) {
     Ref ref = tupleDic.get( key );
     if ( ref == null ) return; // create it ?
     ref.label = label;
@@ -130,8 +130,8 @@ public class DicPhrase
     if ( ref == null ) return; // create it ?
     ref.label = label;
   }
-  public boolean contains( final IntStack intStack ) {
-    Ref ref = tupleDic.get( intStack );
+  public boolean contains( final IntSeries key ) {
+    Ref ref = tupleDic.get( key );
     if ( ref == null ) return false;
     return true;
   }
