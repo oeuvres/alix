@@ -60,7 +60,8 @@ public class DicPhrase
     final int lim = compound.length();
     if ( lim == 0) return false;
     int code;
-    IntSeries buffer = this.buffer.reset(); // take a ref to avoid a lookup
+    IntSeries buffer = this.buffer; // take a ref to avoid a lookup
+    buffer.reset();
     Term token = this.token.reset(); // a temp mutable string
     for ( int i=0; i< lim; i++) {
       char c = compound.charAt( i );

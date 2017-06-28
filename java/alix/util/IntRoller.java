@@ -12,7 +12,8 @@ import java.util.HashSet;
  *
  * @param <T>
  */
-public class IntRoller extends Roller {
+public class IntRoller extends Roller 
+{
   /** Data of the sliding window */
   private int[] data;
   /** Cached HashCode */
@@ -211,6 +212,9 @@ public class IntRoller extends Roller {
       System.out.println(win);
     }
     HashSet<IntTuple> set = new HashSet<IntTuple>();
+    for ( int i=1; i<100; i++ ) {
+      set.add( new IntTuple( 0, i ) );
+    }
     set.add( new IntTuple( 1, 2) );
     System.out.println( set );
     set.add( new IntTuple( 1, 2) );

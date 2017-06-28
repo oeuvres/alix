@@ -1,6 +1,5 @@
 package alix.util;
 
-import java.io.IOException;
 import java.util.Arrays;
 
 /**
@@ -10,14 +9,8 @@ import java.util.Arrays;
  *
  * @author glorieux-f
  */
-public class IntSeries 
+public class IntSeries extends IntList
 {
-  /** Internal data */
-  protected int[] data = new int[8];
-  /** The mobile size */
-  private int size;
-  /** Precalculate hash */
-  private int hash;
   /** Record a count event */
   public int count;
   /** Maybe used to keep some event memory */
@@ -33,7 +26,7 @@ public class IntSeries
   /** Max value */
   public int max;
   /** Median value */
-  public int median;
+  public int[] decile = new int[11];
   /** Full sum, for average */
   public long sum;
   /** Average */
@@ -41,36 +34,70 @@ public class IntSeries
   /** standard deviation */
   public double devstd;
   
+  /**
+   * Constructor with no metadata.
+   */
   public IntSeries( )
   {
+    super();
     label = null;
     code = -1;
     cat = -1;
   }
+  
+  /**
+   * Constructore with label.
+   * @param label
+   */
   public IntSeries( final String label )
   {
+    super();
     this.label = label;
     code = -1;
     cat = -1;
   }
+  
+  /**
+   * Constructor with a code.
+   * @param code
+   */
   public IntSeries( final int code )
   {
     this.label = null;
     this.code = code;
     cat = -1;
   }
+  
+  /**
+   * Constructor with a code and a category.
+   * @param code
+   * @param cat
+   */
   public IntSeries( final int code, final int cat )
   {
     this.label = null;
     this.code = code;
     this.cat = cat;
   }
+  
+  /**
+   * Constructor with a label and a category.
+   * @param label
+   * @param cat
+   */
   public IntSeries( final String label, final int cat )
   {
     this.label = label;
     this.code = -1;
     this.cat = cat;
   }
+  
+  /**
+   * Constructor with a label, a code, and a category.
+   * @param label
+   * @param code
+   * @param cat
+   */
   public IntSeries( final String label, final int code, final int cat )
   {
     this.label = label;
@@ -78,124 +105,9 @@ public class IntSeries
     this.cat = cat;
   }
 
-  protected IntSeries reset()
-  {
-    size = 0;
-    hash = 0;
-    // todo recache ?
-    return this;
-  }
-  public IntSeries push( int value )
-  {
-    onWrite( size);
-    data[size] = value;
-    size++;
-    return this;
-  }
-  public int size()
-  {
-    return size;
-  }
   /**
-   * Call it before write
-   * @param position
-   * @return true if resized (? good ?)
+   * Cache statistic values.
    */
-  private boolean onWrite( final int position )
-  {
-    hash = 0;
-    if ( position < data.length ) return false;
-    final int oldLength = data.length;
-    final int[] oldData = data;
-    int capacity = Calcul.nextSquare( position + 1 );
-    data = new int[capacity];
-    System.arraycopy( oldData, 0, data, 0, oldLength );
-    return true;
-  }
-  public IntSeries set( int pos, int value )
-  {
-    if (onWrite( pos )) ;
-    if ( pos >= size) size = (short)(pos+1);
-    data[pos] = value;
-    return this;
-  }
-  /**
-   * Copy data from another Phrase, keep mode of source object (bag or seq)
-   * @param phr
-   * @return
-   */
-  public IntSeries set( final IntSeries series )
-  {
-    int newSize = series.size;
-    onWrite( newSize-1 );
-    size = newSize;
-    System.arraycopy( series.data, 0, data, 0, newSize );
-    return this;
-  }
-  public int[] toArray()
-  {
-    int[] ret = new int[size];
-    System.arraycopy( data, 0, ret, 0, size );
-    return ret;
-  }
-
-  public IntSeries set( final IntRoller roller )
-  {
-    short newSize = (short)roller.size();
-    onWrite( newSize-1 );
-    size = newSize;
-    int i=0;
-    int iroll = roller.left;
-    while( i < size ) {
-      data[i] = roller.get( iroll );
-      i++;
-      iroll++;
-    }
-    return this;
-  }
-
-
-  public int get(int pos)
-  {
-    return data[pos];
-  }
-  @Override
-  public boolean equals(Object o)
-  {
-    if ( o == null ) return false;
-    if ( o == this ) return true;
-    if ( o instanceof IntSeries ) {
-      IntSeries stack = (IntSeries)o;
-      if ( stack.size != size ) return false;
-      for (short i=0; i < size; i++ ) {
-        if ( stack.data[i] != data[i] ) return false;
-      }
-      return true;
-    }
-    if ( o instanceof IntTuple ) {
-      IntTuple tuple = (IntTuple)o;
-      if ( tuple.size() != size ) return false;
-      for (short i=0; i < size; i++ ) {
-        if ( tuple.data[i] != data[i] ) return false;
-      }
-      return true;
-    }
-    if ( o instanceof IntRoller ) {
-      IntRoller roll = (IntRoller)o;
-      if ( roll.size != size ) return false;
-      int i=size - 1;
-      int iroll=roll.right;
-      do {
-        if ( roll.get( iroll ) != data[i] ) return false;
-        i--;
-        iroll--;
-      } while( i >= 0 );
-      return true;
-    }
-    return false;
-  }
-
-  
   public void cache()
   {
     int size = this.size;
@@ -235,36 +147,24 @@ public class IntSeries
     int[] dest = new int[size];
     System.arraycopy( data, 0, dest, 0, size );
     Arrays.sort( dest );
-    if ( dest.length % 2 == 0 )
-      median = ( dest[dest.length/2] + dest[dest.length/2 - 1]) / 2;
-    else
-      median = dest[dest.length/2];
+    
+    double part = dest.length / 10.0;
+    for ( int i=0; i<10; i++ ) {
+      double point = i * part;
+      decile[i] = dest[(int)point];
+      // else decil[i] = (dest[(int)floor] + dest[(int)floor-1])/2; // why average ?
+    }
+    decile[10] = dest[size-1];
   }
   
-  @Override 
-  public int hashCode() 
+  /**
+   * Get a d
+   * @param n
+   * @return
+   */
+  public int decile( int n )
   {
-    if ( hash != 0 ) return hash;
-    int res = 17;
-    for ( int i=0; i < size; i++ ) {
-      res = 31 * res + data[i];
-    }
-    hash = res;
-    return res;
+    return decile[n];
   }
-
-  @Override
-  public String toString()
-  {
-    StringBuffer sb = new StringBuffer();
-    for (int i=0; i < size; i++ ) {
-      if ( i > 0 ) sb.append( ", " );
-      sb.append( data[i] );
-    }
-    return sb.toString();
-  }
-
-  public static void main( String[] args ) throws IOException
-  {
-  }
+  
 }

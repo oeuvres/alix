@@ -1,8 +1,5 @@
 package alix.util;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
 
 /**
  * A fixed list of ints.
@@ -13,62 +10,25 @@ import java.util.HashSet;
 public class IntTuple implements Comparable<IntTuple>
 {
   /** Internal data (mutable from ouside ?) */
-  public final int[] data;
-  /** HashCode cache */
-  private int hash;
+  protected int[] data; // could be final for a tuple
   /** Size of tuple  */
-  private final int size;
-  
-  /**
-   * Copy a 
-   */
-  public IntTuple( int[] data )
-  {
-    this.size = data.length;
-    this.data = new int[size];
-    System.arraycopy( data, 0, this.data, 0, size );
-  }
-  
-  /**
-   * Take a copy of a tuple
-   * @param tuple
-   */
-  public IntTuple( IntTuple tuple )
-  {
-    int length = tuple.data.length;
-    this.size = length;
-    data = new int[length];
-    System.arraycopy( tuple.data, 0, data, 0, length );
-  }
+  protected int size; // could be final for a tuple
+  /** HashCode cache */
+  protected int hash; // could be final for a tuple
 
   /**
-   * Take a copy of an int buffer
-   * @param tuple
+   * Empty constructor, no sense for a non mutable Tuple, but useful for mutable.
    */
-  public IntTuple( IntSeries buffer )
+  public IntTuple( )
   {
-    int size = buffer.size();
-    this.size = size;
-    data = new int[size];
-    System.arraycopy( buffer.data, 0, data, 0, size );
+    data = new int[4];
   }
-  /**
-   * Take a copy of an int roller
-   * @param roller
-   */
-  public IntTuple( IntRoller roller )
-  {
-    this.size = roller.size();
-    data = new int[size];
-    int lim = roller.right;
-    int j = 0;
-    for ( int i = roller.left; i < lim; i++ ) {
-      data[j] = roller.get( i );
-      j++;
-    }
-  }
-
   
+  /**
+   * Build a pair
+   * @param a
+   * @param b
+   */
   public IntTuple( int a, int b )
   {
     size = 2;
@@ -76,6 +36,13 @@ public class IntTuple implements Comparable<IntTuple>
     data[0] = a;
     data[1] = b;
   }
+  
+  /**
+   * Build a 3-tuple
+   * @param a
+   * @param b
+   * @param c
+   */
   public IntTuple( int a, int b, int c )
   {
     size = 3;
@@ -84,6 +51,14 @@ public class IntTuple implements Comparable<IntTuple>
     data[1] = b;
     data[2] = c;
   }
+  
+  /**
+   * Build a 4-tuple 
+   * @param a
+   * @param b
+   * @param c
+   * @param d
+   */
   public IntTuple( int a, int b, int c, int d )
   {
     size = 4;
@@ -94,35 +69,123 @@ public class IntTuple implements Comparable<IntTuple>
     data[3] = d;
   }
 
-  /*
-  public IntTuple set( final IntRoller roll )
+  /**
+   * Take a copy of an int array.
+   * @param data
+   */
+  public IntTuple( int[] data )
   {
-    short newSize = (short)roll.size;
-    onWrite( newSize-1 );
-    length = newSize;
-    int i=0;
-    int iroll=roll.left;
-    while( i < length) {
-      data[i] = roll.get( iroll );
-      i++;
-      iroll++;
-    }
-    return this;
+    this.data = new int[data.length];
+    set( data );
   }
-  */
-  public int size()
+  
+  /**
+   * Take a copy of an int array.
+   * @param data
+   */
+  protected void set( int[] data )
   {
-    return size;
+    this.size = data.length;
+    onWrite( this.size - 1 );
+    System.arraycopy( data, 0, this.data, 0, size );
+  }
+  
+  /**
+   * Build a tuple from another tuple.
+   * @param tuple
+   */
+  public IntTuple( IntTuple tuple )
+  {
+    data = new int[tuple.size];
+    set( tuple );
   }
 
+  /**
+   * Take a copy of another set.
+   * @param tuple
+   */
+  protected void set( IntTuple tuple )
+  {
+    int length = tuple.size;
+    this.size = length;
+    onWrite( length - 1 );
+    System.arraycopy( tuple.data, 0, data, 0, length );
+  }
+  
+  /**
+   * Take a copy of an int roller
+   * @param roller
+   */
+  public IntTuple( IntRoller roller )
+  {
+    data = new int[roller.size()];
+    set( roller );
+  }
+
+  /**
+   * Take a copy of an int roller
+   * @param roller
+   */
+  protected void set( IntRoller roller )
+  {
+    this.size = roller.size();
+    onWrite( this.size - 1 );
+    int lim = roller.right;
+    int j = 0;
+    for ( int i = roller.left; i < lim; i++ ) {
+      data[j] = roller.get( i );
+      j++;
+    }
+  }
+
+  /**
+   * Call it before write
+   * @param position
+   * @return true if resized (? good ?)
+   */
+  protected boolean onWrite( final int position )
+  {
+    hash = 0;
+    if ( position < data.length ) return false;
+    final int oldLength = data.length;
+    final int[] oldData = data;
+    int capacity = Calcul.nextSquare( position + 1 );
+    data = new int[capacity];
+    System.arraycopy( oldData, 0, data, 0, oldLength );
+    return true;
+  }
+
+  /**
+   * Get int at a position.
+   * @param pos
+   * @return
+   */
   public int get(int pos)
   {
     return data[pos];
   }
-  
+  /**
+   * Size of data.
+   * @return
+   */
+  public int size()
+  {
+    return size;
+  }
+  /**
+   * 
+   * @return
+   */
+  public int[] toArray()
+  {
+    int[] ret = new int[size];
+    System.arraycopy( data, 0, ret, 0, size );
+    return ret;
+  }
+
   
   @Override
-  public boolean equals(Object o)
+  public boolean equals( Object o )
   {
     if ( o == null ) return false;
     if ( o == this ) return true;
@@ -132,16 +195,6 @@ public class IntTuple implements Comparable<IntTuple>
       for (short i=0; i < size; i++ ) {
         if ( phr.data[i] != data[i] ) return false;
       }
-      return true;
-    }
-    if ( o instanceof IntSeries ) {
-      IntSeries buf = (IntSeries)o;
-      if ( buf.size() != size ) return false;
-      int i=size - 1;
-      do {
-        if ( buf.data[i] != data[i] ) return false;
-        i--;
-      } while( i >= 0 );
       return true;
     }
     if ( o instanceof IntRoller ) {
@@ -194,20 +247,5 @@ public class IntTuple implements Comparable<IntTuple>
     return sb.toString();
   }
 
-  public static void main( String[] args ) throws IOException
-  {
-    HashSet<IntTuple> set = new HashSet<IntTuple>();
-    IntRoller roller = new IntRoller( 0, 1 );
-    IntSeries buf = new IntSeries();
-    for ( int i=-5; i<=5; i++ ) {
-      IntTuple tuple = new IntTuple( i, i+1 );
-      set.add( tuple );
-      roller.push( i ).push( i+1 );
-      buf.reset();
-      buf.set( 0, i ).set( 1, i+1 );
-      System.out.println( tuple.equals( roller )+" "+roller.equals( tuple )+" "+tuple.equals( buf )
-      +" "+set.contains( buf )+" "+set.contains( roller )+" "+tuple.hashCode()+" = "+roller.hashCode()+" = "+buf.hashCode() );
-    }
-  }
 
 }
