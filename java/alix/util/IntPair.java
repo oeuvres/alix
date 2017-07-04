@@ -1,7 +1,6 @@
 package alix.util;
 
-import java.io.IOException;
-import java.util.Arrays;
+
 
 /**
  * A mutable pair of ints.

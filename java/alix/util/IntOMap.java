@@ -375,7 +375,7 @@ public class IntOMap<E>
    * Testing the object performances
    * @throws IOException 
    */
-  public static void main(Term[] args) throws IOException 
+  public static void main( String[] args ) throws IOException 
   {
     // french letter in frequency order
     String letters = "easitnrulodcmpévfqgbhàjxèêyMELCzIPDAçSâJBVOTûùRôNîFœHQUGÀÉÇïkZwKWXëYÊÔŒÈüÂÎæäÆ";

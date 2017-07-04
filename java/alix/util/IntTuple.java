@@ -9,7 +9,7 @@ package alix.util;
  */
 public class IntTuple implements Comparable<IntTuple>
 {
-  /** Internal data (mutable from ouside ?) */
+  /** Internal data */
   protected int[] data; // could be final for a tuple
   /** Size of tuple  */
   protected int size; // could be final for a tuple
