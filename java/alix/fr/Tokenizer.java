@@ -110,11 +110,10 @@ public class Tokenizer
       pointer = pos+12;
     }
     end = text.length();
-    // if ( !xml ) System.out.println( "Pas XML ?" );
+    if ( !xml ) System.out.println( "Pas XML ?" );
     // on fait quoi ?
-    if ( text.isEmpty()) this.text="";
-    else if ( !Char.isToken( text.charAt( end - 1 ) )) this.text = text;
-    else this.text = text + "\n"; // this hack will avoid lots of tests
+    // System.out.println( "last char ? "+text.charAt( end - 1 ));
+    this.text = text + "\n"; // this hack will avoid lots of tests
     // start the buffer of occurrences, fill it with the needed occurrences for the larger rule on the right size 
     occhere = occbuf.first();
     maxright = lexer.maxright();
@@ -567,16 +566,17 @@ public class Tokenizer
         }
       }
 
-      c2 = text.charAt( pos+1 );
       if ( c == '[' && !graph.isEmpty() ); // [rue] E[mile] D[esvaux]
       else if ( c == 0xAD ); // &shy; soft hyphen do not append, go next
       else if ( c == ' ' ) { System.out.println( "?? CTRL" );} // unknown char inside XML flow, breaking Excel copy/paste
       // test if there is a number after comma, if not, break here
       else if ( c == ',' ) {
+        c2 = text.charAt( pos+1 );
         if ( Char.isDigit( c2 ) ) graph.append( c ); // 15,5
         else break; // word,word
       }
       else if ( c == '.' ) {
+        c2 = text.charAt( pos+1 );
         if ( Char.isLetter( c2 ) ) graph.append( c ); // U.K.N.O.W.N
         // TODO Fin de Phr. La phrase recommence.
         else if ( !Char.isToken( c2 ) || c2 == ',' ) { // end 

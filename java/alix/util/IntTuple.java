@@ -1,5 +1,6 @@
 package alix.util;
 
+import java.util.Arrays;
 
 /**
  * A fixed list of ints.
@@ -178,9 +179,22 @@ public class IntTuple implements Comparable<IntTuple>
    */
   public int[] toArray()
   {
-    int[] ret = new int[size];
-    System.arraycopy( data, 0, ret, 0, size );
-    return ret;
+    return toArray( null );
+  }
+
+  /**
+   * Fill the provided array with sorted values, or create new if null provided
+   * @param dest
+   * @return
+   */
+  public int[] toArray( int[] dest )
+  {
+    if ( dest == null ) dest = new int[size];
+    int lim = Math.min( dest.length, size );
+    System.arraycopy( data, 0, dest, 0, lim );
+    // if provided array is bigger than size, do not sort with other values
+    Arrays.sort( dest, 0, lim );
+    return dest;
   }
 
   

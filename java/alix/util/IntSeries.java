@@ -144,9 +144,7 @@ public class IntSeries extends IntList
     dev = Math.sqrt( dev / size );
     this.devstd = dev;
     // median
-    int[] dest = new int[size];
-    System.arraycopy( data, 0, dest, 0, size );
-    Arrays.sort( dest );
+    int[] dest = toArray();
     
     double part = dest.length / 10.0;
     for ( int i=0; i<10; i++ ) {
@@ -158,7 +156,7 @@ public class IntSeries extends IntList
   }
   
   /**
-   * Get a d
+   * Get a decile
    * @param n
    * @return
    */
