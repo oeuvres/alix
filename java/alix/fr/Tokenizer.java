@@ -71,12 +71,13 @@ public class Tokenizer
   private int evstruct;
   /** XML  */
   private static final int EVNUL = 0;
-  private static final int EVP=1;
-  private static final int EVL=2;
+  private static final int EVDIV=1;
+  private static final int EVP=2;
+  private static final int EVL=4;
   private static final HashSet<String> EVP_TAG = new HashSet<String>();
   static {
     for (String w: new String[]{
-      "div", "head", "h1", "h2", "h3", "h4", "h5", "h6", "p", "q", "quote", "sp", "speaker"
+      "/head", "/h1", "/h2", "/h3", "/h4", "/h5", "/h6", "/p", "/quote", "/sp", "/speaker"
     }) EVP_TAG.add( w );
   }
   /** French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel */
@@ -96,21 +97,32 @@ public class Tokenizer
     }) ELLISION.add( w );
   } 
   
+  public Tokenizer( String text ) 
+  {
+    this( text, null );
+  }
   /**
    * Constructor, give complete text in a String, release file handle.
    * @param text
    */
-  public Tokenizer(String text) 
+  public Tokenizer(String text, final Boolean xml) 
   {
-    if ( text.charAt( 0 ) == '<') xml = true;
+    if ( xml != null ) {
+      this.xml = xml;
+    }
+    else {
+      int pos = 0;
+      while ( Char.isSpace( text.charAt( pos )) ) pos++;
+      this.xml = ( text.charAt( pos ) == '<');
+    }
     // useful for TEI files
-    int pos = text.indexOf( "</teiHeader>" );
-    if (pos > 0) {
-      xml = true;
-      pointer = pos+12;
+    int pos = text.indexOf( "<teiHeader>" );
+    if ( pos > 0 && pos < 500 ) {
+      pos = text.indexOf( "</teiHeader>" );
+      if ( pos > 0 ) pointer = pos;
+      this.xml = true;
     }
     end = text.length();
-    if ( !xml ) System.out.println( "Pas XML ?" );
     // on fait quoi ?
     // System.out.println( "last char ? "+text.charAt( end - 1 ));
     this.text = text + "\n"; // this hack will avoid lots of tests
@@ -346,7 +358,7 @@ public class Tokenizer
       if ( !occ.tag().isEmpty() ); // déjà fixé, evstruct
       else if ( Char.isPUNsent( c ) ) occ.tag( Tag.PUNsent );
       else if ( Char.isPUNcl( c ) ) occ.tag( Tag.PUNcl );
-      else if ( c == '/' || c=='¶' ) occ.tag( Tag.PUNdiv );
+      else if ( c == '/' || c=='¶' || c=='§'  ) occ.tag( Tag.PUNdiv );
       else occ.tag( Tag.PUN );
       return true;
     }
@@ -438,24 +450,21 @@ public class Tokenizer
       lastchar = c;
       c = text.charAt( pos );
       pos++;
-      if (Char.isSpace( c )) continue;
       // not XML, do not enter in tests after
       if ( !xml );
       // TODO a nicer XML parser stack
       else if ( tagrec && c == '>' ) { // end of tag
         tagrec = false;
+        if ( elname.equals( "div" ) || elname.equals( "section" ) ) evstruct |= EVDIV;
         if ( EVP_TAG.contains( elname ) ) evstruct |= EVP;
-        if ( elname.equals( "l" ) ) evstruct |= EVL;
+        if ( elname.equals( "/l" ) ) evstruct |= EVL;
         continue;
       }
       else if ( tagrec ) { // inside tag
-        if ( c == '/' ) continue;
-        else if ( !namerec ) continue;
-        else if ( c == ' ' ) {
-          namerec = false;
-          continue;
-        }
-        elname.append( c );
+        // if ( c == '/' ) continue; // enregistrer la fin de balise
+        if ( !namerec );
+        else if ( c == ' ' ) namerec = false;
+        else elname.append( c );
         continue;
       }
       else if ( c == '<' ) {  // start tag
@@ -464,6 +473,8 @@ public class Tokenizer
         namerec = true;
         continue;
       }
+      // jump spaces when not inside an xml tag
+      if (Char.isSpace( c )) continue;
       // do not create a token on \n, but let \"
       if ( c == '\\' ) {
         char c2 = text.charAt( pos );
@@ -503,7 +514,8 @@ public class Tokenizer
       // create a token here
       occ.start( lastpos );
       occ.end( lastpos );
-      if ( (evstruct & EVP) > 0 ) occ.graph( "¶" );
+      if ( (evstruct & EVDIV) > 0 ) occ.graph( "§" );
+      else if ( (evstruct & EVP) > 0 ) occ.graph( "¶" );
       else if ( (evstruct & EVL) > 0 ) occ.graph( "/" );
       occ.tag( Tag.PUNdiv );
       return pos;
@@ -794,42 +806,15 @@ public class Tokenizer
    */
   public static void main( String[] args) 
   {
-    /*
-    String mots = " le la les des de du d' ";
-    long loops = 100000000;
-    HashSet<String> set = new HashSet<String>(7); 
-    for ( String mot: mots.split( " " )) set.add( mot );
-    long test=0;
-    long time = System.nanoTime();
-    for ( int i = 0 ; i < loops; i++) {
-      if (mots.contains( " d' " )) test++;
-    }
-    System.out.println( test+" en "+ 1000000*(System.nanoTime() - time)+" ms" );
-    // 1279928744000000 ms
-    
-    
-    time = System.nanoTime();
-    for ( int i = 0 ; i < loops; i++) {
-      if ( set.contains( "d'" ) ) test++;
-    }
-    System.out.println( test+" en "+ (System.nanoTime() - time) +" ms" );
-    // 137814735 ms
-    
-    System.exit( 1 );
-    */
     // maybe useful, the path of the project, but could be not consistent with 
     // Path context = Paths.get(Tokenizer.class.getClassLoader().getResource("").getPath()).getParent();
     if ( true || args.length < 1) {
       String text;
       text = "<>"
-        + " J’aime, - j’aime."
-        + " M<hi rend=\"sup\">me</hi> de Maintenon l’a payé 25 centimes. "
-        + " au XIXe siècle. Chapitre II."
-      //  + " Tu es dans la merde et dans la maison, pour quelqu’un, à d’autres. " 
-      //  + " Ce  travail obscurément réparateur est un chef-d'oeuvre d’emblée, à l'instar."
-      //   + " Parce que s'il on en croit l’intrus, d’abord, M., lorsqu’on va j’aime ce que C’était &amp; D’où es-tu ? "
+        + " J’aime, - <p>j’aime.</p> <l>Un vers</l>"
+        + " lol <div xml:id=\"LOL\">M<hi rend=\"sup\">me</hi> de Maintenon l’a payé 25 centimes. "
+        + " au XIXe siècle. Chapitre II.</div>"
       ;
-      // text = "— D'abord, M. Racine, j’aime ce casse-tête parce que voyez-vous, c’est de <i>Paris.</i>.. \"Et voilà !\" s'écria-t'il.";
       Tokenizer toks = new Tokenizer(text);
       Occ occ = new Occ();
       while ( (occ =toks.word( )) != null ) {

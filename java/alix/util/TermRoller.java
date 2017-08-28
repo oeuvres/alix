@@ -1,5 +1,10 @@
 package alix.util;
 
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+import alix.util.IntOTop.TopIterator;
+
 /**
  * Efficient Object to handle a sliding window of mutable String (Term), 
  * Works like a circular array that you can roll on a token line.
@@ -8,7 +13,7 @@ package alix.util;
  *
  * @param <T>
  */
-public class TermRoller extends Roller {
+public class TermRoller extends Roller implements Iterable<Term> {
   /** Data of the sliding window */
   private final Term[] data;
   
@@ -90,6 +95,47 @@ public class TermRoller extends Roller {
     data[ pointer(right) ].replace( value );
   }
   /**
+   * Add a value by the end
+   */
+  public void push(final Term value) 
+  {
+    // Term ret = data[ pointer( -left ) ];
+    center = pointer( +1 );
+    data[ pointer(right) ].replace( value );
+  }
+  /**
+   *  A private class that implements iteration.
+   * @author glorieux-f
+   */
+  class TermIterator implements Iterator<Term>
+  {
+    int current = left;  // the current element we are looking at
+
+    /**
+     * If cursor is less than size, return OK.
+     */
+    public boolean hasNext()
+    {
+      if ( current <= right ) return true;
+      else return false;
+    }
+
+    /**
+     * Return current element 
+     */
+    public Term next() 
+    {
+      if ( !hasNext() ) throw new NoSuchElementException();
+      return data[pointer(current++)];
+    }
+  }
+  @Override
+  public Iterator<Term> iterator() {
+    return new TermIterator();
+  }
+
+
+  /**
    * Show window content
    */
   public String toString() {
@@ -117,6 +163,9 @@ public class TermRoller extends Roller {
     for (String token: text.split( " " )) {
       win.push( token );
       System.out.println(win);
+    }
+    for ( Term s: win ) {
+      System.out.println(s);
     }
   }
 }

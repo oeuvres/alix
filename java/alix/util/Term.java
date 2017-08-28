@@ -8,8 +8,9 @@ import java.util.Arrays;
 /**
  * A mutable string implementation thought for efficiency more than security.
  * The hash function is same as String so that a Term can be found in a Set<String>.
- * The same internal char array could be shared by multiple Term instances (with different offset and len),
- * allowing to scan 
+ * The same internal char array could be shared by multiple Term instances (with different offset and len).
+ * Some convenient methods are provided for lexical terms, 
+ * for case, and glob searching (prefix and/or suffix search).
  * 
  * @author glorieux-f
  */
