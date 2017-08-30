@@ -219,7 +219,7 @@ public class Tokenizer
     else if ( occ.tag().isName() ) {
       return stem.get( "NAME" );
     }
-    // verb, test lem for locution
+    // verb, test lem for locution — pb for “mise{mettre} en œuvre”
     else if ( occ.tag().isVerb() ) {
       tmp = stem.get( occ.lem() );
       // n’importe quoi
@@ -373,13 +373,21 @@ public class Tokenizer
       occ.lem( occ.orth() );
       return true;
     }
-    // upper case ?
+    // upper case
     else if ( Char.isUpperCase( c ) ) {
       // known as name, get it
       if ( Lexik.name( occ ) ) return true;
       // test to lower, to see if it is a know word
       occ.orth().toLower();
       if ( Lexik.word( occ ) ) return true;
+      // Evolution ? > évolution ; TODO FREDERIC > Frédéric
+      String lc = Lexik.CAPS.get( occ.graph() );
+      if ( lc != null ) {
+        occ.orth( lc.toLowerCase() );
+        Lexik.word( occ );
+        return true;
+      }
+      // seems unknown name
       // restore original graph, and do better job
       occ.orth( occ.graph() );
       // occ.orth().capitalize(); // do not normalize, keep ADN, NRF
@@ -388,9 +396,6 @@ public class Tokenizer
       /*
       // BOULOGNE -> Boulogne, U.S.A.
       occ.orth().normCase();
-      // Evolution ? > évolution ; TODO FREDERIC > Frédéric
-      String lc = Lexik.CAPS.get( occ.graph() );
-      if ( lc != null ) occ.orth( lc );
       // test first if upper case is known as a name (keep Paris: town, do not give paris: bets) 
       
       // U.R.S.S. but not M.
@@ -811,7 +816,7 @@ public class Tokenizer
     if ( true || args.length < 1) {
       String text;
       text = "<>"
-        + " J’aime, - <p>j’aime.</p> <l>Un vers</l>"
+        + " J’aime, - <p>j’aime.</p> l’Etat <l>Mise en œuvre, la mise en oeuvre</l>"
         + " lol <div xml:id=\"LOL\">M<hi rend=\"sup\">me</hi> de Maintenon l’a payé 25 centimes. "
         + " au XIXe siècle. Chapitre II.</div>"
       ;

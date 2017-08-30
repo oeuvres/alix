@@ -677,6 +677,7 @@ nulle part;ADV
 off the record;ADV
 par ailleurs;ADV;
 par mégarde;ADV;
+par écrit;ADV
 peu à peu;ADV;
 peu ou prou;ADV;
 plutôt deux fois que une;ADV;
@@ -746,6 +747,8 @@ mettre en examen;VERB
 mettre en peine;VERB
 prendre contact;VERB
 prendre du plaisir;VERB
+prendre en compte;VERB
+prendre en charge;VERB
 prendre garde;VERB
 prendre l’air;VERB
 prendre la peine;VERB
@@ -883,6 +886,9 @@ commedia dell'arte;SUB
 conférence de presse;SUB
 connaissance de cause;SUB
 conseil d'administration;SUB
+conseil d'Etat;SUB;Conseil d'État
+conseil d'état;SUB;Conseil d'État
+conseil d'etat;SUB;Conseil d'État
 conseil général;SUB
 conseiller général;SUB
 corn flakes;SUB
@@ -914,6 +920,7 @@ coup de vent;SUB
 coups de vent;SUB
 coups et blessures;SUB
 coups et blessures aggravés;SUB
+cour d'assises;SUB
 courrier électronique;SUB
 cri de joie;SUB
 critique d'art;SUB
@@ -943,6 +950,7 @@ enfant de chœur;SUB
 enfants de chœur;SUB
 enfant de choeur;SUB;enfant de chœur
 enfants de choeur;SUB;enfants de chœur
+état civil;SUB
 face à face;SUB
 fast food;SUB
 fauteuil roulant;SUB
@@ -1083,6 +1091,10 @@ Ministre des Affaires étrangères;SUB
 ministre des finances;SUB;ministre des Finances
 ministre des Finances;SUB
 minus habens;SUB
+mise en cause;SUB
+mise en œuvre;SUB
+mise en oeuvre;SUB;mise en œuvre
+mise en place;SUB
 modern style;SUB
 modus operandi;SUB
 modus vivendi;SUB
@@ -1146,6 +1158,7 @@ premier âge;SUB
 premier consul;SUB
 premier ministre;SUB;Premier ministre
 Premier ministre;SUB
+presse écrite;SUB
 prime time;SUB
 procureur du roi;SUB
 public schools;SUB
