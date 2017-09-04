@@ -3,7 +3,6 @@ package alix.util;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import alix.util.IntOTop.TopIterator;
 
 /**
  * Efficient Object to handle a sliding window of mutable String (Term), 

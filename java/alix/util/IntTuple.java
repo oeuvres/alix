@@ -153,6 +153,7 @@ public class IntTuple implements Comparable<IntTuple>
     int capacity = Calcul.nextSquare( position + 1 );
     data = new int[capacity];
     System.arraycopy( oldData, 0, data, 0, oldLength );
+    if ( position >= size ) size = (position+1);
     return true;
   }
 

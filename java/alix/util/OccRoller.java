@@ -105,7 +105,7 @@ public class OccRoller extends Roller {
     return data[ pointer(right) ];
   }
   /**
-   * Add a value by the end
+   * Copy an occurrence object at right end
    * @return The left token 
    */
   public Occ push( final Occ value ) 

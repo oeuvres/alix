@@ -129,8 +129,8 @@ public class IntRoller extends Roller
     if ( o instanceof IntPair ) {
       IntPair pair = (IntPair)o;
       if ( size != 2 ) return false;
-      if ( get(0) != pair.val0 ) return false;
-      if ( get(1) != pair.val1 ) return false;
+      if ( get(0) != pair.x ) return false;
+      if ( get(1) != pair.y ) return false;
       return true;
     }
     if ( o instanceof IntTuple ) {

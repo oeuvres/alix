@@ -462,7 +462,7 @@ public class IntVek implements Cloneable
   }
   
   /**
-   * Output a two dimensions array in random order
+   * Output a two dimensions array, sorted by value, biggest first
    */
   public Pair[] toArray()
   {

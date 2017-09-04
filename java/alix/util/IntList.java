@@ -40,8 +40,18 @@ public class IntList extends IntTuple
   public void set( int pos, int value )
   {
     if ( onWrite( pos ) ) ;
-    if ( pos >= size ) size = (short)(pos+1);
     data[pos] = value;
+  }
+
+  /**
+   * Increment value at a position
+   * @param pos
+   * @return
+   */
+  public void inc( int pos )
+  {
+    if ( onWrite( pos ) ) ;
+    data[pos]++;
   }
 
   /**
