@@ -12,28 +12,29 @@
     </manifest>
     <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
         <file path="/Alix/java/alix/fr/dic/orth.csv"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.util"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.viz"/>
+        <file path="/Alix/java/alix/fr/dic/commune.csv"/>
+        <file path="/Alix/java/alix/fr/dic/loc.csv"/>
+        <file path="/Alix/java/alix/fr/dic/name.csv"/>
+        <file path="/Alix/java/alix/fr/dic/locno.csv"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
+        <file path="/Alix/java/alix/fr/dic/rules.csv"/>
+        <file path="/Alix/java/alix/fr/dic/caps.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.sqlite"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Lexik.java"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.frdo"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.util"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.viz"/>
         <file path="/Alix/java/alix/fr/dic/brevidot.csv"/>
         <file path="/Alix/java/alix/fr/dic/forename.csv"/>
-        <file path="/Alix/java/alix/fr/dic/commune.csv"/>
-        <file path="/Alix/java/alix/fr/dic/loc.csv"/>
+        <folder path="/Alix/java/META-INF/services"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Tag.java"/>
         <file path="/Alix/java/alix/fr/dic/france.csv"/>
         <file path="/Alix/java/alix/fr/dic/place.csv"/>
         <file path="/Alix/java/alix/fr/dic/stop.csv"/>
-        <file path="/Alix/java/alix/fr/dic/name.csv"/>
-        <file path="/Alix/java/alix/fr/dic/locno.csv"/>
         <file path="/Alix/java/alix/fr/dic/author.csv"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr.query"/>
-        <file path="/Alix/java/alix/fr/dic/rules.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Tokenizer.java"/>
         <file path="/Alix/java/alix/fr/dic/word.csv"/>
-        <file path="/Alix/java/alix/fr/dic/caps.csv"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.grep"/>
     </selectedElements>
 </jardesc>
