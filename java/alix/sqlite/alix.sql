@@ -8,29 +8,46 @@ PRAGMA journal_mode = OFF; -- unsecure
 PRAGMA synchronous = OFF; -- unsecure
 
 CREATE TABLE doc (
-  -- Groupe de vecteurs
+  -- Document = fichier
   id         INTEGER,  -- alias rowid
-  title      TEXT,     -- affichable
-  date       INTEGER,  -- date
+  name       STRING,   -- nom de fichier unique
+  url        TEXT,     -- lien Internet
+  collection STRING,   -- sous-corpus
+  title      TEXT,     -- titre affichable
+  page       INTEGER,  -- index
   byline     TEXT,     -- auteur
+  date       STRING,   -- date format AAAA-MM-JJ
+  julianday  INTEGER,  -- numéro de jour depuis -4714
+  year       INTEGER,  -- année entier
+  month      INTEGER,  -- mois entier
+  daymonth   INTEGER,  -- jour du mois
+  dayweek    INTEGER,  -- jour de la semaine
+  text       BLOB,     -- texte original
   occs       INTEGER,  -- nombre d’occurrences pour le document
   PRIMARY KEY(id ASC)
 );
+CREATE UNIQUE INDEX doc_name ON doc(name);
+CREATE INDEX doc_year ON doc(year, month, day);
+CREATE INDEX doc_week ON doc(year, month, day);
+CREATE INDEX doc_collection ON doc(collection, julianday);
+CREATE INDEX doc_collweek ON doc(collection, week, date);
+CREATE INDEX doc_collmonth ON doc(collection, month, date);
 
 Create table occ (
   -- indexation des occurrences
   id         INTEGER,  -- alias rowid
-  graph      TEXT,     -- graphie 
+  doc        INTEGER REFERENCES doc(id),
+  graph      TEXT,     -- graphie originale
   orth       INTEGER,  -- orthographe normalisée 
   tag        INTEGER,  -- catégorie morpho-syntaxique 
   lem        INTEGER,  -- lemme 
-  start      INTEGER,  -- position du premier caractère (Unicode) dans le texte source lemmatisé
-  end        INTEGER,  -- position du caractère (Unicode) suivant dans le texte source lemmatisé
+  start      INTEGER,  -- position du premier caractère (Unicode) dans le texte source
+  end        INTEGER,  -- position du caractère (Unicode) suivant dans le texte source
   PRIMARY KEY(id ASC)
 );
-CREATE INDEX occOrth ON occ( orth );
-CREATE INDEX occLem ON occ( lem );
-CREATE INDEX occTag ON occ( tag );
+CREATE INDEX occ_orth ON occ(orth);
+CREATE INDEX occ_lem ON occ(lem);
+CREATE INDEX occ_tag ON occ(tag);
 
 CREATE TABLE term (
   -- Dictionnaire de termes indexés,

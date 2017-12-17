@@ -9,5 +9,7 @@
 	<classpathentry kind="lib" path="lib/lucene-core-5.5.0.jar"/>
 	<classpathentry kind="lib" path="lib/lucene-misc-5.5.0.jar"/>
 	<classpathentry kind="lib" path="lib/univocity-parsers-2.0.2.jar"/>
+	<classpathentry kind="lib" path="lib/sqlite-jdbc-3.21.0.jar"/>
+	<classpathentry kind="lib" path="lib/json-20171018.jar"/>
 	<classpathentry kind="output" path="classes"/>
 </classpath>
