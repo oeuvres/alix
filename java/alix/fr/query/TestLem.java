@@ -4,14 +4,14 @@ import alix.util.Occ;
 
 public class TestLem extends TestTerm
 {
-  public TestLem( String term )
-  {
-    super( term );
+  public TestLem(String term) {
+    super(term);
   }
+
   @Override
-  public boolean test( Occ occ )
+  public boolean test(Occ occ)
   {
-    return term.glob( occ.lem() );
+    return term.glob(occ.lem());
   }
 
 }

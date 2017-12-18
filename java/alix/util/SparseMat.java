@@ -26,42 +26,42 @@ public class SparseMat
   private HashMap<String, Integer> colnames = new HashMap<String, Integer>();
 
   /** Get Value */
-  public boolean contains( String rowname, String colname )
+  public boolean contains(String rowname, String colname)
   {
-    IntVek row = rows.get( rowname );
+    IntVek row = rows.get(rowname);
     if (row == null)
       return false;
-    Integer colno = colnames.get( colname );
+    Integer colno = colnames.get(colname);
     if (colno == null)
       return false;
-    return row.contains( colno );
+    return row.contains(colno);
   }
 
-  public int get( String rowname, String colname )
+  public int get(String rowname, String colname)
   {
-    IntVek row = rows.get( rowname );
+    IntVek row = rows.get(rowname);
     if (row == null)
       return NULL;
-    Integer colno = colnames.get( colname );
+    Integer colno = colnames.get(colname);
     if (colno == null)
       return NULL;
-    return row.get( colno );
+    return row.get(colno);
   }
 
   /** Put value */
-  public SparseMat add( String rowname, String colname, int count )
+  public SparseMat add(String rowname, String colname, int count)
   {
-    IntVek row = rows.get( rowname );
+    IntVek row = rows.get(rowname);
     if (row == null) {
-      row = new IntVek( 10, -1, rowname );
-      rows.put( rowname, row );
+      row = new IntVek(10, -1, rowname);
+      rows.put(rowname, row);
     }
-    Integer col = colnames.get( colname );
+    Integer col = colnames.get(colname);
     if (col == null) {
       col = colno++;
-      colnames.put( colname, col );
+      colnames.put(colname, col);
     }
-    row.add( col, count );
+    row.add(col, count);
     return this;
   }
 
@@ -70,33 +70,33 @@ public class SparseMat
   {
     StringBuffer sb = new StringBuffer();
     // get col index in String order of colnames
-    SortedSet<String> keys = new TreeSet<String>( colnames.keySet() );
+    SortedSet<String> keys = new TreeSet<String>(colnames.keySet());
     int width = keys.size();
     int[] colnos = new int[width];
     int i = 0;
     for (String colname : keys) {
-      colnos[i] = colnames.get( colname );
-      sb.append( SEP ).append( colname );
+      colnos[i] = colnames.get(colname);
+      sb.append(SEP).append(colname);
       i++;
     }
-    sb.append( "\n" );
-    keys = new TreeSet<String>( rows.keySet() );
+    sb.append("\n");
+    keys = new TreeSet<String>(rows.keySet());
     // loop on lines
     for (String rowname : keys) {
-      sb.append( rowname );
-      IntVek row = rows.get( rowname );
+      sb.append(rowname);
+      IntVek row = rows.get(rowname);
       for (i = 0; i < width; i++) {
-        sb.append( SEP );
-        if (!row.contains( colnos[i] ))
+        sb.append(SEP);
+        if (!row.contains(colnos[i]))
           continue;
-        sb.append( row.get( colnos[i] ) );
+        sb.append(row.get(colnos[i]));
       }
-      sb.append( "\n" );
+      sb.append("\n");
     }
     return sb.toString();
   }
 
-  public static void main( String[] args ) throws IOException
+  public static void main(String[] args) throws IOException
   {
 
   }

@@ -4,14 +4,14 @@ import alix.util.Occ;
 
 public class TestOrth extends TestTerm
 {
-  public TestOrth(String term)
-  {
-    super( term );
+  public TestOrth(String term) {
+    super(term);
   }
+
   @Override
-  public boolean test( Occ occ )
+  public boolean test(Occ occ)
   {
-    return term.glob( occ.orth() );
+    return term.glob(occ.orth());
   }
 
 }

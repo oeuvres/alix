@@ -21,172 +21,198 @@ import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
  * http://java.codefetch.com/example/in/LuceneInAction/src/lia/analysis/AnalyzerUtils.java
  * Ajouts
  * <li>Compatible Lucene 3.5.0</li>
- * <li>Utilisable en Console et en Jsp</li> 
- * <li>Permet d'utiliser des analyseurs lucene pour étiquetter des textes en ligne de commande</li> 
+ * <li>Utilisable en Console et en Jsp</li>
+ * <li>Permet d'utiliser des analyseurs lucene pour étiquetter des textes en
+ * ligne de commande</li>
  */
-public class Demo {
-	
-	/**
-	 * Writer vers lequel sortir les résultats, par exemple pour utiliser cette
-	 * classe depuis une JSP.
-	 */
-	public PrintWriter out;
-	/** default field */
-	public String field="text";
+public class Demo
+{
 
-	public Demo() {
-		try {
-			out = new PrintWriter(new PrintStream(System.out, true, "UTF-8"), true);
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-	}
-	public Demo(Writer out) {
-		this.out = new PrintWriter(out);
-	}
-	
+  /**
+   * Writer vers lequel sortir les résultats, par exemple pour utiliser cette
+   * classe depuis une JSP.
+   */
+  public PrintWriter out;
+  /** default field */
+  public String field = "text";
 
-	/**
-	 * Classe interne pratique pour mimer le comportement de Lucene 2.*
-	 * 
-	 * @author Pierre DITTGEN
-	 */
-	public static class MyToken {
-		private String termText;
-		private int positionIncrement;
-		private String type;
-		private int startOffset;
-		private int endOffset;
+  public Demo() {
+    try {
+      out = new PrintWriter(new PrintStream(System.out, true, "UTF-8"), true);
+    }
+    catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+  }
 
-		public MyToken(String termText, int positionIncrement, String type, int startOffset, int endOffset) {
-			this.termText = termText;
-			this.positionIncrement = positionIncrement;
-			this.type = type;
-			this.startOffset = startOffset;
-			this.endOffset = endOffset;
-		}
+  public Demo(Writer out) {
+    this.out = new PrintWriter(out);
+  }
 
-		public String termText() {
-			return termText;
-		}
+  /**
+   * Classe interne pratique pour mimer le comportement de Lucene 2.*
+   * 
+   * @author Pierre DITTGEN
+   */
+  public static class MyToken
+  {
+    private String termText;
+    private int positionIncrement;
+    private String type;
+    private int startOffset;
+    private int endOffset;
 
-		public int getPositionIncrement() {
-			return positionIncrement;
-		}
+    public MyToken(String termText, int positionIncrement, String type, int startOffset, int endOffset) {
+      this.termText = termText;
+      this.positionIncrement = positionIncrement;
+      this.type = type;
+      this.startOffset = startOffset;
+      this.endOffset = endOffset;
+    }
 
-		public String type() {
-			return type;
-		}
+    public String termText()
+    {
+      return termText;
+    }
 
-		public int startOffset() {
-			return startOffset;
-		}
+    public int getPositionIncrement()
+    {
+      return positionIncrement;
+    }
 
-		public int endOffset() {
-			return endOffset;
-		}
-	}
+    public String type()
+    {
+      return type;
+    }
 
-	
-	
-	public static MyToken[] tokensFromAnalysis(Analyzer analyzer, String text, String field) throws IOException {
-		;
-		TokenStream stream = analyzer.tokenStream(field, new StringReader(text));
-		CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
-		PositionIncrementAttribute positionIncrementAttr = (PositionIncrementAttribute) stream
-				.addAttribute(PositionIncrementAttribute.class);
-		TypeAttribute typeAttr = (TypeAttribute) stream.addAttribute(TypeAttribute.class);
-		OffsetAttribute offsetAttr = (OffsetAttribute) stream.addAttribute(OffsetAttribute.class);
+    public int startOffset()
+    {
+      return startOffset;
+    }
 
-		ArrayList<MyToken> tokenList = new ArrayList<MyToken>();
-		while (stream.incrementToken()) {
-			tokenList.add(new MyToken(term.toString(), positionIncrementAttr.getPositionIncrement(), typeAttr.type(),
-					offsetAttr.startOffset(), offsetAttr.endOffset()));
-		}
+    public int endOffset()
+    {
+      return endOffset;
+    }
+  }
 
-		return tokenList.toArray(new MyToken[0]);
-	}
+  public static MyToken[] tokensFromAnalysis(Analyzer analyzer, String text, String field) throws IOException
+  {
+    ;
+    TokenStream stream = analyzer.tokenStream(field, new StringReader(text));
+    CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
+    PositionIncrementAttribute positionIncrementAttr = stream.addAttribute(PositionIncrementAttribute.class);
+    TypeAttribute typeAttr = stream.addAttribute(TypeAttribute.class);
+    OffsetAttribute offsetAttr = stream.addAttribute(OffsetAttribute.class);
 
-	public void displayTokens(Analyzer analyzer, String text) throws IOException {
-		;
-		MyToken[] tokens = tokensFromAnalysis(analyzer, text, field);
-		for (MyToken token : tokens) {
-			out.println("[" + token.termText() + "] ");
-		}
-	}
+    ArrayList<MyToken> tokenList = new ArrayList<MyToken>();
+    while (stream.incrementToken()) {
+      tokenList.add(new MyToken(term.toString(), positionIncrementAttr.getPositionIncrement(), typeAttr.type(),
+          offsetAttr.startOffset(), offsetAttr.endOffset()));
+    }
 
-	public void displayTokensWithPositions(Analyzer analyzer, String text) throws IOException {
-		MyToken[] tokens = tokensFromAnalysis(analyzer, text, field);
-		int position = 0;
-		for (MyToken token : tokens) {
-			int increment = token.getPositionIncrement();
-			if (increment > 0) {
-				position = position + increment;
-				out.println();
-				out.print(position + ":");
-			}
-			out.print(" [" + token.termText() + "]");
-		}
-		out.println();
-	}
+    return tokenList.toArray(new MyToken[0]);
+  }
 
-	public void displayTokensWithFullDetails(Analyzer analyzer, String text) throws IOException {
-		MyToken[] tokens = tokensFromAnalysis(analyzer, text, field);
-		int position = 0;
-		for (MyToken token : tokens) {
-			int increment = token.getPositionIncrement();
-			if (increment > 0) {
-				position = position + increment;
-				out.println();
-				out.print(position + ": ");
-			}
-			out.print("[" + token.termText() + ":" + token.startOffset() + "->" + token.endOffset() + ":" + token.type() + "] ");
-		}
-		out.println();
-	}
+  public void displayTokens(Analyzer analyzer, String text) throws IOException
+  {
+    ;
+    MyToken[] tokens = tokensFromAnalysis(analyzer, text, field);
+    for (MyToken token : tokens) {
+      out.println("[" + token.termText() + "] ");
+    }
+  }
 
-	/**
-	 * Lancer l'étiquetage d'un texte, en rétablissant les espaces autour des ponctuations (selon les normes françaises).
-	 * @param args
-	 * @throws IOException
-	 */
-	public void ponctuer(Analyzer analyzer, String text, String field) throws IOException {
-		TokenStream stream = analyzer.tokenStream(field, new StringReader(text));
-		CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
-		// PositionIncrementAttribute posinc = (PositionIncrementAttribute) stream.addAttribute(PositionIncrementAttribute.class);
-		TypeAttribute type = (TypeAttribute) stream.addAttribute(TypeAttribute.class);
-		// OffsetAttribute offset = (OffsetAttribute) stream.addAttribute(OffsetAttribute.class);
-		String tok, tag;
-		char c;
-		boolean noSpaceBefore=true;
-		while (stream.incrementToken()) {
-			// pour accumulation dans un objet
-			// tokenList.add(new MyToken(term.term(), posinc.getPositionIncrement(), type.type(), offset.startOffset(), offset.endOffset()));
-			tok=term.toString();
-			c=tok.charAt(0);
-			tag=type.type();
-			// avant un mot
-			if (noSpaceBefore);
-			// espace insécable avant ponctuation double (?)
-			else if (";".equals(tok) || ":".equals(tok) || "!".equals(tok) || "?".equals(tok) || "»".equals(tok)) out.print(' ');
-			// avant : pas d'espace
-			else if (c == ',' || c == '.' || c == '…' || c == ')' || tok.startsWith("</") || tag.equals("PUNCT") || tag.equals("S"));
-			else out.print(' ');
-			
-			out.print(tok);
-			
-			// après espace insécable
-			if (tok.equals("«")) out.print(' ');
-			// pas d'espace après un tag ouvrant
-			if (c=='<' && !(tok.charAt(0)=='/')) noSpaceBefore=true;
-			else noSpaceBefore=false;
-		}
-		out.println();
-	}
-	
-	static public void main(String[] args) throws IOException {
-		Demo u=new Demo();
-		System.out.println("StandardAnalyzer");
-		u.displayTokensWithFullDetails(new StandardAnalyzer(), "The quick brown fox....");
-	}
+  public void displayTokensWithPositions(Analyzer analyzer, String text) throws IOException
+  {
+    MyToken[] tokens = tokensFromAnalysis(analyzer, text, field);
+    int position = 0;
+    for (MyToken token : tokens) {
+      int increment = token.getPositionIncrement();
+      if (increment > 0) {
+        position = position + increment;
+        out.println();
+        out.print(position + ":");
+      }
+      out.print(" [" + token.termText() + "]");
+    }
+    out.println();
+  }
+
+  public void displayTokensWithFullDetails(Analyzer analyzer, String text) throws IOException
+  {
+    MyToken[] tokens = tokensFromAnalysis(analyzer, text, field);
+    int position = 0;
+    for (MyToken token : tokens) {
+      int increment = token.getPositionIncrement();
+      if (increment > 0) {
+        position = position + increment;
+        out.println();
+        out.print(position + ": ");
+      }
+      out.print(
+          "[" + token.termText() + ":" + token.startOffset() + "->" + token.endOffset() + ":" + token.type() + "] ");
+    }
+    out.println();
+  }
+
+  /**
+   * Lancer l'étiquetage d'un texte, en rétablissant les espaces autour des
+   * ponctuations (selon les normes françaises).
+   * 
+   * @param args
+   * @throws IOException
+   */
+  public void ponctuer(Analyzer analyzer, String text, String field) throws IOException
+  {
+    TokenStream stream = analyzer.tokenStream(field, new StringReader(text));
+    CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
+    // PositionIncrementAttribute posinc = (PositionIncrementAttribute)
+    // stream.addAttribute(PositionIncrementAttribute.class);
+    TypeAttribute type = stream.addAttribute(TypeAttribute.class);
+    // OffsetAttribute offset = (OffsetAttribute)
+    // stream.addAttribute(OffsetAttribute.class);
+    String tok, tag;
+    char c;
+    boolean noSpaceBefore = true;
+    while (stream.incrementToken()) {
+      // pour accumulation dans un objet
+      // tokenList.add(new MyToken(term.term(), posinc.getPositionIncrement(),
+      // type.type(), offset.startOffset(), offset.endOffset()));
+      tok = term.toString();
+      c = tok.charAt(0);
+      tag = type.type();
+      // avant un mot
+      if (noSpaceBefore)
+        ;
+      // espace insécable avant ponctuation double (?)
+      else if (";".equals(tok) || ":".equals(tok) || "!".equals(tok) || "?".equals(tok) || "»".equals(tok))
+        out.print(' ');
+      // avant : pas d'espace
+      else if (c == ',' || c == '.' || c == '…' || c == ')' || tok.startsWith("</") || tag.equals("PUNCT")
+          || tag.equals("S"))
+        ;
+      else
+        out.print(' ');
+
+      out.print(tok);
+
+      // après espace insécable
+      if (tok.equals("«"))
+        out.print(' ');
+      // pas d'espace après un tag ouvrant
+      if (c == '<' && !(tok.charAt(0) == '/'))
+        noSpaceBefore = true;
+      else
+        noSpaceBefore = false;
+    }
+    out.println();
+  }
+
+  static public void main(String[] args) throws IOException
+  {
+    Demo u = new Demo();
+    System.out.println("StandardAnalyzer");
+    u.displayTokensWithFullDetails(new StandardAnalyzer(), "The quick brown fox....");
+  }
 }

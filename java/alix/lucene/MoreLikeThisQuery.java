@@ -28,11 +28,13 @@ import java.util.Arrays;
 import java.util.Set;
 
 /**
- * A simple wrapper for MoreLikeThis for use in scenarios where a Query object is required eg
- * in custom QueryParser extensions. At query.rewrite() time the reader is used to construct the
- * actual MoreLikeThis object and obtain the real Query object.
+ * A simple wrapper for MoreLikeThis for use in scenarios where a Query object
+ * is required eg in custom QueryParser extensions. At query.rewrite() time the
+ * reader is used to construct the actual MoreLikeThis object and obtain the
+ * real Query object.
  */
-public class MoreLikeThisQuery extends Query {
+public class MoreLikeThisQuery extends Query
+{
 
   private String likeText;
   private String[] moreLikeFields;
@@ -45,7 +47,8 @@ public class MoreLikeThisQuery extends Query {
   private int minDocFreq = -1;
 
   /**
-   * @param moreLikeFields fields used for similarity measure
+   * @param moreLikeFields
+   *          fields used for similarity measure
    */
   public MoreLikeThisQuery(String likeText, String[] moreLikeFields, Analyzer analyzer, String fieldName) {
     this.likeText = likeText;
@@ -55,7 +58,8 @@ public class MoreLikeThisQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexReader reader) throws IOException
+  {
     if (getBoost() != 1f) {
       return super.rewrite(reader);
     }
@@ -75,85 +79,105 @@ public class MoreLikeThisQuery extends Query {
     for (BooleanClause clause : bq) {
       newBq.add(clause);
     }
-    //make at least half the terms match
+    // make at least half the terms match
     newBq.setMinimumNumberShouldMatch((int) (bq.clauses().size() * percentTermsToMatch));
     return newBq.build();
   }
 
-  /* (non-Javadoc)
-  * @see org.apache.lucene.search.Query#toString(java.lang.String)
-  */
+  /*
+   * (non-Javadoc)
+   * 
+   * @see org.apache.lucene.search.Query#toString(java.lang.String)
+   */
   @Override
-  public String toString(String field) {
+  public String toString(String field)
+  {
     return "like:" + likeText;
   }
 
-  public float getPercentTermsToMatch() {
+  public float getPercentTermsToMatch()
+  {
     return percentTermsToMatch;
   }
 
-  public void setPercentTermsToMatch(float percentTermsToMatch) {
+  public void setPercentTermsToMatch(float percentTermsToMatch)
+  {
     this.percentTermsToMatch = percentTermsToMatch;
   }
 
-  public Analyzer getAnalyzer() {
+  public Analyzer getAnalyzer()
+  {
     return analyzer;
   }
 
-  public void setAnalyzer(Analyzer analyzer) {
+  public void setAnalyzer(Analyzer analyzer)
+  {
     this.analyzer = analyzer;
   }
 
-  public String getLikeText() {
+  public String getLikeText()
+  {
     return likeText;
   }
 
-  public void setLikeText(String likeText) {
+  public void setLikeText(String likeText)
+  {
     this.likeText = likeText;
   }
 
-  public int getMaxQueryTerms() {
+  public int getMaxQueryTerms()
+  {
     return maxQueryTerms;
   }
 
-  public void setMaxQueryTerms(int maxQueryTerms) {
+  public void setMaxQueryTerms(int maxQueryTerms)
+  {
     this.maxQueryTerms = maxQueryTerms;
   }
 
-  public int getMinTermFrequency() {
+  public int getMinTermFrequency()
+  {
     return minTermFrequency;
   }
 
-  public void setMinTermFrequency(int minTermFrequency) {
+  public void setMinTermFrequency(int minTermFrequency)
+  {
     this.minTermFrequency = minTermFrequency;
   }
 
-  public String[] getMoreLikeFields() {
+  public String[] getMoreLikeFields()
+  {
     return moreLikeFields;
   }
 
-  public void setMoreLikeFields(String[] moreLikeFields) {
+  public void setMoreLikeFields(String[] moreLikeFields)
+  {
     this.moreLikeFields = moreLikeFields;
   }
 
-  public Set<?> getStopWords() {
+  public Set<?> getStopWords()
+  {
     return stopWords;
   }
 
-  public void setStopWords(Set<?> stopWords) {
+  public void setStopWords(Set<?> stopWords)
+  {
     this.stopWords = stopWords;
   }
 
-  public int getMinDocFreq() {
+  public int getMinDocFreq()
+  {
     return minDocFreq;
   }
 
-  public void setMinDocFreq(int minDocFreq) {
+  public void setMinDocFreq(int minDocFreq)
+  {
     this.minDocFreq = minDocFreq;
   }
 
   @Override
-  public int hashCode() {
+  public int hashCode()
+  {
     final int prime = 31;
     int result = super.hashCode();
     result = prime * result + ((analyzer == null) ? 0 : analyzer.hashCode());
@@ -169,29 +193,49 @@ public class MoreLikeThisQuery extends Query {
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) return true;
-    if (!super.equals(obj)) return false;
-    if (getClass() != obj.getClass()) return false;
+  public boolean equals(Object obj)
+  {
+    if (this == obj)
+      return true;
+    if (!super.equals(obj))
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
     MoreLikeThisQuery other = (MoreLikeThisQuery) obj;
     if (analyzer == null) {
-      if (other.analyzer != null) return false;
-    } else if (!analyzer.equals(other.analyzer)) return false;
+      if (other.analyzer != null)
+        return false;
+    }
+    else if (!analyzer.equals(other.analyzer))
+      return false;
     if (fieldName == null) {
-      if (other.fieldName != null) return false;
-    } else if (!fieldName.equals(other.fieldName)) return false;
+      if (other.fieldName != null)
+        return false;
+    }
+    else if (!fieldName.equals(other.fieldName))
+      return false;
     if (likeText == null) {
-      if (other.likeText != null) return false;
-    } else if (!likeText.equals(other.likeText)) return false;
-    if (maxQueryTerms != other.maxQueryTerms) return false;
-    if (minDocFreq != other.minDocFreq) return false;
-    if (minTermFrequency != other.minTermFrequency) return false;
-    if (!Arrays.equals(moreLikeFields, other.moreLikeFields)) return false;
-    if (Float.floatToIntBits(percentTermsToMatch) != Float
-        .floatToIntBits(other.percentTermsToMatch)) return false;
+      if (other.likeText != null)
+        return false;
+    }
+    else if (!likeText.equals(other.likeText))
+      return false;
+    if (maxQueryTerms != other.maxQueryTerms)
+      return false;
+    if (minDocFreq != other.minDocFreq)
+      return false;
+    if (minTermFrequency != other.minTermFrequency)
+      return false;
+    if (!Arrays.equals(moreLikeFields, other.moreLikeFields))
+      return false;
+    if (Float.floatToIntBits(percentTermsToMatch) != Float.floatToIntBits(other.percentTermsToMatch))
+      return false;
     if (stopWords == null) {
-      if (other.stopWords != null) return false;
-    } else if (!stopWords.equals(other.stopWords)) return false;
+      if (other.stopWords != null)
+        return false;
+    }
+    else if (!stopWords.equals(other.stopWords))
+      return false;
     return true;
   }
 }
