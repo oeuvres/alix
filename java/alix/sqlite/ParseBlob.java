@@ -7,6 +7,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import alix.fr.Lexik;
 import alix.fr.Tag;
@@ -20,9 +21,9 @@ public class ParseBlob
   /** Sqlite connexion */
   Connection conn;
   /** Dictionary of orthographic form with an index */
-  DicFreq orthDic = new DicFreq();
+  DicFreq orthDic; 
   /** Dictionary of orthographic form with an index */
-  DicFreq lemDic = new DicFreq();
+  DicFreq lemDic;
   /** Max index for stop words */
   int stopoffset;
   
@@ -49,16 +50,23 @@ public class ParseBlob
    */
   public void walk() throws IOException, SQLException
   {
-    PreparedStatement blob = conn.prepareStatement("SELECT id, text FROM blob LIMIT 10");
-    ResultSet rs = blob.executeQuery();
+    ResultSet res;
+    orthDic = new DicFreq();
+    lemDic = new DicFreq();
+    Statement stmt  = conn.createStatement();
+    res = stmt.executeQuery("SELECT * FROM orth");
+    while(res.next()) {
+      
+    }
+    res = stmt.executeQuery("SELECT id, text FROM blob LIMIT 10");
     PreparedStatement insOcc = conn.prepareStatement("INSERT INTO occ(doc, orth, tag, lem, start, end) "
         + "VALUES (?, ?, ?, ?, ?, ?)");
-    while (rs.next()) {
-      int doc = rs.getInt(1);
+    while (res.next()) {
+      int doc = res.getInt(1);
       if (doc % 1000 == 0) System.out.println(doc);
       insOcc.getConnection().setAutoCommit(false);
       insOcc.setInt(1, doc);
-      String text = rs.getString(2);
+      String text = res.getString(2);
       Tokenizer toks = new Tokenizer(text, false);
       Occ occ;
       while ((occ = toks.word()) != null) {

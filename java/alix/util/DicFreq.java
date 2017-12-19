@@ -3,20 +3,20 @@ package alix.util;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * A specialized table for a dictionary of terms, with an int code, an int
@@ -54,6 +54,7 @@ import java.util.List;
  */
 public class DicFreq
 {
+  private ReentrantLock lock = new ReentrantLock();
   /**
    * HashMap to find by String. String is the best object for key (most common,
    * not mutable). A custom object (like Term) will not match against String. The
@@ -68,7 +69,7 @@ public class DicFreq
    */
   private int pointer;
   /** Count of all occurrences for this dico */
-  private long occs;
+  private AtomicLong occs = new AtomicLong();
   /** The separator for CSV export and import */
   private static char SEP = ';';
 
@@ -86,16 +87,14 @@ public class DicFreq
     /** A tag ex gram cat */
     private final int tag;
     /** A counter */
-    private int count;
+    private AtomicInteger count = new AtomicInteger();
     /** A secondary counter (for comparisons) */
-    private int count2;
+    private AtomicInteger count2 = new AtomicInteger();
 
-    private Entry(String label, int code, int tag, int count, int count2) {
-      this.label = label;
+    private Entry(int code, String label, int tag) {
       this.code = code;
+      this.label = label;
       this.tag = tag;
-      this.count = count;
-      this.count2 = count2;
     }
 
     public String label()
@@ -115,12 +114,12 @@ public class DicFreq
 
     public int count()
     {
-      return count;
+      return count.get();
     }
 
     public int count2()
     {
-      return count2;
+      return count2.get();
     }
 
     /**
@@ -141,7 +140,8 @@ public class DicFreq
      */
     public int compareTo(Entry o)
     {
-      return (o.count + o.count2) - (count + count2);
+      
+      return (o.count.get() + o.count2.get()) - (count.get() + count2.get());
     }
   }
 
@@ -167,9 +167,9 @@ public class DicFreq
    * For object reuse, and not too much memory reallocation, reset counters
    * (objects are kept)
    */
-  public void reset()
+  synchronized public void reset()
   {
-    occs = 0;
+    occs.set(0);
     pointer = 0;
     byTerm.clear();
   }
@@ -271,7 +271,7 @@ public class DicFreq
     Entry line = byTerm.get(term);
     if (line == null)
       return -1;
-    return line.count;
+    return line.count.get();
   }
 
   /**
@@ -285,7 +285,7 @@ public class DicFreq
     Entry line = byTerm.get(term);
     if (line == null)
       return -1;
-    return line.count;
+    return line.count.get();
   }
 
   /**
@@ -301,23 +301,12 @@ public class DicFreq
       return -1;
     if (code > pointer)
       return -1;
-    return byCode[code].count;
+    return byCode[code].count.get();
   }
 
-  /**
-   * Create a term with no tag, set its count at 1, or increment if exists
-   * 
-   * @param term
-   *          a word
-   * @return the code of term
-   */
-  public int add(final String term)
-  {
-    return add(term, 0, 1, 0);
-  }
 
   /**
-   * Create a term with no tag, set its count at 1, or increment if exists
+   * Increment a term, set its count at 1, or increment if exists
    * 
    * @param term
    *          a word
@@ -325,25 +314,16 @@ public class DicFreq
    */
   public int inc(final String term)
   {
-    return add(term, 0, 1, 0);
+    Entry entry = byTerm.get(term);
+    if (entry == null)
+      entry =  entry(term, 0);
+    entry.count.incrementAndGet();
+    occs.incrementAndGet();
+    return entry.code;
   }
 
   /**
-   * Create a term with no tag (by a Term object), set its count at 1, or
-   * increment if exists
-   * 
-   * @param term
-   *          a word
-   * @return the code of term
-   */
-  public int add(final Term term)
-  {
-    return add(term, 0, 1, 0);
-  }
-
-  /**
-   * Create a term with no tag (by a Term object), set its count at 1, or
-   * increment if exists
+   * Increment a term, or set its counter to 1 if not exists.
    * 
    * @param term
    *          a word
@@ -351,12 +331,11 @@ public class DicFreq
    */
   public int inc(final Term term)
   {
-    return add(term, 0, 1, 0);
+    return inc(term, 0);
   }
 
   /**
-   * Increment second counter for a term (by a String object), or create it if not
-   * exists
+   * Increment an alternate counter for a term, or set it to 1 if not exists.
    * 
    * @param term
    *          a word
@@ -368,8 +347,7 @@ public class DicFreq
   }
 
   /**
-   * Increment second counter for a term (by a Term object), or create it if not
-   * exists
+   * Increment an alternate counter for a term, or set it to 1 if not exists.
    * 
    * @param term
    *          a word
@@ -381,7 +359,7 @@ public class DicFreq
   }
 
   /**
-   * Create a term with a tag, set its count at 1, or increment if exists.
+   * Increment a term with a tag, or set its counter to 1 if not exists.
    * 
    * @param term
    *          a word
@@ -391,12 +369,16 @@ public class DicFreq
    */
   public int inc(final String term, final int tag)
   {
-    return add(term, tag, 1, 0);
+    Entry entry = byTerm.get(term);
+    if (entry == null)
+      entry =  entry(term, tag);
+    entry.count.incrementAndGet();
+    occs.incrementAndGet();
+    return entry.code;
   }
 
   /**
-   * Create a term with no tag (by a Term object), set its count at 1, or
-   * increment if exists.
+   * Increment a term with a tag, or set its counter to 1 if not exists.
    * 
    * @param term
    *          a word
@@ -406,12 +388,15 @@ public class DicFreq
    */
   public int inc(final Term term, final int tag)
   {
-    return add(term, tag, 1, 0);
+    Entry entry = byTerm.get(term);
+    if (entry == null) entry = entry(term.toString(), tag);
+    entry.count.incrementAndGet();
+    occs.incrementAndGet();
+    return entry.code;
   }
 
   /**
-   * Increment second counter for a term (by a String object), or create it if not
-   * exists
+   * Increment an alternate counter for a term with a tag, or set it to 1 if not exists.
    * 
    * @param term
    *          a word
@@ -423,8 +408,7 @@ public class DicFreq
   }
 
   /**
-   * Increment second counter for a term (by a Term object), or create it if not
-   * exists
+   * Increment an alternate counter for a term, or set it to 1 if not exists.
    * 
    * @param term
    *          a word
@@ -436,67 +420,64 @@ public class DicFreq
   }
 
   /**
-   * Increment counter for a term (with a String object) of a specified amount, or
-   * create it if not exists
+   * Add delta to a term, or set it to delta if not exists.
    * 
    * @param term
    *          a word
-   * @param amount
+   * @param delta
    *          add to counter
    * @return the code of term
    */
-  public int add(final String term, final int amount)
+  public int add(final String term, final int delta)
   {
-    return add(term, 0, amount, 0);
+    return add(term, 0, delta, 0);
   }
 
   /**
-   * Increment counter for a term (with a String object) of a specified amount, or
-   * create it if not exists
+   * Add delta to a term, or set it to delta if not exists.
    * 
    * @param term
    *          a word
-   * @param amount
+   * @param delta
    *          add to counter
    * @return the code of term
    */
-  public int add(final Term term, final int amount)
+  public int add(final Term term, final int delta)
   {
-    return add(term, 0, amount, 0);
+    return add(term, 0, delta, 0);
   }
 
   /**
-   * Increment counter for a term (with a String object) of a specified amount, or
-   * create it if not exists
+   * Add delta to a term with a tag, or set it to delta if not exists.
    * 
    * @param term
    *          a word
-   * @param amount
+   * @param delta
    *          add to counter
    * @return the code of term
    */
-  public int add(final String term, final int tag, final int amount)
+  public int add(final String term, final int tag, final int delta)
   {
-    return add(term, tag, amount, 0);
+    return add(term, tag, delta, 0);
   }
 
   /**
-   * Increment counter for a term (with a String object) of a specified amount, or
-   * create it if not exists
+   * Add delta to a term with a tag, or set it to delta if not exists.
    * 
    * @param term
    *          a word
-   * @param amount
+   * @param delta
    *          add to counter
    * @return the code of term
    */
-  public int add(final Term term, final int tag, final int amount)
+  public int add(final Term term, final int tag, final int delta)
   {
-    return add(term, tag, amount, 0);
+    return add(term, tag, delta, 0);
   }
 
   /**
-   * Add a term occurrence, increment if exist or create entry
+   * Add delta1 and delta2 to the 2 counters of a term,
+   * if not exists create it with a tag and set counters.
    * 
    * @param term
    * @param count1
@@ -505,61 +486,43 @@ public class DicFreq
    *          for second counter
    * @return code (old or new)
    */
-  public int add(final String term, final int tag, final int amount1, final int amount2)
+  public int add(final String term, final int tag, final int delta1, final int delta2)
   {
-    Entry line = byTerm.get(term);
-    if (line == null)
-      return create(term, tag, amount1, amount2);
-    // repeated code with add(Term, …)
-    occs += amount1;
-    occs += amount2;
-    line.count += amount1;
-    line.count2 += amount2;
-    return line.code;
+    Entry entry = entry(term, tag);
+    entry.count.addAndGet(delta1);
+    entry.count2.addAndGet(delta2);
+    occs.addAndGet(delta1);
+    occs.addAndGet(delta2);
+    return entry.code;
   }
 
   /**
-   * Return full entry if exists, or create it
+   * Add delta1 and delta2 to the 2 counters of a term,
+   * if not exists create it with a tag and set counters amounts.
    * 
    * @param term
-   * @return
+   * @param count1
+   *          first count
+   * @param count2
+   *          second counter
+   * @return code (old or new)
    */
-  public Entry entry(final Term term)
+  public int add(final Term term, final int tag, final int delta1, final int delta2)
   {
     Entry entry = byTerm.get(term);
-    if (entry != null)
-      return entry;
-    return entryNew(term.toString());
+    if (entry == null) {
+      entry = entry(term.toString(), tag);
+    }
+    entry.count.addAndGet(delta1);
+    entry.count2.addAndGet(delta2);
+    occs.addAndGet(delta1);
+    occs.addAndGet(delta2);
+    return entry.code;
   }
 
-  /**
-   * Return full entry if exists, or create it
-   * 
-   * @param term
-   * @return
-   */
-  public Entry entry(final String term)
-  {
-    Entry entry = byTerm.get(term);
-    if (entry != null)
-      return entry;
-    return entryNew(term);
-  }
 
   /**
-   * Create new entry, shared by entry( String|Term )
-   * 
-   * @param term
-   * @return
-   */
-  private Entry entryNew(final String term)
-  {
-    int code = create(term, 0, 0, 0);
-    return byCode[code];
-  }
-
-  /**
-   * Put values in an entry
+   * Put a full entry, synchronized method to keep conssitency.
    * 
    * @param term
    * @param tag
@@ -569,19 +532,16 @@ public class DicFreq
    */
   public int put(final Term term, final int tag, final int count, final int count2)
   {
-    occs += count;
-    occs += count2;
     Entry entry = byTerm.get(term);
-    if (entry == null)
-      return create(term.toString(), tag, count, count2);
-    // repeated code with add(String, …)
-    entry.count = count;
-    entry.count2 = count2;
-    return entry.code;
+    if (entry == null) {
+      entry = entry(term.toString(), tag);
+    }
+    return put(entry, count, count2);
   }
 
+  
   /**
-   * Put values in an entry
+   * Put a full entry.
    * 
    * @param term
    * @param tag
@@ -591,37 +551,17 @@ public class DicFreq
    */
   public int put(final String term, final int tag, final int count, final int count2)
   {
-    occs += count;
-    occs += count2;
-    Entry entry = byTerm.get(term);
-    if (entry == null)
-      return create(term.toString(), tag, count, count2);
-    // repeated code with add(String, …)
-    entry.count = count;
-    entry.count2 = count2;
-    return entry.code;
+    Entry entry = entry(term, tag);
+    return put(entry, count, count2);
   }
 
-  /**
-   * Add a term occurrence, increment if exist or create entry, does not create a
-   * String object for increment, except if the entry is created.
-   * 
-   * @param term
-   * @param count1
-   *          first count
-   * @param count2
-   *          second counter
-   * @return code (old or new)
-   */
-  public int add(final Term term, final int tag, final int amount, final int amount2)
+  public int put(Entry entry, final int count, final int count2)
   {
-    occs += amount;
-    occs += amount2;
-    Entry entry = byTerm.get(term);
-    if (entry == null)
-      return create(term.toString(), tag, amount, amount2);
-    entry.count += amount;
-    entry.count2 += amount2;
+    synchronized (entry) {
+      occs.set(occs.get() - entry.count.get() - entry.count2.get() + count + count2);
+      entry.count.set(count);
+      entry.count2.set(count2);
+    }
     return entry.code;
   }
 
@@ -667,7 +607,8 @@ public class DicFreq
   }
 
   /**
-   * Create a term in the different data structures
+   * Create a term in the different data structures.
+   * Critic fro multiThreading.
    * 
    * @param term
    * @param tag
@@ -678,8 +619,13 @@ public class DicFreq
    *          initial value for secondary counter
    * @return
    */
-  private int create(final String term, final int tag, final int amount, final int amount2)
+  private synchronized Entry entry(final String term, final int tag)
   {
+    // possible queue, multiple call and entry creation is not finished
+    Entry entry = byTerm.get(term);
+    if (entry != null) {
+      return entry;
+    }
     pointer++;
     // index is too short, extends it (not a big perf pb)
     if (pointer >= byCode.length) {
@@ -688,11 +634,11 @@ public class DicFreq
       byCode = new Entry[Calcul.nextSquare(oldLength)];
       System.arraycopy(oldData, 0, byCode, 0, oldLength);
     }
-    Entry entry = new Entry(term, pointer, tag, amount, amount2);
+    entry = new Entry(pointer, term, tag);
     // put the same line object by reference in HashMap and Array
-    byTerm.put(term, entry);
     byCode[pointer] = entry;
-    return pointer;
+    byTerm.put(term, entry);
+    return entry;
   }
 
   /**
@@ -708,7 +654,7 @@ public class DicFreq
    */
   public long occs()
   {
-    return occs;
+    return occs.get();
   }
 
   /**
@@ -717,7 +663,7 @@ public class DicFreq
    */
   public DicFreq inc()
   {
-    occs++;
+    occs.incrementAndGet();
     return this;
   }
 
@@ -725,9 +671,9 @@ public class DicFreq
    * Increment occurrences count with not stored terms (useful for filtered
    * dictionary)
    */
-  public DicFreq inc(int i)
+  public DicFreq add(int delta)
   {
-    occs += i;
+    occs.addAndGet(delta);
     return this;
   }
 
@@ -776,10 +722,18 @@ public class DicFreq
    * Send a CSV version of the dictionary
    * 
    * @return a CSV string
+   * @throws IOException 
    */
   public String csv(int limit)
   {
-    return csv(limit);
+    StringWriter writer = new StringWriter();
+    try {
+      csv(writer, limit);
+    }
+    catch(Exception e) {
+      e.printStackTrace(System.out);
+    }
+    return writer.toString();
   }
 
   /**
@@ -803,10 +757,10 @@ public class DicFreq
     return csv(writer, -1);
   }
 
-  public Writer csv(PrintStream stream, int limit) throws IOException
+  public void csv(PrintStream stream, int limit) throws IOException
   {
     Writer writer = new PrintWriter(stream);
-    return csv(writer, limit);
+    csv(writer, limit);
   }
 
   /**
@@ -824,12 +778,12 @@ public class DicFreq
           break;
         writer.write(entry.toString());
         writer.write(SEP);
-        writer.write("" + (double) Math.round(100000000.0 * entry.count / occs) / 100);
+        writer.write("" + (double) Math.round(100000000.0 * entry.count.get() / occs.get()) / 100);
         writer.write("\n");
       }
     }
     finally {
-      writer.close();
+      writer.flush();
     }
     return writer;
   }
@@ -903,6 +857,7 @@ public class DicFreq
     }
   }
 
+  
   /**
    * Testing
    * 
@@ -910,6 +865,8 @@ public class DicFreq
    */
   public static void main(String[] args) throws IOException
   {
+    // test synchonisation
+    /*
     BufferedReader buf = new BufferedReader(
         new InputStreamReader(DicFreq.class.getResourceAsStream("/alix/fr/dic/loc.csv"), StandardCharsets.UTF_8));
     String l;
@@ -922,5 +879,6 @@ public class DicFreq
       }
     }
     dic.csv(new PrintWriter(System.out));
+    */
   }
 }

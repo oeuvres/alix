@@ -77,7 +77,7 @@ public class DicPhrase
       if (c == '’' || c == '\'' || Char.isSpace(c) || c == '-' || c == '\t' || c == ';' || i == lim - 1) {
         if (c == '’' || c == '\'' || i == lim - 1)
           token.append(c);
-        code = words.add(token);
+        code = words.inc(token);
         if (code > senselevel)
           buffer.push(code);
         token.reset();
@@ -265,22 +265,22 @@ public class DicPhrase
     DicFreq dic = new DicFreq();
     DicPhrase phrases = new DicPhrase();
 
-    int NAME = dic.add("NOM");
-    int NUM = dic.add("NUM");
+    int NAME = dic.inc("NOM");
+    int NUM = dic.inc("NUM");
     BufferedReader buf = new BufferedReader(
         new InputStreamReader(Lexik.class.getResourceAsStream("dic/stop.csv"), StandardCharsets.UTF_8));
     String l;
     // define a "sense level" in the dictionary, by inserting a stoplist at first
     int senselevel = -1;
     while ((l = buf.readLine()) != null) {
-      int code = dic.add(l.trim());
+      int code = dic.inc(l.trim());
       if (code > senselevel)
         senselevel = code;
     }
     buf.close();
     // add some more words to the stoplits
     for (String w : new String[] { "chère", "dire", "dis", "dit", "jeune", "jeunes", "yeux" }) {
-      int code = dic.add(w);
+      int code = dic.inc(w);
       if (code > senselevel)
         senselevel = code;
     }
@@ -330,9 +330,9 @@ public class DicPhrase
         else if (occ.tag().isNum())
           code = NUM; // simplify names
         else if (occ.tag().isVerb())
-          code = dic.add(occ.lem());
+          code = dic.inc(occ.lem());
         else
-          code = dic.add(occ.orth());
+          code = dic.inc(occ.orth());
         // clear to avoid repetitions
         // « Voulez vous sortir, grand pied de grue, grand pied de grue, grand pied de
         // grue »

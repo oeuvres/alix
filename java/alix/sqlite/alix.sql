@@ -6,7 +6,8 @@ PRAGMA main.cache_size = 10000;
 PRAGMA temp_store = 2; -- memory temp table
 PRAGMA journal_mode = OFF; -- unsecure
 PRAGMA synchronous = OFF; -- unsecure
-PRAGMA schema.auto_vacuum = FULL;
+PRAGMA auto_vacuum = FULL;
+PRAGMA locking_mode = EXCLUSIVE;
 
 CREATE TABLE doc (
   -- Document = fichier
