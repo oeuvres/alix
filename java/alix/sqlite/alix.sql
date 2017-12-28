@@ -1,13 +1,12 @@
 -- structure d’un index plein texte avec informations linguistiques
 
 PRAGMA encoding = 'UTF-8';
-PRAGMA main.page_size = 4096;
-PRAGMA main.cache_size = 10000;
+PRAGMA page_size = 4096;
+PRAGMA cache_size = 10000;
 PRAGMA temp_store = 2; -- memory temp table
 PRAGMA journal_mode = OFF; -- unsecure
 PRAGMA synchronous = OFF; -- unsecure
 PRAGMA auto_vacuum = FULL;
-PRAGMA locking_mode = EXCLUSIVE;
 
 CREATE TABLE doc (
   -- Document = fichier
@@ -24,6 +23,7 @@ CREATE TABLE doc (
   month      INTEGER,  -- mois entier
   daymonth   INTEGER,  -- jour du mois
   dayweek    INTEGER,  -- jour de la semaine
+  chars      INTEGER,  -- nombre dr caractères du document
   occs       INTEGER,  -- nombre d’occurrences pour le document
   PRIMARY KEY(id ASC)
 );
@@ -39,10 +39,10 @@ CREATE TABLE blob (
 CREATE TABLE occ (
   -- indexation des occurrences
   id         INTEGER,  -- alias rowid
-  doc        INTEGER REFERENCES doc(id),
-  orth       INTEGER REFERENCES orth(id),  -- orthographe normalisée 
+  doc        INTEGER,
+  orth       INTEGER,  -- orthographe normalisée 
   tag        INTEGER,  -- catégorie morpho-syntaxique 
-  lem        INTEGER REFERENCES lem(id),  -- lemme 
+  lem        INTEGER,  -- lemme 
   start      INTEGER,  -- position du premier caractère (Unicode) dans le texte source
   end        INTEGER,  -- position du caractère (Unicode) suivant dans le texte source
   PRIMARY KEY(id ASC)
@@ -53,7 +53,7 @@ CREATE TABLE orth (
   id         INTEGER, -- alias rowid
   form       TEXT,    -- forme graphique de référence
   tag        INTEGER,
-  lem        INTEGER REFERENCES lem(id),
+  lem        INTEGER,
   PRIMARY KEY(id ASC)
 );
 

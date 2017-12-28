@@ -2,8 +2,10 @@ package alix.sqlite;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import java.sql.Connection;
@@ -11,6 +13,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -86,7 +89,10 @@ public class Presse
         doc.setString(1, name + "_f" + (p + 1));
         doc.setString(2, identifier + "/f" + (p + 1)); // url
         doc.setInt(5, (p + 1)); // page
-        blob.setString(2, pages.getString(p)); // text
+        String text = pages.getString(p);
+        text.replaceAll("\n", "\n¶\n");
+        doc.setInt(11, text.length());
+        blob.setString(2, text); // text
         try {
           doc.executeUpdate();
           ResultSet keys = doc.getGeneratedKeys();
@@ -123,7 +129,8 @@ public class Presse
         + ", month"// 8
         + ", daymonth" // 9
         + ", dayweek" // 10
-        + ") VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        + ", chars" // 11
+        + ") VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     doc = conn.prepareStatement(sql);
     blob = conn.prepareStatement("INSERT INTO blob(id, text) VALUES (?, ?);");
     String[][] list = { 
@@ -148,9 +155,29 @@ public class Presse
   public static void main(String args[]) throws IOException, SQLException, ParseException
   {
     String root = "/Local/presse/";
-    String url = "jdbc:sqlite:" + root + "presse.sqlite";
-    conn = DriverManager.getConnection(url);
-    load(root + "json/");
+    InputStream in = String.class.getResourceAsStream("/res/alix.sqlite");
+    Path dest = Paths.get(root, "presse_blobs.sqlite");
+    // Files.copy(in, dest);
+    in = String.class.getResourceAsStream("/res/alix.sqlite");
+    dest = Paths.get(root, "presse.sqlite");
+    // Files.copy(in, dest);
+
+    
+    conn = DriverManager.getConnection("jdbc:sqlite:" + dest);
+    Statement stmt = conn.createStatement();
+
+    stmt.execute("PRAGMA locking_mode = EXCLUSIVE;");
+    // load(root + "json/");
+    stmt.execute("PRAGMA locking_mode = NORMAL;");
+    stmt.execute("UPDATE doc SET julianday = CAST(julianday(date) AS INTEGER)");
+    stmt.execute("DROP TABLE lem;");
+    stmt.execute("DROP TABLE orth;");
+    stmt.execute("DROP TABLE occ;");
+    
+    stmt.execute("ATTACH DATABASE '"+dest+"' AS presse");
+    stmt.execute("INSERT INTO presse.doc SELECT * FROM main.doc");
+    stmt.close();
+    conn.close();
   }
 
 }

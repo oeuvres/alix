@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * A specialized table for a dictionary of terms, with an int code, an int
@@ -54,7 +53,6 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class DicFreq
 {
-  private ReentrantLock lock = new ReentrantLock();
   /**
    * HashMap to find by String. String is the best object for key (most common,
    * not mutable). A custom object (like Term) will not match against String. The
@@ -91,7 +89,7 @@ public class DicFreq
     /** A secondary counter (for comparisons) */
     private AtomicInteger count2 = new AtomicInteger();
 
-    private Entry(int code, String label, int tag) {
+    private Entry(final int code, final String label, final int tag) {
       this.code = code;
       this.label = label;
       this.tag = tag;
@@ -197,10 +195,10 @@ public class DicFreq
    */
   public int code(Term term)
   {
-    Entry vals = byTerm.get(term);
-    if (vals == null)
+    Entry entry = byTerm.get(term);
+    if (entry == null)
       return -1;
-    return vals.code;
+    return entry.code;
   }
 
   /**
@@ -555,7 +553,7 @@ public class DicFreq
     return put(entry, count, count2);
   }
 
-  public int put(Entry entry, final int count, final int count2)
+  private int put(Entry entry, final int count, final int count2)
   {
     synchronized (entry) {
       occs.set(occs.get() - entry.count.get() - entry.count2.get() + count + count2);
@@ -619,14 +617,14 @@ public class DicFreq
    *          initial value for secondary counter
    * @return
    */
-  private synchronized Entry entry(final String term, final int tag)
+  synchronized private Entry entry(final String term, final int tag)
   {
+    Entry entry;
     // possible queue, multiple call and entry creation is not finished
-    Entry entry = byTerm.get(term);
+    entry = byTerm.get(term);
     if (entry != null) {
       return entry;
     }
-    pointer++;
     // index is too short, extends it (not a big perf pb)
     if (pointer >= byCode.length) {
       final int oldLength = byCode.length;
@@ -637,6 +635,7 @@ public class DicFreq
     entry = new Entry(pointer, term, tag);
     // put the same line object by reference in HashMap and Array
     byCode[pointer] = entry;
+    pointer++;
     byTerm.put(term, entry);
     return entry;
   }
