@@ -1,6 +1,5 @@
 package alix.sqlite;
 
-import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -8,116 +7,207 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
-import alix.fr.Lexik;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.DicFreq;
+import alix.util.DicFreq.Entry;
 import alix.util.Occ;
-import alix.util.Term;
 
-public class ParseBlob
+public class ParseBlob implements Runnable
 {
   /** Sqlite connexion */
-  Connection conn;
+  private static Connection blobs;
+  /** Sqlite connexion */
+  private static Connection occs;
   /** Dictionary of orthographic form with an index */
-  DicFreq orthDic; 
+  private static DicFreq orthDic; 
   /** Dictionary of orthographic form with an index */
-  DicFreq lemDic;
-  /** Max index for stop words */
-  int stopoffset;
+  private static DicFreq lemDic;
+  /** Number of pages */
+  private static int pageCount;
+  /** Local cursor on blob to process */
+  private ResultSet pages;
+  /** Start index in document list */
+  private final int start;
+  private final int end;
   
   /**
-   * Constructor
+   * Open database before ops, and load dics.
    * 
    * @throws SQLException
    */
-  public ParseBlob(File sqlite) throws SQLException {
-    String url = "jdbc:sqlite:" + sqlite.toString();
-    conn = DriverManager.getConnection(url);
-    orthDic.put(""); // rien=1
-    for (String word : Tag.CODE.keySet())
-      orthDic.put(word);
-    for (String word : Lexik.STOP)
-      orthDic.put(word, Lexik.cat(word));
-    this.stopoffset = orthDic.put("STOPOFFSET");
-  }
-
-  /**
-   * Parse record, populate undic
-   * 
-   * @throws SQLException
-   */
-  public void walk() throws IOException, SQLException
+  public static int open(String occsSqlite, String blobsSqlite) throws SQLException 
   {
-    ResultSet res;
-    orthDic = new DicFreq();
-    lemDic = new DicFreq();
-    Statement stmt  = conn.createStatement();
-    res = stmt.executeQuery("SELECT * FROM orth");
-    while(res.next()) {
-      
-    }
-    res = stmt.executeQuery("SELECT id, text FROM blob LIMIT 10");
-    PreparedStatement insOcc = conn.prepareStatement("INSERT INTO occ(doc, orth, tag, lem, start, end) "
-        + "VALUES (?, ?, ?, ?, ?, ?)");
-    while (res.next()) {
-      int doc = res.getInt(1);
-      if (doc % 1000 == 0) System.out.println(doc);
-      insOcc.getConnection().setAutoCommit(false);
-      insOcc.setInt(1, doc);
-      String text = res.getString(2);
-      Tokenizer toks = new Tokenizer(text, false);
-      Occ occ;
-      while ((occ = toks.word()) != null) {
-        if (occ.tag().isPun())
-          continue;
-        if (occ.tag().equals(Tag.NULL))
-          continue; // inconnu
-        int lem = lemDic.put(occ.lem(), occ.tag().code());
-        int orth = orthDic.put(occ.orth(), occ.tag().code(), lem);
-        insOcc.setInt(2, orth);
-        insOcc.setInt(3, occ.tag().code());
-        insOcc.setInt(4, lem);
-        insOcc.setInt(5, occ.start());
-        insOcc.setInt(6, occ.end());
-        insOcc.executeUpdate();
-      }
-      insOcc.getConnection().commit();
-    }
-    PreparedStatement insOrth = conn.prepareStatement("INSERT INTO orth(id, form, tag, lem) VALUES (?, ?, ?, ?)");
-    insOrth.getConnection().setAutoCommit(false);
-    for (DicFreq.Entry entry: orthDic.entries()) {
-      if (entry == null ) continue; // temp hack
-      insOrth.setInt(1, entry.code());
-      insOrth.setString(2, entry.label());
-      insOrth.setInt(3, entry.tag());
-      insOrth.setInt(4, entry.count());
-      insOrth.executeUpdate();
-    }
-    insOrth.getConnection().commit();
+    occs = DriverManager.getConnection("jdbc:sqlite:" + occsSqlite);
+    if (blobsSqlite == null) blobs = occs;
+    else blobs = DriverManager.getConnection("jdbc:sqlite:" + blobsSqlite);
+    ResultSet res = blobs.createStatement().executeQuery("SELECT MAX(id)+1 FROM blob");
+    pageCount = res.getInt(1);
+    res.close();
+
     
-    PreparedStatement insLem = conn.prepareStatement("INSERT INTO lem(id, form, tag) VALUES (?, ?, ?)");
-    insLem.getConnection().setAutoCommit(false);
-    for (DicFreq.Entry entry: lemDic.entries()) {
-      if (entry == null ) continue; // temp hack
-      insLem.setInt(1, entry.code());
-      insLem.setString(2, entry.label());
-      insLem.setInt(3, entry.tag());
+    Statement stmt  = occs.createStatement();
+    // load orth dic
+    orthDic = new DicFreq();
+    res = stmt.executeQuery("SELECT * FROM orth ORDER BY id");
+    while(res.next()) {
+      orthDic.put(res.getString("form"), res.getInt("tag"), res.getInt("lem"));
     }
-    insLem.getConnection().commit();
+    res.close();
+    lemDic = new DicFreq();
+    res = stmt.executeQuery("SELECT * FROM lem ORDER BY id");
+    while(res.next()) {
+      lemDic.put(res.getString("form"), res.getInt("tag"));
+    }
+    
+    res.close();
+    return pageCount;
+  }
+  
+  public static int pageCount()
+  {
+    return pageCount;
+  }
+  
+  /**
+   * Close database and update dics.
+   * @throws SQLException
+   */
+  public static void close() throws SQLException
+  {
+    blobs.close();
+    PreparedStatement stmt;
+    occs.setAutoCommit(false);
+    stmt = occs.prepareStatement("DELETE FROM orth");
+    stmt.execute();
+    stmt = occs.prepareStatement("INSERT INTO orth(id, form, tag, lem) VALUES (?, ?, ?, ?)");
+    for (Entry entry: orthDic.entries()) {
+      if (entry == null ) break; // last one
+      stmt.setInt(1, entry.code());
+      stmt.setString(2, entry.label());
+      stmt.setInt(3, entry.tag());
+      stmt.setInt(4, entry.count());
+      stmt.execute();
+    }
+    stmt.close();
+    stmt = occs.prepareStatement("DELETE FROM lem");
+    stmt.execute();
+    stmt = occs.prepareStatement("INSERT INTO lem(id, form, tag) VALUES (?, ?, ?)");
+    for (Entry entry: lemDic.entries()) {
+      if (entry == null ) break; // last one
+      stmt.setInt(1, entry.code());
+      stmt.setString(2, entry.label());
+      stmt.setInt(3, entry.tag());
+      stmt.execute();
+    }
+    stmt.close();
+    occs.commit();
+    occs.close();
+  }
+
+  /**
+   * Constructor of the thread
+   * @param offset
+   * @param limit
+   * @throws SQLException 
+   */
+  public ParseBlob(final int start, final int end) throws SQLException
+  {
+    this.start = start;
+    this.end = end;
+    PreparedStatement q = blobs.prepareStatement("SELECT id, text FROM blob WHERE id >= ? AND id < ?");
+    q.setInt(1, start);
+    q.setInt(2, end);
+    pages = q.executeQuery();
+  }
+  
+  /**
+   * Parse record
+   * 
+   * @throws SQLException
+   */
+  public void run()
+  {
+    // String table = Thread.currentThread().getName().replaceAll("-", "");
+    String table = "table"+start;
+    try {
+      Statement stmt = occs.createStatement();
+      stmt.execute("CREATE TEMP TABLE '"+table+"' (doc, orth, tag, lem, start, end)");
+      stmt.close();
+      PreparedStatement ins = occs.prepareStatement(
+        "INSERT INTO '"+table+"'"
+        +" (doc, orth, tag, lem, start, end)"
+        +" VALUES (?, ?, ?, ?, ?, ?)"
+      );
+      Tokenizer toks = new Tokenizer(false);
+      while (pages.next()) {
+        int doc = pages.getInt(1);
+        ins.setInt(1, doc);
+        toks.text(pages.getString(2));
+        Occ occ;
+        while ((occ = toks.word()) != null) {
+          if (occ.tag().isPun())
+            continue;
+          if (occ.tag().equals(Tag.NULL))
+            continue; // inconnu
+          int lem = lemDic.put(occ.lem(), occ.tag().code());
+          int orth = orthDic.put(occ.orth(), occ.tag().code(), lem);
+          ins.setInt(2, orth);
+          ins.setInt(3, occ.tag().code());
+          ins.setInt(4, lem);
+          ins.setInt(5, occ.start());
+          ins.setInt(6, occ.end());
+          ins.executeUpdate();
+        }
+      }
+      stmt.execute(
+          "INSERT INTO occ"
+        + " (doc, orth, tag, lem, start, end)"
+        + " SELECT doc, orth, tag, lem, start, end"
+        + " FROM '"+table+"'"
+      );
+      stmt.execute("DROP TABLE "+table);
+      stmt.close();
+    }
+    catch (SQLException e) {
+      System.out.println(Thread.currentThread().getName());
+      e.printStackTrace();
+    }
+    System.out.println(start);
   }
   
 
-  public static void main(String[] args) throws IOException, SQLException
+  public static void main(String[] args) throws IOException, SQLException, InterruptedException
   {
-    /*
-     * if ( args == null || args.length < 1 ) { System.out.println(
-     * "Usage : java -cp \"alix.jar\" alix.sqlite.ParseBlob base.sqlite" );
-     * System.exit( 0 ); }
-     */
-    ParseBlob base = new ParseBlob(new File("/Local/presse/presse.sqlite"));
-    base.walk();
+    String occs = "/Local/presse/presse.sqlite";
+    if (args.length > 0) occs = args[0];
+    String blobs = "/Local/presse/presse_blobs.sqlite";
+    if (args.length > 1) blobs = args[1];
+    int threads = 200;
+    if (args.length > 2) threads = Integer.parseInt(args[2]);
+    int limit = 1000;
+    if (args.length > 3) limit = Integer.parseInt(args[3]);
+    
+    int pageCount = ParseBlob.open(occs, blobs);
+    
+    
+    ExecutorService pool = Executors.newFixedThreadPool(threads);
+    
+    long start = System.nanoTime();
+    int max = pageCount;
+    for (int offset = 0 ; offset < max; offset+=limit) {
+      pool.execute(new ParseBlob(offset, offset+limit));
+    }
+    pool.shutdown();
+    pool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+    System.out.println((System.nanoTime() - start)/1000000.0);
+    ParseBlob.close();
+    System.out.println((System.nanoTime() - start)/1000000.0);
+    
     // base.unDic.csv(System.out, 300);
   }
 }

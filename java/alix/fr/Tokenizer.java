@@ -30,7 +30,7 @@ public class Tokenizer
    * The text, as a non mutable string. Same text could be shared as reference by
    * multiple Tokenizer.
    */
-  public final String text;
+  private String text;
   /** Where we are in the text */
   private int pointer;
   /** An end index, may be set after init */
@@ -112,6 +112,15 @@ public class Tokenizer
   }
 
   /**
+   * Constructor for multiple
+   * @param text
+   */
+  public Tokenizer(final Boolean xml) {
+    this.xml = xml;
+    this.text = null;
+  }
+
+  /**
    * Constructor, give complete text in a String, release file handle.
    * 
    * @param text
@@ -126,18 +135,27 @@ public class Tokenizer
         pos++;
       this.xml = (text.charAt(pos) == '<');
     }
-    // useful for TEI files
-    int pos = text.indexOf("<teiHeader>");
-    if (pos > 0 && pos < 500) {
-      pos = text.indexOf("</teiHeader>");
-      if (pos > 0)
-        pointer = pos;
-      this.xml = true;
+    text(text);
+  }
+  
+  /**
+   * Set text
+   */
+  public void text(String text)
+  {
+    this.text = text + "\n"; // this hack will avoid lots of tests
+    if (this.xml) {
+      // useful for TEI files
+      int pos = text.indexOf("<teiHeader>");
+      if (pos > 0 && pos < 500) {
+        pos = text.indexOf("</teiHeader>");
+        if (pos > 0)
+          pointer = pos;
+      }
     }
-    end = text.length();
+    end = text.length()-1;
     // on fait quoi ?
     // System.out.println( "last char ? "+text.charAt( end - 1 ));
-    this.text = text + "\n"; // this hack will avoid lots of tests
     // start the buffer of occurrences, fill it with the needed occurrences for the
     // larger rule on the right size
     occhere = occbuf.first();
