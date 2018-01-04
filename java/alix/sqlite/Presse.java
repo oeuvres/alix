@@ -154,26 +154,25 @@ public class Presse
 
   public static void main(String args[]) throws IOException, SQLException, ParseException
   {
-    String root = "/Local/presse/";
+    String root = ".";
     InputStream in = String.class.getResourceAsStream("/res/alix.sqlite");
     Path dest = Paths.get(root, "presse_blobs.sqlite");
-    // Files.copy(in, dest);
+    Files.copy(in, dest);
+    System.out.println(dest);
+    conn = DriverManager.getConnection("jdbc:sqlite:" + dest);
     in = String.class.getResourceAsStream("/res/alix.sqlite");
     dest = Paths.get(root, "presse.sqlite");
-    // Files.copy(in, dest);
-
-    
-    conn = DriverManager.getConnection("jdbc:sqlite:" + dest);
+    Files.copy(in, dest);
     Statement stmt = conn.createStatement();
 
     stmt.execute("PRAGMA locking_mode = EXCLUSIVE;");
-    // load(root + "json/");
+    load(root + "/json/");
     stmt.execute("PRAGMA locking_mode = NORMAL;");
     stmt.execute("UPDATE doc SET julianday = CAST(julianday(date) AS INTEGER)");
     stmt.execute("DROP TABLE lem;");
     stmt.execute("DROP TABLE orth;");
     stmt.execute("DROP TABLE occ;");
-    
+    System.out.println(dest);
     stmt.execute("ATTACH DATABASE '"+dest+"' AS presse");
     stmt.execute("INSERT INTO presse.doc SELECT * FROM main.doc");
     stmt.close();

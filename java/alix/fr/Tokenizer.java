@@ -144,6 +144,7 @@ public class Tokenizer
   public void text(String text)
   {
     this.text = text + "\n"; // this hack will avoid lots of tests
+    pointer = 0;
     if (this.xml) {
       // useful for TEI files
       int pos = text.indexOf("<teiHeader>");

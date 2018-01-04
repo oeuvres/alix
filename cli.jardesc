@@ -27,6 +27,7 @@
         <javaElement handleIdentifier="=Alix/java&lt;alix.frdo"/>
         <file path="/Alix/java/alix/fr/dic/brevidot.csv"/>
         <file path="/Alix/java/alix/fr/dic/forename.csv"/>
+        <javaElement handleIdentifier="=Alix/java&lt;res"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr{Tag.java"/>
         <file path="/Alix/java/alix/fr/dic/france.csv"/>
         <file path="/Alix/java/alix/fr/dic/place.csv"/>

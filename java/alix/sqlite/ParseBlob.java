@@ -43,6 +43,8 @@ public class ParseBlob implements Runnable
   public static int open(String occsSqlite, String blobsSqlite) throws SQLException 
   {
     occs = DriverManager.getConnection("jdbc:sqlite:" + occsSqlite);
+    occs.createStatement().execute("PRAGMA locking_mode = EXCLUSIVE;");
+
     if (blobsSqlite == null) blobs = occs;
     else blobs = DriverManager.getConnection("jdbc:sqlite:" + blobsSqlite);
     ResultSet res = blobs.createStatement().executeQuery("SELECT MAX(id)+1 FROM blob");
@@ -104,8 +106,9 @@ public class ParseBlob implements Runnable
       stmt.setInt(3, entry.tag());
       stmt.execute();
     }
-    stmt.close();
     occs.commit();
+    stmt.execute("PRAGMA locking_mode = NORMAL;");
+    stmt.close();
     occs.close();
   }
 
@@ -144,6 +147,8 @@ public class ParseBlob implements Runnable
         +" VALUES (?, ?, ?, ?, ?, ?)"
       );
       Tokenizer toks = new Tokenizer(false);
+      int occs = 0;
+      int page = 0;
       while (pages.next()) {
         int doc = pages.getInt(1);
         ins.setInt(1, doc);
@@ -162,7 +167,9 @@ public class ParseBlob implements Runnable
           ins.setInt(5, occ.start());
           ins.setInt(6, occ.end());
           ins.executeUpdate();
+          occs++;
         }
+        page++;
       }
       stmt.execute(
           "INSERT INTO occ"
