@@ -9,7 +9,7 @@ Tool for French tokenization, lemmatization, POStagging ; corpus analysis ; dist
 
 * UNKNOWN — connu comme inconnu (selon les dictionnaires) 
 * NULL — valeur par défaut, aucune information
-* VERB — verbe, qui n'est pas l'une des catégories ci-dessous
+* VERB — verbe, autre que l'une des catégories ci-dessous
   * VERBaux — auxilliaire, conjugaison d’être et avoir
   * VERBppass — participe passé, peut avoir un emploi adjectif, voire substantif
   * VERBppres — participe présent, a souvent un emploi adjectif ou substantif 
