@@ -451,7 +451,7 @@ public class Char
    */
   public static void main(String args[])
   {
-    String test = " ■A\n°^�&-.6<Œ" + (char) 0xAD;
+    String test = ".;!? ■A\n°^�&-.6<Œ" + (char) 0xAD;
     for (int i = 0, n = test.length(); i < n; i++) {
       char c = test.charAt(i);
       System.out.println(props(c));
