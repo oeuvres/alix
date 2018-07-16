@@ -138,7 +138,6 @@ public class DicFreq
      */
     public int compareTo(Entry o)
     {
-      
       return (o.count.get() + o.count2.get()) - (count.get() + count2.get());
     }
   }

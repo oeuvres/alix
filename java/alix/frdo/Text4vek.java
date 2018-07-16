@@ -2,12 +2,17 @@ package alix.frdo;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import alix.fr.Lexik;
+import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.fr.Lexik.LexEntry;
 import alix.util.Occ;
+import alix.util.Term;
 
 /**
  * Optimise du texte pour la vectorisation
@@ -17,45 +22,52 @@ import alix.util.Occ;
  */
 public class Text4vek
 {
-
-  public static void main(String[] args) throws IOException
-  {
-    // String src = "../alix-demo/WEB-INF/textes/proust_recherche.xml";
-    // String dest = "/Local/word2vec/proust.txt";
-    // String src = "../alix-demo/WEB-INF/textes/zola.xml";
-    // String dest = "/Local/word2vec/zola.txt";
-    // String src = "../alix-demo/WEB-INF/textes/dumas.xml";
-    // String dest = "/Local/word2vec/dumas.txt";
-    // String src = "../alix-demo/WEB-INF/textes/lacan_ecrits.xml";
-    // String dest = "/Local/word2vec/lacan.txt";
-    // String src =
-    // "../alix-demo/WEB-INF/textes/levi-strauss_anthropologie-structurale.xml";
-    // String dest = "/Local/word2vec/levistrauss.txt";
-    String src = "../alix-demo/WEB-INF/textes/barthes_compilationstructurale.html";
-    String dest = "/Local/word2vec/barthes.txt";
-    String text = new String(Files.readAllBytes(Paths.get(src)), StandardCharsets.UTF_8);
-    System.out.println(src + " > " + dest);
-    PrintWriter out = new PrintWriter(dest);
-    Tokenizer toks = new Tokenizer(text);
-    // est-ce qu’on a besoin d’une fenêtre glissante ?
-    Occ occ = new Occ();
-    while (toks.word(occ)) {
-      if (occ.graph().equals("/")) {
-        out.println("");
-        continue;
-      }
-      else if (occ.tag().isPun())
-        continue;
-      else if (occ.tag().isName())
-        out.print("ONOMA");
-      // else if ( occ.tag.isVerb() || occ.tag.isAdj() || occ.tag.isSub() ) out.print(
-      // occ.lem );
-      else
-        out.print(occ.lem());
-      out.print(' ');
+    static public void parse(final String txt, Writer writer) throws IOException {
+        int length = txt.length();
+        // réécrire proprement le texte
+        Tokenizer toks = new Tokenizer(txt, false);
+        Occ occ;
+        while ((occ = toks.word()) != null) {
+            if (occ.tag().isPun()) {
+                if (occ.tag().equals(Tag.PUNdiv)) {
+                    writer.append("\n");
+                }
+                continue;
+            }
+            if (occ.tag().isName()) {
+                writer.append(occ.tag().label());
+            }
+            else if (occ.tag().isNum()) {
+                writer.append(occ.tag().label());
+            }
+            else if ((occ.tag().equals(Tag.VERB) || occ.tag().isAdj()) && !occ.lem().isEmpty()) {
+                writer.append(occ.lem().replace(' ', '_'));
+            }
+            else if (!occ.tag().equals(Tag.NULL)) {
+                writer.append(occ.orth().replace(' ', '_'));
+            }
+            // unknown word, especially -t-
+            else {
+            }
+            writer.append(' ');
+        }
+        writer.flush();
+        writer.close();
     }
-    out.close();
-    System.out.println("Fini");
-  }
+
+
+    public static void main(String[] args) throws IOException
+    {
+        if (args.length < 2) {
+            System.out.println("java -cp \"lib/*\" alix.frdo.Text4vek src dst");
+            System.exit(0);
+        }
+        String src = args[0];
+        String dst = args[1];
+        String text = new String(Files.readAllBytes(Paths.get(src)), StandardCharsets.UTF_8);
+        System.out.println(src + " > " + dst);
+        PrintWriter out = new PrintWriter(dst);
+        parse(text, out);
+    }
 
 }

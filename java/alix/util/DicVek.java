@@ -192,7 +192,7 @@ public class DicVek
     IntVek vek = vectors.get(key);
     // optimize ? term not yet encountered, create vector
     if (vek == null) {
-      vek = new IntVek(10, key, null);
+      vek = new IntVek(key, null);
       // A vector is mutable in its dictionary
       vectors.put(key, vek);
     }
@@ -334,7 +334,7 @@ public class DicVek
       if (vek.size() < 30)
         break;
       if (inter)
-        score = vekterm.cosine2(vek);
+        score = vekterm.intercos(vek);
       else
         score = vekterm.cosine(vek);
       // score differs

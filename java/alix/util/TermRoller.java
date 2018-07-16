@@ -61,7 +61,7 @@ public class TermRoller extends Roller implements Iterable<Term>
    */
   public Term set(final int pos, final String term)
   {
-    return data[pointer(pos)].replace(term);
+    return data[pointer(pos)].set(term);
   }
 
   /**
@@ -106,7 +106,7 @@ public class TermRoller extends Roller implements Iterable<Term>
   {
     // Term ret = data[ pointer( -left ) ];
     center = pointer(+1);
-    data[pointer(right)].replace(value);
+    data[pointer(right)].set(value);
   }
 
   /**
@@ -116,7 +116,7 @@ public class TermRoller extends Roller implements Iterable<Term>
   {
     // Term ret = data[ pointer( -left ) ];
     center = pointer(+1);
-    data[pointer(right)].replace(value);
+    data[pointer(right)].set(value);
   }
 
   /**

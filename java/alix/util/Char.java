@@ -422,7 +422,7 @@ public class Char
   {
     short props = CHARS[c];
     StringBuilder sb = new StringBuilder();
-    sb.append(c).append(" ").append(Character.getName(c)).append(" — ");
+    sb.append(c).append("\t").append(Character.getName(c)).append("\t");
     if ((props & TOKEN) > 0)
       sb.append("TOKEN ");
     if ((props & LETTER) > 0)
@@ -451,7 +451,7 @@ public class Char
    */
   public static void main(String args[])
   {
-    String test = ".;!? ■A\n°^�&-.6<Œ" + (char) 0xAD;
+    String test = "-,_.;!? ■A\n°^�&-.6<Œ" + (char) 0xAD;
     for (int i = 0, n = test.length(); i < n; i++) {
       char c = test.charAt(i);
       System.out.println(props(c));

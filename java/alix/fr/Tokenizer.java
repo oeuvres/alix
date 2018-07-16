@@ -322,7 +322,8 @@ public class Tokenizer {
                     // if ( next == null ) break; // ??? should not arrive
                     boolean stop = (next == end);
                     // normalize orth, compound test has been down on graph
-                    next.orth(next.graph());
+                    // jeunes FILLES
+                    next.orth(next.graph().toLower());
                     occhere.apend(next);
                     // remove the next token to relink the chain
                     occbuf.remove(next);
@@ -392,7 +393,7 @@ public class Tokenizer {
             // minus ?
             else if (occ.orth().length() == 1) {
                 occ.lem("-");
-                occ.tag(Tag.MATH);
+                occ.tag(Tag.PUNcl);
             }
             // other junctions
             else
@@ -482,7 +483,7 @@ public class Tokenizer {
 
     /**
      * Find position of next token char (not space, jump XML tags) If char at pos is
-     * token char, return same value Jump notes ? Update a mutable string about the
+     * token char, return same value. Jump notes ? Update a mutable string about the
      * last XML tag found
      * 
      * @param pos
@@ -530,9 +531,6 @@ public class Tokenizer {
                 namerec = true;
                 continue;
             }
-            // jump spaces when not inside an xml tag
-            if (!Char.isToken(c) && !Char.isPunctuation(c))
-                continue;
             // do not create a token on \n, but let \"
             if (c == '\\') {
                 char c2 = text.charAt(pos);
@@ -544,6 +542,9 @@ public class Tokenizer {
                 evstruct |= EVP;
                 continue;
             }
+            // jump spaces when not inside an xml tag
+            if (!Char.isToken(c) && !Char.isPunctuation(c))
+                continue;
             // words do not start by an hyphen or apos
             // if ( c == '\'' || c == '’' || c == 0xAD || c == '-' ) continue;
             return pos - 1;
@@ -603,7 +604,7 @@ public class Tokenizer {
             while (text.charAt(pos) == '.') {
                 pos++;
             }
-            graph.replace("…");
+            graph.set("…");
             occ.end(pos);
             return pos;
         }
@@ -611,7 +612,7 @@ public class Tokenizer {
         // test if there is a letter after, if not, it could be part of a word
         else if (c == '-') {
             c2 = text.charAt(pos + 1);
-            if (Char.isSpace(c2)) {
+            if (c2 != '-') {
                 graph.append(c);
                 occ.end(++pos);
                 return pos;
@@ -882,7 +883,8 @@ public class Tokenizer {
         // Paths.get(Tokenizer.class.getClassLoader().getResource("").getPath()).getParent();
         if (true || args.length < 1) {
             String text;
-            text = "<>" + " J'aime! l'État ; et sa mise, en oeuvre ; ";
+            text = "<>" + " \"début de cette législature, nous vous avions des créances bancaires. \\\\\\\"* ' "
+                    + "Or, dans -le même filet die -l'Agence Economique, on pouvait lire hier Et notre confrère ajouta\" ";
             Tokenizer toks = new Tokenizer(text);
             Occ occ = new Occ();
             while ((occ = toks.word()) != null) {

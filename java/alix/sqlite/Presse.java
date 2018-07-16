@@ -3,6 +3,7 @@ package alix.sqlite;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +21,10 @@ import java.util.Arrays;
 import java.util.Calendar;
 
 import org.json.JSONObject;
+
+import alix.fr.Tokenizer;
+import alix.util.Occ;
+
 import org.json.JSONArray;
 
 /**
@@ -110,7 +115,6 @@ public class Presse
   }
 
   /**
-   * Test the Class
    * 
    * @param args
    * @throws IOException
@@ -134,12 +138,12 @@ public class Presse
     doc = conn.prepareStatement(sql);
     blob = conn.prepareStatement("INSERT INTO blob(id, text) VALUES (?, ?);");
     String[][] list = { 
-        { "l_action_francaise", "L’Action Française" }, 
-        { "la_croix", "La Croix" },
-        { "le_figaro", "Le Figaro" }, 
-        { "l_humanite", "L’Humanité" }, 
-        { "le_petit_journal", "Le Petit Journal" },
-        { "le_temps", "Le Temps" } 
+        {"l_action_francaise", "L’Action Française"}, 
+        {"la_croix", "La Croix"},
+        {"le_figaro", "Le Figaro"}, 
+        {"l_humanite", "L’Humanité"}, 
+        {"le_petit_journal", "Le Petit Journal"},
+        {"le_temps", "Le Temps"} 
     };
     for (String[] row : list) {
       dir = row[0];
@@ -151,32 +155,61 @@ public class Presse
     }
     System.out.println("FINI");
   }
-
-  public static void main(String args[]) throws IOException, SQLException, ParseException
+  
+  /**
+   * Test tokenisation of a file
+   * @throws IOException
+   * @throws ParseException
+   */
+  public static void test() throws IOException, ParseException
   {
-    String root = ".";
-    InputStream in = String.class.getResourceAsStream("/res/alix.sqlite");
-    Path dest = Paths.get(root, "presse_blobs.sqlite");
+    String src = "/home/fred/code/presse/19340101.metadata.fulltext.json";
+    String cont = new String(Files.readAllBytes(Paths.get(src)), StandardCharsets.UTF_8);
+    JSONObject json = new JSONObject(cont);
+    JSONArray pages = json.getJSONArray("contentAsText");
+    String dest = "/home/fred/code/presse/test.txt";
+    PrintWriter out = new PrintWriter(dest);
+    for (int p = 0; p < pages.length(); p++) {
+      String text = pages.getString(p);
+      text.replaceAll("\n", "\n¶\n");
+      Tokenizer toks = new Tokenizer(text);
+      Occ occ;
+      while ((occ = toks.word()) != null) {
+        out.println(occ);
+      }
+    }
+    out.close();
+  }
+
+  /**
+   * Create a base to load the texts
+   * @throws IOException
+   * @throws SQLException
+   * @throws ParseException
+   */
+  public static void base(String srcDir, String destFile) throws IOException, SQLException, ParseException
+  {
+    InputStream in = Presse.class.getResourceAsStream("alix.sqlite");
+    Path dest = Paths.get(destFile);
     Files.copy(in, dest);
     System.out.println(dest);
     conn = DriverManager.getConnection("jdbc:sqlite:" + dest);
-    in = String.class.getResourceAsStream("/res/alix.sqlite");
-    dest = Paths.get(root, "presse.sqlite");
-    Files.copy(in, dest);
     Statement stmt = conn.createStatement();
 
     stmt.execute("PRAGMA locking_mode = EXCLUSIVE;");
-    load(root + "/json/");
+    load(srcDir);
     stmt.execute("PRAGMA locking_mode = NORMAL;");
     stmt.execute("UPDATE doc SET julianday = CAST(julianday(date) AS INTEGER)");
     stmt.execute("DROP TABLE lem;");
     stmt.execute("DROP TABLE orth;");
     stmt.execute("DROP TABLE occ;");
-    System.out.println(dest);
-    stmt.execute("ATTACH DATABASE '"+dest+"' AS presse");
-    stmt.execute("INSERT INTO presse.doc SELECT * FROM main.doc");
     stmt.close();
     conn.close();
+  }
+  
+  public static void main(String args[]) throws IOException, SQLException, ParseException
+  {
+    base(args[0], args[1]);
   }
 
 }

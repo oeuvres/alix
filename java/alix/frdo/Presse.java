@@ -30,7 +30,8 @@ public class Presse {
     public static final HashSet<String> ALERT = new HashSet<String>();
     static {
         for (String w : new String[] {"amen", "ar", "ban", "archie", "chie", "com", "con", "cul", "da", "dé", "dés", "do", "euro",
-                "fra", "gent", "hom", "ide", "ides", "in", "ité", "lé", "méta", "nique", "pie", "ré", "té", "teille"
+                "fra", "frai", "gent", "hom", "ide", "ides", "in", "ité", "lé", "lés", "mach", "mage",
+                "méta", "mi", "nique", "ord", "pie", "ré", "réf", "ron", "sen", "sil", "té", "teille"
         }) FALSEPREF.add(w);
         for (String w : new String[] {
             "FILLES", "GENS"
@@ -59,7 +60,7 @@ public class Presse {
     }
     
 
-    static public void parse(String txt, Writer writer) throws IOException {
+    static public void parse(final String txt, Writer writer) throws IOException {
         // réécrire proprement le texte
         Tokenizer toks = new Tokenizer(txt, false);
         Occ occ;
@@ -71,35 +72,33 @@ public class Presse {
                     writer.append("\n");
                 continue;
             }
-            
             if (occ.tag().equals(Tag.NULL) || FALSEPREF.contains(occ.orth())) {
                 if (last.isEmpty()) {
                     last.append(occ.orth());
                     continue;
                 }
-                last.append(occ.orth());
-                LexEntry entry = Lexik.WORD.get(occ.orth());
+                last.append(occ.orth()).toLower();
+                LexEntry entry = Lexik.WORD.get(last);
                 if (entry == null) {
                     last.reset();
                     continue;
                 }
-                occ.orth(last.toLower());
+                occ.orth(last);
                 occ.lem(entry.lem);
                 occ.tag(entry.tag.code());
             }
             last.reset();
-            
             if (occ.tag().isName()) {
                 writer.append(occ.tag().label());
             }
             else if (occ.tag().isNum()) {
                 writer.append(occ.tag().label());
             }
-            else if (occ.tag().isSub()) {
-                writer.append(occ.orth().replace(' ', '_'));
-            }
-            else if (!occ.lem().isEmpty()) {
+            else if ((occ.tag().equals(Tag.VERB) || occ.tag().isAdj()) && !occ.lem().isEmpty()) {
                 writer.append(occ.lem().replace(' ', '_'));
+            }
+            else if (occ.tag().equals(Tag.NULL)) {
+                System.out.println(occ.graph());
             }
             else {
                 writer.append(occ.orth().replace(' ', '_'));
@@ -169,8 +168,9 @@ public class Presse {
             System.out.println(label);
             File titleDir = new File(jsonDir, code);
             if (!titleDir.exists()) continue;
-            File[] ls = titleDir.listFiles();
             File dstDir = new File(txtDir, code);
+            File[] ls = titleDir.listFiles();
+            Arrays.sort(ls);
             for (final File year : ls) {
                 if (!year.isDirectory()) continue;
                 File dstFile = new File(dstDir, code+'-'+year.getName()+".txt");
@@ -193,7 +193,8 @@ public class Presse {
         process(jsonDir, txtDir);
         /*
         StringWriter sw = new StringWriter();
-        parse("Je suis un HOMME do la Manche des GENS.", sw);
+        parse("début de cette législature, nous vous avions des créances bancaires. \\\"* '"
+                + " Or, dans -le même filet die -l'Agence Economique, on pouvait lire hier Et notre confrère ajouta", sw);
         System.out.println(sw);
         */
     }

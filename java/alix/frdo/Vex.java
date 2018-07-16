@@ -40,25 +40,30 @@ import alix.util.DicVek.SimRow;
  */
 public class Vex 
 {
-    String srcFile;
+    HashMap<String, Entry> freqs = new HashMap<String, Entry>();
+    long wc;
     HashMap<String, Integer> byString;
     String[] byIndex;
     /** Vectors of co-occurences for each term of dictionary */
     private IntVek[] mat;
     double[] magnitudes;
-    public Vex(String srcFile) {
-        this.srcFile = srcFile;
+    int left;
+    int right;
+    public Vex(int left, int right) {
+        this.left = left;
+        this.right = right;
     }
-    public long freqs(String fileName) throws FileNotFoundException, IOException
+    
+    public long freqs(String srcFile) throws FileNotFoundException, IOException
     {
         int minFreq = 5;
         String l;
         char c;
         Term term = new Term();
+        HashMap<String, Entry> freqs = this.freqs; // perf
         Entry entry;
         String label;
-        long wc = 0;
-        HashMap<String, Entry> freqs = new HashMap<String, Entry>();
+        long wc = this.wc;
         try (BufferedReader br = Files.newBufferedReader(Paths.get(srcFile), StandardCharsets.UTF_8)) {
             while ((l = br.readLine()) != null) {
                 // loop on all chars and build words
@@ -66,7 +71,7 @@ public class Vex
                 for(int i=0; i <= length ; i++) {
                     if (i == length) c = ' ';
                     else c = l.charAt(i);
-                    if (Char.isLetter(c)) {
+                    if (Char.isLetter(c) || c == '_') {
                         term.append(c);
                         continue;
                     }
@@ -88,35 +93,28 @@ public class Vex
         Collections.sort(list);
         int size = list.size();
         byString = new HashMap<String, Integer>();
-        ArrayList<String> freqlist = new ArrayList<String>();
+        ArrayList<String> wordlist = new ArrayList<String>();
         int count;
-        try (
-            OutputStreamWriter writer = new OutputStreamWriter(
-               new FileOutputStream(fileName), StandardCharsets.UTF_8
-            )
-        ) {
-            System.out.println(list.get(0).count);
-            for (int i=0;i < size; i++) {
-                entry = list.get(i);
-                count = entry.count.get();
-                if (count <= minFreq) break;
-                byString.put(entry.label, i);
-                freqlist.add(entry.label);
-                writer.write(entry.label+"\t"+count+"\n");
-            }
+        for (int i=0;i < size; i++) {
+            entry = list.get(i);
+            count = entry.count.get();
+            if (count <= minFreq) break;
+            byString.put(entry.label, i);
+            wordlist.add(entry.label);
         }
-        byIndex = new String[freqlist.size()];
-        byIndex = freqlist.toArray(byIndex);
+        byIndex = new String[wordlist.size()];
+        byIndex = wordlist.toArray(byIndex);
+        this.wc = wc;
         return wc;
     }
-    public void fill(String fileName) throws IOException
+    public void fill(String srcFile) throws IOException
     {
-        int rows = byString.size();
+        int rows = byIndex.length;
         mat = new IntVek[rows];
-        int cols = byString.size();
-        int left = -1;
-        int right = 1;
-        IntRoller slider = new IntRoller(-1, +1);
+        for(int row=0; row < rows; row++) {
+            mat[row] = new IntVek(row, byIndex[row]);
+        }
+        IntRoller slider = new IntRoller(left, right);
         int size = slider.size();
         for (int i=0; i < size; i++) slider.push(-1);
         Term term = new Term();
@@ -158,21 +156,23 @@ public class Vex
     
     private void cosPrep()
     {
+        /*
         int height = mat.length;
         double mag;
         int value;
-        long zeros = 0;
         IntVek vec;
         for(int row = 0; row < height; row++) {
             mag = 0;
             vec = mat[row];
             // square root values
+            vec.reset();
             while(vec.next()) {
                 value = vec.value();
                 value = (int) Math.ceil(Math.sqrt(value));
                 vec.set(value);
             }
         }
+        */
     }
     public Top<String> distance(String word)
     {
@@ -182,22 +182,12 @@ public class Vex
             System.out.println("Word unknown: "+word);
             return null;
         }
-        int[] vec = mat[wordRow];
+        IntVek center = mat[wordRow];
+        IntVek cooc;
         int height = mat.length;
-        int width = mat[0].length;
-        double sim;
-        long dotprod;
         for (int row = 0; row < height; row++) {
-            int[] vec2 = mat[row];
-            dotprod = 0;
-            for (int col = 0; col < width; col++) {
-                dotprod += vec[col] * vec2[col];
-            }
-            if (dotprod < 0)  {
-                System.out.println(byIndex[row]);
-            }
-            sim = dotprod / (magnitudes[wordRow] * magnitudes[row]);
-            top.push(sim, byIndex[row]);
+            cooc = mat[row];
+            top.push(center.cosine(cooc), byIndex[row]);
         }
         return top;
     }
@@ -217,6 +207,10 @@ public class Vex
         {
             return count.incrementAndGet();
         }
+        public int count()
+        {
+            return count.get();
+        }
         @Override
         /**
          * Default comparator for term informations,
@@ -226,27 +220,95 @@ public class Vex
           return (o.count.get() - count.get() );
         }
     }
+    public static void freqrel(Vex vex1, Vex vex2)
+    {
+        int limit = 2000;
+        int i1 = 0;
+        Entry entry;
+        int count1;
+        int count2;
+        double freq1, freq2, ratio;
+        double wc1 = vex1.wc;
+        double wc2 = vex2.wc;
+        int floor = 3;
+        while (true) {
+            String word = vex1.byIndex[i1];
+            i1++;
+            entry = vex1.freqs.get(word);
+            count1 = entry.count();
+            entry = vex2.freqs.get(word);
+            if (entry == null) {
+                System.out.println(""+i1+"\t"+word);
+                if (--limit <= 0 ) break;
+                continue;
+            }
+            count2 = entry.count();
+            freq1 = count1 / (double)wc1;
+            freq2 = count2 / (double)wc2;
+            if (freq1 > freq2) {
+                ratio = freq1 / freq2;
+                if (ratio < floor) continue;
+                System.out.println(""+i1+"\t"+word+"\tx "+ratio);
+            }
+            else {
+                ratio = freq2 / freq1;
+                if (ratio < floor) continue;
+                System.out.println(""+i1+"\t"+word+"\t/ "+ratio);
+            }
+            if (--limit <= 0 ) break;
+        }
+        
+    }
+    
     public static void main(String[] args) throws Exception
     {
-        /* This will return Long.MAX_VALUE if there is no preset limit */
-        long maxMemory = Runtime.getRuntime().maxMemory();
-        /* Maximum amount of memory the JVM will attempt to use */
-        System.out.println("Maximum memory (bytes): " + 
-        (maxMemory == Long.MAX_VALUE ? "no limit" : maxMemory));
-        //
         long start = System.nanoTime();
-        // Vex vex = new Vex("/home/fred/code/presse/txt/zola.txt");
-        Vex vex = new Vex(args[0]);
-        String name = new File(args[0]).getName();
-        if (name.lastIndexOf(".") > 0) name = name.substring(0, name.lastIndexOf("."));
-        long wc = vex.freqs(name+".dic");
-        System.out.println("Dico, "+wc+" occurrences, "+vex.byIndex.length+" "+vex.byString.size()+" mots en " + ((System.nanoTime() - start) / 1000000) + " ms");
-        /* Total amount of free memory available to the JVM */
-        System.out.println("Free memory (bytes): " + 
-        Runtime.getRuntime().freeMemory());
+        Vex vex1 = new Vex(-5, +5);
+        Vex vex2 = new Vex(-5, +5);
+        long wc1 = vex1.freqs(args[0]);
+        System.out.println(args[0]+", "+wc1+" occurrences, "+vex1.byIndex.length+" mots en " + ((System.nanoTime() - start) / 1000000) + " ms");
+        long wc2 = vex2.freqs(args[1]);
+        System.out.println(args[1]+", "+wc2+" occurrences, "+vex2.byIndex.length+" "+vex2.byString.size()+" mots en " + ((System.nanoTime() - start) / 1000000) + " ms");
+        System.out.println();
+        System.out.println(args[0]+" / "+args[1]);
+        System.out.println("--------------------------");
+        freqrel(vex1, vex2);
+        System.out.println();
+        System.out.println();
+        System.out.println(args[1]+" / "+args[0]);
+        System.out.println("--------------------------");
+        freqrel(vex2, vex1);
+        System.out.println();
+        System.out.println();
+
+        System.exit(1);
         start = System.nanoTime();
-        vex.fill(name+".mat");
+        vex1.fill(args[0]);
         System.out.println("Matrice en " + ((System.nanoTime() - start) / 1000000) + " ms");
+        start = System.nanoTime();
+        vex2.fill(args[1]);
+        System.out.println("Matrice en " + ((System.nanoTime() - start) / 1000000) + " ms");
+        int limit = 2000;
+        int i1 = 0;
+        double cosine;
+        limit = 2000;
+        while (true) {
+            String word = vex1.byIndex[i1];
+            IntVek vec1 = vex1.mat[i1];
+            i1++;
+            Integer i2 = vex2.byString.get(word);
+            if (i2 == null) {
+                System.out.println(""+i1+"\t"+word);
+                if (--limit <= 0 ) break;
+                continue;
+            }
+            IntVek vec2 = vex2.mat[i2];
+            cosine = vec1.cosine(vec2);
+            if (cosine >= 0.8) continue; 
+            System.out.println(""+i1+"\t"+word+"\t"+cosine);
+            if (--limit <= 0 ) break;
+        }
+        /*
         BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
         while (true) {
             System.out.println("");
@@ -261,5 +323,6 @@ public class Vex
             Top<String> top = vex.distance(word);
             System.out.println(top);
         }
+        */
     }
 }

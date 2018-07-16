@@ -28,6 +28,12 @@ CREATE TABLE doc (
   PRIMARY KEY(id ASC)
 );
 CREATE UNIQUE INDEX doc_name ON doc(name);
+CREATE INDEX doc_year ON doc(year);
+CREATE INDEX doc_dayweek ON doc(dayweek);
+CREATE INDEX doc_collection ON doc(collection, julianday);
+CREATE INDEX doc_collweek ON doc(collection, dayweek, date);
+CREATE INDEX doc_collmonth ON doc(collection, month, date);
+
 
 CREATE TABLE blob (
   -- Texte brut à indexer
@@ -47,6 +53,10 @@ CREATE TABLE occ (
   end        INTEGER,  -- position du caractère (Unicode) suivant dans le texte source
   PRIMARY KEY(id ASC)
 );
+CREATE INDEX occ_orth ON occ(orth);
+CREATE INDEX occ_lem ON occ(lem);
+CREATE INDEX occ_tag ON occ(tag);
+CREATE INDEX occ_doc ON occ(doc, lem);
 
 CREATE TABLE orth (
   -- Dictionnaire de termes indexés,
@@ -56,6 +66,7 @@ CREATE TABLE orth (
   lem        INTEGER,
   PRIMARY KEY(id ASC)
 );
+CREATE INDEX orth_form ON orth(form);
 
 CREATE TABLE lem (
   -- Dictionnaire de termes indexés,
@@ -64,16 +75,8 @@ CREATE TABLE lem (
   tag        INTEGER,
   PRIMARY KEY(id ASC)
 );
+CREATE INDEX lem_form ON lem(form);
 
-CREATE INDEX doc_year ON doc(year);
-CREATE INDEX doc_dayweek ON doc(dayweek);
-CREATE INDEX doc_collection ON doc(collection, julianday);
-CREATE INDEX doc_collweek ON doc(collection, week, date);
-CREATE INDEX doc_collmonth ON doc(collection, month, date);
-
-CREATE INDEX occ_orth ON occ(orth);
-CREATE INDEX occ_lem ON occ(lem);
-CREATE INDEX occ_tag ON occ(tag);
 
 
 CREATE TABLE vek (

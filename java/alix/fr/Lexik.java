@@ -346,7 +346,7 @@ public class Lexik
   {
     if (!ORTH.containsKey(term))
       return false;
-    term.replace(ORTH.get(term));
+    term.set(ORTH.get(term));
     return true;
   }
 

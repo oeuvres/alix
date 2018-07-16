@@ -188,7 +188,7 @@ public class Occ
    */
   public Occ graph(CharSequence cs)
   {
-    graph.replace(cs);
+    graph.set(cs);
     return this;
   }
 
@@ -204,7 +204,7 @@ public class Occ
    */
   public Occ graph(CharSequence cs, int from, int length)
   {
-    graph.replace(cs, from, length);
+    graph.set(cs, from, length);
     return this;
   }
 
@@ -238,7 +238,7 @@ public class Occ
    */
   public Occ orth(CharSequence cs)
   {
-    orth.replace(cs);
+    orth.set(cs);
     return this;
   }
 
@@ -254,7 +254,7 @@ public class Occ
    */
   public Occ orth(CharSequence cs, int from, int length)
   {
-    orth.replace(cs, from, length);
+    orth.set(cs, from, length);
     return this;
   }
 
@@ -345,7 +345,7 @@ public class Occ
    */
   public Occ lem(final CharSequence cs)
   {
-    lem.replace(cs);
+    lem.set(cs);
     return this;
   }
 
