@@ -1,8 +1,11 @@
 package alix.util;
 
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -25,24 +28,22 @@ public class SparseMat {
     int length;
     int height;
     int width;
-    long sum;
-    public int[] rows;
-    public int[] rowsIndex;
-    public int[] cols;
-    public int[] colSizes;
-    public double[] counts;
-    public double[] rowCounts;
-    public double[] colCounts;
-    double[] coscounts;
+    double sum;
+    int[] rows;
+    int[] rowIndex;
+    int[] rowSize;
+    int[] colSize;
+    int[] cols;
+    double[] counts;
+    double[] countsRowSum;
+    double[] countsColSum;
+    double[] countsRowMag;
     double[] ppmi;
-    double[] deviance;
-    double[] devianceMags;
+    double[] ppmiRowMag;
     final static double LOG2 = Math.log(2);
-    public static final int COUNT = 0;
+    public static final int COUNTS = 0;
     public static final int PPMI = 1;
-    public static final int PMI = 2;
-    public static final int COSCOUNTS = 3;
-    public static final int DEVIANCE = 4;
+    public static final int CELL_BYTE_LEN = 4 + 4 +8;
     
     private static class Entry implements Comparable<Entry>
     {
@@ -68,6 +69,14 @@ public class SparseMat {
     }
     
     public void compile()
+    {
+        sortData();
+        indexRows();
+        sumLines();
+        countsRowMags();
+    }
+    
+    public void sortData()
     {
         int length = hash.size();
         Entry[] sorter = new Entry[length];
@@ -105,29 +114,13 @@ public class SparseMat {
             counts[i] = entry.count;
             i++;
         }
+        hash.clear();
         this.rows = rows;
         this.cols = cols;
         this.counts = counts;
         this.width = width;
         this.height = height;
         this.length = length;
-        indexRows();
-        double count;
-        long sum = 0;
-        double[] rowCounts = new double[height];
-        double[] colCounts = new double[width];
-        int[] colSizes = new int[width];
-        for(i=0; i < length; i++) {
-            count = counts[i];
-            rowCounts[rows[i]] += count;
-            colCounts[cols[i]] += count;
-            colSizes[cols[i]]++;
-            sum += count;
-        }
-        this.sum = sum;
-        this.rowCounts = rowCounts;
-        this.colCounts = colCounts;
-        this.colSizes = colSizes;
     }
     
     
@@ -146,121 +139,138 @@ public class SparseMat {
             rowLast = row;
         }
         rowsIndex[height] = length;
-        this.rowsIndex = rowsIndex;
+        this.rowIndex = rowsIndex;
     }
-
-    /**
-     * Comput ppmi values
-     */
-    public void deviance()
+    
+    public void sumLines()
     {
-        double[] deviance = new double[length];
-        double[] devianceMags = new double[height];
-        double cell;
+        double count;
+        double sum = 0;
+        double[] rowSum = new double[height];
+        double[] colSum = new double[width];
+        int[] rowSize = new int[height];
+        int[] colSize = new int[width];
         for(int i=0; i < length; i++) {
-            cell = (double)counts[i] - ((double)colCounts[cols[i]] / (double)colSizes[cols[i]]);
-            deviance[i] = cell;
-            devianceMags[rows[i]] += cell * cell;
+            count = counts[i];
+            rowSum[rows[i]] += count;
+            colSum[cols[i]] += count;
+            rowSize[rows[i]]++;
+            colSize[cols[i]]++;
+            sum += count;
         }
-        for (int i=0; i < height; i++) {
-            devianceMags[i] = Math.sqrt(devianceMags[i]);
+        this.sum = sum;
+        this.countsRowSum = rowSum;
+        this.countsColSum = colSum;
+        this.rowSize = rowSize;
+        this.colSize = colSize;
+    }
+    public void countsRowMags()
+    {
+        double[] values = this.counts;
+        countsRowMag = new double[height];
+        for(int row = 0; row < height; row++) {
+            int start = rowIndex[row];
+            int end = rowIndex[row+1];
+            float mag = 0;
+            for (int i=start; i < end; i++) {
+                mag += values[i] * values[i];
+            }
+            countsRowMag[row] = Math.sqrt(mag);
         }
-        this.deviance = deviance;
-        this.devianceMags = devianceMags;
     }
 
     /**
      * Comput ppmi values
      */
-    public void ppmi(final float laplace)
+    public void ppmi(double laplace)
     {
+        double cds = 1;
         int[] rows = this.rows;
         int[] cols = this.cols;
         int length = counts.length;
-        double[] ppmi = new double[length];
-        double sum = (double)width * (double)height * (double)laplace; // cast is needed, or will be negative long
-        double[] rowCount = new double[height];
-        for(int i=0; i < height; i++) rowCount[i] = laplace * width;
-        double[] colCount = new double[width];
-        for(int i=0; i < width; i++) colCount[i] = laplace * height;
+        double[] rowSum = new double[height];
+        for(int i=0; i < height; i++) rowSum[i] = laplace * (width - rowSize[i]);
+        double[] colSum = new double[width];
+        double cdsLaplace = Math.pow(laplace, cds);
+        for(int i=0; i < width; i++) colSum[i] = cdsLaplace * (height - colSize[i]);
+        
         double count;
+        double ppmiSum = 0;
+        // pop sums
         for(int i=0; i < length; i++) {
             count = counts[i];
-            colCount[cols[i]] += count;
-            rowCount[rows[i]] += count;
-            sum += count;
+            rowSum[rows[i]] += (count + laplace);
+            colSum[cols[i]] += (count + laplace);
         }
+        // for (int i=0; i < height; i++) rowSum[i] /= ppmiSum;
+        // for (int i=0; i < width; i++) colSum[i] /= ppmiSum;
+
+        double[] ppmi = new double[length];
         double[] rowMag = new double[height];
         for(int i=0; i < length; i++) {
-            double cell = Math.log( (double)((counts[i]+laplace)*sum) / (double)(rowCount[rows[i]] * colCount[cols[i]]) ) / LOG2;
+            double cell = Math.log( (double)((counts[i]+laplace) * sum) / (double)(rowSum[rows[i]] * colSum[cols[i]]) ) / LOG2;
             if (cell < 0) cell = 0;
             else rowMag[rows[i]] += cell * cell;
             ppmi[i] = cell;
         }
-        // prepare data for cosine distance
-        for (int i=0; i < height; i++) {
-            rowMag[i] = Math.sqrt(rowMag[i]);
-        }
-        for (int i=0; i < length; i++) {
-            double mag = rowMag[rows[i]];
-            if (mag == 0) ppmi[i] = 0;
-            else ppmi[i] /= rowMag[rows[i]];
-        }
+        for (int i=0; i < height; i++) rowMag[i] = Math.sqrt(rowMag[i]);
+        this.ppmiRowMag = rowMag;
         this.ppmi = ppmi;
     }
 
 
     
-    /*
-    public Top<Integer> topLabbe(int row, int topSize) 
+    public Top<Integer> sims(int row, final int mode, int topSize) 
     {
         Top<Integer> top = new Top<Integer>(topSize);
         int height = this.height;
+        double dist;
         for(int i = 0; i < height; i++) {
-            double dist = labbe(row, i);
-            top.push(1 - dist, i);
+            if (mode == this.PPMI) dist = cosine(row, i, ppmi, ppmiRowMag);
+            else dist = cosine(row, i, counts, countsRowMag);
+            top.push(dist, i);
         }
         return top;
     }
-    */
-    public double cosine(final int row1, final int row2, final double[] values)
+
+    
+    public double cosine(final int row1, final int row2, final double[] values, final double[] mags)
     {
-        int i1 = rowsIndex[row1];
-        int i1End = rowsIndex[row1+1] - 1;
-        int i2 = rowsIndex[row2];
-        int i2End = rowsIndex[row2+1] - 1;
+        int i1 = rowIndex[row1];
+        int i1End = rowIndex[row1+1];
+        int i2 = rowIndex[row2];
+        int i2End = rowIndex[row2+1];
         double dist = 0;
-        double mag1 = 0;
-        double mag2 = 0;
-        double value1;
-        double value2;
         while (true) {
+            if (i1 == i1End || i2 == i2End) {
+                break;
+            }
+            /*
+            if(i1 == i1End) { // finish row2
+                i2++;
+                continue;
+            }
+            if(i2 == i2End) { // finish row1
+                i1++;
+                continue;
+            }
+            */
             int col1 = cols[i1];
             int col2 = cols[i2];
-            if(col1 < col2) {
-                value1 = values[i1];
-                mag1 += value1 * value1;
-                if (i1 == i1End && i2 == i2End) break;
+            if(col1 < col2) { // forward row1
                 i1++;
             }
-            else if(col1 > col2) {
-                value2 = values[i2];
-                mag2 += value2 * value2;
-                if (i1 == i1End && i2 == i2End) break;
+            else if(col1 > col2) { // forward row2
                 i2++;
             }
-            else if (col1 == col2) {
-                value1 = values[i1];
-                value2 = values[i2];
-                dist += value1 * value2;
-                mag1 += value1 * value1;
-                mag2 += value2 * value2;
-                if (i1 == i1End && i2 == i2End) break;
-                if (i1 != i1End) i1++;
-                if (i2 != i2End) i2++;
+            else if (col1 == col2) { // row1 and row2 intersection
+                dist += values[i1] * values[i2];
+                i1++;
+                i2++;
             }
         }
-        return dist / (Math.sqrt(mag1) * Math.sqrt(mag2));
+        if (mags[row1] == 0 || mags[row2] == 0) return 0;
+        return dist / (mags[row1] * mags[row2]);
     }
 
     /* Test of a Labbé distance, very bad.
@@ -313,79 +323,58 @@ public class SparseMat {
     }
     */
     
-    public Top<Integer> cosine(int row, int mode, int topSize) 
-    {
-        Top<Integer> top = new Top<Integer>(topSize);
-        int length = rows.length;
-        int iStart = rowsIndex[row];
-        int iEnd = rowsIndex[row + 1];
-        int rowLast = rows[0];
-        int i = iStart;
-        int j = 0;
-        double dist = 0;
-        int col1;
-        int col2;
-        int row2;
-        while (true) {
-            // end of row ?
-            if (i == iEnd || j == length || rows[j] != rowLast) {
-                if (mode == DEVIANCE) dist /= (devianceMags[row] * devianceMags[rowLast]);
-                top.push(dist, rowLast);
-                // jump to next working index
-                int a = rowLast+1;
-                do {
-                    if(a >= height) return top; // end of list
-                    j = rowsIndex[a];
-                    a++;
-                }
-                while(j < 0);
-                dist = 0;
-                i = iStart;
-            }
-            col1 = cols[i];
-            row2 = rows[j];
-            col2 = cols[j];
-            if (col1 == col2) {
-                if (mode == PPMI) dist += ppmi[i] * ppmi[j];
-                else if (mode == DEVIANCE) dist += deviance[i] * deviance[j];
-                else dist += coscounts[i] * coscounts[j];
-                i++;
-                j++;
-            }
-            else if(col1 < col2) {
-                i++;
-            }
-            else if(col2 < col1) {
-                j++;
-            }
-            rowLast = row2;
-        }
-    }
-
-    public void write(String dstFile) throws IOException 
+    public void save(String dstFile) throws IOException 
     {
         int length = counts.length;
-        try(FileOutputStream out = new FileOutputStream(dstFile)) {
-            FileChannel file = out.getChannel();
-            ByteBuffer buf = file.map(FileChannel.MapMode.READ_WRITE, 0, 4 * 3 * length);
+        try(
+            FileChannel channel = new RandomAccessFile(dstFile, "rw").getChannel();
+        ) {
+            MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_WRITE, 0, (CELL_BYTE_LEN ) * length);
             for(int i = 0; i < length; i++) {
                 buf.putInt(rows[i]).putInt(cols[i]).putDouble(counts[i]);
             }
-            file.close();
+            channel.close();
         }
     }
-    public void read(String srcFile) throws IOException 
+    public void load(String srcFile) throws IOException 
     {
-        /* TODO
-        try(FileOutputStream in = new FileOutputStream(srcFile)) {
-            FileChannel file = in.getChannel();
-            ByteBuffer buf = file.map(FileChannel.MapMode.READ_WRITE, 0, 4 * 3 * length);
+        int length;
+        int[] rows;
+        int[] cols;
+        double[] counts;
+        int height = 0;
+        int width = 0;
+        try(
+                FileChannel channel = new FileInputStream(srcFile).getChannel();
+        ){
+            long size = channel.size();
+            length = (int) (size / CELL_BYTE_LEN);
+            MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_ONLY, 0, size);
+            rows = new int[length];
+            cols = new int[length];
+            counts = new double[length];
             for(int i = 0; i < length; i++) {
-                buf.putInt(rows[i]).putInt(cols[i]).putInt(counts[i]);
+                int row = buf.getInt();
+                if (height <= row) height = row + 1;
+                rows[i] = row;
+                
+                int col = buf.getInt();
+                if (width <= col) width = col + 1;
+                cols[i] = col;
+                
+                counts[i] = buf.getDouble();
             }
-            file.close();
+            channel.close();
         }
-        */
+        this.length = length;
+        this.rows = rows;
+        this.cols = cols;
+        this.counts = counts;
+        this.width = width;
+        this.height = height;
+        indexRows();
+        sumLines();
+        countsRowMags();
     }
     public static class Counter 
     {
@@ -408,7 +397,7 @@ public class SparseMat {
     @Override
     public String toString()
     {
-        return toString(COUNT);
+        return toString(COUNTS);
     }
     public String toString(final int mode)
     {
@@ -431,7 +420,6 @@ public class SparseMat {
             }
             if (mode == PPMI) sb.append(df.format(ppmi[i])+'\t');
             // else if (mode == PMI) sb.append(df.format(pmi[i])+'\t');
-            else if (mode == COSCOUNTS) sb.append(df.format(coscounts[i])+'\t');
             else sb.append(""+counts[i]+'\t');
             colLast = col;
         }
@@ -447,18 +435,31 @@ public class SparseMat {
         mat.hash.put(new IntPair(0, 0), new Counter(10));
         mat.hash.put(new IntPair(0, 2), new Counter(10));
         mat.hash.put(new IntPair(0, 4), new Counter(10));
-        mat.hash.put(new IntPair(0, 10), new Counter(10));
+        // mat.hash.put(new IntPair(0, 10), new Counter(10));
         mat.hash.put(new IntPair(1, 0), new Counter(10));
         mat.hash.put(new IntPair(1, 1), new Counter(3));
         mat.hash.put(new IntPair(1, 3), new Counter(10));
         mat.hash.put(new IntPair(1, 5), new Counter(10));
         mat.compile();
-        System.out.println("height="+mat.height+" width="+mat.width);
         System.out.println(mat);
+        System.out.print("rowSize");
+        System.out.println(Arrays.toString(mat.rowSize));
+        System.out.print("colSize");
+        System.out.println(Arrays.toString(mat.colSize));
+        System.out.println("sum = "+mat.sum);
+        mat.save("test.dat");
+        System.out.println("     --- save, load");
+        mat.load("test.dat");
+        System.out.println(mat);
+        mat.ppmi(0);
+        System.out.println("height="+mat.height+" width="+mat.width);
+        System.out.println(mat.toString(SparseMat.PPMI));
+        System.out.println(Arrays.toString(mat.ppmiRowMag));
         int rowLength = 3;
         for(int i=0; i < rowLength; i++) {
             for(int j=0; j < rowLength; j++) {
-                System.out.println("cosine("+i+", "+j+") = "+mat.cosine(i, j, mat.counts));
+                System.out.println("\ncosine("+i+", "+j+")");
+                System.out.println(mat.cosine(i, j, mat.ppmi, mat.ppmiRowMag));
             }
         }
     }

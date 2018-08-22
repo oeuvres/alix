@@ -39,7 +39,6 @@ public class PPMI {
     final int left;
     final int right;
     final int min;
-    final int laplace;
     long wc;
     HashMap<String, Integer> byString = new HashMap<String, Integer>();
     String[] byIndex;
@@ -53,8 +52,7 @@ public class PPMI {
     {
         this.left = left;
         this.right = right;
-        this.laplace = 2;
-        this.min = 2;
+        this.min = 5;
     }
     class WCounter implements Comparable<WCounter>
     {
@@ -129,6 +127,7 @@ public class PPMI {
         Collections.sort(list);
         int size = list.size();
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(dicFile), StandardCharsets.UTF_8)) {
+            writer.write("WC\t" + this.wc +'\n');
             for (int i=0;i < size; i++) {
                 entry = list.get(i);
                 writer.write(entry.label()+'\t' + entry.count()+'\n');
@@ -144,9 +143,12 @@ public class PPMI {
         int min = this.min;
         stop = new int[stoplimit];
         ArrayList<String> list = new ArrayList<String>();
+        String[] cells;
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(dicFile), StandardCharsets.UTF_8)) {
+            cells = reader.readLine().split("\t");
+            this.wc = Long.parseLong(cells[1]);
             while((l = reader.readLine()) != null) {
-                String[] cells = l.split("\t");
+                cells = l.split("\t");
                 int count = Integer.parseInt(cells[1]);
                 if (count < min) continue;
                 byString.put(cells[0], code);
@@ -175,7 +177,7 @@ public class PPMI {
         char[] buf = new char[bufsize];
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(textFile), StandardCharsets.UTF_8)) {
             while((chars = reader.read(buf)) > 0) {
-                System.out.print('.');
+                System.out.print(".");
                 for (int i = 0; i < chars; i++) {
                     c = buf[i];
                     if (Char.isLetter(c) || c == '_') {
@@ -202,7 +204,7 @@ public class PPMI {
                             counter.inc();
                         }
                         else {
-                            coocs.put(new IntPair(word, context), new SparseMat.Counter());
+                            coocs.put(new IntPair(word, context), new SparseMat.Counter(1));
                         }
                     }
                 }
@@ -213,28 +215,43 @@ public class PPMI {
     public static void main(String[] args) throws Exception
     {
         long time;
+        double laplace = 0;
         time = System.nanoTime();
         PPMI mat1 = new PPMI(-2, +2);
-        if (!new File(args[0]).exists()) {
-            System.out.println("Extract dic from "+args[1]+" to "+args[0]);
-            long wc = mat1.freqs(args[1]);
-            System.out.println("Dic " + ((System.nanoTime() - time) / 1000000) + " ms wc="+wc+" dicSize="+mat1.freqs.size());
-            mat1.dicSave(args[0]);
+        if (args.length < 2) {
+            System.out.println("java -Xmx20g -server -cp \"build/*\" alix.frdo.PPMI corpus.txt? corpus.dic corpus.bin laplace");
+            System.exit(0);
         }
-        System.out.println("Loadindg dic "+args[0]);
-        mat1.dicLoad(args[0]);
+        // build from text
+        if (args.length == 4) {
+            System.out.println("Extract dic from "+args[0]+" to "+args[1]);
+            long wc = mat1.freqs(args[0]);
+            System.out.println(" -- in " + ((System.nanoTime() - time) / 1000000) + " ms wc="+wc+" dicSize="+mat1.freqs.size());
+            mat1.dicSave(args[1]);
+            mat1.dicLoad(args[1]);
+            time = System.nanoTime();
+            System.out.println("Build cooccurence matrix from "+args[0]+", save to "+args[2]);
+            mat1.coocs(args[0]);
+            mat1.mat.compile();
+            mat1.mat.save(args[2]);
+            System.out.println(" in " + ((System.nanoTime() - time) / 1000000) + " ms");
+            laplace = Double.parseDouble(args[3]);
+        }
+        else if (args.length == 3) {
+            time = System.nanoTime();
+            System.out.print("Load dic from "+args[0]);
+            mat1.dicLoad(args[0]);
+            System.out.println(" in " + ((System.nanoTime() - time) / 1000000) + " ms");
+            time = System.nanoTime();
+            System.out.print("Load natrix from "+args[1]);
+            mat1.mat.load(args[1]);
+            System.out.println(" in " + ((System.nanoTime() - time) / 1000000) + " ms");
+            laplace = Double.parseDouble(args[2]);
+        }
         
-        // String dstName = new File(src).getName().replaceAll("(.)\\.[^\\.]+$", "$1");
-        time = System.nanoTime();
-        System.out.println("Build cooccurrences table");
-        mat1.coocs(args[1]);
-        System.out.println("Coocs table " + ((System.nanoTime() - time) / 1000000) + " ms");
-        time = System.nanoTime();
-        mat1.mat.compile();
-        mat1.mat.coscounts();
-        mat1.mat.deviance();
-        mat1.mat.ppmi(2);
-        System.out.println("Compile dics " + ((System.nanoTime() - time) / 1000000) + " ms");
+        
+        
+        mat1.mat.ppmi(laplace); // 
         BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
         while (true) {
             System.out.println("");
@@ -245,6 +262,7 @@ public class PPMI {
             Integer code = mat1.byString.get(word);
             if (code == null) {
                 System.out.println("Mot inconnu");
+                continue;
             }
             /* TODO get vector iterator
             int start = mat1.mat.rowsIndex[code];
@@ -261,23 +279,21 @@ public class PPMI {
             }
             */
             Top<Integer> top;
+
             System.out.println("--------------------");
-            System.out.println(word+" LABBE");
-            top = mat1.mat.topLabbe(code, 40);
+            time = System.nanoTime();
+            top = mat1.mat.sims(code, SparseMat.COUNTS, 40);
             for(Top.Entry<Integer> entry: top) {
                 System.out.println(mat1.byIndex[entry.value()]+"\t"+entry.score());
             }
-            System.out.println("--------------------");
-            top = mat1.mat.cosine(code, SparseMat.COSCOUNTS, 40);
-            for(Top.Entry<Integer> entry: top) {
-                System.out.println(mat1.byIndex[entry.value()]+"\t"+entry.score());
-            }
-            System.out.println("--------------------");
+            System.out.println("---------- " + ((System.nanoTime() - time) / 1000000) + " ms ------------");
+            time = System.nanoTime();
             System.out.println(word+" PPMI");
-            top = mat1.mat.cosine(code, SparseMat.PPMI, 40);
+            top = mat1.mat.sims(code, SparseMat.PPMI, 40);
             for(Top.Entry<Integer> entry: top) {
                 System.out.println(mat1.byIndex[entry.value()]+"\t"+entry.score());
             }
+            System.out.println("---------- " + ((System.nanoTime() - time) / 1000000) + " ms ------------");
         }
     }
 }
