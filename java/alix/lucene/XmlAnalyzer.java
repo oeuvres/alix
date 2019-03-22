@@ -6,6 +6,9 @@ import java.io.StringReader;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
 public class XmlAnalyzer extends Analyzer
 {
@@ -25,13 +28,15 @@ public class XmlAnalyzer extends Analyzer
     TokenStream stream = analyzer.tokenStream("field", new StringReader(text));
 
     // get the CharTermAttribute from the TokenStream
-    CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
+    CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
+    OffsetAttribute offset = stream.addAttribute(OffsetAttribute.class);
+    PositionIncrementAttribute pos = stream.addAttribute(PositionIncrementAttribute.class);
 
     try {
       stream.reset();
       // print all tokens until stream is exhausted
       while (stream.incrementToken()) {
-        System.out.println(termAtt.toString());
+        System.out.println(term.toString()+" "+pos.getPositionIncrement()+" "+offset.startOffset()+" "+offset.endOffset());
       }
       stream.end();
     }

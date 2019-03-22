@@ -11,26 +11,26 @@ import org.apache.lucene.analysis.util.CharTokenizer;
  */
 public class XmlTokenizer extends CharTokenizer
 {
-  boolean tag;
+    boolean tag;
 
-  /**
-   * The simple parser
-   */
-  @Override
-  protected boolean isTokenChar(int c)
-  {
-    if (this.tag && '>' == c) {
-      this.tag = false;
-      return false;
+    /**
+     * The simple parser
+     */
+    @Override
+    protected boolean isTokenChar(int c)
+    {
+        if (this.tag && '>' == c) {
+            this.tag = false;
+            return false;
+        }
+        if ('<' == c) {
+            this.tag = true;
+            return false;
+        }
+        if (this.tag) {
+            return false;
+        }
+        return Character.isLetter(c);
     }
-    if ('<' == c) {
-      this.tag = true;
-      return false;
-    }
-    if (this.tag) {
-      return false;
-    }
-    return Character.isLetter(c);
-  }
 
 }

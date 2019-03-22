@@ -3,6 +3,7 @@ test*
 classes/
 build/
 res/
+work/
 *.bak
 /*.csv
 *.gephi
@@ -15,4 +16,4 @@ res/
 /*.xlsx
 /*.xml
 
-.settings/org.eclipse.jdt.core.prefs
+.settings/
