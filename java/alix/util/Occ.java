@@ -19,13 +19,13 @@ public class Occ
    * Graphical form like encountered, caps/min, ellisions, could be used for a
    * correct concordancer
    */
-  private Term graph = new Term();
+  private Chain graph = new Chain();
   /** Orthographic form, normalized graphical form */
-  private Term orth = new Term();
+  private Chain orth = new Chain();
   /** Grammatical category */
   private Tag tag = new Tag();
   /** Lemma form */
-  private Term lem = new Term();
+  private Chain lem = new Chain();
   /** An index */
   private int n = -1;
   /** Char index in the source file of the first char of the token */
@@ -73,7 +73,7 @@ public class Occ
   /**
    * Constructor
    */
-  public Occ(final Term graph, final Term orth, final Tag tag, final Term lem) {
+  public Occ(final Chain graph, final Chain orth, final Tag tag, final Chain lem) {
     graph(graph);
     orth(orth);
     tag(tag);
@@ -175,7 +175,7 @@ public class Occ
    * 
    * @return
    */
-  public Term graph()
+  public Chain graph()
   {
     return graph;
   }
@@ -209,12 +209,12 @@ public class Occ
   }
 
   /**
-   * Set graph value by copy of a term
+   * Set graph value by copy of a chain
    * 
    * @param t
    * @return a handle on the occurrence
    */
-  public Occ graph(Term t)
+  public Occ graph(Chain t)
   {
     graph.set(t);
     return this;
@@ -225,7 +225,7 @@ public class Occ
    * 
    * @return
    */
-  public Term orth()
+  public Chain orth()
   {
     return orth;
   }
@@ -259,12 +259,12 @@ public class Occ
   }
 
   /**
-   * Set orth value by copy of a term
+   * Set orth value by copy of a chain
    * 
    * @param t
    * @return a handle on the occurrence object
    */
-  public Occ orth(Term t)
+  public Occ orth(Chain t)
   {
     orth.set(t);
     return this;
@@ -320,18 +320,18 @@ public class Occ
    * 
    * @return
    */
-  public Term lem()
+  public Chain lem()
   {
     return lem;
   }
 
   /**
-   * Set lem value by copy of a term
+   * Set lem value by copy of a chain
    * 
    * @param t
    * @return a handle on the occurrence object
    */
-  public Occ lem(final Term t)
+  public Occ lem(final Chain t)
   {
     lem.set(t);
     return this;

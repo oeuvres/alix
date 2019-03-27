@@ -103,7 +103,7 @@ public class GN
         return dic;
       if (!win.get(0).tag().equals(Tag.SUB)) {
         // increment global count of dictionary to calculate a frequency for the indexed
-        // term
+        // chain
         dic.inc();
         continue;
       }

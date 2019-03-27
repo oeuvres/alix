@@ -136,7 +136,7 @@ public class Lexer
       }
       rulerec.add(new Rule(center, tag));
       if (center instanceof TestTerm) {
-        String term = ((TestTerm) center).term.toString();
+        String term = ((TestTerm) center).chain.toString();
         int[] nos = byform.get(term);
         if (nos == null)
           byform.put(term, new int[] { no });
@@ -212,7 +212,7 @@ public class Lexer
   /**
    * Build a Test from a String
    * 
-   * @param term
+   * @param chain
    * @return
    */
   static public Test test(String term)

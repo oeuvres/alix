@@ -22,7 +22,7 @@ import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.fr.Lexik.LexEntry;
 import alix.util.Occ;
-import alix.util.Term;
+import alix.util.Chain;
 
 public class Presse {
     /** Faux préfixes */
@@ -64,7 +64,7 @@ public class Presse {
         // réécrire proprement le texte
         Tokenizer toks = new Tokenizer(txt, false);
         Occ occ;
-        Term last = new Term();
+        Chain last = new Chain();
         while ((occ = toks.word()) != null) {
             if (occ.tag().isPun()) {
                 last.reset();

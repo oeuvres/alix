@@ -77,7 +77,7 @@ public class IntTuple implements Comparable<IntTuple>
      */
     public IntTuple(int[] data) {
         this.data = new int[data.length];
-        set(data);
+        put(data);
     }
 
     /**
@@ -85,7 +85,7 @@ public class IntTuple implements Comparable<IntTuple>
      * 
      * @param data
      */
-    protected void set(int[] data)
+    protected void put(int[] data)
     {
         this.size = data.length;
         onWrite(this.size - 1);
@@ -99,7 +99,7 @@ public class IntTuple implements Comparable<IntTuple>
      */
     public IntTuple(IntTuple tuple) {
         data = new int[tuple.size];
-        set(tuple);
+        put(tuple);
     }
 
     /**
@@ -107,7 +107,7 @@ public class IntTuple implements Comparable<IntTuple>
      * 
      * @param tuple
      */
-    protected void set(IntTuple tuple)
+    protected void put(IntTuple tuple)
     {
         int length = tuple.size;
         this.size = length;
@@ -122,7 +122,7 @@ public class IntTuple implements Comparable<IntTuple>
      */
     public IntTuple(IntRoller roller) {
         data = new int[roller.size()];
-        set(roller);
+        put(roller);
     }
 
     /**
@@ -130,7 +130,7 @@ public class IntTuple implements Comparable<IntTuple>
      * 
      * @param roller
      */
-    protected void set(IntRoller roller)
+    protected void put(IntRoller roller)
     {
         this.size = roller.size();
         onWrite(this.size - 1);
@@ -283,6 +283,8 @@ public class IntTuple implements Comparable<IntTuple>
         sb.append(')');
         return sb.toString();
     }
+    
+
     public static void main(String[] args) throws Exception
     {
         long start = System.nanoTime();

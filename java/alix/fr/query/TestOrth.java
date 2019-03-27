@@ -11,7 +11,7 @@ public class TestOrth extends TestTerm
   @Override
   public boolean test(Occ occ)
   {
-    return term.glob(occ.orth());
+    return chain.glob(occ.orth());
   }
 
 }

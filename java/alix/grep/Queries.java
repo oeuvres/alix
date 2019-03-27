@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 import alix.fr.Tokenizer;
 import alix.fr.query.Query;
 import alix.util.Occ;
-import alix.util.Term;
+import alix.util.Chain;
 
 /**
  * La classe contient les méthodes qui ramassent les fichiers, appellent le
@@ -168,17 +168,17 @@ public class Queries
       while (toks.token(occ)) {
         if (occ.tag().isPun())
           continue;
-        Term term = null;
+        Chain chain = null;
         if (form.contains("l")) {
-          term = occ.lem();
+          chain = occ.lem();
         }
         else {
-          term = occ.graph();
+          chain = occ.graph();
         }
         occs++;
 
         Pattern p = Pattern.compile(query, caseSensitivity);
-        Matcher m = p.matcher(term.toString());
+        Matcher m = p.matcher(chain.toString());
 
         if (m.matches()) {
           countOccurrences++;
@@ -237,14 +237,14 @@ public class Queries
         if (occ.tag().isPun())
           continue;
         occs++;
-        Term term = null;
+        Chain chain = null;
         if (form.contains("l")) {
-          term = occ.lem();
+          chain = occ.lem();
         }
         else {
-          term = occ.graph();
+          chain = occ.graph();
         }
-        WordFlag test = listToCheck.get(term);
+        WordFlag test = listToCheck.get(chain);
 
         if (test != null) {
           test.value = true;

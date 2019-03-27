@@ -110,9 +110,9 @@ public class StemTrie
   }
 
   /**
-   * Add a term to the dictionary of compounds
+   * Add a chain to the dictionary of compounds
    * 
-   * @param term
+   * @param chain
    *          space separated words
    */
   public void add(final String term)
@@ -121,9 +121,9 @@ public class StemTrie
   }
 
   /**
-   * Add a term to the dictionary of compounds
+   * Add a chain to the dictionary of compounds
    * 
-   * @param term
+   * @param chain
    *          space separated words
    */
   public void add(final String term, final int cat)
@@ -132,9 +132,9 @@ public class StemTrie
   }
 
   /**
-   * Add a term to the dictionary of compounds
+   * Add a chain to the dictionary of compounds
    * 
-   * @param term
+   * @param chain
    *          space separated words
    * @param cat
    *          grammatical category code
@@ -142,7 +142,7 @@ public class StemTrie
   public void add(String term, int cat, String orth)
   {
     Stem node = getRoot();
-    // parse the term, split on space and apos
+    // parse the chain, split on space and apos
     char[] chars = term.toCharArray();
     int lim = chars.length;
     char c;
@@ -172,11 +172,11 @@ public class StemTrie
       token = new String(chars, offset, lim - offset);
       node = node.append(token);
     }
-    node.inc(); // update counter (this structure may be used as term counter)
+    node.inc(); // update counter (this structure may be used as chain counter)
     node.tag(cat); // a category
     if (orth != null)
       node.orth(orth);
-    // else node.orth( term ); // Bad for names NAME NAME
+    // else node.orth( chain ); // Bad for names NAME NAME
   }
   /**
    * Populate dictionary with a list of multi-words terms
@@ -184,19 +184,19 @@ public class StemTrie
    * @param lexicon
    */
   /*
-   * public TermTrie(Term[] lexicon) { /* char c; TermNode node; for (String word
+   * public TermTrie(Chain[] lexicon) { /* char c; TermNode node; for (String word
    * : lexicon) { node = root; for (int i = 0; i < word.length(); i++) { c =
    * word.charAt( i ); node = node.add( c ); } node.incWord(); } }
    */
   /**
-   * Test if dictionary contains a term
+   * Test if dictionary contains a chain
    * 
-   * @param term
+   * @param chain
    * @return
    */
   /*
-   * public boolean contains(Term term) { char c; node = root; for (int i = 0; i <
-   * term.length(); i++) { c = term.charAt( i ); node = node.test( c ); if (node
+   * public boolean contains(Chain chain) { char c; node = root; for (int i = 0; i <
+   * chain.length(); i++) { c = chain.charAt( i ); node = node.test( c ); if (node
    * == null) return false; } if (node == null) return false; else if (node.wc <
    * 1) return false; else return true;
    * 
@@ -280,7 +280,7 @@ public class StemTrie
     }
 
     /**
-     * Set a normalized graphical version for the term
+     * Set a normalized graphical version for the chain
      * 
      * @return the category
      */
@@ -291,7 +291,7 @@ public class StemTrie
     }
 
     /**
-     * Give a normalized graphical version for the term
+     * Give a normalized graphical version for the chain
      * 
      * @return the category
      */
@@ -336,7 +336,7 @@ public class StemTrie
       return children.get(form);
     }
 
-    public Stem get(Term form)
+    public Stem get(Chain form)
     {
       // String map = mapper.get( form );
       // if ( map != null ) form.replace( map );

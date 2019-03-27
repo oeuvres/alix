@@ -62,9 +62,9 @@ import java.util.Set;
  * Generate "more like this" similarity queries. Based on this mail:
  * 
  * Lucene does let you access the document frequency of terms, with
- * IndexReader.docFreq(). Term frequencies can be computed by re-tokenizing the
+ * IndexReader.docFreq(). Chain frequencies can be computed by re-tokenizing the
  * text, which, for a single document, is usually fast enough. But looking up
- * the docFreq() of every term in the document is probably too slow.
+ * the docFreq() of every chain in the document is probably too slow.
  * 
  * You can use some heuristics to prune the set of terms, to avoid calling
  * docFreq() too much, or at all. Since you're trying to maximize a tf*idf
@@ -148,7 +148,7 @@ import java.util.Set;
  * Some bugfixing, some refactoring, some optimisation.
  * - bugfix: retrieveTerms(int docNum) was not working for indexes without a termvector -added missing code
  * - bugfix: No significant terms being created for fields with a termvector - because
- * was only counting one occurrence per term/field pair in calculations(ie not including frequency info from TermVector)
+ * was only counting one occurrence per chain/field pair in calculations(ie not including frequency info from TermVector)
  * - refactor: moved common code into isNoiseWord()
  * - optimise: when no termvector support available - used maxNumTermsParsed to limit amount of tokenization
  * </pre>
@@ -452,7 +452,7 @@ public final class MoreLikeThis
    * in more than this many docs will be ignored.
    *
    * @param maxFreq
-   *          the maximum count of documents that a term may appear in to be still
+   *          the maximum count of documents that a chain may appear in to be still
    *          considered relevant
    */
   public void setMaxDocFreq(int maxFreq)
@@ -465,7 +465,7 @@ public final class MoreLikeThis
    * in more than this many percent of all docs will be ignored.
    *
    * @param maxPercentage
-   *          the maximum percentage of documents (0-100) that a term may appear
+   *          the maximum percentage of documents (0-100) that a chain may appear
    *          in to be still considered relevant
    */
   public void setMaxDocFreqPct(int maxPercentage)
@@ -736,7 +736,7 @@ public final class MoreLikeThis
     FreqQ queue = new FreqQ(limit); // will order words by score
 
     for (String word : words.keySet()) { // for every word
-      int tf = words.get(word).x; // term freq in the source doc
+      int tf = words.get(word).x; // chain freq in the source doc
       if (minTermFreq > 0 && tf < minTermFreq) {
         continue; // filter out words that don't occur enough times in the source
       }
@@ -814,7 +814,7 @@ public final class MoreLikeThis
     Map<String, Int> termFreqMap = new HashMap<>();
     for (String fieldName : fieldNames) {
       final Terms vector = ir.getTermVector(docNum, fieldName);
-      // field does not store term vector info
+      // field does not store chain vector info
       if (vector == null) {
         Document d = ir.document(docNum);
         IndexableField[] fields = d.getFields(fieldName);
@@ -886,7 +886,7 @@ public final class MoreLikeThis
   }
 
   /**
-   * Print a term vector for debugging
+   * Print a chain vector for debugging
    * 
    * @param vector
    *          List of terms and their frequencies for a doc/field
@@ -921,7 +921,7 @@ public final class MoreLikeThis
   }
 
   /**
-   * Adds term frequencies found by tokenizing text from reader into the Map words
+   * Adds chain frequencies found by tokenizing text from reader into the Map words
    *
    * @param r
    *          a source of text to be tokenized
@@ -934,7 +934,7 @@ public final class MoreLikeThis
   {
     if (analyzer == null) {
       throw new UnsupportedOperationException(
-          "To use MoreLikeThis without " + "term vectors, you must provide an Analyzer");
+          "To use MoreLikeThis without " + "chain vectors, you must provide an Analyzer");
     }
     try (TokenStream ts = analyzer.tokenStream(fieldName, r)) {
       int tokenCount = 0;
@@ -965,10 +965,10 @@ public final class MoreLikeThis
   }
 
   /**
-   * determines if the passed term is likely to be of interest in "more like"
+   * determines if the passed chain is likely to be of interest in "more like"
    * comparisons
    *
-   * @param term
+   * @param chain
    *          The word being considered
    * @return true if should be ignored, false if should be used in further
    *         analysis

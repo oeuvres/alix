@@ -2,7 +2,7 @@ package alix.fr;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
-import alix.util.Term;
+import alix.util.Chain;
 
 /**
  * Jeu d’étiquettes morphosyntaxique pour le français.
@@ -238,7 +238,7 @@ public final class Tag
     return this;
   }
 
-  public static short code(final Term label)
+  public static short code(final Chain label)
   {
     Short ret = CODE.get(label);
     if (ret == null)
@@ -414,8 +414,8 @@ public final class Tag
       return o.equals((int) code);
     if (o instanceof Short)
       return o.equals(code);
-    if (o instanceof Term)
-      return (code == Tag.code((Term) o));
+    if (o instanceof Chain)
+      return (code == Tag.code((Chain) o));
     return false;
   }
 

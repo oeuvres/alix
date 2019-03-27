@@ -9,7 +9,7 @@ import alix.util.Char;
 import alix.util.Occ;
 import alix.util.OccChain;
 import alix.util.StemTrie.Stem;
-import alix.util.Term;
+import alix.util.Chain;
 
 /**
  * A tokenizer for French, build for efficiency AND precision.
@@ -63,12 +63,12 @@ public class Tokenizer {
         } catch (Exception e) {
         }
     }
-    /** A term used for some testing */
-    private Term test = new Term();
+    /** A chain used for some testing */
+    private Chain test = new Chain();
     /** used to test the word after */
-    private Term after = new Term();
+    private Chain after = new Chain();
     /** Keep memory of tag found */
-    private Term elname = new Term();
+    private Chain elname = new Chain();
     /**
      * Some none word events, like XML tags, should break token flow :
      * </p>
@@ -364,7 +364,7 @@ public class Tokenizer {
      *            occurrence to tag
      */
     public boolean token(Occ occ) {
-        Term copy = new Term();
+        Chain copy = new Chain();
         occ.tag(Tag.UNKNOWN);
         pointer = next(occ, pointer); // parse the text at pointer position
         if (pointer < 0)
@@ -566,7 +566,7 @@ public class Tokenizer {
     private int next(Occ occ, int pos) {
         String s;
         occ.clear(); // we should clear here, isn‘t it ?
-        Term graph = occ.graph(); // work with local variables to limit lookups (“avoid getfield opcode”, read in
+        Chain graph = occ.graph(); // work with local variables to limit lookups (“avoid getfield opcode”, read in
                                   // String source code)
         int lastpos = pos; // va servir
         pos = fw(pos); // go to start of first token
@@ -753,7 +753,7 @@ public class Tokenizer {
     /**
      * A simple tokenizer, with no information return false when finished
      */
-    public boolean token(Term t) {
+    public boolean token(Chain t) {
         t.reset();
         int pos = pointer;
         int max = end;
@@ -807,13 +807,13 @@ public class Tokenizer {
     }
 
     /**
-     * A String wrapper for the simple tokenizer, less efficient than the term
+     * A String wrapper for the simple tokenizer, less efficient than the chain
      * version (a new String is instantiate)
      * 
      * @return
      */
     public String token() {
-        Term t = new Term();
+        Chain t = new Chain();
         if (token(t))
             return t.toString();
         else

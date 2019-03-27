@@ -17,13 +17,13 @@ public class TestOrthTag extends TestTerm
   {
     if (!occ.tag().equals(tag))
       return false;
-    return term.glob(occ.orth());
+    return chain.glob(occ.orth());
   }
 
   @Override
   public String label()
   {
-    return term + ":" + Tag.label(tag);
+    return chain + ":" + Tag.label(tag);
   }
 
 }

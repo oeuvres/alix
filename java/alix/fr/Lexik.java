@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
-import alix.util.Term;
+import alix.util.Chain;
 import alix.util.Occ;
 import alix.util.StemTrie;
 
@@ -250,7 +250,7 @@ public class Lexik
    *          orthographic form
    * @return
    */
-  public static boolean isStop(final Term orth)
+  public static boolean isStop(final Chain orth)
   {
     if (orth.isEmpty())
       return true;
@@ -276,7 +276,7 @@ public class Lexik
    *          form with initial cap
    * @return
    */
-  public static boolean isName(final Term orth)
+  public static boolean isName(final Chain orth)
   {
     return NAME.containsKey(orth);
   }
@@ -292,9 +292,9 @@ public class Lexik
   /**
    * Test orthographic form
    */
-  public static boolean isWord(Term term)
+  public static boolean isWord(Chain chain)
   {
-    return WORD.containsKey(term);
+    return WORD.containsKey(chain);
   }
 
   /**
@@ -337,26 +337,26 @@ public class Lexik
   }
 
   /**
-   * Normalize graphical form of a term with a table of graphical variants
+   * Normalize graphical form of a chain with a table of graphical variants
    * 
-   * @param term
+   * @param chain
    * @return
    */
-  public static boolean orth(Term term)
+  public static boolean orth(Chain chain)
   {
-    if (!ORTH.containsKey(term))
+    if (!ORTH.containsKey(chain))
       return false;
-    term.set(ORTH.get(term));
+    chain.set(ORTH.get(chain));
     return true;
   }
 
   /**
-   * Normalize graphical form of a term with a table of graphical variants
+   * Normalize graphical form of a chain with a table of graphical variants
    * 
-   * @param term
+   * @param chain
    * @return
    */
-  public static String brevidot(Term graph)
+  public static String brevidot(Chain graph)
   {
     return Lexik.BREVIDOT.get(graph);
   }

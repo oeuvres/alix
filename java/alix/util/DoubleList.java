@@ -36,7 +36,7 @@ public class DoubleList
    * @param value
    * @return
    */
-  public DoubleList set(int pos, double value)
+  public DoubleList put(int pos, double value)
   {
     onWrite(pos);
     data[pos] = value;

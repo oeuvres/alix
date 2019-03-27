@@ -41,7 +41,7 @@ public class OccRoller extends Roller
    * the line is circular, there no limit, move to a position bigger than width
    * will clear data.
    * 
-   * @return the new current term
+   * @return the new current chain
    */
   public Occ move(int count)
   {
@@ -67,7 +67,7 @@ public class OccRoller extends Roller
    * Move index to the next position and return a pointer on the new current
    * Object, clear the last left Object to not find it at extreme right
    * 
-   * @return the new current term
+   * @return the new current chain
    */
   public Occ __next()
   {

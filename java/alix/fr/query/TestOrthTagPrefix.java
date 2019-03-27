@@ -17,13 +17,13 @@ public class TestOrthTagPrefix extends TestTerm
   {
     if (occ.tag().prefix() != prefix)
       return false;
-    return term.glob(occ.orth());
+    return chain.glob(occ.orth());
   }
 
   @Override
   public String label()
   {
-    return term + ":" + Tag.label(prefix);
+    return chain + ":" + Tag.label(prefix);
   }
 
 }

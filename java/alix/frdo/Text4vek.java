@@ -12,7 +12,7 @@ import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.fr.Lexik.LexEntry;
 import alix.util.Occ;
-import alix.util.Term;
+import alix.util.Chain;
 
 /**
  * Optimise du texte pour la vectorisation

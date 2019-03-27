@@ -29,7 +29,7 @@ import alix.util.DicFreq.Entry;
 
 /**
  * A data structure for sparse matrix of terms, optimized for cosine similarity.
- * Each term is mapped to an int code by an internal dictionary. For each head
+ * Each chain is mapped to an int code by an internal dictionary. For each head
  * code is stored a vector of values, corresponding
  * 
  * 
@@ -54,7 +54,7 @@ public class DicVek
    * external modif
    */
   private DicFreq dic;
-  /** Vectors of co-occurences for each term of dictionary */
+  /** Vectors of co-occurences for each chain of dictionary */
   private IntOMap<IntVek> vectors;
   /** Index of left context */
   public final int left;
@@ -179,7 +179,7 @@ public class DicVek
   /**
    * Update the vectors from the current state
    * 
-   * @param term
+   * @param chain
    *          A token
    */
   private boolean update()
@@ -188,9 +188,9 @@ public class DicVek
     int key = key(center);
     if (key < 0)
       return false;
-    // get the vector for this center term
+    // get the vector for this center chain
     IntVek vek = vectors.get(key);
-    // optimize ? term not yet encountered, create vector
+    // optimize ? chain not yet encountered, create vector
     if (vek == null) {
       vek = new IntVek(key, null);
       // A vector is mutable in its dictionary
@@ -359,7 +359,7 @@ public class DicVek
     // get vector for requested word
     int k = dic.code(term);
     if (k < 1) {
-      System.out.println("Dicovek, term not found: " + term);
+      System.out.println("Dicovek, chain not found: " + term);
       return null;
     }
     IntVek doc = vectors.get(k);
@@ -486,7 +486,7 @@ public class DicVek
   /**
    * A list of co-occurrencies
    * 
-   * @param term
+   * @param chain
    * @param limit
    * @param stop
    * @return

@@ -106,6 +106,8 @@ public class Alix
 {
     /** Mandatory field, XML file name, maybe used for update */
     public static String FILENAME = "FILENAME";
+    /** Mandatory field, XML file name, maybe used for update */
+    public static String OFFSETS = "OFFSETS";
     /** Current filename proceded */
     private static String filename;
     /** Current lucene index writer, filled by XSL */
@@ -284,7 +286,7 @@ public class Alix
                 // Saxon serializer maybe needed if encoding problems
                 // https://www.saxonica.com/html/documentation/javadoc/net/sf/saxon/s9api/Serializer.html
                 // get a stream may give some perfs (to test)
-                
+                doc.add(field);
             } 
             else if (type.equals("sort")) {
                 String value = args[1].toString();
@@ -335,7 +337,7 @@ public class Alix
         Directory dir = FSDirectory.open(indexPath);
 
         // TODO configure analyzers
-        Analyzer analyzer = new XmlAnalyzer();
+        Analyzer analyzer = new AlixAnalyzer();
         IndexWriterConfig conf = new IndexWriterConfig(analyzer);
         conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
         conf.setSimilarity(new BM25Similarity());

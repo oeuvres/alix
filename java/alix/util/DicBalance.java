@@ -116,27 +116,27 @@ public class DicBalance
   }
 
   /**
-   * A term, with a balance of counts and frequencies
+   * A chain, with a balance of counts and frequencies
    * 
    * @author frederic.glorieux@fictif.org
    */
   public class Balance implements Comparable<Balance>
   {
-    /** The term */
+    /** The chain */
     public final String term;
     /** A tag for filtering */
     public final int tag;
-    /** Count for a term on side 1 */
+    /** Count for a chain on side 1 */
     public int count1 = 0;
-    /** Frequency by million occurrences for a term on side 1 */
+    /** Frequency by million occurrences for a chain on side 1 */
     public float freq1 = -1;
-    /** Count for a term on side 2 */
+    /** Count for a chain on side 2 */
     public int count2 = 0;
-    /** Frequency by million occurrences for a term on side 2 */
+    /** Frequency by million occurrences for a chain on side 2 */
     public float freq2 = -1;
 
     /**
-     * Create a term balance
+     * Create a chain balance
      */
     public Balance(final String term) {
       this.term = term;
@@ -144,7 +144,7 @@ public class DicBalance
     }
 
     /**
-     * Create a term balance with a filtering tag
+     * Create a chain balance with a filtering tag
      */
     public Balance(final String term, int tag) {
       this.term = term;

@@ -1,20 +1,20 @@
 package alix.fr.query;
 
-import alix.util.Term;
+import alix.util.Chain;
 
 public abstract class TestTerm extends Test
 {
-  /** The term object to glob() with */
-  final Term term;
+  /** The chain object to glob() with */
+  final Chain chain;
 
   /** constructor */
   public TestTerm(String term) {
-    this.term = new Term(term);
+    this.chain = new Chain(term);
   }
 
   @Override
   public String label()
   {
-    return term.toString();
+    return chain.toString();
   }
 }

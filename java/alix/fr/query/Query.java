@@ -168,7 +168,7 @@ public class Query
       else
         c = q.charAt(pos);
       pos++;
-      // append char to term ?
+      // append char to chain ?
       // in quotes, always append char
       if (quote) {
         term.append(c);
@@ -183,17 +183,17 @@ public class Query
         quote = true;
         continue;
       }
-      // not a space or a special char, append to term
+      // not a space or a special char, append to chain
       else if (!Char.isSpace(c) && c != 0 && c != ',' && c != '(' && c != ')') {
         term.append(c);
         continue;
       }
 
-      // now, the complex work, should be end of term
-      // a term is set, build an orphan query
+      // now, the complex work, should be end of chain
+      // a chain is set, build an orphan query
       if (term.length() > 0) {
         orphan = Test.create(term.toString());
-        term.setLength(0); // reset term buffer
+        term.setLength(0); // reset chain buffer
       }
       // another orphan Test to connect
       if (c == '(') {

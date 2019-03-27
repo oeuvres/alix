@@ -41,7 +41,7 @@ public class DicPhrase
    */
   private IntSeries buffer = new IntSeries();
   /** A local mutable String for locution insertion, not thread safe */
-  private Term token = new Term();
+  private Chain token = new Chain();
 
   public boolean add(final DicFreq words, String compound)
   {
@@ -61,14 +61,14 @@ public class DicPhrase
     compound = compound.trim();
     if (compound.startsWith("#"))
       return false;
-    // parse the term, split on space and apos
+    // parse the chain, split on space and apos
     final int lim = compound.length();
     if (lim == 0)
       return false;
     int code;
     IntSeries buffer = this.buffer; // take a ref to avoid a lookup
     buffer.reset();
-    Term token = this.token.reset(); // a temp mutable string
+    Chain token = this.token.reset(); // a temp mutable string
     for (int i = 0; i < lim; i++) {
       char c = compound.charAt(i);
       if (c == '’')
@@ -79,7 +79,7 @@ public class DicPhrase
           token.append(c);
         code = words.inc(token);
         if (code > senselevel)
-          buffer.push(code);
+          buffer.put(code);
         token.reset();
         if (c == '\t' || c == ';')
           break;

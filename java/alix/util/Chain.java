@@ -7,15 +7,15 @@ import java.util.Arrays;
 
 /**
  * A mutable string implementation thought for efficiency more than security.
- * The hash function is same as String so that a Term can be found in a
- * Set<String>. The same internal char array could be shared by multiple Term
+ * The hash function is same as String so that a Chain can be found in a
+ * Set<String>. The same internal char array could be shared by multiple Chain
  * instances (with different offset and len). Some convenient methods are
  * provided for lexical terms, for case, and glob searching (prefix and/or
  * suffix search).
  * 
  * @author glorieux-f
  */
-public class Term implements CharSequence, Comparable<Term>
+public class Chain implements CharSequence, Comparable<Chain>
 {
     /** The characters */
     private char[] data = new char[16];
@@ -37,40 +37,40 @@ public class Term implements CharSequence, Comparable<Term>
     /**
      * Empty constructor, value will be set later
      */
-    public Term() {
+    public Chain() {
     }
 
     /**
-     * Construct a term by copy of a term content (modification of this Term object
-     * will NOT affect source Term)
+     * Construct a chain by copy of a chain content (modification of this Chain object
+     * will NOT affect source Chain)
      */
-    public Term(Term t) {
+    public Chain(Chain t) {
         set(t);
     }
 
     /**
-     * Construct a term by copy of a char array (modification of this Term object
+     * Construct a chain by copy of a char array (modification of this Chain object
      * will NOT affect the source array)
      * 
      * @param a
      *          a char array
      */
-    public Term(final char[] a) {
+    public Chain(final char[] a) {
         set(a, -1, -1);
     }
 
     /**
-     * Construct a term by copy of a char sequence
+     * Construct a chain by copy of a char sequence
      * 
      * @param cs
      *          a char sequence (String, but also String buffers or builders)
      */
-    public Term(CharSequence cs) {
+    public Chain(CharSequence cs) {
         set(cs, -1, -1);
     }
 
     /**
-     * Construct a term by copy of a section of char sequence (String, but also
+     * Construct a chain by copy of a section of char sequence (String, but also
      * String buffers or builders)
      * 
      * @param cs
@@ -80,7 +80,7 @@ public class Term implements CharSequence, Comparable<Term>
      * @param count
      *          number of chars from offset
      */
-    public Term(CharSequence cs, int offset, int count) {
+    public Chain(CharSequence cs, int offset, int count) {
         set(cs, offset, count);
     }
 
@@ -91,38 +91,38 @@ public class Term implements CharSequence, Comparable<Term>
     }
 
     /**
-     * Link by reference to a section of a term (modification of one of the Term
-     * WILL affect the 2 Term)
+     * Link by reference to a section of a chain (modification of one of the Chain
+     * WILL affect the 2 Chain)
      * 
-     * @param term
-     *          the source term
+     * @param chain
+     *          the source chain
      * @param offset
-     *          start index from source term
+     *          start index from source chain
      * @param count
      *          number of chars from offset
-     * @return the Term object for chaining
+     * @return the Chain object for chaining
      */
-    public Term link(final Term term, final int offset, final int count)
+    public Chain link(final Chain chain, final int offset, final int count)
     {
         hash = 0;
-        data = term.data;
-        start = term.start + offset;
+        data = chain.data;
+        start = chain.start + offset;
         len = count;
         return this;
     }
 
     /**
-     * Link a term by reference to a section of a char array (modification of the
-     * Term object or the char array WILL affect the other)
+     * Link a chain by reference to a section of a char array (modification of the
+     * Chain object or the char array WILL affect the other)
      * 
      * @param a
      *          a char array
      * @param offset
-     *          start index from source term
+     *          start index from source chain
      * @param count
      *          number of chars from offset
      */
-    public Term link(final char[] a, final int offset, final int count)
+    public Chain link(final char[] a, final int offset, final int count)
     {
         hash = 0;
         data = a;
@@ -132,7 +132,7 @@ public class Term implements CharSequence, Comparable<Term>
     }
 
     /**
-     * Is Term with no chars ?
+     * Is Chain with no chars ?
      * 
      * @return true if len == 0, or false
      */
@@ -152,11 +152,11 @@ public class Term implements CharSequence, Comparable<Term>
     }
 
     /**
-     * Reset term (no modification to internal data)
+     * Reset chain (no modification to internal data)
      * 
-     * @return the Term
+     * @return the Chain
      */
-    public Term reset()
+    public Chain reset()
     {
         hash = 0;
         len = 0;
@@ -164,19 +164,19 @@ public class Term implements CharSequence, Comparable<Term>
     }
 
     /**
-     * Replace Term content by copy af a String
+     * Replace Chain content by copy af a String
      * 
      * @param cs
      *          a char sequence
-     * @return the Term object for chaining
+     * @return the Chain object for chaining
      */
-    public Term set(CharSequence cs)
+    public Chain set(CharSequence cs)
     {
         return set(cs, -1, -1);
     }
 
     /**
-     * Replace Term content by a span of String
+     * Replace Chain content by a span of String
      * 
      * @param cs
      *          a char sequence
@@ -184,10 +184,10 @@ public class Term implements CharSequence, Comparable<Term>
      *          of the string from where to copy chars
      * @param number
      *          of chars to copy -1
-     * @return the Term object for chaining, or null if the String provided is null
+     * @return the Chain object for chaining, or null if the String provided is null
      *         (for testing)
      */
-    public Term set(CharSequence cs, int offset, int count)
+    public Chain set(CharSequence cs, int offset, int count)
     {
         if (cs == null)
             return null;
@@ -211,19 +211,19 @@ public class Term implements CharSequence, Comparable<Term>
     }
 
     /**
-     * Replace Term content by copy of a char array, 2 time faster than String
+     * Replace Chain content by copy of a char array, 2 time faster than String
      * 
      * @param a
      *          text as char array
-     * @return the Term object for chaining
+     * @return the Chain object for chaining
      */
-    public Term set(char[] a)
+    public Chain set(char[] a)
     {
         return set(a, -1, -1);
     }
 
     /**
-     * Replace Term content by a span of a char array
+     * Replace Chain content by a span of a char array
      * 
      * @param a
      *          text as char array
@@ -231,9 +231,9 @@ public class Term implements CharSequence, Comparable<Term>
      *          of the string from where to copy chars
      * @param number
      *          of chars to copy -1
-     * @return the Term object for chaining
+     * @return the Chain object for chaining
      */
-    public Term set(char[] a, int offset, int count)
+    public Chain set(char[] a, int offset, int count)
     {
         if (offset <= 0 && count < 0) {
             offset = 0;
@@ -250,18 +250,18 @@ public class Term implements CharSequence, Comparable<Term>
     }
 
     /**
-     * Replace this term content by the copy of a term. Reset the start position.
+     * Replace this chain content by the copy of a chain. Reset the start position.
      * 
-     * @param term
+     * @param chain
      * @return
      */
-    public Term set(Term term)
+    public Chain set(Chain chain)
     {
-        int newlen = term.len;
+        int newlen = chain.len;
         // do not change len before sizing
         onWrite(newlen);
         start = 0;
-        System.arraycopy(term.data, term.start, data, start, newlen);
+        System.arraycopy(chain.data, chain.start, data, start, newlen);
         len = newlen;
         return this;
     }
@@ -270,9 +270,9 @@ public class Term implements CharSequence, Comparable<Term>
      * Append a character
      * 
      * @param c
-     * @return the Term object for chaining
+     * @return the Chain object for chaining
      */
-    public Term append(char c)
+    public Chain append(char c)
     {
         int newlen = len + 1;
         onWrite(newlen);
@@ -282,16 +282,16 @@ public class Term implements CharSequence, Comparable<Term>
     }
 
     /**
-     * Append a term
+     * Append a chain
      * 
-     * @param term
-     * @return the Term object for chaining
+     * @param chain
+     * @return the Chain object for chaining
      */
-    public Term append(Term term)
+    public Chain append(Chain chain)
     {
-        int newlen = len + term.len;
+        int newlen = len + chain.len;
         onWrite(newlen);
-        System.arraycopy(term.data, term.start, data, start + len, term.len);
+        System.arraycopy(chain.data, chain.start, data, start + len, chain.len);
         len = newlen;
         return this;
     }
@@ -301,9 +301,9 @@ public class Term implements CharSequence, Comparable<Term>
      * 
      * @param cs
      *          String or other CharSequence
-     * @return the Term object for chaining
+     * @return the Chain object for chaining
      */
-    public Term append(CharSequence cs)
+    public Chain append(CharSequence cs)
     {
         int count = cs.length();
         int newlen = len + count;
@@ -331,7 +331,7 @@ public class Term implements CharSequence, Comparable<Term>
     /**
      * Set last char, will send an array out of bound, with no test
      */
-    public Term last(char c)
+    public Chain last(char c)
     {
         hash = 0;
         data[len - 1] = c;
@@ -341,7 +341,7 @@ public class Term implements CharSequence, Comparable<Term>
     /**
      * Remove last char
      */
-    public Term lastDel()
+    public Chain lastDel()
     {
         hash = 0;
         len--;
@@ -359,9 +359,9 @@ public class Term implements CharSequence, Comparable<Term>
     /**
      * Delete first char (just by modification of pointers)
      * 
-     * @return the Term for chaining
+     * @return the Chain for chaining
      */
-    public Term firstDel()
+    public Chain firstDel()
     {
         hash = 0;
         start++;
@@ -370,13 +370,13 @@ public class Term implements CharSequence, Comparable<Term>
     }
 
     /**
-     * Delete some chars to term, if i>0, deletion start from left, if i<0, deletion
+     * Delete some chars to chain, if i>0, deletion start from left, if i<0, deletion
      * start from right
      * 
      * @param i
-     * @return the Term for chaining
+     * @return the Chain for chaining
      */
-    public Term del(int i)
+    public Chain del(int i)
     {
         hash = 0;
         if (i >= len || -i >= len) {
@@ -396,9 +396,9 @@ public class Term implements CharSequence, Comparable<Term>
     /**
      * Put first char upperCase
      * 
-     * @return the Term for chaining
+     * @return the Chain for chaining
      */
-    public Term firstToUpper()
+    public Chain firstToUpper()
     {
         hash = 0;
         data[start] = Character.toUpperCase(data[start]);
@@ -416,11 +416,11 @@ public class Term implements CharSequence, Comparable<Term>
     }
 
     /**
-     * Change case of the chars in scope of the term.
+     * Change case of the chars in scope of the chain.
      * 
-     * @return the Term object for chaining
+     * @return the Chain object for chaining
      */
-    public Term toLower()
+    public Chain toLower()
     {
         hash = 0;
         char c;
@@ -438,9 +438,9 @@ public class Term implements CharSequence, Comparable<Term>
     /**
      * Replace a char by another
      * 
-     * @return the Term object for chaining
+     * @return the Chain object for chaining
      */
-    public Term replace(char from, char to)
+    public Chain replace(char from, char to)
     {
         hash = 0;
         char c;
@@ -454,9 +454,9 @@ public class Term implements CharSequence, Comparable<Term>
     /**
      * Change case of the chars according to different rules
      * 
-     * @return the Term object for chaining
+     * @return the Chain object for chaining
      */
-    public Term normCase()
+    public Chain normCase()
     {
         hash = 0;
         char last;
@@ -475,7 +475,7 @@ public class Term implements CharSequence, Comparable<Term>
         return this;
     }
 
-    public Term capitalize()
+    public Chain capitalize()
     {
         hash = 0;
         char last;
@@ -498,9 +498,9 @@ public class Term implements CharSequence, Comparable<Term>
      * Suppress spaces at start and end of string. Do not affect the internal char
      * array data but modify only its limits. Should be very efficient.
      * 
-     * @return the modified Term object
+     * @return the modified Chain object
      */
-    public Term trim()
+    public Chain trim()
     {
         hash = 0;
         int from = start;
@@ -521,9 +521,9 @@ public class Term implements CharSequence, Comparable<Term>
      * internal char array data but modify only its limits.
      * 
      * @param chars
-     * @return the modified Term object
+     * @return the modified Chain object
      */
-    public Term trim(String chars)
+    public Chain trim(String chars)
     {
         hash = 0;
         int from = start;
@@ -545,7 +545,7 @@ public class Term implements CharSequence, Comparable<Term>
      * Test prefix
      * 
      * @param prefix
-     * @return true if the Term starts by prefix
+     * @return true if the Chain starts by prefix
      */
     public boolean startsWith(final CharSequence prefix)
     {
@@ -563,7 +563,7 @@ public class Term implements CharSequence, Comparable<Term>
      * Test suffix
      * 
      * @param suffix
-     * @return true if the Term ends by suffix
+     * @return true if the Chain ends by suffix
      */
     public boolean endsWith(final CharSequence suffix)
     {
@@ -577,7 +577,7 @@ public class Term implements CharSequence, Comparable<Term>
         return true;
     }
 
-    public int value(Term cell, final char separator)
+    public int value(Chain cell, final char separator)
     {
         if (pointer < 0)
             pointer = 0;
@@ -586,7 +586,7 @@ public class Term implements CharSequence, Comparable<Term>
     }
 
     /**
-     * Read value in a char separated string. The term objected is update from
+     * Read value in a char separated string. The chain objected is update from
      * offset position to the next separator (or end of String).
      * 
      * @param separator
@@ -595,7 +595,7 @@ public class Term implements CharSequence, Comparable<Term>
      * @return a new offset from where to search in String, or -1 when end of line
      *         is reached
      */
-    public int value(Term cell, final char separator, final int offset)
+    public int value(Chain cell, final char separator, final int offset)
     {
         if (offset >= len)
             return -1;
@@ -649,9 +649,9 @@ public class Term implements CharSequence, Comparable<Term>
      *          position of the char to change
      * @param c
      *          new char value
-     * @return the Term object for chaining
+     * @return the Chain object for chaining
      */
-    public Term setCharAt(int index, char c)
+    public Chain setCharAt(int index, char c)
     {
         hash = 0;
         if ((index < 0) || (index >= len)) {
@@ -664,7 +664,7 @@ public class Term implements CharSequence, Comparable<Term>
     @Override
     public CharSequence subSequence(int start, int end)
     {
-        System.out.println("Term.subSequence() TODO Auto-generated method stub");
+        System.out.println("Chain.subSequence() TODO Auto-generated method stub");
         return null;
     }
 
@@ -777,8 +777,8 @@ public class Term implements CharSequence, Comparable<Term>
         // limit field lookup
         int offset = start;
         int lim = len;
-        if (o instanceof Term) {
-            Term oTerm = (Term) o;
+        if (o instanceof Chain) {
+            Chain oTerm = (Chain) o;
             if (oTerm.len != lim)
                 return false;
             // hashcode already calculated, if different, not same strings
@@ -827,7 +827,7 @@ public class Term implements CharSequence, Comparable<Term>
      * orthographic ordering
      */
     @Override
-    public int compareTo(Term t)
+    public int compareTo(Chain t)
     {
         char v1[] = data;
         char v2[] = t.data;
@@ -947,52 +947,52 @@ public class Term implements CharSequence, Comparable<Term>
      */
     public static void main(String[] args)
     {
-        Term test;
-        System.out.println(new Term(" Charles-Albert Cingria").normCase());
-        System.out.println(new Term("charles-albert").capitalize());
-        Term glob = new Term("*ent");
-        test = new Term("t");
+        Chain test;
+        System.out.println(new Chain(" Charles-Albert Cingria").normCase());
+        System.out.println(new Chain("charles-albert").capitalize());
+        Chain glob = new Chain("*ent");
+        test = new Chain("t");
         System.out.println(glob + " GLOB " + test + " : " + glob.glob(test));
-        test = new Term("présentement");
-        glob = new Term("*ent*ent");
+        test = new Chain("présentement");
+        glob = new Chain("*ent*ent");
         System.out.println(glob + " GLOB " + test + " : " + glob.glob(test));
-        glob = new Term("présentement");
+        glob = new Chain("présentement");
         System.out.println(glob + " GLOB " + test + " : " + glob.glob(test));
-        glob = new Term("prés*ent");
+        glob = new Chain("prés*ent");
         System.out.println(glob + " GLOB " + test + " : " + glob.glob(test));
-        glob = new Term("présentement*");
+        glob = new Chain("présentement*");
         System.out.println(glob + " GLOB " + test + " : " + glob.glob(test));
-        glob = new Term("present");
+        glob = new Chain("present");
         System.out.println(glob + " GLOB " + test + " : " + glob.glob(test));
-        glob = new Term("présent");
+        glob = new Chain("présent");
         System.out.println(glob + " GLOB " + test + " : " + glob.glob(test));
 
         System.exit(1);
-        Term term;
-        term = new Term("123456");
-        term.lastDel();
-        System.out.println(term.endsWith("345"));
-        Term line = new Term(",,C,D,,EPO");
+        Chain chain;
+        chain = new Chain("123456");
+        chain.lastDel();
+        System.out.println(chain.endsWith("345"));
+        Chain line = new Chain(",,C,D,,EPO");
         System.out.println(line + " test CSV");
-        Term cell = new Term();
+        Chain cell = new Chain();
         while (line.value(cell, ',') > -1) {
             System.out.print(cell);
             System.out.print('|');
         }
         System.out.println();
         System.out.println(Arrays.toString(line.split(',')));
-        System.out.println("trim() \"     \" \"" + new Term("     ").trim(" ") + "\"");
+        System.out.println("trim() \"     \" \"" + new Chain("     ").trim(" ") + "\"");
         System.out.println("// Illustration of char data shared between two terms");
-        line = new Term("01234567890123456789");
+        line = new Chain("01234567890123456789");
         System.out.println("line: \"" + line + "\"");
-        Term span = new Term();
+        Chain span = new Chain();
         span.link(line, 3, 4);
-        System.out.println("span=new Term(line, 3, 4): \"" + span + "\"");
+        System.out.println("span=new Chain(line, 3, 4): \"" + span + "\"");
         span.setCharAt(0, '-');
         System.out.println("span.setCharAt(0, '-') ");
         System.out.println("line: \"" + line + "\"");
         System.out.println("span: \"" + span + "\"");
-        System.out.println("Test comparesTo()=" + span.compareTo(new Term("-456")) + " equals()=" + span.equals("-456"));
+        System.out.println("Test comparesTo()=" + span.compareTo(new Chain("-456")) + " equals()=" + span.equals("-456"));
         System.out.println(span.append("____") + ", " + line);
         for (char c = 33; c < 100; c++)
             span.append(c);
@@ -1002,12 +1002,12 @@ public class Term implements CharSequence, Comparable<Term>
         long time = System.nanoTime();
         // test equals perf with a long String
         String text = "java - CharBuffer vs. char[] - Stack Overflow stackoverflow.com/questions/294382/charbuffer-vs-char Traduire cette page 16 nov. 2008 - No, there's really no reason to prefer a CharBuffer in this case. In general, though ..... P.S If you use a backport remember to remove it once you catch up to the version containing the real version of the backported code.";
-        term = new Term(text);
-        term.last('p'); // modify the last char
+        chain = new Chain(text);
+        chain.last('p'); // modify the last char
         for (int i = 0; i < 10000000; i++) {
-            term.equals(text);
+            chain.equals(text);
         }
-        System.out.print(term.equals(text));
+        System.out.print(chain.equals(text));
         System.out.println(" " + ((System.nanoTime() - time) / 1000000) + " ms");
 
         /*
@@ -1020,8 +1020,8 @@ public class Term implements CharSequence, Comparable<Term>
          * text="de en le la les un une des"; for (String token: text.split( " " )) {
          * dic.add( token ); } System.out.println( dic ); System.out.println(
          * "HashSet<String>.contains(String) "+dic.contains( "des" ) );
-         * System.out.println( "HashSet<String>.contains(Term) "+dic.contains( new
-         * Term("des") ) );
+         * System.out.println( "HashSet<String>.contains(Chain) "+dic.contains( new
+         * Chain("des") ) );
          */
     }
 }

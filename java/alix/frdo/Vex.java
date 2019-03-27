@@ -24,7 +24,7 @@ import alix.util.Char;
 import alix.util.IntOMap;
 import alix.util.IntRoller;
 import alix.util.IntVek;
-import alix.util.Term;
+import alix.util.Chain;
 import alix.util.Top;
 import alix.util.DicFreq.Entry;
 import alix.util.DicVek.SimRow;
@@ -44,7 +44,7 @@ public class Vex
     long wc;
     HashMap<String, Integer> byString;
     String[] byIndex;
-    /** Vectors of co-occurences for each term of dictionary */
+    /** Vectors of co-occurences for each chain of dictionary */
     private IntVek[] mat;
     double[] magnitudes;
     int left;
@@ -59,7 +59,7 @@ public class Vex
         int minFreq = 5;
         String l;
         char c;
-        Term term = new Term();
+        Chain chain = new Chain();
         HashMap<String, Entry> freqs = this.freqs; // perf
         Entry entry;
         String label;
@@ -72,20 +72,20 @@ public class Vex
                     if (i == length) c = ' ';
                     else c = l.charAt(i);
                     if (Char.isLetter(c) || c == '_') {
-                        term.append(c);
+                        chain.append(c);
                         continue;
                     }
-                    if (term.isEmpty()) continue;
+                    if (chain.isEmpty()) continue;
                     // got a word
                     wc++;
-                    entry = freqs.get(term);
+                    entry = freqs.get(chain);
                     if (entry == null) {
-                        label = term.toString();
+                        label = chain.toString();
                         freqs.put(label, new Entry(label));
                     } else {
                         entry.inc();
                     }
-                    term.reset();
+                    chain.reset();
                 }
             }
         }
@@ -117,7 +117,7 @@ public class Vex
         IntRoller slider = new IntRoller(left, right);
         int size = slider.size();
         for (int i=0; i < size; i++) slider.push(-1);
-        Term term = new Term();
+        Chain chain = new Chain();
         String l;
         char c;
         Integer key;
@@ -129,13 +129,13 @@ public class Vex
                     if (i == length) c = ' ';
                     else c = l.charAt(i);
                     if (Char.isLetter(c)) {
-                        term.append(c);
+                        chain.append(c);
                         continue;
                     }
-                    if (term.isEmpty()) continue;
+                    if (chain.isEmpty()) continue;
                     // got a word
-                    key = byString.get(term);
-                    term.reset();
+                    key = byString.get(chain);
+                    chain.reset();
                     if (key == null) key = -1;
                     slider.push(key);
                     int row = slider.get(0);
@@ -195,7 +195,7 @@ public class Vex
 
     public class Entry implements Comparable<Entry>
     {
-        /** The String form of Term */
+        /** The String form of Chain */
         private final String label;
         /** A counter */
         private AtomicInteger count = new AtomicInteger(1);
@@ -213,7 +213,7 @@ public class Vex
         }
         @Override
         /**
-         * Default comparator for term informations,
+         * Default comparator for chain informations,
          */
         public int compareTo(Entry o)
         {

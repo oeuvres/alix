@@ -177,7 +177,7 @@ public class Demo
     boolean noSpaceBefore = true;
     while (stream.incrementToken()) {
       // pour accumulation dans un objet
-      // tokenList.add(new MyToken(term.term(), posinc.getPositionIncrement(),
+      // tokenList.add(new MyToken(chain.term(), posinc.getPositionIncrement(),
       // type.type(), offset.startOffset(), offset.endOffset()));
       tok = term.toString();
       c = tok.charAt(0);

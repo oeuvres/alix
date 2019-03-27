@@ -10,13 +10,13 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
-public class XmlAnalyzer extends Analyzer
+public class AlixAnalyzer extends Analyzer
 {
 
   @Override
   protected TokenStreamComponents createComponents(String fieldName)
   {
-    return new TokenStreamComponents(new XmlTokenizer());
+    return new TokenStreamComponents(new FrTokenizer());
   }
 
   public static void main(String[] args) throws IOException
@@ -24,7 +24,7 @@ public class XmlAnalyzer extends Analyzer
     // text to tokenize
     final String text = "<p>" + "C’est un paragraphe. Avec de <i>l'italique</i>." + "</p>";
 
-    XmlAnalyzer analyzer = new XmlAnalyzer();
+    AlixAnalyzer analyzer = new AlixAnalyzer();
     TokenStream stream = analyzer.tokenStream("field", new StringReader(text));
 
     // get the CharTermAttribute from the TokenStream

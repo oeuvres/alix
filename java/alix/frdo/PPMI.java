@@ -27,7 +27,7 @@ import alix.util.Char;
 import alix.util.IntPair;
 import alix.util.IntRoller;
 import alix.util.SparseMat;
-import alix.util.Term;
+import alix.util.Chain;
 import alix.util.Top;
 
 /**
@@ -72,7 +72,7 @@ public class PPMI {
         }
         @Override
         /**
-         * Default comparator for term informations,
+         * Default comparator for chain informations,
          */
         public int compareTo(WCounter o)
         {
@@ -82,7 +82,7 @@ public class PPMI {
     
     public long freqs(String textFile) throws FileNotFoundException, IOException
     {
-        Term term = new Term();
+        Chain chain = new Chain();
         HashMap<String, WCounter> freqs = this.freqs; // direct handler for perfs
         WCounter wcounter;
         String label;
@@ -98,19 +98,19 @@ public class PPMI {
                 for (i = 0; i < chars; i++) {
                     c = buf[i];
                     if (Char.isLetter(c) || c == '_') {
-                        term.append(c);
+                        chain.append(c);
                         continue;
                     }
-                    if (term.isEmpty()) continue;
+                    if (chain.isEmpty()) continue;
                     wc++;
-                    wcounter = freqs.get(term);
+                    wcounter = freqs.get(chain);
                     if (wcounter == null) {
-                        label = term.toString();
+                        label = chain.toString();
                         freqs.put(label, new WCounter(label));
                     } else {
                         wcounter.inc();
                     }
-                    term.reset();
+                    chain.reset();
                 }
             }
             reader.close();
@@ -164,7 +164,7 @@ public class PPMI {
         IntRoller slider = new IntRoller(left, right);
         int size = slider.size();
         for (int i=0; i < size; i++) slider.push(-1);
-        Term term = new Term();
+        Chain chain = new Chain();
         String l;
         char c;
         Integer code;
@@ -181,12 +181,12 @@ public class PPMI {
                 for (int i = 0; i < chars; i++) {
                     c = buf[i];
                     if (Char.isLetter(c) || c == '_') {
-                        term.append(c);
+                        chain.append(c);
                         continue;
                     }
-                    if (term.isEmpty()) continue;
-                    code = byString.get(term);
-                    term.reset();
+                    if (chain.isEmpty()) continue;
+                    code = byString.get(chain);
+                    chain.reset();
                     if (code == null) slider.push(-1);
                     else slider.push(code);
                     int word = slider.get(0);

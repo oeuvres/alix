@@ -11,7 +11,7 @@ public class TestLem extends TestTerm
   @Override
   public boolean test(Occ occ)
   {
-    return term.glob(occ.lem());
+    return chain.glob(occ.lem());
   }
 
 }
