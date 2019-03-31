@@ -346,7 +346,7 @@ public class Lexik
   {
     if (!ORTH.containsKey(chain))
       return false;
-    chain.set(ORTH.get(chain));
+    chain.copy(ORTH.get(chain));
     return true;
   }
 

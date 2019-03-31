@@ -7,18 +7,24 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Random;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.queryparser.simple.SimpleQueryParser;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -31,7 +37,9 @@ import org.apache.lucene.search.spans.SpanWeight;
 import org.apache.lucene.search.spans.SpanWeight.Postings;
 import org.apache.lucene.search.spans.Spans;
 import org.apache.lucene.search.spans.TermSpans;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -49,6 +57,34 @@ public class Conc
     }
     public static void main(String args[]) throws Exception
     {
+        Analyzer analyzer = new AlixAnalyzer();
+        Directory directory = new RAMDirectory();
+        IndexWriterConfig config = new IndexWriterConfig(analyzer);
+        IndexWriter indexWriter = new IndexWriter(directory, config);
+        Document doc = new Document();
+        String name = "text";
+        String text = "Lucene is an Information Retrieval library written in Java";
+        doc.add(new Field(name, text, Alix.ftypeText));
+        text = "Lucene est une librairie d'indexation plein texte en Java.";
+        doc.add(new Field(name, text, Alix.ftypeText));
+        indexWriter.addDocument(doc);
+        indexWriter.addDocument(doc);
+        IndexReader ir=DirectoryReader.open(indexWriter);
+        IndexSearcher is = new IndexSearcher(ir);
+        doc = ir.document(1);
+        Terms vector = ir.getTermVector(0, name);
+        System.out.println(vector.getStats());
+        vector.
+        TermsEnum termit = vector.iterator();
+        while(termit.next() != null) {
+            System.out.println(termit.term().utf8ToString()+" "+termit.totalTermFreq()+" "+termit.docFreq());
+        }
+        System.out.println(termit.seekCeil(new BytesRef("ple")));
+        System.out.println(termit.term().utf8ToString());
+        
+        // offsets = new OffsetList(doc.getField("offsets").binaryValue());
+
+        /*
         String usage = "java alix.lucene.Conc lucene-index field\n\n";
         BufferedReader in = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
         String index = args[0];
@@ -94,7 +130,6 @@ public class Conc
                   System.out.print(termBytesRef.utf8ToString());
                   System.out.print(" ");
               }
-              /*
               while(spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
                   PostingsEnum postings = spans.getPostings();
                   int start = postings.startOffset();
@@ -111,11 +146,11 @@ public class Conc
                   int rend = Math.min(end+rwidth+1, text.length());
                   System.out.println(text.substring(end+1, rend));
               }
-              */
             }
                // Date end = new Date();
         // info(end.getTime() - start.getTime() + " total ms.");
         }
+        */
     }
 
 }

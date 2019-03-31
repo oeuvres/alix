@@ -23,26 +23,28 @@ import java.util.HashMap;
 public class Char
 {
     /** The 2 bytes unicode */
-    static final int SIZE = 65535;
+    private static final int SIZE = 65535;
     /** Properties of chars by index */
-    static final short[] CHARS = new short[SIZE + 1];
+    private static final short[] CHARS = new short[SIZE + 1];
     /** Is a letter (Unicode property) */
-    private static final short LETTER = 0x0001;
+    public static final short LETTER = 0x0001;
     /** Is a space (Unicode property) */
-    private static final short SPACE = 0x0002;
+    public static final short SPACE = 0x0002;
     /** Is token, specific, with '-' and ‘'’ */
-    private static final short TOKEN = 0x0004;
+    public static final short TOKEN = 0x0004;
     /** Punctuation, according to Unicode */
-    private static final short PUNCTUATION = 0x0008;
-    private static final short PUNCTUATION_OR_SPACE = SPACE | PUNCTUATION;
-    private static final short LOWERCASE = 0x0010;
-    private static final short UPPERCASE = 0x0020;
-    private static final short VOWEL = 0x0040;
-    private static final short CONSONNANT = 0x0080;
-    private static final short DIGIT = 0x0100;
-    private static final short PUNsent = 0x0200;
-    private static final short PUNcl = 0x0400;
-    private static final short MATH = 0x0800;
+    public static final short PUNCTUATION = 0x0008;
+    public static final short PUNCTUATION_OR_SPACE = SPACE | PUNCTUATION;
+    public static final short LOWERCASE = 0x0010;
+    public static final short UPPERCASE = 0x0020;
+    public static final short VOWEL = 0x0040;
+    public static final short CONSONNANT = 0x0080;
+    public static final short DIGIT = 0x0100;
+    public static final short PUNsent = 0x0200;
+    public static final short PUNcl = 0x0400;
+    public static final short MATH = 0x0800;
+    public static final short HIGHSUR = 0x4000;
+    public static final short LOWSUR = 0x2000;
     public static final HashMap<String, Character> HTMLENT = new HashMap<String, Character>();
     static {
         BufferedReader buf = new BufferedReader(
@@ -201,6 +203,14 @@ public class Char
         int type;
         // infinite loop when size = 65536, a char restart to 0
         for (char c = 0; c < SIZE; c++) {
+            if (Character.isHighSurrogate(c)) {
+                CHARS[c] = HIGHSUR;
+                continue;
+            }
+            if (Character.isLowSurrogate(c)) {
+                CHARS[c] = LOWSUR;
+                continue;
+            }
             type = Character.getType(c);
             short properties = 0x0;
             // DO NOT modify '<>' values
@@ -243,13 +253,8 @@ public class Char
                 {
                     properties |= PUNCTUATION;
                 }
-                // TOKEN is a property to continue a token word (but not start)
-                if (c == '.' || c == ',') properties |= TOKEN;
                 // hacky, hyphen maybe part of compound word, or start of a separator like ---
-                if (c == '-' || c == 0xAD || c == '\'' || c == '’') {
-                    properties |= TOKEN;
-                }
-                else if (c == '_') {
+                if (c == '-' || c == 0xAD || c == '\'' || c == '’' || c == '_') {
                     properties |= TOKEN;
                 }
                 if (c == '�') properties |= LETTER | TOKEN;
@@ -261,14 +266,14 @@ public class Char
 
     }
 
-    public static char htmlent(String ent)
+    public static char htmlent(final String ent)
     {
         Character c = HTMLENT.get(ent);
         if (c == null) return '�';
         return c;
     }
 
-    public static char htmlent(Chain ent)
+    public static char htmlent(final Chain ent)
     {
         Character c = HTMLENT.get(ent);
         if (c == null) return '�';
@@ -276,16 +281,20 @@ public class Char
     }
 
     /**
+     * Get the internal properties for a char
+     * @param c
+     * @return
+     */
+    public static short props(final char c)
+    {
+        return CHARS[c];
+    }
+    /**
      * Is a word character (letter, but also, '’-_)
      * 
      * @see Character#isLetter(char)
      */
-    public static boolean isToken(char c)
-    {
-        return (CHARS[c] & TOKEN) > 0;
-    }
-
-    public static boolean isToken(int c)
+    public static boolean isToken(final char c)
     {
         return (CHARS[c] & TOKEN) > 0;
     }
@@ -295,12 +304,7 @@ public class Char
      * 
      * @see Character#isLetter(char)
      */
-    public static boolean isLetter(char c)
-    {
-        return (CHARS[c] & LETTER) > 0;
-    }
-
-    public static boolean isLetter(int c)
+    public static boolean isLetter(final char c)
     {
         return (CHARS[c] & LETTER) > 0;
     }
@@ -308,12 +312,7 @@ public class Char
     /**
      * Is a Mathematic symbol
      */
-    public static boolean isMath(char c)
-    {
-        return (CHARS[c] & MATH) > 0;
-    }
-
-    public static boolean isMath(int c)
+    public static boolean isMath(final char c)
     {
         return (CHARS[c] & MATH) > 0;
     }
@@ -323,27 +322,16 @@ public class Char
      * 
      * @see Character#isDigit(char)
      */
-    public static boolean isDigit(char c)
+    public static boolean isDigit(final char c)
     {
         return (CHARS[c] & DIGIT) > 0;
     }
-
-    public static boolean isDigit(int c)
-    {
-        return (CHARS[c] & DIGIT) > 0;
-    }
-
     /**
      * Is a lower case letter
      * 
      * @see Character#isLowerCase(char)
      */
-    public static boolean isLowerCase(char c)
-    {
-        return (CHARS[c] & LOWERCASE) > 0;
-    }
-
-    public static boolean isLowerCase(int c)
+    public static boolean isLowerCase(final char c)
     {
         return (CHARS[c] & LOWERCASE) > 0;
     }
@@ -353,12 +341,7 @@ public class Char
      * 
      * @see Character#isUpperCase(char)
      */
-    public static boolean isUpperCase(char c)
-    {
-        return (CHARS[c] & UPPERCASE) > 0;
-    }
-
-    public static boolean isUpperCase(int c)
+    public static boolean isUpperCase(final char c)
     {
         return (CHARS[c] & UPPERCASE) > 0;
     }
@@ -369,12 +352,7 @@ public class Char
      * @param ch
      * @return
      */
-    public static boolean isPunctuation(char c)
-    {
-        return (CHARS[c] & PUNCTUATION) > 0;
-    }
-
-    public static boolean isPunctuation(int c)
+    public static boolean isPunctuation(final char c)
     {
         return (CHARS[c] & PUNCTUATION) > 0;
     }
@@ -385,12 +363,7 @@ public class Char
      * @param ch
      * @return
      */
-    public static boolean isPUNsent(char c)
-    {
-        return (CHARS[c] & PUNsent) > 0;
-    }
-
-    public static boolean isPUNsent(int c)
+    public static boolean isPUNsent(final char c)
     {
         return (CHARS[c] & PUNsent) > 0;
     }
@@ -401,12 +374,7 @@ public class Char
      * @param ch
      * @return
      */
-    public static boolean isPUNcl(char c)
-    {
-        return (CHARS[c] & PUNcl) > 0;
-    }
-
-    public static boolean isPUNcl(int c)
+    public static boolean isPUNcl(final char c)
     {
         return (CHARS[c] & PUNcl) > 0;
     }
@@ -418,15 +386,11 @@ public class Char
      * @see Character#isSpaceChar(char)
      * @see Character#isWhiteSpace(char)
      */
-    public static boolean isSpace(char c)
+    public static boolean isSpace(final char c)
     {
         return (CHARS[c] & SPACE) > 0;
     }
 
-    public static boolean isSpace(int c)
-    {
-        return (CHARS[c] & SPACE) > 0;
-    }
 
     /**
      * Convenient method
@@ -434,17 +398,35 @@ public class Char
      * @param ch
      * @return
      */
-    public static boolean isPunctuationOrSpace(char c)
+    public static boolean isPunctuationOrSpace(final char c)
     {
         return (CHARS[c] & PUNCTUATION_OR_SPACE) > 0;
     }
-    public static boolean isPunctuationOrSpace(int c)
+    
+    /**
+     * Is it first UTF-16 char of a supplemental unicode type like emoji ? 
+     * 
+     * @param c
+     * @return
+     */
+    public static boolean isHighSurrogate(final char c)
     {
-        return (CHARS[c] & PUNCTUATION_OR_SPACE) > 0;
+        return (CHARS[c] & HIGHSUR) > 0;
     }
 
     /**
-     * Efficient lower casing on a string builder
+     * Is it second UTF-16 char of a supplemental unicode type like emoji ? 
+     * 
+     * @param c
+     * @return
+     */
+    public static boolean isLowSurrogate(final char c)
+    {
+        return (CHARS[c] & LOWSUR) > 0;
+    }
+
+    /**
+     * Lower casing on a string builder
      */
     public static StringBuilder toLower(StringBuilder s)
     {
@@ -452,7 +434,8 @@ public class Char
         char c;
         for (int i = 0; i < max; i++) {
             c = s.charAt(i);
-            // not faster
+            // 1003 chars in multiple blocks accept a loer case
+            // a hash of chars is not faster
             // if ( LOWER.containsKey( c )) s.setCharAt( i, LOWER.get( c ) );
             s.setCharAt(i, Character.toLowerCase(c));
         }
@@ -465,7 +448,7 @@ public class Char
         // Don't
     }
 
-    static public String props(char c)
+    static public String toString(char c)
     {
         short props = CHARS[c];
         StringBuilder sb = new StringBuilder();
@@ -480,6 +463,8 @@ public class Char
         if ((props & LOWERCASE) > 0) sb.append("LOWERCASE ");
         if ((props & UPPERCASE) > 0) sb.append("UPPERCASE ");
         if ((props & MATH) > 0) sb.append("MATH ");
+        if ((props & HIGHSUR) > 0) sb.append("HIGHSUR ");
+        if ((props & LOWSUR) > 0) sb.append("LOWSUR ");
         return sb.toString();
     }
 
@@ -488,10 +473,10 @@ public class Char
      */
     public static void main(String args[])
     {
-        String test = "-,_.;!? ■A\n°^�&-.6<Œ" + (char) 0xAD;
+        String test = "😀-,_.;!? ■A\n°^�&-.6<Œ" + (char) 0xAD;
         for (int i = 0, n = test.length(); i < n; i++) {
             char c = test.charAt(i);
-            System.out.println(props(c));
+            System.out.println(toString(c));
         }
     }
 }

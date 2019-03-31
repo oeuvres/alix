@@ -62,7 +62,7 @@ public class ChainRoller extends Roller implements Iterable<Chain>
      */
     public Chain set(final int pos, final String term)
     {
-        return data[pointer(pos)].set(term);
+        return data[pointer(pos)].copy(term);
     }
 
     /**
@@ -76,7 +76,7 @@ public class ChainRoller extends Roller implements Iterable<Chain>
      */
     public Chain set(final int pos, final Chain chain)
     {
-        return data[pointer(pos)].set(chain);
+        return data[pointer(pos)].copy(chain);
     }
 
     /**
@@ -107,7 +107,7 @@ public class ChainRoller extends Roller implements Iterable<Chain>
     {
         // Chain ret = data[ pointer( -left ) ];
         center = pointer(+1);
-        data[pointer(right)].set(value);
+        data[pointer(right)].copy(value);
     }
 
     /**
@@ -117,7 +117,7 @@ public class ChainRoller extends Roller implements Iterable<Chain>
     {
         // Chain ret = data[ pointer( -left ) ];
         center = pointer(+1);
-        data[pointer(right)].set(value);
+        data[pointer(right)].copy(value);
     }
 
     /**

@@ -21,12 +21,13 @@ import org.apache.lucene.util.BytesRef;
 import alix.util.Calcul;
 
 /**
- * A growable list of ints backed to a byte array with convenient methods for
- * conversion.
+ * A growable list of couples of ints backed to a byte array with convenient methods for
+ * conversion. Designed to get back information recorded from a lucene Strored Field
+ * (pointing to a byte array without copy).
  *
  * @author glorieux-f
  */
-public class ByteIntList
+public class OffsetList
 {
     /** Internal data */
     private byte[] bytes;
@@ -37,17 +38,17 @@ public class ByteIntList
     /** Internal length of used bytes */
     private int length;
 
-    public ByteIntList()
+    public OffsetList()
     {
         bytes = new byte[64];
     }
 
-    public ByteIntList(int offset)
+    public OffsetList(int offset)
     {
         this(offset, 64);
     }
 
-    public ByteIntList(int offset, int length)
+    public OffsetList(int offset, int length)
     {
         int floor = offset + length;
         int capacity = Calcul.nextSquare(floor);
@@ -60,7 +61,7 @@ public class ByteIntList
         pointer = offset;
     }
 
-    public ByteIntList(BytesRef bytesref)
+    public OffsetList(BytesRef bytesref)
     {
         this.bytes = bytesref.bytes;
         this.offset = bytesref.offset;
@@ -76,19 +77,40 @@ public class ByteIntList
     {
         pointer = offset;
     }
-
+    /**
+     * Length of list in bytes (= size * 8)
+     * @return
+     */
     public int length()
     {
         return length;
     }
-
+    /**
+     * Size of list in couples of ints (= length / 8)
+     * @return
+     */
+    public int size()
+    {
+        return length >> 3;
+    }
+    /**
+     * Add a couple start-end index
+     * 
+     * @param value
+     * @return
+     */
+    public void put(int start, int end)
+    {
+        this.put(start).put(end);
+    }
+    
     /**
      * Add on more value at the end
      * 
      * @param value
      * @return
      */
-    public ByteIntList put(int x)
+    private OffsetList put(int x)
     {
         length = length + 4;
         ensureCapacity(offset + length);
@@ -100,23 +122,21 @@ public class ByteIntList
         return this;
     }
 
-    public int get(final int pos)
+    public int getStart(final int pos)
     {
-        pointer = offset + pos * 4;
-        return next();
+        return get(offset + pos << 3);
+    }
+    public int getEnd(final int pos)
+    {
+        return get(offset + pos << 3 + 4);
     }
 
-    public int next()
+    private int get(final int index)
     {
-        return (((bytes[pointer++]) << 24) | ((bytes[pointer++] & 0xff) << 16) | ((bytes[pointer++] & 0xff) << 8)
-                | ((bytes[pointer++] & 0xff)));
+        return (((bytes[index]) << 24) | ((bytes[index+1] & 0xff) << 16) | ((bytes[index+2] & 0xff) << 8)
+                | ((bytes[index+3] & 0xff)));
     }
 
-    public boolean hasMore()
-    {
-        if (pointer < 0 || length + offset - pointer - 4 < 0) return false;
-        return true;
-    }
 
     private void ensureCapacity(final int minCapacity)
     {
@@ -141,6 +161,37 @@ public class ByteIntList
     public static void main(String[] args) throws IOException
     {
         long time;
+        OffsetList offsets = new OffsetList();
+        
+        int size = 3;
+        for(int i=0; i < size; i++) {
+            offsets.put(i*5, i*5+1);
+        }
+        System.out.println(Arrays.toString(offsets.bytes));
+        System.out.println(offsets.size());
+
+        /*
+         
+        // bitshift is faster than / power of two
+        int ops = 100000000;
+        int test;
+        for(int loop = 0; loop < 5; loop++) {
+            time = System.nanoTime();
+            test = 0;
+            for (int i=0; i < ops; i++) {
+                test += i / 2;
+            }
+            System.out.println("/2: " + ((System.nanoTime() - time) / 1000000) + " ms. " + test);
+            time = System.nanoTime();
+            test = 0;
+            for (int i=0; i < ops; i++) {
+                test += i >> 1;
+            }
+            System.out.println(">>1: " + ((System.nanoTime() - time) / 1000000) + " ms. " + test);
+        }
+        */
+        System.exit(0);
+        
         Random rand = new Random(); 
         Analyzer analyzer = new AlixAnalyzer();
         Directory directory = new RAMDirectory();
@@ -149,26 +200,24 @@ public class ByteIntList
         Document doc = new Document();
         String text = "Lucene is an Information Retrieval library written in Java";
         doc.add(new TextField("text", text, Field.Store.NO));
-        ByteIntList offsets = new ByteIntList();
-        
-        int size = 100000;
+        size = 100000;
         for(int i=-0; i <= size; i++) {
-            offsets.put(i);
+            offsets.put(-i, i);
         }
         doc.add(new StoredField("offsets", offsets.getBytesRef()));
         indexWriter.addDocument(doc);
         IndexReader ir=DirectoryReader.open(indexWriter);
         IndexSearcher is = new IndexSearcher(ir);
         doc = ir.document(0);
-        offsets = new ByteIntList(doc.getField("offsets").binaryValue());
-        
+
+        /* 
+         // Verify that picking directly in the byte array is more efficient than copy it in an int array
         int samples = 100;
-        
         for(int loop = 0; loop < 5; loop++) {
             time = System.nanoTime();
             for(int i=0; i < samples; i++) {
                 int pick = rand.nextInt(size);
-                int v = offsets.get(pick);
+                int v = offsets.getStart(pick);
             }
             System.out.println("Direct BytesRef " + ((System.nanoTime() - time) / 1000000) + " ms.");
             
@@ -183,5 +232,6 @@ public class ByteIntList
             }
             System.out.println("Int[] copy " + ((System.nanoTime() - time) / 1000000) + " ms.");
         }
+        */
     }
 }

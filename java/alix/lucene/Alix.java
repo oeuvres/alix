@@ -105,10 +105,25 @@ import net.sf.saxon.s9api.XdmValue;
 public class Alix
 {
     /** Mandatory field, XML file name, maybe used for update */
-    public static String FILENAME = "FILENAME";
+    public static final String FILENAME = "FILENAME";
     /** Mandatory field, XML file name, maybe used for update */
-    public static String OFFSETS = "OFFSETS";
+    public static final String OFFSETS = "OFFSETS";
     /** Current filename proceded */
+    public static final FieldType ftypeText = new FieldType();
+    static {
+        // inverted index
+        ftypeText.setTokenized(true);
+        // position needed for phrase query
+        ftypeText.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+        // keep 
+        ftypeText.setStored(true);
+        ftypeText.setStoreTermVectors(true);
+        ftypeText.setStoreTermVectorOffsets(true);
+        ftypeText.setStoreTermVectorPositions(true);
+        // http://makble.com/what-is-lucene-norms, omit norms (length normalization) 
+        ftypeText.setOmitNorms(true);
+        ftypeText.freeze();
+    }
     private static String filename;
     /** Current lucene index writer, filled by XSL */
     static IndexWriter lucwriter = null;
@@ -118,8 +133,6 @@ public class Alix
     static Transformer parser;
     /** A garbage collector for XSL parser */
     static Result outNull = new StreamResult(new NullOutputStream());
-    /** An XML transformer to serialize a DOM to XML */
-    static Transformer dom2string;
 
     public static class SaxHello implements ExtensionFunction
     {
@@ -222,21 +235,6 @@ public class Alix
 
     public static class SaxField implements ExtensionFunction
     {
-        static FieldType xmlType = new FieldType();
-        static {
-            // inverted index
-            xmlType.setTokenized(true);
-            // position needed for phrase query
-            xmlType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
-            // keep 
-            xmlType.setStored(true);
-            xmlType.setStoreTermVectors(true);
-            xmlType.setStoreTermVectorOffsets(true);
-            xmlType.setStoreTermVectorPositions(true);
-            // http://makble.com/what-is-lucene-norms, omit norms (length normalization) 
-            xmlType.setOmitNorms(true);
-            xmlType.freeze();
-        }
         @Override
         public QName getName()
         {
@@ -282,10 +280,11 @@ public class Alix
             // test if value empty ?
             // if (value.trim().isEmpty()) return new XdmAtomicValue("field(\""+name+"\", \"\") not indexed.");
             if (type.equals("xml")) {
-                doc.add(new Field(name, args[1].toString(), xmlType));
                 // Saxon serializer maybe needed if encoding problems
                 // https://www.saxonica.com/html/documentation/javadoc/net/sf/saxon/s9api/Serializer.html
-                // get a stream may give some perfs (to test)
+                String xml = args[1].toString();
+                doc.add(new Field(name, xml, ftypeText));
+                // store offsets, for efficient concordance
                 doc.add(field);
             } 
             else if (type.equals("sort")) {

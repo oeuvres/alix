@@ -18,55 +18,71 @@ import java.util.Arrays;
 public class Chain implements CharSequence, Comparable<Chain>
 {
     /** The characters */
-    private char[] data = new char[16];
-    /**
-     * Start index of the String in the array, allow fast trim(), or allow different
-     * terms to share the same text line (ex: char separated values)
-     */
+    private char[] data;
+    /** Start index of the String in the array */
     private int start = 0;
     /** Number of characters used */
-    private int len;
+    private int len = 0;
     /** Cache the hash code for the string */
-    private int hash; // Default to 0
-    /**
-     * Internal pointer inside the scope of the string, used by csv scanner
-     * (value())
-     */
+    private int hash = 0; // Default to 0
+    /** Internal pointer inside the scope of the string, used by csv scanner */
     private int pointer = -1;
 
     /**
      * Empty constructor, value will be set later
      */
     public Chain() {
+        data = new char[16];
     }
 
     /**
-     * Construct a chain by copy of a chain content (modification of this Chain object
-     * will NOT affect source Chain)
+     * Wrap the char array of another chain.
+     * Any change in this chain will affect the other chain.
      */
-    public Chain(Chain t) {
-        set(t);
+    public Chain(final Chain chain) {
+        data = chain.data;
+        start = chain.start;
+        len = chain.len;
     }
 
     /**
-     * Construct a chain by copy of a char array (modification of this Chain object
-     * will NOT affect the source array)
+     * Back the chain to an external char array (no copy).
+     * The char sequence is considered empty (start = len = 0)
      * 
      * @param a
      *          a char array
      */
     public Chain(final char[] a) {
-        set(a, -1, -1);
+        this.data = a;
+    }
+    /**
+     * Back the chain to an external char array (no copy).
+     * 
+     * @param a
+     *          a char array
+     * @param start
+     *          offset index where a string start
+     * @param len
+     *          length of the string
+     */
+    public Chain(final char[] a, final int start, final int len) {
+        if (start < 0) throw new IndexOutOfBoundsException("start=" + start + "< 0");
+        if (len < 0) throw new IndexOutOfBoundsException("len=" + len + "< 0");
+        if (start >= a.length) throw new IndexOutOfBoundsException("start=" + start + ">= length="+a.length);
+        if (start + len >= a.length) throw new IndexOutOfBoundsException("start+len=" + start+len + ">= length="+a.length);
+        this.data = a;
+        this.start = start;
+        this.len = len;
     }
 
     /**
-     * Construct a chain by copy of a char sequence
+     * Construct a chain by copy of a char sequence.
      * 
      * @param cs
      *          a char sequence (String, but also String buffers or builders)
      */
-    public Chain(CharSequence cs) {
-        set(cs, -1, -1);
+    public Chain(final CharSequence cs) {
+        copy(cs, -1, -1);
     }
 
     /**
@@ -75,60 +91,19 @@ public class Chain implements CharSequence, Comparable<Chain>
      * 
      * @param cs
      *          a char sequence (String, but also String buffers or builders)
-     * @param offset
-     *          start index from source string
-     * @param count
+     * @param start
+     *          start offset index from source string
+     * @param len
      *          number of chars from offset
      */
-    public Chain(CharSequence cs, int offset, int count) {
-        set(cs, offset, count);
+    public Chain(final CharSequence cs, final int start, final int len) {
+        copy(cs, start, len);
     }
 
     @Override
     public int length()
     {
         return len;
-    }
-
-    /**
-     * Link by reference to a section of a chain (modification of one of the Chain
-     * WILL affect the 2 Chain)
-     * 
-     * @param chain
-     *          the source chain
-     * @param offset
-     *          start index from source chain
-     * @param count
-     *          number of chars from offset
-     * @return the Chain object for chaining
-     */
-    public Chain link(final Chain chain, final int offset, final int count)
-    {
-        hash = 0;
-        data = chain.data;
-        start = chain.start + offset;
-        len = count;
-        return this;
-    }
-
-    /**
-     * Link a chain by reference to a section of a char array (modification of the
-     * Chain object or the char array WILL affect the other)
-     * 
-     * @param a
-     *          a char array
-     * @param offset
-     *          start index from source chain
-     * @param count
-     *          number of chars from offset
-     */
-    public Chain link(final char[] a, final int offset, final int count)
-    {
-        hash = 0;
-        data = a;
-        start = offset;
-        len = count;
-        return this;
     }
 
     /**
@@ -164,15 +139,24 @@ public class Chain implements CharSequence, Comparable<Chain>
     }
 
     /**
-     * Replace Chain content by copy af a String
+     * Return a pointer on the internal char array data.
+     * @return
+     */
+    public char[] data()
+    {
+        return data;
+    }
+
+    /**
+     * Replace Chain content by a copy af a String.
      * 
      * @param cs
      *          a char sequence
      * @return the Chain object for chaining
      */
-    public Chain set(CharSequence cs)
+    public Chain copy(CharSequence cs)
     {
-        return set(cs, -1, -1);
+        return copy(cs, -1, -1);
     }
 
     /**
@@ -180,30 +164,30 @@ public class Chain implements CharSequence, Comparable<Chain>
      * 
      * @param cs
      *          a char sequence
-     * @param index
-     *          of the string from where to copy chars
-     * @param number
-     *          of chars to copy -1
+     * @param start
+     *          index of the string from where to copy chars
+     * @param len
+     *          number of chars to copy
      * @return the Chain object for chaining, or null if the String provided is null
      *         (for testing)
      */
-    public Chain set(CharSequence cs, int offset, int count)
+    public Chain copy(final CharSequence cs, int start, int len)
     {
         if (cs == null)
             return null;
-        if (offset <= 0 && count < 0) {
-            offset = 0;
-            count = cs.length();
+        if (start <= 0 && len < 0) {
+            start = 0;
+            len = cs.length();
         }
-        if (count <= 0) {
-            len = 0;
+        if (len <= 0) {
+            this.len = 0;
             return this;
         }
-        onWrite(count);
-        for (int i = start; i < count; i++) {
-            data[i] = cs.charAt(offset++);
+        onWrite(len);
+        for (int i = start; i < len; i++) {
+            data[i] = cs.charAt(start++);
         }
-        len = count;
+        this.len = len;
         /*
          * // longer value = s.toCharArray(); len = value.length;
          */
@@ -217,52 +201,69 @@ public class Chain implements CharSequence, Comparable<Chain>
      *          text as char array
      * @return the Chain object for chaining
      */
-    public Chain set(char[] a)
+    public Chain copy(final char[] a)
     {
-        return set(a, -1, -1);
+        return copy(a, -1, -1);
     }
 
     /**
-     * Replace Chain content by a span of a char array
+     * Wrap the Chain on another char array without copy
      * 
      * @param a
      *          text as char array
-     * @param index
-     *          of the string from where to copy chars
-     * @param number
-     *          of chars to copy -1
      * @return the Chain object for chaining
      */
-    public Chain set(char[] a, int offset, int count)
+    public Chain set(final char[] a, final int start, int len)
     {
-        if (offset <= 0 && count < 0) {
-            offset = 0;
-            count = a.length;
-        }
-        if (count <= 0) {
-            len = 0;
-            return this;
-        }
-        len = count;
-        onWrite(count);
-        System.arraycopy(a, offset, data, start, count);
+        this.data = a;
+        this.start = start;
+        this.len = len;
+        this.hash = 0;
         return this;
     }
 
     /**
-     * Replace this chain content by the copy of a chain. Reset the start position.
+     * Replace Chain content by a span of a char array.
+     * The copy will keep start index of the Chain object.
+     * 
+     * @param a
+     *          text as char array
+     * @param start
+     *          start index of the string from where to copy chars
+     * @param len
+     *          number of chars to copy
+     * @return the Chain object for chaining
+     */
+    public Chain copy(final char[] a, int start, int len)
+    {
+        if (start <= 0 && len < 0) {
+            start = 0;
+            len = a.length;
+        }
+        if (start < 0) throw new IndexOutOfBoundsException("start=" + start + "< 0");
+        if (start >= a.length) throw new IndexOutOfBoundsException("start=" + start + ">= length="+a.length);
+        if (start + len >= a.length) throw new IndexOutOfBoundsException("start+len=" + start+len + ">= length="+a.length);
+        if (this.start + len > data.length) data = new char[this.start + len];
+        this.hash = 0;
+        this.len = len;
+        System.arraycopy(a, start, data, this.start, len);
+        return this;
+    }
+
+    /**
+     * Replace this chain content by the copy of a chain.
      * 
      * @param chain
      * @return
      */
-    public Chain set(Chain chain)
+    public Chain copy(Chain chain)
     {
-        int newlen = chain.len;
-        // do not change len before sizing
-        onWrite(newlen);
+        if (chain.len > data.length) {
+            this.data = new char[chain.len];
+        }
+        System.arraycopy(chain.data, chain.start, data, 0, chain.len);
         start = 0;
-        System.arraycopy(chain.data, chain.start, data, start, newlen);
-        len = newlen;
+        len = chain.len;
         return this;
     }
 
@@ -272,7 +273,7 @@ public class Chain implements CharSequence, Comparable<Chain>
      * @param c
      * @return the Chain object for chaining
      */
-    public Chain append(char c)
+    public Chain append(final char c)
     {
         int newlen = len + 1;
         onWrite(newlen);
@@ -287,7 +288,7 @@ public class Chain implements CharSequence, Comparable<Chain>
      * @param chain
      * @return the Chain object for chaining
      */
-    public Chain append(Chain chain)
+    public Chain append(final Chain chain)
     {
         int newlen = len + chain.len;
         onWrite(newlen);
@@ -303,7 +304,7 @@ public class Chain implements CharSequence, Comparable<Chain>
      *          String or other CharSequence
      * @return the Chain object for chaining
      */
-    public Chain append(CharSequence cs)
+    public Chain append(final CharSequence cs)
     {
         int count = cs.length();
         int newlen = len + count;
@@ -440,7 +441,7 @@ public class Chain implements CharSequence, Comparable<Chain>
      * 
      * @return the Chain object for chaining
      */
-    public Chain replace(char from, char to)
+    public Chain replace(final char from, final char to)
     {
         hash = 0;
         char c;
@@ -523,7 +524,7 @@ public class Chain implements CharSequence, Comparable<Chain>
      * @param chars
      * @return the modified Chain object
      */
-    public Chain trim(String chars)
+    public Chain trim(final String chars)
     {
         hash = 0;
         int from = start;
@@ -577,13 +578,6 @@ public class Chain implements CharSequence, Comparable<Chain>
         return true;
     }
 
-    public int value(Chain cell, final char separator)
-    {
-        if (pointer < 0)
-            pointer = 0;
-        pointer = value(cell, separator, pointer);
-        return pointer;
-    }
 
     /**
      * Read value in a char separated string. The chain objected is update from
@@ -595,6 +589,15 @@ public class Chain implements CharSequence, Comparable<Chain>
      * @return a new offset from where to search in String, or -1 when end of line
      *         is reached
      */
+    /* rewrite
+    public int value(Chain cell, final char separator)
+    {
+        if (pointer < 0)
+            pointer = 0;
+        pointer = value(cell, separator, pointer);
+        return pointer;
+    }
+    
     public int value(Chain cell, final char separator, final int offset)
     {
         if (offset >= len)
@@ -613,6 +616,7 @@ public class Chain implements CharSequence, Comparable<Chain>
         cell.link(this, offset, to - offset - start);
         return to - start;
     }
+    */
 
     /**
      * An split on one char
@@ -620,7 +624,7 @@ public class Chain implements CharSequence, Comparable<Chain>
      * @param separator
      * @return
      */
-    public String[] split(char separator)
+    public String[] split(final char separator)
     {
         // store generated Strings in alist
         ArrayList<String> list = new ArrayList<>();
@@ -651,7 +655,7 @@ public class Chain implements CharSequence, Comparable<Chain>
      *          new char value
      * @return the Chain object for chaining
      */
-    public Chain setCharAt(int index, char c)
+    public Chain setCharAt(final int index, final char c)
     {
         hash = 0;
         if ((index < 0) || (index >= len)) {
@@ -763,13 +767,13 @@ public class Chain implements CharSequence, Comparable<Chain>
      * @param text
      * @return
      */
-    public boolean glob(CharSequence text)
+    public boolean glob(final CharSequence text)
     {
         return globsearch(this, 0, len - 1, text, 0, text.length() - 1);
     }
 
     @Override
-    public boolean equals(Object o)
+    public boolean equals(final Object o)
     {
         if (this == o)
             return true;
@@ -827,7 +831,7 @@ public class Chain implements CharSequence, Comparable<Chain>
      * orthographic ordering
      */
     @Override
-    public int compareTo(Chain t)
+    public int compareTo(final Chain t)
     {
         char v1[] = data;
         char v2[] = t.data;
@@ -846,7 +850,7 @@ public class Chain implements CharSequence, Comparable<Chain>
         return len - t.len;
     }
 
-    public int compareTo(String string)
+    public int compareTo(final String string)
     {
         char chars[] = data;
         int ichars = start;
@@ -890,7 +894,6 @@ public class Chain implements CharSequence, Comparable<Chain>
             }
             hash = h;
         }
-        // System.out.println( this+" "+hash );
         return h;
     }
 
@@ -909,9 +912,8 @@ public class Chain implements CharSequence, Comparable<Chain>
 
 
     /**
-     * Test if char array container is big enough to contain a new size If resized,
-     * chars outside the scope are kept, maybe they are needed by other users of the
-     * char array
+     * Test if char array container is big enough to contain a new size.
+     * Progression is one by one, usually enough.
      * 
      * @param newlen
      *          The new size to put in
@@ -919,17 +921,11 @@ public class Chain implements CharSequence, Comparable<Chain>
      */
     private boolean onWrite(final int newlen)
     {
-        hash = 0;
+        hash = 0; // do not forget to reset hashcode
         if ((start + newlen) <= data.length)
             return false;
-        char[] a = new char[Calcul.nextSquare(start + newlen)];
-        try {
-            System.arraycopy(data, 0, a, 0, data.length);
-        }
-        catch (Exception e) {
-            System.out.println(new String(data) + " " + len);
-            throw (e);
-        }
+        char[] a = new char[start + newlen];
+        System.arraycopy(data, 0, a, 0, data.length);
         data = a;
         return true;
     }
@@ -975,6 +971,7 @@ public class Chain implements CharSequence, Comparable<Chain>
         Chain line = new Chain(",,C,D,,EPO");
         System.out.println(line + " test CSV");
         Chain cell = new Chain();
+        /*
         while (line.value(cell, ',') > -1) {
             System.out.print(cell);
             System.out.print('|');
@@ -1009,6 +1006,7 @@ public class Chain implements CharSequence, Comparable<Chain>
         }
         System.out.print(chain.equals(text));
         System.out.println(" " + ((System.nanoTime() - time) / 1000000) + " ms");
+        */
 
         /*
          * System.out.println( t.copy( "abcde", 2, 1 ) ); t.clear(); for ( char c=33; c

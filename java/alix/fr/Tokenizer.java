@@ -269,7 +269,7 @@ public class Tokenizer {
         // D’alors
         else if (occ.graph().last() == '\'') {
             if (occ.graph().isFirstUpper()) {
-                test = test.set(occ.graph()).toLower();
+                test = test.copy(occ.graph()).toLower();
                 tmp = stem.get(test);
             } else {
                 tmp = stem.get(occ.graph());
@@ -604,7 +604,7 @@ public class Tokenizer {
             while (text.charAt(pos) == '.') {
                 pos++;
             }
-            graph.set("…");
+            graph.copy("…");
             occ.end(pos);
             return pos;
         }

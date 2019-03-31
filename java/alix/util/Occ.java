@@ -88,10 +88,10 @@ public class Occ
    */
   public Occ set(Occ occ)
   {
-    graph.set(occ.graph);
-    orth.set(occ.orth);
+    graph.copy(occ.graph);
+    orth.copy(occ.orth);
     tag.set(occ.tag);
-    lem.set(occ.lem);
+    lem.copy(occ.lem);
     start = occ.start;
     end = occ.end;
     // KEEP prev-next links of source, do not import them from target
@@ -188,7 +188,7 @@ public class Occ
    */
   public Occ graph(CharSequence cs)
   {
-    graph.set(cs);
+    graph.copy(cs);
     return this;
   }
 
@@ -204,7 +204,7 @@ public class Occ
    */
   public Occ graph(CharSequence cs, int from, int length)
   {
-    graph.set(cs, from, length);
+    graph.copy(cs, from, length);
     return this;
   }
 
@@ -216,7 +216,7 @@ public class Occ
    */
   public Occ graph(Chain t)
   {
-    graph.set(t);
+    graph.copy(t);
     return this;
   }
 
@@ -238,7 +238,7 @@ public class Occ
    */
   public Occ orth(CharSequence cs)
   {
-    orth.set(cs);
+    orth.copy(cs);
     return this;
   }
 
@@ -254,7 +254,7 @@ public class Occ
    */
   public Occ orth(CharSequence cs, int from, int length)
   {
-    orth.set(cs, from, length);
+    orth.copy(cs, from, length);
     return this;
   }
 
@@ -266,7 +266,7 @@ public class Occ
    */
   public Occ orth(Chain t)
   {
-    orth.set(t);
+    orth.copy(t);
     return this;
   }
 
@@ -333,7 +333,7 @@ public class Occ
    */
   public Occ lem(final Chain t)
   {
-    lem.set(t);
+    lem.copy(t);
     return this;
   }
 
@@ -345,7 +345,7 @@ public class Occ
    */
   public Occ lem(final CharSequence cs)
   {
-    lem.set(cs);
+    lem.copy(cs);
     return this;
   }
 
