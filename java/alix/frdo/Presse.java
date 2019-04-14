@@ -18,9 +18,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import alix.fr.Lexik;
-import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.fr.Lexik.LexEntry;
+import alix.fr.dic.Tag;
 import alix.util.Occ;
 import alix.util.Chain;
 

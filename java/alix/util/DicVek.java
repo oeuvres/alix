@@ -22,8 +22,8 @@ import java.util.Collections;
 import java.util.List;
 
 import alix.fr.Lexik;
-import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.fr.dic.Tag;
 import alix.util.IntVek.Pair;
 import alix.util.DicFreq.Entry;
 
@@ -674,7 +674,7 @@ public class DicVek
     // faire le vecteur de "de"
     // un lemmatiseur du pauvre sert à regrouper les entrées des vecteurs
     DicVek veks = new DicVek(-wing, wing);
-    // Dicovek veks = new Dicovek(wing, wing, Lexik.STOPLIST);
+    // Dicovek veks = new Dicovek(wing, wing, CharDic.STOPLIST);
     long start = System.nanoTime();
     // Boucler sur les fichiers
     for (int i = 0; i < args.length; i++) {
@@ -711,7 +711,7 @@ public class DicVek
       System.out.println("SIMINYMES (cosine) ");
       boolean first = true;
       for (SimRow row : table) {
-        // if ( Lexik.isStop( row.term )) continue;
+        // if ( CharDic.isStop( row.term )) continue;
         if (first)
           first = false;
         else

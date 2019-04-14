@@ -9,13 +9,13 @@ package alix.util;
  */
 public class IntSeries extends IntList
 {
-  /** Record a count event */
+  /** Row a count event */
   public int count;
   /** Maybe used to keep some event memory */
   public int last = -1;
   /** A code, maybe used for a collection of stack */
   final public int code;
-  /** Record a name, useful for collection */
+  /** Row a name, useful for collection */
   final public String label;
   /** A class */
   final public int cat;

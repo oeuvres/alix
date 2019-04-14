@@ -1,7 +1,7 @@
 package alix.fr.query;
 
 import alix.fr.Lexik;
-import alix.fr.Tag;
+import alix.fr.dic.Tag;
 import alix.util.Occ;
 
 public abstract class Test

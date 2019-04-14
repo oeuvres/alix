@@ -2,7 +2,6 @@
 <classpath>
 	<classpathentry excluding=".*" kind="src" path="java"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="lib/univocity-parsers-2.0.2.jar"/>
 	<classpathentry kind="lib" path="lib/saxon9he.jar"/>
 	<classpathentry kind="lib" path="lib/sqlite-jdbc-3.25.2.jar"/>
 	<classpathentry kind="lib" path="lib/json-20180813.jar"/>

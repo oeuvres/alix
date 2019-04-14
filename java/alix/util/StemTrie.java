@@ -9,8 +9,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.fr.dic.Tag;
 
 /**
  * 

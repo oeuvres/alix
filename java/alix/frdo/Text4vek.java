@@ -8,9 +8,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import alix.fr.Lexik;
-import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.fr.Lexik.LexEntry;
+import alix.fr.dic.Tag;
 import alix.util.Occ;
 import alix.util.Chain;
 

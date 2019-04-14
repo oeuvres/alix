@@ -20,8 +20,8 @@ import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
 import alix.fr.Lexik;
-import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.fr.dic.Tag;
 
 /**
  * A data structure to store multi words expression.

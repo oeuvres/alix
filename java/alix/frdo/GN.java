@@ -8,8 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.fr.dic.Tag;
 import alix.util.OccRoller;
 import alix.util.DicFreq;
 

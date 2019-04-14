@@ -8,8 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.ParseException;
 import alix.fr.Lexik;
-import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.fr.dic.Tag;
 import alix.util.Occ;
 
 public class Mythographies

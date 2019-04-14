@@ -41,7 +41,7 @@ import javax.xml.stream.XMLStreamWriter;
 
 import alix.fr.Lexik;
 import alix.fr.Lexik.LexEntry;
-import alix.fr.Tag;
+import alix.fr.dic.Tag;
 import alix.fr.Tokenizer;
 import alix.util.Occ;
 import alix.util.DicFreq;
