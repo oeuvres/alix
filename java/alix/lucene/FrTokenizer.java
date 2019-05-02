@@ -1,19 +1,14 @@
 package alix.lucene;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.HashMap;
-import java.util.HashSet;
 
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharacterUtils;
-import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.CharacterUtils.CharacterBuffer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.util.Attribute;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.AttributeImpl;
@@ -303,54 +298,5 @@ public class FrTokenizer extends Tokenizer
     }
   }
 
-  static class TestAnalyzer extends Analyzer
-  {
 
-    @Override
-    protected TokenStreamComponents createComponents(String fieldName)
-    {
-      final Tokenizer source = new FrTokenizer();
-      return new TokenStreamComponents(source);
-    }
-
-  }
-
-  public static void main(String[] args) throws IOException
-  {
-    // text to tokenize
-    final String text = "<p xml:id='pp'>Qu'en penses-tu ? "
-        + "C’est m&eacute;connaître 1,5 &lt; -1.5 cts &amp; M<b>o</b>t Avec de <i>l'italique</i>"
-        + " -- Quadratin. U.K.N.O.W.N. La Fontaine... Quoi ???" + " Problème</section>. FIN.";
-
-    Analyzer[] analyzers = { new TestAnalyzer(),
-        // new StandardAnalyzer(),
-        // new FrenchAnalyzer()
-    };
-    for (Analyzer analyzer : analyzers) {
-      System.out.println(analyzer.getClass());
-      System.out.println();
-      TokenStream stream = analyzer.tokenStream("field", new StringReader(text));
-
-      // get the CharTermAttribute from the TokenStream
-      CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
-      OffsetAttribute offset = stream.addAttribute(OffsetAttribute.class);
-      FlagsAttribute flags = stream.addAttribute(FlagsAttribute.class);
-      PositionIncrementAttribute pos = stream.addAttribute(PositionIncrementAttribute.class);
-
-      try {
-        stream.reset();
-        // print all tokens until stream is exhausted
-        while (stream.incrementToken()) {
-          System.out.println("\"" + term + "\" " + " " + offset.startOffset() + " " + offset.endOffset()+ " " + Tag.label(flags.getFlags()) + " |"
-              + text.substring(offset.startOffset(), offset.endOffset()) + "|");
-        }
-        stream.end();
-      }
-      finally {
-        stream.close();
-        analyzer.close();
-      }
-      System.out.println();
-    }
-  }
 }

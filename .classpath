@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry excluding=".*" kind="src" path="java"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="src" output="build/test" path="test/java"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="lib" path="lib/saxon9he.jar"/>
 	<classpathentry kind="lib" path="lib/sqlite-jdbc-3.25.2.jar"/>
 	<classpathentry kind="lib" path="lib/json-20180813.jar"/>
 	<classpathentry kind="lib" path="lib/lucene-analyzers-common-8.0.0.jar"/>
 	<classpathentry kind="lib" path="lib/lucene-core-8.0.0.jar" sourcepath="/home/fred/code/lucene-8.0.0-src/core/src/java/"/>
-	<classpathentry kind="output" path="classes"/>
+	<classpathentry kind="output" path="build/classes"/>
 </classpath>

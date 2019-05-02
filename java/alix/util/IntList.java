@@ -49,6 +49,19 @@ public class IntList extends IntTuple
     }
 
     /**
+     * Add value at a position
+     * 
+     * @param pos
+     * @param value
+     * @return
+     */
+    public void add(int pos, int value)
+    {
+        if (onWrite(pos)) ;
+        data[pos] += value;
+    }
+
+    /**
      * Increment value at a position
      * 
      * @param pos

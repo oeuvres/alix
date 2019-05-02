@@ -31,9 +31,9 @@ public class OffsetList
 {
     /** Internal data */
     private byte[] bytes;
-    /** Internal pointer in byte array, is not an int position */
+    /** Internal pointer in byte array for next() */
     private int pointer;
-    /** Start index */
+    /** Start index in the byte array (like in ) */
     private int offset;
     /** Internal length of used bytes */
     private int length;
@@ -113,7 +113,7 @@ public class OffsetList
     private OffsetList put(int x)
     {
         length = length + 4;
-        ensureCapacity(offset + length);
+        grow(offset + length);
         // Big Endian
         bytes[pointer++] = (byte) (x >> 24);
         bytes[pointer++] = (byte) (x >> 16);
@@ -121,24 +121,43 @@ public class OffsetList
         bytes[pointer++] = (byte) x;
         return this;
     }
-
+    
+    /**
+     * Get start offset at position pos.
+     * @param pos
+     * @return
+     */
     public int getStart(final int pos)
     {
-        return get(offset + pos << 3);
+        return getInt(offset + pos << 3);
     }
+    
+    /**
+     * Get end offset at position pos.
+     * @param pos
+     * @return
+     */
     public int getEnd(final int pos)
     {
-        return get(offset + pos << 3 + 4);
+        return getInt(offset + pos << 3 + 4);
     }
 
-    private int get(final int index)
+    /**
+     * Get int from an index in bytes.
+     * @param index
+     * @return
+     */
+    private int getInt(final int index)
     {
         return (((bytes[index]) << 24) | ((bytes[index+1] & 0xff) << 16) | ((bytes[index+2] & 0xff) << 8)
                 | ((bytes[index+3] & 0xff)));
     }
 
-
-    private void ensureCapacity(final int minCapacity)
+    /**
+     * Grow the data array to ensure capacity.
+     * @param minCapacity
+     */
+    private void grow(final int minCapacity)
     {
         int oldCapacity = bytes.length;
         if (oldCapacity - minCapacity > 0) return;
@@ -149,89 +168,13 @@ public class OffsetList
         }
         bytes = Arrays.copyOf(bytes, newCapacity);
     }
-
+    /**
+     * Return data as a BytesRef, may be indexed in a lucene binary field.
+     * @return
+     */
     public BytesRef getBytesRef()
     {
         return new BytesRef(bytes, offset, length);
     }
 
-    /**
-     * Test performances
-     */
-    public static void main(String[] args) throws IOException
-    {
-        long time;
-        OffsetList offsets = new OffsetList();
-        
-        int size = 3;
-        for(int i=0; i < size; i++) {
-            offsets.put(i*5, i*5+1);
-        }
-        System.out.println(Arrays.toString(offsets.bytes));
-        System.out.println(offsets.size());
-
-        /*
-         
-        // bitshift is faster than / power of two
-        int ops = 100000000;
-        int test;
-        for(int loop = 0; loop < 5; loop++) {
-            time = System.nanoTime();
-            test = 0;
-            for (int i=0; i < ops; i++) {
-                test += i / 2;
-            }
-            System.out.println("/2: " + ((System.nanoTime() - time) / 1000000) + " ms. " + test);
-            time = System.nanoTime();
-            test = 0;
-            for (int i=0; i < ops; i++) {
-                test += i >> 1;
-            }
-            System.out.println(">>1: " + ((System.nanoTime() - time) / 1000000) + " ms. " + test);
-        }
-        */
-        System.exit(0);
-        
-        Random rand = new Random(); 
-        Analyzer analyzer = new AlixAnalyzer();
-        Directory directory = new RAMDirectory();
-        IndexWriterConfig config = new IndexWriterConfig(analyzer);
-        IndexWriter indexWriter = new IndexWriter(directory, config);
-        Document doc = new Document();
-        String text = "Lucene is an Information Retrieval library written in Java";
-        doc.add(new TextField("text", text, Field.Store.NO));
-        size = 100000;
-        for(int i=-0; i <= size; i++) {
-            offsets.put(-i, i);
-        }
-        doc.add(new StoredField("offsets", offsets.getBytesRef()));
-        indexWriter.addDocument(doc);
-        IndexReader ir=DirectoryReader.open(indexWriter);
-        IndexSearcher is = new IndexSearcher(ir);
-        doc = ir.document(0);
-
-        /* 
-         // Verify that picking directly in the byte array is more efficient than copy it in an int array
-        int samples = 100;
-        for(int loop = 0; loop < 5; loop++) {
-            time = System.nanoTime();
-            for(int i=0; i < samples; i++) {
-                int pick = rand.nextInt(size);
-                int v = offsets.getStart(pick);
-            }
-            System.out.println("Direct BytesRef " + ((System.nanoTime() - time) / 1000000) + " ms.");
-            
-            time = System.nanoTime();
-            int[] ints = new int[size];
-            for(int i=0; i < size; i++) {
-                ints[i] = offsets.get(i);
-            }
-            for(int i=0; i < samples; i++) {
-                int pick = rand.nextInt(size);
-                int v = ints[pick];
-            }
-            System.out.println("Int[] copy " + ((System.nanoTime() - time) / 1000000) + " ms.");
-        }
-        */
-    }
 }

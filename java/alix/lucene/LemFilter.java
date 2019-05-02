@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -89,6 +90,8 @@ public final class LemFilter extends TokenFilter
       // clean the term stack
       return true;
     }
+    // normalise œ, É
+    CharDic.norm(term);
     // Get first char
     char c1 = term.charAt(0);
     // a tag do not affect the prev flags
@@ -117,6 +120,8 @@ public final class LemFilter extends TokenFilter
         return true;
       }
     }
+
+
     else {
       word = CharDic.word(term);
       if (word == null) return true;
@@ -149,6 +154,9 @@ public final class LemFilter extends TokenFilter
   public static void main(String[] args) throws IOException
   {
     Analyzer analyzer = new TestAnalyzer();
+    TokenStream ts;
+    long time;
+    
     Chain test = new Chain("Alain");
     CharAtt att = new CharAtt(test);
     System.out.println("'"+test+"' '"+att+"'");
@@ -156,17 +164,34 @@ public final class LemFilter extends TokenFilter
     System.out.println(analyzer.getClass());
     System.out.println();
     
-    /*
     Path path = Paths.get("work/zola.xml");
-    InputStream is = Files.newInputStream(path);
-    BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-    */
+    for (int loop = 0; loop < 10; loop++) {
+      time = System.nanoTime();
+      InputStream is = Files.newInputStream(path, StandardOpenOption.READ);
+      BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+      ts = analyzer.tokenStream("content", br);
+      int tokens = 0;
+      try {
+        ts.reset();
+        while (ts.incrementToken()) {
+          tokens++;
+        }
+        ts.end();
+      }
+      finally {
+        ts.close();
+      }
+      System.out.println("" + ((System.nanoTime() - time) / 1000000) + " ms tokens="+tokens);    
+    }
+    System.out.println("END");
+    System.exit(0);
+
     // text to tokenize
-    final String text = "<p xml:id='pp'>Qu'en penses-tu ? Je n'en sais rien, Henri, c'est bidon."
+    final String text = "<p xml:id='pp'>Qu'en penses-tu ? L'Etat, je n'en sais rien, Henri, c'est bidon."
         + "C’est m&eacute;connaître 1,5 &lt; -1.5 cts &amp; m<b>o</b>ts, avec de <i>l'italique</i>"
         + " -- Quadratin. U.K.N.O.W.N. La Fontaine... Quoi ???" + " Problème</section>. FIN.";
 
-    TokenStream ts = analyzer.tokenStream("field", new StringReader(text));
+    ts = analyzer.tokenStream("content", new StringReader(text));
 
     // get the CharTermAttribute from the TokenStream
     CharTermAttribute term = ts.addAttribute(CharTermAttribute.class);

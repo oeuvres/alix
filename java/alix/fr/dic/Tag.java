@@ -6,6 +6,7 @@ import alix.util.Chain;
 
 /**
  * Jeu d’étiquettes morphosyntaxique pour le français.
+ * Un short pèsera moins qu'un objet Enum.
  * 
  * @author glorieux
  */

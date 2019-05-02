@@ -1,31 +1,20 @@
 package alix.lucene;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.IOException;
+
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.Serializable;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Set;
 
 import alix.fr.dic.Tag;
-import alix.lucene.CharDic.LexEntry;
 import alix.util.Chain;
 import alix.util.CsvReader;
-import alix.util.Occ;
-import alix.util.StemTrie;
 
 
 /**
- * Preloaded word List
+ * Preloaded word List for lucene indexation.
  * 
  * @author glorieux-f
  *
@@ -124,14 +113,13 @@ public class CharDic
     return NAME.get(att);
   }
 
-  /*
   public static boolean norm(CharAtt att)
   {
-    String val = NORM.get(att);
+    CharAtt val = NORM.get(att);
     if (val == null) return false;
     att.setEmpty().append(val);
+    return true;
   }
-  */
 
   public static class NameEntry
   {
@@ -181,14 +169,4 @@ public class CharDic
     }
   }
 
-  /**
-   * For testing
-   * 
-   * @throws ParseException
-   * @throws URISyntaxException
-   */
-  public static void main(String[] args) throws IOException, ParseException, URISyntaxException
-  {
-    // Load wor dic
-  }
 }

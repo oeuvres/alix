@@ -785,7 +785,7 @@ public class Chain implements CharSequence, Comparable<Chain>
   {
     if (this == o) return true;
     char[] test;
-    // limit field lookup
+    // limit content lookup
     int offset = start;
     int lim = len;
     if (o instanceof Chain) {

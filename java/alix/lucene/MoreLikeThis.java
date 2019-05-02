@@ -148,7 +148,7 @@ import java.util.Set;
  * Some bugfixing, some refactoring, some optimisation.
  * - bugfix: retrieveTerms(int docNum) was not working for indexes without a termvector -added missing code
  * - bugfix: No significant terms being created for fields with a termvector - because
- * was only counting one occurrence per chain/field pair in calculations(ie not including frequency info from TermVector)
+ * was only counting one occurrence per chain/content pair in calculations(ie not including frequency info from TermVector)
  * - refactor: moved common code into isNoiseWord()
  * - optimise: when no termvector support available - used maxNumTermsParsed to limit amount of tokenization
  * </pre>
@@ -157,7 +157,7 @@ public final class MoreLikeThis
 {
 
   /**
-   * Default maximum number of tokens to parse in each example doc field that is
+   * Default maximum number of tokens to parse in each example doc content that is
    * not stored with TermVector support.
    *
    * @see #getMaxNumTokensParsed
@@ -198,7 +198,7 @@ public final class MoreLikeThis
   public static final boolean DEFAULT_BOOST = false;
 
   /**
-   * Default field names. Null is used to specify that the field names should be
+   * Default content names. Null is used to specify that the content names should be
    * looked up at runtime from the provided reader.
    */
   public static final String[] DEFAULT_FIELD_NAMES = new String[] { "contents" };
@@ -272,7 +272,7 @@ public final class MoreLikeThis
   private String[] fieldNames = DEFAULT_FIELD_NAMES;
 
   /**
-   * The maximum number of tokens to parse in each example doc field that is not
+   * The maximum number of tokens to parse in each example doc content that is not
    * stored with TermVector support
    */
   private int maxNumTokensParsed = DEFAULT_MAX_NUM_TOKENS_PARSED;
@@ -498,11 +498,11 @@ public final class MoreLikeThis
   }
 
   /**
-   * Returns the field names that will be used when generating the 'More Like
-   * This' query. The default field names that will be used is
+   * Returns the content names that will be used when generating the 'More Like
+   * This' query. The default content names that will be used is
    * {@link #DEFAULT_FIELD_NAMES}.
    *
-   * @return the field names that will be used when generating the 'More Like
+   * @return the content names that will be used when generating the 'More Like
    *         This' query.
    */
   public String[] getFieldNames()
@@ -511,12 +511,12 @@ public final class MoreLikeThis
   }
 
   /**
-   * Sets the field names that will be used when generating the 'More Like This'
-   * query. Set this to null for the field names to be determined at runtime from
+   * Sets the content names that will be used when generating the 'More Like This'
+   * query. Set this to null for the content names to be determined at runtime from
    * the IndexReader provided in the constructor.
    *
    * @param fieldNames
-   *          the field names that will be used when generating the 'More Like
+   *          the content names that will be used when generating the 'More Like
    *          This' query.
    */
   public void setFieldNames(String[] fieldNames)
@@ -622,7 +622,7 @@ public final class MoreLikeThis
   }
 
   /**
-   * @return The maximum number of tokens to parse in each example doc field that
+   * @return The maximum number of tokens to parse in each example doc content that
    *         is not stored with TermVector support
    * @see #DEFAULT_MAX_NUM_TOKENS_PARSED
    */
@@ -633,7 +633,7 @@ public final class MoreLikeThis
 
   /**
    * @param i
-   *          The maximum number of tokens to parse in each example doc field that
+   *          The maximum number of tokens to parse in each example doc content that
    *          is not stored with TermVector support
    */
   public void setMaxNumTokensParsed(int i)
@@ -663,7 +663,7 @@ public final class MoreLikeThis
   /**
    * 
    * @param filteredDocument
-   *          Document with field values extracted for selected fields.
+   *          Document with content values extracted for selected fields.
    * @return More Like This query for the passed document.
    */
   public Query like(Map<String, Collection<Object>> filteredDocument) throws IOException
@@ -814,7 +814,7 @@ public final class MoreLikeThis
     Map<String, Int> termFreqMap = new HashMap<>();
     for (String fieldName : fieldNames) {
       final Terms vector = ir.getTermVector(docNum, fieldName);
-      // field does not store chain vector info
+      // content does not store chain vector info
       if (vector == null) {
         Document d = ir.document(docNum);
         IndexableField[] fields = d.getFields(fieldName);
@@ -857,7 +857,7 @@ public final class MoreLikeThis
    * @param termFreqMap
    *          a Map of terms and their frequencies
    * @param vector
-   *          List of terms and their frequencies for a doc/field
+   *          List of terms and their frequencies for a doc/content
    */
   private void addTermFrequencies(Map<String, Int> termFreqMap, Terms vector) throws IOException
   {
@@ -889,7 +889,7 @@ public final class MoreLikeThis
    * Print a chain vector for debugging
    * 
    * @param vector
-   *          List of terms and their frequencies for a doc/field
+   *          List of terms and their frequencies for a doc/content
    * @throws IOException
    */
   private void print(Terms vector) throws IOException
@@ -928,7 +928,7 @@ public final class MoreLikeThis
    * @param termFreqMap
    *          a Map of terms and their frequencies
    * @param fieldName
-   *          Used by analyzer for any special per-field analysis
+   *          Used by analyzer for any special per-content analysis
    */
   private void addTermFrequencies(Reader r, Map<String, Int> termFreqMap, String fieldName) throws IOException
   {
@@ -998,7 +998,7 @@ public final class MoreLikeThis
    * has 6 elements. The elements are:
    * <ol>
    * <li>The word (String)
-   * <li>The top field that this word comes from (String)
+   * <li>The top content that this word comes from (String)
    * <li>The score for this word (Float)
    * <li>The IDF value (Float)
    * <li>The frequency of this word in the index (Integer)
@@ -1012,7 +1012,7 @@ public final class MoreLikeThis
    * @param r
    *          the reader that has the content of the document
    * @param fieldName
-   *          field passed to the analyzer to use when analyzing the content
+   *          content passed to the analyzer to use when analyzing the content
    * @return the most interesting words in the document ordered by score, with the
    *         highest scoring, or best entry, first
    * @see #retrieveInterestingTerms
@@ -1050,7 +1050,7 @@ public final class MoreLikeThis
    * @param r
    *          the source document
    * @param fieldName
-   *          field passed to analyzer to use when analyzing the content
+   *          content passed to analyzer to use when analyzing the content
    * @return the most interesting words in the document
    * @see #retrieveTerms(java.io.Reader, String)
    * @see #setMaxQueryTerms

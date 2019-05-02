@@ -7,6 +7,7 @@ import java.util.Arrays;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
@@ -22,50 +23,49 @@ import org.apache.lucene.util.BytesRef;
  */
 public class AlixAnalyzer extends Analyzer
 {
-    /** Store offsets of the tokenizer, not thread safe */
-    private OffsetList offsets = new OffsetList();
 
-    public AlixAnalyzer()
-    {
+  public AlixAnalyzer()
+  {
 
+  }
+
+  /**
+   * Process a text to get offsets of tokens. Not thread safe.
+   * 
+   * @param text
+   * @return
+   * @throws IOException
+   */
+  public BytesRef getOffsets(String text, OffsetList offsets) throws IOException
+  {
+    offsets.reset();
+    TokenStream ts = this.tokenStream(Alix.OFFSETS, new StringReader(text));
+    // listen to offsets
+    OffsetAttribute offsetAtt = ts.addAttribute(OffsetAttribute.class);
+    try {
+      ts.reset();
+      while (ts.incrementToken()) {
+        offsets.put(offsetAtt.startOffset(), offsetAtt.endOffset());
+      }
+      ts.end();
     }
-
-    /**
-     * Process a text to get offsets of tokens. Not thread safe.
-     * 
-     * @param text
-     * @return
-     * @throws IOException
-     */
-    public BytesRef getOffsets(String text) throws IOException
-    {
-        offsets.reset();
-        TokenStream ts = this.tokenStream(Alix.OFFSETS, new StringReader(text));
-        // listen to offsets
-        OffsetAttribute offsetAtt = ts.addAttribute(OffsetAttribute.class);
-        try {
-            ts.reset();
-            while (ts.incrementToken()) {
-                offsets.put(offsetAtt.startOffset(), offsetAtt.endOffset());
-            }
-            ts.end();
-        }
-        finally {
-            ts.close();
-        }
-        return offsets.getBytesRef();
+    finally {
+      ts.close();
     }
+    return offsets.getBytesRef();
+  }
 
-    @Override
-    protected TokenStreamComponents createComponents(String fieldName)
-    {
-        final Tokenizer source = new FrTokenizer();
-        // for offsets, no filters needed
-        if (fieldName.equals(Alix.OFFSETS)) {
-            return new TokenStreamComponents(new FrTokenizer());
-        }
-        return new TokenStreamComponents(new FrTokenizer());
+  @Override
+  protected TokenStreamComponents createComponents(String fieldName)
+  {
+    final Tokenizer source = new FrTokenizer();
+    // for offsets, no filters needed
+    if (fieldName.equals(Alix.OFFSETS)) {
+      return new TokenStreamComponents(new FrTokenizer());
     }
-
+    if (fieldName.endsWith(suffix))
+    TokenStream result = new LemFilter(source);
+    return new TokenStreamComponents(source, result);
+  }
 
 }

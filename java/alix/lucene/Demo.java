@@ -33,7 +33,7 @@ public class Demo
    * classe depuis une JSP.
    */
   public PrintWriter out;
-  /** default field */
+  /** default content */
   public String field = "text";
 
   public Demo() {

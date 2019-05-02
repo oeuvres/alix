@@ -48,6 +48,7 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Date;
+import java.util.HashMap;
 
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
@@ -71,14 +72,23 @@ import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 import org.w3c.dom.Node;
@@ -94,428 +104,166 @@ import net.sf.saxon.s9api.SequenceType;
 import net.sf.saxon.s9api.XdmAtomicValue;
 import net.sf.saxon.s9api.XdmValue;
 
-
 /**
  * Alix entry-point
  * 
  * @author Pierre DITTGEN (2012, original idea, creation)
- * @author glorieux-f (2016, lucene.5.5.0 port, github migration, Teinte
- *         integration)
+ * @author glorieux-f
  */
 public class Alix
 {
-    /** Mandatory field, XML file name, maybe used for update */
-    public static final String FILENAME = "FILENAME";
-    /** Mandatory field, XML file name, maybe used for update */
-    public static final String OFFSETS = "OFFSETS";
-    /** Current filename proceded */
-    public static final FieldType ftypeText = new FieldType();
-    static {
-        // inverted index
-        ftypeText.setTokenized(true);
-        // position needed for phrase query
-        ftypeText.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
-        // keep 
-        ftypeText.setStored(true);
-        ftypeText.setStoreTermVectors(true);
-        ftypeText.setStoreTermVectorOffsets(true);
-        ftypeText.setStoreTermVectorPositions(true);
-        // http://makble.com/what-is-lucene-norms, omit norms (length normalization) 
-        ftypeText.setOmitNorms(true);
-        ftypeText.freeze();
+  /** Mandatory content, XML file name, maybe used for update */
+  public static final String FILENAME = "FILENAME";
+  /** Mandatory content, XML file name, maybe used for update */
+  public static final String OFFSETS = "OFFSETS";
+  /** Cache lists of terms by field in frequency order */
+  final static HashMap<String, Dic> dics = new HashMap<String, Dic>();
+  /** Current filename proceded */
+  public static final FieldType ftypeText = new FieldType();
+  static {
+    // inverted index
+    ftypeText.setTokenized(true);
+    // position needed for phrase query
+    ftypeText.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    // keep
+    ftypeText.setStored(true);
+    ftypeText.setStoreTermVectors(true);
+    ftypeText.setStoreTermVectorOffsets(true);
+    ftypeText.setStoreTermVectorPositions(true);
+    // http://makble.com/what-is-lucene-norms, omit norms (length normalization)
+    ftypeText.setOmitNorms(true);
+    ftypeText.freeze();
+  }
+  /** Pool of instances, unique by path */
+  public static final HashMap<Path, Alix> pool = new HashMap<Path, Alix>();
+  /** Normalized path */
+  public final Path path;
+  /** The lucene directory, kept private, to avoid closing by a thread */
+  private Directory dir;
+  /** The IndexReader if requested */
+  private IndexReader reader;
+  /** The IndexWriter if requested */
+  private IndexWriter writer;
+  /** The IndexSearcher if requested */
+  private IndexSearcher searcher;
+
+  /**
+   * Avoid constructions, maintain a pool by file path
+   * 
+   * @throws IOException
+   */
+  private Alix(final Path path) throws IOException
+  {
+    this.path = path;
+    Files.createDirectories(path);
+    // dir = FSDirectory.open(indexPath);
+    dir = MMapDirectory.open(path); // https://dzone.com/articles/use-lucene’s-mmapdirectory
+  }
+
+  public static Alix instance(final String path) throws IOException
+  {
+    return instance(Paths.get(path));
+  }
+
+  public static Alix instance(Path path) throws IOException
+  {
+    path = path.toAbsolutePath();
+    Alix alix = pool.get(path);
+    if (alix == null) {
+      alix = new Alix(path);
+      pool.put(path, alix);
     }
-    private static String filename;
-    /** Current lucene index writer, filled by XSL */
-    static IndexWriter lucwriter = null;
-    /** Current lucene Document, build by static XSL calls */
-    static Document doc;
-    /** The XSL transformer to parse XML files */
-    static Transformer parser;
-    /** A garbage collector for XSL parser */
-    static Result outNull = new StreamResult(new NullOutputStream());
+    return alix;
+  }
 
-    public static class SaxHello implements ExtensionFunction
-    {
+  public IndexReader reader() throws IOException
+  {
+    return reader(false);
+  }
 
-        @Override
-        public QName getName()
-        {
-            return new QName("alix.lucene.Alix", "hello");
-        }
+  public IndexReader reader(final boolean force) throws IOException
+  {
+    if (!force && reader != null) return reader;
+    // near real time reader
+    if (writer != null && writer.isOpen()) reader = DirectoryReader.open(writer, true, true);
+    else reader = DirectoryReader.open(dir);
+    return reader;
+  }
 
-        @Override
-        public SequenceType getResultType()
-        {
-            return SequenceType.makeSequenceType(ItemType.STRING, OccurrenceIndicator.ONE);
-        }
+  public IndexSearcher searcher() throws IOException
+  {
+    return searcher(false);
+  }
 
-        @Override
-        public SequenceType[] getArgumentTypes()
-        {
-            return new SequenceType[] {};
-        }
+  public IndexSearcher searcher(final boolean force) throws IOException
+  {
+    if (!force && searcher != null) return searcher;
+    reader(force);
+    searcher = new IndexSearcher(reader);
+    return searcher;
+  }
 
-        @Override
-        public XdmValue call(XdmValue[] arguments) throws SaxonApiException
-        {
-            String result = "Saxon is being extended correctly.";
-            return new XdmAtomicValue(result);
-        }
+  /**
+   * Get a lucene writer
+   * 
+   * @throws IOException
+   */
+  public IndexWriter writer() throws IOException
+  {
+    if (writer != null && writer.isOpen()) return writer;
+    Analyzer analyzer = new AlixAnalyzer();
+    IndexWriterConfig conf = new IndexWriterConfig(analyzer);
+    conf.setUseCompoundFile(false); // show separate file by segment
+    // may needed, increase the max heap size to the JVM (eg add -Xmx512m or
+    // -Xmx1g):
+    conf.setRAMBufferSizeMB(48);
+    conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
+    conf.setSimilarity(new BM25Similarity());
+    writer = new IndexWriter(dir, conf);
+    return writer;
+  }
 
+  public Dic dic(final String field) throws IOException
+  {
+    
+    Dic dic = dics.get(field);
+    if (dic != null) return dic;
+    dic = new Dic(field);
+    // ensure reader
+    IndexReader reader = reader();
+    dic.docs = reader.getDocCount(field);
+    dic.occs = reader.getSumTotalTermFreq(field);
+    BytesRef bytes;
+    for (LeafReaderContext context : reader.leaves()) {
+      LeafReader leaf = context.reader();
+      TermsEnum tenum = leaf.terms(field).iterator();
+      while((bytes=tenum.next()) != null) {
+        dic.add(bytes, tenum.totalTermFreq());
+      }
     }
+    dic.sort();
+    dics.put(field, dic);
+    return dic;
+  }
 
-    public static class SaxDocNew implements ExtensionFunction
-    {
-
-        @Override
-        public QName getName()
-        {
-            return new QName("alix.lucene.Alix", "docNew");
-        }
-
-        @Override
-        public SequenceType getResultType()
-        {
-            return SequenceType.makeSequenceType(ItemType.STRING, OccurrenceIndicator.ONE);
-        }
-
-        @Override
-        public SequenceType[] getArgumentTypes()
-        {
-            return new SequenceType[] {};
-        }
-
-        @Override
-        public XdmValue call(XdmValue[] arguments) throws SaxonApiException
-        {
-            if (doc != null) throw new SaxonApiException("docNew() : current document not yet written, call docWrite() before.");            
-            doc = new Document();
-            // key to delete
-            doc.add(new StringField(FILENAME, filename, Store.YES));
-            return new XdmAtomicValue("docNew() "+filename);
-        }
-    }
-
-    public static class SaxDocWrite implements ExtensionFunction
-    {
-
-        @Override
-        public QName getName()
-        {
-            return new QName("alix.lucene.Alix", "docWrite");
-        }
-
-        @Override
-        public SequenceType getResultType()
-        {
-            return SequenceType.makeSequenceType(ItemType.STRING, OccurrenceIndicator.ONE);
-        }
-
-        @Override
-        public SequenceType[] getArgumentTypes()
-        {
-            return new SequenceType[] {};
-        }
-
-        @Override
-        public XdmValue call(XdmValue[] arguments) throws SaxonApiException
-        {
-            if (doc == null) throw new SaxonApiException("docWrite() : no document to write. Call docNew() before docWrite().");
-            try {
-                lucwriter.addDocument(doc);
-            }
-            catch (IOException e) {
-                throw new SaxonApiException(e);
-            }
-            doc = null;
-            return new XdmAtomicValue("docWrite() "+filename);
-        }
-
-    }
-
-    public static class SaxField implements ExtensionFunction
-    {
-        @Override
-        public QName getName()
-        {
-            return new QName("alix.lucene.Alix", "field");
-        }
-
-        @Override
-        public SequenceType getResultType()
-        {
-            return SequenceType.makeSequenceType(ItemType.STRING, OccurrenceIndicator.ONE);
-        }
-
-        @Override
-        public SequenceType[] getArgumentTypes()
-        {
-            return new SequenceType[] {
-                SequenceType.makeSequenceType(ItemType.STRING, OccurrenceIndicator.ONE),
-                SequenceType.makeSequenceType(ItemType.ANY_ITEM, OccurrenceIndicator.ONE_OR_MORE),
-                SequenceType.makeSequenceType(ItemType.STRING, OccurrenceIndicator.ONE)
-            };
-        }
-
-
-        @Override
-        /**
-         * Adds field to the current doc. Called by XSL -- static mode
-         * 
-         * @param name
-         *            Name of the field
-         * @param value
-         *            Value of the field
-         * @param options
-         *            [TSVOPLN#.]+
-         */
-        public XdmValue call(XdmValue[] args) throws SaxonApiException
-        {
-            String name = args[0].itemAt(0).getStringValue();
-            String type = args[2].toString();
-            if (doc == null) throw new SaxonApiException("field("+name+", ...) no document to write. Call docNew().");
-            if (name == Alix.FILENAME) throw new SaxonApiException("field(\""+name+"\", ...) "+name+" is a reserved name.");
-            System.out.println(args[1].itemAt(0).getClass());
-            Field field = null;
-            // test if value empty ?
-            // if (value.trim().isEmpty()) return new XdmAtomicValue("field(\""+name+"\", \"\") not indexed.");
-            if (type.equals("xml")) {
-                // Saxon serializer maybe needed if encoding problems
-                // https://www.saxonica.com/html/documentation/javadoc/net/sf/saxon/s9api/Serializer.html
-                String xml = args[1].toString();
-                doc.add(new Field(name, xml, ftypeText));
-                // store offsets, for efficient concordance
-                doc.add(field);
-            } 
-            else if (type.equals("sort")) {
-                String value = args[1].toString();
-                doc.add(new SortedDocValuesField (name, new BytesRef(value) ));
-                doc.add(new StoredField(name, value));
-            }
-            else if (type.equals("string")) {
-                doc.add(new StringField(name, args[1].toString(), Field.Store.YES));
-            }
-            else {
-                throw new SaxonApiException("field("+name+") no type '"+type+"'");
-            }
-            return new XdmAtomicValue("field(\""+name+"\", ...)");
-        }
-
+  
+  /**
+   * Parses command-line
+   */
+  public static void main(String args[]) throws Exception
+  {
+    String usage = "java alix.lucene.Alix parser.xsl lucene-index corpus/*.xml\n\n"
+        + "Parse the files in corpus, with xsl parser, to be indexed in lucene index directory";
+    if (args.length < 3) {
+      System.err.println("Usage: " + usage);
+      System.exit(1);
     }
 
-    /**
-     * Start to scan the glob of xml files
-     * 
-     * @param indexDir
-     *            where the lucene indexes are generated
-     * @param anAnalyzer
-     *            Analyzer to use for analyzed fields
-     * @param similarity
-     *            instance of Similarity to work with the writer
-     * @throws TransformerConfigurationException
+    Date start = new Date();
+    /*
+     * Alix.walk(args[0], args[1], args[2]); Date end = new Date();
+     * info(end.getTime() - start.getTime() + " total ms.");
      */
-    static public void walk(String xslFile, String indexDir, String xmlGlob)
-            throws IOException, TransformerConfigurationException
-    {
-
-        info("Lucene, parser:" + xslFile + ", index:" + indexDir + ", src:" + xmlGlob);
-
-        Path srcDir = Paths.get(xmlGlob);
-        PathMatcher glob = FileSystems.getDefault().getPathMatcher("glob:*.xml");
-        if (!Files.isDirectory(srcDir)) {
-            String pattern = srcDir.getFileName().toString();
-            glob = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
-            srcDir = srcDir.getParent();
-        }
-        if (!Files.isDirectory(srcDir)) {
-            fatal("FATAL " + srcDir + " NOT FOUND");
-        }
-
-        Path indexPath = Paths.get(indexDir);
-        Files.createDirectories(indexPath);
-        Directory dir = FSDirectory.open(indexPath);
-
-        // TODO configure analyzers
-        Analyzer analyzer = new AlixAnalyzer();
-        IndexWriterConfig conf = new IndexWriterConfig(analyzer);
-        conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
-        conf.setSimilarity(new BM25Similarity());
-        System.out.println(conf.getCodec());
-        // Optional: for better indexing performance, if you
-        // are indexing many documents, increase the RAM
-        // buffer. But if you do this, increase the max heap
-        // size to the JVM (eg add -Xmx512m or -Xmx1g):
-        //
-        // conf.setRAMBufferSizeMB(256.0);
-        lucwriter = new IndexWriter(dir, conf);
-
-        System.setProperty("javax.xml.transform.TransformerFactory", "net.sf.saxon.TransformerFactoryImpl");
-        TransformerFactory tf = TransformerFactory.newInstance();
-        // Grab the handle of Transformer factory and cast it to TransformerFactoryImpl
-        TransformerFactoryImpl saxonFactory = (TransformerFactoryImpl) tf;
-        tf.setAttribute("http://saxon.sf.net/feature/version-warning", Boolean.FALSE);
-        tf.setAttribute("http://saxon.sf.net/feature/recoveryPolicy", new Integer(0));
-        tf.setAttribute("http://saxon.sf.net/feature/linenumbering", new Boolean(true));
-
-        // Get the currently used processor
-        net.sf.saxon.Configuration saxonConfig = saxonFactory.getConfiguration();
-        Processor processor = (Processor) saxonConfig.getProcessor();
-
-        processor.registerExtensionFunction(new SaxHello());
-        processor.registerExtensionFunction(new SaxDocNew());
-        processor.registerExtensionFunction(new SaxDocWrite());
-        processor.registerExtensionFunction(new SaxField());
-        parser = tf.newTransformer(new StreamSource(xslFile));
-
-        final PathMatcher matcher = glob; // transmit the matcher by a final variable to the anonymous class
-        Files.walkFileTree(srcDir, new SimpleFileVisitor<Path>()
-        {
-            @Override
-            public FileVisitResult visitFile(Path path, BasicFileAttributes attrs)
-            {
-                if (path.getFileName().toString().startsWith(".")) return FileVisitResult.CONTINUE;
-                if (!matcher.matches(path.getFileName())) return FileVisitResult.CONTINUE;
-                parse(path);
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs)
-            {
-                // .git, .svn
-                if (path.getFileName().toString().startsWith(".")) return FileVisitResult.SKIP_SUBTREE;
-                return FileVisitResult.CONTINUE;
-            }
-        });
-
-        lucwriter.commit();
-        // NOTE: if you want to maximize search performance,
-        // you can optionally call forceMerge here. This can be
-        // a terribly costly operation, so generally it's only
-        // worth it when your index is relatively static (ie
-        // you're done adding documents to it):
-        //
-        lucwriter.forceMerge(1);
-        lucwriter.close();
-    }
-
-    /**
-     * Indexes one or more XML documents or documents directory
-     * 
-     * @throws TransformerException
-     * @throws TransformerConfigurationException
-     */
-    static public void parse(Path xmlPath)
-    {
-        // get file name without extension
-        filename = xmlPath.getFileName().toString();
-        filename = filename.substring(0, filename.lastIndexOf('.'));
-        info(filename + "                        ".substring(Math.min(22, filename.length())) + xmlPath.getParent());
-        try {
-            lucwriter.deleteDocuments(new Term(FILENAME, filename));
-            // A file to work on
-            Source xml = new StreamSource(xmlPath.toFile());
-            parser.setParameter("filename", filename);
-            parser.transform(xml, outNull);
-        }
-        catch (IOException e) {
-            fatal(e);
-        }
-        catch (TransformerException e) {
-            error(e);
-        }
-    }
-
-    /**
-     * Creates an instance of an analyzer given its full class name
-     * 
-     * @param className
-     * @return The analyzer instance
-     * @throws IOException
-     * @throws InstantiationException
-     * @throws IllegalAccessException
-     * @throws ClassNotFoundException
-     */
-    static Analyzer createAnalyzerInstance(String className)
-            throws IOException, InstantiationException, IllegalAccessException, ClassNotFoundException
-    {
-        Analyzer analyzer;
-        Class<?> cl = null;
-        cl = Class.forName(className);
-
-        // does the analyzer need a version instance as constructor argument?
-        try {
-            Class<?>[] params = new Class[1];
-            params[0] = Version.class;
-            Constructor<?> constructor = cl.getDeclaredConstructor(params);
-            analyzer = (Analyzer) constructor.newInstance(null);
-        }
-        catch (Exception e) {
-        }
-        finally {
-            // Or default constructor
-            analyzer = (Analyzer) cl.newInstance();
-        }
-        return analyzer;
-    }
-
-
-
-
-    /**
-     * A quiet output for the XSL
-     */
-    private static class NullOutputStream extends OutputStream
-    {
-        @Override
-        public void write(int b) throws IOException
-        {
-            return;
-        }
-    }
-
-    /**
-     * Usage info
-     */
-    public static void info(Object o)
-    {
-        System.out.println(o);
-    }
-
-    /**
-     * Recoverable error
-     */
-    public static void error(Object o)
-    {
-        if (o instanceof Exception) System.err.println(((Exception) o).getStackTrace());
-        else System.err.println(o);
-    }
-
-    /**
-     * Fatal error
-     */
-    public static void fatal(Object o)
-    {
-        error(o);
-        System.exit(1);
-    }
-
-    /**
-     * Parses command-line
-     */
-    public static void main(String args[]) throws Exception
-    {
-        String usage = "java alix.lucene.Alix parser.xsl lucene-index corpus/*.xml\n\n"
-                + "Parse the files in corpus, with xsl parser, to be indexed in lucene index directory";
-        if (args.length < 3) {
-            System.err.println("Usage: " + usage);
-            System.exit(1);
-        }
-
-        Date start = new Date();
-        Alix.walk(args[0], args[1], args[2]);
-        Date end = new Date();
-        info(end.getTime() - start.getTime() + " total ms.");
-    }
+  }
 
 }
