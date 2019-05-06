@@ -22,15 +22,15 @@ import alix.util.CsvReader;
 public class CharDic
 {
   /** French stopwords */
-  public final static HashSet<CharAtt> STOP = new HashSet<CharAtt>((int) (700 * 0.75));
+  public final static HashSet<TokenAttChar> STOP = new HashSet<TokenAttChar>((int) (700 * 0.75));
   /** 130 000 types French lexicon seems not too bad for memory */
-  public final static HashMap<CharAtt, LexEntry> WORD = new HashMap<CharAtt, LexEntry>((int) (150000 * 0.75));
+  public final static HashMap<TokenAttChar, LexEntry> WORD = new HashMap<TokenAttChar, LexEntry>((int) (150000 * 0.75));
   /** French names on which keep Capitalization */
-  public final static HashMap<CharAtt, NameEntry> NAME = new HashMap<CharAtt, NameEntry>((int) (50000 * 0.75));
+  public final static HashMap<TokenAttChar, NameEntry> NAME = new HashMap<TokenAttChar, NameEntry>((int) (50000 * 0.75));
   /** Graphic normalization (replacement) */
-  public final static HashMap<CharAtt, CharAtt> NORM = new HashMap<CharAtt, CharAtt>((int) (100 * 0.75));
+  public final static HashMap<TokenAttChar, TokenAttChar> NORM = new HashMap<TokenAttChar, TokenAttChar>((int) (100 * 0.75));
   /** Ellisions, for tokenization and normalisation */
-  public final static HashMap<CharAtt, CharAtt> ELLISION = new HashMap<CharAtt, CharAtt>((int) (30 * 0.75));
+  public final static HashMap<TokenAttChar, TokenAttChar> ELLISION = new HashMap<TokenAttChar, TokenAttChar>((int) (30 * 0.75));
   /** Abbreviations with a final dot */
   // protected static HashMap<String, String> BREVIDOT = new HashMap<String, String>((int) (100 * 0.75));
   /* Load dictionaries */
@@ -40,7 +40,7 @@ public class CharDic
     try {
       Reader reader;
       // unmodifiable map with jdk10 Map.copyOf is not faster
-      STOP.add(new CharAtt(";"));
+      STOP.add(new TokenAttChar(";"));
       file = "stop.csv";
       reader = new InputStreamReader(Tag.class.getResourceAsStream(file), StandardCharsets.UTF_8);
       csv = new CsvReader(reader, 1);
@@ -48,7 +48,7 @@ public class CharDic
       while (csv.readRow()) {
         Chain cell0 = csv.row().get(0);
         if (cell0.isEmpty() || cell0.charAt(0) == '#') continue;
-        STOP.add(new CharAtt(cell0));
+        STOP.add(new TokenAttChar(cell0));
       }
       
       file = "word.csv";
@@ -59,12 +59,12 @@ public class CharDic
         Chain orth = csv.row().get(0);
         if (orth.isEmpty() || orth.charAt(0) == '#') continue;
         if (WORD.containsKey(orth)) continue;
-        CharAtt key = new CharAtt(orth);
+        TokenAttChar key = new TokenAttChar(orth);
         WORD.put(key, new LexEntry(csv.row().get(1), csv.row().get(2)));
       }
       // nouns, put persons after places (Molière is also a village, but not very common)
       String[] files = {"commune.csv", "france.csv", "forename.csv", "place.csv", "author.csv", "name.csv"};
-      CharAtt alain = new CharAtt("Alain");
+      TokenAttChar alain = new TokenAttChar("Alain");
       for (String f : files) {
         file = f;
         reader = new InputStreamReader(Tag.class.getResourceAsStream(file), StandardCharsets.UTF_8);
@@ -73,7 +73,7 @@ public class CharDic
         while (csv.readRow()) {
           Chain cell = csv.row().get(0);
           if (cell.isEmpty() || cell.charAt(0) == '#') continue;
-          NAME.put(new CharAtt(cell), new NameEntry(csv.row().get(1), csv.row().get(2)));
+          NAME.put(new TokenAttChar(cell), new NameEntry(csv.row().get(1), csv.row().get(2)));
         }
       }
       String[] list = {"caps.csv", "orth.csv"};
@@ -85,7 +85,7 @@ public class CharDic
         while (csv.readRow()) {
           Chain cell = csv.row().get(0);
           if (cell.isEmpty() || cell.charAt(0) == '#') continue;
-          NORM.put(new CharAtt(cell), new CharAtt(csv.row().get(1)));
+          NORM.put(new TokenAttChar(cell), new TokenAttChar(csv.row().get(1)));
         }
       }
       file = "ellision.csv";
@@ -95,7 +95,7 @@ public class CharDic
       while (csv.readRow()) {
         Chain cell = csv.row().get(0);
         if (cell.isEmpty() || cell.charAt(0) == '#') continue;
-        ELLISION.put(new CharAtt(cell), new CharAtt(csv.row().get(1)));
+        ELLISION.put(new TokenAttChar(cell), new TokenAttChar(csv.row().get(1)));
       }
     }
     // output errors at start
@@ -104,18 +104,18 @@ public class CharDic
       e.printStackTrace();
     }
   }
-  public static LexEntry word(CharAtt att)
+  public static LexEntry word(TokenAttChar att)
   {
     return WORD.get(att);
   }
-  public static NameEntry name(CharAtt att)
+  public static NameEntry name(TokenAttChar att)
   {
     return NAME.get(att);
   }
 
-  public static boolean norm(CharAtt att)
+  public static boolean norm(TokenAttChar att)
   {
-    CharAtt val = NORM.get(att);
+    TokenAttChar val = NORM.get(att);
     if (val == null) return false;
     att.setEmpty().append(val);
     return true;
@@ -123,7 +123,7 @@ public class CharDic
 
   public static class NameEntry
   {
-    public final CharAtt orth;
+    public final TokenAttChar orth;
     public final short tag;
 
     public NameEntry(final Chain tag, final Chain orth)
@@ -131,7 +131,7 @@ public class CharDic
       short code = Tag.code(tag);
       if (code == 0) this.tag = Tag.NAME;
       else this.tag = code;
-      if (!orth.isEmpty()) this.orth = new CharAtt(orth);
+      if (!orth.isEmpty()) this.orth = new TokenAttChar(orth);
       else this.orth = null;
     }
 
@@ -145,20 +145,20 @@ public class CharDic
   public static class LexEntry
   {
     public final short tag;
-    public final CharAtt lem;
+    public final TokenAttChar lem;
 
     public LexEntry(final Chain tag, final Chain lem) throws ParseException
     {
       this.tag = Tag.code(tag);
       if (lem == null || lem.isEmpty()) this.lem = null;
-      else this.lem = new CharAtt(lem);
+      else this.lem = new TokenAttChar(lem);
     }
 
     public LexEntry(final String tag, final String lem)
     {
       this.tag = Tag.code(tag);
       if (lem == null || lem.isEmpty()) this.lem = null;
-      else this.lem = new CharAtt(lem);
+      else this.lem = new TokenAttChar(lem);
     }
 
     @Override

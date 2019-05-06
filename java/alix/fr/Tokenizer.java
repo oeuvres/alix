@@ -5,7 +5,7 @@ import java.io.Writer;
 import java.util.HashSet;
 
 import alix.fr.dic.Tag;
-import alix.fr.query.Lexer;
+import alix.grep.query.Lexer;
 import alix.util.Char;
 import alix.util.Occ;
 import alix.util.OccChain;

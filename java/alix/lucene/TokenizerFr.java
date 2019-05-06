@@ -1,9 +1,11 @@
 package alix.lucene;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.HashMap;
 
 import org.apache.lucene.analysis.CharacterUtils;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.CharacterUtils.CharacterBuffer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -12,6 +14,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.util.Attribute;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.AttributeImpl;
+import org.apache.lucene.util.BytesRef;
 
 import alix.fr.dic.Tag;
 import alix.util.Char;
@@ -22,7 +25,7 @@ import alix.util.Char;
  * @author glorieux-f
  *
  */
-public class FrTokenizer extends Tokenizer
+public class TokenizerFr extends Tokenizer
 {
   /** Current char offset */
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
@@ -31,7 +34,7 @@ public class FrTokenizer extends Tokenizer
   /** Current term, as an array of chars */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   /** Tool for string testings */
-  CharAtt test = new CharAtt();
+  TokenAttChar test = new TokenAttChar();
   /** Store state */
   private State save;
   /** Source buffer of chars, delegate to Lucene experts */
@@ -55,7 +58,7 @@ public class FrTokenizer extends Tokenizer
     TAGS.put("/section", "</section>");
   }
 
-  public FrTokenizer()
+  public TokenizerFr()
   {
     this(true);
   }
@@ -65,7 +68,7 @@ public class FrTokenizer extends Tokenizer
    * 
    * @param ml
    */
-  public FrTokenizer(boolean xml)
+  public TokenizerFr(boolean xml)
   {
     super(new AlixAttributeFactory(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
     this.xml = xml;
@@ -88,8 +91,8 @@ public class FrTokenizer extends Tokenizer
     int startOffset = -1; // this variable is always initialized
     int endOffset = -1;
     int ltOffset = -1;
-    CharAtt term = (CharAtt)this.termAtt;
-    CharAtt test = this.test;
+    TokenAttChar term = (TokenAttChar)this.termAtt;
+    TokenAttChar test = this.test;
     char[] buffer = bufSrc.getBuffer();
     boolean intag = false;
     boolean tagname = false;
@@ -234,7 +237,7 @@ public class FrTokenizer extends Tokenizer
         term.append(c);
         length++;
         if (c == '\'') {
-          CharAtt val = CharDic.ELLISION.get(term);
+          TokenAttChar val = CharDic.ELLISION.get(term);
           if (val != null) {
             val.copyTo(term);
             break;
@@ -293,8 +296,33 @@ public class FrTokenizer extends Tokenizer
     @Override
     public AttributeImpl createAttributeInstance(Class<? extends Attribute> attClass) {
       if (attClass == CharTermAttribute.class)
-        return new CharAtt();
+        return new TokenAttChar();
       return delegate.createAttributeInstance(attClass);
+    }
+  }
+
+  /**
+   * Get offsets of a text as an array of ints that could be indexed in a binary field.
+   * @param text
+   * @param offsets
+   * @throws IOException
+   */
+  static public void offsets(String text, OffsetList offsets) throws IOException
+  {
+    offsets.reset();
+    Tokenizer tokens = new TokenizerFr();
+    tokens.setReader(new StringReader(text));
+    // listen to offsets
+    OffsetAttribute offsetAtt = tokens.addAttribute(OffsetAttribute.class);
+    try {
+      tokens.reset();
+      while (tokens.incrementToken()) {
+        offsets.put(offsetAtt.startOffset(), offsetAtt.endOffset());
+      }
+      tokens.end();
+    }
+    finally {
+      tokens.close();
     }
   }
 

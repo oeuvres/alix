@@ -64,7 +64,7 @@ public class Conc
     }
     public static void nomain(String args[]) throws Exception
     {
-        Analyzer analyzer = new AlixAnalyzer();
+        Analyzer analyzer = new AnalyzerAlix();
         Directory directory = new RAMDirectory();
         IndexWriterConfig config = new IndexWriterConfig(analyzer);
         IndexWriter indexWriter = new IndexWriter(directory, config);
@@ -169,7 +169,7 @@ public class Conc
       // Directory dir = FSDirectory.open(indexPath);
       Directory dir = MMapDirectory.open(path); // https://dzone.com/articles/use-lucene’s-mmapdirectory
 
-      Analyzer analyzer = new AlixAnalyzer();
+      Analyzer analyzer = new AnalyzerAlix();
       IndexWriterConfig conf = new IndexWriterConfig(analyzer);
       conf.setUseCompoundFile(false); // show separate file by segment
       conf.setMaxBufferedDocs(48); // 48 MB buffer

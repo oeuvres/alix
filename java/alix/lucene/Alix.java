@@ -116,7 +116,7 @@ public class Alix
   public static final String FILENAME = "FILENAME";
   /** Mandatory content, XML file name, maybe used for update */
   public static final String OFFSETS = "OFFSETS";
-  /** Cache lists of terms by field in frequency order */
+  /** For each field, a dictionary of the terms in frequency order */
   final static HashMap<String, Dic> dics = new HashMap<String, Dic>();
   /** Current filename proceded */
   public static final FieldType ftypeText = new FieldType();
@@ -211,7 +211,7 @@ public class Alix
   public IndexWriter writer() throws IOException
   {
     if (writer != null && writer.isOpen()) return writer;
-    Analyzer analyzer = new AlixAnalyzer();
+    Analyzer analyzer = new AnalyzerAlix();
     IndexWriterConfig conf = new IndexWriterConfig(analyzer);
     conf.setUseCompoundFile(false); // show separate file by segment
     // may needed, increase the max heap size to the JVM (eg add -Xmx512m or

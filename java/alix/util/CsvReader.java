@@ -14,7 +14,7 @@ import java.text.ParseException;
 import java.util.HashMap;
 
 import alix.fr.dic.Tag;
-import alix.lucene.CharAtt;
+import alix.lucene.TokenAttChar;
 import alix.lucene.CharDic.LexEntry;
 
 /**
@@ -192,7 +192,7 @@ public class CsvReader
       
       
       i = -1;
-      HashMap<CharAtt, LexEntry> dic1 = new HashMap<CharAtt, LexEntry>();
+      HashMap<TokenAttChar, LexEntry> dic1 = new HashMap<TokenAttChar, LexEntry>();
       // nio is not faster
       // Path path = Paths.get(Tag.class.getResource("word.csv").toURI());
       // reader = Files.newBufferedReader(path, StandardCharsets.UTF_8);
@@ -201,7 +201,7 @@ public class CsvReader
       time = System.nanoTime();
       while (csv.readRow()) {
         i++;
-        // dic1.put(new CharAtt(csv.row().get(0)), new LexEntry(csv.row().get(1), csv.row().get(2)));
+        // dic1.put(new TokenAttChar(csv.row().get(0)), new LexEntry(csv.row().get(1), csv.row().get(2)));
       }
       System.out.println("csv: " + ((System.nanoTime() - time) / 1000000) + " ms line="+i);
       

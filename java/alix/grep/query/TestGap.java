@@ -1,4 +1,4 @@
-package alix.fr.query;
+package alix.grep.query;
 
 import alix.util.Occ;
 

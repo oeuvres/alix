@@ -19,8 +19,8 @@ import alix.util.Chain;
  * @author fred
  *
  */
-public class CharAtt extends AttributeImpl
-    implements CharTermAttribute, TermToBytesRefAttribute, Cloneable, Comparable<CharAtt>
+public class TokenAttChar extends AttributeImpl
+    implements CharTermAttribute, TermToBytesRefAttribute, Cloneable, Comparable<TokenAttChar>
 {
   /** Cached hashCode */
   private int hash;
@@ -36,13 +36,13 @@ public class CharAtt extends AttributeImpl
   protected BytesRefBuilder builder = new BytesRefBuilder();
 
   /** Initialize this attribute with empty term text */
-  public CharAtt()
+  public TokenAttChar()
   {
     chars = new char[ArrayUtil.oversize(MIN_BUFFER_SIZE, Character.BYTES)];
   }
 
   /** Initialize the chars with a String */
-  public CharAtt(String s)
+  public TokenAttChar(String s)
   {
     len = s.length();
     this.chars = new char[len];
@@ -50,7 +50,7 @@ public class CharAtt extends AttributeImpl
   }
 
   /** Initialize the chars with a Chain */
-  public CharAtt(Chain chain)
+  public TokenAttChar(Chain chain)
   {
     len = chain.length();
     chars = new char[len];
@@ -259,9 +259,9 @@ public class CharAtt extends AttributeImpl
   }
 
   @Override
-  public CharAtt clone()
+  public TokenAttChar clone()
   {
-    CharAtt t = (CharAtt) super.clone();
+    TokenAttChar t = (TokenAttChar) super.clone();
     // Do a deep clone
     t.chars = new char[this.len];
     System.arraycopy(this.chars, 0, t.chars, 0, this.len);
@@ -278,8 +278,8 @@ public class CharAtt extends AttributeImpl
     }
     int len = this.len;
     char[] chars = this.chars;
-    if (other instanceof CharAtt) {
-      CharAtt term = (CharAtt) other;
+    if (other instanceof TokenAttChar) {
+      TokenAttChar term = (TokenAttChar) other;
       if (term.len != len) return false;
       // if hashcode already calculated, if different, not same strings
       if (hash != 0 && term.hash != 0 && hash != term.hash) return false;
@@ -394,7 +394,7 @@ public class CharAtt extends AttributeImpl
   }
 
   @Override
-  public int compareTo(CharAtt o)
+  public int compareTo(TokenAttChar o)
   {
     char[] chars1 = chars;
     char[] chars2 = o.chars;

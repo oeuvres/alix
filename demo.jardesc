@@ -19,7 +19,7 @@
         <javaElement handleIdentifier="=Alix/java&lt;alix.viz"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
         <folder path="/Alix/java/META-INF/services"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.fr.query"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.grep.query"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.grep"/>
     </selectedElements>
 </jardesc>

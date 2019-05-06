@@ -5,14 +5,14 @@ import java.io.IOException;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.ArrayUtil;
 
-
-
 /**
- * Used in a Lucene Analyzer, a LIFO stack of terms to keep trace of tokens for compounds.
+ * Used in a Lucene Analyzer, a LIFO stack of terms to keep trace of tokens for
+ * compounds.
+ * 
  * @author fred
  *
  */
-public class TermStack
+public class TokenStack
 {
   private final Term[] stack;
   private static final int DEFAULT_SIZE = 5;
@@ -20,25 +20,30 @@ public class TermStack
   private final int size;
   /** current buffer */
   private int pointer = 0;
+
   /** Initialize stack with default size */
-  public TermStack()
+  public TokenStack()
   {
     this(DEFAULT_SIZE);
   }
-  public TermStack(final int size)
+
+  public TokenStack(final int size)
   {
     this.size = size;
     stack = new Term[size];
-    for(int i = 0; i < size; i++) stack[i] = new Term();
+    for (int i = 0; i < size; i++)
+      stack[i] = new Term();
   }
+
   /**
    * Push A term value
    */
-  public void push(CharTermAttribute term) {
+  public void push(CharTermAttribute term)
+  {
     stack[pointer].copy(term);
     pointer = pointer(1);
   }
-  
+
   /**
    * Get pointer on the data array from a position. Will roll around array if out
    * the limits
@@ -46,7 +51,7 @@ public class TermStack
   private int pointer(final int pos)
   {
     int size = this.size;
-    if (pos >= size) throw(new ArrayIndexOutOfBoundsException("position="+pos+" >= size="+size));
+    if (pos >= size) throw (new ArrayIndexOutOfBoundsException("position=" + pos + " >= size=" + size));
     return (pointer + pos) % size;
   }
 
@@ -59,6 +64,7 @@ public class TermStack
     private char[] chars = new char[CHARS_LENGTH];
     /** Current length of term */
     private int len;
+
     /** Copy char array */
     public final void copy(CharTermAttribute term)
     {
@@ -66,8 +72,10 @@ public class TermStack
       grow(len);
       System.arraycopy(term.buffer(), 0, chars, 0, len);
     }
+
     /**
      * Ensure size for copy (old value is not kept)
+     * 
      * @param newLen
      * @return
      */
@@ -79,8 +87,10 @@ public class TermStack
       }
       return chars;
     }
+
     /**
      * Ensure size for append
+     * 
      * @param newLen
      * @return
      */
@@ -95,15 +105,5 @@ public class TermStack
     }
 
   }
-  /**
-   * Test the Class
-   * 
-   * @param args
-   * @throws IOException
-   */
-  public static void main(String args[])
-  {
-    TermStack stack = new TermStack();
-    for(int i=0; i < 5; i++) System.out.println(stack.pointer(i));
-  }
+
 }

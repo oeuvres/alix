@@ -18,7 +18,7 @@
         <javaElement handleIdentifier="=Alix/java&lt;alix.util"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.viz"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.fr.query"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.grep.query"/>
         <file path="/Alix/java/META-INF/MANIFEST.MF"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.grep"/>
     </selectedElements>
