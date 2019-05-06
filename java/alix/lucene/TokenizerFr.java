@@ -237,7 +237,7 @@ public class TokenizerFr extends Tokenizer
         term.append(c);
         length++;
         if (c == '\'') {
-          TokenAttChar val = CharDic.ELLISION.get(term);
+          TokenAttChar val = TokenDics.ELLISION.get(term);
           if (val != null) {
             val.copyTo(term);
             break;

@@ -117,7 +117,7 @@ public class Alix
   /** Mandatory content, XML file name, maybe used for update */
   public static final String OFFSETS = "OFFSETS";
   /** For each field, a dictionary of the terms in frequency order */
-  final static HashMap<String, Dic> dics = new HashMap<String, Dic>();
+  final static HashMap<String, BytesDic> bytesDics = new HashMap<String, BytesDic>();
   /** Current filename proceded */
   public static final FieldType ftypeText = new FieldType();
   static {
@@ -223,27 +223,27 @@ public class Alix
     return writer;
   }
 
-  public Dic dic(final String field) throws IOException
+  public BytesDic bytesDic(final String field) throws IOException
   {
     
-    Dic dic = dics.get(field);
-    if (dic != null) return dic;
-    dic = new Dic(field);
+    BytesDic bytesDic = bytesDics.get(field);
+    if (bytesDic != null) return bytesDic;
+    bytesDic = new BytesDic(field);
     // ensure reader
     IndexReader reader = reader();
-    dic.docs = reader.getDocCount(field);
-    dic.occs = reader.getSumTotalTermFreq(field);
+    bytesDic.docs = reader.getDocCount(field);
+    bytesDic.occs = reader.getSumTotalTermFreq(field);
     BytesRef bytes;
     for (LeafReaderContext context : reader.leaves()) {
       LeafReader leaf = context.reader();
       TermsEnum tenum = leaf.terms(field).iterator();
       while((bytes=tenum.next()) != null) {
-        dic.add(bytes, tenum.totalTermFreq());
+        bytesDic.add(bytes, tenum.totalTermFreq());
       }
     }
-    dic.sort();
-    dics.put(field, dic);
-    return dic;
+    bytesDic.sort();
+    bytesDics.put(field, bytesDic);
+    return bytesDic;
   }
 
   

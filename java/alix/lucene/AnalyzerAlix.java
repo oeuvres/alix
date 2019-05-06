@@ -12,7 +12,7 @@ public class AnalyzerAlix extends Analyzer
   {
     Tokenizer src = new TokenizerFr();
     TokenStream result = new TokenLem(src);
-    result = new TokenCloud(result);
+    result = new TokenLemCloud(result);
     return new TokenStreamComponents(src, result);
   }
 

@@ -95,7 +95,7 @@ public class IndexerTask implements Runnable
         error(e);
       }
       StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
-      if ()
+      // if ()
     }
   }
   synchronized public File next() {
@@ -220,7 +220,7 @@ public class IndexerTask implements Runnable
     List<File> files = collect(xmlGlob); // CopyOnWriteArrayList produce some duplicates
     Iterator<File> it = files.iterator();
 
-    Templates templates;
+    Templates templates = null;
     // compile XSLT
     if (xslFile != null) {
       templates = factory.newTemplates(new StreamSource(xslFile));

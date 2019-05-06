@@ -231,10 +231,10 @@ public class Cooc
     
     Cooc cooc = new Cooc(alix.searcher(), pivotQuery, Indexer.content, 1, 1);
     BytesRef bytes = new BytesRef();
-    Dic dic = alix.dic(Indexer.content);
-    while (dic.next()) {
-      dic.term(bytes);
-      System.out.print(bytes.utf8ToString()+":"+dic.count(bytes)+" - ");
+    BytesDic bytesDic = alix.bytesDic(Indexer.content);
+    while (bytesDic.next()) {
+      bytesDic.term(bytes);
+      System.out.print(bytes.utf8ToString()+":"+bytesDic.count(bytes)+" - ");
       System.out.println(cooc.count(Indexer.content, bytes));
       
     }

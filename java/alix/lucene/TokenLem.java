@@ -9,8 +9,8 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import alix.fr.dic.Tag;
-import alix.lucene.CharDic.LexEntry;
-import alix.lucene.CharDic.NameEntry;
+import alix.lucene.TokenDics.LexEntry;
+import alix.lucene.TokenDics.NameEntry;
 import alix.util.Char;
 
 /**
@@ -72,7 +72,7 @@ public final class TokenLem extends TokenFilter
       return true;
     }
     // normalise œ, É
-    CharDic.norm(term);
+    TokenDics.norm(term);
     // Get first char
     char c1 = term.charAt(0);
     // a tag do not affect the prev flags
@@ -82,7 +82,7 @@ public final class TokenLem extends TokenFilter
     NameEntry name;
     // norm case
     if (Char.isUpperCase(c1)) {
-      name = CharDic.name(term);
+      name = TokenDics.name(term);
       if (name != null) {
         flagsAtt.setFlags(name.tag);
         return true;
@@ -94,7 +94,7 @@ public final class TokenLem extends TokenFilter
       }
       // test if it is a known word
       term.setCharAt(0, Char.toLower(c1));
-      word = CharDic.word(term);
+      word = TokenDics.word(term);
       if (word == null) {
         // unknown, restore cap, let other filters say better
         term.setCharAt(0, Char.toUpper(c1));
@@ -103,7 +103,7 @@ public final class TokenLem extends TokenFilter
     }
 
     else {
-      word = CharDic.word(term);
+      word = TokenDics.word(term);
       if (word == null) return true;
     }
     // known word

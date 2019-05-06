@@ -40,7 +40,7 @@ public class ParseBlob implements Runnable
     private final int end;
 
     /**
-     * Open database before ops, and load dics.
+     * Open database before ops, and load bytesDics.
      * 
      * @throws SQLException
      */
@@ -79,7 +79,7 @@ public class ParseBlob implements Runnable
     }
 
     /**
-     * Close database and update dics.
+     * Close database and update bytesDics.
      * @throws SQLException
      */
     public static void close() throws SQLException

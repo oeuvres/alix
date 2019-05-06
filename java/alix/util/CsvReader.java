@@ -15,11 +15,12 @@ import java.util.HashMap;
 
 import alix.fr.dic.Tag;
 import alix.lucene.TokenAttChar;
-import alix.lucene.CharDic.LexEntry;
+import alix.lucene.TokenDics.LexEntry;
 
 /**
  * A light fast csv parser without Strings, especially to load jar resources.
  * Populate a reusable predefined array of object.
+ * 
  * @author fred
  *
  */
@@ -46,11 +47,11 @@ public class CsvReader
   /** line number */
   private int line = -1;
 
-
   public CsvReader(Reader reader, int cols) throws IOException
   {
     this(reader, cols, ';');
   }
+
   public CsvReader(Reader reader, int cols, char sep) throws IOException
   {
     this.reader = reader;
@@ -58,16 +59,19 @@ public class CsvReader
     quote = '"';
     this.sep = sep;
   }
+
   public Row row()
   {
     return this.row;
   }
+
   public int line()
   {
     return this.line;
   }
 
-  public boolean readRow() throws IOException {
+  public boolean readRow() throws IOException
+  {
     if (this.bufPos < 0) return false;
     Row row = this.row.reset();
     Chain cell = row.next();
@@ -77,13 +81,13 @@ public class CsvReader
     char quote = this.quote;
     boolean inquote;
     char lastChar = 0;
-    int crlf = 0; // used to not append CR to a CRLF ending line 
+    int crlf = 0; // used to not append CR to a CRLF ending line
     while (true) {
       // fill buffer
       if (bufLen == bufPos) {
         // copy chars before erase them
-        if (cell == null);
-        else if (lastChar == CR) cell.append(buf, bufMark, bufLen - bufMark -1 ); // do not append CR to cell
+        if (cell == null) ;
+        else if (lastChar == CR) cell.append(buf, bufMark, bufLen - bufMark - 1); // do not append CR to cell
         else cell.append(buf, bufMark, bufLen - bufMark);
         bufLen = reader.read(buf, 0, buf.length);
         bufMark = 0;
@@ -98,7 +102,7 @@ public class CsvReader
       final char c = buf[bufPos++];
       // escaping char ? what to do
       if (lastChar == CR) {
-        if(c != LF) { // old mac line
+        if (c != LF) { // old mac line
           bufPos--;
           break;
         }
@@ -120,6 +124,7 @@ public class CsvReader
     line++;
     return true;
   }
+
   public class Row
   {
     /** Predefined number of cells to populate */
@@ -128,6 +133,7 @@ public class CsvReader
     private final int cols;
     /** Internal pointer in cells */
     int pointer;
+
     /** constructor */
     public Row(int cols)
     {
@@ -137,8 +143,10 @@ public class CsvReader
       }
       this.cols = cols;
     }
+
     /**
      * Reset all cells
+     * 
      * @return
      */
     public Row reset()
@@ -149,6 +157,7 @@ public class CsvReader
       }
       return this;
     }
+
     /**
      * Give next cell or null if no more
      */
@@ -156,6 +165,7 @@ public class CsvReader
     {
       return cells[col];
     }
+
     /**
      * Give next cell or null if no more
      */
@@ -164,6 +174,7 @@ public class CsvReader
       if (pointer >= cols) return null;
       return cells[pointer++];
     }
+
     @Override
     public String toString()
     {
@@ -181,31 +192,4 @@ public class CsvReader
 
   }
 
-  public static void main(String[] args) throws IOException, ParseException, URISyntaxException
-  {
-    Reader reader;
-    int i;
-    long time;
-    
-    
-    for (int loop = 0; loop < 10; loop++) {
-      
-      
-      i = -1;
-      HashMap<TokenAttChar, LexEntry> dic1 = new HashMap<TokenAttChar, LexEntry>();
-      // nio is not faster
-      // Path path = Paths.get(Tag.class.getResource("word.csv").toURI());
-      // reader = Files.newBufferedReader(path, StandardCharsets.UTF_8);
-      reader = new InputStreamReader(Tag.class.getResourceAsStream("word.csv"));
-      CsvReader csv = new CsvReader(reader, 4);
-      time = System.nanoTime();
-      while (csv.readRow()) {
-        i++;
-        // dic1.put(new TokenAttChar(csv.row().get(0)), new LexEntry(csv.row().get(1), csv.row().get(2)));
-      }
-      System.out.println("csv: " + ((System.nanoTime() - time) / 1000000) + " ms line="+i);
-      
-    }
-    
-  }
 }

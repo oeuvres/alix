@@ -1,4 +1,4 @@
 /**
- * An automaton to query a stream of token.
+ * An automaton to query a stream of tokens.
  */
 package alix.grep.query;

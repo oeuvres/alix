@@ -12,8 +12,8 @@ import java.util.Map;
 
 import alix.fr.dic.Tag;
 import alix.lucene.TokenAttChar;
-import alix.lucene.CharDic.LexEntry;
-import alix.lucene.CharDic.NameEntry;
+import alix.lucene.TokenDics.LexEntry;
+import alix.lucene.TokenDics.NameEntry;
 import alix.util.Chain;
 import alix.util.CsvReader;
 import sun.misc.Unsafe;
