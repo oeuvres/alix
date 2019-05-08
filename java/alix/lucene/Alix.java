@@ -117,22 +117,22 @@ public class Alix
   /** Mandatory content, XML file name, maybe used for update */
   public static final String OFFSETS = "OFFSETS";
   /** For each field, a dictionary of the terms in frequency order */
-  final static HashMap<String, BytesDic> bytesDics = new HashMap<String, BytesDic>();
+  final static HashMap<String, BytesDic> dictionaries = new HashMap<String, BytesDic>();
   /** Current filename proceded */
-  public static final FieldType ftypeText = new FieldType();
+  public static final FieldType ftypeAll = new FieldType();
   static {
     // inverted index
-    ftypeText.setTokenized(true);
-    // position needed for phrase query
-    ftypeText.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
-    // keep
-    ftypeText.setStored(true);
-    ftypeText.setStoreTermVectors(true);
-    ftypeText.setStoreTermVectorOffsets(true);
-    ftypeText.setStoreTermVectorPositions(true);
+    ftypeAll.setTokenized(true);
     // http://makble.com/what-is-lucene-norms, omit norms (length normalization)
-    ftypeText.setOmitNorms(true);
-    ftypeText.freeze();
+    ftypeAll.setOmitNorms(true);
+    // position needed for phrase query
+    ftypeAll.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    ftypeAll.setStoreTermVectors(true);
+    ftypeAll.setStoreTermVectorOffsets(true);
+    ftypeAll.setStoreTermVectorPositions(true);
+    // do not store in this field
+    ftypeAll.setStored(false);
+    ftypeAll.freeze();
   }
   /** Pool of instances, unique by path */
   public static final HashMap<Path, Alix> pool = new HashMap<Path, Alix>();
@@ -223,30 +223,29 @@ public class Alix
     return writer;
   }
 
-  public BytesDic bytesDic(final String field) throws IOException
+  public BytesDic dic(final String field) throws IOException
   {
-    
-    BytesDic bytesDic = bytesDics.get(field);
-    if (bytesDic != null) return bytesDic;
-    bytesDic = new BytesDic(field);
+
+    BytesDic dic = dictionaries.get(field);
+    if (dic != null) return dic;
+    dic = new BytesDic(field);
     // ensure reader
     IndexReader reader = reader();
-    bytesDic.docs = reader.getDocCount(field);
-    bytesDic.occs = reader.getSumTotalTermFreq(field);
+    dic.docs = reader.getDocCount(field);
+    dic.occs = reader.getSumTotalTermFreq(field);
     BytesRef bytes;
     for (LeafReaderContext context : reader.leaves()) {
       LeafReader leaf = context.reader();
       TermsEnum tenum = leaf.terms(field).iterator();
-      while((bytes=tenum.next()) != null) {
-        bytesDic.add(bytes, tenum.totalTermFreq());
+      while ((bytes = tenum.next()) != null) {
+        dic.add(bytes, tenum.totalTermFreq());
       }
     }
-    bytesDic.sort();
-    bytesDics.put(field, bytesDic);
-    return bytesDic;
+    dic.sort();
+    dictionaries.put(field, dic);
+    return dic;
   }
 
-  
   /**
    * Parses command-line
    */

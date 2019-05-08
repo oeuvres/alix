@@ -174,7 +174,7 @@ public class Cooc
       Document doc = new Document();
       for(String text: docs) {
         doc.clear();
-        doc.add(new Field(content, text+" "+no+" ", Alix.ftypeText));
+        doc.add(new Field(content, text+" "+no+" ", Alix.ftypeAll));
         doc.add(new IntPoint(tag, j % 3));
         try {
           writer.addDocument(doc);
@@ -231,7 +231,7 @@ public class Cooc
     
     Cooc cooc = new Cooc(alix.searcher(), pivotQuery, Indexer.content, 1, 1);
     BytesRef bytes = new BytesRef();
-    BytesDic bytesDic = alix.bytesDic(Indexer.content);
+    BytesDic bytesDic = alix.dic(Indexer.content);
     while (bytesDic.next()) {
       bytesDic.term(bytes);
       System.out.print(bytes.utf8ToString()+":"+bytesDic.count(bytes)+" - ");

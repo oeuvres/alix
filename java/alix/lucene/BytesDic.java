@@ -30,6 +30,8 @@ public class BytesDic
   private int pointer = -1;
   /** Cache size after sorting */
   private int size;
+  /** Reusable bytes ref */
+  BytesRef bytes = new BytesRef();
   
   public BytesDic(final String name)
   {
@@ -110,19 +112,37 @@ public class BytesDic
     return hash.get(id, bytes);
   }
   /**
-   * Get current count.
+   * Get current term
+   * @return
+   */
+  public String term()
+  {
+    final int id = sorted[pointer].id;
+    return hash.get(id, bytes).utf8ToString();
+  }
+  /**
+   * Get current count
    * @return
    */
   public long count()
   {
     return sorted[pointer].count;
   }
+  /**
+   * Get current id
+   * @return
+   */
+  public int id()
+  {
+    return sorted[pointer].id;
+  }
+  
   
 
   /**
-   * Take the first term in the list after sorting (restart pointer)
+   * Reset before calling next();
    */
-  public void first()
+  public void reset()
   {
     pointer = -1;
   }
@@ -151,9 +171,24 @@ public class BytesDic
       final long y = o.count;
       if (x > y) return -1;
       else if (x < y) return 1;
-      BytesRef term1 = new BytesRef();
       return term.compareTo(o.term);
     }
   }
 
+  @Override
+  public String toString() {
+    StringBuilder string = new StringBuilder();
+    int max = 100;
+    this.reset();
+    string.append(name).append(", docs=").append(docs).append(" occs=").append(occs).append("\n");
+    while (this.next()) {
+      string.append(term()).append(":").append(count()).append(" (").append(id()).append(")\n");
+      if (max-- == 0) {
+        string.append("...\n");
+        break;
+      }
+    }
+    return string.toString();
+  }
+  
 }

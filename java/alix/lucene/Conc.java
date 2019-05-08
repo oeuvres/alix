@@ -71,9 +71,9 @@ public class Conc
         Document doc = new Document();
         String name = "text";
         String text = "Lucene is an Information Retrieval library written in Java";
-        doc.add(new Field(name, text, Alix.ftypeText));
+        doc.add(new Field(name, text, Alix.ftypeAll));
         text = "Lucene est une librairie d'indexation plein texte en Java.";
-        doc.add(new Field(name, text, Alix.ftypeText));
+        doc.add(new Field(name, text, Alix.ftypeAll));
         indexWriter.addDocument(doc);
         indexWriter.addDocument(doc);
         IndexReader ir=DirectoryReader.open(indexWriter);
@@ -189,7 +189,7 @@ public class Conc
       };
       for(String text: docs) {
         Document doc = new Document();
-        doc.add(new Field("text", text, Alix.ftypeText));
+        doc.add(new Field("text", text, Alix.ftypeAll));
         lucwriter.addDocument(doc);
       }
       lucwriter.commit();

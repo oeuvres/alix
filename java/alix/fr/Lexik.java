@@ -404,7 +404,7 @@ public class Lexik
     }
 
     /**
-     * Compare bytesDics, names should not contain common words
+     * Compare dictionaries, names should not contain common words
      * 
      * @throws ParseException
      * @throws IOException

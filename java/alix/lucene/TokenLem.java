@@ -23,9 +23,9 @@ public final class TokenLem extends TokenFilter
   /** A linguistic category as a short number, from Tag */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
   /** A lemma when possible */
-  private final TokenAttLem tokenAttLem = addAttribute(TokenAttLem.class); // ? needs to be declared in the tokenizer
+  private final TokenAttLem tokenAttLem = addAttribute(TokenAttLem.class);
   /** Last token was Punctuation */
-  private boolean waspun;
+  private boolean waspun = true; // first word considered as if it follows a dot
   /** Store state */
   private State save;
   /** Keep trace of tokens */
@@ -119,5 +119,6 @@ public final class TokenLem extends TokenFilter
   {
     super.reset();
     save = null;
+    waspun = true;
   }
 }

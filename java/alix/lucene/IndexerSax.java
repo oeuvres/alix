@@ -26,7 +26,33 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import net.sf.saxon.s9api.SaxonApiException;
 
-
+/**
+ * Index an xml file of lucene documents.
+ * React to the namespace uri xmlns:alix="http://alix.casa".
+ * The element <alix:document> contains a document.
+ * The element <alix:field> contains a field.
+ * <pre>
+ * <freename xmlns:alix="http://alix.casa">
+ *    <alix:document>
+        <alix:field name="text" type="text">
+          Le petit chat est mort.
+        </alix:field>
+      </alix:document>
+      <alix:document>
+        <alix:field name="text" type="xml">
+          <p>La <i>petite</i> chatte est morte.</p>
+        </alix:field>
+      </alix:document>
+ * </freename>
+ * </pre>
+ * 
+ * <p>
+ * <b>NOTE:</b> This indexer do not reuse fields and document object, because the fields provided by source are not predictable.
+ *  
+ * </p>
+ * @author fred
+ *
+ */
 public class IndexerSax extends DefaultHandler
 {
   /** Lucene index */
@@ -34,7 +60,7 @@ public class IndexerSax extends DefaultHandler
   /** Current file processed */
   final String filename;
   /** Curent document to index */
-  Document document = new Document();
+  Document document;
   /** Flag set by a text field */
   boolean record = true;
   /** Name of the current xml field to populate */
@@ -53,6 +79,7 @@ public class IndexerSax extends DefaultHandler
   @Override
   public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException
   {
+    System.out.println(uri+"::"+qName);
     empty = true;
     // output all elements inside a text field
     if (!uri.endsWith("alix.casa")) {
@@ -94,9 +121,9 @@ public class IndexerSax extends DefaultHandler
     }
     // create a new Lucene document
     else if (localName.equals("document")) {
-      if (!document.getFields().isEmpty())
+      if (document != null)
         throw new SAXException("<alix:document> A pending document has not been indexed.");
-      document.clear();
+      document = new Document();
       // key to delete
       document.add(new StringField(Alix.FILENAME, filename, Store.YES));
     }
@@ -112,6 +139,7 @@ public class IndexerSax extends DefaultHandler
         throw new SAXException("<alix:field> A field must have a type=\"[xml, facet, token, int]\"");
       String value = attributes.getValue("value");
       switch (type) {
+        case "text":
         case "xml":
           field = name;
           record = true;
@@ -187,8 +215,8 @@ public class IndexerSax extends DefaultHandler
     }
     empty = false;
     if ("document".equals(localName)) {
-      if (document.getFields().isEmpty())
-        throw new SAXException("</alix:document> empty document, no write");
+      if (document == null)
+        throw new SAXException("</alix:document> empty document, nothing to write");
       try {
         index.addDocument(document);
         // index.addDocuments(docs) // maybe used in future for nested docs
@@ -201,22 +229,18 @@ public class IndexerSax extends DefaultHandler
     if ("field".equals(localName) && record) {
       record = false;
       Tokenizer source = new TokenizerFr();
-      source.setReader(new StringReader(this.xml.toString()));
+      String text = this.xml.toString();
+      this.xml.setLength(0);
+      source.setReader(new StringReader(text));
       xml.setLength(0);
       TokenStream result = new TokenLem(source);
       result = new CachingTokenFilter(result);
-
-      /*
-      TokenStream cloud = new LowerCaseFilter(source1);
-      TokenStream final2 = new EntityDetect(sink1);
-      TokenStream final3 = new URLDetect(sink2);
-
-      d.add(new TextField("f1", final1));
-      d.add(new TextField("f2", final2));
-      d.add(new TextField("f3", final3));
-      document.add(new Field(field, xml, Alix.ftypeText));
+      TokenStream full = new TokenLemFull(result);
+      TokenStream cloud = new TokenLemCloud(result);
+      document.add(new StoredField(field + "_store", text));
+      document.add(new Field(field, full, Alix.ftypeAll));
+      document.add(new Field(field + "_cloud", cloud, Alix.ftypeAll));
       field = null;
-      */
     }
   }
 }
