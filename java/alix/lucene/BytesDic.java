@@ -182,7 +182,7 @@ public class BytesDic
     this.reset();
     string.append(name).append(", docs=").append(docs).append(" occs=").append(occs).append("\n");
     while (this.next()) {
-      string.append(term()).append(":").append(count()).append(" (").append(id()).append(")\n");
+      string.append(term()).append(":").append(count()).append("\n");
       if (max-- == 0) {
         string.append("...\n");
         break;

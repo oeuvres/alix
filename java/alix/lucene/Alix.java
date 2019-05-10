@@ -72,6 +72,7 @@ import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
@@ -82,6 +83,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -218,7 +220,9 @@ public class Alix
     // -Xmx1g):
     conf.setRAMBufferSizeMB(48);
     conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
+    // 
     conf.setSimilarity(new BM25Similarity());
+    // no effet found with modification ConcurrentMergeScheduler
     writer = new IndexWriter(dir, conf);
     return writer;
   }
@@ -236,7 +240,9 @@ public class Alix
     BytesRef bytes;
     for (LeafReaderContext context : reader.leaves()) {
       LeafReader leaf = context.reader();
-      TermsEnum tenum = leaf.terms(field).iterator();
+      Terms terms = leaf.terms(field);
+      if (terms == null) continue; 
+      TermsEnum tenum = terms.iterator();
       while ((bytes = tenum.next()) != null) {
         dic.add(bytes, tenum.totalTermFreq());
       }
@@ -244,6 +250,12 @@ public class Alix
     dic.sort();
     dictionaries.put(field, dic);
     return dic;
+  }
+  
+  @Override
+  public String toString()
+  {
+    return "lucene@" + path;
   }
 
   /**

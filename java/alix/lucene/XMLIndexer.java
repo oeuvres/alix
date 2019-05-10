@@ -6,6 +6,8 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -25,6 +27,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
 import javax.xml.transform.Result;
 import javax.xml.transform.Source;
 import javax.xml.transform.Templates;
@@ -32,6 +37,7 @@ import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.sax.SAXResult;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
@@ -46,40 +52,65 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 
-public class IndexerTask implements Runnable
+
+public class XMLIndexer implements Runnable
 {
   /** XSLT processor (saxon) */
-  static final TransformerFactory factory;
+  static final TransformerFactory XSLFactory;
   static {
     // use JAXP standard API with Saxon
     System.setProperty("javax.xml.transform.TransformerFactory", "net.sf.saxon.TransformerFactoryImpl");
-    factory = TransformerFactory.newInstance();
-    factory.setAttribute("http://saxon.sf.net/feature/version-warning", Boolean.FALSE);
-    factory.setAttribute("http://saxon.sf.net/feature/recoveryPolicy", Integer.valueOf(0));
-    factory.setAttribute("http://saxon.sf.net/feature/linenumbering", Boolean.TRUE);
+    XSLFactory = TransformerFactory.newInstance();
+    XSLFactory.setAttribute("http://saxon.sf.net/feature/version-warning", Boolean.FALSE);
+    XSLFactory.setAttribute("http://saxon.sf.net/feature/recoveryPolicy", Integer.valueOf(0));
+    XSLFactory.setAttribute("http://saxon.sf.net/feature/linenumbering", Boolean.TRUE);
   }
-  /** A garbage collector for XSL parser */
-  static Result outNull = new StreamResult(new NullOutputStream());
-  /** The XSL transformer to parse XML files */
-  Transformer parser;
-
+  /** SAX factory */
+  static final SAXParserFactory SAXFactory = SAXParserFactory.newInstance();
+  static {
+    SAXFactory.setNamespaceAware(true);
+  }
   /** Current lucene index writer, filled by XSL */
-  final IndexWriter writer;
+  private final IndexWriter writer;
   /** Iterator in a list of files, synchronized */
-  final Iterator<File> it;
-  /** An XSL transformer to produce documents and fields */
-  Transformer transformer;
+  private final Iterator<File> it;
+  /** The XSL transformer to parse XML files */
+  private Transformer transformer;
+  /** A SAX processor */
+  private SAXParser SAXParser;
+  /** SAX handler for indexation */
+  private SAXIndexer handler;
+  /** SAX output for XSL */
+  private SAXResult result;
 
-  public IndexerTask(IndexWriter writer, Iterator<File> it, Templates templates) throws TransformerConfigurationException
+  /**
+   * Create a thread reading a shared file list to index.
+   * Provide an indexWriter, a file list iterator, and an optional compiled xsl 
+   * (used to transform original XML docs in the the alix name space <alix:documet>, <alix:field>)  
+   * @param writer
+   * @param it
+   * @param templates
+   * @throws TransformerConfigurationException
+   * @throws SAXException 
+   * @throws ParserConfigurationException 
+   */
+  public XMLIndexer(IndexWriter writer, Iterator<File> it, Templates templates) throws TransformerConfigurationException, ParserConfigurationException, SAXException
   {
     this.writer = writer;
     this.it = it;
+    handler = new SAXIndexer(writer);
     if (templates != null) {
       transformer = templates.newTransformer();
+      result = new SAXResult(handler);
     }
-
+    else {
+      SAXParser = SAXFactory.newSAXParser();
+    }
   }
   @Override
   public void run()
@@ -89,49 +120,34 @@ public class IndexerTask implements Runnable
       if (file == null) return;
       byte[] bytes = null;
       try {
+        // read file as fast as possible to release disk resource for other threads
         bytes = Files.readAllBytes(file.toPath());
+        String fileName = file.getName();
+        fileName = fileName.substring(0, fileName.lastIndexOf('.'));
+        info(fileName + "                        ".substring(Math.min(22, fileName.length())) + file.getParent());
+        handler.setFileName(fileName);
+        if (transformer != null) {
+          StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
+          transformer.transform(source, result);
+        }
+        else {
+          SAXParser.parse(new ByteArrayInputStream(bytes), handler);
+        }
       }
       catch (IOException e) {
         error(e);
       }
-      StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
-      // if ()
+      catch (TransformerException e) {
+        error(e);
+      }
+      catch (SAXException e) {
+        error(e);
+      }
     }
   }
   synchronized public File next() {
     if (!it.hasNext()) return null;
     return it.next();
-  }
-
-  /**
-   * Indexes one or more XML documents or documents directory
-   * 
-   * @throws TransformerException
-   * @throws TransformerConfigurationException
-   */
-  public void parse(Path xmlPath)
-  {
-    // get file name without extension
-    /*
-    filename = xmlPath.getFileName().toString();
-    filename = filename.substring(0, filename.lastIndexOf('.'));
-    info(filename + "                        ".substring(Math.min(22, filename.length())) + xmlPath.getParent());
-    writer.deleteDocuments(new Term(Alix.FILENAME, filename));
-
-    try {
-      // writer.deleteDocuments(new Term(Alix.FILENAME, filename));
-      // A file to work on
-      Source xml = new StreamSource(xmlPath.toFile());
-      parser.setParameter("filename", filename);
-      parser.transform(xml, outNull);
-    }
-    catch (IOException e) {
-      fatal(e);
-    }
-    catch (TransformerException e) {
-      error(e);
-    }
-    */
   }
   
   /**
@@ -151,7 +167,7 @@ public class IndexerTask implements Runnable
    */
   public static void info(Object o)
   {
-    System.out.println(o);
+    // System.out.println(o);
   }
 
   /**
@@ -159,7 +175,11 @@ public class IndexerTask implements Runnable
    */
   public static void error(Object o)
   {
-    if (o instanceof Exception) System.err.println(((Exception) o).getStackTrace());
+    if (o instanceof Exception) {
+      StringWriter sw = new StringWriter();
+      ((Exception) o).printStackTrace(new PrintWriter(sw));
+      System.err.println(sw);
+    }
     else System.err.println(o);
   }
 
@@ -172,7 +192,16 @@ public class IndexerTask implements Runnable
     System.exit(1);
   }
   
-  static public List<File> collect(String path)
+  /**
+   * Collect files to index recursively from a folder. 
+   * Default regex pattern to select files is : .*\.xml
+   * A regex selector can be provided by the path argument.
+   * path= "folder/to/index/.*\.tei"
+   * Be careful, pattern is a regex, not a glob (don not forger the dot for any character).
+   * @param path
+   * @return
+   */
+  public static List<File> collect(String path)
   {
     File dir = new File(path);
     String re = ".*\\.xml";
@@ -183,7 +212,13 @@ public class IndexerTask implements Runnable
     }
     return collect(dir, Pattern.compile(re));
   }
-  static public List<File> collect(File dir, Pattern pattern)
+  /**
+   * Private collector of files to index.
+   * @param dir
+   * @param pattern
+   * @return
+   */
+  private static List<File> collect(File dir, Pattern pattern)
   {
     
     ArrayList<File> files = new ArrayList<File>();
@@ -194,50 +229,53 @@ public class IndexerTask implements Runnable
       if (name.startsWith(".")) continue;
       else if (entry.isDirectory()) files.addAll(collect(entry, pattern));
       else if (!pattern.matcher(name).matches()) continue;
-      else files.add(new File(entry, ""+i));
+      else files.add(entry);
       i++;
     }
     return files;
   }  
   /**
-   * Start to scan the glob of xml files
+   * Recursive indexation of an XML folder, multi-threadeded.
    * 
    * @param indexDir
    *          where the lucene indexes are generated
    * @throws TransformerConfigurationExceptionArrayList
    * @throws InterruptedException 
    * @throws TransformerConfigurationException 
+   * @throws SAXException 
+   * @throws ParserConfigurationException 
    */
-  static public void dispatch(String xmlGlob, String indexDir, String xslFile)
-      throws IOException, InterruptedException, TransformerConfigurationException
+  static public void index(Alix alix, int threads, String xmlGlob, String xslFile)
+      throws IOException, InterruptedException, TransformerConfigurationException, ParserConfigurationException, SAXException
   {
 
-    info("Lucene, src:" + xmlGlob + ", index:" + indexDir +", parser:" + xslFile);
+    info("Lucene, index:" + alix +", files:" + xmlGlob + " , parser:" + xslFile);
 
-    Alix alix = Alix.instance(Paths.get(indexDir));
     IndexWriter writer = alix.writer();
-
+    // preload dictionaries
     List<File> files = collect(xmlGlob); // CopyOnWriteArrayList produce some duplicates
     Iterator<File> it = files.iterator();
-
+    
+    // compile XSLT 1 time
     Templates templates = null;
-    // compile XSLT
     if (xslFile != null) {
-      templates = factory.newTemplates(new StreamSource(xslFile));
+      templates = XSLFactory.newTemplates(new StreamSource(xslFile));
     }
-
+    
     
     // multithread pool, one thread load bytes from disk, and delegate indexation to other threads
-    int threads = Runtime.getRuntime().availableProcessors();
     ExecutorService pool = Executors.newFixedThreadPool(threads);
     for (int i = 0; i < threads; i++) {
-      pool.submit(new IndexerTask(writer, it, templates));
+      pool.submit(new XMLIndexer(writer, it, templates));
     }
     pool.shutdown();
     boolean finished = pool.awaitTermination(30, TimeUnit.MINUTES);
-
     writer.commit();
-    // writer.forceMerge(1);
+    long start = System.nanoTime();
+    writer.forceMerge(1);
+    
+    long ms = (System.nanoTime() - start) / 1000000;
+    System.out.println("Merge in " + ms + " ms.");
     writer.close();
   }
 

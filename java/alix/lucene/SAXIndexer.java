@@ -18,6 +18,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
@@ -53,33 +54,59 @@ import net.sf.saxon.s9api.SaxonApiException;
  * @author fred
  *
  */
-public class IndexerSax extends DefaultHandler
+public class SAXIndexer extends DefaultHandler
 {
-  /** Lucene index */
-  final IndexWriter index;
+  /** Lucene writer */
+  private final IndexWriter writer;
   /** Current file processed */
-  final String filename;
-  /** Curent document to index */
-  Document document;
+  private String fileName;
+  /** Curent document to writer */
+  private Document document;
   /** Flag set by a text field */
-  boolean record = true;
+  private boolean record = true;
   /** Name of the current xml field to populate */
-  String field;
+  private String field;
   /** A text field value */
-  StringBuilder xml = new StringBuilder();
-  /** Flag to verify that an element is not empty */
-  boolean empty;
+  private StringBuilder xml = new StringBuilder();
+  /** Flag to verify that an element is not empty (for serialization) */
+  private boolean empty;
+  /** A reusable field for deletion */
+  private Term del = new Term(Alix.FILENAME);
   
-  public IndexerSax(final IndexWriter index, final String filename)
+  
+  /**
+   * Keep same writer for 
+   * @param writer
+   * @param filename
+   */
+  public SAXIndexer(final IndexWriter writer)
   {
-    this.index = index;
-    this.filename = filename;
+    this.writer = writer;
+  }
+  
+  /**
+   * Provide a filename for the documents to be processed.
+   * All document from this source will be indexed with this token.
+   * This keyword should be unique for the entire index.
+   * All documents from this filename will deleted before indexation.
+   * @throws IOException 
+   */
+  public void setFileName(String fileName) throws IOException
+  {
+    this.fileName = fileName;
+    writer.deleteDocuments(new Term(Alix.FILENAME, fileName));
   }
 
   @Override
+  public void startDocument()  throws SAXException
+  {
+    if (this.fileName == null)
+      throw new SAXException("Java error, .setFileName() sould be called before sending a document.");
+    
+  }
+  @Override
   public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException
   {
-    System.out.println(uri+"::"+qName);
     empty = true;
     // output all elements inside a text field
     if (!uri.endsWith("alix.casa")) {
@@ -125,7 +152,7 @@ public class IndexerSax extends DefaultHandler
         throw new SAXException("<alix:document> A pending document has not been indexed.");
       document = new Document();
       // key to delete
-      document.add(new StringField(Alix.FILENAME, filename, Store.YES));
+      document.add(new StringField(Alix.FILENAME, fileName, Store.YES));
     }
     // open a field
     else if (localName.equals("field")) {
@@ -218,8 +245,8 @@ public class IndexerSax extends DefaultHandler
       if (document == null)
         throw new SAXException("</alix:document> empty document, nothing to write");
       try {
-        index.addDocument(document);
-        // index.addDocuments(docs) // maybe used in future for nested docs
+        writer.addDocument(document);
+        // writer.addDocuments(docs) // maybe used in future for nested docs
       }
       catch (IOException e) {
         throw new SAXException(e);
@@ -242,5 +269,12 @@ public class IndexerSax extends DefaultHandler
       document.add(new Field(field + "_cloud", cloud, Alix.ftypeAll));
       field = null;
     }
+  }
+  
+  @Override
+  public void endDocument() throws SAXException
+  {
+     // ensure a name for the file, to allow deletion of document of same name
+    fileName = null;
   }
 }
