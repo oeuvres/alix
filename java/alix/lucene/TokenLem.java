@@ -9,8 +9,8 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import alix.fr.dic.Tag;
-import alix.lucene.TokenDics.LexEntry;
-import alix.lucene.TokenDics.NameEntry;
+import alix.lucene.CharsAttMaps.LexEntry;
+import alix.lucene.CharsAttMaps.NameEntry;
 import alix.util.Char;
 
 /**
@@ -23,13 +23,13 @@ public final class TokenLem extends TokenFilter
   /** A linguistic category as a short number, from Tag */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
   /** A lemma when possible */
-  private final TokenAttLem tokenAttLem = addAttribute(TokenAttLem.class);
+  private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
   /** Last token was Punctuation */
   private boolean waspun = true; // first word considered as if it follows a dot
   /** Store state */
   private State save;
   /** Keep trace of tokens */
-  // private final TokenStack stack = new TokenStack();
+  // private final TermStack stack = new TermStack();
 
   /**
    * French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel
@@ -61,8 +61,8 @@ public final class TokenLem extends TokenFilter
     // end of stream
     if (!input.incrementToken()) return false;
     final boolean waspun = this.waspun;
-    TokenAttChar term = (TokenAttChar) termAtt;
-    TokenAttChar lem = (TokenAttChar) tokenAttLem;
+    CharsAtt term = (CharsAtt) termAtt;
+    CharsAtt lem = (CharsAtt) lemAtt;
     int flags = flagsAtt.getFlags();
     // pass through zero-length terms
     if (term.length() == 0) return true;
@@ -71,8 +71,13 @@ public final class TokenLem extends TokenFilter
       // clean the term stack
       return true;
     }
+    if (term.isEmpty()) {
+      System.out.println(term);
+      System.exit(2);
+    }
     // normalise œ, É
-    TokenDics.norm(term);
+    CharsAttMaps.norm(term);
+    
     // Get first char
     char c1 = term.charAt(0);
     // a tag do not affect the prev flags
@@ -82,7 +87,7 @@ public final class TokenLem extends TokenFilter
     NameEntry name;
     // norm case
     if (Char.isUpperCase(c1)) {
-      name = TokenDics.name(term);
+      name = CharsAttMaps.name(term);
       if (name != null) {
         flagsAtt.setFlags(name.tag);
         return true;
@@ -94,7 +99,7 @@ public final class TokenLem extends TokenFilter
       }
       // test if it is a known word
       term.setCharAt(0, Char.toLower(c1));
-      word = TokenDics.word(term);
+      word = CharsAttMaps.word(term);
       if (word == null) {
         // unknown, restore cap, let other filters say better
         term.setCharAt(0, Char.toUpper(c1));
@@ -103,7 +108,7 @@ public final class TokenLem extends TokenFilter
     }
 
     else {
-      word = TokenDics.word(term);
+      word = CharsAttMaps.word(term);
       if (word == null) return true;
     }
     // known word

@@ -11,9 +11,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import alix.fr.dic.Tag;
-import alix.lucene.TokenAttChar;
-import alix.lucene.TokenDics.LexEntry;
-import alix.lucene.TokenDics.NameEntry;
+import alix.lucene.CharsAtt;
+import alix.lucene.CharsAttMaps.LexEntry;
+import alix.lucene.CharsAttMaps.NameEntry;
 import alix.util.Chain;
 import alix.util.CsvReader;
 import sun.misc.Unsafe;
@@ -125,7 +125,7 @@ public class MemBuf {
   {
     Reader reader;
     CsvReader csv;
-    HashMap<TokenAttChar, LexEntry> WORD = new HashMap<TokenAttChar, LexEntry>((int) (150000 * 0.75));
+    HashMap<CharsAtt, LexEntry> WORD = new HashMap<CharsAtt, LexEntry>((int) (150000 * 0.75));
     long time;
     int count;
     
@@ -139,7 +139,7 @@ public class MemBuf {
       Chain orth = csv.row().get(0);
       if (orth.isEmpty() || orth.charAt(0) == '#') continue;
       if (WORD.containsKey(orth)) continue;
-      TokenAttChar key = new TokenAttChar(orth);
+      CharsAtt key = new CharsAtt(orth);
       WORD.put(key, new LexEntry(csv.row().get(1), csv.row().get(2)));
       count++;
     }

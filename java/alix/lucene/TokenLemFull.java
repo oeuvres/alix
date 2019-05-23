@@ -24,7 +24,7 @@ public class TokenLemFull extends TokenFilter
   /** A linguistic category as a short number, from Tag */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
   /** A lemma when possible */
-  private final TokenAttLem lemAtt = addAttribute(TokenAttLem.class); // ? needs to be declared in the tokenizer
+  private final CharsLemAtt charsLemAtt = addAttribute(CharsLemAtt.class); // ? needs to be declared in the tokenizer
   /** A lemma when possible */
   private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class); // ? needs to be declared in the tokenizer
   /** Flag to say a tag has to be send */
@@ -39,7 +39,7 @@ public class TokenLemFull extends TokenFilter
     // purge things
     if (lem) {
       posIncAtt.setPositionIncrement(0);
-      term.setEmpty().append(lemAtt);
+      term.setEmpty().append(charsLemAtt);
       lem = false;
       return true;
     }
@@ -53,7 +53,7 @@ public class TokenLemFull extends TokenFilter
     // end of stream
     if (!input.incrementToken()) return false;
     tag = flagsAtt.getFlags();
-    if (this.lemAtt.length() != 0) lem = true;
+    if (this.charsLemAtt.length() != 0) lem = true;
     return true;
   }
 

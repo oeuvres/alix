@@ -12,7 +12,7 @@ import org.apache.lucene.util.ArrayUtil;
  * @author fred
  *
  */
-public class TokenStack
+public class TermStack
 {
   private final Term[] stack;
   private static final int DEFAULT_SIZE = 5;
@@ -22,12 +22,12 @@ public class TokenStack
   private int pointer = 0;
 
   /** Initialize stack with default size */
-  public TokenStack()
+  public TermStack()
   {
     this(DEFAULT_SIZE);
   }
 
-  public TokenStack(final int size)
+  public TermStack(final int size)
   {
     this.size = size;
     stack = new Term[size];

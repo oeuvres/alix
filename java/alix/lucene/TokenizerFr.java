@@ -34,7 +34,7 @@ public class TokenizerFr extends Tokenizer
   /** Current term, as an array of chars */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   /** Tool for string testings */
-  TokenAttChar test = new TokenAttChar();
+  CharsAtt test = new CharsAtt();
   /** Store state */
   private State save;
   /** Source buffer of chars, delegate to Lucene experts */
@@ -91,8 +91,8 @@ public class TokenizerFr extends Tokenizer
     int startOffset = -1; // this variable is always initialized
     int endOffset = -1;
     int ltOffset = -1;
-    TokenAttChar term = (TokenAttChar)this.termAtt;
-    TokenAttChar test = this.test;
+    CharsAtt term = (CharsAtt)this.termAtt;
+    CharsAtt test = this.test;
     char[] buffer = bufSrc.getBuffer();
     boolean intag = false;
     boolean tagname = false;
@@ -191,11 +191,13 @@ public class TokenizerFr extends Tokenizer
         term.append(c);
         endOffset++;
         length++;
+        lastChar = c; // give it to check if it is not a list marker
         continue;
       }
 
       // Sentence punctuation
-      if (c == '.' || c == '…' || c == '?' || c == '!') {
+      if (c == '.' || c == '…' || c == '?' || c == '!' || c == '«' || c == '—' || c == ':') {
+        // Start of quote is an event useful to interpret caps
         // a word have been started, send it
         if (length > 0 && !pun) {
           bufIndex--; // restart parser at this position
@@ -227,6 +229,7 @@ public class TokenizerFr extends Tokenizer
         break;
       }
       if (Char.isToken(c)) { // it's a token char
+        if (Char.isDigit(c)) flagsAtt.setFlags(Tag.NUM);
         // start of token, record startOffset
         if (length == 0) startOffset = offset + bufIndex - 1;
 
@@ -237,7 +240,7 @@ public class TokenizerFr extends Tokenizer
         term.append(c);
         length++;
         if (c == '\'') {
-          TokenAttChar val = TokenDics.ELLISION.get(term);
+          CharsAtt val = CharsAttMaps.ELLISION.get(term);
           if (val != null) {
             val.copyTo(term);
             break;
@@ -247,6 +250,12 @@ public class TokenizerFr extends Tokenizer
       }
       //
       else if (length > 0) { // at non-Letter w/ chars
+        // something like 1. 2.
+        if ((lastChar == '.' || c == ')' || c == '°') && flagsAtt.getFlags() == Tag.NUM) {
+          term.setEmpty().append('#');
+          length = 1;
+          flagsAtt.setFlags(Tag.PUNsent);
+        }
         break; // return 'em
       }
       lastChar = c;
@@ -296,7 +305,7 @@ public class TokenizerFr extends Tokenizer
     @Override
     public AttributeImpl createAttributeInstance(Class<? extends Attribute> attClass) {
       if (attClass == CharTermAttribute.class)
-        return new TokenAttChar();
+        return new CharsAtt();
       return delegate.createAttributeInstance(attClass);
     }
   }

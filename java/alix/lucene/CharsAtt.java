@@ -19,8 +19,8 @@ import alix.util.Chain;
  * @author fred
  *
  */
-public class TokenAttChar extends AttributeImpl
-    implements CharTermAttribute, TermToBytesRefAttribute, Cloneable, Comparable<TokenAttChar>
+public class CharsAtt extends AttributeImpl
+    implements CharTermAttribute, TermToBytesRefAttribute, Cloneable, Comparable<CharsAtt>
 {
   /** Cached hashCode */
   private int hash;
@@ -33,28 +33,37 @@ public class TokenAttChar extends AttributeImpl
    * May be used by subclasses to convert to different charsets / encodings for
    * implementing {@link #getBytesRef()}.
    */
-  protected BytesRefBuilder builder = new BytesRefBuilder();
+  protected BytesRefBuilder builder;
 
   /** Initialize this attribute with empty term text */
-  public TokenAttChar()
+  public CharsAtt()
   {
     chars = new char[ArrayUtil.oversize(MIN_BUFFER_SIZE, Character.BYTES)];
+    builder = new BytesRefBuilder();
   }
 
   /** Initialize the chars with a String */
-  public TokenAttChar(String s)
+  public CharsAtt(String s)
   {
     len = s.length();
     this.chars = new char[len];
     s.getChars(0, len, this.chars, 0);
   }
 
-  /** Initialize the chars with a Chain */
-  public TokenAttChar(Chain chain)
+  /** Copy chars from a mutable Chain object, getBytesRef() will not be available. Used as a key in HashMap. */
+  public CharsAtt(Chain chain)
   {
     len = chain.length();
     chars = new char[len];
     chain.getChars(chars);
+  }
+
+  /** Copy a token attribute, used as a key in a map.  */
+  public CharsAtt(CharsAtt token)
+  {
+    len = token.len;
+    chars = new char[len];
+    System.arraycopy(token.chars, 0, chars, 0, len);
   }
 
   @Override
@@ -259,14 +268,15 @@ public class TokenAttChar extends AttributeImpl
   }
 
   @Override
-  public TokenAttChar clone()
+  public CharsAtt clone()
   {
-    TokenAttChar t = (TokenAttChar) super.clone();
+    CharsAtt t = (CharsAtt) super.clone();
     // Do a deep clone
     t.chars = new char[this.len];
     System.arraycopy(this.chars, 0, t.chars, 0, this.len);
     t.builder = new BytesRefBuilder();
     t.builder.copyBytes(builder.get());
+    t.hash = 0;
     return t;
   }
 
@@ -278,8 +288,8 @@ public class TokenAttChar extends AttributeImpl
     }
     int len = this.len;
     char[] chars = this.chars;
-    if (other instanceof TokenAttChar) {
-      TokenAttChar term = (TokenAttChar) other;
+    if (other instanceof CharsAtt) {
+      CharsAtt term = (CharsAtt) other;
       if (term.len != len) return false;
       // if hashcode already calculated, if different, not same strings
       if (hash != 0 && term.hash != 0 && hash != term.hash) return false;
@@ -394,7 +404,7 @@ public class TokenAttChar extends AttributeImpl
   }
 
   @Override
-  public int compareTo(TokenAttChar o)
+  public int compareTo(CharsAtt o)
   {
     char[] chars1 = chars;
     char[] chars2 = o.chars;

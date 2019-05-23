@@ -210,7 +210,9 @@ public class XMLIndexer implements Runnable
       dir = dir.getParentFile();
       if (!dir.isDirectory()) fatal("FATAL " + dir + " NOT FOUND");
     }
-    return collect(dir, Pattern.compile(re));
+    ArrayList<File> files = new ArrayList<File>();
+    collect(dir, Pattern.compile(re), files);
+    return files;
   }
   /**
    * Private collector of files to index.
@@ -218,21 +220,18 @@ public class XMLIndexer implements Runnable
    * @param pattern
    * @return
    */
-  private static List<File> collect(File dir, Pattern pattern)
+  private static void collect(File dir, Pattern pattern, final ArrayList<File> files)
   {
-    
-    ArrayList<File> files = new ArrayList<File>();
     File[] ls = dir.listFiles();
     int i = 0;
     for (File entry : ls) {
       String name = entry.getName();
       if (name.startsWith(".")) continue;
-      else if (entry.isDirectory()) files.addAll(collect(entry, pattern));
+      else if (entry.isDirectory()) collect(entry, pattern, files);
       else if (!pattern.matcher(name).matches()) continue;
       else files.add(entry);
       i++;
     }
-    return files;
   }  
   /**
    * Recursive indexation of an XML folder, multi-threadeded.
@@ -271,11 +270,7 @@ public class XMLIndexer implements Runnable
     pool.shutdown();
     boolean finished = pool.awaitTermination(30, TimeUnit.MINUTES);
     writer.commit();
-    long start = System.nanoTime();
     writer.forceMerge(1);
-    
-    long ms = (System.nanoTime() - start) / 1000000;
-    System.out.println("Merge in " + ms + " ms.");
     writer.close();
   }
 

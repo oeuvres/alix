@@ -1,6 +1,7 @@
 package alix.fr.dic;
 
 import java.lang.reflect.Field;
+import java.util.BitSet;
 import java.util.HashMap;
 import alix.util.Chain;
 
@@ -12,142 +13,142 @@ import alix.util.Chain;
  */
 public final class Tag
 {
-  /** Connu comme inconnu (selon les dictionnaires) */
-  public final static short UNKNOWN = -1;
   /** Valeur par défaut, aucune information */
-  public final static short NULL = 0;
+  public final static int NULL = 0;
+  /** Connu comme inconnu (selon les dictionnaires) */
+  public final static int UNKNOWN = 1;
   /** Verbe, qui n'est pas l'une des catégories ci-dessous */
-  public final static short VERB = 0x10;
+  public final static int VERB = 0x10;
   /** Auxilliaire, conjugaison d’être et avoir */
-  public final static short VERBaux = 0x11;
+  public final static int VERBaux = 0x11;
   /** Participe passé, peut avoir un emploi adjectif, voire substantif */
-  public final static short VERBppass = 0x12;
+  public final static int VERBppass = 0x12;
   /** Participe présent, a souvent un emploi adjectif ou substantif */
-  public final static short VERBppres = 0x13;
+  public final static int VERBppres = 0x13;
   /**
    * Verbe support, fréquent mais peut significatif, comme aller (je vais faire)
    */
-  public final static short VERBsup = 0x15;
+  public final static int VERBsup = 0x15;
   /** Substantif */
-  public final static short SUB = 0x20;
+  public final static int SUB = 0x20;
   /** Substantif masculin (pas encore renseigné) */
-  public final static short SUBm = 0x21;
+  public final static int SUBm = 0x21;
   /** Substantif féminin (pas encore renseigné) */
-  public final static short SUBf = 0x22;
+  public final static int SUBf = 0x22;
   /** Catégorie un peu adhoc pour monsieur, madame, prince… */
-  public final static short SUBtit = 0x28;
+  public final static int SUBtit = 0x28;
   /** Adjectif */
-  public final static short ADJ = 0x30;
+  public final static int ADJ = 0x30;
   /** Adverbe */
-  public final static short ADV = 0x40;
+  public final static int ADV = 0x40;
   /** Adverbe de négation : ne, pas, point… */
-  public final static short ADVneg = 0x41;
+  public final static int ADVneg = 0x41;
   /** Adverbe de lieu */
-  public final static short ADVplace = 0x42;
+  public final static int ADVplace = 0x42;
   /** Adverbe de temps */
-  public final static short ADVtemp = 0x43;
+  public final static int ADVtemp = 0x43;
   /** Adverbe de quantité */
-  public final static short ADVquant = 0x44;
+  public final static int ADVquant = 0x44;
   /** Adverbe indéfini : aussi, même… */
-  public final static short ADVindef = 0x4A;
+  public final static int ADVindef = 0x4A;
   /** Adverbe interrogatif : est-ce que, comment… */
-  public final static short ADVinter = 0x4B;
+  public final static int ADVinter = 0x4B;
   /** Préposition */
-  public final static short PREP = 0x50;
+  public final static int PREP = 0x50;
   /** Déterminant */
-  public final static short DET = 0x60;
+  public final static int DET = 0x60;
   /** Déterminant article : le, la, un, des… */
-  public final static short DETart = 0x61;
+  public final static int DETart = 0x61;
   /** Déterminant prépositionnel : du, au (?? non comptable ?) */
-  public final static short DETprep = 0x62;
+  public final static int DETprep = 0x62;
   /** Déterminant numéral : deux, trois */
-  public final static short DETnum = 0x63;
+  public final static int DETnum = 0x63;
   /** Déterminant indéfini : tout, tous, quelques… */
-  public final static short DETindef = 0x6A;
+  public final static int DETindef = 0x6A;
   /** Déterminant interrogatif : quel, quelles… */
-  public final static short DETinter = 0x6B;
+  public final static int DETinter = 0x6B;
   /** Déterminant démonstratif : ce, cette, ces… */
-  public final static short DETdem = 0x6C;
+  public final static int DETdem = 0x6C;
   /** Déterminant possessif : son, mas, leurs… */
-  public final static short DETposs = 0x6D;
+  public final static int DETposs = 0x6D;
   /** Pronom */
-  public final static short PRO = 0x70;
+  public final static int PRO = 0x70;
   /** Pronom personnel : il, je, se, me… */
-  public final static short PROpers = 0x71;
+  public final static int PROpers = 0x71;
   /** Pronom relatif : qui, que, où… */
-  public final static short PROrel = 0x72;
+  public final static int PROrel = 0x72;
   /** Pronom indéfini : y, rien, tout… */
-  public final static short PROindef = 0x7A;
+  public final static int PROindef = 0x7A;
   /** Pronom interrogatif : y, rien, tout… */
-  public final static short PROint = 0x7B;
+  public final static int PROint = 0x7B;
   /** Pronom démonstratif : c', ça, cela… */
-  public final static short PROdem = 0x7C;
+  public final static int PROdem = 0x7C;
   /** Pronom possessif : le mien, la sienne… */
-  public final static short PROposs = 0x7D;
+  public final static int PROposs = 0x7D;
   /** Conjonction */
-  public final static short CONJ = 0x80;
+  public final static int CONJ = 0x80;
   /** Conjonction de coordination : et, mais, ou… */
-  public final static short CONJcoord = 0x81;
+  public final static int CONJcoord = 0x81;
   /** Conjonction de subordination : comme, si, parce que… */
-  public final static short CONJsubord = 0x82;
+  public final static int CONJsubord = 0x82;
   /** Nom propre */
-  public final static short NAME = 0xB0;
+  public final static int NAME = 0xB0;
   /** Nom de personne */
-  public final static short NAMEpers = 0xB1;
+  public final static int NAMEpers = 0xB1;
   /** Prénom masculin */
-  public final static short NAMEpersm = 0xB2;
+  public final static int NAMEpersm = 0xB2;
   /** Prénom féminin */
-  public final static short NAMEpersf = 0xB3;
+  public final static int NAMEpersf = 0xB3;
   /** Nom de lieu */
-  public final static short NAMEplace = 0xB4;
+  public final static int NAMEplace = 0xB4;
   /** Nom d’organisation */
-  public final static short NAMEorg = 0xB5;
+  public final static int NAMEorg = 0xB5;
   /** Nom de peuple */
-  public final static short NAMEpeople = 0xB6;
+  public final static int NAMEpeople = 0xB6;
   /** Nom d’événement : la Révolution, la Seconde Guerre mondiale… */
-  public final static short NAMEevent = 0xB7;
+  public final static int NAMEevent = 0xB7;
   /** Nom de personne auteur */
-  public final static short NAMEauthor = 0xB8;
+  public final static int NAMEauthor = 0xB8;
   /** Nom de personnage fictif */
-  public final static short NAMEfict = 0xB9;
+  public final static int NAMEfict = 0xB9;
   /** Titre d’œuvre */
-  public final static short NAMEtitle = 0xBA;
+  public final static int NAMEtitle = 0xBA;
   /** Animal : Pégase… */
-  public final static short NAMEanimal = 0xBD;
+  public final static int NAMEanimal = 0xBD;
   /** Demi-humain : Hercule… */
-  public final static short NAMEdemhum = 0xBE;
+  public final static int NAMEdemhum = 0xBE;
   /** Noms de dieux : Dieu, Vénus… */
-  public final static short NAMEgod = 0xBF;
+  public final static int NAMEgod = 0xBF;
   /** Ponctuation */
-  public final static short PUN = 0xC0;
+  public final static int PUN = 0xC0;
   /** Ponctuation de phrase : . ? ! */
-  public final static short PUNsent = 0xC1;
+  public final static int PUNsent = 0xC1;
   /** Ponctuation de clause : , ; ( */
-  public final static short PUNcl = 0xC2;
+  public final static int PUNcl = 0xC2;
   /** Ponctuation structurante : ¶, § */
-  public final static short PUNdiv = 0xC3;
+  public final static int PUNdiv = 0xC3;
   /** Catégories diverses */
-  public final static short MISC = 0xF0;
+  public final static int MISC = 0xF0;
   /** Abréviation (encore non résolue) */
-  public final static short ABBR = 0xF1;
+  public final static int ABBR = 0xF1;
   /** Numéro */
-  public final static short NUM = 0xF2;
+  public final static int NUM = 0xF2;
   /** Exclamation */
-  public final static short EXCL = 0xF3;
+  public final static int EXCL = 0xF3;
   /** Mathematical operator */
-  public final static short MATH = 0xF4;
+  public final static int MATH = 0xF4;
   /** Particules démonstratives -ci, -là */
-  public final static short PARTdem = 0xFC;
+  public final static int PARTdem = 0xFC;
   /** Category */
-  private short code;
+  private int code;
   /** Dictionnaire des codes par nom */
-  public static final HashMap<String, Short> CODE = new HashMap<String, Short>();
+  public static final HashMap<String, Integer> CODE = new HashMap<String, Integer>();
   /** Dictionnaire des noms par code */
-  public static final HashMap<Short, String> LABEL = new HashMap<Short, String>();
+  public static final HashMap<Integer, String> LABEL = new HashMap<Integer, String>();
   // loop on the static fields declared to populate the HashMaps
   static {
     String name;
-    short value = 0;
+    int value = 0;
     Field[] declaredFields = Tag.class.getDeclaredFields();
     for (Field field : declaredFields) {
       if (!java.lang.reflect.Modifier.isStatic(field.getModifiers()))
@@ -156,7 +157,7 @@ public final class Tag
       if (name.equals("CODE") || name.contains("LABEL"))
         continue;
       try {
-        value = field.getShort(null);
+        value = field.getInt(null);
       }
       catch (IllegalArgumentException e) {
         e.printStackTrace();
@@ -208,7 +209,7 @@ public final class Tag
    * 
    * @return
    */
-  public short code()
+  public int code()
   {
     return this.code;
   }
@@ -220,7 +221,7 @@ public final class Tag
    */
   public Tag set(final int code)
   {
-    this.code = (short) code;
+    this.code = code;
     return this;
   }
 
@@ -239,17 +240,17 @@ public final class Tag
     return this;
   }
 
-  public static short code(final Chain label)
+  public static int code(final Chain label)
   {
-    Short ret = CODE.get(label);
+    Integer ret = CODE.get(label);
     if (ret == null)
       return UNKNOWN;
     return ret;
   }
 
-  public static short code(final String label)
+  public static int code(final String label)
   {
-    Short ret = CODE.get(label);
+    Integer ret = CODE.get(label);
     if (ret == null)
       return UNKNOWN;
     return ret;
@@ -258,7 +259,7 @@ public final class Tag
   public static String label(final int code)
   {
     if (code == 0) return "";
-    String ret = LABEL.get((short) code);
+    String ret = LABEL.get(code);
     if (ret == null)
       return LABEL.get(UNKNOWN);
     return ret;
@@ -320,7 +321,7 @@ public final class Tag
 
   public static boolean isAdj(final int code)
   {
-    return (((short) code >> 0x4) == 0x3);
+    return ((code >> 0x4) == 0x3);
   }
 
   public boolean isAdv()
@@ -370,7 +371,7 @@ public final class Tag
 
   public static boolean isName(final int code)
   {
-    return (((short) code >> 0x4) == 0xB);
+    return ((code >> 0x4) == 0xB);
   }
 
   public boolean isPun()
@@ -427,19 +428,30 @@ public final class Tag
     return Tag.label(code);
   }
 
-  /**
-   * For testing
-   * 
-   * @throws IOException
-   */
-  public static void main(String[] args)
+  public static class TagFilter
   {
-    System.out.println(CODE);
-    System.out.println("test equals " + new Tag(Tag.SUB).equals(Tag.SUB));
-    System.out.println(isName(NAMEplace));
-    System.out.println("is NAMEplace a prefix ? " + isPrefix(NAMEplace));
-    System.out.println("is NAME a prefix ? " + isPrefix(NAME));
-    System.out.println("UNKNOW tag " + code("TEST"));
-    System.out.println("prefix label by number category ADVint : " + prefix(Tag.ADVinter));
+    final BitSet bits = new BitSet(256);
+    public void clear() {
+      bits.clear();
+    }
+    public TagFilter setName() {
+      return setGroup(NAME);
+    }
+    public TagFilter setAdj() {
+      return setGroup(ADJ);
+    }
+    public TagFilter set(final int tag) {
+      bits.set(tag);
+      return setGroup(ADJ);
+    }
+
+    public TagFilter setGroup(int tag) {
+      tag = tag & 0xF0;
+      bits.set(tag, tag + 16, true);
+      return this;
+    }
+    public boolean accept(int tag) {
+      return bits.get(tag);
+    }
   }
 }

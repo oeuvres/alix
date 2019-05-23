@@ -223,6 +223,13 @@ public class Alix
     // 
     conf.setSimilarity(new BM25Similarity());
     // no effet found with modification ConcurrentMergeScheduler
+    /*
+    int threads = Runtime.getRuntime().availableProcessors() - 1; 
+    ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler(); 
+    cms.setMaxMergesAndThreads(threads, threads); 
+    cms.disableAutoIOThrottle();
+    conf.setMergeScheduler(cms);
+    */
     writer = new IndexWriter(dir, conf);
     return writer;
   }
@@ -257,24 +264,4 @@ public class Alix
   {
     return "lucene@" + path;
   }
-
-  /**
-   * Parses command-line
-   */
-  public static void main(String args[]) throws Exception
-  {
-    String usage = "java alix.lucene.Alix parser.xsl lucene-index corpus/*.xml\n\n"
-        + "Parse the files in corpus, with xsl parser, to be indexed in lucene index directory";
-    if (args.length < 3) {
-      System.err.println("Usage: " + usage);
-      System.exit(1);
-    }
-
-    Date start = new Date();
-    /*
-     * Alix.walk(args[0], args[1], args[2]); Date end = new Date();
-     * info(end.getTime() - start.getTime() + " total ms.");
-     */
-  }
-
 }

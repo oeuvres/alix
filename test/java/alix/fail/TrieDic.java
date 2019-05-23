@@ -15,7 +15,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttributeImpl;
 import alix.util.IntOMap;
 import alix.fr.Lexik;
 import alix.fr.Lexik.LexEntry;
-import alix.lucene.TokenAttChar;
+import alix.lucene.CharsAtt;
 import alix.util.Chain;
 
 /**
@@ -170,18 +170,18 @@ public class TrieDic
     
     String[] words = Lexik.WORD.keySet().toArray(new String[0]);
     int lim = 100000;
-    HashSet<TokenAttChar> attSet = new HashSet<TokenAttChar>();
+    HashSet<CharsAtt> attSet = new HashSet<CharsAtt>();
     for(int i = 0; i < lim; i++) {
-      attSet.add(new TokenAttChar(words[i]));
+      attSet.add(new CharsAtt(words[i]));
     }
-    HashMap<TokenAttChar, String> attMap = new HashMap<TokenAttChar, String>();
+    HashMap<CharsAtt, String> attMap = new HashMap<CharsAtt, String>();
     for(int i = 0; i < lim; i++) {
-      attMap.put(new TokenAttChar(words[i]), words[i]);
+      attMap.put(new CharsAtt(words[i]), words[i]);
     }
     
-    TokenAttChar[] terms = new TokenAttChar[lim];
+    CharsAtt[] terms = new CharsAtt[lim];
     for(int i = 0; i < lim; i++) {
-      terms[i] = new TokenAttChar();
+      terms[i] = new CharsAtt();
       terms[i].append(words[i]);
     }
     CharTermAttributeImpl[] atts = new CharTermAttributeImpl[lim];

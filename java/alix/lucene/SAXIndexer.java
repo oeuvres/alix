@@ -168,18 +168,21 @@ public class SAXIndexer extends DefaultHandler
       switch (type) {
         case "text":
         case "xml":
+        case "html":
           field = name;
           record = true;
-          break; // start recording 
+          break;
         case "facet":
           if (value == null)
             throw new SAXException("<alix:field> A field of type=\"" + type + "\" must have an attribute value=\"sortable\"");
           document.add(new SortedDocValuesField(name, new BytesRef(value)));
           document.add(new StoredField(name, value));
+          break;
         case "token":
           if (value == null)
             throw new SAXException("<alix:field> A field of type=\"" + type + "\" must have an attribute value=\"token\"");
           document.add(new StringField(name, value, Field.Store.YES));
+          break;
         default:
           throw new SAXException("<alix:field> The type=\"" + type + "\" is not yet implemented");
       }
