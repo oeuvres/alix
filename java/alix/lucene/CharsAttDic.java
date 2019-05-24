@@ -10,12 +10,12 @@ public class CharsAttDic
 {
   private HashMap<CharsAtt, Entry> tokens = new HashMap<CharsAtt, Entry>();
 
-  public int inc(final CharsAtt token)
+  public int inc(final CharsAtt token, final int tag)
   {
     Entry entry = tokens.get(token);
     if (entry == null) {
       CharsAtt key = new CharsAtt(token);
-      entry = new Entry(key);
+      entry = new Entry(key, tag);
       tokens.put(key, entry);
     }
     return ++entry.count;
@@ -24,13 +24,19 @@ public class CharsAttDic
   {
     private int count;
     private final CharsAtt key;
-    public Entry(final CharsAtt key)
+    private final int tag;
+    public Entry(final CharsAtt key, final int tag)
     {
       this.key = key;
+      this.tag = tag;
     }
-    public String key()
+    public CharsAtt key()
     {
-      return key.toString();
+      return key;
+    }
+    public int tag()
+    {
+      return tag;
     }
     public int count()
     {

@@ -7,6 +7,7 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import alix.fr.dic.Tag;
 import alix.fr.dic.Tag.TagFilter;
@@ -25,13 +26,15 @@ public class TokenDic extends TokenFilter
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   /** A dictionary to populate with the token stream */
   private final CharsAttDic dic;
+  /** A linguistic category as an int, from Tag */
+  private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
 
   @Override
   public boolean incrementToken() throws IOException
   {
     // end of stream
     if (!input.incrementToken()) return false;
-    dic.inc((CharsAtt) termAtt);
+    dic.inc((CharsAtt) termAtt, flagsAtt.getFlags());
     return true;
   }
 
@@ -65,7 +68,7 @@ public class TokenDic extends TokenFilter
   {
     final CharsAttDic dic;
 
-    AnalyzerDic(final CharsAttDic dic)
+    public AnalyzerDic(final CharsAttDic dic)
     {
       this.dic = dic;
     }

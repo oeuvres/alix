@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <jardesc>
-    <jar path="alix-demo/WEB-INF/lib/alix.jar"/>
+    <jar path="Alix/web/WEB-INF/lib/alix.jar"/>
     <options buildIfNeeded="true" compress="true" descriptionLocation="/Alix/demo.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="true" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
     <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
     <selectedProjects/>
@@ -18,7 +18,6 @@
         <javaElement handleIdentifier="=Alix/java&lt;alix.util"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.viz"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
-        <folder path="/Alix/java/META-INF/services"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.grep.query"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.grep"/>
     </selectedElements>

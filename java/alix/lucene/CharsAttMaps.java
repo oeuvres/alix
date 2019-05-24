@@ -19,6 +19,7 @@ import alix.util.CsvReader;
  * @author glorieux-f
  *
  */
+@SuppressWarnings("unlikely-arg-type")
 public class CharsAttMaps
 {
   /** French stopwords */
@@ -53,18 +54,17 @@ public class CharsAttMaps
       
       file = "word.csv";
       reader = new InputStreamReader(Tag.class.getResourceAsStream(file), StandardCharsets.UTF_8);
-      csv = new CsvReader(reader, 3);
+      csv = new CsvReader(reader, 6);
       csv.readRow(); // pass first line
       while (csv.readRow()) {
         Chain orth = csv.row().get(0);
         if (orth.isEmpty() || orth.charAt(0) == '#') continue;
         if (WORD.containsKey(orth)) continue;
         CharsAtt key = new CharsAtt(orth);
-        WORD.put(key, new LexEntry(csv.row().get(1), csv.row().get(2)));
+        WORD.put(key, new LexEntry(csv.row().get(1), csv.row().get(2), csv.row().get(5)));
       }
       // nouns, put persons after places (Molière is also a village, but not very common)
       String[] files = {"commune.csv", "france.csv", "forename.csv", "place.csv", "author.csv", "name.csv"};
-      CharsAtt alain = new CharsAtt("Alain");
       for (String f : files) {
         file = f;
         reader = new InputStreamReader(Tag.class.getResourceAsStream(file), StandardCharsets.UTF_8);
@@ -116,6 +116,10 @@ public class CharsAttMaps
   {
     return NAME.get(att);
   }
+  public static boolean isStop(CharsAtt att)
+  {
+    return STOP.contains(att);
+  }
 
   public static boolean norm(CharsAtt att)
   {
@@ -150,19 +154,18 @@ public class CharsAttMaps
   {
     public final int tag;
     public final CharsAtt lem;
+    public float freq = 3;
 
-    public LexEntry(final Chain tag, final Chain lem) throws ParseException
+    public LexEntry(final Chain tag, final Chain lem, final Chain freq) throws ParseException
     {
       this.tag = Tag.code(tag);
       if (lem == null || lem.isEmpty()) this.lem = null;
       else this.lem = new CharsAtt(lem);
-    }
-
-    public LexEntry(final String tag, final String lem)
-    {
-      this.tag = Tag.code(tag);
-      if (lem == null || lem.isEmpty()) this.lem = null;
-      else this.lem = new CharsAtt(lem);
+      if (!freq.isEmpty()) try {
+        this.freq = Float.parseFloat(freq.toString());
+      }
+      catch (NumberFormatException e) {
+      }
     }
 
     @Override
