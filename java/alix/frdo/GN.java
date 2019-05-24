@@ -110,7 +110,7 @@ public class GN
       int lpos = 0;
       boolean ladj = false;
       while (lpos > left) {
-        final short tag = win.get(lpos - 1).tag().code();
+        final int tag = win.get(lpos - 1).tag().code();
         if (tag == Tag.ADJ) {
           dic.inc(win.get(lpos - 1).lem());
           lpos--;
@@ -156,7 +156,7 @@ public class GN
       // que mon grand-oncle me tirât par mes boucles et qu’avait dissipée le jour —
       // date pour moi d’une ère nouvelle — où on les avait coupées.
       while (rpos < right) {
-        final short tag = win.get(rpos + 1).tag().code();
+        final int tag = win.get(rpos + 1).tag().code();
         if (tag == Tag.ADJ) {
           dic.inc2(win.get(rpos + 1).lem());
           rpos++;

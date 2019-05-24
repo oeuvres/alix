@@ -17,8 +17,9 @@ import alix.fr.dic.Tag;
  * @author fred
  *
  */
-public class TokenLemCloud extends TokenFilter
+public class TokenLemCloud extends FilteringTokenFilter
 {
+
   /** The term provided by the Tokenizer */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   /** A linguistic category as a short number, from Tag */
@@ -26,12 +27,16 @@ public class TokenLemCloud extends TokenFilter
   /** A lemma when possible */
   private final CharsLemAtt charsLemAtt = addAttribute(CharsLemAtt.class); // ? needs to be declared in the tokenizer
 
-  @Override
-  public boolean incrementToken() throws IOException
+  public TokenLemCloud(TokenStream in)
   {
-    // end of stream
-    if (!input.incrementToken()) return false;
+    super(in);
+  }
+
+  @Override
+  protected boolean accept() throws IOException
+  {
     int tag = flagsAtt.getFlags();
+    if (Tag.isPun(tag)) return false;
     // replace term by lemma for adjectives and verbs
     if (Tag.isAdj(tag) || Tag.isVerb(tag))
       if (charsLemAtt.length() != 0)
@@ -39,25 +44,5 @@ public class TokenLemCloud extends TokenFilter
     return true;
   }
 
-  /**
-   * 
-   * @param in
-   */
-  public TokenLemCloud(TokenStream in)
-  {
-    super(in);
-  }
-
-  @Override
-  public void reset() throws IOException
-  {
-    super.reset();
-  }
-
-  @Override
-  public void end() throws IOException
-  {
-    super.end();
-  }
 
 }

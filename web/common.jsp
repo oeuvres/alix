@@ -33,7 +33,9 @@ alix.lucene.CharsAttMaps,
 alix.lucene.CharsAttMaps.LexEntry,
 alix.lucene.CharsAttMaps.NameEntry,
 alix.lucene.TokenDic,
-alix.lucene.TokenDic.AnalyzerDic
+alix.lucene.TokenDic.AnalyzerDic,
+alix.lucene.TokenCooc,
+alix.lucene.TokenCooc.AnalyzerCooc
 " %><%!
 
 static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);

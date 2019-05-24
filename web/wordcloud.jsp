@@ -1,12 +1,12 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@include file="common.jsp" %>
 <%
-
-  String bibcode = request.getParameter("bibcode");
 String log = request.getParameter("log");
 if ( log != null && log.isEmpty() ) log = null;
 String frantext = request.getParameter("frantext");
 DecimalFormat fontdf = new DecimalFormat("#");
+String word = request.getParameter("word");
+if ( word != null && word.isEmpty() ) word = null;
 %>
 <!DOCTYPE html>
 <html>
@@ -16,7 +16,7 @@ DecimalFormat fontdf = new DecimalFormat("#");
     <script src="lib/wordcloud2.js">//</script>
     <style>
 #frame { padding: 25px; background:#000;}
-#nuage { height: 700px; background: #000; }
+#nuage { height: 800px; background: #000; }
 #nuage a { text-decoration: none; }
 a.mot { font-family: Georgia, serif; position: absolute; display: block; white-space: nowrap; color: rgba( 128, 0, 0, 0.9); }
 a.SUB { color: rgba( 32, 32, 32, 0.6); font-family: "Arial", sans-serif; font-weight: 700; }
@@ -45,7 +45,9 @@ text-shadow: #000 0px 0px 5px;  -webkit-font-smoothing: antialiased;  }
 
 
 CharsAttDic dic = new CharsAttDic();
-Analyzer analyzer = new AnalyzerDic(dic);
+Analyzer analyzer;
+if (word != null) analyzer = new AnalyzerCooc(dic, word, -5, +5);
+else analyzer = new AnalyzerDic(dic);
 TokenStream ts;
 long time;
 File dir = new File("/home/fred/Documents/rougemont/DDR/tei");
@@ -61,7 +63,7 @@ for (File entry : ls) {
   String text = Files.readString(path);
   InputStream is = Files.newInputStream(path, StandardOpenOption.READ);
   BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-  ts = analyzer.tokenStream("cloud", reader);
+  ts = analyzer.tokenStream("sub", reader);
   CharTermAttribute term = ts.addAttribute(CharTermAttribute.class);
   OffsetAttribute offset = ts.addAttribute(OffsetAttribute.class);
   long occs = 0;
@@ -93,19 +95,27 @@ out.println("var list = [");
 int max = entries.length;
 int lines = 400;
 int fontmin = 16;
-float fontmax = 80;
+float fontmax = 70;
 int countmax = 0;
 float franfreq;
 double bias = 0;
-for (int i = 0; i < max; i++) {
+int start = 0;
+if (word != null) start = 1; 
+for (int i = start; i < max; i++) {
   if (CharsAttMaps.isStop(entries[i].key())) continue;
   int count = entries[i].count();
   Tag tag = new Tag(entries[i].tag());
+  if (tag.isPun()) continue;
   if ( countmax == 0 ) countmax = count;
   if ( frantext != null ) {
 	  float ratio = 4F;
 	  if (tag.isSub()) ratio = 12F;
 	  else if ( tag.equals(Tag.VERB)) ratio = 6F;
+	  LexEntry lex = CharsAttMaps.word(entries[i].key());
+	  if (lex == null) franfreq = 0;
+	  else franfreq = lex.freq;
+	  double myfreq = 1.0*count*1000000/total;
+	  if ( myfreq/franfreq < ratio ) continue;
   }
   else {
   }

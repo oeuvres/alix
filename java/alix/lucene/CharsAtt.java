@@ -249,6 +249,14 @@ public class CharsAtt extends AttributeImpl
     len += length;
     return this;
   }
+  
+  public final CharTermAttribute copy(CharTermAttribute ta)
+  {
+    len = ta.length();
+    hash = 0;
+    System.arraycopy(ta.buffer(), 0, resizeBuffer(this.len), 0, len);
+    return this;
+  }
 
   private CharTermAttribute appendNull()
   {
@@ -292,7 +300,7 @@ public class CharsAtt extends AttributeImpl
       CharsAtt term = (CharsAtt) other;
       if (term.len != len) return false;
       // if hashcode already calculated, if different, not same strings
-      if (hash != 0 && term.hash != 0 && hash != term.hash) return false;
+      if (this.hashCode() != term.hashCode()) return false;
       char[] test = term.chars;
       for (int i = 0; i < len; i++) {
         if (test[i] != chars[i]) return false;
