@@ -347,10 +347,13 @@ if (!window.clearImmediate) {
 
     /* function for getting the color of the text */
     var getTextColor;
-    function random_hsl_color(min, max) {
+    function random_hsl_color(min, max, from, to) {
+      // var colors = [0, 10, 20, 30, 40, 50, 60, 220, 230, 240, 250];
+      var colors = [340, 350, 0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+      var saturations = [60, 80, 100];
       return 'hsl(' +
-        (Math.random() * 360).toFixed() + ',' +
-        (Math.random() * 30 + 70).toFixed() + '%,' +
+        colors[Math.floor(Math.random()*colors.length)] + ',' +
+        saturations[Math.floor(Math.random()*saturations.length)] + '%,' +
         (Math.random() * (max - min) + min).toFixed() + '%)';
     }
     switch (settings.color) {
@@ -362,7 +365,11 @@ if (!window.clearImmediate) {
 
       case 'random-light':
         getTextColor = function getRandomLightColor() {
-          return random_hsl_color(50, 90);
+          return 'rgb('
+            + (Math.random() * 255).toFixed()
+            + ', ' + (128 + Math.random() * 128).toFixed()
+            + ', ' + (128 + Math.random() * 128).toFixed()
+          + ')';
         };
         break;
 

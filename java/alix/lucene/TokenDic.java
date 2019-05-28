@@ -25,7 +25,7 @@ public class TokenDic extends TokenFilter
   /** The term provided by the Tokenizer */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   /** A dictionary to populate with the token stream */
-  private final CharsAttDic dic;
+  private final CharsDic dic;
   /** A linguistic category as an int, from Tag */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
 
@@ -46,7 +46,7 @@ public class TokenDic extends TokenFilter
    * @param dic
    *          a dictionary to populate with counts
    */
-  public TokenDic(TokenStream in, final CharsAttDic dic)
+  public TokenDic(TokenStream in, final CharsDic dic)
   {
     super(in);
     this.dic = dic;
@@ -66,9 +66,9 @@ public class TokenDic extends TokenFilter
 
   public static class AnalyzerDic extends Analyzer
   {
-    final CharsAttDic dic;
+    final CharsDic dic;
 
-    public AnalyzerDic(final CharsAttDic dic)
+    public AnalyzerDic(final CharsDic dic)
     {
       this.dic = dic;
     }
@@ -78,16 +78,16 @@ public class TokenDic extends TokenFilter
     {
       final Tokenizer source = new TokenizerFr();
       TokenStream result = new TokenLem(source);
-      if (fieldName.equals("cloud")) {
-        result = new TokenLemCloud(result);
-      }
-      else if (fieldName.equals("name")) {
+      if (fieldName.equals("name")) {
         TagFilter tags = new TagFilter().setName();
         result = new TokenPosFilter(result, tags);
       }
       else if (fieldName.equals("sub")) {
         TagFilter tags = new TagFilter().setGroup(Tag.SUB);
         result = new TokenPosFilter(result, tags);
+      }
+      else {
+        result = new TokenLemCloud(result);
       }
       result = new TokenDic(result, dic);
       return new TokenStreamComponents(source, result);

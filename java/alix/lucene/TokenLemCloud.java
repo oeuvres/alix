@@ -25,7 +25,7 @@ public class TokenLemCloud extends FilteringTokenFilter
   /** A linguistic category as a short number, from Tag */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
   /** A lemma when possible */
-  private final CharsLemAtt charsLemAtt = addAttribute(CharsLemAtt.class); // ? needs to be declared in the tokenizer
+  private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class); // ? needs to be declared in the tokenizer
 
   public TokenLemCloud(TokenStream in)
   {
@@ -36,11 +36,11 @@ public class TokenLemCloud extends FilteringTokenFilter
   protected boolean accept() throws IOException
   {
     int tag = flagsAtt.getFlags();
-    if (Tag.isPun(tag)) return false;
+    // if (Tag.isPun(tag)) return false;
     // replace term by lemma for adjectives and verbs
     if (Tag.isAdj(tag) || Tag.isVerb(tag))
-      if (charsLemAtt.length() != 0)
-        termAtt.setEmpty().append(charsLemAtt);
+      if (lemAtt.length() != 0)
+        termAtt.setEmpty().append(lemAtt);
     return true;
   }
 

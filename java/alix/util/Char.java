@@ -466,7 +466,7 @@ public class Char
   {
     short props = CHARS[c];
     StringBuilder sb = new StringBuilder();
-    sb.append(c).append("\t").append(Character.getName(c)).append("\t");
+    sb.append(c).append("\t").append(Character.getName(c).toLowerCase()).append("\t");
     if ((props & TOKEN) > 0) sb.append("TOKEN ");
     if ((props & LETTER) > 0) sb.append("LETTER ");
     if ((props & SPACE) > 0) sb.append("SPACE ");
@@ -482,15 +482,4 @@ public class Char
     return sb.toString();
   }
 
-  /**
-   * Testing
-   */
-  public static void main(String args[])
-  {
-    String test = "😀-,_.;!? ■A\n°^�&-.6<Œ" + (char) 0xAD;
-    for (int i = 0, n = test.length(); i < n; i++) {
-      char c = test.charAt(i);
-      System.out.println(toString(c));
-    }
-  }
 }

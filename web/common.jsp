@@ -26,16 +26,12 @@ org.apache.lucene.analysis.TokenStream,
 org.apache.lucene.analysis.tokenattributes.CharTermAttribute,
 org.apache.lucene.analysis.tokenattributes.OffsetAttribute,
 
-alix.fr.dic.Tag,
-alix.lucene.CharsAttDic,
-alix.lucene.CharsAttDic.Entry,
-alix.lucene.CharsAttMaps,
-alix.lucene.CharsAttMaps.LexEntry,
-alix.lucene.CharsAttMaps.NameEntry,
+alix.fr.dic.Tag,alix.lucene.CharsDic,alix.lucene.CharsDic.Entry,alix.lucene.CharsMaps,alix.lucene.CharsMaps.LexEntry,alix.lucene.CharsMaps.NameEntry,
 alix.lucene.TokenDic,
 alix.lucene.TokenDic.AnalyzerDic,
 alix.lucene.TokenCooc,
-alix.lucene.TokenCooc.AnalyzerCooc
+alix.lucene.TokenCooc.AnalyzerCooc,
+alix.util.Dir
 " %><%!
 
 static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);

@@ -12,6 +12,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FutureObjects;
 
 import alix.util.Chain;
+import alix.util.Char;
 
 /**
  * An implementation of CharTermAttribute for fast search in hash of strings.
@@ -268,6 +269,36 @@ public class CharsAtt extends AttributeImpl
     return this;
   }
 
+  public CharsAtt toLower()
+  {
+    hash = 0;
+    char c;
+    for (int i = 0; i < len; i++) {
+      c = chars[i];
+      if (!Char.isUpperCase(c)) continue;
+      chars[i] = Character.toLowerCase(c);
+    }
+    return this;
+  }
+  public CharsAtt capitalize()
+  {
+    hash = 0;
+    if (len == 0) return this;
+    char last = ' ';
+    char c = chars[0];
+    if (Char.isLowerCase(c)) chars[0] = Character.toUpperCase(c);
+    for (int i = 1; i < len; i++) {
+      c = chars[i];
+      if (last == '-' ) {
+        if (Char.isLowerCase(c)) chars[i] = Character.toUpperCase(c);
+      }
+      else if (Char.isUpperCase(c)) {
+        chars[i] = Character.toLowerCase(c);
+      }
+      last = c;
+    }
+    return this;
+  }
   @Override
   public void clear()
   {

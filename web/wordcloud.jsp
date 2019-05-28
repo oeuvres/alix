@@ -1,7 +1,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@include file="common.jsp" %>
 <%
-String log = request.getParameter("log");
+  String log = request.getParameter("log");
 if ( log != null && log.isEmpty() ) log = null;
 String frantext = request.getParameter("frantext");
 DecimalFormat fontdf = new DecimalFormat("#");
@@ -32,45 +32,43 @@ text-shadow: #000 0px 0px 5px;  -webkit-font-smoothing: antialiased;  }
       <form method="GET">
         <a href=".">Alix</a>
 		<%
-          String checked = ""; if (frantext != null) checked =" checked=\"checked\"";
-        %>
+		  String checked = ""; if (frantext != null) checked =" checked=\"checked\"";
+		%>
        <label>Filtre Frantext <input name="frantext" <%=checked%> type="checkbox"/></label>
         <button>▶</button>
       </form>
       <div id="frame">
-      <div id="nuage"></div>
-	   </div>
+      	<div id="nuage"></div>
+	  </div>
    <ul>
 <%
-
-
-CharsAttDic dic = new CharsAttDic();
+  CharsDic dic = new CharsDic();
 Analyzer analyzer;
 if (word != null) analyzer = new AnalyzerCooc(dic, word, -5, +5);
 else analyzer = new AnalyzerDic(dic);
 TokenStream ts;
 long time;
-File dir = new File("/home/fred/Documents/rougemont/DDR/tei");
-File[] ls = dir.listFiles();
+// List<File> ls = Dir.ls("/home/fred/Documents/rougemont/DDR/tei");
+// List<File> ls = Dir.ls("/var/www/html/critique");
+List<File> ls = Dir.ls("/home/fred/Documents/suisse/.*\\.html");
+out.println(ls);
+
 int n = 0;
 long total = 0;
 for (File entry : ls) {
-  String name = entry.getName();
-  if (name.startsWith(".")) continue;
-  else if (!name.endsWith(".xml")) continue;
-  out.print(name + "");
+  out.print(entry.getName());
   Path path = entry.toPath();
   String text = Files.readString(path);
   InputStream is = Files.newInputStream(path, StandardOpenOption.READ);
   BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-  ts = analyzer.tokenStream("sub", reader);
+  ts = analyzer.tokenStream("cloud", reader);
   CharTermAttribute term = ts.addAttribute(CharTermAttribute.class);
   OffsetAttribute offset = ts.addAttribute(OffsetAttribute.class);
   long occs = 0;
   try {
     ts.reset();
     while (ts.incrementToken()) {
-      occs++; // loop on all tokens
+  occs++; // loop on all tokens
     }
     ts.end();
   }
@@ -85,15 +83,15 @@ for (File entry : ls) {
   total += occs;
   n++;
 }
+analyzer.close();
 %>
 </ul>
 		<script>
-<%
-// System.out.println("tokens="+total+" files="+n);
+var list = [
+<%// System.out.println("tokens="+total+" files="+n);
 Entry[] entries = dic.sorted();
-out.println("var list = [");
 int max = entries.length;
-int lines = 400;
+int lines = 500;
 int fontmin = 16;
 float fontmax = 70;
 int countmax = 0;
@@ -102,7 +100,7 @@ double bias = 0;
 int start = 0;
 if (word != null) start = 1; 
 for (int i = start; i < max; i++) {
-  if (CharsAttMaps.isStop(entries[i].key())) continue;
+  if (CharsMaps.isStop(entries[i].key())) continue;
   int count = entries[i].count();
   Tag tag = new Tag(entries[i].tag());
   if (tag.isPun()) continue;
@@ -111,7 +109,7 @@ for (int i = start; i < max; i++) {
 	  float ratio = 4F;
 	  if (tag.isSub()) ratio = 12F;
 	  else if ( tag.equals(Tag.VERB)) ratio = 6F;
-	  LexEntry lex = CharsAttMaps.word(entries[i].key());
+	  LexEntry lex = CharsMaps.word(entries[i].key());
 	  if (lex == null) franfreq = 0;
 	  else franfreq = lex.freq;
 	  double myfreq = 1.0*count*1000000/total;
@@ -134,15 +132,27 @@ for (int i = start; i < max; i++) {
   // TODO link ? out.println("\", target:\"grep\", href:\"grep.jsp?q="+word+"&bibcode="+bibcode+"\" }, bias:"+bias+" },");
   out.println("],");
   if (--lines <= 0 ) break;
-}
-
-  out.println("];");
-  out.println( "WordCloud(document.getElementById('nuage'), { list: list, minRotation: -Math.PI/5, maxRotation: Math.PI/5,"
-   + "rotateRatio: 0.5, shape: 'square', rotationSteps: 4, gridSize:5, fontFamily:'Arial, sans-serif', fontWeight: 500" 
-   + ", color: 'random-light', backgroundColor: '#000000' } );");
-%>
+}%>
+];
+WordCloud(
+	document.getElementById('nuage'), 
+	{ 
+		list: list,
+		// drawMask: true,
+		// maskColor: "white",
+		minRotation: -Math.PI/2.5, 
+		maxRotation: Math.PI/2.5,
+   		rotationSteps: 8,
+   		rotateRatio: 1, 
+   		shape: 'square',
+   		ridSize: 5,
+   		fontFamily:'Arial, sans-serif',
+   		fontWeight: 500, 
+   		color: 'random-light', 
+   		backgroundColor: '#000000' 
+   	} 
+);
       </script>
-      <iframe name="grep" width="100%" allowfullscreen="true" style="min-height: 500px; border: none "></iframe>
     </article>
   </body>
 </html>

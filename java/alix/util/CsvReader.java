@@ -15,7 +15,7 @@ import java.util.HashMap;
 
 import alix.fr.dic.Tag;
 import alix.lucene.CharsAtt;
-import alix.lucene.CharsAttMaps.LexEntry;
+import alix.lucene.CharsMaps.LexEntry;
 
 /**
  * A light fast csv parser without Strings, especially to load jar resources.

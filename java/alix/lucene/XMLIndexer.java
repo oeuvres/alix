@@ -56,6 +56,8 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import alix.util.Dir;
+
 
 
 public class XMLIndexer implements Runnable
@@ -192,47 +194,7 @@ public class XMLIndexer implements Runnable
     System.exit(1);
   }
   
-  /**
-   * Collect files to index recursively from a folder. 
-   * Default regex pattern to select files is : .*\.xml
-   * A regex selector can be provided by the path argument.
-   * path= "folder/to/index/.*\.tei"
-   * Be careful, pattern is a regex, not a glob (don not forger the dot for any character).
-   * @param path
-   * @return
-   */
-  public static List<File> collect(String path)
-  {
-    File dir = new File(path);
-    String re = ".*\\.xml";
-    if (!dir.isDirectory()) {
-      re = dir.getName();
-      dir = dir.getParentFile();
-      if (!dir.isDirectory()) fatal("FATAL " + dir + " NOT FOUND");
-    }
-    ArrayList<File> files = new ArrayList<File>();
-    collect(dir, Pattern.compile(re), files);
-    return files;
-  }
-  /**
-   * Private collector of files to index.
-   * @param dir
-   * @param pattern
-   * @return
-   */
-  private static void collect(File dir, Pattern pattern, final ArrayList<File> files)
-  {
-    File[] ls = dir.listFiles();
-    int i = 0;
-    for (File entry : ls) {
-      String name = entry.getName();
-      if (name.startsWith(".")) continue;
-      else if (entry.isDirectory()) collect(entry, pattern, files);
-      else if (!pattern.matcher(name).matches()) continue;
-      else files.add(entry);
-      i++;
-    }
-  }  
+
   /**
    * Recursive indexation of an XML folder, multi-threadeded.
    * 
@@ -252,7 +214,7 @@ public class XMLIndexer implements Runnable
 
     IndexWriter writer = alix.writer();
     // preload dictionaries
-    List<File> files = collect(xmlGlob); // CopyOnWriteArrayList produce some duplicates
+    List<File> files = Dir.ls(xmlGlob); // CopyOnWriteArrayList produce some duplicates
     Iterator<File> it = files.iterator();
     
     // compile XSLT 1 time

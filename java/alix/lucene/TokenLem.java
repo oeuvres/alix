@@ -9,8 +9,9 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import alix.fr.dic.Tag;
-import alix.lucene.CharsAttMaps.LexEntry;
-import alix.lucene.CharsAttMaps.NameEntry;
+import alix.lucene.CharsMaps.LexEntry;
+import alix.lucene.CharsMaps.NameEntry;
+import alix.util.Calcul;
 import alix.util.Char;
 
 /**
@@ -28,20 +29,11 @@ public final class TokenLem extends TokenFilter
   private boolean waspun = true; // first word considered as if it follows a dot
   /** Store state */
   private State save;
-  /** Keep trace of tokens */
-  // private final TermStack stack = new TermStack();
+  /** For some tests */
+  private final CharsAtt copy = new CharsAtt();
 
-  /**
-   * French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel
-   */
-  public static final HashSet<String> HYPHEN_POST = new HashSet<String>();
-  static {
-    for (String w : new String[] { "-ce", "-ci", "-elle", "-elles", "-en", "-eux", "-il", "-ils", "-je", "-la", "-là",
-        "-le", "-les", "-leur", "-lui", "-me", "-moi", "-nous", "-on", "-t", "-t-", "-te", "-toi", "-tu", "-vous",
-        "-y" })
-      HYPHEN_POST.add(w);
-  }
 
+  
   /**
    *
    */
@@ -68,53 +60,64 @@ public final class TokenLem extends TokenFilter
     if (term.length() == 0) return true;
     if (flags == Tag.PUNdiv || flags == Tag.PUNsent) {
       this.waspun = true;
-      // clean the term stack
+      // clean the compound stack
       return true;
     }
     if (term.isEmpty()) {
-      System.out.println(term);
-      System.exit(2);
+      throw new IOException("Unexpected event, term is empty");
     }
-    // normalise œ, É
-    CharsAttMaps.norm(term);
-    
     // Get first char
     char c1 = term.charAt(0);
-    // a tag do not affect the prev flags
-    if (c1 == '<') return true;
+    // Not a word
+    if (!Char.isToken(c1)) return true;
+    
+    
     this.waspun = false;
     LexEntry word;
     NameEntry name;
     // norm case
     if (Char.isUpperCase(c1)) {
-      name = CharsAttMaps.name(term);
+      
+      copy.copy(term); // if nothing found, be conservative, restore (ex : USA, Grande-Bretagne)
+      // acronyms, roman number
+      if (term.length() > 1 && Char.isUpperCase(term.charAt(1))) {
+        int roman = Calcul.roman2int(term.buffer());
+        if (roman > 0) {
+          
+        }
+      }
+      term.capitalize();
+      boolean normalized = CharsMaps.norm(term); // normalise : coeur -> cœur, Etat -> État
+      c1 = term.charAt(0); // get first char, may have been modified by normalization Etat -> État
+      name = CharsMaps.name(term);
       if (name != null) {
         flagsAtt.setFlags(name.tag);
+        if (name.orth != null) term.copy(name.orth);
         return true;
       }
-      // if not after pun, say it's a name
-      if (!waspun) {
-        flagsAtt.setFlags(Tag.NAME);
-        return true;
-      }
-      // test if it is a known word
-      term.setCharAt(0, Char.toLower(c1));
-      word = CharsAttMaps.word(term);
+      term.setCharAt(0, Character.toLowerCase(c1));
+      word = CharsMaps.word(term);
+      // if not after a pun, always capitalize, even if it's a known word (État...)
+      if (!waspun) term.setCharAt(0, c1);
+      // if word not found, infer it's a MAME
       if (word == null) {
-        // unknown, restore cap, let other filters say better
-        term.setCharAt(0, Char.toUpper(c1));
+        flagsAtt.setFlags(Tag.NAME);
+        term.copy(copy);
         return true;
       }
     }
-
     else {
-      word = CharsAttMaps.word(term);
+      CharsMaps.norm(term); // normalise oeil -> œil
+      word = CharsMaps.word(term);
       if (word == null) return true;
     }
-    // known word
-    flagsAtt.setFlags(word.tag);
-    if (word.lem != null) {
-      lem.append(word.lem);
+    // a word found in the dictionary
+    if (word != null) {
+      // known word
+      flagsAtt.setFlags(word.tag);
+      if (word.lem != null) {
+        lem.append(word.lem);
+      }
     }
     return true;
   }

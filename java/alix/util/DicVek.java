@@ -674,7 +674,7 @@ public class DicVek
     // faire le vecteur de "de"
     // un lemmatiseur du pauvre sert à regrouper les entrées des vecteurs
     DicVek veks = new DicVek(-wing, wing);
-    // Dicovek veks = new Dicovek(wing, wing, CharsAttMaps.STOPLIST);
+    // Dicovek veks = new Dicovek(wing, wing, CharsMaps.STOPLIST);
     long start = System.nanoTime();
     // Boucler sur les fichiers
     for (int i = 0; i < args.length; i++) {
@@ -711,7 +711,7 @@ public class DicVek
       System.out.println("SIMINYMES (cosine) ");
       boolean first = true;
       for (SimRow row : table) {
-        // if ( CharsAttMaps.isStop( row.term )) continue;
+        // if ( CharsMaps.isStop( row.term )) continue;
         if (first)
           first = false;
         else

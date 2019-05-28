@@ -442,7 +442,7 @@ public final class Tag
     }
     public TagFilter set(final int tag) {
       bits.set(tag);
-      return setGroup(ADJ);
+      return this;
     }
 
     public TagFilter setGroup(int tag) {

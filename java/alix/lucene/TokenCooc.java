@@ -3,6 +3,7 @@ package alix.lucene;
 import java.io.IOException;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.FilteringTokenFilter;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -21,14 +22,16 @@ import alix.fr.dic.Tag.TagFilter;
  * @author fred
  *
  */
-public class TokenCooc extends TokenFilter
+public class TokenCooc extends FilteringTokenFilter
 {
   /** The term provided by the Tokenizer */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  /** A lemma when possible */
+  private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
   /** A linguistic category as an int, from Tag */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
   /** A dictionary to populate with the token stream */
-  private final CharsAttDic dic;
+  private final CharsDic dic;
   /** Pivot token */
   private final CharsAtt pivot;
   /** Windows */
@@ -50,7 +53,7 @@ public class TokenCooc extends TokenFilter
    * @param dic
    *          a dictionary to populate with counts
    */
-  public TokenCooc(TokenStream in, final CharsAttDic dic, final CharsAtt pivot, final int left, final int right)
+  public TokenCooc(TokenStream in, final CharsDic dic, final CharsAtt pivot, final int left, final int right)
   {
     super(in);
     this.dic = dic;
@@ -61,11 +64,15 @@ public class TokenCooc extends TokenFilter
   }
 
   @Override
-  public boolean incrementToken() throws IOException
+  protected boolean accept() throws IOException
   {
-    // end of stream
-    if (!input.incrementToken()) return false;
+    int tag = flagsAtt.getFlags();
+    if (Tag.isPun(tag)) return false;
+    // replace term by lemma for adjectives and verbs
     CharsAtt term = (CharsAtt)termAtt;
+    if (Tag.isVerb(tag))
+      if (lemAtt.length() != 0)
+        term.setEmpty().append(lemAtt);
     win.push(term);
     if (lastpos >= 0) {
       if (pos - lastpos >= right) {
@@ -75,32 +82,20 @@ public class TokenCooc extends TokenFilter
     } else if(pivot.equals(term)) {
       lastpos = pos;
     }
-    // dic.inc((CharsAtt) termAtt, flagsAtt.getFlags());
     pos ++;
     return true;
   }
 
 
-  @Override
-  public void reset() throws IOException
-  {
-    super.reset();
-  }
-
-  @Override
-  public void end() throws IOException
-  {
-    super.end();
-  }
 
   public static class AnalyzerCooc extends Analyzer
   {
-    final CharsAttDic dic;
+    final CharsDic dic;
     final CharsAtt pivot;
     final int left;
     final int right;
 
-    public AnalyzerCooc(final CharsAttDic dic, String pivot, final int left, final int right)
+    public AnalyzerCooc(final CharsDic dic, String pivot, final int left, final int right)
     {
       this.dic = dic;
       this.pivot = new CharsAtt(pivot);
@@ -113,7 +108,6 @@ public class TokenCooc extends TokenFilter
     {
       final Tokenizer source = new TokenizerFr();
       TokenStream result = new TokenLem(source);
-      result = new TokenLemCloud(result);
       result = new TokenCooc(result, dic, pivot, left, right);
       return new TokenStreamComponents(source, result);
     }

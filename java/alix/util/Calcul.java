@@ -82,5 +82,35 @@ public class Calcul
             System.out.println(a[i]+" "+Calcul.nextSquare(a[i]));
         }
     }
-
+    static class Num {
+      final char[] chars;
+      final int value;
+      public Num(String s, int value) {
+        this.chars = s.toCharArray();
+        this.value = value;
+      }
+    }
+    private static final char[] symbols = "IVXLCDM".toCharArray();
+    private static final int[] values = {1, 5, 10, 50, 100, 500, 1000};
+    public static int roman2int(char[] chars)
+    {
+      int len = chars.length;
+      char c;
+      int j = 0;
+      int value = 0;
+      for (int i = len - 1; i >= 0; i--) {
+        c = chars[i];
+        if (j > 1 && c == symbols[j-2]) {
+          value -= values[j-2];
+          continue;
+        }
+        for (; j < 7; j++) {
+          if (c != symbols[j]) continue;
+          value += values[j];
+          break;
+        }
+        if (j == 7) return -1;
+      }
+      return value;
+    }
 }
