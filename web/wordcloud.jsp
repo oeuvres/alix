@@ -42,7 +42,11 @@ text-shadow: #000 0px 0px 5px;  -webkit-font-smoothing: antialiased;  }
 	  </div>
    <ul>
 <%
-  CharsDic dic = new CharsDic();
+HashSet<CharsAtt> STOP = new HashSet<CharsAtt>();
+for (String w : new String[] { "article", "partie", "section", "annexe", "protocole", "déclaration", "effet", "sein", "art.", "let."}) {
+  STOP.add(new CharsAtt(w));
+}
+CharsDic dic = new CharsDic();
 Analyzer analyzer;
 if (word != null) analyzer = new AnalyzerCooc(dic, word, -5, +5);
 else analyzer = new AnalyzerDic(dic);
@@ -50,7 +54,7 @@ TokenStream ts;
 long time;
 // List<File> ls = Dir.ls("/home/fred/Documents/rougemont/DDR/tei");
 // List<File> ls = Dir.ls("/var/www/html/critique");
-List<File> ls = Dir.ls("/home/fred/Documents/suisse/.*\\.html");
+List<File> ls = Dir.ls("/home/fred/Documents/suisse/accord2.html");
 out.println(ls);
 
 int n = 0;
@@ -93,7 +97,7 @@ Entry[] entries = dic.sorted();
 int max = entries.length;
 int lines = 500;
 int fontmin = 16;
-float fontmax = 70;
+float fontmax = 60;
 int countmax = 0;
 float franfreq;
 double bias = 0;
@@ -101,9 +105,12 @@ int start = 0;
 if (word != null) start = 1; 
 for (int i = start; i < max; i++) {
   if (CharsMaps.isStop(entries[i].key())) continue;
+  if (STOP.contains(entries[i].key())) continue;
   int count = entries[i].count();
+  if (count <= 2) break;
   Tag tag = new Tag(entries[i].tag());
   if (tag.isPun()) continue;
+  if (tag.isNum()) continue;
   if ( countmax == 0 ) countmax = count;
   if ( frantext != null ) {
 	  float ratio = 4F;
@@ -120,7 +127,7 @@ for (int i = start; i < max; i++) {
 
   out.print("[\"");
   // if ( word.indexOf( '"' ) > -1 ) word = word.replace( "\"", "\\\"" ); 
-  out.print(entries[i].key().toString()) ;
+  out.print(entries[i].key().toString().replace('_', ' ')) ;
   out.print("\", ");
   if ( log != null ) out.print( fontdf.format( fontmin + (fontmax - fontmin)*Math.log10(1+9.0*count/countmax) ) );
   else out.print(fontdf.format( (1.0*count/countmax) *fontmax+fontmin ) );
@@ -140,8 +147,8 @@ WordCloud(
 		list: list,
 		// drawMask: true,
 		// maskColor: "white",
-		minRotation: -Math.PI/2.5, 
-		maxRotation: Math.PI/2.5,
+		minRotation: -Math.PI/3, 
+		maxRotation: Math.PI/3,
    		rotationSteps: 8,
    		rotateRatio: 1, 
    		shape: 'square',

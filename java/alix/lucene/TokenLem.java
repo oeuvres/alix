@@ -83,7 +83,9 @@ public final class TokenLem extends TokenFilter
       if (term.length() > 1 && Char.isUpperCase(term.charAt(1))) {
         int roman = Calcul.roman2int(term.buffer());
         if (roman > 0) {
-          
+          flagsAtt.setFlags(Tag.NUM);
+          term.setEmpty().append(Integer.toString(roman));
+          return true;
         }
       }
       term.capitalize();

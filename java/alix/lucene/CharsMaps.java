@@ -35,6 +35,8 @@ public class CharsMaps
   public final static HashMap<CharsAtt, CharsAtt> ELLISION = new HashMap<CharsAtt, CharsAtt>((int) (30 * 0.75));
   /** Abbreviations with a final dot */
   public final static HashMap<CharsAtt, CharsAtt> BREVIDOT = new HashMap<CharsAtt, CharsAtt>((int) (100 * 0.75));
+  /** First word of a compound */
+  public final static HashSet<CharsAtt> COMPOUND1 = new HashSet<CharsAtt>();
   /* Load dictionaries */
   static {
     String res = null;
@@ -127,6 +129,10 @@ public class CharsMaps
     if (val == null) return false;
     if (!val.isEmpty()) att.copy(val);
     return true;
+  }
+  public static boolean compound1(CharsAtt att)
+  {
+    return COMPOUND1.contains(att);
   }
 
   public static boolean norm(CharsAtt att)

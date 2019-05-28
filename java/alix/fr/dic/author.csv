@@ -1,10 +1,4 @@
-#TITRES
-
-Antarès;NAMEtitle
-Cinna;NAMEtitle
-Rodogune;NAMEfict
-
-#PERSONNAGES
+#FICTION
 
 Baryton;NAMEfict
 Bijou;NAMEfict
@@ -15,6 +9,9 @@ Diafoirus;NAMEfict;
 Gavroche;NAMEfict;
 Plassans;NAMEplace
 Verrières;NAMEplace
+Antarès;NAMEtitle
+Cinna;NAMEtitle
+Rodogune;NAMEfict
 
 
 # AUTEURS;;

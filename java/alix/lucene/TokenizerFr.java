@@ -53,12 +53,13 @@ public class TokenizerFr extends Tokenizer
   private int offset = 0;
   /** Final input offset */
   private int finalOffset = 0;
-  /** French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel */
+  /**
+   * French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel
+   */
   public static final HashSet<CharsAtt> HYPHEN_POST = new HashSet<CharsAtt>();
   static {
-    for (String w : new String[] { "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "la", "là",
-        "le", "les", "leur", "lui", "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous",
-        "y" })
+    for (String w : new String[] { "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "la", "là", "le", "les",
+        "leur", "lui", "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y" })
       HYPHEN_POST.add(new CharsAtt(w));
   }
 
@@ -75,11 +76,13 @@ public class TokenizerFr extends Tokenizer
   public static final HashSet<CharsAtt> SKIP = new HashSet<CharsAtt>();
   static {
     SKIP.add(new CharsAtt("teiHeader"));
+    SKIP.add(new CharsAtt("head"));
     SKIP.add(new CharsAtt("script"));
     SKIP.add(new CharsAtt("style"));
   }
   /** Store closing tag to skip */
   private CharsAtt skip = new CharsAtt();
+
   public TokenizerFr()
   {
     this(true);
@@ -96,11 +99,10 @@ public class TokenizerFr extends Tokenizer
     this.xml = xml;
   }
 
-
   @Override
   public final boolean incrementToken() throws IOException
   {
-    // The 
+    // The
     clearAttributes();
     // send term event
     if (save != null) {
@@ -112,7 +114,7 @@ public class TokenizerFr extends Tokenizer
     int startOffset = -1; // this variable is always initialized
     int ltOffset = -1;
     int hyphOffset = -1; // keep offset of last hyphen
-    CharsAtt term = (CharsAtt)this.termAtt;
+    CharsAtt term = (CharsAtt) this.termAtt;
     CharsAtt test = this.test;
     FlagsAttribute flags = flagsAtt;
     char[] buffer = bufSrc.getBuffer();
@@ -134,7 +136,7 @@ public class TokenizerFr extends Tokenizer
         bufLen = bufSrc.getLength();
         bufIndex = 0;
         // end of buffer
-        if (bufLen != 0);
+        if (bufLen != 0) ;
         else if (length > 0) { // a term to send
           endSub = 0;
           break;
@@ -148,7 +150,7 @@ public class TokenizerFr extends Tokenizer
       // got a char, let's work
       c = buffer[bufIndex];
       bufIndex++;
- 
+
       // a very light XML parser
       if (!xml) ;
       else if (c == '<') { // start tag
@@ -160,7 +162,7 @@ public class TokenizerFr extends Tokenizer
         continue;
       }
       else if (intag) { // inside tag
-        if (tagname) {
+        if (tagname) { // start to record tagname
           if (!test.isEmpty() && (c == ' ' || c == '>' || (c == '/'))) tagname = false;
           else test.append(c);
         }
@@ -204,6 +206,10 @@ public class TokenizerFr extends Tokenizer
         }
         continue;
       }
+      // inside a tag to skip, go throw
+      else if (!skip.isEmpty()) {
+        continue;
+      }
       else if (c == '&') {
         if (length == 0) startOffset = offset + bufIndex - 1;
         xmlent = true;
@@ -221,43 +227,49 @@ public class TokenizerFr extends Tokenizer
         term.append(c);
         continue;
       }
-      // inside a tag to skip, go throw
-      else if (!skip.isEmpty()) {
-        continue;
-      }
-      // Sentence delimiters
+      
+      // Possible sentence delimiters
       if (c == '.' || c == '…' || c == '?' || c == '!' || c == '«' || c == '—' || c == ':') {
         // dot after a digit, decimal number
-        if (Char.isDigit(lastChar)) {
-          term.append(c);
-        }
-        // test if it's an abreviation with a dot
-        else if (c == '.' && CharsMaps.brevidot(term)) {
-          endSub = 0;
-          break;
-        }
-        // a term is started, send it, but prepare to send a dot event 
-        else if (length > 0 && flags.getFlags() != Tag.PUNsent) {
-          endSub = 0;
-          bufIndex--;
-          break;
-        }
-        else if (length == 0) {
+        if (length == 0) {
           flags.setFlags(Tag.PUNsent);
           startOffset = offset + bufIndex - 1;
           term.append(c);
+          lastChar = c; // give for ..., or 1.
+          continue;
         }
-        lastChar = c; // give for ..., or 1.
-        continue;
+        // ... ???
+        if (flags.getFlags() == Tag.PUNsent) {
+          continue;
+        }
+        if (Char.isDigit(lastChar)) {
+          term.append(c);
+          lastChar = c; // for 6. 7.
+          continue;
+        }
+        // test if it's an abreviation with a dot
+        if (c == '.') {
+          term.append('.');
+          if (CharsMaps.brevidot(term)) {
+            endSub = 0;
+            break;
+          }
+          term.setLength(term.length() - 1);
+          // restore
+        }
+        // seems a sentence dot 
+        endSub = 0;
+        bufIndex--;
+        break;
       }
-      
+
       // french decimals
       if (Char.isDigit(lastChar) && c == ',') {
         term.append(c);
         continue;
       }
 
-      // store the position of an hyphen, and check if there is not one 
+      // store the position of an hyphen, and check if there is not one
       if (c == '-' && length != 0) {
         hyphOffset = offset + bufIndex;
         test.setEmpty();
@@ -296,7 +308,8 @@ public class TokenizerFr extends Tokenizer
       term.setEmpty().append('#');
       flags.setFlags(Tag.PUNsent);
     }
-    // splitable hyphen ? split on souviens-toi, murmura-t-elle, but not Joinville-le-Pont, 
+    // splitable hyphen ? split on souviens-toi, murmura-t-elle, but not
+    // Joinville-le-Pont,
     if (hyphOffset > 0 && HYPHEN_POST.contains(test)) {
       // swap terms to store state of word after hyphen
       copy.copy(term);
@@ -334,29 +347,33 @@ public class TokenizerFr extends Tokenizer
     bufSrc.reset(); // make sure to reset the IO buffer!!
   }
 
- 
   /**
-   * An attribute factory 
+   * An attribute factory
+   * 
    * @author fred
    *
    */
-  private static final class AlixAttributeFactory extends AttributeFactory {
+  private static final class AlixAttributeFactory extends AttributeFactory
+  {
     private final AttributeFactory delegate;
 
-    public AlixAttributeFactory(AttributeFactory delegate) {
+    public AlixAttributeFactory(AttributeFactory delegate)
+    {
       this.delegate = delegate;
     }
 
     @Override
-    public AttributeImpl createAttributeInstance(Class<? extends Attribute> attClass) {
-      if (attClass == CharTermAttribute.class)
-        return new CharsAtt();
+    public AttributeImpl createAttributeInstance(Class<? extends Attribute> attClass)
+    {
+      if (attClass == CharTermAttribute.class) return new CharsAtt();
       return delegate.createAttributeInstance(attClass);
     }
   }
 
   /**
-   * Get offsets of a text as an array of ints that could be indexed in a binary field.
+   * Get offsets of a text as an array of ints that could be indexed in a binary
+   * field.
+   * 
    * @param text
    * @param offsets
    * @throws IOException
@@ -379,6 +396,5 @@ public class TokenizerFr extends Tokenizer
       tokens.close();
     }
   }
-
 
 }
