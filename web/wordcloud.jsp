@@ -15,16 +15,14 @@ if ( word != null && word.isEmpty() ) word = null;
     <link rel="stylesheet" type="text/css" href="alix.css" />
     <script src="lib/wordcloud2.js">//</script>
     <style>
-#frame { padding: 25px; background:#000;}
-#nuage { height: 800px; background: #000; }
+#frame { padding: 25px; background:#FFF;}
+#nuage { height: 800px; width: 800px; background: #FFF; }
 #nuage a { text-decoration: none; }
-a.mot { font-family: Georgia, serif; position: absolute; display: block; white-space: nowrap; color: rgba( 128, 0, 0, 0.9); }
-a.SUB { color: rgba( 32, 32, 32, 0.6); font-family: "Arial", sans-serif; font-weight: 700; }
-a.ADJ { color: rgba( 128, 128, 192, 0.8); }
-a.VERB { color: rgba( 255, 0, 0, 1 );  }
-a.ADV { color: rgba( 64, 128, 64, 0.8); }
-a.NAME { padding: 0 0.5ex; background-color: rgba( 192, 192, 192, 0.2) ; color: #FFF; 
-text-shadow: #000 0px 0px 5px;  -webkit-font-smoothing: antialiased;  }
+span.SUB { color: #000000; }
+span.ADJ { color: #008000; }
+span.VERB { color: #000080;  }
+span.ADV { color: #008000; }
+span.NAME { color: #FF0000; }
     </style>
   </head>
   <body>
@@ -37,13 +35,25 @@ text-shadow: #000 0px 0px 5px;  -webkit-font-smoothing: antialiased;  }
        <label>Filtre Frantext <input name="frantext" <%=checked%> type="checkbox"/></label>
         <button>▶</button>
       </form>
+    <div style="font-family: 'Roboto'; font-size: 50pt; ">
+    	<span style="font-weight: 100">100</span>
+    	<span style="font-weight: 200">200</span>
+    	<span style="font-weight: 300">300</span>
+    	<span style="font-weight: 400">400</span>
+    	<span style="font-weight: 500">500</span>
+    	<span style="font-weight: 600">600</span>
+    	<span style="font-weight: 700">700</span>
+    	<span style="font-weight: 800">800</span>
+    	<span style="font-weight: 900">900</span>
+    </div>
       <div id="frame">
       	<div id="nuage"></div>
 	  </div>
    <ul>
 <%
 HashSet<CharsAtt> STOP = new HashSet<CharsAtt>();
-for (String w : new String[] { "article", "partie", "section", "annexe", "protocole", "déclaration", "effet", "sein", "art.", "let."}) {
+for (String w : new String[] { "article", "Article", "partie", "section", "annexe", "protocole", "déclaration", "effet", "sein", "art.", "let.", 
+    "Union_européenne", "accords", "accord", "Suisse", "paragraphe", "paragraphes", "UE", "ci-après", "sauf"}) {
   STOP.add(new CharsAtt(w));
 }
 CharsDic dic = new CharsDic();
@@ -96,8 +106,8 @@ var list = [
 Entry[] entries = dic.sorted();
 int max = entries.length;
 int lines = 500;
-int fontmin = 16;
-float fontmax = 60;
+int fontmin = 14;
+float fontmax = 80;
 int countmax = 0;
 float franfreq;
 double bias = 0;
@@ -125,38 +135,47 @@ for (int i = start; i < max; i++) {
   else {
   }
 
-  out.print("[\"");
+  out.print("{word:\"");
   // if ( word.indexOf( '"' ) > -1 ) word = word.replace( "\"", "\\\"" ); 
   out.print(entries[i].key().toString().replace('_', ' ')) ;
-  out.print("\", ");
+  out.print("\"");
+  out.print(", weight:");
   if ( log != null ) out.print( fontdf.format( fontmin + (fontmax - fontmin)*Math.log10(1+9.0*count/countmax) ) );
-  else out.print(fontdf.format( (1.0*count/countmax) *fontmax+fontmin ) );
-  out.print(", '");
+  else out.print(fontdf.format( (1.0*count/countmax)*(fontmax - fontmin)+fontmin ) );
+  out.print(", attributes:{class:'");
   out.print(tag.label());
-  out.print("'");
-  out.print(", ");
-  out.print(count);
-  // TODO link ? out.println("\", target:\"grep\", href:\"grep.jsp?q="+word+"&bibcode="+bibcode+"\" }, bias:"+bias+" },");
-  out.println("],");
+  out.print("'}");
+  out.println("},");
   if (--lines <= 0 ) break;
 }%>
 ];
+var fontmin = <%=fontmin%>;
+var fontmax = <%=fontmax%>;
 WordCloud(
 	document.getElementById('nuage'), 
 	{ 
 		list: list,
 		// drawMask: true,
 		// maskColor: "white",
-		minRotation: -Math.PI/3, 
-		maxRotation: Math.PI/3,
-   		rotationSteps: 8,
+		minRotation: -Math.PI/4, 
+		maxRotation: Math.PI/4,
+   		rotationSteps: 5,
    		rotateRatio: 1, 
+   		shuffle: false,
    		shape: 'square',
    		ridSize: 5,
-   		fontFamily:'Arial, sans-serif',
-   		fontWeight: 500, 
-   		color: 'random-light', 
-   		backgroundColor: '#000000' 
+   		color: null,
+   		fontFamily:'Roboto, Lato, Helvetica, "Open Sans", sans-serif',
+   		fontWeight: function(word, weight, fontSize) {
+   			var ratio = (weight - fontmin) / (fontmax - fontmin);
+   			var bold = 250 + Math.round(ratio * 13) * 50;
+   			return ""+bold;
+   		},
+   		backgroundColor: '#FFFFFF',
+   		opacity: function(word, weight, fontSize) {
+   			var ratio = (weight - fontmin) / (fontmax - fontmin);
+   			return 1 - ratio * 0.7;
+   		},
    	} 
 );
       </script>

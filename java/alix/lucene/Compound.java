@@ -77,7 +77,7 @@ public class Compound
     }
     if (size == cap) {
       int from = offset[1];
-      // System.arrayCopy do not seems to create problems
+      // System.arrayCopy do not seems to create crossing problems
       term.copyBuffer(term.buffer(), from, length[cap - 1] - from);
       for (int i = 1; i < cap; i++) {
         offset[i - 1] = offset[i] - from; 

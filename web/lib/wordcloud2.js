@@ -183,6 +183,7 @@ if (!window.clearImmediate) {
                   '"Arial Unicode MS", "Droid Fallback Sans", sans-serif',
       fontWeight: 'normal',
       color: 'random-dark',
+      opacity: null,
       minSize: 0, // 0 to disable
       weightFactor: 1,
       clearCanvas: true,
@@ -391,6 +392,12 @@ if (!window.clearImmediate) {
       getTextFontWeight = settings.fontWeight;
     }
 
+    /* function for getting the font-weight of the text */
+    var getTextOpacity;
+    if (typeof settings.opacity === 'function') {
+      getTextOpacity = settings.opacity;
+    }
+
     /* function for getting the classes of the text */
     var getTextClasses = null;
     if (typeof settings.classes === 'function') {
@@ -478,7 +485,7 @@ if (!window.clearImmediate) {
           rx = settings.shape(t / T * 2 * Math.PI); // 0 to 1
         }
 
-        // Push [x, y, t]; t is used solely for getTextColor()
+        // Push [x, y, t]; t is used solely for ()
         points.push([
           center[0] + radius * rx * Math.cos(-t / T * 2 * Math.PI),
           center[1] + radius * rx * Math.sin(-t / T * 2 * Math.PI) *
@@ -739,6 +746,10 @@ if (!window.clearImmediate) {
       } else {
         color = settings.color;
       }
+      var opacity;
+      if (getTextOpacity) {
+        opacity = getTextOpacity(word, weight, fontSize);
+      }
 
       // get fontWeight that will be used to set ctx.font and font style rule
       var fontWeight;
@@ -833,6 +844,9 @@ if (!window.clearImmediate) {
           };
           if (color) {
             styleRules.color = color;
+          }
+          if (opacity) {
+            styleRules.opacity = opacity;
           }
           span.textContent = word;
           for (var cssProp in styleRules) {
