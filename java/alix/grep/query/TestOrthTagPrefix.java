@@ -15,7 +15,7 @@ public class TestOrthTagPrefix extends TestTerm
   @Override
   public boolean test(Occ occ)
   {
-    if (occ.tag().prefix() != prefix)
+    if (occ.tag().group() != prefix)
       return false;
     return chain.glob(occ.orth());
   }

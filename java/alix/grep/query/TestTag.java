@@ -20,7 +20,7 @@ public class TestTag extends Test
   @Override
   public String label()
   {
-    if (Tag.prefix(tag) == tag)
+    if (Tag.group(tag) == tag)
       return '"' + Tag.label(tag) + '"';
     return Tag.label(tag);
   }

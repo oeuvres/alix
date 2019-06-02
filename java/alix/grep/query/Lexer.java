@@ -150,7 +150,7 @@ public class Lexer
       else if (center instanceof TestTag || center instanceof TestTagPrefix) {
         int key = 0;
         if (center instanceof TestTag)
-          key = Tag.prefix(((TestTag) center).tag);
+          key = Tag.group(((TestTag) center).tag);
         else if (center instanceof TestTagPrefix)
           key = ((TestTagPrefix) center).prefix;
         int[] nos = bytag.get(key);
@@ -180,7 +180,7 @@ public class Lexer
   {
     int[] rules = null;
     int[] rules1 = byform.get(occ.orth());
-    int[] rules2 = bytag.get(occ.tag().prefix());
+    int[] rules2 = bytag.get(occ.tag().group());
     if (rules1 == null && rules2 == null)
       return false;
     else if (rules1 != null)
@@ -234,13 +234,13 @@ public class Lexer
       tag = Tag.code(term.substring(start, end));
       if (tag == Tag.UNKNOWN)
         return new TestOrth(term.substring(start, end));
-      if (Tag.isPrefix(tag) && !quotes)
+      if (Tag.isGroup(tag) && !quotes)
         return new TestTagPrefix(tag);
       return new TestTag(tag);
     }
     else {
       tag = Tag.code(term.substring(pos + 1, end));
-      if (Tag.isPrefix(tag) && !quotes)
+      if (Tag.isGroup(tag) && !quotes)
         return new TestOrthTagPrefix(term.substring(start, pos), tag);
       return new TestOrthTag(term.substring(start, pos), tag);
     }

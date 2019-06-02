@@ -465,7 +465,7 @@ public class Occ
   {
 
     // test Prefix only, is it dangerous ?
-    if (tag.isPrefix() && lem.isEmpty() && orth.isEmpty() && tag.equals(occ.tag.prefix()))
+    if (tag.isGroup() && lem.isEmpty() && orth.isEmpty() && tag.equals(occ.tag.group()))
       return true;
     if (!tag.isEmpty() && !tag.equals(occ.tag))
       return false;

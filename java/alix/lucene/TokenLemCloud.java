@@ -3,11 +3,9 @@ package alix.lucene;
 import java.io.IOException;
 
 import org.apache.lucene.analysis.FilteringTokenFilter;
-import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import alix.fr.dic.Tag;
 
@@ -36,7 +34,7 @@ public class TokenLemCloud extends FilteringTokenFilter
   protected boolean accept() throws IOException
   {
     int tag = flagsAtt.getFlags();
-    // if (Tag.isPun(tag)) return false;
+    if (Tag.isPun(tag)) return false;
     // replace term by lemma for adjectives and verbs
     if (Tag.isAdj(tag) || Tag.isVerb(tag))
       if (lemAtt.length() != 0)

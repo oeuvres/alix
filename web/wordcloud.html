@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Nuage de mots</title>
+    <script src="lib/wordcloud2.js">
+      //
+    </script>
+<style>
+* { box-sizing: border-box; }
+html, body {
+  height: 100%;
+}
+body {
+  /* background: #F8F8EF; */
+  background: #F0F8FF;
+  padding: 25px;
+  
+}
+#nuage {
+  height: 100%;
+}
+
+#nuage span {
+  color: #887;
+  text-decoration: none;
+}
+
+#nuage .SUB {
+  color: #000033;
+}
+
+#nuage .ADJ {
+  
+}
+
+#nuage .VERB {
+  
+}
+
+#nuage .ADV {
+  
+}
+
+#nuage .NAME {
+  color: #FF0000;
+  font-family: serif;
+}
+</style>
+</head>
+<body>
+      <div id="nuage"></div>
+    <script>
+var div = document.getElementById('nuage');
+var fontmin = 14;
+var fontmax = 100;
+var url = new URL(window.location.href);
+var frantext = url.searchParams.get("frantext");
+fetch("freqlist.jsp?fontmin="+fontmin+"&fontmax="+fontmax+"&frantext="+frantext).then(function(response) {
+  return response.json();
+}).then(function(json) {
+  list = json;
+  cloud(div, list);
+}).catch(function(err) {
+  console.log('Fetch problem: ' + err.message);
+});
+function cloud(div, list) {
+  WordCloud(div, {
+    list: list,
+    // origin : [0, 0],
+    // drawOutOfBound: false,
+    // minSize : fontmin,
+    minRotation: -Math.PI / 4,
+    maxRotation: Math.PI / 4,
+    rotationSteps: 5,
+    rotateRatio: 1,
+    shuffle: false,
+    shape: 'square',
+    fontFamily: 'Roboto, Lato, Helvetica, "Open Sans", sans-serif',
+    gridSize: 6,
+    color: null,
+    fontWeight: function(word, weight, fontSize) {
+      var ratio = (weight - fontmin) / (fontmax - fontmin);
+      var bold = 300 + Math.round(ratio * 12) * 50;
+      return "" + bold;
+    },
+    backgroundColor: null,
+    opacity : function(word, weight, fontSize) {
+      var ratio = (weight - fontmin) / (fontmax - fontmin);
+      return 1 - ratio * 0.7;
+    },
+  });
+}
+    </script>
+</body>
+</html>

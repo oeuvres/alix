@@ -13,7 +13,7 @@
     <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.sqlite"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.frdo"/>
+        <javaElement handleIdentifier="=Alix/java&lt;alix.tools"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.fr.dic"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.util"/>
         <javaElement handleIdentifier="=Alix/java&lt;alix.viz"/>

@@ -78,6 +78,7 @@ public class TokenDic extends TokenFilter
     {
       final Tokenizer source = new TokenizerFr();
       TokenStream result = new TokenLem(source);
+      result = new TokenCompound(result, 5);
       if (fieldName.equals("name")) {
         TagFilter tags = new TagFilter().setName();
         result = new TokenPosFilter(result, tags);

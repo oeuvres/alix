@@ -122,7 +122,7 @@ public class TokenizerFr extends Tokenizer
     boolean tagname = false;
     boolean xmlent = false;
     char lastChar = 0;
-    int endSub = 1; // subtract to offset to have precise endOffset
+    int offLast = 1; // subtract to offset the last char
 
     boolean pun = false;
     char c = 0; // current char
@@ -138,7 +138,7 @@ public class TokenizerFr extends Tokenizer
         // end of buffer
         if (bufLen != 0) ;
         else if (length > 0) { // a term to send
-          endSub = 0;
+          offLast = 0;
           break;
         }
         else { // finish !
@@ -222,11 +222,40 @@ public class TokenizerFr extends Tokenizer
         if (c != ';') continue;
         // end of entity
         xmlent = false;
-        c = Char.HTMLENT.get(test);
+        Character get = Char.HTMLENT.get(test);
+        if (get != null) {
+          c = get;
+          term.append(c);
+        }
+        else {
+          term.append(test);
+        }
         test.setEmpty();
-        term.append(c);
         continue;
       }
+
+      // decimals
+      if (Char.isDigit(lastChar) && (c == '.' || c == ',')) {
+        term.append(c);
+        lastChar = c; // for 6. 7.
+        continue;
+      }
+
+      // Clause punctuation, send a punctuation event to separate tokens
+      if (Char.isPUNcl(c)) {
+        // send term before
+        if (length != 0) {
+          offLast = 0;
+          bufIndex--;
+          break;
+        }
+        term.append(c);
+        flags.setFlags(Tag.PUNcl);
+        startOffset = offset + bufIndex - 1;
+        offLast = 0;
+        break;
+      }
+
       
       // Possible sentence delimiters
       if (c == '.' || c == '…' || c == '?' || c == '!' || c == '«' || c == '—' || c == ':') {
@@ -235,39 +264,29 @@ public class TokenizerFr extends Tokenizer
           flags.setFlags(Tag.PUNsent);
           startOffset = offset + bufIndex - 1;
           term.append(c);
-          lastChar = c; // give for ..., or 1.
+          lastChar = c; // give for ... ???
           continue;
         }
         // ... ???
         if (flags.getFlags() == Tag.PUNsent) {
           continue;
         }
-        if (Char.isDigit(lastChar)) {
-          term.append(c);
-          lastChar = c; // for 6. 7.
-          continue;
-        }
         // test if it's an abreviation with a dot
         if (c == '.') {
           term.append('.');
           if (CharsMaps.brevidot(term)) {
-            endSub = 0;
+            offLast = 0;
             break;
           }
           term.setLength(term.length() - 1);
           // restore
         }
         // seems a sentence dot 
-        endSub = 0;
+        offLast = 0;
         bufIndex--;
         break;
       }
 
-      // french decimals
-      if (Char.isDigit(lastChar) && c == ',') {
-        term.append(c);
-        continue;
-      }
 
       // store the position of an hyphen, and check if there is not one
       if (c == '-' && length != 0) {
@@ -302,7 +321,7 @@ public class TokenizerFr extends Tokenizer
       lastChar = c;
     }
     // send term event
-    int endOffset = offset + bufIndex - endSub;
+    int endOffset = offset + bufIndex - offLast;
     // something like 1. 2.
     if ((lastChar == '.' || c == ')' || c == '°') && flags.getFlags() == Tag.NUM) {
       term.setEmpty().append('#');
@@ -312,9 +331,10 @@ public class TokenizerFr extends Tokenizer
     // Joinville-le-Pont,
     if (hyphOffset > 0 && HYPHEN_POST.contains(test)) {
       // swap terms to store state of word after hyphen
-      copy.copy(term);
+      int len = term.length() - test.length() - 1;
+      copy.copy(term.setLength(len));
       term.copy(test);
-      offsetAtt.setOffset(correctOffset(hyphOffset - 1), correctOffset(endOffset));
+      offsetAtt.setOffset(correctOffset(hyphOffset), correctOffset(endOffset));
       save = captureState();
       // send the word before hyphen
       term.copy(copy);

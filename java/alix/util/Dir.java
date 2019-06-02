@@ -18,6 +18,11 @@ public class Dir
    */
   public static List<File> ls(String path)
   {
+    ArrayList<File> files = new ArrayList<File>();
+    return ls(path, files);
+  }
+  public static List<File> ls(String path, List<File> files)
+  {
     File dir = new File(path);
     String re = ".*\\.xml";
     if (!dir.isDirectory()) {
@@ -25,7 +30,6 @@ public class Dir
       dir = dir.getParentFile();
       // if (!dir.isDirectory()) let exception go
     }
-    ArrayList<File> files = new ArrayList<File>();
     collect(dir, Pattern.compile(re), files);
     return files;
   }
@@ -35,7 +39,7 @@ public class Dir
    * @param pattern
    * @return
    */
-  private static void collect(File dir, Pattern pattern, final ArrayList<File> files)
+  private static void collect(File dir, Pattern pattern, final List<File> files)
   {
     File[] ls = dir.listFiles();
     int i = 0;

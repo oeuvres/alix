@@ -14,7 +14,7 @@ public class TestTagPrefix extends Test
   @Override
   public boolean test(Occ occ)
   {
-    return (occ.tag().prefix() == prefix);
+    return (occ.tag().group() == prefix);
   }
 
   @Override

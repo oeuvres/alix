@@ -37,7 +37,7 @@ public abstract class Test
     if ((tag = Tag.code(term)) != Tag.UNKNOWN) {
       if (quotes)
         return new TestTag(tag);
-      if (Tag.prefix(tag) == tag)
+      if (Tag.group(tag) == tag)
         return new TestTagPrefix(tag);
       return new TestTag(tag);
     }

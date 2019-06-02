@@ -31,6 +31,7 @@ public final class TokenLem extends TokenFilter
   private State save;
   /** For some tests */
   private final CharsAtt copy = new CharsAtt();
+  /**  */
 
 
   
@@ -60,11 +61,7 @@ public final class TokenLem extends TokenFilter
     if (term.length() == 0) return true;
     if (flags == Tag.PUNdiv || flags == Tag.PUNsent) {
       this.waspun = true;
-      // clean the compound stack
       return true;
-    }
-    if (term.isEmpty()) {
-      throw new IOException("Unexpected event, term is empty");
     }
     // Get first char
     char c1 = term.charAt(0);
@@ -77,10 +74,10 @@ public final class TokenLem extends TokenFilter
     NameEntry name;
     // norm case
     if (Char.isUpperCase(c1)) {
-      
-      copy.copy(term); // if nothing found, be conservative, restore (ex : USA, Grande-Bretagne)
-      // acronyms, roman number
-      if (term.length() > 1 && Char.isUpperCase(term.charAt(1))) {
+      // if nothing found, be conservative, restore (ex : USA, Grande-Bretagne)
+      copy.copy(term);
+      // roman number
+      if (term.length() > 2 && Char.isUpperCase(term.charAt(1))) {
         int roman = Calcul.roman2int(term.buffer());
         if (roman > 0) {
           flagsAtt.setFlags(Tag.NUM);
@@ -88,17 +85,16 @@ public final class TokenLem extends TokenFilter
           return true;
         }
       }
-      term.capitalize();
-      boolean normalized = CharsMaps.norm(term); // normalise : coeur -> cœur, Etat -> État
-      c1 = term.charAt(0); // get first char, may have been modified by normalization Etat -> État
+      term.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
+      boolean normalized = CharsMaps.norm(term); // normalise : Etat -> État
+      c1 = term.charAt(0); // get normalized cap
       name = CharsMaps.name(term);
       if (name != null) {
         flagsAtt.setFlags(name.tag);
         if (name.orth != null) term.copy(name.orth);
         return true;
       }
-      term.setCharAt(0, Character.toLowerCase(c1));
-      word = CharsMaps.word(term);
+      word = CharsMaps.word(term.toLower());
       // if not after a pun, always capitalize, even if it's a known word (État...)
       if (!waspun) term.setCharAt(0, c1);
       // if word not found, infer it's a MAME

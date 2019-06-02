@@ -270,26 +270,26 @@ public final class Tag
     return (code == NULL);
   }
 
-  public boolean isPrefix()
+  public boolean isGroup()
   {
     if (code == NULL || code == UNKNOWN)
       return false;
     return (code & 0xF) == 0;
   }
 
-  static public boolean isPrefix(final int code)
+  static public boolean isGroup(final int code)
   {
     if (code == NULL || code == UNKNOWN)
       return false;
     return (code & 0xF) == 0;
   }
 
-  public int prefix()
+  public int group()
   {
-    return prefix(code);
+    return group(code);
   }
 
-  public static int prefix(final int code)
+  public static int group(final int code)
   {
     return code >> 0x4 << 0x4;
   }

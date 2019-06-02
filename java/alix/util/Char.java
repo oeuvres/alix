@@ -259,7 +259,7 @@ public class Char
         }
         if (c == '�') properties |= LETTER | TOKEN;
         if ('.' == c || '…' == c || '?' == c || '!' == c) properties |= PUNsent;
-        else if (',' == c || ';' == c || ':' == c) properties |= PUNcl;
+        else if (',' == c || ';' == c || ':' == c || '(' == c || ')' == c || '—' == c || '–' == c) properties |= PUNcl;
       }
       CHARS[c] = properties;
     }

@@ -1,6 +1,7 @@
 package alix.lucene;
 
 import java.io.IOException;
+import java.util.HashSet;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -12,6 +13,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.AttributeSource.State;
 
 import alix.fr.dic.Tag;
+import alix.lucene.CharsMaps.NameEntry;
 
 /**
  * Plug behind TokenLem
@@ -20,6 +22,14 @@ import alix.fr.dic.Tag;
  */
 public class TokenCompound extends TokenFilter
 {
+  /**
+   * French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel
+   */
+  public static final HashSet<CharsAtt> PARTICLES = new HashSet<CharsAtt>();
+  static {
+    for (String w : new String[] { "d'", "D'", "de", "De", "du", "Du", "l'", "L'", "le", "la", "von", "Von" })
+      PARTICLES.add(new CharsAtt(w));
+  }
   /** Size of a compound */
   private int skippedPositions;
   /** Increment position of a token */
@@ -34,8 +44,10 @@ public class TokenCompound extends TokenFilter
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   /** A lemma when possible */
   private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
-  /** */
-  private final Compound cache;
+  /** Store state */
+  private State save;
+  /** A term used to concat names */
+  private CharsAtt name = new CharsAtt();
 
   /** Number of tokens to cache for compounds */
   final int size;
@@ -43,26 +55,54 @@ public class TokenCompound extends TokenFilter
   {
     super(input);
     this.size = size;
-    this.cache = new Compound(size);
   }
 
   @Override
   public boolean incrementToken() throws IOException
   {
+    if (save != null) {
+      restoreState(save);
+      save = null;
+      return true;
+    }
     if (!input.incrementToken()) {
-      // empty the cache
       return false;
     }
-    int tag = flagsAtt.getFlags();
-    // compound names
+    CharTermAttribute term = termAtt;
+    final int tag = flagsAtt.getFlags();
+    
+    // test if compound names
     if (Tag.isName(tag)) {
-      compound.start(term, offsetAtt.startOffset(), offsetAtt.endOffset());
-      while (input.incrementToken()) {
-        if ()
+      final int startOffset = offsetAtt.startOffset();
+      int endOffset = offsetAtt.endOffset();
+      int pos = 1; 
+      name.copy(term);
+      boolean notlast;
+      while ((notlast = input.incrementToken())) {
+        // end of name
+        if (!Tag.isName(flagsAtt.getFlags()) && !PARTICLES.contains(term)) break;
+        endOffset = offsetAtt.endOffset();
+        pos++;
+        if (name.charAt(name.length()-1) != '\'') name.append(' ');
+        name.append(term);
       }
+      if (notlast) save = captureState();
+      offsetAtt.setOffset(startOffset, endOffset);
+      // get tag
+      NameEntry entry = CharsMaps.name(name);
+      if (entry == null) {
+        flagsAtt.setFlags(tag);
+        term.setEmpty().append(name);
+      }
+      else {
+        flagsAtt.setFlags(entry.tag);
+        if (entry.orth != null) term.setEmpty().append(entry.orth);
+        else term.setEmpty().append(name);
+      }
+      return true;
     }
     
-    
+    /*
     // compounds start by lem, ex : faire comme si
     else if (lem.length() != 0) {
       if (!CharsMaps.compound1(lem)) return true;
@@ -87,7 +127,8 @@ public class TokenCompound extends TokenFilter
       skippedPositions += posIncrAtt.getPositionIncrement();
     }
     // reached EOS -- return false
-    return false;
+     */
+    return true;
   }
   @Override
   public void reset() throws IOException {

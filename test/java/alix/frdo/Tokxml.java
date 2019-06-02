@@ -54,7 +54,7 @@ public class Tokxml
   public static void main(String[] args) throws IOException
   {
     if (args == null || args.length < 1) {
-      System.out.println("Usage : java -cp \"alix.jar\" alix.frdo.Teiw src.xml dest.xml");
+      System.out.println("Usage : java -cp \"alix.jar\" alix.tools.Teiw src.xml dest.xml");
       System.exit(0);
     }
     String src = args[0];

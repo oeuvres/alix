@@ -36,7 +36,7 @@ public class Tokcsv
   public static void main(String[] args) throws IOException
   {
     if (args == null || args.length < 1) {
-      System.out.println("Usage : java -cp \"alix.jar\" alix.frdo.Tokcsv src.xml dest.tsv");
+      System.out.println("Usage : java -cp \"alix.jar\" alix.tools.Tokcsv src.xml dest.tsv");
       System.exit(0);
     }
     String src = args[0];
