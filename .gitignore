@@ -15,5 +15,5 @@ work/
 /*.txt
 /*.xlsx
 /*.xml
-
+web/WEB-INF/lucene
 .settings/

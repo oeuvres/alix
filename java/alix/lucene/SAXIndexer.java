@@ -13,10 +13,12 @@ import org.apache.lucene.analysis.sinks.TeeSinkTokenFilter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
@@ -35,11 +37,15 @@ import net.sf.saxon.s9api.SaxonApiException;
  * <pre>
  * <freename xmlns:alix="http://alix.casa">
  *    <alix:document>
+        <alix:field name="title" type="text">First document</alix:field>
+        <alix:field name="year" type="int" value="2019"/>
         <alix:field name="text" type="text">
           Le petit chat est mort.
         </alix:field>
       </alix:document>
       <alix:document>
+        <alix:field name="title" type="text">Second document</alix:field>
+        <alix:field name="year" type="int" value="2019"/>
         <alix:field name="text" type="xml">
           <p>La <i>petite</i> chatte est morte.</p>
         </alix:field>
@@ -63,15 +69,13 @@ public class SAXIndexer extends DefaultHandler
   /** Curent document to writer */
   private Document document;
   /** Flag set by a text field */
-  private boolean record = true;
+  private boolean record = false;
   /** Name of the current xml field to populate */
-  private String field;
+  private String fieldName;
   /** A text field value */
   private StringBuilder xml = new StringBuilder();
   /** Flag to verify that an element is not empty (for serialization) */
   private boolean empty;
-  /** A reusable field for deletion */
-  private Term del = new Term(Alix.FILENAME);
   
   
   /**
@@ -160,31 +164,43 @@ public class SAXIndexer extends DefaultHandler
       if (name == null) 
         throw new SAXException("<alix:field> A field must have a name.");
       if (Alix.FILENAME.equals(name))
-        throw new SAXException("<alix:field> name=\"" + name + "\" is a reserved field name");
+        throw new SAXException("<alix:field> @name=\"" + name + "\" is a reserved field name");
       String type = attributes.getValue("type");
       if (type == null) 
-        throw new SAXException("<alix:field> A field must have a type=\"[xml, facet, token, int]\"");
+        throw new SAXException("<alix:field name=\""+name+"\"> A field must have a type=\"[xml, facet, token, int]\"");
       String value = attributes.getValue("value");
       switch (type) {
         case "text":
         case "xml":
         case "html":
-          field = name;
+          fieldName = name;
           record = true;
+          break;
+        case "int":
+          int val = 0;
+          if (value == null)
+            throw new SAXException("<alix:field name=\""+name+"\"> A field of @type=\"" + type + "\" must have an attribute @value=\"number\"");
+          try {
+            val = Integer.parseInt(value);
+          } catch (Exception e) {
+            throw new SAXException("<alix:field name=\""+name+"\" type=\"" + type + "\"> @value=\""+value+"\" is not a number.");
+          }
+          document.add(new IntPoint(name, val));
+          document.add(new StoredField(name, value));
           break;
         case "facet":
           if (value == null)
-            throw new SAXException("<alix:field> A field of type=\"" + type + "\" must have an attribute value=\"sortable\"");
-          document.add(new SortedDocValuesField(name, new BytesRef(value)));
+            throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"facet\"");
+          document.add(new SortedSetDocValuesField(name, new BytesRef(value)));
           document.add(new StoredField(name, value));
           break;
         case "token":
           if (value == null)
-            throw new SAXException("<alix:field> A field of type=\"" + type + "\" must have an attribute value=\"token\"");
+            throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"token\"");
           document.add(new StringField(name, value, Field.Store.YES));
           break;
         default:
-          throw new SAXException("<alix:field> The type=\"" + type + "\" is not yet implemented");
+          throw new SAXException("<alix:field name=\""+name+"\"> The type=\"" + type + "\" is not yet implemented");
       }
     }
     // unknown, alert
@@ -254,23 +270,26 @@ public class SAXIndexer extends DefaultHandler
       catch (IOException e) {
         throw new SAXException(e);
       }
-      document = null;
+      finally {
+        document = null;
+      }
     }
     if ("field".equals(localName) && record) {
-      record = false;
       Tokenizer source = new TokenizerFr();
       String text = this.xml.toString();
       this.xml.setLength(0);
       source.setReader(new StringReader(text));
       xml.setLength(0);
       TokenStream result = new TokenLem(source);
+      result = new TokenCompound(result, 5);
       result = new CachingTokenFilter(result);
       TokenStream full = new TokenLemFull(result);
       TokenStream cloud = new TokenLemCloud(result);
-      document.add(new StoredField(field + "_store", text));
-      document.add(new Field(field, full, Alix.ftypeAll));
-      document.add(new Field(field + "_cloud", cloud, Alix.ftypeAll));
-      field = null;
+      document.add(new StoredField(fieldName , text));
+      document.add(new Field(fieldName, cloud, Alix.ftypeAll));
+      // document.add(new Field(fieldName + "_cloud", cloud, Alix.ftypeAll));
+      record = false;
+      fieldName = null;
     }
   }
   

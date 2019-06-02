@@ -119,14 +119,14 @@ public class XMLIndexer implements Runnable
   {
     while(true) {
       File file = next();
-      if (file == null) return;
+      if (file == null) return; // should be the last
+      String fileName = file.getName();
+      fileName = fileName.substring(0, fileName.lastIndexOf('.'));
+      info(fileName + "                        ".substring(Math.min(22, fileName.length())) + file.getParent());
       byte[] bytes = null;
       try {
         // read file as fast as possible to release disk resource for other threads
         bytes = Files.readAllBytes(file.toPath());
-        String fileName = file.getName();
-        fileName = fileName.substring(0, fileName.lastIndexOf('.'));
-        info(fileName + "                        ".substring(Math.min(22, fileName.length())) + file.getParent());
         handler.setFileName(fileName);
         if (transformer != null) {
           StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
@@ -136,14 +136,9 @@ public class XMLIndexer implements Runnable
           SAXParser.parse(new ByteArrayInputStream(bytes), handler);
         }
       }
-      catch (IOException e) {
-        error(e);
-      }
-      catch (TransformerException e) {
-        error(e);
-      }
-      catch (SAXException e) {
-        error(e);
+      catch (Exception e) {
+        Exception ee =new Exception("ERROR in file "+file, e);
+        error(ee);
       }
     }
   }
@@ -169,7 +164,7 @@ public class XMLIndexer implements Runnable
    */
   public static void info(Object o)
   {
-    // System.out.println(o);
+    System.out.println(o);
   }
 
   /**
