@@ -259,7 +259,7 @@ public class TokenizerFr extends Tokenizer
       
       // Possible sentence delimiters
       if (c == '.' || c == '…' || c == '?' || c == '!' || c == '«' || c == '—' || c == ':') {
-        // dot after a digit, decimal number
+        // token starting by a sentence punctuation 
         if (length == 0) {
           flags.setFlags(Tag.PUNsent);
           startOffset = offset + bufIndex - 1;
@@ -267,21 +267,23 @@ public class TokenizerFr extends Tokenizer
           lastChar = c; // give for ... ???
           continue;
         }
-        // ... ???
+        // for ... ???
         if (flags.getFlags() == Tag.PUNsent) {
           continue;
         }
         // test if it's an abreviation with a dot
         if (c == '.') {
           term.append('.');
+          // U.S.A.
+          if (Char.isUpperCase(lastChar)) continue;
           if (CharsMaps.brevidot(term)) {
             offLast = 0;
             break;
           }
+          // seems a sentence dot, 
           term.setLength(term.length() - 1);
-          // restore
         }
-        // seems a sentence dot 
+        // seems a punctuation 
         offLast = 0;
         bufIndex--;
         break;
@@ -309,6 +311,7 @@ public class TokenizerFr extends Tokenizer
           CharsAtt val = CharsMaps.ELLISION.get(term);
           if (val != null) {
             val.copyTo(term);
+            offLast = 0;
             break;
           }
         }

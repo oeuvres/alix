@@ -26,8 +26,8 @@ DecimalFormat fontdf = new DecimalFormat("#");
 String word = request.getParameter("word");
 if ( word != null && word.isEmpty() ) word = null;
 
-// List<File> ls = Dir.ls("/home/fred/Documents/rougemont/DDR/tei");
-List<File> ls = Dir.ls("/var/www/html/critique");
+List<File> ls = Dir.ls("/home/fred/Documents/rougemont/DDR/tei");
+// List<File> ls = Dir.ls("/var/www/html/critique");
 //List<File> ls = Dir.ls("/home/fred/Documents/suisse/accord2.html");
 
 CharsDic dic = new CharsDic();
@@ -44,7 +44,7 @@ for (File entry : ls) {
   String text = Files.readString(path);
   InputStream is = Files.newInputStream(path, StandardOpenOption.READ);
   BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-  ts = analyzer.tokenStream("name", reader);
+  ts = analyzer.tokenStream("sub", reader);
   CharTermAttribute term = ts.addAttribute(CharTermAttribute.class);
   OffsetAttribute offset = ts.addAttribute(OffsetAttribute.class);
   long occs = 0;
@@ -102,12 +102,11 @@ for (int i = start; i < max; i++) {
   }
 
   out.print("  {\"word\" : \"");
-  // if ( word.indexOf( '"' ) > -1 ) word = word.replace( "\"", "\\\"" ); 
   out.print(entries[i].key().toString().replace( "\"", "\\\"" ).replace('_', ' ')) ;
   out.print("\"");
   out.print(", \"weight\" : ");
-  if ( log != null ) out.print( fontdf.format( fontmin + (fontmax - fontmin)*Math.log10(1+9.0*count/countmax) ) );
-  else out.print(fontdf.format( (1.0*count/countmax)*(fontmax - fontmin)+fontmin ) );
+  if ( log != null ) out.print( fontdf.format( fontmin + (fontmax - fontmin) * Math.log10(1+9.0*count/countmax) ) );
+  else out.print(fontdf.format( fontmin + (fontmax - fontmin) * (1.0*count/countmax)) );
   out.print(", \"attributes\" : {\"class\" : \"");
   out.print(Tag.label(tag.group()));
   out.print("\"}");

@@ -2,6 +2,7 @@ package alix.lucene;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.LinkedList;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -27,13 +28,11 @@ public class TokenCompound extends TokenFilter
    */
   public static final HashSet<CharsAtt> PARTICLES = new HashSet<CharsAtt>();
   static {
-    for (String w : new String[] { "d'", "D'", "de", "De", "du", "Du", "l'", "L'", "le", "la", "von", "Von" })
+    for (String w : new String[] { "d'", "D'", "de", "De", "du", "Du", "l'", "L'", "le", "Le", "la", "La", "von", "Von" })
       PARTICLES.add(new CharsAtt(w));
   }
-  /** Size of a compound */
-  private int skippedPositions;
   /** Increment position of a token */
-  private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
+  private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
   /** Position length of a token */
   private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
   /** Current char offset */
@@ -44,8 +43,8 @@ public class TokenCompound extends TokenFilter
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   /** A lemma when possible */
   private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
-  /** Store state */
-  private State save;
+  /** A stack of sates  */
+  private LinkedList<State> stack = new LinkedList<State>();
   /** A term used to concat names */
   private CharsAtt name = new CharsAtt();
 
@@ -60,38 +59,59 @@ public class TokenCompound extends TokenFilter
   @Override
   public boolean incrementToken() throws IOException
   {
-    if (save != null) {
-      restoreState(save);
-      save = null;
+    if (!stack.isEmpty()) {
+      restoreState(stack.removeLast());
       return true;
     }
     if (!input.incrementToken()) {
       return false;
     }
     CharTermAttribute term = termAtt;
-    final int tag = flagsAtt.getFlags();
+    PositionIncrementAttribute posInc = posIncAtt;
+    OffsetAttribute offset = offsetAtt;
+    FlagsAttribute flags = flagsAtt;
+    final int tag = flags.getFlags();
     
-    // test if compound names
+    // test compound names : NAME (particle|NAME)* NAME
     if (Tag.isName(tag)) {
       final int startOffset = offsetAtt.startOffset();
       int endOffset = offsetAtt.endOffset();
-      int pos = 1; 
+      int pos = posInc.getPositionIncrement(); 
       name.copy(term);
+      int lastlen = name.length();
       boolean notlast;
       while ((notlast = input.incrementToken())) {
-        // end of name
-        if (!Tag.isName(flagsAtt.getFlags()) && !PARTICLES.contains(term)) break;
-        endOffset = offsetAtt.endOffset();
-        pos++;
-        if (name.charAt(name.length()-1) != '\'') name.append(' ');
-        name.append(term);
+        if (Tag.isName(flags.getFlags())) {
+          endOffset = offset.endOffset();
+          if (name.charAt(name.length()-1) != '\'') name.append(' ');
+          name.append(term);
+          lastlen = name.length(); // store the last length of name
+          stack.clear(); // empty the stored paticles
+          pos += posInc.getPositionIncrement(); // incremen tposition
+          continue;
+        }
+        // test if it is a particle, but store it, avoid [Europe de l']atome
+        if (PARTICLES.contains(term)) {
+          stack.addFirst(captureState());
+          name.append(' ').append(term);
+          pos += posInc.getPositionIncrement();
+          continue;
+        }
+        break;
       }
-      if (notlast) save = captureState();
+      // are there particles to exhaust ?
+      if (!stack.isEmpty()) {
+        pos = pos - stack.size();
+        name.setLength(lastlen);
+      }
+      if (notlast) stack.addFirst(captureState());
       offsetAtt.setOffset(startOffset, endOffset);
+      posIncAtt.setPositionIncrement(pos);
+      posLenAtt.setPositionLength(pos);
       // get tag
       NameEntry entry = CharsMaps.name(name);
       if (entry == null) {
-        flagsAtt.setFlags(tag);
+        flagsAtt.setFlags(Tag.NAME);
         term.setEmpty().append(name);
       }
       else {
@@ -133,12 +153,10 @@ public class TokenCompound extends TokenFilter
   @Override
   public void reset() throws IOException {
     super.reset();
-    skippedPositions = 0;
   }
 
   @Override
   public void end() throws IOException {
     super.end();
-    posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
   }
 }
