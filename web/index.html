@@ -1,21 +1,38 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="UTF-8">
 	<title>Alix</title>
+    <style type="text/css">
+html, body {height: 100%; background-color: #f3f2ec;}
+body {font-family: sans-serif; margin: 0; padding:0;}
+  * {box-sizing: border-box;}
+#form { padding: 5px 10px 5px 15em;}
+.row {}
+#left {float:left; width: 20%;}
+#right {float: right; width: 80%}
+iframe {border: 1px #FFFFFF solid; width: 100%; }
+#authors {height: 800px;}
+#cloud { height: 800px; }
+    </style>
   </head>
   <body>
-    <form>
-      <input name="q"/>
-    </form>
-    <iframe name="cloud" src="wordcloud.jsp">
-    </iframe>
-    <div>
-      <iframe id="meta" name="meta">
-      </iframe>
+    <div id="form">
+      <form>
+        <input name="q"/>
+      </form>
     </div>
-    <div>
-      <iframe id="right" name="right">
-      </iframe>
+    <div class="row">
+      <div id="left">
+        <iframe id="authors" name="authors" src="authors.jsp">
+        </iframe>
+      </div>
+      <div id="right">
+        <iframe name="cloud" src="wordcloud.html">
+        </iframe>
+        <iframe name="conc">
+        </iframe>
+      </div>
     </div>
   </body>
 </html>

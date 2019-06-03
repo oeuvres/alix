@@ -21,7 +21,7 @@ body {
   height: 100%;
 }
 
-#nuage span {
+#nuage a {
   color: #887;
   text-decoration: none;
 }
@@ -52,22 +52,29 @@ body {
       <div id="nuage"></div>
     <script>
 var div = document.getElementById('nuage');
-var fontmin = 14;
-var fontmax = 80;
 var url = new URL(window.location.href);
 var frantext = url.searchParams.get("frantext");
 var log = url.searchParams.get("log");
-fetch("freqlist.jsp?fontmin="+fontmin+"&fontmax="+fontmax+"&frantext="+frantext+"&log="+log).then(function(response) {
+
+
+fetch("data/freqlist.jsp?frantext="+frantext+"&log="+log).then(function(response) {
   return response.json();
 }).then(function(json) {
   list = json;
   cloud(div, list);
-}).catch(function(err) {
+});
+/*
+.catch(function(err) {
   console.log('Fetch problem: ' + err.message);
 });
+*/
+var fontMin = 14;
+var fontMax = 120;
 function cloud(div, list) {
   WordCloud(div, {
     list: list,
+    fontMin: fontMin,
+    fontMax: fontMax,
     // origin : [0, 0],
     // drawOutOfBound: false,
     // minSize : fontmin,
@@ -79,16 +86,16 @@ function cloud(div, list) {
     shape: 'square',
     fontFamily: 'Roboto, Lato, Helvetica, "Open Sans", sans-serif',
     gridSize: 6,
-    // color: null,
+    color: null,
     fontWeight: function(word, weight, fontSize) {
-      var ratio = (weight - fontmin) / (fontmax - fontmin);
+      var ratio = (fontSize - fontMin) / (fontMax - fontMin);
       var bold = 300 + Math.round(ratio * 12) * 50;
       return "" + bold;
     },
     backgroundColor: null,
     opacity : function(word, weight, fontSize) {
-      var ratio = (weight - fontmin) / (fontmax - fontmin);
-      return 1 - ratio * 0.9;
+      var ratio = (fontSize - fontMin) / (fontMax - fontMin);
+      return 1 - ratio * 0.8;
     },
   });
 }

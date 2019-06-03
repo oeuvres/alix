@@ -1,10 +1,13 @@
 package alix.lucene;
 
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
+import org.apache.lucene.util.UnicodeUtil;
 
 /**
  * A dictionary of terms with frequencies, for lucene.
@@ -12,7 +15,7 @@ import org.apache.lucene.util.BytesRefHash;
  * @author fred
  *
  */
-public class BytesDic
+public class BytesDic implements Iterable<Integer>
 {
   /** Name of dictionary */
   public final String name;
@@ -26,20 +29,17 @@ public class BytesDic
   private long[] counts = new long[32];
   /** Array of terms sorted by count */
   private Entry[] sorted;
-  /** Internal pointer in sorted order */
-  private int pointer = -1;
   /** Cache size after sorting */
   private int size;
-  /** Reusable bytes ref */
-  BytesRef bytes = new BytesRef();
-  
+
   public BytesDic(final String name)
   {
     this.name = name;
   }
-  
+
   /**
    * Populate the list of terms, and add the value.
+   * 
    * @param bytes
    * @param more
    */
@@ -48,13 +48,14 @@ public class BytesDic
     sorted = null;
     int id = hash.add(bytes);
     // value already given
-    if (id < 0) id = - id - 1;
+    if (id < 0) id = -id - 1;
     counts = ArrayUtil.grow(counts, id + 1);
     counts[id] += more;
   }
-  
+
   /**
    * Get count for a term.
+   * 
    * @param bytes
    */
   public long count(final BytesRef bytes)
@@ -62,9 +63,10 @@ public class BytesDic
     final int id = hash.find(bytes);
     return counts[id];
   }
-  
+
   /**
    * Number of terms in the list.
+   * 
    * @return
    */
   public int size()
@@ -73,7 +75,7 @@ public class BytesDic
   }
 
   /**
-   * Sort the entries in count order, to use beforervoid 
+   * Sort the entries in count order, to use beforervoid
    */
   public void sort()
   {
@@ -84,69 +86,8 @@ public class BytesDic
       sorted[id] = new Entry(id, counts[id]);
     }
     Arrays.sort(sorted);
-    pointer = -1;
   }
 
-  /**
-   * Forward cursor
-   * @return
-   */
-  public boolean next()
-  {
-    pointer ++;
-    if (pointer >= size) {
-      pointer = -1;
-      return false;
-    }
-    return true;
-  }
-
-  /**
-   * Reuse bytes to get current term.
-   * @param bytes
-   * @return
-   */
-  public BytesRef term(BytesRef bytes)
-  {
-    final int id = sorted[pointer].id;
-    return hash.get(id, bytes);
-  }
-  /**
-   * Get current term
-   * @return
-   */
-  public String term()
-  {
-    final int id = sorted[pointer].id;
-    return hash.get(id, bytes).utf8ToString();
-  }
-  /**
-   * Get current count
-   * @return
-   */
-  public long count()
-  {
-    return sorted[pointer].count;
-  }
-  /**
-   * Get current id
-   * @return
-   */
-  public int id()
-  {
-    return sorted[pointer].id;
-  }
-  
-  
-
-  /**
-   * Reset before calling next();
-   */
-  public void reset()
-  {
-    pointer = -1;
-  }
-  
   /**
    * Entry used for sorting by count.
    */
@@ -155,7 +96,6 @@ public class BytesDic
     private final int id;
     private final long count;
     private final BytesRef term = new BytesRef();
-    
 
     public Entry(final int id, final long count)
     {
@@ -176,13 +116,113 @@ public class BytesDic
   }
 
   @Override
-  public String toString() {
+  public Cursor iterator()
+  {
+    if (sorted == null) sort();
+    return new Cursor();
+  }
+
+  /**
+   * A private cursor in the list of terms, sorted by count.
+   */
+  public class Cursor implements Iterator<Integer>
+  {
+    private int cursor = -1;
+    /** Reusable bytes ref */
+    BytesRef bytes = new BytesRef();
+
+    /**
+     * Forward cursor
+     * 
+     * @return
+     */
+    @Override
+    public Integer next()
+    {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      cursor++;
+      return cursor;
+    }
+
+    @Override
+    public void remove()
+    {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean hasNext()
+    {
+      return this.cursor < size - 1;
+    }
+
+    /**
+     * Get current term as a string
+     * 
+     * @return
+     */
+    public String term()
+    {
+      final int id = sorted[cursor].id;
+      return hash.get(id, bytes).utf8ToString();
+    }
+
+    /**
+     * Get current term with reusable bytes
+     * 
+     * @param bytes
+     * @return
+     */
+    public BytesRef term(BytesRef bytes)
+    {
+      final int id = sorted[cursor].id;
+      return hash.get(id, bytes);
+    }
+    public CharsAtt term(CharsAtt term)
+    {
+      final int id = sorted[cursor].id;
+      hash.get(id, bytes);
+      
+      // ensure size of the char array
+      int length = bytes.length;
+      char[] chars = term.resizeBuffer(length);
+      final int len = UnicodeUtil.UTF8toUTF16(bytes.bytes, bytes.offset, length, chars);
+      term.setLength(len);
+      return term;
+    }
+
+    /**
+     * Get current count
+     * 
+     * @return
+     */
+    public long count()
+    {
+      return sorted[cursor].count;
+    }
+
+    /**
+     * Reset the cursor.
+     */
+    public void reset()
+    {
+      cursor = -1;
+    }
+
+  }
+
+  @Override
+  public String toString()
+  {
     StringBuilder string = new StringBuilder();
     int max = 100;
-    this.reset();
+    Cursor cursor = this.iterator();
     string.append(name).append(", docs=").append(docs).append(" occs=").append(occs).append("\n");
-    while (this.next()) {
-      string.append(term()).append(":").append(count()).append("\n");
+    while (cursor.hasNext()) {
+      cursor.next();
+      string.append(cursor.term()).append(": ").append(cursor.count()).append("\n");
       if (max-- == 0) {
         string.append("...\n");
         break;
@@ -190,5 +230,5 @@ public class BytesDic
     }
     return string.toString();
   }
-  
+
 }

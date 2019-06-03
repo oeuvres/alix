@@ -1,7 +1,7 @@
 html, body {height: 100%; background-color: #f3f2ec;}
 body {font-family: sans-serif; margin: 0; padding:0;}
+  * {box-sizing: border-box;}
 
-* {box-sizing: border-box;}
 nav.menu {background-color: #ffffff; left: 0; padding: 0 1ex; position: absolute; right: 0; top: 0; font-family: sans-serif;}
 nav a {color: #999; text-decoration: none;}
 

@@ -82,9 +82,12 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
@@ -236,24 +239,45 @@ public class Alix
 
   public BytesDic dic(final String field) throws IOException
   {
-
     BytesDic dic = dictionaries.get(field);
     if (dic != null) return dic;
     dic = new BytesDic(field);
-    // ensure reader
-    IndexReader reader = reader();
-    dic.docs = reader.getDocCount(field);
-    dic.occs = reader.getSumTotalTermFreq(field);
-    BytesRef bytes;
+    IndexReader reader = reader(); // ensure reader
+    // indexed field
+    if (reader.getDocCount(field) > 0) {
+      dic.docs = reader.getDocCount(field);
+      dic.occs = reader.getSumTotalTermFreq(field);
+      BytesRef bytes;
+      for (LeafReaderContext context : reader.leaves()) {
+        LeafReader leaf = context.reader();
+        Terms terms = leaf.terms(field);
+        if (terms == null) continue; 
+        TermsEnum tenum = terms.iterator();
+        while ((bytes = tenum.next()) != null) {
+          dic.add(bytes, tenum.totalTermFreq());
+        }
+      }
+      dic.sort();
+      dictionaries.put(field, dic);
+      return dic;
+    }
+    int docs = 0;
     for (LeafReaderContext context : reader.leaves()) {
       LeafReader leaf = context.reader();
-      Terms terms = leaf.terms(field);
-      if (terms == null) continue; 
-      TermsEnum tenum = terms.iterator();
-      while ((bytes = tenum.next()) != null) {
-        dic.add(bytes, tenum.totalTermFreq());
+      SortedSetDocValues docs4terms = leaf.getSortedSetDocValues(field);
+      if (docs4terms == null) break;
+      BytesRef bytes;
+      // terms.termsEnum().docFreq() not implemented, should loop on docs to have it
+      while (docs4terms.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        long ord;
+        docs++;
+        // each term 
+        while((ord = docs4terms.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+          dic.add(docs4terms.lookupOrd(ord), 1);
+        }
       }
     }
+    dic.docs = docs;
     dic.sort();
     dictionaries.put(field, dic);
     return dic;

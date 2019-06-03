@@ -14,7 +14,9 @@ java.nio.file.StandardOpenOption,
 java.text.DecimalFormat,
 java.text.DecimalFormatSymbols,
 java.util.Arrays,
+java.util.BitSet,
 java.util.HashSet,
+java.util.Iterator,
 java.util.LinkedHashMap,
 java.util.List,
 java.util.Locale,
@@ -25,8 +27,24 @@ org.apache.lucene.analysis.Analyzer,
 org.apache.lucene.analysis.TokenStream,
 org.apache.lucene.analysis.tokenattributes.CharTermAttribute,
 org.apache.lucene.analysis.tokenattributes.OffsetAttribute,
+org.apache.lucene.index.IndexReader,
+org.apache.lucene.index.LeafReader,
+org.apache.lucene.index.Term,
+org.apache.lucene.index.LeafReaderContext,
+org.apache.lucene.index.SortedSetDocValues,
+org.apache.lucene.search.BooleanClause.Occur,
+org.apache.lucene.search.BooleanQuery,
+org.apache.lucene.search.IndexSearcher,
+org.apache.lucene.search.MatchAllDocsQuery,
+org.apache.lucene.search.Query,
+org.apache.lucene.search.TermQuery,
+org.apache.lucene.util.BytesRef,
 
 alix.fr.dic.Tag,
+alix.lucene.Alix,
+alix.lucene.BytesDic,
+alix.lucene.BytesDic.Cursor,
+alix.lucene.Cooc,
 alix.lucene.CharsAtt,
 alix.lucene.CharsDic,
 alix.lucene.CharsDic.Entry,
@@ -43,7 +61,6 @@ alix.util.Dir
 static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
 static DecimalFormat dfppm = new DecimalFormat("#,###", frsyms);
 static DecimalFormat dfratio = new DecimalFormat("#,##0.0000", frsyms);
-
 
 /**
  * Output options for Frantext filter
@@ -94,4 +111,6 @@ public static String escapeXML(String s) {
 
 %><%
 request.setCharacterEncoding("UTF-8");
+Alix lucene = Alix.instance(application.getRealPath("") + "WEB-INF/lucene/");
+
 %>

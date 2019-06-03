@@ -184,8 +184,9 @@ if (!window.clearImmediate) {
       fontWeight: 'normal',
       color: 'random-dark',
       opacity: null,
-      minSize: 0, // 0 to disable
-      weightFactor: 1,
+      fontMin: 16,
+      fontMax: 80,
+      // weightFactor: 1,
       clearCanvas: true,
       backgroundColor: '#fff',  // opaque white = rgba(255, 255, 255, 1)
 
@@ -224,14 +225,22 @@ if (!window.clearImmediate) {
         }
       }
     }
-
-    /* Convert weightFactor into a function */
-    if (typeof settings.weightFactor !== 'function') {
-      var factor = settings.weightFactor;
-      settings.weightFactor = function weightFactor(pt) {
-        return pt * factor; //in px
-      };
+    // find max and min of the list
+    var length = settings.list.length;
+    var weightMin = settings.list[0].weight;
+    var weightMax = weightMin
+    for (var i = 0; i < length; i++) {
+      var weight = settings.list[i].weight;
+      if (weight > weightMax) weightMax = weight;
+      if (weight < weightMin) weightMin = weight;
     }
+
+    /* Set the weightFactor into a function */
+    var fontMin = settings.fontMin;
+    var fontMax = settings.fontMax;
+    settings.weightFactor = function weightFactor(weight) {
+      return Math.round(fontMin + (fontMax - fontMin) * (1.0 * weight / (weightMax - weightMin)));
+    };
 
     /* Convert shape into a function */
     if (typeof settings.shape !== 'function') {
@@ -534,7 +543,7 @@ if (!window.clearImmediate) {
       // and size < minSize means we cannot draw the text.
       var debug = false;
       var fontSize = settings.weightFactor(weight);
-      if (fontSize <= settings.minSize) {
+      if (fontSize <= 0) {
         return false;
       }
 
@@ -816,7 +825,7 @@ if (!window.clearImmediate) {
           ctx.restore();
         } else {
           // drawText on DIV element
-          var span = document.createElement('span');
+          var span = document.createElement('a');
           var transformRule = '';
           transformRule = 'rotate(' + (- rotateDeg / Math.PI * 180) + 'deg) ';
           if (info.mu !== 1) {
