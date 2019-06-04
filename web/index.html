@@ -14,6 +14,7 @@ body {font-family: sans-serif; margin: 0; padding:0;}
 iframe {border: 1px #FFFFFF solid; width: 100%; }
 #authors {height: 800px;}
 #cloud { height: 800px; }
+#conc { height: 100%; }
     </style>
   </head>
   <body>
@@ -24,13 +25,13 @@ iframe {border: 1px #FFFFFF solid; width: 100%; }
     </div>
     <div class="row">
       <div id="left">
-        <iframe id="authors" name="authors" src="authors.jsp">
+        <iframe id="authors" name="authors" src="authors.jsp" frameborder="0" padding=*0*>
         </iframe>
       </div>
       <div id="right">
-        <iframe name="cloud" src="wordcloud.html">
+        <iframe name="cloud" id="cloud" src="wordcloud.html">
         </iframe>
-        <iframe name="conc">
+        <iframe name="conc" id="conc">
         </iframe>
       </div>
     </div>
