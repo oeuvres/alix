@@ -6,34 +6,72 @@
     <style type="text/css">
 html, body {height: 100%; background-color: #f3f2ec;}
 body {font-family: sans-serif; margin: 0; padding:0;}
-  * {box-sizing: border-box;}
+* {box-sizing: border-box;}
+#win {height: 100%;}
+#middle { display: flex; flex-direction: row;}
+
+.gutter {}
+.gutter.gutter-horizontal { cursor: col-resize; height: 100%; border-left: #CCCCD5 1px solid;  border-right: #CCCCD5 1px solid;}
+.gutter-vertical { cursor: ns-resize; border-top: #CCCCD5 1px solid;  border-bottom: #CCCCD5 1px solid; text-align: center; font-size: 10px; line-height: 70%; }
+.gutter.but {background: #CCCCD5; color: #FFFFFF;}
+.gutter-vertical .but {padding-left: 2em; padding-right: 2em;}
+  /*
 #form { padding: 5px 10px 5px 15em;}
-.row {}
-#left {float:left; width: 20%;}
-#right {float: right; width: 80%}
+.row {display: flex; }
+#left {flex: 20%;}
+#right {flex: 80%}
+form {display: block; }
 iframe {border: 1px #FFFFFF solid; width: 100%; }
 #authors {height: 800px;}
-#cloud { height: 800px; }
+#cloud { height: 700px; }
 #conc { height: 100%; }
+#chrono {height: 250px; }
+    */
     </style>
   </head>
   <body>
-    <div id="form">
-      <form>
-        <input name="q"/>
-      </form>
-    </div>
-    <div class="row">
-      <div id="left">
-        <iframe id="authors" name="authors" src="authors.jsp" frameborder="0" padding=*0*>
-        </iframe>
+    <div id="win">
+      <header id="header">
+        <form>
+          <input name="q"/>
+        </form>
+      </header>
+      <div id="middle">
+        <aside id="aside">
+          aside
+          <!-- 
+          <iframe id="authors" name="authors" src="authors.jsp" frameborder="0" padding=*0*>
+          </iframe>
+           -->
+        </aside>
+        <article id="article">
+          article
+          <!-- 
+          <iframe name="cloud" id="cloud" >
+          </iframe>
+          <iframe name="conc" id="conc">
+          </iframe>
+           -->
+        </article>
       </div>
-      <div id="right">
-        <iframe name="cloud" id="cloud" src="wordcloud.html">
-        </iframe>
-        <iframe name="conc" id="conc">
-        </iframe>
-      </div>
-    </div>
+      <footer id="footer">
+        footer
+        <!-- 
+        <iframe id="chrono" name="chrono" > </iframe>
+         -->
+       </footer>
+     </div>
+     <script src="lib/split.js">//</script>
+     <script>
+var splitV = Split(['#header', '#middle', '#footer'], {
+  sizes: [10, 80, 10],
+  direction: 'vertical',
+});
+var splitH = Split(['#aside', '#article'], {
+  sizes: [20, 80],
+  gutterSize: 6,
+});
+
+     </script>
   </body>
 </html>
