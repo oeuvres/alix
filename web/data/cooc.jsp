@@ -11,10 +11,11 @@ BooleanQuery filterQuery = new BooleanQuery.Builder()
   .build();
 */
 String field = "article";
-String[] words = request.getParameterValues("w");
+String[] words = request.getParameter("w").split("[\n,]+");
 if (words != null) {
   BooleanQuery.Builder qBuilder = new BooleanQuery.Builder();
   for (String w: words) {
+    w = w.trim();
     qBuilder.add(new TermQuery(new Term(field, w)), Occur.SHOULD);
   }
   BooleanQuery pivotQuery = new BooleanQuery.Builder()
@@ -25,23 +26,41 @@ if (words != null) {
   // build a cooccurrence map
   Cooc cooc = new Cooc(lucene.searcher(), pivotQuery, field, 1, 1);
   time = (System.nanoTime() - time) / 1000000;
-  out.println("Cooc build in " + time + "ms");
+  // out.println("Cooc build in " + time + "ms");
   
   BytesRef term = new BytesRef(); // reusable string
   BytesDic terms = lucene.dic(field); // dictionary of all term for the field
-  int limit = 100;
+  CharsAtt chars = new CharsAtt();
+
+  out.println("[");
+  int lines = 500;
   Cursor cursor = terms.iterator();
   while (cursor.hasNext()) {
     cursor.next();
     cursor.term(term); // get the term
     long total = cursor.count();
     long count = cooc.count(field, term);
+    // chars.cop
     // System.out.print(bytes.utf8ToString()+":"+bytesDic.count(bytes)+" - ");
     double ratio = 1000000.0*count/total;
-    if (ratio < 200) continue;
-    out.println(term.utf8ToString()+":\t"+count+'/'+total+"\t"+ratio);
-    if (limit-- <= 0) break;
+    // if (ratio < 3000) continue;
+    out.print("  {\"word\" : \"");
+    out.print(term.utf8ToString().replace( "\"", "\\\"" ).replace('_', ' ')) ;
+    out.print("\"");
+    out.print(", \"weight\" : ");
+    out.print(Math.round(ratio));
+    /*
+    out.print(", \"attributes\" : {\"class\" : \"");
+    out.print(Tag.label(tag.group()));
+    out.print("\"}");
+    */
+    out.print("}");
+
+    // out.println(term.utf8ToString()+":\t"+count+'/'+total+"\t"+ratio);
+    if (--lines <= 0 ) break;
+    else out.println(",");
   }
+  out.println("\n]");
 }
 
 /*

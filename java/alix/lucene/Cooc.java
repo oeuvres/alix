@@ -59,12 +59,11 @@ public class Cooc
     
 
     
-    final BitsCollector collector = new BitsCollector(searcher);
+    final CollectorBits collector = new CollectorBits(searcher);
     searcher.search(pivotQuery, collector);
     this.filterBits = collector.bits();
     BitSet filter = collector.bits();
     
-
     
     this.hits = collector.hits();
     // Get the positions of the pivot query
@@ -85,6 +84,7 @@ public class Cooc
       }
       // try to get matches in the current index segment 
       Matches matches = weight.matches(ctx, docid - docBase);
+      
       if (matches == null) continue;
       // with matches, fill a bitset of positions to select occurences in the pivot context
       BitSet positions = new BitSet();

@@ -40,10 +40,14 @@ while (cursor.hasNext()) {
   LexEntry entry = CharsMaps.word(term);
   if (entry != null) {
     tag = new Tag(entry.tag);
-  } else {
+  }
+  else if (Char.isUpperCase(term.charAt(0))) {
+    tag = new Tag(Tag.NAME);
+  }
+  else {
     tag = new Tag(0);
   }
-  if (STOP.contains(term)) continue;
+  // if (STOP.contains(term)) continue;
   /*
   if (tag.isPun()) continue;
   if (tag.isNum()) continue;

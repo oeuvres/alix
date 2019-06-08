@@ -6,6 +6,7 @@ java.io.InputStream,
 java.io.InputStreamReader,
 java.io.IOException,
 java.io.PrintWriter,
+java.io.StringReader,
 java.nio.charset.StandardCharsets,
 java.nio.file.Files,
 java.nio.file.Path,
@@ -14,7 +15,9 @@ java.nio.file.StandardOpenOption,
 java.text.DecimalFormat,
 java.text.DecimalFormatSymbols,
 java.util.Arrays,
+java.util.ArrayList,
 java.util.BitSet,
+java.util.Comparator,
 java.util.HashSet,
 java.util.Iterator,
 java.util.LinkedHashMap,
@@ -24,26 +27,39 @@ java.util.Set,
 java.util.Scanner,
 
 org.apache.lucene.analysis.Analyzer,
+org.apache.lucene.analysis.Tokenizer,
 org.apache.lucene.analysis.TokenStream,
 org.apache.lucene.analysis.tokenattributes.CharTermAttribute,
+org.apache.lucene.analysis.tokenattributes.FlagsAttribute,
 org.apache.lucene.analysis.tokenattributes.OffsetAttribute,
+org.apache.lucene.document.Document,
 org.apache.lucene.index.IndexReader,
+org.apache.lucene.index.IndexWriter,
 org.apache.lucene.index.LeafReader,
+org.apache.lucene.index.MultiBits,
+org.apache.lucene.index.PostingsEnum,
 org.apache.lucene.index.Term,
+org.apache.lucene.index.Terms,
 org.apache.lucene.index.LeafReaderContext,
 org.apache.lucene.index.SortedSetDocValues,
 org.apache.lucene.search.BooleanClause.Occur,
 org.apache.lucene.search.BooleanQuery,
+org.apache.lucene.search.BulkScorer,
 org.apache.lucene.search.IndexSearcher,
 org.apache.lucene.search.MatchAllDocsQuery,
 org.apache.lucene.search.Query,
+org.apache.lucene.search.ScoreMode,
 org.apache.lucene.search.TermQuery,
+org.apache.lucene.search.Weight,
 org.apache.lucene.util.BytesRef,
+org.apache.lucene.util.Bits,
 
 alix.fr.dic.Tag,
 alix.lucene.Alix,
+alix.lucene.Alix.Tick,
 alix.lucene.BytesDic,
 alix.lucene.BytesDic.Cursor,
+alix.lucene.CharsLemAtt,
 alix.lucene.Cooc,
 alix.lucene.CharsAtt,
 alix.lucene.CharsDic,
@@ -51,16 +67,26 @@ alix.lucene.CharsDic.Entry,
 alix.lucene.CharsMaps,
 alix.lucene.CharsMaps.LexEntry,
 alix.lucene.CharsMaps.NameEntry,
+alix.lucene.TokenCompound,
 alix.lucene.TokenDic,
 alix.lucene.TokenDic.AnalyzerDic,
 alix.lucene.TokenCooc,
 alix.lucene.TokenCooc.AnalyzerCooc,
+alix.lucene.TokenLem,
+alix.lucene.TokenizerFr,
+alix.util.Char,
 alix.util.Dir
 " %><%!
 
-static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
-static DecimalFormat dfppm = new DecimalFormat("#,###", frsyms);
-static DecimalFormat dfratio = new DecimalFormat("#,##0.0000", frsyms);
+final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
+final static DecimalFormat dfppm = new DecimalFormat("#,###", frsyms);
+final static DecimalFormat dfratio = new DecimalFormat("#,##0.0000", frsyms);
+/** Field Name with int date */
+final static String YEAR = "year";
+/** Field name containing canonized text */
+public static String TEXT = "article";
+
+
 
 /**
  * Output options for Frantext filter

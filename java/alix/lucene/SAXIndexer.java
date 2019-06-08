@@ -19,6 +19,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
@@ -185,8 +186,9 @@ public class SAXIndexer extends DefaultHandler
           } catch (Exception e) {
             throw new SAXException("<alix:field name=\""+name+"\" type=\"" + type + "\"> @value=\""+value+"\" is not a number.");
           }
+          document.add(new NumericDocValuesField(name, val));
           document.add(new IntPoint(name, val));
-          document.add(new StoredField(name, value));
+          document.add(new StoredField(name, val));
           break;
         case "facet":
           if (value == null)

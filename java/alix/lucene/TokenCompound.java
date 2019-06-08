@@ -50,7 +50,7 @@ public class TokenCompound extends TokenFilter
 
   /** Number of tokens to cache for compounds */
   final int size;
-  protected TokenCompound(TokenStream input, final int size)
+  public TokenCompound(TokenStream input, final int size)
   {
     super(input);
     this.size = size;

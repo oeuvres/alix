@@ -5,32 +5,45 @@ import java.util.BitSet;
 
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.util.DocIdSetBuilder;
 
 /**
  * Collect found docs as a bitSet 
  * @author fred
  *
  */
-public class BitsCollector implements Collector
+public class CollectorBits  extends SimpleCollector implements Collector
 {
-  private final BitSet bits;
+  /** A lucene bitSet builder for the results */
+  private DocIdSetBuilder docsBuilder;
+  /** The bitset (optimized for spare or all docs) */
+  private DocIdSet docs;
+  /** Number of hits */
   private int hits = 0;
+  /** Current context reader */
+  LeafReaderContext context;
+  /** Current docBase for the context */
+  int docBase;
+  
 
-  public BitsCollector(IndexSearcher searcher) 
+  public CollectorBits(IndexSearcher searcher) 
   {
-    bits = new BitSet(searcher.getIndexReader().maxDoc());
+    docsBuilder = new DocIdSetBuilder(searcher.getIndexReader().maxDoc());
   }
   
   /**
-   * Get current bitset
+   * Get a document iterator
    */
-  public BitSet bits()
+  public DocIdSet docs()
   {
-    return bits;
+    if(docs == null) docs = docsBuilder.build();
+    return docs;
   }
   
   /**
@@ -41,20 +54,18 @@ public class BitsCollector implements Collector
     return hits;
   }
 
-  /**
-   * Clear bitset.
-   */
-  public void clear()
-  {
-    hits = 0;
-    bits.clear();
+  @Override
+  protected void doSetNextReader(LeafReaderContext context) throws IOException {
+    this.context = context;
+    this.docBase = context.docBase;
   }
-
+  /* Generic Collector (instead of SimpleCollector)
   @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException
   {
     final int docBase = context.docBase;
     return new LeafCollector() {
+      
       public void collect(int doc) throws IOException {
         bits.set(docBase + doc);
         hits++;
@@ -68,11 +79,19 @@ public class BitsCollector implements Collector
 
     };
  }
+ */
 
   @Override
   public ScoreMode scoreMode()
   {
     return ScoreMode.COMPLETE_NO_SCORES;
+  }
+
+  @Override
+  public void collect(int doc) throws IOException
+  {
+    docsBuilder.grow(1).add(docBase + doc);
+    hits++;
   }
 
   

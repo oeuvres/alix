@@ -85,41 +85,16 @@ const getGutterSize = (gutterSize, isFirst, isLast, gutterAlign) => {
 const defaultGutterFn = (i, gutterDirection) => {
     const gut = document.createElement('div')
     gut.className = `gutter gutter-${gutterDirection}`
-    // ◀ ▶▼▲
-    const but = document.createElement('span');
-    if(gutterDirection == 'vertical');
-    console.log(i+" "+gutterDirection);
-    but.className = "gutter but";
-    if (gutterDirection == 'vertical') {
-      if (i == 1) {
-        but.innerText = '▲';
-        but.oldText = '▼';
-      }
-      else {
-        but.innerText = '▼';
-        but.oldText = '▲';
-      }
-    }
-    else {
-      if (i == 1) {
-        but.innerText = '◀';
-        but.oldText = '▶';
-      }
-      else {
-        but.innerText = '▶';
-        but.oldText = '◀';
-      }
-    }
-    gut.appendChild(but);
     return gut
 }
 
 const defaultElementStyleFn = (dim, size, gutSize) => {
     const style = {}
-
+    if (size > 99) size = 99.5;
+    else size = Math.round(size);
     if (!isString(size)) {
         if (!isIE8) {
-            style[dim] = `${calc}(${size}% - ${gutSize}px)`
+            style[dim] = calc+"("+size+"% - "+gutSize+"px)";
         } else {
             style[dim] = `${size}%`
         }
@@ -192,7 +167,7 @@ const Split = (idsOption, options = {}) => {
     // Get other options
     const expandToMin = getOption(options, 'expandToMin', false)
     // set optional gutterSize, or will be calculated after element is inserted
-    gutterSize = getOption(options, 'gutterSize', false)
+    const gutterSize = getOption(options, 'gutterSize', 10)
     const gutterAlign = getOption(options, 'gutterAlign', 'center')
     const snapOffset = getOption(options, 'snapOffset', 30)
     const dragInterval = getOption(options, 'dragInterval', 1)
@@ -243,8 +218,7 @@ const Split = (idsOption, options = {}) => {
         // by string, like '300px'. This is less than ideal, because it breaks
         // the fluid layout that `calc(% - px)` provides. You're on your own if you do that,
         // make sure you calculate the gutter size by hand.
-        const style = elementStyle(dimension, size, gutSize, i)
-
+        const style = elementStyle(dimension, size, gutSize, i);
         Object.keys(style).forEach(prop => {
             // eslint-disable-next-line no-param-reassign
             el.style[prop] = style[prop]
@@ -252,7 +226,7 @@ const Split = (idsOption, options = {}) => {
     }
 
     function setGutterSize(gutterElement, gutSize, i) {
-      /*
+      /* Do no set gutter Size, let work user CSS
         const style = gutterStyle(dimension, gutSize, i)
 
         Object.keys(style).forEach(prop => {
@@ -291,6 +265,51 @@ const Split = (idsOption, options = {}) => {
         setElementSize(b.element, b.size, this[bGutterSize], b.i)
     }
 
+    function butClick(e) {
+      // // Alias frequently used variables to save space. 200 bytes.
+      // const self = this
+      const a = elements[this.a]
+      const b = elements[this.b]
+      but = this.but;
+      var panel;
+      var panelGutterSize;
+      var body;
+      var bodyGutterSize;
+      if (this.a == 0) {
+        panel = a;
+        panelGutterSize = this[aGutterSize];
+        body = b;
+        bodyGutterSize = this[bGutterSize];
+      } else {
+        panel = b;
+        panelGutterSize = this[bGutterSize];
+        body = a;
+        bodyGutterSize = this[aGutterSize];
+      }
+      if (panel.element.style.display == 'none') {
+        but.classList.remove("closed");
+        but.classList.add("open");
+        panel.size = panel.sizeOld;
+        body.size = body.size - panel.size ;
+        panel.element.style.display = panel.displayOld;
+      }
+      else {
+        but.classList.remove("open");
+        but.classList.add("closed");
+        panel.sizeOld = panel.size;
+        body.size = body.size + panel.size;
+        panel.size = 0;
+        panel.displayOld = panel.element.style.display;
+        panel.element.style.display = 'none';
+      }
+      setElementSize(panel.element, panel.size, panelGutterSize, panel.i);
+      setElementSize(body.element, body.size, bodyGutterSize, body.i);
+      e.stopPropagation();
+      return false;
+    }
+
+
+
     // drag, where all the magic happens. The logic is really quite simple:
     //
     // 1. Ignore if the pair is not dragging.
@@ -309,7 +328,6 @@ const Split = (idsOption, options = {}) => {
         let offset
         const a = elements[this.a]
         const b = elements[this.b]
-
         if (!this.dragging) return
 
 
@@ -523,11 +541,20 @@ const Split = (idsOption, options = {}) => {
         if ('button' in e && e.button !== 0) {
             return
         }
+        // stopPropagation do not work properly in some case;
+        if (e.target == this.but) return false;
         // Alias frequently used variables to save space. 200 bytes.
         const self = this
         const a = elements[self.a].element
         const b = elements[self.b].element
-
+        // ensure elements are visible
+        if (a.style.display == "none" || b.style.display == "none") {
+          console.log(e);
+          but.classList.remove("closed");
+          but.classList.add("open");
+          if(a.style.display == "none") a.style.display = elements[self.a].displayOld;
+          if(b.style.display == "none") b.style.display = elements[self.b].displayOld;
+        }
         // Call the onDragStart callback.
         if (!self.dragging) {
             getOption(options, 'onDragStart', NOOP)(getSizes())
@@ -656,12 +683,31 @@ const Split = (idsOption, options = {}) => {
         if (!isIE8) {
             // Create gutter elements for each pair.
             if (i > 0) {
-                const gutterElement = gutter(i, direction, element.element)
-                setGutterSize(gutterElement, gutterSize, i)
+                const gutterElement = gutter(i, direction, element.element);
+                setGutterSize(gutterElement, gutterSize, i);
+
+                // append a button hide/show for first or last gutter
+                if (i == 1 || i === ids.length - 1) {
+                  const but = document.createElement('span');
+                  // but.innerText = " ·· ";
+                  but.className = "gutter but "+direction;
+                  if (i == 1) {
+                    but.className += " first";
+                  }
+                  else {
+                    but.className += " last";
+                  }
+                  gutterElement.appendChild(but);
+                  pair['but'] = but;
+                  pair['butClick'] = butClick.bind(pair);
+                  pair['but'][addEventListener](
+                      'click',
+                      pair['butClick'],
+                  );
+                }
 
                 // Save bound event listener for removal later
                 pair[gutterStartDragging] = startDragging.bind(pair)
-
                 // Attach bound event listener
                 gutterElement[addEventListener](
                     'mousedown',
@@ -672,10 +718,7 @@ const Split = (idsOption, options = {}) => {
                     pair[gutterStartDragging],
                 )
                 parent.insertBefore(gutterElement, element.element)
-                if (gutterSize);
-                else if (direction == "vertical") gutterSize = gutterElement.offsetHeight;
-                else gutterSize = gutterElement.offsetWidth;
-                console.log(direction+" "+gutterSize);
+                // Set gutterSize from element offsetWith or offsetHeight of created element is not working here
                 pair.gutter = gutterElement
             }
         }
@@ -738,7 +781,6 @@ const Split = (idsOption, options = {}) => {
 
                 a.size = trimmed[i - 1]
                 b.size = newSize
-
                 setElementSize(a.element, a.size, pair[aGutterSize], a.i)
                 setElementSize(b.element, b.size, pair[bGutterSize], b.i)
             }
@@ -765,12 +807,12 @@ const Split = (idsOption, options = {}) => {
                     dimension,
                     pair.a.size,
                     pair[aGutterSize],
-                )
+                );
 
                 Object.keys(style).forEach(prop => {
                     elements[pair.a].element.style[prop] = ''
                     elements[pair.b].element.style[prop] = ''
-                })
+                });
             }
         })
     }
