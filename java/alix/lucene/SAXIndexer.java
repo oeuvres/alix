@@ -2,6 +2,7 @@ package alix.lucene;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.ArrayList;
 
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -67,15 +68,21 @@ public class SAXIndexer extends DefaultHandler
   private final IndexWriter writer;
   /** Current file processed */
   private String fileName;
-  /** Curent document to writer */
+  /** Curent document to write */
   private Document document;
-  /** Flag set by a text field */
+  /** Curent book to write */
+  private Document book;
+  /** Current document list to write as a block */
+  private ArrayList<Document> chapters = new ArrayList<>();
+  /** Flag set when a text field is being recorded */
   private boolean record = false;
+  /** Flag set by the store field type,  */
+  private boolean store = false;
   /** Name of the current xml field to populate */
   private String fieldName;
   /** A text field value */
   private StringBuilder xml = new StringBuilder();
-  /** Flag to verify that an element is not empty (for serialization) */
+  /** Flag to verify that an element is not empty (for XML serialization) */
   private boolean empty;
   
   
@@ -114,7 +121,7 @@ public class SAXIndexer extends DefaultHandler
   {
     empty = true;
     // output all elements inside a text field
-    if (!uri.endsWith("alix.casa")) {
+    if (!qName.startsWith("alix:")) {
       if (!record) return;
       xml.append("<").append(qName);
       int length = attributes.getLength();
@@ -151,26 +158,71 @@ public class SAXIndexer extends DefaultHandler
       }
       xml.append(">");
     }
+    // open an indexation block of chapters
+    else if (localName.equals("book")) {
+      if (record)
+        throw new SAXException("<alix:book> A pending field is not yet added. A book is forbidden in a field.");
+      if (book != null)
+        throw new SAXException("<alix:book> A pending book is not yet added. A book is forbidden in another book.");
+      if (document != null)
+        throw new SAXException("<alix:book> A pending document is not yet added. A book is forbidden in a document, a chapter, or a field.");
+      // will record the field as an ending doc
+      book = new Document();
+      book.add(new StringField(Alix.BOOK, localName, Store.YES)); // mark the last document of a book series
+      book.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
+    }
+    // open a chapter as an item in a book series
+    else if (localName.equals("chapter")) {
+      if (record)
+        throw new SAXException("<alix:chapter> A pending field is not yet added. A book is forbidden in a field.");
+      if (book == null)
+        throw new SAXException("<alix:chapter> No book series is opened. A chapter must be in a book.");
+      if (document != null)
+        throw new SAXException("<alix:chapter> A pending docuement has not yet been added. A chapter must be in a bookand is forbidden in a document.");
+      // will record the field as an ending doc
+      document = new Document();
+      document.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
+    }
     // create a new Lucene document
     else if (localName.equals("document")) {
+      if (record)
+        throw new SAXException("<alix:document> A pending field is not yet added. A document is forbidden in a field.");
+      if (book != null)
+        throw new SAXException("<alix:document> A book series is not yed added. A document is forbidden in a book.");
       if (document != null)
-        throw new SAXException("<alix:document> A pending document has not been indexed.");
+        throw new SAXException("<alix:document> A pending document has not yet been added. A document is forbidden in a document.");
       document = new Document();
-      // key to delete
-      document.add(new StringField(Alix.FILENAME, fileName, Store.YES));
+      document.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
     }
     // open a field
     else if (localName.equals("field")) {
+      // choose the right doc to add the field
+      Document doc;
+      if (document != null) doc = document; // chapter or document
+      else if (book != null) doc = book; // book if not chapter
+      else throw new SAXException("<alix:field> No document is opened to write the field in. A field must be nested in one of these:"
+          + " document, book, chapter.");
+      
       String name = attributes.getValue("name");
       if (name == null) 
         throw new SAXException("<alix:field> A field must have a name.");
-      if (Alix.FILENAME.equals(name))
-        throw new SAXException("<alix:field> @name=\"" + name + "\" is a reserved field name");
+      if (name.startsWith("alix:"))
+        throw new SAXException("<alix:field> @name=\"" + name + "\" is forbidden (\"alix:\" is a reserved prefix)");
       String type = attributes.getValue("type");
       if (type == null) 
-        throw new SAXException("<alix:field name=\""+name+"\"> A field must have a type=\"[xml, facet, token, int]\"");
+        throw new SAXException("<alix:field name=\""+name+"\"> A field must have a type=\"[xml, facet, string, int, store]\"");
       String value = attributes.getValue("value");
       switch (type) {
+        case "store":
+          if (value != null) {
+            doc.add(new StoredField(name, value));
+          }
+          else {
+            fieldName = name;
+            record = true;
+            store = true;
+          }
+          break;
         case "text":
         case "xml":
         case "html":
@@ -186,24 +238,28 @@ public class SAXIndexer extends DefaultHandler
           } catch (Exception e) {
             throw new SAXException("<alix:field name=\""+name+"\" type=\"" + type + "\"> @value=\""+value+"\" is not a number.");
           }
-          document.add(new NumericDocValuesField(name, val));
-          document.add(new IntPoint(name, val));
-          document.add(new StoredField(name, val));
+          // doc.add(new NumericDocValuesField(name, val)); why ?
+          doc.add(new IntPoint(name, val));
+          doc.add(new StoredField(name, val));
           break;
         case "facet":
           if (value == null)
             throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"facet\"");
-          document.add(new SortedSetDocValuesField(name, new BytesRef(value)));
-          document.add(new StoredField(name, value));
+          doc.add(new SortedSetDocValuesField(name, new BytesRef(value)));
+          doc.add(new StoredField(name, value));
           break;
+        case "string":
         case "token":
           if (value == null)
             throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"token\"");
-          document.add(new StringField(name, value, Field.Store.YES));
+          doc.add(new StringField(name, value, Field.Store.YES));
           break;
         default:
           throw new SAXException("<alix:field name=\""+name+"\"> The type=\"" + type + "\" is not yet implemented");
       }
+    }
+    else if (localName.equals("corpus")) {
+      // nothing for now
     }
     // unknown, alert
     else {
@@ -251,7 +307,7 @@ public class SAXIndexer extends DefaultHandler
   public void endElement(String uri, String localName, String qName) throws SAXException
   {
     // output all elements inside a text field
-    if (!uri.endsWith("alix.casa")) {
+    if (!qName.startsWith("alix:")) {
       if (!record) return;
       else if (empty) {
         xml.setLength(xml.length() - 1);
@@ -262,12 +318,68 @@ public class SAXIndexer extends DefaultHandler
       return;
     }
     empty = false;
-    if ("document".equals(localName)) {
+    if ("field".equals(localName) && record) {
+      // do not forget to reset the flags
+      final String name = fieldName;
+      fieldName = null;
+      record = false;
+      store = false;
+      String text = this.xml.toString();
+      this.xml.setLength(0);
+      // choose the right doc to which add the field
+      Document doc;
+      if (document != null) doc = document; // chapter or document
+      else if (book != null) doc = book; // book if not chapter
+      else throw new SAXException("</\"+qName+\"> no document is opened to write the field in. A field must be nested in one of these:"
+          + " document, book, chapter.");
+      // store content with no analyzis
+      if (store) {
+        doc.add(new StoredField(name , text));
+      }
+      // analysis, Tee is possible because of a caching token filter
+      else {
+        Tokenizer source = new TokenizerFr();
+        source.setReader(new StringReader(text));
+        xml.setLength(0);
+        TokenStream result = new TokenLem(source);
+        result = new TokenCompound(result, 5);
+        result = new CachingTokenFilter(result);
+        // TokenStream full = new TokenLemFull(result);
+        TokenStream cloud = new TokenLemCloud(result);
+        doc.add(new StoredField(name , text));
+        doc.add(new Field(name, cloud, Alix.ftypeAll));
+        // document.add(new Field(fieldName + "_cloud", cloud, Alix.ftypeAll));
+      }
+    }
+    else if ("chapter".equals(localName)) {
       if (document == null)
-        throw new SAXException("</alix:document> empty document, nothing to write");
+        throw new SAXException("</"+qName+"> empty document, nothing to add.");
+      chapters.add(document);
+      document = null;
+    }
+    else if ("book".equals(localName)) {
+      if (document != null)
+        throw new SAXException("</"+qName+"> a pending document has not been added.");
+      if (book == null)
+        throw new SAXException("</"+qName+"> a closing book document is missing.");
+      chapters.add(book);
+      try {
+        writer.addDocuments(chapters);
+      }
+      catch (IOException e) {
+        throw new SAXException(e);
+      }
+      finally {
+        document = null;
+        book = null;
+        chapters.clear();
+      }
+    }
+    else if ("document".equals(localName)) {
+      if (document == null)
+        throw new SAXException("</"+qName+"> empty document, nothing to add.");
       try {
         writer.addDocument(document);
-        // writer.addDocuments(docs) // maybe used in future for nested docs
       }
       catch (IOException e) {
         throw new SAXException(e);
@@ -275,23 +387,6 @@ public class SAXIndexer extends DefaultHandler
       finally {
         document = null;
       }
-    }
-    if ("field".equals(localName) && record) {
-      Tokenizer source = new TokenizerFr();
-      String text = this.xml.toString();
-      this.xml.setLength(0);
-      source.setReader(new StringReader(text));
-      xml.setLength(0);
-      TokenStream result = new TokenLem(source);
-      result = new TokenCompound(result, 5);
-      result = new CachingTokenFilter(result);
-      TokenStream full = new TokenLemFull(result);
-      TokenStream cloud = new TokenLemCloud(result);
-      document.add(new StoredField(fieldName , text));
-      document.add(new Field(fieldName, cloud, Alix.ftypeAll));
-      // document.add(new Field(fieldName + "_cloud", cloud, Alix.ftypeAll));
-      record = false;
-      fieldName = null;
     }
   }
   

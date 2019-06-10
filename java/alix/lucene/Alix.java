@@ -99,10 +99,10 @@ import alix.fr.dic.Tag;
  */
 public class Alix
 {
-  /** Mandatory content, XML file name, maybe used for update */
-  public static final String FILENAME = "FILENAME";
-  /** Madatory field for sorting the index */
-  public static final String YEAR = "year";
+  /** Mandatory field, XML file name, used for update */
+  public static final String FILENAME = "alix:filename";
+  /** Mandatory field, to query the last document of a book series */
+  public static final String BOOK = "alix:book";
   /** A global cache for objects */
   private final ConcurrentHashMap<String, SoftReference<Object>> cache = new ConcurrentHashMap<>();
   /** Key prefix for a cached object */
@@ -119,8 +119,8 @@ public class Alix
     // inverted index
     ftypeAll.setTokenized(true);
     // http://makble.com/what-is-lucene-norms, omit norms (length normalization)
-    ftypeAll.setOmitNorms(true);
-    // position needed for phrase query
+    ftypeAll.setOmitNorms(false);
+    // position needed for phrase query, take also 
     ftypeAll.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     ftypeAll.setStoreTermVectors(true);
     ftypeAll.setStoreTermVectorOffsets(true);
@@ -288,8 +288,8 @@ public class Alix
      * cms.setMaxMergesAndThreads(threads, threads); cms.disableAutoIOThrottle();
      * conf.setMergeScheduler(cms);
      */
-    // order docid by date after merge
-    conf.setIndexSort(new Sort(new SortField(YEAR, SortField.Type.INT)));
+    // order docid by a field after merge ? No functionality should rely on such order
+    // conf.setIndexSort(new Sort(new SortField(YEAR, SortField.Type.INT)));
     writer = new IndexWriter(dir, conf);
     return writer;
   }
@@ -340,7 +340,7 @@ public class Alix
         {
           int v = IntPoint.decodeDimension(minPackedValue, 0);
           if (minMax[0] > v) minMax[0] = v;
-          v = IntPoint.decodeDimension(minPackedValue, 0);
+          v = IntPoint.decodeDimension(maxPackedValue, 0);
           if (minMax[1] < v) minMax[1] = v;
           // Answer that the query needs further infornmation to visit doc with values
           return Relation.CELL_CROSSES_QUERY;
@@ -398,7 +398,7 @@ public class Alix
         continue;
       }
       Document doc = reader.document(i, fields);
-      int v = doc.getField(Alix.YEAR).numericValue().intValue();
+      int v = doc.getField(field).numericValue().intValue();
       load[i] = v;
     }
     return load;
@@ -434,6 +434,8 @@ public class Alix
         continue;
       }
       Terms vector = reader.getTermVector(i, field);
+      // maybe no vector for this docid (ex : toc, book...)
+      if (vector == null) continue;
       docLength[i] = vector.getSumTotalTermFreq(); // expensive on first call
     }
     cache(key, docLength);
@@ -579,7 +581,8 @@ public class Alix
           }
           continue;
         }
-        terms.add(new Term(field, token.toString()));
+        if (lem.length() > 0) terms.add(new Term(field, lem.toString()));
+        else terms.add(new Term(field, token.toString()));
       }
       ts.end();
     }

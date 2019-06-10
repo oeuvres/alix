@@ -49,6 +49,7 @@ org.apache.lucene.search.DocIdSetIterator,
 org.apache.lucene.search.IndexSearcher,
 org.apache.lucene.search.MatchAllDocsQuery,
 org.apache.lucene.search.Query,
+org.apache.lucene.search.ScoreDoc,
 org.apache.lucene.search.ScoreMode,
 org.apache.lucene.search.TermQuery,
 org.apache.lucene.search.Weight,
@@ -86,7 +87,7 @@ final static DecimalFormat dfratio = new DecimalFormat("#,##0.0000", frsyms);
 /** Field Name with int date */
 final static String YEAR = "year";
 /** Field name containing canonized text */
-public static String TEXT = "article";
+public static String TEXT = "text";
 
 
 
