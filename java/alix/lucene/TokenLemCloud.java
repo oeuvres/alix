@@ -36,7 +36,7 @@ public class TokenLemCloud extends FilteringTokenFilter
     int tag = flagsAtt.getFlags();
     if (Tag.isPun(tag)) return false;
     // replace term by lemma for adjectives and verbs
-    if (Tag.isAdj(tag) || Tag.isVerb(tag))
+    if (Tag.isAdj(tag) || Tag.isVerb(tag) || Tag.isSub(tag))
       if (lemAtt.length() != 0)
         termAtt.setEmpty().append(lemAtt);
     return true;

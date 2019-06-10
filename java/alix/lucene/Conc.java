@@ -129,8 +129,8 @@ public class Conc
               System.out.println("docid="+docid);
               Document doc = reader.document(docid);
               String text = doc.get(content);
-              Terms vector = reader.getTermVector(docid, content);
-              System.out.println("Terms size="+vector.size());
+              TermList vector = reader.getTermVector(docid, content);
+              System.out.println("TermList size="+vector.size());
               final TermsEnum termsEnum = vector.iterator();
               BytesRef termBytesRef;
               while ((termBytesRef = termsEnum.next()) != null) {

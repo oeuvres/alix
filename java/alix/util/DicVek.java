@@ -33,7 +33,7 @@ import alix.util.DicFreq.Entry;
  * code is stored a vector of values, corresponding
  * 
  * 
- * Space of a corpus, dictionary with vectors of co-occurrences. Terms are
+ * Space of a corpus, dictionary with vectors of co-occurrences. TermList are
  * stores as int, for efficency and Cosine calculations. There are probably lots
  * of better optimizations, similarities are for now linear calculations.
  * 

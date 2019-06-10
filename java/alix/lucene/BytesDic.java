@@ -61,6 +61,18 @@ public class BytesDic implements Iterable<Integer>
   public long count(final BytesRef bytes)
   {
     final int id = hash.find(bytes);
+    if (id < 0) return -1;
+    return counts[id];
+  }
+  /**
+   * Get count by String
+   * 
+   * @param bytes
+   */
+  public long count(final String s)
+  {
+    final BytesRef bytes = new BytesRef(s);
+    final int id = hash.find(bytes);
     return counts[id];
   }
 

@@ -441,7 +441,7 @@ public class Alix
   }
 
   /**
-   * For a file, try to get a dictionary of indexed terms.
+   * For a field, try to get a dictionary of indexed terms.
    * Is cached.
    * 
    * @param field
@@ -549,6 +549,8 @@ public class Alix
     }
     return qTerm;
   }
+  
+  
   /**
    * Provide tokens as a table of terms
    * @param q
@@ -556,7 +558,7 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public static Term[][] qTerms(String q, String field) throws IOException
+  public TermList qTerms(String q, String field) throws IOException
   {
 
     TokenStream ts = qAnalyzer.tokenStream(field, q);
@@ -565,8 +567,7 @@ public class Alix
     FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
     OffsetAttribute offset = ts.addAttribute(OffsetAttribute.class);
 
-    ArrayList<Term[]> block = new ArrayList<>();
-    ArrayList<Term> line = new ArrayList<>();
+    TermList terms = new TermList(dic(field));
     ts.reset();
     try {
       while (ts.incrementToken()) {
@@ -574,23 +575,18 @@ public class Alix
         if (Tag.isPun(tag)) {
           // start a new line
           if (token.equals(";") || tag == Tag.PUNsent) {
-            if (line.isEmpty()) continue;
-            final Term[] terms = new Term[line.size()];
-            line.toArray(terms);
-            block.add(terms);
-            line.clear();
+            terms.add(null);
           }
           continue;
         }
-        line.add(new Term(field, token.toString()));
+        terms.add(new Term(field, token.toString()));
       }
       ts.end();
     }
     finally {
       ts.close();
     }
-    if (block.isEmpty()) return null;
-    return block.toArray(new Term[0][0]);
+    return terms;
   }
 
   /** A row of data for a crossing axis */
@@ -630,6 +626,7 @@ public class Alix
    */
   public Tick[] axis(String textField, String intPoint) throws IOException
   {
+    long total = reader.getSumTotalTermFreq(textField);
     int maxDoc = reader().maxDoc();
     long[] docLength = docLength(textField);
     int[] docInt = docInt(intPoint);

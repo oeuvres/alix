@@ -6,12 +6,10 @@
 public String ticks(PageContext pageContext, Alix lucene) throws IOException  {
 
   ServletContext application = pageContext.getServletContext();
-  String ticks = (String)application.getAttribute("ticks");
-  if (ticks != null) return ticks;
   
   int min = lucene.min(YEAR);
   int max = lucene.max(YEAR);
-  int yearStep = 10; // TODO, optimize date step according to max - min
+  int yearStep = 5; // TODO, optimize date step according to max - min
   long total = lucene.reader().getSumTotalTermFreq(TEXT);
   long labelWidth = (long)Math.ceil((float) total / 30); // width of a label in tokens
   
@@ -58,13 +56,11 @@ public String ticks(PageContext pageContext, Alix lucene) throws IOException  {
     label = label + yearStep;
   }
   sb.append("\n  ]");
-  ticks = sb.toString();
-  application.setAttribute("ticks", ticks);
-  return ticks;
+  return sb.toString();
 }%>
 <%
 // number of fots by curve, could be a parameter
-int dots = 100;
+int dots = 200;
 
 // build queries
 long time;
@@ -87,71 +83,81 @@ out.print( "  \"ticks\": "+ticks(pageContext, lucene));
 //parse the query by line
 String q = request.getParameter("q");
 if (q == null || q.isBlank()) q = "théâtre acteur actrice ; lettres ; littérature ; poésie poème ; roman";
-Term[][] terms = Alix.qTerms(q, TEXT);
-if (terms != null) {
+TermList terms = lucene.qTerms(q, TEXT);
+if (terms.size() > 0) {
+  terms.sortByRowFreq();
   out.print(",\n  \"labels\": [\"\"");
-  for(Term[] l: terms) {
-    out.print(", \"");
-    boolean first = true;
-    for(Term t: l) {
-      if (first) first = false;
-      else out.print(", ");
-      out.print(t.text());
+  boolean first = true;
+  for(Term t: terms) {
+    if (t == null) {
+      out.print("\"");
+      first = true;
+      continue;
     }
-    out.print("\"");
+    if (first) {
+      out.print(", \"");
+      first = false;
+    }
+    else out.print(", ");
+    out.print(t.text());
   }
-  out.println("]");
+  out.println("],");
   
   time = System.nanoTime();
-  // loop on docs in docid order
-  // get term freqs for each queries
-  // populate a data table
-  int cols = terms.length;
+  int cols = terms.rows();
   // table of data to populate
-  long[][] data = new long[cols][dots];
-  // width of a step between two dots
-  long step = total / dots;
+  int[][] data = new int[cols][dots];
+  // width of a step between two dots, 
+  long step = (total) / dots;
   // axis index
   Tick[] axis = (Tick[])lucene.cache("axis-year");
   if (axis == null) {
     axis = lucene.axis(TEXT, YEAR);
     lucene.cache("axis-year", axis);
   }
-  IndexSearcher searcher = lucene.searcher();
-  /*
-  Weight[] weights = new Weight[cols];
-  for(int i = 0; i < cols; i++) {
-    weights[i] = queries.get(i).createWeight(searcher, ScoreMode.COMPLETE, 0);
-  }
-  */
   // loop on contexts, because open a context is heavy, do not open too much
   for (LeafReaderContext ctx : reader.leaves()) {
     // Do as a termQuery, loop on PostingsEnum.FREQS for each term
     LeafReader leaf = ctx.reader();
+    Bits live = leaf.getLiveDocs();
     // loop on terms
-    for(int i = 0; i < cols; i++) {
-      Bits live = leaf.getLiveDocs();
-      long[] col = data[i]; // prepare the col to write in
-      Term[] line = terms[i];
-      for (int j = 0, end = line.length; j < end; j ++) {
-        PostingsEnum postings = leaf.postings(line[j]);
-        
+    int col = 0;
+    for(Term term: terms) {
+      if (term == null) {
+        col++;
+        continue;
+      }
+      PostingsEnum postings = leaf.postings(term);
+      if (postings == null) continue;
+      int doc;
+      long freq;
+      int[] column = data[col];
+      while((doc = postings.nextDoc()) !=  DocIdSetIterator.NO_MORE_DOCS) {
+        if (live !=null && !live.get(doc)) continue;
+        if ((freq = postings.freq()) == 0) continue;
+        int row = (int)(axis[doc].cumul / step);
+        if (row >= dots) row = dots - 1; // because of rounding on big numbers last row could be missed
+        column[row] += freq;
       }
     }
   }
-  /*
-  long toks = 0;
-  long step = Math.round((double)total / dots);
-  for(int i=0, end = sorter.length; i < end; i++) {
-    long length = sorter[i].length;
-    if (length <= 0) continue;
-    toks += length;
-    // looo on weights
-  } */
 
   out.println("  \"data\": [");
-  out.println("\n  ]");
+  first = true;
+  for (int row = 0; row < dots; row++) {
+    if (first) first = false;
+    else out.print(",\n");
+    out.print("    [");
+    out.print((step * row));
+    for (int col = 0; col < cols; col++){
+      out.print(", ");
+      double ppm = Math.round(10 * 100000.0 * data[col][row] / step) / 10.0;
+      out.print(ppm);
+    }
+    out.print("]");
+  }
+  out.println("\n  ],");
 }
+out.println("  \"time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\"");
 out.println("\n}");
-out.println("" + (System.nanoTime() - time) / 1000000.0 + "ms");
 %>
