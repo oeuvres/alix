@@ -517,7 +517,7 @@ public class Alix
 
   }
 
-  private static QueryAnalyzer qAnalyzer = new QueryAnalyzer();
+  public static QueryAnalyzer qAnalyzer = new QueryAnalyzer();
 
   public static Query qParse(String q, String field) throws IOException
   {

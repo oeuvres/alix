@@ -13,5 +13,6 @@
 	<classpathentry kind="lib" path="lib/servlet-api-2.3.jar"/>
 	<classpathentry kind="lib" path="lib/lucene-analyzers-common-8.1.1.jar"/>
 	<classpathentry kind="lib" path="lib/lucene-core-8.1.1.jar" sourcepath="/home/fred/code/lucene-8.0.0-src/core/src"/>
+	<classpathentry kind="lib" path="lib/lucene-highlighter-8.1.1.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>

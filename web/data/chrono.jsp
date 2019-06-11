@@ -101,7 +101,7 @@ if (ticks == null) {
   lucene.cache("ticks-year", ticks);
 }
 out.print( "  \"ticks\": "+ticks+",\n");
-out.println("  \"time\" : \"" + (System.nanoTime() - partial) / 1000000.0 + "ms\"");
+out.println("  \"time\" : \"" + (System.nanoTime() - partial) / 1000000.0 + "ms\",");
 
 
 

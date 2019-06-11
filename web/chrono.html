@@ -3,111 +3,14 @@
   <head>
     <meta charset="UTF-8">
     <title>Chronologie, Alix</title>
-    <script src="lib/dygraph.min.js">//</script>
-    <link rel="stylesheet" type="text/css" href="lib/dygraph.min.css"/>
-    <link rel="stylesheet" type="text/css" href="cataviz.css"/>
-<style>
-* { box-sizing: border-box; }
-html, body {
-  height: 100%;
-}
-body {padding-bottom: 4em;}
-#chart {font-family: sans-serif; background-color: #FFFFFF; width:100%; height:100%;}
-.dygraph-label {color: #999; font-size: 25px;}
-.dygraph-title {color: #000; padding-top: 3px; font-weight: 100;}
-.dygraph-legend { left: 4em !important; top: 2em !important; background-color: rgba(255, 255, 255, 0.6) !important; padding: 4px; border: 1px solid #000; border-radius: 10px; box-shadow: 4px 4px 4px #888; pointer-events: none; font-size: 14pt !important; line-height: 100%;}
-.dygraph-axis-label-x {font-size: 12pt;}
-</style>
-</head>
-<body>
-<form id="qform">
-  <input id="q" name="q" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"/>
-</form>
-<script>
-var url = new URL(window.location.href);
-var q = url.searchParams.get("q");
-if (!q) q = "";
-var form = document.forms['qform'];
-if (self != top) { // no form embedded in a frame
-  form.style.display = "none";
-} else {
-  form.q.value = q;
-}
-
-</script>
+    <link rel="stylesheet" type="text/css" href="static/alix.css"/>
+  </head>
+  <body class="chrono">
+    <form id="qform">
+      <input id="q" name="q" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"/>
+    </form>
     <div id="chart" class="dygraph"></div>
-    <script>
-var div = document.getElementById("chart");
-var url = new URL(window.location.href);
-var ticks;
-var jsonUrl = "data/chrono.jsp?q="+q;
-fetch(jsonUrl).then(
-  function(response) {
-    return response.json();
-  }
-).then(
-  function(json) {
-    ticks = json.ticks;
-    draw(div, json.data, json.labels);
-  }
-);
-/*
-.catch(function(err) {
-  console.log('Fetch problem: ' + err.message);
-});
-*/
-// var years = [589, 1789, 1815, 1830, 1870, 1914, 1939, 2005];
-var yearTicks = function(a, b, pixels, opts, dygraph, vals) {
-  return ticks;
-}
-function draw(div, data, labels) {
-  attrs = {
-    title : "Répartitions des occurrences sur le corpus (en ordre chronologique)",
-    labels: labels,
-    // labelsKMB: true,
-    legend: "always",
-    labelsSeparateLines: true,
-    ylabel: "Nombre d'occurrences pour 100 000 mots",
-    // xlabel: "Répartition des années en nombre de mots",
-    showRoller: true,
-    rollPeriod: localStorage.getItem('chronRollPeriod'),
-    drawCallback: function() {
-      localStorage.setItem('chronRollPeriod', this.rollPeriod());
-    },
-    series: {
-      "Occurrences": {
-        axis: 'y1',
-        drawPoints: true,
-        pointSize: 3,
-        color: "rgba( 0, 0, 0, 0.4)",
-        strokeWidth: 0.5,
-        fillGraph: true,
-      },
-    },
-    colors:['rgba(255, 0, 0, 0.5)', 'rgba(0, 0, 128, 0.5)', 'rgba(0, 128, 0, 0.5)', 'rgba(192, 128, 0, 0.5)', 'rgba(0, 128, 192, 0.5)'],
-    strokeBorderWidth: 0.5,
-    strokeWidth: 5,
-    drawGapEdgePoints: true,
-    
-    // logscale: true,
-    axes : {
-      x: {
-        independentTicks: true,
-        drawGrid: true,
-        ticker: yearTicks,
-        // gridLineColor: "rgba( 128, 128, 128, 0.1)",
-        // gridLineWidth: 1,
-      },
-      y: {
-        independentTicks: true,
-        drawGrid: true,
-        // gridLineColor: "rgba( 128, 128, 128, 0.1)",
-        // gridLineWidth: 1,
-      },
-    },
-  };
-  g = new Dygraph(div, data, attrs);
-}
-    </script>
+    <script src="vendors/dygraph.min.js">//</script>
+    <script src="static/js/chrono.js">//</script>
 </body>
 </html>

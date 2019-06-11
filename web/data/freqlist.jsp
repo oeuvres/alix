@@ -20,7 +20,7 @@ String word = request.getParameter("word");
 if ( word != null && word.isEmpty() ) word = null;
 
 // output array
-String field = "article";
+String field = TEXT;
 BytesDic dic = lucene.dic(field);
 Cursor cursor = dic.iterator();
 

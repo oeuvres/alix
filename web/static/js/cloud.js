@@ -1,57 +1,4 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Nuage de mots</title>
-    <script src="lib/wordcloud2.js">
-      //
-    </script>
-<style>
-* { box-sizing: border-box; }
-html, body {
-  height: 100%;
-}
-body {
-  /* background: #F8F8EF; */
-  background: #F0F8FF;
-  padding: 25px;
-  
-}
-#nuage {
-  height: 100%;
-}
-
-#nuage a {
-  color: #887;
-  text-decoration: none;
-}
-
-#nuage .SUB {
-  color: #000033;
-}
-
-#nuage .ADJ {
-  
-}
-
-#nuage .VERB {
-  
-}
-
-#nuage .ADV {
-  
-}
-
-#nuage .NAME {
-  color: #FF0000;
-  font-family: serif;
-}
-</style>
-</head>
-<body>
-      <div id="nuage"></div>
-    <script>
-var div = document.getElementById('nuage');
+var cloudId = "wordcloud2";
 var url = new URL(window.location.href);
 var frantext = url.searchParams.get("frantext");
 var log = url.searchParams.get("log");
@@ -61,7 +8,7 @@ fetch("data/freqlist.jsp?frantext="+frantext+"&log="+log).then(function(response
   return response.json();
 }).then(function(json) {
   list = json;
-  cloud(div, list);
+  cloud(document.getElementById(cloudId), list);
 });
 /*
 .catch(function(err) {
@@ -99,6 +46,3 @@ function cloud(div, list) {
     },
   });
 }
-    </script>
-</body>
-</html>
