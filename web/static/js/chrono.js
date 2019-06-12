@@ -28,6 +28,8 @@ fetch(jsonUrl).then(
   console.log('Fetch problem: ' + err.message);
 });
 */
+var rollPeriod = localStorage.getItem('chronoRollPeriod');
+if (!rollPeriod) rollPeriod = 20;
 // function for the ticker
 var yearTicks = function(a, b, pixels, opts, dygraph, vals) {
   return ticks;
@@ -43,9 +45,9 @@ function draw(div, data, labels) {
     ylabel: "Nombre d'occurrences pour 100 000 mots",
     // xlabel: "Répartition des années en nombre de mots",
     showRoller: true,
-    rollPeriod: localStorage.getItem('chronRollPeriod'),
+    rollPeriod: rollPeriod,
     drawCallback: function() {
-      localStorage.setItem('chronRollPeriod', this.rollPeriod());
+      localStorage.setItem('chronoRollPeriod', this.rollPeriod());
     },
     series: {
       "Occurrences": {
