@@ -23,7 +23,7 @@ public class HiliteFormatter extends PassageFormatter {
    * Creates a new DefaultPassageFormatter with the default tags.
    */
   public HiliteFormatter() {
-    this("<mark>", "</mark>", " […] ", true);
+    this("<mark>", "</mark>", " <samp class=\"\">[…]</samp> ", true);
   }
 
   /**
