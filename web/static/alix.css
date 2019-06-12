@@ -9,11 +9,27 @@ html, body {
 
 body {
   font-family: sans-serif;
-  background-color:#faf9f6; /* #f3f2ec; */
+  background-color: #faf9f6;
+  /* #f3f2ec; */
 }
 
 * {
   box-sizing: border-box;
+}
+
+sub, sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+sup {
+  top: -0.5em;
+}
+
+sub {
+  bottom: -0.25em;
 }
 
 /**
@@ -152,29 +168,38 @@ body.results {
   margin-right: auto;
   padding: 2em 0;
 }
+
 article.hit {
   padding-top: 1em;
 }
 
 article.hit .bibl {
-  font-size: 108%;
   line-height: 115%;
   color: #675344;
 }
+
 article.hit .surname {
   font-variant: small-caps;
-  font-size: 110%;
+  font-size: 115%;
   font-weight: bold;
 }
+
 article.hit .title {
   font-style: italic;
 }
+
 article.hit p.frags {
   line-height: 130%;
-  margin: 0;
+  margin: 0.5ex 0 0 2em;
   text-indent: 0;
-  padding: 0 0 0 2em;
+  padding: 0;
   text-align: justify;
+}
+
+article.hit mark {
+  background: transparent;
+  font-weight: bold;
+  color: rgba(0, 0, 80, 1);
 }
 /**
  * Word cloud

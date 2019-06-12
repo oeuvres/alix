@@ -147,6 +147,6 @@ public static String escapeXML(String s) {
 
 %><%
 request.setCharacterEncoding("UTF-8");
-Alix lucene = Alix.instance(application.getRealPath("") + "WEB-INF/lucene/");
+Alix lucene = Alix.instance(application.getRealPath("") + "/WEB-INF/lucene/");
 
 %>
