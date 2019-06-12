@@ -107,7 +107,7 @@ out.println("  \"time\" : \"" + (System.nanoTime() - partial) / 1000000.0 + "ms\
 
 //parse the query by line
 String q = request.getParameter("q");
-if (q == null || q.isBlank()) q = "théâtre acteur ; lettres ; littérature ; poésie poème ; roman";
+if (q == null || q.trim() == "") q = "théâtre acteur ; lettres ; littérature ; poésie poème ; roman";
 TermList terms = lucene.qTerms(q, TEXT);
 if (terms.size() > 0) {
   terms.sortByRowFreq();
