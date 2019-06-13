@@ -1,5 +1,9 @@
 // get the url params
 var url = new URL(window.location.href);
+var dots = url.searchParams.get("dots");
+var start = url.searchParams.get("start");
+var end = url.searchParams.get("end");
+console.log("end="+end);
 var q = url.searchParams.get("q");
 if (!q) q = "";
 var form = document.forms['qform'];
@@ -12,7 +16,7 @@ var div = document.getElementById("chart");
 var url = new URL(window.location.href);
 var ticks;
 // download the json data
-var jsonUrl = "data/chrono.jsp?q="+q;
+var jsonUrl = "data/chrono.jsp?q="+q+"&dots="+dots+"&start="+start+"&end="+end;
 fetch(jsonUrl).then(
   function(response) {
     return response.json();

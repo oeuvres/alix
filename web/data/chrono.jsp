@@ -76,15 +76,16 @@ public String ticks(PageContext pageContext, Alix lucene) throws IOException  {
   return sb.toString();
 }%>
 <%
-long time = System.nanoTime();
+
 
 // number of fots by curve, could be a parameter
-int dots = 200;
+
+int dots = getParameter(request, "dots", 200);
 
 // build queries
 time = System.nanoTime();
 
-IndexReader reader = lucene.reader();
+
 long total = reader.getSumTotalTermFreq(TEXT);
 
 int maxDoc = reader.maxDoc();
@@ -129,8 +130,8 @@ if (terms.size() > 0) {
   out.println("],");
   
   int cols = terms.rows();
-  // table of data to populate + 1 check column
-  long[][] data = new long[cols + 1][dots];
+  // table of data to populate
+  long[][] data = new long[cols][dots];
   // width of a step between two dots, 
   long step = (total) / dots;
   // axis index
@@ -141,12 +142,11 @@ if (terms.size() > 0) {
   }
   // loop on contexts, because open a context is heavy, do not open too much
   for (LeafReaderContext ctx : reader.leaves()) {
+    BitSet bits = filter.getBitSet(ctx); // the filtered docs for this segment
     // Do as a termQuery, loop on PostingsEnum.FREQS for each term
     LeafReader leaf = ctx.reader();
-    Bits live = leaf.getLiveDocs();
     // loop on terms
     int col = 0;
-    long[] colSum = data[cols];
     for(Term term: terms) {
       if (term == null) {
         col++;
@@ -158,21 +158,23 @@ if (terms.size() > 0) {
       long freq;
       long[] column = data[col];
       while((doc = postings.nextDoc()) !=  DocIdSetIterator.NO_MORE_DOCS) {
-        if (live !=null && !live.get(doc)) continue;
+        if (!bits.get(doc)) continue;
         if ((freq = postings.freq()) == 0) continue;
         int row = (int)(axis[doc].cumul / step);
         if (row >= dots) row = dots - 1; // because of rounding on big numbers last row could be missed
         column[row] += freq;
-        colSum[row] += freq;
       }
     }
   }
+  
 
   out.println("  \"data\": [");
   first = true;
   for (int row = 0; row < dots; row++) {
     // empty row, go throw
-    if ( data[cols][row] == 0) continue;
+    long sum = 0;
+    for (int col = 0; col < cols; col++) sum += data[col][row];
+    if (sum == 0) continue;
     if (first) first = false;
     else out.print(",\n");
     out.print("    [");

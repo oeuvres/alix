@@ -16,7 +16,6 @@ java.text.DecimalFormat,
 java.text.DecimalFormatSymbols,
 java.util.Arrays,
 java.util.ArrayList,
-java.util.BitSet,
 java.util.Comparator,
 java.util.HashSet,
 java.util.Iterator,
@@ -33,6 +32,7 @@ org.apache.lucene.analysis.tokenattributes.CharTermAttribute,
 org.apache.lucene.analysis.tokenattributes.FlagsAttribute,
 org.apache.lucene.analysis.tokenattributes.OffsetAttribute,
 org.apache.lucene.document.Document,
+org.apache.lucene.document.IntPoint,
 org.apache.lucene.index.IndexableField,
 org.apache.lucene.index.IndexReader,
 org.apache.lucene.index.IndexWriter,
@@ -46,8 +46,11 @@ org.apache.lucene.index.SortedSetDocValues,
 org.apache.lucene.search.BooleanClause.Occur,
 org.apache.lucene.search.BooleanQuery,
 org.apache.lucene.search.BulkScorer,
+org.apache.lucene.search.ConstantScoreQuery,
+org.apache.lucene.search.DocIdSet,
 org.apache.lucene.search.DocIdSetIterator,
 org.apache.lucene.search.IndexSearcher,
+org.apache.lucene.search.join.QueryBitSetProducer,
 org.apache.lucene.search.MatchAllDocsQuery,
 org.apache.lucene.search.Query,
 org.apache.lucene.search.ScoreDoc,
@@ -61,6 +64,7 @@ org.apache.lucene.search.vectorhighlight.FieldQuery,
 org.apache.lucene.search.Weight,
 org.apache.lucene.util.BytesRef,
 org.apache.lucene.util.Bits,
+org.apache.lucene.util.BitSet,
 
 alix.fr.dic.Tag,
 alix.lucene.Alix,
@@ -75,6 +79,7 @@ alix.lucene.CharsDic.Entry,
 alix.lucene.CharsMaps,
 alix.lucene.CharsMaps.LexEntry,
 alix.lucene.CharsMaps.NameEntry,
+alix.lucene.CollectorBits,
 alix.lucene.HiliteFormatter,
 alix.lucene.TermList,
 alix.lucene.TokenCompound,
@@ -130,9 +135,9 @@ static Float tlfoptions (PageContext pageContext, String param) throws IOExcepti
 }
 
 /**
- * Normaliser une entrée pour l'affichage dans un input
+ * Ensure that a String could be included as an html attribute with quotes
  */
-public static String escapeXML(String s) {
+public static String escapeHtml(String s) {
     StringBuilder out = new StringBuilder(Math.max(16, s.length()));
     for (int i = 0; i < s.length(); i++) {
         char c = s.charAt(i);
@@ -145,8 +150,38 @@ public static String escapeXML(String s) {
     return out.toString();
 }
 
+/**
+ * Get a request parameter as an int with default value
+ */
+public static int getParameter(HttpServletRequest request, String name, int value) {
+  String s = request.getParameter(name);
+  if (s == null || s.trim().length() == 0 || "null".equals(s)) return value;
+  try {
+    value = Integer.parseInt(s);
+  }
+  catch(NumberFormatException e) {
+  }
+  return value;
+}
+
 %><%
+long time = System.nanoTime();
+
 request.setCharacterEncoding("UTF-8");
 Alix lucene = Alix.instance(application.getRealPath("") + "/WEB-INF/lucene/");
+
+int start = getParameter(request, "start", -1);
+int end = getParameter(request, "end", -1);
+
+Query query;
+if (start > 0 && end > 0 && start <= end) query = IntPoint.newRangeQuery(YEAR, start, end);
+else query = new MatchAllDocsQuery();
+// don't forget, ConstantScoreQuery
+
+QueryBitSetProducer filter = new QueryBitSetProducer(query);
+// new MatchAllDocsQuery() ()
+IndexReader reader = lucene.reader();
+
+
 
 %>

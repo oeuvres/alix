@@ -36,7 +36,7 @@ ScoreDoc[] hits = topDocs.scoreDocs;
 UnifiedHighlighter uHiliter = new UnifiedHighlighter(searcher, Alix.qAnalyzer);
 uHiliter.setFormatter(new  HiliteFormatter());
 String[] fragments = uHiliter.highlight(fieldName, query, topDocs, 3);
-
+// TODO, get matching occurences coumt
 
 String value;
 for (int i = 0; i < hits.length; i++) {
@@ -68,7 +68,7 @@ for (int i = 0; i < hits.length; i++) {
   
   value = doc.get("pages");
   if (value != null) {
-    out.print("    <span class=\"pages\">pp. ");
+    out.print("    <span class=\"pages\">pp. ");
     out.print(value);
     out.println("</span>");
   }
@@ -76,10 +76,10 @@ for (int i = 0; i < hits.length; i++) {
   IndexableField[] parents = doc.getFields("parent");
   int length = parents.length;
   if (length > 0) {
-    out.println("<span class=\"chapter\"> : « ");
+    out.print("<span class=\"chapter\"> : « ");
     for (int j = 0; j < length; j++) {
-      if (j > 0) out.print(" — ");
-      out.print(parents[j].stringValue());
+      if (j > 0) out.print(" — ");
+      out.print(parents[j].stringValue().trim());
     }
     out.println(" »</span>");
   }

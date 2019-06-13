@@ -31,18 +31,55 @@ public static void collect(IndexReader reader, String field, BitSet filter, Byte
 
 %>
 <%
-String field = "author";
-// get document results
-BitSet filter = (BitSet)session.getAttribute("filterBits");
-// no query stored, give all authors
-BytesDic dic = null;
-if (filter == null) {
-  dic = lucene.dic(field);
+
+
+
+IndexReader reader = lucene.reader();
+// choose a field
+String facet = "author";
+// open the dic
+BytesDic dic = new BytesDic(facet);
+// get terms from a query
+String q = request.getParameter("q");
+if (q == null || q.trim() == "") q = "théâtre acteur ; lettres ; littérature ; poésie poème ; roman";
+TermList terms = lucene.qTerms(q, TEXT);
+// reusable counts if possible
+int leafCount = reader.leaves().size();
+// loop on the reader leaves
+for (LeafReaderContext context : reader.leaves()) {
+  LeafReader leaf = context.reader();
+  // get a doc iterator for the facet
+  SortedSetDocValues docs4terms = leaf.getSortedSetDocValues(facet);
+  if (docs4terms == null) break;
+  // the term for the facet is indexed with a long, lets bet it is less than the max int for an array collecttor
+  long ordMax = docs4terms.getValueCount();
+  // record counts for each term by ord
+  long[] counts = new long[(int)ordMax];
+  // loop on matches docs
+      
+  if (counts == null || counts.length < ordMax) {
+    int length = (int)(1.5 * ordMax); // give some place
+    if (leafCount == 1) length = 
+    counts = new int[(int)(ordMax * 1.5)];
+  }
+  System.out.println("term ord < "+ordMax);
+  for (long ord = 0; ord < ordMax; ord++) {
+    System.out.println(ord+" "+docs4terms.lookupOrd(ord).utf8ToString());
+  }
+  /*
+  // terms.termsEnum().docFreq() not implemented, should loop on docs to have it
+  while (docs4terms.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+    long ord;
+    docs++;
+    // each term
+    while ((ord = docs4terms.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+      dic.add(docs4terms.lookupOrd(ord), 1);
+    }
+  }
+  */
 }
-else {
-  dic = new BytesDic(field);
-  collect(lucene.reader(), field, filter, dic);
-}
+
+
 %>
 <!DOCTYPE html>
 <html>
