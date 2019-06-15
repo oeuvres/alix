@@ -15,7 +15,7 @@ import org.apache.lucene.util.UnicodeUtil;
  * @author fred
  *
  */
-public class BytesDic implements Iterable<Integer>
+public class DicBytes implements Iterable<Integer>
 {
   /** Name of dictionary */
   public final String name;
@@ -32,7 +32,7 @@ public class BytesDic implements Iterable<Integer>
   /** Cache size after sorting */
   private int size;
 
-  public BytesDic(final String name)
+  public DicBytes(final String name)
   {
     this.name = name;
   }

@@ -31,7 +31,7 @@ public class ChainRoller extends Roller implements Iterable<Chain>
     /**
      * Get a value by index, positive or negative, relative to center
      * 
-     * @param pos
+     * @param ord
      * @return
      */
     public String get(final int pos)
@@ -43,7 +43,7 @@ public class ChainRoller extends Roller implements Iterable<Chain>
      * Get a pointer on the chain at desired position. Be careful, the chain is
      * mutable
      * 
-     * @param pos
+     * @param ord
      * @return
      */
     public Chain access(final int pos)
@@ -54,7 +54,7 @@ public class ChainRoller extends Roller implements Iterable<Chain>
     /**
      * Modify a value by an index
      * 
-     * @param pos
+     * @param ord
      *            Position in the slider
      * @param chain
      *            A string value to modify the position
@@ -68,7 +68,7 @@ public class ChainRoller extends Roller implements Iterable<Chain>
     /**
      * Modify a value by an index
      * 
-     * @param pos
+     * @param ord
      *            Position in the slider
      * @param chain
      *            A string value to modify the position

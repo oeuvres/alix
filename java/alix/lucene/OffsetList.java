@@ -128,9 +128,9 @@ public class OffsetList
   }
 
   /**
-   * Get start offset at position pos.
+   * Get start offset at position ord.
    * 
-   * @param pos
+   * @param ord
    * @return
    */
   public int getStart(final int pos)
@@ -139,9 +139,9 @@ public class OffsetList
   }
 
   /**
-   * Get end offset at position pos.
+   * Get end offset at position ord.
    * 
-   * @param pos
+   * @param ord
    * @return
    */
   public int getEnd(final int pos)

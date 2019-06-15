@@ -1,85 +1,81 @@
-<%@ page language="java"  pageEncoding="UTF-8" contentType="text/html; charset=UTF-8"%>
+<%@ page language="java"  pageEncoding="UTF-8" contentType="text/plain; charset=UTF-8"%>
 <%@include file="data/common.jsp" %>
-<%!
-public static void collect(IndexReader reader, String field, BitSet filter, BytesDic dic) throws IOException
-{
-  int docBase = 0;
-  int maxDoc = 0;
-  Iterator<LeafReaderContext> contexts = reader.leaves().iterator();
-  LeafReader leaf = null;
-  LeafReaderContext ctx = null;
-  SortedSetDocValues docs = null;
-  // loop on docs, try to find them in the right context
-  for (int docid = filter.nextSetBit(0); docid >= 0; docid = filter.nextSetBit(docid+1)) {
-    // search the right context 
-    while((docid - docBase) >= maxDoc) {
-      if (!contexts.hasNext()) return; // no more contexts, go away
-      ctx = contexts.next();
-      docBase = ctx.docBase;
-      leaf = ctx.reader();
-      maxDoc = leaf.maxDoc();
-      docs = leaf.getSortedSetDocValues(field);
-    }
-    docs.advanceExact(docid - docBase);
-    long ord;
-    // each term 
-    while((ord = docs.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-      dic.add(docs.lookupOrd(ord), 1);
-    }
-  }
-}
-
-%>
 <%
-
-
-
-IndexReader reader = lucene.reader();
-// choose a field
+  // choose a field
 String facet = "author";
-// open the dic
-BytesDic dic = new BytesDic(facet);
+// Open a dictionary for this field
+DicBytes dic = new DicBytes(facet);
 // get terms from a query
 String q = request.getParameter("q");
 if (q == null || q.trim() == "") q = "théâtre acteur ; lettres ; littérature ; poésie poème ; roman";
 TermList terms = lucene.qTerms(q, TEXT);
-// reusable counts if possible
-int leafCount = reader.leaves().size();
-// loop on the reader leaves
-for (LeafReaderContext context : reader.leaves()) {
-  LeafReader leaf = context.reader();
-  // get a doc iterator for the facet
+
+
+for (LeafReaderContext ctx : reader.leaves()) { // loop on the reader leaves
+  BitSet bits = filter.bits(ctx); // the filtered docs for this segment
+  if (bits == null) continue; // no matching doc, go away
+  LeafReader leaf = ctx.reader();
+  // get a doc iterator for the facet field
   SortedSetDocValues docs4terms = leaf.getSortedSetDocValues(facet);
-  if (docs4terms == null) break;
+  if (docs4terms == null) continue;
+  int maxDoc = leaf.maxDoc();
+  long[] docOccs = new long[maxDoc];
+  // get the ocurrence count for each doc (allow GC to release resources on postings)
+  PostingsEnum postings;
+  // cost of reading postings ?
+  job = System.nanoTime();
+  for(Term term: terms) {
+    if (term == null) continue;
+    postings = leaf.postings(term);
+    if (postings == null) continue;
+    int doc;
+    long freq;
+    while((doc = postings.nextDoc()) !=  DocIdSetIterator.NO_MORE_DOCS) {
+  docOccs[doc] += postings.freq();
+    }
+  }
+  // collect postings is very cheap (25000 docs < 1 ms)  
+  out.println("postings " + (System.nanoTime() - job) / 1000000.0 + "ms\"");
   // the term for the facet is indexed with a long, lets bet it is less than the max int for an array collecttor
   long ordMax = docs4terms.getValueCount();
-  // record counts for each term by ord
+  // record counts for each term by ord index
   long[] counts = new long[(int)ordMax];
-  // loop on matches docs
-      
-  if (counts == null || counts.length < ordMax) {
-    int length = (int)(1.5 * ordMax); // give some place
-    if (leafCount == 1) length = 
-    counts = new int[(int)(ordMax * 1.5)];
-  }
-  System.out.println("term ord < "+ordMax);
-  for (long ord = 0; ord < ordMax; ord++) {
-    System.out.println(ord+" "+docs4terms.lookupOrd(ord).utf8ToString());
-  }
-  /*
-  // terms.termsEnum().docFreq() not implemented, should loop on docs to have it
-  while (docs4terms.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-    long ord;
-    docs++;
-    // each term
-    while ((ord = docs4terms.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-      dic.add(docs4terms.lookupOrd(ord), 1);
+  // loop on docs 
+  int doc;
+  long ord;
+  /* 
+   // A bit slower than loop on filtered docs when the filter is narrow
+   // could be faster for sparse facets 
+  while ((doc = docs4terms.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+    if (!bits.get(doc)) continue;
+    while ( (ord = docs4terms.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+  counts[(int)ord] += docOccs[doc];
     }
   }
   */
+  job = System.nanoTime();
+  int current = -1;
+  for (doc = bits.nextSetBit(0); doc != DocIdSetIterator.NO_MORE_DOCS; doc = bits.nextSetBit(doc + 1)) {
+    // current doc for facets is too far
+    if (current > doc) continue;
+    // advance cursor in docs facets
+    if (current < doc) {
+  current = docs4terms.advance(doc);
+  if (current == DocIdSetIterator.NO_MORE_DOCS) break;
+    }
+    // current in factes maybe too far here
+    if (current != doc) continue;
+    while ( (ord = docs4terms.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+  counts[(int)ord] += docOccs[doc];
+    }
+  }
+  out.println("facets " + (System.nanoTime() - job) / 1000000.0 + "ms\"");
+  // populate the dic
+  for (ord = 0; ord < ordMax; ord++) {
+    dic.add(docs4terms.lookupOrd(ord), counts[(int)ord]);
+  }
 }
-
-
+out.println(dic);
 %>
 <!DOCTYPE html>
 <html>

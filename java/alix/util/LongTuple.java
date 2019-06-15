@@ -60,7 +60,7 @@ public class LongTuple implements Comparable<LongTuple>
   /**
    * Get value for a position.
    * 
-   * @param pos
+   * @param ord
    * @return
    */
   public long get(int pos)

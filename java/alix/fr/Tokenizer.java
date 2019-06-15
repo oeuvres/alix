@@ -164,7 +164,7 @@ public class Tokenizer {
     /**
      * Set pointer position, especially to forward after an header
      * 
-     * @param pos
+     * @param ord
      */
     public Tokenizer pointer(int pos) {
         if (pos > 0 && pos < end)
@@ -175,7 +175,7 @@ public class Tokenizer {
     /**
      * Set an end index, to stop parsing before an header
      * 
-     * @param pos
+     * @param ord
      */
     public Tokenizer end(int pos) {
         if (pos > pointer && pos < text.length())
@@ -483,11 +483,11 @@ public class Tokenizer {
     }
 
     /**
-     * Find position of next token char (not space, jump XML tags) If char at pos is
+     * Find position of next token char (not space, jump XML tags) If char at ord is
      * token char, return same value. Jump notes ? Update a mutable string about the
      * last XML tag found
      * 
-     * @param pos
+     * @param ord
      * @return the position of next token char
      */
     private int fw(int pos) {
@@ -554,13 +554,13 @@ public class Tokenizer {
     }
 
     /**
-     * Update an occurrence with the next token in a big string from the pos index.
+     * Update an occurrence with the next token in a big string from the ord index.
      * To allow a correct concordance, segments will keep some final chars like apos
      * or hyphen
      *
      * @param occ
      *            An occurrence to populate
-     * @param pos
+     * @param ord
      *            Pointer in the text from where to start
      * @return
      */
@@ -738,11 +738,11 @@ public class Tokenizer {
             if (!Char.isToken(c)) {
                 /*
                  * // M<sup>me</sup> H<sc>ugo</sc> ??? peut casser la balisage XML if ( c ==
-                 * '<') { int i=pos; int max=pos+300; while ( i < end ) { i++; if ( i > max )
+                 * '<') { int i=ord; int max=ord+300; while ( i < end ) { i++; if ( i > max )
                  * break; // bad XML c2 = text.charAt( i ); if ( c2 != '>') continue; // test if
                  * tag is inside word c2 = text.charAt( i+1 ); if ( Char.isLetter( c2 ) ) { c =
-                 * c2; pos = i + 1; supsc = true; // put ending tag inside the token } if (
-                 * supsc ) { pos = i+1; c = c2; } break; } }
+                 * c2; ord = i + 1; supsc = true; // put ending tag inside the token } if (
+                 * supsc ) { ord = i+1; c = c2; } break; } }
                  */
                 break;
             }

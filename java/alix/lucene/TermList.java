@@ -22,18 +22,22 @@ import org.apache.lucene.index.Term;
  */
 public class TermList implements Iterable<Term>
 {
+  /** Keep memory of last input term, to avoid too much null separators */
+  private Term termLast;
   /** The terms with fields to sort on */
   private ArrayList<Entry> data = new ArrayList<>();
-  /** Current global pos counter */
-  private int pos = 0;
+  /** Current global ord counter */
+  private int ord = 0;
+  /** Not null term count */
+  private int notNull = 0;
   /** Current row */
   private int row = 0;
   /** Current column in row */
   private int col = 0;
   /** A dictionary to get freqs */
-  private final BytesDic dic;
+  private final DicBytes dic;
 
-  public TermList(final BytesDic dic)
+  public TermList(final DicBytes dic)
   {
     this.dic = dic;
   }
@@ -41,16 +45,16 @@ public class TermList implements Iterable<Term>
   private class Entry
   {
     final Term term;
-    final int pos;
+    final int ord;
     final int row;
     final int col;
     final long freq;
     long rowFreq;
 
-    public Entry(final Term term, final int pos, final int row, final int col, final long freq)
+    public Entry(final Term term, final int ord, final int row, final int col, final long freq)
     {
       this.term = term;
-      this.pos = pos;
+      this.ord = ord;
       this.row = row;
       this.col = col;
       this.freq = freq;
@@ -58,13 +62,25 @@ public class TermList implements Iterable<Term>
     @Override
     public String toString()
     {
-      return ""+pos+". ["+row+", "+col+"] "+term+":"+freq+" ("+rowFreq+")";
+      return ""+ord+". ["+row+", "+col+"] "+term+":"+freq+" ("+rowFreq+")";
     }
   }
 
+  /**
+   * Return size with null entries
+   * @return
+   */
   public int size()
   {
-    return pos;
+    return ord;
+  }
+  /**
+   * Return size with only not null entries
+   * @return
+   */
+  public int sizeNotNull()
+  {
+    return notNull;
   }
   public int rows()
   {
@@ -74,24 +90,26 @@ public class TermList implements Iterable<Term>
   public void add(Term term)
   {
     if (term == null) {
-      addNull();
+      if (termLast != null) addNull();
     }
     else {
       long freq = dic.count(term.bytes());
-      System.out.println(freq);
-      data.add(new Entry(term, pos, row, col, freq));
+      data.add(new Entry(term, ord, row, col, freq));
+      ord++;
+      notNull++;
       col++;
-      pos++;
     }
+    termLast = term;
   }
 
   private void addNull() 
   {
-    data.add(new Entry(null, pos, row, col, 0));
+    termLast = null;
+    data.add(new Entry(null, ord, row, col, 0));
     updateRowFreq();
+    ord++;
     row++;
     col = 0;
-    pos++;
   }
   
   /** Loop on all entries with current row number, sum the freqs, update entry */
@@ -115,8 +133,9 @@ public class TermList implements Iterable<Term>
    */
   public void sortByRowFreq()
   {
-    if (data.get(pos - 1).term != null) addNull();
-    updateRowFreq();
+    // ensure that last entry is a null to keep rows in order
+    if (termLast != null) addNull();
+    // updateRowFreq(); // not needed
     Collections.sort(data, new Comparator<Entry>()
     {
       @Override
@@ -124,8 +143,8 @@ public class TermList implements Iterable<Term>
       {
         if (entry1.rowFreq > entry2.rowFreq) return -1;
         if (entry1.rowFreq < entry2.rowFreq) return +1;
-        if (entry1.pos < entry2.pos) return -1;
-        if (entry1.pos > entry2.pos) return +1;
+        if (entry1.ord < entry2.ord) return -1;
+        if (entry1.ord > entry2.ord) return +1;
         return 0;
       }
     });
@@ -140,8 +159,8 @@ public class TermList implements Iterable<Term>
       {
         if (entry1.rowFreq > entry2.rowFreq) return -1;
         if (entry1.rowFreq < entry2.rowFreq) return +1;
-        if (entry1.pos < entry2.pos) return -1;
-        if (entry1.pos > entry2.pos) return +1;
+        if (entry1.ord < entry2.ord) return -1;
+        if (entry1.ord > entry2.ord) return +1;
         return 0;
       }
     });
@@ -200,20 +219,6 @@ public class TermList implements Iterable<Term>
       sb.append(entry);
       sb.append("\n");
     }
-    /*
-    boolean nocoma = true;
-    for (Term t : this) {
-      if (t == null) {
-        sb.append(" ;\n");
-        nocoma = true;
-      }
-      else {
-        if (nocoma) nocoma = false;
-        else sb.append(", ");
-        sb.append(t.text());
-      }
-    }
-    */
     return sb.toString();
   }
 }

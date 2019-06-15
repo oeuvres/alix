@@ -12,7 +12,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import alix.fr.dic.Tag;
 
 /**
- * A token Filter to plug after a TokenLem filter, overriding positions with lemma and pos
+ * A token Filter to plug after a TokenLem filter, overriding positions with lemma and POS
  * 
  * @author fred
  *

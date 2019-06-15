@@ -171,7 +171,7 @@ public class IntTuple implements Comparable<IntTuple>
   /**
    * Get int at a position.
    * 
-   * @param pos
+   * @param ord
    * @return
    */
   public int get(int pos)

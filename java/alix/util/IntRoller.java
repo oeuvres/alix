@@ -28,7 +28,7 @@ public class IntRoller extends Roller
   /**
    * Return a value for a position, positive or negative, relative to center
    * 
-   * @param pos
+   * @param ord
    * @return the primary value
    */
   public int get(final int pos)
@@ -59,7 +59,7 @@ public class IntRoller extends Roller
   /**
    * Set value at position
    * 
-   * @param pos
+   * @param ord
    * @return the primary value
    */
   public IntRoller set(final int pos, final int value)

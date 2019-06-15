@@ -201,13 +201,11 @@ public class XMLIndexer implements Runnable
    * @throws SAXException 
    * @throws ParserConfigurationException 
    */
-  static public void index(Alix alix, int threads, String xmlGlob, String xslFile)
+  static public void index(final IndexWriter writer, int threads, String xmlGlob, String xslFile)
       throws IOException, InterruptedException, TransformerConfigurationException, ParserConfigurationException, SAXException
   {
 
-    info("Lucene, index:" + alix +", files:" + xmlGlob + " , parser:" + xslFile);
-
-    IndexWriter writer = alix.writer();
+    info("Lucene, index:" + writer.getDirectory() +", files:" + xmlGlob + " , parser:" + xslFile);
     // preload dictionaries
     List<File> files = Dir.ls(xmlGlob); // CopyOnWriteArrayList produce some duplicates
     Iterator<File> it = files.iterator();
@@ -219,15 +217,17 @@ public class XMLIndexer implements Runnable
     }
     
     
-    // multithread pool, one thread load bytes from disk, and delegate indexation to other threads
+    // multithread pool
     ExecutorService pool = Executors.newFixedThreadPool(threads);
     for (int i = 0; i < threads; i++) {
       pool.submit(new XMLIndexer(writer, it, templates));
     }
     pool.shutdown();
+    // ? verify what should be done here if it hangs
     boolean finished = pool.awaitTermination(30, TimeUnit.MINUTES);
     writer.commit();
     writer.forceMerge(1);
+    info(writer.getDocStats());
     writer.close();
   }
 

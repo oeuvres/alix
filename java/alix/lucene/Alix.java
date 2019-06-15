@@ -73,6 +73,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -81,6 +82,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
@@ -118,7 +120,7 @@ public class Alix
   static {
     // inverted index
     ftypeAll.setTokenized(true);
-    // http://makble.com/what-is-lucene-norms, omit norms (length normalization)
+    // keep norms for Similarity, http://makble.com/what-is-lucene-norms
     ftypeAll.setOmitNorms(false);
     // position needed for phrase query, take also 
     ftypeAll.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
@@ -137,6 +139,8 @@ public class Alix
   private Directory dir;
   /** The IndexReader if requested */
   private IndexReader reader;
+  /** Shared Similarity for indexation and searching */
+  public final Similarity similarity;
   /** The IndexSearcher if requested */
   private IndexSearcher searcher;
   /** The IndexWriter if requested */
@@ -152,6 +156,7 @@ public class Alix
   {
     this.path = path;
     Files.createDirectories(path);
+    this.similarity = new BM25Similarity(); // default similarity
     // dir = FSDirectory.open(indexPath);
     dir = MMapDirectory.open(path); // https://dzone.com/articles/use-lucene’s-mmapdirectory
   }
@@ -182,6 +187,40 @@ public class Alix
       pool.put(path, alix);
     }
     return alix;
+  }
+  public IndexWriter writer() throws IOException
+  {
+    return writer(null);
+  }
+  /**
+   * Get a lucene writer
+   * 
+   * @throws IOException
+   */
+  public IndexWriter writer(final Similarity similarity) throws IOException
+  {
+    if (writer != null && writer.isOpen()) return writer;
+    Analyzer analyzer = new AnalyzerAlix();
+    IndexWriterConfig conf = new IndexWriterConfig(analyzer);
+    conf.setUseCompoundFile(false); // show separate file by segment
+    // may needed, increase the max heap size to the JVM (eg add -Xmx512m or
+    // -Xmx1g):
+    conf.setRAMBufferSizeMB(48);
+    conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
+    //
+    if (similarity != null) conf.setSimilarity(similarity);
+    else conf.setSimilarity(this.similarity);
+    // no effect found with modification ConcurrentMergeScheduler
+    /*
+     * int threads = Runtime.getRuntime().availableProcessors() - 1;
+     * ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
+     * cms.setMaxMergesAndThreads(threads, threads); cms.disableAutoIOThrottle();
+     * conf.setMergeScheduler(cms);
+     */
+    // order docid by a field after merge ? No functionality should rely on such order
+    // conf.setIndexSort(new Sort(new SortField(YEAR, SortField.Type.INT)));
+    writer = new IndexWriter(dir, conf);
+    return writer;
   }
 
   /**
@@ -235,6 +274,7 @@ public class Alix
     if (!force && searcher != null) return searcher;
     reader(force);
     searcher = new IndexSearcher(reader);
+    searcher.setSimilarity(similarity);
     return searcher;
   }
 
@@ -262,36 +302,6 @@ public class Alix
     SoftReference<Object> ref = cache.get(key);
     if (ref != null) return ref.get();
     return null;
-  }
-
-  /**
-   * Get a lucene writer
-   * 
-   * @throws IOException
-   */
-  public IndexWriter writer() throws IOException
-  {
-    if (writer != null && writer.isOpen()) return writer;
-    Analyzer analyzer = new AnalyzerAlix();
-    IndexWriterConfig conf = new IndexWriterConfig(analyzer);
-    conf.setUseCompoundFile(false); // show separate file by segment
-    // may needed, increase the max heap size to the JVM (eg add -Xmx512m or
-    // -Xmx1g):
-    conf.setRAMBufferSizeMB(48);
-    conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
-    //
-    conf.setSimilarity(new BM25Similarity());
-    // no effet found with modification ConcurrentMergeScheduler
-    /*
-     * int threads = Runtime.getRuntime().availableProcessors() - 1;
-     * ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
-     * cms.setMaxMergesAndThreads(threads, threads); cms.disableAutoIOThrottle();
-     * conf.setMergeScheduler(cms);
-     */
-    // order docid by a field after merge ? No functionality should rely on such order
-    // conf.setIndexSort(new Sort(new SortField(YEAR, SortField.Type.INT)));
-    writer = new IndexWriter(dir, conf);
-    return writer;
   }
 
   /**
@@ -407,6 +417,9 @@ public class Alix
   /**
    * For a field, return an array in docid order, with the total number of tokens
    * by doc. Is cached, cost 1 s. / 1000 books
+   * A norm after indexation could be faster, but common similarity store such length on one byte.
+   * see SimilarityBase.computeNorm() 
+   * https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/apache/lucene/search/similarities/SimilarityBase.java#L185
    * 
    * @param field
    * @return
@@ -450,12 +463,12 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public BytesDic dic(final String field) throws IOException
+  public DicBytes dic(final String field) throws IOException
   {
     String key = CACHE_DIC + field;
-    BytesDic dic = (BytesDic) cache(key);
+    DicBytes dic = (DicBytes) cache(key);
     if (dic != null) return dic;
-    dic = new BytesDic(field);
+    dic = new DicBytes(field);
     IndexReader reader = reader(); // ensure reader
     // indexed field
     if (reader.getDocCount(field) > 0) {
@@ -521,7 +534,9 @@ public class Alix
 
   public static Query qParse(String q, String field) throws IOException
   {
-
+    float[] boosts = {2.0f, 1.5f, 1.0f, 0.7f, 0.5f};
+    int boostLength = boosts.length;
+    float boostDefault = boosts[boostLength - 1];
     TokenStream ts = qAnalyzer.tokenStream(field, q);
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
@@ -529,8 +544,9 @@ public class Alix
     OffsetAttribute offset = ts.addAttribute(OffsetAttribute.class);
 
     ts.reset();
-    TermQuery qTerm = null;
+    Query qTerm = null;
     BooleanQuery.Builder bq = null;
+    int i = 0;
     try {
       while (ts.incrementToken()) {
         if (Tag.isPun(flags.getFlags())) continue;
@@ -539,6 +555,10 @@ public class Alix
           bq.add(qTerm, Occur.SHOULD);
         }
         qTerm = new TermQuery(new Term(field, token.toString()));
+        float boost = boostDefault;
+        if (i < boostLength) boost = boosts[i];
+        qTerm = new BoostQuery(qTerm, boost);
+        i++;
       }
       ts.end();
     }

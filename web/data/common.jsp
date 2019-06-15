@@ -50,11 +50,11 @@ org.apache.lucene.search.ConstantScoreQuery,
 org.apache.lucene.search.DocIdSet,
 org.apache.lucene.search.DocIdSetIterator,
 org.apache.lucene.search.IndexSearcher,
-org.apache.lucene.search.join.QueryBitSetProducer,
 org.apache.lucene.search.MatchAllDocsQuery,
 org.apache.lucene.search.Query,
 org.apache.lucene.search.ScoreDoc,
 org.apache.lucene.search.ScoreMode,
+org.apache.lucene.search.similarities.*,
 org.apache.lucene.search.TermQuery,
 org.apache.lucene.search.TopDocs,
 org.apache.lucene.search.uhighlight.UnifiedHighlighter,
@@ -68,9 +68,7 @@ org.apache.lucene.util.BitSet,
 
 alix.fr.dic.Tag,
 alix.lucene.Alix,
-alix.lucene.Alix.Tick,
-alix.lucene.BytesDic,
-alix.lucene.BytesDic.Cursor,
+alix.lucene.Alix.Tick,alix.lucene.DicBytes,alix.lucene.DicBytes.Cursor,
 alix.lucene.CharsLemAtt,
 alix.lucene.Cooc,
 alix.lucene.CharsAtt,
@@ -81,6 +79,7 @@ alix.lucene.CharsMaps.LexEntry,
 alix.lucene.CharsMaps.NameEntry,
 alix.lucene.CollectorBits,
 alix.lucene.HiliteFormatter,
+alix.lucene.QueryBits,
 alix.lucene.TermList,
 alix.lucene.TokenCompound,
 alix.lucene.TokenDic,
@@ -167,21 +166,19 @@ public static int getParameter(HttpServletRequest request, String name, int valu
 %><%
 long time = System.nanoTime();
 
-request.setCharacterEncoding("UTF-8");
 Alix lucene = Alix.instance(application.getRealPath("") + "/WEB-INF/lucene/");
-
 int start = getParameter(request, "start", -1);
 int end = getParameter(request, "end", -1);
 
-Query query;
-if (start > 0 && end > 0 && start <= end) query = IntPoint.newRangeQuery(YEAR, start, end);
-else query = new MatchAllDocsQuery();
-// don't forget, ConstantScoreQuery
-
-QueryBitSetProducer filter = new QueryBitSetProducer(query);
-// new MatchAllDocsQuery() ()
-IndexReader reader = lucene.reader();
-
-
+long job = System.nanoTime();
+Query filterQuery;
+if (start > 0 && end > 0 && start <= end) filterQuery = IntPoint.newRangeQuery(YEAR, start, end);
+else filterQuery = new MatchAllDocsQuery(); // ensure to get bits without deleted docs
+/*
+QueryBitSetProducer was quite nice but has a too hard cache policy.
+Prefer to rely on the default LRU caching of IndexSearcher.
+// QueryBitSetProducer filter = new QueryBitSetProducer(query);
+ConstantScoreQuery wraper is not needed here
+*/
 
 %>

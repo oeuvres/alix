@@ -20,7 +20,7 @@ public class DoubleList
   /**
    * Get value at a position.
    * 
-   * @param pos
+   * @param ord
    * @return
    */
   public double get(int pos)
@@ -32,7 +32,7 @@ public class DoubleList
   /**
    * Change value at a position
    * 
-   * @param pos
+   * @param ord
    * @param value
    * @return
    */
@@ -48,7 +48,7 @@ public class DoubleList
   /**
    * Increment value at a position
    * 
-   * @param pos
+   * @param ord
    * @return
    */
   public void inc(int pos)

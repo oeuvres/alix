@@ -1,9 +1,8 @@
 <%@ page language="java"  pageEncoding="UTF-8" contentType="text/javascript; charset=UTF-8"%>
 <%@include file="common.jsp"%>
-<%!
-%>
+<%!%>
 <%
-Query filterQuery =  new MatchAllDocsQuery();
+  Query filterQuery =  new MatchAllDocsQuery();
 /*
 BooleanQuery filterQuery = new BooleanQuery.Builder()
   .add(IntPoint.newExactQuery(Indexer.tag, 0), Occur.SHOULD)
@@ -29,7 +28,7 @@ if (words != null) {
   // out.println("Cooc build in " + time + "ms");
   
   BytesRef term = new BytesRef(); // reusable string
-  BytesDic terms = lucene.dic(field); // dictionary of all term for the field
+  DicBytes terms = lucene.dic(field); // dictionary of all term for the field
   CharsAtt chars = new CharsAtt();
 
   out.println("[");
@@ -108,5 +107,4 @@ for (int i = start; i < max; i++) {
 }
 out.println("\n]");
 */
-
 %>

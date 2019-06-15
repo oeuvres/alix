@@ -77,7 +77,7 @@ public class OccRoller extends Roller
   /**
    * Get a value by index, positive or negative, relative to center
    * 
-   * @param pos
+   * @param ord
    * @return
    */
   public Occ get(final int pos)

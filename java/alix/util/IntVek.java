@@ -411,7 +411,7 @@ public class IntVek implements Cloneable
 
   /**
    * 
-   * @param pos
+   * @param ord
    * @return
    */
   private int shiftKeys(int pos)

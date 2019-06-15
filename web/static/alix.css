@@ -1,3 +1,4 @@
+@charset "UTF-8";
 /**
  * Global
  */
@@ -8,7 +9,7 @@ html, body {
 }
 
 body {
-  font-family: sans-serif;
+  font-family: "Open Sans", sans-serif;
   background-color: #faf9f6;
   /* #f3f2ec; */
 }
@@ -32,6 +33,21 @@ sub {
   bottom: -0.25em;
 }
 
+a {
+  background-color: transparent;
+  text-decoration: none;
+  color: #339;
+}
+
+a:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  color: #000;
+  -webkit-border-radius: 0.3ex;
+  -moz-border-radius: 0.3ex;
+  border-radius: 0.3ex;
+  border-bottom-color: inherit;
+  text-decoration: none;
+}
 /**
  * Welcome desk
  */
@@ -162,7 +178,7 @@ body.results {
   background: #FFFFFF;
 }
 
-#results {
+#results, article.chapter {
   max-width: 100ex;
   margin-left: auto;
   margin-right: auto;
@@ -187,6 +203,20 @@ article.hit .surname {
 article.hit .title {
   font-style: italic;
 }
+
+.bibl .analytic:before {
+  content: " « "
+}
+.bibl .analytic:after {
+  content: " »"
+}
+.bibl .year:before {
+  content: "("
+}
+.bibl .year:after {
+  content: ")"
+}
+
 
 article.hit p.frags {
   line-height: 130%;

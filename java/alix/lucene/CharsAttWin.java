@@ -44,7 +44,7 @@ public class CharsAttWin
   /**
    * Return a value for a position, positive or negative, relative to center
    * 
-   * @param pos
+   * @param ord
    * @return the primary value
    */
   public CharsAtt get(final int pos)
@@ -58,10 +58,10 @@ public class CharsAttWin
   protected int pointer(final int pos)
   {
     /*
-     * if (pos < -left) throw(new ArrayIndexOutOfBoundsException(
-     * pos+" < "+(-left)+", left context size.\n"+this.toString() )); else if (pos >
+     * if (ord < -left) throw(new ArrayIndexOutOfBoundsException(
+     * ord+" < "+(-left)+", left context size.\n"+this.toString() )); else if (ord >
      * right) throw(new ArrayIndexOutOfBoundsException(
-     * pos+" > "+(+right)+", right context size.\n"+this.toString() ));
+     * ord+" > "+(+right)+", right context size.\n"+this.toString() ));
      */
     return (((center + pos) % size) + size) % size;
   }
