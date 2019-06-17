@@ -15,6 +15,7 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
@@ -231,8 +232,9 @@ public class SAXIndexer extends DefaultHandler
             throw new SAXException("<alix:field name=\""+name+"\" type=\"" + type + "\"> @value=\""+value+"\" is not a number.");
           }
           // doc.add(new NumericDocValuesField(name, val)); why ?
-          doc.add(new IntPoint(name, val));
-          doc.add(new StoredField(name, val));
+          doc.add(new IntPoint(name, val)); // to query
+          doc.add(new StoredField(name, val)); // to show
+          doc.add(new NumericDocValuesField(name, val)); // to sort
           break;
         case "facet":
           if (value == null)
@@ -315,7 +317,6 @@ public class SAXIndexer extends DefaultHandler
       final String name = fieldName;
       fieldName = null;
       record = false;
-      store = false;
       String text = this.xml.toString();
       this.xml.setLength(0);
       // choose the right doc to which add the field
@@ -327,6 +328,7 @@ public class SAXIndexer extends DefaultHandler
       // store content with no analyzis
       if (store) {
         doc.add(new StoredField(name , text));
+        store = false;
       }
       // analysis, Tee is possible because of a caching token filter
       else {
@@ -335,12 +337,23 @@ public class SAXIndexer extends DefaultHandler
         xml.setLength(0);
         TokenStream result = new TokenLem(source);
         result = new TokenCompound(result, 5);
-        result = new CachingTokenFilter(result);
+        TokenCount counter = new TokenCount(result);
+        TokenStream caching = new CachingTokenFilter(counter);
+        // Cache all tokens
+        try {
+          caching.reset();
+          caching.incrementToken();
+        }
+        catch (IOException e) {
+          throw new SAXException(e);
+        }
+        doc.add(new NumericDocValuesField(name, counter.count()));
         // TokenStream full = new TokenLemFull(result);
-        TokenStream cloud = new TokenLemCloud(result);
+        TokenStream cloud = new TokenLemCloud(caching);
         doc.add(new StoredField(name , text));
         doc.add(new Field(name, cloud, Alix.ftypeAll));
-        // document.add(new Field(fieldName + "_cloud", cloud, Alix.ftypeAll));
+        // doc.add(new Field(fieldName + "_full", full, Alix.ftypeAll));
+
       }
     }
     else if ("chapter".equals(localName)) {

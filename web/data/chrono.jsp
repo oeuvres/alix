@@ -4,7 +4,7 @@
 /** A record used to sort docid by date */
 /** 0.1ms no real need to cache */
 public String ticks(PageContext pageContext, Alix lucene) throws IOException  {
-
+  
   ServletContext application = pageContext.getServletContext();
   
   int min = lucene.min(YEAR);
@@ -86,7 +86,7 @@ int dots = getParameter(request, "dots", 200);
 
 // build queries
 time = System.nanoTime();
-
+IndexReader reader = lucene.reader();
 
 long total = reader.getSumTotalTermFreq(TEXT);
 

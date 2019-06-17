@@ -11,23 +11,33 @@
     <div id="results">
       <%
 String q = request.getParameter("q");
-if (q == null || q.trim() == "") q = "théâtre acteur ; lettres ; littérature ; poésie poème ; roman";
-String sim = request.getParameter("sim");
-if (sim == null) sim = "";
+// if (q == null || q.trim() == "") q = "théâtre acteur ; lettres ; littérature ; poésie poème ; roman";
+String sort = request.getParameter("sort");
       %>
       <form id="qform">
         <input id="q" name="q" value="<%=q%>" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"  onclick="this.select();"/>
         <label>
          Tri
-          <select name="sim" onchange="this.form.submit()">
-            <option value="">Défaut</option>
+          <select name="sort" onchange="this.form.submit()">
+            <option value="">Pertinence (BM25)</option>
             <%
-String[] sims = {"bm25", "dfi_chi2", "dfi_std", "dfi_sat", "tf-idf"};
-for (String s: sims) {
+String[] value = {
+  "length", "year", "year-inv", 
+  "tf-idf", "dfi_chi2", "dfi_std", "dfi_sat", 
+  "lmd", "lmd0.1", "lmd0.7", "dfr", "ib"
+};
+String[] label = {
+  "taille", "Année (+ ancien)", "Année (+ récent)", 
+  "Pertinence (tf-idf)", "Pertinence (DFI chi²)", "Pertinence (DFI standard)", "Pertinence (DFI saturé)", 
+  "LMD", "LMD λ=0.1", "LMD λ=0.7", "DFR", "IB"
+};
+for (int i = 0, length = value.length; i < length; i++) {
   out.print("<option");
-  if (s.equals(sim)) out.print(" selected=\"selected\"");
-  out.print(">");
-  out.print(s);
+  if (value[i].equals(sort)) out.print(" selected=\"selected\"");
+  out.print(" value=\"");
+  out.print(value[i]);
+  out.print("\">");
+  out.print(label[i]);
   out.println("</option>");
 }
             %>
@@ -39,29 +49,39 @@ for (String s: sims) {
 // renew seracher for this experiment on similarity
 IndexSearcher searcher = lucene.searcher(true);
 Similarity similarity = null;
-switch(sim) {
-  case "dfi_chi2":
-    similarity = new DFISimilarity(new IndependenceChiSquared());
-    break;
-  case "dfi_std":
-    similarity = new DFISimilarity(new IndependenceStandardized());
-    break;
-  case "dfi_sat":
-    similarity = new DFISimilarity(new IndependenceSaturated());
-    break;
-  case "tf-idf":
-    similarity = new ClassicSimilarity();
-}
+if ("dfi_chi2".equals(sort)) similarity = new DFISimilarity(new IndependenceChiSquared());
+else if ("dfi_std".equals(sort)) similarity = new DFISimilarity(new IndependenceStandardized());
+else if ("dfi_sat".equals(sort)) similarity = new DFISimilarity(new IndependenceSaturated());
+else if ("tf-idf".equals(sort)) similarity = new ClassicSimilarity();
+else if ("lmd".equals(sort)) similarity = new LMDirichletSimilarity();
+else if ("lmd0.1".equals(sort)) similarity = new LMJelinekMercerSimilarity(0.1f);
+else if ("lmd0.7".equals(sort)) similarity = new LMJelinekMercerSimilarity(0.7f);
+else if ("dfr".equals(sort)) similarity = new DFRSimilarity(new BasicModelG(), new AfterEffectB(), new NormalizationH1());
+else if ("ib".equals(sort)) similarity = new IBSimilarity(new DistributionLL(), new LambdaDF(), new NormalizationH3());
+  
+  
 if (similarity != null) searcher.setSimilarity(similarity);
 
 String fieldName = TEXT;
-Query query = Alix.qParse(q, fieldName);
+Query query;
+if (q == null || q.trim() == "") query = new MatchAllDocsQuery();
+else query = Alix.qParse(q, fieldName);
+
+TopDocs topDocs;
+if ("year".equals(sort)) {
+  topDocs = searcher.search(query, 100, new Sort(new SortField(YEAR, SortField.Type.INT)));
+}
+else if ("year-inv".equals(sort)) {
+  topDocs = searcher.search(query, 100, new Sort(new SortField(YEAR, SortField.Type.INT, true)));
+}
+else if ("length".equals(sort)) {
+  topDocs = searcher.search(query, 100, new Sort(new SortField(TEXT, SortField.Type.INT)));
+}
+else {
+  topDocs = searcher.search(query, 100);
+}
 
 
-
-
-
-TopDocs topDocs = searcher.search(query, 100);
 ScoreDoc[] hits = topDocs.scoreDocs;
 
 
@@ -69,9 +89,7 @@ ScoreDoc[] hits = topDocs.scoreDocs;
 UnifiedHighlighter uHiliter = new UnifiedHighlighter(searcher, Alix.qAnalyzer);
 uHiliter.setFormatter(new  HiliteFormatter());
 String[] fragments = uHiliter.highlight(fieldName, query, topDocs, 3);
-// TODO, get matching occurences coumt
 
-String value;
 for (int i = 0; i < hits.length; i++) {
   int docId = hits[i].doc;
   Document document = searcher.doc(docId);
@@ -79,9 +97,8 @@ for (int i = 0; i < hits.length; i++) {
   // hits[i].doc
   out.println("  <div class=\"bibl\">");
   // test if null ?
-  out.println("<a href=\"doc.jsp?doc="+docId+"\">");
-  value = document.get("bibl");
-  out.println(value);
+  out.println("<a target=\"_blank\" href=\"doc.jsp?doc="+docId+"&q="+q+"\">");
+  out.println(document.get("bibl"));
   out.println("</a>");
   out.println("  </div>");
   out.print("<p class=\"frags\">");
@@ -89,7 +106,7 @@ for (int i = 0; i < hits.length; i++) {
   out.println("</p>");
   /*
   out.println("<small>");
-  out.println(searcher.explain(query, docId));
+  out.println(document.get(Alix.FILENAME));
   out.println("</small>");
   */
   out.println("</article>");

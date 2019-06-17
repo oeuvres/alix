@@ -3,10 +3,14 @@ var url = new URL(window.location.href);
 var dots = url.searchParams.get("dots");
 var start = url.searchParams.get("start");
 var end = url.searchParams.get("end");
-console.log("end="+end);
 var q = url.searchParams.get("q");
-if (!q) q = "";
+if (!q) q = "poème, poésie ; théâtre, acteur ; critique";
 var form = document.forms['qform'];
+form['q'].value = q;
+if (start) form['start'].value = start;
+if (end) form['end'].value = end;
+
+
 if (self != top) { // no form embedded in a frame
   form.style.display = "none";
 } else {

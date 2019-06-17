@@ -1,11 +1,13 @@
 package alix.lucene;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 
 import org.apache.lucene.index.Term;
+import org.apache.lucene.util.BytesRef;
 
 /**
  * An object to store lucene terms with a frequency indice. A hack allow to
@@ -150,7 +152,7 @@ public class TermList implements Iterable<Term>
     });
   }
 
-  public void sortByPos()
+  public void sortByOrd()
   {
     Collections.sort(data, new Comparator<Entry>()
     {
@@ -166,6 +168,31 @@ public class TermList implements Iterable<Term>
     });
   }
 
+  public void sortByBytes()
+  {
+    Collections.sort(data, new Comparator<Entry>()
+    {
+      @Override
+      public int compare(Entry entry1, Entry entry2)
+      {
+        if (entry1.term == null) return +1;
+        if (entry2.term == null) return -1;
+        return entry1.term.bytes().compareTo(entry2.term.bytes());
+      }
+    });
+  }
+
+  public Collection<BytesRef> bytesList()
+  {
+    sortByBytes();
+    ArrayList<BytesRef> list = new ArrayList<>();
+    for (Entry entry: data) {
+      if (entry.term == null) break;
+      list.add(entry.term.bytes());
+    }
+    return list;
+  }
+  
   @Override
   public Iterator<Term> iterator()
   {
