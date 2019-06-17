@@ -13,6 +13,7 @@ class TokenOffsets
     this.className = className;
   }
 }
+
 %>
 <!DOCTYPE html>
 <html>
@@ -37,7 +38,7 @@ while (true) {
 }
 if (document != null) {
   out.print("    <title>");
-  out.print(document.get("bibl"));
+  out.print(Char.unTag(document.get("bibl")));
   out.println(" [Alix]</title>");
 }
   %>
@@ -72,7 +73,7 @@ if (document != null) {
     CompiledAutomaton filter = new CompiledAutomaton(automaton);
     TermsEnum tEnum = filter.getTermsEnum(tVek);
     PostingsEnum postings = null;
-    ArrayList<TokenOffsets> offsets = new ArrayList<>();
+    ArrayList<TokenOffsets> offsets = new ArrayList<TokenOffsets>();
     while (tEnum.next() != null) {
       postings = tEnum.postings(postings, PostingsEnum.OFFSETS);
       while(postings.nextDoc() != PostingsEnum.NO_MORE_DOCS) {

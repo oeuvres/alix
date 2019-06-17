@@ -279,6 +279,38 @@ public class Char
     if (c == null) return '�';
     return c;
   }
+  
+  public static String unTag(String xml)
+  {
+    StringBuilder dest = new StringBuilder();
+    int start = 0;
+    int end = xml.length();
+    boolean lt = false, first = true;
+    int lastLt = start; // index of last <, to erase broken ending tag
+    for (int i = start; i < end; i++) {
+      char c = xml.charAt(i);
+      switch (c) {
+        case '<':
+          first = false; // no broken tag at start
+          lt = true;
+          lastLt = i;
+          break;
+        case '>':
+          lt = false;
+          // a broken tag at start, erase what was appended
+          if (first) {
+            dest.setLength(dest.length()-(i-start));
+            first = false;
+            break;
+          }
+          break;
+        default:
+          if (lt) break;
+          else dest.append(c);
+      }
+    }
+    return dest.toString();
+  }
 
   /**
    * Get the internal properties for a char

@@ -109,7 +109,6 @@ final static String YEAR = "year";
 public static String TEXT = "text";
 
 
-
 /**
  * Output options for Frantext filter
  */
