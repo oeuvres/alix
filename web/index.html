@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8"/>
     <title>Alix</title>
     <link rel="stylesheet" type="text/css" href="static/alix.css"/>
     <script src="static/js/split.js">//</script>
@@ -9,32 +9,23 @@
   <body class="split">
     <div id="win">
       <header id="header">
-        <form>
+        <form target="page">
           <input name="q"/>
         </form>
       </header>
       <div id="middle">
         <div id="aside">
-          aside
-          <!--
-          <iframe id="authors" name="authors" src="authors.jsp" frameborder="0" padding=*0*>
+          <iframe id="panel" name="panel" src="facet.jsp">
           </iframe>
-           -->
         </div>
         <div id="body">
-          <iframe name="cloud" id="cloud" src="cloud.html">
+          <iframe name="page" id="page" src="snip.jsp">
           </iframe>
-          <!--
-          <iframe name="conc" id="conc">
-          </iframe>
-           -->
         </div>
       </div>
       <footer id="footer">
-        footer
-        <!--
-        <iframe id="chrono" name="chrono" > </iframe>
-         -->
+        <iframe id="chrono" name="chrono" src="chrono.html"> 
+        </iframe>
        </footer>
      </div>
      <script src="static/js/index.js">//</script>

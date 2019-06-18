@@ -77,8 +77,8 @@ public String ticks(PageContext pageContext, Alix lucene) throws IOException  {
 }%>
 <%
 // needs the bits of th filter
-QueryBits filter = new QueryBits(filterQuery);
-
+QueryBits filter = null;
+if (filterQuery != null) filter = new QueryBits(filterQuery);
 
 // number of fots by curve, could be a parameter
 
@@ -144,10 +144,16 @@ if (terms.size() > 0) {
   }
   // loop on contexts, because open a context is heavy, do not open too much
   for (LeafReaderContext ctx : reader.leaves()) {
-    BitSet bits = filter.bits(ctx); // the filtered docs for this segment
-    if (bits == null) continue; // no filtered docs in this segment, 
-    // Do as a termQuery, loop on PostingsEnum.FREQS for each term
     LeafReader leaf = ctx.reader();
+    Bits bits;
+    if (filter != null) {
+      bits = filter.bits(ctx); // the filtered docs for this segment
+      if (bits == null) continue; // no filtered docs in this segment, 
+    }
+    else {
+      bits = leaf.getLiveDocs();
+    }
+    // Do as a termQuery, loop on PostingsEnum.FREQS for each term
     // loop on terms
     int col = 0;
     for(Term term: terms) {

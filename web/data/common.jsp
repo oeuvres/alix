@@ -86,6 +86,7 @@ alix.lucene.CharsMaps,
 alix.lucene.CharsMaps.LexEntry,
 alix.lucene.CharsMaps.NameEntry,
 alix.lucene.CollectorBits,
+alix.lucene.Facet.FacetResult,
 alix.lucene.HiliteFormatter,
 alix.lucene.QueryBits,
 alix.lucene.TermList,
@@ -179,9 +180,9 @@ int start = getParameter(request, "start", -1);
 int end = getParameter(request, "end", -1);
 
 long job = System.nanoTime();
-Query filterQuery;
+Query filterQuery = null;
 if (start > 0 && end > 0 && start <= end) filterQuery = IntPoint.newRangeQuery(YEAR, start, end);
-else filterQuery = new MatchAllDocsQuery(); // ensure to get bits without deleted docs
+// else filterQuery = new MatchAllDocsQuery(); // ensure to get bits without deleted docs
 /*
 QueryBitSetProducer was quite nice but has a too hard cache policy.
 Prefer to rely on the default LRU caching of IndexSearcher.

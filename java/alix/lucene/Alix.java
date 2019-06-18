@@ -59,6 +59,9 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -66,6 +69,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiBits;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
@@ -92,6 +96,8 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 import alix.fr.dic.Tag;
+import alix.lucene.Facet.FacetResult;
+import alix.lucene.Facet.FacetScore;
 
 /**
  * Alix entry-point
@@ -107,14 +113,6 @@ public class Alix
   public static final String BOOK = "alix:book";
   /** A global cache for objects */
   private final ConcurrentHashMap<String, SoftReference<Object>> cache = new ConcurrentHashMap<>();
-  /** Key prefix for a cached object */
-  public static final String CACHE_DOC_INT = "alixDocInt";
-  /** Key prefix for a cached object */
-  public static final String CACHE_MIN_MAX = "alixMinMax";
-  /** Key prefix for a cached object */
-  public static final String CACHE_DOC_LENGTH = "alixDocLength";
-  /** Key prefix for a cached object */
-  public static final String CACHE_DIC = "alixDic";
   /** Current filename proceded */
   public static final FieldType ftypeAll = new FieldType();
   static {
@@ -122,7 +120,7 @@ public class Alix
     ftypeAll.setTokenized(true);
     // keep norms for Similarity, http://makble.com/what-is-lucene-norms
     ftypeAll.setOmitNorms(false);
-    // position needed for phrase query, take also 
+    // position needed for phrase query, take also
     ftypeAll.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     ftypeAll.setStoreTermVectors(true);
     ftypeAll.setStoreTermVectorOffsets(true);
@@ -139,6 +137,8 @@ public class Alix
   private Directory dir;
   /** The IndexReader if requested */
   private IndexReader reader;
+  /** The infos on field if reader is requested */
+  private FieldInfos fieldInfos;
   /** Shared Similarity for indexation and searching */
   public final Similarity similarity;
   /** The IndexSearcher if requested */
@@ -188,10 +188,12 @@ public class Alix
     }
     return alix;
   }
+
   public IndexWriter writer() throws IOException
   {
     return writer(null);
   }
+
   /**
    * Get a lucene writer
    * 
@@ -217,7 +219,8 @@ public class Alix
      * cms.setMaxMergesAndThreads(threads, threads); cms.disableAutoIOThrottle();
      * conf.setMergeScheduler(cms);
      */
-    // order docid by a field after merge ? No functionality should rely on such order
+    // order docid by a field after merge ? No functionality should rely on such
+    // order
     // conf.setIndexSort(new Sort(new SortField(YEAR, SortField.Type.INT)));
     writer = new IndexWriter(dir, conf);
     return writer;
@@ -244,10 +247,11 @@ public class Alix
   public IndexReader reader(final boolean force) throws IOException
   {
     if (!force && reader != null) return reader;
-    cache.clear(); // clean cache
+    cache.clear(); // clean cache on renew the reader
     // near real time reader
     if (writer != null && writer.isOpen()) reader = DirectoryReader.open(writer, true, true);
     else reader = DirectoryReader.open(dir);
+    fieldInfos = FieldInfos.getMergedFieldInfos(reader);
     return reader;
   }
 
@@ -305,7 +309,7 @@ public class Alix
   }
 
   /**
-   * Returns an array in docid order with the value of an int sort field (year).
+   * Returns an array in docid order with the value of an intPoint field (year).
    * 
    * @return
    * @throws IOException
@@ -313,52 +317,81 @@ public class Alix
   public int[] docInt(String field) throws IOException
   {
     IndexReader reader = reader(); // ensure reader, or decache
-    String key = CACHE_DOC_INT + field;
+    String key = "AlixDocInt" + field;
     int[] ints = (int[]) cache(key);
     if (ints != null) return ints;
+    // build the list
+    FieldInfo info = fieldInfos.fieldInfo(field);
+    // check infos
+    if (info.getPointDataDimensionCount() <= 0 && info.getDocValuesType() != DocValuesType.NUMERIC) {
+      throw new IllegalArgumentException("Field \"" + field +"\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
+    }
     int maxDoc = reader.maxDoc();
     final int[] docInt = new int[maxDoc];
-    // fill with min value as deleted or absent
+    // fill with min value for deleted docs or with no values
     Arrays.fill(docInt, Integer.MIN_VALUE);
     final int[] minMax = { Integer.MAX_VALUE, Integer.MIN_VALUE };
-    for (LeafReaderContext context : reader.leaves()) {
-      final int docBase = context.docBase;
-      LeafReader leaf = context.reader();
-      final Bits liveDocs = leaf.getLiveDocs();
-      PointValues points = leaf.getPointValues(field);
-      points.intersect(new IntersectVisitor()
-      {
-
-        @Override
-        public void visit(int docid)
+    if (info.getPointDataDimensionCount() > 0) {
+      if (info.getPointDataDimensionCount() > 0) {
+        throw new IllegalArgumentException("Field \"" + field +"\" is not an IntPoint type.");
+      }
+      for (LeafReaderContext context : reader.leaves()) {
+        final int docBase = context.docBase;
+        LeafReader leaf = context.reader();
+        final Bits liveDocs = leaf.getLiveDocs();
+        PointValues points = leaf.getPointValues(field);
+        points.intersect(new IntersectVisitor()
         {
-          // visit if inside the compare();
-        }
 
-        @Override
-        public void visit(int docid, byte[] packedValue)
-        {
-          if (liveDocs != null && !liveDocs.get(docid)) return;
-          // in case of multiple values, take the lower one
-          if (docInt[docBase + docid] > Integer.MIN_VALUE) return;
-          int v = IntPoint.decodeDimension(packedValue, 0);
-          docInt[docBase + docid] = v;
-        }
+          @Override
+          public void visit(int docid)
+          {
+            // visit if inside the compare();
+          }
 
-        @Override
-        public Relation compare(byte[] minPackedValue, byte[] maxPackedValue)
-        {
-          int v = IntPoint.decodeDimension(minPackedValue, 0);
+          @Override
+          public void visit(int docLeaf, byte[] packedValue)
+          {
+            if (liveDocs != null && !liveDocs.get(docLeaf)) return;
+            // in case of multiple values, take the lower one
+            if (docInt[docBase + docLeaf] > Integer.MIN_VALUE) return;
+            int v = IntPoint.decodeDimension(packedValue, 0);
+            docInt[docBase + docLeaf] = v;
+          }
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue)
+          {
+            int v = IntPoint.decodeDimension(minPackedValue, 0);
+            if (minMax[0] > v) minMax[0] = v;
+            v = IntPoint.decodeDimension(maxPackedValue, 0);
+            if (minMax[1] < v) minMax[1] = v;
+            // Answer that the query needs further infornmation to visit doc with values
+            return Relation.CELL_CROSSES_QUERY;
+          }
+        });
+      }
+    }
+    else if (info.getDocValuesType() == DocValuesType.NUMERIC) {
+      for (LeafReaderContext context : reader.leaves()) {
+        LeafReader leaf = context.reader();
+        NumericDocValues docs4num = leaf.getNumericDocValues(field);
+        // no values for this leaf, go next
+        if (docs4num == null) continue;
+        final Bits liveDocs = leaf.getLiveDocs();
+        final int docBase = context.docBase;
+        int docLeaf;
+        while ( (docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          if (liveDocs != null && !liveDocs.get(docLeaf)) continue;
+          int v = (int)docs4num.longValue(); // long value is force to int;
+          docInt[docBase + docLeaf] = v;
           if (minMax[0] > v) minMax[0] = v;
-          v = IntPoint.decodeDimension(maxPackedValue, 0);
           if (minMax[1] < v) minMax[1] = v;
-          // Answer that the query needs further infornmation to visit doc with values
-          return Relation.CELL_CROSSES_QUERY;
         }
-      });
+      }
     }
     cache(key, docInt);
-    cache(CACHE_MIN_MAX + field, minMax);
+    cache("AlixMinMax" + field, minMax);
     return docInt;
   }
 
@@ -373,13 +406,14 @@ public class Alix
   {
     return minMax(field, 1);
   }
+
   /** Get min-max from the cache. */
   private int minMax(String field, int i) throws IOException
   {
-    int[] minMax = (int[]) cache(CACHE_MIN_MAX + field);
+    int[] minMax = (int[]) cache("AlixMinMax" + field);
     if (minMax == null) {
       docInt(field); // ensure calculation
-      minMax = (int[]) cache(CACHE_MIN_MAX + field);
+      minMax = (int[]) cache("AlixMinMax" + field);
     }
     return minMax[i];
   }
@@ -413,12 +447,26 @@ public class Alix
     }
     return load;
   }
+  
+  /**
+   * For a facet field, get an iterator in some order, according to a query
+   * @throws IOException 
+   */
+  public FacetResult facet(final String facetField, final String textField, final QueryBits filter, final TermList terms, final FacetScore scorer) throws IOException
+  {
+    String key = "AlixFacet" + facetField + textField;
+    Facet facet = (Facet)cache(key);
+    if (facet == null) facet = new Facet(this, facetField, textField);
+    return facet.new FacetResult(filter, terms, scorer);
+  }
+  
 
   /**
    * For a field, return an array in docid order, with the total number of tokens
-   * by doc. Is cached, cost 1 s. / 1000 books
-   * A norm after indexation could be faster, but common similarity store such length on one byte.
-   * see SimilarityBase.computeNorm() 
+   * by doc. Is cached.
+   * Term vector   cost 1 s. / 1000 books A norm after indexation could be
+   * faster, but common similarity store such length on one byte. see
+   * SimilarityBase.computeNorm()
    * https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/apache/lucene/search/similarities/SimilarityBase.java#L185
    * 
    * @param field
@@ -428,36 +476,62 @@ public class Alix
   public long[] docLength(String field) throws IOException
   {
     IndexReader reader = reader(); // ensure reader or decache
-    String key = CACHE_DOC_LENGTH + field;
+    String key = "AlixDocLength" + field;
     long[] docLength = (long[]) cache(key);
     if (docLength != null) return docLength;
+    
+    FieldInfo info = fieldInfos.fieldInfo(field);
+    if (info.getIndexOptions() == IndexOptions.NONE) {
+      throw new IllegalArgumentException("Field \"" + field +"\" is not indexed, get the number of tokens by doc (length) is not relevant.");
+    }
+    if (info.getDocValuesType() != DocValuesType.NUMERIC && !info.hasVectors()) {
+      throw new IllegalArgumentException("Field \"" + field +"\" has no vectors or numeric value with thi name to calculate lengths.");
+    }
     int maxDoc = reader.maxDoc();
     // index by year
     docLength = new long[maxDoc];
-    Bits liveDocs = null;
-    boolean hasDeletions = reader.hasDeletions();
-    if (hasDeletions) {
-      liveDocs = MultiBits.getLiveDocs(reader);
-    }
-
-    // get sum of terms by doc
-    for (int i = 0; i < maxDoc; i++) {
-      if (hasDeletions && !liveDocs.get(i)) {
-        docLength[i] = -1;
-        continue;
+    // A text field may be indexed with a parallel long value which is supposed to be the length
+    if (info.getDocValuesType() == DocValuesType.NUMERIC) {
+      for (LeafReaderContext context : reader.leaves()) {
+        LeafReader leaf = context.reader();
+        NumericDocValues docs4num = leaf.getNumericDocValues(field);
+        // no values for this leaf, go next
+        if (docs4num == null) continue;
+        final Bits liveDocs = leaf.getLiveDocs();
+        final int docBase = context.docBase;
+        int docLeaf;
+        while ( (docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          if (liveDocs != null && !liveDocs.get(docLeaf)) continue;
+          int v = (int)docs4num.longValue(); // long value is force to int;
+          docLength[docBase + docLeaf] = docs4num.longValue();
+        }
       }
-      Terms vector = reader.getTermVector(i, field);
-      // maybe no vector for this docid (ex : toc, book...)
-      if (vector == null) continue;
-      docLength[i] = vector.getSumTotalTermFreq(); // expensive on first call
+    }
+    else if(info.hasVectors()) {
+      Bits liveDocs = null;
+      boolean hasDeletions = reader.hasDeletions();
+      if (hasDeletions) {
+        liveDocs = MultiBits.getLiveDocs(reader);
+      }
+
+      // get sum of terms by doc
+      for (int i = 0; i < maxDoc; i++) {
+        if (hasDeletions && !liveDocs.get(i)) {
+          docLength[i] = -1;
+          continue;
+        }
+        Terms vector = reader.getTermVector(i, field);
+        // maybe no vector for this docid (ex : toc, book...)
+        if (vector == null) continue;
+        docLength[i] = vector.getSumTotalTermFreq(); // expensive on first call
+      }
     }
     cache(key, docLength);
     return docLength;
   }
 
   /**
-   * For a field, try to get a dictionary of indexed terms.
-   * Is cached.
+   * For a field, try to get a dictionary of indexed terms. Is cached.
    * 
    * @param field
    * @return
@@ -465,7 +539,7 @@ public class Alix
    */
   public DicBytes dic(final String field) throws IOException
   {
-    String key = CACHE_DIC + field;
+    String key = "AlixDic" + field;
     DicBytes dic = (DicBytes) cache(key);
     if (dic != null) return dic;
     dic = new DicBytes(field);
@@ -534,7 +608,7 @@ public class Alix
 
   public static Query qParse(String q, String field) throws IOException
   {
-    float[] boosts = {2.0f, 1.5f, 1.0f, 0.7f, 0.5f};
+    float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
     int boostLength = boosts.length;
     float boostDefault = boosts[boostLength - 1];
     TokenStream ts = qAnalyzer.tokenStream(field, q);
@@ -571,10 +645,10 @@ public class Alix
     }
     return qTerm;
   }
-  
-  
+
   /**
    * Provide tokens as a table of terms
+   * 
    * @param q
    * @param field
    * @return
@@ -696,6 +770,17 @@ public class Alix
   @Override
   public String toString()
   {
-    return "lucene@" + path;
+    StringBuffer sb = new StringBuffer();
+    sb.append(path + "\n");
+    try {
+      reader(); // get FieldInfos
+    }
+    catch (Exception e) {
+    }
+    for (FieldInfo info: fieldInfos) {
+      sb.append(info.name+" PointDataDimensionCount="+info.getPointDataDimensionCount()+" DocValuesType="+info.getDocValuesType()+" IndexOptions="+info.getIndexOptions()+"\n");
+    }
+    sb.append(fieldInfos.toString());
+    return sb.toString();
   }
 }

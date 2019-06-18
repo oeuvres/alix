@@ -11,7 +11,7 @@
     <div id="results">
       <%
 String q = request.getParameter("q");
-// if (q == null || q.trim() == "") q = "théâtre acteur ; lettres ; littérature ; poésie poème ; roman";
+if (q == null || q.trim() == "") q = "théâtre acteur ; lettres ; littérature ; poésie poème ; roman";
 String sort = request.getParameter("sort");
       %>
       <form id="qform">

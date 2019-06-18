@@ -1,7 +1,7 @@
 package alix.util;
 
 /**
- * A mutable list of ints with useful metatdata, for example to calculate
+ * A mutable list of ints with useful metadata, for example to calculate
  * average. This object is not protected, for fast acess to fields, be careful
  * to enjoy speed. Not suitable as a key for a hash (mutable).
  *
