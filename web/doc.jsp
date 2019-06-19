@@ -43,7 +43,7 @@ if (document != null) {
 }
   %>
   </head>
-  <body class="docuement">
+  <body class="document">
       <%
 String q = request.getParameter("q");
 if (q == null || "".equals(q.trim())) q = "";

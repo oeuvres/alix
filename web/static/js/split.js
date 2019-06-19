@@ -161,7 +161,7 @@ const Split = (idsOption, options = {}) => {
 
     // Standardize minSize to an array if it isn't already. This allows minSize
     // to be passed as a number.
-    const minSize = getOption(options, 'minSize', 100)
+    const minSize = getOption(options, 'minSize', 30)
     const minSizes = Array.isArray(minSize) ? minSize : ids.map(() => minSize)
 
     // Get other options

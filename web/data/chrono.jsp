@@ -110,7 +110,8 @@ out.println("  \"time\" : \"" + (System.nanoTime() - partial) / 1000000.0 + "ms\
 
 //parse the query by line
 String q = request.getParameter("q");
-if (q == null || q.trim() == "") q = "théâtre acteur ; lettres ; littérature ; poésie poème ; roman";
+if (q == null) q = "";
+else q = q.trim();
 TermList terms = lucene.qTerms(q, TEXT);
 if (terms.size() > 0) {
   terms.sortByRowFreq();
@@ -167,7 +168,7 @@ if (terms.size() > 0) {
       long freq;
       long[] column = data[col];
       while((doc = postings.nextDoc()) !=  DocIdSetIterator.NO_MORE_DOCS) {
-        if (!bits.get(doc)) continue;
+        if (bits!= null && !bits.get(doc)) continue;
         if ((freq = postings.freq()) == 0) continue;
         int row = (int)(axis[doc].cumul / step);
         if (row >= dots) row = dots - 1; // because of rounding on big numbers last row could be missed

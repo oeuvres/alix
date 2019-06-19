@@ -68,6 +68,10 @@ iframe {
   height: 100%;
 }
 
+#header form {
+  text-align: center;
+}
+
 /** The split gutters */
 .gutter {
   border-color: #ccccd5;
@@ -169,6 +173,24 @@ iframe {
 }
 
 /**
+ * Facets
+ */
+body.facet {
+  padding: 1em 0.5ex 1em 1ex;
+}
+body.facet a {
+  display: block;
+  white-space: nowrap;
+}
+
+/**
+ * Docuement view
+ */
+ body.document {
+   background: #FFFFFF;
+ }
+
+/**
  * Search results
  */
 body.results {
@@ -267,13 +289,11 @@ body.cloud {
  */
 /** Chart in chrono */
 body.chrono {
-  padding-bottom: 4em;
   overflow-y: hidden;
 }
 
 #chart {
   font-family: sans-serif;
-  background-color: #FFFFFF;
   width: 100%;
   height: 100%;
 }

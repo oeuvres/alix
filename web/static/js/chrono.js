@@ -1,10 +1,11 @@
 // get the url params
 var url = new URL(window.location.href);
 var dots = url.searchParams.get("dots");
+if (!dots) dots = "";
 var start = url.searchParams.get("start");
 var end = url.searchParams.get("end");
 var q = url.searchParams.get("q");
-if (!q) q = "poème, poésie ; théâtre, acteur ; critique";
+// if (!q) q = "poème, poésie ; théâtre, acteur ; critique";
 var form = document.forms['qform'];
 form['q'].value = q;
 if (start) form['start'].value = start;
@@ -21,6 +22,7 @@ var url = new URL(window.location.href);
 var ticks;
 // download the json data
 var jsonUrl = "data/chrono.jsp?q="+q+"&dots="+dots+"&start="+start+"&end="+end;
+console.log(jsonUrl);
 fetch(jsonUrl).then(
   function(response) {
     return response.json();

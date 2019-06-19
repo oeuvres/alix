@@ -332,8 +332,8 @@ public class Alix
     Arrays.fill(docInt, Integer.MIN_VALUE);
     final int[] minMax = { Integer.MAX_VALUE, Integer.MIN_VALUE };
     if (info.getPointDataDimensionCount() > 0) {
-      if (info.getPointDataDimensionCount() > 0) {
-        throw new IllegalArgumentException("Field \"" + field +"\" is not an IntPoint type.");
+      if (info.getPointDataDimensionCount() > 1) {
+        throw new IllegalArgumentException("Field \"" + field +"\" "+info.getPointDataDimensionCount()+" dimensions, too much for an int tag by doc.");
       }
       for (LeafReaderContext context : reader.leaves()) {
         final int docBase = context.docBase;

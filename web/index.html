@@ -9,9 +9,14 @@
   <body class="split">
     <div id="win">
       <header id="header">
-        <form target="page">
-          <input name="q"/>
-        </form>
+      <form id="qform" name="qform" onsubmit="dispatch(this)" target="page" action="snip.jsp">
+        <input id="q" name="q" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"/>
+        Entre
+        <input id="start" name="start" size="4"/>
+        et
+        <input id="end" name="end" size="4"/>
+        <button>▶</button>
+      </form>
       </header>
       <div id="middle">
         <div id="aside">
@@ -24,7 +29,7 @@
         </div>
       </div>
       <footer id="footer">
-        <iframe id="chrono" name="chrono" src="chrono.html"> 
+        <iframe id="chrono" name="chrono" src="chrono.html">
         </iframe>
        </footer>
      </div>

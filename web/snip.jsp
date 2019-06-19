@@ -11,7 +11,8 @@
     <div id="results">
       <%
 String q = request.getParameter("q");
-if (q == null || q.trim() == "") q = "théâtre acteur ; lettres ; littérature ; poésie poème ; roman";
+if (q == null) q = "";
+else q = q.trim();
 String sort = request.getParameter("sort");
       %>
       <form id="qform">
@@ -97,13 +98,15 @@ for (int i = 0; i < hits.length; i++) {
   // hits[i].doc
   out.println("  <div class=\"bibl\">");
   // test if null ?
-  out.println("<a target=\"_blank\" href=\"doc.jsp?doc="+docId+"&q="+q+"\">");
+  out.println("<a href=\"doc.jsp?doc="+docId+"&q="+q+"\">");
   out.println(document.get("bibl"));
   out.println("</a>");
   out.println("  </div>");
-  out.print("<p class=\"frags\">");
-  out.println(fragments[i]);
-  out.println("</p>");
+  if (fragments[i] != null) {
+    out.print("<p class=\"frags\">");
+    out.println(fragments[i]);
+    out.println("</p>");
+  }
   /*
   out.println("<small>");
   out.println(document.get(Alix.FILENAME));
@@ -116,4 +119,5 @@ for (int i = 0; i < hits.length; i++) {
     %>
     </div>
     <% out.println("time : " + (System.nanoTime() - time) / 1000000.0 + " ms "); %>  </body>
+    <script src="static/js/snip.js">//</script>
 </html>
