@@ -21,14 +21,13 @@ if ( word != null && word.isEmpty() ) word = null;
 
 // output array
 String field = TEXT;
-BytesDic dic = lucene.dic(field);
+DicBytes dic = lucene.dic(field);
 Cursor cursor = dic.iterator();
 
 out.println("[");
 int lines = 500;
 float franfreq;
 double bias = 0;
-int start = 0;
 CharsAtt term = new CharsAtt();
 Tag tag;
 while (cursor.hasNext()) {

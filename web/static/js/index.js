@@ -1,12 +1,12 @@
 // open the split
-var splitV = Split(['#header', '#middle', '#footer'], {
-  sizes: [5, 65, 30],
+var splitH = Split(['#aside', '#main'], {
+  sizes: [15, 85],
+  gutterSize: 10,
+});
+var splitV = Split(['#body', '#footer'], {
+  sizes: [70, 30],
   direction: 'vertical',
   gutterSize: 9,
-});
-var splitH = Split(['#aside', '#body'], {
-  sizes: [20, 80],
-  gutterSize: 10,
 });
 // fill the form
 var url = new URL(window.location.href);

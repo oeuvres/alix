@@ -608,9 +608,9 @@ public class Alix
 
   public static Query qParse(String q, String field) throws IOException
   {
-    float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
-    int boostLength = boosts.length;
-    float boostDefault = boosts[boostLength - 1];
+    // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
+    // int boostLength = boosts.length;
+    // float boostDefault = boosts[boostLength - 1];
     TokenStream ts = qAnalyzer.tokenStream(field, q);
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
@@ -629,9 +629,11 @@ public class Alix
           bq.add(qTerm, Occur.SHOULD);
         }
         qTerm = new TermQuery(new Term(field, token.toString()));
+        /*
         float boost = boostDefault;
         if (i < boostLength) boost = boosts[i];
         qTerm = new BoostQuery(qTerm, boost);
+        */
         i++;
       }
       ts.end();

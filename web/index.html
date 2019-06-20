@@ -7,8 +7,7 @@
     <script src="static/js/split.js">//</script>
   </head>
   <body class="split">
-    <div id="win">
-      <header id="header">
+    <header id="header">
       <form id="qform" name="qform" onsubmit="dispatch(this)" target="page" action="snip.jsp">
         <input id="q" name="q" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"/>
         Entre
@@ -17,22 +16,40 @@
         <input id="end" name="end" size="4"/>
         <button>▶</button>
       </form>
-      </header>
-      <div id="middle">
-        <div id="aside">
-          <iframe id="panel" name="panel" src="facet.jsp">
-          </iframe>
-        </div>
+      <select id="panChange" name="panel" style="font-family: 'Open Sans', sans-serif; line-height: 100%; font-size: 16px;">
+        <option value="facet.jsp">Auteurs</option>
+        <option>Titres</option>
+        <option>Annotations</option>
+        <option>Noms</option>
+        <option>Personnes</option>
+        <option>Lieux</option>
+      </select>
+      <span id="alert">Prototype en chantier</span>
+      <div id="tabs">
+        <a target="page">Bibliographie</a>
+        <a href="snip.jsp" target="page">Résultats</a>
+        <a target="page">Document</a>
+        <a>Concordancier</a>
+        <a target="page">Fréquences</a>
+        <a target="page" href="cloud.html">Nuage</a>
+      </div>
+    </header>
+    <div id="win">
+      <div id="aside">
+        <iframe id="panel" name="panel" src="facet.jsp">
+        </iframe>
+      </div>
+      <div id="main">
         <div id="body">
           <iframe name="page" id="page" src="snip.jsp">
           </iframe>
         </div>
+        <footer id="footer">
+          <iframe id="chrono" name="chrono" src="chrono.html">
+          </iframe>
+         </footer>
       </div>
-      <footer id="footer">
-        <iframe id="chrono" name="chrono" src="chrono.html">
-        </iframe>
-       </footer>
-     </div>
-     <script src="static/js/index.js">//</script>
+    </div>
+    <script src="static/js/index.js">//</script>
   </body>
 </html>

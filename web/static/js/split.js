@@ -1,3 +1,9 @@
+/**
+ * Borrowed to Nathan Cahill. https://split.js.org/
+ * extended and tweaked by frederic.glorieux@ficitif.org
+ * 
+ */
+
 // The programming goals of Split.js are to deliver readable, understandable and
 // maintainable code, while at the same time manually optimizing for tiny minified file size,
 // browser compatibility without additional requirements, graceful fallback (IE8 is supported)
@@ -275,7 +281,7 @@ const Split = (idsOption, options = {}) => {
       var panelGutterSize;
       var body;
       var bodyGutterSize;
-      if (this.a == 0) {
+      if (a.size < b.size) {
         panel = a;
         panelGutterSize = this[aGutterSize];
         body = b;
@@ -689,9 +695,8 @@ const Split = (idsOption, options = {}) => {
                 // append a button hide/show for first or last gutter
                 if (i == 1 || i === ids.length - 1) {
                   const but = document.createElement('span');
-                  // but.innerText = " ·· ";
                   but.className = "gutter but "+direction;
-                  if (i == 1) {
+                  if (i == 1 && direction != 'vertical') {
                     but.className += " first";
                   }
                   else {

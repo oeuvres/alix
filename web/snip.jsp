@@ -4,7 +4,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Alix, test</title>
+    <title>Recherche [Alix]</title>
     <link href="static/alix.css" rel="stylesheet"/>
   </head>
   <body class="results">
@@ -16,20 +16,21 @@ else q = q.trim();
 String sort = request.getParameter("sort");
       %>
       <form id="qform">
+        <input type="hidden" name="start" value="<%=start%>"/>
+        <input type="hidden" name="end" value="<%=end%>"/>
         <input id="q" name="q" value="<%=q%>" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"  onclick="this.select();"/>
         <label>
          Tri
           <select name="sort" onchange="this.form.submit()">
-            <option value="">Pertinence (BM25)</option>
             <%
 String[] value = {
-  "length", "year", "year-inv", 
-  "tf-idf", "dfi_chi2", "dfi_std", "dfi_sat", 
+  "year", "year-inv", "length",
+  "tf-idf", "bm25", "dfi_chi2", "dfi_std", "dfi_sat", 
   "lmd", "lmd0.1", "lmd0.7", "dfr", "ib"
 };
 String[] label = {
-  "taille", "Année (+ ancien)", "Année (+ récent)", 
-  "Pertinence (tf-idf)", "Pertinence (DFI chi²)", "Pertinence (DFI standard)", "Pertinence (DFI saturé)", 
+  "Année (+ ancien)", "Année (+ récent)", "Taille",
+  "tf-idf", "BM25", "DFI chi²", "DFI standard", "DFI saturé", 
   "LMD", "LMD λ=0.1", "LMD λ=0.7", "DFR", "IB"
 };
 for (int i = 0, length = value.length; i < length; i++) {
@@ -89,7 +90,7 @@ ScoreDoc[] hits = topDocs.scoreDocs;
 
 UnifiedHighlighter uHiliter = new UnifiedHighlighter(searcher, Alix.qAnalyzer);
 uHiliter.setFormatter(new  HiliteFormatter());
-String[] fragments = uHiliter.highlight(fieldName, query, topDocs, 3);
+String[] fragments = uHiliter.highlight(fieldName, query, topDocs, 5);
 
 for (int i = 0; i < hits.length; i++) {
   int docId = hits[i].doc;

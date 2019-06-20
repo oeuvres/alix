@@ -49,7 +49,7 @@ String q = request.getParameter("q");
 if (q == null || "".equals(q.trim())) q = "";
 String sort = request.getParameter("sort");
       %>
-
+    <div><a class="but">◀</a>Résultats<a class="but">▶</a> <a class="but">◀</a>Chapitres<a class="but">▶</a></div>
     <form id="qform">
       <input type="hidden" name="doc" value="<%=docId%>"/>
       <input id="q" name="q" value="<%=q%>" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"  onclick="this.select();"/>
