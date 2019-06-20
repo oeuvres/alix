@@ -28,6 +28,7 @@ else out.println("<h3>Auteur (chapitres)</h3>");
       <input id="end" name="end" size="4" value="<%=(end > -1)?end:""%>"/>
       <button>▶</button>
     </form>
+    <div class="facets">
     <%
 // needs the bits of th filter
 QueryBits filter = null;
@@ -41,6 +42,7 @@ while (results.hasNext()) {
   out.println("<div>"+results.term()+" ("+weight+")</div>");
 }
     %>
+    </div>
     <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
     <script src="static/js/facet.js">//</script>
   </body>

@@ -217,7 +217,7 @@ iframe {
 body.facet {
   padding: 1em 0.5ex 1em 1ex;
 }
-body.facet a {
+.facets div {
   display: block;
   white-space: nowrap;
 }
@@ -328,7 +328,10 @@ body.cloud {
  */
 /** Chart in chrono */
 body.chrono {
-  overflow-y: hidden;
+  overflow: hidden;
+  /*
+  padding-bottom: 1rem;
+  */
 }
 
 #chart {
@@ -342,14 +345,14 @@ body.chrono {
 }
 
 .dygraph-legend {
-  background-color: rgba(255, 255, 255, 0.6);
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  font-weight: normal;
   position: absolute;
   pointer-events: none;
-  font-size: 14pt !important;
   line-height: 100%;
   left: 4em !important;
   top: 2em !important;
-  font-size: 14px;
+  font-size: 12px;
   z-index: 10;
   width: 250px;
   background: #fff;

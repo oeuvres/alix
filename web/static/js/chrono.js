@@ -52,7 +52,7 @@ function draw(div, data, labels) {
     // labelsKMB: true,
     legend: "always",
     labelsSeparateLines: true,
-    ylabel: "Nombre d'occurrences pour 100 000 mots",
+    // ylabel: "occurrence / 100 000 mots",
     // xlabel: "Répartition des années en nombre de mots",
     showRoller: true,
     rollPeriod: rollPeriod,
