@@ -32,7 +32,6 @@ public class SmallSet
    */
   public SmallSet(String[] words) {
     Arrays.sort(words);
-    int lenmmin = 10;
     int lenmax = 0;
     int len;
     int length = words.length;
@@ -51,7 +50,6 @@ public class SmallSet
     }
     Arrays.sort(codes);
     this.lenmax = lenmax;
-    this.lenmin = lenmin;
   }
 
   public boolean contains(String test)
@@ -81,7 +79,6 @@ public class SmallSet
     }
     String[] words = new String[list.size()];
     words = list.toArray(words);
-    int wlength = words.length;
     long time;
     HashSet<String> hash = new HashSet<String>();
     for (String w : words) {

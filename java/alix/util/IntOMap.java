@@ -200,6 +200,7 @@ public class IntOMap<E>
      * 
      * @return
      */
+    @SuppressWarnings("unchecked")
     public E remove()
     {
         // if ( pointer == -1 ) return NO_VALUE;

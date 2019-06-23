@@ -625,7 +625,7 @@ public class IntVek implements Cloneable
     reset();
     while (next()) {
       val2 = vek.get(key());
-      if (val2 == vek.NO_VALUE) continue;
+      if (val2 == IntVek.NO_VALUE) continue;
       val1 = value();
       sum += val1 * val2;
       mag1 += val1 * val1;
@@ -727,7 +727,7 @@ public class IntVek implements Cloneable
     int dist = 0;
     for (int i = 0; i < max; i++) {
       int rank = catprint.get(docprint[i]) - 1;
-      if (rank == catprint.NO_VALUE) dist += max; // no value
+      if (rank == IntVek.NO_VALUE) dist += max; // no value
       if (rank > i) dist += rank - i;
       else if (i < rank) dist += i - rank;
     }
@@ -788,7 +788,7 @@ public class IntVek implements Cloneable
       while (next()) {
         key = key();
         tval = other.get(key);
-        if (tval == other.NO_VALUE) continue;
+        if (tval == IntVek.NO_VALUE) continue;
         sval = value();
         table.add(new SpecRow(key, source, sval, target, tval, 1000000.0 * sval * tval / div));
       }
@@ -798,7 +798,7 @@ public class IntVek implements Cloneable
       while (other.next()) {
         key = other.key();
         sval = get(key);
-        if (sval == other.NO_VALUE) continue;
+        if (sval == IntVek.NO_VALUE) continue;
         tval = other.value();
         table.add(new SpecRow(key, source, sval, target, tval, 1000000.0 * sval * tval / div));
       }

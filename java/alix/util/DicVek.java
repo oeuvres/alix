@@ -1,9 +1,7 @@
 package alix.util;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
@@ -16,14 +14,12 @@ import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 
 import alix.fr.Lexik;
+import alix.fr.Tag;
 import alix.fr.Tokenizer;
-import alix.fr.dic.Tag;
 import alix.util.IntVek.Pair;
 import alix.util.DicFreq.Entry;
 
@@ -76,7 +72,8 @@ public class DicVek
    * @param right
    *          TODO, create different modes
    */
-  public DicVek(final int left, final int right) {
+  public DicVek(final int left, final int right)
+  {
     this.left = left;
     this.right = right;
     // this.stoplist = stoplist;
@@ -103,24 +100,18 @@ public class DicVek
   {
     int ret = -1;
     // TOFIX
-    if (occ.isEmpty())
-      return -1;
-    if (occ.tag().isPun())
-      return -1;
-    if (occ.tag().equals(Tag.NULL))
-      return -1;
+    if (occ.isEmpty()) return -1;
+    if (occ.tag().isPun()) return -1;
+    if (occ.tag().equals(Tag.NULL)) return -1;
     // nombre
     if (occ.tag().equals(Tag.DETnum) || occ.tag().equals(Tag.DETnum)) {
       return dic.inc("NUM");
     }
     // return all substantives with no lem
-    if (occ.tag().isSub())
-      return dic.inc(occ.orth(), occ.tag().code());
+    if (occ.tag().isSub()) return dic.inc(occ.orth(), occ.tag().code());
     // lem is empty
-    if (occ.lem().isEmpty())
-      ret = dic.inc(occ.orth(), occ.tag().code());
-    else
-      ret = dic.inc(occ.lem(), occ.tag().code());
+    if (occ.lem().isEmpty()) ret = dic.inc(occ.orth(), occ.tag().code());
+    else ret = dic.inc(occ.lem(), occ.tag().code());
     // what about stopwords ? VERBsup je fis -> faire
     // if ( ret < stopoffset ) return -1;
     return ret;
@@ -186,8 +177,7 @@ public class DicVek
   {
     Occ center = occs.get(0);
     int key = key(center);
-    if (key < 0)
-      return false;
+    if (key < 0) return false;
     // get the vector for this center chain
     IntVek vek = vectors.get(key);
     // optimize ? chain not yet encountered, create vector
@@ -200,8 +190,7 @@ public class DicVek
     // fill the vector, using the convenient add method
     for (int i = left; i <= right; i++) {
       // centre de contexte, ne pas ajouter
-      if (i == 0)
-        continue;
+      if (i == 0) continue;
       // valeur exclue, ne pas ajouter
       // if ( values.get(i) < 1 ) continue;
       // vek.inc( values.get(i) );
@@ -218,15 +207,11 @@ public class DicVek
     StringBuffer sb = new StringBuffer();
     boolean first = true;
     for (Entry entry : dic.byCount()) {
-      if (Lexik.isStop(entry.label()))
-        continue;
-      if (first)
-        first = false;
-      else
-        sb.append(", ");
+      if (Lexik.isStop(entry.label())) continue;
+      if (first) first = false;
+      else sb.append(", ");
       sb.append(entry.label() + " (" + entry.count() + ")");
-      if (--limit == 0)
-        break;
+      if (--limit == 0) break;
     }
     return sb.toString();
   }
@@ -246,8 +231,7 @@ public class DicVek
   {
     // get vector for requested word
     int code = dic.code(term);
-    if (code < 1)
-      return null;
+    if (code < 1) return null;
     return sims(code);
   }
 
@@ -263,8 +247,7 @@ public class DicVek
     while (vectors.next()) {
       IntVek vek = vectors.value();
       score = vekterm.cosine(vek);
-      if (Double.isNaN(score))
-        continue;
+      if (Double.isNaN(score)) continue;
       // score differs
       // if ( score < 0.5 ) continue;
       row = new SimRow(vek.code, score);
@@ -284,7 +267,8 @@ public class DicVek
     public final int code;
     public final double score;
 
-    public SimRow(final int code, final double score) {
+    public SimRow(final int code, final double score)
+    {
       this.code = code;
       this.score = score;
     }
@@ -311,13 +295,11 @@ public class DicVek
   {
     // get vector for requested word
     int k = dic.code(term);
-    if (k < 1)
-      return null;
+    if (k < 1) return null;
     IntVek vekterm = vectors.get(k);
     // some words of the dictionary has no vector but are recorded in co-occurrence
     // (ex: stop)
-    if (vekterm == null)
-      return null;
+    if (vekterm == null) return null;
     // Similarity
     double score;
     // list dico in freq order
@@ -325,24 +307,18 @@ public class DicVek
     CosineRow row;
     IntVek vek;
     for (Entry entry : dic.byCount()) {
-      if (entry.count() < 3)
-        break;
+      if (entry.count() < 3) break;
       vek = vectors.get(entry.code());
-      if (vek == null)
-        continue;
+      if (vek == null) continue;
       // System.out.print( ", "+vek.size() );
-      if (vek.size() < 30)
-        break;
-      if (inter)
-        score = vekterm.intercos(vek);
-      else
-        score = vekterm.cosine(vek);
+      if (vek.size() < 30) break;
+      if (inter) score = vekterm.intercos(vek);
+      else score = vekterm.cosine(vek);
       // score differs
       // if ( score < 0.5 ) continue;
       row = new CosineRow(entry.code(), entry.label(), entry.count(), score);
       table.add(row);
-      if (limit-- == 0)
-        break;
+      if (limit-- == 0) break;
     }
     Collections.sort(table);
     return table;
@@ -366,14 +342,12 @@ public class DicVek
     // list dico in freq order
     ArrayList<TextcatRow> table = new ArrayList<TextcatRow>();
     for (Entry entry : dic.byCount()) {
-      if (entry.count() < 3)
-        break;
+      if (entry.count() < 3) break;
       IntVek cat = vectors.get(entry.code());
       int score = doc.textcat(cat);
       TextcatRow row = new TextcatRow(entry.code(), entry.label(), entry.count(), score);
       table.add(row);
-      if (limit-- == 0)
-        break;
+      if (limit-- == 0) break;
     }
     Collections.sort(table);
     return table;
@@ -391,7 +365,8 @@ public class DicVek
     public final int count;
     public final int score;
 
-    public TextcatRow(final int code, final String term, final int count, final int score) {
+    public TextcatRow(final int code, final String term, final int count, final int score)
+    {
       this.code = code;
       this.term = term;
       this.count = count;
@@ -423,7 +398,8 @@ public class DicVek
     public final int count;
     public final double score;
 
-    public CosineRow(final int code, final String term, final int count, final double score) {
+    public CosineRow(final int code, final String term, final int count, final double score)
+    {
       this.code = code;
       this.term = term;
       this.count = count;
@@ -464,12 +440,10 @@ public class DicVek
   {
     try {
       writer.write("{\n");
-      boolean first1 = true;
       int count1 = 1;
       for (Entry entry : dic.byCount()) {
         // TODO, write vector
-        if (--count1 == 0)
-          break;
+        if (--count1 == 0) break;
       }
       writer.write("\n}");
     }
@@ -495,12 +469,10 @@ public class DicVek
   {
     StringBuffer sb = new StringBuffer();
     int index = dic.code(term);
-    if (index == 0)
-      return null;
+    if (index == 0) return null;
     IntVek vek = vectors.get(index);
     // some words on dictionary has no vector, like stop words
-    if (vek == null)
-      return null;
+    if (vek == null) return null;
     // get vector as an array
     // will receive the co-occurrences to sort
     Pair[] coocs = vek.toArray();
@@ -508,16 +480,12 @@ public class DicVek
     boolean first = true;
     String w;
     for (int j = 0; j < size; j++) {
-      if (coocs[j].key < stopoffset)
-        continue;
+      if (coocs[j].key < stopoffset) continue;
       w = dic.label(coocs[j].key);
-      if (first)
-        first = false;
-      else
-        sb.append(", ");
+      if (first) first = false;
+      else sb.append(", ");
       sb.append("" + w + " (" + coocs[j].value + ")");
-      if (--limit == 0)
-        break;
+      if (--limit == 0) break;
     }
     return sb.toString();
   }
@@ -525,8 +493,7 @@ public class DicVek
   public IntVek vek(final String term)
   {
     int code = dic.code(term);
-    if (code == 0)
-      return null;
+    if (code == 0) return null;
     return vek(code);
   }
 
@@ -586,18 +553,17 @@ public class DicVek
     }
     // get the parent folder before the first glob star, needed for ../*/*.xml
     int before = glob.indexOf('*');
-    if (before < 0)
-      before = glob.length() - 1;
+    if (before < 0) before = glob.length() - 1;
     int pos = glob.substring(0, before).lastIndexOf('/');
     Path dir = Paths.get(glob.substring(0, pos + 1));
     final PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + glob);
 
-    Files.walkFileTree(dir, new SimpleFileVisitor<Path>() {
+    Files.walkFileTree(dir, new SimpleFileVisitor<Path>()
+    {
       @Override
       public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
       {
-        if (dir.getFileName().toString().startsWith("."))
-          return FileVisitResult.SKIP_SUBTREE;
+        if (dir.getFileName().toString().startsWith(".")) return FileVisitResult.SKIP_SUBTREE;
         return FileVisitResult.CONTINUE;
       }
 
@@ -630,8 +596,7 @@ public class DicVek
      * i=list.length - 1; i > -1; i-- ) { if ( terms.count( list[i] ) > FREQMIN )
      * break; id = terms.index( list[i] ); vectors.remove( id ); }
      */
-    if (out != null)
-      out.flush();
+    if (out != null) out.flush();
   }
 
   /**
@@ -650,83 +615,6 @@ public class DicVek
       }
     }
     return ops;
-  }
-
-  /**
-   * @throws IOException
-   * 
-   *           TODO: dictionnaire
-   */
-  public static void main(String[] args) throws IOException
-  {
-    String usage = "Usage: java -cp alix.jar site.oeuvres.muthovek.Dicovek texts/*\n"
-        + "   texts maybe in txt or xml.\n";
-    BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
-    if (args.length == 0) {
-      System.out.print("Fichiers ? : ");
-      String glob = keyboard.readLine().trim();
-      System.out.println('"' + glob + '"');
-      args = new String[] { glob };
-    }
-    // largeur avant-après
-    int wing = 5;
-    // le chargeur de vecteur a besoin d'une liste de mots vides pour éviter de
-    // faire le vecteur de "de"
-    // un lemmatiseur du pauvre sert à regrouper les entrées des vecteurs
-    DicVek veks = new DicVek(-wing, wing);
-    // Dicovek veks = new Dicovek(wing, wing, CharsMaps.STOPLIST);
-    long start = System.nanoTime();
-    // Boucler sur les fichiers
-    for (int i = 0; i < args.length; i++) {
-      veks.walk(args[i], new PrintWriter(System.out));
-    }
-    veks.prune(5);
-    DicFreq dic = veks.dic();
-    System.out.println(dic);
-
-    System.out.println("Chargé en " + ((System.nanoTime() - start) / 1000000) + " ms");
-    System.out.println(veks.freqlist(true, 100));
-
-    // Boucle de recherche
-    List<SimRow> table;
-    DecimalFormat df = new DecimalFormat("0.0000");
-    while (true) {
-      System.out.println("");
-      System.out.print("Mot : ");
-      String line = keyboard.readLine().trim();
-      line = line.trim();
-      if (line.isEmpty())
-        System.exit(0);
-      start = System.nanoTime();
-      System.out.print("COOCCURRENTS : ");
-      System.out.println(veks.coocs(line, 30, true));
-      System.out.println("");
-      start = System.nanoTime();
-      table = veks.sims(line);
-      System.out.println("Calculé en " + ((System.nanoTime() - start) / 1000000) + " ms");
-      if (table == null)
-        continue;
-      int limit = 30;
-      // TODO optimiser
-      System.out.println("SIMINYMES (cosine) ");
-      boolean first = true;
-      for (SimRow row : table) {
-        // if ( CharsMaps.isStop( row.term )) continue;
-        if (first)
-          first = false;
-        else
-          System.out.print(", ");
-        System.out.print(dic.label(row.code));
-        System.out.print(" (");
-        System.out.print(row.score);
-        System.out.print(")");
-        if (--limit == 0)
-          break;
-      }
-      System.out.println(".");
-
-    }
-
   }
 
 }

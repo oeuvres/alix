@@ -3,7 +3,6 @@ package alix.util;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 /**
  * A mutable string implementation thought for efficiency more than security.
@@ -25,8 +24,6 @@ public class Chain implements CharSequence, Comparable<Chain>
   private int len = 0;
   /** Cache the hash code for the string */
   private int hash = 0; // Default to 0
-  /** Internal pointer inside the scope of the string, used by csv scanner */
-  private int pointer = -1;
 
   /**
    * Empty constructor, value will be set later
@@ -106,7 +103,7 @@ public class Chain implements CharSequence, Comparable<Chain>
    */
   public Chain(final CharSequence cs, final int start, final int len)
   {
-    this.data = new char[len-start];
+    this.data = new char[len - start];
     copy(cs, start, len);
   }
 
@@ -489,7 +486,6 @@ public class Chain implements CharSequence, Comparable<Chain>
   public Chain replace(final char from, final char to)
   {
     hash = 0;
-    char c;
     for (int i = start; i < len; i++) {
       if (data[i] != from) continue;
       data[i] = to;
@@ -755,7 +751,7 @@ public class Chain implements CharSequence, Comparable<Chain>
     for (;;) {
       if (globc == '*') return globsearch(glob, globstart, globend, text, textstart, textend);
       else if (globc == '?') ;
-      // TODO, char class [éju…]
+      // char class ? [éju…]
       else if (globc != textc) return false;
       if (globstart == globend && textstart == textend) return true;
       // ??? unuseful ?

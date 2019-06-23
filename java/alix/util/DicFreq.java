@@ -194,6 +194,7 @@ public class DicFreq
    */
   public int code(Chain chain)
   {
+    @SuppressWarnings("unlikely-arg-type")
     Entry entry = byTerm.get(chain);
     if (entry == null)
       return -1;
@@ -222,6 +223,7 @@ public class DicFreq
    */
   public int tag(Chain chain)
   {
+    @SuppressWarnings("unlikely-arg-type")
     Entry line = byTerm.get(chain);
     if (line == null)
       return 0;
@@ -279,6 +281,7 @@ public class DicFreq
    */
   public int count(Chain chain)
   {
+    @SuppressWarnings("unlikely-arg-type")
     Entry line = byTerm.get(chain);
     if (line == null)
       return -1;
@@ -385,6 +388,7 @@ public class DicFreq
    */
   public int inc(final Chain chain, final int tag)
   {
+    @SuppressWarnings("unlikely-arg-type")
     Entry entry = byTerm.get(chain);
     if (entry == null) entry = entry(chain.toString(), tag);
     entry.count.incrementAndGet();
@@ -506,6 +510,7 @@ public class DicFreq
    */
   public int add(final Chain chain, final int tag, final int delta1, final int delta2)
   {
+    @SuppressWarnings("unlikely-arg-type")
     Entry entry = byTerm.get(chain);
     if (entry == null) {
       entry = entry(chain.toString(), tag);
@@ -529,6 +534,7 @@ public class DicFreq
    */
   public int put(final Chain chain, final int tag, final int count, final int count2)
   {
+    @SuppressWarnings("unlikely-arg-type")
     Entry entry = byTerm.get(chain);
     if (entry == null) {
       entry = entry(chain.toString(), tag);

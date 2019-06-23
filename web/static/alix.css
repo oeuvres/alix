@@ -334,6 +334,12 @@ body.chrono {
   */
 }
 
+body.chrono form {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+}
+
 #chart {
   font-family: sans-serif;
   width: 100%;

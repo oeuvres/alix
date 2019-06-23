@@ -1,6 +1,6 @@
 package alix.grep.query;
 
-import alix.fr.dic.Tag;
+import alix.fr.Tag;
 import alix.util.Occ;
 
 public class TestTagPrefix extends Test

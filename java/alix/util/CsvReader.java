@@ -1,21 +1,7 @@
 package alix.util;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.Reader;
-import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.text.ParseException;
-import java.util.HashMap;
-
-import alix.fr.dic.Tag;
-import alix.lucene.CharsAtt;
-import alix.lucene.CharsMaps.LexEntry;
 
 /**
  * A light fast csv parser without Strings, especially to load jar resources.
@@ -32,10 +18,6 @@ public class CsvReader
   private int bufLen;
   private static final char LF = '\n';
   private static final char CR = '\r';
-  /** Read all chars at once */
-  private String chars;
-  private int len;
-  private int pos;
   /** The char source */
   private Reader reader;
   /** The cell delimiter char */

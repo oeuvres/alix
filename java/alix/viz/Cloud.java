@@ -40,8 +40,8 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import alix.fr.Lexik;
+import alix.fr.Tag;
 import alix.fr.Lexik.LexEntry;
-import alix.fr.dic.Tag;
 import alix.fr.Tokenizer;
 import alix.util.Occ;
 import alix.util.DicFreq;
@@ -241,8 +241,8 @@ public class Cloud
       center.y /= (totalWeight);
 
       // TODO
-      Shape shaveH = current.shape;
-      Rectangle2D bounds = current.bounds;
+      // Shape shaveH = current.shape;
+      // Rectangle2D bounds = current.bounds;
 
       boolean done = false;
       double radx = ratio * Math.min(first.bounds.getWidth(), first.bounds.getHeight());
@@ -255,7 +255,7 @@ public class Cloud
         int prev_x = -1;
         int prev_y = -1;
         for (int deg = startDeg; deg < startDeg + 360; deg += dDeg) {
-          double sq = Math.abs(deg % 90 - 45) / 45.0;
+          // double sq = Math.abs(deg % 90 - 45) / 45.0;
           double rad = (deg / Math.PI) * 180.0;
           // 1+0.5*sq *
           int cx = (int) (center.x + radx * Math.cos(rad));

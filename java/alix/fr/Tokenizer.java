@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.HashSet;
 
-import alix.fr.dic.Tag;
 import alix.grep.query.Lexer;
 import alix.util.Char;
 import alix.util.Occ;

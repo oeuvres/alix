@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 
-import alix.fr.dic.Tag;
+import alix.fr.Tag;
 
 /**
  * A Token in a text flow with different properties. A token should allow to

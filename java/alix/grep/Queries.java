@@ -244,6 +244,7 @@ public class Queries
         else {
           chain = occ.graph();
         }
+        @SuppressWarnings("unlikely-arg-type")
         WordFlag test = listToCheck.get(chain);
 
         if (test != null) {
@@ -351,6 +352,7 @@ public class Queries
    * 
    * @return tsv file with patterns count
    */
+  @SuppressWarnings("unlikely-arg-type")
   public void freqPatterns(String pathTSV, String pathCorpus, String queries) throws IOException
   {
 

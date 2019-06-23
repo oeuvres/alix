@@ -21,9 +21,14 @@ if ( word != null && word.isEmpty() ) word = null;
 
 // output array
 String field = TEXT;
+// the big way
+// loop an all terms in the field, collect freq in all docs 
+for (LeafReaderContext ctx : reader.leaves()) { // loop on the reader leaves
+
+}
+/*
 DicBytes dic = lucene.dic(field);
 Cursor cursor = dic.iterator();
-
 out.println("[");
 int lines = 500;
 float franfreq;
@@ -46,6 +51,7 @@ while (cursor.hasNext()) {
   else {
     tag = new Tag(0);
   }
+  */
   // if (STOP.contains(term)) continue;
   /*
   if (tag.isPun()) continue;
@@ -63,7 +69,7 @@ while (cursor.hasNext()) {
     if ( myfreq/franfreq < ratio ) continue;
   }
   */
-
+/*
   out.print("  {\"word\" : \"");
   out.print(term.toString().replace( "\"", "\\\"" ).replace('_', ' ')) ;
   out.print("\"");
@@ -77,5 +83,6 @@ while (cursor.hasNext()) {
   else out.println(",");
 }
 out.println("\n]");
+*/
 
 %>

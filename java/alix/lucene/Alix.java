@@ -40,12 +40,10 @@ import java.lang.ref.SoftReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -54,7 +52,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
-import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
@@ -71,19 +68,13 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
@@ -93,11 +84,19 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
-import alix.fr.dic.Tag;
-import alix.lucene.Facet.FacetResult;
-import alix.lucene.Facet.FacetScore;
+import alix.fr.Tag;
+import alix.lucene.analysis.AnalyzerAlix;
+import alix.lucene.analysis.CharsLemAtt;
+import alix.lucene.analysis.TokenCompound;
+import alix.lucene.analysis.TokenLem;
+import alix.lucene.analysis.TokenizerFr;
+import alix.lucene.search.Facet;
+import alix.lucene.search.QueryBits;
+import alix.lucene.search.Scorer;
+import alix.lucene.search.TermList;
+import alix.lucene.search.TopTerms;
+import alix.lucene.search.TermFreqs;
 
 /**
  * Alix entry-point
@@ -324,7 +323,8 @@ public class Alix
     FieldInfo info = fieldInfos.fieldInfo(field);
     // check infos
     if (info.getPointDataDimensionCount() <= 0 && info.getDocValuesType() != DocValuesType.NUMERIC) {
-      throw new IllegalArgumentException("Field \"" + field +"\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
+      throw new IllegalArgumentException(
+          "Field \"" + field + "\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
     }
     int maxDoc = reader.maxDoc();
     final int[] docInt = new int[maxDoc];
@@ -333,7 +333,8 @@ public class Alix
     final int[] minMax = { Integer.MAX_VALUE, Integer.MIN_VALUE };
     if (info.getPointDataDimensionCount() > 0) {
       if (info.getPointDataDimensionCount() > 1) {
-        throw new IllegalArgumentException("Field \"" + field +"\" "+info.getPointDataDimensionCount()+" dimensions, too much for an int tag by doc.");
+        throw new IllegalArgumentException("Field \"" + field + "\" " + info.getPointDataDimensionCount()
+            + " dimensions, too much for an int tag by doc.");
       }
       for (LeafReaderContext context : reader.leaves()) {
         final int docBase = context.docBase;
@@ -381,9 +382,9 @@ public class Alix
         final Bits liveDocs = leaf.getLiveDocs();
         final int docBase = context.docBase;
         int docLeaf;
-        while ( (docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        while ((docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           if (liveDocs != null && !liveDocs.get(docLeaf)) continue;
-          int v = (int)docs4num.longValue(); // long value is force to int;
+          int v = (int) docs4num.longValue(); // long value is force to int;
           docInt[docBase + docLeaf] = v;
           if (minMax[0] > v) minMax[0] = v;
           if (minMax[1] < v) minMax[1] = v;
@@ -447,25 +448,37 @@ public class Alix
     }
     return load;
   }
-  
+
   /**
    * For a facet field, get an iterator in some order, according to a query
-   * @throws IOException 
+   * 
+   * @throws IOException
    */
-  public FacetResult facet(final String facetField, final String textField, final QueryBits filter, final TermList terms, final FacetScore scorer) throws IOException
+  public TopTerms facet(final String facetField, final String textField, final QueryBits filter, final TermList terms,
+      final Scorer scorer) throws IOException
   {
     String key = "AlixFacet" + facetField + textField;
-    Facet facet = (Facet)cache(key);
+    Facet facet = (Facet) cache(key);
     if (facet == null) facet = new Facet(this, facetField, textField);
     return facet.new FacetResult(filter, terms, scorer);
   }
-  
+
+  /**
+   * @throws IOException
+   * 
+   */
+  public TermFreqs termFreqs(final String field) throws IOException
+  {
+    String key = "AlixFreqList" + field;
+    TermFreqs termFreqs = (TermFreqs) cache(key);
+    if (termFreqs == null) termFreqs = new TermFreqs(this, field);
+    return termFreqs;
+  }
 
   /**
    * For a field, return an array in docid order, with the total number of tokens
-   * by doc. Is cached.
-   * Term vector   cost 1 s. / 1000 books A norm after indexation could be
-   * faster, but common similarity store such length on one byte. see
+   * by doc. Is cached. Term vector cost 1 s. / 1000 books A norm after indexation
+   * could be faster, but common similarity store such length on one byte. see
    * SimilarityBase.computeNorm()
    * https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/apache/lucene/search/similarities/SimilarityBase.java#L185
    * 
@@ -479,18 +492,21 @@ public class Alix
     String key = "AlixDocLength" + field;
     long[] docLength = (long[]) cache(key);
     if (docLength != null) return docLength;
-    
+
     FieldInfo info = fieldInfos.fieldInfo(field);
     if (info.getIndexOptions() == IndexOptions.NONE) {
-      throw new IllegalArgumentException("Field \"" + field +"\" is not indexed, get the number of tokens by doc (length) is not relevant.");
+      throw new IllegalArgumentException(
+          "Field \"" + field + "\" is not indexed, get the number of tokens by doc (length) is not relevant.");
     }
     if (info.getDocValuesType() != DocValuesType.NUMERIC && !info.hasVectors()) {
-      throw new IllegalArgumentException("Field \"" + field +"\" has no vectors or numeric value with thi name to calculate lengths.");
+      throw new IllegalArgumentException(
+          "Field \"" + field + "\" has no vectors or numeric value with thi name to calculate lengths.");
     }
     int maxDoc = reader.maxDoc();
     // index by year
     docLength = new long[maxDoc];
-    // A text field may be indexed with a parallel long value which is supposed to be the length
+    // A text field may be indexed with a parallel long value which is supposed to
+    // be the length
     if (info.getDocValuesType() == DocValuesType.NUMERIC) {
       for (LeafReaderContext context : reader.leaves()) {
         LeafReader leaf = context.reader();
@@ -500,14 +516,13 @@ public class Alix
         final Bits liveDocs = leaf.getLiveDocs();
         final int docBase = context.docBase;
         int docLeaf;
-        while ( (docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        while ((docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           if (liveDocs != null && !liveDocs.get(docLeaf)) continue;
-          int v = (int)docs4num.longValue(); // long value is force to int;
           docLength[docBase + docLeaf] = docs4num.longValue();
         }
       }
     }
-    else if(info.hasVectors()) {
+    else if (info.hasVectors()) {
       Bits liveDocs = null;
       boolean hasDeletions = reader.hasDeletions();
       if (hasDeletions) {
@@ -528,63 +543,6 @@ public class Alix
     }
     cache(key, docLength);
     return docLength;
-  }
-
-  /**
-   * For a field, try to get a dictionary of indexed terms. Is cached.
-   * 
-   * @param field
-   * @return
-   * @throws IOException
-   */
-  public DicBytes dic(final String field) throws IOException
-  {
-    String key = "AlixDic" + field;
-    DicBytes dic = (DicBytes) cache(key);
-    if (dic != null) return dic;
-    dic = new DicBytes(field);
-    IndexReader reader = reader(); // ensure reader
-    // indexed field
-    if (reader.getDocCount(field) > 0) {
-      dic.docs = reader.getDocCount(field);
-      dic.occs = reader.getSumTotalTermFreq(field);
-      BytesRef bytes;
-      for (LeafReaderContext context : reader.leaves()) {
-        LeafReader leaf = context.reader();
-        Terms terms = leaf.terms(field);
-        if (terms == null) continue;
-        TermsEnum tenum = terms.iterator();
-        // because terms are sorted, we could merge dics more efficiently
-        // but index is merged
-        while ((bytes = tenum.next()) != null) {
-          dic.add(bytes, tenum.totalTermFreq());
-        }
-      }
-      dic.sort();
-      cache(key, dic);
-      return dic;
-    }
-    // facet field
-    int docs = 0;
-    for (LeafReaderContext context : reader.leaves()) {
-      LeafReader leaf = context.reader();
-      SortedSetDocValues docs4terms = leaf.getSortedSetDocValues(field);
-      if (docs4terms == null) break;
-      BytesRef bytes;
-      // terms.termsEnum().docFreq() not implemented, should loop on docs to have it
-      while (docs4terms.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-        long ord;
-        docs++;
-        // each term
-        while ((ord = docs4terms.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-          dic.add(docs4terms.lookupOrd(ord), 1);
-        }
-      }
-    }
-    dic.docs = docs;
-    dic.sort();
-    cache(key, dic);
-    return dic;
   }
 
   /**
@@ -613,14 +571,11 @@ public class Alix
     // float boostDefault = boosts[boostLength - 1];
     TokenStream ts = qAnalyzer.tokenStream(field, q);
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
-    CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
     FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
-    OffsetAttribute offset = ts.addAttribute(OffsetAttribute.class);
 
     ts.reset();
     Query qTerm = null;
     BooleanQuery.Builder bq = null;
-    int i = 0;
     try {
       while (ts.incrementToken()) {
         if (Tag.isPun(flags.getFlags())) continue;
@@ -630,11 +585,9 @@ public class Alix
         }
         qTerm = new TermQuery(new Term(field, token.toString()));
         /*
-        float boost = boostDefault;
-        if (i < boostLength) boost = boosts[i];
-        qTerm = new BoostQuery(qTerm, boost);
-        */
-        i++;
+         * float boost = boostDefault; if (i < boostLength) boost = boosts[i]; qTerm =
+         * new BoostQuery(qTerm, boost);
+         */
       }
       ts.end();
     }
@@ -663,9 +616,8 @@ public class Alix
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
     FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
-    OffsetAttribute offset = ts.addAttribute(OffsetAttribute.class);
 
-    TermList terms = new TermList(dic(field));
+    TermList terms = new TermList(termFreqs(field));
     ts.reset();
     try {
       while (ts.incrementToken()) {
@@ -725,7 +677,7 @@ public class Alix
    */
   public Tick[] axis(String textField, String intPoint) throws IOException
   {
-    long total = reader.getSumTotalTermFreq(textField);
+    // long total = reader.getSumTotalTermFreq(textField);
     int maxDoc = reader().maxDoc();
     long[] docLength = docLength(textField);
     int[] docInt = docInt(intPoint);
@@ -779,8 +731,9 @@ public class Alix
     }
     catch (Exception e) {
     }
-    for (FieldInfo info: fieldInfos) {
-      sb.append(info.name+" PointDataDimensionCount="+info.getPointDataDimensionCount()+" DocValuesType="+info.getDocValuesType()+" IndexOptions="+info.getIndexOptions()+"\n");
+    for (FieldInfo info : fieldInfos) {
+      sb.append(info.name + " PointDataDimensionCount=" + info.getPointDataDimensionCount() + " DocValuesType="
+          + info.getDocValuesType() + " IndexOptions=" + info.getIndexOptions() + "\n");
     }
     sb.append(fieldInfos.toString());
     return sb.toString();

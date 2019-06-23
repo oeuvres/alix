@@ -20,8 +20,8 @@ import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
 import alix.fr.Lexik;
+import alix.fr.Tag;
 import alix.fr.Tokenizer;
-import alix.fr.dic.Tag;
 
 /**
  * A data structure to store multi words expression.
@@ -56,41 +56,33 @@ public class DicPhrase
    */
   public boolean add(final DicFreq words, String compound, final int senselevel)
   {
-    if (compound == null)
-      return false;
+    if (compound == null) return false;
     compound = compound.trim();
-    if (compound.startsWith("#"))
-      return false;
+    if (compound.startsWith("#")) return false;
     // parse the chain, split on space and apos
     final int lim = compound.length();
-    if (lim == 0)
-      return false;
+    if (lim == 0) return false;
     int code;
     IntSeries buffer = this.buffer; // take a ref to avoid a lookup
     buffer.reset();
     Chain token = this.token.reset(); // a temp mutable string
     for (int i = 0; i < lim; i++) {
       char c = compound.charAt(i);
-      if (c == '’')
-        c = '\'';
+      if (c == '’') c = '\'';
       // split on apos or hyphen
       if (c == '’' || c == '\'' || Char.isSpace(c) || c == '-' || c == '\t' || c == ';' || i == lim - 1) {
-        if (c == '’' || c == '\'' || i == lim - 1)
-          token.append(c);
+        if (c == '’' || c == '\'' || i == lim - 1) token.append(c);
         code = words.inc(token);
-        if (code > senselevel)
-          buffer.put(code);
+        if (code > senselevel) buffer.put(code);
         token.reset();
-        if (c == '\t' || c == ';')
-          break;
+        if (c == '\t' || c == ';') break;
       }
       else {
         token.append(c);
       }
     }
     // ?? allow simple words ?
-    if (buffer.size() < 1)
-      return false;
+    if (buffer.size() < 1) return false;
     // Add phrase to dictionary
     inc(buffer);
     // here we could add more info on the compound
@@ -122,6 +114,7 @@ public class DicPhrase
 
   public int inc(final IntRoller key)
   {
+    @SuppressWarnings("unlikely-arg-type")
     Ref ref = tupleDic.get(key);
     occs++;
     if (ref == null) {
@@ -141,39 +134,38 @@ public class DicPhrase
   public void label(final IntSeries key, final String label)
   {
     Ref ref = tupleDic.get(key);
-    if (ref == null)
-      return; // create it ?
+    if (ref == null) return; // create it ?
     ref.label = label;
   }
 
   public void label(final IntRoller key, final String label)
   {
+    @SuppressWarnings("unlikely-arg-type")
     Ref ref = tupleDic.get(key);
-    if (ref == null)
-      return; // create it ?
+    if (ref == null) return; // create it ?
     ref.label = label;
   }
 
   public boolean contains(final IntSeries key)
   {
     Ref ref = tupleDic.get(key);
-    if (ref == null)
-      return false;
+    if (ref == null) return false;
     return true;
   }
 
   public boolean contains(final IntRoller win)
   {
+    @SuppressWarnings("unlikely-arg-type")
     Ref ref = tupleDic.get(win);
-    if (ref == null)
-      return false;
+    if (ref == null) return false;
     return true;
   }
 
   public Iterator<Map.Entry<IntTuple, Ref>> freqlist()
   {
     List<Map.Entry<IntTuple, Ref>> list = new LinkedList<Map.Entry<IntTuple, Ref>>(tupleDic.entrySet());
-    Collections.sort(list, new Comparator<Map.Entry<IntTuple, Ref>>() {
+    Collections.sort(list, new Comparator<Map.Entry<IntTuple, Ref>>()
+    {
       @Override
       public int compare(Map.Entry<IntTuple, Ref> o1, Map.Entry<IntTuple, Ref> o2)
       {
@@ -202,15 +194,11 @@ public class DicPhrase
       entry = it.next();
       label = entry.getValue().label;
       writer.write("\n");
-      if (label != null)
-        writer.write(label);
-      else
-        writer.write(entry.getKey().toString());
+      if (label != null) writer.write(label);
+      else writer.write(entry.getKey().toString());
       writer.write(" (" + entry.getValue().count() + ")");
-      if (html)
-        writer.write("<br/>");
-      if (--limit == 0)
-        break;
+      if (html) writer.write("<br/>");
+      if (--limit == 0) break;
     }
     writer.flush();
   }
@@ -226,11 +214,13 @@ public class DicPhrase
     private int count;
     private String label;
 
-    public Ref(final String label) {
+    public Ref(final String label)
+    {
       this.label = label;
     }
 
-    public Ref(final int count) {
+    public Ref(final int count)
+    {
       this.count = count;
     }
 
@@ -274,46 +264,36 @@ public class DicPhrase
     int senselevel = -1;
     while ((l = buf.readLine()) != null) {
       int code = dic.inc(l.trim());
-      if (code > senselevel)
-        senselevel = code;
+      if (code > senselevel) senselevel = code;
     }
     buf.close();
     // add some more words to the stoplits
     for (String w : new String[] { "chère", "dire", "dis", "dit", "jeune", "jeunes", "yeux" }) {
       int code = dic.inc(w);
-      if (code > senselevel)
-        senselevel = code;
+      if (code > senselevel) senselevel = code;
     }
 
     IntRoller wordflow = new IntRoller(-15, 0);
     int code;
-    int exit = 1000;
     StringBuffer label = new StringBuffer();
     for (File src : new File(dir).listFiles()) {
-      if (src.isDirectory())
-        continue;
-      if (src.getName().startsWith("."))
-        continue;
-      if (!filematch.matcher(src.getName()).matches())
-        continue;
-      if (!src.getName().endsWith(".txt") && !src.getName().endsWith(".xml"))
-        continue;
+      if (src.isDirectory()) continue;
+      if (src.getName().startsWith(".")) continue;
+      if (!filematch.matcher(src.getName()).matches()) continue;
+      if (!src.getName().endsWith(".txt") && !src.getName().endsWith(".xml")) continue;
       System.out.println(src);
       String xml = new String(Files.readAllBytes(Paths.get(src.toString())), StandardCharsets.UTF_8);
       int pos = xml.indexOf("</teiHeader>");
-      if (pos < 0)
-        pos = 0;
+      if (pos < 0) pos = 0;
       Occ occ = new Occ(); // pointer on current occurrence in the tokenizer flow
       Tokenizer toks = new Tokenizer(xml);
       while (true) {
         if (locs) {
           occ = toks.word();
-          if (occ == null)
-            break;
+          if (occ == null) break;
         }
         else {
-          if (!toks.token(occ))
-            break;
+          if (!toks.token(occ)) break;
         }
         // clear after sentences
         if (occ.tag().equals(Tag.PUNsent)) {
@@ -323,16 +303,11 @@ public class DicPhrase
           continue;
         }
 
-        if (occ.tag().isPun())
-          continue; // do not record punctuation
-        else if (occ.tag().isName())
-          code = NAME; // simplify names
-        else if (occ.tag().isNum())
-          code = NUM; // simplify names
-        else if (occ.tag().isVerb())
-          code = dic.inc(occ.lem());
-        else
-          code = dic.inc(occ.orth());
+        if (occ.tag().isPun()) continue; // do not record punctuation
+        else if (occ.tag().isName()) code = NAME; // simplify names
+        else if (occ.tag().isNum()) code = NUM; // simplify names
+        else if (occ.tag().isVerb()) code = dic.inc(occ.lem());
+        else code = dic.inc(occ.orth());
         // clear to avoid repetitions
         // « Voulez vous sortir, grand pied de grue, grand pied de grue, grand pied de
         // grue »
@@ -345,12 +320,10 @@ public class DicPhrase
 
         wordflow.push(code); // add this token to the word flow
         wordmarks.dec(); // decrement positions of the recorded plain words
-        if (wordflow.get(0) <= senselevel)
-          continue; // do not record empty words
+        if (wordflow.get(0) <= senselevel) continue; // do not record empty words
         wordmarks.push(0); // record a new position of full word
         gram.push(wordflow.get(0)); // store a signficant word as a collocation key
-        if (gram.get(0) == 0)
-          continue; // the collocation key is not complete
+        if (gram.get(0) == 0) continue; // the collocation key is not complete
 
         int count = phrases.inc(gram);
         // new value, add a label to the collocation
@@ -358,8 +331,7 @@ public class DicPhrase
           label.setLength(0);
           for (int i = wordmarks.get(0); i <= 0; i++) {
             label.append(dic.label(wordflow.get(i)));
-            if (i != 0 && label.charAt(label.length() - 1) != '\'')
-              label.append(" ");
+            if (i != 0 && label.charAt(label.length() - 1) != '\'') label.append(" ");
           }
           // System.out.println( label );
           phrases.label(gram, label.toString());

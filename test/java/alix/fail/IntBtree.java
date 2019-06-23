@@ -48,8 +48,6 @@ public class IntBtree
   /** Current buffer size */
   private int bufpointer = 0;
 
-  /** An iterator used to get keys and values */
-  private int pointer = -1;
   /** The current entry of the pointer */
   private int[] entry = new int[2];
 
@@ -230,7 +228,7 @@ public class IntBtree
    */
   public void reset()
   {
-    pointer = -1;
+    // pointer = -1;
   }
 
   /**
@@ -357,7 +355,6 @@ public class IntBtree
     Random rng = new Random();
     int max = 300000;
     int req = 1000000;
-    int size;
     // fill a vek with random keys and entries
     System.out.print("IntVek " + 4 * max + " inserts");
     IntVek vek = new IntVek();

@@ -9,8 +9,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import alix.fr.Tag;
 import alix.fr.Tokenizer;
-import alix.fr.dic.Tag;
 
 /**
  * 
@@ -35,7 +35,8 @@ public class StemTrie
   /**
    * Empty constructor
    */
-  public StemTrie() {
+  public StemTrie()
+  {
   }
 
   public void loadFile(final String path, final String separator) throws IOException
@@ -63,17 +64,12 @@ public class StemTrie
     String line;
     BufferedReader buf = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
     buf.readLine(); // first line is labels and should give number of cells to find
-    int i = 0;
     String[] cells;
     while ((line = buf.readLine()) != null) {
       line = line.trim();
-      if (line.isEmpty())
-        continue;
-      if (line.charAt(0) == '#')
-        continue;
+      if (line.isEmpty()) continue;
+      if (line.charAt(0) == '#') continue;
       cells = line.split(separator);
-      if (add(cells))
-        i++;
     }
     buf.close();
   }
@@ -87,12 +83,9 @@ public class StemTrie
   public boolean add(String[] cells)
   {
     int cat;
-    if (cells == null)
-      return false;
-    if (cells.length == 0)
-      return false;
-    if (cells[0] == null || cells[0].isEmpty())
-      return false;
+    if (cells == null) return false;
+    if (cells.length == 0) return false;
+    if (cells[0] == null || cells[0].isEmpty()) return false;
     if (cells.length == 1) {
       add(cells[0], Tag.UNKNOWN);
       return true;
@@ -102,10 +95,8 @@ public class StemTrie
       add(cells[0], cat);
       return true;
     }
-    if (cells[2] == null || cells[2].isEmpty())
-      add(cells[0], cat);
-    else
-      add(cells[0], cat, cells[2]);
+    if (cells[2] == null || cells[2].isEmpty()) add(cells[0], cat);
+    else add(cells[0], cat, cells[2]);
     return true;
   }
 
@@ -154,16 +145,14 @@ public class StemTrie
       if (c == '’' || c == '\'') {
         chars[i] = '\'';
         token = new String(chars, offset, i - offset + 1);
-        if (!ELLISION.contains(token))
-          continue;
+        if (!ELLISION.contains(token)) continue;
         node = node.append(token);
         offset = i + 1;
       }
       // and space (be nice on double spaces, do not create empty words)
       if (Char.isSpace(c)) {
         token = new String(chars, offset, i - offset);
-        if (offset != i)
-          node = node.append(token);
+        if (offset != i) node = node.append(token);
         offset = i + 1;
       }
     }
@@ -174,8 +163,7 @@ public class StemTrie
     }
     node.inc(); // update counter (this structure may be used as chain counter)
     node.tag(cat); // a category
-    if (orth != null)
-      node.orth(orth);
+    if (orth != null) node.orth(orth);
     // else node.orth( chain ); // Bad for names NAME NAME
   }
   /**
@@ -195,10 +183,10 @@ public class StemTrie
    * @return
    */
   /*
-   * public boolean contains(Chain chain) { char c; node = root; for (int i = 0; i <
-   * chain.length(); i++) { c = chain.charAt( i ); node = node.test( c ); if (node
-   * == null) return false; } if (node == null) return false; else if (node.wc <
-   * 1) return false; else return true;
+   * public boolean contains(Chain chain) { char c; node = root; for (int i = 0; i
+   * < chain.length(); i++) { c = chain.charAt( i ); node = node.test( c ); if
+   * (node == null) return false; } if (node == null) return false; else if
+   * (node.wc < 1) return false; else return true;
    * 
    * }
    */
@@ -232,7 +220,8 @@ public class StemTrie
     private String orth;
 
     /** Constructor */
-    public Stem() {
+    public Stem()
+    {
       // this.word = word;
     }
 
@@ -310,10 +299,8 @@ public class StemTrie
       // String map = mapper.get( form );
       // if ( map != null ) form = map;
       Stem child = null;
-      if (children == null)
-        children = new HashMap<String, Stem>();
-      else
-        child = children.get(form);
+      if (children == null) children = new HashMap<String, Stem>();
+      else child = children.get(form);
       if (child == null) {
         child = new Stem();
         children.put(form, child);
@@ -331,17 +318,16 @@ public class StemTrie
     {
       // String map = mapper.get( form );
       // if ( map != null ) form = map;
-      if (children == null)
-        return null;
+      if (children == null) return null;
       return children.get(form);
     }
 
+    @SuppressWarnings("unlikely-arg-type")
     public Stem get(Chain form)
     {
       // String map = mapper.get( form );
       // if ( map != null ) form.replace( map );
-      if (children == null)
-        return null;
+      if (children == null) return null;
       return children.get(form);
     }
 
@@ -352,21 +338,15 @@ public class StemTrie
     public String toString()
     {
       StringBuffer sb = new StringBuffer();
-      if (tag != 0)
-        sb.append("<" + Tag.label(tag) + ">");
-      if (orth != null)
-        sb.append(orth);
-      if (count > 1)
-        sb.append('(').append(count).append(')');
-      if (children == null)
-        return sb.toString();
+      if (tag != 0) sb.append("<" + Tag.label(tag) + ">");
+      if (orth != null) sb.append(orth);
+      if (count > 1) sb.append('(').append(count).append(')');
+      if (children == null) return sb.toString();
       sb.append(" { ");
       boolean first = true;
       for (String w : children.keySet()) {
-        if (first)
-          first = false;
-        else
-          sb.append(", ");
+        if (first) first = false;
+        else sb.append(", ");
         sb.append(w);
         sb.append(children.get(w));
       }
@@ -389,23 +369,18 @@ public class StemTrie
     int i = 6;
     for (String term : terms) {
       dic.add(term);
-      if (--i <= 0)
-        break;
+      if (--i <= 0) break;
     }
     System.out.println(dic);
     for (String term : terms) {
       Stem node = dic.getRoot();
       for (String word : term.split(" ")) {
-        if (word.isEmpty())
-          continue;
+        if (word.isEmpty()) continue;
         node = node.get(word);
-        if (node == null)
-          break;
+        if (node == null) break;
       }
-      if (node != null && node.tag() != 0)
-        System.out.println(term + " OK");
-      else
-        System.out.println(term + " UNFOUND");
+      if (node != null && node.tag() != 0) System.out.println(term + " OK");
+      else System.out.println(term + " UNFOUND");
     }
 
   }

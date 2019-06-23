@@ -1,7 +1,5 @@
 package alix.util;
 
-import java.util.HashSet;
-
 /**
  * Efficient Object to handle a sliding window of ints.
  * 
@@ -14,8 +12,6 @@ public class IntRoller extends Roller
 {
   /** Data of the sliding window */
   private int[] data;
-  /** Cached HashCode */
-  private int hash;
 
   /**
    * Constructor, init data
@@ -233,32 +229,4 @@ public class IntRoller extends Roller
     return sb.toString();
   }
 
-  /**
-   * Test the Class
-   * 
-   * @param args
-   */
-  public static void main(String args[])
-  {
-    IntRoller win = new IntRoller(-2, 3);
-    for (int i = 1; i < 20; i++) {
-      win.push(i);
-      System.out.println(win);
-    }
-    HashSet<IntTuple> set = new HashSet<IntTuple>();
-    for (int i = 1; i < 100; i++) {
-      set.add(new IntTuple(0, i));
-    }
-    set.add(new IntTuple(1, 2));
-    System.out.println(set);
-    set.add(new IntTuple(1, 2));
-    System.out.println(set);
-    set.add(new IntTuple(1, 3));
-    System.out.println(set);
-    IntRoller roller = new IntRoller(0, 1);
-    roller.push(1).push(2);
-    System.out.println(roller + " " + set.contains(roller));
-    roller.push(3);
-    System.out.println(roller + " " + set.contains(roller));
-  }
 }

@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 
 import alix.fr.Lexik;
-import alix.fr.dic.Tag;
+import alix.fr.Tag;
 import alix.util.Occ;
 
 /**
@@ -34,9 +34,13 @@ public class Lexer
   private int maxright = 0;
   /** Cell separator */
   private String sep = ";";
+  
+  public Lexer()
+  {
+  }
 
   /** Change separator */
-  public void Lexer(final String sep)
+  public Lexer(final String sep)
   {
     this.sep = sep;
   }
@@ -179,13 +183,14 @@ public class Lexer
   public boolean apply(Occ occ)
   {
     int[] rules = null;
+    @SuppressWarnings("unlikely-arg-type")
     int[] rules1 = byform.get(occ.orth());
     int[] rules2 = bytag.get(occ.tag().group());
     if (rules1 == null && rules2 == null)
       return false;
-    else if (rules1 != null)
+    else if (rules2 == null)
       rules = rules1;
-    else if (rules2 != null)
+    else if (rules1 == null)
       rules = rules2;
     // compact and sort rules
     else {

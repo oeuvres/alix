@@ -47,7 +47,7 @@ var yearTicks = function(a, b, pixels, opts, dygraph, vals) {
 // draw the graph with all the configuration
 function draw(div, data, labels) {
   attrs = {
-    title : "Répartitions des occurrences sur le corpus (en ordre chronologique)",
+    // title : "Répartitions des occurrences sur le corpus (en ordre chronologique)",
     labels: labels,
     // labelsKMB: true,
     legend: "always",

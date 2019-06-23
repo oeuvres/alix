@@ -16,7 +16,6 @@ import java.util.LinkedList;
 import alix.fr.Tokenizer;
 import alix.util.Occ;
 import alix.util.OccRoller;
-import alix.util.Chain;
 
 public class NAME
 {
@@ -104,6 +103,7 @@ public class NAME
    * @param text
    * @throws IOException
    */
+  @SuppressWarnings("unlikely-arg-type")
   public void parse(String filename, String date, String text) throws IOException
   {
     Tokenizer toks = new Tokenizer(text);
@@ -111,7 +111,6 @@ public class NAME
     // une pile FIFO,
     LinkedList<Source> stack = new LinkedList<Source>();
     int wn = 0; // le compteur de mots
-    Chain chain;
     Source node;
     Occ occ;
     while (toks.word(win.add())) {

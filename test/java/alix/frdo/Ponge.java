@@ -61,6 +61,7 @@ public class Ponge
    * @throws XMLStreamException
    * @throws IOException
    */
+  @SuppressWarnings("unlikely-arg-type")
   public void parse(File src) throws XMLStreamException, IOException
   {
     StringBuilder sb = new StringBuilder();

@@ -275,31 +275,30 @@ public class Char
 
   public static char htmlent(final Chain ent)
   {
+    @SuppressWarnings("unlikely-arg-type")
     Character c = HTMLENT.get(ent);
     if (c == null) return '�';
     return c;
   }
-  
+
   public static String unTag(String xml)
   {
     StringBuilder dest = new StringBuilder();
     int start = 0;
     int end = xml.length();
     boolean lt = false, first = true;
-    int lastLt = start; // index of last <, to erase broken ending tag
     for (int i = start; i < end; i++) {
       char c = xml.charAt(i);
       switch (c) {
         case '<':
           first = false; // no broken tag at start
           lt = true;
-          lastLt = i;
           break;
         case '>':
           lt = false;
           // a broken tag at start, erase what was appended
           if (first) {
-            dest.setLength(dest.length()-(i-start));
+            dest.setLength(dest.length() - (i - start));
             first = false;
             break;
           }
@@ -462,13 +461,13 @@ public class Char
   public static char toLower(char c)
   {
     if (!Char.isUpperCase(c)) return c;
-    return  Character.toLowerCase(c);
+    return Character.toLowerCase(c);
   }
 
   public static char toUpper(char c)
   {
     if (!Char.isLowerCase(c)) return c;
-    return  Character.toUpperCase(c);
+    return Character.toUpperCase(c);
   }
 
   /**

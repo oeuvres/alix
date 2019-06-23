@@ -1,7 +1,5 @@
 package alix.lucene;
 
-import java.io.IOException;
-
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.ArrayUtil;
 
@@ -63,7 +61,7 @@ public class TermStack
     private static final int CHARS_LENGTH = ArrayUtil.oversize(10, Character.BYTES);
     private char[] chars = new char[CHARS_LENGTH];
     /** Current length of term */
-    private int len;
+    // private int len;
 
     /** Copy char array */
     public final void copy(CharTermAttribute term)

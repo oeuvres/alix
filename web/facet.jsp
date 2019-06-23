@@ -10,8 +10,8 @@
   <body class="facet">
   <%
   // choose a field
-String facet = request.getParameter("facet");
-if (facet == null || "".equals(facet.trim())) facet = "author";
+String facetField = request.getParameter("facet");
+if (facetField == null || "".equals(facetField.trim())) facetField = "author";
 String q = request.getParameter("q");
 if (q == null) q = "";
 else q = q.trim();
@@ -34,12 +34,12 @@ else out.println("<h3>Auteur (chapitres)</h3>");
 QueryBits filter = null;
 if (filterQuery != null) filter = new QueryBits(filterQuery);
 
-FacetResult results = lucene.facet(facet, TEXT, filter, terms, null);
-while (results.hasNext()) {
-  results.next();
-  long weight = results.weight();
+TopTerms facetEnum = lucene.facet(facetField, TEXT, filter, terms, null);
+while (facetEnum.hasNext()) {
+  facetEnum.next();
+  long weight = facetEnum.weight();
   if (weight < 1) break;
-  out.println("<div>"+results.term()+" ("+weight+")</div>");
+  out.println("<div>"+facetEnum.term()+" ("+weight+")</div>");
 }
     %>
     </div>

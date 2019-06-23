@@ -1,21 +1,15 @@
 package alix.fail;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttributeImpl;
 
-import alix.util.IntOMap;
 import alix.fr.Lexik;
 import alix.fr.Lexik.LexEntry;
-import alix.lucene.CharsAtt;
+import alix.lucene.analysis.CharsAtt;
 import alix.util.Chain;
 
 /**
@@ -159,6 +153,7 @@ public class TrieDic
    * @param args
    * @throws IOException
    */
+  @SuppressWarnings("unlikely-arg-type")
   public static void main(String[] args) throws IOException
   {
     long time;

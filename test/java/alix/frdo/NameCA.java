@@ -41,6 +41,7 @@ public class NameCA
    * @param text
    * @throws IOException
    */
+  @SuppressWarnings("unlikely-arg-type")
   public void parse(String text, String[] props) throws IOException
   {
     Tokenizer toks = new Tokenizer(text);
