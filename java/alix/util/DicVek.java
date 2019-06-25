@@ -438,6 +438,7 @@ public class DicVek
    */
   public void json(Writer writer, int limit) throws IOException
   {
+    /*
     try {
       writer.write("{\n");
       int count1 = 1;
@@ -450,6 +451,7 @@ public class DicVek
     finally {
       writer.close();
     }
+    */
   }
 
   public String coocs(final String term)

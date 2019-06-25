@@ -1,10 +1,10 @@
 var cloudId = "wordcloud2";
 var url = new URL(window.location.href);
-var frantext = url.searchParams.get("frantext");
-var log = url.searchParams.get("log");
+var scorer = url.searchParams.get("scorer");
+// var log = url.searchParams.get("log");
 
 
-fetch("data/freqlist.jsp?frantext="+frantext+"&log="+log).then(function(response) {
+fetch("data/freqlist.jsp?scorer="+scorer).then(function(response) {
   return response.json();
 }).then(function(json) {
   list = json;

@@ -12,6 +12,12 @@ static {
 }
 %>
 <%
+String sc = request.getParameter("scorer");
+Scorer scorer = new ScorerBM25();
+if ("tfidf".equals(sc)) scorer = new ScorerTfidf();
+else if ("tf".equals(sc)) scorer = new ScorerTf();
+else if ("occs".equals(sc)) scorer = new ScorerOccs();
+
 String log = request.getParameter("log");
 if ( log != null && log.isEmpty() ) log = null;
 String frantext = request.getParameter("frantext");
@@ -21,26 +27,17 @@ if ( word != null && word.isEmpty() ) word = null;
 
 // output array
 String field = TEXT;
-// the big way
-// loop an all terms in the field, collect freq in all docs 
-for (LeafReaderContext ctx : reader.leaves()) { // loop on the reader leaves
-
-}
-/*
-DicBytes dic = lucene.dic(field);
-Cursor cursor = dic.iterator();
+TermFreqs freqs = lucene.termFreqs(TEXT);
+TopTerms terms = freqs.topTerms(null, scorer);
 out.println("[");
 int lines = 500;
-float franfreq;
-double bias = 0;
 CharsAtt term = new CharsAtt();
 Tag tag;
-while (cursor.hasNext()) {
-  cursor.next();
-  cursor.term(term);
-  long count = cursor.count();
-  if (count <= 2) break;
-  if (CharsMaps.isStop(term)) continue;
+while (terms.hasNext()) {
+  terms.next();
+  terms.term(term);
+  if("tf".equals(sc) || "occs".equals(sc))
+    if (CharsMaps.isStop(term)) continue;
   LexEntry entry = CharsMaps.word(term);
   if (entry != null) {
     tag = new Tag(entry.tag);
@@ -51,11 +48,41 @@ while (cursor.hasNext()) {
   else {
     tag = new Tag(0);
   }
+  // if (tag.isPun()) continue;
+  // if (tag.isNum()) continue;
+  /*
+  long weight = terms.weight();
+  if (weight < 1) break;
+  */
+  out.print("  {\"word\" : \"");
+  out.print(terms.term().toString().replace( "\"", "\\\"" ).replace('_', ' ')) ;
+  out.print("\"");
+  out.print(", \"weight\" : ");
+  out.print(terms.score());
+  out.print(", \"attributes\" : {\"class\" : \"");
+  out.print(Tag.label(tag.group()));
+  out.print("\"}");
+  out.print("}");
+  if (--lines <= 0 ) break;
+  else out.println(",");
+}
+out.println("\n]");
+/*
+DicBytes dic = lucene.dic(field);
+Cursor cursor = dic.iterator();
+int lines = 500;
+float franfreq;
+double bias = 0;
+CharsAtt term = new CharsAtt();
+while (cursor.hasNext()) {
+  cursor.next();
+  cursor.term(term);
+  long count = cursor.count();
+  if (count <= 2) break;
+  if (CharsMaps.isStop(term)) continue;
   */
   // if (STOP.contains(term)) continue;
   /*
-  if (tag.isPun()) continue;
-  if (tag.isNum()) continue;
   */
   /*
   if ( frantext != null ) {
@@ -69,20 +96,5 @@ while (cursor.hasNext()) {
     if ( myfreq/franfreq < ratio ) continue;
   }
   */
-/*
-  out.print("  {\"word\" : \"");
-  out.print(term.toString().replace( "\"", "\\\"" ).replace('_', ' ')) ;
-  out.print("\"");
-  out.print(", \"weight\" : ");
-  out.print(count);
-  out.print(", \"attributes\" : {\"class\" : \"");
-  out.print(Tag.label(tag.group()));
-  out.print("\"}");
-  out.print("}");
-  if (--lines <= 0 ) break;
-  else out.println(",");
-}
-out.println("\n]");
-*/
 
 %>

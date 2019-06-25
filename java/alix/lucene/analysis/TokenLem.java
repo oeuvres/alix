@@ -85,7 +85,7 @@ public final class TokenLem extends TokenFilter
         }
       }
       term.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
-      boolean normalized = CharsMaps.norm(term); // normalise : Etat -> État
+      CharsMaps.norm(term); // normalise : Etat -> État
       c1 = term.charAt(0); // get normalized cap
       name = CharsMaps.name(term);
       if (name != null) {

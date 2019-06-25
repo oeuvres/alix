@@ -4,6 +4,9 @@ import java.util.Arrays;
 
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
+import org.apache.lucene.util.UnicodeUtil;
+
+import alix.lucene.analysis.CharsAtt;
 
 /**
  * An iterator for sorted list of terms
@@ -11,17 +14,15 @@ import org.apache.lucene.util.BytesRefHash;
  * @author fred
  *
  */
-abstract public class TopTerms
+public class TopTerms
 {
   /** Dictionary of the terms */
-  private final BytesRefHash dic;
+  private final BytesRefHash hashSet;
   /** Count of terms */
   private final int size;
-  /** A required vector of scores, used to sort termId */
-  private double[] scores;
-  /** An optional field by termId to display more information */
+  /** An optional field by termId to display (no calculation), ex : count of matching occurrences */
   private long[] lengths;
-  /** A value to display by termId */
+  /** An optional field by termId to display (no calculation), ex : count of matching docs */
   protected long[] weights;
   /** Pointer to iterate the results */
   private int pointer = -1;
@@ -30,11 +31,11 @@ abstract public class TopTerms
   /** Bytes to copy current term */
   private final BytesRef ref = new BytesRef();
 
-  /** Super constructor, needs a dictionary, lengths is an optional field by term */
-  public TopTerms(final BytesRefHash dic)
+  /** Super constructor, needs a dictionary */
+  public TopTerms(final BytesRefHash hashSet)
   {
-    this.dic = dic;
-    this.size = dic.size();
+    this.hashSet = hashSet;
+    this.size = hashSet.size();
   }
   
 
@@ -42,9 +43,9 @@ abstract public class TopTerms
   private class Entry implements Comparable<Entry>
   {
     final int termId;
-    final double score;
+    final float score;
 
-    Entry(final int termId, final double score)
+    Entry(final int termId, final float score)
     {
       this.termId = termId;
       this.score = score;
@@ -60,7 +61,7 @@ abstract public class TopTerms
     public String toString()
     {
       BytesRef ref = new BytesRef();
-      dic.get(termId, ref);
+      hashSet.get(termId, ref);
       return termId + ". " + ref.utf8ToString() + " (" + score + ")";
     }
   }
@@ -68,10 +69,24 @@ abstract public class TopTerms
   /**
    * Sort the terms according to a vector of scores by termId.
    */
-  protected void sort(final double[] scores)
+  public void sort(final float[] scores)
   {
-    this.scores = scores;
-    int length = scores.length;
+    assert scores.length == size;
+    int length = size;
+    Entry[] sorter = new Entry[length];
+    for (int i = 0; i < length; i++) {
+      sorter[i] = new Entry(i, scores[i]);
+    }
+    Arrays.sort(sorter);
+    this.sorter = sorter;
+  }
+  /**
+   * Sort the terms according to a vector of scores by termId.
+   */
+  public void sort(final long[] scores)
+  {
+    assert scores.length == size;
+    int length = size;
     Entry[] sorter = new Entry[length];
     for (int i = 0; i < length; i++) {
       sorter[i] = new Entry(i, scores[i]);
@@ -80,6 +95,21 @@ abstract public class TopTerms
     this.sorter = sorter;
   }
 
+  /**
+   * Sort the terms according to a vector of scores by termId.
+   */
+  public void sort(final int[] scores)
+  {
+    assert scores.length == size;
+    int length = size;
+    Entry[] sorter = new Entry[length];
+    for (int i = 0; i < length; i++) {
+      sorter[i] = new Entry(i, scores[i]);
+    }
+    Arrays.sort(sorter);
+    this.sorter = sorter;
+  }
+  
   /**
    * Reset the internal pointer when iterating on terms.
    */
@@ -106,7 +136,22 @@ abstract public class TopTerms
    */
   public void term(BytesRef ref)
   {
-    dic.get(sorter[pointer].termId, ref);
+    hashSet.get(sorter[pointer].termId, ref);
+  }
+  /**
+   * Get tem as a cha 
+   * @param term
+   * @return
+   */
+  public CharsAtt term(CharsAtt term)
+  {
+    hashSet.get(sorter[pointer].termId, ref);
+    // ensure size of the char array
+    int length = ref.length;
+    char[] chars = term.resizeBuffer(length);
+    final int len = UnicodeUtil.UTF8toUTF16(ref.bytes, ref.offset, length, chars);
+    term.setLength(len);
+    return term;
   }
 
   /**
@@ -116,7 +161,7 @@ abstract public class TopTerms
    */
   public String term()
   {
-    dic.get(sorter[pointer].termId, ref);
+    hashSet.get(sorter[pointer].termId, ref);
     return ref.utf8ToString();
   }
 
@@ -163,19 +208,20 @@ abstract public class TopTerms
    */
   public double score()
   {
-    return scores[sorter[pointer].termId];
+    return sorter[pointer].score;
   }
 
   @Override
   public String toString()
   {
-    StringBuilder string = new StringBuilder();
+    StringBuilder sb = new StringBuilder();
     BytesRef ref = new BytesRef();
-    for (int i = 0, length = sorter.length; i < length; i++) {
+    int max = Math.min(50, sorter.length);
+    for (int i = 0; i < max; i++) {
       int facetId = sorter[i].termId;
-      dic.get(facetId, ref);
-      System.out.println(ref.utf8ToString() + ":" + lengths[i] + " (" + sorter[i].score + ")");
+      hashSet.get(facetId, ref);
+      sb.append(ref.utf8ToString() + ":" + lengths[i] + " (" + sorter[i].score + ")\n");
     }
-    return string.toString();
+    return sb.toString();
   }
 }

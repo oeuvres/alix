@@ -132,7 +132,7 @@ public class Presse
 
     String identifier = jsonO.getJSONArray("source").getString(1);
     if (!identifier.startsWith("http")) identifier = jsonO.getJSONArray("identifier").getString(1);
-    String date = jsonO.getJSONArray("date").getString(0);
+    // String date = jsonO.getJSONArray("date").getString(0);
     // String name = coll + "_" + date; // name
 
     JSONArray pages = jsonO.getJSONArray("contentAsText");

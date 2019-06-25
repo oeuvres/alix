@@ -92,8 +92,6 @@ import alix.lucene.analysis.TokenCompound;
 import alix.lucene.analysis.TokenLem;
 import alix.lucene.analysis.TokenizerFr;
 import alix.lucene.search.Facet;
-import alix.lucene.search.QueryBits;
-import alix.lucene.search.Scorer;
 import alix.lucene.search.TermList;
 import alix.lucene.search.TopTerms;
 import alix.lucene.search.TermFreqs;
@@ -454,13 +452,14 @@ public class Alix
    * 
    * @throws IOException
    */
-  public TopTerms facet(final String facetField, final String textField, final QueryBits filter, final TermList terms,
-      final Scorer scorer) throws IOException
+  public Facet facet(final String facetField, final String textField) throws IOException
   {
     String key = "AlixFacet" + facetField + textField;
     Facet facet = (Facet) cache(key);
-    if (facet == null) facet = new Facet(this, facetField, textField);
-    return facet.new FacetResult(filter, terms, scorer);
+    if (facet != null) return facet;
+    facet = new Facet(this, facetField, textField);
+    cache(key, facet);
+    return facet;
   }
 
   /**
@@ -469,10 +468,22 @@ public class Alix
    */
   public TermFreqs termFreqs(final String field) throws IOException
   {
-    String key = "AlixFreqList" + field;
+    String key = "AlixTermFreqs" + field;
     TermFreqs termFreqs = (TermFreqs) cache(key);
-    if (termFreqs == null) termFreqs = new TermFreqs(this, field);
+    if (termFreqs != null) return termFreqs;
+    termFreqs = new TermFreqs(this, field);
+    cache(key, termFreqs);
     return termFreqs;
+  }
+  
+  /**
+   * Ashortcut to get a dictionary for a field
+   * @throws IOException 
+   */
+  public TopTerms dic(final String field) throws IOException 
+  {
+    TermFreqs termFreqs = termFreqs(field);
+    return termFreqs.dic();
   }
 
   /**
@@ -609,6 +620,7 @@ public class Alix
    * @return
    * @throws IOException
    */
+  @SuppressWarnings("unlikely-arg-type")
   public TermList qTerms(String q, String field) throws IOException
   {
 

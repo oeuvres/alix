@@ -115,10 +115,7 @@ public class CharTrieHash
       return ++wc;
     }
 
-    public int wc()
-    {
-      return wc;
-    }
+
 
     @Override
     public String toString()

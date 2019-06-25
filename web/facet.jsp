@@ -34,7 +34,8 @@ else out.println("<h3>Auteur (chapitres)</h3>");
 QueryBits filter = null;
 if (filterQuery != null) filter = new QueryBits(filterQuery);
 
-TopTerms facetEnum = lucene.facet(facetField, TEXT, filter, terms, null);
+Facet facet = lucene.facet(facetField, TEXT);
+TopTerms facetEnum = facet.topTerms(filter, terms, null);
 while (facetEnum.hasNext()) {
   facetEnum.next();
   long weight = facetEnum.weight();

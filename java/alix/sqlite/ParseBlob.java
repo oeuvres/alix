@@ -124,7 +124,6 @@ public class ParseBlob implements Runnable
   public ParseBlob(final int start, final int end) throws SQLException
   {
     this.start = start;
-    this.end = end;
     PreparedStatement q = texts.prepareStatement("SELECT id, text FROM blob WHERE id >= ? AND id < ?");
     q.setInt(1, start);
     q.setInt(2, end);
