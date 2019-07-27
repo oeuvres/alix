@@ -21,14 +21,14 @@ if (words != null) {
     .add(filterQuery, Occur.FILTER)
     .add(qBuilder.build(), Occur.MUST)
   .build();
-  long time = System.nanoTime();
+  time = System.nanoTime();
   // build a cooccurrence map
-  Cooc cooc = new Cooc(lucene.searcher(), pivotQuery, field, 1, 1);
+  Cooc cooc = new Cooc(alix.searcher(), pivotQuery, field, 1, 1);
   time = (System.nanoTime() - time) / 1000000;
   // out.println("Cooc build in " + time + "ms");
   
   BytesRef term = new BytesRef(); // reusable string
-  DicBytes terms = lucene.dic(field); // dictionary of all term for the field
+  DicBytes terms = alix.dic(field); // dictionary of all term for the field
   CharsAtt chars = new CharsAtt();
 
   out.println("[");

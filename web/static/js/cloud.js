@@ -1,6 +1,13 @@
 var cloudId = "wordcloud2";
 var url = new URL(window.location.href);
-var scorer = url.searchParams.get("scorer");
+
+const PATHNAME = url.pathname;
+const SCORER = "scorer";
+var scorer = url.searchParams.get(SCORER);
+if (scorer) localStorage.setItem(PATHNAME + SCORER, scorer);
+else if (scorer === "") localStorage.removeItem(PATHNAME + SCORER);
+else scorer = "";
+
 // var log = url.searchParams.get("log");
 
 
@@ -16,7 +23,7 @@ fetch("data/freqlist.jsp?scorer="+scorer).then(function(response) {
 });
 */
 var fontMin = 14;
-var fontMax = 120;
+var fontMax = 80;
 function cloud(div, list) {
   WordCloud(div, {
     list: list,

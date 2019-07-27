@@ -24,7 +24,7 @@ class TokenOffsets
   <%
 int docId = getParameter(request, "doc", -1);
 Document document = null;
-IndexReader reader = lucene.reader();
+IndexReader reader = alix.reader();
 while (true) {
   if (docId < 0) break;
   if( docId >= reader.maxDoc()) break; // tdoc do not existsc
@@ -66,7 +66,7 @@ if (document != null) {
   String text = document.get(TEXT);
   // hilie
   if (!"".equals(q)) {
-    TermList terms = lucene.qTerms(q, TEXT);
+    TermList terms = alix.qTerms(q, TEXT);
     ArrayList<BytesRef> bytesList = (ArrayList<BytesRef>)terms.bytesList();
     Terms tVek = reader.getTermVector(docId, TEXT);
     Automaton automaton = DaciukMihovAutomatonBuilder.build(bytesList);

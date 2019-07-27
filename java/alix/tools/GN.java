@@ -268,7 +268,7 @@ public class GN
       Path srcpath = Paths.get(dir.toString(), srcname);
       Path destpath = Paths.get(dir.toString(), destname);
       System.out.println(srcpath + " > " + destpath);
-      GN gn = new GN(srcpath);
+      // GN gn = new GN(srcpath);
       // htmlWriter = new PrintWriter( destName.toString()+".html" );
       // csvWriter = new PrintWriter( destName.toString()+".csv" );
       // gn.parse();

@@ -102,6 +102,8 @@ public class TermList implements Iterable<Term>
     }
     else {
       long freq = dic.length(term.bytes());
+      // unknow term
+      if (freq < 1) return;
       data.add(new Entry(term, ord, row, col, freq));
       ord++;
       notNull++;

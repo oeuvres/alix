@@ -11,6 +11,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesIterator;
@@ -36,7 +37,7 @@ public class Cooc
   /** Number of positions right to pivot */
   private final int right = 5;
   /** Docs of the pivot query */
-  private final BitSet filterBits;
+  private final DocIdSet filterBits;
   /** Number of hits (documents) containing the pivot query */
   private final int hits;
   /** Number of occurrences of the pivot */
@@ -61,8 +62,8 @@ public class Cooc
     
     final CollectorBits collector = new CollectorBits(searcher);
     searcher.search(pivotQuery, collector);
-    this.filterBits = collector.bits();
-    BitSet filter = collector.bits();
+    this.filterBits = collector.docs();
+    DocIdSet filter = collector.docs();
     
     
     this.hits = collector.hits();

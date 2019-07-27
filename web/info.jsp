@@ -4,15 +4,15 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Alix, test</title>
+    <title>Tests [Alix]</title>
     <link href="static/alix.css" rel="stylesheet"/>
   </head>
   <body class="info">
     <%
-IndexReader reader = lucene.reader();
+IndexReader reader = alix.reader();
 
 %>
-    <h1><%=lucene.path %></h1>
+    <h1><%=alix.path %></h1>
     <ul>
       <li>Documents: <%= reader.numDocs() %></li>
       <li><%= request  %></li>

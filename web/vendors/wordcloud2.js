@@ -241,7 +241,6 @@ if (!window.clearImmediate) {
     var fontMax = settings.fontMax;
     settings.weightFactor = function weightFactor(weight) {
       var fontSize = Math.round(fontMin + (fontMax - fontMin) * ( (weight - weightMin) / (weightMax - weightMin)));
-      console.log(weight)
       return fontSize;
     };
 

@@ -88,16 +88,17 @@ public class XMLIndexer implements Runnable
     while (true) {
       File file = next();
       if (file == null) return; // should be the last
-      String fileName = file.getName();
-      fileName = fileName.substring(0, fileName.lastIndexOf('.'));
-      info(fileName + "                        ".substring(Math.min(22, fileName.length())) + file.getParent());
+      String filename = file.getName();
+      filename = filename.substring(0, filename.lastIndexOf('.'));
+      info(filename + "                        ".substring(Math.min(22, filename.length())) + file.getParent());
       byte[] bytes = null;
       try {
         // read file as fast as possible to release disk resource for other threads
         bytes = Files.readAllBytes(file.toPath());
-        handler.setFileName(fileName);
+        handler.setFileName(filename);
         if (transformer != null) {
           StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
+          transformer.setParameter("filename", filename);
           transformer.transform(source, result);
         }
         else {

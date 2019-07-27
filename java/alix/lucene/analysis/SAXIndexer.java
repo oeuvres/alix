@@ -16,6 +16,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
@@ -33,19 +34,41 @@ import alix.lucene.Alix;
  * The element <alix:field> contains a field.
  * <pre>
  * <freename xmlns:alix="http://alix.casa">
- *    <alix:document>
+ *    <alix:document xml:id="docid1">
         <alix:field name="title" type="text">First document</alix:field>
         <alix:field name="year" type="int" value="2019"/>
         <alix:field name="text" type="text">
           Le petit chat est mort.
         </alix:field>
       </alix:document>
-      <alix:document>
+      <alix:document xml:id="docid2">
         <alix:field name="title" type="text">Second document</alix:field>
         <alix:field name="year" type="int" value="2019"/>
         <alix:field name="text" type="xml">
           <p>La <i>petite</i> chatte est morte.</p>
         </alix:field>
+      </alix:document>
+      <alix:book xml:id="bookid1">
+        <alix:field name="title" type="text">Book title</alix:field>
+        <alix:field name="author" type="facet">Surname, Firstname</alix:field>
+        <alix:field name="toc" type="store">
+          1) Chapter 1
+          2) Chapter 2
+        </alix:field>
+        <alix:field name="year" type="int" value="2019"/>
+        <alix:chapter>
+          <!-- Useful metas for an application should be replicated, example facet  -->
+          <alix:field name="author" type="facet">Surname, Firstname</alix:field>
+          <alix:field name="text" type="xml">
+            <p>First chapter text</p>
+          </alix:field>
+        </alix:chapter>
+        <alix:chapter>
+          <alix:field name="author" type="facet">Surname, Firstname</alix:field>
+          <alix:field name="text" type="xml">
+            <p>Second chapter text</p>
+          </alix:field>
+        </alix:chapter>
       </alix:document>
  * </freename>
  * </pre>
@@ -67,6 +90,10 @@ public class SAXIndexer extends DefaultHandler
   private Document document;
   /** Curent book to write */
   private Document book;
+  /** Current bookid */
+  private String bookid;
+  /** Current chapter number */
+  private int chapno;
   /** Current document list to write as a block */
   private ArrayList<Document> chapters = new ArrayList<>();
   /** Flag set when a text field is being recorded */
@@ -154,29 +181,42 @@ public class SAXIndexer extends DefaultHandler
       xml.append(">");
     }
     // open an indexation block of chapters
-    else if (localName.equals("book")) {
+    else if (localName.equals(Alix.BOOK)) {
+      String id = attributes.getValue("http://www.w3.org/XML/1998/namespace", "id");
       if (record)
         throw new SAXException("<alix:book> A pending field is not yet added. A book is forbidden in a field.");
       if (book != null)
-        throw new SAXException("<alix:book> A pending book is not yet added. A book is forbidden in another book.");
+        throw new SAXException("<alix:book> A pending book is not yet added. A book is forbidden in another <alix:book>.");
       if (document != null)
         throw new SAXException("<alix:book> A pending document is not yet added. A book is forbidden in a document, a chapter, or a field.");
+      if (id == null || id.trim().equals(""))
+        throw new SAXException("<alix:book> A book must have an attribute @xml:id=\"bookid\" to be shared with chapters");
+      bookid = id;
       // will record the field as an ending doc
       book = new Document();
-      book.add(new StringField(Alix.BOOK, localName, Store.YES)); // mark the last document of a book series
+      book.add(new StringField(Alix.ID, id, Store.YES));
+      book.add(new StringField(Alix.BOOKID, id, Store.YES));
+      book.add(new SortedDocValuesField(Alix.BOOKID, new BytesRef(bookid))); // keep bookid as a facet
+      book.add(new StringField(Alix.LEVEL, Alix.BOOK, Store.YES));
       book.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
+      chapno = 0;
     }
     // open a chapter as an item in a book series
-    else if (localName.equals("chapter")) {
+    else if (localName.equals(Alix.CHAPTER)) {
       if (record)
         throw new SAXException("<alix:chapter> A pending field is not yet added. A book is forbidden in a field.");
       if (book == null)
         throw new SAXException("<alix:chapter> No book series is opened. A chapter must be in a book.");
       if (document != null)
-        throw new SAXException("<alix:chapter> A pending docuement has not yet been added. A chapter must be in a bookand is forbidden in a document.");
+        throw new SAXException("<alix:chapter> A pending document has not yet been added. A chapter must be in a <alix:book> (forbidden in <alix:document> and <alix:chapter>)");
       // will record the field as an ending doc
       document = new Document();
       document.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
+      document.add(new StringField(Alix.LEVEL, Alix.CHAPTER, Store.YES));
+      document.add(new SortedDocValuesField(Alix.BOOKID, new BytesRef(bookid))); // keep bookid as a facet
+      document.add(new StringField(Alix.BOOKID, bookid, Store.YES));
+      chapno++;
+      document.add(new StringField(Alix.ID, bookid+"_"+chapno, Store.YES));
     }
     // create a new Lucene document
     else if (localName.equals("document")) {
@@ -187,7 +227,12 @@ public class SAXIndexer extends DefaultHandler
       if (document != null)
         throw new SAXException("<alix:document> A pending document has not yet been added. A document is forbidden in a document.");
       document = new Document();
+      // unique id for documents is not required
+      String id = attributes.getValue("http://www.w3.org/XML/1998/namespace", "id");
+      if (id == null || id.trim().equals(""))
+        document.add(new StringField(Alix.ID, id, Store.YES));
       document.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
+      document.add(new StringField(Alix.LEVEL, Alix.ARTICLE, Store.YES));
     }
     // open a field
     else if (localName.equals("field")) {
@@ -196,11 +241,11 @@ public class SAXIndexer extends DefaultHandler
       if (document != null) doc = document; // chapter or document
       else if (book != null) doc = book; // book if not chapter
       else throw new SAXException("<alix:field> No document is opened to write the field in. A field must be nested in one of these:"
-          + " document, book, chapter.");
+          + " <alix:document>, <alix:book>, <alix:chapter>.");
       
       String name = attributes.getValue("name");
       if (name == null) 
-        throw new SAXException("<alix:field> A field must have a name.");
+        throw new SAXException("<alix:field> A field must have an attribute @name=\"fieldName\".");
       if (name.startsWith("alix:"))
         throw new SAXException("<alix:field> @name=\"" + name + "\" is forbidden (\"alix:\" is a reserved prefix)");
       String type = attributes.getValue("type");
@@ -239,6 +284,12 @@ public class SAXIndexer extends DefaultHandler
           doc.add(new NumericDocValuesField(name, val)); // to sort
           break;
         case "facet":
+          if (value == null)
+            throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"facet\"");
+          doc.add(new SortedDocValuesField(name, new BytesRef(value)));
+          doc.add(new StoredField(name, value));
+          break;
+        case "facets":
           if (value == null)
             throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"facet\"");
           doc.add(new SortedSetDocValuesField(name, new BytesRef(value)));
@@ -347,6 +398,12 @@ public class SAXIndexer extends DefaultHandler
           caching.incrementToken();
         }
         catch (IOException e) {
+          try {
+            caching.close();
+          }
+          catch (IOException e1) {
+            throw new SAXException(e);
+          }
           throw new SAXException(e);
         }
         doc.add(new NumericDocValuesField(name, counter.count()));
@@ -380,6 +437,7 @@ public class SAXIndexer extends DefaultHandler
         document = null;
         book = null;
         chapters.clear();
+        chapno = 0;
       }
     }
     else if ("document".equals(localName)) {

@@ -3,12 +3,9 @@
 <%!
 static HashSet<CharsAtt> STOP = new HashSet<CharsAtt>();
 static {
-  /*
-  for (String w : new String[] { "article", "Article", "partie", "section", "annexe", "protocole", "déclaration", "effet", "sein", "art.", "let.", 
-      "Union_européenne", "accords", "accord", "Suisse", "paragraphe", "paragraphes", "UE", "ci-après", "sauf"}) {
+  for (String w : new String[] {"dire", "Et", "etc.", "homme", "Il", "La", "Le", "Les", "M.", "p."}) {
     STOP.add(new CharsAtt(w));
   }
-  */
 }
 %>
 <%
@@ -19,15 +16,15 @@ else if ("tf".equals(sc)) scorer = new ScorerTf();
 else if ("occs".equals(sc)) scorer = new ScorerOccs();
 
 String log = request.getParameter("log");
-if ( log != null && log.isEmpty() ) log = null;
+if (log != null && log.isEmpty()) log = null;
 String frantext = request.getParameter("frantext");
 DecimalFormat fontdf = new DecimalFormat("#");
 String word = request.getParameter("word");
-if ( word != null && word.isEmpty() ) word = null;
+if (word != null && word.isEmpty()) word = null;
 
 // output array
 String field = TEXT;
-TermFreqs freqs = lucene.termFreqs(TEXT);
+TermFreqs freqs = alix.termFreqs(TEXT);
 TopTerms terms = freqs.topTerms(null, scorer);
 out.println("[");
 int lines = 500;
@@ -36,6 +33,9 @@ Tag tag;
 while (terms.hasNext()) {
   terms.next();
   terms.term(term);
+  // filter some unuseful words
+  if (STOP.contains(term)) continue;
+  // term frequency or brut counts will not filter stop words
   if("tf".equals(sc) || "occs".equals(sc))
     if (CharsMaps.isStop(term)) continue;
   LexEntry entry = CharsMaps.word(term);
@@ -47,6 +47,10 @@ while (terms.hasNext()) {
   }
   else {
     tag = new Tag(0);
+  }
+  // 
+  if("tf".equals(sc) || "occs".equals(sc)) {
+    if (tag.isVerb()) continue;
   }
   // if (tag.isPun()) continue;
   // if (tag.isNum()) continue;

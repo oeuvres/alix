@@ -1,6 +1,9 @@
 package alix.lucene.search;
 
+import java.text.CollationKey;
+import java.text.Collator;
 import java.util.Arrays;
+import java.util.Locale;
 
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
@@ -20,12 +23,16 @@ public class TopTerms
   private final BytesRefHash hashSet;
   /** Count of terms */
   private final int size;
-  /** An optional field by termId to display (no calculation), ex : count of matching occurrences */
+  /** An optional field by termId used for sort by score */
+  private float[] scores;
+  /** An optional field by termId, ex : count of matching occurrences */
   private long[] lengths;
-  /** An optional field by termId to display (no calculation), ex : count of matching docs */
+  /** An optional field by termId, ex : count of matching docs */
   protected long[] weights;
-  /** Pointer to iterate the results */
-  private int pointer = -1;
+  /** Current term id to get infos on */
+  private int termId;
+  /** Cursor, to iterate in the sorter */
+  private int cursor = -1;
   /** An array in order of score */
   private Entry[] sorter;
   /** Bytes to copy current term */
@@ -37,24 +44,35 @@ public class TopTerms
     this.hashSet = hashSet;
     this.size = hashSet.size();
   }
-  
 
-  /** An entry associating a termId with a score, used for sorting */
-  private class Entry implements Comparable<Entry>
+  private abstract class Entry implements Comparable<Entry>
   {
     final int termId;
-    final float score;
 
-    Entry(final int termId, final float score)
+    public Entry(final int termId)
     {
       this.termId = termId;
+    }
+
+    @Override
+    abstract public int compareTo(Entry o);
+  }
+
+  /** An entry associating a termId with a score, used for sorting */
+  private class EntryScore extends Entry
+  {
+    final float score;
+
+    EntryScore(final int termId, final float score)
+    {
+      super(termId);
       this.score = score;
     }
 
     @Override
     public int compareTo(Entry o)
     {
-      return Double.compare(o.score, score);
+      return Double.compare(((EntryScore) o).score, score);
     }
 
     @Override
@@ -66,33 +84,77 @@ public class TopTerms
     }
   }
 
+  /** An entry associating a termId with a score, used for sorting */
+  private class EntryString extends Entry
+  {
+    final CollationKey key;
+
+    EntryString(final int termId, final CollationKey key)
+    {
+      super(termId);
+      this.key = key;
+    }
+
+    @Override
+    public int compareTo(Entry o)
+    {
+      return key.compareTo(((EntryString) o).key);
+    }
+
+    @Override
+    public String toString()
+    {
+      BytesRef ref = new BytesRef();
+      hashSet.get(termId, ref);
+      return termId + ". " + ref.utf8ToString();
+    }
+  }
+
+  /**
+   * Sort the terms by value
+   */
+  public void sort()
+  {
+    int length = size;
+    Entry[] sorter = new EntryString[length];
+    Collator collator = Collator.getInstance(Locale.FRANCE);
+    collator.setStrength(Collator.TERTIARY);
+    collator.setDecomposition(Collator.CANONICAL_DECOMPOSITION);
+    for (int i = 0; i < length; i++) {
+      hashSet.get(i, ref);
+      sorter[i] = new EntryString(i, collator.getCollationKey(ref.utf8ToString()));
+    }
+    Arrays.sort(sorter);
+    this.sorter = sorter;
+  }
+
   /**
    * Sort the terms according to a vector of scores by termId.
    */
   public void sort(final float[] scores)
   {
     assert scores.length == size;
+    this.scores = scores;
     int length = size;
     Entry[] sorter = new Entry[length];
     for (int i = 0; i < length; i++) {
-      sorter[i] = new Entry(i, scores[i]);
+      sorter[i] = new EntryScore(i, scores[i]);
     }
     Arrays.sort(sorter);
     this.sorter = sorter;
   }
+
   /**
    * Sort the terms according to a vector of scores by termId.
    */
   public void sort(final long[] scores)
   {
-    assert scores.length == size;
     int length = size;
-    Entry[] sorter = new Entry[length];
+    float[] floats = new float[length];
     for (int i = 0; i < length; i++) {
-      sorter[i] = new Entry(i, scores[i]);
+      floats[i] = scores[i];
     }
-    Arrays.sort(sorter);
-    this.sorter = sorter;
+    sort(floats);
   }
 
   /**
@@ -100,33 +162,51 @@ public class TopTerms
    */
   public void sort(final int[] scores)
   {
-    assert scores.length == size;
     int length = size;
-    Entry[] sorter = new Entry[length];
+    float[] floats = new float[length];
     for (int i = 0; i < length; i++) {
-      sorter[i] = new Entry(i, scores[i]);
+      floats[i] = scores[i];
     }
-    Arrays.sort(sorter);
-    this.sorter = sorter;
+    sort(floats);
+  }
+
+  /**
+   * Test if a term is in the dictionary.
+   * If exists, identifier will be kept to get infos on it.
+   * @param term
+   * @return
+   */
+  public boolean contains(String term)
+  {
+    BytesRef bytes = new BytesRef(term);
+    int termId = hashSet.find(bytes);
+    if (termId < 0) return false;
+    this.termId = termId;
+    return true;
   }
   
   /**
-   * Reset the internal pointer when iterating on terms.
+   * Reset the internal cursor when iterating in the sorter.
    */
   public void reset()
   {
-    pointer = -1;
+    cursor = -1;
   }
 
+  /**
+   * Test if there is one term more in
+   * @return
+   */
   public boolean hasNext()
   {
-    return (pointer < size - 1);
+    return (cursor < size - 1);
   }
 
   public void next()
   {
-    // if too far, let's array cry ?
-    pointer++;
+    // if too far, let's array cry
+    cursor++;
+    termId = sorter[cursor].termId;
   }
 
   /**
@@ -134,18 +214,20 @@ public class TopTerms
    * 
    * @param ref
    */
-  public void term(BytesRef ref)
+  public void term(BytesRef bytes)
   {
-    hashSet.get(sorter[pointer].termId, ref);
+    hashSet.get(termId, bytes);
   }
+
   /**
-   * Get tem as a cha 
+   * Get current term, with reusable chars.
+   * 
    * @param term
    * @return
    */
   public CharsAtt term(CharsAtt term)
   {
-    hashSet.get(sorter[pointer].termId, ref);
+    hashSet.get(termId, ref);
     // ensure size of the char array
     int length = ref.length;
     char[] chars = term.resizeBuffer(length);
@@ -155,60 +237,78 @@ public class TopTerms
   }
 
   /**
-   * Get the current facet term as String
+   * Get the current term as String.
    * 
    * @return
    */
   public String term()
   {
-    hashSet.get(sorter[pointer].termId, ref);
+    hashSet.get(termId, ref);
     return ref.utf8ToString();
   }
 
   /**
-   * Set an optional array of values (in termId order) to show on iterations.
+   * Set an optional array of values (in termId order).
+   * 
    * @param weights
    */
   public void setWeights(final long[] weights)
   {
     this.weights = weights;
   }
+
   /**
-   * Get the weight of the current facet
+   * Set an optional array of values (in termId order).
    * 
+   * @param weights
+   */
+  public void setWeights(final int[] ints)
+  {
+    int length = ints.length;
+    long[] weights = new long[length];
+    for (int i = 0; i < length; i++)
+      weights[i] = ints[i];
+    this.weights = weights;
+  }
+
+  /**
+   * Get the weight of the current term.
    * @return
    */
   public long weight()
   {
-    return weights[sorter[pointer].termId];
+    return weights[termId];
   }
 
   /**
-   * Set an optional array of values (in termId order) to show on iterations.
+   * Set an optional array of values (in termId order).
+   * 
    * @param weights
    */
   public void setLengths(final long[] lengths)
   {
     this.lengths = lengths;
   }
+
   /**
-   * Current facet, the length (total count of occurences).
+   * Current term, the length.
+   * Semantic can vary (ustotal count of occurences).
    * 
    * @return
    */
   public long length()
   {
-    return lengths[sorter[pointer].termId];
+    return lengths[termId];
   }
 
   /**
-   * Get the current score
+   * Get the current score, usually the value used to sort the dictionary.
    * 
    * @return
    */
   public double score()
   {
-    return sorter[pointer].score;
+    return scores[termId];
   }
 
   @Override
@@ -220,7 +320,10 @@ public class TopTerms
     for (int i = 0; i < max; i++) {
       int facetId = sorter[i].termId;
       hashSet.get(facetId, ref);
-      sb.append(ref.utf8ToString() + ":" + lengths[i] + " (" + sorter[i].score + ")\n");
+      sb.append(ref.utf8ToString());
+      if (lengths != null) sb.append(":" + lengths[i]);
+      if (scores != null) sb.append(" (" + scores[i] + ")");
+      sb.append("\n");
     }
     return sb.toString();
   }

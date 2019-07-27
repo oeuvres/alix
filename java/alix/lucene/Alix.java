@@ -44,6 +44,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -75,7 +76,12 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
@@ -106,10 +112,20 @@ public class Alix
 {
   /** Mandatory field, XML file name, used for update */
   public static final String FILENAME = "alix:filename";
-  /** Mandatory field, to query the last document of a book series */
-  public static final String BOOK = "alix:book";
-  /** A global cache for objects */
-  private final ConcurrentHashMap<String, SoftReference<Object>> cache = new ConcurrentHashMap<>();
+  /** Mandatory field, define the level of a leaf (book/chapter, article) https://lucene.apache.org/core/8_1_1/join/org/apache/lucene/search/join/package-summary.html */
+  public static final String LEVEL = "alix:level";
+  /** Book containing chaèpters, in a nested documents indexation */
+  public static final String BOOK = "book";
+  /** Chapter in a book, in a nested documents indexation */
+  public static final String CHAPTER = "chapter";
+  /** Independant article */
+  public static final String ARTICLE = "article";
+  /** Unique id for a book parent document */
+  public static final String BOOKID = "alix:bookid";
+  /** Unique id provide by user for all documents */
+  public static final String ID = "alix:id";
+  /** Max books */
+  private static final int MAXBOOKS = 10000;
   /** Current filename proceded */
   public static final FieldType ftypeAll = new FieldType();
   static {
@@ -130,14 +146,18 @@ public class Alix
   public static final HashMap<Path, Alix> pool = new HashMap<Path, Alix>();
   /** Normalized path */
   public final Path path;
+  /** Shared Similarity for indexation and searching */
+  public final Similarity similarity;
+  /** A locale used for sorting terms */
+  public final Locale locale;
+  /** A global cache for objects */
+  private final ConcurrentHashMap<String, SoftReference<Object>> cache = new ConcurrentHashMap<>();
   /** The lucene directory, kept private, to avoid closing by a thread */
   private Directory dir;
   /** The IndexReader if requested */
   private IndexReader reader;
-  /** The infos on field if reader is requested */
+  /** The infos on field */
   private FieldInfos fieldInfos;
-  /** Shared Similarity for indexation and searching */
-  public final Similarity similarity;
   /** The IndexSearcher if requested */
   private IndexSearcher searcher;
   /** The IndexWriter if requested */
@@ -151,6 +171,8 @@ public class Alix
    */
   private Alix(final Path path) throws IOException
   {
+    // this default locale will work for English
+    this.locale = Locale.FRANCE;
     this.path = path;
     Files.createDirectories(path);
     this.similarity = new BM25Similarity(); // default similarity
@@ -305,6 +327,12 @@ public class Alix
     return null;
   }
 
+  public FieldInfo info(String field) throws IOException
+  {
+    reader(); // ensure reader or decache
+    return fieldInfos.fieldInfo(field);
+  }
+  
   /**
    * Returns an array in docid order with the value of an intPoint field (year).
    * 
@@ -556,6 +584,29 @@ public class Alix
     return docLength;
   }
 
+  /**
+   * Get docid parent documents (books) of nested documents (chapters), with a sorted by a field.
+   * The sort type is needed (not known from reader info).
+   * @throws IOException 
+   */
+  public int[] books(Sort sort) throws IOException
+  {
+    IndexSearcher searcher = searcher(); // ensure reader or decache
+    String key = "AlixBooks" + sort;
+    int[] books = (int[]) cache(key);
+    if (books != null) return books;
+    Query qBook = new TermQuery(new Term(Alix.LEVEL, Alix.BOOK));
+    TopFieldDocs top = searcher.search(qBook, MAXBOOKS, sort);
+    int length = top.scoreDocs.length;
+    ScoreDoc[] docs = top.scoreDocs;
+    books = new int[length];
+    for (int i=0; i < length; i++) {
+      books[i] = docs[i].doc;
+    }
+    cache(key, books);
+    return books;
+  }
+  
   /**
    * An analyzer used for query parsing
    */

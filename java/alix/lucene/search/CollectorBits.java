@@ -11,14 +11,13 @@ import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.util.DocIdSetBuilder;
 
 /**
- * Collect found docs as a bitSet. Maybe useful in some cases, 
- * ex: a hard cache for a session.
- * QueryBits is more flexible, 
- * it relies on the lucene LRU cache.
+ * Collect found docs as a bitSet. 
+ * Caching should be done by user.
+ * QueryBits could be interesting alternative (relies on the lucene LRU cache)
  * @author fred
  *
  */
-public class CollectorBits  extends SimpleCollector implements Collector
+public class CollectorBits extends SimpleCollector implements Collector
 {
   /** A lucene bitSet builder for the results */
   private DocIdSetBuilder docsBuilder;

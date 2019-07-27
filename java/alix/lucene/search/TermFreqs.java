@@ -52,7 +52,7 @@ public class TermFreqs
     // loop on the index leaves
     for (LeafReaderContext context : reader.leaves()) {
       LeafReader leaf = context.reader();
-      int docBase = context.docBase;
+      // int docBase = context.docBase;
       Terms terms = leaf.terms(field);
       if (terms == null) continue;
       TermsEnum tenum = terms.iterator();
@@ -78,7 +78,7 @@ public class TermFreqs
   }
   
   /**
-   * Return the global dictionary of termes for this field in order 
+   * Return the global dictionary of terms for this field in order 
    * of most frequent first.
    * @return
    */
@@ -96,6 +96,7 @@ public class TermFreqs
   {
     final BytesRef bytes = new BytesRef(s);
     final int id = hashSet.find(bytes);
+    if (id < 0) return -1;
     return termLength[id];
   }
 
@@ -107,6 +108,7 @@ public class TermFreqs
   public long length(final BytesRef bytes)
   {
     final int id = hashSet.find(bytes);
+    if (id < 0) return -1;
     return termLength[id];
   }
   /**

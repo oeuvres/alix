@@ -89,24 +89,24 @@ public class Facet
   private final long[] docLength;
 
   /**
-   * Build data to have frequences on a facet field.
+   * Build data to have frequencies on a facet field.
    * Prefers access by an Alix instance, to allow cache on an IndexReader state.
    * 
-   * @param index
+   * @param alix
    * @param facet
    * @param text
    * @throws IOException
    */
-  public Facet(final Alix index, final String facet, final String text) throws IOException
+  public Facet(final Alix alix, final String facet, final String text) throws IOException
   {
     this.facet = facet;
     this.text = text;
-    this.reader = index.reader();
+    this.reader = alix.reader();
     docFacets = new int[reader.maxDoc()][];
     int docsAll = 0;
     long occsAll = 0;
     long[] facetLength = new long[32];
-    long[] docLength = index.docLength(text); // length of each doc for the text field
+    long[] docLength = alix.docLength(text); // length of each doc for the text field
     this.docLength = docLength;
     // populate global data
     for (LeafReaderContext ctx : reader.leaves()) { // loop on the reader leaves
@@ -172,13 +172,29 @@ public class Facet
     this.facetLength = facetLength;
   }
 
+  /**
+   * Returns list of all facets in orthographic order
+   * @return
+   * @throws IOException
+   */
+  public TopTerms topTerms() throws IOException {
+    TopTerms dic = new TopTerms(hashSet);
+    dic.sort(); // orthographc sort
+    dic.setWeights(facetDocs);
+    dic.setLengths(facetLength);
+    return dic;
+  }
 
+  /**
+   * Returns a dictionary of the terms of a facet, with scores and other stats.   * @return
+   * @throws IOException
+   */
   public TopTerms topTerms(final QueryBits filter, final TermList terms, Scorer scorer) throws IOException
   {
     TopTerms dic = new TopTerms(hashSet);
     float[] scores = new float[size];
     long[] weights = new long[size];
-    // a term query
+    // A term query, get matched occurrences and calculate score
     if (terms != null && terms.sizeNotNull() != 0) {
       if (scorer == null) scorer = new ScorerBM25(); // default scorer is BM25 (for now)
       // loop on each term of the query to update the score vector
@@ -224,7 +240,7 @@ public class Facet
         }
       }
     }
-    // update score with global occurrences for the filterd docs
+    // Filter of docs, 
     else if (filter != null) {
       // loop on the reader leaves
       for (LeafReaderContext ctx : reader.leaves()) { // loop on the reader leaves
@@ -254,7 +270,9 @@ public class Facet
     // no filter, no query, order facets by occ length
     else {
       for (int facetId = 0; facetId < size; facetId++) {
+        // array conversion from long to float
         scores[facetId] = facetLength[facetId];
+        // array conversion from int to long
         weights[facetId] = facetDocs[facetId];
       }
     }

@@ -49,7 +49,7 @@ for (int i = 0, length = value.length; i < length; i++) {
     
     <%
 // renew seracher for this experiment on similarity
-IndexSearcher searcher = lucene.searcher(true);
+IndexSearcher searcher = alix.searcher(true);
 Similarity similarity = null;
 if ("dfi_chi2".equals(sort)) similarity = new DFISimilarity(new IndependenceChiSquared());
 else if ("dfi_std".equals(sort)) similarity = new DFISimilarity(new IndependenceStandardized());

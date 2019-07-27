@@ -26,6 +26,7 @@ java.util.List,
 java.util.Locale,
 java.util.Set,
 java.util.Scanner,
+java.util.stream.Collectors,
 
 org.apache.lucene.analysis.Analyzer,
 org.apache.lucene.analysis.Tokenizer,
@@ -93,6 +94,7 @@ alix.lucene.analysis.TokenCooc,
 alix.lucene.analysis.TokenCooc.AnalyzerCooc,
 alix.lucene.analysis.TokenLem,
 alix.lucene.analysis.TokenizerFr,
+alix.lucene.search.Corpus,
 alix.lucene.search.CollectorBits,
 alix.lucene.search.Facet,
 alix.lucene.search.HiliteFormatter,
@@ -180,14 +182,20 @@ public static int getParameter(HttpServletRequest request, String name, int valu
   return value;
 }
 
+public static String getParameter(HttpServletRequest request, String name, String value) {
+  String s = request.getParameter(name);
+  if (s == null || s.trim().length() == 0 || "null".equals(s)) return value;
+  return s;
+}
+
 %><%
 long time = System.nanoTime();
 
-Alix lucene = Alix.instance(application.getRealPath("") + "/WEB-INF/lucene/");
+Alix alix = Alix.instance(application.getRealPath("") + "/WEB-INF/lucene/");
 int start = getParameter(request, "start", -1);
 int end = getParameter(request, "end", -1);
-
-long job = System.nanoTime();
+String author = getParameter(request, "author", "");
+String title = getParameter(request, "title", "");
 Query filterQuery = null;
 if (start > 0 && end > 0 && start <= end) filterQuery = IntPoint.newRangeQuery(YEAR, start, end);
 // else filterQuery = new MatchAllDocsQuery(); // ensure to get bits without deleted docs

@@ -1,62 +1,37 @@
 package alix.lucene.search;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Random;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StoredField;
-import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.similarities.BM25Similarity;
-import org.apache.lucene.search.spans.SpanMultiTermQueryWrapper;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
-import org.apache.lucene.search.spans.SpanWeight;
-import org.apache.lucene.search.spans.SpanWeight.Postings;
-import org.apache.lucene.search.spans.Spans;
-import org.apache.lucene.search.spans.TermSpans;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
 
 import alix.lucene.Alix;
-import alix.lucene.AnalyzerAlix;
+import alix.lucene.analysis.AnalyzerAlix;
 
 /**
  * 
  * @author fred
  *
  */
+@SuppressWarnings("deprecation")
 public class Conc
 {
     static String spaces;
@@ -80,7 +55,7 @@ public class Conc
         indexWriter.addDocument(doc);
         indexWriter.addDocument(doc);
         IndexReader ir=DirectoryReader.open(indexWriter);
-        IndexSearcher is = new IndexSearcher(ir);
+        // IndexSearcher is = new IndexSearcher(ir);
         doc = ir.document(1);
         Terms vector = ir.getTermVector(0, name);
         System.out.println(vector.getStats());

@@ -1,4 +1,5 @@
 @charset "UTF-8";
+
 /**
  * Global
  */
@@ -8,14 +9,43 @@ html, body {
   padding: 0;
 }
 
-body {
+* {
+  box-sizing: border-box;
+}
+
+body, select {
   font-family: "Open Sans", sans-serif;
+}
+
+a {
+  background-color: transparent;
+  text-decoration: none;
+  color: #339;
+}
+
+a:hover {
+  color: #000;
+  text-decoration: underline #339;
+}
+
+body {
   background-color: #faf9f6;
   /* #f3f2ec; */
 }
 
-* {
-  box-sizing: border-box;
+[type="checkbox"] {
+  margin: 0;
+  padding: 0;
+}
+
+input.year {
+  width: 10ex;
+  height: 1rem;
+}
+
+select {
+  line-height: 100%;
+  font-size: 16px;
 }
 
 sub, sup {
@@ -33,17 +63,6 @@ sub {
   bottom: -0.25em;
 }
 
-a {
-  background-color: transparent;
-  text-decoration: none;
-  color: #339;
-}
-
-
-a:hover {
-  color: #000;
-  text-decoration: underline #339;
-}
 /**
  * Welcome desk
  */
@@ -66,12 +85,14 @@ iframe {
   width: 100%;
   height: 100%;
 }
+
 #header {
   position: relative;
   background-image: url("img/workin_50.png");
   background-repeat: no-repeat;
   background-position: top 2px left 200px;
 }
+
 #alert {
   font-weight: bold;
   color: red;
@@ -80,6 +101,7 @@ iframe {
   font-variant: small-caps;
   line-height: 95%;
 }
+
 #header form {
   text-align: center;
   margin-bottom: 0;
@@ -93,6 +115,7 @@ iframe {
   bottom: 0;
   margin-right: 2rem;
 }
+
 #tabs a {
   background-color: #FFF;
   border-radius: 0.3ex;
@@ -106,11 +129,13 @@ iframe {
   -moz-border-radius: 0.3ex;
   */
 }
+
 #panChange {
   background-color: #FFF;
   margin-left: 2em;
   color: #339;
 }
+
 /** The split gutters */
 .gutter {
   border-color: #ccccd5;
@@ -209,6 +234,19 @@ iframe {
 
 .gutter.but.vertical.last.closed:after {
   content: '▲';
+  10
+}
+
+/**
+ * Bibliography of the corpus
+ */
+body.corpus {
+  padding: 1em;
+}
+
+body.corpus label {
+  display: inline-block;
+  width: 4rem;
 }
 
 /**
@@ -217,6 +255,7 @@ iframe {
 body.facet {
   padding: 1em 0.5ex 1em 1ex;
 }
+
 .facets div {
   display: block;
   white-space: nowrap;
@@ -225,9 +264,9 @@ body.facet {
 /**
  * Docuement view
  */
- body.document {
-   background: #FFFFFF;
- }
+body.document {
+  background: #FFFFFF;
+}
 
 /**
  * Search results
@@ -265,16 +304,18 @@ article.hit .title {
 .bibl .analytic:before {
   content: " « "
 }
+
 .bibl .analytic:after {
   content: " »"
 }
+
 .bibl .year:before {
   content: "("
 }
+
 .bibl .year:after {
   content: ")"
 }
-
 
 article.hit p.frags {
   line-height: 130%;
@@ -289,6 +330,7 @@ article.hit mark {
   font-weight: bold;
   color: rgba(0, 0, 80, 1);
 }
+
 /**
  * Word cloud
  */

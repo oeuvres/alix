@@ -3,12 +3,12 @@
 <%!
 /** A record used to sort docid by date */
 /** 0.1ms no real need to cache */
-public String ticks(PageContext pageContext, Alix lucene) throws IOException  {
+public String ticks(PageContext pageContext, Alix alix) throws IOException  {
   
   ServletContext application = pageContext.getServletContext();
   
-  int min = lucene.min(YEAR);
-  int max = lucene.max(YEAR);
+  int min = alix.min(YEAR);
+  int max = alix.max(YEAR);
   StringBuilder sb = new StringBuilder();
 
   int span = max - min;
@@ -18,10 +18,10 @@ public String ticks(PageContext pageContext, Alix lucene) throws IOException  {
   else if (span > 75) yearStep = 2;
   else yearStep = 1;
   
-  long total = lucene.reader().getSumTotalTermFreq(TEXT);
+  long total = alix.reader().getSumTotalTermFreq(TEXT);
   long labelWidth = (long)Math.ceil((float) total / 30); // width of a label in tokens
   
-  long[] docLength = lucene.docLength(TEXT);
+  long[] docLength = alix.docLength(TEXT);
   
 
   
@@ -31,7 +31,7 @@ public String ticks(PageContext pageContext, Alix lucene) throws IOException  {
   // int label = min;
   sb.append("    {\"v\": 0, \"label\": " + min + "}");
   // get Axis data, but resort it in cumulate order
-  Tick[] axis = lucene.axis(TEXT, YEAR);
+  Tick[] axis = alix.axis(TEXT, YEAR);
   
   Arrays.sort(axis, new Comparator<Tick>() {
     @Override
@@ -86,7 +86,7 @@ int dots = getParameter(request, "dots", 200);
 
 // build queries
 time = System.nanoTime();
-IndexReader reader = lucene.reader();
+IndexReader reader = alix.reader();
 
 long total = reader.getSumTotalTermFreq(TEXT);
 
@@ -98,10 +98,10 @@ int maxDoc = reader.maxDoc();
 out.println("{");
 // display ticks
 long partial = System.nanoTime();
-String ticks = (String)lucene.cache("ticks-year");
+String ticks = (String)alix.cache("ticks-year");
 if (ticks == null) {
-  ticks = ticks(pageContext, lucene);
-  lucene.cache("ticks-year", ticks);
+  ticks = ticks(pageContext, alix);
+  alix.cache("ticks-year", ticks);
 }
 out.print( "  \"ticks\": "+ticks+",\n");
 out.println("  \"time\" : \"" + (System.nanoTime() - partial) / 1000000.0 + "ms\",");
@@ -112,7 +112,7 @@ out.println("  \"time\" : \"" + (System.nanoTime() - partial) / 1000000.0 + "ms\
 String q = request.getParameter("q");
 if (q == null) q = "";
 else q = q.trim();
-TermList terms = lucene.qTerms(q, TEXT);
+TermList terms = alix.qTerms(q, TEXT);
 if (terms.size() > 0) {
   terms.sortByRowFreq();
   out.print("  \"labels\": [\"\"");
@@ -138,10 +138,10 @@ if (terms.size() > 0) {
   // width of a step between two dots, 
   long step = (total) / dots;
   // axis index
-  Tick[] axis = (Tick[])lucene.cache("axis-year");
+  Tick[] axis = (Tick[])alix.cache("axis-year");
   if (axis == null) {
-    axis = lucene.axis(TEXT, YEAR);
-    lucene.cache("axis-year", axis);
+    axis = alix.axis(TEXT, YEAR);
+    alix.cache("axis-year", axis);
   }
   // loop on contexts, because open a context is heavy, do not open too much
   for (LeafReaderContext ctx : reader.leaves()) {
