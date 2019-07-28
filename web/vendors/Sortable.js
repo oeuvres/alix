@@ -57,7 +57,8 @@ var Sortable = {
   /**
    * call on the load document event, loop on table to put sort arrows
    */
-  load: function() {
+  load: function()
+  {
     // Find all tables with class sortable and make them sortable
     if (!document.getElementsByTagName) return;
     tables = document.getElementsByTagName("table");
@@ -69,7 +70,8 @@ var Sortable = {
     }
     Sortable.css();
   },
-  css: function() {
+  css: function()
+  {
     if (!document) return;
     var css = document.createElementNS("http://www.w3.org/1999/xhtml", "style");
     css.type = "text/css";
@@ -84,7 +86,10 @@ tr.odd {background: -moz-linear-gradient(left, #EEE, #FFF 30%, #F5F3EB); backgro
 tr.odd td {border-bottom: 1px solid #EEF; border-top: 1px solid #EEF } \
 table.sortable th {text-align: center; vertical-align: middle; text-align: left; padding: 5px 1ex 5px 1ex; background-color: #FFFFFF; border-top: 2px solid #CCCCCC; border-bottom: 1px solid #666; box-shadow: 0 4px 2px -2px #99C; } \
 table.sortable thead th {border-left: #BBD 1px solid; } \
-table.sortable th.head, table.sortable td.head {vertical-align: bottom; } \
+table.sortable .sorting {cursor: pointer; padding-left: 1.2em; background:url(data:image/gif;base64,R0lGODlhCwALAJEAAAAAAP///xUVFf///yH5BAEAAAMALAAAAAALAAsAAAIUnC2nKLnT4or00PvyrQwrPzUZshQAOw==) no-repeat center left;} \
+table.sortable .sorting:hover {background-color: #FFFFFF;} \
+table.sortable .sorting.asc {background:url(data:image/gif;base64,R0lGODlhCwALAJEAAAAAAP///xUVFf///yH5BAEAAAMALAAAAAALAAsAAAIRnC2nKLnT4or00Puy3rx7VQAAOw==) no-repeat center left;} \
+table.sortable .sorting.desc {background:url(data:image/gif;base64,R0lGODlhCwALAJEAAAAAAP///xUVFf///yH5BAEAAAMALAAAAAALAAsAAAIPnI+py+0/hJzz0IruwjsVADs=) no-repeat center left;} \
 tr.even th, tr.odd th {text-align: right; } \
 table.sortable tr.mod5 td {border-bottom: solid 1px rgba(171, 170, 164, 0.8); } \
 table.sortable tr.mod10 td {border-bottom: solid 2px rgba(171, 170, 164, 0.5); box-shadow: 0 4px 2px -2px rgba(171, 170, 164, 0.8); } \
@@ -102,9 +107,157 @@ th.num, table.sortable th.num {text-align: right; font-weight: 100; font-size: 8
     head.insertBefore(css, head.firstChild);
   },
   /**
+   * Sort a prepared table. For string values, the trick is to modify the String.toString() method
+   * so that we can give what we want for table row <tr>, especially a prepared sort key
+   * for the requested row.
+   */
+  sort: function(table, col, desc)
+  {
+    var tbody = table.tBodies[0],
+    arr = Array.prototype.slice.call(tbody.rows, 0),
+    ret = (desc)?-1:1;
+    arr.sort(function(rowA, rowB) {
+      a = rowA.keys[col];
+      b = rowB.keys[col];
+      if (a > b) return ret;
+      else if (a == b) return 0;
+      else return -ret;
+    });
+    for(var i = 0, len = arr.length; i < len; i++) {
+      tbody.appendChild(arr[i]);
+    }
+    // zebra the table after sort
+    Sortable.zebra(table);
+  },
+
+  /**
+   * Hide lines not equal to a value.
+   */
+  filter: function(table, col, filter)
+  {
+    tbody = table.tBodies[0];
+    filter = Sortable.key(filter);
+    for (i = tbody.rows.length-1; i >=0; i--) {
+      row = tbody.rows[i];
+      if (!filter) {
+        row.style.display = "";
+        continue;
+      }
+      value = row.keys[col];
+      if (value == filter) row.style.display = "table-row";
+      else if (!row.style.display) row.style.display = "none";
+    }
+  },
+  /**
+   * normalize table, add events to top cells, take a copy of the table as an array of string
+   */
+  create: function(table)
+  {
+    // already done
+    if (table.sortable) return false;
+    // not enough rows, go away
+    if (table.rows.length < 2) return false;
+    // if no tHead, create it with first row
+    if (!table.tHead) {
+      table.createTHead().appendChild(table.rows[0]);
+    }
+    firstRow = table.tHead.rows[0];
+    // We have a first row: assume it's the header, and make its contents clickable links
+    var i = firstRow.cells.length;
+    while (--i >= 0) (function (i) { // hack to localize i
+      cell = firstRow.cells[i];
+      var text = cell.innerHTML.replace(/<.+>/g, '');
+      if (cell.className.indexOf("unsort") != -1 || cell.className.indexOf("nosort") != -1 || Sortable.trim(text) == '') return;
+      cell.className = cell.className+' sorting';
+      cell.addEventListener('click', function () {
+        Sortable.sort(table, i, cell.desc);
+        if (cell.desc) cell.className = cell.className.replace(/ asc/, "") + " desc";
+        else cell.className = cell.className.replace(/ desc/, "") + " asc";
+        cell.desc = !cell.desc;
+      });
+    }(i));
+    if (!table.tBodies) {
+      tbody = table.createTBody();
+      for (var i = 1, len = table.rows.length; i < len; i++) tbody.appendChild(table.rows[i]);
+    }
+    else tbody = table.tBodies[0];
+    // for each line, prepare a key to use for sorting
+    for (var i = 0, len = tbody.rows.length; i < len; i++) {
+      var row = tbody.rows[i];
+      Sortable.paint(row, i+1);
+      row.keys = [];
+      // prepare the key
+      for (var j = 0, len2 = row.cells.length; j < len2 ; j++) {
+        row.keys[j] = Sortable.key(row.cells[j]);
+      }
+    }
+    // do it one time
+    table.sortable=true;
+    return true;
+  },
+  /**
+   * build sortable key from element content
+   */
+  key: function(text)
+  {
+    if (!text) return "";
+    if (typeof text == 'string');
+    else if (text.hasAttribute("sort")) text=text.getAttribute("sort");
+    else if (text.hasAttribute("data-sort")) text=text.getAttribute("data-sort");
+    else if (text.textContent) text=text.textContent;
+    else text = text.innerHTML.replace(/<.+>/g, '');
+    // innerText could be very slow (infers CSS visibility)
+    text=Sortable.trim(text);
+    // num
+    n=parseFloat(text.replace(/,/g, '.').replace(/[  x×/]/g, ''));
+    // text
+    if (isNaN(n)) {
+      text=text.toLowerCase().replace(/’/, "'").replace(/^(d'|de |le |les |la |l')/, '').replace(/œ/g, 'oe').replace(/æ/g, 'ae').replace(/ç/g, 'c').replace(/ñ/g, 'n').replace(/[éèêë]/g, 'e').replace(/[áàâä]/g, 'a').replace(/[íìîï]/g, 'i').replace(/úùûü/, 'u').replace(/\W/g, '') ;
+      // +"__________" still usefull ?
+      return text;
+    }
+    else {
+      return n;
+    }
+  },
+  /**
+   * add alternate even odd classes on table rows
+   */
+  zebra: function (table)
+  {
+    for (var i = 0; i < table.tBodies.length; i++) {
+      for (j=table.tBodies[i].rows.length -1; j >= 0; j--) this.paint(table.tBodies[i].rows[j], j);
+    }
+  },
+  /**
+   * Paint a row according to its index
+   */
+  paint: function(row, i) {
+    row.className=" "+row.className+" ";
+    row.className=row.className.replace(/ *(odd|even|mod5|mod10) */g, ' ');
+    if ((i % 2) == 1) row.className+=" even";
+    if ((i % 2) == 0) row.className+=" odd";
+    if ((i % 5) == 3) row.className+=" mod3";
+    if ((i % 5) == 0) row.className+=" mod5";
+    if ((i % 10) == 0) row.className+=" mod10";
+    // row.className=row.className.replace(/^\s\s*|\s(?=\s)|\s\s*$/g, ""); // normalize-space, will bug a bit on \n\t
+  },
+  /**
+   * A clever and fast trim, http://flesler.blogspot.com/2008/11/fast-trim-function-for-javascript.html
+   */
+  trim : function (s)
+  {
+    var start = -1,
+    end = s.length;
+    while(s.charCodeAt(--end) < 33);
+    while(s.charCodeAt(++start) < 33);
+    return s.slice(start, end + 1);
+  },
+  /**
    * A light csv parser (not clever enough for "tab \t in cell"\t"cell tab separated"
    */
-  csv2table: function(srcid, dstid) {
+  csv2table: function(srcid, dstid)
+  {
     if (srcid.contentWindow && srcid.contentWindow.document) {
       var txt = srcid.contentWindow.document.body.childNodes[0].innerHTML;
     }
@@ -128,154 +281,7 @@ th.num, table.sortable th.num {text-align: right; font-weight: 100; font-size: 8
     }
     html[lines.length + 1] = "</table>";
     dst.innerHTML= html.join("\n");
-  },
-  /**
-   * Sort a prepared table. For string values, the trick is to modify the String.toString() method
-   * so that we can give what we want for table row <tr>, especially a prepared sort key
-   * for the requested row.
-   */
-  sort: function(table, key, reverse) {
-    // waited object not found, go out
-    if (!table.lines) return;
-    // get the first non empty value of the column
-    /*
-    var i=0;
-    var max = table.lines.length;
-    while (!table.lines[i][key] && i < max) i++;
-    */
-    // seems numerical key, do something ?
-    // if (table.lines[i][key] === 0+table.lines[i][key])
-    // table.reverse() does not seem to accept a sort function
-    if (reverse) table.lines.sort(function(a, b) {
-      if (a[key] > b[key]) return -1;
-      else if (a[key] == b[key]) return 0;
-      else return 1;
-    });
-    else table.lines.sort(function(a, b) {
-      if (a[key] > b[key]) return 1;
-      else if (a[key] == b[key]) return 0;
-      else return -1;
-    });
-    /*
-    // This hack was a quite efficient sort
-    // save native String.toString()
-    var save = String.prototype.toString;
-    // localeCompare() is to slow, our ADCII key approach is better
-    // set the method
-    String.prototype.toString = function () {return this[key];};
-    // do the sort
-    if (reverse) table.lines.reverse();
-    else table.lines.sort();
-    // restore native String.toString()
-    String.prototype.toString = save;
-    */
-    // affect the sorted <tr> to the table as a innerHTML
-    // var tbody = table.getElementsByTagName('tbody')[0];
-    table.tBodies[0].innerHTML= table.lines.join("\n");
-    // zebra the table after sort
-    Sortable.zebra(table);
-  },
-  /**
-   * normalize table, add events to top cells, take a copy of the table as an array of string
-   */
-  create: function(table) {
-    // already done
-    if (table.sortable) return false;
-    // not enough rows, go away
-    if (table.rows.length < 2) return false;
-    // if no tHead, create it with first row
-    if (!table.tHead) {
-      table.createTHead().appendChild(table.rows[0]);
-    }
-    firstRow = table.tHead.rows[0];
-    // We have a first row: assume it's the header, and make its contents clickable links
-    var cell;
-    for (var i=0; i < firstRow.cells.length; i++) {
-      cell = firstRow.cells[i];
-      var text = cell.innerHTML.replace(/<.+>/g, '');
-      if (cell.className.indexOf("unsort") != -1 || cell.className.indexOf("nosort") != -1 || Sortable.trim(text) == '') continue;
-      cell.className = cell.className+' head';
-      cell.table=table;
-      cell.innerHTML = '<b class="sortheader" onclick="Sortable.sort(this.parentNode.table, \'key'+i+'\', this.reverse); this.reverse=!this.reverse ; return false;">↓'+text+'↑</b>'; //
-    }
-    if (!table.tBodies) {
-      tbody = table.createTBody();
-      var length = table.rows.length;
-      for (i=1; i < len; i++) tbody.appendChild(table.rows[i]);
-    }
-    else tbody = table.tBodies[0];
-
-    // to paint fast the sorted table, keep rows as an array of strings
-    var row, s;
-    table.lines=new Array();
-    for (i = tbody.rows.length-1; i >=0; i--) {
-      row = tbody.rows[i];
-      Sortable.paint(row, i+1);
-      // get the <tr> html as a String object
-      s=new String(row.outerHTML || new XMLSerializer().serializeToString(row).replace(' xmlns="http://www.w3.org/1999/xhtml"', ''));
-      // prepare the key
-      for (k=row.cells.length -1; k>-1; k--) s['key'+k]=Sortable.key(row.cells[k]);
-      table.lines[i]=s;
-    }
-    // do it one time
-    table.sortable=true;
-    return true;
-  },
-  /**
-   * build sortable key from element content
-   */
-  key: function(text) {
-    if (typeof text == 'string');
-    else if (text.hasAttribute("sort")) text=text.getAttribute("sort");
-    else if (text.hasAttribute("data-sort")) text=text.getAttribute("data-sort");
-    else if (text.textContent) text=text.textContent;
-    else text = text.innerHTML.replace(/<.+>/g, '');
-    // innerText could be very slow (infers CSS visibility)
-    text=Sortable.trim(text);
-    // num
-    n=parseFloat(text.replace(/,/g, '.').replace(/[  x×/]/g, ''));
-    // text
-    if (isNaN(n)) {
-      text=text.toLowerCase().replace(/’/, "'").replace(/^(d'|de |le |les |la |l')/, '').replace(/œ/g, 'oe').replace(/æ/g, 'ae').replace(/ç/g, 'c').replace(/ñ/g, 'n').replace(/[éèêë]/g, 'e').replace(/[áàâä]/g, 'a').replace(/[íìîï]/g, 'i').replace(/úùûü/, 'u').replace(/\W/g, '') ;
-      // +"__________" still usefull ?
-      return text;
-    }
-    else {
-      return n;
-    }
-  },
-  /**
-   * add alternate even odd classes on table rows
-   */
-  zebra: function (table) {
-    for (var i = 0; i < table.tBodies.length; i++) {
-      for (j=table.tBodies[i].rows.length -1; j >= 0; j--) this.paint(table.tBodies[i].rows[j], j);
-    }
-  },
-  /**
-   * Paint a row according to its index
-   */
-  paint: function(row, i) {
-    row.className=" "+row.className+" ";
-    row.className=row.className.replace(/ *(odd|even|mod5|mod10) */g, ' ');
-    if ((i % 2) == 1) row.className+=" even";
-    if ((i % 2) == 0) row.className+=" odd";
-    if ((i % 5) == 3) row.className+=" mod3";
-    if ((i % 5) == 0) row.className+=" mod5";
-    if ((i % 10) == 0) row.className+=" mod10";
-    // row.className=row.className.replace(/^\s\s*|\s(?=\s)|\s\s*$/g, ""); // normalize-space, will bug a bit on \n\t
-  },
-  /**
-   * A clever and fast trim, http://flesler.blogspot.com/2008/11/fast-trim-function-for-javascript.html
-   */
-  trim : function (s){
-    var start = -1,
-    end = s.length;
-    while(s.charCodeAt(--end) < 33);
-    while(s.charCodeAt(++start) < 33);
-    return s.slice(start, end + 1);
   }
-
 }
 
 // if loaded as bottom script, create tables

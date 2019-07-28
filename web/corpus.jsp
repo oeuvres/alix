@@ -17,52 +17,43 @@ static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new
     <link href="static/alix.css" rel="stylesheet"/>
   </head>
   <body class="corpus">
-    <fieldset>
-      <legend>Filter le tableau</legend>
-      <label for="start">Années</label>
-      <input id="start" name="start" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Début" class="year" onclick="select()"/>
-      <input id="end" name="end" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Fin" class="year" onclick="select()"/>
-      <br/><label for="author">Auteur</label>
-      <input id="author" name="author" value="<%=author%>" size="50" list="author-data" type="text" onclick="select()" placeholder="Nom, Prénom"/>
-      <br/><label for="title">Titre</label>
-      <input id="title" name="title" value="<%=title%>" size="100" list="title-data" type="text" onclick="select()"/>
-      <datalist id="author-data">
-<%
-Facet facet = alix.facet("author", TEXT);
-TopTerms facetEnum = facet.topTerms();
-while (facetEnum.hasNext()) {
-  facetEnum.next();
-  // long weight = facetEnum.weight();
-  out.println("<option value=\""+facetEnum.term()+"\"/>");
+    <%
+String[] checks = request.getParameterValues("book");
+if (checks != null) {
+  for (String s: checks) {
+    out.println(s + ", ");
+  }
 }
-%>
-
-      </datalist>
-      <datalist id="title-data">
-<%
-facet = alix.facet("title", TEXT);
-facetEnum = facet.topTerms();
-while (facetEnum.hasNext()) {
-  facetEnum.next();
-  // long weight = facetEnum.weight();
-  out.println("<option value=\""+facetEnum.term()+"\"/>");
-}
-%>
-
-      </datalist>
-    </fieldset>
+    %>
+    <form method="post">
+      <fieldset>
+        <legend>Filter le tableau</legend>
+        <label for="start">Années</label>
+        <input id="start" name="start" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Début" class="year" onclick="select()"/>
+        <input id="end" name="end" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Fin" class="year" onclick="select()"/>
+        <br/><label for="author">Auteur</label>
+        <input id="author" name="author" value="<%=author%>" size="50" list="author-data" type="text" onclick="select()" placeholder="Nom, Prénom"/>
+        <datalist id="author-data">
+  <%
+  Facet facet = alix.facet("author", TEXT);
+  TopTerms facetEnum = facet.topTerms();
+  while (facetEnum.hasNext()) {
+    facetEnum.next();
+    // long weight = facetEnum.weight();
+    out.println("<option value=\""+facetEnum.term()+"\"/>");
+  }
+  %>
+  
+        </datalist>
+        <br/><button id="show" type="button">Tout voir</button><button id="save" type="submit">Enregistrer</button>
+      </fieldset>
     
-    <p>
-    Vous n'avez pas encore défini de corpus. Voulez vous partr d'une collection prédéfinie ?
-    Vous pourrez la modifier dans cette interface en cochant ou décochant un livre.
-    Elle se conservera durant toute votre session.
-    </p>
 
     
-    <table class="sortable">
+    <table class="sortable" id="corpus">
       <thead>
         <tr>
-          <th class="checkbox"> </th>
+          <th class="checkbox"><input id="checkall" type="checkbox" title="Sélectionner/déselectionner les lignes visibles"/></th>
           <th class="author">Auteur</th>
           <th class="year">Date</th>
           <th class="title">Titre</th>
@@ -103,6 +94,7 @@ for (int i = 0, len = books.length; i < len; i++) {
   %>
       </tbody>
     </table>
+    </form>
     <script src="vendors/Sortable.js">//</script>
     <script src="static/js/corpus.js">//</script>
   </body>
