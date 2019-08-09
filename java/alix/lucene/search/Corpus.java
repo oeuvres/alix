@@ -27,21 +27,23 @@ import alix.lucene.Alix;
 
 /**
  * This object handle information of a “corpus” : a set of docid in a lucene
- * index. These docid are grouped by a value, a “bookid”, indexed as a StringField
- * and a SortedDocValuesField (efficient for faceting); so a book can contain 
- * multiple “chapters“ (documents). User should maintain unicity of his bookdids.
- * These bookids allow to keep a stable reference between different lucene index states.
- * They can be stored as a json string.
+ * index. These docid are grouped by a value, a “bookid”, indexed as a
+ * StringField and a SortedDocValuesField (efficient for faceting); so a book
+ * can contain multiple “chapters“ (documents). User should maintain unicity of
+ * his bookdids. These bookids allow to keep a stable reference between
+ * different lucene index states. They can be stored as a json string.
  * 
  * @author fred
  *
  */
 public class Corpus
 {
-  /** Name of the corpus */
-  public final String name;
-  /** Name of the field   */
-  public final String field;
+  /** Mandatory name for the corpus */
+  private String name;
+  /** Optional description for the corpus */
+  private String desc;
+  /** Name of the field */
+  private final String field;
   /** The lucene index */
   private final Alix alix;
   /** Max number of docs */
@@ -51,69 +53,100 @@ public class Corpus
 
   /**
    * Constructor
-   * @param alix Link to a lucene index.
-   * @param field Field name storing the bookid.
-   * @param name Name of the corpus
+   * 
+   * @param alix
+   *          Link to a lucene index.
+   * @param field
+   *          Field name storing the bookid.
+   * @param name
+   *          Name of the corpus
    * @throws IOException
    */
-  public Corpus(Alix alix, String field, String name) throws IOException
+  public Corpus(Alix alix, String field, String name, String desc) throws IOException
   {
     this.alix = alix;
+    this.field = field;
     IndexReader reader = alix.reader();
     this.maxDoc = reader.maxDoc();
-    this.field = field;
     this.name = name;
     this.docs = new FixedBitSet(maxDoc);
   }
 
   /**
    * 
-   * @param alix Link to a lucene index.
-   * @param json Data to rebuild the corpus
+   * @param alix
+   *          Link to a lucene index.
+   * @param json
+   *          Data to rebuild the corpus
    * @throws IOException
    */
-  public Corpus(Alix alix, String json) throws IOException
+  public Corpus(Alix alix, String field, String json) throws IOException
   {
     this.alix = alix;
+    this.field = field;
     IndexReader reader = alix.reader();
     this.maxDoc = reader.maxDoc();
     this.docs = new FixedBitSet(maxDoc);
     JSONObject jsobj = new JSONObject(json);
     name = jsobj.getString("name");
-    field = jsobj.getString("field");
     JSONArray jsarr = jsobj.getJSONArray("books");
-    HashSet<String> books = new HashSet<String>();
-    for (int i = 0, len = jsarr.length(); i < len; i++) {
-      books.add(jsarr.getString(i));
+    int length = jsarr.length();
+    String[] books = new String[length];
+    for (int i = 0; i < length; i++) {
+      books[i] = jsarr.getString(i);
     }
     add(books);
   }
 
   /**
-   * Return a json String, storing enough info to rebuild object.
-   * @throws IOException 
-   * @throws JSONException 
+   * Number of documents set
+   * @return
    */
-  public String write() throws JSONException, IOException
+  public int cardinality()
+  {
+    // be careful, is not cached
+    return docs.cardinality();
+  }
+  
+  /**
+   * Get name of this corpus.
+   * @return
+   */
+  public String name()
+  {
+    return name;
+  }
+
+  /**
+   * Get description of this corpus.
+   * @return
+   */
+  public String desc()
+  {
+    if (desc == null) return "";
+    return desc;
+  }
+
+  /**
+   * Return a json String, storing enough info to rebuild object.
+   * 
+   * @throws IOException
+   * @throws JSONException
+   */
+  public String json() throws JSONException, IOException
   {
     JSONObject jsobj = new JSONObject();
-    jsobj.put("books", books())
-      .put("field", field)
-      .put("name", name)
-    ;
+    jsobj.put("books", books()).put("field", field).put("name", name);
     return jsobj.toString();
   }
 
-  
-  
-
-  
   /**
-   * Build the list of bookids from 
+   * Build the list of bookids from the vector of docids.
+   * 
    * @return
-   * @throws IOException 
+   * @throws IOException
    */
-  private Set<String> books() throws IOException
+  public Set<String> books() throws IOException
   {
     Set<String> set = new HashSet<String>();
     IndexReader reader = alix.reader();
@@ -124,40 +157,40 @@ public class Corpus
       // get a doc iterator for the facet field (book)
       SortedDocValues docs4terms = leaf.getSortedDocValues(field);
       if (docs4terms == null) continue;
-      // loop on each doc in this leaf, collect bookids for  this filter
       int ordMax = docs4terms.getValueCount(); // max term id
       FixedBitSet bits = new FixedBitSet(ordMax);
       int docLeaf;
+      // loop on each doc in this leaf, for each docid in the vector, collect bookids in set
       while ((docLeaf = docs4terms.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-        if (!docs.get(docBase+docLeaf)) continue; // doc not in this corpus
+        if (!docs.get(docBase + docLeaf)) continue; // doc not in this corpus
         bits.set(docs4terms.ordValue());
       }
       int ord = 1;
-      while((ord =bits.nextSetBit(ord+1)) < DocIdSetIterator.NO_MORE_DOCS) {
+      while ((ord = bits.nextSetBit(ord + 1)) < DocIdSetIterator.NO_MORE_DOCS) {
         set.add(docs4terms.lookupOrd(ord).utf8ToString());
       }
     }
     return set;
   }
 
-  
   /**
    * Add the results of a query to the filter, return number of hits found.
    * 
    * @throws IOException
    */
-  public int add(Collection<String> books) throws IOException
+  public int add(String[] books) throws IOException
   {
     BooleanQuery.Builder bq = new BooleanQuery.Builder();
-    for(String bookid: books) {
+    for (String bookid : books) {
       bq.add(new TermQuery(new Term(field, bookid)), BooleanClause.Occur.SHOULD);
     }
     Query q = bq.build();
     return addBits(q);
   }
-  
+
   /**
-   * Add 
+   * Add
+   * 
    * @param q
    * @return
    * @throws IOException
@@ -172,6 +205,7 @@ public class Corpus
 
   /**
    * Modifiy the local vector of docs according to a query of bookids.
+   * 
    * @param q
    * @return
    * @throws IOException
@@ -193,6 +227,7 @@ public class Corpus
   {
     return addBits(new TermQuery(new Term(field, bookid)));
   }
+
   /**
    * Remove the results of a query to the filter, return number of hits found.
    * 
@@ -205,6 +240,7 @@ public class Corpus
 
   /**
    * Local collector used to add docid to the vector.
+   * 
    * @author fred
    *
    */
@@ -219,6 +255,7 @@ public class Corpus
 
   /**
    * Local collector used to remove docid from the vector.
+   * 
    * @author fred
    *
    */
@@ -233,6 +270,7 @@ public class Corpus
 
   /**
    * Abstract collector
+   * 
    * @author fred
    *
    */

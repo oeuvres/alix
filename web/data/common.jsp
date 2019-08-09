@@ -119,6 +119,8 @@ final static DecimalFormat dfratio = new DecimalFormat("#,##0.0000", frsyms);
 final static String YEAR = "year";
 /** Field name containing canonized text */
 public static String TEXT = "text";
+/** Key for current session corpus */
+public static String CORPUS = "corpus";
 
 
 /**

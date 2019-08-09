@@ -38,9 +38,26 @@ body {
   padding: 0;
 }
 
+input[type="text"], input[type="number"] {
+  -webkit-appearance: none;
+  font-size: 120%;
+  padding: 1px 2px;
+  margin: 1px;
+  border: none;
+}
+
+::-moz-placeholder, ::-webkit-input-placeholder {
+  font-style: italic;
+  color: #999;
+}
+
+ ::-ms-input-placeholder {
+  font-style: italic;
+  color: #999;
+}
+
 input.year {
   width: 10ex;
-  height: 1rem;
 }
 
 select {

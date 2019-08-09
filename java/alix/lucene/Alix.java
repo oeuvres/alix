@@ -516,8 +516,8 @@ public class Alix
 
   /**
    * For a field, return an array in docid order, with the total number of tokens
-   * by doc. Is cached. Term vector cost 1 s. / 1000 books A norm after indexation
-   * could be faster, but common similarity store such length on one byte. see
+   * by doc. Is cached. Term vector cost 1 s. / 1000 books.
+   * Norms for similarity is not enough precise (1 byte) see
    * SimilarityBase.computeNorm()
    * https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/apache/lucene/search/similarities/SimilarityBase.java#L185
    * 
@@ -539,7 +539,7 @@ public class Alix
     }
     if (info.getDocValuesType() != DocValuesType.NUMERIC && !info.hasVectors()) {
       throw new IllegalArgumentException(
-          "Field \"" + field + "\" has no vectors or numeric value with thi name to calculate lengths.");
+          "Field \"" + field + "\" has no vectors or numeric value to calculate lengths.");
     }
     int maxDoc = reader.maxDoc();
     // index by year

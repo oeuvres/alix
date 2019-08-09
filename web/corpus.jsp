@@ -9,6 +9,50 @@ static {
 }
 static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT));
 %>
+<%
+/*
+Use cases of this page
+ — creation : no local corpus, create a new one
+ — select : no corpus in session, list of local corpus
+ — modify : no query, corpus in session, edit
+ — stats : query distribution by book 
+*/
+String name = getParameter(request, "name", "");
+String desc = getParameter(request, "desc", "");
+String json = getParameter(request, "json", null);
+String[] checks = request.getParameterValues("book");
+String botjs = ""; // javascript to add at the end
+Corpus corpus = null;
+Set<String> bookids = null; // load the bookds to update the 
+
+// json send, client wants to load a new corpus
+if (json != null) {
+  corpus = new Corpus(alix, Alix.BOOKID, json);
+  name = corpus.name();
+  desc = corpus.desc();
+  session.setAttribute(CORPUS, corpus);
+  bookids =  corpus.books();
+}
+// client send bookids
+else if (checks != null) {
+  corpus = new Corpus(alix, Alix.BOOKID, name, desc);
+  corpus.add(checks);
+  bookids = corpus.books(); // 
+  session.setAttribute(CORPUS, corpus);
+  json = corpus.json();
+  // corpus has been modified, store on client
+  botjs += "store(\""+name+"\", \""+desc+"\", '"+json+"');";
+}
+// load corpus from sesssion
+else {
+  corpus = (Corpus)session.getAttribute(CORPUS);
+  if (corpus != null) {
+    bookids = corpus.books();
+    name = corpus.name();
+    desc = corpus.desc();
+  }
+}
+%>
 <!DOCTYPE html>
 <html>
   <head>
@@ -17,22 +61,22 @@ static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new
     <link href="static/alix.css" rel="stylesheet"/>
   </head>
   <body class="corpus">
-    <%
-String[] checks = request.getParameterValues("book");
-if (checks != null) {
-  for (String s: checks) {
-    out.println(s + ", ");
-  }
-}
-    %>
-    <form method="post">
-      <fieldset>
-        <legend>Filter le tableau</legend>
-        <label for="start">Années</label>
-        <input id="start" name="start" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Début" class="year" onclick="select()"/>
-        <input id="end" name="end" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Fin" class="year" onclick="select()"/>
+    <form method="post" id="corpora">
+      <input type="hidden" name="json"/>
+      <span id="listCorpora"></span>
+    </form>
+    <form method="post" id="corpus">
+      <fieldset id="filter">
+        <legend>Modifier le corpus
+          <input type="text" size="10" id="name" name="name" value="<%=name%>" placeholder="Nom du corpus" required="required"/>
+        </legend>
+        <label for="desc"> </label>
+        <input type="text" id="desc" name="desc" size="50" value="<%=desc%>" placeholder="Description" title="Description courte de cette sélection"/>
+        <br/><br/><label for="start">Années</label>
+        <input id="start" name="start" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Début" class="year"/>
+        <input id="end" name="end" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Fin" class="year"/>
         <br/><label for="author">Auteur</label>
-        <input id="author" name="author" value="<%=author%>" size="50" list="author-data" type="text" onclick="select()" placeholder="Nom, Prénom"/>
+        <input id="author" name="author" autocomplete="off" list="author-data" size="50" type="text" onclick="select()" placeholder="Nom, Prénom"/>
         <datalist id="author-data">
   <%
   Facet facet = alix.facet("author", TEXT);
@@ -45,12 +89,30 @@ if (checks != null) {
   %>
   
         </datalist>
-        <br/><button id="show" type="button">Tout voir</button><button id="save" type="submit">Enregistrer</button>
+        <br/><label for="title">Titre</label>
+        <input id="title" name="title" autocomplete="off" list="title-data" type="text" size="50" onclick="select()" placeholder="Chercher un titre"/>
+        <datalist id="title-data">
+  <%
+  facet = alix.facet("title", TEXT);
+  facetEnum = facet.topTerms();
+  while (facetEnum.hasNext()) {
+    facetEnum.next();
+    // long weight = facetEnum.weight();
+    out.println("<option value=\""+facetEnum.term()+"\"/>");
+  }
+  %>
+  
+        </datalist>
+        <br/>
+        <button id="selection" type="button">Sélection</button>
+        <button id="all" type="button">Tout</button>
+        <button name="save" type="submit">Enregistrer</button>
+        <button name="reload"  style="float: right;" type="button" onclick="window.location = window.location.href.split('#')[0];">Recharger</button>
       </fieldset>
     
 
     
-    <table class="sortable" id="corpus">
+    <table class="sortable" id="bib">
       <thead>
         <tr>
           <th class="checkbox"><input id="checkall" type="checkbox" title="Sélectionner/déselectionner les lignes visibles"/></th>
@@ -71,22 +133,25 @@ IndexReader reader = alix.reader();
 // loop on all books, get metas by document
 int[] books = alix.books(SORT);
 
-
 for (int i = 0, len = books.length; i < len; i++) {
   Document doc = reader.document(books[i], FIELDS);
   String bookid = doc.get(Alix.BOOKID);
   out.println("<tr>");
-  out.println("<td class=\"checkbox\"><input type=\"checkbox\" name=\"book\" value=\""+bookid+"\"/></td>");
-  out.print("<td class=\"author\">");
+  out.println("  <td class=\"checkbox\">");
+  out.print("    <input type=\"checkbox\" name=\"book\" value=\""+bookid+"\"");
+  if (bookids != null && bookids.contains(bookid)) out.print(" checked=\"checked\"");
+  out.println(" />");
+  out.println("  </td>");
+  out.print("  <td class=\"author\">");
   String byline = doc.get("byline");
   if (byline != null) out.print(byline);
   out.println("</td>");
-  out.println("<td class=\"year\">"+doc.get("year")+"</td>");
-  out.println("<td class=\"title\">"+doc.get("title")+"</td>");
+  out.println("  <td class=\"year\">"+doc.get("year")+"</td>");
+  out.println("  <td class=\"title\">"+doc.get("title")+"</td>");
   dic.contains(bookid); // set internal pointer
-  out.println("<td class=\"occs\">"+dic.length()+"</td>");
-  out.println("<td class=\"chapter\">"+"</td>"); // +dic.weight()
-  out.println("<td class=\"score\">"+"</td>"); // +dic.score()
+  out.println("  <td class=\"occs\">"+dic.length()+"</td>");
+  out.println("  <td class=\"chapter\">"+"</td>"); // +dic.weight()
+  out.println("  <td class=\"score\">"+"</td>"); // +dic.score()
   out.println("</tr>");
 }
 // TermQuery filterQuery = null;
@@ -95,8 +160,15 @@ for (int i = 0, len = books.length; i < len; i++) {
       </tbody>
     </table>
     </form>
+
     <script src="vendors/Sortable.js">//</script>
     <script src="static/js/corpus.js">//</script>
+    <script>
+<%
+out.println(botjs);
+%>
+showSelected();
+    </script>
   </body>
 </html>
 <% out.println("<!-- "+(System.nanoTime() - time) / 1000000.0 + " ms. -->");%>

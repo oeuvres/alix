@@ -2,10 +2,13 @@ package alix.lucene.search;
 
 import java.io.IOException;
 
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -67,6 +70,8 @@ public class Facet
 {
   /** Name of the field for facets, source key for this dictionary */
   public final String facet;
+  /** The field type */
+  public final DocValuesType type;
   /** Name of the field for text, source of different value counts */
   public final String text;
   /** Store and populate the terms */
@@ -77,7 +82,7 @@ public class Facet
   public final long occsAll;
   /** Global number of value for this facet */
   public final int size;
-  /** A table docId => facetId * n */
+  /** A table docId => facetId*n, to get freqs from found docs */
   private final int[][] docFacets;
   /** Count of docs by facet */
   private int[] facetDocs = new int[32];
@@ -99,25 +104,41 @@ public class Facet
    */
   public Facet(final Alix alix, final String facet, final String text) throws IOException
   {
+    FieldInfo info = alix.info(facet);
+    if (info == null) {
+      throw new IllegalArgumentException("Field \"" + facet + "\" is not known in this index.");
+    }
+    type = info.getDocValuesType();
+    if (type != DocValuesType.SORTED_SET && type != DocValuesType.SORTED) {
+      throw new IllegalArgumentException("Field \"" + facet + "\", the type "+type+" is not supported as a facet.");
+    }
     this.facet = facet;
     this.text = text;
     this.reader = alix.reader();
     docFacets = new int[reader.maxDoc()][];
     int docsAll = 0;
     long occsAll = 0;
+    // Count of occurrences by facet value, ordered by a unified ord across leaves
     long[] facetLength = new long[32];
     long[] docLength = alix.docLength(text); // length of each doc for the text field
     this.docLength = docLength;
-    // populate global data
-    for (LeafReaderContext ctx : reader.leaves()) { // loop on the reader leaves
+    // max int for an array collecttor
+    int ordMax = -1;
+    for (LeafReaderContext ctx: reader.leaves()) { // loop on the reader leaves
       int docBase = ctx.docBase;
       LeafReader leaf = ctx.reader();
       // get a doc iterator for the facet field
-      SortedSetDocValues docs4terms = leaf.getSortedSetDocValues(facet);
-      if (docs4terms == null) continue;
-      // the term for the facet is indexed with a long, lets bet it is less than the
-      // max int for an array collecttor
-      long ordMax = docs4terms.getValueCount();
+      DocIdSetIterator docs4terms = null;
+      if (type == DocValuesType.SORTED) {
+        docs4terms = leaf.getSortedDocValues(facet);
+        if (docs4terms == null) continue;
+        ordMax = (int)((SortedDocValues)docs4terms).getValueCount();
+      }
+      else if (type == DocValuesType.SORTED_SET) {
+        docs4terms = leaf.getSortedSetDocValues(facet);
+        if (docs4terms == null) continue;
+        ordMax = (int)((SortedSetDocValues)docs4terms).getValueCount();
+      }
       // record doc counts for each term by ord index
       int[] leafDocs = new int[(int) ordMax];
       // record occ counts for each term by ord index
@@ -130,18 +151,27 @@ public class Facet
         long occsMore = docLength[docBase + docLeaf];
         docsAll++; // one more doc for this facet
         occsAll += occsMore; // count of tokens for this doc
-        long ord;
-        while ((ord = docs4terms.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-          leafDocs[(int) ord]++;
-          leafOccs[(int) ord] += occsMore;
+        int ord;
+        if (type == DocValuesType.SORTED) {
+          ord = ((SortedDocValues)docs4terms).ordValue();
+          leafDocs[ord]++;
+          leafOccs[ord] += occsMore;
+        }
+        else if (type == DocValuesType.SORTED_SET) {
+          SortedSetDocValues it = (SortedSetDocValues)docs4terms;
+          while ((ord = (int)it.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+            leafDocs[ord]++;
+            leafOccs[ord] += occsMore;
+          }
         }
       }
-      BytesRef bytes;
-      // buidl a local map for this leaf to record the ord -> facetId
-      int[] ordFacetId = new int[(int) ordMax];
+      BytesRef bytes = null;
+      // build a local map for this leaf to record the ord -> facetId
+      int[] ordFacetId = new int[ordMax];
       // copy the data fron this leaf to the global dic
       for (int ord = 0; ord < ordMax; ord++) {
-        bytes = docs4terms.lookupOrd(ord);
+        if (type == DocValuesType.SORTED) bytes = ((SortedDocValues)docs4terms).lookupOrd(ord);
+        else if (type == DocValuesType.SORTED_SET) bytes = ((SortedSetDocValues)docs4terms).lookupOrd(ord);
         int facetId = hashSet.add(bytes);
         // value already given
         if (facetId < 0) facetId = -facetId - 1;
@@ -151,18 +181,27 @@ public class Facet
         facetLength[facetId] += leafOccs[ord];
         ordFacetId[ord] = facetId;
       }
-      // build a map docId -> facetId*n, will be used to attribute freqs of found
-      // terms
-      docs4terms = leaf.getSortedSetDocValues(facet);
-      IntList row = new IntList();
+      // global dic has set a unified int id for terms
+      // build a map docId -> facetId*n, used to get freqs from docs found
+      // restart the loop on docs
+      if (type == DocValuesType.SORTED) docs4terms = leaf.getSortedDocValues(facet);
+      else if (type == DocValuesType.SORTED_SET) docs4terms = leaf.getSortedSetDocValues(facet);
+      IntList row = new IntList(); // a growable imt array
       while ((docLeaf = docs4terms.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         if (live != null && !live.get(docLeaf)) continue; // deleted doc
-        row.reset();
-        long ord;
-        while ((ord = docs4terms.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-          row.put(ordFacetId[(int) ord]);
+        int ord;
+        if (type == DocValuesType.SORTED) {
+          ord = ((SortedDocValues)docs4terms).ordValue();
+          docFacets[docBase + docLeaf] = new int[]{ordFacetId[ord]};
         }
-        docFacets[docBase + docLeaf] = row.toArray();
+        else if (type == DocValuesType.SORTED_SET) {
+          row.reset();
+          SortedSetDocValues it = (SortedSetDocValues)docs4terms;
+          while ((ord = (int)it.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+            row.put(ordFacetId[ord]);
+          }
+          docFacets[docBase + docLeaf] = row.toArray();
+        }
       }
     }
     // this should avoid some opcode upper
@@ -172,6 +211,8 @@ public class Facet
     this.facetLength = facetLength;
   }
 
+  
+  
   /**
    * Returns list of all facets in orthographic order
    * @return
@@ -242,6 +283,8 @@ public class Facet
     }
     // Filter of docs, 
     else if (filter != null) {
+      // loop on the docs of the filter
+      /*
       // loop on the reader leaves
       for (LeafReaderContext ctx : reader.leaves()) { // loop on the reader leaves
         BitSet bits = filter.bits(ctx); // the filtered docs for this segment
@@ -266,6 +309,7 @@ public class Facet
           }
         }
       }
+      */
     }
     // no filter, no query, order facets by occ length
     else {

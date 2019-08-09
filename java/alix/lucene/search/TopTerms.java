@@ -316,7 +316,7 @@ public class TopTerms
   {
     StringBuilder sb = new StringBuilder();
     BytesRef ref = new BytesRef();
-    int max = Math.min(50, sorter.length);
+    int max = Math.min(200, sorter.length);
     for (int i = 0; i < max; i++) {
       int facetId = sorter[i].termId;
       hashSet.get(facetId, ref);

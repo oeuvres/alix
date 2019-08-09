@@ -88,8 +88,8 @@ table.sortable th {text-align: center; vertical-align: middle; text-align: left;
 table.sortable thead th {border-left: #BBD 1px solid; } \
 table.sortable .sorting {cursor: pointer; padding-left: 1.2em; background:url(data:image/gif;base64,R0lGODlhCwALAJEAAAAAAP///xUVFf///yH5BAEAAAMALAAAAAALAAsAAAIUnC2nKLnT4or00PvyrQwrPzUZshQAOw==) no-repeat center left;} \
 table.sortable .sorting:hover {background-color: #FFFFFF;} \
-table.sortable .sorting.asc {background:url(data:image/gif;base64,R0lGODlhCwALAJEAAAAAAP///xUVFf///yH5BAEAAAMALAAAAAALAAsAAAIRnC2nKLnT4or00Puy3rx7VQAAOw==) no-repeat center left;} \
-table.sortable .sorting.desc {background:url(data:image/gif;base64,R0lGODlhCwALAJEAAAAAAP///xUVFf///yH5BAEAAAMALAAAAAALAAsAAAIPnI+py+0/hJzz0IruwjsVADs=) no-repeat center left;} \
+table.sortable .sorting.desc {background:url(data:image/gif;base64,R0lGODlhCwALAJEAAAAAAP///xUVFf///yH5BAEAAAMALAAAAAALAAsAAAIRnC2nKLnT4or00Puy3rx7VQAAOw==) no-repeat center left;} \
+table.sortable .sorting.asc {background:url(data:image/gif;base64,R0lGODlhCwALAJEAAAAAAP///xUVFf///yH5BAEAAAMALAAAAAALAAsAAAIPnI+py+0/hJzz0IruwjsVADs=) no-repeat center left;} \
 tr.even th, tr.odd th {text-align: right; } \
 table.sortable tr.mod5 td {border-bottom: solid 1px rgba(171, 170, 164, 0.8); } \
 table.sortable tr.mod10 td {border-bottom: solid 2px rgba(171, 170, 164, 0.5); box-shadow: 0 4px 2px -2px rgba(171, 170, 164, 0.8); } \
@@ -132,6 +132,7 @@ th.num, table.sortable th.num {text-align: right; font-weight: 100; font-size: 8
 
   /**
    * Hide lines not equal to a value.
+   * Selected values
    */
   filter: function(table, col, filter)
   {
@@ -139,13 +140,46 @@ th.num, table.sortable th.num {text-align: right; font-weight: 100; font-size: 8
     filter = Sortable.key(filter);
     for (i = tbody.rows.length-1; i >=0; i--) {
       row = tbody.rows[i];
-      if (!filter) {
-        row.style.display = "";
-        continue;
-      }
       value = row.keys[col];
-      if (value == filter) row.style.display = "table-row";
+      if (value.search(filter) >= 0) row.style.display = "table-row";
       else if (!row.style.display) row.style.display = "none";
+    }
+  },
+  /**
+   * Hide lines inferior to a value.
+   */
+  range: function(table, col, min, max)
+  {
+    tbody = table.tBodies[0];
+    for (i = tbody.rows.length-1; i >=0; i--) {
+      row = tbody.rows[i];
+      value = row.keys[col];
+      if (min === "") {
+        if (max === "") row.style.display = "";
+        else if (value <= max) row.style.display = "";
+        else row.style.display = "none";
+      }
+      else if (max === "") {
+        if (min === "") row.style.display = "";
+        else if (value >= min) row.style.display = "";
+        else row.style.display = "none";
+      }
+      else {
+        if (value < min) row.style.display = "none";
+        else if (value > max) row.style.display = "none";
+        else if (row.style.display) row.style.display = "";
+      }
+    }
+  },
+  /**
+   * Show all rows (after the filter selection)
+   */
+  showAll: function(table)
+  {
+    tbody = table.tBodies[0];
+    for (i = tbody.rows.length-1; i >=0; i--) {
+      row = tbody.rows[i];
+      row.style.display = "";
     }
   },
   /**
@@ -165,7 +199,7 @@ th.num, table.sortable th.num {text-align: right; font-weight: 100; font-size: 8
     // We have a first row: assume it's the header, and make its contents clickable links
     var i = firstRow.cells.length;
     while (--i >= 0) (function (i) { // hack to localize i
-      cell = firstRow.cells[i];
+      var cell = firstRow.cells[i];
       var text = cell.innerHTML.replace(/<.+>/g, '');
       if (cell.className.indexOf("unsort") != -1 || cell.className.indexOf("nosort") != -1 || Sortable.trim(text) == '') return;
       cell.className = cell.className+' sorting';
@@ -225,21 +259,27 @@ th.num, table.sortable th.num {text-align: right; font-weight: 100; font-size: 8
    */
   zebra: function (table)
   {
+    var n = 1;
     for (var i = 0; i < table.tBodies.length; i++) {
-      for (j=table.tBodies[i].rows.length -1; j >= 0; j--) this.paint(table.tBodies[i].rows[j], j);
+      for (var j=0, len = table.tBodies[i].rows.length; j < len; j++) {
+        var row = table.tBodies[i].rows[j];
+        if (row.style.display == "none") continue;
+        this.paint(row, n);
+        n++;
+      }
     }
   },
   /**
    * Paint a row according to its index
    */
   paint: function(row, i) {
-    row.className=" "+row.className+" ";
-    row.className=row.className.replace(/ *(odd|even|mod5|mod10) */g, ' ');
+    row.className = " "+row.className+" ";
+    row.className = row.className.replace(/ *(odd|even|mod3|mod5|mod10|\d+) */g, ' ');
     if ((i % 2) == 1) row.className+=" even";
-    if ((i % 2) == 0) row.className+=" odd";
+    else if ((i % 2) == 0) row.className+=" odd";
     if ((i % 5) == 3) row.className+=" mod3";
-    if ((i % 5) == 0) row.className+=" mod5";
     if ((i % 10) == 0) row.className+=" mod10";
+    else if ((i % 5) == 0) row.className+=" mod5";
     // row.className=row.className.replace(/^\s\s*|\s(?=\s)|\s\s*$/g, ""); // normalize-space, will bug a bit on \n\t
   },
   /**
