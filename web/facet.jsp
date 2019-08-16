@@ -9,38 +9,39 @@
   </head>
   <body class="facet">
   <%
-// choose a field
-String facetField = request.getParameter("facet");
-if (facetField == null || "".equals(facetField.trim())) facetField = "author";
-String q = request.getParameter("q");
-if (q == null) q = "";
-else q = q.trim();
+String q = getParameter(request, "q", "");
 TermList terms = alix.qTerms(q, TEXT);
-if (terms.size() > 0) out.println("<h3>Auteur (occurrences)</h3>");
-else out.println("<h3>Auteur (chapitres)</h3>");
+// choose a field
+String facetField = getParameter(request, "facet", "author");
+String facetName = facetField;
+if (facetField.equals("author")) facetName = "Auteur";
+else if (facetField.equals("title")) facetName = "Titre";
+if (terms.size() > 0) out.println("<h3>"+facetName+" (occurrences)</h3>");
+else out.println("<h3>"+facetName+" (chapitres)</h3>");
 
 %>
     <form id="qform">
-      <input id="q" name="q" value="<%=q%>" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"  onclick="this.select();"/>
-      Entre
-      <input id="start" name="start" size="4" value="<%=(start > -1)?start:""%>"/>
-      et
-      <input id="end" name="end" size="4" value="<%=(end > -1)?end:""%>"/>
-      <button>▶</button>
+      <input type="hidden" id="q" name="q" value="<%=q%>" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"  onclick="this.select();"/>
     </form>
     <div class="facets">
     <%
 // needs the bits of th filter
-QueryBits filter = null;
-if (filterQuery != null) filter = new QueryBits(filterQuery);
+Corpus corpus = (Corpus)session.getAttribute(CORPUS);
+BitSet bits = null;
+if (corpus != null) bits = corpus.bits();
 
 Facet facet = alix.facet(facetField, TEXT);
-TopTerms facetEnum = facet.topTerms(filter, terms, null);
+TopTerms facetEnum = facet.topTerms(bits, terms, null);
 while (facetEnum.hasNext()) {
   facetEnum.next();
-  long weight = facetEnum.weight();
-  if (weight < 1) break;
-  out.println("<div>"+facetEnum.term()+" ("+weight+")</div>");
+  if (terms.size() > 0) {
+    long occs = facetEnum.occs();
+    if (occs < 1) break;
+    out.println("<div>"+facetEnum.term()+" ("+occs+")</div>");
+  }
+  else {
+    out.println("<div>"+facetEnum.term()+" ("+facetEnum.docs()+")</div>");
+  }
 }
     %>
     </div>

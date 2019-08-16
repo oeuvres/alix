@@ -76,6 +76,14 @@ checkall.addEventListener('click', function(evt) {
     checks[i].checked = checked;
   }
 });
+var none = document.getElementById("none");
+none.addEventListener('click', function(evt) {
+  var checks = document.getElementsByName("book");
+  for(var i=0, len=checks.length; i < len; i++) {
+    checks[i].checked = false;
+  }
+  showSelected();
+});
 var all = document.getElementById("all");
 all.addEventListener('click', function(evt) {
   Sortable.showAll(table);
@@ -98,21 +106,21 @@ var remove = function(name) {
   if (!name) return;
   var corpora = JSON.parse(localStorage.getItem(CORPORA));
   if (corpora) delete corpora[name];
+  var json = JSON.stringify(corpora);
   localStorage.setItem(CORPORA, JSON.stringify(corpora));
   localStorage.removeItem(name);
+  corpusList("corpusList");
 }
-var listCorpora = function(id) {
+var corpusList = function(id) {
   var el =  document.getElementById(id);
   var html = "";
   var corpora =  JSON.parse(localStorage.getItem(CORPORA));
   for (var name in corpora) {
     var desc = corpora[name];
-    html += "<li><button type=\"submit\" name=\""+name+"\" onclick=\"send(this)\" title=\""+desc+"\">"+name+"</button> <span onclick=\"remove('"+name+"'); parent = this.parentNode; parent.parentNode.removeChild(parent);\">🗙<span></li>\n";
+    html += "<li><button type=\"submit\" name=\""+name+"\" onclick=\"send(this)\" title=\""+desc+"\">"+name+"</button> <b title=\"Suppriner la sélection “"+name+"”\" onclick=\"remove('"+name+"');\">🗙</b></li>\n";
   }
   el.innerHTML = html;
 }
-//display corpora list
-listCorpora("listCorpora");
 var send = function(button) {
   var json = localStorage.getItem(button.name);
   button.form['json'].value = json;

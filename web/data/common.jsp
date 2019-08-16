@@ -115,6 +115,8 @@ alix.util.Dir
 final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
 final static DecimalFormat dfppm = new DecimalFormat("#,###", frsyms);
 final static DecimalFormat dfratio = new DecimalFormat("#,##0.0000", frsyms);
+final static DecimalFormat dfint = new DecimalFormat("###,###,##0", frsyms);
+final static DecimalFormat dfscore = new DecimalFormat("0.000000", frsyms);
 /** Field Name with int date */
 final static String YEAR = "year";
 /** Field name containing canonized text */
@@ -187,13 +189,15 @@ public static int getParameter(HttpServletRequest request, String name, int valu
 public static String getParameter(HttpServletRequest request, String name, String value) {
   String s = request.getParameter(name);
   if (s == null || s.trim().length() == 0 || "null".equals(s)) return value;
-  return s;
+  return s.trim();
 }
 
 %><%
 long time = System.nanoTime();
-
+request.setCharacterEncoding("UTF-8");
 Alix alix = Alix.instance(application.getRealPath("") + "/WEB-INF/lucene/");
+
+/*
 int start = getParameter(request, "start", -1);
 int end = getParameter(request, "end", -1);
 String author = getParameter(request, "author", "");
@@ -201,6 +205,7 @@ String title = getParameter(request, "title", "");
 Query filterQuery = null;
 if (start > 0 && end > 0 && start <= end) filterQuery = IntPoint.newRangeQuery(YEAR, start, end);
 // else filterQuery = new MatchAllDocsQuery(); // ensure to get bits without deleted docs
+*/
 /*
 QueryBitSetProducer was quite nice but has a too hard cache policy.
 Prefer to rely on the default LRU caching of IndexSearcher.

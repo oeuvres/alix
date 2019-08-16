@@ -8,7 +8,9 @@ import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Collect found docs as a bitSet. 
@@ -19,10 +21,8 @@ import org.apache.lucene.util.DocIdSetBuilder;
  */
 public class CollectorBits extends SimpleCollector implements Collector
 {
-  /** A lucene bitSet builder for the results */
-  private DocIdSetBuilder docsBuilder;
   /** The bitset (optimized for spare or all docs) */
-  private DocIdSet docs;
+  private BitSet docs;
   /** Number of hits */
   private int hits = 0;
   /** Current context reader */
@@ -33,15 +33,14 @@ public class CollectorBits extends SimpleCollector implements Collector
 
   public CollectorBits(IndexSearcher searcher) 
   {
-    docsBuilder = new DocIdSetBuilder(searcher.getIndexReader().maxDoc());
+    docs = new FixedBitSet(searcher.getIndexReader().maxDoc());
   }
   
   /**
    * Get a document iterator
    */
-  public DocIdSet docs()
+  public BitSet docs()
   {
-    if(docs == null) docs = docsBuilder.build();
     return docs;
   }
   
@@ -61,9 +60,9 @@ public class CollectorBits extends SimpleCollector implements Collector
 
 
   @Override
-  public void collect(int doc) throws IOException
+  public void collect(int docLeaf) throws IOException
   {
-    docsBuilder.grow(1).add(docBase + doc);
+    docs.set(docBase + docLeaf);
     hits++;
   }
 

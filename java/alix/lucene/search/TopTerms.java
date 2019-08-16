@@ -23,12 +23,16 @@ public class TopTerms
   private final BytesRefHash hashSet;
   /** Count of terms */
   private final int size;
-  /** An optional field by termId used for sort by score */
+  /** An optional field by termId used to sort by score */
   private float[] scores;
-  /** An optional field by termId, ex : count of matching occurrences */
+  /** An optional field by termId, ex : total count of words */
   private long[] lengths;
   /** An optional field by termId, ex : count of matching docs */
-  protected long[] weights;
+  protected int[] docs;
+  /** An optional field by termId, ex : count of matching occurences */
+  protected long[] occs;
+  /** An optional field by termId, ex : docid used as a cover for a term like a title or an author */
+  protected int[] covers;
   /** Current term id to get infos on */
   private int termId;
   /** Cursor, to iterate in the sorter */
@@ -252,9 +256,9 @@ public class TopTerms
    * 
    * @param weights
    */
-  public void setWeights(final long[] weights)
+  public void setDocs(final int[] docs)
   {
-    this.weights = weights;
+    this.docs = docs;
   }
 
   /**
@@ -262,6 +266,7 @@ public class TopTerms
    * 
    * @param weights
    */
+  /*
   public void setWeights(final int[] ints)
   {
     int length = ints.length;
@@ -270,20 +275,21 @@ public class TopTerms
       weights[i] = ints[i];
     this.weights = weights;
   }
+  */
 
   /**
    * Get the weight of the current term.
    * @return
    */
-  public long weight()
+  public int docs()
   {
-    return weights[termId];
+    return docs[termId];
   }
 
   /**
    * Set an optional array of values (in termId order).
    * 
-   * @param weights
+   * @param lengths
    */
   public void setLengths(final long[] lengths)
   {
@@ -299,6 +305,47 @@ public class TopTerms
   public long length()
   {
     return lengths[termId];
+  }
+
+  /**
+   * Set an optional array of values (in termId order), occurrences.
+   * 
+   * @param occs
+   */
+  public void setOccs(final long[] occs)
+  {
+    this.occs = occs;
+  }
+
+  /**
+   * Current term, the occs.
+   * 
+   * @return
+   */
+  public long occs()
+  {
+    return occs[termId];
+  }
+
+  /**
+   * Set an optional array of int values (in termId order).
+   * 
+   * @param weights
+   */
+  public void setCovers(final int[] covers)
+  {
+    this.covers = covers;
+  }
+
+  /**
+   * Current term, the cover docid.
+   * User may define a different semantic for thin int value.
+   * 
+   * @return
+   */
+  public int cover()
+  {
+    return covers[termId];
   }
 
   /**

@@ -60,8 +60,8 @@ public class CsvReader
     int bufPos = this.bufPos;
     int bufMark = bufPos; // from where to start a copy
     char sep = this.sep;
-    char quote = this.quote;
-    boolean inquote;
+    // char quote = this.quote;
+    // boolean inquote;
     char lastChar = 0;
     int crlf = 0; // used to not append CR to a CRLF ending line
     while (true) {

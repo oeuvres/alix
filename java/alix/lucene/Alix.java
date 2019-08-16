@@ -78,9 +78,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
@@ -476,16 +474,39 @@ public class Alix
   }
 
   /**
-   * For a facet field, get an iterator in some order, according to a query
+   * Get a “facet” object, a cached list of terms from a field 
+   * of type SortedDocValuesField or SortedSetDocValuesField ;
+   * to get lexical stats from a text field.
    * 
+   * @param facetField A SortedDocValuesField or a SortedSetDocValuesField fieldName.
+   * @param textField A indexed TextField.
+   * @return
    * @throws IOException
    */
   public Facet facet(final String facetField, final String textField) throws IOException
   {
+    return facet(facetField, textField, null);
+  }
+
+  /**
+   * Get a “facet” object, a cached list of terms from a field 
+   * of type SortedDocValuesField or SortedSetDocValuesField ;
+   * to get lexical stats from a text field.
+   * An optional “term” (field:value) maybe used to catch a “cover”
+   * document (ex: a document carrying metada avbout a title or an author).
+   *
+   * @param facetField A SortedDocValuesField or a SortedSetDocValuesField fieldName.
+   * @param textField A indexed TextField.
+   * @param coverTerm A couple field:value to catch one document by facet term.
+   * @return
+   * @throws IOException
+   */
+  public Facet facet(final String facetField, final String textField, final Term coverTerm) throws IOException
+  {
     String key = "AlixFacet" + facetField + textField;
     Facet facet = (Facet) cache(key);
     if (facet != null) return facet;
-    facet = new Facet(this, facetField, textField);
+    facet = new Facet(this, facetField, textField, coverTerm);
     cache(key, facet);
     return facet;
   }
@@ -585,8 +606,8 @@ public class Alix
   }
 
   /**
-   * Get docid parent documents (books) of nested documents (chapters), with a sorted by a field.
-   * The sort type is needed (not known from reader info).
+   * Get docid parent documents (books) of nested documents (chapters),
+   * sorted by a sort specification.
    * @throws IOException 
    */
   public int[] books(Sort sort) throws IOException

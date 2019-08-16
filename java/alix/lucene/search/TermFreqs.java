@@ -119,28 +119,26 @@ public class TermFreqs
    * @return
    * @throws IOException
    */
-  public TopTerms topTerms(final QueryBits filter, Scorer scorer) throws IOException
+  public TopTerms topTerms(final BitSet filter, Scorer scorer) throws IOException
   {
     TopTerms dic = new TopTerms(hashSet);
+    dic.setLengths(termLength);
+    dic.setDocs(termDocs);
+    
+    
     long[] docLength = alix.docLength(field);
     IndexReader reader = alix.reader();
     float[] scores = new float[size];
-    long[] docs = new long[size];
+    long[] occs = new long[size];
     BytesRef bytes;
     if (scorer == null) scorer = new ScorerBM25(); // default scorer is BM25 (for now)
     for (LeafReaderContext context : reader.leaves()) {
       int docBase = context.docBase;
-      BitSet bits = null;
-      if (filter != null) {
-        bits = filter.bits(context); // the filtered docs for this segment
-        if (bits == null) continue; // no matching doc, go away
-      }
       LeafReader leaf = context.reader();
       Terms terms = leaf.terms(field);
       if (terms == null) continue;
       TermsEnum tenum = terms.iterator();
       PostingsEnum docsEnum = null;
-
       while ((bytes = tenum.next()) != null) {
         int termId = hashSet.find(bytes);
         // for each term, set scorer with global stats
@@ -148,16 +146,16 @@ public class TermFreqs
         docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
         int docLeaf;
         while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          if (bits != null && !bits.get(docLeaf)) continue; // document not in the metadata filter
           int docId = docBase + docLeaf;
-          docs[termId]++;
+          if (filter != null && !filter.get(docId)) continue; // document not in the filter
           long freq = docsEnum.freq();
           scores[termId] += scorer.score(freq, docLength[docId]);
+          occs[termId] = freq;
         }
       }
     }
+    dic.setOccs(occs);
     dic.sort(scores);
-    dic.setLengths(docs);
     return dic;
   }
 

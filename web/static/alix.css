@@ -51,7 +51,7 @@ input[type="text"], input[type="number"] {
   color: #999;
 }
 
- ::-ms-input-placeholder {
+::-ms-input-placeholder {
   font-style: italic;
   color: #999;
 }
@@ -258,12 +258,62 @@ iframe {
  * Bibliography of the corpus
  */
 body.corpus {
+  padding: 0;
+}
+
+body.corpus main {
   padding: 1em;
 }
 
 body.corpus label {
   display: inline-block;
   width: 4rem;
+}
+
+td.num {
+  text-align: right;
+}
+
+#corpora {
+  background-color: #FFF;
+  margin-bottom: 1em;
+  padding: 1px 5px 2px 5px;
+}
+
+#corpora ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+#corpora ul li {
+  float: left;
+  margin: 1px 5px 0 0;
+  padding: 1px 5px;
+  border: 1px;
+  color: #FFF;
+  background-color: #CCC;
+}
+
+#corpora ul li button {
+  cursor: pointer;
+  border: none;
+  background: inherit;
+  color: inherit;
+}
+
+#corpora ul li button:hover {
+  background-color: #FFF;
+  color: #CCC;
+}
+
+#corpora ul li b {
+  cursor: pointer;
+}
+
+#corpora ul li b:hover {
+  background-color: #FFF;
+  color: #CCC;
 }
 
 /**
@@ -659,10 +709,6 @@ table.conc {
 
 .conc td, .conc th {
   padding: 0;
-}
-
-td.num {
-  font-size: 70%;
 }
 
 td.left {

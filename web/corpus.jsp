@@ -17,6 +17,8 @@ Use cases of this page
  — modify : no query, corpus in session, edit
  — stats : query distribution by book 
 */
+String q = getParameter(request, "q", "");
+
 String name = getParameter(request, "name", "");
 String desc = getParameter(request, "desc", "");
 String json = getParameter(request, "json", null);
@@ -63,103 +65,122 @@ else {
   <body class="corpus">
     <form method="post" id="corpora">
       <input type="hidden" name="json"/>
-      <span id="listCorpora"></span>
+      <ul id="corpusList"></ul>
     </form>
-    <form method="post" id="corpus">
-      <fieldset id="filter">
-        <legend>Modifier le corpus
-          <input type="text" size="10" id="name" name="name" value="<%=name%>" placeholder="Nom du corpus" required="required"/>
-        </legend>
-        <label for="desc"> </label>
-        <input type="text" id="desc" name="desc" size="50" value="<%=desc%>" placeholder="Description" title="Description courte de cette sélection"/>
-        <br/><br/><label for="start">Années</label>
-        <input id="start" name="start" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Début" class="year"/>
-        <input id="end" name="end" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Fin" class="year"/>
-        <br/><label for="author">Auteur</label>
-        <input id="author" name="author" autocomplete="off" list="author-data" size="50" type="text" onclick="select()" placeholder="Nom, Prénom"/>
-        <datalist id="author-data">
-  <%
-  Facet facet = alix.facet("author", TEXT);
-  TopTerms facetEnum = facet.topTerms();
-  while (facetEnum.hasNext()) {
-    facetEnum.next();
-    // long weight = facetEnum.weight();
-    out.println("<option value=\""+facetEnum.term()+"\"/>");
-  }
-  %>
-  
-        </datalist>
-        <br/><label for="title">Titre</label>
-        <input id="title" name="title" autocomplete="off" list="title-data" type="text" size="50" onclick="select()" placeholder="Chercher un titre"/>
-        <datalist id="title-data">
-  <%
-  facet = alix.facet("title", TEXT);
-  facetEnum = facet.topTerms();
-  while (facetEnum.hasNext()) {
-    facetEnum.next();
-    // long weight = facetEnum.weight();
-    out.println("<option value=\""+facetEnum.term()+"\"/>");
-  }
-  %>
-  
-        </datalist>
-        <br/>
-        <button id="selection" type="button">Sélection</button>
-        <button id="all" type="button">Tout</button>
-        <button name="save" type="submit">Enregistrer</button>
-        <button name="reload"  style="float: right;" type="button" onclick="window.location = window.location.href.split('#')[0];">Recharger</button>
-      </fieldset>
-    
+    <main>
+      <form method="post" id="corpus">
+        <fieldset id="filter">
+          <legend>Modifier le corpus
+            <input type="text" size="10" id="name" name="name" value="<%=name%>" placeholder="Nom du corpus" required="required"/>
+          </legend>
+          <input type="hidden" name="q" value="<%=q%>"/>
+          <label for="start">Années</label>
+          <input id="start" name="start" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Début" class="year"/>
+          <input id="end" name="end" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Fin" class="year"/>
+          <br/><label for="author">Auteur</label>
+          <input id="author" name="author" autocomplete="off" list="author-data" size="50" type="text" onclick="select()" placeholder="Nom, Prénom"/>
+          <datalist id="author-data">
+    <%
+    Facet facet = alix.facet("author", TEXT);
+    TopTerms facetEnum = facet.topTerms();
+    while (facetEnum.hasNext()) {
+      facetEnum.next();
+      // long weight = facetEnum.weight();
+      out.println("<option value=\""+facetEnum.term()+"\"/>");
+    }
+    %>
 
-    
-    <table class="sortable" id="bib">
-      <thead>
-        <tr>
-          <th class="checkbox"><input id="checkall" type="checkbox" title="Sélectionner/déselectionner les lignes visibles"/></th>
-          <th class="author">Auteur</th>
-          <th class="year">Date</th>
-          <th class="title">Titre</th>
-          <th class="occs">Occurrences</th>
-          <th class="chapters">Chapitres</th>
-          <th class="score">Score</th>
-        </tr>
-      </thead>
-      <tbody>
-  <%
-facet = alix.facet(Alix.BOOKID, TEXT);
-TopTerms dic = facet.topTerms(null, null, null);
+          </datalist>
+          <br/><label for="title">Titre</label>
+          <input id="title" name="title" autocomplete="off" list="title-data" type="text" size="50" onclick="select()" placeholder="Chercher un titre"/>
+          <datalist id="title-data">
+    <%
+    facet = alix.facet("title", TEXT);
+    facetEnum = facet.topTerms();
+    while (facetEnum.hasNext()) {
+      facetEnum.next();
+      // long weight = facetEnum.weight();
+      out.println("<option value=\""+facetEnum.term()+"\"/>");
+    }
+    %>
+
+          </datalist>
+          <br/>
+          <button id="selection" type="button">Sélection</button>
+          <button id="all" type="button">Tout</button>
+          <button id="none" type="button">Effacer</button>
+          <button name="reload" type="button" onclick="window.location = window.location.href.split('#')[0];">Recharger</button>
+          <button  style="float: right;"  name="save" type="submit">Enregistrer</button>
+        </fieldset>
+
+<%
 IndexReader reader = alix.reader();
-  
-// loop on all books, get metas by document
-int[] books = alix.books(SORT);
+facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.LEVEL, Alix.BOOK));
+TermList qTerms = alix.qTerms(q, TEXT);
+// no query
+TopTerms dic = null;
+boolean score = qTerms.size() > 0;
+%>
 
-for (int i = 0, len = books.length; i < len; i++) {
-  Document doc = reader.document(books[i], FIELDS);
-  String bookid = doc.get(Alix.BOOKID);
-  out.println("<tr>");
-  out.println("  <td class=\"checkbox\">");
-  out.print("    <input type=\"checkbox\" name=\"book\" value=\""+bookid+"\"");
-  if (bookids != null && bookids.contains(bookid)) out.print(" checked=\"checked\"");
-  out.println(" />");
-  out.println("  </td>");
-  out.print("  <td class=\"author\">");
-  String byline = doc.get("byline");
-  if (byline != null) out.print(byline);
-  out.println("</td>");
-  out.println("  <td class=\"year\">"+doc.get("year")+"</td>");
-  out.println("  <td class=\"title\">"+doc.get("title")+"</td>");
-  dic.contains(bookid); // set internal pointer
-  out.println("  <td class=\"occs\">"+dic.length()+"</td>");
-  out.println("  <td class=\"chapter\">"+"</td>"); // +dic.weight()
-  out.println("  <td class=\"score\">"+"</td>"); // +dic.score()
-  out.println("</tr>");
-}
-// TermQuery filterQuery = null;
-// put metas
-  %>
-      </tbody>
-    </table>
-    </form>
+        <table class="sortable" id="bib">
+          <thead>
+            <tr>
+              <th class="checkbox"><input id="checkall" type="checkbox" title="Sélectionner/déselectionner les lignes visibles"/></th>
+              <th class="author">Auteur</th>
+              <th class="year">Date</th>
+              <th class="title">Titre</th>
+              <th class="docs">Chapitres</th>
+              <th class="length" title="Taille en mots">Taille</th>
+            <% if (score) { %>
+              <th class="occs">Occurrences</th>
+              <th class="score">Score</th>
+            <% } %>
+            </tr>
+          </thead>
+          <tbody>
+    <%
+  if (score && corpus != null) {
+    dic = facet.topTerms(corpus.bits(), qTerms, null);
+  }
+  else if (score) {
+    dic = facet.topTerms(null, qTerms, null);
+  }
+  else {
+    dic = facet.topTerms();
+  }
+  
+  while (dic.hasNext()) {
+    dic.next();
+    int coverId = dic.cover();
+    Document doc = reader.document(coverId, FIELDS);
+    String bookid = doc.get(Alix.BOOKID);
+    out.println("<tr>");
+    out.println("  <td class=\"checkbox\">");
+    out.print("    <input type=\"checkbox\" name=\"book\" value=\""+bookid+"\"");
+    if (bookids != null && bookids.contains(bookid)) out.print(" checked=\"checked\"");
+    out.println(" />");
+    out.println("  </td>");
+    out.print("  <td class=\"author\">");
+    String byline = doc.get("byline");
+    if (byline != null) out.print(byline);
+    out.println("</td>");
+    out.println("  <td class=\"year\">"+doc.get("year")+"</td>");
+    out.println("  <td class=\"title\">"+doc.get("title")+"</td>");
+    out.println("  <td class=\"docs num\">"+dic.docs()+"</td>");
+    out.println("  <td class=\"length num\">"+dfint.format(dic.length())+"</td>");
+    if (score) {
+      out.println("  <td class=\"occs num\">" +dic.occs()+"</td>"); 
+      out.println("  <td class=\"score num\">" +dfscore.format(dic.score())+"</td>"); 
+    }
+    out.println("</tr>");
+  }
+  // TermQuery filterQuery = null;
+  // put metas
+    %>
+          </tbody>
+        </table>
+      </form>
+    </main>
 
     <script src="vendors/Sortable.js">//</script>
     <script src="static/js/corpus.js">//</script>
@@ -167,6 +188,8 @@ for (int i = 0, len = books.length; i < len; i++) {
 <%
 out.println(botjs);
 %>
+// display corpus list after corpus recording
+corpusList("corpusList");
 showSelected();
     </script>
   </body>

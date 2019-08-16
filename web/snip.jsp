@@ -16,8 +16,6 @@ else q = q.trim();
 String sort = request.getParameter("sort");
       %>
       <form id="qform">
-        <input type="hidden" name="start" value="<%=start%>"/>
-        <input type="hidden" name="end" value="<%=end%>"/>
         <input id="q" name="q" value="<%=q%>" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"  onclick="this.select();"/>
         <label>
          Tri

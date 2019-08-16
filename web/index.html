@@ -15,24 +15,26 @@
         et
         <input id="end" name="end" size="4"/>
         <button>▶</button>
+        <select id="panChange" name="panel" style="font-family: 'Open Sans', sans-serif; line-height: 100%; font-size: 16px;">
+          <option value="facet.jsp">Auteurs</option>
+          <option value="facet.jsp?facet=title">Titres</option>
+          <option>Noms</option>
+          <optgroup label="À développer">
+            <option>Annotations</option>
+            <option>Personnes</option>
+            <option>Lieux</option>
+          </optgroup>
+        </select>
       </form>
-      <select id="panChange" name="panel" style="font-family: 'Open Sans', sans-serif; line-height: 100%; font-size: 16px;">
-        <option value="facet.jsp">Auteurs</option>
-        <option>Titres</option>
-        <option>Annotations</option>
-        <option>Noms</option>
-        <option>Personnes</option>
-        <option>Lieux</option>
-      </select>
       <span id="alert">Prototype en chantier</span>
-      <div id="tabs">
-        <a target="page">Bibliographie</a>
-        <a href="snip.jsp" target="page">Résultats</a>
-        <a target="page">Document</a>
-        <a>Concordancier</a>
-        <a target="page">Fréquences</a>
-        <a target="page" href="cloud.html">Nuage</a>
-      </div>
+        <div id="tabs">
+          <a href="corpus.jsp" target="page">Bibliographie</a>
+          <a href="snip.jsp" target="page">Résultats</a>
+          <a target="page">Document</a>
+          <a>Concordancier</a>
+          <a target="page">Fréquences</a>
+          <a target="page" href="cloud.html">Nuage</a>
+        </div>
     </header>
     <div id="win">
       <div id="aside">

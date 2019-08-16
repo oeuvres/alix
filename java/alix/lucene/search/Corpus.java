@@ -1,7 +1,6 @@
 package alix.lucene.search;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -18,6 +17,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -49,7 +49,7 @@ public class Corpus
   /** Max number of docs */
   private final int maxDoc;
   /** The bitset */
-  private final FixedBitSet docs;
+  private final BitSet docs;
 
   /**
    * Constructor
@@ -98,6 +98,15 @@ public class Corpus
     add(books);
   }
 
+  /**
+   * Provide the documents as a bitset.
+   * @return
+   */
+  public BitSet bits()
+  {
+    return docs;
+  }
+  
   /**
    * Number of documents set
    * @return

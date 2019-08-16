@@ -12,6 +12,9 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
@@ -84,10 +87,12 @@ public class Facet
   public final int size;
   /** A table docId => facetId*n, to get freqs from found docs */
   private final int[][] docFacets;
-  /** Count of docs by facet */
-  private int[] facetDocs = new int[32];
-  /** Count of occurrences by facet */
+  /** Count of tokens by facet */
   private final long[] facetLength;
+  /** Count of docs by facet */
+  private final int[] facetDocs;
+  /** A docid by facet uses as a “cover“ doc (not counted  */
+  private final int[] facetCover;
   /** The reader from which to get freqs */
   private IndexReader reader;
   /** A vector for each docId, size in occurrences */
@@ -95,15 +100,24 @@ public class Facet
 
   /**
    * Build data to have frequencies on a facet field.
-   * Prefers access by an Alix instance, to allow cache on an IndexReader state.
+   * Access by an Alix instance, to allow cache on an IndexReader state.
    * 
    * @param alix
    * @param facet
    * @param text
    * @throws IOException
    */
-  public Facet(final Alix alix, final String facet, final String text) throws IOException
+  public Facet(final Alix alix, final String facet, final String text, final Term coverTerm) throws IOException
   {
+    // get a vector of possible docids used as a cover for a facetId
+    BitSet coverBits = null;
+    if (coverTerm != null) {
+      IndexSearcher searcher = alix.searcher(); // ensure reader or decache
+      Query coverQuery = new TermQuery(coverTerm);
+      CollectorBits coverCollector = new CollectorBits(searcher);
+      searcher.search(coverQuery, coverCollector);
+      coverBits = coverCollector.docs();
+    }
     FieldInfo info = alix.info(facet);
     if (info == null) {
       throw new IllegalArgumentException("Field \"" + facet + "\" is not known in this index.");
@@ -118,8 +132,11 @@ public class Facet
     docFacets = new int[reader.maxDoc()][];
     int docsAll = 0;
     long occsAll = 0;
-    // Count of occurrences by facet value, ordered by a unified ord across leaves
+    // prepare local arrays to populate with leaf data
     long[] facetLength = new long[32];
+    int[] facetDocs = new int[32];
+    int[] facetCover = new int[32];
+
     long[] docLength = alix.docLength(text); // length of each doc for the text field
     this.docLength = docLength;
     // max int for an array collecttor
@@ -139,42 +156,60 @@ public class Facet
         if (docs4terms == null) continue;
         ordMax = (int)((SortedSetDocValues)docs4terms).getValueCount();
       }
-      // record doc counts for each term by ord index
-      int[] leafDocs = new int[(int) ordMax];
-      // record occ counts for each term by ord index
-      long[] leafOccs = new long[(int) ordMax];
+      // record doc counts for each term by a temp ord index
+      int[] leafDocs = new int[ordMax];
+      // record occ counts for each term by a temp ord index
+      long[] leafOccs = new long[ordMax];
+      // record cover docid for each term by a temp ord index
+      int[] leafCover = new int[ordMax];
       // loop on docs
       int docLeaf;
       Bits live = leaf.getLiveDocs();
       while ((docLeaf = docs4terms.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         if (live != null && !live.get(docLeaf)) continue; // deleted doc
-        long occsMore = docLength[docBase + docLeaf];
+        int docId = docBase + docLeaf;
+        long docOccs = docLength[docId];
         docsAll++; // one more doc for this facet
-        occsAll += occsMore; // count of tokens for this doc
+        occsAll += docOccs; // count of tokens for this doc
         int ord;
         if (type == DocValuesType.SORTED) {
           ord = ((SortedDocValues)docs4terms).ordValue();
-          leafDocs[ord]++;
-          leafOccs[ord] += occsMore;
+          // doc is a cover, record it and do not add to stats
+          if (coverBits != null && coverBits.get(docId)) {
+            leafCover[ord] = docId;
+          }
+          else {
+            leafDocs[ord]++;
+            leafOccs[ord] += docOccs;
+          }
         }
         else if (type == DocValuesType.SORTED_SET) {
           SortedSetDocValues it = (SortedSetDocValues)docs4terms;
           while ((ord = (int)it.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-            leafDocs[ord]++;
-            leafOccs[ord] += occsMore;
+            // doc is a cover, record it and do not add to stats
+            if (coverBits != null && coverBits.get(docId)) {
+              leafCover[ord] = docId;
+            }
+            else {
+              leafDocs[ord]++;
+              leafOccs[ord] += docOccs;
+            }
           }
         }
       }
       BytesRef bytes = null;
       // build a local map for this leaf to record the ord -> facetId
       int[] ordFacetId = new int[ordMax];
-      // copy the data fron this leaf to the global dic
+      // copy the data fron this leaf to the global dic, and get facetId for it
       for (int ord = 0; ord < ordMax; ord++) {
         if (type == DocValuesType.SORTED) bytes = ((SortedDocValues)docs4terms).lookupOrd(ord);
         else if (type == DocValuesType.SORTED_SET) bytes = ((SortedSetDocValues)docs4terms).lookupOrd(ord);
         int facetId = hashSet.add(bytes);
         // value already given
         if (facetId < 0) facetId = -facetId - 1;
+        facetCover = ArrayUtil.grow(facetCover, facetId + 1);
+        // if more than one cover by facet, last will replace previous
+        facetCover[facetId] = leafCover[ord];
         facetDocs = ArrayUtil.grow(facetDocs, facetId + 1);
         facetDocs[facetId] += leafDocs[ord];
         facetLength = ArrayUtil.grow(facetLength, facetId + 1);
@@ -209,6 +244,8 @@ public class Facet
     this.occsAll = occsAll;
     this.size = hashSet.size();
     this.facetLength = facetLength;
+    this.facetDocs = facetDocs;
+    this.facetCover = facetCover;
   }
 
   
@@ -220,9 +257,10 @@ public class Facet
    */
   public TopTerms topTerms() throws IOException {
     TopTerms dic = new TopTerms(hashSet);
-    dic.sort(); // orthographc sort
-    dic.setWeights(facetDocs);
+    dic.setDocs(facetDocs);
     dic.setLengths(facetLength);
+    dic.setCovers(facetCover);
+    dic.sort(); // orthographc sort
     return dic;
   }
 
@@ -230,9 +268,12 @@ public class Facet
    * Returns a dictionary of the terms of a facet, with scores and other stats.   * @return
    * @throws IOException
    */
-  public TopTerms topTerms(final QueryBits filter, final TermList terms, Scorer scorer) throws IOException
+  public TopTerms topTerms(final BitSet filter, final TermList terms, Scorer scorer) throws IOException
   {
     TopTerms dic = new TopTerms(hashSet);
+    dic.setDocs(facetDocs);
+    dic.setLengths(facetLength);
+    dic.setCovers(facetCover);
     float[] scores = new float[size];
     long[] weights = new long[size];
     // A term query, get matched occurrences and calculate score
@@ -241,14 +282,9 @@ public class Facet
       // loop on each term of the query to update the score vector
       for (Term term : terms) {
         int facetMatch = 0; // number of matched facets by this term
-        long[] freqs = new long[size]; // a vector to count matched occurrences by facet
+        long[] occs = new long[size]; // a vector to count matched occurrences by facet
         if (term == null) continue;
         for (LeafReaderContext ctx : reader.leaves()) { // loop on the reader leaves
-          BitSet bits = null;
-          if (filter != null) {
-            bits = filter.bits(ctx); // the filtered docs for this segment
-            if (bits == null) continue; // no matching doc, go away
-          }
           int docBase = ctx.docBase;
           LeafReader leaf = ctx.reader();
           // get the ocurrence count for the query in each doc
@@ -259,36 +295,31 @@ public class Facet
           long freq;
           // loop on the docs for this term
           while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-            if (bits != null && !bits.get(docLeaf)) continue; // document not in the metadata fillter
+            int docId = docBase + docLeaf;
+            if (filter != null && !filter.get(docId)) continue; // document not in the metadata fillter
             if ((freq = postings.freq()) == 0) continue; // no occurrence of this term (?)
-            int[] facets = docFacets[docBase + docLeaf]; // get the facets of this doc
-
+            int[] facets = docFacets[docId]; // get the facets of this doc
             if (facets == null) continue; // could be null if doc matching but not faceted
             for (int i = 0, length = facets.length; i < length; i++) {
               int facetId = facets[i];
-              if (freqs[facetId] == 0) facetMatch++; // first match for this facet, increment the counter of matched
-                                                     // facets
-              freqs[facetId] += freq; // add the matched occs for this doc to the facet
+              // first match for this facet, increment the counter of matched facets
+              if (occs[facetId] == 0) facetMatch++;
+              occs[facetId] += freq; // add the matched occs for this doc to the facet
             }
           }
         }
-
+        dic.setOccs(occs);
         scorer.weight(facetMatch, size, occsAll); // prepare the scorer for this term
-        for (int facetId = 0, length = freqs.length; facetId < length; facetId++) { // get score for each facet
-          scores[facetId] += scorer.score(freqs[facetId], facetLength[facetId]);
-          // update the occurrence count by facets for all terms
-          weights[facetId] += freqs[facetId];
+        for (int facetId = 0, length = occs.length; facetId < length; facetId++) { // get score for each facet
+          scores[facetId] = scorer.score(occs[facetId], facetLength[facetId]);
         }
       }
     }
     // Filter of docs, 
     else if (filter != null) {
       // loop on the docs of the filter
-      /*
       // loop on the reader leaves
       for (LeafReaderContext ctx : reader.leaves()) { // loop on the reader leaves
-        BitSet bits = filter.bits(ctx); // the filtered docs for this segment
-        if (bits == null) continue; // no filtered docs in this segment,
         int docBase = ctx.docBase;
         LeafReader leaf = ctx.reader();
         // get a doc iterator for the facet field
@@ -298,8 +329,8 @@ public class Facet
         // loop on the docs with a facet
         int docLeaf;
         while ((docLeaf = docs4terms.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          if (!bits.get(docLeaf)) continue;// not in the filter do not count
           int docId = docBase + docLeaf;
+          if (!filter.get(docId)) continue;// not in the filter do not count
           int[] facets = docFacets[docId]; // get the facets of this doc
           // if (facets == null) continue; // should no arrive, wait and see
           for (int i = 0, length = facets.length; i < length; i++) {
@@ -309,20 +340,15 @@ public class Facet
           }
         }
       }
-      */
     }
     // no filter, no query, order facets by occ length
     else {
       for (int facetId = 0; facetId < size; facetId++) {
         // array conversion from long to float
         scores[facetId] = facetLength[facetId];
-        // array conversion from int to long
-        weights[facetId] = facetDocs[facetId];
       }
     }
     dic.sort(scores);
-    dic.setWeights(weights);
-    dic.setLengths(facetLength);
     return dic;
   }
 
