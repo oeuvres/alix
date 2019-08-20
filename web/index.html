@@ -8,33 +8,27 @@
   </head>
   <body class="split">
     <header id="header">
-      <form id="qform" name="qform" onsubmit="dispatch(this)" target="page" action="snip.jsp">
-        <input id="q" name="q" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"/>
-        Entre
-        <input id="start" name="start" size="4"/>
-        et
-        <input id="end" name="end" size="4"/>
+      <form id="qform" name="qform" onsubmit="return dispatch(this)" target="page" action="snip.jsp">
+        <input id="q" name="q" autocomplete="off" size="40" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"/>
         <button>▶</button>
-        <select id="panChange" name="panel" style="font-family: 'Open Sans', sans-serif; line-height: 100%; font-size: 16px;">
-          <option value="facet.jsp">Auteurs</option>
-          <option value="facet.jsp?facet=title">Titres</option>
-          <option>Noms</option>
-          <optgroup label="À développer">
-            <option>Annotations</option>
-            <option>Personnes</option>
-            <option>Lieux</option>
-          </optgroup>
-        </select>
       </form>
-      <span id="alert">Prototype en chantier</span>
-        <div id="tabs">
-          <a href="corpus.jsp" target="page">Bibliographie</a>
-          <a href="snip.jsp" target="page">Résultats</a>
-          <a target="page">Document</a>
-          <a>Concordancier</a>
-          <a target="page">Fréquences</a>
-          <a target="page" href="cloud.html">Nuage</a>
-        </div>
+      <select id="panChange" name="panel" style="font-family: 'Open Sans', sans-serif; line-height: 100%; font-size: 16px;">
+        <option value="facet.jsp">Auteurs</option>
+        <option>Noms</option>
+        <optgroup label="À développer">
+          <option>Annotations</option>
+          <option>Personnes</option>
+          <option>Lieux</option>
+        </optgroup>
+      </select>
+      <div id="tabs">
+        <a href="corpus.jsp" target="page" class="tab">Bibliographie</a>
+        <a href="snip.jsp" target="page" class="tab">Résultats</a>
+        <a target="page" class="tab">Document</a>
+        <a target="page" class="tab">Concordancier</a>
+        <a target="page" class="tab">Fréquences</a>
+        <a target="page" href="cloud.html" class="tab">Nuage</a>
+      </div>
     </header>
     <div id="win">
       <div id="aside">
@@ -43,7 +37,7 @@
       </div>
       <div id="main">
         <div id="body">
-          <iframe name="page" id="page" src="snip.jsp">
+          <iframe name="page" id="page" src="corpus.jsp">
           </iframe>
         </div>
         <footer id="footer">

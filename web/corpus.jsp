@@ -24,7 +24,6 @@ String desc = getParameter(request, "desc", "");
 String json = getParameter(request, "json", null);
 String[] checks = request.getParameterValues("book");
 String botjs = ""; // javascript to add at the end
-Corpus corpus = null;
 Set<String> bookids = null; // load the bookds to update the 
 
 // json send, client wants to load a new corpus
@@ -61,12 +60,14 @@ else {
     <meta charset="UTF-8">
     <title>Corpus [Alix]</title>
     <link href="static/alix.css" rel="stylesheet"/>
+    <script src="static/js/corpus.js">//</script>
   </head>
   <body class="corpus">
     <form method="post" id="corpora">
       <input type="hidden" name="json"/>
       <ul id="corpusList"></ul>
     </form>
+    <script type="text/javascript">corpusList("corpusList");</script>
     <main>
       <form method="post" id="corpus">
         <fieldset id="filter">
@@ -103,7 +104,6 @@ else {
       out.println("<option value=\""+facetEnum.term()+"\"/>");
     }
     %>
-
           </datalist>
           <br/>
           <button id="selection" type="button">Sélection</button>
@@ -183,14 +183,13 @@ boolean score = qTerms.size() > 0;
     </main>
 
     <script src="vendors/Sortable.js">//</script>
-    <script src="static/js/corpus.js">//</script>
     <script>
+bottomLoad();
 <%
 out.println(botjs);
+if (corpus != null) out.println("showSelected();");
 %>
-// display corpus list after corpus recording
-corpusList("corpusList");
-showSelected();
+
     </script>
   </body>
 </html>

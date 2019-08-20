@@ -1,43 +1,39 @@
 // get the url params
 var url = new URL(window.location.href);
-var dots = url.searchParams.get("dots");
-if (!dots) dots = "";
-var start = url.searchParams.get("start");
-var end = url.searchParams.get("end");
-var q = url.searchParams.get("q");
-// if (!q) q = "poème, poésie ; théâtre, acteur ; critique";
 var form = document.forms['qform'];
+var q = url.searchParams.get("q");
 form['q'].value = q;
+var start = url.searchParams.get("start");
 if (start) form['start'].value = start;
+var end = url.searchParams.get("end");
 if (end) form['end'].value = end;
-
-
 if (self != top) { // no form embedded in a frame
   form.style.display = "none";
 } else {
   form.q.value = q;
 }
 var div = document.getElementById("chart");
-var url = new URL(window.location.href);
+
+var dots = url.searchParams.get("dots");
+if (!dots) dots = "";
+// download the json data, only if a query
 var ticks;
-// download the json data
-var jsonUrl = "data/chrono.jsp?q="+q+"&dots="+dots+"&start="+start+"&end="+end;
-console.log(jsonUrl);
-fetch(jsonUrl).then(
-  function(response) {
-    return response.json();
-  }
-).then(
-  function(json) {
-    ticks = json.ticks;
-    draw(div, json.data, json.labels);
-  }
-);
-/*
-.catch(function(err) {
-  console.log('Fetch problem: ' + err.message);
-});
-*/
+function load(q) {
+  if (!q) return;
+  var jsonUrl = "data/chrono.jsp?q="+q+"&dots="+dots;
+  fetch(jsonUrl).then(
+    function(response) {
+      return response.json();
+    }
+  ).then(
+    function(json) {
+      ticks = json.ticks;
+      draw(div, json.data, json.labels);
+    }
+  );
+  return ticks;
+}
+load(q, dots);
 var rollPeriod = localStorage.getItem('chronoRollPeriod');
 if (!rollPeriod) rollPeriod = 20;
 // function for the ticker

@@ -24,6 +24,7 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import alix.fr.Tag.TagFilter;
 import alix.lucene.Alix;
 
 
@@ -82,6 +83,11 @@ import alix.lucene.Alix;
  */
 public class SAXIndexer extends DefaultHandler
 {
+  /**  */
+  private final static TagFilter nameFilter = new TagFilter();
+  static {
+    nameFilter.setName();
+  }
   /** Lucene writer */
   private final IndexWriter writer;
   /** Current file processed */
@@ -194,11 +200,11 @@ public class SAXIndexer extends DefaultHandler
       bookid = id;
       // will record the field as an ending doc
       book = new Document();
-      book.add(new StringField(Alix.ID, id, Store.YES));
+      book.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
       book.add(new StringField(Alix.BOOKID, id, Store.YES));
       book.add(new SortedDocValuesField(Alix.BOOKID, new BytesRef(bookid))); // keep bookid as a facet
+      book.add(new StringField(Alix.ID, id, Store.YES));
       book.add(new StringField(Alix.LEVEL, Alix.BOOK, Store.YES));
-      book.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
       chapno = 0;
     }
     // open a chapter as an item in a book series
@@ -212,11 +218,11 @@ public class SAXIndexer extends DefaultHandler
       // will record the field as an ending doc
       document = new Document();
       document.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
-      document.add(new StringField(Alix.LEVEL, Alix.CHAPTER, Store.YES));
-      document.add(new SortedDocValuesField(Alix.BOOKID, new BytesRef(bookid))); // keep bookid as a facet
       document.add(new StringField(Alix.BOOKID, bookid, Store.YES));
+      document.add(new SortedDocValuesField(Alix.BOOKID, new BytesRef(bookid))); // keep bookid as a facet
       chapno++;
       document.add(new StringField(Alix.ID, bookid+"_"+chapno, Store.YES));
+      document.add(new StringField(Alix.LEVEL, Alix.CHAPTER, Store.YES));
     }
     // create a new Lucene document
     else if (localName.equals("document")) {
@@ -229,9 +235,9 @@ public class SAXIndexer extends DefaultHandler
       document = new Document();
       // unique id for documents is not required
       String id = attributes.getValue("http://www.w3.org/XML/1998/namespace", "id");
+      document.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
       if (id == null || id.trim().equals(""))
         document.add(new StringField(Alix.ID, id, Store.YES));
-      document.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
       document.add(new StringField(Alix.LEVEL, Alix.ARTICLE, Store.YES));
     }
     // open a field
@@ -291,7 +297,7 @@ public class SAXIndexer extends DefaultHandler
           break;
         case "facets":
           if (value == null)
-            throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"facet\"");
+            throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"facets\"");
           doc.add(new SortedSetDocValuesField(name, new BytesRef(value)));
           doc.add(new StoredField(name, value));
           break;
@@ -407,11 +413,11 @@ public class SAXIndexer extends DefaultHandler
           throw new SAXException(e);
         }
         doc.add(new NumericDocValuesField(name, counter.count()));
-        // TokenStream full = new TokenLemFull(result);
         TokenStream cloud = new TokenLemCloud(caching);
-        doc.add(new StoredField(name , text));
+        TokenStream names = new TokenPosFilter(caching, nameFilter);
+        doc.add(new StoredField(name , text)); // text has to be stored for snippets and conc
         doc.add(new Field(name, cloud, Alix.ftypeAll));
-        // doc.add(new Field(fieldName + "_full", full, Alix.ftypeAll));
+        doc.add(new Field(fieldName + Alix._NAMES, names, Alix.ftypeAll));
 
       }
     }

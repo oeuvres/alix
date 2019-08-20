@@ -95,10 +95,10 @@ alix.lucene.analysis.TokenCooc.AnalyzerCooc,
 alix.lucene.analysis.TokenLem,
 alix.lucene.analysis.TokenizerFr,
 alix.lucene.search.Corpus,
+alix.lucene.search.CorpusQuery,
 alix.lucene.search.CollectorBits,
 alix.lucene.search.Facet,
-alix.lucene.search.HiliteFormatter,
-alix.lucene.search.QueryBits,
+alix.lucene.search.HiliteFormatter,alix.lucene.search.BitsFromQuery,
 alix.lucene.search.Scorer,
 alix.lucene.search.ScorerBM25,
 alix.lucene.search.ScorerTfidf,
@@ -196,6 +196,14 @@ public static String getParameter(HttpServletRequest request, String name, Strin
 long time = System.nanoTime();
 request.setCharacterEncoding("UTF-8");
 Alix alix = Alix.instance(application.getRealPath("") + "/WEB-INF/lucene/");
+
+//Set a bitSet filter for current corpus
+BitSet filter = null;
+Corpus corpus = (Corpus)session.getAttribute(CORPUS);
+if (corpus != null) filter = corpus.bits();
+// get query string
+String q = getParameter(request, "q", "");
+
 
 /*
 int start = getParameter(request, "start", -1);

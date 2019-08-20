@@ -9,6 +9,11 @@ static {
 }
 %>
 <%
+out.println("{");
+IndexSearcher searcher = alix.searcher();
+
+String textField = TEXT;
+
 String sc = request.getParameter("scorer");
 Scorer scorer = new ScorerBM25();
 if ("tfidf".equals(sc)) scorer = new ScorerTfidf();
@@ -22,11 +27,18 @@ DecimalFormat fontdf = new DecimalFormat("#");
 String word = request.getParameter("word");
 if (word != null && word.isEmpty()) word = null;
 
-// output array
-String field = TEXT;
-TermFreqs freqs = alix.termFreqs(TEXT);
-TopTerms terms = freqs.topTerms(null, scorer);
-out.println("[");
+TermFreqs freqs = alix.termFreqs(textField);
+String f = getParameter(request, "f", null);
+String v = getParameter(request, "v", null);
+if (f != null && v != null) {
+  CollectorBits authorCollector = new CollectorBits(searcher);
+  searcher.search(new TermQuery(new Term(f, v)), authorCollector);
+  filter = authorCollector.bits();  
+}
+
+TopTerms terms = freqs.topTerms(filter, scorer);
+
+out.println("  \"data\":[");
 int lines = 500;
 CharsAtt term = new CharsAtt();
 Tag tag;
@@ -58,7 +70,7 @@ while (terms.hasNext()) {
   long weight = terms.weight();
   if (weight < 1) break;
   */
-  out.print("  {\"word\" : \"");
+  out.print("    {\"word\" : \"");
   out.print(terms.term().toString().replace( "\"", "\\\"" ).replace('_', ' ')) ;
   out.print("\"");
   out.print(", \"weight\" : ");
@@ -70,7 +82,8 @@ while (terms.hasNext()) {
   if (--lines <= 0 ) break;
   else out.println(",");
 }
-out.println("\n]");
+out.println("\n  ]");
+out.println("\n}");
 /*
 DicBytes dic = lucene.dic(field);
 Cursor cursor = dic.iterator();

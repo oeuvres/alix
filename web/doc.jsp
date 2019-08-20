@@ -44,11 +44,6 @@ if (document != null) {
   %>
   </head>
   <body class="document">
-      <%
-String q = request.getParameter("q");
-if (q == null || "".equals(q.trim())) q = "";
-String sort = request.getParameter("sort");
-      %>
     <div><a class="but">◀</a>Résultats<a class="but">▶</a> <a class="but">◀</a>Chapitres<a class="but">▶</a></div>
     <form id="qform">
       <input type="hidden" name="doc" value="<%=docId%>"/>
@@ -69,9 +64,9 @@ if (document != null) {
     TermList terms = alix.qTerms(q, TEXT);
     ArrayList<BytesRef> bytesList = (ArrayList<BytesRef>)terms.bytesList();
     Terms tVek = reader.getTermVector(docId, TEXT);
+    // buid a term enumeration like lucene like them in the term vector
     Automaton automaton = DaciukMihovAutomatonBuilder.build(bytesList);
-    CompiledAutomaton filter = new CompiledAutomaton(automaton);
-    TermsEnum tEnum = filter.getTermsEnum(tVek);
+    TermsEnum tEnum = new CompiledAutomaton(automaton).getTermsEnum(tVek);
     PostingsEnum postings = null;
     ArrayList<TokenOffsets> offsets = new ArrayList<TokenOffsets>();
     while (tEnum.next() != null) {

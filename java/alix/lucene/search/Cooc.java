@@ -62,8 +62,8 @@ public class Cooc
     
     final CollectorBits collector = new CollectorBits(searcher);
     searcher.search(pivotQuery, collector);
-    this.filterBits = collector.docs();
-    DocIdSet filter = collector.docs();
+    this.filterBits = collector.bits();
+    DocIdSet filter = collector.bits();
     
     
     this.hits = collector.hits();

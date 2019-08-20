@@ -1,6 +1,80 @@
-var table = document.getElementById("bib");
-var showSelected = function() {
-  var checks = document.getElementsByName("book");
+var table;
+const authors = {};
+const titles = {};
+var checks;
+function bottomLoad() {
+  var el;
+  table = document.getElementById("bib");
+  var nl = document.querySelectorAll('#author-data option');
+  for (var i = 0, len = nl.length; i< len; i++) {
+    authors[nl[i].value] = true;
+  }
+  el = document.getElementById("author");
+  el.addEventListener('input', authorFilter);
+  el.addEventListener('focus', authorFilter);
+
+  el = document.getElementById("selection");
+  el.addEventListener('click', function(evt) {
+    showSelected();
+  });
+
+  el = document.getElementById("start");
+  el.addEventListener('input', range);
+  el.addEventListener('focus', range);
+
+  el = document.getElementById("end");
+  el.addEventListener('input', range);
+  el.addEventListener('focus', range);
+
+  var nl = document.querySelectorAll('#title-data option');
+  for (var i = 0, len = nl.length; i< len; i++) {
+    titles[nl[i].value] = true;
+  }
+
+  el = document.getElementById("title");
+  el.addEventListener('keydown', titleEnter);
+  el.addEventListener('input', titleFilter);
+  el.addEventListener('focus', titleFilter);
+
+  el = document.getElementById("all");
+  el.addEventListener('click', function(evt) {
+    Sortable.showAll(table);
+    Sortable.zebra(table);
+  });
+
+  el = document.getElementById("checkall");
+  el.addEventListener('click', checkAll)
+
+  el = document.getElementById("none");
+  el.addEventListener('click', none);
+
+  checks = document.getElementsByName("book");
+  for (var i = 0, length = checks.length; i < length; i++) {
+    var check = checks[i];
+    check.n = i;
+    check.addEventListener('click', checkRange);
+  }
+}
+
+var checkLast;
+function checkRange(evt) {
+  if (!evt.shiftKey && !evt.ctrlKey) {
+    checkLast = this;
+    return true;
+  }
+  if (!checkLast) return true;
+  var checked = this.checked;
+  if (checkLast.checked != checked) return true;
+  var min = Math.min(this.n, checkLast.n);
+  var max = Math.max(this.n, checkLast.n);
+  for(var i = min; i <= max; i++) {
+    if (checks[i].offsetParent === null) continue; // invisible
+    checks[i].checked = checked;
+  }
+  checkLast = this;
+}
+
+function showSelected() {
   for (var i = 0, length = checks.length; i < length; i++) {
     // onload, ensure visibility of checked
     var check = checks[i];
@@ -16,34 +90,21 @@ var showSelected = function() {
   Sortable.zebra(table);
 }
 
-const authors = {};
-var nl = document.querySelectorAll('#author-data option');
-for (var i = 0, len = nl.length; i< len; i++) {
-  authors[nl[i].value] = true;
-}
-var author = document.getElementById("author");
 function authorFilter(evt) {
   if (!authors[this.value]) return true;
   Sortable.filter(table, 1, this.value);
   Sortable.zebra(table);
 }
-author.addEventListener('input', authorFilter);
-author.addEventListener('focus', authorFilter);
 
-const titles = {};
-var nl = document.querySelectorAll('#title-data option');
-for (var i = 0, len = nl.length; i< len; i++) {
-  titles[nl[i].value] = true;
-}
-var title = document.getElementById("title");
 function titleFilter(evt) {
   if (!titles[this.value]) return true;
   Sortable.filter(table, 3, this.value);
   Sortable.zebra(table);
   this.value = "";
 }
+
 // intercept enter to search for words
-title.onkeydown = function(evt) {
+function titleEnter(evt) {
   // return false;
   if (evt.key != 'Enter') return true;
   Sortable.filter(table, 3, this.value);
@@ -51,58 +112,40 @@ title.onkeydown = function(evt) {
   this.value = "";
   return false;
 }
-title.addEventListener('input', titleFilter);
-title.addEventListener('focus', titleFilter);
 
-var start = document.getElementById("start");
-var end = document.getElementById("end");
 function range(evt) {
   if (!this.validity.valid) return true;
   if (evt.type == "focus" && this.value === "") return true;
   Sortable.range(table, 2, start.value, end.value);
   Sortable.zebra(table);
 }
-start.addEventListener('input', range);
-start.addEventListener('focus', range);
-end.addEventListener('input', range);
-end.addEventListener('focus', range);
 
-var checkall = document.getElementById("checkall");
-checkall.addEventListener('click', function(evt) {
-  var checks = document.getElementsByName("book");
+function checkAll(evt) {
   var checked = this.checked;
   for(var i=0, len=checks.length; i < len; i++) {
     if (checks[i].offsetParent === null) continue; // invisible
     checks[i].checked = checked;
   }
-});
-var none = document.getElementById("none");
-none.addEventListener('click', function(evt) {
-  var checks = document.getElementsByName("book");
+}
+
+function none(evt) {
   for(var i=0, len=checks.length; i < len; i++) {
     checks[i].checked = false;
   }
   showSelected();
-});
-var all = document.getElementById("all");
-all.addEventListener('click', function(evt) {
-  Sortable.showAll(table);
-  Sortable.zebra(table);
-});
-var selection = document.getElementById("selection");
-selection.addEventListener('click', function(evt) {
-  showSelected();
-});
+}
+
 /** Store corpus bookid as json on response from server */
 const CORPORA = "alix:corpora";
-var store = function(name, desc, json) {
+function store(name, desc, json) {
   var corpora =  JSON.parse(localStorage.getItem(CORPORA));
   if (!corpora) corpora = {};
   if (name) corpora[name] = desc;
   localStorage.setItem(CORPORA, JSON.stringify(corpora));
   if (json) localStorage.setItem(name, json);
 }
-var remove = function(name) {
+
+function remove(name) {
   if (!name) return;
   var corpora = JSON.parse(localStorage.getItem(CORPORA));
   if (corpora) delete corpora[name];
@@ -111,7 +154,8 @@ var remove = function(name) {
   localStorage.removeItem(name);
   corpusList("corpusList");
 }
-var corpusList = function(id) {
+
+function corpusList(id) {
   var el =  document.getElementById(id);
   var html = "";
   var corpora =  JSON.parse(localStorage.getItem(CORPORA));
@@ -121,7 +165,8 @@ var corpusList = function(id) {
   }
   el.innerHTML = html;
 }
-var send = function(button) {
+
+function send(button) {
   var json = localStorage.getItem(button.name);
   button.form['json'].value = json;
   return false;

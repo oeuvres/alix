@@ -116,7 +116,7 @@ public class Facet
       Query coverQuery = new TermQuery(coverTerm);
       CollectorBits coverCollector = new CollectorBits(searcher);
       searcher.search(coverQuery, coverCollector);
-      coverBits = coverCollector.docs();
+      coverBits = coverCollector.bits();
     }
     FieldInfo info = alix.info(facet);
     if (info == null) {
@@ -271,11 +271,10 @@ public class Facet
   public TopTerms topTerms(final BitSet filter, final TermList terms, Scorer scorer) throws IOException
   {
     TopTerms dic = new TopTerms(hashSet);
-    dic.setDocs(facetDocs);
     dic.setLengths(facetLength);
     dic.setCovers(facetCover);
     float[] scores = new float[size];
-    long[] weights = new long[size];
+    int[] docs = new int[size];
     // A term query, get matched occurrences and calculate score
     if (terms != null && terms.sizeNotNull() != 0) {
       if (scorer == null) scorer = new ScorerBM25(); // default scorer is BM25 (for now)
@@ -302,6 +301,7 @@ public class Facet
             if (facets == null) continue; // could be null if doc matching but not faceted
             for (int i = 0, length = facets.length; i < length; i++) {
               int facetId = facets[i];
+              docs[facetId]++; // matched docs by facets
               // first match for this facet, increment the counter of matched facets
               if (occs[facetId] == 0) facetMatch++;
               occs[facetId] += freq; // add the matched occs for this doc to the facet
@@ -336,7 +336,7 @@ public class Facet
           for (int i = 0, length = facets.length; i < length; i++) {
             int facetId = facets[i];
             scores[facetId] += docLength[docId];
-            weights[facetId]++; // weight is here in docs
+            docs[facetId]++; // weight is here in docs
           }
         }
       }
@@ -347,7 +347,9 @@ public class Facet
         // array conversion from long to float
         scores[facetId] = facetLength[facetId];
       }
+      docs = facetDocs;
     }
+    dic.setDocs(docs);
     dic.sort(scores);
     return dic;
   }
@@ -370,7 +372,7 @@ public class Facet
     BytesRef ref = new BytesRef();
     for (int i = 0; i < size; i++) {
       hashSet.get(i, ref);
-      System.out.println(ref.utf8ToString() + ":" + facetLength[i]);
+      string.append(ref.utf8ToString() + ": " + facetLength[i] + "\n");
     }
     return string.toString();
   }

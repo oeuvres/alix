@@ -32,11 +32,10 @@ public class TermFreqs
   private int[] termDocs;
   /** Count of occurrences by termId */
   private final long[] termLength;
-  /** A sorted list of the terms in order of  */
+  /** A sorted list of the terms in order of */
   final TopTerms dic;
   /** The reader from which to get freqs */
   private Alix alix;
-
 
   public TermFreqs(final Alix alix, final String field) throws IOException
   {
@@ -71,22 +70,23 @@ public class TermFreqs
     TopTerms dic = new TopTerms(hashSet);
     dic.sort(termLength);
     this.dic = dic;
-    this.hashSet = hashSet; 
+    this.hashSet = hashSet;
     this.size = hashSet.size();
     this.termDocs = termDocs;
     this.termLength = termLength;
   }
-  
+
   /**
-   * Return the global dictionary of terms for this field in order 
-   * of most frequent first.
+   * Return the global dictionary of terms for this field in order of most
+   * frequent first.
+   * 
    * @return
    */
   public TopTerms dic()
   {
     return this.dic;
   }
-  
+
   /**
    * Get global length (occurrences) for a term
    * 
@@ -111,8 +111,10 @@ public class TermFreqs
     if (id < 0) return -1;
     return termLength[id];
   }
+
   /**
    * Build an iterator of term score, on a set of docs defined by a filter
+   * 
    * @param filter
    * @param terms
    * @param scorer
@@ -124,8 +126,7 @@ public class TermFreqs
     TopTerms dic = new TopTerms(hashSet);
     dic.setLengths(termLength);
     dic.setDocs(termDocs);
-    
-    
+
     long[] docLength = alix.docLength(field);
     IndexReader reader = alix.reader();
     float[] scores = new float[size];

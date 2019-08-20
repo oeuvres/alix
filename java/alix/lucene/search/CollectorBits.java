@@ -13,16 +13,16 @@ import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
- * Collect found docs as a bitSet. 
+ * Collect found bits as a bitSet. 
  * Caching should be done by user.
- * QueryBits could be interesting alternative (relies on the lucene LRU cache)
+ * BitsFromQuery could be interesting alternative (relies on the lucene LRU cache)
  * @author fred
  *
  */
 public class CollectorBits extends SimpleCollector implements Collector
 {
-  /** The bitset (optimized for spare or all docs) */
-  private BitSet docs;
+  /** The bitset (optimized for spare or all bits) */
+  private BitSet bits;
   /** Number of hits */
   private int hits = 0;
   /** Current context reader */
@@ -33,15 +33,15 @@ public class CollectorBits extends SimpleCollector implements Collector
 
   public CollectorBits(IndexSearcher searcher) 
   {
-    docs = new FixedBitSet(searcher.getIndexReader().maxDoc());
+    bits = new FixedBitSet(searcher.getIndexReader().maxDoc());
   }
   
   /**
    * Get a document iterator
    */
-  public BitSet docs()
+  public BitSet bits()
   {
-    return docs;
+    return bits;
   }
   
   /**
@@ -62,7 +62,7 @@ public class CollectorBits extends SimpleCollector implements Collector
   @Override
   public void collect(int docLeaf) throws IOException
   {
-    docs.set(docBase + docLeaf);
+    bits.set(docBase + docLeaf);
     hits++;
   }
 

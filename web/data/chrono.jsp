@@ -77,8 +77,6 @@ public String ticks(PageContext pageContext, Alix alix) throws IOException  {
 }%>
 <%
 // needs the bits of th filter
-QueryBits filter = null;
-if (filterQuery != null) filter = new QueryBits(filterQuery);
 
 // number of fots by curve, could be a parameter
 
@@ -109,9 +107,6 @@ out.println("  \"time\" : \"" + (System.nanoTime() - partial) / 1000000.0 + "ms\
 
 
 //parse the query by line
-String q = request.getParameter("q");
-if (q == null) q = "";
-else q = q.trim();
 TermList terms = alix.qTerms(q, TEXT);
 if (terms.size() > 0) {
   terms.sortByRowFreq();
@@ -146,14 +141,7 @@ if (terms.size() > 0) {
   // loop on contexts, because open a context is heavy, do not open too much
   for (LeafReaderContext ctx : reader.leaves()) {
     LeafReader leaf = ctx.reader();
-    Bits bits;
-    if (filter != null) {
-      bits = filter.bits(ctx); // the filtered docs for this segment
-      if (bits == null) continue; // no filtered docs in this segment, 
-    }
-    else {
-      bits = leaf.getLiveDocs();
-    }
+    int docBase = ctx.docBase;
     // Do as a termQuery, loop on PostingsEnum.FREQS for each term
     // loop on terms
     int col = 0;
@@ -164,13 +152,14 @@ if (terms.size() > 0) {
       }
       PostingsEnum postings = leaf.postings(term);
       if (postings == null) continue;
-      int doc;
+      int docLeaf;
       long freq;
       long[] column = data[col];
-      while((doc = postings.nextDoc()) !=  DocIdSetIterator.NO_MORE_DOCS) {
-        if (bits!= null && !bits.get(doc)) continue;
+      while((docLeaf = postings.nextDoc()) !=  DocIdSetIterator.NO_MORE_DOCS) {
+        int docId = docBase + docLeaf;
+        if (filter!= null && !filter.get(docId)) continue;
         if ((freq = postings.freq()) == 0) continue;
-        int row = (int)(axis[doc].cumul / step);
+        int row = (int)(axis[docId].cumul / step);
         if (row >= dots) row = dots - 1; // because of rounding on big numbers last row could be missed
         column[row] += freq;
       }

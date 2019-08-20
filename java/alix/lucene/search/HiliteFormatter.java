@@ -5,9 +5,7 @@ import org.apache.lucene.search.uhighlight.PassageFormatter;
 
 /**
  * Creates a formatted snippet from the top passages.
- * <p>
- * The default implementation marks the query terms as bold, and places
- * ellipses between unconnected passages.
+ * This implementation strip tags from an html input.
  */
 public class HiliteFormatter extends PassageFormatter {
   /** text that will appear before highlighted terms */

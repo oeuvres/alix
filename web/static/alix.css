@@ -108,6 +108,7 @@ iframe {
   background-image: url("img/workin_50.png");
   background-repeat: no-repeat;
   background-position: top 2px left 200px;
+  border-bottom: 1px blue solid;
 }
 
 #alert {
@@ -127,9 +128,14 @@ iframe {
   margin-right: auto;
 }
 
+#q {
+  font-weight: bold;
+  font-size: 1.5rem;
+  padding: 0;
+}
+
 #header #tabs {
   float: right;
-  bottom: 0;
   margin-right: 2rem;
 }
 
@@ -278,6 +284,7 @@ td.num {
   background-color: #FFF;
   margin-bottom: 1em;
   padding: 1px 5px 2px 5px;
+  height: 1.8rem;
 }
 
 #corpora ul {
@@ -883,7 +890,7 @@ svg.scatter {
 
 svg.scatter line.dot {
   stroke: #000;
-  stroke-width: 100;
+  stroke-width: 10px;
   stroke-linecap: round;
   cursor: pointer;
 }

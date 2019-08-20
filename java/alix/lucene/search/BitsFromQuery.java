@@ -19,7 +19,7 @@ import org.apache.lucene.util.BitSet;
  * @author fred
  *
  */
-public class QueryBits
+public class BitsFromQuery
 {
 
   private final Query query;
@@ -30,7 +30,7 @@ public class QueryBits
    * @param query
    *          Query to cache results of
    */
-  public QueryBits(Query query)
+  public BitsFromQuery(Query query)
   {
     this.query = query;
   }
@@ -71,7 +71,7 @@ public class QueryBits
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final QueryBits other = (QueryBits) o;
+    final BitsFromQuery other = (BitsFromQuery) o;
     return this.query.equals(other.query);
   }
 

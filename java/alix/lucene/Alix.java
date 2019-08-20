@@ -108,20 +108,22 @@ import alix.lucene.search.TermFreqs;
  */
 public class Alix
 {
-  /** Mandatory field, XML file name, used for update */
+  /** Mandatory field, XML source file name, used for update */
   public static final String FILENAME = "alix:filename";
-  /** Mandatory field, define the level of a leaf (book/chapter, article) https://lucene.apache.org/core/8_1_1/join/org/apache/lucene/search/join/package-summary.html */
-  public static final String LEVEL = "alix:level";
-  /** Book containing chaèpters, in a nested documents indexation */
-  public static final String BOOK = "book";
-  /** Chapter in a book, in a nested documents indexation */
-  public static final String CHAPTER = "chapter";
-  /** Independant article */
-  public static final String ARTICLE = "article";
-  /** Unique id for a book parent document */
+  /** Mandatory field, unique id for a book and its chapters */
   public static final String BOOKID = "alix:bookid";
-  /** Unique id provide by user for all documents */
+  /** Mandatory field, unique id provide by user for all documents */
   public static final String ID = "alix:id";
+  /** Mandatory field, define the level of a leaf (book/chapter, article)  */
+  public static final String LEVEL = "alix:level";
+  /** Level type, book containing chapters */
+  public static final String BOOK = "book";
+  /** Level type, chapter in a book */
+  public static final String CHAPTER = "chapter";
+  /** Level type, independent article */
+  public static final String ARTICLE = "article";
+  /** Suffix for a text field containing only names */
+  public static final String _NAMES = "_names";
   /** Max books */
   private static final int MAXBOOKS = 10000;
   /** Current filename proceded */

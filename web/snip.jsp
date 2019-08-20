@@ -10,9 +10,6 @@
   <body class="results">
     <div id="results">
       <%
-String q = request.getParameter("q");
-if (q == null) q = "";
-else q = q.trim();
 String sort = request.getParameter("sort");
       %>
       <form id="qform">
@@ -46,72 +43,82 @@ for (int i = 0, length = value.length; i < length; i++) {
       </form>
     
     <%
-// renew seracher for this experiment on similarity
-IndexSearcher searcher = alix.searcher(true);
-Similarity similarity = null;
-if ("dfi_chi2".equals(sort)) similarity = new DFISimilarity(new IndependenceChiSquared());
-else if ("dfi_std".equals(sort)) similarity = new DFISimilarity(new IndependenceStandardized());
-else if ("dfi_sat".equals(sort)) similarity = new DFISimilarity(new IndependenceSaturated());
-else if ("tf-idf".equals(sort)) similarity = new ClassicSimilarity();
-else if ("lmd".equals(sort)) similarity = new LMDirichletSimilarity();
-else if ("lmd0.1".equals(sort)) similarity = new LMJelinekMercerSimilarity(0.1f);
-else if ("lmd0.7".equals(sort)) similarity = new LMJelinekMercerSimilarity(0.7f);
-else if ("dfr".equals(sort)) similarity = new DFRSimilarity(new BasicModelG(), new AfterEffectB(), new NormalizationH1());
-else if ("ib".equals(sort)) similarity = new IBSimilarity(new DistributionLL(), new LambdaDF(), new NormalizationH3());
-  
-  
-if (similarity != null) searcher.setSimilarity(similarity);
 
-String fieldName = TEXT;
-Query query;
-if (q == null || q.trim() == "") query = new MatchAllDocsQuery();
-else query = Alix.qParse(q, fieldName);
-
-TopDocs topDocs;
-if ("year".equals(sort)) {
-  topDocs = searcher.search(query, 100, new Sort(new SortField(YEAR, SortField.Type.INT)));
-}
-else if ("year-inv".equals(sort)) {
-  topDocs = searcher.search(query, 100, new Sort(new SortField(YEAR, SortField.Type.INT, true)));
-}
-else if ("length".equals(sort)) {
-  topDocs = searcher.search(query, 100, new Sort(new SortField(TEXT, SortField.Type.INT)));
-}
-else {
-  topDocs = searcher.search(query, 100);
-}
-
-
-ScoreDoc[] hits = topDocs.scoreDocs;
-
-
-
-UnifiedHighlighter uHiliter = new UnifiedHighlighter(searcher, Alix.qAnalyzer);
-uHiliter.setFormatter(new  HiliteFormatter());
-String[] fragments = uHiliter.highlight(fieldName, query, topDocs, 5);
-
-for (int i = 0; i < hits.length; i++) {
-  int docId = hits[i].doc;
-  Document document = searcher.doc(docId);
-  out.println("<article class=\"hit\">");
-  // hits[i].doc
-  out.println("  <div class=\"bibl\">");
-  // test if null ?
-  out.println("<a href=\"doc.jsp?doc="+docId+"&q="+q+"\">");
-  out.println(document.get("bibl"));
-  out.println("</a>");
-  out.println("  </div>");
-  if (fragments[i] != null) {
-    out.print("<p class=\"frags\">");
-    out.println(fragments[i]);
-    out.println("</p>");
+if (q != null) {
+  // renew searcher for this experiment on similarity
+  IndexSearcher searcher = alix.searcher(true);
+  Similarity similarity = null;
+  if ("dfi_chi2".equals(sort)) similarity = new DFISimilarity(new IndependenceChiSquared());
+  else if ("dfi_std".equals(sort)) similarity = new DFISimilarity(new IndependenceStandardized());
+  else if ("dfi_sat".equals(sort)) similarity = new DFISimilarity(new IndependenceSaturated());
+  else if ("tf-idf".equals(sort)) similarity = new ClassicSimilarity();
+  else if ("lmd".equals(sort)) similarity = new LMDirichletSimilarity();
+  else if ("lmd0.1".equals(sort)) similarity = new LMJelinekMercerSimilarity(0.1f);
+  else if ("lmd0.7".equals(sort)) similarity = new LMJelinekMercerSimilarity(0.7f);
+  else if ("dfr".equals(sort)) similarity = new DFRSimilarity(new BasicModelG(), new AfterEffectB(), new NormalizationH1());
+  else if ("ib".equals(sort)) similarity = new IBSimilarity(new DistributionLL(), new LambdaDF(), new NormalizationH3());
+   
+   
+  if (similarity != null) searcher.setSimilarity(similarity);
+  String fieldName = TEXT;
+  Query qWords = Alix.qParse(q, fieldName);
+  Query query;
+  if (filter != null) {
+    query = new BooleanQuery.Builder()
+      .add(new CorpusQuery(corpus.name(), filter), Occur.FILTER)
+      .add(qWords, Occur.MUST)
+      .build();
   }
-  /*
-  out.println("<small>");
-  out.println(document.get(Alix.FILENAME));
-  out.println("</small>");
-  */
-  out.println("</article>");
+  else {
+    query = qWords;
+  }
+  TopDocs topDocs;
+  if ("year".equals(sort)) {
+    topDocs = searcher.search(query, 100, new Sort(new SortField(YEAR, SortField.Type.INT)));
+  }
+  else if ("year-inv".equals(sort)) {
+    topDocs = searcher.search(query, 100, new Sort(new SortField(YEAR, SortField.Type.INT, true)));
+  }
+  else if ("length".equals(sort)) {
+    topDocs = searcher.search(query, 100, new Sort(new SortField(TEXT, SortField.Type.INT)));
+  }
+  else {
+    topDocs = searcher.search(query, 100);
+  }
+
+
+  ScoreDoc[] hits = topDocs.scoreDocs;
+
+
+
+  UnifiedHighlighter uHiliter = new UnifiedHighlighter(searcher, Alix.qAnalyzer);
+  uHiliter.setMaxLength(500000); // bigger text size to process
+  uHiliter.setFormatter(new  HiliteFormatter());
+  String[] fragments = uHiliter.highlight(fieldName, query, topDocs, 5);
+
+  for (int i = 0; i < hits.length; i++) {
+    int docId = hits[i].doc;
+    Document document = searcher.doc(docId);
+    out.println("<article class=\"hit\">");
+    // hits[i].doc
+    out.println("  <div class=\"bibl\">");
+    // test if null ?
+    out.println("<a href=\"doc.jsp?doc="+docId+"&q="+q+"\">");
+    out.println(document.get("bibl"));
+    out.println("</a>");
+    out.println("  </div>");
+    if (fragments[i] != null) {
+      out.print("<p class=\"frags\">");
+      out.println(fragments[i]);
+      out.println("</p>");
+    }
+    /*
+    out.println("<small>");
+    out.println(document.get(Alix.FILENAME));
+    out.println("</small>");
+    */
+    out.println("</article>");
+  }
 }
 
 
