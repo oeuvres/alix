@@ -13,77 +13,38 @@
 String sort = request.getParameter("sort");
       %>
       <form id="qform">
-        <input id="q" name="q" value="<%=q%>" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"  onclick="this.select();"/>
+        <input id="q" name="q" value="<%=escapeHtml(q)%>" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"  onclick="this.select();"/>
         <label>
          Tri
           <select name="sort" onchange="this.form.submit()">
-            <%
-String[] value = {
-  "year", "year-inv", "length",
-  "tf-idf", "bm25", "dfi_chi2", "dfi_std", "dfi_sat", 
-  "lmd", "lmd0.1", "lmd0.7", "dfr", "ib"
-};
-String[] label = {
-  "Année (+ ancien)", "Année (+ récent)", "Taille",
-  "tf-idf", "BM25", "DFI chi²", "DFI standard", "DFI saturé", 
-  "LMD", "LMD λ=0.1", "LMD λ=0.7", "DFR", "IB"
-};
-for (int i = 0, length = value.length; i < length; i++) {
-  out.print("<option");
-  if (value[i].equals(sort)) out.print(" selected=\"selected\"");
-  out.print(" value=\"");
-  out.print(value[i]);
-  out.print("\">");
-  out.print(label[i]);
-  out.println("</option>");
-}
-            %>
+            <option>Pertinence</option>
+            <% sortOptions(out, sort); %>
           </select>
         </label>
       </form>
     
     <%
-
-if (q != null) {
+String fieldName = TEXT;
+if (!"".equals(q)) {
   // renew searcher for this experiment on similarity
   IndexSearcher searcher = alix.searcher(true);
-  Similarity similarity = null;
-  if ("dfi_chi2".equals(sort)) similarity = new DFISimilarity(new IndependenceChiSquared());
-  else if ("dfi_std".equals(sort)) similarity = new DFISimilarity(new IndependenceStandardized());
-  else if ("dfi_sat".equals(sort)) similarity = new DFISimilarity(new IndependenceSaturated());
-  else if ("tf-idf".equals(sort)) similarity = new ClassicSimilarity();
-  else if ("lmd".equals(sort)) similarity = new LMDirichletSimilarity();
-  else if ("lmd0.1".equals(sort)) similarity = new LMJelinekMercerSimilarity(0.1f);
-  else if ("lmd0.7".equals(sort)) similarity = new LMJelinekMercerSimilarity(0.7f);
-  else if ("dfr".equals(sort)) similarity = new DFRSimilarity(new BasicModelG(), new AfterEffectB(), new NormalizationH1());
-  else if ("ib".equals(sort)) similarity = new IBSimilarity(new DistributionLL(), new LambdaDF(), new NormalizationH3());
-   
-   
-  if (similarity != null) searcher.setSimilarity(similarity);
-  String fieldName = TEXT;
-  Query qWords = Alix.qParse(q, fieldName);
-  Query query;
-  if (filter != null) {
-    query = new BooleanQuery.Builder()
-      .add(new CorpusQuery(corpus.name(), filter), Occur.FILTER)
-      .add(qWords, Occur.MUST)
-      .build();
-  }
-  else {
-    query = qWords;
-  }
+  Query query = getQuery(corpus, q);
   TopDocs topDocs;
-  if ("year".equals(sort)) {
-    topDocs = searcher.search(query, 100, new Sort(new SortField(YEAR, SortField.Type.INT)));
+  Sort sorter = getSort(sort);
+  Similarity similarity = getSimilarity("sort");
+  Similarity oldSim = null;
+  if (similarity != null) {
+    searcher.setSimilarity(similarity);
+    oldSim = searcher.getDefaultSimilarity();
   }
-  else if ("year-inv".equals(sort)) {
-    topDocs = searcher.search(query, 100, new Sort(new SortField(YEAR, SortField.Type.INT, true)));
-  }
-  else if ("length".equals(sort)) {
-    topDocs = searcher.search(query, 100, new Sort(new SortField(TEXT, SortField.Type.INT)));
+  if (sorter == null ) {
+    topDocs = searcher.search(query, 100);
   }
   else {
-    topDocs = searcher.search(query, 100);
+    topDocs = searcher.search(query, 100, sorter);
+  }
+  if (similarity != null) {
+    searcher.setSimilarity(oldSim);
   }
 
 
@@ -92,7 +53,7 @@ if (q != null) {
 
 
   UnifiedHighlighter uHiliter = new UnifiedHighlighter(searcher, Alix.qAnalyzer);
-  uHiliter.setMaxLength(500000); // bigger text size to process
+  uHiliter.setMaxLength(500000); // biggest text size to process
   uHiliter.setFormatter(new  HiliteFormatter());
   String[] fragments = uHiliter.highlight(fieldName, query, topDocs, 5);
 

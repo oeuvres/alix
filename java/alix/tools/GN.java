@@ -10,8 +10,8 @@ import java.nio.file.Paths;
 
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
-import alix.util.OccRoller;
 import alix.util.DicFreq;
+import alix.util.OccRoller;
 
 public class GN
 {

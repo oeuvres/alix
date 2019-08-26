@@ -9,9 +9,9 @@ import java.nio.file.Paths;
 
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.util.DicFreq;
 import alix.util.Occ;
 import alix.util.OccRoller;
-import alix.util.DicFreq;
 
 public class Castlist
 {

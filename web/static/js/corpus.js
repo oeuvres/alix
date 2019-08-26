@@ -46,7 +46,7 @@ function bottomLoad() {
   el.addEventListener('click', checkAll)
 
   el = document.getElementById("none");
-  el.addEventListener('click', none);
+  if (el) el.addEventListener('click', none);
 
   checks = document.getElementsByName("book");
   for (var i = 0, length = checks.length; i < length; i++) {

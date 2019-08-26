@@ -2079,7 +2079,7 @@ a.prev, a.next {
 }
 
 .mark a.prev, .mark a.next {
-  color: rgba(200, 200, 200, 0.5);
+  color: rgba(100, 100, 100, 0.5);
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   -khtml-user-select: none;
@@ -2090,6 +2090,7 @@ a.prev, a.next {
 
 .mark a.prev:hover, .mark a:hover.next {
   color: #000;
+  text-decoration: none;
 }
 
 nav.breadcrumb {
@@ -2119,31 +2120,6 @@ nav.breadcrumb {
   color: rgba(150, 150, 150, 1);
 }
 
-#ruloccs {
-  position: absolute;
-  top: -200px;
-  bottom: 0;
-  width: 1rem;
-  right: -2rem;
-  z-index: 10;
-  background-color: rgba(255, 255, 255, 0.8);
-}
-
-#ruloccs a {
-  display: block;
-  border-bottom: none;
-  color: white;
-  position: fixed;
-  background-color: rgba(150, 150, 150, 0.5);
-  width: 1rem;
-  font-size: 1px;
-  height: 2px;
-}
-
-#ruloccs a:hover {
-  height: 5px;
-  background-color: rgba(150, 150, 150, 1);
-}
 
 /* list styles  */
 ul.none, ol.none, ul.simple, ol.simple {

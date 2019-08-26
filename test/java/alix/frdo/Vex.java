@@ -12,10 +12,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import alix.util.Chain;
 import alix.util.Char;
 import alix.util.IntRoller;
 import alix.util.IntVek;
-import alix.util.Chain;
 import alix.util.Top;
 
 /**

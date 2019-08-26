@@ -14,11 +14,11 @@ import java.util.HashMap;
 import java.util.List;
 
 import alix.fr.Lexik;
+import alix.util.Chain;
 import alix.util.Char;
 import alix.util.IntPair;
 import alix.util.IntRoller;
 import alix.util.SparseMat;
-import alix.util.Chain;
 import alix.util.Top;
 
 /**

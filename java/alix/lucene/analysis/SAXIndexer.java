@@ -2,21 +2,23 @@ package alix.lucene.analysis;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
-
+import java.util.Locale;
 
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.SortedSetDocValuesField;
-import org.apache.lucene.document.StoredField;
-import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
@@ -88,6 +90,9 @@ public class SAXIndexer extends DefaultHandler
   static {
     nameFilter.setName();
   }
+  final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
+  final static DecimalFormat df000 = new DecimalFormat("000", frsyms);
+
   /** Lucene writer */
   private final IndexWriter writer;
   /** Current file processed */
@@ -204,6 +209,7 @@ public class SAXIndexer extends DefaultHandler
       book.add(new StringField(Alix.BOOKID, id, Store.YES));
       book.add(new SortedDocValuesField(Alix.BOOKID, new BytesRef(bookid))); // keep bookid as a facet
       book.add(new StringField(Alix.ID, id, Store.YES));
+      book.add(new SortedDocValuesField(Alix.ID, new BytesRef(id)));
       book.add(new StringField(Alix.LEVEL, Alix.BOOK, Store.YES));
       chapno = 0;
     }
@@ -221,7 +227,9 @@ public class SAXIndexer extends DefaultHandler
       document.add(new StringField(Alix.BOOKID, bookid, Store.YES));
       document.add(new SortedDocValuesField(Alix.BOOKID, new BytesRef(bookid))); // keep bookid as a facet
       chapno++;
-      document.add(new StringField(Alix.ID, bookid+"_"+chapno, Store.YES));
+      String id = bookid+"_"+df000.format(chapno);
+      document.add(new StringField(Alix.ID, id, Store.YES));
+      document.add(new SortedDocValuesField(Alix.ID, new BytesRef(id)));
       document.add(new StringField(Alix.LEVEL, Alix.CHAPTER, Store.YES));
     }
     // create a new Lucene document
@@ -236,8 +244,10 @@ public class SAXIndexer extends DefaultHandler
       // unique id for documents is not required
       String id = attributes.getValue("http://www.w3.org/XML/1998/namespace", "id");
       document.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
-      if (id == null || id.trim().equals(""))
+      if (id == null || id.trim().equals("")) {
         document.add(new StringField(Alix.ID, id, Store.YES));
+        document.add(new SortedDocValuesField(Alix.ID, new BytesRef(id)));
+      }
       document.add(new StringField(Alix.LEVEL, Alix.ARTICLE, Store.YES));
     }
     // open a field

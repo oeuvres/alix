@@ -18,14 +18,19 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
 /**
- * Use the cached BitSet of a corpus in a Query, to filter the results in a boolean Query.
- * @author fred
- *
+ * Query with a document iterator backed on a BitSet (the corpus). Used as a filter in a boolean Query.
  */
 public class CorpusQuery extends Query
 {
+  /** Unordered set of docids as a BitSet */
   final BitSet corpus;
+  /** Name of the corpus, unique for a user */
   final String name;
+  /**
+   * Build the query with a BitSet of docids, and a name, used as a key for caching.
+   * @param name
+   * @param corpus
+   */
   public CorpusQuery(final String name, final BitSet corpus) {
     this.name = name;
     this.corpus = corpus;
@@ -142,7 +147,7 @@ public class CorpusQuery extends Query
 
   @Override
   public int hashCode() {
-    return classHash() ^ corpus.hashCode();
+    return classHash() ^ name.hashCode();
   }
 
   public class DummyScorer extends Scorable {

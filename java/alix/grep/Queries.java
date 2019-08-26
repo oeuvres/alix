@@ -25,8 +25,8 @@ import java.util.stream.Collectors;
 
 import alix.fr.Tokenizer;
 import alix.grep.query.Query;
-import alix.util.Occ;
 import alix.util.Chain;
+import alix.util.Occ;
 
 /**
  * La classe contient les méthodes qui ramassent les fichiers, appellent le

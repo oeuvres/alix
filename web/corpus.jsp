@@ -17,7 +17,6 @@ Use cases of this page
  — modify : no query, corpus in session, edit
  — stats : query distribution by book 
 */
-String q = getParameter(request, "q", "");
 
 String name = getParameter(request, "name", "");
 String desc = getParameter(request, "desc", "");
@@ -25,9 +24,15 @@ String json = getParameter(request, "json", null);
 String[] checks = request.getParameterValues("book");
 String botjs = ""; // javascript to add at the end
 Set<String> bookids = null; // load the bookds to update the 
-
+Facet facet;
+// new corpus, do not load something
+if (request.getParameter("new") != null) {
+  corpus = null;
+  name = "";
+  desc = "";
+}
 // json send, client wants to load a new corpus
-if (json != null) {
+else if (json != null) {
   corpus = new Corpus(alix, Alix.BOOKID, json);
   name = corpus.name();
   desc = corpus.desc();
@@ -80,37 +85,14 @@ else {
           <input id="end" name="end" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Fin" class="year"/>
           <br/><label for="author">Auteur</label>
           <input id="author" name="author" autocomplete="off" list="author-data" size="50" type="text" onclick="select()" placeholder="Nom, Prénom"/>
-          <datalist id="author-data">
-    <%
-    Facet facet = alix.facet("author", TEXT);
-    TopTerms facetEnum = facet.topTerms();
-    while (facetEnum.hasNext()) {
-      facetEnum.next();
-      // long weight = facetEnum.weight();
-      out.println("<option value=\""+facetEnum.term()+"\"/>");
-    }
-    %>
-
-          </datalist>
           <br/><label for="title">Titre</label>
           <input id="title" name="title" autocomplete="off" list="title-data" type="text" size="50" onclick="select()" placeholder="Chercher un titre"/>
-          <datalist id="title-data">
-    <%
-    facet = alix.facet("title", TEXT);
-    facetEnum = facet.topTerms();
-    while (facetEnum.hasNext()) {
-      facetEnum.next();
-      // long weight = facetEnum.weight();
-      out.println("<option value=\""+facetEnum.term()+"\"/>");
-    }
-    %>
-          </datalist>
           <br/>
           <button id="selection" type="button">Sélection</button>
           <button id="all" type="button">Tout</button>
-          <button id="none" type="button">Effacer</button>
           <button name="reload" type="button" onclick="window.location = window.location.href.split('#')[0];">Recharger</button>
-          <button  style="float: right;"  name="save" type="submit">Enregistrer</button>
+          <button style="float: right;" name="save" type="submit">Enregistrer</button>
+          <button style="float: right;" name="new" type="submit">Nouveau</button>
         </fieldset>
 
 <%
@@ -156,13 +138,15 @@ boolean score = qTerms.size() > 0;
     String bookid = doc.get(Alix.BOOKID);
     out.println("<tr>");
     out.println("  <td class=\"checkbox\">");
-    out.print("    <input type=\"checkbox\" name=\"book\" value=\""+bookid+"\"");
+    out.print("    <input type=\"checkbox\" name=\"book\" id=\""+bookid+"\" value=\""+bookid+"\"");
     if (bookids != null && bookids.contains(bookid)) out.print(" checked=\"checked\"");
     out.println(" />");
     out.println("  </td>");
     out.print("  <td class=\"author\">");
+    out.print("<label for=\""+bookid+"\">");
     String byline = doc.get("byline");
     if (byline != null) out.print(byline);
+    out.print("</label>");
     out.println("</td>");
     out.println("  <td class=\"year\">"+doc.get("year")+"</td>");
     out.println("  <td class=\"title\">"+doc.get("title")+"</td>");
@@ -183,13 +167,36 @@ boolean score = qTerms.size() > 0;
     </main>
 
     <script src="vendors/Sortable.js">//</script>
+              <datalist id="author-data">
+    <%
+    facet = alix.facet("author", TEXT);
+    TopTerms facetEnum = facet.topTerms();
+    while (facetEnum.hasNext()) {
+      facetEnum.next();
+      // long weight = facetEnum.weight();
+      out.println("<option value=\""+facetEnum.term()+"\"/>");
+    }
+    %>
+
+          </datalist>
+          <datalist id="title-data">
+    <%
+    facet = alix.facet("title", TEXT);
+    facetEnum = facet.topTerms();
+    while (facetEnum.hasNext()) {
+      facetEnum.next();
+      // long weight = facetEnum.weight();
+      out.println("<option value=\""+facetEnum.term()+"\"/>");
+    }
+    %>
+          </datalist>
+
     <script>
 bottomLoad();
 <%
 out.println(botjs);
 if (corpus != null) out.println("showSelected();");
 %>
-
     </script>
   </body>
 </html>

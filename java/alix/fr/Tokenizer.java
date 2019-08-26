@@ -5,11 +5,11 @@ import java.io.Writer;
 import java.util.HashSet;
 
 import alix.grep.query.Lexer;
+import alix.util.Chain;
 import alix.util.Char;
 import alix.util.Occ;
 import alix.util.OccChain;
 import alix.util.StemTrie.Stem;
-import alix.util.Chain;
 
 /**
  * A tokenizer for French, build for efficiency AND precision.

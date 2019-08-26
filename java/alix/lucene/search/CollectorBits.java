@@ -4,18 +4,15 @@ import java.io.IOException;
 
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
-import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
- * Collect found bits as a bitSet. 
- * Caching should be done by user.
- * BitsFromQuery could be interesting alternative (relies on the lucene LRU cache)
+ * Collect found document as at set of docids in a bitSet.
+ * Caching should be ensure by user.
  * @author fred
  *
  */

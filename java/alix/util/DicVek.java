@@ -20,8 +20,8 @@ import java.util.Collections;
 import alix.fr.Lexik;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
-import alix.util.IntVek.Pair;
 import alix.util.DicFreq.Entry;
+import alix.util.IntVek.Pair;
 
 /**
  * A data structure for sparse matrix of terms, optimized for cosine similarity.

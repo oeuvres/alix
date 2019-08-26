@@ -3,6 +3,7 @@ package alix.fr;
 import java.lang.reflect.Field;
 import java.util.BitSet;
 import java.util.HashMap;
+
 import alix.util.Chain;
 
 /**

@@ -5,8 +5,8 @@ import java.util.HashSet;
 
 import org.apache.lucene.analysis.CharArraySet;
 
-import alix.util.IntOMap;
 import alix.util.Chain;
+import alix.util.IntOMap;
 
 /**
  * 

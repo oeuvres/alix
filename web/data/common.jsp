@@ -50,6 +50,7 @@ org.apache.lucene.index.SortedSetDocValues,
 org.apache.lucene.search.BooleanClause.Occur,
 org.apache.lucene.search.BooleanQuery,
 org.apache.lucene.search.BulkScorer,
+org.apache.lucene.search.Collector,
 org.apache.lucene.search.ConstantScoreQuery,
 org.apache.lucene.search.DocIdSet,
 org.apache.lucene.search.DocIdSetIterator,
@@ -63,6 +64,9 @@ org.apache.lucene.search.Sort,
 org.apache.lucene.search.SortField,
 org.apache.lucene.search.TermQuery,
 org.apache.lucene.search.TopDocs,
+org.apache.lucene.search.TopDocsCollector,
+org.apache.lucene.search.TopFieldCollector,
+org.apache.lucene.search.TopScoreDocCollector,
 org.apache.lucene.search.uhighlight.UnifiedHighlighter,
 org.apache.lucene.search.uhighlight.DefaultPassageFormatter,
 org.apache.lucene.search.vectorhighlight.FastVectorHighlighter,
@@ -104,6 +108,7 @@ alix.lucene.search.ScorerBM25,
 alix.lucene.search.ScorerTfidf,
 alix.lucene.search.ScorerTf,
 alix.lucene.search.ScorerOccs,
+alix.lucene.search.SimilarityOccs,
 alix.lucene.search.TermFreqs,
 alix.lucene.search.TermList,
 alix.lucene.search.TopTerms,
@@ -113,6 +118,7 @@ alix.util.Dir
 <%!
 
 final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
+final static DecimalFormatSymbols ensyms = DecimalFormatSymbols.getInstance(Locale.ENGLISH);
 final static DecimalFormat dfppm = new DecimalFormat("#,###", frsyms);
 final static DecimalFormat dfratio = new DecimalFormat("#,##0.0000", frsyms);
 final static DecimalFormat dfint = new DecimalFormat("###,###,##0", frsyms);
@@ -157,21 +163,165 @@ static Float tlfoptions (PageContext pageContext, String param) throws IOExcepti
 }
 
 /**
+ * Strip all html tags form a string
+ */
+public static String detag(String s) {
+  StringBuilder out = new StringBuilder(Math.max(16, s.length()));
+  boolean intag = false;
+  for (int i = 0; i < s.length(); i++) {
+    char c = s.charAt(i);
+    if (c == '<') {
+      intag = true;
+    }
+    else if (c == '>') {
+      intag = false;
+    }
+    else if (!intag) {
+      out.append(c);
+    }
+  }
+  return out.toString();
+}
+
+/**
  * Ensure that a String could be included as an html attribute with quotes
  */
 public static String escapeHtml(String s) {
-    StringBuilder out = new StringBuilder(Math.max(16, s.length()));
-    for (int i = 0; i < s.length(); i++) {
-        char c = s.charAt(i);
-        if (c == '"') out.append("&quot;");
-        else if (c == '<') out.append("&lt;");
-        else if (c == '>') out.append("&gt;");
-        else if (c == '&') out.append("&amp;");
-        else out.append(c);
-    }
-    return out.toString();
+  StringBuilder out = new StringBuilder(Math.max(16, s.length()));
+  for (int i = 0; i < s.length(); i++) {
+    char c = s.charAt(i);
+    if (c == '"') out.append("&quot;");
+    else if (c == '<') out.append("&lt;");
+    else if (c == '>') out.append("&gt;");
+    else if (c == '&') out.append("&amp;");
+    else out.append(c);
+  }
+  return out.toString();
 }
 
+/**
+ * Get a sort specification by a name
+ */
+ public static Sort getSort(final String sortSpec)
+ {
+   if ("year".equals(sortSpec)) {
+     return new Sort(new SortField(YEAR, SortField.Type.INT));
+   }
+   else if ("year-inv".equals(sortSpec)) {
+     return new Sort(new SortField(YEAR, SortField.Type.INT, true));
+   }
+   else if ("author".equals(sortSpec)) {
+     return new Sort(new SortField(Alix.ID, SortField.Type.STRING));
+   }
+   else if ("author-inv".equals(sortSpec)) {
+     return new Sort(new SortField(Alix.ID, SortField.Type.STRING, true));
+   }
+   else if ("length".equals(sortSpec)) {
+     return new Sort(new SortField(TEXT, SortField.Type.INT));
+   }
+   return null;
+ }
+
+public static Similarity getSimilarity(final String sortSpec)
+{
+  Similarity similarity = null;
+  if ("dfi_chi2".equals(sortSpec)) similarity = new DFISimilarity(new IndependenceChiSquared());
+  else if ("dfi_std".equals(sortSpec)) similarity = new DFISimilarity(new IndependenceStandardized());
+  else if ("dfi_sat".equals(sortSpec)) similarity = new DFISimilarity(new IndependenceSaturated());
+  else if ("tf-idf".equals(sortSpec)) similarity = new ClassicSimilarity();
+  else if ("lmd".equals(sortSpec)) similarity = new LMDirichletSimilarity();
+  else if ("lmd0.1".equals(sortSpec)) similarity = new LMJelinekMercerSimilarity(0.1f);
+  else if ("lmd0.7".equals(sortSpec)) similarity = new LMJelinekMercerSimilarity(0.7f);
+  else if ("dfr".equals(sortSpec)) similarity = new DFRSimilarity(new BasicModelG(), new AfterEffectB(), new NormalizationH1());
+  else if ("ib".equals(sortSpec)) similarity = new IBSimilarity(new DistributionLL(), new LambdaDF(), new NormalizationH3());
+  return similarity;
+}
+
+public static void sortOptions(JspWriter out, String sortSpec) throws IOException
+{
+  String[] value = {
+    "year", "year-inv", "author", "author-inv", "occs",
+    // "tf-idf", "bm25", "dfi_chi2", "dfi_std", "dfi_sat", 
+    // "lmd", "lmd0.1", "lmd0.7", "dfr", "ib"
+  };
+  String[] label = {
+    "Année (+ ancien)", "Année (+ récent)", "Auteur (A-Z)", "Auteur (Z-A)", "Occurrences",
+    // "tf-idf", "BM25", "DFI chi²", "DFI standard", "DFI saturé", 
+    // "LMD", "LMD λ=0.1", "LMD λ=0.7", "DFR", "IB"
+  };
+  for (int i = 0, length = value.length; i < length; i++) {
+    out.print("<option");
+    if (value[i].equals(sortSpec)) out.print(" selected=\"selected\"");
+    out.print(" value=\"");
+    out.print(value[i]);
+    out.print("\">");
+    out.print(label[i]);
+    out.println("</option>");
+  }
+  
+}
+
+/**
+ * Get query from 
+ */
+public static Query getQuery(Corpus corpus, String q) throws IOException
+{
+  String fieldName = TEXT;
+  Query qWords = Alix.qParse(q, fieldName);
+  Query query;
+  BitSet filter= null;
+  if (corpus != null) filter = corpus.bits();
+  if (filter != null) {
+    query = new BooleanQuery.Builder()
+      .add(new CorpusQuery(corpus.name(), filter), Occur.FILTER)
+      .add(qWords, Occur.MUST)
+      .build();
+  }
+  else {
+    query = qWords;
+  }
+  return query;
+}
+
+public TopDocs getTopDocs(HttpSession session, IndexSearcher searcher, Corpus corpus, String q, String sortSpec) throws IOException
+{
+  int numHits = 10000;
+  int totalHitsThreshold = Integer.MAX_VALUE;
+  Query query = getQuery(corpus, q);
+  if (query == null) return null;
+  Sort sort = getSort(sortSpec);
+  String key = ""+query;
+  if (sort != null)  key+= " " + sort;
+  Similarity similarity = null;
+  Similarity oldSim = null;
+  if ("occs".equals(sortSpec)) similarity = new SimilarityOccs();
+  if (similarity != null) {
+    key += " <"+similarity+">";
+  }
+  TopDocs topDocs = (TopDocs)session.getAttribute(key);
+  if (topDocs != null) return topDocs;
+  TopDocsCollector collector;
+  if (sort != null) {
+    collector = TopFieldCollector.create(sort, numHits, totalHitsThreshold);
+  }
+  else {
+    collector = TopScoreDocCollector.create(numHits, totalHitsThreshold);
+  }
+  if (similarity != null) {
+    oldSim = searcher.getSimilarity();
+    searcher.setSimilarity(similarity);
+    searcher.search(query, collector);
+    // will it be fast enough to not affect other results ?
+    searcher.setSimilarity(oldSim);
+  }
+  else {
+    searcher.search(query, collector);
+  }
+  topDocs = collector.topDocs();
+  session.setAttribute(key, topDocs);
+  return topDocs;
+}
+ 
 /**
  * Get a request parameter as an int with default value
  */
