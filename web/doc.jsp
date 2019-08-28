@@ -58,7 +58,7 @@ else if (!"".equals(q)) {
   topDocs = getTopDocs(session, searcher, corpus, q, sort);
   ScoreDoc[] hits = topDocs.scoreDocs;
   if (n < 1) n = 1;
-  if (n < hits.length) {
+  if (n <= hits.length) {
     docId = hits[n - 1].doc;
     document = reader.document(docId);
   }

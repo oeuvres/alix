@@ -87,6 +87,7 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
 import alix.fr.Tag;
@@ -96,6 +97,7 @@ import alix.lucene.analysis.TokenCompound;
 import alix.lucene.analysis.TokenLem;
 import alix.lucene.analysis.TokenizerFr;
 import alix.lucene.search.Facet;
+import alix.lucene.search.Scale;
 import alix.lucene.search.TermFreqs;
 import alix.lucene.search.TermList;
 import alix.lucene.search.TopTerms;
@@ -238,7 +240,7 @@ public class Alix
      * cms.setMaxMergesAndThreads(threads, threads); cms.disableAutoIOThrottle();
      * conf.setMergeScheduler(cms);
      */
-    // order docid by a field after merge ? No functionality should rely on such
+    // order docId by a field after merge ? No functionality should rely on such
     // order
     // conf.setIndexSort(new Sort(new SortField(YEAR, SortField.Type.INT)));
     writer = new IndexWriter(dir, conf);
@@ -334,7 +336,7 @@ public class Alix
   }
   
   /**
-   * Returns an array in docid order with the value of an intPoint field (year).
+   * Returns an array in docId order with the value of an intPoint field (year).
    * 
    * @return
    * @throws IOException
@@ -357,7 +359,25 @@ public class Alix
     // fill with min value for deleted docs or with no values
     Arrays.fill(docInt, Integer.MIN_VALUE);
     final int[] minMax = { Integer.MAX_VALUE, Integer.MIN_VALUE };
-    if (info.getPointDataDimensionCount() > 0) {
+    if (info.getDocValuesType() == DocValuesType.NUMERIC) {
+      for (LeafReaderContext context : reader.leaves()) {
+        LeafReader leaf = context.reader();
+        NumericDocValues docs4num = leaf.getNumericDocValues(field);
+        // no values for this leaf, go next
+        if (docs4num == null) continue;
+        final Bits liveDocs = leaf.getLiveDocs();
+        final int docBase = context.docBase;
+        int docLeaf;
+        while ((docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          if (liveDocs != null && !liveDocs.get(docLeaf)) continue;
+          int v = (int) docs4num.longValue(); // long value is force to int;
+          docInt[docBase + docLeaf] = v;
+          if (minMax[0] > v) minMax[0] = v;
+          if (minMax[1] < v) minMax[1] = v;
+        }
+      }
+    }
+    else if (info.getPointDataDimensionCount() > 0) {
       if (info.getPointDataDimensionCount() > 1) {
         throw new IllegalArgumentException("Field \"" + field + "\" " + info.getPointDataDimensionCount()
             + " dimensions, too much for an int tag by doc.");
@@ -399,24 +419,6 @@ public class Alix
         });
       }
     }
-    else if (info.getDocValuesType() == DocValuesType.NUMERIC) {
-      for (LeafReaderContext context : reader.leaves()) {
-        LeafReader leaf = context.reader();
-        NumericDocValues docs4num = leaf.getNumericDocValues(field);
-        // no values for this leaf, go next
-        if (docs4num == null) continue;
-        final Bits liveDocs = leaf.getLiveDocs();
-        final int docBase = context.docBase;
-        int docLeaf;
-        while ((docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          if (liveDocs != null && !liveDocs.get(docLeaf)) continue;
-          int v = (int) docs4num.longValue(); // long value is force to int;
-          docInt[docBase + docLeaf] = v;
-          if (minMax[0] > v) minMax[0] = v;
-          if (minMax[1] < v) minMax[1] = v;
-        }
-      }
-    }
     cache(key, docInt);
     cache("AlixMinMax" + field, minMax);
     return docInt;
@@ -446,7 +448,7 @@ public class Alix
   }
 
   /**
-   * Get value by docid of a unique store field, desired type is given by the
+   * Get value by docId of a unique store field, desired type is given by the
    * array to load. Very slow, ~1.5 s. / 1000 books
    * 
    * @throws IOException
@@ -514,6 +516,24 @@ public class Alix
   }
 
   /**
+   * Get a Scale object, used to build 
+   * @param fieldInt A NumericDocValuesField used as a sorted value.
+   * @param fieldText A Texfield to count occurences, used as a size for docs.
+   * @return
+   * @throws IOException
+   */
+  public Scale scale(final String fieldInt, final String fieldText) throws IOException
+  {
+    String key = "AlixFacet" + fieldInt + fieldText;
+    Scale scale = (Scale) cache(key);
+    if (scale != null) return scale;
+    scale = new Scale(this, null, fieldInt, fieldText);
+    cache(key, scale);
+    return scale;
+  }
+
+  
+  /**
    * @throws IOException
    * 
    */
@@ -538,7 +558,7 @@ public class Alix
   }
 
   /**
-   * For a field, return an array in docid order, with the total number of tokens
+   * For a field, return an array in docId order, with the total number of tokens
    * by doc. Is cached. Term vector cost 1 s. / 1000 books.
    * Norms for similarity is not enough precise (1 byte) see
    * SimilarityBase.computeNorm()
@@ -598,7 +618,7 @@ public class Alix
           continue;
         }
         Terms vector = reader.getTermVector(i, field);
-        // maybe no vector for this docid (ex : toc, book...)
+        // maybe no vector for this docId (ex : toc, book...)
         if (vector == null) continue;
         docLength[i] = vector.getSumTotalTermFreq(); // expensive on first call
       }
@@ -608,7 +628,7 @@ public class Alix
   }
 
   /**
-   * Get docid parent documents (books) of nested documents (chapters),
+   * Get docId parent documents (books) of nested documents (chapters),
    * sorted by a sort specification.
    * @throws IOException 
    */
@@ -724,87 +744,6 @@ public class Alix
       ts.close();
     }
     return terms;
-  }
-
-  /** A row of data for a crossing axis */
-  public static class Tick
-  {
-    public final int docid;
-    public final int rank;
-    public final long length;
-    public long cumul;
-
-    public Tick(final int docid, final int rank, final long length)
-    {
-      this.docid = docid;
-      this.rank = rank;
-      this.length = length;
-    }
-
-    @Override
-    public String toString()
-    {
-      return "docid=" + docid + " rank=" + rank + " length=" + length + " cumul=" + cumul;
-    }
-  }
-
-  /**
-   * Data for an axis across all index. Measure is token count of a text field.
-   * Order is given by an intPoint field (ex : year). Is returned in order of
-   * docid. Not too expensive to calculate (~1 ms/1000 docs), but good to cache to
-   * avoid multiplication of objects in web context. Cache is not assured here,
-   * because data could be used in different order (docid order, or int field
-   * order).
-   *
-   * @param textField
-   * @param intPoint
-   * @return
-   * @throws IOException
-   */
-  public Tick[] axis(String textField, String intPoint) throws IOException
-  {
-    // long total = reader.getSumTotalTermFreq(textField);
-    int maxDoc = reader().maxDoc();
-    long[] docLength = docLength(textField);
-    int[] docInt = docInt(intPoint);
-    Tick[] axis = new Tick[maxDoc];
-    // populate the index
-    for (int i = 0; i < maxDoc; i++) {
-      axis[i] = new Tick(i, docInt[i], docLength[i]);
-    }
-    // sort the index by date
-    Arrays.sort(axis, new Comparator<Tick>()
-    {
-      @Override
-      public int compare(Tick tick1, Tick tick2)
-      {
-        if (tick1.rank < tick2.rank) return -1;
-        if (tick1.rank > tick2.rank) return +1;
-        if (tick1.docid < tick2.docid) return -1;
-        if (tick1.docid > tick2.docid) return +1;
-        return 0;
-      }
-    });
-    // update cumul
-    long cumul = 0;
-    for (int i = 0; i < maxDoc; i++) {
-      long length = axis[i].length;
-      if (length > 0) cumul += length;
-      axis[i].cumul = cumul;
-    }
-    // resort in doc order
-    Arrays.sort(axis, new Comparator<Tick>()
-    {
-      @Override
-      public int compare(Tick tick1, Tick row2)
-      {
-        if (tick1.docid < row2.docid) return -1;
-        if (tick1.docid > row2.docid) return +1;
-        return 0;
-      }
-    });
-    // update
-    return axis;
   }
 
   @Override

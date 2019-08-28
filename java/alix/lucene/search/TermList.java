@@ -25,7 +25,7 @@ import org.apache.lucene.util.BytesRef;
 public class TermList implements Iterable<Term>
 {
   /** Keep memory of last input term, to avoid too much null separators */
-  private Term termLast;
+  private Term termLast = null;
   /** The terms with fields to sort on */
   private ArrayList<Entry> data = new ArrayList<>();
   /** Current global ord counter */
@@ -90,11 +90,22 @@ public class TermList implements Iterable<Term>
   {
     return notNull;
   }
-  public int rows()
+  
+  /**
+   * Count of rows (groups).
+   * @return
+   */
+  public int groups()
   {
-    return row;
+    if (termLast != null) return row + 1;
+    else return row;
   }
   
+  /**
+   * Add a term to the series, handle a null label as a group separator,
+   * get term frequence to strip unknown terms, and sort in inverse frequency.
+   * @param term
+   */
   public void add(Term term)
   {
     if (term == null) {

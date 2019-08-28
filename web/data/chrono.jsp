@@ -1,46 +1,32 @@
 <%@ page language="java" contentType="text/javascript; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@include file="common.jsp" %>
-<%!
-/** A record used to sort docid by date */
-/** 0.1ms no real need to cache */
-public String ticks(PageContext pageContext, Alix alix) throws IOException  {
-  
-  ServletContext application = pageContext.getServletContext();
-  
-  int min = alix.min(YEAR);
-  int max = alix.max(YEAR);
-  StringBuilder sb = new StringBuilder();
+<%!/** A record used to sort docid by date */
 
+/**
+ * Return a json view of ticks for 
+ */
+public String ticks(Scale scale) throws IOException  {
+  
+  StringBuilder sb = new StringBuilder();
+  int min = scale.min();
+  int max = scale.max();
   int span = max - min;
   int yearStep = 5;
   if (span > 400) yearStep = 10;
   else if (span > 200) yearStep = 5;
   else if (span > 75) yearStep = 2;
   else yearStep = 1;
-  
-  long total = alix.reader().getSumTotalTermFreq(TEXT);
-  long labelWidth = (long)Math.ceil((float) total / 30); // width of a label in tokens
-  
-  long[] docLength = alix.docLength(TEXT);
-  
-
-  
+  long total = scale.length();
+  // calculate an hypothetic width to avoid too much labels ine dense sections
+  long labelWidth = (long)Math.ceil((float) total / 30);
   sb.append("[\n");
   // give the first year
   int label = min - min % yearStep;
   // int label = min;
   sb.append("    {\"v\": 0, \"label\": " + min + "}");
   // get Axis data, but resort it in cumulate order
-  Tick[] axis = alix.axis(TEXT, YEAR);
+  Tick[] axis = scale.axis();
   
-  Arrays.sort(axis, new Comparator<Tick>() {
-    @Override
-    public int compare(Tick tick1, Tick tick2) {
-      if (tick1.cumul < tick2.cumul) return -1;
-      if (tick1.cumul > tick2.cumul) return +1;
-      return 0;
-    }
-  });
   
   long cumulLast = 0;
   boolean first = true;
@@ -48,7 +34,7 @@ public String ticks(PageContext pageContext, Alix alix) throws IOException  {
   long cumul = 0;
   for (int i = 0, length = axis.length; i < length; i++) {
     if (axis[i].length == 0) continue; // A deleted doc
-    int year = axis[i].rank;
+    int year = axis[i].value;
     if (year < lastYear) {
       sb.append("\nBUG\n");
     }
@@ -58,7 +44,7 @@ public String ticks(PageContext pageContext, Alix alix) throws IOException  {
     label = year - year % yearStep;
    
     sb.append(",\n");
-    cumul = axis[i].cumul;
+    cumul = axis[i].pos;
     sb.append("    {");
     sb.append("\"v\": "+cumul);
     // let space between labels
@@ -76,32 +62,26 @@ public String ticks(PageContext pageContext, Alix alix) throws IOException  {
   return sb.toString();
 }%>
 <%
-// needs the bits of th filter
-
+Scale scale;
+if (filter == null) {
+  // scale = alix.scale(YEAR, TEXT);
+  scale = new Scale(alix, filter, YEAR, TEXT);
+}
+else {
+  scale = new Scale(alix, filter, YEAR, TEXT);
+}
 // number of fots by curve, could be a parameter
-
 int dots = getParameter(request, "dots", 200);
-
 // build queries
 time = System.nanoTime();
 IndexReader reader = alix.reader();
-
-long total = reader.getSumTotalTermFreq(TEXT);
-
-int maxDoc = reader.maxDoc();
-// OK if no deleted docs
 
 
 
 out.println("{");
 // display ticks
 long partial = System.nanoTime();
-String ticks = (String)alix.cache("ticks-year");
-if (ticks == null) {
-  ticks = ticks(pageContext, alix);
-  alix.cache("ticks-year", ticks);
-}
-out.print( "  \"ticks\": "+ticks+",\n");
+out.print( "  \"ticks\": "+ticks(scale)+",\n");
 out.println("  \"time\" : \"" + (System.nanoTime() - partial) / 1000000.0 + "ms\",");
 
 
@@ -109,7 +89,7 @@ out.println("  \"time\" : \"" + (System.nanoTime() - partial) / 1000000.0 + "ms\
 //parse the query by line
 TermList terms = alix.qTerms(q, TEXT);
 if (terms.size() > 0) {
-  terms.sortByRowFreq();
+  terms.sortByRowFreq(); // sort query lines by freq
   out.print("  \"labels\": [\"\"");
   boolean first = true;
   for(Term t: terms) {
@@ -126,59 +106,27 @@ if (terms.size() > 0) {
     out.print(t.text());
   }
   out.println("],");
+  // get dots by curve
+  long[][] data = scale.curves(terms, dots);
+  long step = data[0][1];
+  // 
+  int rows = data[0].length;
+  int cols = data.length;
   
-  int cols = terms.rows();
-  // table of data to populate
-  long[][] data = new long[cols][dots];
-  // width of a step between two dots, 
-  long step = (total) / dots;
-  // axis index
-  Tick[] axis = (Tick[])alix.cache("axis-year");
-  if (axis == null) {
-    axis = alix.axis(TEXT, YEAR);
-    alix.cache("axis-year", axis);
-  }
-  // loop on contexts, because open a context is heavy, do not open too much
-  for (LeafReaderContext ctx : reader.leaves()) {
-    LeafReader leaf = ctx.reader();
-    int docBase = ctx.docBase;
-    // Do as a termQuery, loop on PostingsEnum.FREQS for each term
-    // loop on terms
-    int col = 0;
-    for(Term term: terms) {
-      if (term == null) {
-        col++;
-        continue;
-      }
-      PostingsEnum postings = leaf.postings(term);
-      if (postings == null) continue;
-      int docLeaf;
-      long freq;
-      long[] column = data[col];
-      while((docLeaf = postings.nextDoc()) !=  DocIdSetIterator.NO_MORE_DOCS) {
-        int docId = docBase + docLeaf;
-        if (filter!= null && !filter.get(docId)) continue;
-        if ((freq = postings.freq()) == 0) continue;
-        int row = (int)(axis[docId].cumul / step);
-        if (row >= dots) row = dots - 1; // because of rounding on big numbers last row could be missed
-        column[row] += freq;
-      }
-    }
-  }
-  
-
   out.println("  \"data\": [");
   first = true;
-  for (int row = 0; row < dots; row++) {
-    // empty row, go throw
+  for (int row = 0; row < rows; row++) {
+    // do not print empty rows (easier for curve display)
     long sum = 0;
-    for (int col = 0; col < cols; col++) sum += data[col][row];
+    for (int col = 1; col < cols; col++) sum += data[col][row];
     if (sum == 0) continue;
+    
     if (first) first = false;
     else out.print(",\n");
+    
     out.print("    [");
-    out.print((step * row));
-    for (int col = 0; col < cols; col++){
+    out.print(data[0][row]);
+    for (int col = 1; col < cols; col++) {
       out.print(", ");
       long count = data[col][row];
       if (count < 2) {

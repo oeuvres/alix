@@ -76,7 +76,7 @@ public class Facet
   /** The field type */
   public final DocValuesType type;
   /** Name of the field for text, source of different value counts */
-  public final String text;
+  public final String fieldText;
   /** Store and populate the terms */
   private final BytesRefHash hashSet = new BytesRefHash();
   /** Global number of docs relevant for this facet */
@@ -91,7 +91,7 @@ public class Facet
   private final long[] facetLength;
   /** Count of docs by facet */
   private final int[] facetDocs;
-  /** A docid by facet uses as a “cover“ doc (not counted  */
+  /** A docId by facet uses as a “cover“ doc (not counted  */
   private final int[] facetCover;
   /** The reader from which to get freqs */
   private IndexReader reader;
@@ -107,7 +107,7 @@ public class Facet
    * @param text
    * @throws IOException
    */
-  public Facet(final Alix alix, final String facet, final String text, final Term coverTerm) throws IOException
+  public Facet(final Alix alix, final String facet, final String fieldText, final Term coverTerm) throws IOException
   {
     // get a vector of possible docids used as a cover for a facetId
     BitSet coverBits = null;
@@ -127,7 +127,7 @@ public class Facet
       throw new IllegalArgumentException("Field \"" + facet + "\", the type "+type+" is not supported as a facet.");
     }
     this.facet = facet;
-    this.text = text;
+    this.fieldText = fieldText;
     this.reader = alix.reader();
     docFacets = new int[reader.maxDoc()][];
     int docsAll = 0;
@@ -137,7 +137,7 @@ public class Facet
     int[] facetDocs = new int[32];
     int[] facetCover = new int[32];
 
-    long[] docLength = alix.docLength(text); // length of each doc for the text field
+    long[] docLength = alix.docLength(fieldText); // length of each doc for the text field
     this.docLength = docLength;
     // max int for an array collecttor
     int ordMax = -1;
@@ -160,7 +160,7 @@ public class Facet
       int[] leafDocs = new int[ordMax];
       // record occ counts for each term by a temp ord index
       long[] leafOccs = new long[ordMax];
-      // record cover docid for each term by a temp ord index
+      // record cover docId for each term by a temp ord index
       int[] leafCover = new int[ordMax];
       // loop on docs
       int docLeaf;

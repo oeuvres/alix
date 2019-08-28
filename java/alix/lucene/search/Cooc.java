@@ -136,7 +136,7 @@ public class Cooc
       // we should have the leaf cursor as near as possible
       if (docid != (cursor + docBase)) continue;
       BitSet positions = docMaps.get(docid);
-      // no positions may have been recorded for this docid (filter bitset bigger than the matching docs)
+      // no positions may have been recorded for this docId (filter bitset bigger than the matching docs)
       if (positions == null) continue;
       int freq = impacts.freq();
       for (int i = 0; i < freq; i++) {

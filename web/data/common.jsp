@@ -80,11 +80,7 @@ org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder,
 org.apache.lucene.util.automaton.CompiledAutomaton,alix.fr.Tag,
 
 alix.lucene.Alix,
-alix.lucene.Alix.Tick,
-alix.lucene.search.DicBytes,
-alix.lucene.search.DicBytes.Cursor,
 alix.lucene.analysis.CharsLemAtt,
-alix.lucene.search.Cooc,
 alix.lucene.analysis.CharsAtt,
 alix.lucene.analysis.CharsDic,
 alix.lucene.analysis.CharsDic.Entry,
@@ -98,11 +94,17 @@ alix.lucene.analysis.TokenCooc,
 alix.lucene.analysis.TokenCooc.AnalyzerCooc,
 alix.lucene.analysis.TokenLem,
 alix.lucene.analysis.TokenizerFr,
+alix.lucene.search.BitsFromQuery,
+alix.lucene.search.Cooc,
 alix.lucene.search.Corpus,
 alix.lucene.search.CorpusQuery,
 alix.lucene.search.CollectorBits,
+alix.lucene.search.DicBytes,
+alix.lucene.search.DicBytes.Cursor,
 alix.lucene.search.Facet,
-alix.lucene.search.HiliteFormatter,alix.lucene.search.BitsFromQuery,
+alix.lucene.search.HiliteFormatter,
+alix.lucene.search.Scale,
+alix.lucene.search.Scale.Tick,
 alix.lucene.search.Scorer,
 alix.lucene.search.ScorerBM25,
 alix.lucene.search.ScorerTfidf,
@@ -349,6 +351,7 @@ Alix alix = Alix.instance(application.getRealPath("") + "/WEB-INF/lucene/");
 
 //Set a bitSet filter for current corpus
 BitSet filter = null;
+// limitation here, only one corpus allowed by session
 Corpus corpus = (Corpus)session.getAttribute(CORPUS);
 if (corpus != null) filter = corpus.bits();
 // get query string

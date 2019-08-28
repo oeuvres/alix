@@ -26,8 +26,8 @@ import org.json.JSONObject;
 import alix.lucene.Alix;
 
 /**
- * This object handle information of a “corpus” : a set of docid in a lucene
- * index. These docid are grouped by a value, a “bookid”, indexed as a
+ * This object handle information of a “corpus” : a set of docId in a lucene
+ * index. These docId are grouped by a label, a “bookid”, indexed as a
  * StringField and a SortedDocValuesField (efficient for faceting); so a book
  * can contain multiple “chapters“ (documents). User should maintain unicity of
  * his bookdids. These bookids allow to keep a stable reference between
@@ -97,7 +97,7 @@ public class Corpus
     }
     add(books);
   }
-
+  
   /**
    * Provide the documents as a bitset.
    * @return
@@ -169,7 +169,7 @@ public class Corpus
       int ordMax = docs4terms.getValueCount(); // max term id
       FixedBitSet bits = new FixedBitSet(ordMax);
       int docLeaf;
-      // loop on each doc in this leaf, for each docid in the vector, collect bookids in set
+      // loop on each doc in this leaf, for each docId in the vector, collect bookids in set
       while ((docLeaf = docs4terms.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         if (!docs.get(docBase + docLeaf)) continue; // doc not in this corpus
         bits.set(docs4terms.ordValue());
@@ -248,7 +248,7 @@ public class Corpus
   }
 
   /**
-   * Local collector used to add docid to the vector.
+   * Local collector used to add docId to the vector.
    * 
    * @author fred
    *
@@ -263,7 +263,7 @@ public class Corpus
   }
 
   /**
-   * Local collector used to remove docid from the vector.
+   * Local collector used to remove docId from the vector.
    * 
    * @author fred
    *
@@ -309,7 +309,7 @@ public class Corpus
       update(docBase + doc);
     }
 
-    /** Do something with the matching docid */
+    /** Do something with the matching docId */
     abstract void update(int docid);
   }
 

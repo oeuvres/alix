@@ -76,7 +76,7 @@ public class CorpusQuery extends Query
       if (target >= docMax) {
         return docLeaf = NO_MORE_DOCS;
       }
-      // try to find next docid in the current segment
+      // try to find next docId in the current segment
       int docTest = corpus.nextSetBit(docBase + target) - docBase;
       if (docTest >= docMax) return docLeaf = NO_MORE_DOCS;
       return docLeaf = docTest;

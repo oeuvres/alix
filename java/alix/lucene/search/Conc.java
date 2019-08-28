@@ -100,14 +100,14 @@ public class Conc
             LeafReaderContext context = searcher.getIndexReader().leaves().iterator().next();
             System.out.println(spanWeight.getSpans(context, Postings.OFFSETS).getClass());
             TermSpans spans = (TermSpans) spanWeight.getSpans(context, Postings.OFFSETS);
-            int docid = 0;
+            int docId = 0;
 
-            while((docid = spans.nextDoc()) != Spans.NO_MORE_DOCS){
+            while((docId = spans.nextDoc()) != Spans.NO_MORE_DOCS){
               System.out.println(spans.toString());
-              System.out.println("docid="+docid);
-              Document doc = reader.document(docid);
+              System.out.println("docId="+docId);
+              Document doc = reader.document(docId);
               String text = doc.get(content);
-              TermList vector = reader.getTermVector(docid, content);
+              TermList vector = reader.getTermVector(docId, content);
               System.out.println("TermList size="+vector.size());
               final TermsEnum termsEnum = vector.iterator();
               BytesRef termBytesRef;
