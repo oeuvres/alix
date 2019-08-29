@@ -64,7 +64,7 @@ if (!"".equals(q)) {
     // hits[i].doc
     out.println("  <div class=\"bibl\">");
     // test if null ?
-    out.println("<a href=\"doc.jsp?doc="+docId+"&q="+q+"\">");
+    out.println("<a href=\"doc.jsp?n="+(i + 1)+"&q="+q+"\">");
     out.println(document.get("bibl"));
     out.println("</a>");
     out.println("  </div>");
