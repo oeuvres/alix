@@ -1,15 +1,11 @@
 <%@ page language="java"  pageEncoding="UTF-8" contentType="text/javascript; charset=UTF-8"%>
 <%@include file="common.jsp"%>
 <%!
-static HashSet<CharsAtt> STOP = new HashSet<CharsAtt>();
-static {
-  for (String w : new String[] {"dire", "Et", "etc.", "homme", "Il", "La", "Le", "Les", "M.", "p."}) {
-    STOP.add(new CharsAtt(w));
-  }
-}
+static final DecimalFormat dfdec3 = new DecimalFormat("0.###", ensyms);
+
 %>
 <%
-out.println("{");
+  out.println("{");
 IndexSearcher searcher = alix.searcher();
 
 String textField = TEXT;
@@ -27,7 +23,9 @@ DecimalFormat fontdf = new DecimalFormat("#");
 String word = request.getParameter("word");
 if (word != null && word.isEmpty()) word = null;
 
-TermFreqs freqs = alix.termFreqs(textField);
+Freqs freqs = alix.freqs(textField);
+
+/*
 String f = getParameter(request, "f", null);
 String v = getParameter(request, "v", null);
 if (f != null && v != null) {
@@ -35,6 +33,7 @@ if (f != null && v != null) {
   searcher.search(new TermQuery(new Term(f, v)), authorCollector);
   filter = authorCollector.bits();  
 }
+*/
 
 TopTerms terms = freqs.topTerms(filter, scorer);
 
@@ -46,7 +45,7 @@ while (terms.hasNext()) {
   terms.next();
   terms.term(term);
   // filter some unuseful words
-  if (STOP.contains(term)) continue;
+  if (STOPLIST.contains(term)) continue;
   // term frequency or brut counts will not filter stop words
   if("tf".equals(sc) || "occs".equals(sc))
     if (CharsMaps.isStop(term)) continue;
@@ -60,12 +59,13 @@ while (terms.hasNext()) {
   else {
     tag = new Tag(0);
   }
-  // 
-  if("tf".equals(sc) || "occs".equals(sc)) {
-    if (tag.isVerb()) continue;
+  if ("name".equals(sc)) {
+    if (!tag.isName()) continue;
+  }
+  else if("tf".equals(sc) || "occs".equals(sc)) {
+    if (tag.isNum()) continue;
   }
   // if (tag.isPun()) continue;
-  // if (tag.isNum()) continue;
   /*
   long weight = terms.weight();
   if (weight < 1) break;
@@ -74,7 +74,7 @@ while (terms.hasNext()) {
   out.print(terms.term().toString().replace( "\"", "\\\"" ).replace('_', ' ')) ;
   out.print("\"");
   out.print(", \"weight\" : ");
-  out.print(terms.score());
+  out.print(dfdec3.format(terms.score()));
   out.print(", \"attributes\" : {\"class\" : \"");
   out.print(Tag.label(tag.group()));
   out.print("\"}");
@@ -113,5 +113,4 @@ while (cursor.hasNext()) {
     if ( myfreq/franfreq < ratio ) continue;
   }
   */
-
 %>

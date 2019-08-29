@@ -13,8 +13,7 @@ public String ticks(Scale scale) throws IOException  {
   int span = max - min;
   int yearStep = 5;
   if (span > 400) yearStep = 10;
-  else if (span > 200) yearStep = 5;
-  else if (span > 75) yearStep = 2;
+  else if (span > 50) yearStep = 5;
   else yearStep = 1;
   long total = scale.length();
   // calculate an hypothetic width to avoid too much labels ine dense sections
@@ -133,7 +132,7 @@ if (terms.size() > 0) {
         out.print("null");
         continue;
       }
-      double ppm = Math.round(10 * 100000.0 * count / step) / 10.0;
+      double ppm = Math.round(10.0 * 100000.0 * count / step) / 10.0;
       out.print(ppm);
     }
     out.print("]");

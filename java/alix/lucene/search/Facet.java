@@ -287,6 +287,7 @@ public class Facet
         LeafReader leaf = ctx.reader();
         // loop on terms for this leaf
         for (Term term : terms) {
+          if (term == null) continue;
           // get the ocurrence count for the query in each doc
           PostingsEnum postings = leaf.postings(term);
           if (postings == null) continue;

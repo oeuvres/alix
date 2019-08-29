@@ -6,10 +6,12 @@
     <link rel="stylesheet" type="text/css" href="static/alix.css"/>
   </head>
   <body class="cloud">
-    <form>
-      <select>
-        <option value="occs">Sans mots vides</option>
+    <form id="filter">
+      <select name="scorer" onchange="this.form.submit()">
+        <option/>
         <option value="bm25">Contrasté</option>
+        <option value="occs">Sans mots vides</option>
+        <option value="name">Noms propres</option>
       </select>
     </form>
     <div id="wordcloud2"></div>

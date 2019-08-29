@@ -171,3 +171,8 @@ function send(button) {
   button.form['json'].value = json;
   return false;
 }
+
+function informParent(name) {
+  var url = window.parent.location.href.split("#")[0] + "#corpus=" + name;
+  window.parent.location.replace(url);
+}

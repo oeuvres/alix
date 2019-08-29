@@ -110,8 +110,7 @@ alix.lucene.search.ScorerBM25,
 alix.lucene.search.ScorerTfidf,
 alix.lucene.search.ScorerTf,
 alix.lucene.search.ScorerOccs,
-alix.lucene.search.SimilarityOccs,
-alix.lucene.search.TermFreqs,
+alix.lucene.search.SimilarityOccs,alix.lucene.search.Freqs,
 alix.lucene.search.TermList,
 alix.lucene.search.TopTerms,
 alix.util.Char,
@@ -124,13 +123,19 @@ final static DecimalFormatSymbols ensyms = DecimalFormatSymbols.getInstance(Loca
 final static DecimalFormat dfppm = new DecimalFormat("#,###", frsyms);
 final static DecimalFormat dfratio = new DecimalFormat("#,##0.0000", frsyms);
 final static DecimalFormat dfint = new DecimalFormat("###,###,##0", frsyms);
-final static DecimalFormat dfscore = new DecimalFormat("0.000000", frsyms);
 /** Field Name with int date */
 final static String YEAR = "year";
 /** Field name containing canonized text */
 public static String TEXT = "text";
 /** Key for current session corpus */
 public static String CORPUS = "corpus";
+/** Local stop word list */
+static HashSet<CharsAtt> STOPLIST = new HashSet<CharsAtt>();
+static {
+  for (String w : new String[] {"dire", "Et", "etc.", "homme", "Il", "La", "Le", "Les", "M.", "p."}) {
+    STOPLIST.add(new CharsAtt(w));
+  }
+}
 
 
 /**

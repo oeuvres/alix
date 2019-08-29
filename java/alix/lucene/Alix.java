@@ -98,7 +98,7 @@ import alix.lucene.analysis.TokenLem;
 import alix.lucene.analysis.TokenizerFr;
 import alix.lucene.search.Facet;
 import alix.lucene.search.Scale;
-import alix.lucene.search.TermFreqs;
+import alix.lucene.search.Freqs;
 import alix.lucene.search.TermList;
 import alix.lucene.search.TopTerms;
 
@@ -537,14 +537,14 @@ public class Alix
    * @throws IOException
    * 
    */
-  public TermFreqs termFreqs(final String field) throws IOException
+  public Freqs freqs(final String field) throws IOException
   {
-    String key = "AlixTermFreqs" + field;
-    TermFreqs termFreqs = (TermFreqs) cache(key);
-    if (termFreqs != null) return termFreqs;
-    termFreqs = new TermFreqs(this, field);
-    cache(key, termFreqs);
-    return termFreqs;
+    String key = "AlixFreqs" + field;
+    Freqs freqs = (Freqs) cache(key);
+    if (freqs != null) return freqs;
+    freqs = new Freqs(this, field);
+    cache(key, freqs);
+    return freqs;
   }
   
   /**
@@ -553,8 +553,8 @@ public class Alix
    */
   public TopTerms dic(final String field) throws IOException 
   {
-    TermFreqs termFreqs = termFreqs(field);
-    return termFreqs.dic();
+    Freqs freqs = freqs(field);
+    return freqs.dic();
   }
 
   /**
@@ -723,7 +723,7 @@ public class Alix
     CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
     FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
 
-    TermList terms = new TermList(termFreqs(field));
+    TermList terms = new TermList(freqs(field));
     ts.reset();
     try {
       while (ts.incrementToken()) {

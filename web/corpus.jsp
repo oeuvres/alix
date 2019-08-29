@@ -1,7 +1,8 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@include file="data/common.jsp" %>
 <%!
-static HashSet<String> FIELDS = new HashSet<String>();
+final static DecimalFormat dfScoreFr = new DecimalFormat("0.00000", frsyms);
+final static HashSet<String> FIELDS = new HashSet<String>();
 static {
   for (String w : new String[] {Alix.BOOKID, "byline", "year", "title"}) {
     FIELDS.add(w);
@@ -30,6 +31,7 @@ if (request.getParameter("new") != null) {
   corpus = null;
   name = "";
   desc = "";
+  botjs += "informParent(); ";
 }
 // json send, client wants to load a new corpus
 else if (json != null) {
@@ -38,6 +40,7 @@ else if (json != null) {
   desc = corpus.desc();
   session.setAttribute(CORPUS, corpus);
   bookids =  corpus.books();
+  botjs += "informParent(\""+name+"\"); ";
 }
 // client send bookids
 else if (checks != null) {
@@ -47,7 +50,8 @@ else if (checks != null) {
   session.setAttribute(CORPUS, corpus);
   json = corpus.json();
   // corpus has been modified, store on client
-  botjs += "store(\""+name+"\", \""+desc+"\", '"+json+"');";
+  botjs += "store(\""+name+"\", \""+desc+"\", '"+json+"');\n";
+  botjs += "informParent(\""+name+"\"); ";
 }
 // load corpus from sesssion
 else {
@@ -56,6 +60,7 @@ else {
     bookids = corpus.books();
     name = corpus.name();
     desc = corpus.desc();
+    botjs += "informParent(\""+name+"\"); ";
   }
 }
 %>
@@ -154,7 +159,7 @@ boolean score = qTerms.size() > 0;
     out.println("  <td class=\"length num\">"+dfint.format(dic.length())+"</td>");
     if (score) {
       out.println("  <td class=\"occs num\">" +dic.occs()+"</td>"); 
-      out.println("  <td class=\"score num\">" +dfscore.format(dic.score())+"</td>"); 
+      out.println("  <td class=\"score num\">" +dfScoreFr.format(dic.score())+"</td>"); 
     }
     out.println("</tr>");
   }
@@ -200,4 +205,3 @@ if (corpus != null) out.println("showSelected();");
     </script>
   </body>
 </html>
-<% out.println("<!-- "+(System.nanoTime() - time) / 1000000.0 + " ms. -->");%>

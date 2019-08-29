@@ -9,13 +9,14 @@
   <body class="split">
     <header id="header">
       <form id="qform" name="qform" onsubmit="return dispatch(this)" target="page" action="snip.jsp">
+        <a id="corpus"></a>
         <input id="q" name="q" autocomplete="off" size="40" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"/>
         <button>▶</button>
       </form>
       <select id="panChange" name="panel" style="font-family: 'Open Sans', sans-serif; line-height: 100%; font-size: 16px;">
         <option value="facet.jsp">Auteurs</option>
-        <option>Noms</option>
         <optgroup label="À développer">
+          <option>Noms</option>
           <option>Annotations</option>
           <option>Personnes</option>
           <option>Lieux</option>
@@ -25,9 +26,9 @@
         <a href="corpus.jsp" target="page" class="tab">Bibliographie</a>
         <a href="snip.jsp" target="page" class="tab">Résultats</a>
         <a href="doc.jsp" target="page" class="tab">Document</a>
-        <a target="page" class="tab">Concordancier</a>
-        <a target="page" class="tab">Fréquences</a>
+        <a href="freqs.jsp" target="page" class="tab">Fréquences</a>
         <a target="page" href="cloud.html" class="tab">Nuage</a>
+        <a target="page" class="tab">Concordancier</a>
       </div>
     </header>
     <div id="win">
@@ -37,7 +38,7 @@
       </div>
       <div id="main">
         <div id="body">
-          <iframe name="page" id="page" src="corpus.jsp">
+          <iframe name="page" id="page" src="snip.jsp">
           </iframe>
         </div>
         <footer id="footer">

@@ -67,7 +67,9 @@ input[type="text"], input[type="number"] {
 
 ::-moz-placeholder, ::-webkit-input-placeholder {
   font-style: italic;
+  font-weight: 100;
   color: #999;
+  font-size: 1rem;
 }
 
 ::-ms-input-placeholder {
@@ -99,6 +101,10 @@ sub {
   bottom: -0.25em;
 }
 
+td.num {
+  text-align: right;
+
+}
 /**
  * Welcome desk
  */
@@ -312,13 +318,17 @@ td.num {
   padding: 0;
 }
 
+body.split #corpus,
 #corpora ul li {
-  float: left;
-  margin: 1px 5px 0 0;
   padding: 1px 5px;
   border: 1px;
   color: #FFF;
   background-color: #CCC;
+}
+
+#corpora ul li {
+  float: left;
+  margin: 1px 5px 0 0;
 }
 
 #corpora ul li button {
@@ -536,6 +546,13 @@ article.hit mark {
 body.cloud {
   background: #F0F8FF;
   padding: 25px;
+}
+
+body.cloud #filter {
+  top: 0;
+  left: 0;
+  z-index: 10;
+  position: absolute;
 }
 
 #wordcloud2 {

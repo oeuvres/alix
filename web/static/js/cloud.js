@@ -8,15 +8,21 @@ if (scorer) localStorage.setItem(PATHNAME + SCORER, scorer);
 else if (scorer === "") localStorage.removeItem(PATHNAME + SCORER);
 else scorer = "";
 
+console.log(scorer);
+
 // var log = url.searchParams.get("log");
 
 
-fetch("data/freqlist.jsp?scorer="+scorer).then(function(response) {
+fetch("data/freqlist.jsp?scorer="+scorer).then(
+  function(response) {
   return response.json();
-}).then(function(json) {
-  list = json;
-  cloud(document.getElementById(cloudId), list);
-});
+  }
+).then(
+  function(json) {
+    list = json.data;
+    cloud(document.getElementById(cloudId), list);
+  }
+);
 /*
 .catch(function(err) {
   console.log('Fetch problem: ' + err.message);

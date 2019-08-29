@@ -15,7 +15,12 @@ var url = new URL(window.location.href);
 var q = url.searchParams.get("q");
 var form = document.forms['qform'];
 form['q'].value = q;
-
+var chrono = document.getElementById("chrono");
+var panel = document.getElementById("panel");
+if (q) {
+  form.submit();
+  dispatch(form);
+}
 var tabs = document.getElementById('tabs').getElementsByTagName('a');
 for (var i = 0; i < tabs.length; i++) {
   tabs[i].onclick = function(e) {
@@ -26,8 +31,6 @@ for (var i = 0; i < tabs.length; i++) {
 }
 
 
-var chrono = document.getElementById("chrono");
-var panel = document.getElementById("panel");
 
 
 function dispatch(form)
@@ -42,4 +45,18 @@ function dispatch(form)
     panel.src = url.pathname+"?q="+q;
   }
   return true;
+}
+
+// handle event of hash changing,for now used only
+window.onhashchange = function () {
+  var hash = location.hash;
+  var split = hash.split("corpus=");
+  if (split.length > 1) {
+    var corpus = split[1];
+    var el = document.getElementById("corpus");
+    if (!el) return;
+    el.innerHTML = corpus;
+    panel.src = panel.src;
+    chrono.src = chrono.src;
+  }
 }

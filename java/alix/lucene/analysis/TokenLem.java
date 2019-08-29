@@ -86,18 +86,25 @@ public final class TokenLem extends TokenFilter
       }
       term.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
       CharsMaps.norm(term); // normalise : Etat -> État
-      c1 = term.charAt(0); // get normalized cap
-      name = CharsMaps.name(term);
+      c1 = term.charAt(0); // keep initial cap, maybe useful
+      name = CharsMaps.name(term); // known name ?
       if (name != null) {
         flagsAtt.setFlags(name.tag);
         if (name.orth != null) term.copy(name.orth);
         return true;
       }
-      word = CharsMaps.word(term.toLower());
-      // if not after a pun, always capitalize, even if it's a known word (État...)
-      if (!waspun) term.setCharAt(0, c1);
-      // if word not found, infer it's a MAME
-      if (word == null) {
+      word = CharsMaps.word(term.toLower()); // known word ?
+      if (word != null) { // known word
+        // if not after a pun, maybe a capitalized concept État, or a name La Fontaine, 
+        // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc. 
+        // if (!waspun)
+        flagsAtt.setFlags(word.tag);
+        if (word.lem != null) {
+          lem.append(word.lem);
+        }
+        return true;
+      }
+      else { // unknown word, infer it's a MAME
         flagsAtt.setFlags(Tag.NAME);
         term.copy(copy);
         return true;
