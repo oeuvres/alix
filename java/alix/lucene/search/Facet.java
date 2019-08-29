@@ -279,16 +279,16 @@ public class Facet
     if (terms != null && terms.sizeNotNull() != 0) {
       if (scorer == null) scorer = new ScorerBM25(); // default scorer is BM25 (for now)
       // loop on each term of the query to update the score vector
-      for (Term term : terms) {
-        int facetMatch = 0; // number of matched facets by this term
-        long[] occs = new long[size]; // a vector to count matched occurrences by facet
-        if (term == null) continue;
-        for (LeafReaderContext ctx : reader.leaves()) { // loop on the reader leaves
-          int docBase = ctx.docBase;
-          LeafReader leaf = ctx.reader();
+      int facetMatch = 0; // number of matched facets by this query
+      long[] occs = new long[size]; // a vector to count matched occurrences by facet
+      // loop first on the reader leaves, opening has a disk cost
+      for (LeafReaderContext ctx : reader.leaves()) {
+        int docBase = ctx.docBase;
+        LeafReader leaf = ctx.reader();
+        // loop on terms for this leaf
+        for (Term term : terms) {
           // get the ocurrence count for the query in each doc
-          PostingsEnum postings;
-          postings = leaf.postings(term);
+          PostingsEnum postings = leaf.postings(term);
           if (postings == null) continue;
           int docLeaf;
           long freq;
@@ -308,11 +308,11 @@ public class Facet
             }
           }
         }
-        dic.setOccs(occs);
-        scorer.weight(facetMatch, size, occsAll); // prepare the scorer for this term
-        for (int facetId = 0, length = occs.length; facetId < length; facetId++) { // get score for each facet
-          scores[facetId] = scorer.score(occs[facetId], facetLength[facetId]);
-        }
+      }
+      dic.setOccs(occs);
+      scorer.weight(facetMatch, size, occsAll); // prepare the scorer for this term
+      for (int facetId = 0, length = occs.length; facetId < length; facetId++) { // get score for each facet
+        scores[facetId] = scorer.score(occs[facetId], facetLength[facetId]);
       }
     }
     // Filter of docs, 
