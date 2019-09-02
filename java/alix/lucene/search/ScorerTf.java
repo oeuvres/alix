@@ -2,15 +2,24 @@ package alix.lucene.search;
 
 public class ScorerTf extends Scorer
 {
+  public  ScorerTf()
+  {
+    
+  }
+  public  ScorerTf(long occsAll, int docsAll)
+  {
+    setAll(occsAll, docsAll);
+  }
+
   @Override
-  protected void weight(final long docsMatch, final long docsAll, final long occsAll)
+  public void weight(final long occsMatch, final int docsMatch)
   {
   }
 
   @Override
-  protected float score(final long occsMatch, final long docLen)
+  public float score(final int occsDoc, final long docLen)
   {
-    return (float) occsMatch / docLen;
+    return (float) occsDoc / docLen;
   }
 
 }

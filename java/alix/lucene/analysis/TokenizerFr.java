@@ -17,6 +17,7 @@ import org.apache.lucene.util.AttributeImpl;
 
 import alix.fr.Tag;
 import alix.lucene.util.OffsetList;
+import alix.util.Calcul;
 import alix.util.Char;
 
 /**
@@ -63,7 +64,7 @@ public class TokenizerFr extends Tokenizer
 
   /** Parse as XML */
   boolean xml = true;
-  /** tags to send and translate */
+  /** tags to send as token events and translate */
   public static final HashMap<CharsAtt, CharsAtt> TAGS = new HashMap<CharsAtt, CharsAtt>();
   static {
     TAGS.put(new CharsAtt("p"), new CharsAtt("<p>"));
@@ -71,15 +72,16 @@ public class TokenizerFr extends Tokenizer
     TAGS.put(new CharsAtt("/section"), new CharsAtt("</section>"));
   }
   /** tag content to skip */
-  public static final HashSet<CharsAtt> SKIP = new HashSet<CharsAtt>();
+  public static final HashMap<CharsAtt, CharsAtt> SKIP = new HashMap<CharsAtt, CharsAtt>();
   static {
-    SKIP.add(new CharsAtt("teiHeader"));
-    SKIP.add(new CharsAtt("head"));
-    SKIP.add(new CharsAtt("script"));
-    SKIP.add(new CharsAtt("style"));
+    SKIP.put(new CharsAtt("teiHeader"), new CharsAtt("/teiHeader"));
+    SKIP.put(new CharsAtt("head"), new CharsAtt("/head"));
+    SKIP.put(new CharsAtt("script"), new CharsAtt("/script"));
+    SKIP.put(new CharsAtt("style"), new CharsAtt("/style"));
+    SKIP.put(new CharsAtt("?index_off?"), new CharsAtt("?index_on?"));
   }
   /** Store closing tag to skip */
-  private CharsAtt skip = new CharsAtt();
+  private CharsAtt skip = null;
 
   public TokenizerFr()
   {
@@ -120,7 +122,7 @@ public class TokenizerFr extends Tokenizer
     boolean tagname = false;
     boolean xmlent = false;
     char lastChar = 0;
-    int offLast = 1; // subtract to offset the last char
+    int offLast = 0; // convenient flag for offset in some cases
     char c = 0; // current char
     while (true) {
       final int length = term.length();
@@ -134,7 +136,6 @@ public class TokenizerFr extends Tokenizer
         // end of buffer
         if (bufLen != 0) ;
         else if (length > 0) { // a term to send
-          offLast = 0;
           break;
         }
         else { // finish !
@@ -152,7 +153,6 @@ public class TokenizerFr extends Tokenizer
       else if (c == '<') { // start tag
         // a word was started, send it, ex Word<note>2</note>
         if (length != 0) {
-          offLast = 0;
           bufIndex--;
           // will exclude the 
           // offLast = offset - ltOffset;
@@ -173,17 +173,17 @@ public class TokenizerFr extends Tokenizer
         if (c == '>') {
           intag = false;
           // end of skip element
-          if (!skip.isEmpty() && skip.equals(test)) {
-            skip.setEmpty();
+          if (skip != null && skip.equals(test)) {
+            skip = null;
             continue;
           }
           // inside skip element
-          else if (!skip.isEmpty()) {
+          else if (skip != null) {
             continue;
           }
           // start of a skip element
-          else if (SKIP.contains(test)) {
-            skip.setEmpty().append("/").append(test);
+          else if (SKIP.containsKey(test)) {
+            skip = SKIP.get(test);
             continue;
           }
           CharsAtt el = TAGS.get(test); // test the tagname
@@ -213,7 +213,7 @@ public class TokenizerFr extends Tokenizer
         continue;
       }
       // inside a tag to skip, go throw
-      else if (!skip.isEmpty()) {
+      else if (skip != null) {
         continue;
       }
       else if (c == '&') {
@@ -252,14 +252,12 @@ public class TokenizerFr extends Tokenizer
       if (Char.isPUNcl(c)) {
         // send term before
         if (length != 0) {
-          offLast = 0;
           bufIndex--;
           break;
         }
         term.append(c);
         flags.setFlags(Tag.PUNcl);
         startOffset = offset + bufIndex - 1;
-        offLast = 0;
         break;
       }
 
@@ -279,18 +277,42 @@ public class TokenizerFr extends Tokenizer
         }
         // test if it's an abreviation with a dot
         if (c == '.') {
+          int roman;
           term.append('.');
-          // U.S.A.
-          if (Char.isUpperCase(lastChar)) continue;
+          // M., etc.
           if (CharsMaps.brevidot(term)) {
-            offLast = 0;
-            break;
+            continue; // keep dot
           }
-          // seems a sentence dot,
-          term.setLength(term.length() - 1);
+          // Fin de phrase.
+          else if (Char.isLowerCase(lastChar)) {
+            term.setLength(term.length() - 1);
+          }
+          // 1.5
+          else if (!Char.isUpperCase(lastChar)) {
+            continue;
+          }
+          // XVIII.
+          else if ((roman = Calcul.roman2int(term.buffer(), 0, term.length()-1)) > 0) {
+            flagsAtt.setFlags(Tag.NUM);
+          }
+          // RODOGUNE. dot is a punctuation
+          else if (term.length() > 2 && Char.isUpperCase(term.charAt(0)) && Char.isUpperCase(term.charAt(1))) {
+            term.setLength(term.length() - 1);
+          }
+          // U.{S.A.} 
+          else if (term.length() < 3) {
+            continue;
+          }
+          // U.S.{A.} 
+          else if (term.charAt(term.length() - 3) == '.') {
+            continue;
+          }
+          // default, is punctuation
+          else {
+            term.setLength(term.length() - 1);
+          }
         }
         // seems a punctuation
-        offLast = 0;
         bufIndex--;
         break;
       }
@@ -316,7 +338,6 @@ public class TokenizerFr extends Tokenizer
           CharsAtt val = CharsMaps.ELLISION.get(term);
           if (val != null) {
             val.copyTo(term);
-            offLast = 0;
             break;
           }
         }
@@ -324,6 +345,7 @@ public class TokenizerFr extends Tokenizer
       }
       // a non token char, a word to send
       else if (length > 0) {
+        offLast = 1; // do not take this char in offset delimitation
         break;
       }
       lastChar = c;
@@ -331,16 +353,19 @@ public class TokenizerFr extends Tokenizer
     // send term event
     int endOffset = offset + bufIndex - offLast;
     // something like 1. 2.
-    if ((lastChar == '.' || c == ')' || c == '°') && flags.getFlags() == Tag.NUM) {
+    if ((c == '.' || c == ')' || c == '°') && flags.getFlags() == Tag.NUM) {
       term.setEmpty().append('#');
       flags.setFlags(Tag.PUNsent);
     }
     // splitable hyphen ? split on souviens-toi, murmura-t-elle, but not
     // Joinville-le-Pont,
-    if (hyphOffset > 0 && HYPHEN_POST.contains(test)) {
+    else if (hyphOffset > 0 && HYPHEN_POST.contains(test)) {
       // swap terms to store state of word after hyphen
+      // Laisse-moi ! Réveille-le. eploi-t-il ?
       int len = term.length() - test.length() - 1;
-      copy.copy(term.setLength(len));
+      term.setLength(len); 
+      if (term.endsWith("-t")) term.setLength(len-2); // french specific, euphonic t
+      copy.copy(term);
       term.copy(test);
       offsetAtt.setOffset(correctOffset(hyphOffset), correctOffset(endOffset));
       save = captureState();

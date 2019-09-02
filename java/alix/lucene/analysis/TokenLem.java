@@ -73,19 +73,17 @@ public final class TokenLem extends TokenFilter
     NameEntry name;
     // norm case
     if (Char.isUpperCase(c1)) {
-      // if nothing found, be conservative, restore (ex : USA, Grande-Bretagne)
-      copy.copy(term);
-      // roman number
-      if (term.length() > 2 && Char.isUpperCase(term.charAt(1))) {
-        int roman = Calcul.roman2int(term.buffer());
-        if (roman > 0) {
-          flagsAtt.setFlags(Tag.NUM);
-          term.setEmpty().append(Integer.toString(roman));
-          return true;
-        }
+      // roman number already detected
+      if (flagsAtt.getFlags() == Tag.NUM) return true;
+      int n = Calcul.roman2int(term.buffer(), 0, term.length());
+      if (n > 0) {
+        flagsAtt.setFlags(Tag.NUM);
+        return true;
       }
+      // USA ?
       term.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
       CharsMaps.norm(term); // normalise : Etat -> État
+      copy.copy(term);
       c1 = term.charAt(0); // keep initial cap, maybe useful
       name = CharsMaps.name(term); // known name ?
       if (name != null) {

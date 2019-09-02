@@ -103,6 +103,7 @@ alix.lucene.search.DicBytes,
 alix.lucene.search.DicBytes.Cursor,
 alix.lucene.search.Facet,
 alix.lucene.search.HiliteFormatter,
+alix.lucene.search.Keywords,
 alix.lucene.search.Scale,
 alix.lucene.search.Scale.Tick,
 alix.lucene.search.Scorer,
@@ -114,7 +115,8 @@ alix.lucene.search.SimilarityOccs,alix.lucene.search.Freqs,
 alix.lucene.search.TermList,
 alix.lucene.search.TopTerms,
 alix.util.Char,
-alix.util.Dir
+alix.util.Dir,
+alix.util.Top
 " %>
 <%!
 

@@ -2,13 +2,22 @@ package alix.lucene.search;
 
 public class ScorerOccs extends Scorer
 {
+  public ScorerOccs()
+  {
+    
+  }
+  public ScorerOccs(long occsAll, int docsAll)
+  {
+    setAll(occsAll, docsAll);
+  }
+
   @Override
-  protected void weight(final long docsMatch, final long docsAll, final long occsAll)
+  public void weight(final long occsMatch, final int docsMatch)
   {
   }
 
   @Override
-  protected float score(final long occsMatch, final long docLen)
+  public float score(final int occsMatch, final long docLen)
   {
     return occsMatch;
   }

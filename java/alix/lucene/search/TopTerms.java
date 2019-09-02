@@ -30,7 +30,7 @@ public class TopTerms
   /** An optional field by termId, ex : count of matching docs */
   protected int[] docs;
   /** An optional field by termId, ex : count of matching occurences */
-  protected long[] occs;
+  protected int[] occs;
   /** An optional field by termId, ex : docid used as a cover for a term like a title or an author */
   protected int[] covers;
   /** Current term id to get infos on */
@@ -312,7 +312,7 @@ public class TopTerms
    * 
    * @param occs
    */
-  public void setOccs(final long[] occs)
+  public void setOccs(final int[] occs)
   {
     this.occs = occs;
   }

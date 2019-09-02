@@ -34,7 +34,8 @@ public class TokenLemCloud extends FilteringTokenFilter
   protected boolean accept() throws IOException
   {
     int tag = flagsAtt.getFlags();
-    if (Tag.isPun(tag)) return false;
+    // filter some non semantic token
+    if (Tag.isPun(tag) || Tag.isNum(tag)) return false;
     // replace term by lemma for adjectives and verbs
     if (Tag.isAdj(tag) || Tag.isVerb(tag) || Tag.isSub(tag))
       if (lemAtt.length() != 0)

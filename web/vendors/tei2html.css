@@ -76,7 +76,7 @@ body {
   font-family: Georgia, "Bitstream Vera Serif", Times, serif;
 }
 
-.serif, .subtitle, textarea.readonly, .dialogue li, .titleStmt h1 {
+.serif, .subtitle, textarea.readonly, .titleStmt h1 {
   font-family: Georgia, "Bitstream Vera Serif", Times, serif;
 }
 
@@ -597,7 +597,7 @@ optgroup {
   font-weight: bold;
 }
 
-p {
+p, .dialogue li {
   margin: 0;
   text-align: justify;
   line-height: 150%;
@@ -931,7 +931,7 @@ ul.castList {
   background-color: rgba(255, 255, 255, 0.6);
   padding: 1px 2px 1px 2px;
   position: absolute;
-  left: -1rem;
+  left: -4rem;
   text-align: right;
   width: 3.5rem;
   /* float: right; problèmes dans les tableaux */

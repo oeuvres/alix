@@ -132,12 +132,14 @@ public final class Tag
   public final static int MISC = 0xF0;
   /** Abréviation (encore non résolue) */
   public final static int ABBR = 0xF1;
-  /** Numéro */
-  public final static int NUM = 0xF2;
   /** Exclamation */
-  public final static int EXCL = 0xF3;
+  public final static int EXCL = 0xF2;
+  /** Numéro */
+  public final static int NUM = 0xF3;
   /** Mathematical operator */
   public final static int MATH = 0xF4;
+  /** A number used as a reference, like a page, a note */
+  public final static int REF = 0xF5;
   /** Particules démonstratives -ci, -là */
   public final static int PARTdem = 0xFC;
   /** Category */

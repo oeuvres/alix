@@ -109,7 +109,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
    * 
    * @param rank
    */
-  public boolean test(final double score)
+  public boolean isInsertable(final double score)
   {
     return (!full || (score <= data[last].score));
   }

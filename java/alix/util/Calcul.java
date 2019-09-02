@@ -95,27 +95,52 @@ public class Calcul
     }
   }
 
-  private static final char[] symbols = "IVXLCDM".toCharArray();
-  private static final int[] values = { 1, 5, 10, 50, 100, 500, 1000 };
+
+  private static int dec(char c) 
+  { 
+    switch(c) {
+      case 'I':
+        return 1;
+      case 'V':
+        return 5;
+      case 'X':
+        return 10;
+      case 'L':
+        return 50;
+      case 'C':
+        return 100;
+      case 'D':
+        return 500;
+      case 'M':
+        return 1000;
+      default:
+        return -1;
+    }
+  } 
 
   public static int roman2int(char[] chars)
   {
-    int len = chars.length;
-    char c;
+    return roman2int(chars, 0, chars.length);
+  }
+  public static int roman2int(char[] chars, int start, int len)
+  {
     int j = 0;
     int value = 0;
-    for (int i = len - 1; i >= 0; i--) {
-      c = chars[i];
-      if (j > 1 && c == symbols[j - 2]) {
-        value -= values[j - 2];
-        continue;
+    // loop on chars
+    for (int i = 0; i < len; i++) {
+      int v1 = dec(chars[i]);
+      if (v1 < 0) return -1; // unknown char
+      // substract first char value ?
+      if (i+1 < len) {
+        int v2 = dec(chars[i+1]);
+        if (v1 < v2) {
+          value = value - v1 + v2;
+          i++;
+          continue;
+        }
       }
-      for (; j < 7; j++) {
-        if (c != symbols[j]) continue;
-        value += values[j];
-        break;
-      }
-      if (j == 7) return -1;
+      // normal case
+      value += v1;
     }
     return value;
   }

@@ -83,7 +83,7 @@ public class Facet
   public final int docsAll;
   /** Global number of occurrences in the text field */
   public final long occsAll;
-  /** Global number of value for this facet */
+  /** Global number of values for this facet */
   public final int size;
   /** A table docId => facetId*n, to get freqs from found docs */
   private final int[][] docFacets;
@@ -96,7 +96,7 @@ public class Facet
   /** The reader from which to get freqs */
   private IndexReader reader;
   /** A vector for each docId, size in occurrences */
-  private final long[] docLength;
+  private final int[] docLength;
 
   /**
    * Build data to have frequencies on a facet field.
@@ -137,7 +137,7 @@ public class Facet
     int[] facetDocs = new int[32];
     int[] facetCover = new int[32];
 
-    long[] docLength = alix.docLength(fieldText); // length of each doc for the text field
+    int[] docLength = alix.docLength(fieldText); // length of each doc for the text field
     this.docLength = docLength;
     // max int for an array collecttor
     int ordMax = -1;
@@ -277,10 +277,11 @@ public class Facet
     int[] docs = new int[size];
     // A term query, get matched occurrences and calculate score
     if (terms != null && terms.sizeNotNull() != 0) {
-      if (scorer == null) scorer = new ScorerBM25(); // default scorer is BM25 (for now)
+      if (scorer == null) scorer = new ScorerBM25(occsAll, size); // default scorer is BM25 (for now)
       // loop on each term of the query to update the score vector
       int facetMatch = 0; // number of matched facets by this query
-      long[] occs = new long[size]; // a vector to count matched occurrences by facet
+      long occsMatch = 0; // total occurrences matched
+      int[] occs = new int[size]; // a vector to count matched occurrences by facet
       // loop first on the reader leaves, opening has a disk cost
       for (LeafReaderContext ctx : reader.leaves()) {
         int docBase = ctx.docBase;
@@ -297,9 +298,10 @@ public class Facet
           while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
             int docId = docBase + docLeaf;
             if (filter != null && !filter.get(docId)) continue; // document not in the metadata fillter
-            if ((freq = postings.freq()) == 0) continue; // no occurrence of this term (?)
+            if ((freq = postings.freq()) == 0) continue; // no occurrence for this term (?)
             int[] facets = docFacets[docId]; // get the facets of this doc
             if (facets == null) continue; // could be null if doc matching but not faceted
+            occsMatch += freq;
             for (int i = 0, length = facets.length; i < length; i++) {
               int facetId = facets[i];
               docs[facetId]++; // matched docs by facets
@@ -311,7 +313,7 @@ public class Facet
         }
       }
       dic.setOccs(occs);
-      scorer.weight(facetMatch, size, occsAll); // prepare the scorer for this term
+      scorer.weight(occsMatch, facetMatch); // prepare the scorer for this term
       for (int facetId = 0, length = occs.length; facetId < length; facetId++) { // get score for each facet
         scores[facetId] = scorer.score(occs[facetId], facetLength[facetId]);
       }

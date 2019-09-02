@@ -363,7 +363,17 @@ public class SAXIndexer extends DefaultHandler
   @Override
   public void ignorableWhitespace(char[] ch, int start, int length)
   {
+    if (!record) return;
     xml.append(ch, start, length);
+  }
+
+  @Override
+  public void processingInstruction(String target, String data) throws SAXException
+  {
+    if (!record) return;
+    xml.append("<?"+target);
+    if(data != null && ! data.isEmpty()) xml.append(" "+data);
+    xml.append("?>");
   }
 
   @Override
@@ -405,7 +415,8 @@ public class SAXIndexer extends DefaultHandler
         source.setReader(new StringReader(text));
         xml.setLength(0);
         TokenStream result = new TokenLem(source);
-        result = new TokenCompound(result, 5);
+        // Compound is not yet OK
+        // result = new TokenCompound(result, 5);
         TokenCount counter = new TokenCount(result);
         TokenStream caching = new CachingTokenFilter(counter);
         // Cache all tokens

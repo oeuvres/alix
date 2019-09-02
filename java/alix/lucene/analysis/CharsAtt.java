@@ -319,8 +319,20 @@ public class CharsAtt extends AttributeImpl
     return t;
   }
 
+  public boolean endsWith(final String o)
+  {
+    final int olen = o.length();
+    if (olen > len) return false;
+    int i = len - 1;
+    for (int j = olen - 1; j >=0; j--) {
+      if (chars[i] != o.charAt(j)) return false;
+      i--;
+    }
+    return true;
+  };
+  
   @Override
-  public boolean equals(Object other)
+  public boolean equals(final Object other)
   {
     if (other == this) {
       return true;

@@ -568,11 +568,11 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public long[] docLength(String field) throws IOException
+  public int[] docLength(String field) throws IOException
   {
     IndexReader reader = reader(); // ensure reader or decache
     String key = "AlixDocLength" + field;
-    long[] docLength = (long[]) cache(key);
+    int[] docLength = (int[]) cache(key);
     if (docLength != null) return docLength;
 
     FieldInfo info = fieldInfos.fieldInfo(field);
@@ -586,7 +586,7 @@ public class Alix
     }
     int maxDoc = reader.maxDoc();
     // index by year
-    docLength = new long[maxDoc];
+    docLength = new int[maxDoc];
     // A text field may be indexed with a parallel long value which is supposed to
     // be the length
     if (info.getDocValuesType() == DocValuesType.NUMERIC) {
@@ -600,7 +600,7 @@ public class Alix
         int docLeaf;
         while ((docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           if (liveDocs != null && !liveDocs.get(docLeaf)) continue;
-          docLength[docBase + docLeaf] = docs4num.longValue();
+          docLength[docBase + docLeaf] = (int)docs4num.longValue();
         }
       }
     }
@@ -620,8 +620,12 @@ public class Alix
         Terms vector = reader.getTermVector(i, field);
         // maybe no vector for this docId (ex : toc, book...)
         if (vector == null) continue;
-        docLength[i] = vector.getSumTotalTermFreq(); // expensive on first call
+        docLength[i] = (int) vector.getSumTotalTermFreq(); // expensive on first call
       }
+    }
+    else {
+      throw new IllegalArgumentException(
+        "Field \"" + field + "\" do not allow to calculate lengths.");
     }
     cache(key, docLength);
     return docLength;
