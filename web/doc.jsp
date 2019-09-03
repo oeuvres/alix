@@ -136,7 +136,7 @@ if (document != null) {
   out.println(bibl);
   out.println("</div>");
   out.println("<p class=\"keywords\">");
-  out.println("Mots-Clés <b>BM25</b> : ");
+  out.println("<b>Mots-Clés</b> : ");
   Keywords words = new Keywords (alix, TEXT, docId, new ScorerBM25());
   Top<String> top = words.top();
   boolean first = true;
@@ -147,17 +147,6 @@ if (document != null) {
   }
   out.println("</p>");
 
-  out.println("<p class=\"keywords\">");
-  out.println("Mots-Clés <b>tf-idf</b> : ");
-  words = new Keywords (alix, TEXT, docId, new ScorerTfidf());
-  top = words.top();
-  first = true;
-  for (Top.Entry<String> entry: top) {
-    if (first) first = false;
-    else out.println(", ");
-    out.print(entry.value());
-  }
-  out.println("</p>");
 
 
   String text = document.get(TEXT);

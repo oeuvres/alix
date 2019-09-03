@@ -419,6 +419,7 @@ table.prevnext td.bibl a {
 
 body.document div.heading {
   font-size: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 body.document div.heading span.surname {
