@@ -134,7 +134,6 @@ a:target {}
 a {
   background-color: transparent;
   text-decoration: none;
-  border-bottom: dashed 0.5px #00F;
   color: #339;
 }
 
@@ -1936,11 +1935,6 @@ p.lmarg1, p.lmarg2, p.lmarg3, p.lmarg4, p.lmarg25, p.lmarg50 {
 
 p.noindent, p.autofirst {
   text-indent: 0;
-}
-
-/* automatic */
-blockquote p.autofirst {
-  text-indent: 1.5rem
 }
 
 div.ornament {

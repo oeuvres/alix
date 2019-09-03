@@ -277,7 +277,8 @@ public class Facet
     int[] docs = new int[size];
     // A term query, get matched occurrences and calculate score
     if (terms != null && terms.sizeNotNull() != 0) {
-      if (scorer == null) scorer = new ScorerBM25(occsAll, size); // default scorer is BM25 (for now)
+      if (scorer == null) scorer = new ScorerBM25(); // default scorer is BM25 (for now)
+      scorer.setAll(occsAll, size);
       // loop on each term of the query to update the score vector
       int facetMatch = 0; // number of matched facets by this query
       long occsMatch = 0; // total occurrences matched

@@ -14,7 +14,8 @@ ch.
 cf.
 Cf.;cf
 ch.
-chap.
+chap.;chapitre
+Chap.;chapitre
 cit.
 cl.
 coll.
@@ -43,17 +44,12 @@ Fr.;francs
 G.
 H.
 h.;heure
-I.
 Ib.;ibid
 ib.;ibid
 ibid.;ibid
 id.
 Id.;id
-II.;2
-III.;3
 introd.;
-IV.;4
-IX.;9
 J.
 j.
 jan.;janvier
@@ -129,9 +125,6 @@ U.
 U.S.A.
 V.
 v.
-VI.;6
-VII.;7
-VIII.;8
 vol.
 voy.
 Voy.;voy

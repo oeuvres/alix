@@ -355,6 +355,8 @@ public class TokenizerFr extends Tokenizer
     // something like 1. 2.
     if ((c == '.' || c == ')' || c == '°') && flags.getFlags() == Tag.NUM) {
       term.setEmpty().append('#');
+      endOffset++;
+      bufIndex++; // bad fix
       flags.setFlags(Tag.PUNsent);
     }
     // splitable hyphen ? split on souviens-toi, murmura-t-elle, but not

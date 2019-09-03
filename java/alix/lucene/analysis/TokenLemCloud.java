@@ -36,6 +36,12 @@ public class TokenLemCloud extends FilteringTokenFilter
     int tag = flagsAtt.getFlags();
     // filter some non semantic token
     if (Tag.isPun(tag) || Tag.isNum(tag)) return false;
+    // filter some names
+    if (Tag.isName(tag)) {
+      if (termAtt.length() < 3) return false;
+      // filter first names ?
+      return true;
+    }
     // replace term by lemma for adjectives and verbs
     if (Tag.isAdj(tag) || Tag.isVerb(tag) || Tag.isSub(tag))
       if (lemAtt.length() != 0)

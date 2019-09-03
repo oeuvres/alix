@@ -6,9 +6,9 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
- * A queue to select the top elements according to a double score. 
+ * A queue to select the top elements according to a float score. 
  * Efficiency come from a data structure without object creation.
- * An array is populated with entries (double score, Object value),
+ * An array is populated with entries (float score, Object value),
  * only if score is better than the minimum in the collection.
  * Less flexible data structure have been tested (ex : parallel array of simple types),
  * no sensible gains were observed.
@@ -19,17 +19,19 @@ public class Top<E> implements Iterable<Top.Entry<E>>
   /**
    * Data stored as a Pair rank+object, easy to sort before exported as an array.
    */
-  final Entry<E>[] data;
+  private final Entry<E>[] data;
   /** Max size of the top to extract */
-  final int size;
+  private final int size;
   /** Fill data before */
   private boolean full;
   /** Index of fill factor, before data full */
   private int fill = 0;
   /** Index of the minimum rank in data */
-  int last;
+  private int last;
   /** Min score */
-  double min;
+  private float min = Float.MAX_VALUE;
+  /** Max score */
+  private float max = Float.MIN_VALUE;
 
   /**
    * Constructor with fixed size.
@@ -84,13 +86,13 @@ public class Top<E> implements Iterable<Top.Entry<E>>
   /**
    * Set internal pointer to the minimum score.
    */
-  public void last()
+  private void last()
   {
     int last = 0;
-    double min = data[0].score;
+    float min = data[0].score;
     for (int i = 1; i < size; i++) {
       // if (data[i].score >= min) continue;
-      if (Double.compare(data[i].score, min) >= 0) continue;
+      if (Float.compare(data[i].score, min) >= 0) continue;
       min = data[i].score;
       last = i;
     }
@@ -98,7 +100,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     this.last = last;
   }
 
-  public void sort()
+  private void sort()
   {
     Arrays.sort(data, 0, fill);
     last = size - 1;
@@ -109,9 +111,36 @@ public class Top<E> implements Iterable<Top.Entry<E>>
    * 
    * @param rank
    */
-  public boolean isInsertable(final double score)
+  public boolean isInsertable(final float score)
   {
     return (!full || (score <= data[last].score));
+  }
+
+  /**
+   * Returns the minimum score.
+   * @return
+   */
+  public float min()
+  {
+    return min;
+  }
+
+  /**
+   * Returns the maximum score.
+   * @return
+   */
+  public float max()
+  {
+    return max;
+  }
+
+  /**
+   * Return the count of elements
+   * @return
+   */
+  public int length()
+  {
+    return fill;
   }
 
   /**
@@ -120,27 +149,31 @@ public class Top<E> implements Iterable<Top.Entry<E>>
    * @param rank
    * @param value
    */
-  public void push(final double score, final E value)
+  public boolean push(final float score, final E value)
   {
     // should fill initial array
     if (!full) {
+      if (Float.compare(score, max) > 0) max = score;
+      if (Float.compare(score, min) < 0) min = score;
       data[fill] = new Entry<E>(score, value);
       fill++;
-      if (fill < size) return;
+      if (fill < size) return true;
       // finished
       full = true;
       // find index of minimum rank
       last();
-      return;
+      return true;
     }
     // less than min, go away
     // if (score <= data[last].score) return;
-    // compare in Double is more precise, no less efficient
-    if (Double.compare(score, min) <= 0) return;
+    // compare in Float is more precise, no less efficient
+    if (Float.compare(score, min) <= 0) return false;
+    if (Float.compare(score, max) > 0) max = score;
     // bigger than last, modify it
     data[last].set(score, value);
     // find last
     last();
+    return true;
   }
 
   /**
@@ -180,7 +213,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
   static public class Entry<E> implements Comparable<Entry>
   {
     /** The rank to compare values */
-    double score;
+    float score;
     /** The value */
     E value;
 
@@ -190,7 +223,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
      * @param score
      * @param value
      */
-    Entry(final double score, final E value)
+    Entry(final float score, final E value)
     {
       this.score = score;
       this.value = value;
@@ -202,7 +235,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
      * @param score
      * @param value
      */
-    protected void set(final double score, final E value)
+    protected void set(final float score, final E value)
     {
       this.score = score;
       this.value = value;
@@ -213,7 +246,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
       return value;
     }
 
-    public double score()
+    public float score()
     {
       return score;
     }
@@ -221,7 +254,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     @Override
     public int compareTo(Entry pair)
     {
-      return Double.compare(pair.score, score);
+      return Float.compare(pair.score, score);
     }
 
     @Override

@@ -43,6 +43,7 @@ TopTerms terms = freqs.topTerms(filter, scorer);
 while (terms.hasNext()) {
   terms.next();
   terms.term(term);
+  if (term.isEmpty()) continue; // ???
   // filter some unuseful words
   // if (STOPLIST.contains(term)) continue;
   LexEntry entry = CharsMaps.word(term);

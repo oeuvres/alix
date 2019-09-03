@@ -155,7 +155,8 @@ public class Freqs
     float[] scores = new float[size];
     int[] occs = new int[size];
     BytesRef bytes;
-    if (scorer == null) scorer = new ScorerBM25(occsAll, docsAll); // default scorer is BM25 (for now)
+    if (scorer == null) scorer = new ScorerBM25(); // default scorer is BM25 (for now)
+    scorer.setAll(occsAll, docsAll);
     for (LeafReaderContext context : reader.leaves()) {
       int docBase = context.docBase;
       LeafReader leaf = context.reader();

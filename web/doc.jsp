@@ -13,7 +13,28 @@ class TokenOffsets
     this.className = className;
   }
 }
-
+final static HashSet<String> FIELDS = new HashSet<String>();
+static {
+  for (String w : new String[] {Alix.BOOKID, "bibl"}) {
+    FIELDS.add(w);
+  }
+}
+public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOException
+{
+  StringBuilder out = new StringBuilder();
+  ScoreDoc[] hits = docs.scoreDocs;
+  for (int i = 0, len = hits.length; i < len; i++) {
+    int docId = hits[i].doc;
+    if (docSrc == docId) continue;
+    Document doc = reader.document(docId, FIELDS);
+    out.append("<li>");
+    out.append("<a href=\"?docid="+docId+"\">");
+    out.append(doc.get("bibl"));
+    out.append("</a>");
+    out.append("</li>");
+  }
+  return out.toString();
+}
 %>
 <!DOCTYPE html>
 <html>
@@ -57,8 +78,11 @@ if (id != null) {
 else if (!"".equals(q)) {
   topDocs = getTopDocs(session, searcher, corpus, q, sort);
   ScoreDoc[] hits = topDocs.scoreDocs;
-  if (n < 1) n = 1;
-  if (n <= hits.length) {
+  if (hits.length == 0) {
+    n = 0;
+  }
+  else {
+    if (n < 1 || (n - 1) >= hits.length) n = 1;
     docId = hits[n - 1].doc;
     document = reader.document(docId);
   }
@@ -135,19 +159,70 @@ if (document != null) {
   out.println("<div class=\"heading\">");
   out.println(bibl);
   out.println("</div>");
+  
+  Top<String> top;
+  boolean first;
+  Query query;
+  TopDocs results;
+  Keywords keywords = new Keywords (alix, TEXT, docId, null);
+  
+
+  
   out.println("<p class=\"keywords\">");
-  out.println("<b>Mots-Clés</b> : ");
-  Keywords words = new Keywords (alix, TEXT, docId, new ScorerBM25());
-  Top<String> top = words.top();
-  boolean first = true;
+  out.println("<b>Mots-clés</b> : ");
+  top = keywords.words();
+  first = true;
+  int max = 50;
   for (Top.Entry<String> entry: top) {
     if (first) first = false;
     else out.println(", ");
-    out.print(entry.value());
+    String word = entry.value();
+    out.print("<a href=\"?q="+word+"\">"+word+"</a>");
+    if (--max <= 0) break;
   }
-  out.println("</p>");
+  out.println(".</p>");
 
+  query = keywords.query(top, 50, true);
+  results = searcher.search(query, 11);
+  out.println("<ul>");
+  out.println(results(results, reader, docId));
+  out.println("</ul>");
 
+  out.println("<p class=\"keywords\">");
+  top = keywords.names();
+  out.println("<b>Noms cités</b> : ");
+  first = true;
+  for (Top.Entry<String> entry: top) {
+    if (first) first = false;
+    else out.println(", ");
+    String word = entry.value();
+    out.print("<a href=\"?q="+word+"\">");
+    out.print(word);
+    out.print("</a>");
+  }
+  out.println(".</p>");
+  
+  query = keywords.query(top, 50, true);
+  results = searcher.search(query, 11);
+  out.println("<ul>");
+  out.println(results(results, reader, docId));
+  out.println("</ul>");
+
+  top = keywords.happax();
+  if (top.length() > 0) {
+    out.println("<b>Happax</b> : ");
+    first = true;
+    for (Top.Entry<String> entry: top) {
+      if (first) first = false;
+      else out.println(", ");
+      String word = entry.value();
+      out.print(word);
+    }
+    out.println(".</p>");
+    
+  }
+  
+  out.println(".<p/>");
 
   String text = document.get(TEXT);
   // hilie
