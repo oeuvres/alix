@@ -184,9 +184,12 @@ if (document != null) {
 
   query = keywords.query(top, 50, true);
   results = searcher.search(query, 11);
+  out.println("<details>");
+  out.println("<summary>Chapitres avec ces mots</summary>");
   out.println("<ul>");
   out.println(results(results, reader, docId));
   out.println("</ul>");
+  out.println("</details>");
 
   out.println("<p class=\"keywords\">");
   top = keywords.names();
@@ -204,9 +207,13 @@ if (document != null) {
   
   query = keywords.query(top, 50, true);
   results = searcher.search(query, 11);
+  out.println("<details>");
+  out.println("<summary>Chapitres avec ces noms</summary>");
   out.println("<ul>");
   out.println(results(results, reader, docId));
   out.println("</ul>");
+  out.println("</ul>");
+  out.println("</details>");
 
   top = keywords.happax();
   if (top.length() > 0) {

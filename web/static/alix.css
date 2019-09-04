@@ -52,6 +52,35 @@ a:hover {
   text-decoration: underline #339;
 }
 
+button {
+  cursor: pointer;
+  outline: unset;
+  padding: 0.1em 0.3em;
+  margin: 0 2px 0 0;
+  border: groove 1px #FFF;
+  border-radius: 3px;
+  color: #000;
+  background-color: #E2DED0;
+}
+
+button:hover {
+  background-color: #FFFFFF;
+}
+
+details {
+  border: 1px #E2DED0 solid;
+  padding: 0 0.5rem;
+}
+
+summary {
+  outline: unset;
+  cursor: pointer;
+}
+
+summary:hover {
+  background: #FFFFFF;
+}
+
 [type="checkbox"] {
   margin: 0;
   padding: 0;
@@ -307,7 +336,7 @@ td.num {
 
 #corpora {
   background-color: #FFF;
-  margin-bottom: 1em;
+  margin-bottom: 0;
   padding: 1px 5px 2px 5px;
   height: 1.8rem;
 }
@@ -326,8 +355,12 @@ body.split #corpus,
   background-color: #CCC;
 }
 
+#corpus button:hover {
+  color: #000000;
+}
+
 #corpora ul li {
-  float: left;
+  float: right;
   margin: 1px 5px 0 0;
 }
 
@@ -436,6 +469,11 @@ body.document header.bibl a.but,
   border-radius: unset;
   border: none !important;
   background: transparent;
+}
+#qform #corpus button {
+  color: inherit;
+  font-size: inherit;
+  font-weight: bold;
 }
 
 #qform button:hover {

@@ -10,6 +10,7 @@ function bottomLoad() {
     authors[nl[i].value] = true;
   }
   el = document.getElementById("author");
+  el.addEventListener('keydown', filterEnter);
   el.addEventListener('input', authorFilter);
   el.addEventListener('focus', authorFilter);
 
@@ -104,6 +105,11 @@ function titleFilter(evt) {
 }
 
 // intercept enter to search for words
+function filterEnter(evt) {
+  if (evt.key != 'Enter') return true;
+  return false;
+}
+// intercept enter to search for words
 function titleEnter(evt) {
   // return false;
   if (evt.key != 'Enter') return true;
@@ -173,6 +179,7 @@ function send(button) {
 }
 
 function informParent(name) {
+  if (!name) name = "";
   var url = window.parent.location.href.split("#")[0] + "#corpus=" + name;
   window.parent.location.replace(url);
 }

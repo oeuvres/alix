@@ -73,18 +73,15 @@ else {
     <script src="static/js/corpus.js">//</script>
   </head>
   <body class="corpus">
-    <form method="post" id="corpora">
+    <form method="post" id="corpora" action="?">
       <input type="hidden" name="json"/>
+      <input type="hidden" name="q" value="<%=q%>"/>
       <ul id="corpusList"></ul>
     </form>
     <script type="text/javascript">corpusList("corpusList");</script>
     <main>
-      <form method="post" id="corpus">
-        <fieldset id="filter">
-          <legend>Modifier le corpus
-            <input type="text" size="10" id="name" name="name" value="<%=name%>" placeholder="Nom du corpus" required="required"/>
-          </legend>
-          <input type="hidden" name="q" value="<%=q%>"/>
+        <details id="filter">
+          <summary>Filtres</summary>
           <label for="start">Années</label>
           <input id="start" name="start" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Début" class="year"/>
           <input id="end" name="end" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Fin" class="year"/>
@@ -92,13 +89,7 @@ else {
           <input id="author" name="author" autocomplete="off" list="author-data" size="50" type="text" onclick="select()" placeholder="Nom, Prénom"/>
           <br/><label for="title">Titre</label>
           <input id="title" name="title" autocomplete="off" list="title-data" type="text" size="50" onclick="select()" placeholder="Chercher un titre"/>
-          <br/>
-          <button id="selection" type="button">Sélection</button>
-          <button id="all" type="button">Tout</button>
-          <button name="reload" type="button" onclick="window.location = window.location.href.split('#')[0];">Recharger</button>
-          <button style="float: right;" name="save" type="submit">Enregistrer</button>
-          <button style="float: right;" name="new" type="submit">Nouveau</button>
-        </fieldset>
+        </details>
 
 <%
 IndexReader reader = alix.reader();
@@ -109,7 +100,17 @@ TopTerms dic = null;
 boolean score = qTerms.size() > 0;
 %>
 
+      <form method="post" id="corpus" action="#">
         <table class="sortable" id="bib">
+         <caption>
+            <input type="hidden" name="q" value="<%=q%>"/>
+            <button id="selection" type="button" title="Montrer les items sélectionnés">✔</button>
+            <button id="all" type="button" title="Montrer tous les items">▢</button>
+            Corpus <input type="text" size="10" id="name" name="name" value="<%=name%>" placeholder="Nom du corpus" required="required"/>
+            <button style="float: right;"  name="save" type="submit">Enregistrer</button>
+            <button style="float: right;" name="new" onclick="this.form.name = ' '" type="submit">Nouveau</button>
+            <button style="float: right;" name="reload" type="button" onclick="window.location = window.location.href.split('#')[0];">Recharger</button>
+         </caption>
           <thead>
             <tr>
               <th class="checkbox"><input id="checkall" type="checkbox" title="Sélectionner/déselectionner les lignes visibles"/></th>

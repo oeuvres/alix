@@ -13,7 +13,7 @@ var splitV = Split(['#body', '#footer'], {
 // fill form
 var url = new URL(window.location.href);
 var q = url.searchParams.get("q");
-var form = document.forms['qform'];
+var form = document.getElementById("qform");
 form['q'].value = q;
 var chrono = document.getElementById("chrono");
 var panel = document.getElementById("panel");
@@ -30,9 +30,6 @@ for (var i = 0; i < tabs.length; i++) {
   }
 }
 
-
-
-
 function dispatch(form)
 {
   var q = form['q'].value;
@@ -47,16 +44,28 @@ function dispatch(form)
   return true;
 }
 
-// handle event of hash changing,for now used only
-window.onhashchange = function () {
+// handle event of hash changing, used to display current corpus
+function hashing() {
   var hash = location.hash;
   var split = hash.split("corpus=");
   if (split.length > 1) {
     var corpus = split[1];
     var el = document.getElementById("corpus");
     if (!el) return;
-    el.innerHTML = corpus;
+    // unknown corpus
+    if(corpus && !localStorage.getItem(corpus)) {
+      location.hash = "";
+      corpus = "";
+    }
+
+    var html = "";
+    if (corpus) {
+      html = "<button name=\"new\" onclick=\"this.form.action = 'corpus.jsp';\" title=\"Déselectionner la collection “"+name+"”\">🗙</button>" + corpus;
+    }
+    el.innerHTML = html;
     panel.src = panel.src;
     chrono.src = chrono.src;
   }
 }
+window.onhashchange = hashing;
+hashing();
