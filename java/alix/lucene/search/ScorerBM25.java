@@ -24,7 +24,7 @@ public class ScorerBM25 extends Scorer
   @Override
   public void weight(final long occsMatch, final int docsMatch)
   {
-    this.idf = (float) Math.log(1 + (docsAll - docsMatch + 0.5D) / (docsMatch + 0.5D));
+    this.idf = (float) Math.log(1.0 + (docsAll - docsMatch + 0.5D) / (docsMatch + 0.5D));
   }
 
   @Override

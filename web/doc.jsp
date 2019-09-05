@@ -165,14 +165,38 @@ if (document != null) {
   Query query;
   TopDocs results;
   Keywords keywords = new Keywords (alix, TEXT, docId, null);
-  
+  int max;
 
+  out.println("<p class=\"keywords\">");
+  out.println("<b>Thème (exp.)</b> : ");
+  top = keywords.theme();
+  max = 50;
+  first = true;
+  for (Top.Entry<String> entry: top) {
+    if (first) first = false;
+    else out.println(", ");
+    String word = entry.value();
+    out.print("<a href=\"?q="+word+"\">"+word+"</a>");
+    // out.print(" ("+entry.score()+")");
+    if (entry.score() <= 0) break;
+    if (--max <= 0) break;
+  }
+  out.println(".</p>");
+
+  query = keywords.query(top, 50, true);
+  results = searcher.search(query, 11);
+  out.println("<details>");
+  out.println("<summary>Chapitres avec ces mots</summary>");
+  out.println("<ul>");
+  out.println(results(results, reader, docId));
+  out.println("</ul>");
+  out.println("</details>");
   
   out.println("<p class=\"keywords\">");
   out.println("<b>Mots-clés</b> : ");
   top = keywords.words();
   first = true;
-  int max = 50;
+  max = 50;
   for (Top.Entry<String> entry: top) {
     if (first) first = false;
     else out.println(", ");

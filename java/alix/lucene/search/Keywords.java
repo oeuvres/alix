@@ -14,7 +14,11 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
 
+import alix.fr.Tag;
 import alix.lucene.Alix;
+import alix.lucene.analysis.CharsAtt;
+import alix.lucene.analysis.CharsMaps;
+import alix.lucene.analysis.CharsMaps.LexEntry;
 import alix.util.Char;
 import alix.util.Top;
 import alix.util.Top.Entry;
@@ -30,6 +34,7 @@ public class Keywords
   private final String field;
   private Top<String> names;
   private Top<String> words;
+  private Top<String> theme;
   private Top<String> happax;
   private float boostFactor = 1;
   // 
@@ -48,30 +53,48 @@ public class Keywords
     final Top<String> names = new Top<String>(100);
     final Top<String> words = new Top<String>(100);
     final Top<String> happax = new Top<String>(100);
+    final Top<String> theme = new Top<String>(100);
     long occsAll= freqs.occsAll;
     int docsAll = freqs.docsAll;
     if (scorer == null) scorer = new ScorerBM25();
     scorer.setAll(occsAll, docsAll);
+    Scorer scorerTheme = new ScorerAlix();
+    scorerTheme.setAll(occsAll, docsAll);
+    CharsAtt att = new CharsAtt();
     while(termit.next() != null) {
       BytesRef bytes = termit.term();
       if (!freqs.contains(bytes)) continue; // should not arrive, set a pointer
+      
       int termDocs = freqs.docs();
       long termOccs = freqs.length();
       scorer.weight(termOccs, termDocs); // collection level stats
+      scorerTheme.weight(termOccs, termDocs); // collection level stats
       int occsDoc = (int)termit.totalTermFreq();
       float score = scorer.score(occsDoc, docLen);
       String term = bytes.utf8ToString();
+      /*
+      att.setEmpty().append(term);
+      LexEntry entry = CharsMaps.word(att);
+      if (entry != null) {
+        int tag = entry.tag;
+        if (Tag.isSub(tag)) {
+        }
+      }
+      */
+      
       if (termDocs < 2) {
         happax.push(score, term);
       }
       else if (Char.isUpperCase(term.charAt(0))) {
-        names.push(score, term);
+        names.push(occsDoc, term);
       }
       else {
+        theme.push(scorerTheme.score(occsDoc, docLen), term);
         words.push(score, term);
       }
       
     }
+    this.theme = theme;
     this.names = names;
     this.words = words;
     this.happax = happax;
@@ -83,6 +106,10 @@ public class Keywords
 
   public Top<String> words() {
     return words;
+  }
+
+  public Top<String> theme() {
+    return theme;
   }
 
   public Top<String> happax() {
@@ -97,6 +124,7 @@ public class Keywords
     BooleanQuery.Builder query = new BooleanQuery.Builder();
     float max = top.max();
     for (Top.Entry<String> entry: top) {
+      if (entry.score() <= 0) break;
       Query tq = new TermQuery(new Term(field, entry.value()));
       if (boost) {
         float factor = boostFactor * entry.score() / max;
