@@ -61,19 +61,21 @@ public class Keywords
     long occsAll= freqs.occsAll;
     int docsAll = freqs.docsAll;
     Scorer scorer = new ScorerBM25();
-    scorer.setAll(occsAll, docsAll);
     Scorer scorerTheme = new ScorerAlix();
     Scorer scorerTfidf = new ScorerTfidf();
+    scorer.setAll(occsAll, docsAll);
     scorerTheme.setAll(occsAll, docsAll);
+    scorerTfidf.setAll(occsAll, docsAll);
     CharsAtt att = new CharsAtt();
     while(termit.next() != null) {
       BytesRef bytes = termit.term();
       if (!freqs.contains(bytes)) continue; // should not arrive, set a pointer
-      
+      // count 
       int termDocs = freqs.docs();
       long termOccs = freqs.length();
       scorer.weight(termOccs, termDocs); // collection level stats
       scorerTheme.weight(termOccs, termDocs); // collection level stats
+      scorerTfidf.weight(termOccs, termDocs);
       int occsDoc = (int)termit.totalTermFreq();
       float score = scorer.score(occsDoc, docLen);
       String term = bytes.utf8ToString();
