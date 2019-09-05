@@ -36,6 +36,7 @@ public class Keywords
   private Top<String> oldnames;
   private Top<String> words;
   private Top<String> theme;
+  private Top<String> tfidf;
   private Top<String> happax;
   private float boostFactor = 1;
   // 
@@ -56,11 +57,13 @@ public class Keywords
     final Top<String> words = new Top<String>(100);
     final Top<String> happax = new Top<String>(100);
     final Top<String> theme = new Top<String>(100);
+    final Top<String> tfidf = new Top<String>(100);
     long occsAll= freqs.occsAll;
     int docsAll = freqs.docsAll;
     Scorer scorer = new ScorerBM25();
     scorer.setAll(occsAll, docsAll);
     Scorer scorerTheme = new ScorerAlix();
+    Scorer scorerTfidf = new ScorerTfidf();
     scorerTheme.setAll(occsAll, docsAll);
     CharsAtt att = new CharsAtt();
     while(termit.next() != null) {
@@ -92,12 +95,14 @@ public class Keywords
         oldnames.push(score, term);
       }
       else {
+        tfidf.push(scorerTfidf.score(occsDoc, docLen), term);
         theme.push(scorerTheme.score(occsDoc, docLen), term);
         words.push(score, term);
       }
       
     }
     this.theme = theme;
+    this.tfidf = tfidf;
     this.names = names;
     this.oldnames = oldnames;
     this.words = words;
@@ -110,6 +115,10 @@ public class Keywords
 
   public Top<String> words() {
     return words;
+  }
+
+  public Top<String> tfidf() {
+    return tfidf;
   }
 
   public Top<String> theme() {

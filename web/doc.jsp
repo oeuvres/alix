@@ -193,7 +193,7 @@ if (document != null) {
   out.println("</details>");
   
   out.println("<p class=\"keywords\">");
-  out.println("<b>Mots-clés</b> : ");
+  out.println("<b>Mots-clés (BM25)</b> : ");
   top = keywords.words();
   first = true;
   max = 50;
@@ -214,6 +214,21 @@ if (document != null) {
   out.println(results(results, reader, docId));
   out.println("</ul>");
   out.println("</details>");
+  
+  out.println("<p class=\"keywords\">");
+  out.println("<b>Mots-clés (tf-idf)</b> : ");
+  top = keywords.tfidf();
+  first = true;
+  max = 50;
+  for (Top.Entry<String> entry: top) {
+    if (first) first = false;
+    else out.println(", ");
+    String word = entry.value();
+    out.print("<a href=\"?q="+word+"\">"+word+"</a>");
+    if (--max <= 0) break;
+  }
+  out.println(".</p>");
+
 
   out.println("<p class=\"keywords\">");
   top = keywords.oldnames();
