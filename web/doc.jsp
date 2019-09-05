@@ -164,7 +164,7 @@ if (document != null) {
   boolean first;
   Query query;
   TopDocs results;
-  Keywords keywords = new Keywords (alix, TEXT, docId, null);
+  Keywords keywords = new Keywords (alix, TEXT, docId);
   int max;
 
   out.println("<p class=\"keywords\">");
@@ -178,7 +178,7 @@ if (document != null) {
     String word = entry.value();
     out.print("<a href=\"?q="+word+"\">"+word+"</a>");
     // out.print(" ("+entry.score()+")");
-    if (entry.score() <= 0) break;
+    // if (entry.score() <= 0) break;
     if (--max <= 0) break;
   }
   out.println(".</p>");
@@ -214,6 +214,20 @@ if (document != null) {
   out.println(results(results, reader, docId));
   out.println("</ul>");
   out.println("</details>");
+
+  out.println("<p class=\"keywords\">");
+  top = keywords.oldnames();
+  out.println("<b>Noms (impertinents)</b> : ");
+  first = true;
+  for (Top.Entry<String> entry: top) {
+    if (first) first = false;
+    else out.println(", ");
+    String word = entry.value();
+    out.print("<a href=\"?q="+word+"\">");
+    out.print(word);
+    out.print("</a>");
+  }
+  out.println(".</p>");
 
   out.println("<p class=\"keywords\">");
   top = keywords.names();

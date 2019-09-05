@@ -33,12 +33,13 @@ public class Keywords
 {
   private final String field;
   private Top<String> names;
+  private Top<String> oldnames;
   private Top<String> words;
   private Top<String> theme;
   private Top<String> happax;
   private float boostFactor = 1;
   // 
-  public Keywords(Alix alix, String field, int docId, Scorer scorer) throws IOException
+  public Keywords(Alix alix, String field, int docId) throws IOException
   {
     this.field = field;
     IndexReader reader = alix.reader();
@@ -51,12 +52,13 @@ public class Keywords
     // loop on all terms of the document, get score, keep the top 
     TermsEnum termit = vector.iterator();
     final Top<String> names = new Top<String>(100);
+    final Top<String> oldnames = new Top<String>(100);
     final Top<String> words = new Top<String>(100);
     final Top<String> happax = new Top<String>(100);
     final Top<String> theme = new Top<String>(100);
     long occsAll= freqs.occsAll;
     int docsAll = freqs.docsAll;
-    if (scorer == null) scorer = new ScorerBM25();
+    Scorer scorer = new ScorerBM25();
     scorer.setAll(occsAll, docsAll);
     Scorer scorerTheme = new ScorerAlix();
     scorerTheme.setAll(occsAll, docsAll);
@@ -87,6 +89,7 @@ public class Keywords
       }
       else if (Char.isUpperCase(term.charAt(0))) {
         names.push(occsDoc, term);
+        oldnames.push(score, term);
       }
       else {
         theme.push(scorerTheme.score(occsDoc, docLen), term);
@@ -96,6 +99,7 @@ public class Keywords
     }
     this.theme = theme;
     this.names = names;
+    this.oldnames = oldnames;
     this.words = words;
     this.happax = happax;
   }
@@ -114,6 +118,10 @@ public class Keywords
 
   public Top<String> happax() {
     return happax;
+  }
+
+  public Top<String> oldnames() {
+    return oldnames;
   }
 
   /**
