@@ -56,12 +56,12 @@ Document document = null;
 int docId = getParameter(request, "docid", -1);
 String id = getParameter(request, "id", null);
 String sort = getParameter(request, "sort", null);
-int n = getParameter(request, "n", 1);
+int start = getParameter(request, "start", 1);
 if (request.getParameter("prev") != null) {
-  n = getParameter(request, "prevn", n);
+  start = getParameter(request, "prevn", start);
 }
 else if (request.getParameter("next") != null) {
-  n = getParameter(request, "nextn", n);
+  start = getParameter(request, "nextn", start);
 }
 IndexReader reader = alix.reader();
 IndexSearcher searcher = alix.searcher();
@@ -81,11 +81,11 @@ else if (!"".equals(q)) {
   out.println("<h1>" + (System.nanoTime() - time) / 1000000.0 + " ms </h1>");
   ScoreDoc[] hits = topDocs.scoreDocs;
   if (hits.length == 0) {
-    n = 0;
+    start = 0;
   }
   else {
-    if (n < 1 || (n - 1) >= hits.length) n = 1;
-    docId = hits[n - 1].doc;
+    if (start < 1 || (start - 1) >= hits.length) start = 1;
+    docId = hits[start - 1].doc;
     document = reader.document(docId);
   }
 }
@@ -133,8 +133,8 @@ if (bibl != null) {
        tabindex="-1" />
         <input type="hidden" name="docid" value="<%=docId%>"/>
         <% 
-        if (topDocs != null && n > 1) {
-          out.println("<input type=\"hidden\" name=\"prevn\" value=\""+(n - 1)+"\"/>");
+        if (topDocs != null && start > 1) {
+          out.println("<input type=\"hidden\" name=\"prevn\" value=\""+(start - 1)+"\"/>");
           out.println("<button type=\"submit\" name=\"prev\">◀</button>");
         }
         %>
@@ -143,13 +143,13 @@ if (bibl != null) {
             <option>Pertinence</option>
             <% sortOptions(out, sort); %>
         </select>
-        <input id="n" name="n" value="<%=n%>" autocomplete="off" size="1"/>
+        <input id="start" name="start" value="<%=start%>" autocomplete="off" size="1"/>
                <% 
         if (topDocs != null) {
           long max = topDocs.totalHits.value;
           out.println("<span class=\"hits\"> / "+ max  + "</span>");
-          if (n < max) {
-            out.println("<input type=\"hidden\" name=\"nextn\" value=\""+(n + 1)+"\"/>");
+          if (start < max) {
+            out.println("<input type=\"hidden\" name=\"nextn\" value=\""+(start + 1)+"\"/>");
             out.println("<button type=\"submit\" name=\"next\">▶</button>");
           }
         }

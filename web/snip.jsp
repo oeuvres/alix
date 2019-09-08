@@ -58,7 +58,7 @@ if (!"".equals(q)) {
     out.println("  <div class=\"bibl\">");
     out.println("<small>"+(start + i)+".</small> ");
     // test if null ?
-    out.println("<a href=\"doc.jsp?n="+(i + 1)+"&q="+q+"\">");
+    out.println("<a href=\"doc.jsp?start="+(i + start)+"&q="+q+"&sort="+sort+"\">");
     out.println(document.get("bibl"));
     out.println("</a>");
     out.println("  </div>");
