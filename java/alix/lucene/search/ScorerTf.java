@@ -17,9 +17,9 @@ public class ScorerTf extends Scorer
   }
 
   @Override
-  public float score(final int occsDoc, final long docLen)
+  public double score(final int occsDoc, final long docLen)
   {
-    return (float) occsDoc / docLen;
+    return (double) occsDoc / docLen;
   }
 
 }

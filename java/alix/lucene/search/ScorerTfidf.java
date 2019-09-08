@@ -3,9 +3,9 @@ package alix.lucene.search;
 public class ScorerTfidf extends Scorer
 {
   /** Store idf */
-  float idf;
+  double idf;
   /** A traditional coefficient */
-  final float k = 0.2F;
+  final double k = 0.2F;
 
   public ScorerTfidf()
   {
@@ -21,13 +21,13 @@ public class ScorerTfidf extends Scorer
   public void weight(final long occsMatch, final int docsMatch)
   {
     double l = 0;
-    this.idf = (float) (Math.log((docsAll +l ) / (double) (docsMatch + l)) );
+    this.idf = (double) (Math.log((docsAll +l ) / (double) (docsMatch + l)) );
   }
 
   @Override
-  public float score(final int occsMatch, final long docLen)
+  public double score(final int occsMatch, final long docLen)
   {
-    return idf * (k + (1 - k) * (float) occsMatch / (float) docLen);
+    return idf * (k + (1 - k) * (double) occsMatch / (double) docLen);
     // return idf * (1 +(float)Math.log(occsMatch));
   }
 

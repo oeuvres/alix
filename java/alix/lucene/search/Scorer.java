@@ -12,7 +12,7 @@ public abstract class Scorer
   /** Total count of documents in the collection. */
   protected int docsAll;
   /** Average occ length */
-  protected float docAvg;
+  protected double docAvg;
   
 
   /**
@@ -23,7 +23,7 @@ public abstract class Scorer
   public void setAll(final long occsAll, final int docsAll) {
     this.occsAll = occsAll;
     this.docsAll = docsAll;
-    this.docAvg = (float) occsAll / docsAll;
+    this.docAvg = (double) occsAll / docsAll;
   }
   
   public long occsAll() {
@@ -49,6 +49,6 @@ public abstract class Scorer
    * @param occDoc Total count of occurrences for this document.
    * @return
    */
-  abstract public float score(final int occsDoc, final long docLen);
+  abstract public double score(final int occsDoc, final long docLen);
 
 }

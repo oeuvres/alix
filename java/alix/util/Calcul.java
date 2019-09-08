@@ -124,7 +124,6 @@ public class Calcul
   }
   public static int roman2int(char[] chars, int start, int len)
   {
-    int j = 0;
     int value = 0;
     // loop on chars
     for (int i = 0; i < len; i++) {

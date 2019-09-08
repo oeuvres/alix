@@ -152,7 +152,7 @@ public class Freqs
 
     int[] docLength = alix.docLength(field);
     IndexReader reader = alix.reader();
-    float[] scores = new float[size];
+    double[] scores = new double[size];
     int[] occs = new int[size];
     BytesRef bytes;
     if (scorer == null) scorer = new ScorerBM25(); // default scorer is BM25 (for now)

@@ -1,16 +1,16 @@
 package alix.lucene.search;
 
-public class ScorerAlix extends Scorer
+public class ScorerTheme extends Scorer
 {
   /** Store idf */
   float freqAvg;
 
-  public ScorerAlix()
+  public ScorerTheme()
   {
     
   }
 
-  public ScorerAlix(final long occsAll, final int docsAll)
+  public ScorerTheme(final long occsAll, final int docsAll)
   {
     setAll(occsAll, docsAll);
   }
@@ -23,12 +23,12 @@ public class ScorerAlix extends Scorer
   }
 
   @Override
-  public float score(final int occsDoc, final long docLen)
+  public double score(final int occsDoc, final long docLen)
   {
     if (occsDoc == 0) return 0;
     // float avg = (float) occsDoc / docLen;
     // return (float) Math.log( (occsDoc - freqAvg) / freqAvg );
-    return (float) (occsDoc - freqAvg) / freqAvg;
+    return (double) (occsDoc - freqAvg) / freqAvg;
   }
 
 }

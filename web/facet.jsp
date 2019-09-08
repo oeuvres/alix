@@ -6,6 +6,7 @@
     <meta charset="UTF-8"/>
     <title>Facettes</title>
     <link rel="stylesheet" type="text/css" href="static/alix.css"/>
+    <base target="page"/>
   </head>
   <body class="facet">
   <%
@@ -25,23 +26,40 @@ else out.println("<h3>"+facetName+" (chapitres)</h3>");
     <div class="facets">
     <%
 Facet facet = alix.facet(facetField, TEXT);
-TopTerms facetEnum = facet.topTerms(filter, terms, null);
-while (facetEnum.hasNext()) {
-  facetEnum.next();
-  if (terms.size() > 0) {
+// a query
+if (terms.size() > 0) { 
+  //get results for a query sorted by this field, to get the index to navigate in it
+  TopDocs topDocs = getTopDocs(session, alix.searcher(), corpus, q, facetField);
+  int[] nos = facet.nos(topDocs);
+  TopTerms facetEnum = facet.topTerms(filter, terms, null);
+  facetEnum.setNos(nos);
+  while (facetEnum.hasNext()) {
+    facetEnum.next();
     long occs = facetEnum.occs();
+    System.out.println(occs);
     if (occs < 1) break;
-    out.println("<div>"+facetEnum.term()+" ("+occs+")</div>");
+    int n = facetEnum.n();
+    int hits = facetEnum.hits();
+    out.print("<div>");
+    out.print("<a href=\"snip.jsp?sort="+facetField+"&q="+q+"&start="+(n+1)+"&hpp="+hits+"\">");
+    out.print(facetEnum.term());
+    out.print("</a>");
+    out.print(" ("+occs+")");
+    out.println("</div>");
   }
-  else {
+}
+else {
+  TopTerms facetEnum = facet.topTerms(filter, terms, null);
+  while (facetEnum.hasNext()) {
+    facetEnum.next();
     int docs = facetEnum.docs();
     if (docs < 1) break;
     out.println("<div>"+facetEnum.term()+" ("+docs+")</div>");
   }
 }
+
     %>
     </div>
     <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
-    <script src="vendors/Sortable.js">//</script>
   </body>
 </html>

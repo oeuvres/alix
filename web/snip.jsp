@@ -11,6 +11,9 @@
     <div id="results">
       <%
 String sort = request.getParameter("sort");
+int hpp = getParameter(request, "hpp", 100);
+int start = getParameter(request, "start", 1);
+if (start < 1) start = 1;
       %>
       <form id="qform">
         <input id="q" name="q" value="<%=escapeHtml(q)%>" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"  onclick="this.select();"/>
@@ -26,43 +29,34 @@ String sort = request.getParameter("sort");
     <%
 String fieldName = TEXT;
 if (!"".equals(q)) {
-  // renew searcher for this experiment on similarity
-  IndexSearcher searcher = alix.searcher(true);
-  Query query = getQuery(corpus, q);
-  TopDocs topDocs;
-  Sort sorter = getSort(sort);
-  Similarity similarity = getSimilarity("sort");
-  Similarity oldSim = null;
-  if (similarity != null) {
-    searcher.setSimilarity(similarity);
-    oldSim = searcher.getDefaultSimilarity();
-  }
-  if (sorter == null ) {
-    topDocs = searcher.search(query, 100);
-  }
-  else {
-    topDocs = searcher.search(query, 100, sorter);
-  }
-  if (similarity != null) {
-    searcher.setSimilarity(oldSim);
-  }
 
+  time = System.nanoTime();
+  IndexSearcher searcher = alix.searcher();
+  TopDocs topDocs = getTopDocs(session, searcher, corpus, q, sort);
 
-  ScoreDoc[] hits = topDocs.scoreDocs;
-
-
+  time = System.nanoTime();
 
   UnifiedHighlighter uHiliter = new UnifiedHighlighter(searcher, Alix.qAnalyzer);
   uHiliter.setMaxLength(500000); // biggest text size to process
   uHiliter.setFormatter(new  HiliteFormatter());
-  String[] fragments = uHiliter.highlight(fieldName, query, topDocs, 5);
+  Query query = getQuery(corpus, q); // to get the terms to Hilite
+  ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+  if (start > scoreDocs.length) start = 1;
+  int len = Math.min(hpp, 1 + scoreDocs.length - start);
+  int docIds[] = new int[len];
+  for (int i = 0; i < len; i++) {
+    docIds[i] = scoreDocs[start - 1 + i].doc;
+  }
+  Map<String, String[]> res = uHiliter.highlightFields(new String[]{fieldName}, query, docIds, new int[]{5});
+  String[] fragments = res.get(fieldName);
 
-  for (int i = 0; i < hits.length; i++) {
-    int docId = hits[i].doc;
+  for (int i = 0; i < len; i++) {
+    int docId = docIds[i];
     Document document = searcher.doc(docId);
     out.println("<article class=\"hit\">");
     // hits[i].doc
     out.println("  <div class=\"bibl\">");
+    out.println("<small>"+(start + i)+".</small> ");
     // test if null ?
     out.println("<a href=\"doc.jsp?n="+(i + 1)+"&q="+q+"\">");
     out.println(document.get("bibl"));
@@ -81,10 +75,8 @@ if (!"".equals(q)) {
     out.println("</article>");
   }
 }
-
-
     %>
     </div>
-    <% out.println("time : " + (System.nanoTime() - time) / 1000000.0 + " ms "); %>  </body>
-    <script src="static/js/snip.js">//</script>
+  </body>
+  <script src="static/js/snip.js">//</script>
 </html>

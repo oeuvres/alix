@@ -29,9 +29,9 @@ public class Top<E> implements Iterable<Top.Entry<E>>
   /** Index of the minimum rank in data */
   private int last;
   /** Min score */
-  private float min = Float.MAX_VALUE;
+  private double min = Double.MAX_VALUE;
   /** Max score */
-  private float max = Float.MIN_VALUE;
+  private double max = Double.MIN_VALUE;
 
   /**
    * Constructor with fixed size.
@@ -89,10 +89,10 @@ public class Top<E> implements Iterable<Top.Entry<E>>
   private void last()
   {
     int last = 0;
-    float min = data[0].score;
+    double min = data[0].score;
     for (int i = 1; i < size; i++) {
       // if (data[i].score >= min) continue;
-      if (Float.compare(data[i].score, min) >= 0) continue;
+      if (Double.compare(data[i].score, min) >= 0) continue;
       min = data[i].score;
       last = i;
     }
@@ -120,7 +120,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
    * Returns the minimum score.
    * @return
    */
-  public float min()
+  public double min()
   {
     return min;
   }
@@ -129,7 +129,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
    * Returns the maximum score.
    * @return
    */
-  public float max()
+  public double max()
   {
     return max;
   }
@@ -149,12 +149,12 @@ public class Top<E> implements Iterable<Top.Entry<E>>
    * @param rank
    * @param value
    */
-  public boolean push(final float score, final E value)
+  public boolean push(final double score, final E value)
   {
     // should fill initial array
     if (!full) {
-      if (Float.compare(score, max) > 0) max = score;
-      if (Float.compare(score, min) < 0) min = score;
+      if (Double.compare(score, max) > 0) max = score;
+      if (Double.compare(score, min) < 0) min = score;
       data[fill] = new Entry<E>(score, value);
       fill++;
       if (fill < size) return true;
@@ -167,8 +167,8 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     // less than min, go away
     // if (score <= data[last].score) return;
     // compare in Float is more precise, no less efficient
-    if (Float.compare(score, min) <= 0) return false;
-    if (Float.compare(score, max) > 0) max = score;
+    if (Double.compare(score, min) <= 0) return false;
+    if (Double.compare(score, max) > 0) max = score;
     // bigger than last, modify it
     data[last].set(score, value);
     // find last
@@ -213,7 +213,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
   static public class Entry<E> implements Comparable<Entry>
   {
     /** The rank to compare values */
-    float score;
+    double score;
     /** The value */
     E value;
 
@@ -223,7 +223,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
      * @param score
      * @param value
      */
-    Entry(final float score, final E value)
+    Entry(final double score, final E value)
     {
       this.score = score;
       this.value = value;
@@ -235,7 +235,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
      * @param score
      * @param value
      */
-    protected void set(final float score, final E value)
+    protected void set(final double score, final E value)
     {
       this.score = score;
       this.value = value;
@@ -246,7 +246,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
       return value;
     }
 
-    public float score()
+    public double score()
     {
       return score;
     }
@@ -254,7 +254,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     @Override
     public int compareTo(Entry pair)
     {
-      return Float.compare(pair.score, score);
+      return Double.compare(pair.score, score);
     }
 
     @Override

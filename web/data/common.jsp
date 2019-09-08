@@ -24,6 +24,7 @@ java.util.Iterator,
 java.util.LinkedHashMap,
 java.util.List,
 java.util.Locale,
+java.util.Map,
 java.util.Set,
 java.util.Scanner,
 java.util.stream.Collectors,
@@ -95,13 +96,13 @@ alix.lucene.analysis.TokenCooc.AnalyzerCooc,
 alix.lucene.analysis.TokenLem,
 alix.lucene.analysis.TokenizerFr,
 alix.lucene.search.BitsFromQuery,
-alix.lucene.search.Cooc,
 alix.lucene.search.Corpus,
 alix.lucene.search.CorpusQuery,
 alix.lucene.search.CollectorBits,
 alix.lucene.search.DicBytes,
 alix.lucene.search.DicBytes.Cursor,
 alix.lucene.search.Facet,
+alix.lucene.search.Freqs,
 alix.lucene.search.HiliteFormatter,
 alix.lucene.search.Keywords,
 alix.lucene.search.Scale,
@@ -111,7 +112,8 @@ alix.lucene.search.ScorerBM25,
 alix.lucene.search.ScorerTfidf,
 alix.lucene.search.ScorerTf,
 alix.lucene.search.ScorerOccs,
-alix.lucene.search.SimilarityOccs,alix.lucene.search.Freqs,
+alix.lucene.search.SimilarityOccs,
+alix.lucene.search.SimilarityTheme,
 alix.lucene.search.TermList,
 alix.lucene.search.TopTerms,
 alix.util.Char,
@@ -237,24 +239,26 @@ public static Similarity getSimilarity(final String sortSpec)
   if ("dfi_chi2".equals(sortSpec)) similarity = new DFISimilarity(new IndependenceChiSquared());
   else if ("dfi_std".equals(sortSpec)) similarity = new DFISimilarity(new IndependenceStandardized());
   else if ("dfi_sat".equals(sortSpec)) similarity = new DFISimilarity(new IndependenceSaturated());
-  else if ("tf-idf".equals(sortSpec)) similarity = new ClassicSimilarity();
+  else if ("tfidf".equals(sortSpec)) similarity = new ClassicSimilarity();
   else if ("lmd".equals(sortSpec)) similarity = new LMDirichletSimilarity();
   else if ("lmd0.1".equals(sortSpec)) similarity = new LMJelinekMercerSimilarity(0.1f);
   else if ("lmd0.7".equals(sortSpec)) similarity = new LMJelinekMercerSimilarity(0.7f);
   else if ("dfr".equals(sortSpec)) similarity = new DFRSimilarity(new BasicModelG(), new AfterEffectB(), new NormalizationH1());
   else if ("ib".equals(sortSpec)) similarity = new IBSimilarity(new DistributionLL(), new LambdaDF(), new NormalizationH3());
+  else if ("theme".equals(sortSpec)) similarity = new SimilarityTheme();
+  else if ("occs".equals(sortSpec)) similarity = new SimilarityOccs();
   return similarity;
 }
 
 public static void sortOptions(JspWriter out, String sortSpec) throws IOException
 {
   String[] value = {
-    "year", "year-inv", "author", "author-inv", "occs",
+    "year", "year-inv", "author", "author-inv", "occs", "theme",
     // "tf-idf", "bm25", "dfi_chi2", "dfi_std", "dfi_sat", 
     // "lmd", "lmd0.1", "lmd0.7", "dfr", "ib"
   };
   String[] label = {
-    "Année (+ ancien)", "Année (+ récent)", "Auteur (A-Z)", "Auteur (Z-A)", "Occurrences",
+    "Année (+ ancien)", "Année (+ récent)", "Auteur (A-Z)", "Auteur (Z-A)", "Occurrences", "Thème",
     // "tf-idf", "BM25", "DFI chi²", "DFI standard", "DFI saturé", 
     // "LMD", "LMD λ=0.1", "LMD λ=0.7", "DFR", "IB"
   };
@@ -301,9 +305,8 @@ public TopDocs getTopDocs(HttpSession session, IndexSearcher searcher, Corpus co
   Sort sort = getSort(sortSpec);
   String key = ""+query;
   if (sort != null)  key+= " " + sort;
-  Similarity similarity = null;
   Similarity oldSim = null;
-  if ("occs".equals(sortSpec)) similarity = new SimilarityOccs();
+  Similarity similarity = getSimilarity(sortSpec);
   if (similarity != null) {
     key += " <"+similarity+">";
   }
@@ -364,21 +367,5 @@ if (corpus != null) filter = corpus.bits();
 // get query string
 String q = getParameter(request, "q", "");
 
-
-/*
-int start = getParameter(request, "start", -1);
-int end = getParameter(request, "end", -1);
-String author = getParameter(request, "author", "");
-String title = getParameter(request, "title", "");
-Query filterQuery = null;
-if (start > 0 && end > 0 && start <= end) filterQuery = IntPoint.newRangeQuery(YEAR, start, end);
-// else filterQuery = new MatchAllDocsQuery(); // ensure to get bits without deleted docs
-*/
-/*
-QueryBitSetProducer was quite nice but has a too hard cache policy.
-Prefer to rely on the default LRU caching of IndexSearcher.
-// QueryBitSetProducer filter = new QueryBitSetProducer(query);
-ConstantScoreQuery wraper is not needed here
-*/
 
 %>

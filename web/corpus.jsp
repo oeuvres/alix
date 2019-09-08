@@ -29,6 +29,7 @@ Facet facet;
 // new corpus, do not load something
 if (request.getParameter("new") != null) {
   corpus = null;
+  session.setAttribute(CORPUS, null);
   name = "";
   desc = "";
   botjs += "informParent(); ";

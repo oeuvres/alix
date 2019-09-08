@@ -24,15 +24,19 @@ public class TopTerms
   /** Count of terms */
   private final int size;
   /** An optional field by termId used to sort by score */
-  private float[] scores;
-  /** An optional field by termId, ex : total count of words */
+  private double[] scores;
+  /** An optional field by termId, total count of words */
   private long[] lengths;
-  /** An optional field by termId, ex : count of matching docs */
+  /** An optional field by termId, total of relevant docs b */
   protected int[] docs;
-  /** An optional field by termId, ex : count of matching occurences */
+  /** An optional field by termId, relevant  docs b */
+  protected int[] hits;
+  /** An optional field by termId, count of matching occurences */
   protected int[] occs;
-  /** An optional field by termId, ex : docid used as a cover for a term like a title or an author */
+  /** An optional field by termId, docid used as a cover for a term like a title or an author */
   protected int[] covers;
+  /** An optional field by termId, index of term in a series, like a sorted query */
+  protected int[] nos;
   /** Current term id to get infos on */
   private int termId;
   /** Cursor, to iterate in the sorter */
@@ -65,9 +69,9 @@ public class TopTerms
   /** An entry associating a termId with a score, used for sorting */
   private class EntryScore extends Entry
   {
-    final float score;
+    final double score;
 
-    EntryScore(final int termId, final float score)
+    EntryScore(final int termId, final double score)
     {
       super(termId);
       this.score = score;
@@ -135,7 +139,7 @@ public class TopTerms
   /**
    * Sort the terms according to a vector of scores by termId.
    */
-  public void sort(final float[] scores)
+  public void sort(final double[] scores)
   {
     assert scores.length == size;
     this.scores = scores;
@@ -151,27 +155,27 @@ public class TopTerms
   /**
    * Sort the terms according to a vector of scores by termId.
    */
-  public void sort(final long[] scores)
+  public void sort(final long[] longs)
   {
     int length = size;
-    float[] floats = new float[length];
+    double[] scores = new double[length];
     for (int i = 0; i < length; i++) {
-      floats[i] = scores[i];
+      scores[i] = longs[i];
     }
-    sort(floats);
+    sort(scores);
   }
 
   /**
    * Sort the terms according to a vector of scores by termId.
    */
-  public void sort(final int[] scores)
+  public void sort(final int[] ints)
   {
     int length = size;
-    float[] floats = new float[length];
+    double[] scores = new double[length];
     for (int i = 0; i < length; i++) {
-      floats[i] = scores[i];
+      scores[i] = ints[i];
     }
-    sort(floats);
+    sort(scores);
   }
 
   /**
@@ -254,7 +258,7 @@ public class TopTerms
   /**
    * Set an optional array of values (in termId order).
    * 
-   * @param weights
+   * @param docs
    */
   public void setDocs(final int[] docs)
   {
@@ -262,28 +266,49 @@ public class TopTerms
   }
 
   /**
-   * Set an optional array of values (in termId order).
-   * 
-   * @param weights
-   */
-  /*
-  public void setWeights(final int[] ints)
-  {
-    int length = ints.length;
-    long[] weights = new long[length];
-    for (int i = 0; i < length; i++)
-      weights[i] = ints[i];
-    this.weights = weights;
-  }
-  */
-
-  /**
-   * Get the weight of the current term.
+   * Get the total count of documents relevant for thi term.
    * @return
    */
   public int docs()
   {
     return docs[termId];
+  }
+
+  /**
+   * Set an optional array of values (in termId order).
+   * @param weights
+   */
+  public void setHits(final int[] hits)
+  {
+    this.hits = hits;
+  }
+
+  /**
+   * Get the count of matched documents for the current term.
+   * @return
+   */
+  public int hits()
+  {
+    return hits[termId];
+  }
+
+  /**
+   * Set an optional array of values (in termId order).
+   * 
+   * @param weights
+   */
+  public void setNos(final int[] nos)
+  {
+    this.nos = nos;
+  }
+
+  /**
+   * Get the no of the current term.
+   * @return
+   */
+  public int n()
+  {
+    return nos[termId];
   }
 
   /**
@@ -297,8 +322,7 @@ public class TopTerms
   }
 
   /**
-   * Current term, the length.
-   * Semantic can vary (ustotal count of occurences).
+   * Current term, global count of items relevant for this term.
    * 
    * @return
    */
@@ -318,7 +342,7 @@ public class TopTerms
   }
 
   /**
-   * Current term, the occs.
+   * Current term, number of occurrences.
    * 
    * @return
    */
@@ -328,8 +352,7 @@ public class TopTerms
   }
 
   /**
-   * Set an optional array of int values (in termId order).
-   * 
+   * Set an optional int array of docids in termId order.
    * @param weights
    */
   public void setCovers(final int[] covers)
@@ -339,8 +362,6 @@ public class TopTerms
 
   /**
    * Current term, the cover docid.
-   * User may define a different semantic for thin int value.
-   * 
    * @return
    */
   public int cover()

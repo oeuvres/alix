@@ -76,7 +76,9 @@ if (id != null) {
   }
 }
 else if (!"".equals(q)) {
+  time = System.nanoTime();
   topDocs = getTopDocs(session, searcher, corpus, q, sort);
+  out.println("<h1>" + (System.nanoTime() - time) / 1000000.0 + " ms </h1>");
   ScoreDoc[] hits = topDocs.scoreDocs;
   if (hits.length == 0) {
     n = 0;
@@ -168,7 +170,7 @@ if (document != null) {
   int max;
 
   out.println("<p class=\"keywords\">");
-  out.println("<b>Thème (exp.)</b> : ");
+  out.println("<b>Mots clés</b> : ");
   top = keywords.theme();
   max = 50;
   first = true;
@@ -178,7 +180,7 @@ if (document != null) {
     String word = entry.value();
     out.print("<a href=\"?q="+word+"\">"+word+"</a>");
     // out.print(" ("+entry.score()+")");
-    // if (entry.score() <= 0) break;
+    if (entry.score() <= 0) break;
     if (--max <= 0) break;
   }
   out.println(".</p>");
@@ -192,58 +194,6 @@ if (document != null) {
   out.println("</ul>");
   out.println("</details>");
   
-  out.println("<p class=\"keywords\">");
-  out.println("<b>Mots-clés (BM25)</b> : ");
-  top = keywords.words();
-  first = true;
-  max = 50;
-  for (Top.Entry<String> entry: top) {
-    if (first) first = false;
-    else out.println(", ");
-    String word = entry.value();
-    out.print("<a href=\"?q="+word+"\">"+word+"</a>");
-    if (--max <= 0) break;
-  }
-  out.println(".</p>");
-
-  query = keywords.query(top, 50, true);
-  results = searcher.search(query, 11);
-  out.println("<details>");
-  out.println("<summary>Chapitres avec ces mots</summary>");
-  out.println("<ul>");
-  out.println(results(results, reader, docId));
-  out.println("</ul>");
-  out.println("</details>");
-  
-  out.println("<p class=\"keywords\">");
-  out.println("<b>Mots-clés (tf-idf)</b> : ");
-  top = keywords.tfidf();
-  first = true;
-  max = 50;
-  for (Top.Entry<String> entry: top) {
-    if (first) first = false;
-    else out.println(", ");
-    String word = entry.value();
-    out.print("<a href=\"?q="+word+"\">"+word+"</a>");
-    if (--max <= 0) break;
-  }
-  out.println(".</p>");
-
-
-  out.println("<p class=\"keywords\">");
-  top = keywords.oldnames();
-  out.println("<b>Noms (impertinents)</b> : ");
-  first = true;
-  for (Top.Entry<String> entry: top) {
-    if (first) first = false;
-    else out.println(", ");
-    String word = entry.value();
-    out.print("<a href=\"?q="+word+"\">");
-    out.print(word);
-    out.print("</a>");
-  }
-  out.println(".</p>");
-
   out.println("<p class=\"keywords\">");
   top = keywords.names();
   out.println("<b>Noms cités</b> : ");
