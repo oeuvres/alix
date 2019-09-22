@@ -81,7 +81,7 @@ public class Facet
   /** Name of the field for text, source of different value counts */
   public final String fieldText;
   /** Store and populate the terms */
-  private final BytesRefHash hashSet = new BytesRefHash();
+  private final BytesRefHash hashDic = new BytesRefHash();
   /** Global number of docs relevant for this facet */
   public final int docsAll;
   /** Global number of occurrences in the text field */
@@ -144,9 +144,9 @@ public class Facet
     this.docLength = docLength;
     // max int for an array collecttor
     int ordMax = -1;
-    for (LeafReaderContext ctx: reader.leaves()) { // loop on the reader leaves
-      int docBase = ctx.docBase;
-      LeafReader leaf = ctx.reader();
+    for (LeafReaderContext context: reader.leaves()) { // loop on the reader leaves
+      int docBase = context.docBase;
+      LeafReader leaf = context.reader();
       // get a doc iterator for the facet field
       DocIdSetIterator docs4terms = null;
       if (type == DocValuesType.SORTED) {
@@ -207,7 +207,7 @@ public class Facet
       for (int ord = 0; ord < ordMax; ord++) {
         if (type == DocValuesType.SORTED) bytes = ((SortedDocValues)docs4terms).lookupOrd(ord);
         else if (type == DocValuesType.SORTED_SET) bytes = ((SortedSetDocValues)docs4terms).lookupOrd(ord);
-        int facetId = hashSet.add(bytes);
+        int facetId = hashDic.add(bytes);
         // value already given
         if (facetId < 0) facetId = -facetId - 1;
         facetCover = ArrayUtil.grow(facetCover, facetId + 1);
@@ -236,7 +236,7 @@ public class Facet
           row.reset();
           SortedSetDocValues it = (SortedSetDocValues)docs4terms;
           while ((ord = (int)it.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-            row.put(ordFacetId[ord]);
+            row.push(ordFacetId[ord]);
           }
           docFacets[docBase + docLeaf] = row.toArray();
         }
@@ -245,7 +245,7 @@ public class Facet
     // this should avoid some opcode upper
     this.docsAll = docsAll;
     this.occsAll = occsAll;
-    this.size = hashSet.size();
+    this.size = hashDic.size();
     this.facetLength = facetLength;
     this.facetDocs = facetDocs;
     this.facetCover = facetCover;
@@ -259,7 +259,7 @@ public class Facet
    * @throws IOException
    */
   public TopTerms topTerms() throws IOException {
-    TopTerms dic = new TopTerms(hashSet);
+    TopTerms dic = new TopTerms(hashDic);
     dic.setDocs(facetDocs);
     dic.setLengths(facetLength);
     dic.setCovers(facetCover);
@@ -296,7 +296,7 @@ public class Facet
    */
   public TopTerms topTerms(final BitSet filter, final TermList terms, Scorer scorer) throws IOException
   {
-    TopTerms dic = new TopTerms(hashSet);
+    TopTerms dic = new TopTerms(hashDic);
     dic.setLengths(facetLength);
     dic.setCovers(facetCover);
     dic.setDocs(facetDocs);
@@ -311,9 +311,9 @@ public class Facet
       int facetMatch = 0; // number of matched facets by this query
       long occsMatch = 0; // total occurrences matched
       // loop first on the reader leaves, opening has a disk cost
-      for (LeafReaderContext ctx : reader.leaves()) {
-        int docBase = ctx.docBase;
-        LeafReader leaf = ctx.reader();
+      for (LeafReaderContext context : reader.leaves()) {
+        int docBase = context.docBase;
+        LeafReader leaf = context.reader();
         // loop on terms for this leaf
         for (Term term : terms) {
           if (term == null) continue;
@@ -394,7 +394,7 @@ public class Facet
    */
   public int size()
   {
-    return hashSet.size();
+    return hashDic.size();
   }
 
   @Override
@@ -403,7 +403,7 @@ public class Facet
     StringBuilder string = new StringBuilder();
     BytesRef ref = new BytesRef();
     for (int i = 0; i < size; i++) {
-      hashSet.get(i, ref);
+      hashDic.get(i, ref);
       string.append(ref.utf8ToString() + ": " + facetLength[i] + "\n");
     }
     return string.toString();

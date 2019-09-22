@@ -124,6 +124,10 @@ public class Alix
   public static final String CHAPTER = "chapter";
   /** Level type, independent article */
   public static final String ARTICLE = "article";
+  /** Suffix for a numeric field containing length of a text field in token */
+  public static final String _LENGTH = "_length";
+  /** Suffix for a numeric field containing length of a text field in token */
+  public static final String _WIDTH = "_width";
   /** Suffix for a text field containing only names */
   public static final String _NAMES = "_names";
   /** Max books */
@@ -260,6 +264,7 @@ public class Alix
 
   /**
    * Get a reader for this lucene index, allow to force renew if force is true.
+   * If a writer is already opened, 
    * 
    * @param force
    * @return
@@ -269,11 +274,20 @@ public class Alix
   {
     if (!force && reader != null) return reader;
     cache.clear(); // clean cache on renew the reader
-    // near real time reader
-    if (writer != null && writer.isOpen()) reader = DirectoryReader.open(writer, true, true);
-    else reader = DirectoryReader.open(dir);
+    reader = DirectoryReader.open(dir);
     fieldInfos = FieldInfos.getMergedFieldInfos(reader);
     return reader;
+  }
+
+  /**
+   * A real time reader only used for updates.
+   * @param force
+   * @return
+   * @throws IOException
+   */
+  public IndexReader reader(IndexWriter writer) throws IOException
+  {
+    return DirectoryReader.open(writer, true, true);
   }
 
   /**
@@ -542,27 +556,19 @@ public class Alix
     String key = "AlixFreqs" + field;
     Freqs freqs = (Freqs) cache(key);
     if (freqs != null) return freqs;
-    freqs = new Freqs(this, field);
+    freqs = new Freqs(reader(), field);
     cache(key, freqs);
     return freqs;
   }
   
   /**
-   * Ashortcut to get a dictionary for a field
-   * @throws IOException 
-   */
-  public TopTerms dic(final String field) throws IOException 
-  {
-    Freqs freqs = freqs(field);
-    return freqs.dic();
-  }
-
-  /**
    * For a field, return an array in docId order, with the total number of tokens
-   * by doc. Is cached. Term vector cost 1 s. / 1000 books.
+   * by doc. Is cached. 
+   * Term vector cost 1 s. / 1000 books and is not precise.
    * Norms for similarity is not enough precise (1 byte) see
    * SimilarityBase.computeNorm()
    * https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/apache/lucene/search/similarities/SimilarityBase.java#L185
+   * Should be recorded at indexation.
    * 
    * @param field
    * @return
@@ -570,65 +576,7 @@ public class Alix
    */
   public int[] docLength(String field) throws IOException
   {
-    IndexReader reader = reader(); // ensure reader or decache
-    String key = "AlixDocLength" + field;
-    int[] docLength = (int[]) cache(key);
-    if (docLength != null) return docLength;
-
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info.getIndexOptions() == IndexOptions.NONE) {
-      throw new IllegalArgumentException(
-          "Field \"" + field + "\" is not indexed, get the number of tokens by doc (length) is not relevant.");
-    }
-    if (info.getDocValuesType() != DocValuesType.NUMERIC && !info.hasVectors()) {
-      throw new IllegalArgumentException(
-          "Field \"" + field + "\" has no vectors or numeric value to calculate lengths.");
-    }
-    int maxDoc = reader.maxDoc();
-    // index by year
-    docLength = new int[maxDoc];
-    // A text field may be indexed with a parallel long value which is supposed to
-    // be the length
-    if (info.getDocValuesType() == DocValuesType.NUMERIC) {
-      for (LeafReaderContext context : reader.leaves()) {
-        LeafReader leaf = context.reader();
-        NumericDocValues docs4num = leaf.getNumericDocValues(field);
-        // no values for this leaf, go next
-        if (docs4num == null) continue;
-        final Bits liveDocs = leaf.getLiveDocs();
-        final int docBase = context.docBase;
-        int docLeaf;
-        while ((docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          if (liveDocs != null && !liveDocs.get(docLeaf)) continue;
-          docLength[docBase + docLeaf] = (int)docs4num.longValue();
-        }
-      }
-    }
-    else if (info.hasVectors()) {
-      Bits liveDocs = null;
-      boolean hasDeletions = reader.hasDeletions();
-      if (hasDeletions) {
-        liveDocs = MultiBits.getLiveDocs(reader);
-      }
-
-      // get sum of terms by doc
-      for (int i = 0; i < maxDoc; i++) {
-        if (hasDeletions && !liveDocs.get(i)) {
-          docLength[i] = -1;
-          continue;
-        }
-        Terms vector = reader.getTermVector(i, field);
-        // maybe no vector for this docId (ex : toc, book...)
-        if (vector == null) continue;
-        docLength[i] = (int) vector.getSumTotalTermFreq(); // expensive on first call
-      }
-    }
-    else {
-      throw new IllegalArgumentException(
-        "Field \"" + field + "\" do not allow to calculate lengths.");
-    }
-    cache(key, docLength);
-    return docLength;
+    return docInt(field);
   }
 
   /**

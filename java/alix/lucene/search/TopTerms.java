@@ -20,7 +20,7 @@ import alix.lucene.analysis.CharsAtt;
 public class TopTerms
 {
   /** Dictionary of the terms */
-  private final BytesRefHash hashSet;
+  private final BytesRefHash hashDic;
   /** Count of terms */
   private final int size;
   /** An optional field by termId used to sort by score */
@@ -47,10 +47,10 @@ public class TopTerms
   private final BytesRef ref = new BytesRef();
 
   /** Super constructor, needs a dictionary */
-  public TopTerms(final BytesRefHash hashSet)
+  public TopTerms(final BytesRefHash hashDic)
   {
-    this.hashSet = hashSet;
-    this.size = hashSet.size();
+    this.hashDic = hashDic;
+    this.size = hashDic.size();
   }
 
   private abstract class Entry implements Comparable<Entry>
@@ -87,7 +87,7 @@ public class TopTerms
     public String toString()
     {
       BytesRef ref = new BytesRef();
-      hashSet.get(termId, ref);
+      hashDic.get(termId, ref);
       return termId + ". " + ref.utf8ToString() + " (" + score + ")";
     }
   }
@@ -113,7 +113,7 @@ public class TopTerms
     public String toString()
     {
       BytesRef ref = new BytesRef();
-      hashSet.get(termId, ref);
+      hashDic.get(termId, ref);
       return termId + ". " + ref.utf8ToString();
     }
   }
@@ -129,7 +129,7 @@ public class TopTerms
     collator.setStrength(Collator.TERTIARY);
     collator.setDecomposition(Collator.CANONICAL_DECOMPOSITION);
     for (int i = 0; i < length; i++) {
-      hashSet.get(i, ref);
+      hashDic.get(i, ref);
       sorter[i] = new EntryString(i, collator.getCollationKey(ref.utf8ToString()));
     }
     Arrays.sort(sorter);
@@ -187,7 +187,7 @@ public class TopTerms
   public boolean contains(String term)
   {
     BytesRef bytes = new BytesRef(term);
-    int termId = hashSet.find(bytes);
+    int termId = hashDic.find(bytes);
     if (termId < 0) return false;
     this.termId = termId;
     return true;
@@ -224,7 +224,7 @@ public class TopTerms
    */
   public void term(BytesRef bytes)
   {
-    hashSet.get(termId, bytes);
+    hashDic.get(termId, bytes);
   }
 
   /**
@@ -235,7 +235,7 @@ public class TopTerms
    */
   public CharsAtt term(CharsAtt term)
   {
-    hashSet.get(termId, ref);
+    hashDic.get(termId, ref);
     // ensure size of the char array
     int length = ref.length;
     char[] chars = term.resizeBuffer(length);
@@ -251,7 +251,7 @@ public class TopTerms
    */
   public String term()
   {
-    hashSet.get(termId, ref);
+    hashDic.get(termId, ref);
     return ref.utf8ToString();
   }
 
@@ -387,10 +387,11 @@ public class TopTerms
     int max = Math.min(200, sorter.length);
     for (int i = 0; i < max; i++) {
       int facetId = sorter[i].termId;
-      hashSet.get(facetId, ref);
-      sb.append(ref.utf8ToString());
-      if (lengths != null) sb.append(":" + lengths[i]);
-      if (scores != null) sb.append(" (" + scores[i] + ")");
+      // System.out.println(facetId);
+      hashDic.get(facetId, ref);
+      sb.append(""+facetId+". "+ref.utf8ToString());
+      if (lengths != null) sb.append(":" + lengths[facetId]);
+      if (scores != null) sb.append(" (" + scores[facetId] + ")");
       sb.append("\n");
     }
     return sb.toString();

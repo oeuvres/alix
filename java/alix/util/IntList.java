@@ -1,121 +1,227 @@
 package alix.util;
 
-import java.util.List;
-import java.util.Vector;
+import java.nio.IntBuffer;
 
 /**
  * A mutable list of ints.
  *
  * @author glorieux-f
  */
-public class IntList extends IntTuple
+public class IntList implements Comparable<IntList>
 {
+  /** Internal data */
+  protected int[] data;
+  /** Current size */
+  protected int size;
+  /** Cache an hash code */
+  protected int hash;
 
-    /**
-     * Light reset data, with no erase.
-     * 
-     * @return
-     */
-    public void reset()
-    {
-        size = 0;
-        hash = 0;
-    }
+  /**
+   * Simple constructor.
+   */
+  public IntList()
+  {
+    data = new int[4];
+  }
+  /**
+   * Constructor with an estimated size.
+   * @param size
+   */
+  public IntList(int capacity)
+  {
+    data = new int[capacity];
+  }
+  /**
+   * Wrap an existing int array.
+   * 
+   * @param data
+   */
+  public IntList(int[] data)
+  {
+    this.data = data;
+  }
 
-    /**
-     * Add on more value at the end
-     * 
-     * @param value
-     * @return
-     */
-    public void put(int value)
-    {
-        onWrite(size);
-        data[size] = value;
-        size++;
-    }
 
-    /**
-     * Change value at a position
-     * 
-     * @param ord
-     * @param value
-     * @return
-     */
-    public void put(int pos, int value)
-    {
-        if (onWrite(pos)) ;
-        data[pos] = value;
-    }
+  /**
+   * Light reset data, with no erase.
+   * 
+   * @return
+   */
+  public void reset()
+  {
+    size = 0;
+  }
 
-    /**
-     * Add value at a position
-     * 
-     * @param ord
-     * @param value
-     * @return
-     */
-    public void add(int pos, int value)
-    {
-        if (onWrite(pos)) ;
-        data[pos] += value;
-    }
+  /**
+   * Size of data.
+   * 
+   * @return
+   */
+  public int size()
+  {
+    return size;
+  }
 
-    /**
-     * Increment value at a position
-     * 
-     * @param ord
-     * @return
-     */
-    public void inc(int pos)
-    {
-        if (onWrite(pos)) ;
-        data[pos]++;
-    }
 
-    /**
-     * Modify content an adjust to an int array
-     * 
-     * @param data
-     * @return
-     */
-    @Override
-    public void put(int[] data)
-    {
-        super.put(data);
-    }
+  /**
+   * Push on more value at the end
+   * 
+   * @param value
+   * @return
+   */
+  public void push(int value)
+  {
+    onWrite(size);
+    data[size] = value;
+    size++;
+  }
 
-    /**
-     * Modify content an adjust to another tuple.
-     * 
-     * @param tuple
-     * @return
-     */
-    @Override
-    public void put(IntTuple tuple)
-    {
-        super.put(tuple);
-    }
+  /**
+   * Push a copy of an int array.
+   * 
+   * @param data
+   */
+  protected void push(int[] data)
+  {
+    int newSize = this.size + data.length;
+    onWrite(newSize);
+    System.arraycopy(data, 0, this.data, size, data.length);
+    size = newSize;
+  }
+  
+  /**
+   * Get int at a position.
+   * 
+   * @param ord
+   * @return
+   */
+  public int get(int pos)
+  {
+    return data[pos];
+  }
 
-    /**
-     * Test performances
-     */
-    public static void main(String[] args) {
-        long time;
-        int max = 1000000;
-        for(int i=0; i<10; i++) {
-            time = System.nanoTime();
-            List<Integer> v = new Vector<Integer>();
-            for(int j=0; j<max; j++) {
-                v.add(j);
-            }
-            System.out.println("Vector " + ((System.nanoTime() - time) / 1000000) + " ms.");
-            time = System.nanoTime();
-            IntList a = new IntList();
-            for(int j=0; j<max; j++) {
-                a.put(j);
-            }
-            System.out.println("IntList " + ((System.nanoTime() - time) / 1000000) + " ms.");
-        }
+
+  /**
+   * Change value at a position
+   * 
+   * @param pos
+   * @param value
+   * @return
+   */
+  public void put(int pos, int value)
+  {
+    onWrite(pos);
+    data[pos] = value;
+    if (pos > size) size = pos;
+  }
+
+  /**
+   * Add value at a position
+   * 
+   * @param ord
+   * @param value
+   * @return
+   */
+  public void add(int pos, int value)
+  {
+    if (onWrite(pos)) ;
+    data[pos] += value;
+    if (pos > size) size = pos;
+  }
+
+  /**
+   * Increment value at a position
+   * 
+   * @param ord
+   * @return
+   */
+  public void inc(int pos)
+  {
+    if (onWrite(pos)) ;
+    data[pos]++;
+    if (pos > size) size = pos;
+  }
+
+  /**
+   * Call it before write
+   * 
+   * @param position
+   * @return true if resized (? good ?)
+   */
+  protected boolean onWrite(final int position)
+  {
+    hash = 0;
+    if (position < data.length) return false;
+    final int oldLength = data.length;
+    final int[] oldData = data;
+    int capacity = Calcul.nextSquare(position + 1);
+    data = new int[capacity];
+    System.arraycopy(oldData, 0, data, 0, oldLength);
+    if (position >= size) size = (position + 1);
+    return true;
+  }
+
+  /**
+   * Get data as an int array.
+   * @return
+   */
+  public int[] toArray()
+  {
+    int[] dest = new int[size];
+    System.arraycopy(data, 0, dest, 0, size);
+    return dest;
+  }
+
+  @Override
+  public String toString()
+  {
+    StringBuffer sb = new StringBuffer();
+    sb.append('(');
+    for (int i = 0; i < size; i++) {
+      if (i > 0) sb.append(", ");
+      sb.append(data[i]);
     }
+    sb.append(')');
+    return sb.toString();
+  }
+
+  @Override
+  public boolean equals(final Object o)
+  {
+    if (o == null) return false;
+    if (o == this) return true;
+    if (o instanceof IntList) {
+      IntList list = (IntList) o;
+      if (list.size != size) return false;
+      for (short i = 0; i < size; i++) {
+        if (list.data[i] != data[i]) return false;
+      }
+      return true;
+    }
+    return false;
+  }
+  
+  @Override
+  public int compareTo(final IntList list)
+  {
+    if (size != list.size) return Integer.compare(size, list.size);
+    int lim = size; // avoid a content lookup
+    for (int i = 0; i < lim; i++) {
+      if (data[i] != list.data[i]) return Integer.compare(data[i], list.data[i]);
+    }
+    return 0;
+  }
+
+
+  @Override
+  public int hashCode()
+  {
+    if (hash != 0) return hash;
+    int res = 17;
+    for (int i = 0; i < size; i++) {
+      res = 31 * res + data[i];
+    }
+    return res;
+  }
+
 }

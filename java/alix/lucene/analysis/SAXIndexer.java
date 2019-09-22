@@ -433,12 +433,13 @@ public class SAXIndexer extends DefaultHandler
           }
           throw new SAXException(e);
         }
-        doc.add(new NumericDocValuesField(name, counter.count()));
-        TokenStream cloud = new TokenLemCloud(caching);
-        TokenStream names = new TokenPosFilter(caching, nameFilter);
         doc.add(new StoredField(name , text)); // text has to be stored for snippets and conc
+        doc.add(new NumericDocValuesField(name + Alix._LENGTH, counter.length()));
+        doc.add(new NumericDocValuesField(name + Alix._WIDTH, counter.width()));
+        TokenStream cloud = new TokenLemCloud(caching);
         doc.add(new Field(name, cloud, Alix.ftypeAll));
-        doc.add(new Field(fieldName + Alix._NAMES, names, Alix.ftypeAll));
+        // TokenStream names = new TokenPosFilter(caching, nameFilter);
+        // doc.add(new Field(fieldName + Alix._NAMES, names, Alix.ftypeAll));
 
       }
     }

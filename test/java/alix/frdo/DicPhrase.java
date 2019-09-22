@@ -1,4 +1,4 @@
-package alix.util;
+package alix.frdo;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -22,6 +22,12 @@ import java.util.regex.Pattern;
 import alix.fr.Lexik;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
+import alix.util.Chain;
+import alix.util.Char;
+import alix.util.DicFreq;
+import alix.util.IntRoller;
+import alix.util.IntSeries;
+import alix.util.IntTuple;
 
 /**
  * A data structure to store multi words expression.
@@ -73,7 +79,7 @@ public class DicPhrase
       if (c == '’' || c == '\'' || Char.isSpace(c) || c == '-' || c == '\t' || c == ';' || i == lim - 1) {
         if (c == '’' || c == '\'' || i == lim - 1) token.append(c);
         code = words.inc(token);
-        if (code > senselevel) buffer.put(code);
+        if (code > senselevel) buffer.push(code);
         token.reset();
         if (c == '\t' || c == ';') break;
       }

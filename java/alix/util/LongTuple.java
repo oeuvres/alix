@@ -18,7 +18,7 @@ public class LongTuple implements Comparable<LongTuple>
   protected int hash;
 
   /**
-   * Empty constructor, no sense for a non mutable Tuple, but useful for mutable.
+   * Constructor setting the size.
    */
   public LongTuple(final int size)
   {

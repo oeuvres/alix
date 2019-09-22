@@ -35,7 +35,7 @@ if (f != null && v != null) {
 }
 */
 
-TopTerms terms = freqs.topTerms(filter, scorer);
+TopTerms terms = freqs.topTerms(filter, scorer, alix.docLength(TEXT));
 
 out.println("  \"data\":[");
 int lines = 500;

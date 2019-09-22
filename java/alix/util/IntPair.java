@@ -2,8 +2,8 @@ package alix.util;
 
 /**
  * A mutable pair of ints. Works well as a key for a HashMap (hascode()
- * implemented), comparable is good for perfs in buckets. After test, a long
- * version of the couple is not more efficient in HashMap.
+ * implemented), comparable is good for perfs in buckets. After test,
+ * concating ints in longs is not more efficient in HashMap.
  * 
  *
  * @author glorieux-f
@@ -88,13 +88,6 @@ public class IntPair implements Comparable<IntPair>
       if (series.size() != 2) return false;
       if (x != series.data[0]) return false;
       if (y != series.data[1]) return false;
-      return true;
-    }
-    if (o instanceof IntTuple) {
-      IntTuple tuple = (IntTuple) o;
-      if (tuple.size() != 2) return false;
-      if (x != tuple.data[0]) return false;
-      if (y != tuple.data[1]) return false;
       return true;
     }
     if (o instanceof IntRoller) {

@@ -145,34 +145,19 @@ public class IntRoller extends Roller
         return false;
       return true;
     }
-    if (o instanceof IntTuple) {
-      IntTuple tuple = (IntTuple) o;
-      if (tuple.size() != size)
+    if (o instanceof IntList) {
+      IntList list = (IntList) o;
+      if (list.size() != size)
         return false;
-      int ituple = tuple.size() - 1;
+      int ilist = list.size() - 1;
       int i = right;
       do {
-        if (get(i) != tuple.get(ituple))
+        if (get(i) != list.get(ilist))
           return false;
         i--;
-        ituple--;
+        ilist--;
       }
-      while (ituple >= 0);
-      return true;
-    }
-    if (o instanceof IntSeries) {
-      IntSeries phr = (IntSeries) o;
-      if (phr.size() != size)
-        return false;
-      int iphr = phr.size() - 1;
-      int i = right;
-      do {
-        if (get(i) != phr.get(iphr))
-          return false;
-        i--;
-        iphr--;
-      }
-      while (iphr >= 0);
+      while (ilist >= 0);
       return true;
     }
     if (o instanceof IntRoller) {
