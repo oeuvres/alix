@@ -278,10 +278,10 @@ public static void sortOptions(JspWriter out, String sortSpec) throws IOExceptio
 public static void termOptions(JspWriter out, String sortSpec) throws IOException
 {
   String[] value = {
-    "nostop", "sub", "name", "verb", "adj", "adv", "score", "all",
+    "nostop", "sub", "name", "verb", "adj", "adv", "all",
   };
   String[] label = {
-    "Mots pleins", "Substantifs", "Noms propres", "Verbes", "Adjectifs", "Adverbes", "Pertinence",  "Tout",
+    "Mots pleins", "Substantifs", "Noms propres", "Verbes", "Adjectifs", "Adverbes", "Tout",
   };
   for (int i = 0, length = value.length; i < length; i++) {
     out.print("<option");

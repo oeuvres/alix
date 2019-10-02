@@ -303,9 +303,9 @@ public class Facet
     dic.setLengths(facetLength);
     dic.setCovers(facetCover);
     dic.setDocs(facetDocs);
-    double[] scores = new double[size];
     // A term query, get matched occurrences and calculate score
     if (terms != null && terms.sizeNotNull() != 0) {
+      double[] scores = new double[size];
       int[] hits = new int[size];
       int[] occs = new int[size]; // a vector to count matched occurrences by facet
       if (scorer == null) scorer = new ScorerBM25(); // default scorer is BM25 (for now)
@@ -349,6 +349,7 @@ public class Facet
       for (int facetId = 0, length = occs.length; facetId < length; facetId++) { // get score for each facet
         scores[facetId] = scorer.score(occs[facetId], facetLength[facetId]);
       }
+      dic.setScores(scores);
     }
     // Filter of docs, 
     else if (filter != null) {
@@ -371,21 +372,13 @@ public class Facet
           // if (facets == null) continue; // should no arrive, wait and see
           for (int i = 0, length = facets.length; i < length; i++) {
             int facetId = facets[i];
-            scores[facetId] += docLength[docId];
             hits[facetId]++; // weight is here in docs
           }
         }
       }
       dic.setHits(hits);
     }
-    // no filter, no query, order facets by occ length
-    else {
-      for (int facetId = 0; facetId < size; facetId++) {
-        // array conversion from long to float
-        scores[facetId] = facetLength[facetId];
-      }
-    }
-    dic.sort(scores);
+    // no filter, no query, not much property to sort on
     return dic;
   }
 

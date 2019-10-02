@@ -162,7 +162,7 @@ iframe {
   background-image: url("img/workin_50.png");
   background-repeat: no-repeat;
   background-position: top 2px left 200px;
-  border-bottom: 1px blue solid;
+  height: 58px;
 }
 
 #alert {
@@ -180,6 +180,7 @@ iframe {
   padding-bottom: 0;
   margin-left: auto;
   margin-right: auto;
+  position: relative;
 }
 
 .split #q {
@@ -189,8 +190,9 @@ iframe {
 }
 
 #header #tabs {
-  float: right;
-  margin-right: 2rem;
+  position: absolute;
+  bottom: 0;
+  right: 2em;
 }
 
 #tabs a {

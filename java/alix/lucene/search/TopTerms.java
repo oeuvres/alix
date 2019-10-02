@@ -154,6 +154,7 @@ public class TopTerms
       }
     );
     this.sorter = sorter;
+    cursor = -1;
   }
 
   /**
@@ -192,6 +193,7 @@ public class TopTerms
       }
     );
     this.sorter = sorter;
+    cursor = -1;
   }
 
   /**

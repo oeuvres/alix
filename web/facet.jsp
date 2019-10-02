@@ -10,38 +10,59 @@
   </head>
   <body class="facet">
   <%
+String ord = getParameter(request, "ord", "score", session);
 TermList terms = alix.qTerms(q, TEXT);
+if (terms.size() < 1 && "score".equals(ord)) ord = "freq";
 // choose a field
 String facetField = getParameter(request, "facet", "author");
 String facetName = facetField;
 if (facetField.equals("author")) facetName = "Auteur";
 else if (facetField.equals("title")) facetName = "Titre";
-if (terms.size() > 0) out.println("<h3>"+facetName+" (occurrences)</h3>");
-else out.println("<h3>"+facetName+" (chapitres)</h3>");
 
 %>
     <form id="qform">
+      <input type="submit" style="position: absolute; left: -9999px; width: 1px; height: 1px;"  tabindex="-1" />
       <input type="hidden" id="q" name="q" value="<%=q%>" autocomplete="off"/>
+      <select name="ord" onchange="this.form.submit()">
+        <option/>
+        <option value="alpha" <%=("alpha".equals(ord))?" selected=\"selected\"  ":""%>>Alphabétique</option>
+        <option value="freq" <%=("freq".equals(ord))?" selected=\"selected\"  ":""%>>Fréquence</option>
+        <% 
+if (terms.size() > 0) {
+  String value = "score";
+  out.print("<option value=\""+value+"\"");
+  if (value.equals(ord)) out.print(" selected=\"selected\"");
+  out.println(">Pertinence</option>");
+}
+        %>
+      </select>
     </form>
+    <% 
+if (terms.size() > 0) out.println("<h3>"+facetName+" (occurrences)</h3>");
+else out.println("<h3>"+facetName+" (chapitres)</h3>");
+    %>
     <div class="facets">
     <%
 Facet facet = alix.facet(facetField, TEXT);
 // a query
 if (terms.size() > 0) { 
-  //get results for a query sorted by this field, to get the index to navigate in it
+  // get a 
   TopDocs topDocs = getTopDocs(session, alix.searcher(), corpus, q, facetField);
   int[] nos = facet.nos(topDocs);
   TopTerms facetEnum = facet.topTerms(filter, terms, null);
   facetEnum.setNos(nos);
+  if ("alpha".equals(ord)) facetEnum.sort();
+  else if ("score".equals(ord)) facetEnum.sort(facetEnum.getScores());
+  else if ("freq".equals(ord)) facetEnum.sort(facetEnum.getOccs());
+  else facetEnum.sort();
   while (facetEnum.hasNext()) {
     facetEnum.next();
     long occs = facetEnum.occs();
-    System.out.println(occs);
-    if (occs < 1) break;
+    if (occs < 1) continue; // in alpha order, try next
     int n = facetEnum.n();
     int hits = facetEnum.hits();
     out.print("<div>");
-    out.print("<a href=\"snip.jsp?sort="+facetField+"&q="+q+"&start="+(n+1)+"&hpp="+hits+"\">");
+    out.print("<a href=\"snip.jsp?sort="+facetField+"&amp;q="+q+"&start="+(n+1)+"&amp;hpp="+hits+"\">");
     out.print(facetEnum.term());
     out.print("</a>");
     out.print(" ("+occs+")");
@@ -50,10 +71,13 @@ if (terms.size() > 0) {
 }
 else {
   TopTerms facetEnum = facet.topTerms(filter, terms, null);
+  if ("alpha".equals(ord)) facetEnum.sort();
+  else if ("freq".equals(ord)) facetEnum.sort(facetEnum.getOccs());
+  else facetEnum.sort();
   while (facetEnum.hasNext()) {
     facetEnum.next();
     int docs = facetEnum.docs();
-    if (docs < 1) break;
+    if (docs < 1) continue; // in alpha order, try next
     out.println("<div>"+facetEnum.term()+" ("+docs+")</div>");
   }
 }
