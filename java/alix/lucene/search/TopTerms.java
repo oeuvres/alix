@@ -3,6 +3,7 @@ package alix.lucene.search;
 import java.text.CollationKey;
 import java.text.Collator;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Locale;
 
 import org.apache.lucene.util.BytesRef;
@@ -27,10 +28,14 @@ public class TopTerms
   private double[] scores;
   /** An optional field by termId, total count of words */
   private long[] lengths;
+  /** Total count of documents in the collection. */
+  protected int docsAll;
   /** An optional field by termId, total of relevant docs b */
   protected int[] docs;
   /** An optional field by termId, relevant  docs b */
   protected int[] hits;
+  /** Total count of occurrences in the collection. */
+  protected long occsAll;
   /** An optional field by termId, count of matching occurences */
   protected int[] occs;
   /** An optional field by termId, docid used as a cover for a term like a title or an author */
@@ -41,7 +46,7 @@ public class TopTerms
   private int termId;
   /** Cursor, to iterate in the sorter */
   private int cursor = -1;
-  /** An array in order of score */
+  /** An array for sorting */
   private Entry[] sorter;
   /** Bytes to copy current term */
   private final BytesRef ref = new BytesRef();
@@ -52,69 +57,78 @@ public class TopTerms
     this.hashDic = hashDic;
     this.size = hashDic.size();
   }
+  
+  /**
+   * Get size of the dictionary.
+   * @return
+   */
+  public int size()
+  {
+    return size;
+  }
 
-  private abstract class Entry implements Comparable<Entry>
+  /**
+   * Set global stats.
+   * @param occsAll Total count of occurrences in the collection.
+   * @param docsAll Total count of documents in the collection.
+   */
+  public void setAll(final long occsAll, final int docsAll) 
+  {
+    this.occsAll = occsAll;
+    this.docsAll = docsAll;
+  }
+
+  /**
+   * Prepare sorting
+   */
+  private Entry[] sorter() 
+  {
+    Entry[] sorter = this.sorter; // localize
+    // new array
+    if (sorter == null) {
+      sorter = new Entry[size];
+      for (int i = 0, max = size; i < max; i++) {
+        sorter[i] = new Entry(i);
+      }
+    }
+    // resort
+    else {
+      Arrays.sort(sorter,  new Comparator<Entry>() {
+          @Override
+          public int compare(Entry arg0, Entry arg1)
+          {
+            return Integer.compare(arg0.termId, arg1.termId);
+          }
+        }
+      );
+    }
+    return sorter;
+  }
+  
+  /**
+   * An entry used in a sorter array.
+   */
+  class Entry
   {
     final int termId;
+    double rank;
+    CollationKey key;
 
     public Entry(final int termId)
     {
       this.termId = termId;
     }
 
-    @Override
-    abstract public int compareTo(Entry o);
-  }
-
-  /** An entry associating a termId with a score, used for sorting */
-  private class EntryScore extends Entry
-  {
-    final double score;
-
-    EntryScore(final int termId, final double score)
-    {
-      super(termId);
-      this.score = score;
-    }
-
-    @Override
-    public int compareTo(Entry o)
-    {
-      return Double.compare(((EntryScore) o).score, score);
-    }
-
+    /*
+    Double.compare(((EntryScore) o).score, score);
+    key.compareTo(((EntryString) o).key);
+     */
     @Override
     public String toString()
     {
       BytesRef ref = new BytesRef();
       hashDic.get(termId, ref);
-      return termId + ". " + ref.utf8ToString() + " (" + score + ")";
-    }
-  }
-
-  /** An entry associating a termId with a score, used for sorting */
-  private class EntryString extends Entry
-  {
-    final CollationKey key;
-
-    EntryString(final int termId, final CollationKey key)
-    {
-      super(termId);
-      this.key = key;
-    }
-
-    @Override
-    public int compareTo(Entry o)
-    {
-      return key.compareTo(((EntryString) o).key);
-    }
-
-    @Override
-    public String toString()
-    {
-      BytesRef ref = new BytesRef();
-      hashDic.get(termId, ref);
-      return termId + ". " + ref.utf8ToString();
+      return termId + ". " + ref.utf8ToString() + " (" + rank + ")";
     }
   }
 
@@ -123,59 +137,87 @@ public class TopTerms
    */
   public void sort()
   {
-    int length = size;
-    Entry[] sorter = new EntryString[length];
+    Entry[] sorter = sorter();
     Collator collator = Collator.getInstance(Locale.FRANCE);
     collator.setStrength(Collator.TERTIARY);
     collator.setDecomposition(Collator.CANONICAL_DECOMPOSITION);
-    for (int i = 0; i < length; i++) {
+    for (int i = 0, max = size; i < max; i++) {
       hashDic.get(i, ref);
-      sorter[i] = new EntryString(i, collator.getCollationKey(ref.utf8ToString()));
+      sorter[i].key = collator.getCollationKey(ref.utf8ToString());
     }
-    Arrays.sort(sorter);
+    Arrays.sort(sorter,  new Comparator<Entry>() {
+        @Override
+        public int compare(Entry arg0, Entry arg1)
+        {
+          return arg0.key.compareTo(arg1.key);
+        }
+      }
+    );
     this.sorter = sorter;
   }
 
   /**
-   * Sort the terms according to a vector of scores by termId.
+   * Set a long value to each term.
+   * @param scores
    */
-  public void sort(final double[] scores)
+  public void setScores(final double[] scores)
   {
-    assert scores.length == size;
     this.scores = scores;
-    int length = size;
-    Entry[] sorter = new Entry[length];
-    for (int i = 0; i < length; i++) {
-      sorter[i] = new EntryScore(i, scores[i]);
+  }
+  public double[] getScores()
+  {
+    return scores;
+  }
+  /**
+   * Sort the terms according to a vector of scores by termId.
+   * @param scores An array in termId order.
+   */
+  public void sort(final double[] doubles)
+  {
+    Entry[] sorter = sorter();
+    for (int i = 0, max = size; i < max; i++) {
+      sorter[i].rank = doubles[i];
     }
-    Arrays.sort(sorter);
+    sort(sorter);
+  }
+  
+  private void sort(Entry[] sorter)
+  {
+    Arrays.sort(sorter, new Comparator<Entry>() {
+        @Override
+        public int compare(Entry arg0, Entry arg1)
+        {
+          return Double.compare(arg1.rank, arg0.rank);
+        }
+      }
+    );
     this.sorter = sorter;
   }
 
   /**
    * Sort the terms according to a vector of scores by termId.
+   * @param scores An array in termId order.
    */
   public void sort(final long[] longs)
   {
-    int length = size;
-    double[] scores = new double[length];
-    for (int i = 0; i < length; i++) {
-      scores[i] = longs[i];
+    Entry[] sorter = sorter();
+    for (int i = 0, max = size; i < max; i++) {
+      sorter[i].rank = longs[i];
     }
-    sort(scores);
+    sort(sorter);
   }
 
   /**
    * Sort the terms according to a vector of scores by termId.
+   * @param scores An array in termId order.
    */
   public void sort(final int[] ints)
   {
-    int length = size;
-    double[] scores = new double[length];
-    for (int i = 0; i < length; i++) {
-      scores[i] = ints[i];
+    Entry[] sorter = sorter();
+    for (int i = 0, max = size; i < max; i++) {
+      sorter[i].rank = ints[i];
     }
-    sort(scores);
+    sort(sorter);
   }
 
   /**
@@ -264,6 +306,10 @@ public class TopTerms
   {
     this.docs = docs;
   }
+  public int[] getDocs()
+  {
+    return docs;
+  }
 
   /**
    * Get the total count of documents relevant for thi term.
@@ -276,7 +322,7 @@ public class TopTerms
 
   /**
    * Set an optional array of values (in termId order).
-   * @param weights
+   * @param hits
    */
   public void setHits(final int[] hits)
   {
@@ -341,6 +387,11 @@ public class TopTerms
     this.occs = occs;
   }
 
+  public int[] getOccs()
+  {
+    return occs;
+  }
+
   /**
    * Current term, number of occurrences.
    * 
@@ -370,13 +421,23 @@ public class TopTerms
   }
 
   /**
-   * Get the current score, usually the value used to sort the dictionary.
+   * Get the current score.
    * 
    * @return
    */
   public double score()
   {
     return scores[termId];
+  }
+
+  /**
+   * Get the current value used for sorting.
+   * 
+   * @return
+   */
+  public double rank()
+  {
+    return sorter[cursor].rank;
   }
 
   @Override

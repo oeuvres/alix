@@ -26,8 +26,14 @@ import javax.xml.transform.stream.StreamSource;
 import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.SAXException;
 
+import alix.lucene.util.Cooc;
 import alix.util.Dir;
 
+/**
+ * A worker for parallel indexing.
+ * @author fred
+ *
+ */
 public class XMLIndexer implements Runnable
 {
   /** XSLT processor (saxon) */
@@ -112,6 +118,10 @@ public class XMLIndexer implements Runnable
     }
   }
 
+  /**
+   * A synchonized method to get the next file to index.
+   * @return
+   */
   synchronized public File next()
   {
     if (!it.hasNext()) return null;
@@ -119,7 +129,7 @@ public class XMLIndexer implements Runnable
   }
 
   /**
-   * A quiet output for the XSL
+   * A quiet output for the XSL errors.
    */
   @SuppressWarnings("unused")
   private static class NullOutputStream extends OutputStream
@@ -132,7 +142,7 @@ public class XMLIndexer implements Runnable
   }
 
   /**
-   * Usage info
+   * Log info.
    */
   public static void info(Object o)
   {
@@ -140,7 +150,7 @@ public class XMLIndexer implements Runnable
   }
 
   /**
-   * Recoverable error
+   * Log recoverable error.
    */
   public static void error(Object o)
   {
@@ -153,7 +163,7 @@ public class XMLIndexer implements Runnable
   }
 
   /**
-   * Fatal error
+   * Log fatal error.
    */
   public static void fatal(Object o)
   {

@@ -2,18 +2,18 @@ var cloudId = "wordcloud2";
 var url = new URL(window.location.href);
 
 const PATHNAME = url.pathname;
-const SCORER = "scorer";
-var scorer = url.searchParams.get(SCORER);
-if (scorer) localStorage.setItem(PATHNAME + SCORER, scorer);
-else if (scorer === "") localStorage.removeItem(PATHNAME + SCORER);
-else scorer = "";
+const SORTER = "sorter";
+var sorter = url.searchParams.get(SORTER);
+if (sorter) localStorage.setItem(PATHNAME + SORTER, sorter);
+else if (sorter === "") localStorage.removeItem(PATHNAME + SORTER);
+else sorter = "";
 
-console.log(scorer);
+console.log(sorter);
 
 // var log = url.searchParams.get("log");
 
 
-fetch("data/freqlist.jsp?scorer="+scorer).then(
+fetch("data/freqlist.jsp?sorter="+sorter).then(
   function(response) {
   return response.json();
   }

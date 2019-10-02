@@ -14,7 +14,6 @@ package alix.lucene.util;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -39,10 +38,10 @@ import org.apache.lucene.util.BytesRefHash;
 import alix.lucene.Alix;
 import alix.lucene.search.Freqs;
 import alix.lucene.search.Scorer;
+import alix.lucene.search.ScorerBM25;
 import alix.lucene.search.TermList;
 import alix.lucene.search.TopTerms;
 import alix.util.Calcul;
-import alix.util.IntList;
 
 public class Cooc
 {
@@ -52,6 +51,8 @@ public class Cooc
   private final String field;
   /** Name of the binary field storing the int vector of documents */
   private final String fieldBin;
+  /** Keep the freqs for the fiels */
+  private final Freqs freqs;
   /** Dictionary of terms for this field */
   private final BytesRefHash hashDic;
   /** State of the index */
@@ -67,7 +68,7 @@ public class Cooc
     this.alix = alix;
     this.field = field;
     this.fieldBin = field + _RAIL;
-    Freqs freqs = alix.freqs(field); // build and cache the dictionary of cache for the field
+    this.freqs = alix.freqs(field); // build and cache the dictionary of cache for the field
     this.hashDic = freqs.hashDic();
   }
   
@@ -76,6 +77,7 @@ public class Cooc
    * Flaten terms of a document in a position order, according to the dictionary of terms.
    * Write it in a binary buffer, ready to to be stored in a BinaryField.
    * {@link org.apache.lucene.document.BinaryDocValuesField}
+   * The buffer could be modified if resizing was needed.
    * @param termVector A term vector of a document with positions.
    * @param buf A reusable binary buffer to index.
    * @return
@@ -148,32 +150,42 @@ public class Cooc
     writer.close();
     alix.reader(true); // renew reader, to view the new field
   }
-  
-  public TopTerms topTerms(final TermList terms, final int left, final int right, final BitSet filter, Scorer scorer) throws IOException
-  {
-    int[] freqs = freqs(terms, left, right, filter);
-    TopTerms dic = new TopTerms(hashDic);
-    dic.sort(freqs);
-    return dic;
-  }
 
   
   /**
    * Get cooccurrences fron a multi term query.
    * Each document should be available as an int vector
    * see {@link rail()}.
-   * A loop will cross all docs, 
-   * @throws IOException 
+   * A loop will cross all docs, and 
+   * @param terms List of terms to search accross docs to get positions.
+   * @param left Number of tokens to catch at the left of the pivot.
+   * @param right Number of tokens to catch at the right of the pivot.
+   * @param filter Optional filter to limit the corpus of documents.
+   * @throws IOException
    */
-  public int[] freqs(final TermList terms, final int left, final int right, final BitSet filter) throws IOException
+  public TopTerms topTerms(final TermList terms, final int left, final int right, final BitSet filter) throws IOException
   {
+    TopTerms dic = new TopTerms(hashDic);
+    // BM25 seems the best scorer
+    Scorer scorer = new ScorerBM25(); 
+    /*
+    scorer.setAll(occsAll, docsAll);
+    dic.setLengths(termLength);
+    dic.setDocs(termDocs);
+    */
     IndexReader reader = alix.reader();
     final int END = DocIdSetIterator.NO_MORE_DOCS;
     // collector of scores
-    int[] freqs = new int[this.hashDic.size()];
+    int size = this.hashDic.size();
+    int[] freqs = new int[size];
+    int[] hits = new int[size];
+    // to count documents, a set to count only first occ in a doc
+    java.util.BitSet dicSet = new java.util.BitSet(size);
+
     // for each doc, a bit set is used to record the relevant positions
     // this will avoid counting interferences when terms are close
-    java.util.BitSet positions = new java.util.BitSet();
+    java.util.BitSet contexts = new java.util.BitSet();
+    java.util.BitSet pivots = new java.util.BitSet();
     // loop on leafs
     for (LeafReaderContext context : reader.leaves()) {
       int docBase = context.docBase;
@@ -181,14 +193,15 @@ public class Cooc
       LeafReader leaf = context.reader();
       // loop carefully on docs with a rail
       BinaryDocValues binDocs = leaf.getBinaryDocValues(fieldBin);
-      if (binDocs == null) continue; // why not let error ?
+      // probably nothing indexed
+      if (binDocs == null) return null; 
       // start iterators for each term
       ArrayList<PostingsEnum> list = new ArrayList<PostingsEnum>();
       for (Term term : terms) {
         if (term == null) continue;
         PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS|PostingsEnum.POSITIONS);
         if (postings == null) continue;
-        int doc = postings.nextDoc(); // advance cursor to the first doc
+        postings.nextDoc(); // advance cursor to the first doc
         list.add(postings);
       }
       PostingsEnum[] termDocs = list.toArray(new PostingsEnum[0]);
@@ -197,44 +210,94 @@ public class Cooc
         if (liveDocs != null && !liveDocs.get(docLeaf)) continue; // deleted doc
         int docId = docBase + docLeaf;
         if (filter != null && !filter.get(docId)) continue; // document not in the metadata fillter
+        
         boolean found = false;
-        positions.clear();
+        contexts.clear();
+        pivots.clear();
         // loop on term iterator to get positions for this doc
         for (PostingsEnum postings: termDocs) {
           int doc = postings.docID();
           if (doc == END || doc > docLeaf) continue;
           // 
-          // if (doc == d)
           if (doc < docLeaf) doc = postings.advance(docLeaf - 1);
           if (doc > docLeaf) continue;
           int freq = postings.freq();
           if (freq == 0) continue;
           found = true;
           for (; freq > 0; freq --) {
-            int position = postings.nextPosition();
-            int fromIndex = Math.max(0, position - left);
-            int toIndex = position + right + 1; // toIndex (exclusive)
-            positions.set(fromIndex, toIndex);
+            final int position = postings.nextPosition();
+            final int fromIndex = Math.max(0, position - left);
+            final int toIndex = position + right + 1; // toIndex (exclusive)
+            contexts.set(fromIndex, toIndex);
+            pivots.set(position);
           }
         }
         if (!found) continue;
+        // substract pivots from context, this way should avoid counting pivot
+        contexts.andNot(pivots);
         BytesRef ref = binDocs.binaryValue();
         ByteBuffer buf = ByteBuffer.wrap(ref.bytes, ref.offset, ref.length);
         // loop on the positions 
-        for (int pos = positions.nextSetBit(0); pos >= 0; pos = positions.nextSetBit(pos+1)) {
+        int pos = contexts.nextSetBit(0);
+        if (pos < 0) continue; // word found but without context, ex: first word without left
+        int max = ref.length - 3;
+        dicSet.clear(); // clear the tern set, to count only first occ as doc
+        while (true) {
+          int index = pos*4;
+          if (index >= max) break; // position further than available tokens
           int termId = buf.getInt(pos*4);
           freqs[termId]++;
+          if (!dicSet.get(termId)) {
+            hits[termId]++;
+            dicSet.set(termId);
+          }
+          pos = contexts.nextSetBit(pos+1);
+          if (pos < 0) break; // no more positions
         }
       }
     }
-    return freqs;
+    // try to calculate a score
+    double[] scores = new double[size];
+    // TODO
+    for (int i = 0; i < size; i++) {
+      
+    }
+    dic.setHits(hits);
+    dic.setOccs(freqs);
+    return dic;
   }
   
   /**
-   * Align a term vector
-   * @param array
-   * @param value
+   * Get the token sequence of a document.
    * @throws IOException 
+   * 
+   */
+  public  String[] sequence(int docId) throws IOException
+  {
+    IndexReader reader = alix.reader();
+    for (LeafReaderContext context : reader.leaves()) {
+      int docBase = context.docBase;
+      if (docBase > docId) return null;
+      int docLeaf = docId - docBase;
+      LeafReader leaf = context.reader();
+      BinaryDocValues binDocs = leaf.getBinaryDocValues(fieldBin);
+      if (binDocs == null) return null;
+      int docFound = binDocs.advance(docLeaf);
+      // maybe found on next leaf
+      if (docFound == DocIdSetIterator.NO_MORE_DOCS) continue;
+      // docId not found
+      if (docFound != docLeaf) return null;
+      BytesRef ref = binDocs.binaryValue();
+      return strings(ref);
+    }
+    return null;
+  }
+  
+  /**
+   * Get the tokens of a term vector as an array of strings.
+   * @param termVector
+   * @return
+   * @throws IOException
    */
   public static String[] strings(Terms termVector) throws IOException
   {
@@ -255,11 +318,25 @@ public class Cooc
     return words;
   }
 
+  /**
+   * Tokens of a doc as strings from bytes.
+   * @param ref
+   * @return An indexed document as an array of strings.
+   * @throws IOException
+   */
   public String[] strings(BytesRef ref) throws IOException
   {
     return strings(ref.bytes, ref.offset, ref.length);
   }
   
+  /**
+   * Tokens of a doc as strings from a byte array
+   * @param rail Binary version an int array
+   * @param offset Start index in the array
+   * @param length Length of bytes to consider from offset
+   * @return
+   * @throws IOException
+   */
   public String[] strings(byte[] rail, int offset, int length) throws IOException
   {
     ByteBuffer buf = ByteBuffer.wrap(rail, offset, length);

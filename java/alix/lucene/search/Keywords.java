@@ -39,7 +39,6 @@ public class Keywords
     IndexReader reader = alix.reader();
     int[] docLength = alix.docLength(field);
     Terms vector = reader.getTermVector(docId, field);
-    long time = System.nanoTime();
     int docLen = docLength[docId];
     // get index term stats
     Freqs freqs = alix.freqs(field);

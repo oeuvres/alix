@@ -79,9 +79,9 @@ public class Facet
   /** The field type */
   public final DocValuesType type;
   /** Name of the field for text, source of different value counts */
-  public final String fieldText;
+  public final String text;
   /** Store and populate the terms */
-  private final BytesRefHash hashDic = new BytesRefHash();
+  private final BytesRefHash hashDic;
   /** Global number of docs relevant for this facet */
   public final int docsAll;
   /** Global number of occurrences in the text field */
@@ -110,8 +110,9 @@ public class Facet
    * @param text
    * @throws IOException
    */
-  public Facet(final Alix alix, final String facet, final String fieldText, final Term coverTerm) throws IOException
+  public Facet(final Alix alix, final String facet, final String text, final Term coverTerm) throws IOException
   {
+    final BytesRefHash hashDic = new BytesRefHash();
     // get a vector of possible docids used as a cover for a facetId
     BitSet coverBits = null;
     if (coverTerm != null) {
@@ -130,7 +131,7 @@ public class Facet
       throw new IllegalArgumentException("Field \"" + facet + "\", the type "+type+" is not supported as a facet.");
     }
     this.facet = facet;
-    this.fieldText = fieldText;
+    this.text = text;
     this.reader = alix.reader();
     docFacets = new int[reader.maxDoc()][];
     int docsAll = 0;
@@ -140,7 +141,7 @@ public class Facet
     int[] facetDocs = new int[32];
     int[] facetCover = new int[32];
 
-    int[] docLength = alix.docLength(fieldText); // length of each doc for the text field
+    int[] docLength = alix.docLength(text); // length of each doc for the text field
     this.docLength = docLength;
     // max int for an array collecttor
     int ordMax = -1;
@@ -245,6 +246,7 @@ public class Facet
     // this should avoid some opcode upper
     this.docsAll = docsAll;
     this.occsAll = occsAll;
+    this.hashDic = hashDic;
     this.size = hashDic.size();
     this.facetLength = facetLength;
     this.facetDocs = facetDocs;
@@ -259,11 +261,12 @@ public class Facet
    * @throws IOException
    */
   public TopTerms topTerms() throws IOException {
+    // do not cache here, user wants his own pointer
     TopTerms dic = new TopTerms(hashDic);
     dic.setDocs(facetDocs);
     dic.setLengths(facetLength);
     dic.setCovers(facetCover);
-    dic.sort(); // orthographc sort
+    dic.sort(); // default orthographc sort
     return dic;
   }
 

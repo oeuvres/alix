@@ -78,7 +78,6 @@ if (id != null) {
 else if (!"".equals(q)) {
   time = System.nanoTime();
   topDocs = getTopDocs(session, searcher, corpus, q, sort);
-  out.println("<h1>" + (System.nanoTime() - time) / 1000000.0 + " ms </h1>");
   ScoreDoc[] hits = topDocs.scoreDocs;
   if (hits.length == 0) {
     start = 0;
@@ -137,8 +136,9 @@ if (bibl != null) {
           out.println("<input type=\"hidden\" name=\"prevn\" value=\""+(start - 1)+"\"/>");
           out.println("<button type=\"submit\" name=\"prev\">◀</button>");
         }
+
         %>
-        <input id="q" name="q" value="<%=escapeHtml(q)%>" autocomplete="off" size="30" onclick="this.select();"/>
+        <input id="q" name="q" value="<%=escapeHtml(q)%>" autocomplete="off" type="hidden"/>
         <select name="sort" onchange="this.form.submit()" title="Ordre">
             <option>Pertinence</option>
             <% sortOptions(out, sort); %>

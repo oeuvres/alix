@@ -116,6 +116,7 @@ alix.lucene.search.SimilarityOccs,
 alix.lucene.search.SimilarityTheme,
 alix.lucene.search.TermList,
 alix.lucene.search.TopTerms,
+alix.lucene.util.Cooc,
 alix.util.Char,
 alix.util.Dir,
 alix.util.Top
@@ -274,8 +275,29 @@ public static void sortOptions(JspWriter out, String sortSpec) throws IOExceptio
   
 }
 
+public static void termOptions(JspWriter out, String sortSpec) throws IOException
+{
+  String[] value = {
+    "nostop", "sub", "name", "verb", "adj", "adv", "score", "all",
+  };
+  String[] label = {
+    "Mots pleins", "Substantifs", "Noms propres", "Verbes", "Adjectifs", "Adverbes", "Pertinence",  "Tout",
+  };
+  for (int i = 0, length = value.length; i < length; i++) {
+    out.print("<option");
+    if (value[i].equals(sortSpec)) out.print(" selected=\"selected\"");
+    out.print(" value=\"");
+    out.print(value[i]);
+    out.print("\">");
+    out.print(label[i]);
+    out.println("</option>");
+  }
+  
+}
+
+
 /**
- * Get query from 
+ * Build a lucene query fron a String and a selected a Corpus.
  */
 public static Query getQuery(Corpus corpus, String q) throws IOException
 {
@@ -296,6 +318,9 @@ public static Query getQuery(Corpus corpus, String q) throws IOException
   return query;
 }
 
+/**
+ * Get a cached set of results.
+ */
 public TopDocs getTopDocs(HttpSession session, IndexSearcher searcher, Corpus corpus, String q, String sortSpec) throws IOException
 {
   int numHits = 10000;
@@ -333,25 +358,64 @@ public TopDocs getTopDocs(HttpSession session, IndexSearcher searcher, Corpus co
   session.setAttribute(key, topDocs);
   return topDocs;
 }
- 
+
+/** Check if a String is dignificant */
+public static boolean check(String s) {
+  if (s == null) return false;
+  s = s.trim();
+  if (s.length() == 0) return false;
+  if ("null".equals(s)) return false;
+  return true;
+}
+
+/** A key prefif for parameter in stored session */
+private final static String PAR = "PAR";
 /**
- * Get a request parameter as an int with default value
+ * Get a request parameter as an int with default value, or optional session persistency.
  */
-public static int getParameter(HttpServletRequest request, String name, int value) {
+ public static int getParameter(final HttpServletRequest request, final String name, final int value) {
+   return getParameter(request, name, value, null);
+ }
+public static int getParameter(final HttpServletRequest request, final String name, final int value, final HttpSession session) {
+  String key = PAR+name;
   String s = request.getParameter(name);
-  if (s == null || s.trim().length() == 0 || "null".equals(s)) return value;
-  try {
-    value = Integer.parseInt(s);
+  int ret;
+  // a strinf submitted ?
+  if (check(s)) {
+    try {
+      ret = Integer.parseInt(s);
+    }
+    catch(NumberFormatException e) {
+      return value;
+    }
+    if (session != null) session.setAttribute(key, ret);
+    return ret;
   }
-  catch(NumberFormatException e) {
+  if (session != null) {
+    Integer o = (Integer)session.getAttribute(key);
+    if (o != null) return o;
   }
   return value;
 }
 
-public static String getParameter(HttpServletRequest request, String name, String value) {
+/**
+ * Get a requesparameter as a String with a defaul value, or optional persistency.
+ */
+public static String getParameter(final HttpServletRequest request, final String name, final String value) {
+  return getParameter(request, name, value, null);
+}
+public static String getParameter(final HttpServletRequest request, final String name, final String value, final HttpSession session) {
+  String key = PAR+name;
   String s = request.getParameter(name);
-  if (s == null || s.trim().length() == 0 || "null".equals(s)) return value;
-  return s.trim();
+  if (check(s)) {
+    if (session != null) session.setAttribute(key, s);
+    return s;
+  }
+  if (session != null) {
+    s = (String)session.getAttribute(key);
+    if (s != null) return s;
+  }
+  return value;
 }
 
 %><%

@@ -8,22 +8,10 @@ static final DecimalFormat dfdec3 = new DecimalFormat("0.###", ensyms);
   out.println("{");
 IndexSearcher searcher = alix.searcher();
 
-String textField = TEXT;
+String field = TEXT;
 
-String sc = request.getParameter("scorer");
-Scorer scorer = new ScorerBM25();
-if ("tfidf".equals(sc)) scorer = new ScorerTfidf();
-else if ("tf".equals(sc)) scorer = new ScorerTf();
-else if ("occs".equals(sc)) scorer = new ScorerOccs();
-
-String log = request.getParameter("log");
-if (log != null && log.isEmpty()) log = null;
-String frantext = request.getParameter("frantext");
-DecimalFormat fontdf = new DecimalFormat("#");
-String word = request.getParameter("word");
-if (word != null && word.isEmpty()) word = null;
-
-Freqs freqs = alix.freqs(textField);
+String sorter = getParameter(request, "sorter", "score", session);
+Freqs freqs = alix.freqs(field);
 
 /*
 String f = getParameter(request, "f", null);
@@ -35,20 +23,20 @@ if (f != null && v != null) {
 }
 */
 
-TopTerms terms = freqs.topTerms(filter, scorer, alix.docLength(TEXT));
+TopTerms dic = freqs.topTerms(filter);
+if ("score".equals(sorter)) dic.sort(dic.getScores());
+else dic.sort(dic.getOccs());
+
 
 out.println("  \"data\":[");
 int lines = 500;
 CharsAtt term = new CharsAtt();
 Tag tag;
-while (terms.hasNext()) {
-  terms.next();
-  terms.term(term);
-  // filter some unuseful words
+while (dic.hasNext()) {
+  dic.next();
+  dic.term(term);
+  // local filter
   if (STOPLIST.contains(term)) continue;
-  // term frequency or brut counts will not filter stop words
-  if("tf".equals(sc) || "occs".equals(sc))
-    if (CharsMaps.isStop(term)) continue;
   LexEntry entry = CharsMaps.word(term);
   if (entry != null) {
     tag = new Tag(entry.tag);
@@ -59,22 +47,20 @@ while (terms.hasNext()) {
   else {
     tag = new Tag(0);
   }
-  if ("name".equals(sc)) {
-    if (!tag.isName()) continue;
-  }
-  else if("tf".equals(sc) || "occs".equals(sc)) {
-    if (tag.isNum()) continue;
-  }
-  // if (tag.isPun()) continue;
-  /*
-  long weight = terms.weight();
-  if (weight < 1) break;
-  */
+  
+  // filtering
+  if ("nostop".equals(sorter) && CharsMaps.isStop(term)) continue;
+  else if ("adj".equals(sorter) && !tag.isAdj()) continue;
+  else if ("adv".equals(sorter) && !tag.equals(Tag.ADV)) continue;
+  else if ("name".equals(sorter) && !tag.isName()) continue;
+  else if ("sub".equals(sorter) && !tag.isSub()) continue;
+  else if ("verb".equals(sorter) && !tag.equals(Tag.VERB)) continue;
+
   out.print("    {\"word\" : \"");
-  out.print(terms.term().toString().replace( "\"", "\\\"" ).replace('_', ' ')) ;
+  out.print(dic.term().toString().replace( "\"", "\\\"" ).replace('_', ' ')) ;
   out.print("\"");
   out.print(", \"weight\" : ");
-  out.print(dfdec3.format(terms.score()));
+  out.print(dfdec3.format(dic.rank()));
   out.print(", \"attributes\" : {\"class\" : \"");
   out.print(Tag.label(tag.group()));
   out.print("\"}");

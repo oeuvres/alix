@@ -101,6 +101,7 @@ import alix.lucene.search.Scale;
 import alix.lucene.search.Freqs;
 import alix.lucene.search.TermList;
 import alix.lucene.search.TopTerms;
+import alix.lucene.util.Cooc;
 
 /**
  * Alix entry-point
@@ -343,6 +344,12 @@ public class Alix
     return null;
   }
 
+  /**
+   * Get infos for  field.
+   * @param field
+   * @return
+   * @throws IOException
+   */
   public FieldInfo info(String field) throws IOException
   {
     reader(); // ensure reader or decache
@@ -350,7 +357,7 @@ public class Alix
   }
   
   /**
-   * Returns an array in docId order with the value of an intPoint field (year).
+   * Returns an array in docId order with the value of an intPoint field (ex: year).
    * 
    * @return
    * @throws IOException
@@ -530,7 +537,7 @@ public class Alix
   }
 
   /**
-   * Get a Scale object, used to build 
+   * Get a Scale object, useful to buil graphs with a int field
    * @param fieldInt A NumericDocValuesField used as a sorted value.
    * @param fieldText A Texfield to count occurences, used as a size for docs.
    * @return
@@ -538,7 +545,7 @@ public class Alix
    */
   public Scale scale(final String fieldInt, final String fieldText) throws IOException
   {
-    String key = "AlixFacet" + fieldInt + fieldText;
+    String key = "AlixScale" + fieldInt + fieldText;
     Scale scale = (Scale) cache(key);
     if (scale != null) return scale;
     scale = new Scale(this, null, fieldInt, fieldText);
@@ -548,8 +555,10 @@ public class Alix
 
   
   /**
+   * Get a frequence object.
+   * @param field
+   * @return
    * @throws IOException
-   * 
    */
   public Freqs freqs(final String field) throws IOException
   {
@@ -562,13 +571,31 @@ public class Alix
   }
   
   /**
+   * Get a co-occurrences reader.
+   * @param field
+   * @return
+   * @throws IOException
+   */
+  public Cooc cooc(final String field) throws IOException
+  {
+    String key = "AlixCooc" + field;
+    Cooc cooc = (Cooc) cache(key);
+    if (cooc != null) return cooc;
+    cooc = new Cooc(this, field);
+    cache(key, cooc);
+    return cooc;
+  }
+  
+  /**
    * For a field, return an array in docId order, with the total number of tokens
-   * by doc. Is cached. 
+   * by doc.
    * Term vector cost 1 s. / 1000 books and is not precise.
    * Norms for similarity is not enough precise (1 byte) see
    * SimilarityBase.computeNorm()
    * https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/apache/lucene/search/similarities/SimilarityBase.java#L185
-   * Should be recorded at indexation.
+   * A field could be recorded at indexation, then user knows its name and get it by docInt().
+   * Solution: pre-calculate the sze by a cached Freqs object, which have loop
+  
    * 
    * @param field
    * @return
@@ -576,7 +603,7 @@ public class Alix
    */
   public int[] docLength(String field) throws IOException
   {
-    return docInt(field);
+    return freqs(field).docLength;
   }
 
   /**

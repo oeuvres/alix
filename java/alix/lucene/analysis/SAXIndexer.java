@@ -411,13 +411,16 @@ public class SAXIndexer extends DefaultHandler
       }
       // analysis, Tee is possible because of a caching token filter
       else {
+        doc.add(new StoredField(name , text)); // text has to be stored for snippets and conc
         Tokenizer source = new TokenizerFr();
         source.setReader(new StringReader(text));
-        xml.setLength(0);
         TokenStream result = new TokenLem(source);
         // Compound is not yet OK
         // result = new TokenCompound(result, 5);
-        TokenCount counter = new TokenCount(result);
+        /*
+        // A stats filter has been tested before a caching filter
+        // but it is less reliable than to get counts after indexation
+        TokenCount counter = new TokenCount(result); 
         TokenStream caching = new CachingTokenFilter(counter);
         // Cache all tokens
         try {
@@ -433,10 +436,10 @@ public class SAXIndexer extends DefaultHandler
           }
           throw new SAXException(e);
         }
-        doc.add(new StoredField(name , text)); // text has to be stored for snippets and conc
         doc.add(new NumericDocValuesField(name + Alix._LENGTH, counter.length()));
         doc.add(new NumericDocValuesField(name + Alix._WIDTH, counter.width()));
-        TokenStream cloud = new TokenLemCloud(caching);
+        */
+        TokenStream cloud = new TokenLemCloud(result);
         doc.add(new Field(name, cloud, Alix.ftypeAll));
         // TokenStream names = new TokenPosFilter(caching, nameFilter);
         // doc.add(new Field(fieldName + Alix._NAMES, names, Alix.ftypeAll));
