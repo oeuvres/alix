@@ -20,7 +20,7 @@ if (facetField.equals("author")) facetName = "Auteur";
 else if (facetField.equals("title")) facetName = "Titre";
 
 %>
-    <form id="qform">
+    <form id="qform" target="_self">
       <input type="submit" style="position: absolute; left: -9999px; width: 1px; height: 1px;"  tabindex="-1" />
       <input type="hidden" id="q" name="q" value="<%=q%>" autocomplete="off"/>
       <select name="ord" onchange="this.form.submit()">

@@ -137,6 +137,7 @@ boolean score = qTerms.size() > 0;
   else {
     dic = facet.topTerms();
   }
+  dic.sort();
   
   while (dic.hasNext()) {
     dic.next();
