@@ -72,7 +72,7 @@ if (terms.size() > 0) {
 else {
   TopTerms facetEnum = facet.topTerms(filter, terms, null);
   if ("alpha".equals(ord)) facetEnum.sort();
-  else if ("freq".equals(ord)) facetEnum.sort(facetEnum.getOccs());
+  else if ("freq".equals(ord)) facetEnum.sort(facetEnum.getDocs());
   else facetEnum.sort();
   while (facetEnum.hasNext()) {
     facetEnum.next();
