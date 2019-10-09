@@ -395,7 +395,7 @@ long time = System.nanoTime();
 request.setCharacterEncoding("UTF-8");
 String obvilDir = (String)request.getAttribute("obvilDir");
 String base = (String)request.getAttribute("base");
-Alix alix = Alix.instance(obvilDir + base);
+Alix alix = Alix.instance(obvilDir +"/"+ base);
 
 //Set a bitSet filter for current corpus
 BitSet filter = null;

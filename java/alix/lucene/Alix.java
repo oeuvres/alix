@@ -206,7 +206,7 @@ public class Alix
    */
   public static Alix instance(Path path) throws IOException
   {
-    path = path.toAbsolutePath();
+    path = path.toAbsolutePath().normalize();
     Alix alix = pool.get(path);
     if (alix == null) {
       alix = new Alix(path);

@@ -20,6 +20,7 @@ java.nio.file.Path
           <li>ContexPath=<%=request.getContextPath()%></li>
           <li>Orig=<%=path%></li>
           <li>RequestUri=<%=request.getRequestURI()%></li>
+          <li>realPath=<%=application.getRealPath("WEB-INF/obvil")%></li>
           <li>obvilDir=<%=request.getAttribute("obvilDir")%></li>
           <li>base=<%=request.getAttribute("base")%></li>
       </ul>

@@ -106,7 +106,7 @@ public class Obvil extends HttpServlet
    */
   private void props() throws ServletException
   {
-    obvilDir = getServletContext().getRealPath("WEB-INF/obvil/");
+    obvilDir = getServletContext().getRealPath("WEB-INF/obvil")+"/";
     File dir = new File(obvilDir);
     File[] ls = dir.listFiles();
     baseList.clear();
