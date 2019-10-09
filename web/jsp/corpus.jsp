@@ -1,5 +1,5 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@include file="data/common.jsp" %>
+<%@include file="common.jsp" %>
 <%!
 final static DecimalFormat dfScoreFr = new DecimalFormat("0.00000", frsyms);
 final static HashSet<String> FIELDS = new HashSet<String>();
@@ -70,8 +70,8 @@ else {
   <head>
     <meta charset="UTF-8">
     <title>Corpus [Alix]</title>
-    <link href="static/alix.css" rel="stylesheet"/>
-    <script src="static/js/corpus.js">//</script>
+    <link href="../static/alix.css" rel="stylesheet"/>
+    <script src="../static/js/corpus.js">//</script>
   </head>
   <body class="corpus">
     <form method="post" id="corpora" action="?">
@@ -137,6 +137,7 @@ boolean score = qTerms.size() > 0;
   else {
     dic = facet.topTerms();
   }
+  dic.sort();
   
   while (dic.hasNext()) {
     dic.next();
@@ -173,7 +174,7 @@ boolean score = qTerms.size() > 0;
       </form>
     </main>
 
-    <script src="vendors/Sortable.js">//</script>
+    <script src="../static/vendors/Sortable.js">//</script>
               <datalist id="author-data">
     <%
     facet = alix.facet("author", TEXT);

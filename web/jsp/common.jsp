@@ -19,12 +19,14 @@ java.util.Arrays,
 java.util.ArrayList,
 java.util.Collections,
 java.util.Comparator,
+java.util.HashMap,
 java.util.HashSet,
 java.util.Iterator,
 java.util.LinkedHashMap,
 java.util.List,
 java.util.Locale,
 java.util.Map,
+java.util.Properties,
 java.util.Set,
 java.util.Scanner,
 java.util.stream.Collectors,
@@ -143,36 +145,6 @@ static {
 }
 
 
-/**
- * Output options for Frantext filter
- */
-static Float tlfoptions (PageContext pageContext, String param) throws IOException
-{
-  JspWriter out = pageContext.getOut();
-  DecimalFormat frdf = new DecimalFormat("#.#", frsyms);
-  Float tlfratio = null;
-  if (param != null) {
-    try { tlfratio = new Float(param); }
-    catch (Exception e) {}
-  }
-
-  float[] values = { 200F, 100F, 50F, 20F, 10F, 7F, 6F, 5F, 3F, 2F, 0F, -2F, -3F, -5F, -10F };
-  String[] labels = { "> ×200", "> ×100", "> ×50", "> ×20", "> ×10", "> ×7", "> ×6", "> ×5", "> ×3", "> ×2", 
-      "[×2, /2]", "< /2", "< /3", "< /5", "< /10" };
-  int lim = values.length;
-  String selected="";
-  boolean seldone = false;
-  String label;
-  for (int i=0; i < lim; i++) {
-    if (!seldone && tlfratio != null && tlfratio >= values[i]) {
-      selected=" selected=\"selected\"";
-      seldone = true;
-    }
-    out.println("<option"+selected+" value=\""+values[i]+"\">"+labels[i] +"</option>");
-    selected = "";
-  }
-  return tlfratio;
-}
 
 /**
  * Strip all html tags form a string
@@ -421,15 +393,24 @@ public static String getParameter(final HttpServletRequest request, final String
 %><%
 long time = System.nanoTime();
 request.setCharacterEncoding("UTF-8");
-Alix alix = Alix.instance(application.getRealPath("") + "/WEB-INF/lucene/");
+String obvilDir = (String)request.getAttribute("obvilDir");
+String base = (String)request.getAttribute("base");
+Alix alix = Alix.instance(obvilDir + base);
 
 //Set a bitSet filter for current corpus
 BitSet filter = null;
 // limitation here, only one corpus allowed by session
-Corpus corpus = (Corpus)session.getAttribute(CORPUS);
-if (corpus != null) filter = corpus.bits();
+Corpus corpus = null;
+// Corpus corpus = (Corpus)session.getAttribute(CORPUS);
+// if (corpus != null) filter = corpus.bits();
 // get query string
 String q = getParameter(request, "q", "");
-
+Properties props = (Properties)request.getAttribute("props");
+String title = props.getProperty("title", null);
+if (title == null) {
+  title = props.getProperty("name", null);
+  if (title == null) title =  base;
+  props.setProperty("title", title);
+}
 
 %>

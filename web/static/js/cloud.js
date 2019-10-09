@@ -13,7 +13,7 @@ console.log(sorter);
 // var log = url.searchParams.get("log");
 
 
-fetch("data/freqlist.jsp?sorter="+sorter).then(
+fetch("freqlist.jsp?sorter="+sorter).then(
   function(response) {
   return response.json();
   }

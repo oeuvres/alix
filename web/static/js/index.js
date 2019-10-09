@@ -35,7 +35,7 @@ function dispatch(form)
   var q = form['q'].value;
   // get frame as a window object
   if (chrono.offsetHeight > 10 && chrono.offsetWidth > 10) {
-    chrono.src = "chrono.html?q=" + q;
+    chrono.src = "chrono.jsp?q=" + q;
   }
   if (panel.offsetHeight > 10 && panel.offsetWidth > 10) {
     var url = new URL(panel.src);

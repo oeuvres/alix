@@ -1,11 +1,11 @@
 <%@ page language="java"  pageEncoding="UTF-8" contentType="text/html; charset=UTF-8"%>
-<%@include file="data/common.jsp" %>
+<%@include file="common.jsp" %>
 <!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8"/>
     <title>Facettes</title>
-    <link rel="stylesheet" type="text/css" href="static/alix.css"/>
+    <link rel="stylesheet" type="text/css" href="../static/alix.css"/>
     <base target="page"/>
   </head>
   <body class="facet">
@@ -20,7 +20,7 @@ if (facetField.equals("author")) facetName = "Auteur";
 else if (facetField.equals("title")) facetName = "Titre";
 
 %>
-    <form id="qform">
+    <form id="qform" target="_self">
       <input type="submit" style="position: absolute; left: -9999px; width: 1px; height: 1px;"  tabindex="-1" />
       <input type="hidden" id="q" name="q" value="<%=q%>" autocomplete="off"/>
       <select name="ord" onchange="this.form.submit()">

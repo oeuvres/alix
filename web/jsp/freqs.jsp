@@ -1,5 +1,5 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@include file="data/common.jsp" %>
+<%@include file="common.jsp" %>
 <%!
 final static DecimalFormat dfScoreFr = new DecimalFormat("0.000", frsyms);
 
@@ -37,7 +37,7 @@ int max = Math.min(500, dic.size());
 <html>
   <head>
     <meta charset="UTF-8">
-    <link href="static/alix.css" rel="stylesheet"/>
+    <link href="../static/alix.css" rel="stylesheet"/>
   </head>
   <body>
     <table class="sortable" align="center">
@@ -140,7 +140,7 @@ while (dic.hasNext()) {
     %>
       </tbody>
     </table>
-    <script src="vendors/Sortable.js">//</script>
-    <script src="static/js/freqs.js">//</script>
+    <script src="../static/vendors/Sortable.js">//</script>
+    <script src="../static/js/freqs.js">//</script>
   </body>
 </html>

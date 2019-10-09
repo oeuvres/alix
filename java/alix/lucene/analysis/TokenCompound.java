@@ -71,8 +71,9 @@ public class TokenCompound extends TokenFilter
     FlagsAttribute flags = flagsAtt;
     final int tag = flags.getFlags();
     
-    // Bad Pologne d'Ubu,  Zarathoustra de Nietzsche
+    // tet
     
+    /*
     // test compound names : NAME (particle|NAME)* NAME
     if (Tag.isName(tag)) {
       final int startOffset = offsetAtt.startOffset();
@@ -122,6 +123,7 @@ public class TokenCompound extends TokenFilter
       }
       return true;
     }
+    */
     
     /*
     // compounds start by lem, ex : faire comme si

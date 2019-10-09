@@ -161,8 +161,17 @@ iframe {
   position: relative;
   background-image: url("img/workin_50.png");
   background-repeat: no-repeat;
-  background-position: top 2px left 200px;
+  background-position: top 2px left 10px;
   height: 58px;
+}
+
+#header .corpus {
+  position: absolute;
+  top: 5px;
+  left: 60px;
+  font-weight: bold;
+  font-style: italic;
+  font-size: 1.5em;
 }
 
 #alert {
@@ -557,14 +566,6 @@ article.hit .title {
 
 .bibl .analytic:after {
   content: " »"
-}
-
-.bibl .year:before {
-  content: "("
-}
-
-.bibl .year:after {
-  content: ")"
 }
 
 article.hit p.frags {

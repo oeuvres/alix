@@ -124,11 +124,10 @@ public class Cooc
    * {@link org.apache.lucene.document.BinaryDocValuesField}
    * @throws IOException 
    */
-  public void prepare() throws IOException
+  public void write() throws IOException
   {
     // known issue, writer should have been closed before reindex
     IndexWriter writer = alix.writer();
-    writer = alix.writer();
     IndexReader reader = alix.reader(writer);
     int maxDoc = reader.maxDoc();
     // create a byte buffer, big enough to store all docs

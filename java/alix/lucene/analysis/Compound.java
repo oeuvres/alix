@@ -23,6 +23,10 @@ public class Compound
   /** A flag for each token */
   private final int[] flag;
 
+  /**
+   * 
+   * @param capacity
+   */
   public Compound(final int capacity)
   {
     this.capacity = capacity;
@@ -54,6 +58,11 @@ public class Compound
     return term;
   }
 
+  /**
+   * Get flag of a token
+   * @param token
+   * @return
+   */
   public int flag(final int token)
   {
     if (token >= size) throw new ArrayIndexOutOfBoundsException("" + token + " >= size=" + size);

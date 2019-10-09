@@ -1,5 +1,5 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@include file="data/common.jsp" %>
+<%@include file="common.jsp" %>
 <%!
 class TokenOffsets
 {
@@ -40,8 +40,8 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
 <html>
   <head>
     <meta charset="UTF-8">
-    <link href="vendors/tei2html.css" rel="stylesheet"/>
-    <link href="static/alix.css" rel="stylesheet"/>
+    <link href="../static/vendors/teinte.css" rel="stylesheet"/>
+    <link href="../static/alix.css" rel="stylesheet"/>
   <%
 /**
  * display a doc from the index.
@@ -296,6 +296,6 @@ if (document != null) {
 }
     %>
     </article>
-    <script src="static/js/doc.js">//</script>
+    <script src="../static/js/doc.js">//</script>
   </body>
 </html>

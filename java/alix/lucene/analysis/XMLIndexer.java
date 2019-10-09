@@ -171,6 +171,12 @@ public class XMLIndexer implements Runnable
     System.exit(1);
   }
 
+  static public void index(final IndexWriter writer, int threads, String xsl, String glob) throws IOException,
+  InterruptedException, TransformerConfigurationException, ParserConfigurationException, SAXException
+  {
+    index(writer, threads, xsl, new String[] {glob});
+  }
+
   /**
    * Recursive indexation of an XML folder, multi-threadeded.
    * 
@@ -182,19 +188,22 @@ public class XMLIndexer implements Runnable
    * @throws SAXException
    * @throws ParserConfigurationException
    */
-  static public void index(final IndexWriter writer, int threads, String xmlGlob, String xslFile) throws IOException,
+  static public void index(final IndexWriter writer, int threads, String xsl, String[] globs) throws IOException,
       InterruptedException, TransformerConfigurationException, ParserConfigurationException, SAXException
   {
-
-    info("Lucene, index:" + writer.getDirectory() + ", files:" + xmlGlob + " , parser:" + xslFile);
+    
+    info("Lucene index:" + writer.getDirectory() + "; parser: " + xsl+"; files: "+ String.join(", ", globs));
     // preload dictionaries
-    List<File> files = Dir.ls(xmlGlob); // CopyOnWriteArrayList produce some duplicates
+    List<File> files = null;
+    for (String glob: globs) {
+      files = Dir.ls(glob, files); // CopyOnWriteArrayList produce some duplicates
+    }
     Iterator<File> it = files.iterator();
 
     // compile XSLT 1 time
     Templates templates = null;
-    if (xslFile != null) {
-      templates = XSLFactory.newTemplates(new StreamSource(xslFile));
+    if (xsl != null) {
+      templates = XSLFactory.newTemplates(new StreamSource(xsl));
     }
 
     // multithread pool
@@ -207,8 +216,6 @@ public class XMLIndexer implements Runnable
     pool.awaitTermination(30, TimeUnit.MINUTES);
     writer.commit();
     writer.forceMerge(1);
-    info(writer.getDocStats());
-    writer.close();
   }
 
 }

@@ -24,6 +24,7 @@ public class Dir
 
   public static List<File> ls(String path, List<File> files)
   {
+    if (files == null) files = new ArrayList<File>();
     File dir = new File(path);
     String re = ".*\\.xml";
     if (!dir.isDirectory()) {
