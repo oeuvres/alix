@@ -1,7 +1,7 @@
 /**
  * Borrowed to Nathan Cahill. https://split.js.org/
  * extended and tweaked by frederic.glorieux@ficitif.org
- * 
+ *
  */
 
 // The programming goals of Split.js are to deliver readable, understandable and
@@ -47,71 +47,73 @@ const isString = v => typeof v === 'string' || v instanceof String
 // interchangeably. In either case an element is returned. This allows us to
 // do `Split([elem1, elem2])` as well as `Split(['#id1', '#id2'])`.
 const elementOrSelector = el => {
-    if (isString(el)) {
-        const ele = document.querySelector(el)
-        if (!ele) {
-            throw new Error(`Selector ${el} did not match a DOM element`)
-        }
-        return ele
+  if (isString(el)) {
+    const ele = document.querySelector(el)
+    if (!ele) {
+      throw new Error(`Selector ${el} did not match a DOM element`)
     }
+    return ele
+  }
 
-    return el
+  return el
 }
 
 // Helper function gets a property from the properties object, with a default fallback
 const getOption = (options, propName, def) => {
-    const value = options[propName]
-    if (value !== undefined) {
-        return value
-    }
-    return def
+  const value = options[propName]
+  if (value !== undefined) {
+    return value
+  }
+  return def
 }
 
 const getGutterSize = (gutterSize, isFirst, isLast, gutterAlign) => {
-    if (isFirst) {
-        if (gutterAlign === 'end') {
-            return 0
-        }
-        if (gutterAlign === 'center') {
-            return gutterSize / 2
-        }
-    } else if (isLast) {
-        if (gutterAlign === 'start') {
-            return 0
-        }
-        if (gutterAlign === 'center') {
-            return gutterSize / 2
-        }
+  if (isFirst) {
+    if (gutterAlign === 'end') {
+      return 0
     }
+    if (gutterAlign === 'center') {
+      return gutterSize / 2
+    }
+  } else if (isLast) {
+    if (gutterAlign === 'start') {
+      return 0
+    }
+    if (gutterAlign === 'center') {
+      return gutterSize / 2
+    }
+  }
 
-    return gutterSize
+  return gutterSize
 }
 
 // Default options
 const defaultGutterFn = (i, gutterDirection) => {
-    const gut = document.createElement('div')
-    gut.className = `gutter gutter-${gutterDirection}`
-    return gut
+  const gut = document.createElement('div')
+  gut.className = `gutter gutter-${gutterDirection}`
+  return gut
 }
 
 const defaultElementStyleFn = (dim, size, gutSize) => {
-    const style = {}
-    if (size > 99) size = 99.5;
-    else size = Math.round(size);
-    if (!isString(size)) {
-        if (!isIE8) {
-            style[dim] = calc+"("+size+"% - "+gutSize+"px)";
-        } else {
-            style[dim] = `${size}%`
-        }
+  const style = {}
+  if (size > 99) size = 99.5;
+  else size = Math.round(size);
+  if (!isString(size)) {
+    if (!isIE8) {
+      style[dim] = calc + "(" + size + "% - " + gutSize + "px)";
     } else {
-        style[dim] = size
+      style[dim] = `${size}%`
     }
+  } else {
+    style[dim] = size
+  }
 
-    return style
+  return style
 }
 
-const defaultGutterStyleFn = (dim, gutSize) => ({ [dim]: `${gutSize}px` })
+const defaultGutterStyleFn = (dim, gutSize) => ({
+  [dim]: `${gutSize}px`
+})
 
 // The main function to initialize a split. Split.js thinks about each pair
 // of elements as an independant pair. Dragging the gutter between two elements
@@ -141,704 +143,702 @@ const defaultGutterStyleFn = (dim, gutSize) => ({ [dim]: `${gutSize}px` })
 //    `pair` object and a gutter.
 // 5. Actually size the pair elements, insert gutters and attach event listeners.
 const Split = (idsOption, options = {}) => {
-    let ids = idsOption
-    let dimension
-    let clientAxis
-    let position
-    let positionEnd
-    let clientSize
-    let elements
+  let ids = idsOption
+  let dimension
+  let clientAxis
+  let position
+  let positionEnd
+  let clientSize
+  let elements
 
-    // Allow HTMLCollection to be used as an argument when supported
-    if (Array.from) {
-        ids = Array.from(ids)
+  // Allow HTMLCollection to be used as an argument when supported
+  if (Array.from) {
+    ids = Array.from(ids)
+  }
+
+  // All DOM elements in the split should have a common parent. We can grab
+  // the first elements parent and hope users read the docs because the
+  // behavior will be whacky otherwise.
+  const firstElement = elementOrSelector(ids[0])
+  const parent = firstElement.parentNode
+  const parentStyle = getComputedStyle ? getComputedStyle(parent) : null
+  const parentFlexDirection = parentStyle ? parentStyle.flexDirection : null
+
+  // Set default options.sizes to equal percentages of the parent element.
+  let sizes = getOption(options, 'sizes') || ids.map(() => 100 / ids.length)
+
+  // Standardize minSize to an array if it isn't already. This allows minSize
+  // to be passed as a number.
+  const minSize = getOption(options, 'minSize', 30)
+  const minSizes = Array.isArray(minSize) ? minSize : ids.map(() => minSize)
+
+  // Get other options
+  const expandToMin = getOption(options, 'expandToMin', false)
+  // set optional gutterSize, or will be calculated after element is inserted
+  const gutterSize = getOption(options, 'gutterSize', 10)
+  const gutterAlign = getOption(options, 'gutterAlign', 'center')
+  const snapOffset = getOption(options, 'snapOffset', 30)
+  const dragInterval = getOption(options, 'dragInterval', 1)
+  const direction = getOption(options, 'direction', HORIZONTAL)
+  const cursor = getOption(
+    options,
+    'cursor',
+    direction === HORIZONTAL ? 'col-resize' : 'row-resize',
+  )
+  const gutter = getOption(options, 'gutter', defaultGutterFn)
+  const elementStyle = getOption(
+    options,
+    'elementStyle',
+    defaultElementStyleFn,
+  )
+  const gutterStyle = getOption(options, 'gutterStyle', defaultGutterStyleFn)
+
+  // 2. Initialize a bunch of strings based on the direction we're splitting.
+  // A lot of the behavior in the rest of the library is paramatized down to
+  // rely on CSS strings and classes.
+  if (direction === HORIZONTAL) {
+    dimension = 'width'
+    clientAxis = 'clientX'
+    position = 'left'
+    positionEnd = 'right'
+    clientSize = 'clientWidth'
+  } else if (direction === 'vertical') {
+    dimension = 'height'
+    clientAxis = 'clientY'
+    position = 'top'
+    positionEnd = 'bottom'
+    clientSize = 'clientHeight'
+  }
+
+  // 3. Define the dragging helper functions, and a few helpers to go with them.
+  // Each helper is bound to a pair object that contains its metadata. This
+  // also makes it easy to store references to listeners that that will be
+  // added and removed.
+  //
+  // Even though there are no other functions contained in them, aliasing
+  // this to self saves 50 bytes or so since it's used so frequently.
+  //
+  // The pair object saves metadata like dragging state, position and
+  // event listener references.
+
+  function setElementSize(el, size, gutSize, i) {
+    // Split.js allows setting sizes via numbers (ideally), or if you must,
+    // by string, like '300px'. This is less than ideal, because it breaks
+    // the fluid layout that `calc(% - px)` provides. You're on your own if you do that,
+    // make sure you calculate the gutter size by hand.
+    const style = elementStyle(dimension, size, gutSize, i);
+    Object.keys(style).forEach(prop => {
+      // eslint-disable-next-line no-param-reassign
+      el.style[prop] = style[prop]
+    })
+  }
+
+  function setGutterSize(gutterElement, gutSize, i) {
+    /* Do no set gutter Size, let work user CSS
+      const style = gutterStyle(dimension, gutSize, i)
+
+      Object.keys(style).forEach(prop => {
+          // eslint-disable-next-line no-param-reassign
+          gutterElement.style[prop] = style[prop]
+      })
+      */
+  }
+
+  function getSizes() {
+    return elements.map(element => element.size)
+  }
+
+  // Supports touch events, but not multitouch, so only the first
+  // finger `touches[0]` is counted.
+  function getMousePosition(e) {
+    if ('touches' in e) return e.touches[0][clientAxis]
+    return e[clientAxis]
+  }
+
+  // Actually adjust the size of elements `a` and `b` to `offset` while dragging.
+  // calc is used to allow calc(percentage + gutterpx) on the whole split instance,
+  // which allows the viewport to be resized without additional logic.
+  // Element a's size is the same as offset. b's size is total size - a size.
+  // Both sizes are calculated from the initial parent percentage,
+  // then the gutter size is subtracted.
+  function adjust(offset) {
+    const a = elements[this.a]
+    const b = elements[this.b]
+    const percentage = a.size + b.size
+
+    a.size = (offset / this.size) * percentage
+    b.size = percentage - (offset / this.size) * percentage
+
+    setElementSize(a.element, a.size, this[aGutterSize], a.i)
+    setElementSize(b.element, b.size, this[bGutterSize], b.i)
+  }
+
+  function butClick(e) {
+    // // Alias frequently used variables to save space. 200 bytes.
+    // const self = this
+    const a = elements[this.a]
+    const b = elements[this.b]
+    but = this.but;
+    var panel;
+    var panelGutterSize;
+    var body;
+    var bodyGutterSize;
+    if (a.size < b.size) {
+      panel = a;
+      panelGutterSize = this[aGutterSize];
+      body = b;
+      bodyGutterSize = this[bGutterSize];
+    } else {
+      panel = b;
+      panelGutterSize = this[bGutterSize];
+      body = a;
+      bodyGutterSize = this[aGutterSize];
+    }
+    if (panel.element.style.display == 'none') {
+      but.classList.remove("closed");
+      but.classList.add("open");
+      panel.size = panel.sizeOld;
+      body.size = body.size - panel.size;
+      panel.element.style.display = panel.displayOld;
+    } else {
+      but.classList.remove("open");
+      but.classList.add("closed");
+      panel.sizeOld = panel.size;
+      body.size = body.size + panel.size;
+      panel.size = 0;
+      panel.displayOld = panel.element.style.display;
+      panel.element.style.display = 'none';
+    }
+    setElementSize(panel.element, panel.size, panelGutterSize, panel.i);
+    setElementSize(body.element, body.size, bodyGutterSize, body.i);
+    e.stopPropagation();
+    return false;
+  }
+
+
+
+  // drag, where all the magic happens. The logic is really quite simple:
+  //
+  // 1. Ignore if the pair is not dragging.
+  // 2. Get the offset of the event.
+  // 3. Snap offset to min if within snappable range (within min + snapOffset).
+  // 4. Actually adjust each element in the pair to offset.
+  //
+  // ---------------------------------------------------------------------
+  // |    | <- a.minSize               ||              b.minSize -> |    |
+  // |    |  | <- this.snapOffset      ||     this.snapOffset -> |  |    |
+  // |    |  |                         ||                        |  |    |
+  // |    |  |                         ||                        |  |    |
+  // ---------------------------------------------------------------------
+  // | <- this.start                                        this.size -> |
+  function drag(e) {
+    let offset
+    const a = elements[this.a]
+    const b = elements[this.b]
+    if (!this.dragging) return
+
+
+    // Get the offset of the event from the first side of the
+    // pair `this.start`. Then offset by the initial position of the
+    // mouse compared to the gutter size.
+    offset =
+      getMousePosition(e) -
+      this.start +
+      (this[aGutterSize] - this.dragOffset)
+
+    if (dragInterval > 1) {
+      offset = Math.round(offset / dragInterval) * dragInterval
     }
 
-    // All DOM elements in the split should have a common parent. We can grab
-    // the first elements parent and hope users read the docs because the
-    // behavior will be whacky otherwise.
-    const firstElement = elementOrSelector(ids[0])
-    const parent = firstElement.parentNode
-    const parentStyle = getComputedStyle ? getComputedStyle(parent) : null
-    const parentFlexDirection = parentStyle ? parentStyle.flexDirection : null
+    // If within snapOffset of min or max, set offset to min or max.
+    // snapOffset buffers a.minSize and b.minSize, so logic is opposite for both.
+    // Include the appropriate gutter sizes to prevent overflows.
+    if (offset <= a.minSize + snapOffset + this[aGutterSize]) {
+      offset = a.minSize + this[aGutterSize]
+    } else if (
+      offset >=
+      this.size - (b.minSize + snapOffset + this[bGutterSize])
+    ) {
+      offset = this.size - (b.minSize + this[bGutterSize])
+    }
 
-    // Set default options.sizes to equal percentages of the parent element.
-    let sizes = getOption(options, 'sizes') || ids.map(() => 100 / ids.length)
+    // Actually adjust the size.
+    adjust.call(this, offset)
 
-    // Standardize minSize to an array if it isn't already. This allows minSize
-    // to be passed as a number.
-    const minSize = getOption(options, 'minSize', 30)
-    const minSizes = Array.isArray(minSize) ? minSize : ids.map(() => minSize)
+    // Call the drag callback continously. Don't do anything too intensive
+    // in this callback.
+    getOption(options, 'onDrag', NOOP)()
+  }
 
-    // Get other options
-    const expandToMin = getOption(options, 'expandToMin', false)
-    // set optional gutterSize, or will be calculated after element is inserted
-    const gutterSize = getOption(options, 'gutterSize', 10)
-    const gutterAlign = getOption(options, 'gutterAlign', 'center')
-    const snapOffset = getOption(options, 'snapOffset', 30)
-    const dragInterval = getOption(options, 'dragInterval', 1)
-    const direction = getOption(options, 'direction', HORIZONTAL)
-    const cursor = getOption(
-        options,
-        'cursor',
-        direction === HORIZONTAL ? 'col-resize' : 'row-resize',
-    )
-    const gutter = getOption(options, 'gutter', defaultGutterFn)
-    const elementStyle = getOption(
-        options,
-        'elementStyle',
-        defaultElementStyleFn,
-    )
-    const gutterStyle = getOption(options, 'gutterStyle', defaultGutterStyleFn)
+  // Cache some important sizes when drag starts, so we don't have to do that
+  // continously:
+  //
+  // `size`: The total size of the pair. First + second + first gutter + second gutter.
+  // `start`: The leading side of the first element.
+  //
+  // ------------------------------------------------
+  // |      aGutterSize -> |||                      |
+  // |                     |||                      |
+  // |                     |||                      |
+  // |                     ||| <- bGutterSize       |
+  // ------------------------------------------------
+  // | <- start                             size -> |
+  function calculateSizes() {
+    // Figure out the parent size minus padding.
+    const a = elements[this.a].element
+    const b = elements[this.b].element
 
-    // 2. Initialize a bunch of strings based on the direction we're splitting.
-    // A lot of the behavior in the rest of the library is paramatized down to
-    // rely on CSS strings and classes.
+    const aBounds = a[getBoundingClientRect]()
+    const bBounds = b[getBoundingClientRect]()
+
+    this.size =
+      aBounds[dimension] +
+      bBounds[dimension] +
+      this[aGutterSize] +
+      this[bGutterSize]
+    this.start = aBounds[position]
+    this.end = aBounds[positionEnd]
+  }
+
+  function innerSize(element) {
+    // Return nothing if getComputedStyle is not supported (< IE9)
+    // Or if parent element has no layout yet
+    if (!getComputedStyle) return null
+
+    const computedStyle = getComputedStyle(element)
+
+    if (!computedStyle) return null
+
+    let size = element[clientSize]
+
+    if (size === 0) return null
+
     if (direction === HORIZONTAL) {
-        dimension = 'width'
-        clientAxis = 'clientX'
-        position = 'left'
-        positionEnd = 'right'
-        clientSize = 'clientWidth'
-    } else if (direction === 'vertical') {
-        dimension = 'height'
-        clientAxis = 'clientY'
-        position = 'top'
-        positionEnd = 'bottom'
-        clientSize = 'clientHeight'
+      size -=
+        parseFloat(computedStyle.paddingLeft) +
+        parseFloat(computedStyle.paddingRight)
+    } else {
+      size -=
+        parseFloat(computedStyle.paddingTop) +
+        parseFloat(computedStyle.paddingBottom)
     }
 
-    // 3. Define the dragging helper functions, and a few helpers to go with them.
-    // Each helper is bound to a pair object that contains its metadata. This
-    // also makes it easy to store references to listeners that that will be
-    // added and removed.
-    //
-    // Even though there are no other functions contained in them, aliasing
-    // this to self saves 50 bytes or so since it's used so frequently.
-    //
-    // The pair object saves metadata like dragging state, position and
-    // event listener references.
+    return size
+  }
 
-    function setElementSize(el, size, gutSize, i) {
-        // Split.js allows setting sizes via numbers (ideally), or if you must,
-        // by string, like '300px'. This is less than ideal, because it breaks
-        // the fluid layout that `calc(% - px)` provides. You're on your own if you do that,
-        // make sure you calculate the gutter size by hand.
-        const style = elementStyle(dimension, size, gutSize, i);
-        Object.keys(style).forEach(prop => {
-            // eslint-disable-next-line no-param-reassign
-            el.style[prop] = style[prop]
-        })
+  // When specifying percentage sizes that are less than the computed
+  // size of the element minus the gutter, the lesser percentages must be increased
+  // (and decreased from the other elements) to make space for the pixels
+  // subtracted by the gutters.
+  function trimToMin(sizesToTrim) {
+    // Try to get inner size of parent element.
+    // If it's no supported, return original sizes.
+    const parentSize = innerSize(parent)
+    if (parentSize === null) {
+      return sizesToTrim
     }
 
-    function setGutterSize(gutterElement, gutSize, i) {
-      /* Do no set gutter Size, let work user CSS
-        const style = gutterStyle(dimension, gutSize, i)
-
-        Object.keys(style).forEach(prop => {
-            // eslint-disable-next-line no-param-reassign
-            gutterElement.style[prop] = style[prop]
-        })
-        */
+    if (minSizes.reduce((a, b) => a + b, 0) > parentSize) {
+      return sizesToTrim
     }
 
-    function getSizes() {
-        return elements.map(element => element.size)
-    }
+    // Keep track of the excess pixels, the amount of pixels over the desired percentage
+    // Also keep track of the elements with pixels to spare, to decrease after if needed
+    let excessPixels = 0
+    const toSpare = []
 
-    // Supports touch events, but not multitouch, so only the first
-    // finger `touches[0]` is counted.
-    function getMousePosition(e) {
-        if ('touches' in e) return e.touches[0][clientAxis]
-        return e[clientAxis]
-    }
+    const pixelSizes = sizesToTrim.map((size, i) => {
+      // Convert requested percentages to pixel sizes
+      const pixelSize = (parentSize * size) / 100
+      const elementGutterSize = getGutterSize(
+        gutterSize,
+        i === 0,
+        i === sizesToTrim.length - 1,
+        gutterAlign,
+      )
+      const elementMinSize = minSizes[i] + elementGutterSize
 
-    // Actually adjust the size of elements `a` and `b` to `offset` while dragging.
-    // calc is used to allow calc(percentage + gutterpx) on the whole split instance,
-    // which allows the viewport to be resized without additional logic.
-    // Element a's size is the same as offset. b's size is total size - a size.
-    // Both sizes are calculated from the initial parent percentage,
-    // then the gutter size is subtracted.
-    function adjust(offset) {
-        const a = elements[this.a]
-        const b = elements[this.b]
-        const percentage = a.size + b.size
-
-        a.size = (offset / this.size) * percentage
-        b.size = percentage - (offset / this.size) * percentage
-
-        setElementSize(a.element, a.size, this[aGutterSize], a.i)
-        setElementSize(b.element, b.size, this[bGutterSize], b.i)
-    }
-
-    function butClick(e) {
-      // // Alias frequently used variables to save space. 200 bytes.
-      // const self = this
-      const a = elements[this.a]
-      const b = elements[this.b]
-      but = this.but;
-      var panel;
-      var panelGutterSize;
-      var body;
-      var bodyGutterSize;
-      if (a.size < b.size) {
-        panel = a;
-        panelGutterSize = this[aGutterSize];
-        body = b;
-        bodyGutterSize = this[bGutterSize];
-      } else {
-        panel = b;
-        panelGutterSize = this[bGutterSize];
-        body = a;
-        bodyGutterSize = this[aGutterSize];
+      // If element is too smal, increase excess pixels by the difference
+      // and mark that it has no pixels to spare
+      if (pixelSize < elementMinSize) {
+        excessPixels += elementMinSize - pixelSize
+        toSpare.push(0)
+        return elementMinSize
       }
-      if (panel.element.style.display == 'none') {
-        but.classList.remove("closed");
-        but.classList.add("open");
-        panel.size = panel.sizeOld;
-        body.size = body.size - panel.size ;
-        panel.element.style.display = panel.displayOld;
-      }
-      else {
-        but.classList.remove("open");
-        but.classList.add("closed");
-        panel.sizeOld = panel.size;
-        body.size = body.size + panel.size;
-        panel.size = 0;
-        panel.displayOld = panel.element.style.display;
-        panel.element.style.display = 'none';
-      }
-      setElementSize(panel.element, panel.size, panelGutterSize, panel.i);
-      setElementSize(body.element, body.size, bodyGutterSize, body.i);
-      e.stopPropagation();
-      return false;
+
+      // Otherwise, mark the pixels it has to spare and return it's original size
+      toSpare.push(pixelSize - elementMinSize)
+      return pixelSize
+    })
+
+    // If nothing was adjusted, return the original sizes
+    if (excessPixels === 0) {
+      return sizesToTrim
     }
 
+    return pixelSizes.map((pixelSize, i) => {
+      let newPixelSize = pixelSize
 
-
-    // drag, where all the magic happens. The logic is really quite simple:
-    //
-    // 1. Ignore if the pair is not dragging.
-    // 2. Get the offset of the event.
-    // 3. Snap offset to min if within snappable range (within min + snapOffset).
-    // 4. Actually adjust each element in the pair to offset.
-    //
-    // ---------------------------------------------------------------------
-    // |    | <- a.minSize               ||              b.minSize -> |    |
-    // |    |  | <- this.snapOffset      ||     this.snapOffset -> |  |    |
-    // |    |  |                         ||                        |  |    |
-    // |    |  |                         ||                        |  |    |
-    // ---------------------------------------------------------------------
-    // | <- this.start                                        this.size -> |
-    function drag(e) {
-        let offset
-        const a = elements[this.a]
-        const b = elements[this.b]
-        if (!this.dragging) return
-
-
-        // Get the offset of the event from the first side of the
-        // pair `this.start`. Then offset by the initial position of the
-        // mouse compared to the gutter size.
-        offset =
-            getMousePosition(e) -
-            this.start +
-            (this[aGutterSize] - this.dragOffset)
-
-        if (dragInterval > 1) {
-            offset = Math.round(offset / dragInterval) * dragInterval
-        }
-
-        // If within snapOffset of min or max, set offset to min or max.
-        // snapOffset buffers a.minSize and b.minSize, so logic is opposite for both.
-        // Include the appropriate gutter sizes to prevent overflows.
-        if (offset <= a.minSize + snapOffset + this[aGutterSize]) {
-            offset = a.minSize + this[aGutterSize]
-        } else if (
-            offset >=
-            this.size - (b.minSize + snapOffset + this[bGutterSize])
-        ) {
-            offset = this.size - (b.minSize + this[bGutterSize])
-        }
-
-        // Actually adjust the size.
-        adjust.call(this, offset)
-
-        // Call the drag callback continously. Don't do anything too intensive
-        // in this callback.
-        getOption(options, 'onDrag', NOOP)()
-    }
-
-    // Cache some important sizes when drag starts, so we don't have to do that
-    // continously:
-    //
-    // `size`: The total size of the pair. First + second + first gutter + second gutter.
-    // `start`: The leading side of the first element.
-    //
-    // ------------------------------------------------
-    // |      aGutterSize -> |||                      |
-    // |                     |||                      |
-    // |                     |||                      |
-    // |                     ||| <- bGutterSize       |
-    // ------------------------------------------------
-    // | <- start                             size -> |
-    function calculateSizes() {
-        // Figure out the parent size minus padding.
-        const a = elements[this.a].element
-        const b = elements[this.b].element
-
-        const aBounds = a[getBoundingClientRect]()
-        const bBounds = b[getBoundingClientRect]()
-
-        this.size =
-            aBounds[dimension] +
-            bBounds[dimension] +
-            this[aGutterSize] +
-            this[bGutterSize]
-        this.start = aBounds[position]
-        this.end = aBounds[positionEnd]
-    }
-
-    function innerSize(element) {
-        // Return nothing if getComputedStyle is not supported (< IE9)
-        // Or if parent element has no layout yet
-        if (!getComputedStyle) return null
-
-        const computedStyle = getComputedStyle(element)
-
-        if (!computedStyle) return null
-
-        let size = element[clientSize]
-
-        if (size === 0) return null
-
-        if (direction === HORIZONTAL) {
-            size -=
-                parseFloat(computedStyle.paddingLeft) +
-                parseFloat(computedStyle.paddingRight)
-        } else {
-            size -=
-                parseFloat(computedStyle.paddingTop) +
-                parseFloat(computedStyle.paddingBottom)
-        }
-
-        return size
-    }
-
-    // When specifying percentage sizes that are less than the computed
-    // size of the element minus the gutter, the lesser percentages must be increased
-    // (and decreased from the other elements) to make space for the pixels
-    // subtracted by the gutters.
-    function trimToMin(sizesToTrim) {
-        // Try to get inner size of parent element.
-        // If it's no supported, return original sizes.
-        const parentSize = innerSize(parent)
-        if (parentSize === null) {
-            return sizesToTrim
-        }
-
-        if (minSizes.reduce((a, b) => a + b, 0) > parentSize) {
-            return sizesToTrim
-        }
-
-        // Keep track of the excess pixels, the amount of pixels over the desired percentage
-        // Also keep track of the elements with pixels to spare, to decrease after if needed
-        let excessPixels = 0
-        const toSpare = []
-
-        const pixelSizes = sizesToTrim.map((size, i) => {
-            // Convert requested percentages to pixel sizes
-            const pixelSize = (parentSize * size) / 100
-            const elementGutterSize = getGutterSize(
-                gutterSize,
-                i === 0,
-                i === sizesToTrim.length - 1,
-                gutterAlign,
-            )
-            const elementMinSize = minSizes[i] + elementGutterSize
-
-            // If element is too smal, increase excess pixels by the difference
-            // and mark that it has no pixels to spare
-            if (pixelSize < elementMinSize) {
-                excessPixels += elementMinSize - pixelSize
-                toSpare.push(0)
-                return elementMinSize
-            }
-
-            // Otherwise, mark the pixels it has to spare and return it's original size
-            toSpare.push(pixelSize - elementMinSize)
-            return pixelSize
-        })
-
-        // If nothing was adjusted, return the original sizes
-        if (excessPixels === 0) {
-            return sizesToTrim
-        }
-
-        return pixelSizes.map((pixelSize, i) => {
-            let newPixelSize = pixelSize
-
-            // While there's still pixels to take, and there's enough pixels to spare,
-            // take as many as possible up to the total excess pixels
-            if (excessPixels > 0 && toSpare[i] - excessPixels > 0) {
-                const takenPixels = Math.min(
-                    excessPixels,
-                    toSpare[i] - excessPixels,
-                )
-
-                // Subtract the amount taken for the next iteration
-                excessPixels -= takenPixels
-                newPixelSize = pixelSize - takenPixels
-            }
-
-            // Return the pixel size adjusted as a percentage
-            return (newPixelSize / parentSize) * 100
-        })
-    }
-
-    // stopDragging is very similar to startDragging in reverse.
-    function stopDragging() {
-        const self = this
-        const a = elements[self.a].element
-        const b = elements[self.b].element
-
-        if (self.dragging) {
-            getOption(options, 'onDragEnd', NOOP)(getSizes())
-        }
-
-        self.dragging = false
-
-        // Remove the stored event listeners. This is why we store them.
-        global[removeEventListener]('mouseup', self.stop)
-        global[removeEventListener]('touchend', self.stop)
-        global[removeEventListener]('touchcancel', self.stop)
-        global[removeEventListener]('mousemove', self.move)
-        global[removeEventListener]('touchmove', self.move)
-
-        // Clear bound function references
-        self.stop = null
-        self.move = null
-
-        a[removeEventListener]('selectstart', NOOP)
-        a[removeEventListener]('dragstart', NOOP)
-        b[removeEventListener]('selectstart', NOOP)
-        b[removeEventListener]('dragstart', NOOP)
-
-        a.style.userSelect = ''
-        a.style.webkitUserSelect = ''
-        a.style.MozUserSelect = ''
-        a.style.pointerEvents = ''
-
-        b.style.userSelect = ''
-        b.style.webkitUserSelect = ''
-        b.style.MozUserSelect = ''
-        b.style.pointerEvents = ''
-
-        self.gutter.style.cursor = ''
-        self.parent.style.cursor = ''
-        document.body.style.cursor = ''
-    }
-
-    // startDragging calls `calculateSizes` to store the inital size in the pair object.
-    // It also adds event listeners for mouse/touch events,
-    // and prevents selection while dragging so avoid the selecting text.
-    function startDragging(e) {
-        // Right-clicking can't start dragging.
-        if ('button' in e && e.button !== 0) {
-            return
-        }
-        // stopPropagation do not work properly in some case;
-        if (e.target == this.but) return false;
-        // Alias frequently used variables to save space. 200 bytes.
-        const self = this
-        const a = elements[self.a].element
-        const b = elements[self.b].element
-        // ensure elements are visible
-        if (a.style.display == "none" || b.style.display == "none") {
-          console.log(e);
-          but.classList.remove("closed");
-          but.classList.add("open");
-          if(a.style.display == "none") a.style.display = elements[self.a].displayOld;
-          if(b.style.display == "none") b.style.display = elements[self.b].displayOld;
-        }
-        // Call the onDragStart callback.
-        if (!self.dragging) {
-            getOption(options, 'onDragStart', NOOP)(getSizes())
-        }
-
-        // Don't actually drag the element. We emulate that in the drag function.
-        e.preventDefault()
-
-        // Set the dragging property of the pair object.
-        self.dragging = true
-
-        // Create two event listeners bound to the same pair object and store
-        // them in the pair object.
-        self.move = drag.bind(self)
-        self.stop = stopDragging.bind(self)
-
-        // All the binding. `window` gets the stop events in case we drag out of the elements.
-        global[addEventListener]('mouseup', self.stop)
-        global[addEventListener]('touchend', self.stop)
-        global[addEventListener]('touchcancel', self.stop)
-        global[addEventListener]('mousemove', self.move)
-        global[addEventListener]('touchmove', self.move)
-
-        // Disable selection. Disable!
-        a[addEventListener]('selectstart', NOOP)
-        a[addEventListener]('dragstart', NOOP)
-        b[addEventListener]('selectstart', NOOP)
-        b[addEventListener]('dragstart', NOOP)
-
-        a.style.userSelect = 'none'
-        a.style.webkitUserSelect = 'none'
-        a.style.MozUserSelect = 'none'
-        a.style.pointerEvents = 'none'
-
-        b.style.userSelect = 'none'
-        b.style.webkitUserSelect = 'none'
-        b.style.MozUserSelect = 'none'
-        b.style.pointerEvents = 'none'
-
-        // Set the cursor at multiple levels
-        self.gutter.style.cursor = cursor
-        self.parent.style.cursor = cursor
-        document.body.style.cursor = cursor
-
-        // Cache the initial sizes of the pair.
-        calculateSizes.call(self)
-
-        // Determine the position of the mouse compared to the gutter
-        self.dragOffset = getMousePosition(e) - self.end
-    }
-
-    // adjust sizes to ensure percentage is within min size and gutter.
-    sizes = trimToMin(sizes)
-
-    // 5. Create pair and element objects. Each pair has an index reference to
-    // elements `a` and `b` of the pair (first and second elements).
-    // Loop through the elements while pairing them off. Every pair gets a
-    // `pair` object and a gutter.
-    //
-    // Basic logic:
-    //
-    // - Starting with the second element `i > 0`, create `pair` objects with
-    //   `a = i - 1` and `b = i`
-    // - Set gutter sizes based on the _pair_ being first/last. The first and last
-    //   pair have gutterSize / 2, since they only have one half gutter, and not two.
-    // - Create gutter elements and add event listeners.
-    // - Set the size of the elements, minus the gutter sizes.
-    //
-    // -----------------------------------------------------------------------
-    // |     i=0     |         i=1         |        i=2       |      i=3     |
-    // |             |                     |                  |              |
-    // |           pair 0                pair 1             pair 2           |
-    // |             |                     |                  |              |
-    // -----------------------------------------------------------------------
-    const pairs = []
-    elements = ids.map((id, i) => {
-        // Create the element object.
-        const element = {
-            element: elementOrSelector(id),
-            size: sizes[i],
-            minSize: minSizes[i],
-            i,
-        }
-
-        let pair
-
-        if (i > 0) {
-            // Create the pair object with its metadata.
-            pair = {
-                a: i - 1,
-                b: i,
-                dragging: false,
-                direction,
-                parent,
-            }
-
-            pair[aGutterSize] = getGutterSize(
-                gutterSize,
-                i - 1 === 0,
-                false,
-                gutterAlign,
-            )
-            pair[bGutterSize] = getGutterSize(
-                gutterSize,
-                false,
-                i === ids.length - 1,
-                gutterAlign,
-            )
-
-            // if the parent has a reverse flex-direction, switch the pair elements.
-            if (
-                parentFlexDirection === 'row-reverse' ||
-                parentFlexDirection === 'column-reverse'
-            ) {
-                const temp = pair.a
-                pair.a = pair.b
-                pair.b = temp
-            }
-        }
-
-        // Determine the size of the current element. IE8 is supported by
-        // staticly assigning sizes without draggable gutters. Assigns a string
-        // to `size`.
-        //
-        // IE9 and above
-        if (!isIE8) {
-            // Create gutter elements for each pair.
-            if (i > 0) {
-                const gutterElement = gutter(i, direction, element.element);
-                setGutterSize(gutterElement, gutterSize, i);
-
-                // append a button hide/show for first or last gutter
-                if (i == 1 || i === ids.length - 1) {
-                  const but = document.createElement('span');
-                  but.className = "gutter but "+direction;
-                  if (i == 1 && direction != 'vertical') {
-                    but.className += " first";
-                  }
-                  else {
-                    but.className += " last";
-                  }
-                  gutterElement.appendChild(but);
-                  pair['but'] = but;
-                  pair['butClick'] = butClick.bind(pair);
-                  pair['but'][addEventListener](
-                      'click',
-                      pair['butClick'],
-                  );
-                }
-
-                // Save bound event listener for removal later
-                pair[gutterStartDragging] = startDragging.bind(pair)
-                // Attach bound event listener
-                gutterElement[addEventListener](
-                    'mousedown',
-                    pair[gutterStartDragging],
-                )
-                gutterElement[addEventListener](
-                    'touchstart',
-                    pair[gutterStartDragging],
-                )
-                parent.insertBefore(gutterElement, element.element)
-                // Set gutterSize from element offsetWith or offsetHeight of created element is not working here
-                pair.gutter = gutterElement
-            }
-        }
-
-        setElementSize(
-            element.element,
-            element.size,
-            getGutterSize(
-                gutterSize,
-                i === 0,
-                i === ids.length - 1,
-                gutterAlign,
-            ),
-            i,
+      // While there's still pixels to take, and there's enough pixels to spare,
+      // take as many as possible up to the total excess pixels
+      if (excessPixels > 0 && toSpare[i] - excessPixels > 0) {
+        const takenPixels = Math.min(
+          excessPixels,
+          toSpare[i] - excessPixels,
         )
 
-        // After the first iteration, and we have a pair object, append it to the
-        // list of pairs.
-        if (i > 0) {
-            pairs.push(pair)
-        }
+        // Subtract the amount taken for the next iteration
+        excessPixels -= takenPixels
+        newPixelSize = pixelSize - takenPixels
+      }
 
-        return element
+      // Return the pixel size adjusted as a percentage
+      return (newPixelSize / parentSize) * 100
     })
+  }
 
-    function adjustToMin(element) {
-        const isLast = element.i === pairs.length
-        const pair = isLast ? pairs[element.i - 1] : pairs[element.i]
+  // stopDragging is very similar to startDragging in reverse.
+  function stopDragging() {
+    const self = this
+    const a = elements[self.a].element
+    const b = elements[self.b].element
 
-        calculateSizes.call(pair)
-
-        const size = isLast
-            ? pair.size - element.minSize - pair[bGutterSize]
-            : element.minSize + pair[aGutterSize]
-
-        adjust.call(pair, size)
+    if (self.dragging) {
+      getOption(options, 'onDragEnd', NOOP)(getSizes())
     }
 
-    elements.forEach(element => {
-        const computedSize = element.element[getBoundingClientRect]()[dimension]
+    self.dragging = false
 
-        if (computedSize < element.minSize) {
-            if (expandToMin) {
-                adjustToMin(element)
-            } else {
-                // eslint-disable-next-line no-param-reassign
-                element.minSize = computedSize
-            }
-        }
-    })
+    // Remove the stored event listeners. This is why we store them.
+    global[removeEventListener]('mouseup', self.stop)
+    global[removeEventListener]('touchend', self.stop)
+    global[removeEventListener]('touchcancel', self.stop)
+    global[removeEventListener]('mousemove', self.move)
+    global[removeEventListener]('touchmove', self.move)
 
-    function setSizes(newSizes) {
-        const trimmed = trimToMin(newSizes)
-        trimmed.forEach((newSize, i) => {
-            if (i > 0) {
-                const pair = pairs[i - 1]
+    // Clear bound function references
+    self.stop = null
+    self.move = null
 
-                const a = elements[pair.a]
-                const b = elements[pair.b]
+    a[removeEventListener]('selectstart', NOOP)
+    a[removeEventListener]('dragstart', NOOP)
+    b[removeEventListener]('selectstart', NOOP)
+    b[removeEventListener]('dragstart', NOOP)
 
-                a.size = trimmed[i - 1]
-                b.size = newSize
-                setElementSize(a.element, a.size, pair[aGutterSize], a.i)
-                setElementSize(b.element, b.size, pair[bGutterSize], b.i)
-            }
-        })
+    a.style.userSelect = ''
+    a.style.webkitUserSelect = ''
+    a.style.MozUserSelect = ''
+    a.style.pointerEvents = ''
+
+    b.style.userSelect = ''
+    b.style.webkitUserSelect = ''
+    b.style.MozUserSelect = ''
+    b.style.pointerEvents = ''
+
+    self.gutter.style.cursor = ''
+    self.parent.style.cursor = ''
+    document.body.style.cursor = ''
+  }
+
+  // startDragging calls `calculateSizes` to store the inital size in the pair object.
+  // It also adds event listeners for mouse/touch events,
+  // and prevents selection while dragging so avoid the selecting text.
+  function startDragging(e) {
+    // Right-clicking can't start dragging.
+    if ('button' in e && e.button !== 0) {
+      return
+    }
+    // stopPropagation do not work properly in some case;
+    if (e.target == this.but) return false;
+    // Alias frequently used variables to save space. 200 bytes.
+    const self = this
+    const a = elements[self.a].element
+    const b = elements[self.b].element
+    // ensure elements are visible
+    if (a.style.display == "none" || b.style.display == "none") {
+      console.log(e);
+      but.classList.remove("closed");
+      but.classList.add("open");
+      if (a.style.display == "none") a.style.display = elements[self.a].displayOld;
+      if (b.style.display == "none") b.style.display = elements[self.b].displayOld;
+    }
+    // Call the onDragStart callback.
+    if (!self.dragging) {
+      getOption(options, 'onDragStart', NOOP)(getSizes())
     }
 
-    function destroy(preserveStyles, preserveGutter) {
-        pairs.forEach(pair => {
-            if (preserveGutter !== true) {
-                pair.parent.removeChild(pair.gutter)
-            } else {
-                pair.gutter[removeEventListener](
-                    'mousedown',
-                    pair[gutterStartDragging],
-                )
-                pair.gutter[removeEventListener](
-                    'touchstart',
-                    pair[gutterStartDragging],
-                )
-            }
+    // Don't actually drag the element. We emulate that in the drag function.
+    e.preventDefault()
 
-            if (preserveStyles !== true) {
-                const style = elementStyle(
-                    dimension,
-                    pair.a.size,
-                    pair[aGutterSize],
-                );
+    // Set the dragging property of the pair object.
+    self.dragging = true
 
-                Object.keys(style).forEach(prop => {
-                    elements[pair.a].element.style[prop] = ''
-                    elements[pair.b].element.style[prop] = ''
-                });
-            }
-        })
+    // Create two event listeners bound to the same pair object and store
+    // them in the pair object.
+    self.move = drag.bind(self)
+    self.stop = stopDragging.bind(self)
+
+    // All the binding. `window` gets the stop events in case we drag out of the elements.
+    global[addEventListener]('mouseup', self.stop)
+    global[addEventListener]('touchend', self.stop)
+    global[addEventListener]('touchcancel', self.stop)
+    global[addEventListener]('mousemove', self.move)
+    global[addEventListener]('touchmove', self.move)
+
+    // Disable selection. Disable!
+    a[addEventListener]('selectstart', NOOP)
+    a[addEventListener]('dragstart', NOOP)
+    b[addEventListener]('selectstart', NOOP)
+    b[addEventListener]('dragstart', NOOP)
+
+    a.style.userSelect = 'none'
+    a.style.webkitUserSelect = 'none'
+    a.style.MozUserSelect = 'none'
+    a.style.pointerEvents = 'none'
+
+    b.style.userSelect = 'none'
+    b.style.webkitUserSelect = 'none'
+    b.style.MozUserSelect = 'none'
+    b.style.pointerEvents = 'none'
+
+    // Set the cursor at multiple levels
+    self.gutter.style.cursor = cursor
+    self.parent.style.cursor = cursor
+    document.body.style.cursor = cursor
+
+    // Cache the initial sizes of the pair.
+    calculateSizes.call(self)
+
+    // Determine the position of the mouse compared to the gutter
+    self.dragOffset = getMousePosition(e) - self.end
+  }
+
+  // adjust sizes to ensure percentage is within min size and gutter.
+  sizes = trimToMin(sizes)
+
+  // 5. Create pair and element objects. Each pair has an index reference to
+  // elements `a` and `b` of the pair (first and second elements).
+  // Loop through the elements while pairing them off. Every pair gets a
+  // `pair` object and a gutter.
+  //
+  // Basic logic:
+  //
+  // - Starting with the second element `i > 0`, create `pair` objects with
+  //   `a = i - 1` and `b = i`
+  // - Set gutter sizes based on the _pair_ being first/last. The first and last
+  //   pair have gutterSize / 2, since they only have one half gutter, and not two.
+  // - Create gutter elements and add event listeners.
+  // - Set the size of the elements, minus the gutter sizes.
+  //
+  // -----------------------------------------------------------------------
+  // |     i=0     |         i=1         |        i=2       |      i=3     |
+  // |             |                     |                  |              |
+  // |           pair 0                pair 1             pair 2           |
+  // |             |                     |                  |              |
+  // -----------------------------------------------------------------------
+  const pairs = []
+  elements = ids.map((id, i) => {
+    // Create the element object.
+    const element = {
+      element: elementOrSelector(id),
+      size: sizes[i],
+      minSize: minSizes[i],
+      i,
     }
 
-    if (isIE8) {
-        return {
-            setSizes,
-            destroy,
-        }
-    }
+    let pair
 
-    return {
-        setSizes,
-        getSizes,
-        collapse(i) {
-            adjustToMin(elements[i])
-        },
-        destroy,
+    if (i > 0) {
+      // Create the pair object with its metadata.
+      pair = {
+        a: i - 1,
+        b: i,
+        dragging: false,
+        direction,
         parent,
-        pairs,
+      }
+
+      pair[aGutterSize] = getGutterSize(
+        gutterSize,
+        i - 1 === 0,
+        false,
+        gutterAlign,
+      )
+      pair[bGutterSize] = getGutterSize(
+        gutterSize,
+        false,
+        i === ids.length - 1,
+        gutterAlign,
+      )
+
+      // if the parent has a reverse flex-direction, switch the pair elements.
+      if (
+        parentFlexDirection === 'row-reverse' ||
+        parentFlexDirection === 'column-reverse'
+      ) {
+        const temp = pair.a
+        pair.a = pair.b
+        pair.b = temp
+      }
     }
+
+    // Determine the size of the current element. IE8 is supported by
+    // staticly assigning sizes without draggable gutters. Assigns a string
+    // to `size`.
+    //
+    // IE9 and above
+    if (!isIE8) {
+      // Create gutter elements for each pair.
+      if (i > 0) {
+        const gutterElement = gutter(i, direction, element.element);
+        setGutterSize(gutterElement, gutterSize, i);
+
+        // append a button hide/show for first or last gutter
+        if (i == 1 || i === ids.length - 1) {
+          const but = document.createElement('span');
+          but.className = "gutter but " + direction;
+          if (i == 1 && direction != 'vertical') {
+            but.className += " first";
+          } else {
+            but.className += " last";
+          }
+          gutterElement.appendChild(but);
+          pair['but'] = but;
+          pair['butClick'] = butClick.bind(pair);
+          pair['but'][addEventListener](
+            'click',
+            pair['butClick'],
+          );
+        }
+
+        // Save bound event listener for removal later
+        pair[gutterStartDragging] = startDragging.bind(pair)
+        // Attach bound event listener
+        gutterElement[addEventListener](
+          'mousedown',
+          pair[gutterStartDragging],
+        )
+        gutterElement[addEventListener](
+          'touchstart',
+          pair[gutterStartDragging],
+        )
+        parent.insertBefore(gutterElement, element.element)
+        // Set gutterSize from element offsetWith or offsetHeight of created element is not working here
+        pair.gutter = gutterElement
+      }
+    }
+
+    setElementSize(
+      element.element,
+      element.size,
+      getGutterSize(
+        gutterSize,
+        i === 0,
+        i === ids.length - 1,
+        gutterAlign,
+      ),
+      i,
+    )
+
+    // After the first iteration, and we have a pair object, append it to the
+    // list of pairs.
+    if (i > 0) {
+      pairs.push(pair)
+    }
+
+    return element
+  })
+
+  function adjustToMin(element) {
+    const isLast = element.i === pairs.length
+    const pair = isLast ? pairs[element.i - 1] : pairs[element.i]
+
+    calculateSizes.call(pair)
+
+    const size = isLast ?
+      pair.size - element.minSize - pair[bGutterSize] :
+      element.minSize + pair[aGutterSize]
+
+    adjust.call(pair, size)
+  }
+
+  elements.forEach(element => {
+    const computedSize = element.element[getBoundingClientRect]()[dimension]
+
+    if (computedSize < element.minSize) {
+      if (expandToMin) {
+        adjustToMin(element)
+      } else {
+        // eslint-disable-next-line no-param-reassign
+        element.minSize = computedSize
+      }
+    }
+  })
+
+  function setSizes(newSizes) {
+    const trimmed = trimToMin(newSizes)
+    trimmed.forEach((newSize, i) => {
+      if (i > 0) {
+        const pair = pairs[i - 1]
+
+        const a = elements[pair.a]
+        const b = elements[pair.b]
+
+        a.size = trimmed[i - 1]
+        b.size = newSize
+        setElementSize(a.element, a.size, pair[aGutterSize], a.i)
+        setElementSize(b.element, b.size, pair[bGutterSize], b.i)
+      }
+    })
+  }
+
+  function destroy(preserveStyles, preserveGutter) {
+    pairs.forEach(pair => {
+      if (preserveGutter !== true) {
+        pair.parent.removeChild(pair.gutter)
+      } else {
+        pair.gutter[removeEventListener](
+          'mousedown',
+          pair[gutterStartDragging],
+        )
+        pair.gutter[removeEventListener](
+          'touchstart',
+          pair[gutterStartDragging],
+        )
+      }
+
+      if (preserveStyles !== true) {
+        const style = elementStyle(
+          dimension,
+          pair.a.size,
+          pair[aGutterSize],
+        );
+
+        Object.keys(style).forEach(prop => {
+          elements[pair.a].element.style[prop] = ''
+          elements[pair.b].element.style[prop] = ''
+        });
+      }
+    })
+  }
+
+  if (isIE8) {
+    return {
+      setSizes,
+      destroy,
+    }
+  }
+
+  return {
+    setSizes,
+    getSizes,
+    collapse(i) {
+      adjustToMin(elements[i])
+    },
+    destroy,
+    parent,
+    pairs,
+  }
 }
 
 // export default Split

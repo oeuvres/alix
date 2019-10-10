@@ -37,7 +37,7 @@ int max = Math.min(500, dic.size());
 <html>
   <head>
     <meta charset="UTF-8">
-    <link href="../static/alix.css" rel="stylesheet"/>
+    <link href="../static/obvil.css" rel="stylesheet"/>
   </head>
   <body>
     <table class="sortable" align="center">

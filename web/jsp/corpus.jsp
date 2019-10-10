@@ -70,7 +70,7 @@ else {
   <head>
     <meta charset="UTF-8">
     <title>Corpus [Alix]</title>
-    <link href="../static/alix.css" rel="stylesheet"/>
+    <link href="../static/obvil.css" rel="stylesheet"/>
     <script src="../static/js/corpus.js">//</script>
   </head>
   <body class="corpus">

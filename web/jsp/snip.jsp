@@ -5,10 +5,9 @@
   <head>
     <meta charset="UTF-8">
     <title>Recherche [Obvil]</title>
-    <link href="../static/alix.css" rel="stylesheet"/>
+    <link href="../static/obvil.css" rel="stylesheet"/>
   </head>
   <body class="results">
-    <div id="results">
       <%
 String sort = request.getParameter("sort");
 int hpp = getParameter(request, "hpp", 100);
@@ -25,7 +24,7 @@ if (start < 1) start = 1;
           </select>
         </label>
       </form>
-    
+    <main>
     <%
 String fieldName = TEXT;
 if (!"".equals(q)) {
@@ -76,7 +75,7 @@ if (!"".equals(q)) {
   }
 }
     %>
-    </div>
+    </main>
   </body>
   <script src="../static/js/snip.js">//</script>
 </html>

@@ -6,7 +6,7 @@ java.nio.file.Path
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="fr" lang="fr">
   <head>
     <meta charset="UTF-8"/>
-    <link href="../static/alix.css" rel="stylesheet"/>
+    <link href="../static/obvil.css" rel="stylesheet"/>
     <title>Status, Obvil</title>
   </head>
   <body>

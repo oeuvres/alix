@@ -5,7 +5,7 @@
   <head>
     <meta charset="UTF-8"/>
     <title>Alix</title>
-    <link rel="stylesheet" type="text/css" href="../static/alix.css"/>
+    <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
     <script src="../static/js/split.js">//</script>
   </head>
   <body class="split">
@@ -16,7 +16,7 @@
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
        tabindex="-1" />
         <span id="corpus"></span>
-        <input id="q" name="q" autocomplete="off" size="40" autofocus="true" placeholder="Victor Hugo + Molière ; Dieu"/>
+        <input id="q" name="q" autocomplete="off" size="40" autofocus="true" title="Victor Hugo + Molière ; Dieu"/>
       </form>
       <div id="tabs">
         <a href="corpus.jsp" target="page" class="tab">Corpus</a>

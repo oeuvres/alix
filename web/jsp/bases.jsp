@@ -10,7 +10,7 @@ java.util.Properties
   <head>
     <meta charset="UTF-8">
     <title>OBVIL, bases à chercher</title>
-    <link href="static/alix.css" rel="stylesheet"/>
+    <link href="static/obvil.css" rel="stylesheet"/>
   </head>
   <body>
     <article class="chapter">

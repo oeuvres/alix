@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8">
     <title>Nuage de mots</title>
-    <link rel="stylesheet" type="text/css" href="../static/alix.css"/>
+    <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
   </head>
   <body class="cloud">
     <form id="filter">

@@ -5,7 +5,7 @@
   <head>
     <meta charset="UTF-8"/>
     <title>Facettes</title>
-    <link rel="stylesheet" type="text/css" href="../static/alix.css"/>
+    <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
     <base target="page"/>
   </head>
   <body class="facet">
@@ -38,7 +38,7 @@ if (terms.size() > 0) {
       </select>
     </form>
     <% 
-if (terms.size() > 0) out.println("<h3>"+facetName+" (occurrences)</h3>");
+if (terms.size() > 0) out.println("<h3>"+facetName+" (chapitres, occurrences)</h3>");
 else out.println("<h3>"+facetName+" (chapitres)</h3>");
     %>
     <div class="facets">
@@ -57,15 +57,16 @@ if (terms.size() > 0) {
   else facetEnum.sort();
   while (facetEnum.hasNext()) {
     facetEnum.next();
+    int hits = facetEnum.hits();
+    int docs = facetEnum.docs();
     long occs = facetEnum.occs();
     if (occs < 1) continue; // in alpha order, try next
     int n = facetEnum.n();
-    int hits = facetEnum.hits();
-    out.print("<div>");
+    out.print("<div class=\"term\">");
     out.print("<a href=\"snip.jsp?sort="+facetField+"&amp;q="+q+"&start="+(n+1)+"&amp;hpp="+hits+"\">");
+    out.print("<span><span class=\"occs\">"+occs+"</span> ("+hits+" <i>/"+docs+"</i>)</span>.    ");
     out.print(facetEnum.term());
     out.print("</a>");
-    out.print(" ("+occs+")");
     out.println("</div>");
   }
 }
@@ -78,7 +79,10 @@ else {
     facetEnum.next();
     int docs = facetEnum.docs();
     if (docs < 1) continue; // in alpha order, try next
-    out.println("<div>"+facetEnum.term()+" ("+docs+")</div>");
+    out.print("<div class=\"term\">");
+    out.print("<span><i>"+docs+"</i></span>.    ");
+    out.print(facetEnum.term());
+    out.println("</div>");
   }
 }
 

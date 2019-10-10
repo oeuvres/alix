@@ -41,7 +41,7 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
   <head>
     <meta charset="UTF-8">
     <link href="../static/vendors/teinte.css" rel="stylesheet"/>
-    <link href="../static/alix.css" rel="stylesheet"/>
+    <link href="../static/obvil.css" rel="stylesheet"/>
   <%
 /**
  * display a doc from the index.
@@ -125,7 +125,7 @@ if (bibl != null) {
   out.println("</header>");
 }
   %>
-    <article class="chapter">
+    <main>
       <form id="qform" action="#">
         <input type="submit" 
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
@@ -295,7 +295,7 @@ if (document != null) {
   }
 }
     %>
-    </article>
+    </main>
     <script src="../static/js/doc.js">//</script>
   </body>
 </html>

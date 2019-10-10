@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8"/>
     <title>Chronologie, Alix</title>
-    <link rel="stylesheet" type="text/css" href="../static/alix.css"/>
+    <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
   </head>
   <body class="chrono">
     <form id="qform">

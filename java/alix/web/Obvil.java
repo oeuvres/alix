@@ -106,7 +106,9 @@ public class Obvil extends HttpServlet
    */
   private void props() throws ServletException
   {
-    obvilDir = getServletContext().getRealPath("WEB-INF/obvil")+"/";
+    obvilDir = getServletContext().getRealPath("WEB-INF/obvil");
+    // ensure trrailing slash (getRealPath() could fiffer between tomcat versions)
+    if(!obvilDir.endsWith("/")) obvilDir += "/";
     File dir = new File(obvilDir);
     File[] ls = dir.listFiles();
     baseList.clear();
