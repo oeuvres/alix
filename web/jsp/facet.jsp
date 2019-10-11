@@ -37,12 +37,10 @@ if (terms.size() > 0) {
         %>
       </select>
     </form>
-    <% 
-if (terms.size() > 0) out.println("<h3>"+facetName+" (chapitres, occurrences)</h3>");
-else out.println("<h3>"+facetName+" (chapitres)</h3>");
-    %>
-    <div class="facets">
+    <main>
     <%
+if (terms.size() > 0) out.println("<h4>occurrences (chapitres) "+facetName+"</h4>");
+else out.println("<h4>(chapitres) "+facetName+"</h4>");
 Facet facet = alix.facet(facetField, TEXT);
 // a query
 if (terms.size() > 0) { 
@@ -64,7 +62,7 @@ if (terms.size() > 0) {
     int n = facetEnum.n();
     out.print("<div class=\"term\">");
     out.print("<a href=\"snip.jsp?sort="+facetField+"&amp;q="+q+"&start="+(n+1)+"&amp;hpp="+hits+"\">");
-    out.print("<span><span class=\"occs\">"+occs+"</span> ("+hits+" <i>/"+docs+"</i>)</span>.    ");
+    out.print("<span><span class=\"occs\">"+occs+"</span> ("+hits+" <i>/"+docs+"</i>)</span>    ");
     out.print(facetEnum.term());
     out.print("</a>");
     out.println("</div>");
@@ -80,14 +78,14 @@ else {
     int docs = facetEnum.docs();
     if (docs < 1) continue; // in alpha order, try next
     out.print("<div class=\"term\">");
-    out.print("<span><i>"+docs+"</i></span>.    ");
+    out.print("<span>(<i>"+docs+"</i>)</span>    ");
     out.print(facetEnum.term());
     out.println("</div>");
   }
 }
 
     %>
-    </div>
+    </main>
     <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
   </body>
 </html>

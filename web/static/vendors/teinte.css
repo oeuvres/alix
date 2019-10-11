@@ -417,11 +417,6 @@ h5, h6 {
 
 header {
   clear: both;
-  padding: 1ex;
-  border: dashed #CCC 1px;
-  -webkit-border-radius: 1ex;
-  -moz-border-radius: 1ex;
-  border-radius: 1ex;
 }
 
 header ul {
@@ -622,7 +617,11 @@ pre {
 }
 
 q {
-  quotes: '''';
+  quotes: none;
+}
+
+q:before, q:after {
+  content:'';
 }
 
 q q {
@@ -1348,7 +1347,7 @@ div.lg {
 }
 
 .marginalia {
-  display: block;
+  display: inline-block;
   float: right;
   text-indent: 0;
   clear: both;
@@ -1356,7 +1355,9 @@ div.lg {
   border: 1px #C9C6BB solid;
   box-shadow: 10px 0px 10px #E2DED0;
   padding: 0.2ex 1ex !important;
-  background: #FDFDFC;
+  background: rgba(255, 255, 255, 0.7);
+  z-index: 5;
+  position: relative;
   width: 15em;
   text-align: right;
   line-height: 120%;

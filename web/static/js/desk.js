@@ -1,12 +1,12 @@
 // open the split
 var splitH = Split(['#aside', '#main'], {
   sizes: [20, 80],
-  gutterSize: 10,
+  gutterSize: 3,
 });
 var splitV = Split(['#body', '#footer'], {
   sizes: [70, 30],
   direction: 'vertical',
-  gutterSize: 9,
+  gutterSize: 3,
 });
 
 

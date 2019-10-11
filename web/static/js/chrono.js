@@ -65,7 +65,7 @@ function draw(div, data, labels) {
         fillGraph: true,
       },
     },
-    colors:['rgba(128, 70, 13, 0.7)', 'rgba(26, 26, 128, 0.5)', 'rgba(191, 170, 143, 0.5)', 'rgba(192, 128, 0, 0.5)', 'rgba(0, 128, 192, 0.5)'],
+    colors:['rgba(146,137,127, 0.7)', 'rgba(234, 91, 12, 0.5)', 'rgba(26, 26, 128, 0.5)', 'rgba(192, 128, 0, 0.5)', 'rgba(0, 128, 192, 0.5)'],
     strokeBorderWidth: 0.5,
     strokeWidth: 5,
     drawGapEdgePoints: true,

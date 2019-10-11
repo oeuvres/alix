@@ -26,72 +26,66 @@ package alix.lucene.analysis;
 
 import java.io.IOException;
 
-import org.apache.lucene.analysis.TokenFilter;
+import org.apache.lucene.analysis.FilteringTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import alix.fr.Tag;
 
 /**
- * A token Filter to plug after a lemmatizer filter. Positions of striped tokens
- * are deleted. 
- * 
- * @author fred
- *
+ * A token filter counting tokens. 
+ * Before a CachingTokenFilter, it allows to get some 
+ * counts if the token stream has been exhausted.
  */
-public class TokenLemCloud extends TokenFilter
+
+public class TokenOffsets extends FilteringTokenFilter
 {
-  // no sense to record stats here if filter is not behind a caching filer
-  // exhausting tokens before the index is writed.
+  /** Count tokens for this pass */
+  int length;
+  /** Last position */
+  int pos;
   /** The term provided by the Tokenizer */
-  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  PositionIncrementAttribute posAtt = addAttribute(PositionIncrementAttribute.class);
   /** A linguistic category as a short number, from Tag */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-  /** A lemma when possible */
-  private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class); // ? needs to be declared in the tokenizer
 
-  public TokenLemCloud(TokenStream in)
+  public TokenOffsets(TokenStream in)
   {
     super(in);
   }
 
+  @Override
   protected boolean accept() throws IOException
   {
     int tag = flagsAtt.getFlags();
-    // filter some non semantic token
-    if (Tag.isPun(tag) || Tag.isNum(tag)) return false;
-    // filter some names
-    if (Tag.isName(tag)) {
-      if (termAtt.length() < 3) return false;
-      // filter first names ?
-      return true;
-    }
-    // replace term by lemma for adjectives and verbs
-    if (Tag.isAdj(tag) || Tag.isVerb(tag) || Tag.isSub(tag))
-      if (lemAtt.length() != 0) termAtt.setEmpty().append(lemAtt);
+    if (!Tag.isPun(tag)) length++;
+    pos += posAtt.getPositionIncrement();
     return true;
   }
 
-  @Override
-  public final boolean incrementToken() throws IOException
-  {
-    while (input.incrementToken()) {
-      if (accept()) return true;
-    }
-    return false;
+  /**
+   * Returns the width of document in positions (with also the skipped ones).
+   * @return
+   */
+  public int width() {
+    return pos;
+  }
+
+  /**
+   * Returns the count of tokens.
+   * @return
+   */
+  public int length() {
+    return length;
   }
 
   @Override
   public void reset() throws IOException
   {
     super.reset();
-  }
-
-  @Override
-  public void end() throws IOException
-  {
-    super.end();
+    length = 0;
+    pos = 0;
   }
 
 }

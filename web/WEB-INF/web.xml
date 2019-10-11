@@ -4,7 +4,7 @@
   <description>Corpus explorer</description>
   <servlet>
     <servlet-name>obvil</servlet-name>
-    <servlet-class>alix.web.Obvil</servlet-class>
+    <servlet-class>obvil.web.Obvil</servlet-class>
   </servlet>
   <!-- Override default servlet, limit to static resources -->
   <servlet-mapping>

@@ -1,37 +1,26 @@
 /*
- * © Pierre DITTGEN <pierre@dittgen.org> 
- * 
- * Alix : [A] [L]ucene [I]ndexer for [X]ML documents
- * 
- * Alix is a command-line tool intended to parse XML documents and to index
- * them into a Lucene Index
- * 
- * This software is governed by the CeCILL-C license under French law and
- * abiding by the rules of distribution of free software.  You can  use, 
- * modify and/ or redistribute the software under the terms of the CeCILL-C
- * license as circulated by CEA, CNRS and INRIA at the following URL
- * "http://www.cecill.info". 
- * 
- * As a counterpart to the access to the source code and  rights to copy,
- * modify and redistribute granted by the license, users are provided only
- * with a limited warranty  and the software's author,  the holder of the
- * economic rights,  and the successive licensors  have only  limited
- * liability. 
- * 
- * In this respect, the user's attention is drawn to the risks associated
- * with loading,  using,  modifying and/or developing or reproducing the
- * software by the user in light of its specific status of free software,
- * that may mean  that it is complicated to manipulate,  and  that  also
- * therefore means  that it is reserved for developers  and  experienced
- * professionals having in-depth computer knowledge. Users are therefore
- * encouraged to load and test the software's suitability as regards their
- * requirements in conditions enabling the security of their systems and/or 
- * data to be ensured and,  more generally, to use and operate it in the 
- * same conditions as regards security. 
- * 
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
- * 
+ * Copyright 2008 Pierre DITTGEN <pierre@dittgen.org> 
+ *                Frédéric Glorieux <frederic.glorieux@fictif.org>
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
+ *
+ * Alix, A Lucene Indexer for XML documents
+ * Alix is a tool to index XML text documents
+ * in Lucene https://lucene.apache.org/core/
+ * including linguistic expertise for French.
+ * Project has been started in 2008 under the javacrim project (sf.net)
+ * for a java course at Inalco  http://www.er-tim.fr/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package alix.lucene;
 
@@ -117,7 +106,7 @@ public class Alix
   public static final String BOOKID = "alix:bookid";
   /** Mandatory field, unique id provide by user for all documents */
   public static final String ID = "alix:id";
-  /** Mandatory field, define the level of a leaf (book/chapter, article)  */
+  /** Mandatory field, define the level of a leaf (book/chapter, article) */
   public static final String LEVEL = "alix:level";
   /** Level type, book containing chapters */
   public static final String BOOK = "book";
@@ -125,8 +114,8 @@ public class Alix
   public static final String CHAPTER = "chapter";
   /** Level type, independent article */
   public static final String ARTICLE = "article";
-  /** Suffix for a numeric field containing length of a text field in token */
-  public static final String _LENGTH = "_length";
+  /** A binary field */
+  public static final String _OFFSETS = "_offsets";
   /** Suffix for a numeric field containing length of a text field in token */
   public static final String _WIDTH = "_width";
   /** Suffix for a text field containing only names */
@@ -264,8 +253,8 @@ public class Alix
   }
 
   /**
-   * Get a reader for this lucene index, allow to force renew if force is true.
-   * If a writer is already opened, 
+   * Get a reader for this lucene index, allow to force renew if force is true. If
+   * a writer is already opened,
    * 
    * @param force
    * @return
@@ -282,6 +271,7 @@ public class Alix
 
   /**
    * A real time reader only used for updates.
+   * 
    * @param force
    * @return
    * @throws IOException
@@ -345,7 +335,8 @@ public class Alix
   }
 
   /**
-   * Get infos for  field.
+   * Get infos for field.
+   * 
    * @param field
    * @return
    * @throws IOException
@@ -355,9 +346,10 @@ public class Alix
     reader(); // ensure reader or decache
     return fieldInfos.fieldInfo(field);
   }
-  
+
   /**
-   * Returns an array in docId order with the value of an intPoint field (ex: year).
+   * Returns an array in docId order with the value of an intPoint field (ex:
+   * year).
    * 
    * @return
    * @throws IOException
@@ -499,12 +491,14 @@ public class Alix
   }
 
   /**
-   * Get a “facet” object, a cached list of terms from a field 
-   * of type SortedDocValuesField or SortedSetDocValuesField ;
-   * to get lexical stats from a text field.
+   * Get a “facet” object, a cached list of terms from a field of type
+   * SortedDocValuesField or SortedSetDocValuesField ; to get lexical stats from a
+   * text field.
    * 
-   * @param facetField A SortedDocValuesField or a SortedSetDocValuesField fieldName.
-   * @param textField A indexed TextField.
+   * @param facetField
+   *          A SortedDocValuesField or a SortedSetDocValuesField fieldName.
+   * @param textField
+   *          A indexed TextField.
    * @return
    * @throws IOException
    */
@@ -514,15 +508,17 @@ public class Alix
   }
 
   /**
-   * Get a “facet” object, a cached list of terms from a field 
-   * of type SortedDocValuesField or SortedSetDocValuesField ;
-   * to get lexical stats from a text field.
-   * An optional “term” (field:value) maybe used to catch a “cover”
+   * Get a “facet” object, a cached list of terms from a field of type
+   * SortedDocValuesField or SortedSetDocValuesField ; to get lexical stats from a
+   * text field. An optional “term” (field:value) maybe used to catch a “cover”
    * document (ex: a document carrying metada avbout a title or an author).
    *
-   * @param facetField A SortedDocValuesField or a SortedSetDocValuesField fieldName.
-   * @param textField A indexed TextField.
-   * @param coverTerm A couple field:value to catch one document by facet term.
+   * @param facetField
+   *          A SortedDocValuesField or a SortedSetDocValuesField fieldName.
+   * @param textField
+   *          A indexed TextField.
+   * @param coverTerm
+   *          A couple field:value to catch one document by facet term.
    * @return
    * @throws IOException
    */
@@ -538,8 +534,11 @@ public class Alix
 
   /**
    * Get a Scale object, useful to buil graphs with a int field
-   * @param fieldInt A NumericDocValuesField used as a sorted value.
-   * @param fieldText A Texfield to count occurences, used as a size for docs.
+   * 
+   * @param fieldInt
+   *          A NumericDocValuesField used as a sorted value.
+   * @param fieldText
+   *          A Texfield to count occurences, used as a size for docs.
    * @return
    * @throws IOException
    */
@@ -553,9 +552,9 @@ public class Alix
     return scale;
   }
 
-  
   /**
    * Get a frequence object.
+   * 
    * @param field
    * @return
    * @throws IOException
@@ -569,9 +568,10 @@ public class Alix
     cache(key, freqs);
     return freqs;
   }
-  
+
   /**
    * Get a co-occurrences reader.
+   * 
    * @param field
    * @return
    * @throws IOException
@@ -585,17 +585,16 @@ public class Alix
     cache(key, cooc);
     return cooc;
   }
-  
+
   /**
    * For a field, return an array in docId order, with the total number of tokens
-   * by doc.
-   * Term vector cost 1 s. / 1000 books and is not precise.
-   * Norms for similarity is not enough precise (1 byte) see
-   * SimilarityBase.computeNorm()
+   * by doc. Term vector cost 1 s. / 1000 books and is not precise. Norms for
+   * similarity is not enough precise (1 byte) see SimilarityBase.computeNorm()
    * https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/apache/lucene/search/similarities/SimilarityBase.java#L185
-   * A field could be recorded at indexation, then user knows its name and get it by docInt().
-   * Solution: pre-calculate the sze by a cached Freqs object, which have loop
-  
+   * A field could be recorded at indexation, then user knows its name and get it
+   * by docInt(). Solution: pre-calculate the sze by a cached Freqs object, which
+   * have loop
+   * 
    * 
    * @param field
    * @return
@@ -607,9 +606,10 @@ public class Alix
   }
 
   /**
-   * Get docId parent documents (books) of nested documents (chapters),
-   * sorted by a sort specification.
-   * @throws IOException 
+   * Get docId parent documents (books) of nested documents (chapters), sorted by
+   * a sort specification.
+   * 
+   * @throws IOException
    */
   public int[] books(Sort sort) throws IOException
   {
@@ -622,13 +622,13 @@ public class Alix
     int length = top.scoreDocs.length;
     ScoreDoc[] docs = top.scoreDocs;
     books = new int[length];
-    for (int i=0; i < length; i++) {
+    for (int i = 0; i < length; i++) {
       books[i] = docs[i].doc;
     }
     cache(key, books);
     return books;
   }
-  
+
   /**
    * An analyzer used for query parsing
    */
