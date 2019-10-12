@@ -1,3 +1,31 @@
+/*
+ * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
+ *                Frédéric Glorieux <frederic.glorieux@fictif.org>
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
+ *
+ * Alix, A Lucene Indexer for XML documents.
+ * Alix is a tool to index and search XML text documents
+ * in Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French.
+ * Alix has been started in 2009 under the javacrim project (sf.net)
+ * for a java course at Inalco  http://www.er-tim.fr/
+ * Alix continues the concepts of SDX under a non viral license.
+ * SDX: Documentary System in XML.
+ * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * http://savannah.nongnu.org/projects/sdx/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package alix.lucene.analysis;
 
 import java.io.IOException;
@@ -21,12 +49,42 @@ import alix.util.Calcul;
 import alix.util.Char;
 
 /**
- * A lucene tokenizer for French, adapted fron Lucene CharTokenizer.
- * 
- * @author glorieux-f
- *
+ * <p>
+ * A Lucene tokenizer for XML/html (and French).
+ * Has been tested with thousands of documents in html or XML/TEI.
+ * Goal is to keep all tags to store the document, 
+ * and get exact offsets of text tokens,
+ * allowing hiliting of words, without perturbation of tags.
+ * </p>
+ * The content inside “skip tags” is not indexed.
+ * <ul>
+ *  <li>&lt;style></li>
+ *  <li>&lt;script></li>
+ *  <li>&lt;teiHeader></li>
+ * </ul>
+ * The tokenizer also recognize commands sent as processing instructions
+ * (for section of documents wanted for display but not for index).
+ * <ul>
+ *  <li>&lt;?index_off?>: stop to send tokens from this point</li>
+ *  <li>&lt;?index_on?> restart token stream.</li>
+ * </ul>
+ * Some tags are interpreted as structural events.
+ * This is useful for sentence separation (a title may not finish with a dot)
+ * <ul>
+ *  <li>&lt;p></li>
+ *  <li>&lt;h1>, &lt;h2>, &lt;h3>, &lt;h4>, &lt;h5>, &lt;h6></li>
+ * </ul>
+ * <p>
+ * The token separation follow Latin punctuation and should be compatible 
+ * with most European languages (but is not extensively tested).
+ * </p>
+ * <p>
+ * The resolution of elision (') and hyphen (-) is language specific (French).
+ * </p>
+ * <p>
+ * </p>
  */
-public class TokenizerFr extends Tokenizer
+public class FrTokenizer extends Tokenizer
 {
   /** Current char offset */
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
@@ -68,6 +126,12 @@ public class TokenizerFr extends Tokenizer
   public static final HashMap<CharsAtt, CharsAtt> TAGS = new HashMap<CharsAtt, CharsAtt>();
   static {
     TAGS.put(new CharsAtt("p"), new CharsAtt("<p>"));
+    TAGS.put(new CharsAtt("h1"), new CharsAtt("<p>"));
+    TAGS.put(new CharsAtt("h2"), new CharsAtt("<p>"));
+    TAGS.put(new CharsAtt("h3"), new CharsAtt("<p>"));
+    TAGS.put(new CharsAtt("h4"), new CharsAtt("<p>"));
+    TAGS.put(new CharsAtt("h5"), new CharsAtt("<p>"));
+    TAGS.put(new CharsAtt("h6"), new CharsAtt("<p>"));
     TAGS.put(new CharsAtt("section"), new CharsAtt("<section>"));
     TAGS.put(new CharsAtt("/section"), new CharsAtt("</section>"));
   }
@@ -83,7 +147,7 @@ public class TokenizerFr extends Tokenizer
   /** Store closing tag to skip */
   private CharsAtt skip = null;
 
-  public TokenizerFr()
+  public FrTokenizer()
   {
     this(true);
   }
@@ -93,7 +157,7 @@ public class TokenizerFr extends Tokenizer
    * 
    * @param ml
    */
-  public TokenizerFr(boolean xml)
+  public FrTokenizer(boolean xml)
   {
     super(new AlixAttributeFactory(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
     this.xml = xml;
@@ -335,7 +399,7 @@ public class TokenizerFr extends Tokenizer
         term.append(c);
         if (hyphOffset > 0 && c != '-') test.append(c);
         if (c == '\'') {
-          CharsAtt val = CharsMaps.ELLISION.get(term);
+          CharsAtt val = CharsMaps.ELISION.get(term);
           if (val != null) {
             val.copyTo(term);
             break;
@@ -422,33 +486,6 @@ public class TokenizerFr extends Tokenizer
     {
       if (attClass == CharTermAttribute.class) return new CharsAtt();
       return delegate.createAttributeInstance(attClass);
-    }
-  }
-
-  /**
-   * Get offsets of a text as an array of ints that could be indexed in a binary
-   * field.
-   * 
-   * @param text
-   * @param offsets
-   * @throws IOException
-   */
-  static public void offsets(String text, OffsetList offsets) throws IOException
-  {
-    offsets.reset();
-    Tokenizer tokens = new TokenizerFr();
-    tokens.setReader(new StringReader(text));
-    // listen to offsets
-    OffsetAttribute offsetAtt = tokens.addAttribute(OffsetAttribute.class);
-    try {
-      tokens.reset();
-      while (tokens.incrementToken()) {
-        offsets.put(offsetAtt.startOffset(), offsetAtt.endOffset());
-      }
-      tokens.end();
-    }
-    finally {
-      tokens.close();
     }
   }
 

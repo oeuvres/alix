@@ -1,14 +1,18 @@
 /*
- * Copyright 2008 Pierre DITTGEN <pierre@dittgen.org> 
+ * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents
- * Alix is a tool to index XML text documents
+ * Alix, A Lucene Indexer for XML documents.
+ * Alix is a tool to index and search XML text documents
  * in Lucene https://lucene.apache.org/core/
- * including linguistic expertise for French.
- * Project has been started in 2008 under the javacrim project (sf.net)
+ * including linguistic expertness for French.
+ * Alix has been started in 2009 under the javacrim project (sf.net)
  * for a java course at Inalco  http://www.er-tim.fr/
+ * Alix continues the concepts of SDX under a non viral license.
+ * SDX: Documentary System in XML.
+ * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * http://savannah.nongnu.org/projects/sdx/
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,22 +38,25 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import alix.fr.Tag;
 
 /**
- * A token Filter to plug after a lemmatizer filter. Positions of striped tokens
- * are deleted. 
- * 
- * @author fred
- *
+ * A final token filter before indexation,
+ * to plug after a lemmatizer filter,
+ * providing most significant tokens for word cloud. 
+ * Index lemma instead of forms when available.
+ * Strip punctuation and numbers.
+ * Positions of striped tokens  are deleted.
+ * This allows simple computation of a token context
+ * (ex: span queries, co-occurrences).
  */
 public class TokenLemCloud extends TokenFilter
 {
-  // no sense to record stats here if filter is not behind a caching filer
-  // exhausting tokens before the index is writed.
   /** The term provided by the Tokenizer */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-  /** A linguistic category as a short number, from Tag */
+  /** A linguistic category as a short number, see {@link Tag} */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+  /** A normalized orthographic form */
+  private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
   /** A lemma when possible */
-  private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class); // ? needs to be declared in the tokenizer
+  private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
 
   public TokenLemCloud(TokenStream in)
   {
@@ -61,15 +68,20 @@ public class TokenLemCloud extends TokenFilter
     int tag = flagsAtt.getFlags();
     // filter some non semantic token
     if (Tag.isPun(tag) || Tag.isNum(tag)) return false;
+    // replace term by lemma for substantives, adjectives and verbs
+    if ((Tag.isAdj(tag) || Tag.isVerb(tag) || Tag.isSub(tag)) && (lemAtt.length() != 0)) {
+      termAtt.setEmpty().append(lemAtt);
+    }
+    // or take the normalized form
+    else {
+      termAtt.setEmpty().append(orthAtt);
+    }
     // filter some names
     if (Tag.isName(tag)) {
-      if (termAtt.length() < 3) return false;
+      // if (termAtt.length() < 3) return false;
       // filter first names ?
       return true;
     }
-    // replace term by lemma for adjectives and verbs
-    if (Tag.isAdj(tag) || Tag.isVerb(tag) || Tag.isSub(tag))
-      if (lemAtt.length() != 0) termAtt.setEmpty().append(lemAtt);
     return true;
   }
 

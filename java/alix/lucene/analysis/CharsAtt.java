@@ -1,14 +1,18 @@
 /*
- * Copyright 2008 Pierre DITTGEN <pierre@dittgen.org> 
+ * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents
- * Alix is a tool to index XML text documents
+ * Alix, A Lucene Indexer for XML documents.
+ * Alix is a tool to index and search XML text documents
  * in Lucene https://lucene.apache.org/core/
- * including linguistic expertise for French.
- * Project has been started in 2008 under the javacrim project (sf.net)
+ * including linguistic expertness for French.
+ * Alix has been started in 2009 under the javacrim project (sf.net)
  * for a java course at Inalco  http://www.er-tim.fr/
+ * Alix continues the concepts of SDX under a non viral license.
+ * SDX: Documentary System in XML.
+ * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * http://savannah.nongnu.org/projects/sdx/
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,10 +43,9 @@ import alix.util.Chain;
 import alix.util.Char;
 
 /**
- * An implementation of CharTermAttribute for fast search in hash of strings.
- * 
- * @author fred
- *
+ * An implementation of Lucene {@link CharTermAttribute} designed to be
+ * an efficient key in an HashMap, and with efficient tools for String manipulation
+ * (ex: capitalize).
  */
 public class CharsAtt extends AttributeImpl
     implements CharTermAttribute, TermToBytesRefAttribute, Cloneable, Comparable<CharsAtt>
@@ -75,7 +78,11 @@ public class CharsAtt extends AttributeImpl
     s.getChars(0, len, this.chars, 0);
   }
 
-  /** Copy chars from a mutable Chain object, getBytesRef() will not be available. Used as a key in HashMap. */
+  /** 
+   * Copy chars from a mutable String {@link Chain}.
+   * Use it to build an optimized key in an HashMap. 
+   * Do not used in a token stream, getBytesRef() will not be available.
+   */
   public CharsAtt(Chain chain)
   {
     len = chain.length();
@@ -83,7 +90,9 @@ public class CharsAtt extends AttributeImpl
     chain.getChars(chars);
   }
 
-  /** Copy a token attribute, used as a key in a map.  */
+  /** 
+   * Copy a token attribute, used as a key in a map.
+   */
   public CharsAtt(CharsAtt token)
   {
     len = token.len;
@@ -145,12 +154,16 @@ public class CharsAtt extends AttributeImpl
     return this;
   }
 
+  /**
+   * Test if there is no chars registred.
+   * @return
+   */
   public final boolean isEmpty()
   {
     return (len == 0);
   }
+  
   // *** TermToBytesRefAttribute interface ***
-
   @Override
   public BytesRef getBytesRef()
   {
@@ -180,7 +193,6 @@ public class CharsAtt extends AttributeImpl
   }
 
   // *** Appendable interface ***
-
   @Override
   public final CharTermAttribute append(CharSequence csq)
   {
@@ -275,6 +287,11 @@ public class CharsAtt extends AttributeImpl
     return this;
   }
   
+  /**
+   * Copy a {@link CharTermAttribute} in the buffer.
+   * @param ta
+   * @return
+   */
   public final CharTermAttribute copy(CharTermAttribute ta)
   {
     len = ta.length();
@@ -292,7 +309,13 @@ public class CharsAtt extends AttributeImpl
     chars[len++] = 'l';
     return this;
   }
-
+  
+  /**
+   * Convert all chars from the buffer to lower case.
+   * To avoid default JDK conversion,
+   * some efficiency come from tests with the {@link Char}.
+   * @return
+   */
   public CharsAtt toLower()
   {
     hash = 0;
@@ -304,6 +327,13 @@ public class CharsAtt extends AttributeImpl
     }
     return this;
   }
+
+  /**
+   * Try to capitalize (initial capital only) decently,
+   * according to some rules available in latin language.
+   * ex: états-unis -> États-Unis.
+   * @return
+   */
   public CharsAtt capitalize()
   {
     hash = 0;
@@ -343,13 +373,18 @@ public class CharsAtt extends AttributeImpl
     return t;
   }
 
-  public boolean endsWith(final String o)
+  /**
+   * Test a suffix, char by char.
+   * @param suffix
+   * @return
+   */
+  public boolean endsWith(final String suffix)
   {
-    final int olen = o.length();
+    final int olen = suffix.length();
     if (olen > len) return false;
     int i = len - 1;
     for (int j = olen - 1; j >=0; j--) {
-      if (chars[i] != o.charAt(j)) return false;
+      if (chars[i] != suffix.charAt(j)) return false;
       i--;
     }
     return true;
@@ -405,6 +440,11 @@ public class CharsAtt extends AttributeImpl
     else return false;
   }
   
+  /**
+   * Change a char at a specific position.
+   * @param pos
+   * @param c
+   */
   public void setCharAt(int pos, char c)
   {
     hash = 0;
@@ -464,6 +504,11 @@ public class CharsAtt extends AttributeImpl
     return h;
   }
 
+  /**
+   * String comparison, add efficiency in a HashMap in case of hash code collisions.
+   * @param string
+   * @return
+   */
   public int compareTo(String string)
   {
     char[] chars = this.chars;

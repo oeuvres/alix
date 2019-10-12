@@ -1,14 +1,18 @@
 /*
- * Copyright 2008 Pierre DITTGEN <pierre@dittgen.org> 
+ * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents
- * Alix is a tool to index XML text documents
+ * Alix, A Lucene Indexer for XML documents.
+ * Alix is a tool to index and search XML text documents
  * in Lucene https://lucene.apache.org/core/
- * including linguistic expertise for French.
- * Project has been started in 2008 under the javacrim project (sf.net)
+ * including linguistic expertness for French.
+ * Alix has been started in 2009 under the javacrim project (sf.net)
  * for a java course at Inalco  http://www.er-tim.fr/
+ * Alix continues the concepts of SDX under a non viral license.
+ * SDX: Documentary System in XML.
+ * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * http://savannah.nongnu.org/projects/sdx/
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +34,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
@@ -39,7 +42,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.document.Document;
@@ -62,7 +64,6 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -76,27 +77,21 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
 import alix.fr.Tag;
-import alix.lucene.analysis.AnalyzerAlix;
 import alix.lucene.analysis.CharsLemAtt;
-import alix.lucene.analysis.TokenCompound;
-import alix.lucene.analysis.TokenLem;
-import alix.lucene.analysis.TokenizerFr;
+import alix.lucene.analysis.FrAnalyzer;
 import alix.lucene.search.Facet;
 import alix.lucene.search.Scale;
 import alix.lucene.search.Freqs;
 import alix.lucene.search.TermList;
-import alix.lucene.search.TopTerms;
 import alix.lucene.util.Cooc;
 
 /**
  * Alix entry-point
  * 
- * @author Pierre DITTGEN (2012, original idea, creation)
- * @author glorieux-f
+ * @author Pierre DITTGEN (2009, original idea, creation)
  */
 public class Alix
 {
@@ -158,6 +153,8 @@ public class Alix
   private IndexSearcher searcher;
   /** The IndexWriter if requested */
   private IndexWriter writer;
+  /** Analyzer for indexation and query */
+  final private Analyzer analyzer;
 
   /**
    * Avoid construction, maintain a pool by file path to ensure unicity.
@@ -174,6 +171,7 @@ public class Alix
     this.similarity = new BM25Similarity(); // default similarity
     // dir = FSDirectory.open(indexPath);
     dir = MMapDirectory.open(path); // https://dzone.com/articles/use-lucene’s-mmapdirectory
+    analyzer = new FrAnalyzer();
   }
 
   /**
@@ -217,7 +215,6 @@ public class Alix
   public IndexWriter writer(final Similarity similarity) throws IOException
   {
     if (writer != null && writer.isOpen()) return writer;
-    Analyzer analyzer = new AnalyzerAlix();
     IndexWriterConfig conf = new IndexWriterConfig(analyzer);
     conf.setUseCompoundFile(false); // show separate file by segment
     // may needed, increase the max heap size to the JVM (eg add -Xmx512m or
@@ -533,7 +530,7 @@ public class Alix
   }
 
   /**
-   * Get a Scale object, useful to buil graphs with a int field
+   * Get a Scale object, useful to buil graphs with an int field.
    * 
    * @param fieldInt
    *          A NumericDocValuesField used as a sorted value.
@@ -592,7 +589,7 @@ public class Alix
    * similarity is not enough precise (1 byte) see SimilarityBase.computeNorm()
    * https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/apache/lucene/search/similarities/SimilarityBase.java#L185
    * A field could be recorded at indexation, then user knows its name and get it
-   * by docInt(). Solution: pre-calculate the sze by a cached Freqs object, which
+   * by docInt(). Solution: pre-calculate the lengths by a cached Freqs object, which
    * have loop
    * 
    * 
@@ -629,31 +626,14 @@ public class Alix
     return books;
   }
 
-  /**
-   * An analyzer used for query parsing
-   */
-  static class QueryAnalyzer extends Analyzer
-  {
 
-    @Override
-    protected TokenStreamComponents createComponents(String fieldName)
-    {
-      final Tokenizer source = new TokenizerFr();
-      TokenStream result = new TokenLem(source);
-      result = new TokenCompound(result, 5);
-      return new TokenStreamComponents(source, result);
-    }
 
-  }
-
-  public static QueryAnalyzer qAnalyzer = new QueryAnalyzer();
-
-  public static Query qParse(String q, String field) throws IOException
+  public Query qParse(String q, String field) throws IOException
   {
     // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
     // int boostLength = boosts.length;
     // float boostDefault = boosts[boostLength - 1];
-    TokenStream ts = qAnalyzer.tokenStream(field, q);
+    TokenStream ts = analyzer.tokenStream(field, q);
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
 
@@ -697,7 +677,7 @@ public class Alix
   public TermList qTerms(String q, String field) throws IOException
   {
 
-    TokenStream ts = qAnalyzer.tokenStream(field, q);
+    TokenStream ts = analyzer.tokenStream(field, q);
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
     FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);

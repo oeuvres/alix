@@ -1,14 +1,18 @@
 /*
- * Copyright 2008 Pierre DITTGEN <pierre@dittgen.org> 
+ * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents
- * Alix is a tool to index XML text documents
+ * Alix, A Lucene Indexer for XML documents.
+ * Alix is a tool to index and search XML text documents
  * in Lucene https://lucene.apache.org/core/
- * including linguistic expertise for French.
- * Project has been started in 2008 under the javacrim project (sf.net)
+ * including linguistic expertness for French.
+ * Alix has been started in 2009 under the javacrim project (sf.net)
  * for a java course at Inalco  http://www.er-tim.fr/
+ * Alix continues the concepts of SDX under a non viral license.
+ * SDX: Documentary System in XML.
+ * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * http://savannah.nongnu.org/projects/sdx/
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,9 +42,36 @@ import alix.util.Calcul;
 import alix.util.Char;
 
 /**
- * 
+ * A lucene token filter adding other channels to the token stream
+ * <ul>
+ *   <li>an orthographic form (normalized) in a {@link CharsOrthAtt}</li>
+ *   <li>a lemma in a {@link CharsLemAtt}</li>
+ *   <li>a pos as a lucene int flag {@link FlagsAttribute} (according to the semantic of {@link Tag}</li>
+ * </ul>
+ * <p>
+ * The efficiency of the dictionaries lookup and chars manipulation
+ * rely on a custom implementation of a lucene term attribute {@link CharsOrthAtt}.
+ * </p>
+ * <p>
+ * The original {@link CharTermAttribute} provide by the step before is not
+ * modified, allowing further filters to play with channels and index
+ * the same stream, with the same positions, with different values by field
+ * (ex: lemma in a field, orthographic forms in another).
+ * </p>
+ * <p>
+ * The found lemma+pos is dictionary based. No disambiguation is tried,
+ * so that errors are completely deterministic. The dictionary provide
+ * the most frequent lemma+pos for a graphic form. This approach has
+ * proved its robustness, especially with infrequent texts from past
+ * centuries, on which training is not profitable.
+ * </p>
+ * <p>
+ * Logic could be extended to other languages with same linguistic resources,
+ * there are here rules on capitals to infer proper names, specific to English or French
+ * (not compatible with German for example).
+ * </p>
  */
-public final class TokenLem extends TokenFilter
+public final class FrTokenLem extends TokenFilter
 {
   /** The term provided by the Tokenizer */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -48,20 +79,21 @@ public final class TokenLem extends TokenFilter
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
   /** A lemma when possible */
   private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
+  /** A normalized orthographic form, so that original term is not modified at this step */
+  private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
   /** Last token was Punctuation */
   private boolean waspun = true; // first word considered as if it follows a dot
   /** Store state */
   private State save;
-  /** For some tests */
+  /** Reusable char sequence for some tests and tranformations */
   private final CharsAtt copy = new CharsAtt();
-  /**  */
 
 
   
   /**
-   *
+   * Default constructor
    */
-  public TokenLem(TokenStream input)
+  public FrTokenLem(TokenStream input)
   {
     super(input);
   }
@@ -77,17 +109,18 @@ public final class TokenLem extends TokenFilter
     // end of stream
     if (!input.incrementToken()) return false;
     final boolean waspun = this.waspun;
-    CharsAtt term = (CharsAtt) termAtt;
-    CharsAtt lem = (CharsAtt) lemAtt;
+    // get a local version of orth
+    CharsAtt orth = (CharsAtt) orthAtt;
+    orth.copy(termAtt); // alwas copy original term
     int flags = flagsAtt.getFlags();
     // pass through zero-length terms
-    if (term.length() == 0) return true;
+    if (orth.length() == 0) return true;
     if (flags == Tag.PUNdiv || flags == Tag.PUNsent) {
       this.waspun = true;
       return true;
     }
     // Get first char
-    char c1 = term.charAt(0);
+    char c1 = orth.charAt(0);
     // Not a word
     if (!Char.isToken(c1)) return true;
     
@@ -95,54 +128,53 @@ public final class TokenLem extends TokenFilter
     this.waspun = false;
     LexEntry word;
     NameEntry name;
-    // norm case
+    // First letter of token is upper case, is it a name ? Is it an upper case header ?
     if (Char.isUpperCase(c1)) {
       // roman number already detected
       if (flagsAtt.getFlags() == Tag.NUM) return true;
-      int n = Calcul.roman2int(term.buffer(), 0, term.length());
+      int n = Calcul.roman2int(orth.buffer(), 0, orth.length());
       if (n > 0) {
         flagsAtt.setFlags(Tag.NUM);
         return true;
       }
       // USA ?
-      term.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
-      CharsMaps.norm(term); // normalise : Etat -> État
-      copy.copy(term);
-      c1 = term.charAt(0); // keep initial cap, maybe useful
-      name = CharsMaps.name(term); // known name ?
+      orth.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
+      CharsMaps.norm(orth); // normalise : Etat -> État
+      copy.copy(orth);
+      c1 = orth.charAt(0); // keep initial cap, maybe useful
+      name = CharsMaps.name(orth); // known name ?
       if (name != null) {
         flagsAtt.setFlags(name.tag);
-        if (name.orth != null) term.copy(name.orth);
+        // maybe a normalized form for the name
+        if (name.orth != null) orth.copy(name.orth);
         return true;
       }
-      word = CharsMaps.word(term.toLower()); // known word ?
+      word = CharsMaps.word(orth.toLower()); // known word ?
       if (word != null) { // known word
         // if not after a pun, maybe a capitalized concept État, or a name La Fontaine, 
         // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc. 
         // if (!waspun)
         flagsAtt.setFlags(word.tag);
         if (word.lem != null) {
-          lem.append(word.lem);
+          lemAtt.append(word.lem);
         }
         return true;
       }
       else { // unknown word, infer it's a MAME
         flagsAtt.setFlags(Tag.NAME);
-        term.copy(copy);
+        orth.copy(copy);
         return true;
       }
     }
     else {
-      CharsMaps.norm(term); // normalise oeil -> œil
-      word = CharsMaps.word(term);
+      CharsMaps.norm(orth); // normalise oeil -> œil
+      word = CharsMaps.word(orth);
       if (word == null) return true;
-    }
-    // a word found in the dictionary
-    if (word != null) {
       // known word
       flagsAtt.setFlags(word.tag);
       if (word.lem != null) {
-        lem.append(word.lem);
+        // who set length to 0 here ?
+        lemAtt.append(word.lem);
       }
     }
     return true;
