@@ -30,12 +30,14 @@ package alix.lucene.analysis;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.reflect.InvocationTargetException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Locale;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -146,7 +148,6 @@ public class SAXIndexer extends DefaultHandler
   private StringBuilder xml = new StringBuilder();
   /** Flag to verify that an element is not empty (for XML serialization) */
   private boolean empty;
-  /** Reusable token stream for text, one per thread, to allow   */
   private final Analyzer analyzer;
   
   
@@ -154,11 +155,17 @@ public class SAXIndexer extends DefaultHandler
    * Keep same writer for 
    * @param writer
    * @param filename
+   * @throws SecurityException 
+   * @throws NoSuchMethodException 
+   * @throws InvocationTargetException 
+   * @throws IllegalArgumentException 
+   * @throws IllegalAccessException 
+   * @throws InstantiationException 
    */
-  public SAXIndexer(final IndexWriter writer)
-  {
+  public SAXIndexer(final IndexWriter writer) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
     this.writer = writer;
-    this.analyzer = writer.getAnalyzer();
+    // the default reuse strategy seems n
+    this.analyzer = writer.getAnalyzer().getClass().getDeclaredConstructor().newInstance();
   }
   
   /**
@@ -444,7 +451,6 @@ public class SAXIndexer extends DefaultHandler
       // analysis, Tee is possible because of a caching token filter
       else {
         doc.add(new StoredField(name , text)); // text has to be stored for snippets and conc
-        TokenStream stream = analyzer.tokenStream(name, text);
         /*
         // A stats filter has been tested before a caching filter
         // but it is less reliable than to get counts after indexation
@@ -467,7 +473,17 @@ public class SAXIndexer extends DefaultHandler
         doc.add(new NumericDocValuesField(name + Alix._LENGTH, counter.length()));
         doc.add(new NumericDocValuesField(name + Alix._WIDTH, counter.width()));
         */
-        doc.add(new Field(name, stream, Alix.ftypeAll));
+        /*
+        TokenStream stream = analyzer.tokenStream(name, text);
+        try {
+          stream.reset();
+        }
+        catch (IOException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+        */
+        doc.add(new Field(name, text, Alix.ftypeAll));
         // TokenStream names = new TokenPosFilter(caching, nameFilter);
         // doc.add(new Field(fieldName + Alix._NAMES, names, Alix.ftypeAll));
 

@@ -30,6 +30,7 @@ package alix.lucene;
 
 import java.io.IOException;
 import java.lang.ref.SoftReference;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -81,7 +82,6 @@ import org.apache.lucene.util.Bits;
 
 import alix.fr.Tag;
 import alix.lucene.analysis.CharsLemAtt;
-import alix.lucene.analysis.FrAnalyzer;
 import alix.lucene.search.Facet;
 import alix.lucene.search.Scale;
 import alix.lucene.search.Freqs;
@@ -89,7 +89,35 @@ import alix.lucene.search.TermList;
 import alix.lucene.util.Cooc;
 
 /**
- * Alix entry-point
+ * An Alix instance represents a Lucene base {@link Directory} with other useful data.
+ * Instantiation is not public, use {@link #instance(Path, Class)} instead.
+ * A static pool of lucene directories is kept to ensure uniqueness of Alix objects.
+ * <p>
+ * To keep only one instance of {@link IndexReader}, {@link IndexSearcher}, {@link IndexWriter}
+ * and {@link Analyzer}
+ * across all application (avoiding cost of opening and closing index, use :
+ * <ul>
+ *   <li>{@link #reader()}</li>
+ *   <li>{@link #writer()}</li>
+ *   <li>{@link #searcher()}</li>
+ *   <li>{@link #analyzer()}</li>
+ * </ul>
+ * Different lists and stats concerning all index are cached {@link #cache(String, Object)}, 
+ * to avoid recalculation. Data are usually available as custom objects, optimized for statistics.
+ * <ul>
+ *   <li>{@link #docInt(String)} All values of a unique numeric field per document 
+ *   ({@link IntPoint}, {@link NumericDocValuesField}).
+ *   {@link #min(String)} and {@link #max(String)} returns the minimum and maximum values
+ *   of this vector.</li>
+ *   <li>{@link #freqs(String)} All terms indexed in a {@link TextField}, with stats,
+ *   useful for list of terms and advanced lexical statistics.</li>
+ *   <li>{@link #docLength(String)} Size of indexed documents in a {@link TextField}</li>
+ *   <li>{@link #facet(String, String)} All terms of a facet field
+ *   ({@link SortedDocValuesField} or {@link SortedSetDocValuesField}) with lexical statistics from a
+ *   {@link TextField} (ex: count of words for an author facet)</li>
+ *   <li>{@link #scale(String, String)} Data to build chronologies or other charts.</li>
+ *   <li>{@link #cooc(String)}} Returns a co-occurrences reader (needs a specific indexation, {@link Cooc}).</li>
+ * </ul>
  * 
  * @author Pierre DITTGEN (2009, original idea, creation)
  */
@@ -162,7 +190,7 @@ public class Alix
    * @param path
    * @throws IOException
    */
-  private Alix(final Path path) throws IOException
+  private Alix(final Path path, final Analyzer analyzer) throws IOException
   {
     // this default locale will work for English
     this.locale = Locale.FRANCE;
@@ -170,38 +198,56 @@ public class Alix
     Files.createDirectories(path);
     this.similarity = new BM25Similarity(); // default similarity
     // dir = FSDirectory.open(indexPath);
-    dir = MMapDirectory.open(path); // https://dzone.com/articles/use-lucene’s-mmapdirectory
-    analyzer = new FrAnalyzer();
+    // open directory as a memory map, very efficient, https://dzone.com/articles/use-lucene’s-mmapdirectory
+    dir = MMapDirectory.open(path);
+    this.analyzer = analyzer;
   }
 
   /**
-   * Get a wrapper on a lucene index by file path.
-   * 
+   * See {@link #instance(Path, Class)}
    * @param path
-   * @throws IOException
+   * @param analyzerClass
+   * @throws ClassNotFoundException 
    */
-  public static Alix instance(final String path) throws IOException
+  public static Alix instance(final String path, final String analyzerClass) throws IOException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException, ClassNotFoundException
   {
-    return instance(Paths.get(path));
+    return instance(Paths.get(path), analyzerClass);
   }
 
   /**
-   * Get a wrapper on a lucene index by file path.
-   * 
+   *  Get a a lucene directory index by file path, from cache, or created.
+   *  
    * @param path
-   * @throws IOException
+   * @param analyzerClass
+   * @return
+   * @throws ClassNotFoundException 
+   * @throws SecurityException 
+   * @throws NoSuchMethodException 
+   * @throws InvocationTargetException 
+   * @throws IllegalArgumentException 
+   * @throws IllegalAccessException 
+   * @throws InstantiationException 
+   * @throws IOException 
    */
-  public static Alix instance(Path path) throws IOException
+  public static Alix instance(Path path, final String analyzerClass) throws ClassNotFoundException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException, IOException 
   {
-    path = path.toAbsolutePath().normalize();
+    path = path.toAbsolutePath().normalize(); // normalize path to be a key
     Alix alix = pool.get(path);
     if (alix == null) {
-      alix = new Alix(path);
+      Class<?> cls = Class.forName(analyzerClass);
+      Analyzer analyzer = (Analyzer) cls.getDeclaredConstructor().newInstance();
+      alix = new Alix(path, analyzer);
       pool.put(path, alix);
     }
     return alix;
   }
 
+  /**
+   * See {@link #writer(Similarity)}
+   * 
+   * @return
+   * @throws IOException
+   */
   public IndexWriter writer() throws IOException
   {
     return writer(null);
@@ -239,7 +285,7 @@ public class Alix
   }
 
   /**
-   * Get the reader for this lucene index.
+   * See {@link #reader(boolean)}
    * 
    * @return
    * @throws IOException
@@ -250,8 +296,8 @@ public class Alix
   }
 
   /**
-   * Get a reader for this lucene index, allow to force renew if force is true. If
-   * a writer is already opened,
+   * Get a reader for this lucene index, cached or new.
+   * Allow to force renew if force is true.
    * 
    * @param force
    * @return
@@ -267,7 +313,7 @@ public class Alix
   }
 
   /**
-   * A real time reader only used for updates.
+   * A real time reader only used for some updates (see {@link Cooc#write()}).
    * 
    * @param force
    * @return
@@ -279,7 +325,7 @@ public class Alix
   }
 
   /**
-   * Get the searcher for this lucene index.
+   * See {@link #searcher(boolean)}
    * 
    * @return
    * @throws IOException
@@ -290,7 +336,7 @@ public class Alix
   }
 
   /**
-   * Get a searcher for this lucene index, allow to force renew if force is true.
+   * Get the searcher for this lucene index, allow to force renew if force is true.
    * 
    * @param force
    * @return
@@ -303,6 +349,15 @@ public class Alix
     searcher = new IndexSearcher(reader);
     searcher.setSimilarity(similarity);
     return searcher;
+  }
+  
+  /**
+   * Returns the analyzer shared with this base.
+   * @return
+   */
+  public Analyzer analyzer()
+  {
+    return this.analyzer;
   }
 
   /**
@@ -332,7 +387,7 @@ public class Alix
   }
 
   /**
-   * Get infos for field.
+   * Get infos for a field.
    * 
    * @param field
    * @return
@@ -434,19 +489,36 @@ public class Alix
     return docInt;
   }
 
-  /** Return the min value of an IntPoint field. */
+  /** 
+   * Return the min value of an IntPoint field.
+   * 
+   * @param field
+   * @return
+   * @throws IOException
+   */
   public int min(String field) throws IOException
   {
     return minMax(field, 0);
   }
 
-  /** Returns the max value of an IntPoint field. */
+  /** 
+   * Returns the max value of an IntPoint field.
+   * @param field
+   * @return
+   * @throws IOException
+   */
   public int max(String field) throws IOException
   {
     return minMax(field, 1);
   }
 
-  /** Get min-max from the cache. */
+  /**
+   * Get min-max from the cache.
+   * @param field
+   * @param i
+   * @return
+   * @throws IOException
+   */
   private int minMax(String field, int i) throws IOException
   {
     int[] minMax = (int[]) cache("AlixMinMax" + field);
@@ -460,7 +532,9 @@ public class Alix
   /**
    * Get value by docId of a unique store field, desired type is given by the
    * array to load. Very slow, ~1.5 s. / 1000 books
-   * 
+   * @param field
+   * @param load
+   * @return
    * @throws IOException
    */
   public int[] docStore(String field, int[] load) throws IOException
@@ -488,14 +562,10 @@ public class Alix
   }
 
   /**
-   * Get a “facet” object, a cached list of terms from a field of type
-   * SortedDocValuesField or SortedSetDocValuesField ; to get lexical stats from a
-   * text field.
+   * See {@link #facet(String, String, Term)}
    * 
    * @param facetField
-   *          A SortedDocValuesField or a SortedSetDocValuesField fieldName.
    * @param textField
-   *          A indexed TextField.
    * @return
    * @throws IOException
    */
@@ -506,9 +576,9 @@ public class Alix
 
   /**
    * Get a “facet” object, a cached list of terms from a field of type
-   * SortedDocValuesField or SortedSetDocValuesField ; to get lexical stats from a
+   * {@link SortedDocValuesField} or {@link SortedSetDocValuesField} ; to get lexical stats from a
    * text field. An optional “term” (field:value) maybe used to catch a “cover”
-   * document (ex: a document carrying metada avbout a title or an author).
+   * document (ex: a document carrying metada about a title or an author).
    *
    * @param facetField
    *          A SortedDocValuesField or a SortedSetDocValuesField fieldName.
@@ -530,7 +600,7 @@ public class Alix
   }
 
   /**
-   * Get a Scale object, useful to buil graphs with an int field.
+   * Get a Scale object, useful to build graphs and chronology with an int field.
    * 
    * @param fieldInt
    *          A NumericDocValuesField used as a sorted value.
@@ -626,9 +696,14 @@ public class Alix
     return books;
   }
 
-
-
-  public Query qParse(String q, String field) throws IOException
+  /**
+   * 
+   * @param q
+   * @param field
+   * @return
+   * @throws IOException
+   */
+  public Query qParse(String field, String q) throws IOException
   {
     // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
     // int boostLength = boosts.length;

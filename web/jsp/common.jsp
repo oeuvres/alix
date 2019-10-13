@@ -90,13 +90,8 @@ alix.lucene.analysis.CharsDic.Entry,
 alix.lucene.analysis.CharsMaps,
 alix.lucene.analysis.CharsMaps.LexEntry,
 alix.lucene.analysis.CharsMaps.NameEntry,
+alix.lucene.analysis.FrAnalyzer,
 alix.lucene.analysis.TokenCompound,
-alix.lucene.analysis.TokenDic,
-alix.lucene.analysis.TokenDic.AnalyzerDic,
-alix.lucene.analysis.TokenCooc,
-alix.lucene.analysis.TokenCooc.AnalyzerCooc,
-alix.lucene.analysis.TokenLem,
-alix.lucene.analysis.TokenizerFr,
 alix.lucene.search.BitsFromQuery,
 alix.lucene.search.Corpus,
 alix.lucene.search.CorpusQuery,
@@ -121,7 +116,9 @@ alix.lucene.search.TopTerms,
 alix.lucene.util.Cooc,
 alix.util.Char,
 alix.util.Dir,
-alix.util.Top
+alix.util.Top,
+
+obvil.web.Obvil
 " %>
 <%!
 
@@ -269,12 +266,12 @@ public static void termOptions(JspWriter out, String sortSpec) throws IOExceptio
 
 
 /**
- * Build a lucene query fron a String and a selected a Corpus.
+ * Build a lucene query fron a String and an optional Corpus.
  */
-public static Query getQuery(Corpus corpus, String q) throws IOException
+public static Query getQuery(Alix alix, String q, Corpus corpus) throws IOException
 {
   String fieldName = TEXT;
-  Query qWords = Alix.qParse(q, fieldName);
+  Query qWords = alix.qParse(fieldName, q);
   Query query;
   BitSet filter= null;
   if (corpus != null) filter = corpus.bits();
@@ -293,21 +290,22 @@ public static Query getQuery(Corpus corpus, String q) throws IOException
 /**
  * Get a cached set of results.
  */
-public TopDocs getTopDocs(HttpSession session, IndexSearcher searcher, Corpus corpus, String q, String sortSpec) throws IOException
+public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, String sortSpec) throws IOException
 {
+  IndexSearcher searcher = alix.searcher();
   int numHits = 10000;
   int totalHitsThreshold = Integer.MAX_VALUE;
-  Query query = getQuery(corpus, q);
+  Query query = getQuery(alix, q, corpus);
   if (query == null) return null;
   Sort sort = getSort(sortSpec);
-  String key = ""+query;
+  String key = ""+page.getRequest().getAttribute(Obvil.BASE)+"?"+query;
   if (sort != null)  key+= " " + sort;
   Similarity oldSim = null;
   Similarity similarity = getSimilarity(sortSpec);
   if (similarity != null) {
     key += " <"+similarity+">";
   }
-  TopDocs topDocs = (TopDocs)session.getAttribute(key);
+  TopDocs topDocs = (TopDocs)page.getSession().getAttribute(key);
   if (topDocs != null) return topDocs;
   TopDocsCollector collector;
   if (sort != null) {
@@ -327,7 +325,7 @@ public TopDocs getTopDocs(HttpSession session, IndexSearcher searcher, Corpus co
     searcher.search(query, collector);
   }
   topDocs = collector.topDocs();
-  session.setAttribute(key, topDocs);
+  page.getSession().setAttribute(key, topDocs);
   return topDocs;
 }
 
@@ -393,9 +391,9 @@ public static String getParameter(final HttpServletRequest request, final String
 %><%
 long time = System.nanoTime();
 request.setCharacterEncoding("UTF-8");
-String obvilDir = (String)request.getAttribute("obvilDir");
-String base = (String)request.getAttribute("base");
-Alix alix = Alix.instance(obvilDir +"/"+ base);
+String obvilDir = (String)request.getAttribute(Obvil.OBVIL_DIR);
+String base = (String)request.getAttribute(Obvil.BASE);
+Alix alix = Alix.instance(obvilDir +"/"+ base, "alix.lucene.analysis.FrAnalyzer");
 
 //Set a bitSet filter for current corpus
 BitSet filter = null;
@@ -405,7 +403,7 @@ Corpus corpus = null;
 // if (corpus != null) filter = corpus.bits();
 // get query string
 String q = getParameter(request, "q", "");
-Properties props = (Properties)request.getAttribute("props");
+Properties props = (Properties)request.getAttribute(Obvil.PROPS);
 String title = props.getProperty("title", null);
 if (title == null) {
   title = props.getProperty("name", null);

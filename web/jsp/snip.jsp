@@ -31,14 +31,14 @@ if (!"".equals(q)) {
 
   time = System.nanoTime();
   IndexSearcher searcher = alix.searcher();
-  TopDocs topDocs = getTopDocs(session, searcher, corpus, q, sort);
+  TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
 
   time = System.nanoTime();
 
-  UnifiedHighlighter uHiliter = new UnifiedHighlighter(searcher, Alix.qAnalyzer);
+  UnifiedHighlighter uHiliter = new UnifiedHighlighter(searcher, alix.analyzer());
   uHiliter.setMaxLength(500000); // biggest text size to process
   uHiliter.setFormatter(new  HiliteFormatter());
-  Query query = getQuery(corpus, q); // to get the terms to Hilite
+  Query query = getQuery(alix, q, corpus); // to get the terms to Hilite
   ScoreDoc[] scoreDocs = topDocs.scoreDocs;
   if (start > scoreDocs.length) start = 1;
   int len = Math.min(hpp, 1 + scoreDocs.length - start);

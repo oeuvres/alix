@@ -18,11 +18,25 @@ import javax.servlet.http.HttpServletResponse;
 
 /**
  * In an MVC model, this servlet is the global controller for Obvil app.
- * Model is the lucene index and alix java
- * is It is mainly an url dispatcher, accor
+ * Model is the lucene index and alix java, View is the jsp pages.
+ * It is mainly an url dispatcher.
  */
 public class Obvil extends HttpServlet
 {
+  /** Request attribute name: internal messages for the servlet */
+  public static final String OBVIL = "obvil";
+  /** Request attribute name: the directory containing bases */
+  public static final String OBVIL_DIR = "obvilDir";
+  /** Request attribute name: set of bases, with their properties */
+  public static final String BASE_LIST = "baseList";
+  /** Request attribute name: the base name */
+  public static final String BASE = "base";
+  /** Request attribute name: Properties for the base */
+  public static final String PROPS = "props";
+  /** Request attribute name: error message for an error page */
+  public static final String MESSAGE = "message";
+  /** Request attribute name: URL redirection for client */
+  public static final String REDIRECT = "redirect";
   /** forbidden name for corpus */
   static HashSet<String> STOP = new HashSet<String>();
   static {
@@ -44,17 +58,14 @@ public class Obvil extends HttpServlet
 
   public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
   {
-    if (request.getAttribute("obvil") != null) {
+    if (request.getAttribute(OBVIL) != null) {
       throw new ServletException("[Obvil] {"+request.getRequestURI()+"} infinite loop error.");
     }
     String context = request.getContextPath(); 
     String url = request.getRequestURI().substring(context.length());
     Path path = Paths.get(url).normalize();
-    request.setAttribute("obvil", true);
-    request.setAttribute("obvilDir", obvilDir);
-    request.setAttribute("path", path);
-    request.setAttribute("url", url);
-    request.setAttribute("context", context);
+    request.setAttribute(OBVIL, true);
+    request.setAttribute(OBVIL_DIR, obvilDir);
     if (path.getNameCount() == 0) {
       /* will bug behind proxies
       if (!url.equals("/")) {
@@ -62,7 +73,7 @@ public class Obvil extends HttpServlet
         return;
       }
       */
-      request.setAttribute("baseList", baseList);
+      request.setAttribute(BASE_LIST, baseList);
       request.getRequestDispatcher("/jsp/bases.jsp").forward(request, response);
       return;
     }
@@ -77,16 +88,16 @@ public class Obvil extends HttpServlet
     if (props == null) {
       throw new ServletException("[Obvil] {"+base+ "} base not known on this server.");
     }
-    request.setAttribute("base", base);
-    request.setAttribute("props", props);
+    request.setAttribute(BASE, base);
+    request.setAttribute(PROPS, props);
     // base welcome page
     if (path.getNameCount() == 1) {
       // ensure trailing space for relative links
       if (!url.equals("/"+base+"/")) {
         // response.sendRedirect(context+"/"+base+"/"); // will not work behind proxy
         response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-        request.setAttribute("message", "Bad link, try <a href=\""+base+"/\">"+base+"</a> (with a slash).");
-        request.setAttribute("redirect", base+"/");
+        request.setAttribute(MESSAGE, "Bad link, try <a href=\""+base+"/\">"+base+"</a> (with a slash).");
+        request.setAttribute(REDIRECT, base+"/");
         request.getRequestDispatcher("/jsp/error.jsp").forward(request, response);
         return;
       }

@@ -2,7 +2,6 @@
 <%@include file="common.jsp"%>
 <%!
 static final DecimalFormat dfdec3 = new DecimalFormat("0.###", ensyms);
-
 %>
 <%
   out.println("{");

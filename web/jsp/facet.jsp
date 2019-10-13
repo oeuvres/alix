@@ -45,7 +45,7 @@ Facet facet = alix.facet(facetField, TEXT);
 // a query
 if (terms.size() > 0) { 
   // get a 
-  TopDocs topDocs = getTopDocs(session, alix.searcher(), corpus, q, facetField);
+  TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, facetField);
   int[] nos = facet.nos(topDocs);
   TopTerms facetEnum = facet.topTerms(filter, terms, null);
   facetEnum.setNos(nos);

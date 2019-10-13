@@ -67,24 +67,18 @@ import alix.util.IntList;
  * </p>
  * 
  * <p>
- * Different variables could be used in such fomulas. Some are only relative to
+ * Different variables could be used in such formulas. Some are only relative to
  * all index, some are cacheable for each facet value, other are query
  * dependent.
  * <p>
  * 
  * <ul>
- * <li>index, total document count
- * <li>
- * <li>index, total occurrences count
- * <li>
- * <li>facet, total document count
- * <li>
- * <li>facet, total occurrences count
- * <li>
- * <li>query, matching document count
- * <li>
- * <li>query, matching occurrences count
- * <li>
+ * <li>index, total document count</li>
+ * <li>index, total occurrences count</li>
+ * <li>facet, total document count</li>
+ * <li>facet, total occurrences count</li>
+ * <li>query, matching document count</li>
+ * <li>query, matching occurrences count</li>
  * </ul>
  * 
  * <p>
@@ -92,12 +86,7 @@ import alix.util.IntList;
  * a sequential int id for each term. This is used as a pointer in different
  * growing arrays. On creation, object is populated with data non dependent of a
  * query. Those internal vectors are stored as arrays with termId index.
- * 
- * 
- * 
  * <p>
- * 
- * @author fred
  *
  */
 public class Facet

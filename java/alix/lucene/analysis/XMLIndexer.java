@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.util.Iterator;
 import java.util.List;
@@ -59,6 +60,7 @@ import alix.util.Dir;
 
 /**
  * A worker for parallel indexing.
+ * 
  * @author fred
  *
  */
@@ -67,7 +69,8 @@ public class XMLIndexer implements Runnable
   /** XSLT processor (saxon) */
   static final TransformerFactory XSLFactory;
   static {
-    // use JAXP standard API with Saxon B (not saxon HE 9, because exslt support has been removed)
+    // use JAXP standard API with Saxon B (not saxon HE 9, because exslt support has
+    // been removed)
     System.setProperty("javax.xml.transform.TransformerFactory", "net.sf.saxon.TransformerFactoryImpl");
     XSLFactory = TransformerFactory.newInstance();
     XSLFactory.setAttribute("http://saxon.sf.net/feature/version-warning", Boolean.FALSE);
@@ -101,9 +104,17 @@ public class XMLIndexer implements Runnable
    * @throws TransformerConfigurationException
    * @throws SAXException
    * @throws ParserConfigurationException
+   * @throws SecurityException
+   * @throws NoSuchMethodException
+   * @throws InvocationTargetException
+   * @throws IllegalArgumentException
+   * @throws IllegalAccessException
+   * @throws InstantiationException
    */
   public XMLIndexer(IndexWriter writer, Iterator<File> it, Templates templates)
-      throws TransformerConfigurationException, ParserConfigurationException, SAXException
+      throws TransformerConfigurationException, ParserConfigurationException, SAXException, InstantiationException,
+      IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException,
+      SecurityException
   {
     this.it = it;
     handler = new SAXIndexer(writer);
@@ -148,6 +159,7 @@ public class XMLIndexer implements Runnable
 
   /**
    * A synchonized method to get the next file to index.
+   * 
    * @return
    */
   synchronized public File next()
@@ -199,10 +211,30 @@ public class XMLIndexer implements Runnable
     System.exit(1);
   }
 
-  static public void index(final IndexWriter writer, int threads, String xsl, String glob) throws IOException,
-  InterruptedException, TransformerConfigurationException, ParserConfigurationException, SAXException
+  /**
+   * Wrapper for simple glob.
+   * @param writer
+   * @param threads
+   * @param xsl
+   * @param glob
+   * @throws IOException
+   * @throws InterruptedException
+   * @throws TransformerConfigurationException
+   * @throws ParserConfigurationException
+   * @throws SAXException
+   * @throws InstantiationException
+   * @throws IllegalAccessException
+   * @throws IllegalArgumentException
+   * @throws InvocationTargetException
+   * @throws NoSuchMethodException
+   * @throws SecurityException
+   */
+  static public void index(final IndexWriter writer, int threads, String xsl, String glob)
+      throws IOException, InterruptedException, TransformerConfigurationException, ParserConfigurationException,
+      SAXException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
+      NoSuchMethodException, SecurityException
   {
-    index(writer, threads, xsl, new String[] {glob});
+    index(writer, threads, xsl, new String[] { glob });
   }
 
   /**
@@ -215,15 +247,23 @@ public class XMLIndexer implements Runnable
    * @throws TransformerConfigurationException
    * @throws SAXException
    * @throws ParserConfigurationException
+   * @throws SecurityException
+   * @throws NoSuchMethodException
+   * @throws InvocationTargetException
+   * @throws IllegalArgumentException
+   * @throws IllegalAccessException
+   * @throws InstantiationException
    */
-  static public void index(final IndexWriter writer, int threads, String xsl, String[] globs) throws IOException,
-      InterruptedException, TransformerConfigurationException, ParserConfigurationException, SAXException
+  static public void index(final IndexWriter writer, int threads, String xsl, String[] globs)
+      throws IOException, InterruptedException, TransformerConfigurationException, ParserConfigurationException,
+      SAXException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
+      NoSuchMethodException, SecurityException
   {
-    
-    info("Lucene index:" + writer.getDirectory() + "; parser: " + xsl+"; files: "+ String.join(", ", globs));
+
+    info("Lucene index:" + writer.getDirectory() + "; parser: " + xsl + "; files: " + String.join(", ", globs));
     // preload dictionaries
     List<File> files = null;
-    for (String glob: globs) {
+    for (String glob : globs) {
       files = Dir.ls(glob, files); // CopyOnWriteArrayList produce some duplicates
     }
     Iterator<File> it = files.iterator();

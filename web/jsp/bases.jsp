@@ -2,8 +2,8 @@
 <%@ page import="
 java.util.Arrays,
 java.util.HashMap,
-java.util.Properties
-
+java.util.Properties,
+obvil.web.Obvil
 " %>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="fr" lang="fr">
@@ -17,7 +17,7 @@ java.util.Properties
       <h1>Obvil, bases à chercher sur ce serveur.</h1>
       <ul>
       <%
-  HashMap<String, Properties> baseList = (HashMap<String, Properties>)request.getAttribute("baseList");
+  HashMap<String, Properties> baseList = (HashMap<String, Properties>)request.getAttribute(Obvil.BASE_LIST);
   int size = baseList.size();
   String[] keys = new String[size];
   keys = baseList.keySet().toArray(keys);

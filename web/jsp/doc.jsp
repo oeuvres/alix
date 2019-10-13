@@ -77,7 +77,7 @@ if (id != null) {
 }
 else if (!"".equals(q)) {
   time = System.nanoTime();
-  topDocs = getTopDocs(session, searcher, corpus, q, sort);
+  topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
   ScoreDoc[] hits = topDocs.scoreDocs;
   if (hits.length == 0) {
     start = 0;

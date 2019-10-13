@@ -27,17 +27,6 @@
  * limitations under the License.
  */
 package alix.lucene.util;
-/**
- * This field should store term vectors with positions
- * {@link org.apache.lucene.document.FieldType#setStoreTermVectorPositions(boolean)}.
- * Efficiency is based on a pre-indexation of each document
- * as an int vector where each int is a term at its position
- * (a “rail”).
- * This object should be created on a “dead index”, 
- * with all writing operations commited.
- * 
- * In the method 
- */
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -111,7 +100,7 @@ public class Cooc
   
   
   /**
-   * Flaten terms of a document in a position order, according to the dictionary of terms.
+   * Flatten terms of a document in a position order, according to the dictionary of terms.
    * Write it in a binary buffer, ready to to be stored in a BinaryField.
    * {@link org.apache.lucene.document.BinaryDocValuesField}
    * The buffer could be modified if resizing was needed.
