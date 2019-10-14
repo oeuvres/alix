@@ -708,7 +708,7 @@ public class Alix
     // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
     // int boostLength = boosts.length;
     // float boostDefault = boosts[boostLength - 1];
-    TokenStream ts = analyzer.tokenStream(field, q);
+    TokenStream ts = analyzer.tokenStream("q", q);
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
 
@@ -752,7 +752,7 @@ public class Alix
   public TermList qTerms(String q, String field) throws IOException
   {
 
-    TokenStream ts = analyzer.tokenStream(field, q);
+    TokenStream ts = analyzer.tokenStream(field, "pun"); // keep punctuation to group terms
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
     FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);

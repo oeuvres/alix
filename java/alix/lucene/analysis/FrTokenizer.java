@@ -29,7 +29,6 @@
 package alix.lucene.analysis;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -44,7 +43,6 @@ import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.AttributeImpl;
 
 import alix.fr.Tag;
-import alix.lucene.util.OffsetList;
 import alix.util.Calcul;
 import alix.util.Char;
 

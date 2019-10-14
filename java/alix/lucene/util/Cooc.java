@@ -63,11 +63,10 @@ import alix.util.Calcul;
  * A co-occurrences scanner in a  {@link org.apache.lucene.document.TextField} of a lucene index.
  * This field should store term vectors with positions
  * {@link org.apache.lucene.document.FieldType#setStoreTermVectorPositions(boolean)}.
- * Efficiency is based on a pre-indexation of each document
- * as an int vector where each int is a term at its position
- * (a “rail”).
- * This object should be created on a “dead index”, 
- * with all writing operations commited.
+ * Efficiency is based on a post-indexing of each document,
+ * affecting a int id to each  term at its position (a “rail”).
+ * Also, coocs should be written on a “dead index”, 
+ * with all writing operations committed.
  */
 public class Cooc
 {
@@ -77,7 +76,7 @@ public class Cooc
   private final String field;
   /** Name of the binary field storing the int vector of documents */
   private final String fieldBin;
-  /** Keep the freqs for the fiels */
+  /** Keep the freqs for the field */
   private final Freqs freqs;
   /** Dictionary of terms for this field */
   private final BytesRefHash hashDic;
@@ -85,6 +84,7 @@ public class Cooc
   private final Alix alix;
   /**
    * Build a co-occurrences scanner.
+   * 
    * @param alix A link to a lucene Index, with tools to get terms.
    * @param field A text field name with term vectors.
    * @throws IOException
@@ -98,7 +98,39 @@ public class Cooc
     this.hashDic = freqs.hashDic();
   }
   
-  
+  /**
+   * Reindex all documents of the text field as an int vector
+   * storing terms at their positions
+   * {@link org.apache.lucene.document.BinaryDocValuesField}.
+   * Byte ordering is the java default.
+   * 
+   * @throws IOException 
+   */
+  public void write() throws IOException
+  {
+    // known issue, writer should have been closed before reindex
+    IndexWriter writer = alix.writer();
+    IndexReader reader = alix.reader(writer);
+    int maxDoc = reader.maxDoc();
+    // create a byte buffer, will grow if more 
+    ByteBuffer buf =  ByteBuffer.allocate(1024);
+    
+    for (int docId = 0; docId < maxDoc; docId++) {
+      Terms termVector = reader.getTermVector(docId, field);
+      if (termVector == null) continue;
+      buf = rail(termVector, buf); // reusable buffer may be modified (growing)
+      BytesRef ref =  new BytesRef(buf.array(), buf.arrayOffset(), buf.limit());
+      Field field = new BinaryDocValuesField(fieldBin, ref);
+      long code =  writer.tryUpdateDocValue(reader, docId, field);
+      if( code < 0) System.out.println("Field \""+fieldBin+"\", update error for doc="+docId+" ["+code+"]");
+    }
+    reader.close();
+    writer.commit();
+    writer.forceMerge(1);
+    writer.close();
+    alix.reader(true); // renew reader, to view the new field
+  }
+
   /**
    * Flatten terms of a document in a position order, according to the dictionary of terms.
    * Write it in a binary buffer, ready to to be stored in a BinaryField.
@@ -132,7 +164,8 @@ public class Cooc
         if (capacity < (index+4)) {
           capacity = Calcul.nextSquare(index+4);
           ByteBuffer expanded = ByteBuffer.allocate(capacity);
-          expanded.order(buf.order());
+          // expanded.order(buf.order());
+          buf.position(0); // needed or result maybe unpredictable
           expanded.put(buf);
           buf = expanded;
         }
@@ -144,37 +177,6 @@ public class Cooc
     return buf;
   }
   
-  /**
-   * Reindex all documents of the text field as an int vector
-   * storing terms at their positions
-   * {@link org.apache.lucene.document.BinaryDocValuesField}
-   * @throws IOException 
-   */
-  public void write() throws IOException
-  {
-    // known issue, writer should have been closed before reindex
-    IndexWriter writer = alix.writer();
-    IndexReader reader = alix.reader(writer);
-    int maxDoc = reader.maxDoc();
-    // create a byte buffer, big enough to store all docs
-    ByteBuffer buf =  ByteBuffer.allocate(2);
-    // buf.order(ByteOrder.LITTLE_ENDIAN);
-    
-    for (int docId = 0; docId < maxDoc; docId++) {
-      Terms termVector = reader.getTermVector(docId, field);
-      if (termVector == null) continue;
-      buf = rail(termVector, buf); // reusable buffer may be 
-      BytesRef ref =  new BytesRef(buf.array(), buf.arrayOffset(), buf.limit());
-      Field field = new BinaryDocValuesField(fieldBin, ref);
-      long code =  writer.tryUpdateDocValue(reader, docId, field);
-      if( code < 0) System.out.println("Field \""+fieldBin+"\", update error for doc="+docId+" ["+code+"]");
-    }
-    reader.close();
-    writer.commit();
-    writer.forceMerge(1);
-    writer.close();
-    alix.reader(true); // renew reader, to view the new field
-  }
 
   
   /**

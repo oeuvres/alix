@@ -56,7 +56,9 @@ public class FrAnalyzer extends Analyzer
     */
     final Tokenizer source = new FrTokenizer(); // segment words
     TokenStream result = new FrTokenLem(source); // provide lemma+pos
-    result = new TokenLemCloud(result); // select lemmas as term to index
+    boolean pun = false;
+    if ("pun".equals(field)) pun = true; // keep punctuation to parse query
+    result = new TokenLemCloud(result, pun); // select lemmas as term to index
     return new TokenStreamComponents(source, result);
   }
   

@@ -84,7 +84,7 @@ body {
   font-family: "Lucida Sans Unicode", "Lucida Grande", Verdana, Geneva, sans-serif;
 }
 
-.sans-serif, .availability, figcaption, li.bibl, div.bibl, .editionStmt, .footnotes, figure .label, .marginalia, .note, #noterefover, .publicationStmt, .sourceDesc, .speaker, .stage {
+.sans-serif, .availability, figcaption, li.bibl, div.bibl, .editionStmt, .footnotes, figure .label, .marginnote, .note, #noterefover, .publicationStmt, .sourceDesc, .speaker, .stage {
   font-size: 14px;
   font-family: "Lucida Grande", Verdana, sans-serif;
 }
@@ -1346,7 +1346,7 @@ div.lg {
   margin-bottom: 0;
 }
 
-.marginalia {
+.marginnote {
   display: inline-block;
   float: right;
   text-indent: 0;
@@ -1363,16 +1363,16 @@ div.lg {
   line-height: 120%;
 }
 
-.marginalia a {
+.marginnote a {
   border: none;
   text-decoration: none;
 }
 
-.marginalia:target {
+.marginnote:target {
   background-color: #FFFFEE;
 }
 
-.marginalia:target:before {
+.marginnote:target:before {
   display: block;
   content: "☞";
   font-size: 16px;
@@ -2495,7 +2495,7 @@ figcaption.less:before {
     padding: 1em;
   }
 
-  .marginalia {
+  .marginnote {
     margin-right: -2.5em;
     width: 8em;
   }
@@ -2532,7 +2532,7 @@ figcaption.less:before {
     z-index: 2;
   }
 
-  .marginalia {
+  .marginnote {
     margin-right: -10em;
     width: 15em;
   }

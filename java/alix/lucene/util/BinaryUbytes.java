@@ -26,43 +26,74 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package alix.lucene.analysis;
+package alix.lucene.util;
 
-import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
-import org.apache.lucene.analysis.FilteringTokenFilter;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
+import org.apache.lucene.util.BytesRef;
 
-import alix.fr.Tag.TagFilter;
+import alix.util.Calcul;
 
 /**
- * A token Filter to plus after a lemmatizer filter to choose between token to
+ * Data structure to write and read unsigned bytes
+ * in a bynary form, possible to write in {@link StoredField}.
+ * The values are backed in a reusable and growing {@link ByteBuffer}.
  * 
- * @author fred
- *
  */
-public class TokenPosFilter extends FilteringTokenFilter
+public class BinaryUbytes extends BinaryValue
 {
-  /** A linguistic category as a short number, from Tag */
-  private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-  /** Filter tags */
-  final TagFilter filter;
-
   /**
-   * 
-   * @param in
+   * Create buffer for read {@link #open(BytesRef)}
+   * (write is possible after {@link #reset()}).
    */
-  public TokenPosFilter(TokenStream in, final TagFilter filter)
+  public BinaryUbytes()
   {
-    super(in);
-    this.filter = filter;
+    
   }
 
-  @Override
-  protected boolean accept() throws IOException
+  /**
+   * Create buffer for write with initial size.
+   * @param size
+   */
+  public BinaryUbytes(int size)
   {
-    return filter.accept(flagsAtt.getFlags());
+    capacity = size;
+    buf =  ByteBuffer.allocate(capacity);
+  }
+  
+  /**
+   * Number of positions in this vector.
+   * @return
+   */
+  public int size()
+  {
+    return length;
+  }
+  
+  /**
+   * Put a value at a posiion.
+   * 
+   * @param pos
+   * @param value
+   */
+  public void put(final int pos, final int value)
+  {
+    final int cap = pos + 1;
+    if (cap > length) length = cap; // keep max size
+    if (cap > capacity) grow(cap); // ensure size buffer
+    buf.put(pos, (byte) value);
+  }
+
+  /**
+   * Get value at a position.
+   * 
+   * @param pos
+   * @return
+   */
+  public int get(final int pos)
+  {
+    return buf.get(pos) & (0xff) ;
   }
 
 }

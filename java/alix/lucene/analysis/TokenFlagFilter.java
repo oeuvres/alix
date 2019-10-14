@@ -29,67 +29,39 @@
 package alix.lucene.analysis;
 
 import java.io.IOException;
+import java.util.BitSet;
 
 import org.apache.lucene.analysis.FilteringTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
-import alix.fr.Tag;
 
 /**
- * A token filter counting tokens. 
- * Before a CachingTokenFilter, it allows to get some 
- * counts if the token stream has been exhausted.
+ * A token Filter selecting tokens by flag values.
+ * The set of selected int values is efficiently givem by a {@link BitSet}.
+ * Positions with holes are kept.
  */
-
-public class TokenOffsets extends FilteringTokenFilter
+public class TokenFlagFilter extends FilteringTokenFilter
 {
-  /** Count tokens for this pass */
-  int length;
-  /** Last position */
-  int pos;
-  /** The term provided by the Tokenizer */
-  PositionIncrementAttribute posAtt = addAttribute(PositionIncrementAttribute.class);
   /** A linguistic category as a short number, from Tag */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+  /** Filter tags */
+  final BitSet filter;
 
-  public TokenOffsets(TokenStream in)
+  /**
+   * 
+   * @param in
+   */
+  public TokenFlagFilter(TokenStream in, final BitSet filter)
   {
     super(in);
+    this.filter = filter;
   }
 
   @Override
   protected boolean accept() throws IOException
   {
-    int tag = flagsAtt.getFlags();
-    if (!Tag.isPun(tag)) length++;
-    pos += posAtt.getPositionIncrement();
-    return true;
-  }
-
-  /**
-   * Returns the width of document in positions (with also the skipped ones).
-   * @return
-   */
-  public int width() {
-    return pos;
-  }
-
-  /**
-   * Returns the count of tokens.
-   * @return
-   */
-  public int length() {
-    return length;
-  }
-
-  @Override
-  public void reset() throws IOException
-  {
-    super.reset();
-    length = 0;
-    pos = 0;
+    return filter.get(flagsAtt.getFlags());
   }
 
 }

@@ -57,17 +57,21 @@ public class TokenLemCloud extends TokenFilter
   private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
   /** A lemma when possible */
   private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
+  /** output pun or not ? */
+  boolean pun;
 
-  public TokenLemCloud(TokenStream in)
+  public TokenLemCloud(TokenStream in, boolean pun)
   {
     super(in);
+    this.pun = pun;
   }
 
   protected boolean accept() throws IOException
   {
     int tag = flagsAtt.getFlags();
     // filter some non semantic token
-    if (Tag.isPun(tag) || Tag.isNum(tag)) return false;
+    if (Tag.isPun(tag) && !pun) return false;
+    if (Tag.isNum(tag)) return false;
     // replace term by lemma for substantives, adjectives and verbs
     if ((Tag.isAdj(tag) || Tag.isVerb(tag) || Tag.isSub(tag)) && (lemAtt.length() != 0)) {
       termAtt.setEmpty().append(lemAtt);

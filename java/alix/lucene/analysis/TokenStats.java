@@ -29,13 +29,19 @@
 package alix.lucene.analysis;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.FilteringTokenFilter;
+import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import alix.fr.Tag;
+import alix.lucene.util.BinaryUbytes;
+import alix.lucene.util.Offsets;
 
 /**
  * A token filter counting tokens. 
@@ -43,16 +49,21 @@ import alix.fr.Tag;
  * counts if the token stream has been exhausted.
  */
 
-public class TokenStats extends FilteringTokenFilter
+public class TokenStats extends TokenFilter
 {
-  /** Count tokens for this pass */
-  int length;
-  /** Last position */
-  int pos;
+  /** Current char offset */
+  private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
   /** The term provided by the Tokenizer */
   PositionIncrementAttribute posAtt = addAttribute(PositionIncrementAttribute.class);
-  /** A linguistic category as a short number, from Tag */
+  /** A linguistic category as a short number see {@link Tag} */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+  /** Last position */
+  int pos;
+  /** Record tags by position */
+  private BinaryUbytes tags =  new BinaryUbytes(1024);
+  /** Record offsets by position */
+  private Offsets offsets =  new Offsets(1024);
+
 
   public TokenStats(TokenStream in)
   {
@@ -60,36 +71,50 @@ public class TokenStats extends FilteringTokenFilter
   }
 
   @Override
-  protected boolean accept() throws IOException
+  public boolean incrementToken() throws IOException
   {
-    int tag = flagsAtt.getFlags();
-    if (!Tag.isPun(tag)) length++;
+    // end of stream
+    if (!input.incrementToken()) return false;
+    offsets.put(pos, offsetAtt.startOffset(), offsetAtt.endOffset());
+    tags.put(pos, flagsAtt.getFlags());
     pos += posAtt.getPositionIncrement();
     return true;
   }
 
   /**
-   * Returns the width of document in positions (with also the skipped ones).
+   * Returns the cuurent position (or length when stream is consumed).
    * @return
    */
-  public int width() {
+  public int pos() {
     return pos;
   }
 
   /**
-   * Returns the count of tokens.
+   * Return the offsets index for a document, ready to be indexed.
    * @return
    */
-  public int length() {
-    return length;
+  public Offsets offsets()
+  {
+    return offsets;
+  }
+
+  /**
+   * Return the tags in position order.
+   * @return
+   */
+  public BinaryUbytes tags()
+  {
+    return tags;
   }
 
   @Override
   public void reset() throws IOException
   {
     super.reset();
-    length = 0;
+    tags.reset();
+    offsets.reset();
     pos = 0;
   }
+
 
 }

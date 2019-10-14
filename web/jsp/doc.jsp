@@ -31,7 +31,7 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
     out.append("<a href=\"?docid="+docId+"\">");
     out.append(doc.get("bibl"));
     out.append("</a>");
-    out.append("</li>");
+    out.append("</li>\n");
   }
   return out.toString();
 }
@@ -215,11 +215,11 @@ if (document != null) {
   out.println("<ul>");
   out.println(results(results, reader, docId));
   out.println("</ul>");
-  out.println("</ul>");
   out.println("</details>");
 
   top = keywords.happax();
   if (top.length() > 0) {
+    out.println("<p>");
     out.println("<b>Happax</b> : ");
     first = true;
     for (Top.Entry<String> entry: top) {
@@ -232,7 +232,6 @@ if (document != null) {
     
   }
   
-  out.println(".<p/>");
 
   String text = document.get(TEXT);
   // hilie

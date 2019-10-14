@@ -484,7 +484,7 @@ public class SAXIndexer extends DefaultHandler
         }
         */
         doc.add(new Field(name, text, Alix.ftypeAll));
-        // TokenStream names = new TokenPosFilter(caching, nameFilter);
+        // TokenStream names = new TokenFlagFilter(caching, nameFilter);
         // doc.add(new Field(fieldName + Alix._NAMES, names, Alix.ftypeAll));
 
       }
