@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -26,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package alix.lucene.analysis;
+package alix.lucene;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -95,26 +99,16 @@ public class XMLIndexer implements Runnable
 
   /**
    * Create a thread reading a shared file list to index. Provide an indexWriter,
-   * a file list iterator, and an optional compiled xsl (used to transform
-   * original XML docs in the the alix name space <alix:documet>, <alix:field>)
+   * a file list iterator, and an optional compiled xsl.
    * 
    * @param writer
    * @param it
    * @param templates
-   * @throws TransformerConfigurationException
-   * @throws SAXException
-   * @throws ParserConfigurationException
-   * @throws SecurityException
-   * @throws NoSuchMethodException
-   * @throws InvocationTargetException
-   * @throws IllegalArgumentException
-   * @throws IllegalAccessException
-   * @throws InstantiationException
+   * @throws TransformerConfigurationException 
+   * @throws SAXException 
+   * @throws ParserConfigurationException 
    */
-  public XMLIndexer(IndexWriter writer, Iterator<File> it, Templates templates)
-      throws TransformerConfigurationException, ParserConfigurationException, SAXException, InstantiationException,
-      IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException,
-      SecurityException
+  public XMLIndexer(IndexWriter writer, Iterator<File> it, Templates templates) throws TransformerConfigurationException, ParserConfigurationException, SAXException 
   {
     this.it = it;
     handler = new SAXIndexer(writer);
@@ -152,7 +146,8 @@ public class XMLIndexer implements Runnable
       }
       catch (Exception e) {
         Exception ee = new Exception("ERROR in file " + file, e);
-        error(ee);
+        // error(ee);
+        
       }
     }
   }
@@ -239,25 +234,17 @@ public class XMLIndexer implements Runnable
 
   /**
    * Recursive indexation of an XML folder, multi-threadeded.
-   * 
-   * @param indexDir
-   *          where the lucene indexes are generated
-   * @throws TransformerConfigurationExceptionArrayList
-   * @throws InterruptedException
-   * @throws TransformerConfigurationException
-   * @throws SAXException
-   * @throws ParserConfigurationException
-   * @throws SecurityException
-   * @throws NoSuchMethodException
-   * @throws InvocationTargetException
-   * @throws IllegalArgumentException
-   * @throws IllegalAccessException
-   * @throws InstantiationException
+   * @param writer
+   * @param threads
+   * @param xsl
+   * @param globs
+   * @throws TransformerConfigurationException 
+   * @throws SAXException 
+   * @throws ParserConfigurationException 
+   * @throws InterruptedException 
+   * @throws IOException 
    */
-  static public void index(final IndexWriter writer, int threads, String xsl, String[] globs)
-      throws IOException, InterruptedException, TransformerConfigurationException, ParserConfigurationException,
-      SAXException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
-      NoSuchMethodException, SecurityException
+  static public void index(final IndexWriter writer, int threads, String xsl, String[] globs) throws TransformerConfigurationException, ParserConfigurationException, SAXException, InterruptedException, IOException
   {
 
     info("Lucene index:" + writer.getDirectory() + "; parser: " + xsl + "; files: " + String.join(", ", globs));

@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -189,8 +193,7 @@ public class IntVek implements Cloneable
   /**
    * Put an array of values, index in array is the key
    * 
-   * @param key
-   * @param value
+   * @param data
    * @return vector for chaining
    */
   public IntVek put(int[] data)
@@ -219,7 +222,7 @@ public class IntVek implements Cloneable
   /**
    * Add a vector to another
    * 
-   * @param An
+   * @param toadd
    *          IntIntMap to add to this on
    * @return new size
    */
@@ -429,8 +432,6 @@ public class IntVek implements Cloneable
 
   /**
    * Use after next(), set current entry by iterator.
-   * 
-   * @return
    */
   public void set(int value)
   {
@@ -639,8 +640,7 @@ public class IntVek implements Cloneable
   /**
    * Cosine similarity with vector reduction to intersection only
    * 
-   * @param vek1
-   * @param vek2
+   * @param vek
    * @return the similarity score
    */
   public double intercos(IntVek vek)
@@ -668,8 +668,7 @@ public class IntVek implements Cloneable
   /**
    * Cosine similarity with vector
    * 
-   * @param vek1
-   * @param vek2
+   * @param vek
    * @return the similarity score
    */
   public double cosine(IntVek vek)

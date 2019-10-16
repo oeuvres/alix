@@ -16,8 +16,8 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
-import alix.lucene.analysis.CharsDic;
 import alix.lucene.analysis.TokenDic.AnalyzerDic;
+import alix.lucene.analysis.tokenattributes.CharsDic;
 import alix.util.Dir;
 
 public class wc

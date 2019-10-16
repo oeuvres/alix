@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -34,10 +38,6 @@ import java.util.NoSuchElementException;
 /**
  * Efficient Object to handle a sliding window of mutable String (Chain), Works
  * like a circular array that you can roll on a token line.
- * 
- * @author glorieux-f
- *
- * @param <T>
  */
 public class ChainRoller extends Roller implements Iterable<Chain>
 {
@@ -59,7 +59,7 @@ public class ChainRoller extends Roller implements Iterable<Chain>
     /**
      * Get a value by index, positive or negative, relative to center
      * 
-     * @param ord
+     * @param pos
      * @return
      */
     public String get(final int pos)
@@ -71,7 +71,7 @@ public class ChainRoller extends Roller implements Iterable<Chain>
      * Get a pointer on the chain at desired position. Be careful, the chain is
      * mutable
      * 
-     * @param ord
+     * @param pos
      * @return
      */
     public Chain access(final int pos)
@@ -82,9 +82,9 @@ public class ChainRoller extends Roller implements Iterable<Chain>
     /**
      * Modify a value by an index
      * 
-     * @param ord
+     * @param pos
      *            Position in the slider
-     * @param chain
+     * @param term
      *            A string value to modify the position
      * @return
      */
@@ -96,7 +96,7 @@ public class ChainRoller extends Roller implements Iterable<Chain>
     /**
      * Modify a value by an index
      * 
-     * @param ord
+     * @param pos
      *            Position in the slider
      * @param chain
      *            A string value to modify the position

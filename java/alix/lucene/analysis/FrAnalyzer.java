@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -31,17 +35,13 @@ package alix.lucene.analysis;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.core.LetterTokenizer;
-import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
 
 /**
  * Analysis scenario for French in Alix.
- * The linguistic features of Alix are language dependant.
- * 
+ * The linguistic features of Alix are language dependent.
  */
 public class FrAnalyzer extends Analyzer
 {
-  
   /** 
    * Force creation of a new token stream pipeline, for multi threads 
    * indexing.
@@ -57,7 +57,7 @@ public class FrAnalyzer extends Analyzer
     final Tokenizer source = new FrTokenizer(); // segment words
     TokenStream result = new FrTokenLem(source); // provide lemma+pos
     boolean pun = false;
-    if ("pun".equals(field)) pun = true; // keep punctuation to parse query
+    if ("query".startsWith(field)) pun = true; // keep punctuation, ex, to parse query
     result = new TokenLemCloud(result, pun); // select lemmas as term to index
     return new TokenStreamComponents(source, result);
   }

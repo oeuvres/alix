@@ -42,6 +42,11 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
     <meta charset="UTF-8">
     <link href="../static/vendors/teinte.css" rel="stylesheet"/>
     <link href="../static/obvil.css" rel="stylesheet"/>
+    <style>
+mark.ADV { font-weight: normal; background: #FEC; }
+mark.ADJ { font-weight: normal; background: #CEF; }
+mark.NAME { color: red; }
+    </style>
   <%
 /**
  * display a doc from the index.
@@ -77,7 +82,7 @@ if (id != null) {
 }
 else if (!"".equals(q)) {
   time = System.nanoTime();
-  topDocs = getTopDocs(session, searcher, corpus, q, sort);
+  topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
   ScoreDoc[] hits = topDocs.scoreDocs;
   if (hits.length == 0) {
     start = 0;
@@ -161,138 +166,33 @@ if (document != null) {
   out.println("<div class=\"heading\">");
   out.println(bibl);
   out.println("</div>");
-  
-  Top<String> top;
-  boolean first;
-  Query query;
-  TopDocs results;
-  Keywords keywords = new Keywords (alix, TEXT, docId);
-  int max;
-
-  out.println("<p class=\"keywords\">");
-  out.println("<b>Mots clés</b> : ");
-  top = keywords.theme();
-  max = 50;
-  first = true;
-  for (Top.Entry<String> entry: top) {
-    if (first) first = false;
-    else out.println(", ");
-    String word = entry.value();
-    out.print("<a href=\"?q="+word+"\">"+word+"</a>");
-    // out.print(" ("+entry.score()+")");
-    if (entry.score() <= 0) break;
-    if (--max <= 0) break;
-  }
-  out.println(".</p>");
-
-  query = keywords.query(top, 50, true);
-  results = searcher.search(query, 11);
-  out.println("<details>");
-  out.println("<summary>Chapitres avec ces mots</summary>");
-  out.println("<ul>");
-  out.println(results(results, reader, docId));
-  out.println("</ul>");
-  out.println("</details>");
-  
-  out.println("<p class=\"keywords\">");
-  top = keywords.names();
-  out.println("<b>Noms cités</b> : ");
-  first = true;
-  for (Top.Entry<String> entry: top) {
-    if (first) first = false;
-    else out.println(", ");
-    String word = entry.value();
-    out.print("<a href=\"?q="+word+"\">");
-    out.print(word);
-    out.print("</a>");
-  }
-  out.println(".</p>");
-  
-  query = keywords.query(top, 50, true);
-  results = searcher.search(query, 11);
-  out.println("<details>");
-  out.println("<summary>Chapitres avec ces noms</summary>");
-  out.println("<ul>");
-  out.println(results(results, reader, docId));
-  out.println("</ul>");
-  out.println("</ul>");
-  out.println("</details>");
-
-  top = keywords.happax();
-  if (top.length() > 0) {
-    out.println("<b>Happax</b> : ");
-    first = true;
-    for (Top.Entry<String> entry: top) {
-      if (first) first = false;
-      else out.println(", ");
-      String word = entry.value();
-      out.print(word);
-    }
-    out.println(".</p>");
-    
-  }
-  
-  out.println(".<p/>");
 
   String text = document.get(TEXT);
+  BinaryUbytes tags = new BinaryUbytes();
+  tags.open(document.getBinaryValue(TEXT+Alix._TAGS));
+  Offsets offsets = new Offsets();
+  offsets.open(document.getBinaryValue(TEXT+Alix._OFFSETS));
+  
+  
+  TagFilter tagFilter = new TagFilter();
+  tagFilter.setName();
+  tagFilter.setAdj();
+  tagFilter.set(Tag.ADV);
+  
   // hilie
-  if (!"".equals(q)) {
-    TermList terms = alix.qTerms(q, TEXT);
-    ArrayList<BytesRef> bytesList = (ArrayList<BytesRef>)terms.bytesList();
-    Terms tVek = reader.getTermVector(docId, TEXT);
-    // buid a term enumeration like lucene like them in the term vector
-    Automaton automaton = DaciukMihovAutomatonBuilder.build(bytesList);
-    TermsEnum tEnum = new CompiledAutomaton(automaton).getTermsEnum(tVek);
-    PostingsEnum postings = null;
-    ArrayList<TokenOffsets> offsets = new ArrayList<TokenOffsets>();
-    while (tEnum.next() != null) {
-      postings = tEnum.postings(postings, PostingsEnum.OFFSETS);
-      while(postings.nextDoc() != PostingsEnum.NO_MORE_DOCS) {
-        int pos = -1;
-        for (int freq = postings.freq(); freq > 0; freq --) {
-          postings.nextPosition();
-          offsets.add(new TokenOffsets(postings.startOffset(), postings.endOffset(), null));
-        }
-      }
-    }
-    Collections.sort(offsets, new Comparator<TokenOffsets>()
-    {
-      @Override
-      public int compare(TokenOffsets entry1, TokenOffsets entry2)
-      {
-        int v1 = entry1.startOffset;
-        int v2 = entry2.startOffset;
-        if (v1 < v2) return -1;
-        if (v1 > v2) return +1;
-        return 0;
-      }
-    });
-    int offset = 0;
-    for (int i = 0, size = offsets.size(); i < size; i++) {
-      TokenOffsets tok = offsets.get(i);
-      out.print(text.substring(offset, tok.startOffset));
-      out.print("\n<mark class=\"mark\" id=\"mark"+(i+1)+"\">");
-      if (i > 0) out.print("<a href=\"#mark"+(i)+"\" onclick=\"location.replace(this.href); return false;\" class=\"prev\">◀</a> ");
-      out.print(text.substring(tok.startOffset, tok.endOffset));
-      if (i < size - 1) out.print(" <a href=\"#mark"+(i + 2)+"\" onclick=\"location.replace(this.href); return false;\" class=\"next\">▶</a>");
-      out.print("</mark>\n");
-      offset = tok.endOffset;
-    }
-    out.print(text.substring(offset));
-    
-    int length = text.length();
-    out.println("<nav id=\"ruloccs\">");
-    final DecimalFormat dfdec1 = new DecimalFormat("0.#", ensyms);
-    for (int i = 0, size = offsets.size(); i < size; i++) {
-      TokenOffsets tok = offsets.get(i);
-      offset = tok.startOffset;
-      out.println("<a href=\"#mark"+(i+1)+"\" style=\"top: "+dfdec1.format(100.0 * offset / length)+"%\">88&nbsp;</a>");
-    }
-    out.println("</nav>");
+  int off = 0;
+  for (int pos = 0, size = offsets.size(); pos < size; pos++) {
+    int tag = tags.get(pos);
+    if (!tagFilter.accept(tag)) continue;
+    int offStart = offsets.getStart(pos);
+    int offEnd = offsets.getEnd(pos);
+    out.print(text.substring(off, offStart));
+    out.print("\n<mark class=\""+Tag.label(Tag.group(tag))+"\">");
+    out.print(text.substring(offStart, offEnd));
+    out.print("</mark>\n");
+    off = offEnd;
   }
-  else {
-    out.print(text);
-  }
+  out.print(text.substring(off));
 }
     %>
     </main>

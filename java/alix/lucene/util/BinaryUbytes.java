@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -29,23 +33,28 @@
 package alix.lucene.util;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-
+import org.apache.lucene.document.BinaryDocValuesField; // for doc
+import org.apache.lucene.document.Document; // for doc
+import org.apache.lucene.document.StoredField; // for doc
+import org.apache.lucene.index.BinaryDocValues; // for doc
 import org.apache.lucene.util.BytesRef;
 
-import alix.util.Calcul;
-
 /**
- * Data structure to write and read unsigned bytes
- * in a bynary form, possible to write in {@link StoredField}.
+ * Data structure to write and read unsigned bytes (0-255)
+ * in a binary form suited for stored field 
+ * {@link StoredField#StoredField(String, BytesRef)},
+ * {@link Document#getBinaryValue(String)}
+ * or binary fields {@link BinaryDocValuesField},
+ * {@link BinaryDocValues}.
+ * Values to put and get are int, converted as the 
+ * default java signed byte.
  * The values are backed in a reusable and growing {@link ByteBuffer}.
- * 
  */
 public class BinaryUbytes extends BinaryValue
 {
   /**
-   * Create buffer for read {@link #open(BytesRef)}
-   * (write is possible after {@link #reset()}).
+   * Create buffer for read {@link BinaryValue#open(BytesRef)}
+   * (write is possible after {@link BinaryValue#reset()}).
    */
   public BinaryUbytes()
   {
@@ -86,7 +95,9 @@ public class BinaryUbytes extends BinaryValue
   }
 
   /**
-   * Get value at a position.
+   * Get value at a position. Value is stored as
+   * a common java byte (signed),it is returned as an int
+   * to allow unsigne values.
    * 
    * @param pos
    * @return
@@ -96,4 +107,21 @@ public class BinaryUbytes extends BinaryValue
     return buf.get(pos) & (0xff) ;
   }
 
+  @Override
+  public String toString()
+  {
+    StringBuilder sb = new StringBuilder();
+    boolean first = true;
+    int limit = Math.min(this.size(), 100);
+    sb.append("(");
+    int i = 0;
+    for(; i < limit; i++) {
+      if (first) first = false;
+      else sb.append(", ");
+      sb.append(get(i));
+    }
+    if (i > this.size()) sb.append(", …");
+    sb.append("):"+this.size());
+    return sb.toString();
+  }
 }

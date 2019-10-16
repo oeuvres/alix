@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -38,6 +42,9 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import alix.fr.Tag;
 import alix.lucene.analysis.CharsMaps.LexEntry;
 import alix.lucene.analysis.CharsMaps.NameEntry;
+import alix.lucene.analysis.tokenattributes.CharsAtt;
+import alix.lucene.analysis.tokenattributes.CharsLemAtt;
+import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 import alix.util.Calcul;
 import alix.util.Char;
 
@@ -54,9 +61,8 @@ import alix.util.Char;
  * </p>
  * <p>
  * The original {@link CharTermAttribute} provide by the step before is not
- * modified, allowing further filters to play with channels and index
- * the same stream, with the same positions, with different values by field
- * (ex: lemma in a field, orthographic forms in another).
+ * modified, allowing further filters to choose which token to index,
+ * see {@link TokenLemCloud} or {@link TokenFlagFilter}. 
  * </p>
  * <p>
  * The found lemma+pos is dictionary based. No disambiguation is tried,

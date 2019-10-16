@@ -82,11 +82,13 @@ org.apache.lucene.util.automaton.Automaton,
 org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder,
 org.apache.lucene.util.automaton.CompiledAutomaton,alix.fr.Tag,
 
+alix.fr.Tag,
+alix.fr.Tag.TagFilter,
 alix.lucene.Alix,
-alix.lucene.analysis.CharsLemAtt,
-alix.lucene.analysis.CharsAtt,
-alix.lucene.analysis.CharsDic,
-alix.lucene.analysis.CharsDic.Entry,
+alix.lucene.analysis.tokenattributes.CharsLemAtt,
+alix.lucene.analysis.tokenattributes.CharsAtt,
+alix.lucene.analysis.tokenattributes.CharsDic,
+alix.lucene.analysis.tokenattributes.CharsDic.Entry,
 alix.lucene.analysis.CharsMaps,
 alix.lucene.analysis.CharsMaps.LexEntry,
 alix.lucene.analysis.CharsMaps.NameEntry,
@@ -113,7 +115,9 @@ alix.lucene.search.SimilarityOccs,
 alix.lucene.search.SimilarityTheme,
 alix.lucene.search.TermList,
 alix.lucene.search.TopTerms,
+alix.lucene.util.BinaryUbytes,
 alix.lucene.util.Cooc,
+alix.lucene.util.Offsets,
 alix.util.Char,
 alix.util.Dir,
 alix.util.Top,
@@ -393,7 +397,7 @@ long time = System.nanoTime();
 request.setCharacterEncoding("UTF-8");
 String obvilDir = (String)request.getAttribute(Obvil.OBVIL_DIR);
 String base = (String)request.getAttribute(Obvil.BASE);
-Alix alix = Alix.instance(obvilDir +"/"+ base, "alix.lucene.analysis.FrAnalyzer");
+Alix alix = Alix.instance(obvilDir +"/"+ base, new FrAnalyzer());
 
 //Set a bitSet filter for current corpus
 BitSet filter = null;

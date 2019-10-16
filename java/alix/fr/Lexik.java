@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -241,7 +245,7 @@ public class Lexik
   /**
    * Is it a stop word?
    * 
-   * @param An
+   * @param orth
    *          orthographic form
    * @return
    */
@@ -253,7 +257,7 @@ public class Lexik
   /**
    * Is it a stop word?
    * 
-   * @param An
+   * @param orth
    *          orthographic form
    * @return
    */
@@ -267,7 +271,7 @@ public class Lexik
   /**
    * Is it a know name?
    * 
-   * @param A
+   * @param orth
    *          form with initial cap
    * @return
    */
@@ -279,7 +283,7 @@ public class Lexik
   /**
    * Is it a know name?
    * 
-   * @param A
+   * @param orth
    *          form with initial cap
    * @return
    */
@@ -309,7 +313,7 @@ public class Lexik
   /**
    * Update a token with lexical informations about a word
    * 
-   * @param tok
+   * @param occ
    * @return true if entry fond
    */
   @SuppressWarnings("unlikely-arg-type")
@@ -326,7 +330,7 @@ public class Lexik
   /**
    * Update a token with lexical informations about a name
    * 
-   * @param tok
+   * @param occ
    * @return true if entry fond
    */
   @SuppressWarnings("unlikely-arg-type")
@@ -361,7 +365,7 @@ public class Lexik
   /**
    * Normalize graphical form of a chain with a table of graphical variants
    * 
-   * @param chain
+   * @param graph
    * @return
    */
   @SuppressWarnings("unlikely-arg-type")
@@ -385,7 +389,7 @@ public class Lexik
   /**
    * Give a lem according to the dico
    * 
-   * @param token
+   * @param orth
    * @return
    */
   public static String lem(final String orth)
@@ -399,7 +403,7 @@ public class Lexik
   /**
    * Give a category according to the dico
    * 
-   * @param token
+   * @param orth
    * @return
    */
   public static int cat(final String orth)

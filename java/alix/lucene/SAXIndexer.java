@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -26,10 +30,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package alix.lucene.analysis;
+package alix.lucene;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.lang.reflect.InvocationTargetException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -37,10 +40,8 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -58,15 +59,16 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import alix.fr.Tag.TagFilter;
-import alix.lucene.Alix;
+import alix.lucene.analysis.TokenStats;
 
 
 /**
  * Index an xml file of lucene documents.
  * React to the namespace uri xmlns:alix="http://alix.casa".
- * The element <alix:document> contains a document.
- * The element <alix:field> contains a field.
+ * The element {@code <alix:document>} contains a document.
+ * The element {@code <alix:field>} contains a field.
  * <pre>
+ * {@literal
  * <freename xmlns:alix="http://alix.casa">
  *    <alix:document xml:id="docid1">
         <alix:field name="title" type="text">First document</alix:field>
@@ -105,6 +107,7 @@ import alix.lucene.Alix;
         </alix:chapter>
       </alix:document>
  * </freename>
+ * }
  * </pre>
  * 
  * <p>
@@ -148,24 +151,17 @@ public class SAXIndexer extends DefaultHandler
   private StringBuilder xml = new StringBuilder();
   /** Flag to verify that an element is not empty (for XML serialization) */
   private boolean empty;
+  /** Keep an hand on an analyzer */
   private final Analyzer analyzer;
-  
   
   /**
    * Keep same writer for 
    * @param writer
-   * @param filename
-   * @throws SecurityException 
-   * @throws NoSuchMethodException 
-   * @throws InvocationTargetException 
-   * @throws IllegalArgumentException 
-   * @throws IllegalAccessException 
-   * @throws InstantiationException 
    */
-  public SAXIndexer(final IndexWriter writer) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
+  public SAXIndexer(final IndexWriter writer) 
+  {
     this.writer = writer;
-    // the default reuse strategy seems n
-    this.analyzer = writer.getAnalyzer().getClass().getDeclaredConstructor().newInstance();
+    this.analyzer = writer.getAnalyzer();
   }
   
   /**
@@ -448,45 +444,26 @@ public class SAXIndexer extends DefaultHandler
         doc.add(new StoredField(name , text));
         store = false;
       }
-      // analysis, Tee is possible because of a caching token filter
+      // analysis
       else {
         doc.add(new StoredField(name , text)); // text has to be stored for snippets and conc
-        /*
-        // A stats filter has been tested before a caching filter
-        // but it is less reliable than to get counts after indexation
-        TokenStats counter = new TokenStats(result); 
-        // A caching token stream allow to replay the tokens and get here stats to add to the document
-        TokenStream caching = new CachingTokenFilter(counter);
+        TokenStream source = analyzer.tokenStream("stats", text);
         try {
-          caching.reset(); // reset upper filters
+          TokenStats stats = new TokenStats(source);
+          // source.reset();
+          // A caching token stream allow to replay the tokens and get here stats to add to the document
+          TokenStream caching = new CachingTokenFilter(stats);
+          caching.reset(); // reset upper filters ?
           caching.incrementToken(); // cache all tokens
+          doc.add(new StoredField(name+Alix._OFFSETS , stats.offsets().getBytesRef()));
+          doc.add(new StoredField(name+Alix._TAGS , stats.tags().getBytesRef()));
+          doc.add(new Field(name, caching, Alix.ftypeAll)); // indexation of the chosen tokens
         }
-        catch (IOException e) {
-          try {
-            caching.close();
-          }
-          catch (IOException e1) {
-            throw new SAXException(e);
-          }
+        catch (Exception e) {
+          e.printStackTrace();
+          System.exit(9);
           throw new SAXException(e);
         }
-        doc.add(new NumericDocValuesField(name + Alix._LENGTH, counter.length()));
-        doc.add(new NumericDocValuesField(name + Alix._WIDTH, counter.width()));
-        */
-        /*
-        TokenStream stream = analyzer.tokenStream(name, text);
-        try {
-          stream.reset();
-        }
-        catch (IOException e) {
-          // TODO Auto-generated catch block
-          e.printStackTrace();
-        }
-        */
-        doc.add(new Field(name, text, Alix.ftypeAll));
-        // TokenStream names = new TokenFlagFilter(caching, nameFilter);
-        // doc.add(new Field(fieldName + Alix._NAMES, names, Alix.ftypeAll));
-
       }
     }
     else if ("chapter".equals(localName)) {

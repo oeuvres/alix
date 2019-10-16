@@ -9,7 +9,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttributeImpl;
 
 import alix.fr.Lexik;
 import alix.fr.Lexik.LexEntry;
-import alix.lucene.analysis.CharsAtt;
+import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.Chain;
 
 /**

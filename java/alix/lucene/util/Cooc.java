@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -71,11 +75,11 @@ import alix.util.Calcul;
 public class Cooc
 {
   /** Suffix for a binary field containing tokens by position */
-  private static final String _RAIL = "_rail";
+  public static final String _RAIL = "_rail";
   /** Name of the reference text field */
   private final String field;
   /** Name of the binary field storing the int vector of documents */
-  private final String fieldBin;
+  private final String fieldRail;
   /** Keep the freqs for the field */
   private final Freqs freqs;
   /** Dictionary of terms for this field */
@@ -93,7 +97,7 @@ public class Cooc
   {
     this.alix = alix;
     this.field = field;
-    this.fieldBin = field + _RAIL;
+    this.fieldRail = field + _RAIL;
     this.freqs = alix.freqs(field); // build and cache the dictionary of cache for the field
     this.hashDic = freqs.hashDic();
   }
@@ -113,16 +117,15 @@ public class Cooc
     IndexReader reader = alix.reader(writer);
     int maxDoc = reader.maxDoc();
     // create a byte buffer, will grow if more 
-    ByteBuffer buf =  ByteBuffer.allocate(1024);
+    BinaryInts buf =  new BinaryInts(1024);
     
     for (int docId = 0; docId < maxDoc; docId++) {
       Terms termVector = reader.getTermVector(docId, field);
       if (termVector == null) continue;
-      buf = rail(termVector, buf); // reusable buffer may be modified (growing)
-      BytesRef ref =  new BytesRef(buf.array(), buf.arrayOffset(), buf.limit());
-      Field field = new BinaryDocValuesField(fieldBin, ref);
+      rail(termVector, buf);
+      Field field = new BinaryDocValuesField(fieldRail, buf.getBytesRef());
       long code =  writer.tryUpdateDocValue(reader, docId, field);
-      if( code < 0) System.out.println("Field \""+fieldBin+"\", update error for doc="+docId+" ["+code+"]");
+      if( code < 0) System.out.println("Field \""+fieldRail+"\", update error for doc="+docId+" ["+code+"]");
     }
     reader.close();
     writer.commit();
@@ -138,20 +141,17 @@ public class Cooc
    * The buffer could be modified if resizing was needed.
    * @param termVector A term vector of a document with positions.
    * @param buf A reusable binary buffer to index.
-   * @return
    * @throws IOException
    */
-  public ByteBuffer rail(Terms termVector, ByteBuffer buf) throws IOException
+  public void rail(Terms termVector, BinaryInts buf) throws IOException
   {
-    int capacity = buf.capacity();
-    buf.clear(); // reset markers but do not erase
-    // tested, 2x faster than System.arraycopy after 5 iterations
-    Arrays.fill(buf.array(), (byte)0);
+    buf.reset(); // celan all
     BytesRefHash hashDic = this.hashDic;
     TermsEnum tenum = termVector.iterator();
     PostingsEnum postings = null;
     BytesRef bytes = null;
-    int length = -1; // length of the array
+    int maxpos = -1;
+    int minpos = Integer.MAX_VALUE;
     while ((bytes = tenum.next()) != null) {
       int termId = hashDic.find(bytes);
       if (termId < 0) System.out.println("unknown term? "+bytes.utf8ToString());
@@ -160,21 +160,11 @@ public class Cooc
       int freq = postings.freq();
       for (int i = 0; i < freq; i++) {
         int pos = postings.nextPosition();
-        int index = pos * 4;
-        if (capacity < (index+4)) {
-          capacity = Calcul.nextSquare(index+4);
-          ByteBuffer expanded = ByteBuffer.allocate(capacity);
-          // expanded.order(buf.order());
-          buf.position(0); // needed or result maybe unpredictable
-          expanded.put(buf);
-          buf = expanded;
-        }
-        if (length < (index+4)) length = index+4;
-        buf.putInt(index, termId);
+        if (pos > maxpos) maxpos = pos;
+        if (pos < minpos) minpos = pos;
+        buf.put(pos, termId);
       }
     }
-    buf.limit(length);
-    return buf;
   }
   
 
@@ -182,7 +172,7 @@ public class Cooc
   /**
    * Get cooccurrences fron a multi term query.
    * Each document should be available as an int vector
-   * see {@link rail()}.
+   * see {@link #rail(Terms, BinaryInts)}.
    * A loop will cross all docs, and 
    * @param terms List of terms to search accross docs to get positions.
    * @param left Number of tokens to catch at the left of the pivot.
@@ -219,9 +209,9 @@ public class Cooc
       int docLeaf;
       LeafReader leaf = context.reader();
       // loop carefully on docs with a rail
-      BinaryDocValues binDocs = leaf.getBinaryDocValues(fieldBin);
+      BinaryDocValues binDocs = leaf.getBinaryDocValues(fieldRail);
       // probably nothing indexed
-      if (binDocs == null) return null; 
+      if (binDocs == null) continue; 
       // start iterators for each term
       ArrayList<PostingsEnum> list = new ArrayList<PostingsEnum>();
       for (Term term : terms) {
@@ -272,13 +262,14 @@ public class Cooc
         while (true) {
           int index = pos*4;
           if (index >= max) break; // position further than available tokens
-          int termId = buf.getInt(pos*4);
+          int termId = buf.getInt(index);
           freqs[termId]++;
           if (!dicSet.get(termId)) {
             hits[termId]++;
             dicSet.set(termId);
           }
           pos = contexts.nextSetBit(pos+1);
+          // System.out.print(pos);
           if (pos < 0) break; // no more positions
         }
       }
@@ -307,7 +298,7 @@ public class Cooc
       if (docBase > docId) return null;
       int docLeaf = docId - docBase;
       LeafReader leaf = context.reader();
-      BinaryDocValues binDocs = leaf.getBinaryDocValues(fieldBin);
+      BinaryDocValues binDocs = leaf.getBinaryDocValues(fieldRail);
       if (binDocs == null) return null;
       int docFound = binDocs.advance(docLeaf);
       // maybe found on next leaf

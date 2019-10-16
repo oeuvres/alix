@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -30,7 +34,6 @@ package alix.lucene;
 
 import java.io.IOException;
 import java.lang.ref.SoftReference;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -41,13 +44,19 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.lucene.analysis.AlixReuseStrategy;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.AnalyzerReuseControl;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -81,7 +90,6 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.Bits;
 
 import alix.fr.Tag;
-import alix.lucene.analysis.CharsLemAtt;
 import alix.lucene.search.Facet;
 import alix.lucene.search.Scale;
 import alix.lucene.search.Freqs;
@@ -90,7 +98,7 @@ import alix.lucene.util.Cooc;
 
 /**
  * An Alix instance represents a Lucene base {@link Directory} with other useful data.
- * Instantiation is not public, use {@link #instance(Path, Class)} instead.
+ * Instantiation is not public, use {@link #instance(Path, String)} instead.
  * A static pool of lucene directories is kept to ensure uniqueness of Alix objects.
  * <p>
  * To keep only one instance of {@link IndexReader}, {@link IndexSearcher}, {@link IndexWriter}
@@ -137,10 +145,10 @@ public class Alix
   public static final String CHAPTER = "chapter";
   /** Level type, independent article */
   public static final String ARTICLE = "article";
-  /** A binary field */
+  /** A binary stored field with an array of offsets */
   public static final String _OFFSETS = "_offsets";
-  /** Suffix for a numeric field containing length of a text field in token */
-  public static final String _WIDTH = "_width";
+  /** A binary stored with {@link Tag} by position */
+  public static final String _TAGS = "_tags";
   /** Suffix for a text field containing only names */
   public static final String _NAMES = "_names";
   /** Max books */
@@ -188,7 +196,9 @@ public class Alix
    * Avoid construction, maintain a pool by file path to ensure unicity.
    * 
    * @param path
+   * @param analyzerClass
    * @throws IOException
+   * @throws ClassNotFoundException 
    */
   private Alix(final Path path, final Analyzer analyzer) throws IOException
   {
@@ -200,18 +210,19 @@ public class Alix
     // dir = FSDirectory.open(indexPath);
     // open directory as a memory map, very efficient, https://dzone.com/articles/use-lucene’s-mmapdirectory
     dir = MMapDirectory.open(path);
-    this.analyzer = analyzer;
+    this.analyzer = new AnalyzerReuseControl(analyzer, new AlixReuseStrategy());
   }
 
   /**
-   * See {@link #instance(Path, Class)}
+   * See {@link #instance(Path, String)}
    * @param path
    * @param analyzerClass
+   * @throws IOException 
    * @throws ClassNotFoundException 
    */
-  public static Alix instance(final String path, final String analyzerClass) throws IOException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException, ClassNotFoundException
+  public static Alix instance(final String path, final Analyzer analyzer) throws IOException 
   {
-    return instance(Paths.get(path), analyzerClass);
+    return instance(Paths.get(path), analyzer);
   }
 
   /**
@@ -220,22 +231,14 @@ public class Alix
    * @param path
    * @param analyzerClass
    * @return
-   * @throws ClassNotFoundException 
-   * @throws SecurityException 
-   * @throws NoSuchMethodException 
-   * @throws InvocationTargetException 
-   * @throws IllegalArgumentException 
-   * @throws IllegalAccessException 
-   * @throws InstantiationException 
-   * @throws IOException 
+   * @throws IOException
+   * @throws ClassNotFoundException
    */
-  public static Alix instance(Path path, final String analyzerClass) throws ClassNotFoundException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException, IOException 
+  public static Alix instance(Path path, final Analyzer analyzer) throws IOException 
   {
     path = path.toAbsolutePath().normalize(); // normalize path to be a key
     Alix alix = pool.get(path);
     if (alix == null) {
-      Class<?> cls = Class.forName(analyzerClass);
-      Analyzer analyzer = (Analyzer) cls.getDeclaredConstructor().newInstance();
       alix = new Alix(path, analyzer);
       pool.put(path, alix);
     }
@@ -315,7 +318,6 @@ public class Alix
   /**
    * A real time reader only used for some updates (see {@link Cooc#write()}).
    * 
-   * @param force
    * @return
    * @throws IOException
    */
@@ -748,19 +750,19 @@ public class Alix
    * @return
    * @throws IOException
    */
-  @SuppressWarnings("unlikely-arg-type")
   public TermList qTerms(String q, String field) throws IOException
   {
-
-    TokenStream ts = analyzer.tokenStream(field, "pun"); // keep punctuation to group terms
+    TokenStream ts = analyzer.tokenStream("pun", q); // keep punctuation to group terms
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
-    CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
-    FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
-
+    // not generic for other analyzers but may become interesting for a query parser
+    // CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
+    // FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
     TermList terms = new TermList(freqs(field));
     ts.reset();
     try {
       while (ts.incrementToken()) {
+        final String tok = token.toString();
+        /*
         final int tag = flags.getFlags();
         if (Tag.isPun(tag)) {
           // start a new line
@@ -769,8 +771,12 @@ public class Alix
           }
           continue;
         }
-        if (lem.length() > 0) terms.add(new Term(field, lem.toString()));
-        else terms.add(new Term(field, token.toString()));
+        */
+        if (",".equals(tok) || ";".equals(tok)) {
+          terms.add(null);
+          continue;
+        }
+        terms.add(new Term(field, tok));
       }
       ts.end();
     }

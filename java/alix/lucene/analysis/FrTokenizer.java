@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -43,6 +47,7 @@ import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.AttributeImpl;
 
 import alix.fr.Tag;
+import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.Calcul;
 import alix.util.Char;
 
@@ -56,21 +61,21 @@ import alix.util.Char;
  * </p>
  * The content inside “skip tags” is not indexed.
  * <ul>
- *  <li>&lt;style></li>
- *  <li>&lt;script></li>
- *  <li>&lt;teiHeader></li>
+ *  <li>&lt;style&gt;</li>
+ *  <li>&lt;script&gt;</li>
+ *  <li>&lt;teiHeader&gt;</li>
  * </ul>
  * The tokenizer also recognize commands sent as processing instructions
  * (for section of documents wanted for display but not for index).
  * <ul>
- *  <li>&lt;?index_off?>: stop to send tokens from this point</li>
- *  <li>&lt;?index_on?> restart token stream.</li>
+ *  <li>&lt;?index_off?&gt;: stop to send tokens from this point</li>
+ *  <li>&lt;?index_on?&gt; restart token stream.</li>
  * </ul>
  * Some tags are interpreted as structural events.
  * This is useful for sentence separation (a title may not finish with a dot)
  * <ul>
- *  <li>&lt;p></li>
- *  <li>&lt;h1>, &lt;h2>, &lt;h3>, &lt;h4>, &lt;h5>, &lt;h6></li>
+ *  <li>&lt;p&gt;</li>
+ *  <li>&lt;h1&gt;, &lt;h2&gt;, &lt;h3&gt;, &lt;h4&gt;, &lt;h5&gt;, &lt;h6&gt;</li>
  * </ul>
  * <p>
  * The token separation follow Latin punctuation and should be compatible 
@@ -153,7 +158,7 @@ public class FrTokenizer extends Tokenizer
   /**
    * Handle xml tags ?
    * 
-   * @param ml
+   * @param xml
    */
   public FrTokenizer(boolean xml)
   {

@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -29,10 +33,7 @@
 package alix.lucene.analysis;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.FilteringTokenFilter;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
@@ -73,8 +74,7 @@ public class TokenStats extends TokenFilter
   @Override
   public boolean incrementToken() throws IOException
   {
-    // end of stream
-    if (!input.incrementToken()) return false;
+    if (!input.incrementToken()) return false; // end of stream
     offsets.put(pos, offsetAtt.startOffset(), offsetAtt.endOffset());
     tags.put(pos, flagsAtt.getFlags());
     pos += posAtt.getPositionIncrement();
@@ -111,9 +111,9 @@ public class TokenStats extends TokenFilter
   public void reset() throws IOException
   {
     super.reset();
+    pos = 0;
     tags.reset();
     offsets.reset();
-    pos = 0;
   }
 
 

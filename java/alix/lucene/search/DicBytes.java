@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -37,7 +41,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.UnicodeUtil;
 
-import alix.lucene.analysis.CharsAtt;
+import alix.lucene.analysis.tokenattributes.CharsAtt;
 
 /**
  * A dictionary of terms with frequencies, for lucene.
@@ -94,10 +98,11 @@ public class DicBytes implements Iterable<Integer>
     if (id < 0) return -1;
     return counts[id];
   }
+
   /**
    * Get count by String
    * 
-   * @param bytes
+   * @param s
    */
   public long count(final String s)
   {
@@ -222,11 +227,12 @@ public class DicBytes implements Iterable<Integer>
       final int id = sorted[cursor].id;
       return hash.get(id, bytes);
     }
+
     public CharsAtt term(CharsAtt term)
     {
       final int id = sorted[cursor].id;
       hash.get(id, bytes);
-      
+
       // ensure size of the char array
       int length = bytes.length;
       char[] chars = term.resizeBuffer(length);

@@ -1,16 +1,20 @@
 /*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
  * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix, A Lucene Indexer for XML documents.
- * Alix is a tool to index and search XML text documents
- * in Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French.
- * Alix has been started in 2009 under the javacrim project (sf.net)
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache licence.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under a non viral license.
- * SDX: Documentary System in XML.
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
  * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
@@ -38,7 +42,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.UnicodeUtil;
 
-import alix.lucene.analysis.CharsAtt;
+import alix.lucene.analysis.tokenattributes.CharsAtt;
 
 /**
  * An iterator for sorted list of terms
@@ -199,7 +203,7 @@ public class TopTerms
   }
   /**
    * Sort the terms according to a vector of scores by termId.
-   * @param scores An array in termId order.
+   * @param doubles An array in termId order.
    */
   public void sort(final double[] doubles)
   {
@@ -226,7 +230,7 @@ public class TopTerms
 
   /**
    * Sort the terms according to a vector of scores by termId.
-   * @param scores An array in termId order.
+   * @param longs An array in termId order.
    */
   public void sort(final long[] longs)
   {
@@ -239,7 +243,7 @@ public class TopTerms
 
   /**
    * Sort the terms according to a vector of scores by termId.
-   * @param scores An array in termId order.
+   * @param ints An array in termId order.
    */
   public void sort(final int[] ints)
   {
@@ -294,9 +298,9 @@ public class TopTerms
    * 
    * @param ref
    */
-  public void term(BytesRef bytes)
+  public void term(BytesRef ref)
   {
-    hashDic.get(termId, bytes);
+    hashDic.get(termId, ref);
   }
 
   /**
@@ -371,7 +375,7 @@ public class TopTerms
   /**
    * Set an optional array of values (in termId order).
    * 
-   * @param weights
+   * @param nos
    */
   public void setNos(final int[] nos)
   {
@@ -434,7 +438,7 @@ public class TopTerms
 
   /**
    * Set an optional int array of docids in termId order.
-   * @param weights
+   * @param covers
    */
   public void setCovers(final int[] covers)
   {
@@ -474,14 +478,19 @@ public class TopTerms
   public String toString()
   {
     StringBuilder sb = new StringBuilder();
-    BytesRef ref = new BytesRef();
     int max = Math.min(200, sorter.length);
+    if (sorter == null) {
+      sb.append("Dictionary has not be sorted, use alphabetic order");
+      sort();
+    }
+    BytesRef ref = new BytesRef();
     for (int i = 0; i < max; i++) {
       int facetId = sorter[i].termId;
       // System.out.println(facetId);
       hashDic.get(facetId, ref);
-      sb.append(""+facetId+". "+ref.utf8ToString());
-      if (lengths != null) sb.append(":" + lengths[facetId]);
+      sb.append(ref.utf8ToString());
+      if (occs != null) sb.append(", " + occs[facetId]);
+      if (lengths != null) sb.append("/" + lengths[facetId]);
       if (scores != null) sb.append(" (" + scores[facetId] + ")");
       sb.append("\n");
     }
