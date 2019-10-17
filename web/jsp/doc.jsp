@@ -166,6 +166,7 @@ if (document != null) {
   boolean first;
   Query query;
   TopDocs results;
+  
   Keywords keywords = new Keywords (alix, TEXT, docId);
   int max;
 

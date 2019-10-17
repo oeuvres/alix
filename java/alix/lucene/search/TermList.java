@@ -1,14 +1,14 @@
 /*
  * Alix, A Lucene Indexer for XML documents.
  * 
- * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
+ * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
  * Alix is a java library to index and search XML text documents
  * with Lucene https://lucene.apache.org/core/
  * including linguistic expertness for French,
- * available under Apache licence.
+ * available under Apache license.
  * 
  * Alix has been started in 2009 under the javacrim project
  * https://sf.net/projects/javacrim/
@@ -40,6 +40,7 @@ import java.util.Iterator;
 
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder; // doc
 
 /**
  * An object to store lucene terms with a frequency indice. A hack allow to
@@ -232,13 +233,18 @@ public class TermList implements Iterable<Term>
       }
     });
   }
-
-  public Collection<BytesRef> bytesList()
+  
+  /**
+   * Output list of terms as a collection of bytes reference 
+   * suited for automaton in Lucene {@link DaciukMihovAutomatonBuilder#build(Collection)}.
+   * @return
+   */
+  public Collection<BytesRef> refList()
   {
     sortByBytes();
     ArrayList<BytesRef> list = new ArrayList<>();
     for (Entry entry: data) {
-      if (entry.term == null) break;
+      if (entry.term == null) continue;
       list.add(entry.term.bytes());
     }
     return list;

@@ -1,14 +1,14 @@
 /*
  * Alix, A Lucene Indexer for XML documents.
  * 
- * Copyright 2009 Pierre DITTGEN <pierre@dittgen.org> 
+ * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
  * Alix is a java library to index and search XML text documents
  * with Lucene https://lucene.apache.org/core/
  * including linguistic expertness for French,
- * available under Apache licence.
+ * available under Apache license.
  * 
  * Alix has been started in 2009 under the javacrim project
  * https://sf.net/projects/javacrim/
@@ -127,7 +127,7 @@ import alix.lucene.util.Cooc;
  *   <li>{@link #cooc(String)}} Returns a co-occurrences reader (needs a specific indexation, {@link Cooc}).</li>
  * </ul>
  * 
- * @author Pierre DITTGEN (2009, original idea, creation)
+ * @author Pierre Dittgen (2009, original idea, creation)
  */
 public class Alix
 {

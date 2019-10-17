@@ -103,18 +103,8 @@ tt, pre {
   font-family: "FreeSans", "DejaVu Sans", "Lucida Sans Unicode", "Arial Unicode MS", sans-serif
 }
 
-blockquote, dd, p.p, .argument, .availability, div.bibl, li.bibl, .dialogue li, .justify, .note, div.stage {
+blockquote, dd, p.p, div.p, .argument, .availability, div.bibl, li.bibl, .dialogue li, .justify, .note, div.stage {
   text-align: justify;
-}
-
-@media screen {
-  body {
-    color: #161616;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: "Lucida Sans Unicode", "Lucida Grande", Verdana, Geneva, sans-serif;
-  }
 }
 
 /* html5 default, in alphabetic order */
@@ -204,7 +194,7 @@ blockquote {
   padding: 0;
 }
 
-blockquote p {
+blockquote p, blockquote div.p {
   text-indent: 2em;
 }
 
@@ -591,7 +581,7 @@ optgroup {
   font-weight: bold;
 }
 
-p, .dialogue li {
+p, div.p, .dialogue li {
   margin: 0;
   text-align: justify;
   line-height: 150%;
@@ -621,7 +611,7 @@ q {
 }
 
 q:before, q:after {
-  content:'';
+  content: '';
 }
 
 q q {
@@ -992,12 +982,6 @@ section {
   padding-top: 3em;
 }
 
-@media screen {
-  .body>.div {
-    padding-bottom: 3em;
-  }
-}
-
 div.docAuthor {
   text-align: center;
   font-variant: small-caps;
@@ -1077,8 +1061,7 @@ aside .docDate {
 }
 
 .floatingText {
-  font-size: 0.8rem
-  line-height: 120%;
+  font-size: 0.8rem line-height: 120%;
   padding: 0% 1% 1% 5%;
   background-color: #F8F7F4;
 }
@@ -1291,8 +1274,7 @@ div.l {
 }
 
 .p.manuscrits {
-  font-size: 80%
-  margin-top: 1.5rem;
+  font-size: 80% margin-top: 1.5rem;
   background-color: #FBFAF8;
   border-radius: 8px;
 }
@@ -1405,6 +1387,7 @@ div.note, aside.note {
 
 .note p {
   margin: 0;
+  line-height: inherit;
   text-indent: 1em;
   text-indent: 1rem;
 }
@@ -1450,28 +1433,6 @@ a.noteref:hover, a.noteback:hover {
 
 a.noteback {
   font-size: 85%;
-}
-
-@media screen {
-  div.note, aside.note {
-    margin: 0 0 0 2.5em;
-    border-left: 1px solid #CCCCCC;
-    padding: 0.5ex 0 0.5ex 0.5em;
-  }
-
-  section>div.note {
-    margin: 1em 0 1em 0;
-    padding-left: 1.5em;
-    padding-left: 1.5rem;
-  }
-
-  a.noteback {
-    position: absolute;
-    display: block;
-    text-align: right;
-    width: 5ex;
-    margin: 0.3ex 0 0 -7ex;
-  }
 }
 
 .num {
@@ -2115,7 +2076,6 @@ nav.breadcrumb {
   color: rgba(150, 150, 150, 1);
 }
 
-
 /* list styles  */
 ul.none, ol.none, ul.simple, ol.simple {
   list-style-type: none;
@@ -2374,73 +2334,6 @@ figcaption.less:before {
   content: '◿';
 }
 
-/*  */
-/* noterefover */
-#noterefover {
-  display: block;
-  visibility: hidden;
-  line-height: 1.1em;
-  padding: 2px 1ex;
-  font-size: 85%;
-  background: #FFFFFF;
-  border: 1px solid #AAAAAA;
-  box-shadow: 0px 0px 20px #AAAAAA;
-  max-width: 30em;
-  height: auto;
-  position: absolute;
-  visibility: none;
-}
-
-#noterefover.editor {
-  box-shadow: 0px 0px 20px #AAAA66;
-  border: 1px solid #CCCC99;
-}
-
-#noterefover.author {
-  box-shadow: 0px 0px 20px #6666AA;
-  border: 1px solid #9999CC;
-}
-
-#noterefover .noteback {
-  display: none;
-}
-
-#facsdiv {
-  text-align: center;
-  background: #FFFFFF;
-  border: 3px solid #FFFFFF;
-}
-
-#facsdiv a.close {
-  cursor: pointer;
-  font-weight: bold;
-  color: red;
-}
-
-#facsdiv a.close:hover {
-  box-shadow: 0px 0px 10px red;
-  background-color: rgb(255, 255, 255, 0.7);
-}
-
-/** specific wide screen, not for print or phone */
-@media screen {
-
-  .marginnote {
-    margin-right: -2.5em;
-    width: 8em;
-  }
-}
-
-/** wide screens */
-@media screen and (min-width : 1024px) {
-
-  .marginnote {
-    margin-right: -10em;
-    width: 15em;
-  }
-}
-
-
 /* a.prev:before, a.prev:after , a.next:before, a.next:after {font-size: 3em; color: rgba(200, 200, 200, 0.5); padding-right: 0.2ex; padding-left: 0.2ex;} */
 /* xml2html.xsl, documented XML source */
 .exemplum {
@@ -2605,19 +2498,48 @@ dl.xml dt {
   font-weight: normal;
 }
 
+/** specific wide screen, not for print or phone */
+@media screen {
+  div.note, aside.note {
+    margin: 0 0 0 2.5em;
+    border-left: 1px solid #CCCCCC;
+    padding: 0.5ex 0 0.5ex 0.5em;
+  }
+
+  section>div.note {
+    margin: 1em 0 1em 0;
+    padding-left: 1.5em;
+    padding-left: 1.5rem;
+  }
+
+  a.noteback {
+    position: absolute;
+    display: block;
+    text-align: right;
+    width: 5ex;
+    margin: 0.3ex 0 0 -7ex;
+  }
+
+  aside.marginnote {
+    margin-right: -2.5em;
+    width: 20em;
+  }
+}
+
+/** wide screens */
+@media screen and (min-width : 1024px) {
+  aside.marginnote {
+    margin-right: -10em;
+  }
+}
+
 @media print {
   body, #article {
     margin: 0;
     padding: 0;
   }
 
-  body, #article {
-    font-family: Georgia, "Bitstream Vera Serif", Times, serif;
-    color: #000000;
-    font-size: 16pt;
-  }
-
-  #aside, section.act, section.chapter, section.preface {
+  section.act, section.chapter, section.preface {
     -webkit-column-count: 2;
     -moz-column-count: 2;
     column-count: 2;
@@ -2632,10 +2554,6 @@ dl.xml dt {
 
   section.act, section.chapter, section.dedication, section.footnotes, section.preface {
     page-break-before: always;
-  }
-
-  #aside {
-    width: 100% !important;
   }
 
   body, .dialogue li {
@@ -2675,7 +2593,7 @@ dl.xml dt {
     margin-left: 0;
   }
 
-  p, .dialogue li, h3, h4 {
+  p, div.p, .dialogue li, h3, h4 {
     text-indent: 2em;
     text-indent: 2rem;
   }
