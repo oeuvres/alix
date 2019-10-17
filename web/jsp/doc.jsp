@@ -238,10 +238,10 @@ if (document != null) {
   // hilie
   if (!"".equals(q)) {
     TermList terms = alix.qTerms(q, TEXT);
-    ArrayList<BytesRef> bytesList = (ArrayList<BytesRef>)terms.bytesList();
+    ArrayList<BytesRef> refList = (ArrayList<BytesRef>)terms.refList();
     Terms tVek = reader.getTermVector(docId, TEXT);
     // buid a term enumeration like lucene like them in the term vector
-    Automaton automaton = DaciukMihovAutomatonBuilder.build(bytesList);
+    Automaton automaton = DaciukMihovAutomatonBuilder.build(refList);
     TermsEnum tEnum = new CompiledAutomaton(automaton).getTermsEnum(tVek);
     PostingsEnum postings = null;
     ArrayList<TokenOffsets> offsets = new ArrayList<TokenOffsets>();

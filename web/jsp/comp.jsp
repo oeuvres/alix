@@ -19,9 +19,9 @@ iframe {
     </style>
   </head>
   <body style="padding: 0; margin">
-    <iframe id="source" name="source" src="comp1.jsp?q=<%=q%>" width="50%" height="100%">
+    <iframe id="source" name="source" src="comp1.jsp?q=<%=q%>" width="50%" height="99.5%">
     </iframe>
-    <iframe id="target" name="target" src="comp2.jsp" width="50%" height="100%">
+    <iframe id="target" name="target" src="comp2.jsp" width="50%" height="99.5%">
     </iframe>
   </body>
 </html>
