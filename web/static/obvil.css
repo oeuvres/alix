@@ -2,9 +2,10 @@
 @import url('https://fonts.googleapis.com/css?family=Roboto:100,100i,200,200i,300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i&display=swa3');
 
 body.comp article.content, ul.legend {font-weight: 100; font-size: 110%; font-family: "Roboto", serif; color: #000;}
-a.tokspec, a.tokshared { cursor: pointer; color: #000; }
+a.tokspec, a.tokshared { cursor: pointer; color: #666;}
 a.tokspec:hover, a.tokshared:hover, a.tokhover {color: #000; text-decoration: none; outline: 1px rgb(234, 91, 12) solid;}
 a.tokspec {color: rgb(234, 91, 12);}
+a.tokshared {color: #000;}
 a.tokhi {background-color: rgb(234, 91, 12, 0.4); color: #000; }
 .em1 {font-weight: 200;}
 .em2 {font-weight: 300;}

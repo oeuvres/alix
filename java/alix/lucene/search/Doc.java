@@ -136,7 +136,6 @@ public class Doc
     double max1 = Double.MIN_VALUE;
     double max2 = Double.MIN_VALUE;
     CharsAtt att = new CharsAtt();
-    double score;
     while(termit1.next() != null) {
       // termit1.ord(); UnsupportedOperationException
       final double count1 = (int)termit1.totalTermFreq();
@@ -171,7 +170,7 @@ public class Doc
     String text = document.get(field);
     Collections.sort(offsets); // sort offsets before hilite
     int off = 0;
-    final double max = max1 + max2;
+    final double scoremax = max1/length1 + max2/length2;
     for (int i = 0, size = offsets.size(); i < size; i++) {
       TokenOffsets tok = offsets.get(i);
       double count1 = tok.count1;
@@ -183,13 +182,13 @@ public class Doc
       // specific to this doc
       if (count2 == 0) type = "tokspec"; 
       // change boldness
+      double score = count1/length1 + count2/length2;
       double sum = count1 + count2;
       String level = "em1";
-      if (sum >= 0.6*max) level = "em9";
-      else if (sum >= 0.2*max) level = "em5";
-      else if (sum > 2) level = "em3";
-      else if (sum == 2) level = "em2";
-      else if (sum == 1) level = "em1";
+      if (score >= 0.6*scoremax) level = "em9";
+      else if (score >= 0.3*scoremax) level = "em5";
+      else if (sum > 4) level = "em3";
+      else level = "em2";
       
       String form = tok.form.replace(' ', '_');
       String title = "";
