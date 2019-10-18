@@ -10,18 +10,20 @@ body, html {
   margin: 0;
   padding: 0;
 }
-#target {
+#right {
   float: right;
 }
 iframe {
   border: none;
+  margin: 0;
+  padding: 0;
 }
     </style>
   </head>
   <body style="padding: 0; margin">
-    <iframe id="source" name="source" src="comp1.jsp?q=<%=q%>" width="50%" height="99.5%">
+    <iframe id="left" name="left" src="comp1.jsp?q=<%=q%>" width="50%" height="99.5%">
     </iframe>
-    <iframe id="target" name="target" src="comp2.jsp" width="50%" height="99.5%">
+    <iframe id="right" name="right" src="comp2.jsp" width="50%" height="99.5%">
     </iframe>
   </body>
 </html>

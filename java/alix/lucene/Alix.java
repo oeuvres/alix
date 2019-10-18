@@ -156,15 +156,13 @@ public class Alix
   /** Current filename proceded */
   public static final FieldType ftypeAll = new FieldType();
   static {
-    // inverted index
     ftypeAll.setTokenized(true);
-    // keep norms for Similarity, http://makble.com/what-is-lucene-norms
-    ftypeAll.setOmitNorms(false);
-    // position needed for phrase query, take also
+    // freqs required, position needed for co-occurrences
     ftypeAll.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    ftypeAll.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
     ftypeAll.setStoreTermVectors(true);
-    ftypeAll.setStoreTermVectorOffsets(true);
     ftypeAll.setStoreTermVectorPositions(true);
+    ftypeAll.setStoreTermVectorOffsets(true);
     // do not store in this field
     ftypeAll.setStored(false);
     ftypeAll.freeze();

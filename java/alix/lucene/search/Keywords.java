@@ -52,10 +52,7 @@ import alix.util.Char;
 import alix.util.Top;
 
 /**
- * Extract most significant terms of a document
- * @author fred
- *
- *
+ * Extract most significant terms of a document.
  */
 public class Keywords
 {
@@ -132,7 +129,7 @@ public class Keywords
   }
 
   /**
-   * Create the More like query from a PriorityQueue
+   * Create the More like This query from a PriorityQueue
    */
   public Query query(Top<String> top, int words, boolean boost) {
     final String field = this.field;

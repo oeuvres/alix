@@ -34,6 +34,7 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
 mark.ADV { font-weight: normal; background: #FEC; }
 mark.ADJ { font-weight: normal; background: #CEF; }
 mark.NAME { color: red; }
+
     </style>
   <%
 /**
@@ -46,6 +47,7 @@ mark.NAME { color: red; }
 
 
 int docId = getParameter(request, "docid", -1);
+int doc2 = getParameter(request, "doc2", -1);
 String id = getParameter(request, "id", null);
 String sort = getParameter(request, "sort", null);
 int start = getParameter(request, "start", 1);
@@ -81,27 +83,53 @@ else if (!"".equals(q)) {
 
 Doc doc = null;
 if (docId >= 0) {
-  doc = new Doc(reader, docId);
+  doc = new Doc(alix, docId);
   if (doc.document() == null) doc = null;
 }
+
+// declare some variables to update if doc found
 String bibl = null;
+Top<String> top = null;
+boolean first = true;
+Query query;
+TopDocs results;
+int docSim = -1;
+
+
 if (doc != null) {
   bibl = doc.document().get("bibl");
   out.print("    <title>");
   out.print(Char.unTag(bibl));
   out.println(" [Obvil]</title>");
+  Keywords keywords = new Keywords (alix, TEXT, docId);
+  // fill topTerms for below
+  top = keywords.theme();
+  // no docId given to contrast with, serach with one
+  if (doc2 < 0) {
+    query = keywords.query(top, 50, true);
+    results = searcher.search(query, 2);
+    ScoreDoc[] hits = results.scoreDocs;
+    docSim = hits[1].doc;
+  } else {
+    docSim = doc2;
+  }
 }
   %>
   <script type="text/javascript">
-    var docsim = <%=docId%>;
-    if (docsim > 0) {
-      var target = parent.document.getElementById('target');
-      target.src="comp2.jsp?docsim="+docsim+"&start=2";
-    }
-  
+var winaside = parent.document.getElementById("right");
+    <% 
+if (doc2 < 0) out.println("showRight("+docId+");");
+%>
+function showRight (docId) {
+  if (docId < 0) return false;
+  if (!winaside) return false;
+  var url = "comp2.jsp?from=left&start=2&docleft="+docId;
+  winaside.src=url;
+}
+
   </script>
   </head>
-  <body class="document">
+  <body class="document comp">
     <%
 // Shall we add prev/next navigation ?
 if (bibl != null) {
@@ -164,12 +192,9 @@ if (doc != null) {
   out.println(bibl);
   out.println("</div>");
 
-  Top<String> top;
-  boolean first = true;
-  Query query;
-  TopDocs results;
 
-  Keywords keywords = new Keywords (alix, TEXT, docId);
+  int max = 50;
+  /*
   out.println("<p class=\"keywords\">");
   top = keywords.names();
   out.println("<b>Noms cités</b> : ");
@@ -181,41 +206,37 @@ if (doc != null) {
     out.print(word);
   }
   out.println(".</p>");
-
-  String[] words = top.toArray();
-  out.println(doc.hilite(TEXT, words));
-
-  
-  /*
-  String text = document.get(TEXT);
-  BinaryUbytes tags = new BinaryUbytes();
-  tags.open(document.getBinaryValue(TEXT+Alix._TAGS));
-  Offsets offsets = new Offsets();
-  offsets.open(document.getBinaryValue(TEXT+Alix._OFFSETS));
-  
-  
-  TagFilter tagFilter = new TagFilter();
-  tagFilter.setName();
-  tagFilter.setAdj();
-  tagFilter.set(Tag.ADV);
-  
-  // hilie
-  int off = 0;
-  for (int pos = 0, size = offsets.size(); pos < size; pos++) {
-    int tag = tags.get(pos);
-    if (!tagFilter.accept(tag)) continue;
-    int offStart = offsets.getStart(pos);
-    int offEnd = offsets.getEnd(pos);
-    out.print(text.substring(off, offStart));
-    out.print("<mark class=\""+Tag.label(Tag.group(tag))+"\">");
-    out.print(text.substring(offStart, offEnd));
-    out.print("</mark>");
-    off = offEnd;
-  }
-  out.print(text.substring(off));
   */
+  /*
+  out.println("<p class=\"keywords\">");
+  out.println("<b>Mots clés</b> : ");
+  first = true;
+  int i = 0;
+  for (Top.Entry<String> entry: top) {
+    if (first) first = false;
+    else out.println(", ");
+    String word = entry.value();
+    out.print("<a href=\"?q="+word+"\">"+word+"</a>");
+    // out.print(" ("+entry.score()+")");
+    if (entry.score() <= 0) break;
+    if (++i >= max) break;
+  }
+  out.println(".</p>");
+  */
+  Document fields = reader.document(docSim, FIELDS);
+  out.append("<p><b>Contrasté avec : </b>"+fields.get("bibl")+"</p>");
 }
     %>
+      <ul class="legend">
+        <li><a class="em9">Mot très fréquent</a>.</li>
+        <li><a class="tokspec em5">Mot spécifique</a> à ce document.</li>
+        <li><a class="tokshared em5">Mot partagé</a> entre les deux documents.</li>
+        <li><a class="tokhover">Mot au survol</a>, cliquer surligne toutes les occurences.</li>
+        <li><a class="tokhi">Mot surligné</a>, cliquer supprimme tous les surlignements.</li>
+      </ul>
+      <article class="content" id="contrast">
+        <% if (doc!= null) out.println(doc.contrast(TEXT, docSim)); %>
+      </article>
     </main>
     <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
     <script src="../static/js/doc.js">//</script>
