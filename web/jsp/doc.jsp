@@ -159,7 +159,6 @@ if (bibl != null) {
   <%
 if (document != null) {
   out.println("<div class=\"heading\">");
-  out.println("<b>"+docId+"</b> ");
   out.println(bibl);
   out.println("</div>");
   

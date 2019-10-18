@@ -89,12 +89,6 @@ body {
   font-family: "Lucida Grande", Verdana, sans-serif;
 }
 
-.interface, aside, .breadcrumb, .but, caption, .cb, details, form label, nav, .pb, .tabs {
-  font-family: "Droid Sans", "Lucida Grande", Verdana, sans-serif;
-  font-size: 13px;
-  line-height: 1.1em;
-}
-
 tt, pre {
   font-family: "Andale Mono", "Lucida Console", Courier, "MS Courier New", monospace;
 }
@@ -657,11 +651,6 @@ svg:not(:root) {
 }
 
 /** Forms */
-.but:hover {
-  background-color: white;
-  color: #000;
-  text-decoration: none !important;
-}
 
 button, input, optgroup, select, textarea {
   font-size: inherit;
@@ -676,7 +665,7 @@ button, select {
   text-transform: none;
 }
 
-button, html input[type="button"], input[type="reset"], input[type="submit"], .but, .button {
+button, html input[type="button"], input[type="reset"], input[type="submit"], .button {
   -webkit-appearance: button;
   cursor: pointer;
   display: inline;
@@ -693,10 +682,6 @@ button, html input[type="button"], input[type="reset"], input[type="submit"], .b
   border-radius: 0.5ex;
 }
 
-.but {
-  font-family: sans-serif;
-  font-weight: bold;
-}
 
 button[disabled], html input[disabled] {
   cursor: default;
@@ -707,7 +692,7 @@ button::-moz-focus-inner, input::-moz-focus-inner {
   padding: 0;
 }
 
-button:hover, html input[type="button"]:hover, input[type="reset"]:hover, input[type="submit"]:hover, .but:hover, .button:hover {
+button:hover, html input[type="button"]:hover, input[type="reset"]:hover, input[type="submit"]:hover, .button:hover {
   background-color: #FFFFFF;
 }
 

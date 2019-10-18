@@ -228,7 +228,7 @@ if (doc != null) {
 }
     %>
       <ul class="legend">
-        <li>Plus un mot est gras, plus il est fréquent.</li>
+        <li>Plus un mot est <b>gras</b>, plus il est fréquent.</li>
         <li><a class="tokspec em5">Mot spécifique</a> à ce document.</li>
         <li><a class="tokshared em5">Mot partagé</a> entre les deux documents.</li>
         <li><a class="tokhover">Mot au survol</a>, cliquer surligne toutes les occurences.</li>
