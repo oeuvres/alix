@@ -92,7 +92,7 @@ function showLeft (docId) {
     </script>
   
   </head>
-  <body class="comp">
+  <body class="comp right">
     <%
 // Shall we add prev/next navigation ?
 if (bibl != null) {

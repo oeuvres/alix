@@ -7,9 +7,9 @@ if (self == top) // no form embedded in a frame
 var text = document.getElementById("contrast");
 window.onhashchange = function (e)
 {
-  var url = new URL(e.newURL);
-  var hash = url.hash;
-  var id = decodeURIComponent(hash);
+  let url = new URL(e.newURL);
+  let hash = url.hash;
+  let id = decodeURIComponent(hash);
   if (id[0] == "#") id = id.substring(1);
   if (!id) return;
   // hash exists as an id
@@ -19,66 +19,85 @@ window.onhashchange = function (e)
 }
 
 // a set of colors for hilite tokens
-var classtoks = [false, false, false, false, false];
+const styleMap = {
+  "tk1":true,
+  "tk2":true,
+  "tk3":true,
+  "tk4":true,
+  "tk5":true,
+};
+
+function getStyle()
+{
+  for (var style in styleMap) {
+    if(!styleMap.hasOwnProperty(style)) continue;
+    if(styleMap[style]) return style;
+  }
+  // return default
+  return style;
+}
 
 function clickTok(e)
 {
-  var a = e.target;
+  let a = e.target;
   if (!a.matches("a")) return;
-  var classes = a.className.split(/ +/);
-  var form = classes[1];
-  var classtok = null;
-  if (classes[3]) { // free a class name
-    var n = Number(classes[3].slice(-1));
-    classtoks[n] = false;
+  let aStyles = a.className.split(/ +/);
+  let form = aStyles[1];
+  let style = null;
+  if (aStyles[3]) { // free a class name
+    styleMap[aStyles[3]] = true;
   }
   else {
-    for (var i = 0, len = classtoks.length; i < len; i++) {
-      if(classtoks[i] == true) continue;
-      classtoks[i] = true;
-      classtok = "tk"+i;
-      break;
-    }
-    if (!classtok) classtok = "tk0";
+    style = getStyle();
   }
-  var sibling = "right";
+  let sibling = "right";
   if (window.name == "right") sibling = "left";
+  let win;
+  let count = 0;
   if(window.parent.frames[sibling].hitoks) {
-    var win = window.parent.frames[sibling];
-    win.classtoks = classtoks; // share same colors
-    win.hitoks(form, classtok);
+    win = window.parent.frames[sibling];
+    count += win.hitoks(form, style);
   }
-  hitoks(form, classtok);
+  count += hitoks(form, style);
+  if (count && style) { // style used, block it
+    if (styleMap.hasOwnProperty(style)) styleMap[style] = false;
+    if (win) win.styleMap = styleMap;
+  }
+
 }
+
+
 
 if (text) text.addEventListener('click', clickTok, true);
 var rulhi = document.getElementById("rulhi");
-function hitoks(form, classtok)
+function hitoks(form, style)
 {
-  var matches = text.querySelectorAll("a."+form);
-  for (var i = 0, len = matches.length; i < len; i ++) {
-    var el = matches[i];
-    var classes = el.className.split(/ +/);
-    if (classtok) classes[3] = classtok;
+  let count = 0;
+  let matches = text.querySelectorAll("a."+form);
+  for (let i = 0, len = matches.length; i < len; i ++) {
+    let el = matches[i];
+    let classes = el.className.split(/ +/);
+    if (style) classes[3] = style;
     else delete classes[3];
     el.className = classes.join(" ");
-    var tokid = el.id;
-    var n = 0 + tokid.substring(3);
-    var tickid="kot"+n;
-    // delete
-    if (!classtok) {
-      var el = document.getElementById(tickid);
+    let tokid = el.id;
+    let n = 0 + tokid.substring(3);
+    let tickid="kot"+n;
+    // delete tick
+    if (!style) {
+      let el = document.getElementById(tickid);
       if (el) el.remove();
     }
     else {
-      var a = document.createElement("a");
+      count++;
+      let a = document.createElement("a");
       a.setAttribute("href", "#"+tokid);
-      a.className = classtok;
-      var perc = Math.round(1000 * n / rulhiLength) / 10;
+      a.className = style;
+      let perc = Math.round(1000 * n / rulhiLength) / 10;
       a.setAttribute("style", "top:"+perc+"%;");
       a.id = tickid;
       rulhi.append(a);
     }
   }
-
+  return count;
 }

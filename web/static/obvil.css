@@ -1,26 +1,7 @@
 @charset "UTF-8";
 @import url('https://fonts.googleapis.com/css?family=Roboto:100,100i,200,200i,300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i&display=swa3');
 
-body.comp article.content, ul.legend {font-weight: 100; font-size: 110%; font-family: "Roboto", serif; color: #000;}
-a.tokspec, a.tokshared { cursor: pointer; color: #666;}
-a.tokspec:hover, a.tokshared:hover, a.tokhover {color: #000; text-decoration: none; outline: 1px rgb(234, 91, 12) solid;}
-a.tokspec {color: rgb(234, 91, 12);}
-a.tokshared {color: #000;}
 
-a.tk0, a.tokhi {background-color: rgba(26, 26, 128, 0.2); color: #000; }
-a.tk1 {background-color: rgba(192, 128, 0, 0.2); color: #000; }
-a.tk2 {background-color: rgba(0, 128, 192, 0.2); color: #000; }
-a.tk3 {background-color: rgb(234, 91, 12, 0.2); color: #000; }
-a.tk4 {background-color: rgba(234, 91, 12, 0.2); color: #000; }
-
-#rulhi a:hover {border: 1px solid #000;}
-
-
-.em1 {font-weight: 200;}
-.em2 {font-weight: 300;}
-.em3 {font-weight: 300;}
-.em5 {font-weight: 500;}
-.em9 {font-weight: 900;}
 /**
  * colors and fonts
  * blue: 1a1a80  rgba(26, 26, 128, 1)
@@ -34,9 +15,11 @@ body,
 select {
   font-family: "Open Sans", sans-serif;
 }
+
 button {
   font-family: "Arial", sans-serif;
 }
+
 #header .base {
   font-family: "Times New Roman", Times, serif;
 }
@@ -45,12 +28,14 @@ body.facet a span {
   font-family: "Arial Narrow", sans-serif;
 }
 
-
 body,
-body.document #qform,
-body.comp #qform,
 .gutter.but {
   background-color: #faf9f6;
+}
+
+body.document #qform,
+body.comp #qform {
+  background-color: hsla(45, 29%, 90%, 0.5);
 }
 
 ::-webkit-scrollbar {
@@ -70,11 +55,9 @@ html {
   color: #92897F;
 }
 
-
 button,
 table.sortable caption,
-.gutter,
-#rulhi {
+.gutter {
   background: #E1DDCF;
 }
 
@@ -88,6 +71,7 @@ header.biblbar,
 header.biblbar a {
   color: #FFFFFF;
 }
+
 header.biblbar table {
   border: none;
 }
@@ -99,9 +83,9 @@ button {
 button,
 select:hover,
 select:focus,
-#tabs a,
-.marginalia,
 details,
+#tabs a,
+.marginnote,
 .gutter.but {
   border-color: #c3b7aa;
 }
@@ -120,6 +104,10 @@ input[type=text]:focus,
 textarea:focus {
   box-shadow: 0 0 5px rgba(42, 45, 84, 0.7);
   border: 1px solid rgba(42, 45, 84, 0.7);
+}
+
+#rulhi {
+  border-color: rgba(146, 137, 127, 0.3);
 }
 
 a {
@@ -151,12 +139,11 @@ button.magnify,
 
 #tabs a {
   color: #000;
-  font: bold 11px arial,sans-serif;
+  font: bold 11px arial, sans-serif;
   line-height: 100%;
   text-transform: uppercase;
   padding: 5px 5px 5px 5px;
 }
-
 
 select {
   background-color: #FFFFFF;
@@ -173,7 +160,6 @@ select {
 #ruloccs {
   background-color: rgba(255, 255, 255, 0.7);
 }
-
 
 .mark a.prev,
 .mark a.next {
@@ -212,6 +198,7 @@ main {
 main.right {
   margin-right: 2rem;
 }
+
 main.left {
   margin-left: 2rem;
 }
@@ -223,6 +210,10 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
+}
+
+body, body main {
+  position: relative;
 }
 
 * {
@@ -253,9 +244,9 @@ button {
 
 button.magnify {
   -webkit-transform: rotate(45deg);
-     -moz-transform: rotate(45deg);
-       -o-transform: rotate(45deg);
-          transform: rotate(45deg);
+  -moz-transform: rotate(45deg);
+  -o-transform: rotate(45deg);
+  transform: rotate(45deg);
 }
 
 button:hover {
@@ -326,7 +317,8 @@ select {
   box-shadow: 0 1px 0 1px rgba(0, 0, 0, .04);
   border-radius: .5rem;
   background-image: url("data:image/svg+xml;charset=utf8,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' height='25px' width='16px'><text x='0' y='20' font-size='20' fill='rgb(120, 105, 101)'>▼</text></svg>");
-  /* , linear-gradient(to bottom, #ffffff 0%, #e5e5e5 100%) %2380460d */;
+  /* , linear-gradient(to bottom, #ffffff 0%, #e5e5e5 100%) %2380460d */
+  ;
   background-repeat: no-repeat, repeat;
   background-position: right 0.4em top 50%, 0 0;
   background-size: auto 1em;
@@ -393,7 +385,6 @@ body.split {
   overflow-y: hidden;
 }
 
-
 iframe {
   border: none;
   width: 100%;
@@ -406,10 +397,13 @@ iframe {
   background-image: url("img/obvil_50.png");
   background-repeat: no-repeat;
   background-position: top 0 left 10px;
-  height: 68px; /* check #win top */
+  height: 68px;
+  /* check #win top */
 }
+
 #win {
-  top: 68px; /* check #header height */
+  top: 68px;
+  /* check #header height */
   position: absolute;
   width: 100%;
   bottom: 0px;
@@ -451,7 +445,6 @@ iframe {
   border-width: 1px;
   margin-right: 2px;
 }
-
 
 #panChange {
   background-color: #FFF;
@@ -629,8 +622,8 @@ body.split #corpus,
 /**
  * Facets
  */
-body.facet {
-}
+body.facet {}
+
 body.facet main {
   padding: 1em 0.5ex 1em 1ex;
 }
@@ -648,6 +641,7 @@ body.document {
 
 body.document main {
   background-color: #FFFFFF;
+  margin-bottom: 10rem;
 }
 
 body.comp #qform,
@@ -734,17 +728,12 @@ header.biblbar a.but:hover {
   background: #FFFFFF;
 }
 
-body main {
-  position: relative;
-}
-
+/* Occurrences rules */
+#rulhi,
 #ruloccs {
-  position: absolute;
-  top: 1.5rem;
-  bottom: 0;
-  right: -2rem;
+  top: 2rem;
+  bottom: 0.5rem;
   width: 1rem;
-  padding-top: 2rem;
   z-index: 4;
 }
 
@@ -754,10 +743,10 @@ body main {
   text-decoration: none;
   border-bottom: none;
   color: white;
-  position: fixed;
   width: 1rem;
   font-size: 1px;
   height: 6px;
+  margin-top: -3px;
   border-radius: 5px;
 }
 
@@ -766,9 +755,77 @@ body main {
   text-decoration: none;
 }
 
+#ruloccs {
+  position: absolute;
+  right: -2rem;
+}
+#ruloccs div { /* fixed container fro the ticks */
+  position: fixed;
+  top: 2.5rem;
+  bottom: 0.5rem;
+  width: 1rem;
+}
+#ruloccs a {
+  position: absolute;
+}
+#rulhi {
+  position: fixed;
+  border-width: 2px;
+  border-top-style: solid;
+  border-bottom-style: solid;
+}
+#rulhi a {
+  position: absolute;
+}
+
+#rulhi.right {
+  right: 0.2rem;
+  border-left-style: solid;
+}
+
+#rulhi.left {
+  left: 0.2rem;
+  border-right-style: solid;
+}
+
 /**
  * comparison
  */
+body.comp {
+  -ms-background-size: cover;
+  -o-background-size: cover;
+  -moz-background-size: cover;
+  -webkit-background-size: cover;
+  background-size: 100% auto;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+body.comp.left {
+  background-image: url("img/obvil.svg");
+  background-position: top 2rem left 10px;
+  -ms-background-size: cover;
+  -o-background-size: cover;
+  -moz-background-size: cover;
+  -webkit-background-size: cover;
+  background-size: cover;
+  background-size: auto 105%;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+body.comp.right {
+  background-image: url("img/obvil_r.svg");
+  background-position: top 2rem right 10px;
+  -ms-background-size: cover;
+  -o-background-size: cover;
+  -moz-background-size: cover;
+  -webkit-background-size: cover;
+  background-size: auto 105%;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
 body.comp {
   background: #FFF;
   padding-top: 2rem;
@@ -783,27 +840,84 @@ body.com main.left {
   padding-left: 1rem;
   padding-right: 2rem;
 }
+
 body.com main.right {
   padding-left: 2rem;
   padding-right: 1rem;
 }
-
-#rulhi {
-  position: fixed;
-  top: 0rem;
-  padding-top: 1.5rem;
-  bottom: 0;
-  right: -2rem;
-  width: 1rem;
-  z-index: 4;
+body.comp article.content, ul.legend {
+  font-weight: 300;
+  font-size: 112%;
+  font-family: "Roboto", serif;
+  color: #333;
 }
 
-#rulhi.right {
-  right: 0.2rem;
+a.tokspec, a.tokshared {
+  cursor: pointer;
+  color: #666;
 }
 
-#rulhi.left {
-  left: 0.2rem;
+a.tokspec:hover, a.tokshared:hover, a.tokhover {
+  color: #000;
+  text-decoration: none;
+  outline: 1px rgb(234, 91, 12) solid;
+}
+
+a.tokspec {
+  color: rgb(234, 91, 12);
+}
+
+a.tokshared {
+  color: #000;
+}
+
+a.tk1, a.tokhi {
+  background-color: rgba(26, 26, 128, 0.2);
+  color: #000;
+}
+
+a.tk2 {
+  background-color: rgba(192, 128, 0, 0.2);
+  color: #000;
+}
+
+a.tk3 {
+  background-color: rgba(0, 128, 192, 0.2);
+  color: #000;
+}
+
+a.tk4 {
+  background-color: rgb(234, 91, 12, 0.2);
+  color: #000;
+}
+
+a.tk5 {
+  background-color: rgba(128, 128, 128, 0.2);
+  color: #000;
+}
+
+#rulhi a:hover {
+  border: 1px solid #000;
+}
+
+.em1 {
+  font-weight: 300;
+}
+
+.em2 {
+  font-weight: 300;
+}
+
+.em3 {
+  font-weight: 400;
+}
+
+.em5 {
+  font-weight: 600;
+}
+
+.em9 {
+  font-weight: 900;
 }
 
 
@@ -1026,7 +1140,6 @@ div.text {
   max-width: 60ex;
 }
 
-
 section:after, section:before, form:after, form:before, .bar:after, .bar:before {
   content: " ";
   visibility: hidden;
@@ -1151,16 +1264,6 @@ table.conc {
 
 td.left {
   text-align: right;
-}
-
-.left b {
-  padding: 0 1ex;
-  margin-left: 1ex;
-}
-
-.right b {
-  padding: 0 1ex;
-  margin-right: 1ex;
 }
 
 .conc b {}

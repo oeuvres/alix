@@ -4,6 +4,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
+    <title>Conparaison [Obvil]</title>
     <style>
 body, html {
   height: 100%;
@@ -29,5 +30,24 @@ iframe {
     </iframe>
     <iframe id="right" name="right" src="comp2.jsp" width="50%" height="99.5%">
     </iframe>
+    <script type="text/javascript">
+window.onhashchange = function (e)
+{
+  let url = new URL(e.newURL);
+  let hash = url.hash;
+  return propaghi(hash);
+}
+
+function propaghi(hash)
+{
+  let text = decodeURIComponent(hash);
+  if (text[0] == "#") text = text.substring(1);
+  words = text.split(/[,;]/);
+  for (let w of words) {
+    // console.log(w);
+  }
+}
+if (window.location.hash) propaghi(window.location.hash);
+    </script>
   </body>
 </html>

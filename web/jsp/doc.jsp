@@ -282,12 +282,14 @@ if (document != null) {
     
     int length = text.length();
     out.println("<nav id=\"ruloccs\">");
+    out.println("<div>");
     final DecimalFormat dfdec1 = new DecimalFormat("0.#", ensyms);
     for (int i = 0, size = offsets.size(); i < size; i++) {
       TokenOffsets tok = offsets.get(i);
       offset = tok.startOffset;
       out.println("<a href=\"#mark"+(i+1)+"\" style=\"top: "+dfdec1.format(100.0 * offset / length)+"%\">88&nbsp;</a>");
     }
+    out.println("</div>");
     out.println("</nav>");
   }
   else {

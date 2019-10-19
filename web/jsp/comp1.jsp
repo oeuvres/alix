@@ -130,7 +130,7 @@ function showRight (docId) {
 
   </script>
   </head>
-  <body class="comp">
+  <body class="comp left">
     <%
 // Shall we add prev/next navigation ?
 if (bibl != null) {
@@ -231,9 +231,9 @@ if (doc != null) {
 }
     %>
       <ul class="legend">
-        <li>Plus un mot est <b>gras</b>, plus il est fréquent.</li>
-        <li><a class="tokspec em5">Mot spécifique</a> à ce document.</li>
-        <li><a class="tokshared em5">Mot partagé</a> entre les deux documents.</li>
+        <li>Plus un mot est <b class="em9">gras</b>, plus il est fréquent.</li>
+        <li><a class="tokspec em3">Mot spécifique</a> à ce document.</li>
+        <li><a class="tokshared em3">Mot partagé</a> entre les deux documents.</li>
         <li><a class="tokhover">Mot au survol</a>, cliquer surligne toutes les occurences.</li>
         <li><a class="tokhi">Mot surligné</a>, cliquer supprimme tous les surlignements.</li>
       </ul>
