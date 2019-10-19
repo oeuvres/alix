@@ -10,13 +10,17 @@ body, html {
   margin: 0;
   padding: 0;
 }
-#right {
-  float: right;
-}
 iframe {
   border: none;
   margin: 0;
   padding: 0;
+  width: 50%;
+}
+#left {
+}
+
+#right {
+  float: right;
 }
     </style>
   </head>

@@ -104,7 +104,7 @@ if (document != null) {
     <%
 // Shall we add prev/next navigation ?
 if (bibl != null) {
-  out.println("<header class=\"bibl\">");
+  out.println("<header class=\"biblbar\">");
   out.println("<table class=\"prevnext\"><tr>");
   /*
   out.println("<td class=\"prev\">");

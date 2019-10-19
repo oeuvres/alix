@@ -9,7 +9,7 @@ static {
 }
 %>
 <!DOCTYPE html>
-<html>
+<html class="comp right">
   <head>
     <meta charset="UTF-8">
     <link href="../static/vendors/teinte.css" rel="stylesheet"/>
@@ -79,6 +79,7 @@ if (doc != null) {
     <script type="text/javascript">
 var winaside = parent.document.getElementById("left");
     <%
+if (doc != null) out.println("var rulhiLength ="+doc.length(TEXT)+";");
 // this doc is not requested from left, update left
 if (getParameter(request, "from", null) == null) out.println("showLeft("+docId+");");
     %>
@@ -91,11 +92,11 @@ function showLeft (docId) {
     </script>
   
   </head>
-  <body class="document comp">
+  <body class="comp">
     <%
 // Shall we add prev/next navigation ?
 if (bibl != null) {
-  out.println("<header class=\"bibl\">");
+  out.println("<header class=\"biblbar\">");
   out.println("<table class=\"prevnext\"><tr>");
   /*
   out.println("<td class=\"prev\">");
@@ -116,8 +117,9 @@ if (bibl != null) {
   out.println("</header>");
 }
   %>
-    <main>
-    
+    <nav id="rulhi" class="left">
+    </nav>
+    <main  class="left">
 <% if (bibl != null) { %>
       <form id="qform" action="#">
         <input type="submit" 

@@ -58,7 +58,7 @@ public class Freqs
   public final long occsAll;
   /** Global number of docs relevant for this field */
   public final int docsAll;
-  /** Count of occurrences by document for thois field (for stats) */
+  /** Count of occurrences by document for this field (for stats) */
   public final int[] docLength;
   /** Store and populate the terms and get the id */
   private final BytesRefHash hashDic;
@@ -98,7 +98,6 @@ public class Freqs
         termDocs = new int[(int) terms.size()];
         termLength = new long[(int) terms.size()];
       }
-      ;
       TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
       PostingsEnum docsEnum = null;
       // because terms are sorted, we could merge dics more efficiently

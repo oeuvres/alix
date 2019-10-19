@@ -6,7 +6,16 @@ a.tokspec, a.tokshared { cursor: pointer; color: #666;}
 a.tokspec:hover, a.tokshared:hover, a.tokhover {color: #000; text-decoration: none; outline: 1px rgb(234, 91, 12) solid;}
 a.tokspec {color: rgb(234, 91, 12);}
 a.tokshared {color: #000;}
-a.tokhi {background-color: rgb(234, 91, 12, 0.4); color: #000; }
+
+a.tk0, a.tokhi {background-color: rgba(26, 26, 128, 0.2); color: #000; }
+a.tk1 {background-color: rgba(192, 128, 0, 0.2); color: #000; }
+a.tk2 {background-color: rgba(0, 128, 192, 0.2); color: #000; }
+a.tk3 {background-color: rgb(234, 91, 12, 0.2); color: #000; }
+a.tk4 {background-color: rgba(234, 91, 12, 0.2); color: #000; }
+
+#rulhi a:hover {border: 1px solid #000;}
+
+
 .em1 {font-weight: 200;}
 .em2 {font-weight: 300;}
 .em3 {font-weight: 300;}
@@ -39,14 +48,9 @@ body.facet a span {
 
 body,
 body.document #qform,
+body.comp #qform,
 .gutter.but {
   background-color: #faf9f6;
-}
-
-
-html {
-  scrollbar-width: thin;
-  scrollbar-color: #92897F #faf9f6;
 }
 
 ::-webkit-scrollbar {
@@ -57,6 +61,11 @@ html {
   background: #92897F;
 }
 
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #92897F #faf9f6;
+}
+
 .gutter.but {
   color: #92897F;
 }
@@ -64,21 +73,22 @@ html {
 
 button,
 table.sortable caption,
-.gutter {
+.gutter,
+#rulhi {
   background: #E1DDCF;
 }
 
-body.document header.bibl {
+header.biblbar {
   background-color: #92897F;
   border-bottom: 1px solid rgba(255, 255, 255, 0.6);
   box-shadow: 0px 3px 2px 1px rgba(146, 137, 127, 0.5);
 }
 
-body.document header.bibl,
-body.document header.bibl a {
+header.biblbar,
+header.biblbar a {
   color: #FFFFFF;
 }
-header.bibl table {
+header.biblbar table {
   border: none;
 }
 
@@ -153,7 +163,7 @@ select {
 }
 
 #ruloccs a {
-  background-color: rgba(120, 105, 101, 0.5);
+  background-color: rgba(120, 105, 101, 0.2);
 }
 
 #ruloccs a:hover {
@@ -191,13 +201,19 @@ a:hover {
 }
 
 main {
-  padding-left: 2rem;
-  padding-right: 2rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
   padding-bottom: 2rem;
-  max-width: 100ex;
+  max-width: 50rem;
   margin-left: auto;
   margin-right: auto;
-  margin-bottom: 4rem;
+}
+
+main.right {
+  margin-right: 2rem;
+}
+main.left {
+  margin-left: 2rem;
 }
 
 /**
@@ -634,16 +650,17 @@ body.document main {
   background-color: #FFFFFF;
 }
 
+body.comp #qform,
 body.document #qform {
   text-align: center;
 }
 
-body.document #n {
-  text-align: right;
+#n {
+  text-align: center;
   width: 4rem;
 }
 
-body.document header.bibl {
+header.biblbar {
   top: 0;
   position: fixed;
   width: 100%;
@@ -672,11 +689,13 @@ table.prevnext td.bibl a {
   text-align: center;
 }
 
+body.comp div.heading,
 body.document div.heading {
   font-size: 1.5rem;
   margin-bottom: 1.5rem;
 }
 
+body.comp div.heading span.surname,
 body.document div.heading span.surname {
   font-weight: bold;
 }
@@ -703,15 +722,15 @@ body.document header.bibl a.but,
   background-color: #FFFFFF;
 }
 
-body.document header.bibl a.prev {
+header.biblbar a.prev {
   border-right: 2px transparent inset;
 }
 
-body.document header.bibl a.prev:hover {
+header.biblbar a.prev:hover {
   border-right: #000 2px inset;
 }
 
-body.document header.bibl a.but:hover {
+header.biblbar a.but:hover {
   background: #FFFFFF;
 }
 
@@ -729,19 +748,64 @@ body main {
   z-index: 4;
 }
 
+#rulhi a,
 #ruloccs a {
   display: block;
+  text-decoration: none;
   border-bottom: none;
   color: white;
   position: fixed;
   width: 1rem;
   font-size: 1px;
-  height: 2px;
+  height: 6px;
+  border-radius: 5px;
 }
 
+#rulhi a:hover,
 #ruloccs a:hover {
-  height: 5px;
+  text-decoration: none;
 }
+
+/**
+ * comparison
+ */
+body.comp {
+  background: #FFF;
+  padding-top: 2rem;
+}
+
+body.comp a.pb,
+body.comp .marginnote {
+  display: none;
+}
+
+body.com main.left {
+  padding-left: 1rem;
+  padding-right: 2rem;
+}
+body.com main.right {
+  padding-left: 2rem;
+  padding-right: 1rem;
+}
+
+#rulhi {
+  position: fixed;
+  top: 0rem;
+  padding-top: 1.5rem;
+  bottom: 0;
+  right: -2rem;
+  width: 1rem;
+  z-index: 4;
+}
+
+#rulhi.right {
+  right: 0.2rem;
+}
+
+#rulhi.left {
+  left: 0.2rem;
+}
+
 
 /**
  * Search results

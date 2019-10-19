@@ -111,12 +111,32 @@ public class Doc
       return Integer.compare(this.start, tok2.start);
     }
   }
+  /**
+   * Return the count of tokens of this doc for field.
+   * @param field
+   * @return
+   * @throws IOException
+   */
+  public int length(String field) throws IOException
+  {
+    return alix.docLength(field)[this.docId];
+  }
 
   public String contrast(final String field, final int docId2) throws IOException, NoSuchFieldException
   {
     return contrast(field, docId2, false);
   }
   
+  
+  /**
+   * 
+   * @param field
+   * @param docId2
+   * @param right 
+   * @return
+   * @throws IOException
+   * @throws NoSuchFieldException
+   */
   public String contrast(final String field, final int docId2, final boolean right) throws IOException, NoSuchFieldException
   {
     StringBuilder sb = new StringBuilder();

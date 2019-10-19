@@ -25,7 +25,7 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
 }
 %>
 <!DOCTYPE html>
-<html>
+<html class="comp">
   <head>
     <meta charset="UTF-8">
     <link href="../static/vendors/teinte.css" rel="stylesheet"/>
@@ -118,8 +118,9 @@ if (doc != null) {
   <script type="text/javascript">
 var winaside = parent.document.getElementById("right");
     <% 
+if (doc != null) out.println("var rulhiLength ="+doc.length(TEXT)+";");
 if (doc2 < 0) out.println("showRight("+docId+");");
-%>
+    %>
 function showRight (docId) {
   if (docId < 0) return false;
   if (!winaside) return false;
@@ -129,11 +130,11 @@ function showRight (docId) {
 
   </script>
   </head>
-  <body class="document comp">
+  <body class="comp">
     <%
 // Shall we add prev/next navigation ?
 if (bibl != null) {
-  out.println("<header class=\"bibl\">");
+  out.println("<header class=\"biblbar\">");
   out.println("<table class=\"prevnext\"><tr>");
   /*
   out.println("<td class=\"prev\">");
@@ -154,7 +155,9 @@ if (bibl != null) {
   out.println("</header>");
 }
 %>
-    <main>
+    <nav id="rulhi" class="right">
+    </nav>
+    <main class="right">
       <form id="qform" action="#">
         <input type="submit" 
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"

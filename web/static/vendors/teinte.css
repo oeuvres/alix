@@ -1793,7 +1793,7 @@ span.exquote {
   font-style: normal
 }
 
-.left, div.left {
+div.left {
   text-align: left;
 }
 
@@ -1913,10 +1913,6 @@ div.ornament {
 
 .l.refrain {
   font-style: italic;
-}
-
-.right {
-  text-align: right;
 }
 
 p.right {
