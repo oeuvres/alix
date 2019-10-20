@@ -249,6 +249,18 @@ public class TermList implements Iterable<Term>
     }
     return list;
   }
+
+  public String[] toArray()
+  {
+    String[] a = new String[this.sizeNotNull()];
+    int i = 0;
+    for (Entry entry: data) {
+      if (entry.term == null) continue;
+      a[i] = entry.term.text();
+    }
+    return a;
+  }
+
   
   @Override
   public Iterator<Term> iterator()

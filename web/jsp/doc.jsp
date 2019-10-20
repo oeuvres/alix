@@ -1,24 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@include file="common.jsp"%>
 <%!
-class TokenOffsets
-{
-  final int startOffset;
-  final int endOffset;
-  final String className;
-  public TokenOffsets(final int startOffset, final int endOffset, final String className)
-  {
-    this.startOffset = startOffset;
-    this.endOffset = endOffset;
-    this.className = className;
-  }
-}
-final static HashSet<String> FIELDS = new HashSet<String>();
-static {
-  for (String w : new String[] {Alix.BOOKID, "bibl"}) {
-    FIELDS.add(w);
-  }
-}
 public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOException
 {
   StringBuilder out = new StringBuilder();
@@ -26,7 +8,7 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
   for (int i = 0, len = hits.length; i < len; i++) {
     int docId = hits[i].doc;
     if (docSrc == docId) continue;
-    Document doc = reader.document(docId, FIELDS);
+    Document doc = reader.document(docId, DOC_SHORT);
     out.append("<li>");
     out.append("<a href=\"?docid="+docId+"\">");
     out.append(doc.get("bibl"));
@@ -36,13 +18,7 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
   return out.toString();
 }
 %>
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <link href="../static/vendors/teinte.css" rel="stylesheet"/>
-    <link href="../static/obvil.css" rel="stylesheet"/>
-  <%
+<%
 /**
  * display a doc from the index.
  * Different case
@@ -52,7 +28,7 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
  */
 
 
-Document document = null;
+Doc doc = null;
 int docId = getParameter(request, "docid", -1);
 String id = getParameter(request, "id", null);
 String sort = getParameter(request, "sort", null);
@@ -67,13 +43,10 @@ IndexReader reader = alix.reader();
 IndexSearcher searcher = alix.searcher();
 TopDocs topDocs = null;
 if (id != null) {
-  TermQuery qid = new TermQuery(new Term(Alix.ID, id));
-  TopDocs search = searcher.search(qid, 1);
-  ScoreDoc[] hits = search.scoreDocs;
-  if (hits.length > 0) {
-    docId = hits[0].doc;
-    document = reader.document(docId);
-  }
+  doc = new Doc(alix, id);
+}
+else if (docId >= 0) {
+  doc = new Doc(alix, docId);
 }
 else if (!"".equals(q)) {
   time = System.nanoTime();
@@ -85,47 +58,34 @@ else if (!"".equals(q)) {
   else {
     if (start < 1 || (start - 1) >= hits.length) start = 1;
     docId = hits[start - 1].doc;
-    document = reader.document(docId);
+    doc = new Doc(alix, docId);
   }
 }
-else if (docId >= 0) {
-  document = reader.document(docId);
+%>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link href="../static/vendors/teinte.css" rel="stylesheet"/>
+    <link href="../static/obvil.css" rel="stylesheet"/>
+    <title><%
+if (doc != null) {
+  out.print(doc.getUntag("bibl"));
 }
-String bibl = null;
-if (document != null) {
-  bibl = document.get("bibl");
-  out.print("    <title>");
-  out.print(Char.unTag(document.get("bibl")));
-  out.println(" [Obvil]</title>");
-}
-  %>
+    %> [Obvil]</title>
+
   </head>
   <body class="document">
-    <%
-// Shall we add prev/next navigation ?
-if (bibl != null) {
-  out.println("<header class=\"biblbar\">");
-  out.println("<table class=\"prevnext\"><tr>");
-  /*
-  out.println("<td class=\"prev\">");
-  out.println("<a class=\"but prev\">◀</a>");
-  out.println("</td>");
-  */
-  out.println("<td class=\"bibl\" title=\""+detag(bibl)+"\">");
+  <%
+if (doc != null) {
+  out.println("<header class=\"biblbar\" title=\""+doc.getUntag("bibl")+"\">");
   out.print("<a href=\"#\" class=\"bibl\">");
-  out.println(bibl);
+  out.println(doc.get("bibl"));
   out.print("</a>");
-  out.println("</td>");
-  /*
-  out.println("<td class=\"next\">");
-  out.println("<a class=\"but next\">▶</a>");
-  out.println("</td>");
-  */
-  out.println("</tr></table>");
   out.println("</header>");
 }
   %>
-    <main>
+  <main>
       <form id="qform" action="#">
         <input type="submit" 
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
@@ -155,11 +115,11 @@ if (bibl != null) {
         }
         %>
       </form>
+<%
 
-  <%
-if (document != null) {
+if (doc != null) {
   out.println("<div class=\"heading\">");
-  out.println(bibl);
+  out.println(doc.get("bibl"));
   out.println("</div>");
   
   Top<String> top;
@@ -167,12 +127,11 @@ if (document != null) {
   Query query;
   TopDocs results;
   
-  Keywords keywords = new Keywords (alix, TEXT, docId);
   int max;
 
   out.println("<p class=\"keywords\">");
   out.println("<b>Mots clés</b> : ");
-  top = keywords.theme();
+  top = doc.theme(TEXT);
   max = 50;
   first = true;
   for (Top.Entry<String> entry: top) {
@@ -186,7 +145,7 @@ if (document != null) {
   }
   out.println(".</p>");
 
-  query = keywords.query(top, 50, true);
+  query = Doc.moreLikeThis(TEXT, top, 50);
   results = searcher.search(query, 11);
   out.println("<details>");
   out.println("<summary>Chapitres avec ces mots</summary>");
@@ -196,7 +155,7 @@ if (document != null) {
   out.println("</details>");
   
   out.println("<p class=\"keywords\">");
-  top = keywords.names();
+  top = doc.names(TEXT);
   out.println("<b>Noms cités</b> : ");
   first = true;
   for (Top.Entry<String> entry: top) {
@@ -209,7 +168,7 @@ if (document != null) {
   }
   out.println(".</p>");
   
-  query = keywords.query(top, 50, true);
+  query = Doc.moreLikeThis(TEXT, top, 50);
   results = searcher.search(query, 11);
   out.println("<details>");
   out.println("<summary>Chapitres avec ces noms</summary>");
@@ -218,7 +177,7 @@ if (document != null) {
   out.println("</ul>");
   out.println("</details>");
 
-  top = keywords.happax();
+  top = doc.happax(TEXT);
   if (top.length() > 0) {
     out.println("<p>");
     out.println("<b>Happax</b> : ");
@@ -234,66 +193,13 @@ if (document != null) {
   }
   
 
-  String text = document.get(TEXT);
   // hilie
   if (!"".equals(q)) {
-    TermList terms = alix.qTerms(q, TEXT);
-    ArrayList<BytesRef> refList = (ArrayList<BytesRef>)terms.refList();
-    Terms tVek = reader.getTermVector(docId, TEXT);
-    // buid a term enumeration like lucene like them in the term vector
-    Automaton automaton = DaciukMihovAutomatonBuilder.build(refList);
-    TermsEnum tEnum = new CompiledAutomaton(automaton).getTermsEnum(tVek);
-    PostingsEnum postings = null;
-    ArrayList<TokenOffsets> offsets = new ArrayList<TokenOffsets>();
-    while (tEnum.next() != null) {
-      postings = tEnum.postings(postings, PostingsEnum.OFFSETS);
-      while(postings.nextDoc() != PostingsEnum.NO_MORE_DOCS) {
-        int pos = -1;
-        for (int freq = postings.freq(); freq > 0; freq --) {
-          postings.nextPosition();
-          offsets.add(new TokenOffsets(postings.startOffset(), postings.endOffset(), null));
-        }
-      }
-    }
-    Collections.sort(offsets, new Comparator<TokenOffsets>()
-    {
-      @Override
-      public int compare(TokenOffsets entry1, TokenOffsets entry2)
-      {
-        int v1 = entry1.startOffset;
-        int v2 = entry2.startOffset;
-        if (v1 < v2) return -1;
-        if (v1 > v2) return +1;
-        return 0;
-      }
-    });
-    int offset = 0;
-    for (int i = 0, size = offsets.size(); i < size; i++) {
-      TokenOffsets tok = offsets.get(i);
-      out.print(text.substring(offset, tok.startOffset));
-      out.print("\n<mark class=\"mark\" id=\"mark"+(i+1)+"\">");
-      if (i > 0) out.print("<a href=\"#mark"+(i)+"\" onclick=\"location.replace(this.href); return false;\" class=\"prev\">◀</a> ");
-      out.print(text.substring(tok.startOffset, tok.endOffset));
-      if (i < size - 1) out.print(" <a href=\"#mark"+(i + 2)+"\" onclick=\"location.replace(this.href); return false;\" class=\"next\">▶</a>");
-      out.print("</mark>\n");
-      offset = tok.endOffset;
-    }
-    out.print(text.substring(offset));
-    
-    int length = text.length();
-    out.println("<nav id=\"ruloccs\">");
-    out.println("<div>");
-    final DecimalFormat dfdec1 = new DecimalFormat("0.#", ensyms);
-    for (int i = 0, size = offsets.size(); i < size; i++) {
-      TokenOffsets tok = offsets.get(i);
-      offset = tok.startOffset;
-      out.println("<a href=\"#mark"+(i+1)+"\" style=\"top: "+dfdec1.format(100.0 * offset / length)+"%\">88&nbsp;</a>");
-    }
-    out.println("</div>");
-    out.println("</nav>");
+    String[] terms = alix.qTerms(q, TEXT).toArray();
+    out.print(doc.hilite(TEXT, terms));
   }
   else {
-    out.print(text);
+    out.print(doc.get(TEXT));
   }
 }
     %>

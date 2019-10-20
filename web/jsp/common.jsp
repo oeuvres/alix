@@ -104,7 +104,6 @@ alix.lucene.search.Doc,
 alix.lucene.search.Facet,
 alix.lucene.search.Freqs,
 alix.lucene.search.HiliteFormatter,
-alix.lucene.search.Keywords,
 alix.lucene.search.Scale,
 alix.lucene.search.Scale.Tick,
 alix.lucene.search.Scorer,
@@ -145,28 +144,11 @@ static {
     STOPLIST.add(new CharsAtt(w));
   }
 }
-
-
-
-/**
- * Strip all html tags form a string
- */
-public static String detag(String s) {
-  StringBuilder out = new StringBuilder(Math.max(16, s.length()));
-  boolean intag = false;
-  for (int i = 0; i < s.length(); i++) {
-    char c = s.charAt(i);
-    if (c == '<') {
-      intag = true;
-    }
-    else if (c == '>') {
-      intag = false;
-    }
-    else if (!intag) {
-      out.append(c);
-    }
+final static HashSet<String> DOC_SHORT = new HashSet<String>();
+static {
+  for (String w : new String[] {Alix.ID, Alix.BOOKID, "bibl"}) {
+    DOC_SHORT.add(w);
   }
-  return out.toString();
 }
 
 /**

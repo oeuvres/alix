@@ -17,64 +17,62 @@ static {
     <style>
     </style>
   <%
+    IndexReader reader = alix.reader();
 
 
-int docLeft = getParameter(request, "docleft", -1);
-int start = getParameter(request, "start", 1);
-int hitsTot = -1;
-  
-int docId = -1;
-Top<String> topTerms = null;
-String[] words = null;
+    int refDocId = getParameter(request, "docleft", -1);
+    int start = getParameter(request, "start", 1);
+    int hitsTot = -1;
+      
+    int docId = -1;
+    Top<String> topTerms = null;
+    String[] words = null;
 
-IndexReader reader = alix.reader();
-if (docLeft < 0) {
-  out.println("Chercher un mot dans le formulaire à gauche, ici apparaîtront les documents similaires.");
-}
-else {
-  if (request.getParameter("prev") != null) {
+    Doc refDoc = null;
+    if (refDocId < 0) {
+      out.println("Chercher un mot dans le formulaire à gauche, ici apparaîtront les documents similaires.");
+    }
+    else {
+      if (request.getParameter("prev") != null) {
     start = getParameter(request, "prevn", start);
-  }
-  else if (request.getParameter("next") != null) {
+      }
+      else if (request.getParameter("next") != null) {
     start = getParameter(request, "nextn", start);
-  }
-  if (start < 1) start = 1;
-  int hitsMax = 100;
-  if (start > hitsMax) hitsMax = (int)(1.1 * start);
-  
-  IndexSearcher searcher = alix.searcher();
-  
-  Keywords keywords = new Keywords (alix, TEXT, docLeft);
-  topTerms = keywords.theme();
-  words = topTerms.toArray();
-
-  Query query = keywords.query(topTerms, 50, true);
-  TopDocs results = searcher.search(query, hitsMax);
-  hitsTot = (int)results.totalHits.value;
-  if (hitsTot == 0) {
+      }
+      if (start < 1) start = 1;
+      int hitsMax = 100;
+      if (start > hitsMax) hitsMax = (int)(1.1 * start);
+      
+      refDoc = new Doc(alix, refDocId);
+      topTerms = refDoc.theme(TEXT);
+      Query query = Doc.moreLikeThis(TEXT, topTerms, 50);
+      IndexSearcher searcher = alix.searcher();
+      TopDocs results = searcher.search(query, hitsMax);
+      hitsTot = (int)results.totalHits.value;
+      if (hitsTot == 0) {
     start = 0;
-  }
-  else if (hitsTot < start) {
+      }
+      else if (hitsTot < start) {
     start = hitsTot;
-  }
-  if (start > 0) {
+      }
+      if (start > 0) {
     ScoreDoc res = results.scoreDocs[start-1];
     docId = res.doc;
-  }
-}
+      }
+    }
 
-Doc doc = null;
-if (docId >= 0) {
-  doc = new Doc(alix, docId);
-  if (doc.document() == null) doc = null;
-}
-String bibl = null;
-if (doc != null) {
-  bibl = doc.document().get("bibl");
-  out.print("    <title>");
-  out.print(Char.unTag(bibl));
-  out.println(" [Obvil]</title>");
-}
+    Doc doc = null;
+    if (docId >= 0) {
+      doc = new Doc(alix, docId);
+      if (doc.fields() == null) doc = null;
+    }
+    String bibl = null;
+    if (doc != null) {
+      bibl = doc.fields().get("bibl");
+      out.print("    <title>");
+      out.print(Char.detag(bibl));
+      out.println(" [Obvil]</title>");
+    }
   %>
     <script type="text/javascript">
 var winaside = parent.document.getElementById("left");
@@ -94,26 +92,11 @@ function showLeft (docId) {
   </head>
   <body class="comp right">
     <%
-// Shall we add prev/next navigation ?
-if (bibl != null) {
-  out.println("<header class=\"biblbar\">");
-  out.println("<table class=\"prevnext\"><tr>");
-  /*
-  out.println("<td class=\"prev\">");
-  out.println("<a class=\"but prev\">◀</a>");
-  out.println("</td>");
-  */
-  out.println("<td class=\"bibl\" title=\""+detag(bibl)+"\">");
+if (doc != null) {
+  out.println("<header class=\"biblbar\" title=\""+doc.getUntag("bibl")+"\">");
   out.print("<a href=\"#\" class=\"bibl\">");
-  out.println(bibl);
+  out.println(doc.get("bibl"));
   out.print("</a>");
-  out.println("</td>");
-  /*
-  out.println("<td class=\"next\">");
-  out.println("<a class=\"but next\">▶</a>");
-  out.println("</td>");
-  */
-  out.println("</tr></table>");
   out.println("</header>");
 }
   %>
@@ -126,7 +109,7 @@ if (bibl != null) {
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
        tabindex="-1" />
         <input type="hidden" name="q" value="<%=q%>"/>
-        <input type="hidden" name="docleft" value="<%=docLeft%>"/>
+        <input type="hidden" name="docleft" value="<%=refDocId%>"/>
         <% 
         if (start > 1) {
           out.println("<button type=\"submit\" name=\"prev\">◀</button>");
@@ -167,11 +150,10 @@ if (bibl != null) {
   }
   out.println(".</p>");
   */
-  Document fields = reader.document(docLeft, FIELDS);
-  out.append("<p><b>Contrasté avec : </b>"+fields.get("bibl")+"</p>");
+  out.append("<p><b>Contrasté avec : </b>"+refDoc.fields().get("bibl")+"</p>");
 
   out.println("<article class=\"content\" id=\"contrast\">");
-  out.println(doc.contrast(TEXT, docLeft, true));
+  out.println(doc.contrast(TEXT, refDocId, true));
   out.println("</article>");
 }
     %>

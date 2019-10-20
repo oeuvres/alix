@@ -4,7 +4,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Conparaison [Obvil]</title>
+    <title>Face à face [Obvil]</title>
     <style>
 body, html {
   height: 100%;

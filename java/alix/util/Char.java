@@ -313,7 +313,7 @@ public class Char
     return c;
   }
 
-  public static String unTag(String xml)
+  public static String detag(String xml)
   {
     StringBuilder dest = new StringBuilder();
     int start = 0;

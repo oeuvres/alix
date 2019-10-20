@@ -1,53 +1,10 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@include file="common.jsp" %>
 <%!
-final static HashSet<String> FIELDS = new HashSet<String>();
-static {
-  for (String w : new String[] {Alix.BOOKID, "bibl"}) {
-    FIELDS.add(w);
-  }
-}
-public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOException
-{
-  StringBuilder out = new StringBuilder();
-  ScoreDoc[] hits = docs.scoreDocs;
-  for (int i = 0, len = hits.length; i < len; i++) {
-    int docId = hits[i].doc;
-    if (docSrc == docId) continue;
-    Document doc = reader.document(docId, FIELDS);
-    out.append("<li>");
-    out.append("<a href=\"?docid="+docId+"\">");
-    out.append(doc.get("bibl"));
-    out.append("</a>");
-    out.append("</li>");
-  }
-  return out.toString();
-}
 %>
-<!DOCTYPE html>
-<html class="comp">
-  <head>
-    <meta charset="UTF-8">
-    <link href="../static/vendors/teinte.css" rel="stylesheet"/>
-    <link href="../static/obvil.css" rel="stylesheet"/>
-    <style>
-mark.ADV { font-weight: normal; background: #FEC; }
-mark.ADJ { font-weight: normal; background: #CEF; }
-mark.NAME { color: red; }
-
-    </style>
-  <%
-/**
- * display a doc from the index.
- * Different case
- *  — direct read of a docid
- *  — find a doc by id field
- *  — query with an index order
- */
-
-
+<%
 int docId = getParameter(request, "docid", -1);
-int doc2 = getParameter(request, "doc2", -1);
+int docId2 = getParameter(request, "doc2", -1);
 String id = getParameter(request, "id", null);
 String sort = getParameter(request, "sort", null);
 int start = getParameter(request, "start", 1);
@@ -65,7 +22,7 @@ if (id != null) {
   TopDocs search = searcher.search(qid, 1);
   ScoreDoc[] hits = search.scoreDocs;
   if (hits.length > 0) {
-    docId = hits[0].doc;
+docId = hits[0].doc;
   }
 }
 else if (!"".equals(q)) {
@@ -73,18 +30,18 @@ else if (!"".equals(q)) {
   topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
   ScoreDoc[] hits = topDocs.scoreDocs;
   if (hits.length == 0) {
-    start = 0;
+start = 0;
   }
   else {
-    if (start < 1 || (start - 1) >= hits.length) start = 1;
-    docId = hits[start - 1].doc;
+if (start < 1 || (start - 1) >= hits.length) start = 1;
+docId = hits[start - 1].doc;
   }
 }
 
 Doc doc = null;
 if (docId >= 0) {
   doc = new Doc(alix, docId);
-  if (doc.document() == null) doc = null;
+  if (doc.fields() == null) doc = null;
 }
 
 // declare some variables to update if doc found
@@ -95,23 +52,39 @@ Query query;
 TopDocs results;
 int docSim = -1;
 
+%>
+<!DOCTYPE html>
+<html class="comp">
+  <head>
+    <meta charset="UTF-8">
+    <title><%
+if (doc != null) {
+  out.print(doc.getUntag("bibl"));
+}
+    %> [Obvil]</title>
+    <link href="../static/vendors/teinte.css" rel="stylesheet"/>
+    <link href="../static/obvil.css" rel="stylesheet"/>
+    <style>
+mark.ADV { font-weight: normal; background: #FEC; }
+mark.ADJ { font-weight: normal; background: #CEF; }
+mark.NAME { color: red; }
+
+    </style>
+  <%
+
+
 
 if (doc != null) {
-  bibl = doc.document().get("bibl");
-  out.print("    <title>");
-  out.print(Char.unTag(bibl));
-  out.println(" [Obvil]</title>");
-  Keywords keywords = new Keywords (alix, TEXT, docId);
   // fill topTerms for below
-  top = keywords.theme();
+  top = doc.theme(TEXT);
   // no docId given to contrast with, serach with one
-  if (doc2 < 0) {
-    query = keywords.query(top, 50, true);
+  if (docId2 < 0) {
+    query = Doc.moreLikeThis(TEXT, top, 50);
     results = searcher.search(query, 2);
     ScoreDoc[] hits = results.scoreDocs;
     docSim = hits[1].doc;
   } else {
-    docSim = doc2;
+    docSim = docId2;
   }
 }
   %>
@@ -119,7 +92,7 @@ if (doc != null) {
 var winaside = parent.document.getElementById("right");
     <% 
 if (doc != null) out.println("var rulhiLength ="+doc.length(TEXT)+";");
-if (doc2 < 0) out.println("showRight("+docId+");");
+if (docId2 < 0) out.println("showRight("+docId+");");
     %>
 function showRight (docId) {
   if (docId < 0) return false;
@@ -132,29 +105,14 @@ function showRight (docId) {
   </head>
   <body class="comp left">
     <%
-// Shall we add prev/next navigation ?
-if (bibl != null) {
-  out.println("<header class=\"biblbar\">");
-  out.println("<table class=\"prevnext\"><tr>");
-  /*
-  out.println("<td class=\"prev\">");
-  out.println("<a class=\"but prev\">◀</a>");
-  out.println("</td>");
-  */
-  out.println("<td class=\"bibl\" title=\""+detag(bibl)+"\">");
+if (doc != null) {
+  out.println("<header class=\"biblbar\" title=\""+doc.getUntag("bibl")+"\">");
   out.print("<a href=\"#\" class=\"bibl\">");
-  out.println(bibl);
+  out.println(doc.get("bibl"));
   out.print("</a>");
-  out.println("</td>");
-  /*
-  out.println("<td class=\"next\">");
-  out.println("<a class=\"but next\">▶</a>");
-  out.println("</td>");
-  */
-  out.println("</tr></table>");
   out.println("</header>");
 }
-%>
+      %>
     <nav id="rulhi" class="right">
     </nav>
     <main class="right">
@@ -226,7 +184,7 @@ if (doc != null) {
   }
   out.println(".</p>");
   */
-  Document fields = reader.document(docSim, FIELDS);
+  Document fields = reader.document(docSim, DOC_SHORT);
   out.append("<p><b>Contrasté avec : </b>"+fields.get("bibl")+"</p>");
 }
     %>

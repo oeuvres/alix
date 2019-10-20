@@ -44,8 +44,16 @@ import java.util.Locale;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -54,6 +62,8 @@ import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
 import alix.lucene.Alix;
 import alix.lucene.analysis.CharsMaps;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
+import alix.util.Char;
+import alix.util.Top;
 
 
 /**
@@ -67,23 +77,58 @@ public class Doc
   final private Alix alix;
   /** Id of a document in this reader {@link IndexReader#document(int)} */
   final int docId;
+  /** Permanent id for the document */
+  final String id;
   /** The document with stored field */
-  final private Document document;
+  final private Document fields;
   /** Cache of term vector  */
   private HashMap<String, Terms> vectors = new HashMap<>();
+  /** Cache of different top terms */
+  private HashMap<String, Top<String>> tops =  new HashMap<>();
+
+  public Doc(Alix alix, String id) throws IOException 
+  {
+    TermQuery qid = new TermQuery(new Term(Alix.ID, id));
+    TopDocs search = alix.searcher().search(qid, 1);
+    ScoreDoc[] hits = search.scoreDocs;
+    if (hits.length == 0) {
+      throw new IllegalArgumentException("No document found with id: "+id);
+    }
+    if (hits.length > 1) {
+      throw new IllegalArgumentException(""+hits.length + "document found for "+qid);
+    }
+    this.alix = alix;
+    this.docId = hits[0].doc;
+    this.id = id;
+    fields = alix.reader().document(docId);
+  }
   
   public Doc(Alix alix, int docId) throws IOException 
   {
     this.alix = alix;
     this.docId = docId;
-    this.document = alix.reader().document(docId);
+    fields = alix.reader().document(docId);
+    if (fields == null) {
+      throw new IllegalArgumentException("No stored fields found for docId: "+docId);
+    }
+    id = fields.get(Alix.ID);
   }
   
-  public Document document()
+  public Document fields()
   {
-    return document;
+    return fields;
   }
   
+  public String get(String name)
+  {
+    return fields.get(name);
+  }
+
+  public String getUntag(String name)
+  {
+    return Char.detag(fields.get(name));
+  }
+
   class TokenOffsets implements Comparable<TokenOffsets>
   {
     final int pos;
@@ -187,7 +232,7 @@ public class Doc
         }
       }
     }
-    String text = document.get(field);
+    String text = fields.get(field);
     Collections.sort(offsets); // sort offsets before hilite
     int off = 0;
     final double scoremax = max1/length1 + max2/length2;
@@ -223,16 +268,6 @@ public class Doc
     sb.append(text.substring(off)); // do not forget end
     return sb.toString();
   }
-  
-  public String hilite(String field, String[] terms) throws IOException, NoSuchFieldException
-  {
-    ArrayList<BytesRef> list = new ArrayList<>();
-    for (String t: terms) {
-      list.add(new BytesRef(t));
-    }
-    return hilite(field, list);
-  }
-
   /**
    * @throws IOException 
    * @throws NoSuchFieldException 
@@ -246,6 +281,16 @@ public class Doc
     vectors.put(field, tvek);
     return tvek;
   }
+  
+  public String hilite(String field, String[] terms) throws IOException, NoSuchFieldException
+  {
+    ArrayList<BytesRef> list = new ArrayList<>();
+    for (String t: terms) {
+      list.add(new BytesRef(t));
+    }
+    return hilite(field, list);
+  }
+
   /**
    * Hilite terms in a stored document as html.
    * @param field
@@ -255,7 +300,7 @@ public class Doc
   public String hilite(String field, ArrayList<BytesRef> refList) throws IOException, NoSuchFieldException
   {
     StringBuilder sb = new StringBuilder();
-    String text = document.get(field);
+    String text = fields.get(field);
     // maybe to cache ?
     Terms tvek = getTermVector(field);
     // buid a term enumeration like lucene like them in the term vector
@@ -288,14 +333,14 @@ public class Doc
     sb.append(text.substring(offset));
     
     int length = text.length();
-    sb.append("<nav id=\"ruloccs\">\n");
+    sb.append("<nav id=\"ruloccs\"><div>\n");
     final DecimalFormat dfdec1 = new DecimalFormat("0.#", ensyms);
     for (int i = 0, size = offsets.size(); i < size; i++) {
       TokenOffsets tok = offsets.get(i);
       offset = tok.start;
       sb.append("<a href=\"#mark"+(i+1)+"\" style=\"top: "+dfdec1.format(100.0 * offset / length)+"%\"> </a>\n");
     }
-    sb.append("</nav>\n");
+    sb.append("</div></nav>\n");
     return sb.toString();
   }
   
@@ -327,5 +372,104 @@ public class Doc
   }
   out.print(text.substring(off));
   */
+  //
+  
+  /**
+   * Prepare list of terms 
+   * @param field
+   * @throws IOException
+   * @throws NoSuchFieldException 
+   */
+  private void topWords(String field) throws IOException, NoSuchFieldException
+  {
+    IndexReader reader = alix.reader();
+    int[] docLength = alix.docLength(field);
+    Terms vector = getTermVector(field);
+    int docLen = docLength[docId];
+    // get index term stats
+    Freqs freqs = alix.freqs(field);
+    // loop on all terms of the document, get score, keep the top 
+    TermsEnum termit = vector.iterator();
+    final Top<String> names = new Top<String>(100);
+    final Top<String> happax = new Top<String>(100);
+    final Top<String> theme = new Top<String>(100);
+    long occsAll= freqs.occsAll;
+    int docsAll = freqs.docsAll;
+    Scorer scorer = new ScorerBM25();
+    Scorer scorerTheme = new ScorerTheme();
+    Scorer scorerTfidf = new ScorerTfidf();
+    scorer.setAll(occsAll, docsAll);
+    scorerTheme.setAll(occsAll, docsAll);
+    scorerTfidf.setAll(occsAll, docsAll);
+    CharsAtt att = new CharsAtt();
+    while(termit.next() != null) {
+      BytesRef bytes = termit.term();
+      if (!freqs.contains(bytes)) continue; // should not arrive, set a pointer
+      // count 
+      int termDocs = freqs.docs();
+      long termOccs = freqs.length();
+      scorer.weight(termOccs, termDocs); // collection level stats
+      scorerTheme.weight(termOccs, termDocs); // collection level stats
+      scorerTfidf.weight(termOccs, termDocs);
+      int occsDoc = (int)termit.totalTermFreq();
+      double score = scorer.score(occsDoc, docLen);
+      String term = bytes.utf8ToString();
+      
+      if (termDocs < 2) {
+        happax.push(score, term);
+      }
+      else if (Char.isUpperCase(term.charAt(0))) {
+        names.push(occsDoc, term);
+      }
+      else {
+        att.setEmpty().append(term);
+        if (!CharsMaps.isStop(att))
+          theme.push(scorerTheme.score(occsDoc, docLen), term);
+      }
+      
+    }
+    tops.put(field+"_theme", theme);
+    tops.put(field+"_names", names);
+    tops.put(field+"_happax", happax);
+  }
+
+  public Top<String> names(String field) throws IOException, NoSuchFieldException {
+    Top<String> ret = tops.get(field+"_names");
+    if (ret == null) topWords(field);
+    return tops.get(field+"_names");
+  }
+
+  public Top<String> theme(String field) throws IOException, NoSuchFieldException {
+    Top<String> ret = tops.get(field+"_theme");
+    if (ret == null) topWords(field);
+    return tops.get(field+"_theme");
+  }
+
+  public Top<String> happax(String field) throws IOException, NoSuchFieldException {
+    Top<String> ret = tops.get(field+"_happax");
+    if (ret == null) topWords(field);
+    return tops.get(field+"_happax");
+  }
+
+  /**
+   * Create the More like This query from a PriorityQueue
+   */
+  static public Query moreLikeThis(String field, Top<String> top, int words) {
+    BooleanQuery.Builder query = new BooleanQuery.Builder();
+    double max = top.max();
+    for (Top.Entry<String> entry: top) {
+      // if (entry.score() <= 0) break;
+      Query tq = new TermQuery(new Term(field, entry.value()));
+      /*
+      if (boost) {
+        float factor = (float)(boostFactor * entry.score() / max);
+        tq = new BoostQuery(tq, factor);
+      }
+      */
+      query.add(tq, BooleanClause.Occur.SHOULD);
+      if (--words < 0) break;
+    }
+    return query.build();
+  }
 
 }

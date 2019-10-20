@@ -19,14 +19,13 @@ window.onhashchange = function (e)
 }
 
 // a set of colors for hilite tokens
-const styleMap = {
+var styleMap = {
   "tk1":true,
   "tk2":true,
   "tk3":true,
   "tk4":true,
   "tk5":true,
 };
-
 function getStyle()
 {
   for (var style in styleMap) {
@@ -61,7 +60,9 @@ function clickTok(e)
   count += hitoks(form, style);
   if (count && style) { // style used, block it
     if (styleMap.hasOwnProperty(style)) styleMap[style] = false;
-    if (win) win.styleMap = styleMap;
+    if (win) {
+      win.styleMap = styleMap;
+    }
   }
 
 }
