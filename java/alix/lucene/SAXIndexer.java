@@ -59,10 +59,14 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import alix.fr.Tag.TagFilter;
+import alix.lucene.analysis.MetaAnalyzer;
 import alix.lucene.analysis.TokenStats;
 
 
 /**
+ * An XML parser allowing to ndex XML or HTMTL.
+ * 
+ * 
  * Index an xml file of lucene documents.
  * React to the namespace uri xmlns:alix="http://alix.casa".
  * The element {@code <alix:document>} contains a document.
@@ -114,7 +118,6 @@ import alix.lucene.analysis.TokenStats;
  * <b>NOTE:</b> This indexer do not reuse fields and document object, because the fields provided by source are not predictable.
  *  
  * </p>
- * @author fred
  *
  */
 public class SAXIndexer extends DefaultHandler
@@ -126,7 +129,13 @@ public class SAXIndexer extends DefaultHandler
   }
   final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
   final static DecimalFormat df000 = new DecimalFormat("000", frsyms);
-
+  /** Field type */
+  final static String TEXT = "text";
+  final static String META = "meta";
+  final static String STORE = "store";
+  final static String INT = "int";
+  final static String FACET = "facet";
+  final static String FACETS = "facets";
   /** Lucene writer */
   private final IndexWriter writer;
   /** Current file processed */
@@ -143,16 +152,18 @@ public class SAXIndexer extends DefaultHandler
   private ArrayList<Document> chapters = new ArrayList<>();
   /** Flag set when a text field is being recorded */
   private boolean record = false;
-  /** Flag set by the store field type,  */
-  private boolean store = false;
+  /** Flag set by opening <field> tag to know what to do when closing. */
+  private String type;
   /** Name of the current xml field to populate */
   private String fieldName;
   /** A text field value */
   private StringBuilder xml = new StringBuilder();
   /** Flag to verify that an element is not empty (for XML serialization) */
   private boolean empty;
-  /** Keep an hand on an analyzer */
+  /** Keep an hand on the text analyzer */
   private final Analyzer analyzer;
+  /** The analyzer for meta */
+  private final Analyzer metaAnalyzer;
   
   /**
    * Keep same writer for 
@@ -162,6 +173,7 @@ public class SAXIndexer extends DefaultHandler
   {
     this.writer = writer;
     this.analyzer = writer.getAnalyzer();
+    this.metaAnalyzer = new MetaAnalyzer();
   }
   
   /**
@@ -304,23 +316,33 @@ public class SAXIndexer extends DefaultHandler
         throw new SAXException("<alix:field name=\""+name+"\"> A field must have a type=\"[xml, facet, string, int, store]\"");
       String value = attributes.getValue("value");
       switch (type) {
-        case "store":
+        case STORE:
           if (value != null) {
             doc.add(new StoredField(name, value));
           }
           else {
             fieldName = name;
             record = true;
-            store = true;
+            type = STORE;
           }
           break;
-        case "text":
+        case META:
+          if (value != null) {
+            doc.add(new Field(name, value, Alix.ftypeMeta));
+          }
+          else {
+            fieldName = name;
+            record = true;
+            type = INT;
+          }
+          break;
+        case TEXT:
         case "xml":
         case "html":
           fieldName = name;
           record = true;
           break;
-        case "int":
+        case INT:
           int val = 0;
           if (value == null)
             throw new SAXException("<alix:field name=\""+name+"\"> A field of @type=\"" + type + "\" must have an attribute @value=\"number\"");
@@ -334,13 +356,13 @@ public class SAXIndexer extends DefaultHandler
           doc.add(new StoredField(name, val)); // to show
           doc.add(new NumericDocValuesField(name, val)); // to sort
           break;
-        case "facet":
+        case FACET:
           if (value == null)
             throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"facet\"");
           doc.add(new SortedDocValuesField(name, new BytesRef(value)));
           doc.add(new StoredField(name, value));
           break;
-        case "facets":
+        case FACETS:
           if (value == null)
             throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"facets\"");
           doc.add(new SortedSetDocValuesField(name, new BytesRef(value)));
@@ -440,9 +462,16 @@ public class SAXIndexer extends DefaultHandler
       else throw new SAXException("</\"+qName+\"> no document is opened to write the field in. A field must be nested in one of these:"
           + " document, book, chapter.");
       // store content with no analyzis
-      if (store) {
+      if (STORE.equals(type)) {
         doc.add(new StoredField(name , text));
-        store = false;
+        type = null;
+      }
+      // store content with very simple analysis
+      if (META.equals(type)) {
+        type = null;
+        // doc.add(new Field(name, text, Alix.ftypeMeta));
+        TokenStream source = metaAnalyzer.tokenStream("meta", text);
+        doc.add(new Field(name, source, Alix.ftypeMeta)); // indexation of the chosen tokens
       }
       // analysis
       else {
@@ -457,7 +486,7 @@ public class SAXIndexer extends DefaultHandler
           caching.incrementToken(); // cache all tokens
           doc.add(new StoredField(name+Alix._OFFSETS , stats.offsets().getBytesRef()));
           doc.add(new StoredField(name+Alix._TAGS , stats.tags().getBytesRef()));
-          doc.add(new Field(name, caching, Alix.ftypeAll)); // indexation of the chosen tokens
+          doc.add(new Field(name, caching, Alix.ftypeText)); // indexation of the chosen tokens
         }
         catch (Exception e) {
           e.printStackTrace();

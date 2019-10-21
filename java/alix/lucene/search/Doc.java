@@ -33,14 +33,22 @@
 package alix.lucene.search;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.PostingsEnum;
@@ -59,6 +67,7 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
 
+import alix.fr.Tag;
 import alix.lucene.Alix;
 import alix.lucene.analysis.CharsMaps;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
@@ -113,6 +122,14 @@ public class Doc
     }
     id = fields.get(Alix.ID);
   }
+
+  /*
+  public Document load( Set<String> fieldsToLoad)
+  {
+    return fields;
+  }
+  */
+
   
   public Document fields()
   {
@@ -289,6 +306,42 @@ public class Doc
       list.add(new BytesRef(t));
     }
     return hilite(field, list);
+  }
+  
+  public static String hilite(String text, Analyzer analyzer, CharArraySet terms) throws IOException
+  {
+    StringBuilder sb = new StringBuilder();
+    TokenStream stream = analyzer.tokenStream("hilite", new StringReader(text));
+    // get the CharTermAttribute from the TokenStream
+    CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
+    OffsetAttribute offsetAtt = stream.addAttribute(OffsetAttribute.class);
+    int off = 0;
+    System.out.println(text.length()+" "+offsetAtt.startOffset());
+    try {
+      stream.reset();
+      stream.clearAttributes();
+      // print all tokens until stream is exhausted
+      while (stream.incrementToken()) {
+        System.out.print(" "+offsetAtt.startOffset());
+        if(!terms.contains(termAtt.buffer(), 0, termAtt.length())) continue;
+        // should be a desired tem
+        final int start = offsetAtt.startOffset();
+        final int end = offsetAtt.endOffset();
+        System.out.println(start+" "+end);
+        sb.append(text.substring(off, start));
+        sb.append("<b>");
+        sb.append(text.substring(start, end));
+        sb.append("</b>");
+        off = end;
+      }
+      stream.end();
+    }
+    finally {
+      System.out.println("finally ?");
+    }
+    stream.close();
+    sb.append(text.substring(off));
+    return sb.toString();
   }
 
   /**

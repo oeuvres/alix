@@ -34,6 +34,7 @@ package alix.util;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.CharBuffer;
 import java.util.ArrayList;
 
 /**
@@ -46,7 +47,7 @@ import java.util.ArrayList;
  * 
  * @author glorieux-f
  */
-public class Chain implements CharSequence, Comparable<Chain>
+public class Chain implements CharSequence, Appendable, Comparable<Chain>
 {
   /** The characters */
   private char[] data;
@@ -332,7 +333,7 @@ public class Chain implements CharSequence, Comparable<Chain>
    * @param c
    * @return the Chain object for chaining
    */
-  public Chain append(final char c)
+  public Appendable append(final char c)
   {
     int newlen = len + 1;
     onWrite(newlen);
@@ -377,19 +378,45 @@ public class Chain implements CharSequence, Comparable<Chain>
    * @param cs
    *          String or other CharSequence
    * @return the Chain object for chaining
+   * @throws IOException 
    */
-  public Chain append(final CharSequence cs)
+  public Appendable append(final CharSequence cs) throws IOException
   {
-    int count = cs.length();
-    int newlen = len + count;
-    onWrite(newlen);
-    int offset = start + len;
-    for (int i = 0; i < count; i++) {
-      data[offset++] = cs.charAt(i);
-    }
-    len = newlen;
-    return this;
+    return append(cs, 0, cs.length());
   }
+  
+  @Override
+  public Appendable append(CharSequence cs, int start, int end) throws IOException
+  {
+    if (cs == null) return this;
+    int amount = end - start;
+    if (amount < 0) return this;
+    int newlen = len + amount;
+    onWrite(newlen);
+    if (len > 4) { // only use instanceof check series for longer CSQs, else simply iterate
+      if (cs instanceof String) {
+        ((String) cs).getChars(start, end, data, len);
+      } else if (cs instanceof StringBuilder) {
+        ((StringBuilder) cs).getChars(start, end, data, len);
+      } else if (cs instanceof CharBuffer && ((CharBuffer) cs).hasArray()) {
+        final CharBuffer cb = (CharBuffer) cs;
+        System.arraycopy(cb.array(), cb.arrayOffset() + cb.position() + start, data, len, amount);
+      } else if (cs instanceof StringBuffer) {
+        ((StringBuffer) cs).getChars(start, end, data, len);
+      } else {
+        while (start < end)
+          data[len++] = cs.charAt(start++);
+        return this; // len is updated here go now
+      }
+      len = newlen;
+      return this;
+    } else {
+      while (start < end)
+        data[len++] = cs.charAt(start++);
+      return this;
+    }  
+  }
+
 
   /**
    * Last char, will send an array out of bound, with no test
@@ -957,5 +984,6 @@ public class Chain implements CharSequence, Comparable<Chain>
   {
     return new String(data, start, len);
   }
+
 
 }

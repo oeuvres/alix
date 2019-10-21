@@ -58,25 +58,22 @@ public class Char
   private static final int SIZE = 65535;
   /** Properties of chars by index */
   private static final short[] CHARS = new short[SIZE + 1];
-  /** Is a letter (Unicode property) */
-  public static final short LETTER = 0x0001;
-  /** Is a space (Unicode property) */
-  public static final short SPACE = 0x0002;
-  /** Is token, specific, with '-' and ‘'’ */
-  public static final short TOKEN = 0x0004;
-  /** Punctuation, according to Unicode */
-  public static final short PUNCTUATION = 0x0008;
+  public static final short LETTER =       0b000000000000001;
+  public static final short SPACE =        0b000000000000010;
+  public static final short TOKEN =        0b000000000000100;
+  public static final short PUNCTUATION =  0b000000000001000;
+  public static final short LOWERCASE =    0b000000000010000;
+  public static final short UPPERCASE =    0b000000000100000;
+  public static final short VOWEL =        0b000000001000000;
+  public static final short CONSONNANT =   0b000000010000000;
+  public static final short DIGIT =        0b000000100000000;
+  public static final short PUNsent =      0b000001000000000;
+  public static final short PUNcl =        0b000010000000000;
+  public static final short MATH =         0b000100000000000;
+  public static final short LOWSUR =       0b010000000000000;
+  public static final short HIGHSUR =      0b100000000000000;
   public static final short PUNCTUATION_OR_SPACE = SPACE | PUNCTUATION;
-  public static final short LOWERCASE = 0x0010;
-  public static final short UPPERCASE = 0x0020;
-  public static final short VOWEL = 0x0040;
-  public static final short CONSONNANT = 0x0080;
-  public static final short DIGIT = 0x0100;
-  public static final short PUNsent = 0x0200;
-  public static final short PUNcl = 0x0400;
-  public static final short MATH = 0x0800;
-  public static final short HIGHSUR = 0x4000;
-  public static final short LOWSUR = 0x2000;
+  public static final short LETTER_OR_DIGIT = LETTER | DIGIT;
   public static final HashMap<String, Character> HTMLENT = new HashMap<String, Character>();
   static {
     BufferedReader buf = new BufferedReader(
@@ -301,7 +298,7 @@ public class Char
   public static char htmlent(final String ent)
   {
     Character c = HTMLENT.get(ent);
-    if (c == null) return '�';
+    if (c == null) return 0;
     return c;
   }
 
@@ -309,8 +306,14 @@ public class Char
   {
     @SuppressWarnings("unlikely-arg-type")
     Character c = HTMLENT.get(ent);
-    if (c == null) return '�';
+    if (c == null) return 0;
     return c;
+  }
+  
+  public static boolean isEnt(char c) 
+  {
+    if (c > 128) return false;
+    return (CHARS[c] & LETTER_OR_DIGIT) > 0;
   }
 
   public static String detag(String xml)

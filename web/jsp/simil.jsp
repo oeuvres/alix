@@ -26,7 +26,7 @@ iframe {
     </style>
   </head>
   <body style="padding: 0; margin">
-    <iframe id="left" name="left" src="doc2?q=<%=q%>" width="50%" height="99.5%">
+    <iframe id="left" name="left" src="reflist.jsp" width="50%" height="99.5%">
     </iframe>
     <iframe id="right" name="right" src="list.jsp" width="50%" height="99.5%">
     </iframe>

@@ -30,41 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis;
-
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Analyzer.ReuseStrategy;
-import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
-
 /**
- * This analyzer wrap another and allow to force 
- * its {@link ReuseStrategy}.
- * Most analyzers do not implement the constructor 
- * allowing to modify the reuse strategy.
- * This could be needed in some indexing context 
- * where the default strategy is confused.
+ * XML resources to index files in alix.
  */
-public class AnalyzerReuseControl extends Analyzer
-{
-  Analyzer analyzer;
-  
-  public AnalyzerReuseControl(Analyzer analyzer, ReuseStrategy reuseStrategy)
-  {
-    super(reuseStrategy);
-    this.analyzer = analyzer;
-  }
-
-  
-  @Override
-  protected TokenStreamComponents createComponents(String fieldName)
-  {
-    return analyzer.createComponents(fieldName);
-  }
-
-  @Override
-  protected TokenStream normalize(String fieldName, TokenStream in)
-  {
-    return analyzer.normalize(fieldName, in);
-  }
-}
+package alix.xml;

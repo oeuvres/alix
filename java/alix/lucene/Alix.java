@@ -146,26 +146,39 @@ public class Alix
   /** Level type, independent article */
   public static final String ARTICLE = "article";
   /** A binary stored field with an array of offsets */
-  public static final String _OFFSETS = "_offsets";
+  public static final String _OFFSETS = ":offsets";
   /** A binary stored with {@link Tag} by position */
-  public static final String _TAGS = "_tags";
+  public static final String _TAGS = ":tags";
   /** Suffix for a text field containing only names */
-  public static final String _NAMES = "_names";
+  public static final String _NAMES = ":names";
   /** Max books */
   private static final int MAXBOOKS = 10000;
-  /** Current filename proceded */
-  public static final FieldType ftypeAll = new FieldType();
+  /** Lucene field type for alix text field */
+  public static final FieldType ftypeText = new FieldType();
   static {
-    ftypeAll.setTokenized(true);
+    ftypeText.setTokenized(true);
     // freqs required, position needed for co-occurrences
-    ftypeAll.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
-    ftypeAll.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
-    ftypeAll.setStoreTermVectors(true);
-    ftypeAll.setStoreTermVectorPositions(true);
-    ftypeAll.setStoreTermVectorOffsets(true);
-    // do not store in this field
-    ftypeAll.setStored(false);
-    ftypeAll.freeze();
+    ftypeText.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    ftypeText.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
+    ftypeText.setStoreTermVectors(true);
+    ftypeText.setStoreTermVectorPositions(true);
+    ftypeText.setStoreTermVectorOffsets(true);
+    // do not store here to allow fine grain control
+    ftypeText.setStored(false);
+    ftypeText.freeze();
+  }
+  /** lucene field type for alix meta type */
+  public static final FieldType ftypeMeta = new FieldType();
+  static {
+    ftypeMeta.setTokenized(true); // token
+    // freqs required, position needed for co-occurrences
+    ftypeMeta.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    ftypeMeta.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
+    ftypeMeta.setStoreTermVectors(true); // vectors are needed for hilite
+    ftypeMeta.setStoreTermVectorPositions(true);
+    ftypeMeta.setStoreTermVectorOffsets(true);
+    ftypeMeta.setStored(true); // store
+    ftypeMeta.freeze();
   }
   /** Pool of instances, unique by path */
   public static final HashMap<Path, Alix> pool = new HashMap<Path, Alix>();
@@ -641,7 +654,7 @@ public class Alix
    * 
    * @param field
    * @return
-   * @throws IOException
+u   * @throws IOException
    */
   public Cooc cooc(final String field) throws IOException
   {
