@@ -83,6 +83,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopFieldDocs;
+import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
@@ -164,7 +165,7 @@ public class Alix
     ftypeText.setStoreTermVectorPositions(true);
     ftypeText.setStoreTermVectorOffsets(true);
     // do not store here to allow fine grain control
-    ftypeText.setStored(false);
+    ftypeText.setStored(false); // store not allowed 
     ftypeText.freeze();
   }
   /** lucene field type for alix meta type */
@@ -174,10 +175,8 @@ public class Alix
     // freqs required, position needed for co-occurrences
     ftypeMeta.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
     ftypeMeta.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
-    ftypeMeta.setStoreTermVectors(true); // vectors are needed for hilite
-    ftypeMeta.setStoreTermVectorPositions(true);
-    ftypeMeta.setStoreTermVectorOffsets(true);
-    ftypeMeta.setStored(true); // store
+    ftypeMeta.setStoreTermVectors(false); // no vectors, hilite done by anlalyzer
+    ftypeMeta.setStored(false); // store not allowed when indexoing token stream
     ftypeMeta.freeze();
   }
   /** Pool of instances, unique by path */
@@ -708,7 +707,11 @@ u   * @throws IOException
     cache(key, books);
     return books;
   }
-
+  public Query qParse(final String field, final String q) throws IOException
+  {
+    return qParse(field, q, this.analyzer);
+  }
+  
   /**
    * 
    * @param q
@@ -716,7 +719,7 @@ u   * @throws IOException
    * @return
    * @throws IOException
    */
-  public Query qParse(String field, String q) throws IOException
+  static public Query qParse(final String field, final String q, final Analyzer analyzer) throws IOException
   {
     // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
     // int boostLength = boosts.length;
@@ -735,7 +738,10 @@ u   * @throws IOException
           if (bq == null) bq = new BooleanQuery.Builder();
           bq.add(qTerm, Occur.SHOULD);
         }
-        qTerm = new TermQuery(new Term(field, token.toString()));
+        int len = token.length();
+        while(--len >= 0 && token.charAt(len) != '*');
+        if (len > 0) qTerm = new WildcardQuery(new Term(field, token.toString()));
+        else qTerm = new TermQuery(new Term(field, token.toString()));
         /*
          * float boost = boostDefault; if (i < boostLength) boost = boosts[i]; qTerm =
          * new BoostQuery(qTerm, boost);

@@ -162,8 +162,6 @@ public class SAXIndexer extends DefaultHandler
   private boolean empty;
   /** Keep an hand on the text analyzer */
   private final Analyzer analyzer;
-  /** The analyzer for meta */
-  private final Analyzer metaAnalyzer;
   
   /**
    * Keep same writer for 
@@ -173,7 +171,6 @@ public class SAXIndexer extends DefaultHandler
   {
     this.writer = writer;
     this.analyzer = writer.getAnalyzer();
-    this.metaAnalyzer = new MetaAnalyzer();
   }
   
   /**
@@ -311,9 +308,9 @@ public class SAXIndexer extends DefaultHandler
         throw new SAXException("<alix:field> A field must have an attribute @name=\"fieldName\".");
       if (name.startsWith("alix:"))
         throw new SAXException("<alix:field> @name=\"" + name + "\" is forbidden (\"alix:\" is a reserved prefix)");
-      String type = attributes.getValue("type");
+      final String type = attributes.getValue("type");
       if (type == null) 
-        throw new SAXException("<alix:field name=\""+name+"\"> A field must have a type=\"[xml, facet, string, int, store]\"");
+        throw new SAXException("<alix:field name=\""+name+"\"> A field must have a type=\"[text, meta, facet, string, int, store]\"");
       String value = attributes.getValue("value");
       switch (type) {
         case STORE:
@@ -323,7 +320,7 @@ public class SAXIndexer extends DefaultHandler
           else {
             fieldName = name;
             record = true;
-            type = STORE;
+            this.type = STORE;
           }
           break;
         case META:
@@ -333,7 +330,7 @@ public class SAXIndexer extends DefaultHandler
           else {
             fieldName = name;
             record = true;
-            type = INT;
+            this.type = META;
           }
           break;
         case TEXT:
@@ -341,6 +338,7 @@ public class SAXIndexer extends DefaultHandler
         case "html":
           fieldName = name;
           record = true;
+          this.type = TEXT;
           break;
         case INT:
           int val = 0;
@@ -449,8 +447,7 @@ public class SAXIndexer extends DefaultHandler
     }
     empty = false;
     if ("field".equals(localName) && record) {
-      // do not forget to reset the flags
-      final String name = fieldName;
+      final String name = fieldName; // do not forget to reset the flags now
       fieldName = null;
       record = false;
       String text = this.xml.toString();
@@ -461,39 +458,39 @@ public class SAXIndexer extends DefaultHandler
       else if (book != null) doc = book; // book if not chapter
       else throw new SAXException("</\"+qName+\"> no document is opened to write the field in. A field must be nested in one of these:"
           + " document, book, chapter.");
-      // store content with no analyzis
-      if (STORE.equals(type)) {
-        doc.add(new StoredField(name , text));
-        type = null;
-      }
-      // store content with very simple analysis
-      if (META.equals(type)) {
-        type = null;
-        // doc.add(new Field(name, text, Alix.ftypeMeta));
-        TokenStream source = metaAnalyzer.tokenStream("meta", text);
-        doc.add(new Field(name, source, Alix.ftypeMeta)); // indexation of the chosen tokens
-      }
-      // analysis
-      else {
-        doc.add(new StoredField(name , text)); // text has to be stored for snippets and conc
-        TokenStream source = analyzer.tokenStream("stats", text);
-        try {
-          TokenStats stats = new TokenStats(source);
-          // source.reset();
-          // A caching token stream allow to replay the tokens and get here stats to add to the document
-          TokenStream caching = new CachingTokenFilter(stats);
-          caching.reset(); // reset upper filters ?
-          caching.incrementToken(); // cache all tokens
-          doc.add(new StoredField(name+Alix._OFFSETS , stats.offsets().getBytesRef()));
-          doc.add(new StoredField(name+Alix._TAGS , stats.tags().getBytesRef()));
-          doc.add(new Field(name, caching, Alix.ftypeText)); // indexation of the chosen tokens
-        }
-        catch (Exception e) {
-          e.printStackTrace();
-          System.exit(9);
-          throw new SAXException(e);
+      try {
+        switch (this.type) {
+          case STORE:
+            doc.add(new StoredField(name , text));
+            break;
+          case META:
+            doc.add(new StoredField(name , text)); // (TokenStream fields cannot be stored)
+            TokenStream ts = new MetaAnalyzer().tokenStream("meta", text); // renew token stream 
+            doc.add(new Field(name, ts, Alix.ftypeMeta)); // indexation of the chosen tokens
+            break;
+          case TEXT:
+            doc.add(new StoredField(name , text)); // text has to be stored for snippets and conc
+            TokenStream source = analyzer.tokenStream("stats", text);
+            TokenStats stats = new TokenStats(source);
+            // source.reset();
+            // A caching token stream allow to replay the tokens and get here stats to add to the document
+            TokenStream caching = new CachingTokenFilter(stats);
+            caching.reset(); // reset upper filters ?
+            caching.incrementToken(); // cache all tokens
+            doc.add(new StoredField(name+Alix._OFFSETS , stats.offsets().getBytesRef()));
+            doc.add(new StoredField(name+Alix._TAGS , stats.tags().getBytesRef()));
+            doc.add(new Field(name, caching, Alix.ftypeText)); // indexation of the chosen tokens
+            break;
+          default:
+            throw new SAXException("</"+qName+"> @name=\""+name+"\" unkown type: "+type);
         }
       }
+      catch (Exception e) {
+        e.printStackTrace();
+        System.exit(9);
+        throw new SAXException(e);
+      }
+      this.type = null;
     }
     else if ("chapter".equals(localName)) {
       if (document == null)

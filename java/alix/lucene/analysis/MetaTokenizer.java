@@ -145,13 +145,17 @@ public class MetaTokenizer extends Tokenizer
           continue;
         }
       }
-      
+      // soft hyphen, do not append to term
+      if (c == (char) 0xAD) continue;
+
+      // for a query parser, keep wildcard
+      if (length > 0 && c == '*');
       // not a token char
-      if (!Char.isToken(c)) {
+      else if (!Char.isToken(c) || c == '-' || c == '\'' || c == '’') {
         if (length > 0) break; // end of token, send it
         else continue; // go next space
       }
-      
+            
       // start of a token, record start offset
       if (length == 0) {
         start = offset + bufferIndex - 1;
@@ -168,17 +172,11 @@ public class MetaTokenizer extends Tokenizer
   @Override
   public void reset() throws IOException {
     super.reset();
+    bufferIndex = 0;
+    offset = 0;
+    dataLen = 0;
+    finalOffset = 0;
+    ioBuffer.reset(); // make sure to reset the IO buffer!!
   }
 
-  @Override
-  public final void end() throws IOException {
-    super.end();
-    // set final offset
-    offsetAtt.setOffset(finalOffset, finalOffset);
-  }
-  @Override
-  public void close() throws IOException {
-    super.close();
-    offsetAtt.setOffset(0, 0);
-  }
 }

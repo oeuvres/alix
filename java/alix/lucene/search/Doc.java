@@ -308,41 +308,6 @@ public class Doc
     return hilite(field, list);
   }
   
-  public static String hilite(String text, Analyzer analyzer, CharArraySet terms) throws IOException
-  {
-    StringBuilder sb = new StringBuilder();
-    TokenStream stream = analyzer.tokenStream("hilite", new StringReader(text));
-    // get the CharTermAttribute from the TokenStream
-    CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
-    OffsetAttribute offsetAtt = stream.addAttribute(OffsetAttribute.class);
-    int off = 0;
-    System.out.println(text.length()+" "+offsetAtt.startOffset());
-    try {
-      stream.reset();
-      stream.clearAttributes();
-      // print all tokens until stream is exhausted
-      while (stream.incrementToken()) {
-        System.out.print(" "+offsetAtt.startOffset());
-        if(!terms.contains(termAtt.buffer(), 0, termAtt.length())) continue;
-        // should be a desired tem
-        final int start = offsetAtt.startOffset();
-        final int end = offsetAtt.endOffset();
-        System.out.println(start+" "+end);
-        sb.append(text.substring(off, start));
-        sb.append("<b>");
-        sb.append(text.substring(start, end));
-        sb.append("</b>");
-        off = end;
-      }
-      stream.end();
-    }
-    finally {
-      System.out.println("finally ?");
-    }
-    stream.close();
-    sb.append(text.substring(off));
-    return sb.toString();
-  }
 
   /**
    * Hilite terms in a stored document as html.

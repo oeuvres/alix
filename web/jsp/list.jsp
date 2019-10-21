@@ -1,6 +1,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ include file="common.jsp" %>
 <%!
+static Analyzer anameta = new MetaAnalyzer();
 %>
 <%
 String pageType = (String)request.getAttribute("pageType");
@@ -23,7 +24,7 @@ if (refDocId > 0) {
 }
 else if (!"".equals(q)) {
   String lowbibl = q.toLowerCase();
-  query = alix.qParse("bibl", lowbibl);
+  query = Alix.qParse("bibl", lowbibl, anameta);
   terms = lowbibl.split("[ ,;]+");
 }
 
@@ -70,9 +71,11 @@ else {
 if (refDoc != null) {
   out.println("<input type=\"hidden\" name=\"refdocid\" value=\"" +refDocId+"\"/>");
 }
-else if ("bibl".equals(pageType)) {
-  out.println("<input size=\"50\" type=\"text\" id=\"q\" name=\"q\" value=\"" +q+"\"/>");
+else {
+  out.println("<input size=\"50\" type=\"text\" id=\"q\" onfocus=\"var len = this.value.length * 2; this.setSelectionRange(len, len); \" autofocus spellcheck=\"false\"  name=\"q\" value=\"" +q+"\"/>");
+  out.println("<br/>" + query);
 }
+
 // go next
 if (hits != null && hits.length == hpp) {
   out.println("<input type=\"hidden\" name=\"fromdoc\" value=\""+hits[hpp - 1].doc+"\"/>");
@@ -86,36 +89,25 @@ if (hits != null && hits.length == hpp) {
 <%
 
 if (hits != null  && hits.length > 0) {
-  CharArraySet hiSet = null;
-  Analyzer analyzer = new MetaAnalyzer();
-  String jsp = "refdoc.jsp";
-  if ("bibl".equals(pageType)) {
-    hiSet = new CharArraySet(terms.length, false);
-    hiSet.addAll(Arrays.asList(terms));
-    jsp = "simdoc.jsp";
-  }
-  
   String paging = "";
   if (fromDoc > 0) {
     paging = "&amp;fromdoc="+fromDoc+"&amp;fromscore="+fromScore;
   }
+  Marker marker = null;
+  // a query to hilite in records
+  if (!"".equals(q)) {
+    marker = new Marker(anameta, q);
+  }
   out.println("<ul class=\"results\">");
   for (int i = 0, len = hits.length; i < len; i++) {
     int docId = hits[i].doc;
-    out.append("<li>");
+    out.append("<li>888");
     Document doc = reader.document(docId, DOC_SHORT);
     
     String text = doc.get("bibl");
-    if ("bibl".equals(pageType)) {
+    if (marker != null) {
       out.append("<a href=\"refdoc.jsp?docid="+docId+"&amp;q="+q+paging+"\">");
-      /*
-      try {
-        out.append(Doc.hilite(text, analyzer, hiSet));
-      } catch (Exception e) {
-        out.println("??? "+text);
-      }
-      */
-      out.append(text);
+      out.append(marker.mark(text));
       out.append("</a>");
     }
     else {
@@ -127,7 +119,11 @@ if (hits != null  && hits.length > 0) {
   }
   out.println("</ul>");
 }
+
+out.println("  \"time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\"");
+
 %>
     </main>
+    <script src="../static/js/list.js">//</script>
   </body>
 </html>

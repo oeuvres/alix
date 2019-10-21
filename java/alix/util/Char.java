@@ -36,6 +36,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.BitSet;
 import java.util.HashMap;
 
 /**
@@ -55,9 +56,9 @@ import java.util.HashMap;
 public class Char
 {
   /** The 2 bytes unicode */
-  private static final int SIZE = 65535;
+  static final int SIZE = 65536;
   /** Properties of chars by index */
-  private static final short[] CHARS = new short[SIZE + 1];
+  static final short[] CHARS = new short[SIZE];
   public static final short LETTER =       0b000000000000001;
   public static final short SPACE =        0b000000000000010;
   public static final short TOKEN =        0b000000000000100;
@@ -231,7 +232,8 @@ public class Char
   static {
     int type;
     // infinite loop when size = 65536, a char restart to 0
-    for (char c = 0; c < SIZE; c++) {
+    int max = SIZE - 1;
+    for (char c = 0; c < max; c++) {
       if (Character.isHighSurrogate(c)) {
         CHARS[c] = HIGHSUR;
         continue;
@@ -491,6 +493,24 @@ public class Char
   public static boolean isLowSurrogate(final char c)
   {
     return (CHARS[c] & LOWSUR) > 0;
+  }
+
+  public static BitSet filter(short property) 
+  {
+    BitSet filter = new BitSet(SIZE);
+    for (int i = 0; i < SIZE; i++) {
+      filter.set(i, (CHARS[i] & property) > 0);
+    }
+    return filter;
+  }
+
+  
+  private static BitSet filter(BitSet filter, short property) 
+  {
+    for (int i = 0; i < SIZE; i++) {
+      filter.set(i, (CHARS[i] & property) > 0);
+    }
+    return filter;
   }
 
   public static char toLower(char c)

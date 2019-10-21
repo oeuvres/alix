@@ -52,7 +52,7 @@ import alix.util.Char;
  * (ex: capitalize).
  */
 public class CharsAtt extends AttributeImpl
-    implements CharTermAttribute, TermToBytesRefAttribute, Cloneable, Comparable<CharsAtt>
+    implements CharTermAttribute, TermToBytesRefAttribute, Appendable, Cloneable, Comparable<CharsAtt>
 {
   /** Cached hashCode */
   private int hash;
