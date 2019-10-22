@@ -9,18 +9,11 @@
 	</classpathentry>
 	<classpathentry kind="lib" path="lib/sqlite-jdbc-3.25.2.jar"/>
 	<classpathentry kind="lib" path="lib/json-20180813.jar"/>
-	<classpathentry kind="lib" path="lib/servlet-api-2.3.jar"/>
-	<classpathentry kind="lib" path="lib/lucene-analyzers-common-8.1.1.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="https://lucene.apache.org/core/8_2_0/analyzers-common/"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="lib" path="lib/lucene-core-8.1.1.jar" sourcepath="/home/fred/code/lucene-8.0.0-src/core/src">
-		<attributes>
-			<attribute name="javadoc_location" value="https://lucene.apache.org/core/8_2_0/core/"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="lib" path="lib/lucene-highlighter-8.1.1.jar"/>
 	<classpathentry kind="lib" path="lib/saxon9.jar"/>
+	<classpathentry kind="lib" path="lib/jsp-api_tomcat7.jar"/>
+	<classpathentry kind="lib" path="lib/lucene-analyzers-common-8.2.0.jar"/>
+	<classpathentry kind="lib" path="lib/lucene-core-8.2.0.jar"/>
+	<classpathentry kind="lib" path="lib/lucene-highlighter-8.2.0.jar"/>
+	<classpathentry kind="lib" path="lib/servlet-api_tomcat7.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>

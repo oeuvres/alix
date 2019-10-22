@@ -742,6 +742,7 @@ u   * @throws IOException
         while(--len >= 0 && token.charAt(len) != '*');
         if (len > 0) qTerm = new WildcardQuery(new Term(field, token.toString()));
         else qTerm = new TermQuery(new Term(field, token.toString()));
+        System.out.println("\""+qTerm+"\"");
         /*
          * float boost = boostDefault; if (i < boostLength) boost = boosts[i]; qTerm =
          * new BoostQuery(qTerm, boost);

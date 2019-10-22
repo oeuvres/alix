@@ -10,12 +10,12 @@
   <body class="results">
       <%
 String sort = request.getParameter("sort");
-int hpp = getParameter(request, "hpp", 100);
-int start = getParameter(request, "start", 1);
+int hpp = tools.get("hpp", 100);
+int start = tools.get("start", 1);
 if (start < 1) start = 1;
       %>
       <form id="qform">
-        <input id="q" name="q" value="<%=escapeHtml(q)%>" autocomplete="off" size="60" autofocus="true" placeholder="Victor Hugo + Molière, Dieu"  onclick="this.select();"/>
+        <input id="q" name="q" value="<%=JspTools.escapeHtml(q)%>" autocomplete="off" size="60" autofocus="true" onclick="this.select();"/>
         <label>
          Tri
           <select name="sort" onchange="this.form.submit()">

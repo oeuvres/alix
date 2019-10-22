@@ -20,8 +20,8 @@ static {
     IndexReader reader = alix.reader();
 
 
-    int refDocId = getParameter(request, "docleft", -1);
-    int start = getParameter(request, "start", 1);
+    int refDocId = tools.get("docleft", -1);
+    int start = tools.get("start", 1);
     int hitsTot = -1;
       
     int docId = -1;
@@ -34,10 +34,10 @@ static {
     }
     else {
       if (request.getParameter("prev") != null) {
-    start = getParameter(request, "prevn", start);
+    start = tools.get("prevn", start);
       }
       else if (request.getParameter("next") != null) {
-    start = getParameter(request, "nextn", start);
+    start = tools.get("nextn", start);
       }
       if (start < 1) start = 1;
       int hitsMax = 100;
@@ -79,7 +79,7 @@ var winaside = parent.document.getElementById("left");
     <%
 if (doc != null) out.println("var rulhiLength ="+doc.length(TEXT)+";");
 // this doc is not requested from left, update left
-if (getParameter(request, "from", null) == null) out.println("showLeft("+docId+");");
+if (tools.get("from", null) == null) out.println("showLeft("+docId+");");
     %>
 function showLeft (docId) {
   if (docId < 0) return false;

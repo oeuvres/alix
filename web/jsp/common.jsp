@@ -127,6 +127,8 @@ alix.util.Top,
 
 obvil.web.Obvil
 " %>
+<%@ page import="alix.web.JspTools" %>
+
 <%!
 
 final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
@@ -154,21 +156,6 @@ static {
   }
 }
 
-/**
- * Ensure that a String could be included as an html attribute with quotes
- */
-public static String escapeHtml(String s) {
-  StringBuilder out = new StringBuilder(Math.max(16, s.length()));
-  for (int i = 0; i < s.length(); i++) {
-    char c = s.charAt(i);
-    if (c == '"') out.append("&quot;");
-    else if (c == '<') out.append("&lt;");
-    else if (c == '>') out.append("&gt;");
-    else if (c == '&') out.append("&amp;");
-    else out.append(c);
-  }
-  return out.toString();
-}
 
 /**
  * Get a sort specification by a name
@@ -319,72 +306,19 @@ public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, 
   return topDocs;
 }
 
-/** Check if a String is dignificant */
-public static boolean check(String s) {
-  if (s == null) return false;
-  s = s.trim();
-  if (s.length() == 0) return false;
-  if ("null".equals(s)) return false;
-  return true;
-}
 
 /** A key prefif for parameter in stored session */
 private final static String PAR = "PAR";
-/**
- * Get a request parameter as an int with default value, or optional session persistency.
- */
- public static int getParameter(final HttpServletRequest request, final String name, final int value) {
-   return getParameter(request, name, value, null);
- }
-public static int getParameter(final HttpServletRequest request, final String name, final int value, final HttpSession session) {
-  String key = PAR+name;
-  String s = request.getParameter(name);
-  int ret;
-  // a strinf submitted ?
-  if (check(s)) {
-    try {
-      ret = Integer.parseInt(s);
-    }
-    catch(NumberFormatException e) {
-      return value;
-    }
-    if (session != null) session.setAttribute(key, ret);
-    return ret;
-  }
-  if (session != null) {
-    Integer o = (Integer)session.getAttribute(key);
-    if (o != null) return o;
-  }
-  return value;
-}
 
-/**
- * Get a requesparameter as a String with a defaul value, or optional persistency.
- */
-public static String getParameter(final HttpServletRequest request, final String name, final String value) {
-  return getParameter(request, name, value, null);
-}
-public static String getParameter(final HttpServletRequest request, final String name, final String value, final HttpSession session) {
-  String key = PAR+name;
-  String s = request.getParameter(name);
-  if (check(s)) {
-    if (session != null) session.setAttribute(key, s);
-    return s;
-  }
-  if (session != null) {
-    s = (String)session.getAttribute(key);
-    if (s != null) return s;
-  }
-  return value;
-}
 
 %><%
-long time = System.nanoTime();
-request.setCharacterEncoding("UTF-8");
 String obvilDir = (String)request.getAttribute(Obvil.OBVIL_DIR);
 String base = (String)request.getAttribute(Obvil.BASE);
+Properties props = (Properties)request.getAttribute(Obvil.PROPS);
 Alix alix = Alix.instance(obvilDir +"/"+ base, new FrAnalyzer());
+JspTools tools = new JspTools(pageContext);
 
+long time = System.nanoTime();
 //Set a bitSet filter for current corpus
 BitSet filter = null;
 // limitation here, only one corpus allowed by session
@@ -392,8 +326,7 @@ Corpus corpus = null;
 // Corpus corpus = (Corpus)session.getAttribute(CORPUS);
 // if (corpus != null) filter = corpus.bits();
 // get query string
-String q = getParameter(request, "q", "");
-Properties props = (Properties)request.getAttribute(Obvil.PROPS);
+String q = tools.get("q", "");
 String title = props.getProperty("title", null);
 if (title == null) {
   title = props.getProperty("name", null);

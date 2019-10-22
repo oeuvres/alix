@@ -29,15 +29,15 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
 
 
 Doc doc = null;
-int docId = getParameter(request, "docid", -1);
-String id = getParameter(request, "id", null);
-String sort = getParameter(request, "sort", null);
-int start = getParameter(request, "start", 1);
+int docId = tools.get("docid", -1);
+String id = tools.get("id", null);
+String sort = tools.get("sort", null);
+int start = tools.get("start", 1);
 if (request.getParameter("prev") != null) {
-  start = getParameter(request, "prevn", start);
+  start = tools.get("prevn", start);
 }
 else if (request.getParameter("next") != null) {
-  start = getParameter(request, "nextn", start);
+  start = tools.get("nextn", start);
 }
 IndexReader reader = alix.reader();
 IndexSearcher searcher = alix.searcher();
@@ -98,7 +98,7 @@ if (doc != null) {
         }
 
         %>
-        <input id="q" name="q" value="<%=escapeHtml(q)%>" autocomplete="off" type="hidden"/>
+        <input id="q" name="q" value="<%=JspTools.escapeHtml(q)%>" autocomplete="off" type="hidden"/>
         <select name="sort" onchange="this.form.submit()" title="Ordre">
             <option>Pertinence</option>
             <% sortOptions(out, sort); %>

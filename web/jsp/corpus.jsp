@@ -19,9 +19,9 @@ Use cases of this page
  — stats : query distribution by book 
 */
 
-String name = getParameter(request, "name", "", null);
-String desc = getParameter(request, "desc", "", null);
-String json = getParameter(request, "json", null, null);
+String name = tools.get("name", "");
+String desc = tools.get("desc", "");
+String json = tools.get("json", null);
 String[] checks = request.getParameterValues("book");
 String botjs = ""; // javascript to add at the end
 Set<String> bookids = null; // load the bookds to update the 

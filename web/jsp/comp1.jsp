@@ -3,16 +3,16 @@
 <%!
 %>
 <%
-int docId = getParameter(request, "docid", -1);
-int docId2 = getParameter(request, "doc2", -1);
-String id = getParameter(request, "id", null);
-String sort = getParameter(request, "sort", null);
-int start = getParameter(request, "start", 1);
+int docId = tools.get("docid", -1);
+int docId2 = tools.get("doc2", -1);
+String id = tools.get("id", null);
+String sort = tools.get("sort", null);
+int start = tools.get("start", 1);
 if (request.getParameter("prev") != null) {
-  start = getParameter(request, "prevn", start);
+  start = tools.get("prevn", start);
 }
 else if (request.getParameter("next") != null) {
-  start = getParameter(request, "nextn", start);
+  start = tools.get("nextn", start);
 }
 IndexReader reader = alix.reader();
 IndexSearcher searcher = alix.searcher();
@@ -120,7 +120,7 @@ if (doc != null) {
         <input type="submit" 
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
        tabindex="-1" />
-        <input id="q" name="q" value="<%=escapeHtml(q)%>" autocomplete="off"/>
+        <input id="q" name="q" value="<%=JspTools.escapeHtml(q)%>" autocomplete="off"/>
         <br/>
         <input type="hidden" name="docid" value="<%=docId%>"/>
         <% 

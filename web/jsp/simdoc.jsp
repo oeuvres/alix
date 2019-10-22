@@ -2,12 +2,12 @@
 <%@include file="common.jsp" %>
 <%
 
-String id = getParameter(request, "id", null);
-int docId = getParameter(request, "docid", -1);
-int refDocId = getParameter(request, "refdocid", -1);
-int fromDoc = getParameter(request, "fromdoc", -1);
-int fromScore = getParameter(request, "rfromscore", 0);
-int n = getParameter(request, "n", -1);
+String id = tools.get("id", null);
+int docId = tools.get("docid", -1);
+int refDocId = tools.get("refdocid", -1);
+int fromDoc = tools.get("fromdoc", -1);
+int fromScore = tools.get("rfromscore", 0);
+int n = tools.get("n", -1);
 IndexReader reader = alix.reader();
 Doc doc = null;
 if (docId > 0) doc = new Doc(alix, docId);

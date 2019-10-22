@@ -70,7 +70,7 @@ else {
   scale = new Scale(alix, filter, YEAR, TEXT);
 }
 // number of fots by curve, could be a parameter
-int dots = getParameter(request, "dots", 200);
+int dots = tools.get("dots", 200);
 // build queries
 time = System.nanoTime();
 IndexReader reader = alix.reader();

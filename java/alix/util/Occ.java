@@ -134,8 +134,9 @@ public class Occ
    * Append an occurrence to make a compound word
    * 
    * @return
+   * @throws IOException 
    */
-  public Occ apend(Occ occ)
+  public Occ apend(Occ occ) throws IOException
   {
     char c = 0;
 

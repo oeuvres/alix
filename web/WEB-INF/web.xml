@@ -1,7 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app id="WebApp_ID" version="3.0" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
+<web-app 
+    id="obvil" 
+    version="3.0" 
+    xmlns="http://java.sun.com/xml/ns/javaee" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_0.xsd"
+  >
   <display-name>Obvil</display-name>
   <description>Corpus explorer</description>
+  <jsp-config>
+    <taglib>
+      <taglib-uri>/tags/obvil</taglib-uri>
+      <taglib-location>/WEB-INF/obvil.tld</taglib-location>
+    </taglib>
+  </jsp-config>
   <servlet>
     <servlet-name>obvil</servlet-name>
     <servlet-class>obvil.web.Obvil</servlet-class>
