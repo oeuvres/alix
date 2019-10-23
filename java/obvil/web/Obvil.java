@@ -63,7 +63,7 @@ public class Obvil extends HttpServlet
     }
     else {
       stack += "\n"+request.getRequestURI();
-      if (stack.length() > 1024) throw new ServletException("[Obvil] {"+request.getRequestURI()+"} infinite loop error.");
+      if (stack.length() > 1024) throw new ServletException("[Obvil] infinite loop error \n"+stack);
     }
     String context = request.getContextPath(); 
     String url = request.getRequestURI().substring(context.length());
