@@ -3,16 +3,16 @@
 <%!
 %>
 <%
-int docId = tools.get("docid", -1);
-int docId2 = tools.get("doc2", -1);
-String id = tools.get("id", null);
-String sort = tools.get("sort", null);
-int start = tools.get("start", 1);
+int docId = tools.getInt("docid", -1);
+int docId2 = tools.getInt("doc2", -1);
+String id = tools.getString("id", null);
+String sort = tools.getString("sort", null);
+int start = tools.getInt("start", 1);
 if (request.getParameter("prev") != null) {
-  start = tools.get("prevn", start);
+  start = tools.getInt("prevn", start);
 }
 else if (request.getParameter("next") != null) {
-  start = tools.get("nextn", start);
+  start = tools.getInt("nextn", start);
 }
 IndexReader reader = alix.reader();
 IndexSearcher searcher = alix.searcher();

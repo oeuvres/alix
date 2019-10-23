@@ -1,13 +1,9 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="alix.lucene.search.IntSeries" %>
 <%@include file="prelude.jsp" %>
 <%!
 final static DecimalFormat dfScoreFr = new DecimalFormat("0.00000", frsyms);
-final static HashSet<String> FIELDS = new HashSet<String>();
-static {
-  for (String w : new String[] {Alix.BOOKID, "byline", "year", "title"}) {
-    FIELDS.add(w);
-  }
-}
+final static HashSet<String> FIELDS = new HashSet<String>(Arrays.asList(new String[] {Alix.BOOKID, "byline", "year", "title"}));
 static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT));
 %>
 <%
@@ -19,9 +15,9 @@ Use cases of this page
  — stats : query distribution by book 
 */
 
-String name = tools.get("name", "");
-String desc = tools.get("desc", "");
-String json = tools.get("json", null);
+String name = tools.getString("name", "");
+String desc = tools.getString("desc", "");
+String json = tools.getString("json", null);
 String[] checks = request.getParameterValues("book");
 String botjs = ""; // javascript to add at the end
 Set<String> bookids = null; // load the bookds to update the 
@@ -64,6 +60,7 @@ else {
     botjs += "informParent(\""+name+"\"); ";
   }
 }
+IntSeries years = alix.intSeries("year");
 %>
 <!DOCTYPE html>
 <html>
@@ -84,8 +81,8 @@ else {
         <details id="filter">
           <summary>Filtres</summary>
           <label for="start">Années</label>
-          <input id="start" name="start" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Début" class="year"/>
-          <input id="end" name="end" type="number" min="<%=alix.min("year")%>" max="<%=alix.max("year")%>" placeholder="Fin" class="year"/>
+          <input id="start" name="start" type="number" min="<%=years.min()%>" max="<%=years.max()%>" placeholder="Début" class="year"/>
+          <input id="end" name="end" type="number" min="<%=years.min()%>" max="<%=years.max()%>" placeholder="Fin" class="year"/>
           <br/><label for="author">Auteur</label>
           <input id="author" name="author" autocomplete="off" list="author-data" size="50" type="text" onclick="select()" placeholder="Nom, Prénom"/>
           <br/><label for="title">Titre</label>

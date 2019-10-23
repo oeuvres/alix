@@ -30,31 +30,39 @@ Alix alix = Alix.instance(obvilDir +"/"+ base, new FrAnalyzer());
 
 IndexSearcher searcher = alix.searcher();
 
+String field = "bibl";
+
 int hpp = 10;
 ScoreDoc[] hits = null;
 
-String q = tools.get("q", "");
-int fromDoc = tools.get("fromDoc", -1);
-int fromScore = tools.get("fromScore", -1);
+String q = tools.getString("q", "");
+float fromScore = tools.getFloat("fromScore", 0.0f);
+int fromDoc = tools.getInt("fromDoc", -1);
 
 String lowbibl = q.toLowerCase();
-Query query = Alix.qParse("bibl", lowbibl, anameta);
-TopDocs results;
-if (fromDoc > -1) {
+Query query = Alix.qParse(field, lowbibl, anameta);
+TopDocs results = null;
+if (query == null) {
+  
+}
+else if (fromDoc > -1) {
   ScoreDoc from = new ScoreDoc(fromDoc, fromScore);
   results = searcher.searchAfter(from, query, hpp);
+  out.println(results.scoreDocs.length);
 }
 else {
   results = searcher.search(query, hpp);
 }
-hits = results.scoreDocs;
 
 
 
-
-
-
-if (hits != null  && hits.length > 0) {
+if(results == null); // no query
+else if(results.totalHits.value == 0) {
+  // no results
+}
+else {
+  long totalHits = results.totalHits.value;
+  hits = results.scoreDocs;
   String paging = "";
   if (fromDoc > 0) {
     paging = "&amp;fromdoc="+fromDoc+"&amp;fromscore="+fromScore;
@@ -64,9 +72,11 @@ if (hits != null  && hits.length > 0) {
   if (!"".equals(q)) {
     marker = new Marker(anameta, q);
   }
-  out.println("<ul class=\"results\">");
+  int docId = 0;
+  float score = 0;
   for (int i = 0, len = hits.length; i < len; i++) {
-    int docId = hits[i].doc;
+    docId = hits[i].doc;
+    score = hits[i].score;
     out.append("<li>");
     Document doc = searcher.doc(docId, DOC_SHORT);
     
@@ -83,7 +93,9 @@ if (hits != null  && hits.length > 0) {
     }
     out.append("</li>\n");
   }
-  out.println("</ul>");
+  if (hits.length < totalHits) {
+    out.append("<a href=\"?q="+q+"&amp;fromScore="+score+"&amp;fromDoc="+docId+"\">▼</a>\n");
+  }
 }
 
 %>

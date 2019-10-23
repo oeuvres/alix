@@ -74,11 +74,11 @@ public class JspTools
   /**
    * Get a request parameter as an int with default value, or optional session persistency.
    */
-   public int get(final String name, final int fallback) {
-     return get(name, fallback, null);
+   public int getInt(final String name, final int fallback) {
+     return getInt(name, fallback, null);
    }
 
-   public int get(final String name, final int fallback, final String key) {
+   public int getInt(final String name, final int fallback, final String key) {
      String value = page.getRequest().getParameter(name);
      int ret;
      // a string submitted ?
@@ -100,12 +100,40 @@ public class JspTools
    }
 
    /**
+    * Get a request parameter as a float with default value.
+    */
+    public float getFloat(final String name, final float fallback) {
+      return getFloat(name, fallback, null);
+    }
+
+    public float getFloat(final String name, final float fallback, final String key) {
+      String value = page.getRequest().getParameter(name);
+      float ret;
+      // a string submitted ?
+      if (check(value)) {
+        try {
+          ret = Float.parseFloat(value);
+        }
+        catch(NumberFormatException e) {
+          return fallback;
+        }
+        if (key != null) page.getSession().setAttribute(key, ret);
+        return ret;
+      }
+      if (key != null) {
+        Float o = (Float)page.getSession().getAttribute(key);
+        if (o != null) return o;
+      }
+      return fallback;
+    }
+
+   /**
     * Get a requesparameter as a String with a defaul value, or optional persistency.
     */
-   public String get(final String name, final String fallback) {
-     return get(name, fallback, null);
+   public String getString(final String name, final String fallback) {
+     return getString(name, fallback, null);
    }
-   public String get(final String name, final String fallback, String key) {
+   public String getString(final String name, final String fallback, String key) {
      String value = page.getRequest().getParameter(name);
      if (check(value)) {
        if (key != null) page.getSession().setAttribute(key, value);

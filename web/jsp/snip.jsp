@@ -10,8 +10,8 @@
   <body class="results">
       <%
 String sort = request.getParameter("sort");
-int hpp = tools.get("hpp", 100);
-int start = tools.get("start", 1);
+int hpp = tools.getInt("hpp", 100);
+int start = tools.getInt("start", 1);
 if (start < 1) start = 1;
       %>
       <form id="qform">

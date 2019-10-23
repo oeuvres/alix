@@ -10,11 +10,11 @@
   </head>
   <body class="facet">
   <%
-String ord = tools.get("ord", "score", "facetScore");
+String ord = tools.getString("ord", "score", "facetScore");
 TermList terms = alix.qTerms(q, TEXT);
 if (terms.size() < 1 && "score".equals(ord)) ord = "freq";
 // choose a field
-String facetField = tools.get("facet", "author");
+String facetField = tools.getString("facet", "author");
 String facetName = facetField;
 if (facetField.equals("author")) facetName = "Auteur";
 else if (facetField.equals("title")) facetName = "Titre";

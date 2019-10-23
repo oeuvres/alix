@@ -2,12 +2,12 @@
 <%@ include file="prelude.jsp" %>
 <%
 
-String id = tools.get("id", null);
-int docId = tools.get("docid", -1);
-int refDocId = tools.get("refdocid", -1);
-int fromDoc = tools.get("fromdoc", -1);
-int fromScore = tools.get("rfromscore", 0);
-int n = tools.get("n", -1);
+String id = tools.getString("id", null);
+int docId = tools.getInt("docid", -1);
+int refDocId = tools.getInt("refdocid", -1);
+float fromScore = tools.getFloat("rfromscore", -10);
+int fromDoc = tools.getInt("fromdoc", -1);
+int n = tools.getInt("n", -1);
 IndexReader reader = alix.reader();
 Doc doc = null;
 if (docId > 0) doc = new Doc(alix, docId);

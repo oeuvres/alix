@@ -149,12 +149,7 @@ static {
     STOPLIST.add(new CharsAtt(w));
   }
 }
-final static HashSet<String> DOC_SHORT = new HashSet<String>();
-static {
-  for (String w : new String[] {Alix.ID, Alix.BOOKID, "bibl"}) {
-    DOC_SHORT.add(w);
-  }
-}
+
 
 
 /**
@@ -326,7 +321,7 @@ Corpus corpus = null;
 // Corpus corpus = (Corpus)session.getAttribute(CORPUS);
 // if (corpus != null) filter = corpus.bits();
 // get query string
-String q = tools.get("q", "");
+String q = tools.getString("q", "");
 String title = props.getProperty("title", null);
 if (title == null) {
   title = props.getProperty("name", null);

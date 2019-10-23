@@ -9,7 +9,7 @@ IndexSearcher searcher = alix.searcher();
 
 String field = TEXT;
 
-String sorter = tools.get("sorter", "score", "freqSorter");
+String sorter = tools.getString("sorter", "score", "freqSorter");
 Freqs freqs = alix.freqs(field);
 
 /*

@@ -1,6 +1,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@include file="prelude.jsp" %>
 <%!
+final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
 public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOException
 {
   StringBuilder out = new StringBuilder();
@@ -29,15 +30,15 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
 
 
 Doc doc = null;
-int docId = tools.get("docid", -1);
-String id = tools.get("id", null);
-String sort = tools.get("sort", null);
-int start = tools.get("start", 1);
+int docId = tools.getInt("docid", -1);
+String id = tools.getString("id", null);
+String sort = tools.getString("sort", null);
+int start = tools.getInt("start", 1);
 if (request.getParameter("prev") != null) {
-  start = tools.get("prevn", start);
+  start = tools.getInt("prevn", start);
 }
 else if (request.getParameter("next") != null) {
-  start = tools.get("nextn", start);
+  start = tools.getInt("nextn", start);
 }
 IndexReader reader = alix.reader();
 IndexSearcher searcher = alix.searcher();

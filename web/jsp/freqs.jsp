@@ -9,11 +9,11 @@ IndexSearcher searcher = alix.searcher();
 
 String field = TEXT;
 
-String sorter = tools.get("sorter", "score", "freqSorter");
-int left = tools.get("left", 5, "freqLeft");
+String sorter = tools.getString("sorter", "score", "freqSorter");
+int left = tools.getInt("left", 5, "freqLeft");
 if (left < 0) left = 0;
 else if (left > 10) left = 10;
-int right = tools.get("right", 5, "freqRight");
+int right = tools.getInt("right", 5, "freqRight");
 if (right < 0) right = 0;
 else if (right > 10) right = 10;
 
