@@ -6,7 +6,7 @@
     <meta charset="UTF-8"/>
     <title>Alix</title>
     <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
-    <script src="../static/js/split.js">//</script>
+    <script src="../static/vendors/split.js">//</script>
   </head>
   <body class="split">
     <header id="header">

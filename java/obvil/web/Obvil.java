@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Properties;
@@ -38,12 +40,7 @@ public class Obvil extends HttpServlet
   /** Request attribute name: URL redirection for client */
   public static final String REDIRECT = "redirect";
   /** forbidden name for corpus */
-  static HashSet<String> STOP = new HashSet<String>();
-  static {
-    for (String s : new String[] {"WEB-INF", "static", "jsp", "reload"}) {
-      STOP.add(s);
-    }
-  }
+  static HashSet<String> STOP = new HashSet<String>(Arrays.asList(new String[] {"WEB-INF", "static", "jsp", "reload"}));
   /** Absolute folder of properties file and lucene index */
   private String obvilDir;
   /** List of available bases with properties */
@@ -59,13 +56,18 @@ public class Obvil extends HttpServlet
   public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
   {
     request.setCharacterEncoding("UTF-8");
-    if (request.getAttribute(OBVIL) != null) {
-      throw new ServletException("[Obvil] {"+request.getRequestURI()+"} infinite loop error.");
+    String stack = (String)request.getAttribute(OBVIL);
+    if (stack == null) {
+      stack = request.getRequestURI();
+      request.setAttribute(OBVIL, stack);
+    }
+    else {
+      stack += "\n"+request.getRequestURI();
+      if (stack.length() > 1024) throw new ServletException("[Obvil] {"+request.getRequestURI()+"} infinite loop error.");
     }
     String context = request.getContextPath(); 
     String url = request.getRequestURI().substring(context.length());
     Path path = Paths.get(url).normalize();
-    request.setAttribute(OBVIL, true);
     request.setAttribute(OBVIL_DIR, obvilDir);
     if (path.getNameCount() == 0) {
       /* will bug behind proxies
