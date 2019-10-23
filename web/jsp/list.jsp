@@ -56,8 +56,8 @@ if (refDoc != null) {
   out.println("<input type=\"hidden\" name=\"refdocid\" value=\"" +refDocId+"\"/>");
 }
 else {
-  out.print("<input size=\"50\" type=\"text\" id=\"q\" onfocus=\"var len = this.value.length * 2; this.setSelectionRange(len, len); \" autofocus ");
-  out.println("spellcheck=\"false\"  name=\"q\" value=\"" +q+"\"/>");
+  out.print("<input size=\"50\" type=\"text\" id=\"q\" onfocus=\"var len = this.value.length * 2; this.setSelectionRange(len, len); \" autofocus=\"true\"");
+  out.println(" spellcheck=\"false\" autocomplete=\"off\" name=\"q\" value=\"" +q+"\"/>");
   // out.println("<br/>" + query);
 }
 

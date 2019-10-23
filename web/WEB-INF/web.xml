@@ -25,11 +25,11 @@
   </servlet-mapping>
   <!--  override default jsp, limit to a folder -->
   <servlet-mapping>
-    <servlet-name>jsp</servlet-name>
-    <url-pattern>/jsp/*</url-pattern>
-  </servlet-mapping>
-  <servlet-mapping>
     <servlet-name>obvil</servlet-name>
     <url-pattern>/</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>jsp</servlet-name>
+    <url-pattern>/jsp/*</url-pattern>
   </servlet-mapping>
 </web-app>

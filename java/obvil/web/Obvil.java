@@ -70,17 +70,17 @@ public class Obvil extends HttpServlet
     Path path = Paths.get(url).normalize();
     request.setAttribute(OBVIL_DIR, obvilDir);
     if (path.getNameCount() == 0) {
-      /* will bug behind proxies
-      if (!url.equals("/")) {
-        response.sendRedirect(context+"/");
-        return;
-      }
-      */
       request.setAttribute(BASE_LIST, baseList);
       request.getRequestDispatcher("/jsp/bases.jsp").forward(request, response);
       return;
     }
     String base = path.getName(0).toString();
+    // direct access to jsp directory, seen with tomcat7 and <jsp:include/>
+    if ("jsp".equals(base)) {
+      request.getRequestDispatcher(path.toString()).forward(request, response);
+      return;
+    }
+    
     // reload base list
     if ("reload".equals(base)) {
       props();
@@ -89,7 +89,7 @@ public class Obvil extends HttpServlet
     
     Properties props = baseList.get(base);
     if (props == null) {
-      throw new ServletException("[Obvil] {"+base+ "} base not known on this server.");
+      throw new ServletException("[Obvil] {"+base+ "} base not known on this server. \n"+stack);
     }
     request.setAttribute(BASE, base);
     request.setAttribute(PROPS, props);
