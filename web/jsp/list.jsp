@@ -7,8 +7,8 @@ IndexSearcher searcher = alix.searcher();
 IndexReader reader = alix.reader();
 Doc refDoc = null;
 int refDocId = tools.getInt("refdocid", -1);
-int fromDoc = tools.getInt("fromdoc", -1);
-float fromScore = tools.getFloat("fromscore", 0);
+// int fromDoc = tools.getInt("fromdoc", -1);
+// float fromScore = tools.getFloat("fromscore", 0);
 final int hpp = 100;
 ScoreDoc[] hits = null;
 Query query = null;
@@ -56,7 +56,8 @@ if (refDoc != null) {
   out.println("<input type=\"hidden\" name=\"refdocid\" value=\"" +refDocId+"\"/>");
 }
 else {
-  out.println("<input size=\"50\" type=\"text\" id=\"q\" onfocus=\"var len = this.value.length * 2; this.setSelectionRange(len, len); \" autofocus spellcheck=\"false\"  name=\"q\" value=\"" +q+"\"/>");
+  out.print("<input size=\"50\" type=\"text\" id=\"q\" onfocus=\"var len = this.value.length * 2; this.setSelectionRange(len, len); \" autofocus ");
+  out.println("spellcheck=\"false\"  name=\"q\" value=\"" +q+"\"/>");
   // out.println("<br/>" + query);
 }
 
@@ -67,16 +68,15 @@ if (hits != null && false) {
 }
       %>
     </form>
-
+    <p/>
     <main>
-<%--
-<jsp:include page="file.jsp" >
-<jsp:param name="firstname" value="Chaitanya" />
-<jsp:param name="middlename" value="Pratap" />
-<jsp:param name="lastname" value="Singh" />
-</jsp:include>
-
---%>
+      <nav id="chapters">
+        <jsp:include page="meta.jsp" >
+          <jsp:param name="val" value="String" />
+          <jsp:param name="var" value="Pratap" />
+          <jsp:param name="hpp" value="100" />
+        </jsp:include>
+      </nav>
 
     </main>
     <script src="../static/js/list.js">//</script>

@@ -57,6 +57,7 @@ html {
 
 button,
 table.sortable caption,
+#chapters a:hover,
 .gutter {
   background: #E1DDCF;
 }
@@ -974,15 +975,30 @@ article.hit mark {
   font-weight: bold;
 }
 
-ul.results a {
+#chapters a {
   color: #000;
+  display: block;
+  text-align: justify;
+  margin: 5px 0;
+  padding: 0 0.5rem;
 }
 
-ul.results span.title {
+#chapters a:hover {
+  text-decoration: none;
+}
+
+#chapters .more {
+  margin-left: auto;
+  margin-right: auto;
+  width: 3rem;
+  font-size: 3rem;
+}
+
+#chapters span.title {
   font-style: italic;
 }
 
-ul.results .surname {
+#chapters .surname {
   font-variant: small-caps;
   font-size: 115%;
   font-weight: bold;

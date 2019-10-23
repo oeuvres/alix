@@ -1,20 +1,23 @@
-function placeCursorAtEnd() {
-  if (this.setSelectionRange) {
-    // Double the length because Opera is inconsistent about
-    // whether a carriage return is one character or two.
-    var len = this.value.length * 2;
-    this.setSelectionRange(len, len);
-  } else {
-    // This might work for browsers without setSelectionRange support.
-    this.value = this.value;
-  }
-
-  if (this.nodeName === "TEXTAREA") {
-    // This will scroll a textarea to the bottom if needed
-    this.scrollTop = 999999;
-  }
-};
-
+var input= document.getElementById("q");
+var nav = document.getElementById("chapters");
+function resup()
+{
+  var q = this.value.replace(/\s+/g, " ");
+  var c = q.slice(-1);
+  if (c != "*" && c != " ") q += "*"; // last word considered as prefix
+  q = q.replace(/^ *| *$/g, "");
+  if (q == this.last) return;
+  this.last = q;
+  console.log(q);
+  var url = "meta.jsp?hpp=10&q="+ q
+  fetch(url).then(function(response) {
+    return response.text();
+  }).then(function(html) {
+    nav.innerHTML = html;
+  }).catch(function(err) {
+    console.log('Fetch Error', err);
+  });
+}
 /*
 window.onload = function() {
   var input = document.getElementById("q");
@@ -28,3 +31,4 @@ window.onload = function() {
   input.focus();
 }
 */
+input.addEventListener('input', resup);

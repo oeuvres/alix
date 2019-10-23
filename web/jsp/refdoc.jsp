@@ -5,7 +5,7 @@
 int docId = tools.getInt("docid", -1);
 int fromDoc = tools.getInt("fromdoc", -1);
 float fromScore = tools.getFloat("rfromscore", 0);
-int n = tools.getNt("n", -1);
+int n = tools.getInt("n", -1);
 IndexReader reader = alix.reader();
 Doc doc = null;
 if (docId > -1) doc = new Doc(alix, docId);

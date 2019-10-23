@@ -22,22 +22,22 @@ final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new S
 final static Analyzer anameta = new MetaAnalyzer();
 %>
 <%
+long time = System.nanoTime();
+
 JspTools tools = new JspTools(pageContext);
 String obvilDir = (String)request.getAttribute(Obvil.OBVIL_DIR);
 String base = (String)request.getAttribute(Obvil.BASE);
 Alix alix = Alix.instance(obvilDir +"/"+ base, new FrAnalyzer());
 
-
 IndexSearcher searcher = alix.searcher();
-
 String field = "bibl";
 
-int hpp = 10;
 ScoreDoc[] hits = null;
 
 String q = tools.getString("q", "");
 float fromScore = tools.getFloat("fromScore", 0.0f);
 int fromDoc = tools.getInt("fromDoc", -1);
+int hpp = tools.getInt("hpp", 10);
 
 String lowbibl = q.toLowerCase();
 Query query = Alix.qParse(field, lowbibl, anameta);
@@ -48,7 +48,6 @@ if (query == null) {
 else if (fromDoc > -1) {
   ScoreDoc from = new ScoreDoc(fromDoc, fromScore);
   results = searcher.searchAfter(from, query, hpp);
-  out.println(results.scoreDocs.length);
 }
 else {
   results = searcher.search(query, hpp);
@@ -77,25 +76,27 @@ else {
   for (int i = 0, len = hits.length; i < len; i++) {
     docId = hits[i].doc;
     score = hits[i].score;
-    out.append("<li>");
+    // out.append("<li>");
     Document doc = searcher.doc(docId, DOC_SHORT);
     
     String text = doc.get("bibl");
     if (marker != null) {
-      out.append("<a href=\"refdoc.jsp?docid="+docId+"&amp;q="+q+paging+"\">");
+      out.append("<a class=\"bibl\" href=\"refdoc.jsp?docid="+docId+"&amp;q="+q+paging+"\">");
       out.append(marker.mark(text));
       out.append("</a>");
     }
     else {
-      out.append("<a href=\"simdoc.jsp?docid="+docId+paging+"\">");
+      out.append("<a class=\"bibl\" href=\"simdoc.jsp?docid="+docId+paging+"\">");
       out.append(text);
       out.append("</a>");
     }
-    out.append("</li>\n");
+    // out.append("</li>\n");
   }
   if (hits.length < totalHits) {
-    out.append("<a href=\"?q="+q+"&amp;fromScore="+score+"&amp;fromDoc="+docId+"\">▼</a>\n");
+    out.append("<a  class=\"more\" href=\"?q="+q+"&amp;fromScore="+score+"&amp;fromDoc="+docId+"\">▼</a>\n");
   }
 }
+
+out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->");
 
 %>
