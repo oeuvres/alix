@@ -33,22 +33,13 @@
 package alix.lucene.search;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Locale;
-import java.util.Set;
 
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CharArraySet;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.PostingsEnum;
@@ -57,7 +48,6 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
@@ -67,7 +57,6 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
 
-import alix.fr.Tag;
 import alix.lucene.Alix;
 import alix.lucene.analysis.CharsMaps;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
@@ -400,7 +389,6 @@ public class Doc
    */
   private void topWords(String field) throws IOException, NoSuchFieldException
   {
-    IndexReader reader = alix.reader();
     int[] docLength = alix.docLength(field);
     Terms vector = getTermVector(field);
     int docLen = docLength[docId];
@@ -474,7 +462,7 @@ public class Doc
    */
   static public Query moreLikeThis(String field, Top<String> top, int words) {
     BooleanQuery.Builder query = new BooleanQuery.Builder();
-    double max = top.max();
+    // double max = top.max();
     for (Top.Entry<String> entry: top) {
       // if (entry.score() <= 0) break;
       Query tq = new TermQuery(new Term(field, entry.value()));

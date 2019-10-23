@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import alix.util.Chain;
 import alix.util.Char;
 import alix.util.IntRoller;
-import alix.util.IntVek;
+import alix.util.IntIntMap;
 import alix.util.Top;
 
 /**
@@ -33,7 +33,7 @@ public class Vex
   HashMap<String, Integer> byString;
   String[] byIndex;
   /** Vectors of co-occurences for each chain of dictionary */
-  private IntVek[] mat;
+  private IntIntMap[] mat;
   double[] magnitudes;
   int left;
   int right;
@@ -104,9 +104,9 @@ public class Vex
   public void fill(String srcFile) throws IOException
   {
     int rows = byIndex.length;
-    mat = new IntVek[rows];
+    mat = new IntIntMap[rows];
     for (int row = 0; row < rows; row++) {
-      mat[row] = new IntVek(row, byIndex[row]);
+      mat[row] = new IntIntMap(row, byIndex[row]);
     }
     IntRoller slider = new IntRoller(left, right);
     int size = slider.size();
@@ -135,7 +135,7 @@ public class Vex
           slider.push(key);
           int row = slider.get(0);
           if (row < 0) continue;
-          IntVek vec = mat[row];
+          IntIntMap vec = mat[row];
           int col;
           for (int pos = left; pos <= right; pos++) {
             if (pos == 0) continue;
@@ -152,7 +152,7 @@ public class Vex
   private void cosPrep()
   {
     /*
-     * int height = mat.length; double mag; int value; IntVek vec; for(int row = 0;
+     * int height = mat.length; double mag; int value; IntIntMap vec; for(int row = 0;
      * row < height; row++) { mag = 0; vec = mat[row]; // square root values
      * vec.reset(); while(vec.next()) { value = vec.value(); value = (int)
      * Math.ceil(Math.sqrt(value)); vec.set(value); } }
@@ -167,8 +167,8 @@ public class Vex
       System.out.println("Word unknown: " + word);
       return null;
     }
-    IntVek center = mat[wordRow];
-    IntVek cooc;
+    IntIntMap center = mat[wordRow];
+    IntIntMap cooc;
     int height = mat.length;
     for (int row = 0; row < height; row++) {
       cooc = mat[row];
@@ -285,7 +285,7 @@ public class Vex
     limit = 2000;
     while (true) {
       String word = vex1.byIndex[i1];
-      IntVek vec1 = vex1.mat[i1];
+      IntIntMap vec1 = vex1.mat[i1];
       i1++;
       Integer i2 = vex2.byString.get(word);
       if (i2 == null) {
@@ -293,7 +293,7 @@ public class Vex
         if (--limit <= 0) break;
         continue;
       }
-      IntVek vec2 = vex2.mat[i2];
+      IntIntMap vec2 = vex2.mat[i2];
       cosine = vec1.cosine(vec2);
       if (cosine >= 0.8) continue;
       System.out.println("" + i1 + "\t" + word + "\t" + cosine);

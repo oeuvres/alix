@@ -39,10 +39,7 @@ import org.apache.lucene.analysis.CharacterUtils.CharacterBuffer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
-import org.apache.lucene.util.AttributeSource.State;
 
-import alix.fr.Tag;
-import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.Chain;
 import alix.util.Char;
 

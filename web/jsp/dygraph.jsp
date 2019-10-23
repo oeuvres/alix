@@ -1,5 +1,5 @@
 <%@ page language="java" contentType="text/javascript; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@include file="common.jsp" %>
+<%@include file="prelude.jsp" %>
 <%!/** A record used to sort docid by date */
 
 /**

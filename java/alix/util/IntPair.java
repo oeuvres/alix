@@ -115,8 +115,8 @@ public class IntPair implements Comparable<IntPair>
       IntPair pair = (IntPair) o;
       return (x == pair.x && y == pair.y);
     }
-    if (o instanceof IntSeries) {
-      IntSeries series = (IntSeries) o;
+    if (o instanceof IntVector) {
+      IntVector series = (IntVector) o;
       if (series.size() != 2) return false;
       if (x != series.data[0]) return false;
       if (y != series.data[1]) return false;

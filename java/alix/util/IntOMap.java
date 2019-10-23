@@ -449,7 +449,7 @@ public class IntOMap<E>
         // french letter in frequency order
         String letters = "easitnrulodcmpévfqgbhàjxèêyMELCzIPDAçSâJBVOTûùRôNîFœHQUGÀÉÇïkZwKWXëYÊÔŒÈüÂÎæäÆ";
         // feel a HashMap with these letters
-        IntVek alphabet = new IntVek();
+        IntIntMap alphabet = new IntIntMap();
         for (int i = 0; i < letters.length(); i++) {
             alphabet.put(letters.charAt(i), 0);
         }

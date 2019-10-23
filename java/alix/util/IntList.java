@@ -32,12 +32,8 @@
  */
 package alix.util;
 
-import java.nio.IntBuffer;
-
 /**
  * A mutable list of ints.
- *
- * @author glorieux-f
  */
 public class IntList implements Comparable<IntList>
 {

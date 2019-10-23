@@ -5,7 +5,7 @@ import java.util.Comparator;
 import java.util.Random;
 
 import alix.util.Calcul;
-import alix.util.IntVek;
+import alix.util.IntIntMap;
 
 /**
  * 
@@ -356,14 +356,14 @@ public class IntBtree
     int max = 300000;
     int req = 1000000;
     // fill a vek with random keys and entries
-    System.out.print("IntVek " + 4 * max + " inserts");
-    IntVek vek = new IntVek();
+    System.out.print("IntIntMap " + 4 * max + " inserts");
+    IntIntMap vek = new IntIntMap();
     for (int i = 0; i < 4 * max; i++) {
       vek.put(rng.nextInt(max), rng.nextInt(1000) ^ 2);
     }
     System.out.println(" " + ((System.nanoTime() - time) / 1000000) + " ms.");
 
-    System.out.print("IntVek " + req + " get");
+    System.out.print("IntIntMap " + req + " get");
     time = System.nanoTime();
     for (int i = 0; i < req; i++) {
       vek.get(rng.nextInt(max));

@@ -53,7 +53,7 @@ import alix.fr.Lexik;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.DicFreq.Entry;
-import alix.util.IntVek.Pair;
+import alix.util.IntIntMap.Pair;
 
 /**
  * A data structure for sparse matrix of terms, optimized for cosine similarity.
@@ -83,7 +83,7 @@ public class DicVek
    */
   private DicFreq dic;
   /** Vectors of co-occurences for each chain of dictionary */
-  private IntOMap<IntVek> vectors;
+  private IntOMap<IntIntMap> vectors;
   /** Index of left context */
   public final int left;
   /** Index of right context */
@@ -91,7 +91,7 @@ public class DicVek
   /** Sliding window of occurrences */
   private OccRoller occs;
   /** Current Vector to work on */
-  // private IntVek vek;
+  // private IntIntMap vek;
   /** threshold of non stop words */
   public final int stopoffset;
   /** Time finished */
@@ -118,7 +118,7 @@ public class DicVek
       dic.put(word, Lexik.cat(word));
     this.stopoffset = dic.put("STOPOFFSET");
     // 44960 is the size of all Zola vocabulary
-    vectors = new IntOMap<IntVek>(5000);
+    vectors = new IntOMap<IntIntMap>(5000);
   }
 
   /**
@@ -157,7 +157,7 @@ public class DicVek
    * @param vek
    * @param occ
    */
-  private void value(IntVek vek, Occ occ)
+  private void value(IntIntMap vek, Occ occ)
   {
     // TOFIX
     if (occ.isEmpty()) {
@@ -211,10 +211,10 @@ public class DicVek
     int key = key(center);
     if (key < 0) return false;
     // get the vector for this center chain
-    IntVek vek = vectors.get(key);
+    IntIntMap vek = vectors.get(key);
     // optimize ? chain not yet encountered, create vector
     if (vek == null) {
-      vek = new IntVek(key, null);
+      vek = new IntIntMap(key, null);
       // A vector is mutable in its dictionary
       vectors.put(key, vek);
     }
@@ -248,12 +248,12 @@ public class DicVek
     return sb.toString();
   }
 
-  public IntVek vector(int code)
+  public IntIntMap vector(int code)
   {
     return vectors.get(code);
   }
 
-  public IntVek vector(String term)
+  public IntIntMap vector(String term)
   {
     int code = dic.code(term);
     return vector(code);
@@ -271,13 +271,13 @@ public class DicVek
   {
     ArrayList<SimRow> table = new ArrayList<SimRow>();
     SimRow row;
-    IntVek vekterm = vectors.get(code);
+    IntIntMap vekterm = vectors.get(code);
     // Similarity
     double score;
     // list dico in freq order
     vectors.reset();
     while (vectors.next()) {
-      IntVek vek = vectors.value();
+      IntIntMap vek = vectors.value();
       score = vekterm.cosine(vek);
       if (Double.isNaN(score)) continue;
       // score differs
@@ -328,7 +328,7 @@ public class DicVek
     // get vector for requested word
     int k = dic.code(term);
     if (k < 1) return null;
-    IntVek vekterm = vectors.get(k);
+    IntIntMap vekterm = vectors.get(k);
     // some words of the dictionary has no vector but are recorded in co-occurrence
     // (ex: stop)
     if (vekterm == null) return null;
@@ -337,7 +337,7 @@ public class DicVek
     // list dico in freq order
     ArrayList<CosineRow> table = new ArrayList<CosineRow>();
     CosineRow row;
-    IntVek vek;
+    IntIntMap vek;
     for (Entry entry : dic.byCount()) {
       if (entry.count() < 3) break;
       vek = vectors.get(entry.code());
@@ -370,12 +370,12 @@ public class DicVek
       System.out.println("Dicovek, chain not found: " + term);
       return null;
     }
-    IntVek doc = vectors.get(k);
+    IntIntMap doc = vectors.get(k);
     // list dico in freq order
     ArrayList<TextcatRow> table = new ArrayList<TextcatRow>();
     for (Entry entry : dic.byCount()) {
       if (entry.count() < 3) break;
-      IntVek cat = vectors.get(entry.code());
+      IntIntMap cat = vectors.get(entry.code());
       int score = doc.textcat(cat);
       TextcatRow row = new TextcatRow(entry.code(), entry.label(), entry.count(), score);
       table.add(row);
@@ -504,7 +504,7 @@ public class DicVek
     StringBuffer sb = new StringBuffer();
     int index = dic.code(term);
     if (index == 0) return null;
-    IntVek vek = vectors.get(index);
+    IntIntMap vek = vectors.get(index);
     // some words on dictionary has no vector, like stop words
     if (vek == null) return null;
     // get vector as an array
@@ -524,14 +524,14 @@ public class DicVek
     return sb.toString();
   }
 
-  public IntVek vek(final String term)
+  public IntIntMap vek(final String term)
   {
     int code = dic.code(term);
     if (code == 0) return null;
     return vek(code);
   }
 
-  public IntVek vek(final int code)
+  public IntIntMap vek(final int code)
   {
     return vectors.get(code);
   }
@@ -642,7 +642,7 @@ public class DicVek
     // list dico in freq order
     vectors.reset();
     while (vectors.next()) {
-      IntVek vek = vectors.value();
+      IntIntMap vek = vectors.value();
       if (dic.count(vek.code) < count) {
         ops++;
         vectors.remove();

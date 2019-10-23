@@ -1,5 +1,5 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@include file="common.jsp" %>
+<%@include file="prelude.jsp" %>
 <%!
 final static DecimalFormat dfScoreFr = new DecimalFormat("0.00000", frsyms);
 final static HashSet<String> FIELDS = new HashSet<String>();

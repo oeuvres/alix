@@ -58,7 +58,6 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
@@ -66,17 +65,10 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiBits;
-import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.PointValues.IntersectVisitor;
-import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -94,6 +86,7 @@ import alix.fr.Tag;
 import alix.lucene.search.Facet;
 import alix.lucene.search.Scale;
 import alix.lucene.search.Freqs;
+import alix.lucene.search.IntSeries;
 import alix.lucene.search.TermList;
 import alix.lucene.util.Cooc;
 
@@ -418,127 +411,15 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public int[] docInt(String field) throws IOException
+  public IntSeries intSeries(String field) throws IOException
   {
     IndexReader reader = reader(); // ensure reader, or decache
-    String key = "AlixDocInt" + field;
-    int[] ints = (int[]) cache(key);
+    String key = "AlixIntSeries" + field;
+    IntSeries ints = (IntSeries) cache(key);
     if (ints != null) return ints;
-    // build the list
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    // check infos
-    if (info.getPointDataDimensionCount() <= 0 && info.getDocValuesType() != DocValuesType.NUMERIC) {
-      throw new IllegalArgumentException(
-          "Field \"" + field + "\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
-    }
-    int maxDoc = reader.maxDoc();
-    final int[] docInt = new int[maxDoc];
-    // fill with min value for deleted docs or with no values
-    Arrays.fill(docInt, Integer.MIN_VALUE);
-    final int[] minMax = { Integer.MAX_VALUE, Integer.MIN_VALUE };
-    if (info.getDocValuesType() == DocValuesType.NUMERIC) {
-      for (LeafReaderContext context : reader.leaves()) {
-        LeafReader leaf = context.reader();
-        NumericDocValues docs4num = leaf.getNumericDocValues(field);
-        // no values for this leaf, go next
-        if (docs4num == null) continue;
-        final Bits liveDocs = leaf.getLiveDocs();
-        final int docBase = context.docBase;
-        int docLeaf;
-        while ((docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          if (liveDocs != null && !liveDocs.get(docLeaf)) continue;
-          int v = (int) docs4num.longValue(); // long value is force to int;
-          docInt[docBase + docLeaf] = v;
-          if (minMax[0] > v) minMax[0] = v;
-          if (minMax[1] < v) minMax[1] = v;
-        }
-      }
-    }
-    else if (info.getPointDataDimensionCount() > 0) {
-      if (info.getPointDataDimensionCount() > 1) {
-        throw new IllegalArgumentException("Field \"" + field + "\" " + info.getPointDataDimensionCount()
-            + " dimensions, too much for an int tag by doc.");
-      }
-      for (LeafReaderContext context : reader.leaves()) {
-        final int docBase = context.docBase;
-        LeafReader leaf = context.reader();
-        final Bits liveDocs = leaf.getLiveDocs();
-        PointValues points = leaf.getPointValues(field);
-        points.intersect(new IntersectVisitor()
-        {
-
-          @Override
-          public void visit(int docid)
-          {
-            // visit if inside the compare();
-          }
-
-          @Override
-          public void visit(int docLeaf, byte[] packedValue)
-          {
-            if (liveDocs != null && !liveDocs.get(docLeaf)) return;
-            // in case of multiple values, take the lower one
-            if (docInt[docBase + docLeaf] > Integer.MIN_VALUE) return;
-            int v = IntPoint.decodeDimension(packedValue, 0);
-            docInt[docBase + docLeaf] = v;
-          }
-
-          @Override
-          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue)
-          {
-            int v = IntPoint.decodeDimension(minPackedValue, 0);
-            if (minMax[0] > v) minMax[0] = v;
-            v = IntPoint.decodeDimension(maxPackedValue, 0);
-            if (minMax[1] < v) minMax[1] = v;
-            // Answer that the query needs further infornmation to visit doc with values
-            return Relation.CELL_CROSSES_QUERY;
-          }
-        });
-      }
-    }
-    cache(key, docInt);
-    cache("AlixMinMax" + field, minMax);
-    return docInt;
-  }
-
-  /** 
-   * Return the min value of an IntPoint field.
-   * 
-   * @param field
-   * @return
-   * @throws IOException
-   */
-  public int min(String field) throws IOException
-  {
-    return minMax(field, 0);
-  }
-
-  /** 
-   * Returns the max value of an IntPoint field.
-   * @param field
-   * @return
-   * @throws IOException
-   */
-  public int max(String field) throws IOException
-  {
-    return minMax(field, 1);
-  }
-
-  /**
-   * Get min-max from the cache.
-   * @param field
-   * @param i
-   * @return
-   * @throws IOException
-   */
-  private int minMax(String field, int i) throws IOException
-  {
-    int[] minMax = (int[]) cache("AlixMinMax" + field);
-    if (minMax == null) {
-      docInt(field); // ensure calculation
-      minMax = (int[]) cache("AlixMinMax" + field);
-    }
-    return minMax[i];
+    ints = new IntSeries(reader, field);
+    cache(key, ints);
+    return ints;
   }
 
   /**

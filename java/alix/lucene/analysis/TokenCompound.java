@@ -44,8 +44,6 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
-import alix.fr.Tag;
-import alix.lucene.analysis.CharsMaps.NameEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 
 /**

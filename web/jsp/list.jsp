@@ -1,14 +1,14 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ include file="common.jsp" %>
+<%@ include file="prelude.jsp" %>
 <%
 String pageType = (String)request.getAttribute("pageType");
 
 IndexSearcher searcher = alix.searcher();
 IndexReader reader = alix.reader();
 Doc refDoc = null;
-int refDocId = getParameter(request, "refdocid", -1);
-int fromDoc = getParameter(request, "fromdoc", -1);
-int fromScore = getParameter(request, "rfromscore", 0);
+int refDocId = tools.get("refdocid", -1);
+int fromDoc = tools.get("fromdoc", -1);
+int fromScore = tools.get("rfromscore", 0);
 final int hpp = 100;
 ScoreDoc[] hits = null;
 Query query = null;

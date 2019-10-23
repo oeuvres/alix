@@ -49,7 +49,7 @@ import java.util.regex.Pattern;
  * source:
  * http://java-performance.info/implementing-world-fastest-java-int-to-int-hash-map/
  */
-public class IntVek implements Cloneable
+public class IntIntMap implements Cloneable
 {
   /** Binary mask to get upper int from data */
   private static long KEY_MASK = 0xFFFFFFFFL;
@@ -98,14 +98,14 @@ public class IntVek implements Cloneable
    */
   private int[] docprint;
   /** {key, sort order} view of data, used for textcat distance */
-  private IntVek catprint;
+  private IntIntMap catprint;
 
-  public IntVek()
+  public IntIntMap()
   {
     this(-1, null, 10);
   }
 
-  public IntVek(final int code, final String label)
+  public IntIntMap(final int code, final String label)
   {
     this(code, label, 10);
   }
@@ -115,7 +115,7 @@ public class IntVek implements Cloneable
    * 
    * @param size
    */
-  public IntVek(final int code, final String label, final int size)
+  public IntIntMap(final int code, final String label, final int size)
   {
     this.code = code;
     this.label = label;
@@ -196,7 +196,7 @@ public class IntVek implements Cloneable
    * @param data
    * @return vector for chaining
    */
-  public IntVek put(int[] data)
+  public IntIntMap put(int[] data)
   {
     int length = data.length;
     // 0 is an empty
@@ -213,7 +213,7 @@ public class IntVek implements Cloneable
    *          new value
    * @return the vector, to chain input
    */
-  public IntVek add(final int key, final int value)
+  public IntIntMap add(final int key, final int value)
   {
     put(key, value, true);
     return this;
@@ -226,7 +226,7 @@ public class IntVek implements Cloneable
    *          IntIntMap to add to this on
    * @return new size
    */
-  public int add(IntVek toadd)
+  public int add(IntIntMap toadd)
   {
     toadd.reset();
     while (toadd.next())
@@ -562,7 +562,7 @@ public class IntVek implements Cloneable
   /**
    * Return an hash<key, order> optimized for textcat
    */
-  private IntVek catprint()
+  private IntIntMap catprint()
   {
     if (decache) decache();
     if (catprint != null) return catprint;
@@ -570,7 +570,7 @@ public class IntVek implements Cloneable
     Pair[] pairs = toArray();
     int[] docprint = new int[size];
     int max = size;
-    IntVek catprint = new IntVek(this.code, this.label, size);
+    IntIntMap catprint = new IntIntMap(this.code, this.label, size);
     if (max != pairs.length) System.out.println("What ? size do no match: " + max + " != " + docprint.length);
     for (int i = 0; i < max; i++) {
       docprint[i] = pairs[i].key;
@@ -592,7 +592,7 @@ public class IntVek implements Cloneable
    * 
    * @param line
    */
-  public IntVek load(CharSequence line)
+  public IntIntMap load(CharSequence line)
   {
     Matcher m = loadre.matcher(line);
     while (m.find()) {
@@ -626,9 +626,9 @@ public class IntVek implements Cloneable
    * Equality
    */
   /*
-   * @Override public boolean equals(Object obj) { if (!(obj instanceof IntVek))
+   * @Override public boolean equals(Object obj) { if (!(obj instanceof IntIntMap))
    * return false; if (obj == this) return true; int[][] a =
-   * ((IntVek)obj).toArray(); int[][] b = ((IntVek)obj).toArray(); if ( a.length
+   * ((IntIntMap)obj).toArray(); int[][] b = ((IntIntMap)obj).toArray(); if ( a.length
    * != b.length ) return false; Arrays.sort( a , new Comparator<int[]>() { public
    * int compare(int[] o1, int[] o2) { return o1[0] - o2[0]; } }); Arrays.sort( b
    * , new Comparator<int[]>() { public int compare(int[] o1, int[] o2) { return
@@ -643,7 +643,7 @@ public class IntVek implements Cloneable
    * @param vek
    * @return the similarity score
    */
-  public double intercos(IntVek vek)
+  public double intercos(IntIntMap vek)
   {
     double sum = 0;
     double mag1 = 0;
@@ -653,7 +653,7 @@ public class IntVek implements Cloneable
     reset();
     while (next()) {
       val2 = vek.get(key());
-      if (val2 == IntVek.NO_VALUE) continue;
+      if (val2 == IntIntMap.NO_VALUE) continue;
       val1 = value();
       sum += val1 * val2;
       mag1 += val1 * val1;
@@ -671,7 +671,7 @@ public class IntVek implements Cloneable
    * @param vek
    * @return the similarity score
    */
-  public double cosine(IntVek vek)
+  public double cosine(IntIntMap vek)
   {
     double dotp = dotProduct(vek);
     if (dotp <= 0) System.out.println("Dot prod < 0 " + vek.label);
@@ -715,7 +715,7 @@ public class IntVek implements Cloneable
    * @param vek
    * @return
    */
-  private double dotProduct(IntVek other)
+  private double dotProduct(IntIntMap other)
   {
     long sum = 0;
     long value;
@@ -746,15 +746,15 @@ public class IntVek implements Cloneable
    * An alternative distance calculation, good for little
    * 
    */
-  public int textcat(IntVek vek)
+  public int textcat(IntIntMap vek)
   {
-    IntVek catprint = vek.catprint(); // will update cache
+    IntIntMap catprint = vek.catprint(); // will update cache
     int[] docprint = docprint();
     int max = docprint.length;
     int dist = 0;
     for (int i = 0; i < max; i++) {
       int rank = catprint.get(docprint[i]) - 1;
-      if (rank == IntVek.NO_VALUE) dist += max; // no value
+      if (rank == IntIntMap.NO_VALUE) dist += max; // no value
       if (rank > i) dist += rank - i;
       else if (i < rank) dist += i - rank;
     }
@@ -800,7 +800,7 @@ public class IntVek implements Cloneable
    * 
    * @return
    */
-  public ArrayList<SpecRow> specs(IntVek other)
+  public ArrayList<SpecRow> specs(IntIntMap other)
   {
     ArrayList<SpecRow> table = new ArrayList<SpecRow>();
     int key;
@@ -815,7 +815,7 @@ public class IntVek implements Cloneable
       while (next()) {
         key = key();
         tval = other.get(key);
-        if (tval == IntVek.NO_VALUE) continue;
+        if (tval == IntIntMap.NO_VALUE) continue;
         sval = value();
         table.add(new SpecRow(key, source, sval, target, tval, 1000000.0 * sval * tval / div));
       }
@@ -825,7 +825,7 @@ public class IntVek implements Cloneable
       while (other.next()) {
         key = other.key();
         sval = get(key);
-        if (sval == IntVek.NO_VALUE) continue;
+        if (sval == IntIntMap.NO_VALUE) continue;
         tval = other.value();
         table.add(new SpecRow(key, source, sval, target, tval, 1000000.0 * sval * tval / div));
       }
@@ -839,22 +839,22 @@ public class IntVek implements Cloneable
    */
   public static void main(String[] args)
   {
-    IntVek vec = new IntVek();
+    IntIntMap vec = new IntIntMap();
     for (int i = 0; i < 10; i++) {
       System.out.println(vec.inc(1));
     }
     /*
-     * // test loading a string version ArrayList<IntVek> list = new
-     * ArrayList<IntVek>(); list.add(new IntVek().load("1:1 2:1")); list.add(new
-     * IntVek().load("1:1 2:1")); list.add(new IntVek().load("1:10 2:10"));
-     * list.add(new IntVek().load("1:20 2:20 3:1")); int max = list.size(); for (int
+     * // test loading a string version ArrayList<IntIntMap> list = new
+     * ArrayList<IntIntMap>(); list.add(new IntIntMap().load("1:1 2:1")); list.add(new
+     * IntIntMap().load("1:1 2:1")); list.add(new IntIntMap().load("1:10 2:10"));
+     * list.add(new IntIntMap().load("1:20 2:20 3:1")); int max = list.size(); for (int
      * i = 0; i < max; i++) { for (int j = 0; j < max; j++) { System.out.println( ""
      * + i + "–" + j + "   " + list.get(i).intercos(list.get(j)) + " " +
      * list.get(i).cosine(list.get(j)));
      * System.out.println(list.get(i).specs(list.get(j))); } }
      */
     /*
-     * test if storing is OK IntVek vec = new IntVek(); for (int i=-50000; i <
+     * test if storing is OK IntIntMap vec = new IntIntMap(); for (int i=-50000; i <
      * 50000; i++) vec.put(i, i); for (int i=-50001; i < 50001; i++) { int get =
      * vec.get(i); if (i != get) System.out.println(i+" != "+get);; }
      * while(vec.next()) { vec.set(vec.value()+1); } for (int i=-50001; i < 50001;

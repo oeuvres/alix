@@ -1,5 +1,5 @@
 <%@ page language="java"  pageEncoding="UTF-8" contentType="text/html; charset=UTF-8"%>
-<%@include file="common.jsp" %>
+<%@include file="prelude.jsp" %>
 <!DOCTYPE html>
 <html>
   <head>
@@ -10,11 +10,11 @@
   </head>
   <body class="facet">
   <%
-String ord = getParameter(request, "ord", "score", session);
+String ord = tools.get("ord", "score", "facetScore");
 TermList terms = alix.qTerms(q, TEXT);
 if (terms.size() < 1 && "score".equals(ord)) ord = "freq";
 // choose a field
-String facetField = getParameter(request, "facet", "author");
+String facetField = tools.get("facet", "author");
 String facetName = facetField;
 if (facetField.equals("author")) facetName = "Auteur";
 else if (facetField.equals("title")) facetName = "Titre";
