@@ -347,6 +347,7 @@ public class Char
     }
     return dest.toString();
   }
+  
 
   /**
    * Get the internal properties for a char
@@ -552,7 +553,7 @@ public class Char
   {
     short props = CHARS[c];
     StringBuilder sb = new StringBuilder();
-    sb.append(c).append("\t").append(Character.getName(c).toLowerCase()).append("\t");
+    sb.append(c).append("\t");
     if ((props & TOKEN) > 0) sb.append("TOKEN ");
     if ((props & LETTER) > 0) sb.append("LETTER ");
     if ((props & SPACE) > 0) sb.append("SPACE ");
@@ -565,6 +566,7 @@ public class Char
     if ((props & MATH) > 0) sb.append("MATH ");
     if ((props & HIGHSUR) > 0) sb.append("HIGHSUR ");
     if ((props & LOWSUR) > 0) sb.append("LOWSUR ");
+    sb.append(Character.getName(c).toLowerCase()).append("\t");
     return sb.toString();
   }
 

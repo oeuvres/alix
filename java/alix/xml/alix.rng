@@ -74,6 +74,9 @@ Alix is dedicated to text documents, it provides dedicated set of fields
   <define name="book">
     <element name="book">
       <a:documentation>A set of <a:el>chapter</a:el>s with shared <a:el>field</a:el>s (ex: title, author, date…)</a:documentation>
+      <attribute name="xml:id">
+        <a:documentation>String identifier for the book.</a:documentation>
+      </attribute>
       <oneOrMore>
         <choice>
           <ref name="field"/>
@@ -119,7 +122,7 @@ If you need a simple token search, prefer @type="meta".
       </a:documentation>
       <ref name="name"/>
       <attribute name="type">
-        <value>xml</value>
+        <value>text</value>
       </attribute>
       <ref name="xml"/>
     </element>

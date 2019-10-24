@@ -592,7 +592,11 @@ u   * @throws IOException
   {
     return qParse(field, q, this.analyzer);
   }
-  
+
+  static public Query qParse(final String field, final String q, final Analyzer analyzer) throws IOException
+  {
+    return qParse(field, q, analyzer, Occur.SHOULD);
+  }
   /**
    * 
    * @param q
@@ -600,7 +604,7 @@ u   * @throws IOException
    * @return
    * @throws IOException
    */
-  static public Query qParse(final String field, final String q, final Analyzer analyzer) throws IOException
+  static public Query qParse(final String field, final String q, final Analyzer analyzer, final Occur occur) throws IOException
   {
     // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
     // int boostLength = boosts.length;
@@ -615,15 +619,18 @@ u   * @throws IOException
     try {
       while (ts.incrementToken()) {
         if (Tag.isPun(flags.getFlags())) continue;
-        if (qTerm != null) {
-          if (bq == null) bq = new BooleanQuery.Builder();
-          bq.add(qTerm, Occur.SHOULD);
+        if (bq == null && qTerm != null) { // second term, create boolean
+          bq = new BooleanQuery.Builder();
+          bq.add(qTerm, occur);
         }
         int len = token.length();
         while(--len >= 0 && token.charAt(len) != '*');
         if (len > 0) qTerm = new WildcardQuery(new Term(field, token.toString()));
         else qTerm = new TermQuery(new Term(field, token.toString()));
-        System.out.println("\""+qTerm+"\"");
+        
+        if (bq != null) { // more than one term
+          bq.add(qTerm, occur);
+        }
         /*
          * float boost = boostDefault; if (i < boostLength) boost = boosts[i]; qTerm =
          * new BoostQuery(qTerm, boost);
@@ -634,11 +641,8 @@ u   * @throws IOException
     finally {
       ts.close();
     }
-    if (bq != null) {
-      bq.add(qTerm, Occur.SHOULD);
-      return bq.build();
-    }
-    return qTerm;
+    if (bq != null) return bq.build();
+    else return qTerm;
   }
 
   /**

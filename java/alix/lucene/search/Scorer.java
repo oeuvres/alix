@@ -40,9 +40,9 @@ package alix.lucene.search;
 public abstract class Scorer
 {
   /** Total count of occurrences in the collection. */
-  protected long occsAll;
+  protected double occsAll;
   /** Total count of documents in the collection. */
-  protected int docsAll;
+  protected double docsAll;
   /** Average occ length */
   protected double docAvg;
   
@@ -59,10 +59,10 @@ public abstract class Scorer
   }
   
   public long occsAll() {
-    return occsAll;
+    return (long)occsAll;
   }
   public int docsAll() {
-    return docsAll;
+    return (int)docsAll;
   }
   /**
    * Set collection level variables for a query.

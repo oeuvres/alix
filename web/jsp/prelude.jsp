@@ -140,8 +140,8 @@ final static DecimalFormat dfint = new DecimalFormat("###,###,##0", frsyms);
 final static String YEAR = "year";
 /** Field name containing canonized text */
 public static String TEXT = "text";
-/** Key for current session corpus */
-public static String CORPUS = "corpus";
+/** Key prefix for current corpus in session */
+public static String CORPUS_ = "corpus_";
 /** Local stop word list */
 static HashSet<CharsAtt> STOPLIST = new HashSet<CharsAtt>();
 static {

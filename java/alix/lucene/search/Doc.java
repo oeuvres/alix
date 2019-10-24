@@ -36,8 +36,10 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 
 import org.apache.lucene.document.Document;
@@ -69,6 +71,8 @@ import alix.util.Top;
  */
 public class Doc
 {
+  /** Just the mandatory fields */
+  final static HashSet<String> FIELDS_REQUIRED = new HashSet<String>(Arrays.asList(new String[] {  Alix.FILENAME, Alix.BOOKID, Alix.ID, Alix.LEVEL}));
   /** Format numbers with the dot */
   final static DecimalFormatSymbols ensyms = DecimalFormatSymbols.getInstance(Locale.ENGLISH);
   /** The lucene index to read in */
@@ -77,14 +81,35 @@ public class Doc
   final int docId;
   /** Permanent id for the document */
   final String id;
-  /** The document with stored field */
-  final private Document fields;
+  /** Set of field loaded */
+  final private HashSet<String> fieldsToLoad;
+  /** The complete document */
+  final private Document document;
   /** Cache of term vector  */
   private HashMap<String, Terms> vectors = new HashMap<>();
   /** Cache of different top terms */
   private HashMap<String, Top<String>> tops =  new HashMap<>();
-
-  public Doc(Alix alix, String id) throws IOException 
+  
+  /**
+   * Get a document by String id (persists as long as the source XML doc is not modified)
+   * with all fields loaded (even the big ones).
+   * @param alix
+   * @param id
+   * @throws IOException
+   */
+  public Doc(final Alix alix, final String id) throws IOException 
+  {
+    this(alix, id, null);
+  }
+  /**
+   * Get a document by String id (persists as long as the source XML doc is not modified),
+   * with the set of fields provided (or all fields fieldsToLoad is null).
+   * @param alix
+   * @param id
+   * @param fields Set 
+   * @throws IOException
+   */
+  public Doc(final Alix alix, final String id, final HashSet<String> fieldsToLoad) throws IOException 
   {
     TermQuery qid = new TermQuery(new Term(Alix.ID, id));
     TopDocs search = alix.searcher().search(qid, 1);
@@ -95,46 +120,87 @@ public class Doc
     if (hits.length > 1) {
       throw new IllegalArgumentException(""+hits.length + "document found for "+qid);
     }
-    this.alix = alix;
-    this.docId = hits[0].doc;
-    this.id = id;
-    fields = alix.reader().document(docId);
-  }
-  
-  public Doc(Alix alix, int docId) throws IOException 
-  {
+    int docId = hits[0].doc;
+    if (fieldsToLoad == null) {
+      document = alix.reader().document(docId);
+    } 
+    else {
+      fieldsToLoad.addAll(FIELDS_REQUIRED);
+      document = alix.reader().document(docId, fieldsToLoad);
+    }
     this.alix = alix;
     this.docId = docId;
-    fields = alix.reader().document(docId);
-    if (fields == null) {
+    this.id = id;
+    this.fieldsToLoad = fieldsToLoad;
+  }
+  
+  /**
+   * Get a document by lucene docId (persists as long as the Lucene index is not modified)
+   * with all fields loaded (even the big ones).
+   * @param alix
+   * @param docId
+   * @throws IOException 
+   */
+  public Doc(final Alix alix, final int docId) throws IOException
+  {
+    this(alix, docId, null);
+  }
+  
+  /**
+   * Get a document by lucene docId (persists as long as the Lucene index is not modified)
+   * with the set of fields provided (or all fields fieldsToLoad is null).
+   * @param alix
+   * @param id
+   * @param fields
+   * @throws IOException
+   */
+  public Doc(final Alix alix, final int docId, final HashSet<String> fieldsToLoad) throws IOException 
+  {
+    if (fieldsToLoad == null) {
+      document = alix.reader().document(docId);
+    } 
+    else {
+      fieldsToLoad.addAll(FIELDS_REQUIRED);
+      document = alix.reader().document(docId, fieldsToLoad);
+    }
+    if (document == null) {
       throw new IllegalArgumentException("No stored fields found for docId: "+docId);
     }
-    id = fields.get(Alix.ID);
+    this.alix = alix;
+    this.docId = docId;
+    this.id = document.get(Alix.ID);
+    this.fieldsToLoad = fieldsToLoad;
   }
 
-  /*
-  public Document load( Set<String> fieldsToLoad)
+  /**
+   * Returns the persistent String id of the document.
+   * @return
+   */
+  public String id()
   {
-    return fields;
+    return id;
   }
-  */
 
+  /**
+   * Returns the local Lucene int docId of the document.
+   * @return
+   */
+  public int docId()
+  {
+    return docId;
+  }
+
+  /**
+   * Returns the loaded document.
+   */
+  public Document doc()
+  {
+    return document;
+  }
   
-  public Document fields()
-  {
-    return fields;
-  }
-  
-  public String get(String name)
-  {
-    return fields.get(name);
-  }
-
-  public String getUntag(String name)
-  {
-    return Char.detag(fields.get(name));
-  }
-
+  /**
+   * A record to sort term vectors occurrences
+   */
   class TokenOffsets implements Comparable<TokenOffsets>
   {
     final int pos;
@@ -179,6 +245,7 @@ public class Doc
   }
   
   
+  
   /**
    * 
    * @param field
@@ -190,6 +257,13 @@ public class Doc
    */
   public String contrast(final String field, final int docId2, final boolean right) throws IOException, NoSuchFieldException
   {
+    String text = document.get(field);
+    if (fieldsToLoad != null && !fieldsToLoad.contains(field)) {
+      throw new IllegalArgumentException("The field \""+field+"\" has not been loaded with the document \""+id+"\"");
+    }
+    if (text == null) {
+      throw new IllegalArgumentException("No text for the field \""+field+"\" in the document \""+id+"\"");
+    }
     StringBuilder sb = new StringBuilder();
 
     int[] docLength = alix.docLength(field);
@@ -238,7 +312,6 @@ public class Doc
         }
       }
     }
-    String text = fields.get(field);
     Collections.sort(offsets); // sort offsets before hilite
     int off = 0;
     final double scoremax = max1/length1 + max2/length2;
@@ -306,8 +379,14 @@ public class Doc
    */
   public String hilite(String field, ArrayList<BytesRef> refList) throws IOException, NoSuchFieldException
   {
+    String text = document.get(field);
+    if (fieldsToLoad != null && !fieldsToLoad.contains(field)) {
+      throw new IllegalArgumentException("The field \""+field+"\" has not been loaded with the document \""+id+"\"");
+    }
+    if (text == null) {
+      throw new IllegalArgumentException("No text for the field \""+field+"\" in the document \""+id+"\"");
+    }
     StringBuilder sb = new StringBuilder();
-    String text = fields.get(field);
     // maybe to cache ?
     Terms tvek = getTermVector(field);
     // buid a term enumeration like lucene like them in the term vector
@@ -402,35 +481,32 @@ public class Doc
     long occsAll= freqs.occsAll;
     int docsAll = freqs.docsAll;
     Scorer scorer = new ScorerBM25();
-    Scorer scorerTheme = new ScorerTheme();
-    Scorer scorerTfidf = new ScorerTfidf();
+    // Scorer scorerTheme = new ScorerTheme();
+    // Scorer scorerTfidf = new ScorerTfidf();
     scorer.setAll(occsAll, docsAll);
-    scorerTheme.setAll(occsAll, docsAll);
-    scorerTfidf.setAll(occsAll, docsAll);
     CharsAtt att = new CharsAtt();
     while(termit.next() != null) {
       BytesRef bytes = termit.term();
       if (!freqs.contains(bytes)) continue; // should not arrive, set a pointer
       // count 
-      int termDocs = freqs.docs();
-      long termOccs = freqs.length();
+      int termDocs = freqs.docs(); // count of docs with this word
+      long termOccs = freqs.length(); // count of occs accross base
       scorer.weight(termOccs, termDocs); // collection level stats
-      scorerTheme.weight(termOccs, termDocs); // collection level stats
-      scorerTfidf.weight(termOccs, termDocs);
-      int occsDoc = (int)termit.totalTermFreq();
+      int occsDoc = (int)termit.totalTermFreq(); // c
       double score = scorer.score(occsDoc, docLen);
       String term = bytes.utf8ToString();
       
-      if (termDocs < 2) {
-        happax.push(score, term);
-      }
-      else if (Char.isUpperCase(term.charAt(0))) {
+      // keep all names, even uniques
+      if (Char.isUpperCase(term.charAt(0))) {
         names.push(occsDoc, term);
+      }
+      else if (termDocs < 2) {
+        happax.push(score, term);
       }
       else {
         att.setEmpty().append(term);
         if (!CharsMaps.isStop(att))
-          theme.push(scorerTheme.score(occsDoc, docLen), term);
+          theme.push(scorer.score(occsDoc, docLen), term);
       }
       
     }

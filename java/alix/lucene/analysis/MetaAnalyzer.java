@@ -33,7 +33,10 @@
 package alix.lucene.analysis;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
+import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
 public class MetaAnalyzer extends Analyzer
 {
@@ -42,7 +45,8 @@ public class MetaAnalyzer extends Analyzer
   protected TokenStreamComponents createComponents(String fieldName)
   {
     final Tokenizer source = new MetaTokenizer();
-    return new TokenStreamComponents(source);
+    TokenStream result = new ASCIIFoldingFilter(source); // no accentrs
+    return new TokenStreamComponents(source, result);
   }
 
 }
