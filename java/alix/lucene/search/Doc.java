@@ -60,8 +60,10 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
 
 import alix.lucene.Alix;
-import alix.lucene.analysis.CharsMaps;
+import alix.lucene.analysis.FrDics;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
+import alix.lucene.search.Rail.Token;
+import alix.lucene.util.BinaryInts;
 import alix.util.Char;
 import alix.util.Top;
 
@@ -81,12 +83,14 @@ public class Doc
   final int docId;
   /** Permanent id for the document */
   final String id;
-  /** Set of field loaded */
+  /** Set of fields loaded */
   final private HashSet<String> fieldsToLoad;
-  /** The complete document */
+  /** The loaded fields */
   final private Document document;
-  /** Cache of term vector  */
+  /** Cache of term vector by fields */
   private HashMap<String, Terms> vectors = new HashMap<>();
+  /** Cache of offsets rail */
+  private HashMap<String, Rail> rails = new HashMap<>();
   /** Cache of different top terms */
   private HashMap<String, Top<String>> tops =  new HashMap<>();
   
@@ -199,36 +203,6 @@ public class Doc
   }
   
   /**
-   * A record to sort term vectors occurrences
-   */
-  class TokenOffsets implements Comparable<TokenOffsets>
-  {
-    final int pos;
-    final int start;
-    final int end;
-    final String form;
-    final double count1;
-    final double count2;
-    public TokenOffsets(final int pos, final int start, final int end)
-    {
-      this(pos, start, end, null, 0, 0);
-    }
-    public TokenOffsets(final int pos, final int start, final int end, final String form, final double count1, final double count2)
-    {
-      this.pos = pos;
-      this.start = start;
-      this.end = end;
-      this.form = form;
-      this.count1 = count1;
-      this.count2 = count2;
-    }
-    @Override
-    public int compareTo(TokenOffsets tok2)
-    {
-      return Integer.compare(this.start, tok2.start);
-    }
-  }
-  /**
    * Return the count of tokens of this doc for field.
    * @param field
    * @return
@@ -239,11 +213,80 @@ public class Doc
     return alix.docLength(field)[this.docId];
   }
 
+  
+  /**
+   * Get and cache a term vector for a field of this document.
+   * 
+   * @throws IOException 
+   * @throws NoSuchFieldException 
+   */
+  public Terms getTermVector(String field) throws IOException, NoSuchFieldException
+  {
+    Terms tvek = vectors.get(field);
+    if (tvek != null) return tvek; // cache OK
+    tvek = alix.reader().getTermVector(docId, field);
+    if (tvek == null) throw new NoSuchFieldException("Missig terms Vector for field="+field+" docId="+docId);
+    vectors.put(field, tvek);
+    return tvek;
+  }
+
+  /**
+   * 
+   * @param field
+   * @return
+   * @throws IOException 
+   * @throws NoSuchFieldException 
+   */
+  public String paint(final String field) throws NoSuchFieldException, IOException
+  {
+    if (fieldsToLoad != null && !fieldsToLoad.contains(field)) {
+      throw new NoSuchFieldException("The field \""+field+"\" has not been loaded with the document \""+id+"\"");
+    }
+    String text = document.get(field);
+    if (text == null) {
+      throw new NoSuchFieldException("No text for the field \""+field+"\" in the document \""+id+"\"");
+    }
+    Terms tvek = getTermVector(field);
+    final Rail rail = new Rail(field, docId, tvek, FrDics.STOP_BYTES, null);
+    final int countMax = rail.countMax;
+    final Token[] toks = rail.toks;
+    final StringBuilder sb = new StringBuilder();
+    //loop on all token of text
+    int off = 0;
+    for (int i = 0, len = toks.length; i < len; i++) {
+      final Token tok = toks[i];
+      final int count = tok.count;
+      
+      final String form = tok.form;
+      sb.append(text.substring(off, tok.start)); // append text before token
+      // change boldness
+      String level;
+      if (count == 1) level = "em1";
+      else if (count < 4) level = "em2";
+      else if (count >= 0.6*countMax) level = "em9";
+      else if (count >= 0.3*countMax) level = "em5";
+      else level = "em3";
+      
+      String title = "";
+      title += count+" occurremces";
+      String type = "WORD";
+      if (Char.isUpperCase(form.charAt(0))) type = "NAME";
+      
+      sb.append("<a id=\"tok"+tok.pos+"\" class=\""+type+" "+form.replace(' ', '_')+" "+level+"\" title=\""+title+"\">");
+      sb.append(text.substring(tok.start, tok.end));
+      sb.append("</a>");
+      off = tok.end;
+    }
+    sb.append(text.substring(off)); // do not forget end
+    return sb.toString();
+  }  
+
+  
+  
   public String contrast(final String field, final int docId2) throws IOException, NoSuchFieldException
   {
     return contrast(field, docId2, false);
   }
-  
   
   
   /**
@@ -257,12 +300,12 @@ public class Doc
    */
   public String contrast(final String field, final int docId2, final boolean right) throws IOException, NoSuchFieldException
   {
-    String text = document.get(field);
     if (fieldsToLoad != null && !fieldsToLoad.contains(field)) {
-      throw new IllegalArgumentException("The field \""+field+"\" has not been loaded with the document \""+id+"\"");
+      throw new NoSuchFieldException("The field \""+field+"\" has not been loaded with the document \""+id+"\"");
     }
+    String text = document.get(field);
     if (text == null) {
-      throw new IllegalArgumentException("No text for the field \""+field+"\" in the document \""+id+"\"");
+      throw new NoSuchFieldException("No text for the field \""+field+"\" in the document \""+id+"\"");
     }
     StringBuilder sb = new StringBuilder();
 
@@ -275,7 +318,7 @@ public class Doc
     BytesRef term1;
     TermsEnum termit2 = vek2.iterator();
     BytesRef term2 = termit2.next();
-    ArrayList<TokenOffsets> offsets = new ArrayList<TokenOffsets>();
+    ArrayList<Token> offsets = new ArrayList<Token>();
     PostingsEnum postings = null;
     // loop on terms source, compare with dest
     double max1 = Double.MIN_VALUE;
@@ -283,13 +326,13 @@ public class Doc
     CharsAtt att = new CharsAtt();
     while(termit1.next() != null) {
       // termit1.ord(); UnsupportedOperationException
-      final double count1 = (int)termit1.totalTermFreq();
+      final int count1 = (int)termit1.totalTermFreq();
       term1 = termit1.term();
       String form = term1.utf8ToString();
       att.setEmpty().append(form);
-      if (CharsMaps.isStop(att)) continue;
+      if (FrDics.isStop(att)) continue;
 
-      double count2 = 0;
+      int count2 = 0;
       while(true) {
         if (term2 == null) break;
         int comp = term1.compareTo(term2);
@@ -308,7 +351,7 @@ public class Doc
         int pos = -1;
         for (int freq = postings.freq(); freq > 0; freq --) {
           pos = postings.nextPosition();
-          offsets.add(new TokenOffsets(pos, postings.startOffset(), postings.endOffset(), form, count1, count2));
+          offsets.add(new Token(pos, postings.startOffset(), postings.endOffset(), form, count1, count2));
         }
       }
     }
@@ -316,8 +359,8 @@ public class Doc
     int off = 0;
     final double scoremax = max1/length1 + max2/length2;
     for (int i = 0, size = offsets.size(); i < size; i++) {
-      TokenOffsets tok = offsets.get(i);
-      double count1 = tok.count1;
+      Token tok = offsets.get(i);
+      double count1 = tok.count;
       double count2 = tok.count2;
       // skip token
       if (count2 == 0 && count1 < 2) continue;
@@ -336,8 +379,8 @@ public class Doc
       
       String form = tok.form.replace(' ', '_');
       String title = "";
-      if(right) title += (int)tok.count2+" | "+ (int)tok.count1;
-      else  title += (int)tok.count1+" | "+ (int)tok.count2;
+      if(right) title += (int)tok.count2+" | "+ (int)tok.count;
+      else  title += (int)tok.count+" | "+ (int)tok.count2;
       title += " occurremces";
       sb.append("<a id=\"tok"+tok.pos+"\" class=\""+type+" "+form+" "+level+"\" title=\""+title+"\">");
       sb.append(text.substring(tok.start, tok.end));
@@ -346,19 +389,6 @@ public class Doc
     }
     sb.append(text.substring(off)); // do not forget end
     return sb.toString();
-  }
-  /**
-   * @throws IOException 
-   * @throws NoSuchFieldException 
-   * 
-   */
-  public Terms getTermVector(String field) throws IOException, NoSuchFieldException
-  {
-    Terms tvek = vectors.get(field);
-    if (tvek == null) tvek = alix.reader().getTermVector(docId, field);
-    if (tvek == null) throw new NoSuchFieldException("Missig terms Vector for field="+field+" docId="+docId);
-    vectors.put(field, tvek);
-    return tvek;
   }
   
   public String hilite(String field, String[] terms) throws IOException, NoSuchFieldException
@@ -389,10 +419,10 @@ public class Doc
     StringBuilder sb = new StringBuilder();
     // maybe to cache ?
     Terms tvek = getTermVector(field);
-    // buid a term enumeration like lucene like them in the term vector
+    // buid a term enumeration like lucene in the term vector
     Automaton automaton = DaciukMihovAutomatonBuilder.build(refList);
     TermsEnum tEnum = new CompiledAutomaton(automaton).getTermsEnum(tvek);
-    ArrayList<TokenOffsets> offsets = new ArrayList<TokenOffsets>();
+    ArrayList<Token> offsets = new ArrayList<Token>();
     PostingsEnum postings = null;
     while (tEnum.next() != null) {
       postings = tEnum.postings(postings, PostingsEnum.OFFSETS);
@@ -400,14 +430,14 @@ public class Doc
         int pos = -1;
         for (int freq = postings.freq(); freq > 0; freq --) {
           pos = postings.nextPosition();
-          offsets.add(new TokenOffsets(pos, postings.startOffset(), postings.endOffset()));
+          offsets.add(new Token(pos, postings.startOffset(), postings.endOffset()));
         }
       }
     }
     Collections.sort(offsets); // sort offsets before hilite
     int offset = 0;
     for (int i = 0, size = offsets.size(); i < size; i++) {
-      TokenOffsets tok = offsets.get(i);
+      Token tok = offsets.get(i);
       sb.append(text.substring(offset, tok.start));
       sb.append("<mark class=\"mark\" id=\"mark"+(i+1)+"\">");
       if (i > 0) sb.append("<a href=\"#mark"+(i)+"\" onclick=\"location.replace(this.href); return false;\" class=\"prev\">◀</a> ");
@@ -422,7 +452,7 @@ public class Doc
     sb.append("<nav id=\"ruloccs\"><div>\n");
     final DecimalFormat dfdec1 = new DecimalFormat("0.#", ensyms);
     for (int i = 0, size = offsets.size(); i < size; i++) {
-      TokenOffsets tok = offsets.get(i);
+      Token tok = offsets.get(i);
       offset = tok.start;
       sb.append("<a href=\"#mark"+(i+1)+"\" style=\"top: "+dfdec1.format(100.0 * offset / length)+"%\"> </a>\n");
     }
@@ -505,7 +535,7 @@ public class Doc
       }
       else {
         att.setEmpty().append(term);
-        if (!CharsMaps.isStop(att))
+        if (!FrDics.isStop(att))
           theme.push(scorer.score(occsDoc, docLen), term);
       }
       

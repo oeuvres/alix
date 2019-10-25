@@ -142,7 +142,7 @@ public class TokenCompound extends TokenFilter
       posIncAtt.setPositionIncrement(pos);
       posLenAtt.setPositionLength(pos);
       // get tag
-      NameEntry entry = CharsMaps.name(name);
+      NameEntry entry = FrDics.name(name);
       if (entry == null) {
         flagsAtt.setFlags(Tag.NAME);
         term.setEmpty().append(name);
@@ -159,10 +159,10 @@ public class TokenCompound extends TokenFilter
     /*
     // compounds start by lem, ex : faire comme si
     else if (lem.length() != 0) {
-      if (!CharsMaps.compound1(lem)) return true;
+      if (!FrDics.compound1(lem)) return true;
     }
     else {
-      if (!CharsMaps.compound1(term)) return true;
+      if (!FrDics.compound1(term)) return true;
     }
     
     

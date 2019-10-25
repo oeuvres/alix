@@ -33,15 +33,12 @@
 package alix.lucene.util;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.util.BytesRef;
-
-import alix.util.Calcul;
 
 /**
  * Data structure to write and read the “offsets” of a document

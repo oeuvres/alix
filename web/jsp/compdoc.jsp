@@ -55,29 +55,31 @@ function showRight (docId) {
 }
     </script>
   </head>
-  <body class="document">
+  <body  class="comp left">
+
+<% if (doc == null) { // no doc requested %>
+
+    <p><a href="complist.jsp">Chercher un document</a></p>
+
+<% } else { // doc found %>
+
 <%
-if (doc == null) { // no doc requested
+String bibl = doc.doc().get("bibl");
 %>
-  <p><a href="complist.jsp">Chercher un document</a></p>
-<%
-}
-else {
-%>
-    <form action="complist.jsp">
-      <input type="hidden" name="q" value="<%= JspTools.escapeHtml(q) %>"/>
-      <%
-  if (fromDoc >= 0) {
-    out.println("<input type=\"hidden\" name=\"fromdoc\" value=\""+fromDoc+"\"/>");
-    out.println("<input type=\"hidden\" name=\"fromscore\" value=\""+fromScore+"\"/>");
-  }
-      %>
-      <button>Retour à la liste</button>
-    </form>
-        <header>
-            <h2><%=doc.doc().get("bibl") %></h2>
+    <header class="biblbar" title="<%= JspTools.detag(bibl) %>">
+      <a href="#"><%= bibl %></a>
     </header>
     <main>
+      <form action="complist.jsp">
+        <input type="hidden" name="q" value="<%= JspTools.escapeHtml(q) %>"/>
+        <%
+        if (fromDoc >= 0) {
+          out.println("<input type=\"hidden\" name=\"fromdoc\" value=\""+fromDoc+"\"/>");
+          out.println("<input type=\"hidden\" name=\"fromscore\" value=\""+fromScore+"\"/>");
+        }
+        %>
+        <button>Retour à la liste</button>
+      </form>
 <%
 
   {
@@ -115,15 +117,15 @@ else {
     out.println(".</p>");
   }
   
-  // out.println(doc.doc().get(TEXT));
-  String text = doc.hilite(TEXT, top.toArray());
-  out.println(text);
-}
+%>
+
+      <article class="content">
+        <%= doc.paint(TEXT) %>
+      </article>
 
 
-
-    
-    %>
+<% } %>
+      <script src="../static/js/doc.js">//</script>
     </main>
   </body>
 </html>

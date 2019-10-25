@@ -35,7 +35,6 @@ package alix.lucene.util;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Field;
@@ -57,18 +56,15 @@ import org.apache.lucene.util.BytesRefHash;
 
 import alix.lucene.Alix;
 import alix.lucene.search.Freqs;
-import alix.lucene.search.Scorer;
-import alix.lucene.search.ScorerBM25;
 import alix.lucene.search.TermList;
 import alix.lucene.search.TopTerms;
-import alix.util.Calcul;
 
 /** 
  * A co-occurrences scanner in a  {@link org.apache.lucene.document.TextField} of a lucene index.
  * This field should store term vectors with positions
  * {@link org.apache.lucene.document.FieldType#setStoreTermVectorPositions(boolean)}.
  * Efficiency is based on a post-indexing of each document,
- * affecting a int id to each  term at its position (a “rail”).
+ * affecting an int id to each  term at its position (a “rail”).
  * Also, coocs should be written on a “dead index”, 
  * with all writing operations committed.
  */
@@ -184,8 +180,8 @@ public class Cooc
   {
     TopTerms dic = new TopTerms(hashDic);
     // BM25 seems the best scorer
-    Scorer scorer = new ScorerBM25(); 
     /*
+    Scorer scorer = new ScorerBM25(); 
     scorer.setAll(occsAll, docsAll);
     dic.setLengths(termLength);
     dic.setDocs(termDocs);
@@ -274,12 +270,13 @@ public class Cooc
         }
       }
     }
+    /*
     // try to calculate a score
     double[] scores = new double[size];
-    // TODO
     for (int i = 0; i < size; i++) {
       
     }
+    */
     dic.setHits(hits);
     dic.setOccs(freqs);
     return dic;

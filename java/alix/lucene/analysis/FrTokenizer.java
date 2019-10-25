@@ -344,10 +344,10 @@ public class FrTokenizer extends Tokenizer
         }
         // test if it's an abreviation with a dot
         if (c == '.') {
-          int roman;
+          // int roman;
           term.append('.');
           // M., etc.
-          if (CharsMaps.brevidot(term)) {
+          if (FrDics.brevidot(term)) {
             continue; // keep dot
           }
           // Fin de phrase.
@@ -359,7 +359,7 @@ public class FrTokenizer extends Tokenizer
             continue;
           }
           // XVIII.
-          else if ((roman = Calcul.roman2int(term.buffer(), 0, term.length()-1)) > 0) {
+          else if ((Calcul.roman2int(term.buffer(), 0, term.length()-1)) > 0) {
             flagsAtt.setFlags(Tag.NUM);
           }
           // RODOGUNE. dot is a punctuation
@@ -402,7 +402,7 @@ public class FrTokenizer extends Tokenizer
         term.append(c);
         if (hyphOffset > 0 && c != '-') test.append(c);
         if (c == '\'') {
-          CharsAtt val = CharsMaps.ELISION.get(term);
+          CharsAtt val = FrDics.ELISION.get(term);
           if (val != null) {
             val.copyTo(term);
             break;

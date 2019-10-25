@@ -1,8 +1,6 @@
 <%@ page language="java"  pageEncoding="UTF-8" contentType="text/javascript; charset=UTF-8"%>
 <%@ include file="prelude.jsp" %>
-<%!
-static final DecimalFormat dfdec3 = new DecimalFormat("0.###", ensyms);
-%>
+<%!static final DecimalFormat dfdec3 = new DecimalFormat("0.###", ensyms);%>
 <%
   out.println("{");
 IndexSearcher searcher = alix.searcher();
@@ -36,7 +34,7 @@ while (dic.hasNext()) {
   dic.term(term);
   // local filter
   if (STOPLIST.contains(term)) continue;
-  LexEntry entry = CharsMaps.word(term);
+  LexEntry entry = FrDics.word(term);
   if (entry != null) {
     tag = new Tag(entry.tag);
   }
@@ -48,7 +46,7 @@ while (dic.hasNext()) {
   }
   
   // filtering
-  if ("nostop".equals(sorter) && CharsMaps.isStop(term)) continue;
+  if ("nostop".equals(sorter) && FrDics.isStop(term)) continue;
   else if ("adj".equals(sorter) && !tag.isAdj()) continue;
   else if ("adv".equals(sorter) && !tag.equals(Tag.ADV)) continue;
   else if ("name".equals(sorter) && !tag.isName()) continue;

@@ -63,7 +63,7 @@ public class MetaTokenizer extends Tokenizer
     int endAdjust = -1;
     boolean intag = false;
     boolean inent = false;
-    char[] buffer = termAtt.buffer();
+    // char[] buffer = termAtt.buffer();
     while (true) {
       if (bufferIndex >= dataLen) {
         offset += dataLen;

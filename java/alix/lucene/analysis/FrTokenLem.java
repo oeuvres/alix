@@ -40,8 +40,8 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import alix.fr.Tag;
-import alix.lucene.analysis.CharsMaps.LexEntry;
-import alix.lucene.analysis.CharsMaps.NameEntry;
+import alix.lucene.analysis.FrDics.LexEntry;
+import alix.lucene.analysis.FrDics.NameEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
@@ -145,17 +145,17 @@ public final class FrTokenLem extends TokenFilter
       }
       // USA ?
       orth.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
-      CharsMaps.norm(orth); // normalise : Etat -> État
+      FrDics.norm(orth); // normalise : Etat -> État
       copy.copy(orth);
       c1 = orth.charAt(0); // keep initial cap, maybe useful
-      name = CharsMaps.name(orth); // known name ?
+      name = FrDics.name(orth); // known name ?
       if (name != null) {
         flagsAtt.setFlags(name.tag);
         // maybe a normalized form for the name
         if (name.orth != null) orth.copy(name.orth);
         return true;
       }
-      word = CharsMaps.word(orth.toLower()); // known word ?
+      word = FrDics.word(orth.toLower()); // known word ?
       if (word != null) { // known word
         // if not after a pun, maybe a capitalized concept État, or a name La Fontaine, 
         // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc. 
@@ -173,8 +173,8 @@ public final class FrTokenLem extends TokenFilter
       }
     }
     else {
-      CharsMaps.norm(orth); // normalise oeil -> œil
-      word = CharsMaps.word(orth);
+      FrDics.norm(orth); // normalise oeil -> œil
+      word = FrDics.word(orth);
       if (word == null) return true;
       // known word
       flagsAtt.setFlags(word.tag);

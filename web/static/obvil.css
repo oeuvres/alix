@@ -72,6 +72,9 @@ header.biblbar,
 header.biblbar a {
   color: #FFFFFF;
 }
+header.biblbar a:hover {
+  color: #000;
+}
 
 header.biblbar table {
   border: none;
@@ -662,7 +665,11 @@ header.biblbar {
   width: 100%;
   z-index: 10;
   height: 1.5rem;
+}
 
+header.biblbar a {
+  display: block;
+  text-decoration: none;
 }
 
 table.prevnext {
@@ -853,15 +860,15 @@ body.comp article.content, ul.legend {
   font-weight: 300;
   font-size: 112%;
   font-family: "Roboto", serif;
-  color: #333;
-}
-
-a.tokspec, a.tokshared {
-  cursor: pointer;
   color: #666;
 }
 
-a.tokspec:hover, a.tokshared:hover, a.tokhover {
+a.WORD, a.NAME {
+  cursor: pointer;
+  color: #333;
+}
+
+a.WORD:hover, a.NAME:hover, a.tokhover {
   color: #000;
   text-decoration: none;
   outline: 1px rgb(234, 91, 12) solid;

@@ -11,7 +11,7 @@ final static Query QUERY_LEVEL = new TermQuery(new Term(Alix.LEVEL, Alix.CHAPTER
 %>
 <%
 // canonize query string to push in history, avoiding bad requests
-LinkedHashMap<String, String> pars = new LinkedHashMap<>();
+LinkedHashMap<String, String> pars = new LinkedHashMap<String, String>();
 String refId = tools.getString("refid", null);
 int refDocId = tools.getInt("refdocid", -1);
 String refType = tools.getString("refType", null);
@@ -158,7 +158,7 @@ else {
   }
 }
 
-out.println(">!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->");
+out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->");
 
 %>
       </nav>

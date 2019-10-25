@@ -30,8 +30,8 @@ if (id2 != null) { // doc by id requested
 else if (docId2 >= 0) { // doc by docid requested
   url2 = "compdoc.jsp?" + "docid=" + docId2;
 }
-else { // query
-  url2 = "complist.jsp?";
+else { // help
+  url2 = "../static/doc/comparaison.html";
 }
 
 
@@ -51,7 +51,7 @@ else if (q != null) { // query
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Face à face, <%=baseTitle %> [Obvil]</title>
+    <title>Comparaison, <%=baseTitle %> [Obvil]</title>
     <style>
 body, html {
   height: 100%;

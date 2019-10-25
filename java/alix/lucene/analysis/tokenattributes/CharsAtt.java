@@ -52,7 +52,7 @@ import alix.util.Char;
  * (ex: capitalize).
  */
 public class CharsAtt extends AttributeImpl
-    implements CharTermAttribute, TermToBytesRefAttribute, Appendable, Cloneable, Comparable<CharsAtt>
+    implements CharTermAttribute, TermToBytesRefAttribute, Appendable, Cloneable, Comparable<String>
 {
   /** Cached hashCode */
   private int hash;
@@ -513,6 +513,7 @@ public class CharsAtt extends AttributeImpl
    * @param string
    * @return
    */
+  @Override
   public int compareTo(String string)
   {
     char[] chars = this.chars;
@@ -527,7 +528,6 @@ public class CharsAtt extends AttributeImpl
     return len - string.length();
   }
 
-  @Override
   public int compareTo(CharsAtt o)
   {
     char[] chars1 = chars;

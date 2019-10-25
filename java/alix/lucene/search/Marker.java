@@ -33,11 +33,9 @@
 package alix.lucene.search;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.ArrayList;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -48,7 +46,7 @@ import org.apache.lucene.util.automaton.Operations;
 
 /**
  * A light hiliter using a Lucene analyzer and a compiled automaton,
- * designed for short texts (ex: shoy found words when searching in titles).
+ * designed for short texts (ex: show found words when searching in titles).
  * Supports wildcard query.
  */
 public class Marker
@@ -68,9 +66,6 @@ public class Marker
     this.q = q;
     this.analyzer = analyzer;
     // loop on words according the Analyzer to build automatoc
-    TokenStream ts = analyzer.tokenStream("q", q);
-    CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
-    // Automaton auto = Operations.union(a1, a2);
     TokenStream stream = analyzer.tokenStream("hilite", q);
     CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
     ArrayList<Automaton> cogs = new ArrayList<Automaton>();

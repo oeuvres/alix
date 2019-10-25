@@ -37,11 +37,17 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.ByteRunAutomaton;
+
 import alix.fr.Tag;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
+import alix.lucene.util.WordsAutomatonBuilder;
 import alix.util.Chain;
 import alix.util.CsvReader;
 
@@ -54,20 +60,22 @@ import alix.util.CsvReader;
  * comparison {@link CharsAtt#compareTo(CharsAtt)}.
  */
 @SuppressWarnings("unlikely-arg-type")
-public class CharsMaps
+public class FrDics
 {
-  /** French stopwords */
-  public final static HashSet<CharsAtt> STOP = new HashSet<CharsAtt>((int) (700 * 0.75));
+  /** French stopwords as hash to filter attributes */
+  public final static HashSet<CharsAtt> STOP = new HashSet<CharsAtt>((int) (1000 / 0.75));
+  /** French stopwords as binary automaton */
+  public static ByteRunAutomaton STOP_BYTES;
   /** 130 000 types French lexicon seems not too bad for memory */
-  public final static HashMap<CharsAtt, LexEntry> WORD = new HashMap<CharsAtt, LexEntry>((int) (150000 * 0.75));
+  public final static HashMap<CharsAtt, LexEntry> WORD = new HashMap<CharsAtt, LexEntry>((int) (150000 / 0.75));
   /** French names on which keep Capitalization */
-  public final static HashMap<CharsAtt, NameEntry> NAME = new HashMap<CharsAtt, NameEntry>((int) (50000 * 0.75));
+  public final static HashMap<CharsAtt, NameEntry> NAME = new HashMap<CharsAtt, NameEntry>((int) (50000 / 0.75));
   /** Graphic normalization (replacement) */
-  public final static HashMap<CharsAtt, CharsAtt> NORM = new HashMap<CharsAtt, CharsAtt>((int) (100 * 0.75));
+  public final static HashMap<CharsAtt, CharsAtt> NORM = new HashMap<CharsAtt, CharsAtt>((int) (100 / 0.75));
   /** Elisions, for tokenization and normalization */
-  public final static HashMap<CharsAtt, CharsAtt> ELISION = new HashMap<CharsAtt, CharsAtt>((int) (30 * 0.75));
+  public final static HashMap<CharsAtt, CharsAtt> ELISION = new HashMap<CharsAtt, CharsAtt>((int) (30 / 0.75));
   /** Abbreviations with a final dot */
-  public final static HashMap<CharsAtt, CharsAtt> BREVIDOT = new HashMap<CharsAtt, CharsAtt>((int) (100 * 0.75));
+  public final static HashMap<CharsAtt, CharsAtt> BREVIDOT = new HashMap<CharsAtt, CharsAtt>((int) (100 / 0.75));
   /** First word of a compound */
   public final static HashSet<CharsAtt> COMPOUND1 = new HashSet<CharsAtt>();
   /* Load dictionaries */
@@ -82,11 +90,16 @@ public class CharsMaps
       reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
       csv = new CsvReader(reader, 1);
       csv.readRow(); // pass first line
+      ArrayList<String> list = new ArrayList<String>();
       while (csv.readRow()) {
         Chain cell0 = csv.row().get(0);
         if (cell0.isEmpty() || cell0.charAt(0) == '#') continue;
         STOP.add(new CharsAtt(cell0));
+        list.add(cell0.toString());
       }
+      Automaton automaton = WordsAutomatonBuilder.buildFronStrings(list);
+      STOP_BYTES = new ByteRunAutomaton(automaton);
+
       
       res = "word.csv";
       reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
