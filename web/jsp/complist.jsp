@@ -16,7 +16,7 @@ String refId = tools.getString("refid", null);
 int refDocId = tools.getInt("refdocid", -1);
 String refType = tools.getString("refType", null);
 
-String q = tools.getString("q", "");
+String q = tools.getString("q", null);
 int fromDoc = tools.getInt("fromdoc", -1);
 float fromScore = tools.getFloat("fromscore", 0);
 int hpp = tools.getInt("hpp", 100);
@@ -65,7 +65,7 @@ if (refDoc != null) {
 }
 else {
   out.print("<input size=\"50\" type=\"text\" id=\"q\" onfocus=\"var len = this.value.length * 2; this.setSelectionRange(len, len); \" autofocus=\"true\"");
-  out.println(" spellcheck=\"false\" autocomplete=\"off\" name=\"q\" value=\"" +q+"\"/>");
+  out.println(" spellcheck=\"false\" autocomplete=\"off\" name=\"q\" value=\"" +JspTools.escapeHtml(q)+"\"/>");
   // out.println("<br/>" + query);
 }
       %>
@@ -83,7 +83,7 @@ if (refDoc != null) {
   else topTerms = refDoc.theme(TEXT);
   query = Doc.moreLikeThis(TEXT, topTerms, 50);
 }
-else if (!"".equals(q)) {
+else if (q != null) {
   pars.put("q", q);
   String lowbibl = q.toLowerCase();
   query = Alix.qParse("bibl", lowbibl, ANAMET, Occur.MUST);
@@ -93,7 +93,7 @@ if (corpus != null) {
   query = corpusQuery(corpus, query);
 }
 // meta, restric document type
-else if(query != null && !"".equals(q)) {
+else if(query != null && q != null) {
   query = new BooleanQuery.Builder()
     .add(QUERY_LEVEL, Occur.FILTER)
     .add(query, Occur.MUST)
@@ -127,7 +127,7 @@ else {
   }
   Marker marker = null;
   // a query to hilite in records
-  if (!"".equals(q)) {
+  if (q != null) {
     marker = new Marker(ANAMET, q);
   }
   int docId = 0;

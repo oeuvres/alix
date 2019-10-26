@@ -3,8 +3,13 @@ if (self == top) // no form embedded in a frame
   q = document.getElementById("q");
   if (q && q.type == "hidden") q.type = "text";
 }
+else if (window.name) {
+  document.body.className += " "+window.name;
+  console.log("window.name="+window.name)
+}
 
-var text = document.getElementById("contrast");
+var text = document.getElementById("text");
+// scrol after anchor clicked
 window.onhashchange = function (e)
 {
   let url = new URL(e.newURL);
@@ -40,22 +45,24 @@ function clickTok(e)
 {
   let a = e.target;
   if (!a.matches("a")) return;
-  let aStyles = a.className.split(/ +/);
-  let form = aStyles[1];
+  const styleArray = a.className.split(/ +/);
+  const form = styleArray[0];
+  // test if hilited
+  const styleLast = styleArray[styleArray.length - 1];
   let style = null;
-  if (aStyles[3]) { // free a class name
-    styleMap[aStyles[3]] = true;
+  if (typeof styleMap[styleLast] !== 'undefined') { // this is hilited, free a color
+    styleMap[styleLast] = true;
   }
   else {
     style = getStyle();
   }
-  let sibling = "right";
-  if (window.name == "right") sibling = "left";
+  var sibling;
+  if (window.name == "right") sibling = window.parent.frames["left"];
+  else if (window.name == "left") sibling = window.parent.frames["right"];
   let win;
   let count = 0;
-  if(window.parent.frames[sibling].hitoks) {
-    win = window.parent.frames[sibling];
-    count += win.hitoks(form, style);
+  if(sibling && sibling.hitoks) {
+    count += sibling.hitoks(form, style);
   }
   count += hitoks(form, style);
   if (count && style) { // style used, block it
@@ -67,20 +74,64 @@ function clickTok(e)
 
 }
 
+/**
+ *
+ */
+function clickSet(label)
+{
+  let style = "";
+  if (label.lastClass) {
+    if (styleMap.hasOwnProperty(label.lastClass)) styleMap[label.lastClass] = true;
+    label.lastClass = null;
+  }
+  else {
+    style = getStyle();
+    label.lastClass = style;
+    if (styleMap.hasOwnProperty(style)) styleMap[style] = false;
+  }
+  let matches = label.parentNode.querySelectorAll("a");
+  for (let i = 0, len = matches.length; i < len; i ++) {
+    let styleArray = matches[i].className.split(/ +/);
+    let form = styleArray[0];
+    var styleOld = styleArray[styleArray.length-1];
+    // already painted, deete ticks before paint it
+    if (typeof styleMap[styleOld] !== 'undefined') {
+      styleMap[styleOld] = true;
+      hitoks(form, null);
+    }
+    hitoks(form, style);
+  }
+
+}
 
 
 if (text) text.addEventListener('click', clickTok, true);
-var rulhi = document.getElementById("rulhi");
+var blocks = document.querySelectorAll('.keywords'), i;
+for (i = 0; i < blocks.length; ++i) {
+  blocks[i].addEventListener('click', clickTok, true);
+}
+
+const rulhi = document.getElementById("rulhi");
+function clickTick(e) {
+  location.replace(this.href);
+  return false;
+}
 function hitoks(form, style)
 {
   let count = 0;
-  let matches = text.querySelectorAll("a."+form);
+  let matches = document.querySelectorAll("a."+form);
   for (let i = 0, len = matches.length; i < len; i ++) {
     let el = matches[i];
     let classes = el.className.split(/ +/);
-    if (style) classes[3] = style;
-    else delete classes[3];
-    el.className = classes.join(" ");
+    // alway delete to avoir multiple colors
+    var styleArray = [];
+    for (let i = 0; i < classes.length; i++) {
+      if (typeof styleMap[classes[i]] !== 'undefined') continue;
+      styleArray.push(classes[i]);
+    }
+    if (style) styleArray.push(style);
+    el.className = styleArray.join(" ");
+    if (!el.id) continue;
     let tokid = el.id;
     let n = 0 + tokid.substring(3);
     let tickid="kot"+n;
@@ -94,7 +145,8 @@ function hitoks(form, style)
       let a = document.createElement("a");
       a.setAttribute("href", "#"+tokid);
       a.className = style;
-      let perc = Math.round(1000 * n / rulhiLength) / 10;
+      a.onclick = clickTick;
+      let perc = Math.round(1000 * n / docLength) / 10;
       a.setAttribute("style", "top:"+perc+"%;");
       a.id = tickid;
       rulhi.append(a);

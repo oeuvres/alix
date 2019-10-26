@@ -1,5 +1,6 @@
 var input= document.getElementById("q");
 var nav = document.getElementById("chapters");
+/** update results */
 function resup(e)
 {
   if (e.data == "^") return;
