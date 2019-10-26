@@ -1,11 +1,22 @@
-if (self == top) // no form embedded in a frame
-{
+
+var sibling;
+
+
+if (self == top) { // no form embedded in a frame
   q = document.getElementById("q");
   if (q && q.type == "hidden") q.type = "text";
 }
 else if (window.name) {
+  if (window.name == "right") sibling = window.parent.frames["left"];
+  else if (window.name == "left") sibling = window.parent.frames["right"];
   document.body.className += " "+window.name;
-  console.log("window.name="+window.name)
+  const topUrl = top.location;
+  var search = topUrl.search;
+  var key = window.name+"id";
+  var pars = new URLSearchParams(search);
+  if (pars.has(key)) pars.delete(key);
+  pars.append(key, id);
+  top.history.pushState(null, null, "?"+pars.toString());
 }
 
 var text = document.getElementById("text");
@@ -56,9 +67,6 @@ function clickTok(e)
   else {
     style = getStyle();
   }
-  var sibling;
-  if (window.name == "right") sibling = window.parent.frames["left"];
-  else if (window.name == "left") sibling = window.parent.frames["right"];
   let win;
   let count = 0;
   if(sibling && sibling.hitoks) {
@@ -75,7 +83,7 @@ function clickTok(e)
 }
 
 /**
- *
+ * Hilite a block of words
  */
 function clickSet(label)
 {
@@ -89,6 +97,7 @@ function clickSet(label)
     label.lastClass = style;
     if (styleMap.hasOwnProperty(style)) styleMap[style] = false;
   }
+
   let matches = label.parentNode.querySelectorAll("a");
   for (let i = 0, len = matches.length; i < len; i ++) {
     let styleArray = matches[i].className.split(/ +/);
@@ -100,13 +109,14 @@ function clickSet(label)
       hitoks(form, null);
     }
     hitoks(form, style);
+    if(sibling && sibling.hitoks) sibling.hitoks(form, style);
   }
 
 }
 
 
 if (text) text.addEventListener('click', clickTok, true);
-var blocks = document.querySelectorAll('.keywords'), i;
+var blocks = document.querySelectorAll('p.keywords'), i;
 for (i = 0; i < blocks.length; ++i) {
   blocks[i].addEventListener('click', clickTok, true);
 }

@@ -272,7 +272,7 @@ public class Doc
       String type = "WORD";
       if (Char.isUpperCase(form.charAt(0))) type = "NAME";
       
-      sb.append("<a id=\"tok"+tok.pos+"\" class=\""+form.replace(' ', '_')+" "+level+"\" title=\""+title+"\">");
+      sb.append("<a id=\"tok"+tok.pos+"\" class=\""+form.replaceAll("[ \\.]", "_")+" "+level+"\" title=\""+title+"\">");
       sb.append(text.substring(tok.start, tok.end));
       sb.append("</a>");
       off = tok.end;

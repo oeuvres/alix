@@ -65,7 +65,7 @@ else {
     // out.append("</li>\n");
   }
   if (hits.length < totalHits) {
-    out.append("<a  class=\"more\" href=\"?q="+q+"&amp;fromscore="+score+"&amp;fromdoc="+docId+"\">▼</a>\n");
+    out.append("<a  class=\"more\" href=\"?q="+q+"&amp;fromscore="+score+"&amp;fromdoc="+docId+"\">⮟</a>\n");
   }
 }
 

@@ -107,10 +107,19 @@ public class Obvil extends HttpServlet
       request.getRequestDispatcher("/jsp/desk.jsp").forward(request, response);
       return;
     }
-    // base component page
-    // redirect 
-    Path jsp = path.subpath(1, path.getNameCount());
-    request.getRequestDispatcher("/jsp/"+jsp.toString()).forward(request, response);
+    // path inside base
+    Path action = path.subpath(1, path.getNameCount());
+    // documentation
+    if (action.startsWith("help") || action.startsWith("aide")) {
+      String page = "";
+      if (action.getNameCount() > 1) page= action.getName(1).toString();
+      request.getRequestDispatcher("/jsp/help.jsp?page="+page).forward(request, response);
+    }
+    // Desk component
+    String jsp = action.toString();
+    // allow links without extensions
+    if (!jsp.endsWith(".jsp")) jsp += ".jsp";
+    request.getRequestDispatcher("/jsp/"+jsp).forward(request, response);
   }
 
   /**

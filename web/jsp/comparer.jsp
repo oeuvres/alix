@@ -1,48 +1,44 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" trimDirectiveWhitespaces="true"%>
 <%@ include file="prelude2.jsp" %>
 <%
-String id1 = tools.getString("id1", null);
-int docId1 = tools.getInt("docid1", -1);
-String id2 = tools.getString("id2", null);
-int docId2 = tools.getInt("docId2", -1);
+String id1 = tools.getString("leftid", null);
+int docId1 = tools.getInt("leftdocid", -1);
+String id2 = tools.getString("rightid", null);
+int docId2 = tools.getInt("rightdocid", -1);
 String q = tools.getString("q", null);
 
 String url1;
+String ref = "";
 if (id1 != null) { // doc by id requested
-  url1 = "compdoc.jsp?" + "id=" + id1;
+  url1 = "compdoc?" + "id=" + id1;
+  ref = "&amp;refid=" + id1;
 }
 else if (docId1 >= 0) { // doc by docid requested
-  url1 = "compdoc.jsp?" + "docid=" + docId1;
+  url1 = "compdoc?" + "docid=" + docId1;
+  ref = "&amp;refdocid=" + docId1;
 }
 else if (q != null) { // query
-  url1 = "complist.jsp?" + "q=" + q;
+  url1 = "complist?" + "q=" + q;
 }
 else { // query
-  url1 = "complist.jsp";
+  url1 = "complist";
 }
 
 String url2;
-String ref = "";
-
 if (id2 != null) { // doc by id requested
-  url2 = "compdoc.jsp?" + "id=" + id2;
+  url2 = "compdoc?" + "id=" + id2 + ref;
 }
 else if (docId2 >= 0) { // doc by docid requested
-  url2 = "compdoc.jsp?" + "docid=" + docId2;
+  url2 = "compdoc?" + "docid=" + docId2 + ref;
 }
-else { // help
-  url2 = "../static/doc/comparaison.html";
-}
-
-
-if (id1 != null) { // reference document for list or hilite
-  url2 += "&amp;refid=" + id1;
+else if (id1 != null) { // reference document for list or hilite
+  url2 = "complist?refid=" + id1;
 }
 else if (docId1 >= 0) { // reference document for list or hilite
-  url2 += "&amp;refdocid=" + docId1;
+  url2 = "complist?refdocid=" + docId1;
 }
-else if (q != null) { // query
-  url2 += "&amp;q=" + q;
+else { // help
+  url2 = "help/comparer";
 }
 
 
@@ -51,7 +47,7 @@ else if (q != null) { // query
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Comparaison, <%=baseTitle %> [Obvil]</title>
+    <title>Comparer, <%=baseTitle %> [Obvil]</title>
     <style>
 body, html {
   height: 100%;

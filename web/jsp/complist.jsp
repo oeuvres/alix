@@ -14,7 +14,7 @@ final static Query QUERY_LEVEL = new TermQuery(new Term(Alix.LEVEL, Alix.CHAPTER
 LinkedHashMap<String, String> pars = new LinkedHashMap<String, String>();
 String refId = tools.getString("refid", null);
 int refDocId = tools.getInt("refdocid", -1);
-String refType = tools.getString("refType", null);
+String refType = tools.getString("reftype", null);
 
 String q = tools.getString("q", null);
 int fromDoc = tools.getInt("fromdoc", -1);
@@ -27,7 +27,10 @@ hpp = Math.min(hpp, 1000);
 Doc refDoc = null;
 try {
   if (refId != null) refDoc = new Doc(alix, refId, DOC_SHORT);
-  else if (refDocId >= 0) refDoc = new Doc(alix, refDocId, DOC_SHORT);
+  else if (refDocId >= 0) {
+    refDoc = new Doc(alix, refDocId, DOC_SHORT);
+    refId = refDoc.id();
+  }
 }
 catch (IllegalArgumentException e) {} // unknown id
 
@@ -39,19 +42,20 @@ catch (IllegalArgumentException e) {} // unknown id
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Rechercher un document, <%=baseTitle %> [Obvil]</title>
+    <title>Rechercher un texte, <%=baseTitle %> [Obvil]</title>
     <link href="../static/obvil.css" rel="stylesheet"/>
   </head>
   <body class="results">
     <header>
 <%
 if (refDoc != null) {
-  out.println("<h1>Document similaires</h1>");
-  out.println("<b>Documents similaires à :</b>");
+  out.println("<h1>Textes similaires</h1>");
+  out.println("<a href=\"?\" class=\"delete\">🞬</a>");
+  out.println("<b>Textes similaires à :</b>");
   out.println(refDoc.doc().get("bibl"));
 }
 else {
-  out.println("<h1>Rechercher un document par ses métadonnées</h1>");
+  out.println("<h1>Rechercher un texte par ses métadonnées</h1>");
 }
 if (corpus != null) {
   out.println("<p>Dans votre corpus : "+"<b>"+corpus.name()+"</b>"+"</p>");
@@ -126,9 +130,15 @@ else {
     paging = "&amp;fromdoc="+fromDoc+"&amp;fromscore="+fromScore;
   }
   Marker marker = null;
+  String qback = "";
   // a query to hilite in records
   if (q != null) {
     marker = new Marker(ANAMET, q);
+    qback += "&amp;q="+q;
+  }
+  else if (refId != null) {
+    qback += "&amp;refid=" + refId;
+    if (refType != null) qback += "&amp;reftype" + refType;
   }
   int docId = 0;
   float score = 0;
@@ -140,21 +150,19 @@ else {
     
     String text = doc.get("bibl");
     if (marker != null) {
-      out.append("<a class=\"bibl\" href=\"compdoc.jsp?id="+doc.get(Alix.ID)+"&amp;q="+q+paging+"\">");
+      out.append("<a class=\"bibl\" href=\"compdoc.jsp?id="+doc.get(Alix.ID)+qback+paging+"\">");
       out.append(marker.mark(text));
       out.append("</a>");
     }
     else {
-      String ref = "";
-      if (refId != null) ref += "&amp;refid=" + refId;
-      out.append("<a class=\"bibl\" href=\"compdoc.jsp?id="+doc.get(Alix.ID)+ref+paging+"\">");
+      out.append("<a class=\"bibl\" href=\"compdoc.jsp?id="+doc.get(Alix.ID)+qback+paging+"\">");
       out.append(text);
       out.append("</a>");
     }
     // out.append("</li>\n");
   }
   if (hits.length < totalHits) {
-    out.append("<a  class=\"more\" href=\"?q="+q+"&amp;fromscore="+score+"&amp;fromdoc="+docId+"\">▼</a>\n");
+    out.append("<a  class=\"more\" href=\"?fromscore="+score+"&amp;fromdoc="+docId+qback+"\">⮟</a>\n");
   }
 }
 

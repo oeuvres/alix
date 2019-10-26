@@ -1,6 +1,4 @@
 @charset "UTF-8";
-@import url('https://fonts.googleapis.com/css?family=Roboto:100,100i,200,200i,300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i&display=swa3');
-
 
 /**
  * colors and fonts
@@ -16,7 +14,7 @@ select {
   font-family: "Open Sans", sans-serif;
 }
 body.comp #text, ul.legend {
-  font-family: "Open Sans", "Ubuntu", "Calibri", "Segoe UI", Avenir, Helvetica, serif;
+  font-family: "Open Sans", "Ubuntu", "Calibri", "Segoe UI", Avenir, Helvetica, sans-serif;
 }
 
 button {
@@ -32,6 +30,7 @@ body.facet a span {
 }
 
 body,
+.biflex,
 .gutter.but {
   background-color: #faf9f6;
 }
@@ -97,6 +96,10 @@ details,
   border-color: #c3b7aa;
 }
 
+header {
+  border-color: #FFFFFF;
+}
+
 ::-moz-selection {
   background: rgba(120, 105, 101, 0.8);
   color: #FFFFFF;
@@ -126,6 +129,7 @@ a {
   color: #1a1a80;
 }
 
+.keywords a,
 details,
 h1,
 h2,
@@ -173,6 +177,7 @@ select {
   background-color: rgba(255, 255, 255, 0.7);
 }
 
+.keywords a,
 .mark a.prev,
 .mark a.next {
   rgba(128, 70, 13, 0.5);
@@ -271,10 +276,6 @@ details {
   border-width: 1px;
 }
 
-h1, h2, h3 {
-  font-weight: 100;
-}
-
 input[type=text], input[type=number] {
   -webkit-appearance: none;
 }
@@ -305,6 +306,14 @@ input[type=text], input[type=number] {
   font-style: italic;
   color: #999;
 }
+
+body > header {
+  border-width: 2px;
+  padding-bottom: 1rem;
+  border-bottom-style: solid;
+  padding: 0 1rem 0 1rem;
+}
+
 
 input.year {
   width: 10ex;
@@ -684,10 +693,6 @@ header.biblbar a.back {
   line-height: 1.7rem;
 }
 
-.keywords label {
-  font-weight: bold;
-}
-
 table.prevnext {
   border-collapse: collapse;
   width: 100%;
@@ -815,6 +820,14 @@ body.right #rulhi {
   border-right-style: solid;
 }
 
+body.right .goright {
+  display: none;
+}
+
+body.right .biflex {
+  margin-left: auto;
+}
+
 /**
  * comparison
  */
@@ -828,45 +841,45 @@ body.comp {
   background-repeat: no-repeat;
 }
 
+body.comp {
+  background-color: #FFF;
+  background-size: auto 105%;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+
 body.comp.left {
   background-image: url("img/obvil.svg");
   background-position: top 2rem left 10px;
-  -ms-background-size: cover;
-  -o-background-size: cover;
-  -moz-background-size: cover;
-  -webkit-background-size: cover;
-  background-size: cover;
-  background-size: auto 105%;
+}
+body.comp.right {
+  background-image: url("img/obvil_r.svg");
+  background-position: top 2rem right 10px;
+}
+
+body.help {
+  background-image: url("img/obvil_help.svg");
+  background-position: top center;
+  background-size: auto 200%;
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
 
 body.comp.left main {
   padding-left: 2rem;
-  padding-right: 1rem;
+  padding-right: 2.5rem;
 }
 
-body.comp.right {
-  background-image: url("img/obvil_r.svg");
-  background-position: top 2rem right 10px;
-  -ms-background-size: cover;
-  -o-background-size: cover;
-  -moz-background-size: cover;
-  -webkit-background-size: cover;
-  background-size: auto 105%;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-}
 
 body.comp.right main {
-  padding-left: 1rem;
+  padding-left: 2.5rem;
   padding-right: 2rem;
 }
 
 
 body.comp {
-  background: #FFF;
-  padding-top: 2rem;
+  padding-top: 1.6rem;
 }
 
 body.comp a.pb,
@@ -881,15 +894,59 @@ body.comp #text, ul.legend {
   color: #888;
 }
 
+.biflex {
+  width: calc(100% - 1rem);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0.5rem 1rem 1rem;
+}
+
+
+.keywords {
+}
+
 #text a, .keywords a {
   cursor: pointer;
+}
+
+#text a {
   color: #333;
 }
 
-#text a:hover, .keywords.a:hover {
+#text a:hover, .keywords a:hover {
   color: #000;
   text-decoration: none;
   outline: 1px rgb(234, 91, 12) solid;
+}
+
+.keywords label {
+  font-weight: bold;
+  cursor: pointer;
+}
+
+a.delete {
+  font-size: 2rem;
+  line-height: 0.7rem;
+  vertical-align: bottom;
+}
+
+.goright {
+  font-size: 3rem;
+  line-height: 3rem;
+  padding: 0 0.3rem 0 0.5rem;
+  text-decoration: none;
+}
+a.delete {
+  color: red;
+}
+a.delete:hover,
+.goright:hover {
+  text-decoration: none;
+  outline: unset;
+  background-color: #FFF;
+  border: none;
 }
 
 a.tokspec {
@@ -955,7 +1012,7 @@ a.tk5 {
  */
 
 body.results main {
-  background: #FFFFFF;
+
 }
 
 body.results header {

@@ -1,5 +1,15 @@
-var input= document.getElementById("q");
-var nav = document.getElementById("chapters");
+if (window.name) {
+  document.body.className += " "+window.name;
+  const topUrl = top.location;
+  var search = topUrl.search;
+  var key = window.name+"id";
+  var pars = new URLSearchParams(search);
+  if (pars.has(key)) pars.delete(key);
+  top.history.pushState(null, null, "?"+pars.toString());
+}
+
+const input= document.getElementById("q");
+const nav = document.getElementById("chapters");
 /** update results */
 function resup(e)
 {
@@ -10,7 +20,6 @@ function resup(e)
   q = q.replace(/^ *| *$/g, "");
   if (q == this.last) return;
   this.last = q;
-  console.log(q);
   var url = "meta.jsp?hpp=30&q="+ q
   fetch(url).then(function(response) {
     if (response.ok) return response.text();
@@ -21,17 +30,4 @@ function resup(e)
     console.log('Fetch Error', err);
   });
 }
-/*
-window.onload = function() {
-  var input = document.getElementById("q");
-
-  if (input.addEventListener) {
-    input.addEventListener("focus", placeCursorAtEnd, false);
-  } else if (input.attachEvent) {
-    input.attachEvent('onfocus', placeCursorAtEnd);
-  }
-
-  input.focus();
-}
-*/
-input.addEventListener('input', resup);
+if (input) input.addEventListener('input', resup);

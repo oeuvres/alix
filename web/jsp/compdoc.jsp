@@ -14,7 +14,7 @@ static String wordList(Top<String> top, String type)
     if (first) first = false;
     else sb.append(", ");
     String word = entry.value();
-    sb.append("<a class=\""+word.replace(' ', '_')+"\">");
+    sb.append("<a class=\""+word.replaceAll("[ \\.]", "_")+"\">");
     sb.append(word);
     sb.append("</a>");
     // out.print(" ("+entry.score()+")");
@@ -41,7 +41,10 @@ float fromScore = tools.getFloat("fromscore", 0);
 Doc doc = null;
 try { // load full document
   if (id != null) doc = new Doc(alix, id);
-  else if (docId >= 0) doc = new Doc(alix, docId);
+  else if (docId >= 0) {
+    doc = new Doc(alix, docId);
+    id = doc.id();
+  }
 }
 catch (IllegalArgumentException e) {} // unknown id
 
@@ -64,11 +67,12 @@ else {
     <%
 if (doc != null) {
   out.println("const docLength="+doc.length(TEXT)+";");
+  out.println("const id=\""+doc.id()+"\";");
 }
     %>
     </script>
   </head>
-  <body  class="comp left">
+  <body  class="comp">
 
 <% if (doc == null) { // no doc requested %>
 
@@ -91,23 +95,31 @@ if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromSco
       <a class="back" href="<%=url %>" title="Retour aux résultats">⮐</a>
       <a href="#" class="bibl"><%= bibl %></a>
     </header>
-    <main>
 <%
 
   Top<String> top = doc.theme(TEXT);
+  out.println("<nav class=\"biflex\">");
   out.println("<p class=\"keywords\">");
-  out.println("<label onclick=\"clickSet(this)\">Mots clés</label> : ");
+  out.println("<label onclick=\"clickSet(this)\">Mots spécifiques</label> : ");
   out.println(wordList(top, "WORD"));
-  out.println(".</p>");
+  out.print(".");
+  out.println("</p>");
+  out.println("<a class=\"goright\" href=\"complist?reftype=theme&amp;refid="+id+"\" target=\"right\">⮞</a>");
+  out.println("</nav>");
 
   top = doc.names(TEXT);
+  out.println("<nav class=\"biflex\">");
   out.println("<p class=\"keywords\">");
   out.println("<label onclick=\"clickSet(this)\">Noms cités</label> : ");
   out.println(wordList(top, "NAME"));
-  out.println(".</p>");
+  out.print(".");
+  out.println("</p>");
+  out.println("<a class=\"goright\" href=\"complist?reftype=names&amp;refid="+id+"\" target=\"right\">⮞</a>");
+  out.println("</nav>");
   
 %>
 
+    <main>
       <article id="text">
         <%= doc.paint(TEXT) %>
       </article>
