@@ -7,9 +7,10 @@ if (self == top) { // no form embedded in a frame
   if (q && q.type == "hidden") q.type = "text";
 }
 else if (window.name) {
+  document.body.className += " "+window.name;
+  document.documentElement.className += " "+window.name;
   if (window.name == "right") sibling = window.parent.frames["left"];
   else if (window.name == "left") sibling = window.parent.frames["right"];
-  document.body.className += " "+window.name;
   const topUrl = top.location;
   var search = topUrl.search;
   var key = window.name+"id";

@@ -5,7 +5,7 @@
  * blue: 1a1a80  rgba(26, 26, 128, 1)
  * greige: #faf9f6
  * greige2: #E2DED0;
- * lines: #92897F rgb(146,137,127)
+ * lines: #92897F rgb(146,137,127) hsl(32, 8%, 54%)
  * brown:
  * orange: #ea5b0c; rgb(234, 91, 12);
  */
@@ -225,6 +225,7 @@ main.left {
  */
 html, body {
   height: 100%;
+  width: 100%;
   margin: 0;
   padding: 0;
 }
@@ -831,6 +832,7 @@ body.right .biflex {
 /**
  * comparison
  */
+ /*
 body.comp {
   -ms-background-size: cover;
   -o-background-size: cover;
@@ -840,23 +842,41 @@ body.comp {
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
+*/
 
 body.comp {
+  /*
   background-color: #FFF;
-  background-size: auto 105%;
   background-attachment: fixed;
   background-repeat: no-repeat;
-}
-
-
-body.comp.left {
   background-image: url("img/obvil.svg");
-  background-position: top 2rem left 10px;
+  background-position: top 2rem center;
+  background-size: 100% auto;
+  */
 }
-body.comp.right {
-  background-image: url("img/obvil_r.svg");
-  background-position: top 2rem right 10px;
+
+
+body.left {
+  background: top 2rem left 10px / 195% auto fixed no-repeat url("img/obvil.svg");
+  background: top 2rem left 10px / 195% auto fixed no-repeat url("img/obvil.svg"),
+  linear-gradient(90deg, hsla(32, 8%, 54%, 0.5), 5%, rgba(255, 255, 255, 1), 25%, #FFF);
 }
+body.right {
+  background: top 2rem right 10px / 195% auto fixed no-repeat url("img/obvil_r.svg");
+  background: top 2rem right 10px / 195% auto fixed no-repeat url("img/obvil_r.svg"),
+  linear-gradient(270deg, hsla(32, 8%, 54%, 0.5), 5%, rgba(255, 255, 255, 1), 25%, #FFF);
+}
+html.right {
+  scrollbar-color: #faf9f6 hsla(32, 8%, 54%, 0.5);
+}
+body.right::-webkit-scrollbar {
+  background: hsla(32, 8%, 54%, 0.5);
+}
+
+body.right::-webkit-scrollbar-thumb {
+  background: #faf9f6;
+}
+
 
 body.help {
   background-image: url("img/obvil_help.svg");
@@ -889,9 +909,8 @@ body.comp .marginnote {
 
 
 body.comp #text, ul.legend {
-  font-weight: 300;
   font-size: 112%;
-  color: #888;
+  color: #666;
 }
 
 .biflex {
@@ -912,7 +931,7 @@ body.comp #text, ul.legend {
 }
 
 #text a {
-  color: #333;
+  color: #000;
 }
 
 #text a:hover, .keywords a:hover {
@@ -986,6 +1005,7 @@ a.tk5 {
   border: 1px solid #000;
 }
 
+/*
 .em1 {
   font-weight: 300;
 }
@@ -1002,11 +1022,10 @@ a.tk5 {
   font-weight: 600;
 }
 
+*/
 .em9 {
-  font-weight: 900;
+  font-weight: 700;
 }
-
-
 /**
  * Search results
  */

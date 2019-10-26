@@ -54,24 +54,33 @@ body, html {
   margin: 0;
   padding: 0;
 }
+#cont {
+  position: relative;
+  background-color: red;
+  height: 100%;
+}
 iframe {
   border: none;
   margin: 0;
   padding: 0;
   width: 50%;
+  top: 0px;
+  bottom: 0px;
+  height: 100%;
+  position: absolute;
 }
 #left {
 }
 
 #right {
-  float: right;
+  right: 0 ;
 }
     </style>
   </head>
   <body>
-    <iframe id="left" name="left" src="<%=url1%>" width="50%" height="99.5%">
+    <iframe id="left" name="left" src="<%=url1%>">
     </iframe>
-    <iframe id="right" name="right" src="<%=url2%>" width="50%" height="99.5%">
+    <iframe id="right" name="right" src="<%=url2%>">
     </iframe>
     <script type="text/javascript">
 window.onhashchange = function (e)
