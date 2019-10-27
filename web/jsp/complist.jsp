@@ -10,8 +10,6 @@ final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new S
 final static Query QUERY_LEVEL = new TermQuery(new Term(Alix.LEVEL, Alix.CHAPTER));
 %>
 <%
-// canonize query string to push in history, avoiding bad requests
-LinkedHashMap<String, String> pars = new LinkedHashMap<String, String>();
 String refId = tools.getString("refid", null);
 int refDocId = tools.getInt("refdocid", -1);
 String refType = tools.getString("reftype", null);
@@ -22,6 +20,8 @@ float fromScore = tools.getFloat("fromscore", 0);
 int hpp = tools.getInt("hpp", 100);
 hpp = Math.min(hpp, 1000);
 
+//canonize query string to push in history, avoiding bad requests ?
+LinkedHashMap<String, String> pars = new LinkedHashMap<String, String>();
 
 // Is there a good reference doc requested ?
 Doc refDoc = null;

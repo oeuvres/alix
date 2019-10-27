@@ -7,8 +7,8 @@ final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new S
 
 static String wordList(Top<String> top, String type)
 {
-  int max = 50;
   StringBuilder sb = new StringBuilder();
+  int max = 50;
   boolean first = true;
   for (Top.Entry<String> entry: top) {
     if (first) first = false;

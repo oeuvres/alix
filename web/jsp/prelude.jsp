@@ -152,25 +152,25 @@ static {
 /**
  * Get a sort specification by a name
  */
- public static Sort getSort(final String sortSpec)
- {
-   if ("year".equals(sortSpec)) {
-     return new Sort(new SortField(YEAR, SortField.Type.INT));
-   }
-   else if ("year-inv".equals(sortSpec)) {
-     return new Sort(new SortField(YEAR, SortField.Type.INT, true));
-   }
-   else if ("author".equals(sortSpec)) {
-     return new Sort(new SortField(Alix.ID, SortField.Type.STRING));
-   }
-   else if ("author-inv".equals(sortSpec)) {
-     return new Sort(new SortField(Alix.ID, SortField.Type.STRING, true));
-   }
-   else if ("length".equals(sortSpec)) {
-     return new Sort(new SortField(TEXT, SortField.Type.INT));
-   }
-   return null;
- }
+public static Sort getSort(final String sortSpec)
+{
+  if ("year".equals(sortSpec)) {
+    return new Sort(new SortField(YEAR, SortField.Type.INT));
+  }
+  else if ("year-inv".equals(sortSpec)) {
+    return new Sort(new SortField(YEAR, SortField.Type.INT, true));
+  }
+  else if ("author".equals(sortSpec)) {
+    return new Sort(new SortField(Alix.ID, SortField.Type.STRING));
+  }
+  else if ("author-inv".equals(sortSpec)) {
+    return new Sort(new SortField(Alix.ID, SortField.Type.STRING, true));
+  }
+  else if ("length".equals(sortSpec)) {
+    return new Sort(new SortField(TEXT, SortField.Type.INT));
+  }
+  return null;
+}
 
 public static Similarity getSimilarity(final String sortSpec)
 {

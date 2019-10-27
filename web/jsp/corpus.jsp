@@ -1,12 +1,22 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.text.DecimalFormat" %>
+<%@ page import="java.text.DecimalFormatSymbols" %>
+<%@ page import="java.util.Locale" %>
+<%@ page import="alix.lucene.search.Facet" %>
 <%@ page import="alix.lucene.search.IntSeries" %>
-<%@include file="prelude.jsp" %>
+<%@ page import="alix.lucene.search.TermList" %>
+<%@ page import="alix.lucene.search.TopTerms" %>
+<%@include file="prelude2.jsp" %>
 <%!
+final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
 final static DecimalFormat dfScoreFr = new DecimalFormat("0.00000", frsyms);
+final static DecimalFormat dfint = new DecimalFormat("###,###,##0", frsyms);
 final static HashSet<String> FIELDS = new HashSet<String>(Arrays.asList(new String[] {Alix.BOOKID, "byline", "year", "title"}));
 static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT));
 %>
 <%
+String q = tools.getString("q", null);
+
 /*
 Use cases of this page
  — creation : no local corpus, create a new one
@@ -14,7 +24,7 @@ Use cases of this page
  — modify : no query, corpus in session, edit
  — stats : query distribution by book 
 */
-
+final String corpusKey = CORPUS_ + base;
 String name = tools.getString("name", "");
 String desc = tools.getString("desc", "");
 String json = tools.getString("json", null);
@@ -25,7 +35,7 @@ Facet facet;
 // new corpus, do not load something
 if (request.getParameter("new") != null) {
   corpus = null;
-  session.setAttribute(CORPUS, null);
+  session.setAttribute(corpusKey, null);
   name = "";
   desc = "";
   botjs += "informParent(); ";
@@ -35,7 +45,7 @@ else if (json != null) {
   corpus = new Corpus(alix, Alix.BOOKID, json);
   name = corpus.name();
   desc = corpus.desc();
-  session.setAttribute(CORPUS, corpus);
+  session.setAttribute(corpusKey, corpus);
   bookids =  corpus.books();
   botjs += "informParent(\""+name+"\"); ";
 }
@@ -44,7 +54,7 @@ else if (checks != null) {
   corpus = new Corpus(alix, Alix.BOOKID, name, desc);
   corpus.add(checks);
   bookids = corpus.books(); // 
-  session.setAttribute(CORPUS, corpus);
+  session.setAttribute(corpusKey, corpus);
   json = corpus.json();
   // corpus has been modified, store on client
   botjs += "store(\""+name+"\", \""+desc+"\", '"+json+"');\n";
@@ -52,7 +62,7 @@ else if (checks != null) {
 }
 // load corpus from sesssion
 else {
-  corpus = (Corpus)session.getAttribute(CORPUS);
+  corpus = (Corpus)session.getAttribute(corpusKey);
   if (corpus != null) {
     bookids = corpus.books();
     name = corpus.name();
@@ -72,8 +82,8 @@ IntSeries years = alix.intSeries("year");
   </head>
   <body class="corpus">
     <form method="post" id="corpora" action="?">
+      <input type="hidden" name="q" value="<%=JspTools.escapeHtml(q)%>"/>
       <input type="hidden" name="json"/>
-      <input type="hidden" name="q" value="<%=q%>"/>
       <ul id="corpusList"></ul>
     </form>
     <script type="text/javascript">corpusList("corpusList");</script>
@@ -90,7 +100,6 @@ IntSeries years = alix.intSeries("year");
         </details>
 
 <%
-IndexReader reader = alix.reader();
 facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.LEVEL, Alix.BOOK));
 TermList qTerms = alix.qTerms(q, TEXT);
 // no query
@@ -101,7 +110,7 @@ boolean score = qTerms.size() > 0;
       <form method="post" id="corpus" action="#">
         <table class="sortable" id="bib">
          <caption>
-            <input type="hidden" name="q" value="<%=q%>"/>
+            <input type="hidden" name="q" value="<%=JspTools.escapeHtml(q)%>"/>
             <button id="selection" type="button" title="Montrer les items sélectionnés">✔</button>
             <button id="all" type="button" title="Montrer tous les items">▢</button>
             Corpus <input type="text" size="10" id="name" name="name" value="<%=name%>" placeholder="Nom du corpus" required="required"/>

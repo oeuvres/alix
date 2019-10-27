@@ -1,5 +1,12 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ include file="prelude.jsp" %>
+<%@ page import="org.apache.lucene.search.uhighlight.UnifiedHighlighter" %>
+<%@ page import="org.apache.lucene.search.uhighlight.DefaultPassageFormatter" %>
+<%@ page import="alix.lucene.search.HiliteFormatter" %>
+<%@ include file="prelude2.jsp" %>
+<%
+String q = tools.getString("q", null);
+
+%>
 <!DOCTYPE html>
 <html>
   <head>
@@ -20,18 +27,17 @@ if (start < 1) start = 1;
          Tri
           <select name="sort" onchange="this.form.submit()">
             <option>Pertinence</option>
-            <% sortOptions(out, sort); %>
+            <%= sortOptions(sort) %>
           </select>
         </label>
       </form>
     <main>
     <%
 String fieldName = TEXT;
-if (!"".equals(q)) {
+time = System.nanoTime();
+TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
+if (topDocs != null) {
 
-  time = System.nanoTime();
-  IndexSearcher searcher = alix.searcher();
-  TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
 
   time = System.nanoTime();
 

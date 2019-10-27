@@ -606,6 +606,7 @@ u   * @throws IOException
    */
   static public Query qParse(final String field, final String q, final Analyzer analyzer, final Occur occur) throws IOException
   {
+    if (q == null || q.isBlank()) return null;
     // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
     // int boostLength = boosts.length;
     // float boostDefault = boosts[boostLength - 1];
@@ -655,12 +656,13 @@ u   * @throws IOException
    */
   public TermList qTerms(String q, String field) throws IOException
   {
+    if (q == null || q.isBlank()) return null;
+    TermList terms = new TermList(freqs(field));
     TokenStream ts = analyzer.tokenStream("pun", q); // keep punctuation to group terms
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     // not generic for other analyzers but may become interesting for a query parser
     // CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
     // FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
-    TermList terms = new TermList(freqs(field));
     ts.reset();
     try {
       while (ts.incrementToken()) {

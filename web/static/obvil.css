@@ -832,29 +832,6 @@ body.right .biflex {
 /**
  * comparison
  */
- /*
-body.comp {
-  -ms-background-size: cover;
-  -o-background-size: cover;
-  -moz-background-size: cover;
-  -webkit-background-size: cover;
-  background-size: 100% auto;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-}
-*/
-
-body.comp {
-  /*
-  background-color: #FFF;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-image: url("img/obvil.svg");
-  background-position: top 2rem center;
-  background-size: 100% auto;
-  */
-}
-
 
 body.left {
   background: top 2rem left 10px / 195% auto fixed no-repeat url("img/obvil.svg");
