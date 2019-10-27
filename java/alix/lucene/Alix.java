@@ -606,7 +606,7 @@ u   * @throws IOException
    */
   static public Query qParse(final String field, final String q, final Analyzer analyzer, final Occur occur) throws IOException
   {
-    if (q == null || q.isBlank()) return null;
+    if (q == null || "".equals(q.trim())) return null;
     // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
     // int boostLength = boosts.length;
     // float boostDefault = boosts[boostLength - 1];
@@ -656,7 +656,7 @@ u   * @throws IOException
    */
   public TermList qTerms(String q, String field) throws IOException
   {
-    if (q == null || ! "".equals(q.trim())) return null;
+    if (q == null || "".equals(q.trim())) return null;
     TermList terms = new TermList(freqs(field));
     TokenStream ts = analyzer.tokenStream("pun", q); // keep punctuation to group terms
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
