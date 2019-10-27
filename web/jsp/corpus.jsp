@@ -15,23 +15,24 @@ final static HashSet<String> FIELDS = new HashSet<String>(Arrays.asList(new Stri
 static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT));
 %>
 <%
-String q = tools.getString("q", null);
-
 /*
-Use cases of this page
+Build a corpus or show query stats on it
  — creation : no local corpus, create a new one
  — select : no corpus in session, list of local corpus
  — modify : no query, corpus in session, edit
  — stats : query distribution by book 
 */
-final String corpusKey = CORPUS_ + base;
+// params for this page
+String q = tools.getString("q", null);
 String name = tools.getString("name", "");
 String desc = tools.getString("desc", "");
 String json = tools.getString("json", null);
 String[] checks = request.getParameterValues("book");
-String botjs = ""; // javascript to add at the end
+// global variables
 Set<String> bookids = null; // load the bookds to update the 
+String botjs = ""; // javascript to add at the end
 Facet facet;
+
 // new corpus, do not load something
 if (request.getParameter("new") != null) {
   corpus = null;
@@ -70,7 +71,6 @@ else {
     botjs += "informParent(\""+name+"\"); ";
   }
 }
-IntSeries years = alix.intSeries("year");
 %>
 <!DOCTYPE html>
 <html>
@@ -91,6 +91,7 @@ IntSeries years = alix.intSeries("year");
         <details id="filter">
           <summary>Filtres</summary>
           <label for="start">Années</label>
+          <% IntSeries years = alix.intSeries(YEAR); // to get min() max() year %>
           <input id="start" name="start" type="number" min="<%=years.min()%>" max="<%=years.max()%>" placeholder="Début" class="year"/>
           <input id="end" name="end" type="number" min="<%=years.min()%>" max="<%=years.max()%>" placeholder="Fin" class="year"/>
           <br/><label for="author">Auteur</label>
@@ -104,7 +105,7 @@ facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.LEVEL, Alix.BOOK));
 TermList qTerms = alix.qTerms(q, TEXT);
 // no query
 TopTerms dic = null;
-boolean score = qTerms.size() > 0;
+boolean score = (qTerms != null && qTerms.size() > 0);
 %>
 
       <form method="post" id="corpus" action="#">

@@ -36,8 +36,7 @@ String q = tools.getString("q", null);
 int fromDoc = tools.getInt("fromdoc", -1);
 float fromScore = tools.getFloat("fromscore", 0);
 
-
-
+// global variables
 Doc doc = null;
 try { // load full document
   if (id != null) doc = new Doc(alix, id);

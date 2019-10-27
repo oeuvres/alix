@@ -58,7 +58,7 @@ public static Query corpusQuery(Corpus corpus, Query query) throws IOException
 }
 
 /**
- * Used by snip.jsp, 
+ * Used by snip.jsp, and doc.jsp
  */
 public static String sortOptions(String sortSpec) throws IOException
 {
@@ -169,7 +169,7 @@ public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, 
   }
   TopDocs topDocs = (TopDocs)page.getSession().getAttribute(key);
   if (topDocs != null) return topDocs;
-  TopDocsCollector collector;
+  TopDocsCollector<?> collector;
   if (sort != null) {
     collector = TopFieldCollector.create(sort, numHits, totalHitsThreshold);
   }
@@ -210,6 +210,7 @@ if (baseTitle == null) {
   if (baseTitle == null) baseTitle =  base;
   props.setProperty("title", baseTitle);
 }
-Corpus corpus = (Corpus)session.getAttribute(CORPUS_+base);
+final String corpusKey = CORPUS_ + base;
+Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 
 %>

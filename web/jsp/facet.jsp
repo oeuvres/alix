@@ -1,5 +1,8 @@
 <%@ page language="java"  pageEncoding="UTF-8" contentType="text/html; charset=UTF-8"%>
-<%@include file="prelude.jsp" %>
+<%@include file="prelude2.jsp" %>
+<%@ page import="alix.lucene.search.Facet" %>
+<%@ page import="alix.lucene.search.TermList" %>
+<%@ page import="alix.lucene.search.TopTerms" %>
 <!DOCTYPE html>
 <html>
   <head>
@@ -10,9 +13,16 @@
   </head>
   <body class="facet">
   <%
+// Show facets for a corpus or/and a query
+// Params for the page
+BitSet filter = null;
+if (corpus != null) filter = corpus.bits();
+String q = tools.getString("q", null);
 String ord = tools.getString("ord", "score", "facetScore");
+
+
 TermList terms = alix.qTerms(q, TEXT);
-if (terms.size() < 1 && "score".equals(ord)) ord = "freq";
+if (terms != null && terms.size() < 1 && "score".equals(ord)) ord = "freq";
 // choose a field
 String facetField = tools.getString("facet", "author");
 String facetName = facetField;
@@ -28,7 +38,7 @@ else if (facetField.equals("title")) facetName = "Titre";
         <option value="alpha" <%=("alpha".equals(ord))?" selected=\"selected\"  ":""%>>Alphabétique</option>
         <option value="freq" <%=("freq".equals(ord))?" selected=\"selected\"  ":""%>>Fréquence</option>
         <% 
-if (terms.size() > 0) {
+if (terms != null && terms.size() > 0) {
   String value = "score";
   out.print("<option value=\""+value+"\"");
   if (value.equals(ord)) out.print(" selected=\"selected\"");
@@ -39,11 +49,11 @@ if (terms.size() > 0) {
     </form>
     <main>
     <%
-if (terms.size() > 0) out.println("<h4>occurrences (chapitres) "+facetName+"</h4>");
+if (terms != null && terms.size() > 0) out.println("<h4>occurrences (chapitres) "+facetName+"</h4>");
 else out.println("<h4>(chapitres) "+facetName+"</h4>");
 Facet facet = alix.facet(facetField, TEXT);
 // a query
-if (terms.size() > 0) { 
+if (terms != null && terms.size() > 0) { 
   // get a 
   TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, facetField);
   int[] nos = facet.nos(topDocs);

@@ -1,5 +1,8 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@include file="prelude.jsp" %>
+<%@include file="prelude2.jsp" %>
+<%@ page import="alix.lucene.search.Doc" %>
+<%@ page import="alix.util.Top" %>
+
 <%!
 final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
 public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOException
@@ -28,28 +31,42 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
  *  — query with an index order
  */
 
-
-Doc doc = null;
+/* params for the page */
+// get doc by lucene internal docId or persistant String id
 int docId = tools.getInt("docid", -1);
 String id = tools.getString("id", null);
+// if no doc, get params to navigate in a results series
+String q = tools.getString("q", null);
 String sort = tools.getString("sort", null);
 int start = tools.getInt("start", 1);
+// if submit prev
 if (request.getParameter("prev") != null) {
   start = tools.getInt("prevn", start);
 }
+//if submit next
 else if (request.getParameter("next") != null) {
   start = tools.getInt("nextn", start);
 }
-IndexReader reader = alix.reader();
-IndexSearcher searcher = alix.searcher();
+
+// global variables
+Doc doc = null;
 TopDocs topDocs = null;
-if (id != null) {
-  doc = new Doc(alix, id);
+
+// try to populate globals with params
+
+try { // load full document
+  if (id != null) doc = new Doc(alix, id);
+  else if (docId >= 0) {
+    doc = new Doc(alix, docId);
+    id = doc.id();
+  }
 }
-else if (docId >= 0) {
-  doc = new Doc(alix, docId);
-}
-else if (!"".equals(q)) {
+// doc not found
+catch (IllegalArgumentException e) {
+  id = null;
+} 
+// if no full doc, get one in results
+if (doc == null && q != null) {
   time = System.nanoTime();
   topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
   ScoreDoc[] hits = topDocs.scoreDocs;
@@ -59,9 +76,13 @@ else if (!"".equals(q)) {
   else {
     if (start < 1 || (start - 1) >= hits.length) start = 1;
     docId = hits[start - 1].doc;
-    doc = new Doc(alix, docId);
+    doc = new Doc(alix, docId); // should be right
+    id = doc.id();
   }
 }
+// bibl ref with no tags
+String title = "";
+if (doc != null) title = JspTools.detag(doc.doc().get("bibl"));
 %>
 <!DOCTYPE html>
 <html>
@@ -69,19 +90,15 @@ else if (!"".equals(q)) {
     <meta charset="UTF-8">
     <link href="../static/vendors/teinte.css" rel="stylesheet"/>
     <link href="../static/obvil.css" rel="stylesheet"/>
-    <title><%
-if (doc != null) {
-  out.print(doc.getUntag("bibl"));
-}
-    %> [Obvil]</title>
+    <title><%= title%> [Obvil]</title>
 
   </head>
   <body class="document">
   <%
 if (doc != null) {
-  out.println("<header class=\"biblbar\" title=\""+doc.getUntag("bibl")+"\">");
+  out.println("<header class=\"biblbar\" title=\""+title+"\">");
   out.print("<a href=\"#\" class=\"bibl\">");
-  out.println(doc.get("bibl"));
+  out.println(doc.doc().get("bibl"));
   out.print("</a>");
   out.println("</header>");
 }
@@ -91,7 +108,6 @@ if (doc != null) {
         <input type="submit" 
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
        tabindex="-1" />
-        <input type="hidden" name="docid" value="<%=docId%>"/>
         <% 
         if (topDocs != null && start > 1) {
           out.println("<input type=\"hidden\" name=\"prevn\" value=\""+(start - 1)+"\"/>");
@@ -102,7 +118,7 @@ if (doc != null) {
         <input id="q" name="q" value="<%=JspTools.escapeHtml(q)%>" autocomplete="off" type="hidden"/>
         <select name="sort" onchange="this.form.submit()" title="Ordre">
             <option>Pertinence</option>
-            <% sortOptions(out, sort); %>
+            <%= sortOptions(sort) %>
         </select>
         <input id="start" name="start" value="<%=start%>" autocomplete="off" size="1"/>
                <% 
@@ -120,7 +136,7 @@ if (doc != null) {
 
 if (doc != null) {
   out.println("<div class=\"heading\">");
-  out.println(doc.get("bibl"));
+  out.println(doc.doc().get("bibl"));
   out.println("</div>");
   
   Top<String> top;
@@ -200,7 +216,7 @@ if (doc != null) {
     out.print(doc.hilite(TEXT, terms));
   }
   else {
-    out.print(doc.get(TEXT));
+    out.print(doc.doc().get(TEXT));
   }
 }
     %>
