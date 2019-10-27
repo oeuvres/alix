@@ -656,7 +656,7 @@ u   * @throws IOException
    */
   public TermList qTerms(String q, String field) throws IOException
   {
-    if (q == null || q.isBlank()) return null;
+    if (q == null || ! "".equals(q.trim())) return null;
     TermList terms = new TermList(freqs(field));
     TokenStream ts = analyzer.tokenStream("pun", q); // keep punctuation to group terms
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
