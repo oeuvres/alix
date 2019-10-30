@@ -1,9 +1,28 @@
-<%@ page language="java"  pageEncoding="UTF-8" contentType="text/javascript; charset=UTF-8"%>
+<%@ page language="java"  pageEncoding="UTF-8" contentType="text/javascript; charset=UTF-8" trimDirectiveWhitespaces="true"%>
 <%@ include file="prelude.jsp" %>
-<%!static final DecimalFormat dfdec3 = new DecimalFormat("0.###", ensyms);%>
+<%@ page import="java.text.DecimalFormat" %>
+<%@ page import="java.text.DecimalFormatSymbols" %>
+<%@ page import="java.util.Locale" %>
+<%@ page import="alix.fr.Tag" %>
+<%@ page import="alix.lucene.analysis.tokenattributes.CharsAtt" %>
+<%@ page import="alix.lucene.analysis.FrDics" %>
+<%@ page import="alix.lucene.analysis.FrDics.LexEntry" %>
+<%@ page import="alix.lucene.search.Freqs" %>
+<%@ page import="alix.util.Char" %>
+
+<%!
+final static DecimalFormatSymbols ensyms = DecimalFormatSymbols.getInstance(Locale.ENGLISH);
+static final DecimalFormat dfdec3 = new DecimalFormat("0.###", ensyms);
+static HashSet<CharsAtt> STOPLIST = new HashSet<CharsAtt>();
+static {
+  for (String w : new String[] {"dire", "Et", "etc.", "homme", "Il", "La", "Le", "Les", "M.", "p."}) {
+    STOPLIST.add(new CharsAtt(w));
+  }
+}
+
+%>
 <%
   out.println("{");
-IndexSearcher searcher = alix.searcher();
 
 String field = TEXT;
 
@@ -19,8 +38,9 @@ if (f != null && v != null) {
   filter = authorCollector.bits();  
 }
 */
-
-TopTerms dic = freqs.topTerms(filter);
+TopTerms dic;
+if (corpus != null) dic = freqs.topTerms(corpus.bits());
+else dic = freqs.topTerms();
 if ("score".equals(sorter)) dic.sort(dic.getScores());
 else dic.sort(dic.getOccs());
 

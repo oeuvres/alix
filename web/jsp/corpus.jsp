@@ -1,4 +1,5 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" trimDirectiveWhitespaces="true"%>
+<%@include file="prelude.jsp" %>
 <%@ page import="java.text.DecimalFormat" %>
 <%@ page import="java.text.DecimalFormatSymbols" %>
 <%@ page import="java.util.Locale" %>
@@ -6,7 +7,6 @@
 <%@ page import="alix.lucene.search.IntSeries" %>
 <%@ page import="alix.lucene.search.TermList" %>
 <%@ page import="alix.lucene.search.TopTerms" %>
-<%@include file="prelude2.jsp" %>
 <%!
 final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
 final static DecimalFormat dfScoreFr = new DecimalFormat("0.00000", frsyms);
@@ -71,6 +71,13 @@ else {
     botjs += "informParent(\""+name+"\"); ";
   }
 }
+
+facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.LEVEL, Alix.BOOK));
+TermList qTerms = alix.qTerms(q, TEXT);
+// no query
+TopTerms dic = null;
+boolean score = (qTerms != null && qTerms.size() > 0);
+
 %>
 <!DOCTYPE html>
 <html>
@@ -78,6 +85,9 @@ else {
     <meta charset="UTF-8">
     <title>Corpus [Alix]</title>
     <link href="../static/obvil.css" rel="stylesheet"/>
+    <script type="text/javascript">
+const base = "<%=base%>";
+    </script>
     <script src="../static/js/corpus.js">//</script>
   </head>
   <body class="corpus">
@@ -86,7 +96,9 @@ else {
       <input type="hidden" name="json"/>
       <ul id="corpusList"></ul>
     </form>
-    <script type="text/javascript">corpusList("corpusList");</script>
+    <script type="text/javascript">
+corpusList("corpusList");
+    </script>
     <main>
         <details id="filter">
           <summary>Filtres</summary>
@@ -99,15 +111,6 @@ else {
           <br/><label for="title">Titre</label>
           <input id="title" name="title" autocomplete="off" list="title-data" type="text" size="50" onclick="select()" placeholder="Chercher un titre"/>
         </details>
-
-<%
-facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.LEVEL, Alix.BOOK));
-TermList qTerms = alix.qTerms(q, TEXT);
-// no query
-TopTerms dic = null;
-boolean score = (qTerms != null && qTerms.size() > 0);
-%>
-
       <form method="post" id="corpus" action="#">
         <table class="sortable" id="bib">
          <caption>

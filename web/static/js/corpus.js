@@ -141,8 +141,13 @@ function none(evt) {
   showSelected();
 }
 
-/** Store corpus bookid as json on response from server */
-const CORPORA = "alix:corpora";
+/**
+ * Store corpus as a json array of bookids
+ * on response from server .
+ * Client key on localStorage should be paramtrized by
+ * document base.
+ */
+const CORPORA = "alix:"+base+":corpora";
 function store(name, desc, json) {
   var corpora =  JSON.parse(localStorage.getItem(CORPORA));
   if (!corpora) corpora = {};

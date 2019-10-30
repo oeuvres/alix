@@ -1,5 +1,21 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" trimDirectiveWhitespaces="true"%>
 <%@include file="prelude.jsp" %>
+<%
+// params
+String q = tools.getString("q", null);
+String id = tools.getString("id", null);
+String url;
+if (id != null) {
+  url = "doc.jsp?id="+id;
+  if (q != null) url += "&amp;"+JspTools.escapeHtml(q);
+}
+else if (q != null) {
+  url = "snip.jsp?q=" + JspTools.escapeHtml(q);
+}
+else {
+  url = "corpus.jsp";
+}
+%>
 <!DOCTYPE html>
 <html>
   <head>
@@ -12,7 +28,7 @@
     <header id="header">
       <span class="base"><%=props.get("title")%></span>
       <form id="qform" name="qform" onsubmit="return dispatch(this)" target="page" action="snip.jsp">
-        <input id="q" name="q" autocomplete="off" autofocus="true"/>
+        <input id="q" name="q" autocomplete="off" autofocus="true" value="<%= JspTools.escapeHtml(q)%>"/>
         <button type="submit" name="send" tabindex="-1" class="magnify">⚲</button>
       </form>
       <div id="tabs">
@@ -31,7 +47,7 @@
       </div>
       <div id="main">
         <div id="body">
-          <iframe name="page" id="page" src="corpus.jsp">
+          <iframe name="page" id="page" src="<%= url %>">
           </iframe>
         </div>
         <footer id="footer">

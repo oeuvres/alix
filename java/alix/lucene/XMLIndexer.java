@@ -59,7 +59,6 @@ import javax.xml.transform.stream.StreamSource;
 import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.SAXException;
 
-import alix.lucene.util.Cooc;
 import alix.util.Dir;
 
 /**

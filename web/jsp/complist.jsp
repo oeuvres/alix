@@ -1,5 +1,5 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ include file="prelude2.jsp" %>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" trimDirectiveWhitespaces="true"%>
+<%@ include file="prelude.jsp" %>
 <%@ page import="alix.lucene.analysis.MetaAnalyzer" %>
 <%@ page import="alix.lucene.search.Doc" %>
 <%@ page import="alix.lucene.search.Marker" %>

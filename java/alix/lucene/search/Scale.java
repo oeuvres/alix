@@ -45,7 +45,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.FixedBitSet;
 
 import alix.lucene.Alix;
 
@@ -80,7 +79,12 @@ public class Scale
   /** Maximum int label of the int field for the corpus */
   private final int max;
 
-  public Scale(Alix alix, BitSet filter, String fieldInt, String fieldText) throws IOException
+  public Scale(final Alix alix, final String fieldInt, final String fieldText) throws IOException
+  {
+    this(alix, null, fieldInt, fieldText);
+  }
+
+  public Scale(final Alix alix, final BitSet filter, final String fieldInt, final String fieldText) throws IOException
   {
     this.alix = alix;
     this.filter = filter;

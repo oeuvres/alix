@@ -1,5 +1,9 @@
-<%@ page language="java" contentType="text/javascript; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/javascript; charset=UTF-8" pageEncoding="UTF-8" trimDirectiveWhitespaces="true"%>
 <%@include file="prelude.jsp" %>
+<%@ page import="alix.lucene.search.Scale" %>
+<%@ page import="alix.lucene.search.Scale.Tick" %>
+<%@ page import="alix.lucene.search.TermList" %>
+
 <%!/** A record used to sort docid by date */
 
 /**
@@ -61,19 +65,21 @@ public String ticks(Scale scale) throws IOException  {
   return sb.toString();
 }%>
 <%
+// parameters
+final String q = tools.getString("q", null);
+
+// global variables
 Scale scale;
-if (filter == null) {
-  // scale = alix.scale(YEAR, TEXT);
-  scale = new Scale(alix, filter, YEAR, TEXT);
+if (corpus == null) {
+  scale = new Scale(alix, YEAR, TEXT);
 }
 else {
-  scale = new Scale(alix, filter, YEAR, TEXT);
+  scale = new Scale(alix, corpus.bits(), YEAR, TEXT);
 }
 // number of fots by curve, could be a parameter
 int dots = tools.getInt("dots", 200);
 // build queries
 time = System.nanoTime();
-IndexReader reader = alix.reader();
 
 
 

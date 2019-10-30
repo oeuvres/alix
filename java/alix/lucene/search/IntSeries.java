@@ -33,7 +33,6 @@
 package alix.lucene.search;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.util.Arrays;
 
 import org.apache.lucene.document.IntPoint;
@@ -45,7 +44,6 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
@@ -56,8 +54,6 @@ import org.apache.lucene.util.Bits;
  */
 public class IntSeries
 {
-  /** Keep an hand on the index reader */
-  private final IndexReader reader;
   /** Field name */
   private final String field;
   /** The values in docId order */
@@ -79,7 +75,6 @@ public class IntSeries
   
   public IntSeries(IndexReader reader, String field) throws IOException
   {
-    this.reader = reader;
     this.field = field;
     FieldInfos fieldInfos = FieldInfos.getMergedFieldInfos(reader);
     // build the list
@@ -148,7 +143,12 @@ public class IntSeries
     this.docInt = docInt;
     this.mean = (double)sum / card;
   }
-  
+
+  public String field()
+  {
+    return this.field;
+  }
+
   public int min()
   {
     return this.minimum;
@@ -167,6 +167,11 @@ public class IntSeries
   public double mean()
   {
     return this.mean;
+  }
+
+  public long sum()
+  {
+    return this.sum;
   }
 
   class IntPointVisitor implements PointValues.IntersectVisitor

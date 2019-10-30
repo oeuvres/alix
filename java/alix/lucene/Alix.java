@@ -37,7 +37,6 @@ import java.lang.ref.SoftReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
@@ -92,7 +91,7 @@ import alix.lucene.util.Cooc;
 
 /**
  * An Alix instance represents a Lucene base {@link Directory} with other useful data.
- * Instantiation is not public, use {@link #instance(Path, String)} instead.
+ * Instantiation is not public, use {@link #instance(Path, String)} instead.                                                                                                                                                       
  * A static pool of lucene directories is kept to ensure uniqueness of Alix objects.
  * <p>
  * To keep only one instance of {@link IndexReader}, {@link IndexSearcher}, {@link IndexWriter}
@@ -656,8 +655,9 @@ u   * @throws IOException
    */
   public TermList qTerms(String q, String field) throws IOException
   {
-    if (q == null || "".equals(q.trim())) return null;
     TermList terms = new TermList(freqs(field));
+    // what is null here ? returns an empty term list
+    if (q == null || "".equals(q.trim())) return terms;
     TokenStream ts = analyzer.tokenStream("pun", q); // keep punctuation to group terms
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     // not generic for other analyzers but may become interesting for a query parser

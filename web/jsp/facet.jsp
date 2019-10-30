@@ -1,5 +1,5 @@
-<%@ page language="java"  pageEncoding="UTF-8" contentType="text/html; charset=UTF-8"%>
-<%@include file="prelude2.jsp" %>
+<%@ page language="java"  pageEncoding="UTF-8" contentType="text/html; charset=UTF-8" trimDirectiveWhitespaces="true"%>
+<%@include file="prelude.jsp" %>
 <%@ page import="alix.lucene.search.Facet" %>
 <%@ page import="alix.lucene.search.TermList" %>
 <%@ page import="alix.lucene.search.TopTerms" %>

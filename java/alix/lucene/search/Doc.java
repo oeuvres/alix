@@ -63,7 +63,6 @@ import alix.lucene.Alix;
 import alix.lucene.analysis.FrDics;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.search.Rail.Token;
-import alix.lucene.util.BinaryInts;
 import alix.util.Char;
 import alix.util.Top;
 
@@ -89,8 +88,6 @@ public class Doc
   final private Document document;
   /** Cache of term vector by fields */
   private HashMap<String, Terms> vectors = new HashMap<>();
-  /** Cache of offsets rail */
-  private HashMap<String, Rail> rails = new HashMap<>();
   /** Cache of different top terms */
   private HashMap<String, Top<String>> tops =  new HashMap<>();
   
@@ -269,8 +266,6 @@ public class Doc
       
       String title = "";
       title += count+" occurremces";
-      String type = "WORD";
-      if (Char.isUpperCase(form.charAt(0))) type = "NAME";
       
       sb.append("<a id=\"tok"+tok.pos+"\" class=\""+form.replaceAll("[ \\.]", "_")+" "+level+"\" title=\""+title+"\">");
       sb.append(text.substring(tok.start, tok.end));

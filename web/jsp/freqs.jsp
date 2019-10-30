@@ -1,21 +1,36 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" trimDirectiveWhitespaces="true"%>
 <%@ include file="prelude.jsp" %>
-<%!final static DecimalFormat dfScoreFr = new DecimalFormat("0.000", frsyms);%>
+<%@ page import="java.text.DecimalFormat" %>
+<%@ page import="java.text.DecimalFormatSymbols" %>
+<%@ page import="java.util.Locale" %>
+<%@ page import="alix.fr.Tag" %>
+<%@ page import="alix.lucene.analysis.tokenattributes.CharsAtt" %>
+<%@ page import="alix.lucene.analysis.FrDics" %>
+<%@ page import="alix.lucene.analysis.FrDics.LexEntry" %>
+<%@ page import="alix.lucene.search.Freqs" %>
+<%@ page import="alix.lucene.search.TermList" %>
+<%@ page import="alix.lucene.util.Cooc" %>
+<%@ page import="alix.util.Char" %>
+<%!
+final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
+final static DecimalFormat dfScoreFr = new DecimalFormat("0.000", frsyms);
+%>
 <%
-  IndexSearcher searcher = alix.searcher();
-
-String field = TEXT;
-
-String sorter = tools.getString("sorter", "score", "freqSorter");
+//parameters
+final String q = tools.getString("q", null);
+final String sorter = tools.getString("sorter", "score", "freqSorter");
 int left = tools.getInt("left", 5, "freqLeft");
 if (left < 0) left = 0;
 else if (left > 10) left = 10;
 int right = tools.getInt("right", 5, "freqRight");
 if (right < 0) right = 0;
 else if (right > 10) right = 10;
-
+// global variables
+final String field = TEXT;
 TopTerms dic;
-if ("".equals(q)) {
+BitSet filter = null; // if a corpus is selected, filter results with a bitset
+if (corpus != null) filter = corpus.bits();
+if (q == null) {
   Freqs freqs = alix.freqs(field);
   dic = freqs.topTerms(filter);
   if ("score".equals(sorter)) dic.sort(dic.getScores());
@@ -58,7 +73,8 @@ int max = Math.min(500, dic.size());
              }
 
              out.println("<select name=\"sorter\" onchange=\"this.form.submit()\">");
-             termOptions(out, sorter);
+             out.println("<option/>");
+             out.println(posOptions(sorter));
              out.println("</select>");
              %>
         </form>
@@ -79,9 +95,10 @@ int max = Math.min(500, dic.size());
       </thead>
       <tbody>
     <%
-      int no = 1;
-    CharsAtt term = new CharsAtt();
+    int no = 1;
     Tag tag;
+    // optimisation is possible here
+    CharsAtt term = new CharsAtt();
     while (dic.hasNext()) {
       dic.next();
       dic.term(term);

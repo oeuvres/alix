@@ -114,7 +114,6 @@ public final class FrTokenLem extends TokenFilter
     }
     // end of stream
     if (!input.incrementToken()) return false;
-    final boolean waspun = this.waspun;
     // get a local version of orth
     CharsAtt orth = (CharsAtt) orthAtt;
     orth.copy(termAtt); // alwas copy original term

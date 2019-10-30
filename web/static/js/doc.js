@@ -7,16 +7,25 @@ if (self == top) { // no form embedded in a frame
   if (q && q.type == "hidden") q.type = "text";
 }
 else if (window.name) {
+  // to style left or right frame
   document.body.className += " "+window.name;
   document.documentElement.className += " "+window.name;
-  if (window.name == "right") sibling = window.parent.frames["left"];
-  else if (window.name == "left") sibling = window.parent.frames["right"];
+  var key = "id";
+  if (window.name == "right") {
+    sibling = window.parent.frames["left"];
+    key = "rightid";
+  }
+  else if (window.name == "left") {
+    key = "leftid";
+    sibling = window.parent.frames["right"];
+  }
+  // update url of top window if caller has given an id of doc
   const topUrl = top.location;
   var search = topUrl.search;
-  var key = window.name+"id";
   var pars = new URLSearchParams(search);
   if (pars.has(key)) pars.delete(key);
-  pars.append(key, id);
+  if (typeof id !== 'undefined') pars.append(key, id);
+  console.log((typeof id !== 'undefined'));
   top.history.pushState(null, null, "?"+pars.toString());
 }
 

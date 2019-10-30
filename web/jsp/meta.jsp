@@ -1,22 +1,20 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" trimDirectiveWhitespaces="true"%>
+<%@ include file="prelude.jsp" %>
 <%@ page import="alix.lucene.analysis.MetaAnalyzer" %>
 <%@ page import="alix.lucene.search.Marker" %>
-<%@ include file="prelude2.jsp" %>
 <%!
 final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
 final static Analyzer ANAMET = new MetaAnalyzer();
 %>
 <%
-String field = "bibl";
-
-String q = tools.getString("q", "");
-float fromScore = tools.getFloat("fromscore", 0.0f);
-int fromDoc = tools.getInt("fromdoc", -1);
-int hpp = tools.getInt("hpp", 30);
-
-String lowbibl = q.toLowerCase();
-Query query = Alix.qParse(field, lowbibl, ANAMET, Occur.MUST);
-
+// params
+String q = tools.getString("q", null);
+final float fromScore = tools.getFloat("fromscore", 0.0f);
+final int fromDoc = tools.getInt("fromdoc", -1);
+final int hpp = tools.getInt("hpp", 30);
+// global variables
+final String field = "bibl";
+final Query query = Alix.qParse(field, q, ANAMET, Occur.MUST);
 TopDocs results = null;
 if (query == null);
 else if (fromDoc > -1) {

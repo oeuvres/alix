@@ -1,5 +1,5 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@include file="prelude2.jsp" %>
+<%@include file="prelude.jsp" %>
 <%@ page import="alix.lucene.search.Doc" %>
 <%@ page import="alix.util.Top" %>
 
@@ -31,20 +31,17 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
  *  — query with an index order
  */
 
-/* params for the page */
-// get doc by lucene internal docId or persistant String id
-int docId = tools.getInt("docid", -1);
+// params for the page
+
+int docId = tools.getInt("docid", -1); // get doc by lucene internal docId or persistant String id
 String id = tools.getString("id", null);
-// if no doc, get params to navigate in a results series
-String q = tools.getString("q", null);
+String q = tools.getString("q", null); // if no doc, get params to navigate in a results series
 String sort = tools.getString("sort", null);
 int start = tools.getInt("start", 1);
-// if submit prev
-if (request.getParameter("prev") != null) {
+if (request.getParameter("prev") != null) { // if submit prev
   start = tools.getInt("prevn", start);
 }
-//if submit next
-else if (request.getParameter("next") != null) {
+else if (request.getParameter("next") != null) { //if submit next
   start = tools.getInt("nextn", start);
 }
 
@@ -91,7 +88,14 @@ if (doc != null) title = JspTools.detag(doc.doc().get("bibl"));
     <link href="../static/vendors/teinte.css" rel="stylesheet"/>
     <link href="../static/obvil.css" rel="stylesheet"/>
     <title><%= title%> [Obvil]</title>
-
+    <script>
+    <%
+if (doc != null) {
+  out.println("const docLength="+doc.length(TEXT)+";");
+  out.println("const id=\""+doc.id()+"\";");
+}
+    %>
+    </script>
   </head>
   <body class="document">
   <%

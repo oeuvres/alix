@@ -1,6 +1,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" trimDirectiveWhitespaces="true"%>
-<%@ include file="prelude2.jsp" %>
+<%@ include file="prelude.jsp" %>
 <%
+// parameters
 String id1 = tools.getString("leftid", null);
 int docId1 = tools.getInt("leftdocid", -1);
 String id2 = tools.getString("rightid", null);

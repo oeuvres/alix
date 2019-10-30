@@ -5,13 +5,11 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Properties;
 
-import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -25,6 +23,8 @@ import javax.servlet.http.HttpServletResponse;
  */
 public class Obvil extends HttpServlet
 {
+  /** for serialization */
+  private static final long serialVersionUID = 1L;
   /** Request attribute name: internal messages for the servlet */
   public static final String OBVIL = "obvil";
   /** Request attribute name: the directory containing bases */
@@ -121,6 +121,15 @@ public class Obvil extends HttpServlet
     if (!jsp.endsWith(".jsp")) jsp += ".jsp";
     request.getRequestDispatcher("/jsp/"+jsp).forward(request, response);
   }
+  
+  /** 
+   * Formulaires
+   */
+  public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
+  {
+    doGet(request, response);
+  }
+
 
   /**
    * Loop on a folder containing configuration files.
