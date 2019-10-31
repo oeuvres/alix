@@ -1,46 +1,97 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" trimDirectiveWhitespaces="true"%>
 <%@ include file="prelude.jsp" %>
 <%@ page import="alix.lucene.analysis.MetaAnalyzer" %>
+<%@ page import="alix.lucene.search.Doc" %>
 <%@ page import="alix.lucene.search.Marker" %>
+<%@ page import="alix.util.Top" %>
 <%!
-final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
 final static Analyzer ANAMET = new MetaAnalyzer();
-%>
-<%
-// params
-String q = tools.getString("q", null);
-final float fromScore = tools.getFloat("fromscore", 0.0f);
-final int fromDoc = tools.getInt("fromdoc", -1);
-final int hpp = tools.getInt("hpp", 30);
-// global variables
-final String field = "bibl";
-final Query query = Alix.qParse(field, q, ANAMET, Occur.MUST);
-TopDocs results = null;
-if (query == null);
-else if (fromDoc > -1) {
-  ScoreDoc from = new ScoreDoc(fromDoc, fromScore);
-  results = searcher.searchAfter(from, query, hpp);
+final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
+final static Query QUERY_LEVEL = new TermQuery(new Term(Alix.LEVEL, Alix.CHAPTER));
+
+/**
+ * Build a query fron page params, a selected  corpus a reference 
+ */
+public Query query(final JspTools tools, final Corpus corpus, final Doc refDoc) throws IOException, NoSuchFieldException {
+  Query query = null;
+  String refType = tools.getString("reftype", null);
+  String q = tools.getString("q", null);
+  if (refDoc != null) {
+    Top<String> topTerms;
+    if ("names".equals(refType)) topTerms = refDoc.names(TEXT);
+    else topTerms = refDoc.theme(TEXT);
+    query = Doc.moreLikeThis(TEXT, topTerms, 50);
+  }
+  else if (q != null) {
+    String lowbibl = q.toLowerCase();
+    query = Alix.qParse("bibl", lowbibl, ANAMET, Occur.MUST);
+  }
+  // restrict to corpus
+  if (corpus != null) {
+    query = corpusQuery(corpus, query);
+  }
+  // meta, restric document type
+  else if(query != null && q != null) {
+    query = new BooleanQuery.Builder()
+      .add(QUERY_LEVEL, Occur.FILTER)
+      .add(query, Occur.MUST)
+    .build();
+  }
+  // no queries by parameter
+  else if (query == null) {
+    query = QUERY_LEVEL;
+  }
+  return query;
 }
-else {
-  results = searcher.search(query, hpp);
-}
 
+public String results(final JspTools tools, final Corpus corpus, final Doc refDoc, final IndexSearcher searcher)  throws IOException, NoSuchFieldException 
+{
+  Query query = query(tools, corpus, refDoc);
+  if (query == null) return "";
+  TopDocs results = null;
+  int fromDoc = tools.getInt("fromdoc", -1);
+  float fromScore = tools.getFloat("fromscore", 0);
+  int hpp = 100; // default results in full html page
+  int parhpp = tools.getInt("hpp", -1);
+  if (parhpp > 0) hpp = parhpp;
+  hpp = Math.min(hpp, 1000);
 
+  
+  if (fromDoc > -1) {
+    ScoreDoc from = new ScoreDoc(fromDoc, fromScore);
+    results = searcher.searchAfter(from, query, hpp);
+  }
+  else {
+    results = searcher.search(query, hpp);
+  }
 
-if(results == null); // no query
-else if(results.totalHits.value == 0); // no results
-else {
-  long totalHits = results.totalHits.value;
-  ScoreDoc[] hits = results.scoreDocs;
+  if(results == null) return "";
+  if(results.totalHits.value == 0) return ""; // no results
+  StringBuilder sb = new StringBuilder();
   String paging = "";
   if (fromDoc > 0) {
     paging = "&amp;fromdoc="+fromDoc+"&amp;fromscore="+fromScore;
   }
-  Marker marker = null;
+  
+  String q = tools.getString("q", null);
+  String refType = tools.getString("reftype", null);
+  String back = "";
   // a query to hilite in records
-  if (!"".equals(q)) {
-    marker = new Marker(ANAMET, q);
+  if (q != null) {
+    back += "&amp;q="+q;
   }
+  else if (refDoc != null) {
+    back += "&amp;refid=" + refDoc.id();
+    if (refType != null) back += "&amp;reftype" + refType;
+  }
+
+  
+  Marker marker = null;
+  if (q != null) marker = new Marker(ANAMET, q);
+
+
+  long totalHits = results.totalHits.value;
+  ScoreDoc[] hits = results.scoreDocs;
   int docId = 0;
   float score = 0;
   for (int i = 0, len = hits.length; i < len; i++) {
@@ -51,22 +102,109 @@ else {
     
     String text = doc.get("bibl");
     if (marker != null) {
-      out.append("<a class=\"bibl\" href=\"compdoc.jsp?docid="+docId+"&amp;q="+q+paging+"\">");
-      out.append(marker.mark(text));
-      out.append("</a>");
+      sb.append("<a class=\"bibl\" href=\"compdoc.jsp?id="+doc.get(Alix.ID)+paging+back+"\">");
+      sb.append(marker.mark(text));
+      sb.append("</a>\n");
     }
     else {
-      out.append("<a class=\"bibl\" href=\"simdoc.jsp?docid="+docId+paging+"\">");
-      out.append(text);
-      out.append("</a>");
+      sb.append("<a class=\"bibl\" href=\"compdoc.jsp?id="+doc.get(Alix.ID)+paging+back+"\">");
+      sb.append(text);
+      sb.append("</a>\n");
     }
     // out.append("</li>\n");
   }
   if (hits.length < totalHits) {
-    out.append("<a  class=\"more\" href=\"?q="+q+"&amp;fromscore="+score+"&amp;fromdoc="+docId+"\">⮟</a>\n");
+    if (parhpp > 0) back += "&amp;hpp=" + parhpp;
+    sb.append("<a  class=\"more\" href=\"?fromscore="+score+"&amp;fromdoc="+docId+back+"\">⮟</a>\n");
+  }
+  return sb.toString();
+}
+%>
+<%
+// parameters
+String refId = tools.getString("refid", null);
+int refDocId = tools.getInt("refdocid", -1);
+String refType = tools.getString("reftype", null);
+String q = tools.getString("q", null);
+String format = tools.getString("format", null);
+if (format == null) format = (String)request.getAttribute(Obvil.EXT);
+if (format != null) {
+  switch(format) {
+    case JSON:
+    case HTML: 
+    case HTF: // html frangment to include
+      break;
+    default:
+     format = HTML;
   }
 }
 
-out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->");
+// global param
+
+// Is there a good reference doc requested ?
+Doc refDoc = null;
+try {
+  if (refId != null) refDoc = new Doc(alix, refId, DOC_SHORT);
+  else if (refDocId >= 0) {
+    refDoc = new Doc(alix, refDocId, DOC_SHORT);
+    refId = refDoc.id();
+  }
+}
+catch (IllegalArgumentException e) {
+  refId = null;
+} // unknown id
+
+
+
+// parameter 
+if (HTF.equals(format)) {
+  out.println(results(tools, corpus, refDoc, searcher));}
+else {
 
 %>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Rechercher un texte, <%=baseTitle %> [Obvil]</title>
+    <link href="../static/obvil.css" rel="stylesheet"/>
+  </head>
+  <body class="results">
+    <header>
+<%
+if (refDoc != null) {
+  out.println("<h1>Textes similaires</h1>");
+  out.println("<a href=\"?\" class=\"delete\">🞬</a>");
+  out.println("<b>Textes similaires à :</b>");
+  out.println(refDoc.doc().get("bibl"));
+}
+else {
+  out.println("<h1>Rechercher un texte par ses métadonnées</h1>");
+}
+if (corpus != null) {
+  out.println("<p>Dans votre corpus : "+"<b>"+corpus.name()+"</b>"+"</p>");
+}
+%>
+    </header>
+    <form>
+      <%
+if (refDoc != null) {
+  out.println("<input type=\"hidden\" name=\"refid\" value=\"" +refDoc.id()+"\"/>");
+}
+else {
+  out.print("<input size=\"50\" type=\"text\" id=\"q\" onfocus=\"var len = this.value.length * 2; this.setSelectionRange(len, len); \" autofocus=\"true\"");
+  out.println(" spellcheck=\"false\" autocomplete=\"off\" name=\"q\" value=\"" +JspTools.escapeHtml(q)+"\"/>");
+  // out.println("<br/>" + query);
+}
+      %>
+    </form>
+    <p/>
+    <main>
+      <nav id="chapters">
+        <%= results(tools, corpus, refDoc, searcher) %>
+      </nav>
+    </main>
+    <script src="../static/js/list.js">//</script>
+  </body>
+</html>
+<% } %>

@@ -46,7 +46,7 @@ public class JspTools
     this.page = page;
   }
 
-  /** Check if a String is dignificant */
+  /** Check if a String is significant */
   public static boolean check(String s) {
     if (s == null) return false;
     s = s.trim();

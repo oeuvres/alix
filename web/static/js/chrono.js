@@ -20,7 +20,7 @@ if (!dots) dots = "";
 var ticks;
 function load(q) {
   if (!q) return;
-  var jsonUrl = "dygraph.jsp?q="+q+"&dots="+dots;
+  var jsonUrl = "chronojson?q="+q+"&dots="+dots;
   fetch(jsonUrl).then(
     function(response) {
       return response.json();

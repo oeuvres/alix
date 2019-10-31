@@ -42,6 +42,14 @@ public static String TEXT = "text";
 final static String YEAR = "year";
 /** Key prefix for current corpus in session */
 public static String CORPUS_ = "corpus_";
+/** Output format: json */
+final static String JSON = "json";
+/** Output format: txt */
+final static String TXT = "txt";
+/** Output format: complete html document */
+final static String HTML = "html";
+/** Output format: an html fragment */
+final static String HTF = "htf";
 
 /**
  * Build a filtering query with a corpus

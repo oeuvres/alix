@@ -35,6 +35,10 @@ public class Obvil extends HttpServlet
   public static final String BASE = "base";
   /** Request attribute name: Properties for the base */
   public static final String PROPS = "props";
+  /** Request attribute name: original extension of action */
+  public static final String EXT = "ext";
+  /** Request attribute name: original extension of action */
+  public static final String PATHINFO = "pathinfo";
   /** Request attribute name: error message for an error page */
   public static final String MESSAGE = "message";
   /** Request attribute name: URL redirection for client */
@@ -75,7 +79,7 @@ public class Obvil extends HttpServlet
       return;
     }
     String base = path.getName(0).toString();
-    // direct access to jsp directory, seen with tomcat7 and <jsp:include/>
+    // direct access to jsp directory, problems seen with tomcat7 and <jsp:include/>
     if ("jsp".equals(base)) {
       request.getRequestDispatcher(path.toString()).forward(request, response);
       return;
@@ -115,10 +119,22 @@ public class Obvil extends HttpServlet
       if (action.getNameCount() > 1) page= action.getName(1).toString();
       request.getRequestDispatcher("/jsp/help.jsp?page="+page).forward(request, response);
     }
-    // Desk component
-    String jsp = action.toString();
-    // allow links without extensions
-    if (!jsp.endsWith(".jsp")) jsp += ".jsp";
+    // Should be a desk component
+    String jsp = action.subpath(0, 1).toString();
+    String ext = "";
+    String pathinfo = "";
+    int i;
+    // a jsp could be accessed by multiple extensions to modify output format
+    if (( i = jsp.lastIndexOf('.')) > 0) {
+      ext = jsp.substring(i+1);
+      jsp = jsp.substring(0, i);
+    }
+    if (action.getNameCount() > 1) pathinfo = action.subpath(1, action.getNameCount()).toString();
+    // action with no extension
+    jsp += ".jsp";
+    request.setAttribute(EXT, ext);
+    request.setAttribute(PATHINFO, pathinfo);
+    // original path will be available as a request attribute 
     request.getRequestDispatcher("/jsp/"+jsp).forward(request, response);
   }
   

@@ -192,8 +192,10 @@ a:hover {
  * Global styling
  */
 #q {
-  outline: none;
+  outline: 1px solid #CCC;
+  /*
   border: none;
+  */
   padding: 2px 1rem;
   border-width: 1px;
   font-weight: bold;

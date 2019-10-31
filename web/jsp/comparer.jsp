@@ -19,10 +19,10 @@ else if (docId1 >= 0) { // doc by docid requested
   ref = "&amp;refdocid=" + docId1;
 }
 else if (q != null) { // query
-  url1 = "complist?" + "q=" + q;
+  url1 = "meta?" + "q=" + q;
 }
 else { // query
-  url1 = "complist";
+  url1 = "meta";
 }
 
 String url2;
@@ -33,10 +33,10 @@ else if (docId2 >= 0) { // doc by docid requested
   url2 = "compdoc?" + "docid=" + docId2 + ref;
 }
 else if (id1 != null) { // reference document for list or hilite
-  url2 = "complist?refid=" + id1;
+  url2 = "meta?refid=" + id1;
 }
 else if (docId1 >= 0) { // reference document for list or hilite
-  url2 = "complist?refdocid=" + docId1;
+  url2 = "meta?refdocid=" + docId1;
 }
 else { // help
   url2 = "help/comparer";

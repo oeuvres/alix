@@ -20,7 +20,7 @@ function resup(e)
   q = q.replace(/^ *| *$/g, "");
   if (q == this.last) return;
   this.last = q;
-  var url = "meta.jsp?hpp=30&q="+ q
+  var url = "meta.htf?hpp=30&q="+ q
   fetch(url).then(function(response) {
     if (response.ok) return response.text();
     else console.log("ERROR "+response.status+" "+url);
