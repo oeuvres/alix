@@ -13,9 +13,9 @@ static String wordList(Top<String> top, String type)
   for (Top.Entry<String> entry: top) {
     if (first) first = false;
     else sb.append(", ");
-    String word = entry.value();
-    sb.append("<a class=\""+word.replaceAll("[ \\.]", "_")+"\">");
-    sb.append(word);
+    final String form = entry.value();
+    sb.append("<a class=\""+Doc.csstok(form)+"\">");
+    sb.append(JspTools.escapeHtml(form));
     sb.append("</a>");
     // out.print(" ("+entry.score()+")");
     // if (entry.score() <= 0) break;
@@ -75,7 +75,7 @@ if (doc != null) {
 
 <% if (doc == null) { // no doc requested %>
 
-    <p><a href="complist.jsp">Chercher un document</a></p>
+    <p><a href="meta.jsp">Chercher un document</a></p>
 
 <% } else { // doc found %>
 
@@ -85,7 +85,7 @@ String bibl = doc.doc().get("bibl");
     <header class="biblbar" title="<%= JspTools.detag(bibl) %>">
         <%
 // link to go back to results
-String url = "complist.jsp";
+String url = "meta.jsp";
 if (q != null) url += "?q=" + JspTools.escapeHtml(q);
 else if (refId != null) url += "?refid=" + refId;
 else if (refDocId > -1) url += "?refdocid=" + refDocId;
@@ -103,7 +103,7 @@ if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromSco
   out.println(wordList(top, "WORD"));
   out.print(".");
   out.println("</p>");
-  out.println("<a class=\"goright\" href=\"complist?reftype=theme&amp;refid="+id+"\" target=\"right\">⮞</a>");
+  out.println("<a class=\"goright\" href=\"meta?reftype=theme&amp;refid="+id+"\" target=\"right\">⮞</a>");
   out.println("</nav>");
 
   top = doc.names(TEXT);
@@ -113,7 +113,7 @@ if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromSco
   out.println(wordList(top, "NAME"));
   out.print(".");
   out.println("</p>");
-  out.println("<a class=\"goright\" href=\"complist?reftype=names&amp;refid="+id+"\" target=\"right\">⮞</a>");
+  out.println("<a class=\"goright\" href=\"meta?reftype=names&amp;refid="+id+"\" target=\"right\">⮞</a>");
   out.println("</nav>");
   
 %>

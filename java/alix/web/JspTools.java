@@ -93,9 +93,9 @@ public class JspTools
   /**
    * Ensure that a String could be included as an html attribute with quotes
    */
-  public static String escapeHtml(String s) {
+  public static String escapeHtml(final String s) {
     if (s == null) return "";
-    StringBuilder out = new StringBuilder(Math.max(16, s.length()));
+    final StringBuilder out = new StringBuilder(Math.max(16, s.length()));
     for (int i = 0; i < s.length(); i++) {
       char c = s.charAt(i);
       if (c == '"') out.append("&quot;");

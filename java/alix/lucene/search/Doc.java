@@ -266,8 +266,7 @@ public class Doc
       
       String title = "";
       title += count+" occurremces";
-      
-      sb.append("<a id=\"tok"+tok.pos+"\" class=\""+form.replaceAll("[ \\.]", "_")+" "+level+"\" title=\""+title+"\">");
+      sb.append("<a id=\"tok"+tok.pos+"\" class=\""+csstok(form)+" "+level+"\" title=\""+title+"\">");
       sb.append(text.substring(tok.start, tok.end));
       sb.append("</a>");
       off = tok.end;
@@ -276,7 +275,9 @@ public class Doc
     return sb.toString();
   }  
 
-  
+  static public String csstok(String form) {
+    return form.replaceAll("[ \\.<>&\"']", "_");
+  }
   
   public String contrast(final String field, final int docId2) throws IOException, NoSuchFieldException
   {

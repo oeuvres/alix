@@ -128,16 +128,6 @@ String refType = tools.getString("reftype", null);
 String q = tools.getString("q", null);
 String format = tools.getString("format", null);
 if (format == null) format = (String)request.getAttribute(Obvil.EXT);
-if (format != null) {
-  switch(format) {
-    case JSON:
-    case HTML: 
-    case HTF: // html frangment to include
-      break;
-    default:
-     format = HTML;
-  }
-}
 
 // global param
 
