@@ -37,6 +37,7 @@ import java.lang.ref.SoftReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
@@ -73,6 +74,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -140,6 +142,8 @@ public class Alix
   public static final String ID = "alix:id";
   /** Mandatory field, define the level of a leaf (book/chapter, article) */
   public static final String TYPE = "alix:type";
+  /** Just the mandatory fields */
+  final static HashSet<String> FIELDS_ID = new HashSet<String>(Arrays.asList(new String[] { Alix.ID}));
   /** Document type, book containing chapters */
   public static final String BOOK = "book";
   /** Document type, chapter in a book */
@@ -368,6 +372,37 @@ public class Alix
   public Analyzer analyzer()
   {
     return this.analyzer;
+  }
+
+  /**
+   * Get the internal lucene docid of a document by Alix String id 
+   * (a reserved field name)
+   * @param id
+   * @return the docId, or -1 if not found, or -2 if too much found, or -3 if id is null or empty.
+   * @throws IOException
+   */
+  public int getDocId(final String id) throws IOException
+  {
+    if (id == null || id.trim().length() == 0) return -3;
+    TermQuery qid = new TermQuery(new Term(Alix.ID, id));
+    TopDocs search = searcher().search(qid, 1);
+    ScoreDoc[] hits = search.scoreDocs;
+    if (hits.length == 0) return -1;
+    if (hits.length > 1) return -2;
+    return hits[0].doc;
+  }
+
+  /**
+   * Get the the Alix String id of a document by the lucene internal docid.
+   * @param docId
+   * @return
+   * @throws IOException
+   */
+  public String getId(final int docId) throws IOException
+  {
+    Document doc = reader().document(docId, FIELDS_ID);
+    if (doc == null) return null;
+    return doc.get(Alix.ID);
   }
 
   /**

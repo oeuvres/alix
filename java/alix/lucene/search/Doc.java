@@ -75,8 +75,6 @@ public class Doc
 {
   /** Just the mandatory fields */
   final static HashSet<String> FIELDS_REQUIRED = new HashSet<String>(Arrays.asList(new String[] { Alix.FILENAME, Alix.BOOKID, Alix.ID, Alix.TYPE}));
-  /** No fields */
-  final static HashSet<String> FIELDS_NONE = null;
   /** Format numbers with the dot */
   final static DecimalFormatSymbols ensyms = DecimalFormatSymbols.getInstance(Locale.ENGLISH);
   /** The lucene index to read in */
@@ -115,7 +113,7 @@ public class Doc
    */
   public Doc(final Alix alix, final String id, final HashSet<String> fieldsToLoad) throws IOException 
   {
-    int docId = getDocId(alix, id);
+    int docId = alix.getDocId(id);
     if (fieldsToLoad == null) {
       document = alix.reader().document(docId);
     } 
@@ -128,36 +126,7 @@ public class Doc
     this.id = id;
     this.fieldsToLoad = fieldsToLoad;
   }
-  
-  /**
-   * Get the internal lucene docid of of document by Alix String id 
-   * (a reserved field name)
-   * @param alix
-   * @param id
-   * @throws IOException 
-   */
-  public static int getDocId(final Alix alix, final String id) throws IOException
-  {
-    TermQuery qid = new TermQuery(new Term(Alix.ID, id));
-    TopDocs search = alix.searcher().search(qid, 1);
-    ScoreDoc[] hits = search.scoreDocs;
-    if (hits.length == 0) {
-      throw new IllegalArgumentException("No document found with id: "+id);
-    }
-    if (hits.length > 1) {
-      throw new IllegalArgumentException(""+hits.length + "document found for "+qid);
-    }
-    return hits[0].doc;
-  }
-  
-  
-  public static boolean isDocId(final Alix alix, final int docId) throws IOException
-  {
-    Document doc = alix.reader().document(docId, FIELDS_NONE);
-    if (doc == null) return false;
-    return true;
-  }
-  
+    
   /**
    * Get a document by lucene docId (persists as long as the Lucene index is not modified)
    * with all fields loaded (even the big ones).
@@ -317,12 +286,12 @@ public class Doc
    */
   public Top<String> intersect(final String field, final int docId2) throws IOException, NoSuchFieldException
   {
+    Terms vek2 = alix.reader().getTermVector(docId2, field);
     Top<String> top = new Top<String>(100);
     int[] docLength = alix.docLength(field);
     int len1 = docLength[docId];
     int len2 = docLength[docId2];
     Terms vek1 = getTermVector(field);
-    Terms vek2 = alix.reader().getTermVector(docId2, field);
     double max1 = Double.MIN_VALUE;
     double max2 = Double.MIN_VALUE;
     TermsEnum termit1 = vek1.iterator();

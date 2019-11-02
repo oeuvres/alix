@@ -32,6 +32,10 @@ int docId = tools.getInt("docid", -1);
 // if a refernce doc
 String refId = tools.getString("refid", null);
 int refDocId = tools.getInt("refdocid", -1);
+if (refId != null) {
+  refDocId = alix.getDocId(refId);
+  if (refDocId < 0) refId = null;
+}
 // params to go back in query
 String q = tools.getString("q", null);
 int fromDoc = tools.getInt("fromdoc", -1);
@@ -99,7 +103,17 @@ if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromSco
 
   Top<String> top;
 
-  if ()
+  if (refDocId >= 0) {
+    top = doc.intersect(TEXT, refDocId);
+    out.println("<nav class=\"biflex\">");
+    out.println("<p class=\"keywords\">");
+    out.println("<label onclick=\"clickSet(this)\">Mots en commun</label> : ");
+    out.println(wordList(top));
+    out.print(".");
+    out.println("</p>");
+    out.println("<a class=\"goright\" href=\"meta?reftype=frequent&amp;refid="+id+"\" target=\"right\">⮞</a>");
+    out.println("</nav>");
+  }
 
   top = doc.frequent(TEXT);
   out.println("<nav class=\"biflex\">");
