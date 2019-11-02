@@ -15,7 +15,7 @@ final static HashSet<String> FIELDS = new HashSet<String>(Arrays.asList(new Stri
 static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT));
 %>
 <%
-/*
+  /*
 Build a corpus or show query stats on it
  — creation : no local corpus, create a new one
  — select : no corpus in session, list of local corpus
@@ -72,12 +72,11 @@ else {
   }
 }
 
-facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.LEVEL, Alix.BOOK));
+facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.TYPE, Alix.BOOK));
 TermList qTerms = alix.qTerms(q, TEXT);
 // no query
 TopTerms dic = null;
 boolean score = (qTerms != null && qTerms.size() > 0);
-
 %>
 <!DOCTYPE html>
 <html>

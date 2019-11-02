@@ -56,6 +56,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.ByteRunAutomaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
 
@@ -73,7 +74,9 @@ import alix.util.Top;
 public class Doc
 {
   /** Just the mandatory fields */
-  final static HashSet<String> FIELDS_REQUIRED = new HashSet<String>(Arrays.asList(new String[] {  Alix.FILENAME, Alix.BOOKID, Alix.ID, Alix.LEVEL}));
+  final static HashSet<String> FIELDS_REQUIRED = new HashSet<String>(Arrays.asList(new String[] { Alix.FILENAME, Alix.BOOKID, Alix.ID, Alix.TYPE}));
+  /** No fields */
+  final static HashSet<String> FIELDS_NONE = null;
   /** Format numbers with the dot */
   final static DecimalFormatSymbols ensyms = DecimalFormatSymbols.getInstance(Locale.ENGLISH);
   /** The lucene index to read in */
@@ -107,21 +110,12 @@ public class Doc
    * with the set of fields provided (or all fields fieldsToLoad is null).
    * @param alix
    * @param id
-   * @param fields Set 
+   * @param fieldsToLoad
    * @throws IOException
    */
   public Doc(final Alix alix, final String id, final HashSet<String> fieldsToLoad) throws IOException 
   {
-    TermQuery qid = new TermQuery(new Term(Alix.ID, id));
-    TopDocs search = alix.searcher().search(qid, 1);
-    ScoreDoc[] hits = search.scoreDocs;
-    if (hits.length == 0) {
-      throw new IllegalArgumentException("No document found with id: "+id);
-    }
-    if (hits.length > 1) {
-      throw new IllegalArgumentException(""+hits.length + "document found for "+qid);
-    }
-    int docId = hits[0].doc;
+    int docId = getDocId(alix, id);
     if (fieldsToLoad == null) {
       document = alix.reader().document(docId);
     } 
@@ -133,6 +127,35 @@ public class Doc
     this.docId = docId;
     this.id = id;
     this.fieldsToLoad = fieldsToLoad;
+  }
+  
+  /**
+   * Get the internal lucene docid of of document by Alix String id 
+   * (a reserved field name)
+   * @param alix
+   * @param id
+   * @throws IOException 
+   */
+  public static int getDocId(final Alix alix, final String id) throws IOException
+  {
+    TermQuery qid = new TermQuery(new Term(Alix.ID, id));
+    TopDocs search = alix.searcher().search(qid, 1);
+    ScoreDoc[] hits = search.scoreDocs;
+    if (hits.length == 0) {
+      throw new IllegalArgumentException("No document found with id: "+id);
+    }
+    if (hits.length > 1) {
+      throw new IllegalArgumentException(""+hits.length + "document found for "+qid);
+    }
+    return hits[0].doc;
+  }
+  
+  
+  public static boolean isDocId(final Alix alix, final int docId) throws IOException
+  {
+    Document doc = alix.reader().document(docId, FIELDS_NONE);
+    if (doc == null) return false;
+    return true;
   }
   
   /**
@@ -151,8 +174,8 @@ public class Doc
    * Get a document by lucene docId (persists as long as the Lucene index is not modified)
    * with the set of fields provided (or all fields fieldsToLoad is null).
    * @param alix
-   * @param id
-   * @param fields
+   * @param docId
+   * @param fieldsToLoad
    * @throws IOException
    */
   public Doc(final Alix alix, final int docId, final HashSet<String> fieldsToLoad) throws IOException 
@@ -284,6 +307,55 @@ public class Doc
     return contrast(field, docId2, false);
   }
   
+  /**
+   * Get the terms shared between 2 documents
+   * @param field
+   * @param docId2
+   * @return
+   * @throws IOException
+   * @throws NoSuchFieldException
+   */
+  public Top<String> intersect(final String field, final int docId2) throws IOException, NoSuchFieldException
+  {
+    Top<String> top = new Top<String>(100);
+    int[] docLength = alix.docLength(field);
+    int len1 = docLength[docId];
+    int len2 = docLength[docId2];
+    Terms vek1 = getTermVector(field);
+    Terms vek2 = alix.reader().getTermVector(docId2, field);
+    double max1 = Double.MIN_VALUE;
+    double max2 = Double.MIN_VALUE;
+    TermsEnum termit1 = vek1.iterator();
+    TermsEnum termit2 = vek2.iterator();
+    BytesRef term1;
+    BytesRef term2 = termit2.next();
+    ByteRunAutomaton tomat = FrDics.STOP_BYTES;
+    // loop on source terms
+    while( (term1 = termit1.next()) != null) {
+      // filter stop word
+      if (tomat.run(term1.bytes, term1.offset, term1.length)) continue;
+      double count1 = termit1.totalTermFreq();
+      String form = term1.utf8ToString();
+      double count2 = 0;
+      // loop on other doc to find 
+      while(true) {
+        if (term2 == null) break;
+        int comp = term1.compareTo(term2);
+        if (comp < 0) break; // term2 is bigger, get it after
+        if (comp == 0) { // match
+          count2 = termit2.totalTermFreq();
+          break;
+        }
+        term2 = termit2.next();
+      }
+      if (count2 == 0) continue;
+      count1 = count1 / len1;
+      count2 = count2 / len2;
+      final double ratio = Math.max(count1, count2) / Math.min(count1, count2);
+      top.push(count1 + count2, form);
+    }
+    return top;
+  }
   
   /**
    * 
@@ -504,6 +576,7 @@ public class Doc
     final Top<String> names = new Top<String>(100);
     final Top<String> happax = new Top<String>(100);
     final Top<String> theme = new Top<String>(100);
+    final Top<String> frequent = new Top<String>(100);
     long occsAll= freqs.occsAll;
     int docsAll = freqs.docsAll;
     Scorer scorer = new ScorerBM25();
@@ -531,16 +604,25 @@ public class Doc
       }
       else {
         att.setEmpty().append(term);
-        if (!FrDics.isStop(att))
-          theme.push(scorer.score(occsDoc, docLen), term);
+        if (FrDics.isStop(att)) continue;
+        theme.push(scorer.score(occsDoc, docLen), term);
+        frequent.push(occsDoc, term);
       }
       
     }
+    tops.put(field+"_frequent", frequent);
     tops.put(field+"_theme", theme);
     tops.put(field+"_names", names);
     tops.put(field+"_happax", happax);
   }
 
+  public Top<String> frequent(String field) throws IOException, NoSuchFieldException {
+    String key = field+"_frequent";
+    Top<String> ret = tops.get(key);
+    if (ret == null) topWords(field);
+    return tops.get(key);
+  }
+  
   public Top<String> names(String field) throws IOException, NoSuchFieldException {
     Top<String> ret = tops.get(field+"_names");
     if (ret == null) topWords(field);

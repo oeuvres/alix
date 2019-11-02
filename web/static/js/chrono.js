@@ -16,9 +16,9 @@ var div = document.getElementById("chart");
 
 var dots = url.searchParams.get("dots");
 if (!dots) dots = "";
-// download the json data, only if a query
 var ticks;
 function load(q) {
+  // download the json data, only if a query
   if (!q) return;
   var jsonUrl = "chronojson?q="+q+"&dots="+dots;
   fetch(jsonUrl).then(

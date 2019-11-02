@@ -50,6 +50,7 @@ import alix.fr.Tag;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.Calcul;
 import alix.util.Char;
+import alix.util.ML;
 
 /**
  * <p>
@@ -295,15 +296,9 @@ public class FrTokenizer extends Tokenizer
         if (c != ';') continue;
         // end of entity
         xmlent = false;
-        @SuppressWarnings("unlikely-arg-type")
-        Character get = Char.HTMLENT.get(test);
-        if (get != null) {
-          c = get;
-          term.append(c);
-        }
-        else {
-          term.append(test);
-        }
+        c = ML.forChar(test); // will not work well on supplentary chars
+        if (c != 0) term.append(c);
+        else term.append(test);
         test.setEmpty();
         continue;
       }

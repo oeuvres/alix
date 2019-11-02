@@ -31,6 +31,6 @@
  * limitations under the License.
  */
 /**
- * An automaton to query a stream of tokens.
+ * Main pilots for indexing and searching, see especially {@link Alix}
  */
 package alix.lucene;

@@ -254,7 +254,7 @@ public class SAXIndexer extends DefaultHandler
       book.add(new SortedDocValuesField(Alix.BOOKID, new BytesRef(bookid))); // keep bookid as a facet
       book.add(new StringField(Alix.ID, id, Store.YES));
       book.add(new SortedDocValuesField(Alix.ID, new BytesRef(id)));
-      book.add(new StringField(Alix.LEVEL, Alix.BOOK, Store.YES));
+      book.add(new StringField(Alix.TYPE, Alix.BOOK, Store.YES));
       chapno = 0;
     }
     // open a chapter as an item in a book series
@@ -274,7 +274,7 @@ public class SAXIndexer extends DefaultHandler
       String id = bookid+"_"+df000.format(chapno);
       document.add(new StringField(Alix.ID, id, Store.YES));
       document.add(new SortedDocValuesField(Alix.ID, new BytesRef(id)));
-      document.add(new StringField(Alix.LEVEL, Alix.CHAPTER, Store.YES));
+      document.add(new StringField(Alix.TYPE, Alix.CHAPTER, Store.YES));
     }
     // create a new Lucene document
     else if (localName.equals("document")) {
@@ -292,7 +292,7 @@ public class SAXIndexer extends DefaultHandler
         document.add(new StringField(Alix.ID, id, Store.YES));
         document.add(new SortedDocValuesField(Alix.ID, new BytesRef(id)));
       }
-      document.add(new StringField(Alix.LEVEL, Alix.ARTICLE, Store.YES));
+      document.add(new StringField(Alix.TYPE, Alix.ARTICLE, Store.YES));
     }
     // open a field
     else if (localName.equals("field")) {

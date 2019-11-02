@@ -20,13 +20,16 @@ else if (window.name) {
     sibling = window.parent.frames["right"];
   }
   // update url of top window if caller has given an id of doc
-  const topUrl = top.location;
-  var search = topUrl.search;
-  var pars = new URLSearchParams(search);
-  if (pars.has(key)) pars.delete(key);
-  if (typeof id !== 'undefined') pars.append(key, id);
-  console.log((typeof id !== 'undefined'));
-  top.history.pushState(null, null, "?"+pars.toString());
+  try {
+    id;
+    const topUrl = top.location;
+    var search = topUrl.search;
+    var pars = new URLSearchParams(search);
+    if (pars.has(key)) pars.delete(key);
+    pars.append(key, id);
+    top.history.pushState(null, null, "?"+pars.toString());
+  }
+  catch(e) {}
 }
 
 var text = document.getElementById("text");
@@ -119,7 +122,10 @@ function clickSet(label)
       hitoks(form, null);
     }
     hitoks(form, style);
-    if(sibling && sibling.hitoks) sibling.hitoks(form, style);
+    if(sibling && sibling.hitoks) {
+      sibling.hitoks(form, style);
+      sibling.styleMap = styleMap;
+    }
   }
 
 }

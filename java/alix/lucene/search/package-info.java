@@ -32,6 +32,6 @@
  */
 
 /**
- * Objects to search and calculate lexical statistics from an index (ex: found occurrences by facet} {@org.apache.lucene.search}
+ * Objects to search and calculate lexical statistics from an index (ex: found occurrences by facet)
  */
 package alix.lucene.search;

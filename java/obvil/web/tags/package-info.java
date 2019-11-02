@@ -1,4 +1,4 @@
 /**
- * Taglib for the Obvil application.
+ * Taglib for the OBVIL web application.
  */
 package obvil.web.tags;

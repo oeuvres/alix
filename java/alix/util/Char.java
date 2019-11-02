@@ -40,18 +40,16 @@ import java.util.BitSet;
 import java.util.HashMap;
 
 /**
+ * <p>
  * Efficient character categorizer, about 500x faster than Character.is*(),
- * optimized for tokenizer in latin scripts. Taken from
- * http://www.tomshut.de/java/index.html
+ * optimized for tokenizer in latin scripts.
+ * Idea is to populate a big array of properties for the code points.
+ * </p>
  * 
- * Idea is to populate a big array of properties for the code points. Memory
- * optimization is possible for alphabetic scripts (… or ’ are in 2000-206F
- * block) Chinese is not relevant for such classes but will need a test
- * 
+ * <p> 
  * For latin script language, apos and dashes are considered as word characters
- * Separation on these chars is lexical specific
- * 
- * @author glorieux-f
+ * Separation on these chars is language specific.
+ * </p>
  */
 public class Char
 {
@@ -75,30 +73,6 @@ public class Char
   public static final short HIGHSUR =      0b100000000000000;
   public static final short PUNCTUATION_OR_SPACE = SPACE | PUNCTUATION;
   public static final short LETTER_OR_DIGIT = LETTER | DIGIT;
-  public static final HashMap<String, Character> HTMLENT = new HashMap<String, Character>();
-  static {
-    BufferedReader buf = new BufferedReader(
-        new InputStreamReader(Char.class.getResourceAsStream("htmlent.csv"), StandardCharsets.UTF_8));
-    String l;
-    String ent;
-    Character c;
-    int pos;
-    try {
-      while ((l = buf.readLine()) != null) {
-        l = l.trim();
-        if (l.charAt(0) == '#') continue;
-        pos = l.indexOf(',');
-        if (pos < 3) continue;
-        if (pos + 1 >= l.length()) continue;
-        ent = l.substring(0, pos);
-        c = l.charAt(pos + 1);
-        HTMLENT.put(ent, c);
-      }
-    }
-    catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
   public static final HashMap<Character, String> FILENAME = new HashMap<Character, String>();
   static {
     FILENAME.put('a', "a");
@@ -297,63 +271,16 @@ public class Char
 
   }
 
-  public static char htmlent(final String ent)
+  /**
+   * No constructor, only static methods.
+   */
+  private Char()
   {
-    Character c = HTMLENT.get(ent);
-    if (c == null) return 0;
-    return c;
+    // Don't
   }
-
-  public static char htmlent(final Chain ent)
-  {
-    @SuppressWarnings("unlikely-arg-type")
-    Character c = HTMLENT.get(ent);
-    if (c == null) return 0;
-    return c;
-  }
-  
-  public static boolean isEnt(char c) 
-  {
-    if (c > 128) return false;
-    return (CHARS[c] & LETTER_OR_DIGIT) > 0;
-  }
-
-  public static String detag(String xml)
-  {
-    StringBuilder dest = new StringBuilder();
-    int start = 0;
-    int end = xml.length();
-    boolean lt = false, first = true;
-    for (int i = start; i < end; i++) {
-      char c = xml.charAt(i);
-      switch (c) {
-        case '<':
-          first = false; // no broken tag at start
-          lt = true;
-          break;
-        case '>':
-          lt = false;
-          // a broken tag at start, erase what was appended
-          if (first) {
-            dest.setLength(dest.length() - (i - start));
-            first = false;
-            break;
-          }
-          break;
-        default:
-          if (lt) break;
-          else dest.append(c);
-      }
-    }
-    return dest.toString();
-  }
-  
 
   /**
-   * Get the internal properties for a char
-   * 
-   * @param c
-   * @return
+   * Get the internal properties for a char.
    */
   public static short props(final char c)
   {
@@ -361,9 +288,7 @@ public class Char
   }
 
   /**
-   * Is a word character (letter, but also, '’-_)
-   * 
-   * @see Character#isLetter(char)
+   * Is a word character, letter, but also, '’-_ and some other tweaks for lexical parsing.
    */
   public static boolean isToken(final char c)
   {
@@ -371,9 +296,7 @@ public class Char
   }
 
   /**
-   * Is a letter
-   * 
-   * @see Character#isLetter(char)
+   * Is a letter {@link Character#isLetter(char)}.
    */
   public static boolean isLetter(final char c)
   {
@@ -381,7 +304,15 @@ public class Char
   }
 
   /**
-   * Is a Mathematic symbol
+   * Is a letter or a digit, like {@link Character#isLetterOrDigit(char)}.
+   */
+  public static boolean isLetterOrDigit(final char c)
+  {
+    return (CHARS[c] & LETTER_OR_DIGIT) > 0;
+  }
+  
+  /**
+   * Is a Mathematic symbol.
    */
   public static boolean isMath(final char c)
   {
@@ -389,9 +320,7 @@ public class Char
   }
 
   /**
-   * Is Numeric
-   * 
-   * @see Character#isDigit(char)
+   * Is Numeric, like {@link Character#isDigit(char)}.
    */
   public static boolean isDigit(final char c)
   {
@@ -399,9 +328,7 @@ public class Char
   }
 
   /**
-   * Is a lower case letter
-   * 
-   * @see Character#isLowerCase(char)
+   * Is a lower case letter, like {@link Character#isLowerCase(char)}.
    */
   public static boolean isLowerCase(final char c)
   {
@@ -409,9 +336,7 @@ public class Char
   }
 
   /**
-   * Is an upper case letter
-   * 
-   * @see Character#isUpperCase(char)
+   * Is an upper case letter, like {@link Character#isUpperCase(char)}.
    */
   public static boolean isUpperCase(final char c)
   {
@@ -419,10 +344,7 @@ public class Char
   }
 
   /**
-   * Is a punctuation mark between words
-   * 
-   * @param c
-   * @return
+   * Is a punctuation mark between words.
    */
   public static boolean isPunctuation(final char c)
   {
@@ -430,10 +352,7 @@ public class Char
   }
 
   /**
-   * Is a punctuation mark of sentence break level
-   * 
-   * @param c
-   * @return
+   * Is a punctuation mark of sentence break level (!?. etc.)
    */
   public static boolean isPUNsent(final char c)
   {
@@ -441,10 +360,7 @@ public class Char
   }
 
   /**
-   * Is a punctuation mark of clause level (insisde a sentence)
-   * 
-   * @param c
-   * @return
+   * Is a punctuation mark of clause level (insisde a sentence) (,;: etc.)
    */
   public static boolean isPUNcl(final char c)
   {
@@ -453,10 +369,8 @@ public class Char
 
   /**
    * Is a "whitespace" according to ISO (space, tabs, new lines) and also for
-   * Unicode (non breakable spoaces)
-   * 
-   * @see Character#isSpaceChar(char)
-   * @see Character#isWhitespace(char)
+   * Unicode (non breakable spoaces),  {@link Character#isSpaceChar(char)},
+   * {@link Character#isWhitespace(char)}.
    */
   public static boolean isSpace(final char c)
   {
@@ -464,10 +378,7 @@ public class Char
   }
 
   /**
-   * Convenient method
-   * 
-   * @param c
-   * @return
+   * Is punctuation or space (maybe a lexical token)
    */
   public static boolean isPunctuationOrSpace(final char c)
   {
@@ -475,10 +386,7 @@ public class Char
   }
 
   /**
-   * Is it first UTF-16 char of a supplemental unicode type like emoji ?
-   * 
-   * @param c
-   * @return
+   * Is the first short of a supplemental unicode codepoint.
    */
   public static boolean isHighSurrogate(final char c)
   {
@@ -486,40 +394,25 @@ public class Char
   }
 
   /**
-   * Is it second UTF-16 char of a supplemental unicode type like emoji ?
-   * 
-   * @param c
-   * @return
+   * Is the second short of a supplemental unicode codepoint.
    */
   public static boolean isLowSurrogate(final char c)
   {
     return (CHARS[c] & LOWSUR) > 0;
   }
 
-  public static BitSet filter(short property) 
-  {
-    BitSet filter = new BitSet(SIZE);
-    for (int i = 0; i < SIZE; i++) {
-      filter.set(i, (CHARS[i] & property) > 0);
-    }
-    return filter;
-  }
-
-  
-  private static BitSet filter(BitSet filter, short property) 
-  {
-    for (int i = 0; i < SIZE; i++) {
-      filter.set(i, (CHARS[i] & property) > 0);
-    }
-    return filter;
-  }
-
+  /**
+   * Efficient lower casing (test if {@link #isUpperCase(char)} before).
+   */
   public static char toLower(char c)
   {
     if (!Char.isUpperCase(c)) return c;
     return Character.toLowerCase(c);
   }
 
+  /**
+   * Efficient upper casing (test if {@link #isLowerCase(char)} before).
+   */
   public static char toUpper(char c)
   {
     if (!Char.isLowerCase(c)) return c;
@@ -527,7 +420,7 @@ public class Char
   }
 
   /**
-   * Lower casing on a string builder
+   * Lower casing a string builder.
    */
   public static StringBuilder toLower(StringBuilder s)
   {
@@ -544,11 +437,9 @@ public class Char
     return s;
   }
 
-  private Char()
-  {
-    // Don't
-  }
-
+  /**
+   * Give human informations about a char.
+   */
   static public String toString(char c)
   {
     short props = CHARS[c];
@@ -569,5 +460,6 @@ public class Char
     sb.append(Character.getName(c).toLowerCase()).append("\t");
     return sb.toString();
   }
+  
 
 }

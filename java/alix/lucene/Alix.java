@@ -90,29 +90,37 @@ import alix.lucene.search.TermList;
 import alix.lucene.util.Cooc;
 
 /**
- * An Alix instance represents a Lucene base {@link Directory} with other useful data.
- * Instantiation is not public, use {@link #instance(Path, String)} instead.                                                                                                                                                       
- * A static pool of lucene directories is kept to ensure uniqueness of Alix objects.
  * <p>
- * To keep only one instance of {@link IndexReader}, {@link IndexSearcher}, {@link IndexWriter}
- * and {@link Analyzer}
- * across all application (avoiding cost of opening and closing index, use :
+ * An Alix object is a wrapper around a Lucene index with lexical tools,
+ * to be shared across a complex application (ex: web servlet).
+ * Instantiation is not public to ensure uniqueness of threadsafe Lucene objects
+ * ({@link Directory}, {@link IndexReader}, {@link IndexSearcher}, {@link IndexWriter}
+ * and {@link Analyzer}).
+ * Use {@link #instance(Path, Analyzer)} to get an Alix instance, 
+ * and get from it what you need for your classical Lucene bizness.
+ * </p>
+ * 
  * <ul>
  *   <li>{@link #reader()}</li>
  *   <li>{@link #writer()}</li>
  *   <li>{@link #searcher()}</li>
  *   <li>{@link #analyzer()}</li>
  * </ul>
- * Different lists and stats concerning all index are cached {@link #cache(String, Object)}, 
- * to avoid recalculation. Data are usually available as custom objects, optimized for statistics.
+ * 
+ * <p>
+ * An Alix object will also produce 
+ * different lists and stats concerning all index.
+ * These results are cached {@link #cache(String, Object)} 
+ * (to avoid recalculation). 
+ * Data are usually available as custom objects, optimized for statistics.
+ * </p>
+ * 
  * <ul>
- *   <li>{@link #docInt(String)} All values of a unique numeric field per document 
- *   ({@link IntPoint}, {@link NumericDocValuesField}).
- *   {@link #min(String)} and {@link #max(String)} returns the minimum and maximum values
- *   of this vector.</li>
+ *   <li>{@link #intSeries(String)} All values of a unique numeric field per document 
+ *   ({@link IntPoint}, {@link NumericDocValuesField}).</li>
  *   <li>{@link #freqs(String)} All terms indexed in a {@link TextField}, with stats,
  *   useful for list of terms and advanced lexical statistics.</li>
- *   <li>{@link #docLength(String)} Size of indexed documents in a {@link TextField}</li>
+ *   <li>{@link #docLength(String)} Size (in tokens) of indexed documents in a {@link TextField}</li>
  *   <li>{@link #facet(String, String)} All terms of a facet field
  *   ({@link SortedDocValuesField} or {@link SortedSetDocValuesField}) with lexical statistics from a
  *   {@link TextField} (ex: count of words for an author facet)</li>
@@ -131,12 +139,12 @@ public class Alix
   /** Mandatory field, unique id provide by user for all documents */
   public static final String ID = "alix:id";
   /** Mandatory field, define the level of a leaf (book/chapter, article) */
-  public static final String LEVEL = "alix:level";
-  /** Level type, book containing chapters */
+  public static final String TYPE = "alix:type";
+  /** Document type, book containing chapters */
   public static final String BOOK = "book";
-  /** Level type, chapter in a book */
+  /** Document type, chapter in a book */
   public static final String CHAPTER = "chapter";
-  /** Level type, independent article */
+  /** Document type, independent article */
   public static final String ARTICLE = "article";
   /** A binary stored field with an array of offsets */
   public static final String _OFFSETS = ":offsets";
@@ -216,11 +224,11 @@ public class Alix
   }
 
   /**
-   * See {@link #instance(Path, String)}
+   * See {@link #instance(Path, Analyzer)}
    * @param path
-   * @param analyzerClass
-   * @throws IOException 
-   * @throws ClassNotFoundException 
+   * @param analyzer
+   * @return
+   * @throws IOException
    */
   public static Alix instance(final String path, final Analyzer analyzer) throws IOException 
   {
@@ -229,12 +237,10 @@ public class Alix
 
   /**
    *  Get a a lucene directory index by file path, from cache, or created.
-   *  
    * @param path
-   * @param analyzerClass
+   * @param analyzer
    * @return
    * @throws IOException
-   * @throws ClassNotFoundException
    */
   public static Alix instance(Path path, final Analyzer analyzer) throws IOException 
   {
@@ -576,7 +582,7 @@ u   * @throws IOException
     String key = "AlixBooks" + sort;
     int[] books = (int[]) cache(key);
     if (books != null) return books;
-    Query qBook = new TermQuery(new Term(Alix.LEVEL, Alix.BOOK));
+    Query qBook = new TermQuery(new Term(Alix.TYPE, Alix.BOOK));
     TopFieldDocs top = searcher.search(qBook, MAXBOOKS, sort);
     int length = top.scoreDocs.length;
     ScoreDoc[] docs = top.scoreDocs;

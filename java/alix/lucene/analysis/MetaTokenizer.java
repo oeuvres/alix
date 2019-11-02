@@ -42,6 +42,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import alix.util.Chain;
 import alix.util.Char;
+import alix.util.ML;
 
 public class MetaTokenizer extends Tokenizer 
 {
@@ -118,9 +119,7 @@ public class MetaTokenizer extends Tokenizer
         if (c == ';') {
           test.append(c);
           inent = false;
-          @SuppressWarnings("unlikely-arg-type")
-          // try to recognize entity
-          final char c1 = Char.HTMLENT.get(test);
+          final char c1 = ML.forChar(test); // will not work well on supplentary chars
           // entity is not recognize, append it as is to the term
           // update length and get next char
           if (c1 == 0) {
@@ -132,7 +131,7 @@ public class MetaTokenizer extends Tokenizer
           c = c1; // char known give it further
         }
         // not an ASCII letter or digit, false entity, maybe just &
-        else if (!Char.isEnt(c)) {
+        else if (!ML.isInEnt(c)) {
           termAtt.append(test);
           length += test.length();
           break;

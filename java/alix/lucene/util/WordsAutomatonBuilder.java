@@ -46,8 +46,6 @@ import org.apache.lucene.util.automaton.Automaton;
  * strings. The algorithm requires sorted input data, but is very fast 
  * (nearly linear with the input size).
  * 
- * @see #build(Collection)
- * @see Automata#makeStringUnion(Collection)
  */
 public final class WordsAutomatonBuilder {
 

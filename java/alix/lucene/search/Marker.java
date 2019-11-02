@@ -82,7 +82,9 @@ public class Marker
   
   /**
    * Build a char automaton (not for smileys and other 3 bytes)
-   * @param q
+   * @param chars
+   * @param offset
+   * @param length
    * @return
    */
   public static Automaton automaton(char[] chars, int offset, int length) {

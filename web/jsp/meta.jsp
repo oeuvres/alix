@@ -7,7 +7,7 @@
 <%!
 final static Analyzer ANAMET = new MetaAnalyzer();
 final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
-final static Query QUERY_LEVEL = new TermQuery(new Term(Alix.LEVEL, Alix.CHAPTER));
+final static Query QUERY_LEVEL = new TermQuery(new Term(Alix.TYPE, Alix.CHAPTER));
 
 /**
  * Build a query fron page params, a selected  corpus a reference 

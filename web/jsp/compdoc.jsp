@@ -5,7 +5,7 @@
 <%!
 final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
 
-static String wordList(Top<String> top, String type)
+static String wordList(Top<String> top)
 {
   StringBuilder sb = new StringBuilder();
   int max = 50;
@@ -25,6 +25,7 @@ static String wordList(Top<String> top, String type)
 }
 %>
 <%
+// Parameters
 // get a doc, by String id is preferred (more persistant)
 String id = tools.getString("id", null);
 int docId = tools.getInt("docid", -1);
@@ -37,7 +38,7 @@ int fromDoc = tools.getInt("fromdoc", -1);
 float fromScore = tools.getFloat("fromscore", 0);
 
 // global variables
-Doc doc = null;
+Doc doc = null; // get the doc
 try { // load full document
   if (id != null) doc = new Doc(alix, id);
   else if (docId >= 0) {
@@ -96,11 +97,26 @@ if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromSco
     </header>
 <%
 
-  Top<String> top = doc.theme(TEXT);
+  Top<String> top;
+
+  if ()
+
+  top = doc.frequent(TEXT);
+  out.println("<nav class=\"biflex\">");
+  out.println("<p class=\"keywords\">");
+  out.println("<label onclick=\"clickSet(this)\">Mots fréquents</label> : ");
+  out.println(wordList(top));
+  out.print(".");
+  out.println("</p>");
+  out.println("<a class=\"goright\" href=\"meta?reftype=frequent&amp;refid="+id+"\" target=\"right\">⮞</a>");
+  out.println("</nav>");
+
+
+  top = doc.theme(TEXT);
   out.println("<nav class=\"biflex\">");
   out.println("<p class=\"keywords\">");
   out.println("<label onclick=\"clickSet(this)\">Mots spécifiques</label> : ");
-  out.println(wordList(top, "WORD"));
+  out.println(wordList(top));
   out.print(".");
   out.println("</p>");
   out.println("<a class=\"goright\" href=\"meta?reftype=theme&amp;refid="+id+"\" target=\"right\">⮞</a>");
@@ -110,7 +126,7 @@ if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromSco
   out.println("<nav class=\"biflex\">");
   out.println("<p class=\"keywords\">");
   out.println("<label onclick=\"clickSet(this)\">Noms cités</label> : ");
-  out.println(wordList(top, "NAME"));
+  out.println(wordList(top));
   out.print(".");
   out.println("</p>");
   out.println("<a class=\"goright\" href=\"meta?reftype=names&amp;refid="+id+"\" target=\"right\">⮞</a>");

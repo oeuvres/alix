@@ -32,6 +32,6 @@
  */
 
 /**
- * «API and code to convert text into indexable/searchable tokens.» {@link org.apache.lucene.analysis}
+ * Custom token attributes.
  */
 package alix.lucene.analysis.tokenattributes;
