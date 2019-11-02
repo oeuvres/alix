@@ -663,6 +663,10 @@ body.document main {
   margin-bottom: 10rem;
 }
 
+.goright {
+  float: right;
+}
+
 body.comp #qform,
 body.document #qform {
   text-align: center;
@@ -681,6 +685,7 @@ header.biblbar {
   z-index: 10;
   height: 1.5rem;
   overflow: hidden;
+  display: flex;
 }
 
 header.biblbar a.bibl {
@@ -690,11 +695,17 @@ header.biblbar a.bibl {
 }
 
 header.biblbar a.back {
-  float: left;
   text-decoration: none;
   font-size: 2rem;
   line-height: 1.7rem;
 }
+
+header.biblbar a.up {
+  text-decoration: none;
+  font-size: 1.3rem;
+  line-height: 1.1rem;
+}
+
 
 table.prevnext {
   border-collapse: collapse;
@@ -1265,7 +1276,7 @@ div.text {
   max-width: 60ex;
 }
 
-section:after, section:before, form:after, form:before, .bar:after, .bar:before {
+section:after, section:before, .bar:after, .bar:before {
   content: " ";
   visibility: hidden;
   display: block;

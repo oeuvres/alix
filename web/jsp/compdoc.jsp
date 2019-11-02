@@ -98,6 +98,7 @@ if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromSco
         %>
       <a class="back" href="<%=url %>" title="Retour aux résultats">⮐</a>
       <a href="#" class="bibl"><%= bibl %></a>
+      <a class="up" target="_top" href=".?id=<%= id %>" title="Retour au bureau">▲</a>
     </header>
 <%
 

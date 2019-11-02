@@ -98,6 +98,7 @@ if (doc != null) {
     </script>
   </head>
   <body class="document">
+    <a title="Comparer ce document" href="comparer?leftid=<%=id %>" target="_top" class="goright">⮞</a>
   <%
 if (doc != null) {
   out.println("<header class=\"biblbar\" title=\""+title+"\">");
