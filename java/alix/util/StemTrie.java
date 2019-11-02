@@ -47,9 +47,6 @@ import alix.fr.Tokenizer;
 /**
  * 
  * A Trie of words to store compounds expressions with different properties
- * 
- * @author Frédéric Glorieux
- *
  */
 public class StemTrie
 {
