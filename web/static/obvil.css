@@ -1055,7 +1055,7 @@ article.hit mark {
   font-weight: bold;
 }
 
-#chapters a {
+#chapters > a {
   color: #000;
   display: block;
   text-align: justify;
@@ -1063,7 +1063,7 @@ article.hit mark {
   padding: 0 0.5rem;
 }
 
-#chapters a:hover {
+#chapters > a:hover {
   text-decoration: none;
 }
 

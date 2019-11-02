@@ -101,6 +101,8 @@ public String results(final JspTools tools, final Corpus corpus, final Doc refDo
     Document doc = searcher.doc(docId, DOC_SHORT);
     
     String text = doc.get("bibl");
+    // fast hack because of links in links
+    text = text.replaceAll("<(/?)a([ >])", "<$1span$2");
     if (marker != null) {
       sb.append("<a class=\"bibl\" href=\"compdoc.jsp?id="+doc.get(Alix.ID)+paging+back+"\">");
       sb.append(marker.mark(text));
