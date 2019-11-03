@@ -516,10 +516,12 @@ public class Queries
 
   public static LinkedHashMap<String, Integer> sortMyMapByValue(LinkedHashMap<String, Integer> map)
   {
+    /* Java8, not supported on old Debian
     LinkedHashMap<String, Integer> sortedMap = map.entrySet().stream()
         .sorted(Map.Entry.<String, Integer>comparingByValue().reversed()).limit(limit)
         .collect(Collectors.toMap(Entry::getKey, Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-    return sortedMap;
+      */
+    return null;
   }
 
   public HashMap<String, Float> countTokens(String chosenPath, int chosenColumn, List<String[]> allRows)

@@ -32,5 +32,6 @@
  */
 /**
  * A command line tool to produce statistics on texts, without indexing.
+ * The service is still interesting but the API should be rewritten in Lucene context.
  */
 package alix.grep;

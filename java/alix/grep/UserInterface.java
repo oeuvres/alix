@@ -188,9 +188,11 @@ public class UserInterface
 
       Queries wordLookUp = new Queries();
       wordLookUp.setCaseSensitivity(grep.caseSensitivity);
+      /* TODO  what that???
       wordLookUp.setStatsPerTitle(new HashMap<>());
       wordLookUp.setStatsPerAuthor(new HashMap<>());
       wordLookUp.setStatsPerYear(new HashMap<>());
+      */
       wordLookUp.setFormPreference(grep.form);
       String casse = "";
       System.out.println("Votre requête doit-elle être sensible à la casse ? (o/n)");

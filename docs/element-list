@@ -8,7 +8,6 @@ alix.lucene.search
 alix.lucene.util
 alix.util
 alix.web
-alix.xml
 obvil.web
 obvil.web.tags
 org.apache.lucene.analysis

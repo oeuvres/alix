@@ -10,11 +10,72 @@
   <a:documentation>Alix, schema of xml to ingest</a:documentation>
   <div xmlns="http://www.w3.org/1999/xhtml">
     <p>
-This schema define the XML tags understood by Alix to ingest text document (articles, books…).
-As a lucene indexing platform, Alix borrows some concepts from <a href="https://lucene.apache.org/solr/">Solr</a>,
-but dedicated to text, defining an index schema is easier with Alix. The proposed field types 
+      This Relax-NG schema defines the XML tags understood by Alix to ingest text documents (articles, books…) in a <a href="https://lucene.apache.org/core/">Lucene</a> index.
+    </p>
+    <p>Let's start by the kind of XML understood by Alix.</p>
+    <a:example>
+<alix:set xmlns:alix="http://alix.casa">
+  <alix:document xml:id="docid1">
+    <alix:field name="title" type="text">First document</alix:field>
+    <alix:field name="year" type="int" value="2019"/>
+    <alix:field name="text" type="text">
+      Le petit chat est mort.
+    </alix:field>
+  </alix:document>
+  <alix:document xml:id="docid2">
+    <alix:field name="title" type="text">Second document</alix:field>
+    <alix:field name="year" type="int" value="2019"/>
+    <alix:field name="text" type="text">
+      <p>La <i>petite</i> chatte est morte.</p>
+    </alix:field>
+  </alix:document>
+  <alix:book xml:id="bookid1">
+    <alix:field name="title" type="text">Book title</alix:field>
+    <alix:field name="author" type="facet">Surname, Firstname</alix:field>
+    <alix:field name="toc" type="store">
+      <ul>
+        <li>1) Chapter 1</li>
+        <li>2) Chapter 2</li>
+      </ul>
+    </alix:field>
+    <alix:field name="year" type="int" value="2019"/>
+    <alix:chapter>
+      <!-- Useful metas for an application should be replicated, example facet  -->
+      <alix:field name="author" type="facet">Surname, Firstname</alix:field>
+      <alix:field name="text" type="xml">
+        <p>First chapter text</p>
+      </alix:field>
+    </alix:chapter>
+    <alix:chapter>
+      <alix:field name="author" type="facet">Surname, Firstname</alix:field>
+      <alix:field name="text" type="xml">
+        <p>Second chapter text</p>
+      </alix:field>
+    </alix:chapter>
+  </alix:book>
+</alix:set>
+    </a:example>
+    <p>
+As other lucene indexing platforms, Alix borrows some concepts from <a href="https://lucene.apache.org/solr/">Solr</a>,
+but also, a less known but older open source product <a href="http://savannah.nongnu.org/projects/sdx/">SDX</a> (2001),
+on which worked the creators of Alix.
+    </p>
+    <p>
+Unlike Solr, ElasticSearch or others; Alix does not need a configuration file, closing 
+the number, names and types of fields before indexing.
+The declaration of fields is done at indexing time, allowing to add fields
+when the documents need them.
+The user of Alix library knows what he 
+has indexed, so he knows what he will find.
+    </p>
+    <p>
+Alix is XML friendly. Contents of fields could be a clean HTML ready to display in a web application,
+all Alix analyzers and searching helpers know how to deal with tags and avoid to break them.
+    </p>
+    <p>
+The proposed field types 
 are designed to answer to a need, not to replicate Lucene API complexity.
-Investigations have been done, you have the best of a Lucene for texts.
+Investigations have been done to offer the best of a Lucene for texts.
     </p>
     <p>
 According to Lucene model, there are 3 levels of objects inside Alix.
@@ -33,23 +94,9 @@ According to Lucene model, there are 3 levels of objects inside Alix.
         with a specefic one used as a cover
         <a href="https://lucene.apache.org/core/8_2_0/core/org/apache/lucene/index/IndexWriter.html#addDocuments-java.lang.Iterable-">IndexReader.addDocuments()</a>.
         A book is a useful unit in Alix for faceting results, or defining a corpus.
-        For Lucene, a <a:el>chapter</a:el> is like a document 
-        A simple article is not required to be inside a book, <a:el>document</a:el> are allowed.
+        For Lucene, a <a:el>chapter</a:el> is like a document. 
       </li>
     </ul>
-    <!--
-    <p>
-Because Alix is designed for XML documents, it allows  
-(unlike other tools like <a href="https://lucene.apache.org/solr/">Solr</a>,
-Alix do not index only text, but also structured documents with xml/xhtml tags. 
-Tags are not searchable, but they are kept and displayed.
-The indexing process will keep precise memory of offsets of each token inside the tags, 
-so that word found can be hilited in a document without breaking its structure.
-    </p>
-    <p>
-Alix is dedicated to text documents, it provides dedicated set of fields 
-    </p>
-    -->
   </div>
   <start>
     <a:documentation>The root element could be a single <a:el>document</a:el>, a <a:el>book</a:el>, or 
@@ -62,7 +109,7 @@ Alix is dedicated to text documents, it provides dedicated set of fields
   </start>
   <define name="set">
     <element name="set">
-      <a:documentation>A set of <a:el>book</a:el> or <a:el>document</a:el>.</a:documentation>
+      <a:documentation>A set of <a:el>book</a:el>s or <a:el>document</a:el>s.</a:documentation>
       <oneOrMore>
         <choice>
           <ref name="book"/>
@@ -73,7 +120,11 @@ Alix is dedicated to text documents, it provides dedicated set of fields
   </define>
   <define name="book">
     <element name="book">
-      <a:documentation>A set of <a:el>chapter</a:el>s with shared <a:el>field</a:el>s (ex: title, author, date…)</a:documentation>
+      <a:documentation>A set of <a:el>chapter</a:el>s. A book can also contain <a:el>field</a:el>s (ex: title, author, date…).
+      There is no inheritance of fields between books and chapters, to avoid non desired replication (ex: a table of contents of a full book).
+      A String identifier, unique for the base, is required for a permanent access to a book.
+      The identifier of chapters will be automatically calculated by Alix (identifier of book + a counter starting at 001).
+      </a:documentation>
       <attribute name="xml:id">
         <a:documentation>String identifier for the book.</a:documentation>
       </attribute>
@@ -130,7 +181,7 @@ If you need a simple token search, prefer @type="meta".
   <define name="field-meta">
     <element name="field">
       <a:documentation>
-Some text (or xml) to search as raw tokens without linguistic feature. Is especially useful to search 
+Some text (or xml) to search as raw tokens without linguistic features. Is especially useful to search 
 in bibliographic records by token.
       </a:documentation>
       <ref name="name"/>
@@ -191,6 +242,7 @@ in bibliographic records by token.
   </define>
   <define name="name">
     <attribute name="name">
+      <a:documentation>Field name is required.</a:documentation>
       <data type="Name"/>
     </attribute>
   </define>

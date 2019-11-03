@@ -48,9 +48,7 @@ import java.util.NoSuchElementException;
  */
 public class Top<E> implements Iterable<Top.Entry<E>>
 {
-  /**
-   * Data stored as a Pair rank+object, easy to sort before exported as an array.
-   */
+  /** Data stored as a Pair rank+object, easy to sort before exported as an array. */
   private final Entry<E>[] data;
   /** Max size of the top to extract */
   private final int size;

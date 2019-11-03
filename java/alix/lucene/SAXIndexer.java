@@ -71,48 +71,7 @@ import alix.lucene.analysis.TokenStats;
  * React to the namespace uri xmlns:alix="http://alix.casa".
  * The element {@code <alix:document>} contains a document.
  * The element {@code <alix:field>} contains a field.
- * <pre>
- * {@literal
- * <freename xmlns:alix="http://alix.casa">
- *    <alix:document xml:id="docid1">
-        <alix:field name="title" type="text">First document</alix:field>
-        <alix:field name="year" type="int" value="2019"/>
-        <alix:field name="text" type="text">
-          Le petit chat est mort.
-        </alix:field>
-      </alix:document>
-      <alix:document xml:id="docid2">
-        <alix:field name="title" type="text">Second document</alix:field>
-        <alix:field name="year" type="int" value="2019"/>
-        <alix:field name="text" type="xml">
-          <p>La <i>petite</i> chatte est morte.</p>
-        </alix:field>
-      </alix:document>
-      <alix:book xml:id="bookid1">
-        <alix:field name="title" type="text">Book title</alix:field>
-        <alix:field name="author" type="facet">Surname, Firstname</alix:field>
-        <alix:field name="toc" type="store">
-          1) Chapter 1
-          2) Chapter 2
-        </alix:field>
-        <alix:field name="year" type="int" value="2019"/>
-        <alix:chapter>
-          <!-- Useful metas for an application should be replicated, example facet  -->
-          <alix:field name="author" type="facet">Surname, Firstname</alix:field>
-          <alix:field name="text" type="xml">
-            <p>First chapter text</p>
-          </alix:field>
-        </alix:chapter>
-        <alix:chapter>
-          <alix:field name="author" type="facet">Surname, Firstname</alix:field>
-          <alix:field name="text" type="xml">
-            <p>Second chapter text</p>
-          </alix:field>
-        </alix:chapter>
-      </alix:document>
- * </freename>
- * }
- * </pre>
+ * See {@link alix.xml} for a full XML documentation.
  * 
  * <p>
  * <b>NOTE:</b> This indexer do not reuse fields and document object, because the fields provided by source are not predictable.

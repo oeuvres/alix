@@ -188,7 +188,6 @@ public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, 
   Query query = getQuery(alix, q, corpus);
   if (query == null) return null;
   IndexSearcher searcher = alix.searcher();
-  int numHits = 10000;
   int totalHitsThreshold = Integer.MAX_VALUE;
   Sort sort = getSort(sortSpec);
   String key = ""+page.getRequest().getAttribute(Obvil.BASE)+"?"+query;
@@ -200,6 +199,8 @@ public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, 
   }
   TopDocs topDocs = (TopDocs)page.getSession().getAttribute(key);
   if (topDocs != null) return topDocs;
+  
+  final int numHits = 12000;
   TopDocsCollector<?> collector;
   if (sort != null) {
     collector = TopFieldCollector.create(sort, numHits, totalHitsThreshold);

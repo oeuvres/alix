@@ -20,22 +20,20 @@ TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Recherche [Obvil]</title>
+    <title>Recherche, <%=props.get("title")%> [Obvil]</title>
     <link href="../static/obvil.css" rel="stylesheet"/>
   </head>
   <body class="results">
-      <%
-      %>
-      <form id="qform">
-        <input id="q" name="q" value="<%=JspTools.escapeHtml(q)%>" autocomplete="off" size="60" autofocus="autofocus" onclick="this.select();"/>
-        <label>
-         Tri
-          <select name="sort" onchange="this.form.submit()">
-            <option>Pertinence</option>
-            <%= sortOptions(sort) %>
-          </select>
-        </label>
-      </form>
+    <form id="qform">
+      <input id="q" name="q" value="<%=JspTools.escapeHtml(q)%>" autocomplete="off" size="60" autofocus="autofocus" onclick="this.select();"/>
+      <label>
+       Tri
+        <select name="sort" onchange="this.form.submit()">
+          <option>Pertinence</option>
+          <%= sortOptions(sort) %>
+        </select>
+      </label>
+    </form>
     <main>
     <%
 if (topDocs != null) {
@@ -74,11 +72,6 @@ if (topDocs != null) {
       out.println(fragments[i]);
       out.println("</p>");
     }
-    /*
-    out.println("<small>");
-    out.println(document.get(Alix.FILENAME));
-    out.println("</small>");
-    */
     out.println("</article>");
   }
 }

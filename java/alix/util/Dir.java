@@ -33,12 +33,47 @@
 package alix.util;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
-
+/**
+ * Static tools to deal with directories (and  files). Kept in java 7.
+ */
 public class Dir
 {
+
+  /**7
+   * Delete a folder by path
+   * (use java.nio stream, should be faster then {@link #rm(File)})
+   */
+  public static boolean rm(Path path) throws IOException {
+    if (!Files.exists(path)) return false;
+    DirectoryStream<Path> stream = Files.newDirectoryStream(path);
+    for (Path entry : stream) {
+      rm(entry);
+    }
+    Files.delete(path);
+    return true;
+  }
+
+  /**
+   * Delete a folder by File object
+   * (maybe a bit slow for lots of big folders)
+   */
+  public static boolean rm(File file) {
+    File[] ls = file.listFiles();
+    if (ls != null) {
+      for (File f : ls) {
+        rm(file);
+      }
+    }
+    return file.delete();
+  }
   /**
    * Collect files recursively from a folder. Default regex pattern to select
    * files is : .*\.xml A regex selector can be provided by the path argument.

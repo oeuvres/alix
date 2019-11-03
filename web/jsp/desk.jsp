@@ -20,7 +20,7 @@ else {
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>Alix</title>
+    <title>[Obvil] <%=props.get("title")%></title>
     <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
     <script src="../static/vendors/split.js">//</script>
   </head>
@@ -32,17 +32,17 @@ else {
         <button type="submit" name="send" tabindex="-1" class="magnify">⚲</button>
       </form>
       <div id="tabs">
-        <a href="corpus.jsp" target="page" class="tab">Corpus</a>
-        <a href="snip.jsp" target="page" class="tab">Résultats</a>
-        <a href="doc.jsp" target="page" class="tab">Document</a>
-        <a href="freqs.jsp" target="page" class="tab">Fréquences</a>
-        <a href="cloud.jsp" target="page" class="tab">Nuage</a>
-        <i target="page" class="tab">Concordancier</i>
+        <a href="corpus" target="page" class="tab">Corpus</a>
+        <a href="snip" target="page" class="tab">Résultats</a>
+        <a href="doc" target="page" class="tab">Document</a>
+        <a href="freqs" target="page" class="tab">Fréquences</a>
+        <a href="cloud" target="page" class="tab">Nuage</a>
+        <i href="kwic" target="page" class="tab">Concordancier</i>
       </div>
     </header>
     <div id="win">
       <div id="aside">
-        <iframe id="panel" name="panel" src="facet.jsp">
+        <iframe id="panel" name="panel" src="facet">
         </iframe>
       </div>
       <div id="main">
@@ -51,7 +51,7 @@ else {
           </iframe>
         </div>
         <footer id="footer">
-          <iframe id="chrono" name="chrono" src="chrono.jsp">
+          <iframe id="chrono" name="chrono" src="chrono">
           </iframe>
          </footer>
       </div>

@@ -137,26 +137,22 @@ if (doc != null) {
         }
         %>
       </form>
-<%
-
-if (doc != null) {
-  out.println("<div class=\"heading\">");
-  out.println(doc.doc().get("bibl"));
-  out.println("</div>");
-  
-  
-
-  // hilie
-  if (!"".equals(q)) {
-    String[] terms = alix.qTerms(q, TEXT).toArray();
-    out.print(doc.hilite(TEXT, terms));
-  }
-  else {
-    out.print(doc.doc().get(TEXT));
-  }
-}
-    %>
     </main>
+    <%
+    if (doc != null) {
+      out.println("<div class=\"heading\">");
+      out.println(doc.doc().get("bibl"));
+      out.println("</div>");
+      // hilite
+      if (!"".equals(q)) {
+        String[] terms = alix.qTerms(q, TEXT).toArray();
+        out.print(doc.hilite(TEXT, terms));
+      }
+      else {
+        out.print(doc.doc().get(TEXT));
+      }
+    }
+    %>
     <script src="../static/js/doc.js">//</script>
   </body>
 </html>
