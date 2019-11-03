@@ -59,7 +59,7 @@ catch (IllegalArgumentException e) {} // unknown id
     <meta charset="UTF-8">
     <title><%
 if (doc != null) {
-  out.print(JspTools.detag(doc.doc().get("bibl")));
+  out.print(ML.detag(doc.doc().get("bibl")));
 }
 else {
   out.print("Comparaison, document");
@@ -87,7 +87,7 @@ if (doc != null) {
 <%
 String bibl = doc.doc().get("bibl");
 %>
-    <header class="biblbar" title="<%= JspTools.detag(bibl) %>">
+    <header class="biblbar" title="<%= ML.detag(bibl) %>">
         <%
 // link to go back to results
 String url = "meta.jsp";
@@ -100,8 +100,8 @@ if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromSco
       <a href="#" class="bibl"><%= bibl %></a>
       <a class="up" target="_top" href=".?id=<%= id %>" title="Retour au bureau">▲</a>
     </header>
-<%
-
+    <%
+    
   Top<String> top;
 
   if (refDocId >= 0) {
@@ -146,9 +146,7 @@ if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromSco
   out.println("</p>");
   out.println("<a class=\"goright\" href=\"meta?reftype=names&amp;refid="+id+"\" target=\"right\">⮞</a>");
   out.println("</nav>");
-  
-%>
-
+    %>
     <main>
       <article id="text">
         <%= doc.paint(TEXT) %>

@@ -79,7 +79,7 @@ if (doc == null && q != null) {
 }
 // bibl ref with no tags
 String title = "";
-if (doc != null) title = JspTools.detag(doc.doc().get("bibl"));
+if (doc != null) title = ML.detag(doc.doc().get("bibl"));
 %>
 <!DOCTYPE html>
 <html>
@@ -137,7 +137,6 @@ if (doc != null) {
         }
         %>
       </form>
-    </main>
     <%
     if (doc != null) {
       out.println("<div class=\"heading\">");
@@ -153,6 +152,7 @@ if (doc != null) {
       }
     }
     %>
+    </main>
     <script src="../static/js/doc.js">//</script>
   </body>
 </html>

@@ -56,41 +56,6 @@ public class JspTools
   }
   
   /**
-   * Provide a text version of an xml excerpt (possibly broken).
-   * @param xml
-   * @return
-   */
-  public static String detag(String xml)
-  {
-    StringBuilder dest = new StringBuilder();
-    int start = 0;
-    int end = xml.length();
-    boolean lt = false, first = true;
-    for (int i = start; i < end; i++) {
-      char c = xml.charAt(i);
-      switch (c) {
-        case '<':
-          first = false; // no broken tag at start
-          lt = true;
-          break;
-        case '>':
-          lt = false;
-          // a broken tag at start, erase what was appended
-          if (first) {
-            dest.setLength(dest.length() - (i - start));
-            first = false;
-            break;
-          }
-          break;
-        default:
-          if (lt) break;
-          else dest.append(c);
-      }
-    }
-    return dest.toString();
-  }
-
-  /**
    * Ensure that a String could be included as an html attribute with quotes
    */
   public static String escapeHtml(final String s) {

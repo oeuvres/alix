@@ -34,6 +34,7 @@
 <%@ page import="alix.lucene.search.SimilarityOccs" %>
 <%@ page import="alix.lucene.search.SimilarityTheme" %>
 <%@ page import="alix.lucene.search.TopTerms" %>
+<%@ page import="alix.util.ML" %>
 <%@ page import="obvil.web.Obvil" %>
 <%!
 /** Field name containing canonized text */

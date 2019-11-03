@@ -53,9 +53,9 @@ public class Dir
    */
   public static boolean rm(Path path) throws IOException {
     if (!Files.exists(path)) return false;
-    DirectoryStream<Path> stream = Files.newDirectoryStream(path);
-    for (Path entry : stream) {
-      rm(entry);
+    if (Files.isDirectory(path)) {
+      DirectoryStream<Path> stream = Files.newDirectoryStream(path);
+      for (Path entry : stream) rm(entry);
     }
     Files.delete(path);
     return true;

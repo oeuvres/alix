@@ -108,11 +108,12 @@ public class ML
     StringBuilder dest = new StringBuilder();
     int start = 0;
     int end = xml.length();
-    boolean lt = false, first = true;
+    boolean lt = false, first = true, space = false;
     for (int i = start; i < end; i++) {
       char c = xml.charAt(i);
       switch (c) {
         case '<':
+          space = false; // renew space flag
           first = false; // no broken tag at start
           lt = true;
           break;
@@ -125,9 +126,19 @@ public class ML
             break;
           }
           break;
+        case ' ':
+        case '\n':
+        case '\r':
+        case '\t':
+          if (lt) break; // space inside tag, skip
+          if(space) break; // second or more space, skip
+          space = true; // stop record space
+          dest.append(' ');
+          break;
         default:
-          if (lt) break;
-          else dest.append(c);
+          if (lt) break; // char in tag, skip
+          space = false; // renew space flag
+          dest.append(c);
       }
     }
     return dest.toString();
