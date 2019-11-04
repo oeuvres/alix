@@ -14,6 +14,127 @@
 <%!
 final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
 final static DecimalFormat dfScoreFr = new DecimalFormat("0.000", frsyms);
+final static DecimalFormatSymbols ensyms = DecimalFormatSymbols.getInstance(Locale.ENGLISH);
+static final DecimalFormat dfdec3 = new DecimalFormat("0.###", ensyms);
+private static final int OUT_HTML = 0;
+private static final int OUT_CSV = 1;
+private static final int OUT_JSON = 2;
+
+private static final int NOSTOP = 0b0000001;
+private static final int SUB =    0b0000010;
+private static final int NAME =   0b0000100;
+private static final int VERB =   0b0001000;
+private static final int ADJ =    0b0010000;
+private static final int ADV =    0b0100000;
+
+private static String lines(final TopTerms dic, final int formater, final String sorter)
+{
+  StringBuilder sb = new StringBuilder();
+  final int cat;
+  if ("nostop".equals(sorter)) cat = NOSTOP;
+  else if ("sub".equals(sorter)) cat = SUB;
+  else if ("name".equals(sorter)) cat = NAME;
+  else if ("verb".equals(sorter)) cat = VERB;
+  else if ("adj".equals(sorter)) cat = ADJ;
+  else if ("adv".equals(sorter)) cat = ADV;
+  int no = 1;
+  Tag tag;
+  // dictonaries coming fron analysis, wev need to test attributes
+  CharsAtt term = new CharsAtt();
+  while (dic.hasNext()) {
+    dic.next();
+    dic.term(term);
+    if (term.isEmpty()) continue; // empty position
+    // filter some unuseful words
+    // if (STOPLIST.contains(term)) continue;
+    LexEntry entry = FrDics.word(term);
+    if (entry != null) {
+      tag = new Tag(entry.tag);
+    }
+    else if (Char.isUpperCase(term.charAt(0))) {
+      tag = new Tag(Tag.NAME);
+    }
+    else {
+      tag = new Tag(0);
+    }
+    // filtering
+    switch (cat) {
+      case NOSTOP:
+        if (FrDics.isStop(term)) continue;
+        break;
+      case SUB:
+        
+        
+    }
+    if ("nostop".equals(sorter) && FrDics.isStop(term)) continue;
+    else if ("adj".equals(sorter) && !tag.isAdj()) continue;
+    else if ("adv".equals(sorter) && !tag.equals(Tag.ADV)) continue;
+    else if ("name".equals(sorter) && !tag.isName()) continue;
+    else if ("sub".equals(sorter) && !tag.isSub()) continue;
+    else if ("verb".equals(sorter) && !tag.equals(Tag.VERB)) continue;
+    if (dic.occs() == 0) break;
+    if (no >= max) break;
+    no++;
+
+    /*
+    if (--lines <= 0 ) break;
+    else out.println(",");
+    */
+  
+  }
+
+  return sb.toString();
+}
+
+private static String htmlLine()
+{
+  StringBuilder sb = new StringBuilder();
+  sb.append("  <tr>\n");
+  sb.append("    <td class=\"num\">");
+  sb.append(no) ;
+  sb.append("</td>");
+  String t = dic.term().toString().replace('_', ' ');
+  sb.append("    <td><a href=\".?q="+t+"\">");
+  sb.append(t);
+  sb.append("</a></td>");
+  sb.append("    <td>");
+  sb.append(tag) ;
+  sb.append("</td>");
+  sb.append("    <td class=\"num\">");
+  sb.append(dic.hits()) ;
+  sb.append("</td>");
+  sb.append("    <td class=\"num\">");
+  sb.append(dic.occs()) ;
+  sb.append("</td>");
+  if ("".equals(q)) {
+    sb.append("    <td class=\"num\">");
+    sb.append(dfScoreFr.format(dic.score())) ;
+    sb.append("</td>");
+    sb.append("  </tr>");
+  }
+  return sb.toString();
+}
+
+private static String csvLine()
+{
+  StringBuilder sb = new StringBuilder();
+  return sb.toString();
+}
+
+static private String jsonLine(final TopTerms dic)
+{
+  StringBuilder sb = new StringBuilder();
+  sb.append("    {\"word\" : \"");
+  sb.append(dic.term().toString().replace( "\"", "\\\"" ).replace('_', ' ')) ;
+  sb.append("\"");
+  sb.append(", \"weight\" : ");
+  sb.append(dfdec3.format(dic.rank()));
+  sb.append(", \"attributes\" : {\"class\" : \"");
+  sb.append(Tag.label(tag.group()));
+  sb.append("\"}");
+  sb.append("}");
+  return sb.toString();
+}
 %>
 <%
 //parameters
@@ -25,9 +146,10 @@ else if (left > 10) left = 10;
 int right = tools.getInt("right", 5, "freqRight");
 if (right < 0) right = 0;
 else if (right > 10) right = 10;
+
 // global variables
-final String field = TEXT;
-TopTerms dic;
+final String field = TEXT; // the field to process
+TopTerms dic; // the dictionary to extracz
 BitSet filter = null; // if a corpus is selected, filter results with a bitset
 if (corpus != null) filter = corpus.bits();
 if (q == null) {
@@ -42,6 +164,12 @@ else {
   dic = cooc.topTerms(terms, left, right, filter);
   dic.sort(dic.getOccs());
 }
+
+String format = tools.getString("format", null);
+if (format == null) format = (String)request.getAttribute(Obvil.EXT);
+
+
+
 int max = Math.min(500, dic.size());
 %>
 <!DOCTYPE html>
@@ -95,60 +223,6 @@ int max = Math.min(500, dic.size());
       </thead>
       <tbody>
     <%
-    int no = 1;
-    Tag tag;
-    // optimisation is possible here
-    CharsAtt term = new CharsAtt();
-    while (dic.hasNext()) {
-      dic.next();
-      dic.term(term);
-      if (term.isEmpty()) continue; // empty position
-      // filter some unuseful words
-      // if (STOPLIST.contains(term)) continue;
-      LexEntry entry = FrDics.word(term);
-      if (entry != null) {
-        tag = new Tag(entry.tag);
-      }
-      else if (Char.isUpperCase(term.charAt(0))) {
-        tag = new Tag(Tag.NAME);
-      }
-      else {
-        tag = new Tag(0);
-      }
-      // filtering
-      if ("nostop".equals(sorter) && FrDics.isStop(term)) continue;
-      else if ("adj".equals(sorter) && !tag.isAdj()) continue;
-      else if ("adv".equals(sorter) && !tag.equals(Tag.ADV)) continue;
-      else if ("name".equals(sorter) && !tag.isName()) continue;
-      else if ("sub".equals(sorter) && !tag.isSub()) continue;
-      else if ("verb".equals(sorter) && !tag.equals(Tag.VERB)) continue;
-      if (dic.occs() == 0) break;
-      out.println("  <tr>");
-      out.print("    <td class=\"num\">");
-      out.print(no) ;
-      out.println("</td>");
-      String t = dic.term().toString().replace('_', ' ');
-      out.print("    <td><a href=\".?q="+t+"\">");
-      out.print(t);
-      out.println("</a></td>");
-      out.print("    <td>");
-      out.print(tag) ;
-      out.println("</td>");
-      out.print("    <td class=\"num\">");
-      out.print(dic.hits()) ;
-      out.println("</td>");
-      out.print("    <td class=\"num\">");
-      out.print(dic.occs()) ;
-      out.println("</td>");
-      if ("".equals(q)) {
-        out.print("    <td class=\"num\">");
-        out.print(dfScoreFr.format(dic.score())) ;
-        out.println("</td>");
-        out.println("  </tr>");
-      }
-      if (no >= max) break;
-      no++;
-    }
     %>
       </tbody>
     </table>

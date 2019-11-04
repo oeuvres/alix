@@ -73,17 +73,6 @@ while (dic.hasNext()) {
   else if ("sub".equals(sorter) && !tag.isSub()) continue;
   else if ("verb".equals(sorter) && !tag.equals(Tag.VERB)) continue;
 
-  out.print("    {\"word\" : \"");
-  out.print(dic.term().toString().replace( "\"", "\\\"" ).replace('_', ' ')) ;
-  out.print("\"");
-  out.print(", \"weight\" : ");
-  out.print(dfdec3.format(dic.rank()));
-  out.print(", \"attributes\" : {\"class\" : \"");
-  out.print(Tag.label(tag.group()));
-  out.print("\"}");
-  out.print("}");
-  if (--lines <= 0 ) break;
-  else out.println(",");
 }
 out.println("\n  ]");
 out.println("\n}");

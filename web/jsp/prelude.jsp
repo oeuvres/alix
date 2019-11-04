@@ -51,6 +51,8 @@ final static String TXT = "txt";
 final static String HTML = "html";
 /** Output format: an html fragment */
 final static String HTF = "htf";
+/** Output format: a comma separated table */
+final static String CSV = "csv";
 
 /**
  * Build a filtering query with a corpus
@@ -118,7 +120,7 @@ public static String posOptions(String sortSpec) throws IOException
 
 
 /**
- * Build a lucene query fron a String and an optional Corpus.
+ * Build a text query fron a String and an optional Corpus.
  */
 public static Query getQuery(Alix alix, String q, Corpus corpus) throws IOException
 {

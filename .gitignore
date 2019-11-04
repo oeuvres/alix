@@ -1,9 +1,8 @@
 _*
-test*
-classes/
-build/
-res/
-work/
+/classes/
+/build/
+/res/
+/work/
 *.bak
 /*.csv
 *.gephi

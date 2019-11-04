@@ -41,7 +41,7 @@ import java.util.HashMap;
 
 /**
  * <p>
- * Efficient character categorizer, about 500x faster than Character.is*(),
+ * Efficient character categorizer, faster than Character.is*(),
  * optimized for tokenizer in latin scripts.
  * Idea is to populate a big array of properties for the code points.
  * </p>
@@ -292,7 +292,7 @@ public class Char
    */
   public static boolean isToken(final char c)
   {
-    return (CHARS[c] & TOKEN) > 0;
+    return (CHARS[c] & TOKEN) != 0;
   }
 
   /**
@@ -300,7 +300,7 @@ public class Char
    */
   public static boolean isLetter(final char c)
   {
-    return (CHARS[c] & LETTER) > 0;
+    return (CHARS[c] & LETTER) != 0;
   }
 
   /**
@@ -308,7 +308,7 @@ public class Char
    */
   public static boolean isLetterOrDigit(final char c)
   {
-    return (CHARS[c] & LETTER_OR_DIGIT) > 0;
+    return (CHARS[c] & LETTER_OR_DIGIT) != 0;
   }
   
   /**
@@ -316,7 +316,7 @@ public class Char
    */
   public static boolean isMath(final char c)
   {
-    return (CHARS[c] & MATH) > 0;
+    return (CHARS[c] & MATH) != 0;
   }
 
   /**
@@ -324,7 +324,7 @@ public class Char
    */
   public static boolean isDigit(final char c)
   {
-    return (CHARS[c] & DIGIT) > 0;
+    return (CHARS[c] & DIGIT) != 0;
   }
 
   /**
@@ -332,7 +332,7 @@ public class Char
    */
   public static boolean isLowerCase(final char c)
   {
-    return (CHARS[c] & LOWERCASE) > 0;
+    return (CHARS[c] & LOWERCASE) != 0;
   }
 
   /**
@@ -340,7 +340,7 @@ public class Char
    */
   public static boolean isUpperCase(final char c)
   {
-    return (CHARS[c] & UPPERCASE) > 0;
+    return (CHARS[c] & UPPERCASE) != 0;
   }
 
   /**
@@ -348,7 +348,7 @@ public class Char
    */
   public static boolean isPunctuation(final char c)
   {
-    return (CHARS[c] & PUNCTUATION) > 0;
+    return (CHARS[c] & PUNCTUATION) != 0;
   }
 
   /**
@@ -356,7 +356,7 @@ public class Char
    */
   public static boolean isPUNsent(final char c)
   {
-    return (CHARS[c] & PUNsent) > 0;
+    return (CHARS[c] & PUNsent) != 0;
   }
 
   /**
@@ -364,7 +364,7 @@ public class Char
    */
   public static boolean isPUNcl(final char c)
   {
-    return (CHARS[c] & PUNcl) > 0;
+    return (CHARS[c] & PUNcl) != 0;
   }
 
   /**
@@ -374,7 +374,7 @@ public class Char
    */
   public static boolean isSpace(final char c)
   {
-    return (CHARS[c] & SPACE) > 0;
+    return (CHARS[c] & SPACE) != 0;
   }
 
   /**
@@ -382,7 +382,7 @@ public class Char
    */
   public static boolean isPunctuationOrSpace(final char c)
   {
-    return (CHARS[c] & PUNCTUATION_OR_SPACE) > 0;
+    return (CHARS[c] & PUNCTUATION_OR_SPACE) != 0;
   }
 
   /**
@@ -390,7 +390,7 @@ public class Char
    */
   public static boolean isHighSurrogate(final char c)
   {
-    return (CHARS[c] & HIGHSUR) > 0;
+    return (CHARS[c] & HIGHSUR) != 0;
   }
 
   /**
@@ -398,7 +398,7 @@ public class Char
    */
   public static boolean isLowSurrogate(final char c)
   {
-    return (CHARS[c] & LOWSUR) > 0;
+    return (CHARS[c] & LOWSUR) != 0;
   }
 
   /**
@@ -445,18 +445,18 @@ public class Char
     short props = CHARS[c];
     StringBuilder sb = new StringBuilder();
     sb.append(c).append("\t");
-    if ((props & TOKEN) > 0) sb.append("TOKEN ");
-    if ((props & LETTER) > 0) sb.append("LETTER ");
-    if ((props & SPACE) > 0) sb.append("SPACE ");
-    if ((props & PUNCTUATION) > 0) sb.append("PUNCTUATION ");
-    if ((props & PUNsent) > 0) sb.append("PUNsent ");
-    if ((props & PUNcl) > 0) sb.append("PUNcl ");
-    if ((props & DIGIT) > 0) sb.append("DIGIT ");
-    if ((props & LOWERCASE) > 0) sb.append("LOWERCASE ");
-    if ((props & UPPERCASE) > 0) sb.append("UPPERCASE ");
-    if ((props & MATH) > 0) sb.append("MATH ");
-    if ((props & HIGHSUR) > 0) sb.append("HIGHSUR ");
-    if ((props & LOWSUR) > 0) sb.append("LOWSUR ");
+    if ((props & TOKEN) != 0) sb.append("TOKEN ");
+    if ((props & LETTER) != 0) sb.append("LETTER ");
+    if ((props & SPACE) != 0) sb.append("SPACE ");
+    if ((props & PUNCTUATION) != 0) sb.append("PUNCTUATION ");
+    if ((props & PUNsent) != 0) sb.append("PUNsent ");
+    if ((props & PUNcl) != 0) sb.append("PUNcl ");
+    if ((props & DIGIT) != 0) sb.append("DIGIT ");
+    if ((props & LOWERCASE) != 0) sb.append("LOWERCASE ");
+    if ((props & UPPERCASE) != 0) sb.append("UPPERCASE ");
+    if ((props & MATH) != 0) sb.append("MATH ");
+    if ((props & HIGHSUR) != 0) sb.append("HIGHSUR ");
+    if ((props & LOWSUR) != 0) sb.append("LOWSUR ");
     sb.append(Character.getName(c).toLowerCase()).append("\t");
     return sb.toString();
   }

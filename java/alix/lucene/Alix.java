@@ -378,7 +378,7 @@ public class Alix
    * Get the internal lucene docid of a document by Alix String id 
    * (a reserved field name)
    * @param id
-   * @return the docId, or -1 if not found, or -2 if too much found, or -3 if id is null or empty.
+   * @return the docId, or -1 if not found, or -2 if too much found, or -3 if id was null or empty.
    * @throws IOException
    */
   public int getDocId(final String id) throws IOException

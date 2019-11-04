@@ -12,7 +12,7 @@ final static Query QUERY_LEVEL = new TermQuery(new Term(Alix.TYPE, Alix.CHAPTER)
 /**
  * Build a query fron page params, a selected  corpus a reference 
  */
-public Query query(final JspTools tools, final Corpus corpus, final Doc refDoc) throws IOException, NoSuchFieldException {
+private Query query(final JspTools tools, final Corpus corpus, final Doc refDoc) throws IOException, NoSuchFieldException {
   Query query = null;
   String refType = tools.getString("reftype", null);
   String q = tools.getString("q", null);
@@ -44,8 +44,10 @@ public Query query(final JspTools tools, final Corpus corpus, final Doc refDoc) 
   return query;
 }
 
-public String results(final JspTools tools, final Corpus corpus, final Doc refDoc, final IndexSearcher searcher)  throws IOException, NoSuchFieldException 
+private String results(final JspTools tools, final Corpus corpus, final Doc refDoc, final IndexSearcher searcher)  throws IOException, NoSuchFieldException 
 {
+  StringBuilder sb = new StringBuilder();
+  
   Query query = query(tools, corpus, refDoc);
   if (query == null) return "";
   TopDocs results = null;
@@ -67,7 +69,6 @@ public String results(final JspTools tools, final Corpus corpus, final Doc refDo
 
   if(results == null) return "";
   if(results.totalHits.value == 0) return ""; // no results
-  StringBuilder sb = new StringBuilder();
   String paging = "";
   if (fromDoc > 0) {
     paging = "&amp;fromdoc="+fromDoc+"&amp;fromscore="+fromScore;
