@@ -58,8 +58,8 @@ public class Char
   /** Properties of chars by index */
   static final short[] CHARS = new short[SIZE];
   public static final short LETTER =       0b000000000000001;
-  public static final short SPACE =        0b000000000000010;
-  public static final short TOKEN =        0b000000000000100;
+  public static final short TOKEN =        0b000000000000010;
+  public static final short SPACE =        0b000000000000100;
   public static final short PUNCTUATION =  0b000000000001000;
   public static final short LOWERCASE =    0b000000000010000;
   public static final short UPPERCASE =    0b000000000100000;

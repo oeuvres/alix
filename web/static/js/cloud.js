@@ -8,12 +8,16 @@ if (sorter) localStorage.setItem(PATHNAME + SORTER, sorter);
 else if (sorter === "") localStorage.removeItem(PATHNAME + SORTER);
 else sorter = "";
 
+var q = url.searchParams.get("q");
+if (!q) q="";
+else q = "&q="+q;
+
 console.log(sorter);
 
 // var log = url.searchParams.get("log");
 
 
-fetch("freqlist.jsp?sorter="+sorter).then(
+fetch("freqs.json?sorter="+sorter+q).then(
   function(response) {
   return response.json();
   }

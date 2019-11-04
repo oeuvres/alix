@@ -6,6 +6,9 @@ import java.io.StringReader;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
+import org.apache.lucene.analysis.core.WhitespaceTokenizer;
+import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -19,6 +22,26 @@ import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
 public class TestFrAnalyzer
 {
+  static class LuceneStandard extends Analyzer
+  {
+    @Override
+    protected TokenStreamComponents createComponents(String fieldName)
+    {
+      final Tokenizer source = new StandardTokenizer();
+      return new TokenStreamComponents(source);
+    }
+  }
+
+  static class LuceneWhite extends Analyzer
+  {
+    @Override
+    protected TokenStreamComponents createComponents(String fieldName)
+    {
+      final Tokenizer source = new WhitespaceTokenizer();
+      return new TokenStreamComponents(source);
+    }
+  }
+
   static class MetaAnalyzer extends Analyzer
   {
 
@@ -55,12 +78,54 @@ public class TestFrAnalyzer
     }
 
   }
+  
+  static Analyzer anaStd = new LuceneStandard();
+  static Analyzer anaWhite = new LuceneWhite();
+  static Analyzer anaMeta = new MetaAnalyzer();
+  static void analyzers(final String text, final boolean print) throws IOException
+  {
+    long time;
+    Analyzer[] analyzers = {  
+      anaWhite,
+      anaStd,
+      anaMeta,
+    };
+    for (int loop = 1; loop > 0 ; loop--) {
+      for (Analyzer analyzer : analyzers) {
+        time = System.nanoTime();
+        TokenStream stream = analyzer.tokenStream("stats", new StringReader(text));
+        int toks = 0;
+        // get the CharTermAttribute from the TokenStream
+        CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
+        try {
+          stream.reset();
+          // print all tokens until stream is exhausted
+          while (stream.incrementToken()) {
+            toks++;
+            if (print) System.out.println(term);
+          }
+          
+          stream.end();
+        }
+        finally {
+          stream.close();
+          // analyzer.close();
+        }
+        System.out.println("" + analyzer.getClass() + " " + ((System.nanoTime() - time) / 1000000) + " ms. "+toks);
+      }
+    }
+
+  }
+
 
   public static void main(String[] args) throws IOException
   {
+    String text;
+    text = "Insécable : suspension… mot-composé l’élision <balise attribut>html</balise>";
+
     // text to tokenize
     
-    String text = "Emploie-t-il beaucoup de navires ? Réveille-le. "
+    text = "Emploie-t-il beaucoup de navires ? Réveille-le. "
         + "<a href=\"note\">XVII.</a> et XLV, GRYMALKIN. Mais lorsque la Grâce t’illumine de nouveau. "
         + "Le Siècle, La Plume, La Nouvelle Revue. Mot<a>note</a>. "
         + " -- Quadratin. U.K.N.O.W.N. La Fontaine... Quoi ???\" + \" Problème</section>. "

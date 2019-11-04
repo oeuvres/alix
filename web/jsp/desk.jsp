@@ -1,20 +1,22 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" trimDirectiveWhitespaces="true"%>
 <%@include file="prelude.jsp" %>
 <%
-// params
+  // params
 String q = tools.getString("q", null);
 String id = tools.getString("id", null);
 String url;
 if (id != null) {
   url = "doc.jsp?id="+id;
-  if (q != null) url += "&amp;"+JspTools.escapeHtml(q);
+  if (q != null) url += "&amp;"+Jsp.escapeHtml(q);
 }
 else if (q != null) {
-  url = "snip.jsp?q=" + JspTools.escapeHtml(q);
+  url = "snip.jsp?q=" + Jsp.escapeHtml(q);
 }
 else {
   url = "corpus.jsp";
 }
+
+
 %>
 <!DOCTYPE html>
 <html>
@@ -28,9 +30,10 @@ else {
     <header id="header">
       <span class="base"><%=props.get("title")%></span>
       <form id="qform" name="qform" onsubmit="return dispatch(this)" target="page" action="snip.jsp">
-        <input id="q" name="q" autocomplete="off" autofocus="true" value="<%= JspTools.escapeHtml(q)%>"/>
+        <input id="q" name="q" autocomplete="off" autofocus="true" value="<%=Jsp.escapeHtml(q)%>"/>
         <button type="submit" name="send" tabindex="-1" class="magnify">⚲</button>
       </form>
+      <a class="logo" href="."><img alt="Obvil app" src="../static/img/obvil_50.png"/></a>
       <div id="tabs">
         <a href="corpus" target="page" class="tab">Corpus</a>
         <a href="snip" target="page" class="tab">Résultats</a>

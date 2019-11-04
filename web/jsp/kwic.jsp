@@ -4,7 +4,7 @@
 <%@ page import="org.apache.lucene.search.uhighlight.DefaultPassageFormatter" %>
 <%@ page import="alix.lucene.search.HiliteFormatter" %>
 <%
-// parameters
+  // parameters
 final String q = tools.getString("q", null);
 final String sort = request.getParameter("sort");
 final int hpp = tools.getInt("hpp", 100);
@@ -14,7 +14,6 @@ if (start < 1) start = 1;
 final String fieldName = TEXT;
 time = System.nanoTime();
 TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
-
 %>
 <!DOCTYPE html>
 <html>
@@ -25,7 +24,7 @@ TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
   </head>
   <body class="results">
       <form id="qform">
-        <input id="q" name="q" value="<%=JspTools.escapeHtml(q)%>" autocomplete="off" size="60" autofocus="autofocus" onclick="this.select();"/>
+        <input id="q" name="q" value="<%=Jsp.escapeHtml(q)%>" autocomplete="off" size="60" autofocus="autofocus" onclick="this.select();"/>
         <label>
          Tri
           <select name="sort" onchange="this.form.submit()">

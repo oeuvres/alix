@@ -2,8 +2,7 @@
 <%@ include file="prelude.jsp" %>
 <%@ page import="alix.lucene.search.Doc" %>
 <%@ page import="alix.util.Top" %>
-<%!
-final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
+<%!final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
 
 static String wordList(Top<String> top)
 {
@@ -15,17 +14,16 @@ static String wordList(Top<String> top)
     else sb.append(", ");
     final String form = entry.value();
     sb.append("<a class=\""+Doc.csstok(form)+"\">");
-    sb.append(JspTools.escapeHtml(form));
+    sb.append(Jsp.escapeHtml(form));
     sb.append("</a>");
     // out.print(" ("+entry.score()+")");
     // if (entry.score() <= 0) break;
     if (--max <= 0) break;
   }
   return sb.toString();
-}
-%>
+}%>
 <%
-// Parameters
+  // Parameters
 // get a doc, by String id is preferred (more persistant)
 String id = tools.getString("id", null);
 int docId = tools.getInt("docid", -1);
@@ -51,50 +49,51 @@ try { // load full document
   }
 }
 catch (IllegalArgumentException e) {} // unknown id
-
 %>
 <!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8">
     <title><%
-if (doc != null) {
-  out.print(ML.detag(doc.doc().get("bibl")));
-}
-else {
-  out.print("Comparaison, document");
-}
+      if (doc != null) {
+      out.print(ML.detag(doc.doc().get("bibl")));
+    }
+    else {
+      out.print("Comparaison, document");
+    }
     %> [Obvil]</title>
     <link href="../static/vendors/teinte.css" rel="stylesheet"/>
     <link href="../static/obvil.css" rel="stylesheet"/>
     <script>
-    <%
-if (doc != null) {
+    <%if (doc != null) {
   out.println("const docLength="+doc.length(TEXT)+";");
   out.println("const id=\""+doc.id()+"\";");
-}
-    %>
+}%>
     </script>
   </head>
   <body  class="comp">
 
-<% if (doc == null) { // no doc requested %>
+<%
+  if (doc == null) { // no doc requested
+%>
 
     <p><a href="meta.jsp">Chercher un document</a></p>
 
-<% } else { // doc found %>
+<%
+  } else { // doc found
+%>
 
 <%
-String bibl = doc.doc().get("bibl");
+  String bibl = doc.doc().get("bibl");
 %>
-    <header class="biblbar" title="<%= ML.detag(bibl) %>">
+    <header class="biblbar" title="<%=ML.detag(bibl)%>">
         <%
-// link to go back to results
-String url = "meta.jsp";
-if (q != null) url += "?q=" + JspTools.escapeHtml(q);
-else if (refId != null) url += "?refid=" + refId;
-else if (refDocId > -1) url += "?refdocid=" + refDocId;
-if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromScore;
+          // link to go back to results
+        String url = "meta.jsp";
+        if (q != null) url += "?q=" + Jsp.escapeHtml(q);
+        else if (refId != null) url += "?refid=" + refId;
+        else if (refDocId > -1) url += "?refdocid=" + refDocId;
+        if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromScore;
         %>
       <a class="back" href="<%=url %>" title="Retour aux résultats">⮐</a>
       <a href="#" class="bibl"><%= bibl %></a>

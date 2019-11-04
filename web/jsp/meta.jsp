@@ -4,15 +4,14 @@
 <%@ page import="alix.lucene.search.Doc" %>
 <%@ page import="alix.lucene.search.Marker" %>
 <%@ page import="alix.util.Top" %>
-<%!
-final static Analyzer ANAMET = new MetaAnalyzer();
+<%!final static Analyzer ANAMET = new MetaAnalyzer();
 final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
 final static Query QUERY_LEVEL = new TermQuery(new Term(Alix.TYPE, Alix.CHAPTER));
 
 /**
  * Build a query fron page params, a selected  corpus a reference 
  */
-private Query query(final JspTools tools, final Corpus corpus, final Doc refDoc) throws IOException, NoSuchFieldException {
+private Query query(final Jsp tools, final Corpus corpus, final Doc refDoc) throws IOException, NoSuchFieldException {
   Query query = null;
   String refType = tools.getString("reftype", null);
   String q = tools.getString("q", null);
@@ -44,7 +43,7 @@ private Query query(final JspTools tools, final Corpus corpus, final Doc refDoc)
   return query;
 }
 
-private String results(final JspTools tools, final Corpus corpus, final Doc refDoc, final IndexSearcher searcher)  throws IOException, NoSuchFieldException 
+private String results(final Jsp tools, final Corpus corpus, final Doc refDoc, final IndexSearcher searcher)  throws IOException, NoSuchFieldException 
 {
   StringBuilder sb = new StringBuilder();
   
@@ -121,10 +120,9 @@ private String results(final JspTools tools, final Corpus corpus, final Doc refD
     sb.append("<a  class=\"more\" href=\"?fromscore="+score+"&amp;fromdoc="+docId+back+"\">⮟</a>\n");
   }
   return sb.toString();
-}
-%>
+}%>
 <%
-// parameters
+  // parameters
 String refId = tools.getString("refid", null);
 int refDocId = tools.getInt("refdocid", -1);
 String refType = tools.getString("reftype", null);
@@ -150,22 +148,21 @@ catch (IllegalArgumentException e) {
 
 
 // parameter 
-if (HTF.equals(format)) {
+if (Jsp.HTF.equals(format)) {
   out.println(results(tools, corpus, refDoc, searcher));}
 else {
-
 %>
 <!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Rechercher un texte, <%=baseTitle %> [Obvil]</title>
+    <title>Rechercher un texte, <%=baseTitle%> [Obvil]</title>
     <link href="../static/obvil.css" rel="stylesheet"/>
   </head>
   <body class="results">
     <header>
 <%
-if (refDoc != null) {
+  if (refDoc != null) {
   out.println("<h1>Textes similaires</h1>");
   out.println("<a href=\"?\" class=\"delete\">🞬</a>");
   out.println("<b>Textes similaires à :</b>");
@@ -181,14 +178,14 @@ if (corpus != null) {
     </header>
     <form>
       <%
-if (refDoc != null) {
-  out.println("<input type=\"hidden\" name=\"refid\" value=\"" +refDoc.id()+"\"/>");
-}
-else {
-  out.print("<input size=\"50\" type=\"text\" id=\"q\" onfocus=\"var len = this.value.length * 2; this.setSelectionRange(len, len); \" autofocus=\"true\"");
-  out.println(" spellcheck=\"false\" autocomplete=\"off\" name=\"q\" value=\"" +JspTools.escapeHtml(q)+"\"/>");
-  // out.println("<br/>" + query);
-}
+        if (refDoc != null) {
+        out.println("<input type=\"hidden\" name=\"refid\" value=\"" +refDoc.id()+"\"/>");
+      }
+      else {
+        out.print("<input size=\"50\" type=\"text\" id=\"q\" onfocus=\"var len = this.value.length * 2; this.setSelectionRange(len, len); \" autofocus=\"true\"");
+        out.println(" spellcheck=\"false\" autocomplete=\"off\" name=\"q\" value=\"" +Jsp.escapeHtml(q)+"\"/>");
+        // out.println("<br/>" + query);
+      }
       %>
     </form>
     <p/>

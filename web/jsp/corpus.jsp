@@ -7,13 +7,11 @@
 <%@ page import="alix.lucene.search.IntSeries" %>
 <%@ page import="alix.lucene.search.TermList" %>
 <%@ page import="alix.lucene.search.TopTerms" %>
-<%!
-final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
+<%!final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
 final static DecimalFormat dfScoreFr = new DecimalFormat("0.00000", frsyms);
 final static DecimalFormat dfint = new DecimalFormat("###,###,##0", frsyms);
 final static HashSet<String> FIELDS = new HashSet<String>(Arrays.asList(new String[] {Alix.BOOKID, "byline", "year", "title"}));
-static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT));
-%>
+static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT));%>
 <%
   /*
 Build a corpus or show query stats on it
@@ -91,7 +89,7 @@ const base = "<%=base%>";
   </head>
   <body class="corpus">
     <form method="post" id="corpora" action="?">
-      <input type="hidden" name="q" value="<%=JspTools.escapeHtml(q)%>"/>
+      <input type="hidden" name="q" value="<%=Jsp.escapeHtml(q)%>"/>
       <input type="hidden" name="json"/>
       <ul id="corpusList"></ul>
     </form>
@@ -102,7 +100,9 @@ corpusList("corpusList");
         <details id="filter">
           <summary>Filtres</summary>
           <label for="start">Années</label>
-          <% IntSeries years = alix.intSeries(YEAR); // to get min() max() year %>
+          <%
+            IntSeries years = alix.intSeries(YEAR); // to get min() max() year
+          %>
           <input id="start" name="start" type="number" min="<%=years.min()%>" max="<%=years.max()%>" placeholder="Début" class="year"/>
           <input id="end" name="end" type="number" min="<%=years.min()%>" max="<%=years.max()%>" placeholder="Fin" class="year"/>
           <br/><label for="author">Auteur</label>
@@ -113,7 +113,7 @@ corpusList("corpusList");
       <form method="post" id="corpus" action="#">
         <table class="sortable" id="bib">
          <caption>
-            <input type="hidden" name="q" value="<%=JspTools.escapeHtml(q)%>"/>
+            <input type="hidden" name="q" value="<%=Jsp.escapeHtml(q)%>"/>
             <button id="selection" type="button" title="Montrer les items sélectionnés">✔</button>
             <button id="all" type="button" title="Montrer tous les items">▢</button>
             Corpus <input type="text" size="10" id="name" name="name" value="<%=name%>" placeholder="Nom du corpus" required="required"/>

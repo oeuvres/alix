@@ -16,6 +16,9 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import alix.lucene.analysis.FrDics;
+import alix.lucene.analysis.tokenattributes.CharsAtt;
+
 /**
  * In an MVC model, this servlet is the global controller for Obvil app.
  * Model is the lucene index and alix java, View is the jsp pages.
@@ -23,6 +26,11 @@ import javax.servlet.http.HttpServletResponse;
  */
 public class Obvil extends HttpServlet
 {
+  static {
+    for (String w : new String[] {"dire"}) {
+      FrDics.STOP.add(new CharsAtt(w));
+    }
+  }
   /** for serialization */
   private static final long serialVersionUID = 1L;
   /** Request attribute name: internal messages for the servlet */

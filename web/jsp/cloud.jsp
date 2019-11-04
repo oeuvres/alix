@@ -1,4 +1,10 @@
 <%@ page language="java"  pageEncoding="UTF-8" contentType="text/html; charset=UTF-8" trimDirectiveWhitespaces="true"%>
+<%@ include file="prelude.jsp" %>
+<%
+final String q = tools.getString("q", null);
+final String sorter = tools.getString("sorter", "score", "freqSorter");
+
+%>
 <!DOCTYPE html>
 <html>
   <head>
@@ -8,16 +14,11 @@
   </head>
   <body class="cloud">
     <form id="filter">
-      <select name="sorter" onchange="this.form.submit()">
-        <option/>
-        <option value="nostop">Mots pleins</option>
-        <option value="name">Noms propres</option>
-        <option value="sub">Substantifs</option>
-        <option value="verb">Verbes</option>
-        <option value="adj">Adjectifs</option>
-        <option value="adv">Adverbes</option>
-        <option value="all">Tout</option>
-      </select>
+       <select name="sorter" onchange="this.form.submit()">
+          <option/>
+          <%= posOptions(sorter) %>
+       </select>
+       <input type="hidden" name="q" value="<%=Jsp.escapeHtml(q) %>"/>
     </form>
     <div id="wordcloud2"></div>
     <script src="../static/vendors/wordcloud2.js">//</script>

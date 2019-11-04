@@ -3,8 +3,7 @@
 <%@ page import="alix.lucene.search.Doc" %>
 <%@ page import="alix.util.Top" %>
 
-<%!
-final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
+<%!final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
 public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOException
 {
   StringBuilder out = new StringBuilder();
@@ -20,10 +19,9 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
     out.append("</li>\n");
   }
   return out.toString();
-}
-%>
+}%>
 <%
-/**
+  /**
  * display a doc from the index.
  * Different case
  *  — direct read of a docid
@@ -87,40 +85,37 @@ if (doc != null) title = ML.detag(doc.doc().get("bibl"));
     <meta charset="UTF-8">
     <link href="../static/vendors/teinte.css" rel="stylesheet"/>
     <link href="../static/obvil.css" rel="stylesheet"/>
-    <title><%= title%> [Obvil]</title>
+    <title><%=title%> [Obvil]</title>
     <script>
-    <%
-if (doc != null) {
+    <%if (doc != null) {
   out.println("const docLength="+doc.length(TEXT)+";");
   out.println("const id=\""+doc.id()+"\";");
-}
-    %>
+}%>
     </script>
   </head>
   <body class="document">
-    <a title="Comparer ce document" href="comparer?leftid=<%=id %>" target="_top" class="goright">⮞</a>
+    <a title="Comparer ce document" href="comparer?leftid=<%=id%>" target="_top" class="goright">⮞</a>
   <%
-if (doc != null) {
-  out.println("<header class=\"biblbar\" title=\""+title+"\">");
-  out.print("<a href=\"#\" class=\"bibl\">");
-  out.println(doc.doc().get("bibl"));
-  out.print("</a>");
-  out.println("</header>");
-}
+    if (doc != null) {
+    out.println("<header class=\"biblbar\" title=\""+title+"\">");
+    out.print("<a href=\"#\" class=\"bibl\">");
+    out.println(doc.doc().get("bibl"));
+    out.print("</a>");
+    out.println("</header>");
+  }
   %>
   <main>
       <form id="qform" action="#">
         <input type="submit" 
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
        tabindex="-1" />
-        <% 
-        if (topDocs != null && start > 1) {
-          out.println("<input type=\"hidden\" name=\"prevn\" value=\""+(start - 1)+"\"/>");
-          out.println("<button type=\"submit\" name=\"prev\">◀</button>");
-        }
-
+        <%
+          if (topDocs != null && start > 1) {
+              out.println("<input type=\"hidden\" name=\"prevn\" value=\""+(start - 1)+"\"/>");
+              out.println("<button type=\"submit\" name=\"prev\">◀</button>");
+            }
         %>
-        <input id="q" name="q" value="<%=JspTools.escapeHtml(q)%>" autocomplete="off" type="hidden"/>
+        <input id="q" name="q" value="<%=Jsp.escapeHtml(q)%>" autocomplete="off" type="hidden"/>
         <select name="sort" onchange="this.form.submit()" title="Ordre">
             <option>Pertinence</option>
             <%= sortOptions(sort) %>

@@ -2,12 +2,34 @@ package alix.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.BitSet;
+import java.util.Scanner;
+
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.core.WhitespaceTokenizer;
+import org.apache.lucene.analysis.standard.StandardTokenizer;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
+import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
+
+import alix.fr.Tag;
+import alix.lucene.analysis.MetaTokenizer;
+import alix.lucene.analysis.tokenattributes.CharsLemAtt;
+import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
 public class TestChar
 {
@@ -20,23 +42,38 @@ public class TestChar
     }
   }
   
-  static void zola() throws URISyntaxException, UnsupportedEncodingException, IOException
+  
+  static String zola() throws URISyntaxException, UnsupportedEncodingException, IOException 
+  {
+    String res = "/res/zola.txt";
+    String text = new Scanner(TestChar.class.getResourceAsStream(res), "UTF-8").useDelimiter("\\A").next();
+    return text;
+  }
+  
+  static void charIs() throws UnsupportedEncodingException, IOException, URISyntaxException
   {
     long time;
     int found;
-    String projectRoot = new File(".").getAbsolutePath();
-    Path path = Paths.get(projectRoot+"/test/res/zola.txt");
-    String zola = new String( Files.readAllBytes(path), "UTF-8");
+    String zola = zola();
     final int len = zola.length();
     System.out.println("zola.txt "+ len / 10000 / 100.0+" millions de caractères.");
     char[] chars = zola.toCharArray();
-    for (int loop = 10; loop > 0 ; loop--) {
+    double max = 10;
+    int more = 3;
+    long timesum = 0;
+    for (int loop = 0; loop < max + more ; loop++) {
       time = System.nanoTime();
       char print = 0;
       for (int i = 0; i < len; i++) {
-        print += chars[i];
+        if (chars[i] == 0) break; // do something with char or the compiler will skip
       }
-      System.out.println("Boucler sur tous les caractères " + ((System.nanoTime() - time) / 1000000) + " ms.\n");
+      if (loop >= more) timesum += System.nanoTime() - time;
+      System.out.println("Boucler sur tous les caractères " + ((System.nanoTime() - time) / 1000000) + " ms. ");
+    }
+    
+    System.out.println("Boucler sur tous les caractères " + ((timesum / 10) / 100000 / 10.0) + " ms.");
+    
+    for (int loop = 10; loop > 0 ; loop--) {
       
       time = System.nanoTime();
       found = 0;
@@ -66,7 +103,7 @@ public class TestChar
       found = 0;
       for (int i = 0; i < len; i++) {
         final char c = chars[i];
-        if (Char.isSpace(c)) found++;
+        if (!Char.isSpace(c)) found++;
       }
       System.out.println("alix.util.Char.isSpace() " + ((System.nanoTime() - time) / 1000000) + " ms. "+found);
 
@@ -131,7 +168,7 @@ public class TestChar
       System.out.println("alix.util.Char.isLetter() " + ((System.nanoTime() - time) / 1000000) + " ms. "+found);
 
       System.out.println("\n-----");
-}
+    }
   }
   
   public static void bitset()
@@ -174,7 +211,7 @@ public class TestChar
     // props();
     // System.out.println(Character.isWhitespace(' '));
     // System.out.println(Character.isSpaceChar(' '));
-    zola();
+    charIs();
   }
 
 }

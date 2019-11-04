@@ -84,6 +84,7 @@ public class MetaTokenizer extends Tokenizer
       char c = ioBuffer.getBuffer()[bufferIndex];
       bufferIndex++;
 
+      /*
       Chain test = this.test; // localize variable for efficiency
 
 
@@ -141,11 +142,12 @@ public class MetaTokenizer extends Tokenizer
           continue;
         }
       }
+      */
       // soft hyphen, do not append to term
-      if (c == (char) 0xAD) continue;
+      if (c == 0xAD) continue;
 
       // for a query parser, keep wildcard
-      if (length > 0 && c == '*');
+      if (c == '*');
       // not a token char
       else if (!Char.isToken(c) || c == '-' || c == '\'' || c == '’') {
         if (length > 0) break; // end of token, send it

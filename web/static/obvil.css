@@ -413,9 +413,6 @@ iframe {
 #header {
   padding: 5px 2px 0 2px;
   position: relative;
-  background-image: url("img/obvil_50.png");
-  background-repeat: no-repeat;
-  background-position: top 0 left 10px;
   height: 68px;
   /* check #win top */
 }
@@ -429,6 +426,14 @@ iframe {
   display: flex;
   flex-direction: row;
 }
+
+#header .logo {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+}
+
+
 
 #header .base {
   position: absolute;

@@ -4,22 +4,14 @@
     <options buildIfNeeded="true" compress="true" descriptionLocation="/Alix/cli.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="true" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
     <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
     <selectedProjects/>
-    <manifest generateManifest="false" manifestLocation="/Alix/java/META-INF/MANIFEST.MF" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
+    <manifest generateManifest="true" manifestLocation="/Alix/java/META-INF/MANIFEST.MF" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
         <sealing sealJar="false">
             <packagesToSeal/>
             <packagesToUnSeal/>
         </sealing>
     </manifest>
     <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
-        <javaElement handleIdentifier="=Alix/java&lt;alix.fr"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.sqlite"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.tools"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.fr.dic"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.util"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.viz"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.lucene"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.grep.query"/>
-        <file path="/Alix/java/META-INF/MANIFEST.MF"/>
-        <javaElement handleIdentifier="=Alix/java&lt;alix.grep"/>
+        <javaElement handleIdentifier="=Alix/test\/java"/>
+        <javaElement handleIdentifier="=Alix/java"/>
     </selectedElements>
 </jardesc>

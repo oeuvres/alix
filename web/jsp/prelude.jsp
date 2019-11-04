@@ -26,7 +26,7 @@
 <%@ page import="org.apache.lucene.search.TopFieldCollector" %>
 <%@ page import="org.apache.lucene.search.TopScoreDocCollector" %>
 <%@ page import="org.apache.lucene.util.BitSet" %>
-<%@ page import="alix.web.JspTools" %>
+<%@ page import="alix.web.Jsp" %>
 <%@ page import="alix.lucene.Alix" %>
 <%@ page import="alix.lucene.analysis.FrAnalyzer" %>
 <%@ page import="alix.lucene.search.Corpus" %>
@@ -36,23 +36,12 @@
 <%@ page import="alix.lucene.search.TopTerms" %>
 <%@ page import="alix.util.ML" %>
 <%@ page import="obvil.web.Obvil" %>
-<%!
-/** Field name containing canonized text */
+<%!/** Field name containing canonized text */
 public static String TEXT = "text";
 /** Field Name with int date */
 final static String YEAR = "year";
 /** Key prefix for current corpus in session */
 public static String CORPUS_ = "corpus_";
-/** Output format: json */
-final static String JSON = "json";
-/** Output format: txt */
-final static String TXT = "txt";
-/** Output format: complete html document */
-final static String HTML = "html";
-/** Output format: an html fragment */
-final static String HTF = "htf";
-/** Output format: a comma separated table */
-final static String CSV = "csv";
 
 /**
  * Build a filtering query with a corpus
@@ -224,13 +213,10 @@ public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, 
   topDocs = collector.topDocs();
   page.getSession().setAttribute(key, topDocs);
   return topDocs;
-}
-
-    
-%>
+}%>
 <%
-long time = System.nanoTime();
-JspTools tools = new JspTools(pageContext);
+  long time = System.nanoTime();
+Jsp tools = new Jsp(pageContext);
 String obvilDir = (String)request.getAttribute(Obvil.OBVIL_DIR);
 String base = (String)request.getAttribute(Obvil.BASE);
 Properties props = (Properties)request.getAttribute(Obvil.PROPS);
@@ -247,5 +233,4 @@ if (baseTitle == null) {
 }
 final String corpusKey = CORPUS_ + base;
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
-
 %>
