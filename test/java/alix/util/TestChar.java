@@ -95,7 +95,6 @@ public class TestChar
   }
 
   
-  static Tester char_isPunctuationOrSpace = new Char_isPunctuationOrSpace();
   static class Char_isPunctuationOrSpace implements Tester {
     @Override
     public boolean test(char c) {
@@ -124,7 +123,10 @@ public class TestChar
     final int len = chars.length;
     int found = 0;
     for (int t = 0; t < loops + delay ; t++) {
-      if (t == delay) time = System.nanoTime();
+      if (t == delay) {
+        time = System.nanoTime();
+        found = 0;
+      }
       for (int i = 0; i < len; i++) {
         if (tester.test(chars[i])) found++;
       }
@@ -159,7 +161,7 @@ public class TestChar
     double baseDur = (System.nanoTime() -time) / loops;
     System.out.println("Boucler sur tous les caractères " + df2.format(baseDur / 1000000.0) + " ms.");
 
-    looping(chars, baseDur, char_isPunctuationOrSpace);
+    looping(chars, baseDur, new Char_isPunctuationOrSpace());
     looping(chars, baseDur, new Character_isWhiteSpace());
     looping(chars, baseDur, new Character_isSpaceChar());
     looping(chars, baseDur, new Character_isWhiteOrSpaceChar());
@@ -169,17 +171,17 @@ public class TestChar
 
     found = 0;
     for (int t = 0; t < loops + delay ; t++) {
-      if (t == delay) time = System.nanoTime();
+      if (t == delay) {
+        time = System.nanoTime();
+        found = 0;
+      }
       for (int i = 0; i < len; i++) {
         if (Char.isPunctuationOrSpace(chars[i])) found++;
-        // if (Character.isWhitespace(chars[i])) found++;
       }
     }
     double duration = (System.nanoTime() - time ) / loops;
     System.out.println("Char.isPunctuationOrSpace() [inline code] " + df2.format( duration / 1000000.0) + " ms. "
-        + "+"+Math.round(100* (duration-baseDur) /baseDur)+"% trues="+found);
-
-    
+        + "+"+Math.round(100* (duration-baseDur) /baseDur)+"% trues="+found / loops) ;
   }
   
   public static String tokenize(String text, Tester tester)
