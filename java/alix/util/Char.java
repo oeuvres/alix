@@ -32,11 +32,6 @@
  */
 package alix.util;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.BitSet;
 import java.util.HashMap;
 
 /**
@@ -44,11 +39,6 @@ import java.util.HashMap;
  * Efficient character categorizer, faster than Character.is*(),
  * optimized for tokenizer in latin scripts.
  * Idea is to populate a big array of properties for the code points.
- * </p>
- * 
- * <p> 
- * For latin script language, apos and dashes are considered as word characters
- * Separation on these chars is language specific.
  * </p>
  */
 public class Char
