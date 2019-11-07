@@ -78,13 +78,13 @@ corpus = (Corpus)session.getAttribute(corpusKey);
     <meta charset="UTF-8"/>
     <title><%= (corpus != null) ? Jsp.escape(corpus.name())+", " : "" %><%=props.get("name")%> [Obvil]</title>
     <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
+    <script> const base = "<%=base%>"; </script> <%-- give code of the text base for all further js  --%>
     <script src="../static/vendors/split.js">//</script>
     <script src="../static/js/common.js">//</script>
-    <script>
-const base = "<%=base%>"; // before setting corpora key
-<%=js %>
-    </script>
     <script src="../static/js/corpora.js">//</script>
+    <script>
+       <%=js %>
+    </script>
   </head>
   <body class="split">
     <header id="header">
@@ -95,7 +95,7 @@ const base = "<%=base%>"; // before setting corpora key
      
    }
  %></span>
-      <a class="logo" href=".?corpus=new"><img alt="Obvil app" src="../static/img/obvil_50.png"/></a>
+      <a class="logo" href="."><img alt="Obvil app" src="../static/img/obvil_50.png"/></a>
       <form id="qform" name="qform" onsubmit="return dispatch(this)" target="page" action="<%=view%>">
         <input id="q" name="q" autocomplete="off" autofocus="true" value="<%=Jsp.escape(q)%>"/>
         <button type="submit" name="send" tabindex="-1" class="magnify">⚲</button>

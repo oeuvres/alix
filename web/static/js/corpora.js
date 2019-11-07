@@ -1,7 +1,7 @@
 /**
  * Methods to control storing of corpus on client
  */
-// storage key, needs the name of corpus
+// storage key, needs the name of corpus, set by server
 const CORPORA = "alix:"+base+":corpora";
 /**
  * Store corpus as a json array of bookids

@@ -98,8 +98,12 @@ header {
   border-color: #FFFFFF;
 }
 
-#tabs a.here,
-::-moz-selection {
+::-moz-selection { /* let it alone for Chrome */
+  background: rgba(120, 105, 101, 0.8);
+  color: #FFFFFF;
+}
+
+#tabs a.here {
   background: rgba(120, 105, 101, 0.8);
   color: #FFFFFF;
 }
@@ -219,9 +223,6 @@ main {
   padding-left: 2rem;
   padding-right: 2rem;
   padding-bottom: 2rem;
-  max-width: 55rem;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 main.right {

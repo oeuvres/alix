@@ -1,4 +1,5 @@
 episode("id", null); // reset doc view
+episode("view", "cloud");
 var cloudId = "wordcloud2";
 var url = new URL(window.location.href);
 

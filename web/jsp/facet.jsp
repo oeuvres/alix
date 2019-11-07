@@ -6,19 +6,22 @@
 <%
 //Params for the page
 String q = tools.getString("q", null);
-String ord = tools.getString("ord", "score", "facetScore");
+String ord = tools.getString("ord", "alpha", "facetSort");
+String facetField = tools.getString("facet", "author"); 
 
-// global variables
+//global variables
+String facetName = facetField;
+if (facetField.equals("author")) facetName = "Auteur";
+else if (facetField.equals("title")) facetName = "Titre";
+
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 BitSet filter = null;
 if (corpus != null) filter = corpus.bits();
 TermList terms = alix.qTerms(q, TEXT);
-if (terms != null && terms.size() < 1 && "score".equals(ord)) ord = "freq";
-//choose a field
-String facetField = tools.getString("facet", "author");
-String facetName = facetField;
-if (facetField.equals("author")) facetName = "Auteur";
-else if (facetField.equals("title")) facetName = "Titre";
+
+// is there a score (= query) ?
+final boolean score =  (terms != null && terms.size() > 1);
+if (!score && "score".equals(ord)) ord = "freq";
 
 %>
 <!DOCTYPE html>
@@ -36,27 +39,19 @@ else if (facetField.equals("title")) facetName = "Titre";
       <input type="hidden" id="q" name="q" value="<%=q%>" autocomplete="off"/>
       <select name="ord" onchange="this.form.submit()">
         <option/>
-        <option value="alpha" <%=("alpha".equals(ord))?" selected=\"selected\"  ":""%>>Alphabétique</option>
-        <option value="freq" <%=("freq".equals(ord))?" selected=\"selected\"  ":""%>>Fréquence</option>
-        <% 
-if (terms != null && terms.size() > 0) {
-  String value = "score";
-  out.print("<option value=\""+value+"\"");
-  if (value.equals(ord)) out.print(" selected=\"selected\"");
-  out.println(">Pertinence</option>");
-}
-        %>
+        <%= biblSortOptions(ord, score) %>
       </select>
     </form>
     <main>
     <%
-if (terms != null && terms.size() > 0) out.println("<h4>occurrences (chapitres) "+facetName+"</h4>");
+if (score) out.println("<h4>occurrences (chapitres) "+facetName+"</h4>");
 else out.println("<h4>(chapitres) "+facetName+"</h4>");
 Facet facet = alix.facet(facetField, TEXT);
 // a query
 if (terms != null && terms.size() > 0) { 
-  // get a 
+  // Hack to use facet as a navigator in results, cache results in the field of the facet order
   TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, facetField);
+  // get the position of the first document for each facet
   int[] nos = facet.nos(topDocs);
   TopTerms facetEnum = facet.topTerms(filter, terms, null);
   facetEnum.setNos(nos);

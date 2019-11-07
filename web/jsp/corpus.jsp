@@ -15,13 +15,16 @@ static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new
 <%
 // params for this page
 String q = tools.getString("q", null);
+String ord = tools.getString("ord", "score", "corpusSort");
+    
+    
 // global variables
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 Set<String> bookids = null; 
 if (corpus != null) bookids = corpus.books();
 Facet facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.TYPE, Alix.BOOK));
+IntSeries years = alix.intSeries(YEAR); // to get min() max() year
 TermList qTerms = alix.qTerms(q, TEXT);
-// no query
 TopTerms dic = null;
 boolean score = (qTerms != null && qTerms.size() > 0);
 %>
@@ -35,7 +38,7 @@ boolean score = (qTerms != null && qTerms.size() > 0);
     <link href="../static/obvil.css" rel="stylesheet"/>
     <script src="../static/js/common.js">//</script>
     <script type="text/javascript">
-const base = "<%=base%>";
+const base = "<%=base%>"; // give code of texts base to further Javascript
     </script>
     <script src="../static/js/corpus.js">//</script>
   </head>
@@ -43,10 +46,15 @@ const base = "<%=base%>";
     <main>
         <details id="filter">
           <summary>Filtres</summary>
+          <form>
+            <input type="hidden" name="q" value="<%=Jsp.escape(q)%>"/>
+            <label for="ord">Tri par défaut</label>
+            <select name="ord" onchange="this.form.submit()">
+              <option/>
+              <%= biblSortOptions(ord, score) %>
+            </select>
+          </form>
           <label for="start">Années</label>
-          <%
-            IntSeries years = alix.intSeries(YEAR); // to get min() max() year
-          %>
           <input id="start" name="start" type="number" min="<%=years.min()%>" max="<%=years.max()%>" placeholder="Début" class="year"/>
           <input id="end" name="end" type="number" min="<%=years.min()%>" max="<%=years.max()%>" placeholder="Fin" class="year"/>
           <br/><label for="author">Auteur</label>
@@ -59,8 +67,12 @@ const base = "<%=base%>";
          <caption>
             <input type="hidden" name="q" value="<%=Jsp.escape(q)%>"/>
             <button style="float: right;" name="save" type="submit">Enregistrer</button>
-            <input style="float: right;" type="text" size="10" id="name" name="name" value="<%= (corpus != null) ? Jsp.escape(corpus.name()) : "" %>" 
-            placeholder="Donner un nom à cette sélection" required="required"/>
+            <input style="float: right;" type="text" size="10" id="name" name="name" value="<%= (corpus != null) ? Jsp.escape(corpus.name()) : "" %>"
+            title="Donner un nom à cette sélection" 
+            placeholder="Nom ?" 
+            oninvalid="this.setCustomValidity('Un nom est nécessaire pour enregistrer votre sélection.')"
+            oninput="this.setCustomValidity('')"
+            required="required"/>
          </caption>
           <thead>
             <tr>
@@ -87,13 +99,22 @@ const base = "<%=base%>";
   else {
     dic = facet.topTerms();
   }
-  dic.sort();
-  
+    
+  // sorting
+  if ("alpha".equals(ord)) dic.sort();
+  else if (score && "score".equals(ord)) dic.sort(dic.getScores());
+  else if ("freq".equals(ord)) dic.sort(dic.getOccs());
+  else if (score) dic.sort(dic.getScores());
+  else dic.sort();
+    
   while (dic.hasNext()) {
     dic.next();
     int coverId = dic.cover();
     Document doc = reader.document(coverId, FIELDS);
     String bookid = doc.get(Alix.BOOKID);
+    // for results, do not diplay not relevant results
+    if (score && dic.occs() == 0) continue;
+    
     out.println("<tr>");
     out.println("  <td class=\"checkbox\">");
     out.print("    <input type=\"checkbox\" name=\"book\" id=\""+bookid+"\" value=\""+bookid+"\"");

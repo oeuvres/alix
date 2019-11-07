@@ -36,7 +36,9 @@
 <%@ page import="alix.lucene.search.TopTerms" %>
 <%@ page import="alix.util.ML" %>
 <%@ page import="obvil.web.Obvil" %>
-<%!/** Field name containing canonized text */
+<%!
+
+/** Field name containing canonized text */
 public static String TEXT = "text";
 /** Field Name with int date */
 final static String YEAR = "year";
@@ -85,6 +87,32 @@ public static String sortOptions(String sortSpec) throws IOException
   }
   return sb.toString();
 }
+
+/**
+ * Sort options for facets or corpus
+ */
+public static String biblSortOptions(final String sortPar, final boolean score) throws IOException
+{
+  StringBuilder sb = new StringBuilder();
+  String[] value = {
+    "alpha", "freq", "score"
+  };
+  String[] label = {
+    "Alphabétique", "Fréquence", "Pertinence"
+  };
+  for (int i = 0, length = value.length; i < length; i++) {
+    if ("score".equals(value[i]) && !score) continue;
+    sb.append("<option");
+    if (value[i].equals(sortPar)) sb.append(" selected=\"selected\"");
+    sb.append(" value=\"");
+    sb.append(value[i]);
+    sb.append("\">");
+    sb.append(label[i]);
+    sb.append("</option>");
+  }
+  return sb.toString();
+}
+
 
 public static String posOptions(String sortSpec) throws IOException
 {
