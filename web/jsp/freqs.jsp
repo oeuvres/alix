@@ -19,36 +19,18 @@ private static final int OUT_HTML = 0;
 private static final int OUT_CSV = 1;
 private static final int OUT_JSON = 2;
 
-private static final int ALL    = 0;
-private static final int NOSTOP = 1;
-private static final int SUB =    2;
-private static final int NAME =   4;
-private static final int VERB =   8;
-private static final int ADJ =    16;
-private static final int ADV =    32;
 
-private static String lines(final TopTerms dic, int max, final String format, final String filter, final boolean hasScore)
+private static String lines(final TopTerms dic, int max, final Mime mime, final String cat, final boolean hasScore)
 {
   max = Math.min(max, dic.size());
   StringBuilder sb = new StringBuilder();
   
-  final int cat;
-  if ("nostop".equals(filter)) cat = NOSTOP;
-  else if ("sub".equals(filter)) cat = SUB;
-  else if ("name".equals(filter)) cat = NAME;
-  else if ("verb".equals(filter)) cat = VERB;
-  else if ("adj".equals(filter)) cat = ADJ;
-  else if ("adv".equals(filter)) cat = ADV;
-  else cat = ALL;
-  
-  final int type;
-  if (Jsp.JSON.equals(format)) type = Jsp.JSONi;
-  else if (Jsp.CSV.equals(format)) type = Jsp.CSVi;
-  else type = Jsp.HTMLi;
-  
+  Cat catSwitch = Cat.NOSTOP;
+  try { catSwitch = Cat.valueOf(cat); }
+  catch (Exception e) { }
   
   int no = 1;
-  Tag tag;
+  Tag zetag;
   // dictonaries coming fron analysis, wev need to test attributes
   CharsAtt term = new CharsAtt();
   boolean first = true;
@@ -60,48 +42,48 @@ private static String lines(final TopTerms dic, int max, final String format, fi
     // if (STOPLIST.contains(term)) continue;
     LexEntry entry = FrDics.word(term);
     if (entry != null) {
-      tag = new Tag(entry.tag);
+      zetag = new Tag(entry.tag);
     }
     else if (Char.isUpperCase(term.charAt(0))) {
-      tag = new Tag(Tag.NAME);
+      zetag = new Tag(Tag.NAME);
     }
     else {
-      tag = new Tag(0);
+      zetag = new Tag(0);
     }
     // filtering
-    switch (cat) {
+    switch (catSwitch) {
       case NOSTOP:
         if (FrDics.isStop(term)) continue;
         break;
       case SUB:
-        if (!tag.isSub()) continue;
+        if (!zetag.isSub()) continue;
         break;
       case NAME:
-        if (!tag.isName()) continue;
+        if (!zetag.isName()) continue;
         break;
       case VERB:
-        if (!tag.equals(Tag.VERB)) continue;
+        if (!zetag.equals(Tag.VERB)) continue;
         break;
       case ADJ:
-        if (!tag.isAdj()) continue;
+        if (!zetag.isAdj()) continue;
         break;
       case ADV:
-        if (!tag.equals(Tag.ADV)) continue;
+        if (!zetag.equals(Tag.ADV)) continue;
         break;
     }
     if (dic.occs() == 0) break;
     if (no >= max) break;
     
-    switch(type) {
-      case Jsp.JSONi:
+    switch(mime) {
+      case json:
         if (!first) sb.append(",\n");
-        jsonLine(sb, dic, tag, no, hasScore);
+        jsonLine(sb, dic, zetag, no, hasScore);
         break;
-      case Jsp.CSVi:
-        csvLine(sb, dic, tag, no, hasScore);
+      case csv:
+        csvLine(sb, dic, zetag, no, hasScore);
         break;
       default:
-        htmlLine(sb, dic, tag, no, hasScore);
+        htmlLine(sb, dic, zetag, no, hasScore);
     }
     no++;
     first = false;
@@ -113,7 +95,7 @@ private static String lines(final TopTerms dic, int max, final String format, fi
 /**
  * An html table row &lt;tr&gt; for lexical frequence result.
  */
-private static void htmlLine(StringBuilder sb, final TopTerms dic, final Tag tag, final int no, final boolean hasScore)
+private static void htmlLine(StringBuilder sb, final TopTerms dic, final Tag zetag, final int no, final boolean hasScore)
 {
   sb.append("  <tr>\n");
   sb.append("    <td class=\"num\">");
@@ -124,7 +106,7 @@ private static void htmlLine(StringBuilder sb, final TopTerms dic, final Tag tag
   sb.append(t);
   sb.append("</a></td>\n");
   sb.append("    <td>");
-  sb.append(tag) ;
+  sb.append(zetag) ;
   sb.append("</td>\n");
   sb.append("    <td class=\"num\">");
   sb.append(dic.hits()) ;
@@ -156,12 +138,14 @@ static private void jsonLine(StringBuilder sb, final TopTerms dic, final Tag tag
   sb.append("\"}");
   sb.append("}");
 }
-%>
 
+%>
 <%
-//parameters
+  //parameters
 final String q = tools.getString("q", null);
 final String sorter = tools.getString("sorter", "score", "freqSorter");
+final String cat = tools.getString("cat", Cat.NOSTOP.name(), "catFreqs");
+
 int left = tools.getInt("left", 5, "freqLeft");
 if (left < 0) left = 0;
 else if (left > 10) left = 10;
@@ -193,21 +177,23 @@ final boolean hasScore = (q == null);
 
 String format = tools.getString("format", null);
 if (format == null) format = (String)request.getAttribute(Obvil.EXT);
+Mime mime;
+try { mime = Mime.valueOf(format); }
+catch(Exception e) { mime = Mime.html; }
 
-if (Jsp.JSON.equals(format)) {
-  response.setContentType(Jsp.JSON_TYPE);
+if (Mime.json.equals(mime)) {
+  response.setContentType(Mime.json.type);
   out.println("{");
   out.println("  \"data\":[");
-  out.println( lines(dic, 500, format, sorter, hasScore));
+  out.println( lines(dic, 500, mime, cat, hasScore));
   out.println("\n  ]");
   out.println("\n}");  
 }
-else if (Jsp.CSV.equals(format)) {
-  response.setContentType(Jsp.CSV_TYPE);
-  out.println( lines(dic, -1, format, sorter, hasScore));
+else if (Mime.csv.equals(mime)) {
+  response.setContentType(Mime.csv.type);
+  out.println( lines(dic, -1, mime, cat, hasScore));
 }
 else {
-
 
 %>
 <!DOCTYPE html>
@@ -219,7 +205,7 @@ else {
     <script src="../static/js/common.js">//</script>
   </head>
   <body>
-    <table class="sortable" align="center">
+    <table class="sortable">
       <caption>
         <form id="sortForm">
         <input type="submit" 
@@ -227,22 +213,22 @@ else {
        tabindex="-1" />
              <%
                if (corpus != null) {
-                        out.println("<i>"+corpus.name()+"</i>");
-                      }
+                  out.println("<i>"+corpus.name()+"</i>");
+                }
 
-                      if (q == null) {
-                        // out.println(max+" termes");
-                      }
-                      else {
-                        out.println("&lt;<input style=\"width: 2em;\" name=\"left\" value=\""+left+"\"/>");
-                        out.print(q);
-                        out.println("<input style=\"width: 2em;\" name=\"right\" value=\""+right+"\"/>&gt;");
-                        out.println("<input type=\"hidden\" name=\"q\" value=\""+Jsp.escape(q)+"\"/>");
-                      }
+                if (q == null) {
+                  // out.println(max+" termes");
+                }
+                else {
+                  out.println("&lt;<input style=\"width: 2em;\" name=\"left\" value=\""+left+"\"/>");
+                  out.print(q);
+                  out.println("<input style=\"width: 2em;\" name=\"right\" value=\""+right+"\"/>&gt;");
+                  out.println("<input type=\"hidden\" name=\"q\" value=\""+Jsp.escape(q)+"\"/>");
+                }
              %>
-           <select name="sorter" onchange="this.form.submit()">
+           <select name="cat" onchange="this.form.submit()">
               <option/>
-              <%= posOptions(sorter) %>
+              <%= catOptions(cat) %>
            </select>
         </form>
       </caption>
@@ -261,7 +247,7 @@ else {
         <tr>
       </thead>
       <tbody>
-        <%= lines(dic, 500, format, sorter, hasScore) %>
+        <%= lines(dic, 500, mime, cat, hasScore) %>
       </tbody>
     </table>
     <script src="../static/vendors/Sortable.js">//</script>

@@ -486,6 +486,15 @@ iframe {
   text-decoration: none;
 }
 
+#tabs a.comparer {
+  display: none;
+}
+
+body.document #tabs a.comparer {
+  display: inline;
+}
+
+
 #panChange {
   background-color: #FFF;
   margin-left: 2em;
@@ -682,6 +691,7 @@ body.document {
 body.document main {
   background-color: #FFFFFF;
   margin-bottom: 10rem;
+  max-width: 55rem;
 }
 
 .goright {

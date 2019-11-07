@@ -3,23 +3,24 @@ episode("view", "cloud");
 var cloudId = "wordcloud2";
 var url = new URL(window.location.href);
 
-const PATHNAME = url.pathname;
+let pars = [];
+
 const SORTER = "sorter";
 var sorter = url.searchParams.get(SORTER);
-if (sorter) localStorage.setItem(PATHNAME + SORTER, sorter);
-else if (sorter === "") localStorage.removeItem(PATHNAME + SORTER);
-else sorter = "";
+if (sorter) pars.push(SORTER+"="+sorter);
 
-var q = url.searchParams.get("q");
-if (!q) q="";
-else q = "&q="+q;
+const CAT = "cat";
+var cat = url.searchParams.get(CAT);
+if (cat) pars.push(CAT+"="+cat);
 
-console.log(sorter);
+const Q = "q";
+var q = url.searchParams.get(Q);
+if (q) pars.push(Q+"="+q);
 
-// var log = url.searchParams.get("log");
+let query = "";
+if (pars.length > 0) query = "?"+pars.join('&');
 
-
-fetch("freqs.json?sorter="+sorter+q).then(
+fetch("freqs.json" + query).then(
   function(response) {
   return response.json();
   }

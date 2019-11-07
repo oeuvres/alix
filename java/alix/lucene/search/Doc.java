@@ -51,9 +51,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
@@ -75,7 +73,7 @@ public class Doc
 {
   /** Just the mandatory fields */
   final static HashSet<String> FIELDS_REQUIRED = new HashSet<String>(Arrays.asList(new String[] { Alix.FILENAME, Alix.BOOKID, Alix.ID, Alix.TYPE}));
-  /** Format numbers with the dot */
+  /** Mime numbers with the dot */
   final static DecimalFormatSymbols ensyms = DecimalFormatSymbols.getInstance(Locale.ENGLISH);
   /** The lucene index to read in */
   final private Alix alix;

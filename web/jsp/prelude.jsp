@@ -27,6 +27,7 @@
 <%@ page import="org.apache.lucene.search.TopScoreDocCollector" %>
 <%@ page import="org.apache.lucene.util.BitSet" %>
 <%@ page import="alix.web.Jsp" %>
+<%@ page import="alix.web.Mime" %>
 <%@ page import="alix.lucene.Alix" %>
 <%@ page import="alix.lucene.analysis.FrAnalyzer" %>
 <%@ page import="alix.lucene.search.Corpus" %>
@@ -36,6 +37,7 @@
 <%@ page import="alix.lucene.search.TopTerms" %>
 <%@ page import="alix.util.ML" %>
 <%@ page import="obvil.web.Obvil" %>
+<%@ page import="obvil.web.Cat" %>
 <%!
 
 /** Field name containing canonized text */
@@ -114,22 +116,18 @@ public static String biblSortOptions(final String sortPar, final boolean score) 
 }
 
 
-public static String posOptions(String sortSpec) throws IOException
+
+public static String catOptions(String catPar) throws IOException
 {
   StringBuilder sb = new StringBuilder();
-  String[] value = {
-    "nostop", "sub", "name", "verb", "adj", "adv", "all",
-  };
-  String[] label = {
-    "Mots pleins", "Substantifs", "Noms propres", "Verbes", "Adjectifs", "Adverbes", "Tout",
-  };
-  for (int i = 0, length = value.length; i < length; i++) {
+  for (Cat cat : Cat.values()) {
+    String value = cat.name();
     sb.append("<option");
-    if (value[i].equals(sortSpec)) sb.append(" selected=\"selected\"");
+    if (value.equals(catPar)) sb.append(" selected=\"selected\"");
     sb.append(" value=\"");
-    sb.append(value[i]);
+    sb.append(value);
     sb.append("\">");
-    sb.append(label[i]);
+    sb.append(cat.label);
     sb.append("</option>\n");
   }
   return sb.toString();

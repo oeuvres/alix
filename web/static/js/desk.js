@@ -30,6 +30,7 @@ for (var i = 0; i < tabs.length; i++) {
       a.className = '';
     }
     this.className = "here";
+    document.className = "split "+this.href;
     form.action = this.href;
     form.submit();
     return false;

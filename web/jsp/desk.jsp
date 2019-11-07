@@ -105,6 +105,7 @@ corpus = (Corpus)session.getAttribute(corpusKey);
           <a href="doc" target="page"<%= (view.equals("doc"))?" class=\"here\"":"" %>>Document</a>
           <a href="freqs" target="page"<%= (view.equals("freqs"))?" class=\"here\"":"" %>>Fréquences</a>
           <a href="cloud" target="page"<%= (view.equals("cloud"))?" class=\"here\"":"" %>>Nuage</a>
+          <a href="comparer" class="comparer">Comparer</a>
           <!-- 
           <a href="kwic" target="page">Concordancier</a>
            -->

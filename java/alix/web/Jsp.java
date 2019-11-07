@@ -39,30 +39,6 @@ import javax.servlet.jsp.PageContext;
  */
 public class Jsp
 {
-  /** Output format: complete html document */
-  static public final String HTML = "html";
-  /** An int value for a switch case: complete html document */
-  static public final int HTMLi = 1;
-  /** Output format: an html fragment */
-  static public final String HTF = "htf";
-  /** An int value for a switch case: an html fragment */
-  static public final int HTFi = 2;
-  /** Output format: json */
-  static public final String JSON = "json";
-  /** Json mime/type */
-  static public final String JSON_TYPE = "application/json";
-  /** An int value for a switch case: json */
-  static public final int JSONi = 3;
-  /** Output format: a comma separated table */
-  static public final String CSV = "csv";
-  /** Csv mime/type */
-  static public final String CSV_TYPE = "text/csv";
-  /** An int value for a switch case: csv */
-  static public final int CSVi = 4;
-  /** Output format: txt */
-  static public final String TXT = "txt";
-  /** An int value for a switch case: txt */
-  static public final int TXTi = 5;
   /** Jsp page context */
   final PageContext page;
 

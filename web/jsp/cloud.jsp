@@ -2,7 +2,7 @@
 <%@ include file="prelude.jsp" %>
 <%
 final String q = tools.getString("q", null);
-final String sorter = tools.getString("sorter", "score", "freqSorter");
+final String cat = tools.getString("cat", Cat.NOSTOP.name(), "catFreqs");
 
 %>
 <!DOCTYPE html>
@@ -15,9 +15,9 @@ final String sorter = tools.getString("sorter", "score", "freqSorter");
   </head>
   <body class="cloud">
     <form id="filter">
-       <select name="sorter" onchange="this.form.submit()">
+       <select name="cat" onchange="this.form.submit()">
           <option/>
-          <%= posOptions(sorter) %>
+          <%= catOptions(cat) %>
        </select>
        <input type="hidden" name="q" value="<%=Jsp.escape(q)%>"/>
     </form>

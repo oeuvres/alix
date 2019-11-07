@@ -1,7 +1,7 @@
-/** Update location bar */
+/** Update an URL parameter in location bar of parent window if caller is in a frame */
 function episode(key, value) {
   if (!key) return;
-  // update url of top window if caller has given an id of doc
+  if (self == top) return;
   const topUrl = top.location;
   var search = topUrl.search;
   var pars = new URLSearchParams(search);
@@ -10,4 +10,3 @@ function episode(key, value) {
   if (value !== null) pars.append(key, value);
   top.history.replaceState(null, null, "?"+pars.toString());
 }
-//

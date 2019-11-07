@@ -20,7 +20,10 @@ else if (window.name) {
     sibling = window.parent.frames["right"];
   }
   // update url of top window if the calling server has set an id of doc
-  try { episode(key, id); } catch(e) {}
+  try {
+    episode(key, id);
+  } catch(e) {}
+
 }
 
 var text = document.getElementById("text");
