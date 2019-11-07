@@ -390,7 +390,7 @@ public class Facet
           int docId = docBase + docLeaf;
           if (!filter.get(docId)) continue;// not in the filter do not count
           int[] facets = docFacets[docId]; // get the facets of this doc
-          // if (facets == null) continue; // should no arrive, wait and see
+          // if (facets == null) continue; // should not arrive, wait and see
           for (int i = 0, length = facets.length; i < length; i++) {
             int facetId = facets[i];
             hits[facetId]++; // weight is here in docs

@@ -44,6 +44,7 @@ else if (request.getParameter("next") != null) { //if submit next
 }
 
 // global variables
+Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 Doc doc = null;
 TopDocs topDocs = null;
 
@@ -62,7 +63,6 @@ catch (IllegalArgumentException e) {
 } 
 // if no full doc, get one in results
 if (doc == null && q != null) {
-  time = System.nanoTime();
   topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
   ScoreDoc[] hits = topDocs.scoreDocs;
   if (hits.length == 0) {
@@ -83,14 +83,17 @@ if (doc != null) title = ML.detag(doc.doc().get("bibl"));
 <html>
   <head>
     <meta charset="UTF-8">
+    <title><%=title%> [Obvil]</title>
     <link href="../static/vendors/teinte.css" rel="stylesheet"/>
     <link href="../static/obvil.css" rel="stylesheet"/>
-    <title><%=title%> [Obvil]</title>
+    <script src="../static/js/common.js">//</script>
     <script>
-    <%if (doc != null) {
+    <%
+if (doc != null) {
   out.println("const docLength="+doc.length(TEXT)+";");
-  out.println("const id=\""+doc.id()+"\";");
-}%>
+  out.println("const id=\""+doc.id()+"\"; episode('id', id); ");
+}
+    %>
     </script>
   </head>
   <body class="document">
@@ -115,7 +118,7 @@ if (doc != null) title = ML.detag(doc.doc().get("bibl"));
               out.println("<button type=\"submit\" name=\"prev\">◀</button>");
             }
         %>
-        <input id="q" name="q" value="<%=Jsp.escapeHtml(q)%>" autocomplete="off" type="hidden"/>
+        <input id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" type="hidden"/>
         <select name="sort" onchange="this.form.submit()" title="Ordre">
             <option>Pertinence</option>
             <%= sortOptions(sort) %>

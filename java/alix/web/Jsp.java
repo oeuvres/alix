@@ -85,7 +85,7 @@ public class Jsp
   /**
    * Ensure that a String could be included as an html attribute with quotes
    */
-  public static String escapeHtml(final String s)
+  public static String escape(final String s)
   {
     if (s == null) return "";
     final StringBuilder out = new StringBuilder(Math.max(16, s.length()));

@@ -3,33 +3,34 @@
 <%@ page import="alix.lucene.search.Facet" %>
 <%@ page import="alix.lucene.search.TermList" %>
 <%@ page import="alix.lucene.search.TopTerms" %>
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8"/>
-    <title>Facettes</title>
-    <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
-    <base target="page"/>
-  </head>
-  <body class="facet">
-  <%
-// Show facets for a corpus or/and a query
-// Params for the page
-BitSet filter = null;
-if (corpus != null) filter = corpus.bits();
+<%
+//Params for the page
 String q = tools.getString("q", null);
 String ord = tools.getString("ord", "score", "facetScore");
 
-
+// global variables
+Corpus corpus = (Corpus)session.getAttribute(corpusKey);
+BitSet filter = null;
+if (corpus != null) filter = corpus.bits();
 TermList terms = alix.qTerms(q, TEXT);
 if (terms != null && terms.size() < 1 && "score".equals(ord)) ord = "freq";
-// choose a field
+//choose a field
 String facetField = tools.getString("facet", "author");
 String facetName = facetField;
 if (facetField.equals("author")) facetName = "Auteur";
 else if (facetField.equals("title")) facetName = "Titre";
 
 %>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>Facettes</title>
+    <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
+    <script src="../static/js/common.js">//</script>
+    <base target="page"/>
+  </head>
+  <body class="facet">
     <form id="qform" target="_self">
       <input type="submit" style="position: absolute; left: -9999px; width: 1px; height: 1px;"  tabindex="-1" />
       <input type="hidden" id="q" name="q" value="<%=q%>" autocomplete="off"/>
@@ -86,7 +87,9 @@ else {
   while (facetEnum.hasNext()) {
     facetEnum.next();
     int docs = facetEnum.docs();
-    if (docs < 1) continue; // in alpha order, try next
+    // if a filter but no query, hits is set, test it
+    if (filter != null && facetEnum.hits() < 1) continue;
+    if (docs < 1) continue; // if in alpha order, do not stop here
     out.print("<div class=\"term\">");
     out.print("<span>(<i>"+docs+"</i>)</span>    ");
     out.print(facetEnum.term());

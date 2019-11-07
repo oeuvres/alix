@@ -70,6 +70,7 @@ final String q = tools.getString("q", null);
 
 // global variables
 Scale scale;
+Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 if (corpus == null) {
   scale = new Scale(alix, YEAR, TEXT);
 }
@@ -78,8 +79,6 @@ else {
 }
 // number of fots by curve, could be a parameter
 int dots = tools.getInt("dots", 200);
-// build queries
-time = System.nanoTime();
 
 
 

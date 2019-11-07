@@ -122,7 +122,7 @@ private String results(final Jsp tools, final Corpus corpus, final Doc refDoc, f
   return sb.toString();
 }%>
 <%
-  // parameters
+// page parameters
 String refId = tools.getString("refid", null);
 int refDocId = tools.getInt("refdocid", -1);
 String refType = tools.getString("reftype", null);
@@ -130,7 +130,8 @@ String q = tools.getString("q", null);
 String format = tools.getString("format", null);
 if (format == null) format = (String)request.getAttribute(Obvil.EXT);
 
-// global param
+// global varaiables
+Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 
 // Is there a good reference doc requested ?
 Doc refDoc = null;
@@ -146,17 +147,18 @@ catch (IllegalArgumentException e) {
 } // unknown id
 
 
-
 // parameter 
 if (Jsp.HTF.equals(format)) {
-  out.println(results(tools, corpus, refDoc, searcher));}
+  out.println(results(tools, corpus, refDoc, searcher));
+}
 else {
 %>
 <!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Rechercher un texte, <%=baseTitle%> [Obvil]</title>
+    <title>Recherche bibliographique, <%= (corpus != null) ? Jsp.escape(corpus.name())+", " : "" %><%=props.get("name")%> [Obvil]</title>
+    <script src="../static/js/common.js">//</script>
     <link href="../static/obvil.css" rel="stylesheet"/>
   </head>
   <body class="results">
@@ -179,13 +181,13 @@ if (corpus != null) {
     <form>
       <%
         if (refDoc != null) {
-        out.println("<input type=\"hidden\" name=\"refid\" value=\"" +refDoc.id()+"\"/>");
-      }
-      else {
-        out.print("<input size=\"50\" type=\"text\" id=\"q\" onfocus=\"var len = this.value.length * 2; this.setSelectionRange(len, len); \" autofocus=\"true\"");
-        out.println(" spellcheck=\"false\" autocomplete=\"off\" name=\"q\" value=\"" +Jsp.escapeHtml(q)+"\"/>");
-        // out.println("<br/>" + query);
-      }
+          out.println("<input type=\"hidden\" name=\"refid\" value=\"" +refDoc.id()+"\"/>");
+        }
+        else {
+          out.print("<input size=\"50\" type=\"text\" id=\"q\" onfocus=\"var len = this.value.length * 2; this.setSelectionRange(len, len); \" autofocus=\"true\"");
+          out.println(" spellcheck=\"false\" autocomplete=\"off\" name=\"q\" value=\"" +Jsp.escape(q)+"\"/>");
+          // out.println("<br/>" + query);
+        }
       %>
     </form>
     <p/>

@@ -1,20 +1,74 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" trimDirectiveWhitespaces="true"%>
 <%@include file="prelude.jsp" %>
 <%
-  // params
+
+// params
+String[] checks = request.getParameterValues("book");
+String json = tools.getString("json", null);
 String q = tools.getString("q", null);
 String id = tools.getString("id", null);
+String view = tools.getString("view", null);
 String url;
+
+// pars
+String pars = "";
+if (q != null) pars += "q=" + Jsp.escape(q);
 if (id != null) {
-  url = "doc.jsp?id="+id;
-  if (q != null) url += "&amp;"+Jsp.escapeHtml(q);
+  if (pars.length() > 0) pars += "&amp;";
+  pars += "id="+id;
+}
+if (pars.length() > 0) pars = "?" + pars;
+
+if (checks != null || json != null) {
+  view = "corpus";
+  url = view;
+}
+else if (id != null) {
+  view = "doc";
+  url = view + pars;
+}
+else if ("corpus".equals(view) || "snip".equals(view) || "freqs".equals(view) || "cloud".equals(view) ) {
+  url = view + pars;
 }
 else if (q != null) {
-  url = "snip.jsp?q=" + Jsp.escapeHtml(q);
+  view = "snip";
+  url = view + pars;
 }
 else {
-  url = "corpus.jsp";
+  view = "corpus";
+  url = view;
 }
+
+
+//prepare a corpus ?
+String js = "";
+Corpus corpus = null;
+if ("POST".equalsIgnoreCase(request.getMethod())) { 
+// handle paramaters to change the corpus
+String name = tools.getString("name", null);
+String desc = tools.getString("desc", null);
+if (name == null) name = "Ma sélection";
+if (checks != null) {
+  corpus = new Corpus(alix, Alix.BOOKID, name, desc);
+  corpus.add(checks);
+  session.setAttribute(corpusKey, corpus);
+  json = corpus.json();
+  // corpus has been modified, store on client
+  js += "corpusStore(\""+name+"\", \""+desc+"\", '"+json+"');\n";
+
+}
+//json send, client wants to load a new corpus
+else if (json != null) {
+ corpus = new Corpus(alix, Alix.BOOKID, json);
+ name = corpus.name();
+ desc = corpus.desc();
+ session.setAttribute(corpusKey, corpus);
+}
+}
+else if ("new".equals(tools.getString("corpus", null))) {
+  session.setAttribute(corpusKey, null);
+}
+corpus = (Corpus)session.getAttribute(corpusKey);
 
 
 %>
@@ -22,30 +76,44 @@ else {
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>[Obvil] <%=props.get("title")%></title>
+    <title><%= (corpus != null) ? Jsp.escape(corpus.name())+", " : "" %><%=props.get("name")%> [Obvil]</title>
     <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
     <script src="../static/vendors/split.js">//</script>
+    <script src="../static/js/common.js">//</script>
+    <script>
+const base = "<%=base%>"; // before setting corpora key
+<%=js %>
+    </script>
+    <script src="../static/js/corpora.js">//</script>
   </head>
   <body class="split">
     <header id="header">
-      <span class="base"><%=props.get("title")%></span>
-      <form id="qform" name="qform" onsubmit="return dispatch(this)" target="page" action="snip.jsp">
-        <input id="q" name="q" autocomplete="off" autofocus="true" value="<%=Jsp.escapeHtml(q)%>"/>
+      <span class="base"><%=props.get("name")%> <%
+   if (corpus != null) {
+     String name = corpus.name();
+     out.println("<mark><a title=\"Déselectionner ce corpus\" href=\"?corpus=new&amp;q="+Jsp.escape(q)+"\">🗙</a>  "+name+"</mark>");
+     
+   }
+ %></span>
+      <a class="logo" href=".?corpus=new"><img alt="Obvil app" src="../static/img/obvil_50.png"/></a>
+      <form id="qform" name="qform" onsubmit="return dispatch(this)" target="page" action="<%=view%>">
+        <input id="q" name="q" autocomplete="off" autofocus="true" value="<%=Jsp.escape(q)%>"/>
         <button type="submit" name="send" tabindex="-1" class="magnify">⚲</button>
+        <div id="tabs">
+          <a href="corpus" target="page"<%= (view.equals("corpus"))?" class=\"here\"":"" %>>Corpus</a>
+          <a href="snip" target="page"<%= (view.equals("snip"))?" class=\"here\"":"" %>>Résultats</a>
+          <a href="doc" target="page"<%= (view.equals("doc"))?" class=\"here\"":"" %>>Document</a>
+          <a href="freqs" target="page"<%= (view.equals("freqs"))?" class=\"here\"":"" %>>Fréquences</a>
+          <a href="cloud" target="page"<%= (view.equals("cloud"))?" class=\"here\"":"" %>>Nuage</a>
+          <!-- 
+          <a href="kwic" target="page">Concordancier</a>
+           -->
+        </div>
       </form>
-      <a class="logo" href="."><img alt="Obvil app" src="../static/img/obvil_50.png"/></a>
-      <div id="tabs">
-        <a href="corpus" target="page" class="tab">Corpus</a>
-        <a href="snip" target="page" class="tab">Résultats</a>
-        <a href="doc" target="page" class="tab">Document</a>
-        <a href="freqs" target="page" class="tab">Fréquences</a>
-        <a href="cloud" target="page" class="tab">Nuage</a>
-        <i href="kwic" target="page" class="tab">Concordancier</i>
-      </div>
     </header>
     <div id="win">
       <div id="aside">
-        <iframe id="panel" name="panel" src="facet">
+        <iframe id="panel" name="panel" src="facet<%= pars %>">
         </iframe>
       </div>
       <div id="main">
@@ -54,7 +122,7 @@ else {
           </iframe>
         </div>
         <footer id="footer">
-          <iframe id="chrono" name="chrono" src="chrono">
+          <iframe id="chrono" name="chrono" src="chrono<%= pars %>">
           </iframe>
          </footer>
       </div>

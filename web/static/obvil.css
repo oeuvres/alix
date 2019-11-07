@@ -10,10 +10,8 @@
  * orange: #ea5b0c; rgb(234, 91, 12);
  */
 body,
-select {
-  font-family: "Open Sans", sans-serif;
-}
-body.comp #text, ul.legend {
+select,
+#header .base mark {
   font-family: "Open Sans", "Ubuntu", "Calibri", "Segoe UI", Avenir, Helvetica, sans-serif;
 }
 
@@ -100,9 +98,14 @@ header {
   border-color: #FFFFFF;
 }
 
+#tabs a.here,
 ::-moz-selection {
   background: rgba(120, 105, 101, 0.8);
   color: #FFFFFF;
+}
+
+#tabs a:hover {
+  background: hsl(31, 17%, 80%);
 }
 
 ::selection {
@@ -121,6 +124,7 @@ textarea:focus {
   border: 1px solid rgba(42, 45, 84, 0.7);
 }
 
+#header .base mark,
 #rulhi {
   border-color: rgba(146, 137, 127, 0.3);
 }
@@ -191,6 +195,12 @@ a:hover {
 /**
  * Global styling
  */
+
+#header form {
+  width: 80%;
+  margin-left: calc(15vw + 100px);
+}
+
 #q {
   outline: 1px solid #CCC;
   /*
@@ -200,7 +210,7 @@ a:hover {
   border-width: 1px;
   font-weight: bold;
   font-size: 1.3rem;
-  width: 70%;
+  width: 90%;
   min-width: 8rem;
   max-width: 60rem;
 }
@@ -433,14 +443,27 @@ iframe {
   z-index: 2;
 }
 
-
-
 #header .base {
   position: absolute;
   bottom: 0;
   left: 75px;
   font-style: italic;
   font-size: 23px;
+}
+
+#header .base mark {
+  font-style: normal;
+  font-size: 16px;
+  padding: 0 3px;
+  margin-left: 10px;
+  border-color: #FFF;
+}
+
+#header .base mark a {
+  color:red ;
+}
+#header .base mark a:hover {
+  color:red ;
 }
 
 #alert {
@@ -452,22 +475,14 @@ iframe {
   line-height: 95%;
 }
 
-#header form {
-  text-align: center;
-  margin: 0 auto 0 auto;
-  position: relative;
-}
-
-#header #tabs {
-  position: absolute;
-  bottom: 4px;
-  right: 2em;
-}
-
 #tabs a {
   border-style: solid;
   border-width: 1px;
   margin-right: 2px;
+}
+
+#tabs a:hover {
+  text-decoration: none;
 }
 
 #panChange {
@@ -951,10 +966,18 @@ a.delete {
   line-height: 3rem;
   padding: 0 0.3rem 0 0.5rem;
   text-decoration: none;
+  opacity: 0.5;
 }
+
+body.document .goright {
+  position: fixed;
+  right: 1rem;
+}
+
 a.delete {
   color: red;
 }
+
 a.delete:hover,
 .goright:hover {
   text-decoration: none;

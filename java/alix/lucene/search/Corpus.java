@@ -64,17 +64,12 @@ import alix.lucene.Alix;
  * can contain multiple “chapters“ (documents). User should maintain unicity of
  * his bookdids. These bookids allow to keep a stable reference between
  * different lucene index states. They can be stored as a json string.
- * 
- * @author fred
- *
  */
 public class Corpus
 {
   /** Mandatory name for the corpus */
   private String name;
-  /** Optional description for the corpus */
-  private String desc;
-  /** Name of the field */
+  /** Name of the field used for ids, default is {@link Alix#BOOKID} */
   private final String field;
   /** The lucene index */
   private final Alix alix;
@@ -82,6 +77,9 @@ public class Corpus
   private final int maxDoc;
   /** The bitset */
   private final BitSet docs;
+  /** Optional description for the corpus */
+  private String desc;
+
 
   /**
    * Constructor
@@ -94,7 +92,7 @@ public class Corpus
    *          Name of the corpus
    * @throws IOException
    */
-  public Corpus(Alix alix, String field, String name, String desc) throws IOException
+  public Corpus(final Alix alix, final String field, final String name, final String desc) throws IOException
   {
     this.alix = alix;
     this.field = field;
@@ -183,9 +181,6 @@ public class Corpus
 
   /**
    * Build the list of bookids from the vector of docids.
-   * 
-   * @return
-   * @throws IOException
    */
   public Set<String> books() throws IOException
   {
@@ -216,8 +211,6 @@ public class Corpus
 
   /**
    * Add the results of a query to the filter, return number of hits found.
-   * 
-   * @throws IOException
    */
   public int add(String[] books) throws IOException
   {
@@ -230,11 +223,7 @@ public class Corpus
   }
 
   /**
-   * Add
-   * 
-   * @param q
-   * @return
-   * @throws IOException
+   * Add documents by query
    */
   private int addBits(Query q) throws IOException
   {
@@ -246,10 +235,6 @@ public class Corpus
 
   /**
    * Modifiy the local vector of docs according to a query of bookids.
-   * 
-   * @param q
-   * @return
-   * @throws IOException
    */
   private int removeBits(Query q) throws IOException
   {
@@ -261,8 +246,6 @@ public class Corpus
 
   /**
    * Add the results of a query to the filter, return number of hits found.
-   * 
-   * @throws IOException
    */
   public int add(String bookid) throws IOException
   {
@@ -271,8 +254,6 @@ public class Corpus
 
   /**
    * Remove the results of a query to the filter, return number of hits found.
-   * 
-   * @throws IOException
    */
   public int remove(String bookid) throws IOException
   {
@@ -281,9 +262,6 @@ public class Corpus
 
   /**
    * Local collector used to add docId to the vector.
-   * 
-   * @author fred
-   *
    */
   class AddBits extends CollectorBits
   {
@@ -296,9 +274,6 @@ public class Corpus
 
   /**
    * Local collector used to remove docId from the vector.
-   * 
-   * @author fred
-   *
    */
   class RemoveBits extends CollectorBits
   {
@@ -311,9 +286,6 @@ public class Corpus
 
   /**
    * Abstract collector
-   * 
-   * @author fred
-   *
    */
   abstract class CollectorBits extends SimpleCollector
   {

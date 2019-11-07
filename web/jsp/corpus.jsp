@@ -13,64 +13,13 @@ final static DecimalFormat dfint = new DecimalFormat("###,###,##0", frsyms);
 final static HashSet<String> FIELDS = new HashSet<String>(Arrays.asList(new String[] {Alix.BOOKID, "byline", "year", "title"}));
 static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT));%>
 <%
-  /*
-Build a corpus or show query stats on it
- — creation : no local corpus, create a new one
- — select : no corpus in session, list of local corpus
- — modify : no query, corpus in session, edit
- — stats : query distribution by book 
-*/
 // params for this page
 String q = tools.getString("q", null);
-String name = tools.getString("name", "");
-String desc = tools.getString("desc", "");
-String json = tools.getString("json", null);
-String[] checks = request.getParameterValues("book");
 // global variables
-Set<String> bookids = null; // load the bookds to update the 
-String botjs = ""; // javascript to add at the end
-Facet facet;
-
-// new corpus, do not load something
-if (request.getParameter("new") != null) {
-  corpus = null;
-  session.setAttribute(corpusKey, null);
-  name = "";
-  desc = "";
-  botjs += "informParent(); ";
-}
-// json send, client wants to load a new corpus
-else if (json != null) {
-  corpus = new Corpus(alix, Alix.BOOKID, json);
-  name = corpus.name();
-  desc = corpus.desc();
-  session.setAttribute(corpusKey, corpus);
-  bookids =  corpus.books();
-  botjs += "informParent(\""+name+"\"); ";
-}
-// client send bookids
-else if (checks != null) {
-  corpus = new Corpus(alix, Alix.BOOKID, name, desc);
-  corpus.add(checks);
-  bookids = corpus.books(); // 
-  session.setAttribute(corpusKey, corpus);
-  json = corpus.json();
-  // corpus has been modified, store on client
-  botjs += "store(\""+name+"\", \""+desc+"\", '"+json+"');\n";
-  botjs += "informParent(\""+name+"\"); ";
-}
-// load corpus from sesssion
-else {
-  corpus = (Corpus)session.getAttribute(corpusKey);
-  if (corpus != null) {
-    bookids = corpus.books();
-    name = corpus.name();
-    desc = corpus.desc();
-    botjs += "informParent(\""+name+"\"); ";
-  }
-}
-
-facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.TYPE, Alix.BOOK));
+Corpus corpus = (Corpus)session.getAttribute(corpusKey);
+Set<String> bookids = null; 
+if (corpus != null) bookids = corpus.books();
+Facet facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.TYPE, Alix.BOOK));
 TermList qTerms = alix.qTerms(q, TEXT);
 // no query
 TopTerms dic = null;
@@ -82,20 +31,15 @@ boolean score = (qTerms != null && qTerms.size() > 0);
     <meta charset="UTF-8">
     <title>Corpus [Alix]</title>
     <link href="../static/obvil.css" rel="stylesheet"/>
+    <link href="../static/vendors/teinte.css" rel="stylesheet"/>
+    <link href="../static/obvil.css" rel="stylesheet"/>
+    <script src="../static/js/common.js">//</script>
     <script type="text/javascript">
 const base = "<%=base%>";
     </script>
     <script src="../static/js/corpus.js">//</script>
   </head>
   <body class="corpus">
-    <form method="post" id="corpora" action="?">
-      <input type="hidden" name="q" value="<%=Jsp.escapeHtml(q)%>"/>
-      <input type="hidden" name="json"/>
-      <ul id="corpusList"></ul>
-    </form>
-    <script type="text/javascript">
-corpusList("corpusList");
-    </script>
     <main>
         <details id="filter">
           <summary>Filtres</summary>
@@ -110,16 +54,13 @@ corpusList("corpusList");
           <br/><label for="title">Titre</label>
           <input id="title" name="title" autocomplete="off" list="title-data" type="text" size="50" onclick="select()" placeholder="Chercher un titre"/>
         </details>
-      <form method="post" id="corpus" action="#">
+      <form method="post" id="corpus" target="_top" action=".">
         <table class="sortable" id="bib">
          <caption>
-            <input type="hidden" name="q" value="<%=Jsp.escapeHtml(q)%>"/>
-            <button id="selection" type="button" title="Montrer les items sélectionnés">✔</button>
-            <button id="all" type="button" title="Montrer tous les items">▢</button>
-            Corpus <input type="text" size="10" id="name" name="name" value="<%=name%>" placeholder="Nom du corpus" required="required"/>
-            <button style="float: right;"  name="save" type="submit">Enregistrer</button>
-            <button style="float: right;" name="new" onclick="this.form.name = ' '" type="submit">Nouveau</button>
-            <button style="float: right;" name="reload" type="button" onclick="window.location = window.location.href.split('#')[0];">Recharger</button>
+            <input type="hidden" name="q" value="<%=Jsp.escape(q)%>"/>
+            <button style="float: right;" name="save" type="submit">Enregistrer</button>
+            <input style="float: right;" type="text" size="10" id="name" name="name" value="<%= (corpus != null) ? Jsp.escape(corpus.name()) : "" %>" 
+            placeholder="Donner un nom à cette sélection" required="required"/>
          </caption>
           <thead>
             <tr>
@@ -211,7 +152,6 @@ corpusList("corpusList");
     <script>
 bottomLoad();
 <%
-out.println(botjs);
 if (corpus != null) out.println("showSelected();");
 %>
     </script>

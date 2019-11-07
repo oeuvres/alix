@@ -19,13 +19,13 @@ private static final int OUT_HTML = 0;
 private static final int OUT_CSV = 1;
 private static final int OUT_JSON = 2;
 
-private static final int ALL    = 0b0000000;
-private static final int NOSTOP = 0b0000001;
-private static final int SUB =    0b0000010;
-private static final int NAME =   0b0000100;
-private static final int VERB =   0b0001000;
-private static final int ADJ =    0b0010000;
-private static final int ADV =    0b0100000;
+private static final int ALL    = 0;
+private static final int NOSTOP = 1;
+private static final int SUB =    2;
+private static final int NAME =   4;
+private static final int VERB =   8;
+private static final int ADJ =    16;
+private static final int ADV =    32;
 
 private static String lines(final TopTerms dic, int max, final String format, final String filter, final boolean hasScore)
 {
@@ -173,7 +173,9 @@ else if (right > 10) right = 10;
 final String field = TEXT; // the field to process
 TopTerms dic; // the dictionary to extracz
 BitSet filter = null; // if a corpus is selected, filter results with a bitset
+Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 if (corpus != null) filter = corpus.bits();
+
 if (q == null) {
   Freqs freqs = alix.freqs(field);
   dic = freqs.topTerms(filter);
@@ -212,7 +214,9 @@ else {
 <html>
   <head>
     <meta charset="UTF-8">
+    <title>Fréquences, <%= (corpus != null) ? Jsp.escape(corpus.name())+", " : "" %><%=props.get("name")%> [Obvil]</title>
     <link href="../static/obvil.css" rel="stylesheet"/>
+    <script src="../static/js/common.js">//</script>
   </head>
   <body>
     <table class="sortable" align="center">
@@ -222,20 +226,19 @@ else {
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
        tabindex="-1" />
              <%
-             if (corpus != null) {
-               out.println("<i>"+corpus.name()+"</i>");
-             }
+               if (corpus != null) {
+                        out.println("<i>"+corpus.name()+"</i>");
+                      }
 
-             if (q == null) {
-               // out.println(max+" termes");
-             }
-             else {
-               out.println("&lt;<input style=\"width: 2em;\" name=\"left\" value=\""+left+"\"/>");
-               out.print(q);
-               out.println("<input style=\"width: 2em;\" name=\"right\" value=\""+right+"\"/>&gt;");
-               out.println("<input type=\"hidden\" name=\"q\" value=\""+Jsp.escapeHtml(q)+"\"/>");
-             }
-
+                      if (q == null) {
+                        // out.println(max+" termes");
+                      }
+                      else {
+                        out.println("&lt;<input style=\"width: 2em;\" name=\"left\" value=\""+left+"\"/>");
+                        out.print(q);
+                        out.println("<input style=\"width: 2em;\" name=\"right\" value=\""+right+"\"/>&gt;");
+                        out.println("<input type=\"hidden\" name=\"q\" value=\""+Jsp.escape(q)+"\"/>");
+                      }
              %>
            <select name="sorter" onchange="this.form.submit()">
               <option/>

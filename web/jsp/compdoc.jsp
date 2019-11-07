@@ -14,7 +14,7 @@ static String wordList(Top<String> top)
     else sb.append(", ");
     final String form = entry.value();
     sb.append("<a class=\""+Doc.csstok(form)+"\">");
-    sb.append(Jsp.escapeHtml(form));
+    sb.append(Jsp.escape(form));
     sb.append("</a>");
     // out.print(" ("+entry.score()+")");
     // if (entry.score() <= 0) break;
@@ -57,13 +57,14 @@ catch (IllegalArgumentException e) {} // unknown id
     <title><%
       if (doc != null) {
       out.print(ML.detag(doc.doc().get("bibl")));
-    }
-    else {
+        }
+        else {
       out.print("Comparaison, document");
-    }
+        }
     %> [Obvil]</title>
     <link href="../static/vendors/teinte.css" rel="stylesheet"/>
     <link href="../static/obvil.css" rel="stylesheet"/>
+    <script src="../static/js/common.js">//</script>
     <script>
     <%if (doc != null) {
   out.println("const docLength="+doc.length(TEXT)+";");
@@ -89,11 +90,11 @@ catch (IllegalArgumentException e) {} // unknown id
     <header class="biblbar" title="<%=ML.detag(bibl)%>">
         <%
           // link to go back to results
-        String url = "meta.jsp";
-        if (q != null) url += "?q=" + Jsp.escapeHtml(q);
-        else if (refId != null) url += "?refid=" + refId;
-        else if (refDocId > -1) url += "?refdocid=" + refDocId;
-        if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromScore;
+            String url = "meta.jsp";
+            if (q != null) url += "?q=" + Jsp.escape(q);
+            else if (refId != null) url += "?refid=" + refId;
+            else if (refDocId > -1) url += "?refdocid=" + refDocId;
+            if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromScore;
         %>
       <a class="back" href="<%=url %>" title="Retour aux résultats">⮐</a>
       <a href="#" class="bibl"><%= bibl %></a>
@@ -125,7 +126,7 @@ catch (IllegalArgumentException e) {} // unknown id
   out.println("<a class=\"goright\" href=\"meta?reftype=frequent&amp;refid="+id+"\" target=\"right\">⮞</a>");
   out.println("</nav>");
 
-
+/*
   top = doc.theme(TEXT);
   out.println("<nav class=\"biflex\">");
   out.println("<p class=\"keywords\">");
@@ -135,7 +136,8 @@ catch (IllegalArgumentException e) {} // unknown id
   out.println("</p>");
   out.println("<a class=\"goright\" href=\"meta?reftype=theme&amp;refid="+id+"\" target=\"right\">⮞</a>");
   out.println("</nav>");
-
+*/
+  
   top = doc.names(TEXT);
   out.println("<nav class=\"biflex\">");
   out.println("<p class=\"keywords\">");
@@ -150,12 +152,10 @@ catch (IllegalArgumentException e) {} // unknown id
       <article id="text">
         <%= doc.paint(TEXT) %>
       </article>
-
-
-<% } %>
     </main>
     <nav id="rulhi">
     </nav>
+<% } %>
     <script src="../static/js/doc.js">//</script>
   </body>
 </html>

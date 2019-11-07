@@ -1,11 +1,6 @@
 if (window.name) {
   document.body.className += " "+window.name;
-  const topUrl = top.location;
-  var search = topUrl.search;
-  var key = window.name+"id";
-  var pars = new URLSearchParams(search);
-  if (pars.has(key)) pars.delete(key);
-  top.history.pushState(null, null, "?"+pars.toString());
+  episode(window.name+"id", null); // delete the id param when searching
 }
 
 const input= document.getElementById("q");

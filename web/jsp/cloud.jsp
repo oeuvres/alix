@@ -11,6 +11,7 @@ final String sorter = tools.getString("sorter", "score", "freqSorter");
     <meta charset="UTF-8">
     <title>Nuage de mots</title>
     <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
+    <script src="../static/js/common.js">//</script>
   </head>
   <body class="cloud">
     <form id="filter">
@@ -18,7 +19,7 @@ final String sorter = tools.getString("sorter", "score", "freqSorter");
           <option/>
           <%= posOptions(sorter) %>
        </select>
-       <input type="hidden" name="q" value="<%=Jsp.escapeHtml(q) %>"/>
+       <input type="hidden" name="q" value="<%=Jsp.escape(q)%>"/>
     </form>
     <div id="wordcloud2"></div>
     <script src="../static/vendors/wordcloud2.js">//</script>

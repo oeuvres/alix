@@ -4,7 +4,7 @@
 <%@ page import="org.apache.lucene.search.uhighlight.DefaultPassageFormatter" %>
 <%@ page import="alix.lucene.search.HiliteFormatter" %>
 <%
-  // parameters
+// parameters
 final String q = tools.getString("q", null);
 final String sort = request.getParameter("sort");
 final int hpp = tools.getInt("hpp", 100);
@@ -12,7 +12,7 @@ int start = tools.getInt("start", 1);
 if (start < 1) start = 1;
 // global variables
 final String fieldName = TEXT;
-time = System.nanoTime();
+Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
 %>
 <!DOCTYPE html>
@@ -21,10 +21,11 @@ TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
     <meta charset="UTF-8">
     <title>Recherche, <%=props.get("title")%> [Obvil]</title>
     <link href="../static/obvil.css" rel="stylesheet"/>
+    <script src="../static/js/common.js">//</script>
   </head>
   <body class="results">
     <form id="qform">
-      <input id="q" name="q" value="<%=Jsp.escapeHtml(q)%>" autocomplete="off" size="60" autofocus="autofocus" onclick="this.select();"/>
+      <input id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" size="60" autofocus="autofocus" onclick="this.select();"/>
       <label>
        Tri
         <select name="sort" onchange="this.form.submit()">
@@ -36,9 +37,6 @@ TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
     <main>
     <%
 if (topDocs != null) {
-
-
-  time = System.nanoTime();
 
   UnifiedHighlighter uHiliter = new UnifiedHighlighter(searcher, alix.analyzer());
   uHiliter.setMaxLength(500000); // biggest text size to process

@@ -24,7 +24,7 @@ TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
   </head>
   <body class="results">
       <form id="qform">
-        <input id="q" name="q" value="<%=Jsp.escapeHtml(q)%>" autocomplete="off" size="60" autofocus="autofocus" onclick="this.select();"/>
+        <input id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" size="60" autofocus="autofocus" onclick="this.select();"/>
         <label>
          Tri
           <select name="sort" onchange="this.form.submit()">

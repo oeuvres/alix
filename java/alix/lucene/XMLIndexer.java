@@ -62,10 +62,7 @@ import org.xml.sax.SAXException;
 import alix.util.Dir;
 
 /**
- * A worker for parallel indexing.
- * 
- * @author fred
- *
+ * A worker for parallel lucene indexing.
  */
 public class XMLIndexer implements Runnable
 {

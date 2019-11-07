@@ -1,4 +1,4 @@
-
+episode("view", null);
 var sibling;
 
 
@@ -19,17 +19,8 @@ else if (window.name) {
     key = "leftid";
     sibling = window.parent.frames["right"];
   }
-  // update url of top window if caller has given an id of doc
-  try {
-    id;
-    const topUrl = top.location;
-    var search = topUrl.search;
-    var pars = new URLSearchParams(search);
-    if (pars.has(key)) pars.delete(key);
-    pars.append(key, id);
-    top.history.pushState(null, null, "?"+pars.toString());
-  }
-  catch(e) {}
+  // update url of top window if the calling server has set an id of doc
+  try { episode(key, id); } catch(e) {}
 }
 
 var text = document.getElementById("text");

@@ -8,6 +8,10 @@ String id2 = tools.getString("rightid", null);
 int docId2 = tools.getInt("rightdocid", -1);
 String q = tools.getString("q", null);
 
+// global variables
+Corpus corpus = (Corpus)session.getAttribute(corpusKey);
+
+
 String url1;
 String ref = "";
 if (id1 != null) { // doc by id requested
@@ -48,7 +52,8 @@ else { // help
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Comparer, <%=baseTitle %> [Obvil]</title>
+    <title>Comparer, <%= (corpus != null) ? Jsp.escape(corpus.name())+", " : "" %><%=props.get("name")%> [Obvil]</title>
+    <script src="../static/js/common.js">//</script>
     <style>
 body, html {
   height: 100%;

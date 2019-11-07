@@ -10,29 +10,38 @@ var splitV = Split(['#body', '#footer'], {
 });
 
 
+var form = document.getElementById("qform");
+/*
 // fill form
 var url = new URL(window.location.href);
 var q = url.searchParams.get("q");
-var form = document.getElementById("qform");
 form['q'].value = q;
-var chrono = document.getElementById("chrono");
-var panel = document.getElementById("panel");
 if (q) {
   form.submit();
   dispatch(form);
 }
+*/
+
+
 var tabs = document.getElementById('tabs').getElementsByTagName('a');
 for (var i = 0; i < tabs.length; i++) {
   tabs[i].onclick = function(e) {
+    for (let a of this.parentNode.getElementsByTagName('a')) {
+      a.className = '';
+    }
+    this.className = "here";
     form.action = this.href;
     form.submit();
     return false;
   }
 }
 
+var chrono = document.getElementById("chrono");
+var panel = document.getElementById("panel");
 function dispatch(form)
 {
   var q = form['q'].value;
+  episode("q", q); // update URL
   // get frame as a window object
   if (chrono.offsetHeight > 10 && chrono.offsetWidth > 10) {
     chrono.src = "chrono.jsp?q=" + q;
@@ -43,29 +52,3 @@ function dispatch(form)
   }
   return true;
 }
-
-// handle event of hash changing, used to display current corpus
-function hashing() {
-  var hash = location.hash;
-  var split = hash.split("corpus=");
-  if (split.length > 1) {
-    var corpus = split[1];
-    var el = document.getElementById("corpus");
-    if (!el) return;
-    // unknown corpus
-    if(corpus && !localStorage.getItem(corpus)) {
-      location.hash = "";
-      corpus = "";
-    }
-
-    var html = "";
-    if (corpus) {
-      html = "<button name=\"new\" onclick=\"this.form.action = 'corpus.jsp';\" title=\"Déselectionner la collection “"+name+"”\">🗙</button>" + corpus;
-    }
-    el.innerHTML = html;
-    panel.src = panel.src;
-    chrono.src = chrono.src;
-  }
-}
-window.onhashchange = hashing;
-hashing();

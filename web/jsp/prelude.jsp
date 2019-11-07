@@ -215,22 +215,17 @@ public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, 
   return topDocs;
 }%>
 <%
-  long time = System.nanoTime();
-Jsp tools = new Jsp(pageContext);
-String obvilDir = (String)request.getAttribute(Obvil.OBVIL_DIR);
-String base = (String)request.getAttribute(Obvil.BASE);
-Properties props = (Properties)request.getAttribute(Obvil.PROPS);
-
-Alix alix = Alix.instance(obvilDir +"/"+ base, new FrAnalyzer());
-IndexSearcher searcher = alix.searcher();
-IndexReader reader = alix.reader();
-// base properties
-String baseTitle = props.getProperty("title", null);
-if (baseTitle == null) {
-  baseTitle = props.getProperty("name", null);
-  if (baseTitle == null) baseTitle =  base;
-  props.setProperty("title", baseTitle);
+final long time = System.nanoTime();
+final Jsp tools = new Jsp(pageContext);
+final String obvilDir = (String)request.getAttribute(Obvil.OBVIL_DIR);
+final String base = (String)request.getAttribute(Obvil.BASE);
+final Properties props = (Properties)request.getAttribute(Obvil.PROPS);
+{
+  final String baseName = props.getProperty("name", null);
+  if (baseName == null) props.setProperty("name", base);
 }
+final Alix alix = Alix.instance(obvilDir +"/"+ base, new FrAnalyzer());
+final IndexSearcher searcher = alix.searcher();
+final IndexReader reader = alix.reader();
 final String corpusKey = CORPUS_ + base;
-Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 %>

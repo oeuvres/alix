@@ -1,3 +1,5 @@
+episode("id", null); // reset doc view
+episode("view", "corpus");
 var table;
 const authors = {};
 const titles = {};
@@ -10,22 +12,30 @@ function bottomLoad() {
     authors[nl[i].value] = true;
   }
   el = document.getElementById("author");
-  el.addEventListener('keydown', filterEnter);
-  el.addEventListener('input', authorFilter);
-  el.addEventListener('focus', authorFilter);
+  if (el) {
+    el.addEventListener('keydown', filterEnter);
+    el.addEventListener('input', authorFilter);
+    el.addEventListener('focus', authorFilter);
+  }
 
   el = document.getElementById("selection");
-  el.addEventListener('click', function(evt) {
-    showSelected();
-  });
+  if (el) {
+    el.addEventListener('click', function(evt) {
+      showSelected();
+    });
+  }
 
   el = document.getElementById("start");
-  el.addEventListener('input', range);
-  el.addEventListener('focus', range);
+  if (el) {
+    el.addEventListener('input', range);
+    el.addEventListener('focus', range);
+  }
 
   el = document.getElementById("end");
-  el.addEventListener('input', range);
-  el.addEventListener('focus', range);
+  if (el) {
+    el.addEventListener('input', range);
+    el.addEventListener('focus', range);
+  }
 
   var nl = document.querySelectorAll('#title-data option');
   for (var i = 0, len = nl.length; i< len; i++) {
@@ -33,21 +43,29 @@ function bottomLoad() {
   }
 
   el = document.getElementById("title");
-  el.addEventListener('keydown', titleEnter);
-  el.addEventListener('input', titleFilter);
-  el.addEventListener('focus', titleFilter);
+  if (el) {
+    el.addEventListener('keydown', titleEnter);
+    el.addEventListener('input', titleFilter);
+    el.addEventListener('focus', titleFilter);
+  }
 
   el = document.getElementById("all");
-  el.addEventListener('click', function(evt) {
-    Sortable.showAll(table);
-    Sortable.zebra(table);
-  });
+  if (el) {
+    el.addEventListener('click', function(evt) {
+      Sortable.showAll(table);
+      Sortable.zebra(table);
+    });
+  }
 
   el = document.getElementById("checkall");
-  el.addEventListener('click', checkAll)
+  if (el) {
+    el.addEventListener('click', checkAll)
+  }
 
   el = document.getElementById("none");
-  if (el) el.addEventListener('click', none);
+  if (el) {
+    el.addEventListener('click', none);
+  }
 
   checks = document.getElementsByName("book");
   for (var i = 0, length = checks.length; i < length; i++) {
@@ -141,50 +159,21 @@ function none(evt) {
   showSelected();
 }
 
-/**
- * Store corpus as a json array of bookids
- * on response from server .
- * Client key on localStorage should be paramtrized by
- * document base.
- */
-const CORPORA = "alix:"+base+":corpora";
-function store(name, desc, json) {
-  var corpora =  JSON.parse(localStorage.getItem(CORPORA));
-  if (!corpora) corpora = {};
-  if (name) corpora[name] = desc;
-  localStorage.setItem(CORPORA, JSON.stringify(corpora));
-  if (json) localStorage.setItem(name, json);
-}
-
-function remove(name) {
-  if (!name) return;
-  var corpora = JSON.parse(localStorage.getItem(CORPORA));
-  if (corpora) delete corpora[name];
-  var json = JSON.stringify(corpora);
-  localStorage.setItem(CORPORA, JSON.stringify(corpora));
-  localStorage.removeItem(name);
-  corpusList("corpusList");
-}
-
+/** Give some where a list of recorded corpora */
 function corpusList(id) {
   var el =  document.getElementById(id);
   var html = "";
   var corpora =  JSON.parse(localStorage.getItem(CORPORA));
   for (var name in corpora) {
     var desc = corpora[name];
-    html += "<li><button type=\"submit\" name=\""+name+"\" onclick=\"send(this)\" title=\""+desc+"\">"+name+"</button> <b title=\"Suppriner la sélection “"+name+"”\" onclick=\"remove('"+name+"');\">🗙</b></li>\n";
+    html += "<li><button type=\"submit\" name=\""+name+"\" onclick=\"send(this)\" title=\""+desc+"\">"+name+"</button></li>\n";
   }
   el.innerHTML = html;
 }
 
+/** Send a corpus to the server */
 function send(button) {
   var json = localStorage.getItem(button.name);
   button.form['json'].value = json;
   return false;
-}
-
-function informParent(name) {
-  if (!name) name = "";
-  var url = window.parent.location.href.split("#")[0] + "#corpus=" + name;
-  window.parent.location.replace(url);
 }
