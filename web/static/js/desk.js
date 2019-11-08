@@ -26,9 +26,10 @@ if (q) {
 var tabs = document.getElementById('tabs').getElementsByTagName('a');
 for (var i = 0; i < tabs.length; i++) {
   var name = url4name(tabs[i]);
-  // do not change target her, desk.jsp knows better where to send link
   tabs[i].id = name;
   tabs[i].className = name;
+  // do not add an event to a tab that will not go in frame
+  if (!tabs[i].target) continue;
   tabs[i].onclick = function(e) {
     form.action = this.href;
     form.submit();
