@@ -25,12 +25,11 @@ if (q) {
 
 var tabs = document.getElementById('tabs').getElementsByTagName('a');
 for (var i = 0; i < tabs.length; i++) {
+  var name = url4name(tabs[i]);
+  // do not change target her, desk.jsp knows better where to send link
+  tabs[i].id = name;
+  tabs[i].className = name;
   tabs[i].onclick = function(e) {
-    for (let a of this.parentNode.getElementsByTagName('a')) {
-      a.className = '';
-    }
-    this.className = "here";
-    document.className = "split "+this.href;
     form.action = this.href;
     form.submit();
     return false;
@@ -42,7 +41,8 @@ var panel = document.getElementById("panel");
 function dispatch(form)
 {
   var q = form['q'].value;
-  episode("q", q); // update URL
+  console.log(q);
+  parTop("q", q); // update URL
   // get frame as a window object
   if (chrono.offsetHeight > 10 && chrono.offsetWidth > 10) {
     chrono.src = "chrono.jsp?q=" + q;

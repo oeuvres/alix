@@ -60,7 +60,7 @@ try { // load full document
 // doc not found
 catch (IllegalArgumentException e) {
   id = null;
-} 
+}
 // if no full doc, get one in results
 if (doc == null && q != null) {
   topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
@@ -86,15 +86,15 @@ if (doc != null) title = ML.detag(doc.doc().get("bibl"));
     <title><%=title%> [Obvil]</title>
     <link href="../static/vendors/teinte.css" rel="stylesheet"/>
     <link href="../static/obvil.css" rel="stylesheet"/>
-    <script src="../static/js/common.js">//</script>
     <script>
-    <%
-if (doc != null) {
-  out.println("const docLength="+doc.length(TEXT)+";");
-  out.println("const id=\""+doc.id()+"\"; episode('id', id); ");
+<%
+if (doc != null) { // document id is verified, git it javascript 
+  out.println("var docLength="+doc.length(TEXT)+";");
+  out.println("var id=\""+doc.id()+"\";");
 }
-    %>
+%>
     </script>
+    <script src="../static/js/common.js">//</script>
   </head>
   <body class="document">
     <a title="Comparer ce document" href="comparer?leftid=<%=id%>" target="_top" class="goright">⮞</a>
@@ -109,7 +109,7 @@ if (doc != null) {
   %>
   <main>
       <form id="qform" action="#">
-        <input type="submit" 
+        <input type="submit"
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
        tabindex="-1" />
         <%
@@ -124,7 +124,7 @@ if (doc != null) {
             <%= sortOptions(sort) %>
         </select>
         <input id="start" name="start" value="<%=start%>" autocomplete="off" size="1"/>
-               <% 
+               <%
         if (topDocs != null) {
           long max = topDocs.totalHits.value;
           out.println("<span class=\"hits\"> / "+ max  + "</span>");

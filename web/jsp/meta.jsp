@@ -148,7 +148,7 @@ catch (IllegalArgumentException e) {
 
 
 // parameter 
-if (Mime.htf.toString().equals(format)) {
+if (Mime.htf.name().equals(format)) {
   out.println(results(tools, corpus, refDoc, searcher));
 }
 else {

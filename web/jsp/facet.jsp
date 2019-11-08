@@ -67,7 +67,7 @@ if (terms != null && terms.size() > 0) {
     if (occs < 1) continue; // in alpha order, try next
     int n = facetEnum.n();
     out.print("<div class=\"term\">");
-    out.print("<a href=\"snip.jsp?sort="+facetField+"&amp;q="+q+"&start="+(n+1)+"&amp;hpp="+hits+"\">");
+    out.print("<a href=\"snip?sort="+facetField+"&amp;q="+q+"&start="+(n+1)+"&amp;hpp="+hits+"\">");
     out.print("<span><span class=\"occs\">"+occs+"</span> ("+hits+" <i>/"+docs+"</i>)</span>    ");
     out.print(facetEnum.term());
     out.print("</a>");

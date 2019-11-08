@@ -1,30 +1,7 @@
-episode("view", null);
 var sibling;
-
-
-if (self == top) { // no form embedded in a frame
-  q = document.getElementById("q");
-  if (q && q.type == "hidden") q.type = "text";
-}
-else if (window.name) {
-  // to style left or right frame
-  document.body.className += " "+window.name;
-  document.documentElement.className += " "+window.name;
-  var key = "id";
-  if (window.name == "right") {
-    sibling = window.parent.frames["left"];
-    key = "rightid";
-  }
-  else if (window.name == "left") {
-    key = "leftid";
-    sibling = window.parent.frames["right"];
-  }
-  // update url of top window if the calling server has set an id of doc
-  try {
-    episode(key, id);
-  } catch(e) {}
-
-}
+// document in the compare widows
+if (window.name == "right") sibling = window.parent.frames["left"];
+else if (window.name == "left") sibling = window.parent.frames["right"];
 
 var text = document.getElementById("text");
 // scrol after anchor clicked

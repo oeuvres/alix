@@ -27,6 +27,11 @@ body.facet a span {
   font-family: "Arial Narrow", sans-serif;
 }
 
+#tabs a {
+  font-family: Arial, sans-serif;
+}
+
+
 body,
 .biflex,
 .gutter.but {
@@ -103,6 +108,12 @@ header {
   color: #FFFFFF;
 }
 
+body.view_corpus #tabs .corpus,
+body.view_snip #tabs .snip,
+body.view_kwic #tabs .kwic,
+body.view_doc #tabs .doc,
+body.view_freqs #tabs .freqs,
+body.view_cloud #tabs .cloud,
 #tabs a.here {
   background: rgba(120, 105, 101, 0.8);
   color: #FFFFFF;
@@ -161,13 +172,8 @@ button.magnify,
   color: #ea5b0c;
 }
 
-#tabs a {
-  color: #000;
-  font: bold 11px arial, sans-serif;
-  line-height: 100%;
-  text-transform: uppercase;
-  padding: 5px 5px 5px 5px;
-}
+
+
 
 select {
   background-color: #FFFFFF;
@@ -467,16 +473,13 @@ iframe {
   color:red ;
 }
 
-#alert {
-  font-weight: bold;
-  color: red;
-  margin-left: 200px;
-  font-size: 150%;
-  font-variant: small-caps;
-  line-height: 95%;
-}
-
 #tabs a {
+  color: #000;
+  font-weight: bold;
+  font-size: 11px;
+  line-height: 100%;
+  text-transform: uppercase;
+  padding: 5px 5px 5px 5px;
   border-style: solid;
   border-width: 1px;
   margin-right: 2px;
@@ -490,10 +493,19 @@ iframe {
   display: none;
 }
 
-body.document #tabs a.comparer {
+body.doc #tabs a.comparer {
   display: inline;
 }
 
+
+#alert {
+  font-weight: bold;
+  color: red;
+  margin-left: 200px;
+  font-size: 150%;
+  font-variant: small-caps;
+  line-height: 95%;
+}
 
 #panChange {
   background-color: #FFF;
@@ -630,16 +642,11 @@ td.num {
   padding: 0;
 }
 
-body.split #corpus,
 #corpora ul li {
   padding: 1px 5px;
   border: 1px;
   color: #FFF;
   background-color: #CCC;
-}
-
-#corpus button:hover {
-  color: #000000;
 }
 
 #corpora ul li {

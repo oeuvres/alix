@@ -73,7 +73,7 @@ public class Doc
 {
   /** Just the mandatory fields */
   final static HashSet<String> FIELDS_REQUIRED = new HashSet<String>(Arrays.asList(new String[] { Alix.FILENAME, Alix.BOOKID, Alix.ID, Alix.TYPE}));
-  /** Mime numbers with the dot */
+  /** Format numbers with the dot */
   final static DecimalFormatSymbols ensyms = DecimalFormatSymbols.getInstance(Locale.ENGLISH);
   /** The lucene index to read in */
   final private Alix alix;

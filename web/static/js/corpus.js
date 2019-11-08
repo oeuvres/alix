@@ -1,5 +1,3 @@
-episode("id", null); // reset doc view
-episode("view", "corpus");
 
 
 var table;

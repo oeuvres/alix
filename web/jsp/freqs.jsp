@@ -251,7 +251,6 @@ else {
       </tbody>
     </table>
     <script src="../static/vendors/Sortable.js">//</script>
-    <script src="../static/js/freqs.js">//</script>
   </body>
   <!-- <%= ((System.nanoTime() - time) / 1000000.0) %> ms  -->
   

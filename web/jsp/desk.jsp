@@ -95,17 +95,17 @@ corpus = (Corpus)session.getAttribute(corpusKey);
      
    }
  %></span>
-      <a class="logo" href="."><img alt="Obvil app" src="../static/img/obvil_50.png"/></a>
+      <a class="logo" href="." title="Annuler les recherches en cours"><img alt="Obvil app" src="../static/img/obvil_50.png"/></a>
       <form id="qform" name="qform" onsubmit="return dispatch(this)" target="page" action="<%=view%>">
         <input id="q" name="q" autocomplete="off" autofocus="true" value="<%=Jsp.escape(q)%>"/>
         <button type="submit" name="send" tabindex="-1" class="magnify">⚲</button>
         <div id="tabs">
-          <a href="corpus" target="page"<%= (view.equals("corpus"))?" class=\"here\"":"" %>>Corpus</a>
-          <a href="snip" target="page"<%= (view.equals("snip"))?" class=\"here\"":"" %>>Résultats</a>
-          <a href="doc" target="page"<%= (view.equals("doc"))?" class=\"here\"":"" %>>Document</a>
-          <a href="freqs" target="page"<%= (view.equals("freqs"))?" class=\"here\"":"" %>>Fréquences</a>
-          <a href="cloud" target="page"<%= (view.equals("cloud"))?" class=\"here\"":"" %>>Nuage</a>
-          <a href="comparer" class="comparer">Comparer</a>
+          <a href="corpus" target="page">Corpus</a>
+          <a href="snip" target="page">Résultats</a>
+          <a href="doc" target="page">Document</a>
+          <a href="freqs" target="page">Fréquences</a>
+          <a href="cloud" target="page">Nuage</a>
+          <a href="comparer">Comparer</a>
           <!-- 
           <a href="kwic" target="page">Concordancier</a>
            -->

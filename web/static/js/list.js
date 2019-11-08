@@ -1,8 +1,3 @@
-if (window.name) {
-  document.body.className += " "+window.name;
-  episode(window.name+"id", null); // delete the id param when searching
-}
-
 const input= document.getElementById("q");
 const nav = document.getElementById("chapters");
 /** update results */

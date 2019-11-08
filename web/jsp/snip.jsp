@@ -25,7 +25,7 @@ TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
   </head>
   <body class="results">
     <form id="qform">
-      <input id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" size="60" autofocus="autofocus" onclick="this.select();"/>
+      <input id="q" name="q" type="hidden" value="<%=Jsp.escape(q)%>" autocomplete="off" size="60" autofocus="autofocus" onclick="this.select();"/>
       <label>
        Tri
         <select name="sort" onchange="this.form.submit()">
@@ -52,15 +52,20 @@ if (topDocs != null) {
   Map<String, String[]> res = uHiliter.highlightFields(new String[]{fieldName}, query, docIds, new int[]{5});
   String[] fragments = res.get(fieldName);
 
+  final StringBuilder qhref = new StringBuilder();
+  qhref.append("?q="+q);
+  final int qhreflength = qhref.length();
   for (int i = 0; i < len; i++) {
+    qhref.setLength(qhreflength); // reset query String
     int docId = docIds[i];
     Document document = searcher.doc(docId);
     out.println("<article class=\"hit\">");
     // hits[i].doc
     out.println("  <div class=\"bibl\">");
     out.println("<small>"+(start + i)+".</small> ");
-    // test if null ?
-    out.println("<a href=\"doc.jsp?start="+(i + start)+"&q="+q+"&sort="+sort+"\">");
+    qhref.append( "&amp;start="+(i + start));
+    if (sort != null) qhref.append( "&amp;sort="+sort);
+    out.println("<a href=\"doc" + qhref.toString()+"\">");
     out.println(document.get("bibl"));
     out.println("</a>");
     out.println("  </div>");
@@ -75,5 +80,4 @@ if (topDocs != null) {
     %>
     </main>
   </body>
-  <script src="../static/js/snip.js">//</script>
 </html>
