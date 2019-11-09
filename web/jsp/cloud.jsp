@@ -15,6 +15,16 @@ final String cat = tools.getString("cat", Cat.NOSTOP.name(), "catFreqs");
   </head>
   <body class="cloud">
     <form id="filter">
+       <select name="hpp" onchange="this.form.submit()">
+        <option>500</option>
+        <option>30</option>
+        <option>50</option>
+        <option>100</option>
+        <option>200</option>
+        <option>500</option>
+        <option>1000</option>
+       </select>
+    
        <select name="cat" onchange="this.form.submit()">
           <option/>
           <%= catOptions(cat) %>

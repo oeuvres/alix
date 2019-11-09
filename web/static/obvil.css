@@ -472,7 +472,9 @@ iframe {
 #header .base mark a:hover {
   color:red ;
 }
-
+#tabs {
+  margin-top: 3px;
+}
 #tabs a {
   color: #000;
   font-weight: bold;

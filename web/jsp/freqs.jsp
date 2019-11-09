@@ -143,6 +143,9 @@ static private void jsonLine(StringBuilder sb, final TopTerms dic, final Tag tag
 <%
   //parameters
 final String q = tools.getString("q", null);
+int hpp = tools.getInt("hpp", -1);
+if (hpp < 1 || hpp > 2000) hpp = 500;
+
 final String sorter = tools.getString("sorter", "score", "freqSorter");
 final String cat = tools.getString("cat", Cat.NOSTOP.name(), "catFreqs");
 
@@ -185,7 +188,7 @@ if (Mime.json.equals(mime)) {
   response.setContentType(Mime.json.type);
   out.println("{");
   out.println("  \"data\":[");
-  out.println( lines(dic, 500, mime, cat, hasScore));
+  out.println( lines(dic, hpp, mime, cat, hasScore));
   out.println("\n  ]");
   out.println("\n}");  
 }
@@ -247,7 +250,7 @@ else {
         <tr>
       </thead>
       <tbody>
-        <%= lines(dic, 500, mime, cat, hasScore) %>
+        <%= lines(dic, hpp, mime, cat, hasScore) %>
       </tbody>
     </table>
     <script src="../static/vendors/Sortable.js">//</script>

@@ -11,6 +11,10 @@ const CAT = "cat";
 var cat = url.searchParams.get(CAT);
 if (cat) pars.push(CAT+"="+cat);
 
+const HPP = "hpp";
+var hpp = url.searchParams.get(HPP);
+if (hpp) pars.push(HPP+"="+hpp);
+
 const Q = "q";
 var q = url.searchParams.get(Q);
 if (q) pars.push(Q+"="+q);
