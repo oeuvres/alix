@@ -495,7 +495,7 @@ iframe {
   display: none;
 }
 
-body.doc #tabs a.comparer {
+body.view_doc #tabs a.comparer {
   display: inline;
 }
 

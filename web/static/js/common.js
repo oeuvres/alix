@@ -39,7 +39,7 @@ if (self != top) {
         break;
       case "doc":
         parTop("view", selfName);
-        top.document.body.className = "split "+selfName;
+        top.document.body.className = "split view_"+selfName;
         // id should be defined by server who knows if doc exists
         if (window.id) {
           let id = window.id;
