@@ -38,25 +38,36 @@ import java.nio.CharBuffer;
 import java.util.ArrayList;
 
 /**
- * A mutable string implementation thought for efficiency more than security.
- * The hash function is same as String so that a Chain can be found in a
- * Set<String>. The same internal char array could be shared by multiple Chain
- * instances (with different offset and len). Some convenient methods are
- * provided for lexical terms, for case, and glob searching (prefix and/or
- * suffix search).
- * 
- * @author glorieux-f
+ * <p>
+ * A mutable string implementation that grows on the right ({@link Appendable},
+ * but also, on the left {@link #prepend(char)}.
+ * </p>
+ * <p>
+ * The hash function is same as {#link {@link String#hashCode()} 
+ * so that a Chain can be found in a
+ * Set&lt;String&gt;. 
+ * </p>
+ * <p>
+ * The same internal char array could be shared by multiple Chain
+ * instances (with different offset and size). Some convenient methods are
+ * provided for lexical terms ex {@link #normCase()}, 
+ * or searching by prefix and/or suffix {@link #glob(CharSequence)}.
+ * </p>
  */
 public class Chain implements CharSequence, Appendable, Comparable<Chain>
 {
   /** The characters */
   private char[] data;
-  /** Start index of the String in the array */
-  private int start = 0;
   /** Number of characters used */
-  private int len = 0;
+  private int size = 0;
+  /** Start index of the String in the chars */
+  private int start = 0;
   /** Cache the hash code for the string */
   private int hash = 0; // Default to 0
+  /** Count of chars taken on the left, reset by {@link #reset()}. */
+  private int left = 0;
+  /** Memory of the maximum left size, kept during life of object after a {@link #reset()} */
+  private int leftMax = 0;
 
   /**
    * Empty constructor, value will be set later
@@ -74,12 +85,12 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   {
     this.data = chain.data;
     this.start = chain.start;
-    this.len = chain.len;
+    this.size = chain.size;
   }
 
   /**
    * Back the chain to an external char array (no copy). The char sequence is
-   * considered empty (start = len = 0)
+   * considered empty (start = size = 0)
    * 
    * @param a
    *          a char array
@@ -96,19 +107,19 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    *          a char array
    * @param start
    *          offset index where a string start
-   * @param len
+   * @param size
    *          length of the string
    */
   public Chain(final char[] a, final int start, final int len)
   {
     if (start < 0) throw new IndexOutOfBoundsException("start=" + start + "< 0");
-    if (len < 0) throw new IndexOutOfBoundsException("len=" + len + "< 0");
+    if (len < 0) throw new IndexOutOfBoundsException("size=" + len + "< 0");
     if (start >= a.length) throw new IndexOutOfBoundsException("start=" + start + ">= length=" + a.length);
     if (start + len >= a.length)
-      throw new IndexOutOfBoundsException("start+len=" + start + len + ">= length=" + a.length);
+      throw new IndexOutOfBoundsException("start+size=" + start + len + ">= length=" + a.length);
     this.data = a;
     this.start = start;
-    this.len = len;
+    this.size = len;
   }
 
   /**
@@ -131,7 +142,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    *          a char sequence (String, but also String buffers or builders)
    * @param start
    *          start offset index from source string
-   * @param len
+   * @param size
    *          number of chars from offset
    */
   public Chain(final CharSequence cs, final int start, final int len)
@@ -143,38 +154,42 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   @Override
   public int length()
   {
-    return len;
+    return size;
   }
 
   /**
    * Is Chain with no chars ?
    * 
-   * @return true if len == 0, or false
+   * @return true if size == 0, or false
    */
   public boolean isEmpty()
   {
-    return (len == 0);
+    return (size == 0);
   }
 
   @Override
-  public char charAt(int index)
+  public char charAt(final int index)
   {
     /*
-     * no test and no exception if ((index < 0) || (index >= len)) { throw new
+     * no test and no exception if ((index < 0) || (index >= size)) { throw new
      * StringIndexOutOfBoundsException(index); }
      */
     return this.data[start + index];
   }
 
   /**
-   * Reset chain (no modification to internal data)
+   * Reset chain (keep all memory already allocated).
    * 
    * @return the Chain
    */
   public Chain reset()
   {
-    hash = 0;
-    len = 0;
+    this.hash = 0;
+    this.size = 0;
+    if (this.left > this.leftMax) this.leftMax = this.left;
+    this.left = 0;
+    this.start = this.leftMax; // keep the left space already opened
+    // System.out.println("leftMax="+leftMax);
     return this;
   }
 
@@ -184,7 +199,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   public void getChars(char[] chars)
   {
     // let error cry
-    System.arraycopy(this.data, this.start, chars, 0, this.len);
+    System.arraycopy(this.data, this.start, chars, 0, this.size);
   }
 
   /**
@@ -214,7 +229,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    *          a char sequence
    * @return the Chain object for chaining
    */
-  public Chain copy(CharSequence cs)
+  public Chain copy(final CharSequence cs)
   {
     return copy(cs, -1, -1);
   }
@@ -226,30 +241,45 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    *          a char sequence
    * @param start
    *          index of the string from where to copy chars
-   * @param len
+   * @param size
    *          number of chars to copy
    * @return the Chain object for chaining, or null if the String provided is null
    *         (for testing)
    */
-  public Chain copy(final CharSequence cs, int start, int len)
+  public Chain copy(final CharSequence cs, int from, int amount)
   {
     if (cs == null) return null;
-    if (start <= 0 && len < 0) {
-      start = 0;
-      len = cs.length();
+    if (from <= 0 && amount < 0) {
+      from = 0;
+      amount = cs.length();
     }
-    if (len <= 0) {
-      this.len = 0;
+    if (amount <= 0) {
+      this.size = 0;
       return this;
     }
-    onWrite(len);
-    for (int i = start; i < len; i++) {
-      data[i] = cs.charAt(start++);
+    if (amount > size) ensureRight(amount - size);
+    for (int i = start, limit = start + amount; i < limit; i++) {
+      data[i] = cs.charAt(from++);
     }
-    this.len = len;
-    /*
-     * // longer value = s.toCharArray(); len = value.length;
-     */
+    this.size = amount;
+    // slower value = s.toCharArray(); size = value.length;
+    return this;
+  }
+
+
+  /**
+   * Wrap the Chain on another char array without copy
+   * 
+   * @param a
+   *          text as char array
+   * @return the Chain object for chaining
+   */
+  public Chain set(final char[] a, final int start, int len)
+  {
+    this.data = a;
+    this.start = start;
+    this.size = len;
+    this.hash = 0;
     return this;
   }
 
@@ -266,64 +296,49 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   }
 
   /**
-   * Wrap the Chain on another char array without copy
+   * Replace Chain content by a span of a char array. 
    * 
    * @param a
    *          text as char array
-   * @return the Chain object for chaining
-   */
-  public Chain set(final char[] a, final int start, int len)
-  {
-    this.data = a;
-    this.start = start;
-    this.len = len;
-    this.hash = 0;
-    return this;
-  }
-
-  /**
-   * Replace Chain content by a span of a char array. The copy will keep start
-   * index of the Chain object.
-   * 
-   * @param a
-   *          text as char array
-   * @param start
+   * @param begin
    *          start index of the string from where to copy chars
-   * @param len
+   * @param size
    *          number of chars to copy
    * @return the Chain object for chaining
    */
-  public Chain copy(final char[] a, int start, int len)
+  public Chain copy(final char[] a, int begin, int amount)
   {
-    if (start <= 0 && len < 0) {
-      start = 0;
-      len = a.length;
+    if (begin < 0 && amount < 0) { // copy(final char[] a)
+      begin = 0;
+      amount = a.length;
     }
-    if (start < 0) throw new IndexOutOfBoundsException("start=" + start + "< 0");
-    if (start >= a.length) throw new IndexOutOfBoundsException("start=" + start + ">= length=" + a.length);
-    if (start + len >= a.length)
-      throw new IndexOutOfBoundsException("start+len=" + start + len + ">= length=" + a.length);
-    if (this.start + len > data.length) data = new char[this.start + len];
+    if (begin < 0) throw new IndexOutOfBoundsException("begin=" + begin + "< 0");
+    if (begin >= a.length) throw new IndexOutOfBoundsException("begin=" + begin + ">= a.length=" + a.length);
+    if (begin + amount >= a.length)
+      throw new IndexOutOfBoundsException("begin+amount=" + (begin + amount) + ">= a.length=" + a.length);
     this.hash = 0;
-    this.len = len;
-    System.arraycopy(a, start, data, this.start, len);
+    this.size = amount;
+    // copy is keeping the start
+    if (this.start + amount > data.length) data = new char[this.start + amount];
+    System.arraycopy(a, begin, data, this.start, amount);
     return this;
   }
 
   /**
-   * Replace this chain content by the copy of a chain.
+   * Replace this chain content by a copy of a chain (keep allocated memory if enough).
    * 
    * @param chain
    * @return
    */
   public Chain copy(Chain chain)
   {
-    if (chain.len > data.length) {
-      this.data = new char[chain.len];
+    final int dstLength = chain.data.length;
+    if (chain.data.length > data.length) {
+      this.data = new char[dstLength];
     }
-    System.arraycopy(chain.data, chain.start, data, 0, chain.len);
-    start = 0;
-    len = chain.len;
+    System.arraycopy(chain.data, 0, data, 0, dstLength);
+    start = chain.start;
+    size = chain.size;
     return this;
   }
 
@@ -333,12 +348,12 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    * @param c
    * @return the Chain object for chaining
    */
-  public Appendable append(final char c)
+  @Override
+  public Chain append(final char c)
   {
-    int newlen = len + 1;
-    onWrite(newlen);
-    data[len] = c;
-    len = newlen;
+    ensureRight(1);
+    data[start+size] = c;
+    size++;
     return this;
   }
 
@@ -348,12 +363,11 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    * @param chars
    * @return the Chain object for chaining
    */
-  public Chain append(final char[] chars, final int pos, final int length)
+  public Chain append(final char[] chars, final int begin, final int amount)
   {
-    int newlen = len + length;
-    onWrite(newlen);
-    System.arraycopy(chars, pos, this.data, len, length);
-    len = newlen;
+    ensureRight(amount);
+    System.arraycopy(chars, begin, this.data, size, amount);
+    size += amount;
     return this;
   }
 
@@ -365,68 +379,60 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    */
   public Chain append(final Chain chain)
   {
-    int newlen = len + chain.len;
-    onWrite(newlen);
-    System.arraycopy(chain.data, chain.start, data, start + len, chain.len);
-    len = newlen;
+    final int amount = chain.size;
+    ensureRight(amount);
+    System.arraycopy(chain.data, chain.start, data, start + size, amount);
+    size += amount;
     return this;
   }
 
-  /**
-   * Append a string
-   * 
-   * @param cs
-   *          String or other CharSequence
-   * @return the Chain object for chaining
-   * @throws IOException 
-   */
-  public Appendable append(final CharSequence cs) throws IOException
+  @Override
+  public Chain append(final CharSequence cs)
   {
     return append(cs, 0, cs.length());
   }
   
   @Override
-  public Appendable append(CharSequence cs, int start, int end) throws IOException
+  public Chain append(CharSequence cs, int begin, final int end)
   {
     if (cs == null) return this;
-    int amount = end - start;
-    if (amount < 0) return this;
-    int newlen = len + amount;
-    onWrite(newlen);
-    if (len > 4) { // only use instanceof check series for longer CSQs, else simply iterate
+    int amount = end - begin;
+    if (amount < 0) throw new NegativeArraySizeException("begin="+begin+" end="+end+" begin > end, no chars to append");
+    ensureRight(amount);
+    if (amount > 4) { // only use instanceof check series for longer CSQs, else simply iterate
       if (cs instanceof String) {
-        ((String) cs).getChars(start, end, data, len);
+        ((String) cs).getChars(begin, end, data, start+size);
       } else if (cs instanceof StringBuilder) {
-        ((StringBuilder) cs).getChars(start, end, data, len);
+        ((StringBuilder) cs).getChars(begin, end, data, start+size);
+      } else if (cs instanceof StringBuffer) {
+        ((StringBuffer) cs).getChars(begin, end, data, start+size);
       } else if (cs instanceof CharBuffer && ((CharBuffer) cs).hasArray()) {
         final CharBuffer cb = (CharBuffer) cs;
-        System.arraycopy(cb.array(), cb.arrayOffset() + cb.position() + start, data, len, amount);
-      } else if (cs instanceof StringBuffer) {
-        ((StringBuffer) cs).getChars(start, end, data, len);
+        System.arraycopy(cb.array(), cb.arrayOffset() + cb.position() + begin, data, start+size, amount);
       } else {
-        while (start < end)
-          data[len++] = cs.charAt(start++);
-        return this; // len is updated here go now
+        for (int i = start+size, limit =start+size+amount; i < limit; i++) {
+          data[i] = cs.charAt(begin++);
+        }
       }
-      len = newlen;
-      return this;
     } else {
-      while (start < end)
-        data[len++] = cs.charAt(start++);
-      return this;
+      for (int i = start+size, limit =start+size+amount; i < limit; i++) {
+        data[i] = cs.charAt(begin++);
+      }
     }  
+    size += amount;
+    return this;
   }
 
 
   /**
-   * Last char, will send an array out of bound, with no test
+   * Last char.
    * 
    * @return last char
    */
   public char last()
   {
-    if (len == 0) return 0;
-    return data[len - 1];
+    if (size == 0) return 0;
+    return data[start + size - 1];
   }
 
   /**
@@ -435,7 +441,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   public Chain last(char c)
   {
     hash = 0;
-    data[len - 1] = c;
+    data[start + size - 1] = c;
     return this;
   }
 
@@ -445,7 +451,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   public Chain lastDel()
   {
     hash = 0;
-    len--;
+    size--;
     return this;
   }
 
@@ -466,9 +472,50 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   {
     hash = 0;
     start++;
-    len--;
+    size--;
     return this;
   }
+
+  public Chain prepend(char c)
+  {
+    ensureLeft(1);
+    start--;
+    data[start]= c;
+    size++;
+    return this;
+  }
+
+  public Appendable prepend(CharSequence cs, int begin, final int end)
+  {
+    if (cs == null) return this;
+    int amount = end - begin;
+    if (amount < 0) throw new NegativeArraySizeException("begin="+begin+" end="+end+" begin > end, no chars to append");
+    ensureLeft(amount);
+    final int newStart = start - amount;
+    if (amount > 4) { // only use instanceof check series for longer CSQs, else simply iterate
+      if (cs instanceof String) {
+        ((String) cs).getChars(begin, end, data, newStart);
+      } else if (cs instanceof StringBuilder) {
+        ((StringBuilder) cs).getChars(begin, end, data, newStart);
+      } else if (cs instanceof StringBuffer) {
+        ((StringBuffer) cs).getChars(begin, end, data, newStart);
+      } else if (cs instanceof CharBuffer && ((CharBuffer) cs).hasArray()) {
+        final CharBuffer cb = (CharBuffer) cs;
+      } else {
+        for (int i = newStart, limit = start; i < limit; i++) {
+          data[i] = cs.charAt(begin++);
+        }
+      }
+    } else {
+      for (int i = newStart, limit = start; i < limit; i++) {
+        data[i] = cs.charAt(begin++);
+      }
+    }
+    size += amount;
+    start = newStart;
+    return this;
+  }
+
 
   /**
    * Delete some chars to chain, if i &gt; 0, deletion start from left, if i &lt; 0,
@@ -480,16 +527,16 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   public Chain del(int i)
   {
     hash = 0;
-    if (i >= len || -i >= len) {
-      len = 0;
+    if (i >= size || -i >= size) {
+      size = 0;
       return this;
     }
     if (i > 0) {
       start = start + i;
-      len = len - i;
+      size = size - i;
     }
     else if (i < 0) {
-      len = len + i;
+      size = size + i;
     }
     return this;
   }
@@ -525,11 +572,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   {
     hash = 0;
     char c;
-    for (int i = start; i < len; i++) {
+    for (int i = start; i < size; i++) {
       c = data[i];
       if (!Char.isUpperCase(c)) continue;
-      // a predefine hash of chars is not faster
-      // if ( LOWER.containsKey( c )) s.setCharAt( i, LOWER.get( c ) );
       data[i] = Character.toLowerCase(c);
     }
     return this;
@@ -543,7 +588,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   public Chain replace(final char from, final char to)
   {
     hash = 0;
-    for (int i = start; i < len; i++) {
+    for (int i = start, limit = start + size; i < limit; i++) {
       if (data[i] != from) continue;
       data[i] = to;
     }
@@ -551,39 +596,26 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   }
 
   /**
-   * Change case of the chars according to different rules
-   * 
+   * Try to capitalize (initial capital only) decently,
+   * according to some rules available in latin language.
+   * ex: ÉTATS-UNIS -&gt; États-Unis.
    * @return the Chain object for chaining
    */
-  public Chain normCase()
-  {
-    hash = 0;
-    char last;
-    char c = 0;
-    for (int i = start; i < len; i++) {
-      last = c;
-      c = data[i];
-      if (i == start) continue;
-      if (Char.isLowerCase(c)) continue;
-      if (last == '-' || last == '.' || last == '\'' || last == '’' || last == ' ') continue;
-      data[i] = Character.toLowerCase(c);
-    }
-    return this;
-  }
-
   public Chain capitalize()
   {
     hash = 0;
     char last;
-    char c = 0;
-    for (int i = start; i < len; i++) {
+    char c = data[start];
+    if (Char.isLowerCase(c)) data[start] = Character.toUpperCase(c);
+    for (int i = start + 1; i < size; i++) {
       last = c;
       c = data[i];
-      if (i == start) data[i] = Character.toUpperCase(c);
-      else if (last == '-' || last == '.' || last == '\'' || last == '’' || last == ' ')
-        data[i] = Character.toUpperCase(c);
-      // ?
-      else data[i] = Character.toLowerCase(c);
+      if (last == '-' || last == '.' || last == '\'' || last == '’' || last == ' ') {
+        if (Char.isLowerCase(c)) data[i] = Character.toUpperCase(c);
+      }
+      else {
+        if (Char.isUpperCase(c)) data[i] = Character.toLowerCase(c);
+      }
     }
     return this;
   }
@@ -599,14 +631,14 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     hash = 0;
     int from = start;
     char[] dat = data;
-    int to = start + len;
+    int to = start + size;
     while (from < to && dat[from] < ' ')
       from++;
     to--;
     while (to > from && dat[to] < ' ')
       to--;
     start = from;
-    len = to - from + 1;
+    size = to - from + 1;
     return this;
   }
 
@@ -622,7 +654,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     hash = 0;
     int from = start;
     char[] dat = data;
-    int to = start + len;
+    int to = start + size;
     // possible optimisation on indexOf() ?
     while (from < to && chars.indexOf(dat[from]) > -1)
       from++;
@@ -631,7 +663,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     while (to > from && chars.indexOf(dat[to]) > -1)
       to--;
     start = from;
-    len = to - from + 1;
+    size = to - from + 1;
     return this;
   }
 
@@ -644,7 +676,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   public boolean startsWith(final CharSequence prefix)
   {
     int lim = prefix.length();
-    if (lim > len) return false;
+    if (lim > size) return false;
     for (int i = 0; i < lim; i++) {
       if (prefix.charAt(i) != data[start + i]) return false;
     }
@@ -660,9 +692,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   public boolean endsWith(final CharSequence suffix)
   {
     int lim = suffix.length();
-    if (lim > len) return false;
+    if (lim > size) return false;
     for (int i = 0; i < lim; i++) {
-      if (suffix.charAt(lim - 1 - i) != data[start + len - 1 - i]) return false;
+      if (suffix.charAt(lim - 1 - i) != data[start + size - 1 - i]) return false;
     }
     return true;
   }
@@ -682,8 +714,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    * pointer = 0; pointer = value(cell, separator, pointer); return pointer; }
    * 
    * public int value(Chain cell, final char separator, final int offset) { if
-   * (offset >= len) return -1; char[] dat = data; int to = start + offset; int
-   * max = start + len; while (to < max) { if (dat[to] == separator && (to == 0 ||
+   * (offset >= size) return -1; char[] dat = data; int to = start + offset; int
+   * max = start + size; while (to < max) { if (dat[to] == separator && (to == 0 ||
    * dat[to - 1] != '\\')) { // test escape char cell.link(this, offset, to -
    * offset - start); return to - start + 1; } to++; } // end of line
    * cell.link(this, offset, to - offset - start); return to - start; }
@@ -701,7 +733,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     ArrayList<String> list = new ArrayList<>();
     int offset = start;
     int to = start;
-    int max = start + len;
+    int max = start + size;
     char[] dat = data;
     while (to <= max) {
       // not separator, continue
@@ -729,7 +761,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   public Chain setCharAt(final int index, final char c)
   {
     hash = 0;
-    if ((index < 0) || (index >= len)) {
+    if ((index < 0) || (index >= size)) {
       throw new StringIndexOutOfBoundsException(index);
     }
     data[start + index] = c;
@@ -830,7 +862,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    */
   public boolean glob(final CharSequence text)
   {
-    return globsearch(this, 0, len - 1, text, 0, text.length() - 1);
+    return globsearch(this, 0, size - 1, text, 0, text.length() - 1);
   }
 
   @Override
@@ -840,14 +872,14 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     char[] test;
     // limit content lookup
     int offset = start;
-    int lim = len;
+    int lim = size;
     if (o instanceof Chain) {
-      Chain oTerm = (Chain) o;
-      if (oTerm.len != lim) return false;
+      Chain oChain = (Chain) o;
+      if (oChain.size != lim) return false;
       // hashcode already calculated, if different, not same strings
-      if (hash != 0 && oTerm.hash != 0 && hash != oTerm.hash) return false;
-      test = oTerm.data;
-      int offset2 = oTerm.start;
+      if (hash != 0 && oChain.hash != 0 && hash != oChain.hash) return false;
+      test = oChain.data;
+      int offset2 = oChain.start;
       for (int i = 0; i < lim; i++) {
         if (data[offset + i] != test[offset2 + i]) return false;
       }
@@ -861,19 +893,18 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
       }
       return true;
     }
-    // String or other CharSequence, by acces char by char
-    // faster than copy of the compared char array, even for complete equals
+    // String or other CharSequence, access char by char (do not try an array copy, slower)
     else if (o instanceof CharSequence) {
       CharSequence oCs = (CharSequence) o;
-      if (oCs.length() != len) return false;
+      if (oCs.length() != size) return false;
       for (int i = 0; i < lim; i++) {
         if (oCs.charAt(i) != data[offset + i]) return false;
       }
       return true;
     }
     /*
-     * else if (o instanceof String) { if ( ((String)o).length() != len) return
-     * false; test = ((String)o).toCharArray(); for ( int i=0; i < len; i++ ) { if (
+     * else if (o instanceof String) { if ( ((String)o).length() != size) return
+     * false; test = ((String)o).toCharArray(); for ( int i=0; i < size; i++ ) { if (
      * data[offset+i] != test[i] ) return false; } return true; }
      */
     else return false;
@@ -890,7 +921,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     char v2[] = t.data;
     int k1 = start;
     int k2 = t.start;
-    int lim1 = k1 + Math.min(len, t.len);
+    int lim1 = k1 + Math.min(size, t.size);
     while (k1 < lim1) {
       char c1 = v1[k1];
       char c2 = v2[k2];
@@ -900,7 +931,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
       k1++;
       k2++;
     }
-    return len - t.len;
+    return size - t.size;
   }
 
   public int compareTo(final String string)
@@ -908,7 +939,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     char chars[] = data;
     int ichars = start;
     int istring = 0;
-    int lim = Math.min(len, string.length());
+    int lim = Math.min(size, string.length());
     while (istring < lim) {
       char c1 = chars[ichars];
       char c2 = string.charAt(istring);
@@ -918,7 +949,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
       ichars++;
       istring++;
     }
-    return len - string.length();
+    return size - string.length();
   }
 
   /**
@@ -941,7 +972,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   {
     int h = hash;
     if (h == 0) {
-      int end = start + len;
+      int end = start + size;
       for (int i = start; i < end; i++) {
         h = 31 * h + data[i];
       }
@@ -952,8 +983,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
 
   public void write(Writer out) throws IOException
   {
-    int len = this.len;
-    for (int i = start; i < len; i++) {
+    for (int i = start, limit= this.size; i < limit; i++) {
       if (data[i] == '<') out.append("&lt;");
       else if (data[i] == '>') out.append("&gt;");
       else out.append(data[i]);
@@ -961,28 +991,48 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   }
 
   /**
-   * Test if char array container is big enough to contain a new size. Progression
-   * is one by one, usually enough.
-   * 
-   * @param newlen
-   *          The new size to put in
-   * @return true if resized
+   * Ensure capacity of underlying char array for appending to end.
+   * Progression is next power of 2.
+   * @param amount
+   * @return
    */
-  private boolean onWrite(int newlen)
+  private boolean ensureRight(int amount)
   {
-    hash = 0; // do not forget to reset hashcode
-    if ((start + newlen) <= data.length) return false;
-    newlen = newlen + 3; // let some place
-    char[] a = new char[start + newlen];
+    hash = 0; // reset hashcode on each write operation
+    if ((start + size + amount) <= data.length) return false; // enough space, do nothing
+    final int newLength = Calcul.nextSquare(start + size + amount);
+    char[] a = new char[newLength];
     System.arraycopy(data, 0, a, 0, data.length);
     data = a;
     return true;
   }
 
+  /**
+   * Ensure capacity of underlying char array for appending to start.
+   * Progression is next power of 2.
+   * @param amount
+   * @return
+   */
+  private boolean ensureLeft(int amount)
+  {
+    hash = 0; // reset hashcode on each write operation
+    this.left += amount; // keep memory of the left width
+    if (amount <= start) return false; // enough space, do nothing
+    final int newLength = Calcul.nextSquare(amount + size + 1);
+    char[] a = new char[newLength];
+    int newStart = amount + (newLength - size - amount) / 2;
+    System.arraycopy(data, start, a, newStart, size);
+    this.data = a;
+    this.start = newStart;
+    return true;
+  }
+  
+
+
   @Override
   public String toString()
   {
-    return new String(data, start, len);
+    return new String(data, start, size);
   }
 
 

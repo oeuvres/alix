@@ -38,9 +38,6 @@ import java.io.Reader;
 /**
  * A light fast csv parser without Strings, especially to load jar resources.
  * Populate a reusable predefined array of object.
- * 
- * @author fred
- *
  */
 public class CsvReader
 {
@@ -61,12 +58,12 @@ public class CsvReader
   /** line number */
   private int line = -1;
 
-  public CsvReader(Reader reader, int cols) throws IOException
+  public CsvReader(Reader reader, int cols)
   {
     this(reader, cols, ';');
   }
 
-  public CsvReader(Reader reader, int cols, char sep) throws IOException
+  public CsvReader(Reader reader, int cols, char sep)
   {
     this.reader = reader;
     row = new Row(cols);
@@ -84,7 +81,7 @@ public class CsvReader
     return this.line;
   }
 
-  public boolean readRow() throws IOException
+  public boolean readRow() throws IOException 
   {
     if (this.bufPos < 0) return false;
     Row row = this.row.reset();

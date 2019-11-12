@@ -11,8 +11,7 @@ final int hpp = tools.getInt("hpp", 100);
 int start = tools.getInt("start", 1);
 if (start < 1) start = 1;
 // global variables
-final String fieldName = TEXT;
-time = System.nanoTime();
+Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
 %>
 <!DOCTYPE html>

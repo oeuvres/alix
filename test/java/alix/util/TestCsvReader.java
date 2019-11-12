@@ -10,7 +10,7 @@ import alix.fr.Tag;
 
 public class TestCsvReader
 {
-  public static void main(String[] args) throws IOException, ParseException, URISyntaxException
+  public static void words() throws IOException
   {
     Reader reader;
     int i;
@@ -28,13 +28,16 @@ public class TestCsvReader
       time = System.nanoTime();
       while (csv.readRow()) {
         i++;
+        if (i < 10) System.out.println(""+i+csv.row());
         // dic1.put(new CharsAtt(csv.row().get(0)), new LexEntry(csv.row().get(1),
         // csv.row().get(2)));
       }
       System.out.println("csv: " + ((System.nanoTime() - time) / 1000000) + " ms line=" + i);
-
     }
-
+  }
+  public static void main(String[] args) throws IOException, ParseException, URISyntaxException
+  {
+    words();
   }
 
 }
