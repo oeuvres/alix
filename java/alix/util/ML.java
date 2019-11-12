@@ -145,7 +145,7 @@ public class ML
   }
 
   /**
-   * Tool to load entities forn a json file
+   * Tool to load entities from a json file
    * @param path
    * @throws UnsupportedEncodingException
    * @throws IOException

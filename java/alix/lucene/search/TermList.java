@@ -257,6 +257,7 @@ public class TermList implements Iterable<Term>
     for (Entry entry: data) {
       if (entry.term == null) continue;
       a[i] = entry.term.text();
+      i++;
     }
     return a;
   }
