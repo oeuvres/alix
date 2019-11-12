@@ -430,6 +430,7 @@ public class Doc
   {
     ArrayList<BytesRef> list = new ArrayList<>();
     for (String t: terms) {
+      if (t == null) continue;
       list.add(new BytesRef(t));
     }
     return hilite(field, list);

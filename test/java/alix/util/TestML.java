@@ -41,10 +41,21 @@ public class TestML
         "</a>"
     ));
   }
+
+  public static void conc()
+  {
+    String xml = "12 3\n  45<five>6789<CENTER>\n\t\n1234<b>5</b>67        89";
+    Chain chain = new Chain();
+    ML.appendText(xml, 22, 11, chain);
+    System.out.println(chain);
+    chain.prepend('|');
+    ML.prependText(xml, 22, 11, chain);
+    System.out.println(chain);
+  }
+
   public static void main(String args[]) throws IOException, SQLException, ParseException
   {
-    // ML.load("/home/fred/code/Alix/java/alix/util/ent.json");
-    detag();
+    conc();
   }
 
 }

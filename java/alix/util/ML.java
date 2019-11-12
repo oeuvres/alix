@@ -145,6 +145,104 @@ public class ML
   }
 
   /**
+   * Provide a text version of an xml excerpt (possibly broken).
+   * @param xml
+   * @return
+   */
+  public static void appendText(final String xml, int offset, final int amount, final Chain chain)
+  {
+    int length = xml.length();
+    boolean lt = false, first = true, space = false;
+    int count = 0;
+    while (offset< length) {
+      char c = xml.charAt(offset);
+      switch (c) {
+        case '<':
+          space = false; // renew space flag
+          first = false; // no broken tag at start
+          lt = true;
+          break;
+        case '>':
+          lt = false;
+          // a broken tag at start, erase what was appended
+          if (first) {
+            chain.lastDel(count);
+            count = 0;
+            first = false;
+            break;
+          }
+          break;
+        case ' ':
+        case '\n':
+        case '\r':
+        case '\t':
+          if (lt) break; // space inside tag, skip
+          if(space) break; // second or more space, skip
+          space = true; // stop record space
+          chain.append(' ');
+          count++;
+          break;
+        default:
+          if (lt) break; // char in tag, skip
+          space = false; // renew space flag
+          chain.append(c);
+          count++;
+      }
+      offset++;
+      if(count >= amount) break;
+    }
+  }
+
+  /**
+   * Provide a text version of an xml excerpt (possibly broken).
+   * @param xml
+   * @return
+   */
+  public static void prependText(final String xml, int offset, final int amount, final Chain chain)
+  {
+    boolean gt = false, first = true, space = false;
+    int count = 0;
+    while (offset >= 0) {
+      char c = xml.charAt(offset);
+      switch (c) {
+        case '>':
+          space = false; // renew space flag
+          first = false; // no broken tag at start
+          gt = true;
+          break;
+        case '<':
+          gt = false;
+          // a broken tag, erase what was appended
+          if (first) {
+            chain.firstDel(count);
+            count = 0;
+            first = false;
+            break;
+          }
+          break;
+        case ' ':
+        case '\n':
+        case '\r':
+        case '\t':
+          if (gt) break; // space inside tag, skip
+          if(space) break; // second or more space, skip
+          chain.prepend(' ');
+          space = true; // stop record space
+          count++;
+          break;
+        default:
+          if (gt) break; // char in tag, skip
+          space = false; // renew space flag
+          chain.prepend(c);
+          count++;
+      }
+      offset--;
+      if(count >= amount) break;
+    }
+  }
+
+  
+  /**
    * Tool to load entities from a json file
    * @param path
    * @throws UnsupportedEncodingException

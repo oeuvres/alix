@@ -112,11 +112,11 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    */
   public Chain(final char[] a, final int start, final int len)
   {
-    if (start < 0) throw new IndexOutOfBoundsException("start=" + start + "< 0");
-    if (len < 0) throw new IndexOutOfBoundsException("size=" + len + "< 0");
-    if (start >= a.length) throw new IndexOutOfBoundsException("start=" + start + ">= length=" + a.length);
+    if (start < 0) throw new StringIndexOutOfBoundsException("start=" + start + "< 0");
+    if (len < 0) throw new StringIndexOutOfBoundsException("size=" + len + "< 0");
+    if (start >= a.length) throw new StringIndexOutOfBoundsException("start=" + start + ">= length=" + a.length);
     if (start + len >= a.length)
-      throw new IndexOutOfBoundsException("start+size=" + start + len + ">= length=" + a.length);
+      throw new StringIndexOutOfBoundsException("start+size=" + start + len + ">= length=" + a.length);
     this.data = a;
     this.start = start;
     this.size = len;
@@ -312,10 +312,10 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
       begin = 0;
       amount = a.length;
     }
-    if (begin < 0) throw new IndexOutOfBoundsException("begin=" + begin + "< 0");
-    if (begin >= a.length) throw new IndexOutOfBoundsException("begin=" + begin + ">= a.length=" + a.length);
+    if (begin < 0) throw new StringIndexOutOfBoundsException("begin=" + begin + "< 0");
+    if (begin >= a.length) throw new StringIndexOutOfBoundsException("begin=" + begin + ">= a.length=" + a.length);
     if (begin + amount >= a.length)
-      throw new IndexOutOfBoundsException("begin+amount=" + (begin + amount) + ">= a.length=" + a.length);
+      throw new StringIndexOutOfBoundsException("begin+amount=" + (begin + amount) + ">= a.length=" + a.length);
     this.hash = 0;
     this.size = amount;
     // copy is keeping the start
@@ -436,7 +436,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   }
 
   /**
-   * Set last char, will send an array out of bound, with no test
+   * Set last char (right)
    */
   public Chain last(char c)
   {
@@ -446,7 +446,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   }
 
   /**
-   * Remove last char
+   * Remove last char (right), by modification of pointers.
    */
   public Chain lastDel()
   {
@@ -456,23 +456,56 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   }
 
   /**
-   * First char
+   * Remove an amount of chars from end (right).
+   */
+  public Chain lastDel(final int amount)
+  {
+    hash = 0;
+    if (amount > size) throw new StringIndexOutOfBoundsException("amount="+amount+" > size="+size);
+    size -= amount;
+    return this;
+  }
+
+  /**
+   * Peek first char (left).
    */
   public char first()
   {
     return data[start];
   }
+  
+  /**
+   * Set first char (left)
+   */
+  public Chain first(char c)
+  {
+    hash = 0;
+    data[start] = c;
+    return this;
+  }
+
 
   /**
-   * Delete first char (just by modification of pointers)
-   * 
-   * @return the Chain for chaining
+   * Delete first char,  by modification of pointers.
    */
   public Chain firstDel()
   {
     hash = 0;
     start++;
     size--;
+    return this;
+  }
+
+  /**
+   * Remove an amount of chars from start (left).
+   */
+  public Chain firstDel(final int amount)
+  {
+    hash = 0;
+    if (amount > size) throw new StringIndexOutOfBoundsException("amount="+amount+" > size="+size);
+    size -= amount;
+    left -= amount;
+    start += amount;
     return this;
   }
 
@@ -516,30 +549,6 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     return this;
   }
 
-
-  /**
-   * Delete some chars to chain, if i &gt; 0, deletion start from left, if i &lt; 0,
-   * deletion start from right
-   * 
-   * @param i
-   * @return the Chain for chaining
-   */
-  public Chain del(int i)
-  {
-    hash = 0;
-    if (i >= size || -i >= size) {
-      size = 0;
-      return this;
-    }
-    if (i > 0) {
-      start = start + i;
-      size = size - i;
-    }
-    else if (i < 0) {
-      size = size + i;
-    }
-    return this;
-  }
 
   /**
    * Put first char upperCase
