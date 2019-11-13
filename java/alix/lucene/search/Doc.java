@@ -62,7 +62,10 @@ import alix.lucene.Alix;
 import alix.lucene.analysis.FrDics;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.search.Rail.Token;
+import alix.lucene.util.WordsAutomatonBuilder;
+import alix.util.Chain;
 import alix.util.Char;
+import alix.util.ML;
 import alix.util.Top;
 
 
@@ -200,6 +203,24 @@ public class Doc
     return alix.docLength(field)[this.docId];
   }
 
+  /**
+   * Get contents of a field as String.
+   * 
+   * @param field
+   * @return
+   * @throws NoSuchFieldException
+   */
+  public String get(String field) throws NoSuchFieldException
+  {
+    if (fieldsToLoad != null && !fieldsToLoad.contains(field)) {
+      throw new NoSuchFieldException("The field \""+field+"\" has not been loaded with the document \""+id+"\"");
+    }
+    String text = document.get(field);
+    if (text == null) {
+      throw new NoSuchFieldException("No text for the field \""+field+"\" in the document \""+id+"\"");
+    }
+    return text;
+  }
   
   /**
    * Get and cache a term vector for a field of this document.
@@ -226,15 +247,9 @@ public class Doc
    */
   public String paint(final String field) throws NoSuchFieldException, IOException
   {
-    if (fieldsToLoad != null && !fieldsToLoad.contains(field)) {
-      throw new NoSuchFieldException("The field \""+field+"\" has not been loaded with the document \""+id+"\"");
-    }
-    String text = document.get(field);
-    if (text == null) {
-      throw new NoSuchFieldException("No text for the field \""+field+"\" in the document \""+id+"\"");
-    }
     Terms tvek = getTermVector(field);
-    final Rail rail = new Rail(field, docId, tvek, FrDics.STOP_BYTES, null);
+    String text = get(field);
+    final Rail rail = new Rail(tvek, null, FrDics.STOP_BYTES);
     final int countMax = rail.countMax;
     final Token[] toks = rail.toks;
     final StringBuilder sb = new StringBuilder();
@@ -335,13 +350,7 @@ public class Doc
    */
   public String contrast(final String field, final int docId2, final boolean right) throws IOException, NoSuchFieldException
   {
-    if (fieldsToLoad != null && !fieldsToLoad.contains(field)) {
-      throw new NoSuchFieldException("The field \""+field+"\" has not been loaded with the document \""+id+"\"");
-    }
-    String text = document.get(field);
-    if (text == null) {
-      throw new NoSuchFieldException("No text for the field \""+field+"\" in the document \""+id+"\"");
-    }
+    String text = get(field);
     StringBuilder sb = new StringBuilder();
 
     int[] docLength = alix.docLength(field);
@@ -436,6 +445,33 @@ public class Doc
     return hilite(field, list);
   }
   
+  static final private String[] STRINGS = new  String[0];
+  public String[] kwic(final String field, ByteRunAutomaton include, int left, int right, int limit) throws NoSuchFieldException, IOException
+  {
+    if (left < 0 || left > 500) left = 50;
+    if (right < 0 || right > 500) right = 50;
+    Terms tvek = getTermVector(field);
+    String xml = get(field);
+    Rail rail = new Rail(tvek, include, null);
+    final Token[] toks = rail.toks;
+    ArrayList<String> lines = new ArrayList<String>();
+    Chain line = new Chain();
+    if (limit < 0) limit = toks.length;
+    else limit = Math.min(limit, toks.length);
+    for (int i = 0; i < limit; i++) {
+      final Token tok = toks[i];
+      line.append("</span><span class=\"right\"><mark>");
+      line.append(tok.form);
+      line.append("</mark>");
+      ML.appendText(xml, tok.end, right, line);
+      line.append("</span>");
+      ML.prependText(xml, tok.start - 1, left, line);
+      line.prepend("<span class=\"left\">");
+      lines.add(line.toString());
+      line.reset();
+    }
+    return lines.toArray(STRINGS);
+  }
 
   /**
    * Hilite terms in a stored document as html.
@@ -445,16 +481,10 @@ public class Doc
    */
   public String hilite(String field, ArrayList<BytesRef> refList) throws IOException, NoSuchFieldException
   {
-    String text = document.get(field);
-    if (fieldsToLoad != null && !fieldsToLoad.contains(field)) {
-      throw new IllegalArgumentException("The field \""+field+"\" has not been loaded with the document \""+id+"\"");
-    }
-    if (text == null) {
-      throw new IllegalArgumentException("No text for the field \""+field+"\" in the document \""+id+"\"");
-    }
+    Terms tvek = getTermVector(field);
+    String text = get(field);
     StringBuilder sb = new StringBuilder();
     // maybe to cache ?
-    Terms tvek = getTermVector(field);
     // buid a term enumeration like lucene in the term vector
     Automaton automaton = DaciukMihovAutomatonBuilder.build(refList);
     TermsEnum tEnum = new CompiledAutomaton(automaton).getTermsEnum(tvek);

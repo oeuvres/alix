@@ -517,8 +517,14 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     size++;
     return this;
   }
+  
+  public Chain prepend(final CharSequence cs)
+  {
+    return prepend(cs, 0, cs.length());
+  }
 
-  public Appendable prepend(CharSequence cs, int begin, final int end)
+
+  public Chain prepend(final CharSequence cs, int begin, final int end)
   {
     if (cs == null) return this;
     int amount = end - begin;

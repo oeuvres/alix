@@ -45,6 +45,7 @@ if (topDocs != null) {
   ScoreDoc[] scoreDocs = topDocs.scoreDocs;
   if (start > scoreDocs.length) start = 1;
   int len = Math.min(hpp, 1 + scoreDocs.length - start);
+  
   int docIds[] = new int[len];
   for (int i = 0; i < len; i++) {
     docIds[i] = scoreDocs[start - 1 + i].doc;

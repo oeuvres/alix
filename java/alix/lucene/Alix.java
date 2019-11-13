@@ -694,7 +694,7 @@ u   * @throws IOException
    * @return
    * @throws IOException
    */
-  public TermList qTerms(String q, String field) throws IOException
+  public TermList qTermList(final String field, final String q) throws IOException
   {
     TermList terms = new TermList(freqs(field));
     // what is null here ? returns an empty term list

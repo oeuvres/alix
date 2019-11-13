@@ -47,10 +47,6 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
  */
 public class Rail
 {
-  /** Original field name */
-  final String field;
-  /** Original internal docid */
-  final int docId;
   /** The list of tokens in prder of the document */
   final Token[] toks;
   /** Max count for the most frequent token */
@@ -65,13 +61,11 @@ public class Rail
    * @throws NoSuchFieldException
    * @throws IOException
    */
-  public Rail(final String field, final int docId, Terms tvek, ByteRunAutomaton exclude, ByteRunAutomaton include) throws NoSuchFieldException, IOException
+  public Rail(Terms tvek, ByteRunAutomaton include, ByteRunAutomaton exclude) throws NoSuchFieldException, IOException
   {
     if (!tvek.hasFreqs() || !tvek.hasPositions() || !tvek.hasOffsets()) {
-      throw new NoSuchFieldException("Missig offsets in terms Vector for field="+field+" docId="+docId+"; see FieldType.setStoreTermVectorOffsets(true)");
+      throw new NoSuchFieldException("Missig offsets in terms Vector; see FieldType.setStoreTermVectorOffsets(true)");
     }
-    this.field = field;
-    this.docId = docId;
     int max = 0; // get max token count
     TermsEnum termit = tvek.iterator();
     ArrayList<Token> offsets = new ArrayList<Token>();
@@ -96,6 +90,7 @@ public class Rail
     toks = offsets.toArray(new Token[0]);
     this.countMax = max;
   }
+  
   /**
    * A record to sort term vectors occurrences
    */

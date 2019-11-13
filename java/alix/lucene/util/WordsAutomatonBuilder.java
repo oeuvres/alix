@@ -355,15 +355,15 @@ public final class WordsAutomatonBuilder {
   public static Automaton buildFronStrings(List<String> words) {
     // take a copy of the list to sort it
     String[] input = words.toArray(new String[0]);
-    Arrays.sort(input);
     return buildFronStrings(input);
   }
   /**
-   * Build an automaton from sorted list of Strings.
+   * Build an automaton from an array of Strings (will be sorted).
    * @param words
    * @return
    */
   public static Automaton buildFronStrings(String[] words) {
+    Arrays.sort(words);
     final WordsAutomatonBuilder builder = new WordsAutomatonBuilder();
     for (String word : words) {
       builder.add(word);

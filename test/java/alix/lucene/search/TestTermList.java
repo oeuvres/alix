@@ -15,7 +15,7 @@ public class TestTermList
     Path path = Paths.get("web/WEB-INF/obvil/critique");
     Alix alix = Alix.instance(path, new FrAnalyzer());
     String q = "monde science";
-    TermList terms = alix.qTerms(q, "text");
+    TermList terms = alix.qTermList("text", q);
     System.out.println(terms);
     System.out.println(Arrays.toString(terms.toArray()));
   }
