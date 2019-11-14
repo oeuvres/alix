@@ -13,9 +13,9 @@ public class TestAlix
   public static void qparse() throws IOException
   {
     Analyzer analyzer = new FrAnalyzer();
-    String q =  "+maintenant +demain -hier";
-    String field = "text";
-    q = "Littré";
+    final String field = "text";
+    String q =  "+maintenant -loin Littré, +demain; -hier";
+    // q = "Littré";
     Query query = Alix.qParse(field, q, analyzer);
     System.out.println(query);
     TermList terms = Alix.qTermList(field, q, analyzer);

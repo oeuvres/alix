@@ -69,12 +69,12 @@ public static String sortOptions(String sortSpec) throws IOException
 {
   StringBuilder sb = new StringBuilder();
   String[] value = {
-    "year", "year-inv", "author", "author-inv", "occs", "theme",
+    "score", "year", "year-inv", "author", "author-inv", "occs", "theme",
     // "tf-idf", "bm25", "dfi_chi2", "dfi_std", "dfi_sat", 
     // "lmd", "lmd0.1", "lmd0.7", "dfr", "ib"
   };
   String[] label = {
-    "Année (+ ancien)", "Année (+ récent)", "Auteur (A-Z)", "Auteur (Z-A)", "Occurrences", "Thème",
+    "Pertinence", "Année (+ ancien)", "Année (+ récent)", "Auteur (A-Z)", "Auteur (Z-A)", "Occurrences", "Thème",
     // "tf-idf", "BM25", "DFI chi²", "DFI standard", "DFI saturé", 
     // "LMD", "LMD λ=0.1", "LMD λ=0.7", "DFR", "IB"
   };
@@ -116,7 +116,9 @@ public static String biblSortOptions(final String sortPar, final boolean score) 
 }
 
 
-
+/**
+ * Different cat of words
+ */
 public static String catOptions(String catPar) throws IOException
 {
   StringBuilder sb = new StringBuilder();

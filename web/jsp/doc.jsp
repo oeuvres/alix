@@ -61,20 +61,25 @@ try { // load full document
 catch (IllegalArgumentException e) {
   id = null;
 }
-// if no full doc, get one in results
-if (doc == null && q != null) {
+// if a query, provide navigation in documents
+if (q != null) {
   topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
   ScoreDoc[] hits = topDocs.scoreDocs;
+  // ? a no result reponse caches ? Quite idiot, but...
   if (hits.length == 0) {
+    topDocs = null;
     start = 0;
   }
   else {
     if (start < 1 || (start - 1) >= hits.length) start = 1;
-    docId = hits[start - 1].doc;
-    doc = new Doc(alix, docId); // should be right
-    id = doc.id();
+    if (doc == null) {
+      docId = hits[start - 1].doc;
+      doc = new Doc(alix, docId); // should be right
+      id = doc.id();
+    }
   }
 }
+
 // bibl ref with no tags
 String title = "";
 if (doc != null) title = ML.detag(doc.doc().get("bibl"));
@@ -88,7 +93,7 @@ if (doc != null) title = ML.detag(doc.doc().get("bibl"));
     <link href="../static/obvil.css" rel="stylesheet"/>
     <script>
 <%
-if (doc != null) { // document id is verified, git it javascript 
+if (doc != null) { // document id is verified, give it to javascript 
   out.println("var docLength="+doc.length(TEXT)+";");
   out.println("var id=\""+doc.id()+"\";");
 }
@@ -97,9 +102,9 @@ if (doc != null) { // document id is verified, git it javascript
     <script src="../static/js/common.js">//</script>
   </head>
   <body class="document">
-    <a title="Comparer ce document" href="comparer?leftid=<%=id%>" target="_top" class="goright">⮞</a>
+  <%--  <a title="Comparer ce document" href="comparer?leftid=<%=id%>" target="_top" class="goright">⮞</a> --%>
   <%
-    if (doc != null) {
+  if (doc != null) {
     out.println("<header class=\"biblbar\" title=\""+title+"\">");
     out.print("<a href=\"#\" class=\"bibl\">");
     out.println(doc.doc().get("bibl"));
@@ -112,17 +117,17 @@ if (doc != null) { // document id is verified, git it javascript
         <input type="submit"
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
        tabindex="-1" />
+        <input id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" type="hidden"/>
+        <select name="sort" onchange="this.form.submit()" title="Ordre">
+            <option/>
+            <%= sortOptions(sort) %>
+        </select>
         <%
           if (topDocs != null && start > 1) {
               out.println("<input type=\"hidden\" name=\"prevn\" value=\""+(start - 1)+"\"/>");
               out.println("<button type=\"submit\" name=\"prev\">◀</button>");
             }
         %>
-        <input id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" type="hidden"/>
-        <select name="sort" onchange="this.form.submit()" title="Ordre">
-            <option>Pertinence</option>
-            <%= sortOptions(sort) %>
-        </select>
         <input id="start" name="start" value="<%=start%>" autocomplete="off" size="1"/>
                <%
         if (topDocs != null) {
@@ -140,9 +145,10 @@ if (doc != null) { // document id is verified, git it javascript
       out.println("<div class=\"heading\">");
       out.println(doc.doc().get("bibl"));
       out.println("</div>");
+      out.println( alix.qTermList(q, TEXT));
       // hilite
       if (!"".equals(q)) {
-        String[] terms = alix.qTerms(q, TEXT).toArray();
+        String[] terms = alix.qTermList(TEXT, q).toArray();
         out.print(doc.hilite(TEXT, terms));
       }
       else {

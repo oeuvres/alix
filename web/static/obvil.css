@@ -129,9 +129,21 @@ body.view_cloud #tabs .cloud,
 }
 
 mark {
+  background: transparent;
+}
+
+mark:target {
+  border: none;
+  color: #000;
   background: rgba(234, 91, 12, 0.2);
 }
 
+mark:target b {
+  /*
+  outline: #ea5b0c solid 1px;
+  outline-offset: 2px;
+  */
+}
 
 input[type=text]:focus,
 textarea:focus {

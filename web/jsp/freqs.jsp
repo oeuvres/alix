@@ -171,7 +171,7 @@ if (q == null) {
 }
 else {
   Cooc cooc = alix.cooc(field);
-  TermList terms = alix.qTerms(q, TEXT);
+  TermList terms = alix.qTermList(TEXT, q);
   dic = cooc.topTerms(terms, left, right, filter);
   dic.sort(dic.getOccs());
 }

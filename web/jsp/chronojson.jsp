@@ -91,7 +91,7 @@ out.println("  \"time\" : \"" + (System.nanoTime() - partial) / 1000000.0 + "ms\
 
 
 //parse the query by line
-TermList terms = alix.qTerms(q, TEXT);
+TermList terms = alix.qTermList(TEXT, q);
 if (terms.size() > 0) {
   terms.sortByRowFreq(); // sort query lines by freq
   out.print("  \"labels\": [\"\"");

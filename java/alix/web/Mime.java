@@ -14,9 +14,4 @@ public enum Mime
   {  
     this.type = type ;
   }
-  public static void main(String[] args) throws IOException
-  {
-    System.out.println(html.toString().equals("html"));
-  }
-
 }

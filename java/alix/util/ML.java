@@ -98,19 +98,34 @@ public class ML
     if (c > 128) return false;
     return Char.isLetterOrDigit(c);
   }
+  
+  public static String detag(final String xml)
+  {
+    return detag(xml, 0, xml.length());
+  }
 
   /**
-   * Provide a text version of an xml excerpt (possibly broken).
-   * @param xml
-   * @return
+   * Return a normalize-space() text version of an xml excerpt (possibly broken).
    */
-  public static String detag(String xml)
+  public static String detag(final String xml, final int begin, final int end)
   {
-    StringBuilder dest = new StringBuilder();
-    int start = 0;
-    int end = xml.length();
+    Chain dest = new Chain();
+    detag(xml, begin, end, dest);
+    return dest.toString();
+  }
+
+  /**
+   * Return a normalize-space() text version of an xml excerpt (possibly broken).
+   */
+  public static void detag(final String xml, int begin, int end, Chain dest)
+  {
+    // silently fails if bad params
+    if (begin < 0 || end < 0) return;
+    if (end > xml.length()) end = xml.length();
+    if (begin > end) return;
+    
     boolean lt = false, first = true, space = false;
-    for (int i = start; i < end; i++) {
+    for (int i = begin; i < end; i++) {
       char c = xml.charAt(i);
       switch (c) {
         case '<':
@@ -122,7 +137,7 @@ public class ML
           lt = false;
           // a broken tag at start, erase what was appended
           if (first) {
-            dest.setLength(dest.length() - (i - start));
+            dest.reset();
             first = false;
             break;
           }
@@ -142,7 +157,6 @@ public class ML
           dest.append(c);
       }
     }
-    return dest.toString();
   }
 
   public static void appendWords(final String xml, int offset, final Chain chain, final int words) 

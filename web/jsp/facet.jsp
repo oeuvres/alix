@@ -17,7 +17,7 @@ else if (facetField.equals("title")) facetName = "Titre";
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 BitSet filter = null;
 if (corpus != null) filter = corpus.bits();
-TermList terms = alix.qTerms(q, TEXT);
+TermList terms = alix.qTermList(TEXT, q);
 
 // is there a score (= query) ?
 final boolean score =  (terms != null && terms.size() > 1);

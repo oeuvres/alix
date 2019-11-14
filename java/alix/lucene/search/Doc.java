@@ -92,6 +92,8 @@ public class Doc
   private HashMap<String, Terms> vectors = new HashMap<>();
   /** Cache of different top terms */
   private HashMap<String, Top<String>> tops =  new HashMap<>();
+  /** An empty String array used for toArray() in collections */
+  static final private String[] STRINGS = new  String[0];
   
   /**
    * Get a document by String id (persists as long as the source XML doc is not modified)
@@ -435,17 +437,6 @@ public class Doc
     return sb.toString();
   }
   
-  public String hilite(String field, String[] terms) throws IOException, NoSuchFieldException
-  {
-    ArrayList<BytesRef> list = new ArrayList<>();
-    for (String t: terms) {
-      if (t == null) continue;
-      list.add(new BytesRef(t));
-    }
-    return hilite(field, list);
-  }
-  
-  static final private String[] STRINGS = new  String[0];
   /**
    * Extract a kwic (Key Word In Context) for a query.
    * @param field
@@ -457,14 +448,18 @@ public class Doc
    * @throws NoSuchFieldException
    * @throws IOException
    */
-  public String[] kwic(final String field, ByteRunAutomaton include, int left, int right, int limit) throws NoSuchFieldException, IOException
+  public String[] kwic(final String field, ByteRunAutomaton include, final String href, int limit, int left, int right, final int gap, final boolean expressions) throws NoSuchFieldException, IOException
   {
     if (left < 0 || left > 500) left = 50;
     if (right < 0 || right > 500) right = 50;
     Terms tvek = getTermVector(field);
     String xml = get(field);
     Rail rail = new Rail(tvek, include, null);
-    final Token[] toks = rail.toks;
+    // group tokens for expression ?
+    // do better testing here
+    final Token[] toks = rail.group(gap, expressions);
+    // no token or expression found
+    if (toks == null || toks.length < 1) return null;
     Chain line = new Chain();
     int length = toks.length;
     if (limit < 0) limit = length;
@@ -477,71 +472,51 @@ public class Doc
       // prepend left context, because search of full text is progressing from right to left
       ML.prependChars(xml, tok.start - 1, line, left);
       line.prepend("<span class=\"left\">");
-      // build the keyword, maybe multi word
-      line.append("</span><span class=\"right\"><mark>");
-      line.append(xml, tok.start, tok.end);
-      int pos = tok.pos;
-      int score = 1;
-      while (i + 1 < length) {
-        int gap = toks[i+1].pos - tok.pos;
-        if (gap > 3) break; // too far, open a new line
-        if (gap == 0) continue; // token at same position, should be sorted longest first
-        if (gap > 1) { // insert some words betweem matched toks
-          line.append(" <i>");
-          ML.appendWords(xml, tok.end, line, gap - 1);
-          line.append("</i>");
-        }
-        score++;
-        i++;
-        tok = toks[i];
-        line.append(' ');
-        line.append(xml, tok.start, tok.end);
-      }
-      line.append("</mark>");
+      line.append("</span><span class=\"right\"><a href=\"");
+      line.append(href); // caller kows where to send
+      line.append("#pos"+tok.pos); // here knows the ids in the hilited doc
+      line.append("\">");
+      ML.detag(xml, tok.start, tok.end, line); // multi word can contain tags
+      line.append("</a>");
       ML.appendChars(xml, tok.end, line, right);
       line.append("</span>");
-      lines.push(score, line.toString());
+      lines.push(tok.span, line.toString());
       line.reset();
     }
     return lines.toArray();
   }
 
+  public String hilite(final String field, final String[] terms) throws NoSuchFieldException, IOException
+  {
+    Automaton automaton = WordsAutomatonBuilder.buildFronStrings(terms);
+    ByteRunAutomaton include = new ByteRunAutomaton(automaton);
+    return hilite(field, include);
+  }
   /**
    * Hilite terms in a stored document as html.
    * @param field
    * @throws IOException 
    * @throws NoSuchFieldException 
    */
-  public String hilite(String field, ArrayList<BytesRef> refList) throws IOException, NoSuchFieldException
+  public String hilite(final String field, final ByteRunAutomaton include) throws NoSuchFieldException, IOException
   {
     Terms tvek = getTermVector(field);
     String text = get(field);
+    Rail rail = new Rail(tvek, include, null);
+    final Token[] toks = rail.toks;
     StringBuilder sb = new StringBuilder();
-    // maybe to cache ?
-    // buid a term enumeration like lucene in the term vector
-    Automaton automaton = DaciukMihovAutomatonBuilder.build(refList);
-    TermsEnum tEnum = new CompiledAutomaton(automaton).getTermsEnum(tvek);
-    ArrayList<Token> offsets = new ArrayList<Token>();
-    PostingsEnum postings = null;
-    while (tEnum.next() != null) {
-      postings = tEnum.postings(postings, PostingsEnum.OFFSETS);
-      while(postings.nextDoc() != PostingsEnum.NO_MORE_DOCS) {
-        int pos = -1;
-        for (int freq = postings.freq(); freq > 0; freq --) {
-          pos = postings.nextPosition();
-          offsets.add(new Token(pos, postings.startOffset(), postings.endOffset()));
-        }
-      }
-    }
-    Collections.sort(offsets); // sort offsets before hilite
+
     int offset = 0;
-    for (int i = 0, size = offsets.size(); i < size; i++) {
-      Token tok = offsets.get(i);
+    final int lim = toks.length;
+    for (int i = 0; i < lim; i++) {
+      Token tok = toks[i];
       sb.append(text.substring(offset, tok.start));
-      sb.append("<mark class=\"mark\" id=\"mark"+(i+1)+"\">");
-      if (i > 0) sb.append("<a href=\"#mark"+(i)+"\" onclick=\"location.replace(this.href); return false;\" class=\"prev\">◀</a> ");
+      sb.append("<mark class=\"mark\" id=\"pos"+(tok.pos)+"\">");
+      if (i > 0) sb.append("<a href=\"#pos"+(toks[i-1].pos)+"\" onclick=\"location.replace(this.href); return false;\" class=\"prev\">◀</a> ");
+      sb.append("<b>");
       sb.append(text.substring(tok.start, tok.end));
-      if (i < size - 1) sb.append(" <a href=\"#mark"+(i + 2)+"\" onclick=\"location.replace(this.href); return false;\" class=\"next\">▶</a>");
+      sb.append("</b>");
+      if (i < lim - 1) sb.append(" <a href=\"#pos"+(toks[i+1].pos)+"\" onclick=\"location.replace(this.href); return false;\" class=\"next\">▶</a>");
       sb.append("</mark>");
       offset = tok.end;
     }
@@ -550,10 +525,10 @@ public class Doc
     int length = text.length();
     sb.append("<nav id=\"ruloccs\"><div>\n");
     final DecimalFormat dfdec1 = new DecimalFormat("0.#", ensyms);
-    for (int i = 0, size = offsets.size(); i < size; i++) {
-      Token tok = offsets.get(i);
+    for (int i = 0; i < lim; i++) {
+      Token tok = toks[i];
       offset = tok.start;
-      sb.append("<a href=\"#mark"+(i+1)+"\" style=\"top: "+dfdec1.format(100.0 * offset / length)+"%\"> </a>\n");
+      sb.append("<a href=\"#pos"+(tok.pos)+"\" style=\"top: "+dfdec1.format(100.0 * offset / length)+"%\"> </a>\n");
     }
     sb.append("</div></nav>\n");
     return sb.toString();

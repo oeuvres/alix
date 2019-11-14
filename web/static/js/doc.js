@@ -4,7 +4,16 @@ if (window.name == "right") sibling = window.parent.frames["left"];
 else if (window.name == "left") sibling = window.parent.frames["right"];
 
 var text = document.getElementById("text");
+
 // scrol after anchor clicked
+window.addEventListener('load', function () {
+  let id = location.hash;
+  if (id[0] == "#") id = id.substring(1);
+  if (document.getElementById(id)) {
+    window.scrollBy(0, -100);
+  }
+});
+
 window.onhashchange = function (e)
 {
   let url = new URL(e.newURL);

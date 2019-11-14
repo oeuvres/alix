@@ -160,4 +160,31 @@ public class Jsp
     return fallback;
   }
 
+  /**
+   * Get a requesparameter as a String with a defaul value, or optional
+   * persistency.
+   */
+  public boolean getBoolean(final String name, final boolean fallback)
+  {
+    return getBoolean(name, fallback, null);
+  }
+
+  public boolean getBoolean(final String name, final boolean fallback, String key)
+  {
+    String value = page.getRequest().getParameter(name);
+    /*
+    if (check(value)) {
+      if (key != null) page.getSession().setAttribute(key, value);
+      return value;
+    }
+    if (key != null) {
+      value = (String) page.getSession().getAttribute(key);
+      if (value != null) return value;
+    }
+    return fallback;
+    */
+    if (value == null) return false;
+    else return true;
+  }
+
 }

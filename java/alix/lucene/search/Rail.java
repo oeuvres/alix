@@ -53,6 +53,7 @@ public class Rail
   final int countMax;
   /** Used for toArray() conversions */
   private final static Token[] TOKEN0 = new Token[0];
+  
   /**
    * Flatten a term vector as a list of tokens in document order.
    * @param tvek
@@ -72,6 +73,7 @@ public class Rail
     // so letś be linear
     TermsEnum tenum = tvek.iterator();
     PostingsEnum postings = null;
+    int termId = 1;
     while (tenum.next() != null) {
       BytesRef ref = tenum.term();
       if (exclude != null && exclude.run(ref.bytes, ref.offset, ref.length)) continue; 
@@ -85,9 +87,10 @@ public class Rail
         if (freq > max) max = freq;
         for (int i = 0; i < freq; i++) {
           pos = postings.nextPosition();
-          offsets.add(new Token(pos, postings.startOffset(), postings.endOffset(), form, freq));
+          offsets.add(new Token(pos, postings.startOffset(), postings.endOffset(), form, termId, freq));
         }
       }
+      termId++; // new termId
     }
     Collections.sort(offsets); // sort offsets before hilite
     toks = offsets.toArray(TOKEN0);
@@ -95,41 +98,90 @@ public class Rail
   }
   
   /**
+   * Compact the token Array (destructve)
+   */
+  public Token[] group(final int gap, final boolean expression)
+  {
+    Token[] toks = this.toks;
+    ArrayList<Token> offsets = new ArrayList<Token>();
+    Token last = toks[0];
+    // loop on sorted tokens, 
+    for(int i = 1, limit = toks.length;i < limit; i++) {
+      final Token tok = toks[i];
+      // other token for this position, first one should be the longest
+      // maybe there is better to do in the for lemma/orth
+      if (last.pos == tok.pos) continue;
+      // distant tokens
+      if (tok.pos - last.pos > gap) {
+        // we are not filtering expressions, always send last token
+        if (!expression) offsets.add(last);
+        // for expression, send only multi word tokens
+        else if (last.span > 1) offsets.add(last);
+        // remember last and continue
+        last = tok;
+        continue;
+      }
+      // case of hi hi hi ?
+      last.span++;
+      last.end = tok.end;
+      last.form = last.form+'_'+tok.form;
+      // keep pos and start, nothing relevant to do with count
+    }
+    toks = offsets.toArray(TOKEN0);
+    return toks;
+  }
+  
+  /**
    * A record to sort term vectors occurrences
    */
   static class Token implements Comparable<Token>
   {
+    /** Token position */
     final int pos;
+    /** Start offset in chars */
     final int start;
-    final int end;
-    final String form;
+    /** End offset in chars */
+    int end;
+    /** Indexed form (ex: lemma) */
+    String form;
+    /** A local id (scope: a document) for the term, used for fast equals */
+    final int termId;
+    /** Freq of term in document (repeated for each occurrences), used for info */
     final int count;
+    /** Width in positions, used for concatenantion of terms */
+    int span;
+    /** A second possible freq, for info */
     final int count2;
     public Token(final int pos, final int start, final int end)
     {
-      this(pos, start, end, null, 0, 0);
+      this(pos, start, end, null, -1, 1, 0, 0);
     }
-    public Token(final int pos, final int start, final int end, final String form)
+    public Token(final int pos, final int start, final int end, final String form, final int termId)
     {
-      this(pos, start, end, form, 0, 0);
+      this(pos, start, end, form, termId, 0, 1, 0);
     }
-    public Token(final int pos, final int start, final int end, final String form, final int count)
+    public Token(final int pos, final int start, final int end, final String form, final int termId, final int count)
     {
-      this(pos, start, end, form, count, 0);
+      this(pos, start, end, form, termId, count, 1, 0);
     }
-    public Token(final int pos, final int start, final int end, final String form, final int count, final int count2)
+    public Token(final int pos, final int start, final int end, final String form, final int termId, final int count, final int span, final int count2)
     {
       this.pos = pos;
       this.start = start;
       this.end = end;
       this.form = form;
+      this.termId = termId;
+      this.span = span;
       this.count = count;
       this.count2 = count2;
     }
     @Override
     public int compareTo(Token tok2)
     {
-      return Integer.compare(this.start, tok2.start);
+      // sort by position, and biggest token first for same position
+      final int cp = Integer.compare(this.pos, tok2.pos);
+      if (cp != 0) return cp;
+      return Integer.compare(this.end, tok2.end);
     }
   }
 

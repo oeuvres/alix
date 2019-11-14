@@ -24,7 +24,7 @@ Set<String> bookids = null;
 if (corpus != null) bookids = corpus.books();
 Facet facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.TYPE, Alix.BOOK));
 IntSeries years = alix.intSeries(YEAR); // to get min() max() year
-TermList qTerms = alix.qTerms(q, TEXT);
+TermList qTerms = alix.qTermList(TEXT, q);
 TopTerms dic = null;
 boolean score = (qTerms != null && qTerms.size() > 0);
 %>

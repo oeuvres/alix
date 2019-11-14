@@ -17,6 +17,7 @@ function url4name(link) {
   return name.replace(/\.[^/.]+$/, "");
 }
 
+
 /** Inform parent window (desk) of view */
 if (self != top) {
   var topName = url4name(top.location);
@@ -58,6 +59,8 @@ if (self != top) {
   }
 }
 else { // for the views outside
-  let input = document.getElementById("q");
-  if (input && input.type == "hidden") input.type = "text";
+  window.addEventListener('load', function () {
+    let input = document.getElementById("q");
+    if (input && input.type == "hidden") input.type = "text";
+  });
 }
