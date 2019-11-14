@@ -112,19 +112,21 @@ public class Rail
       // maybe there is better to do in the for lemma/orth
       if (last.pos == tok.pos) continue;
       // distant tokens
-      if (tok.pos - last.pos > gap) {
+      if (tok.pos - last.posLast > gap) {
         // we are not filtering expressions, always send last token
         if (!expression) offsets.add(last);
         // for expression, send only multi word tokens
-        else if (last.span > 1) offsets.add(last);
+        else if (last.phrase) offsets.add(last);
         // remember last and continue
         last = tok;
         continue;
       }
-      // case of hi hi hi ?
+      // merge a locution
       last.span++;
       last.end = tok.end;
+      last.posLast = tok.pos;
       last.form = last.form+'_'+tok.form;
+      if (last.termId != tok.termId) last.phrase = true;
       // keep pos and start, nothing relevant to do with count
     }
     toks = offsets.toArray(TOKEN0);
@@ -136,7 +138,7 @@ public class Rail
    */
   static class Token implements Comparable<Token>
   {
-    /** Token position */
+    /** Token first position */
     final int pos;
     /** Start offset in chars */
     final int start;
@@ -152,6 +154,10 @@ public class Rail
     int span;
     /** A second possible freq, for info */
     final int count2;
+    /** A flag if different words */
+    boolean phrase;
+    /** for more than on positions */
+    int posLast;
     public Token(final int pos, final int start, final int end)
     {
       this(pos, start, end, null, -1, 1, 0, 0);
@@ -166,7 +172,7 @@ public class Rail
     }
     public Token(final int pos, final int start, final int end, final String form, final int termId, final int count, final int span, final int count2)
     {
-      this.pos = pos;
+      this.pos = this.posLast = pos;
       this.start = start;
       this.end = end;
       this.form = form;
