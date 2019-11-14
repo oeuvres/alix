@@ -384,7 +384,8 @@ public class FrTokenizer extends Tokenizer
         hyphOffset = offset + bufIndex;
         test.setEmpty();
       }
-      if (Char.isToken(c)) { // it's a token char
+      // it's a token char, + is for queries
+      if (Char.isToken(c) || c == '+') {
         // start of token, record startOffset
         if (length == 0) {
           if (Char.isDigit(c)) flagsAtt.setFlags(Tag.NUM);

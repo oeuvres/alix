@@ -51,10 +51,14 @@ if (topDocs != null) {
   start--; // private index in results start at 0
   if (start > scoreDocs.length) start = 0;
   int limit = Math.min(start + hpp, scoreDocs.length);
-  // load a doc 
+  // loop on docs
   for (int i = start; i < limit; i++) {
     final int docId = scoreDocs[i].doc;
     final Doc doc = new Doc(alix, docId);
+    String type = doc.doc().get(Alix.TYPE);
+    // TODO Enenum
+    if (type.equals(Alix.BOOK)) continue;
+    if (doc.doc().get(TEXT) == null) continue;
     out.println("<h4>"+doc.get("bibl")+"</h4>");
     String[] lines = doc.kwic(field, include, 50, 50, 100);
     for (String l: lines) {

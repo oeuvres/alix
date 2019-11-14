@@ -70,6 +70,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
@@ -633,10 +634,6 @@ u   * @throws IOException
     return qParse(field, q, this.analyzer);
   }
 
-  static public Query qParse(final String field, final String q, final Analyzer analyzer) throws IOException
-  {
-    return qParse(field, q, analyzer, Occur.SHOULD);
-  }
   /**
    * 
    * @param q
@@ -644,7 +641,7 @@ u   * @throws IOException
    * @return
    * @throws IOException
    */
-  static public Query qParse(final String field, final String q, final Analyzer analyzer, final Occur occur) throws IOException
+  static public Query qParse(final String field, final String q, final Analyzer analyzer) throws IOException
   {
     if (q == null || "".equals(q.trim())) return null;
     // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
@@ -657,6 +654,8 @@ u   * @throws IOException
     ts.reset();
     Query qTerm = null;
     BooleanQuery.Builder bq = null;
+    Occur occur = null;
+    bq = null;
     try {
       while (ts.incrementToken()) {
         if (Tag.isPun(flags.getFlags())) continue;
@@ -664,18 +663,30 @@ u   * @throws IOException
           bq = new BooleanQuery.Builder();
           bq.add(qTerm, occur);
         }
-        int len = token.length();
-        while(--len >= 0 && token.charAt(len) != '*');
-        if (len > 0) qTerm = new WildcardQuery(new Term(field, token.toString()));
-        else qTerm = new TermQuery(new Term(field, token.toString()));
+        String word;
+        if (token.charAt(0) == '-') {
+          occur = Occur.MUST_NOT;
+          word = token.subSequence(1, token.length()).toString();
+        }
+        else if (token.charAt(0) == '+') {
+          occur = Occur.MUST;
+          word = token.subSequence(1, token.length()).toString();
+        }
+        else {
+          occur = Occur.SHOULD;
+          word = token.toString();
+        }
         
+        
+        int len = word.length();
+        while(--len >= 0 && word.charAt(len) != '*');
+        if (len > 0) qTerm = new WildcardQuery(new Term(field, word));
+        else qTerm = new TermQuery(new Term(field, word));
+
         if (bq != null) { // more than one term
           bq.add(qTerm, occur);
         }
-        /*
-         * float boost = boostDefault; if (i < boostLength) boost = boosts[i]; qTerm =
-         * new BoostQuery(qTerm, boost);
-         */
+
       }
       ts.end();
     }
@@ -683,7 +694,19 @@ u   * @throws IOException
       ts.close();
     }
     if (bq != null) return bq.build();
-    else return qTerm;
+    
+    if (Occur.MUST_NOT.equals(occur)) {
+      bq = new BooleanQuery.Builder();
+      bq.add(new MatchAllDocsQuery(), Occur.MUST);
+      bq.add(qTerm, occur);
+      return bq.build();
+    }
+    return qTerm;
+  }
+  
+  public TermList qTermList(final String field, final String q) throws IOException
+  {
+    return qTermList(field, q, this.analyzer);
   }
 
   /**
@@ -694,9 +717,10 @@ u   * @throws IOException
    * @return
    * @throws IOException
    */
-  public TermList qTermList(final String field, final String q) throws IOException
+  public static TermList qTermList(final String field, final String q, final Analyzer analyzer) throws IOException
   {
-    TermList terms = new TermList(freqs(field));
+    // TermList terms = new TermList(freqs(field));
+    TermList terms = new TermList();
     // what is null here ? returns an empty term list
     if (q == null || "".equals(q.trim())) return terms;
     TokenStream ts = analyzer.tokenStream("pun", q); // keep punctuation to group terms
@@ -707,7 +731,15 @@ u   * @throws IOException
     ts.reset();
     try {
       while (ts.incrementToken()) {
-        final String tok = token.toString();
+        // a negation term
+        if (token.charAt(0) == '-') continue;
+        String word;
+        if (token.charAt(0) == '+') {
+          word = token.subSequence(1, token.length()).toString();
+        }
+        else {
+          word = token.toString();
+        }
         /*
         final int tag = flags.getFlags();
         if (Tag.isPun(tag)) {
@@ -718,11 +750,11 @@ u   * @throws IOException
           continue;
         }
         */
-        if (",".equals(tok) || ";".equals(tok)) {
+        if (",".equals(word) || ";".equals(word)) {
           terms.add(null);
           continue;
         }
-        terms.add(new Term(field, tok));
+        terms.add(new Term(field, word));
       }
       ts.end();
     }

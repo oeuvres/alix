@@ -51,13 +51,11 @@ public class Rail
   final Token[] toks;
   /** Max count for the most frequent token */
   final int countMax;
-  
-  
+  /** Used for toArray() conversions */
+  private final static Token[] TOKEN0 = new Token[0];
   /**
    * Flatten a term vector as a list of tokens in document order.
    * @param tvek
-   * @param field Keep trace of data origin.
-   * @param docId Keep trace of data origin.
    * @throws NoSuchFieldException
    * @throws IOException
    */
@@ -67,15 +65,20 @@ public class Rail
       throw new NoSuchFieldException("Missig offsets in terms Vector; see FieldType.setStoreTermVectorOffsets(true)");
     }
     int max = 0; // get max token count
-    TermsEnum termit = tvek.iterator();
     ArrayList<Token> offsets = new ArrayList<Token>();
+    // in the underlying implementation of term vectors enum (TVTermsEnum)
+    // https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/apache/lucene/codecs/compressing/CompressingTermVectorsReader.java
+    // seekExact() is not supported, seekCeil() is linear
+    // so letś be linear
+    TermsEnum tenum = tvek.iterator();
     PostingsEnum postings = null;
-    while (termit.next() != null) {
-      BytesRef ref = termit.term();
+    while (tenum.next() != null) {
+      BytesRef ref = tenum.term();
       if (exclude != null && exclude.run(ref.bytes, ref.offset, ref.length)) continue; 
       if (include != null && !include.run(ref.bytes, ref.offset, ref.length)) continue; 
-      String form = termit.term().utf8ToString();
-      postings = termit.postings(postings, PostingsEnum.OFFSETS);
+      String form = tenum.term().utf8ToString();
+      // set and get a postings to this tenum, should be there, before will not work 
+      postings = tenum.postings(postings, PostingsEnum.OFFSETS); 
       while(postings.nextDoc() != PostingsEnum.NO_MORE_DOCS) {
         int pos = -1;
         int freq = postings.freq();
@@ -87,7 +90,7 @@ public class Rail
       }
     }
     Collections.sort(offsets); // sort offsets before hilite
-    toks = offsets.toArray(new Token[0]);
+    toks = offsets.toArray(TOKEN0);
     this.countMax = max;
   }
   

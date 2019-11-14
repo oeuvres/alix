@@ -446,6 +446,17 @@ public class Doc
   }
   
   static final private String[] STRINGS = new  String[0];
+  /**
+   * Extract a kwic (Key Word In Context) for a query.
+   * @param field
+   * @param include
+   * @param left
+   * @param right
+   * @param limit
+   * @return
+   * @throws NoSuchFieldException
+   * @throws IOException
+   */
   public String[] kwic(final String field, ByteRunAutomaton include, int left, int right, int limit) throws NoSuchFieldException, IOException
   {
     if (left < 0 || left > 500) left = 50;
