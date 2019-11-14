@@ -25,6 +25,8 @@ final int right = 50;
     <link href="../static/obvil.css" rel="stylesheet"/>
     <style>
 span.left {display: inline-block; text-align: right; width: 70ex; padding-right: 1ex;}
+mark { font-weight: bold; padding: 0 1ex;}
+mark i {font-weight: normal};
     </style>
   </head>
   <body class="results">
@@ -51,6 +53,7 @@ if (topDocs != null) {
   start--; // private index in results start at 0
   if (start > scoreDocs.length) start = 0;
   int limit = Math.min(start + hpp, scoreDocs.length);
+  // out.print
   // loop on docs
   for (int i = start; i < limit; i++) {
     final int docId = scoreDocs[i].doc;

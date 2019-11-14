@@ -22,6 +22,7 @@ import alix.lucene.analysis.tokenattributes.CharsAtt;
  */
 public class ML
 {
+  private static int KWIC_MAXCHARS = 500;
   public static final HashMap<String, Character> HTMLENT = new HashMap<String, Character>();
   static {
     BufferedReader buf = new BufferedReader(
@@ -144,16 +145,32 @@ public class ML
     return dest.toString();
   }
 
+  public static void appendWords(final String xml, int offset, final Chain chain, final int words) 
+  {
+    append(xml, offset, chain, -1, words);
+  }
+  public static void appendChars(final String xml, int offset, final Chain chain, final int chars)
+  {
+    append(xml, offset, chain, chars, -1);
+  }
+
+  
   /**
-   * Provide a text version of an xml excerpt (possibly broken).
+   * From a random point in an xml file, append text (with possibly broken tag), limit to an amount of chars, or words.
    * @param xml
    * @return
    */
-  public static void appendText(final String xml, int offset, final int amount, final Chain chain)
+  public static void append(final String xml, int offset, final Chain chain, int chars, int words)
   {
+    // silently limit parameters
+    if (words <= 0 && chars <= 0) chars = 50;
+    else if (chars > KWIC_MAXCHARS) chars = KWIC_MAXCHARS;
+    int cc = 0; // char count
+    int wc = 0; // word count
+    
     int length = xml.length();
-    boolean lt = false, first = true, space = false;
-    int count = 0;
+    boolean lt = false, first = true, space = false, token = false;
+    // word count and spacing will bug for non indented tags like <p>word</p><p>word</p>
     while (offset< length) {
       char c = xml.charAt(offset);
       switch (c) {
@@ -166,8 +183,9 @@ public class ML
           lt = false;
           // a broken tag at start, erase what was appended
           if (first) {
-            chain.lastDel(count);
-            count = 0;
+            chain.lastDel(cc);
+            cc = 0;
+            wc = 0;
             first = false;
             break;
           }
@@ -178,19 +196,45 @@ public class ML
         case '\t':
           if (lt) break; // space inside tag, skip
           if(space) break; // second or more space, skip
-          space = true; // stop record space
+          space = true; // stop record space after this one
           chain.append(' ');
-          count++;
+          cc++;
+          if (token) { // a token was started, stop it and count it
+            token = false;
+            wc++;
+          }
           break;
         default:
           if (lt) break; // char in tag, skip
           space = false; // renew space flag
           chain.append(c);
-          count++;
+          cc++;
+          // word boundary?
+          final boolean charIsTok = Char.isToken(c);
+          if (!token && charIsTok) { // open a word
+            token = true;
+          }
+          else if (token && !charIsTok) { // close a word
+            token = false;
+            wc++;
+          }
       }
       offset++;
-      if(count >= amount) break;
+      if (words <= 0); // no matter about words;
+      else if(token) continue; // do not break inside a word
+      else if(wc >= words) break; // we got enough words
+      if(chars > 0 && cc >= chars) break; // chars limit reached
     }
+    // ? delete last char for words ?
+  }
+
+  public static void prependWords(final String xml, int offset, final Chain chain, final int words) 
+  {
+    prepend(xml, offset, chain, -1, words);
+  }
+  public static void prependChars(final String xml, int offset, final Chain chain, final int chars)
+  {
+    prepend(xml, offset, chain, chars, -1);
   }
 
   /**
@@ -198,10 +242,15 @@ public class ML
    * @param xml
    * @return
    */
-  public static void prependText(final String xml, int offset, final int amount, final Chain chain)
+  public static void prepend(final String xml, int offset, final Chain chain, int chars, int words)
   {
-    boolean gt = false, first = true, space = false;
-    int count = 0;
+    // silently limit parameters
+    if (words <= 0 && chars <= 0) chars = 50;
+    else if (chars > KWIC_MAXCHARS) chars = KWIC_MAXCHARS;
+    int cc = 0; // char count
+    int wc = 0; // word count
+    
+    boolean gt = false, first = true, space = false, token = false;
     while (offset >= 0) {
       char c = xml.charAt(offset);
       switch (c) {
@@ -214,8 +263,9 @@ public class ML
           gt = false;
           // a broken tag, erase what was appended
           if (first) {
-            chain.firstDel(count);
-            count = 0;
+            chain.firstDel(cc);
+            cc = 0;
+            wc = 0;
             first = false;
             break;
           }
@@ -228,17 +278,34 @@ public class ML
           if(space) break; // second or more space, skip
           chain.prepend(' ');
           space = true; // stop record space
-          count++;
+          cc++;
+          if (token) { // a token was started, stop it and count it
+            token = false;
+            wc++;
+          }
           break;
         default:
           if (gt) break; // char in tag, skip
           space = false; // renew space flag
           chain.prepend(c);
-          count++;
+          cc++;
+          // word boundary?
+          final boolean charIsTok = Char.isToken(c);
+          if (!token && charIsTok) { // open a word
+            token = true;
+          }
+          else if (token && !charIsTok) { // close a word
+            token = false;
+            wc++;
+          }
       }
       offset--;
-      if(count >= amount) break;
+      if (words <= 0); // no matter about words;
+      else if(token) continue; // do not break inside a word
+      else if(wc >= words) break; // we got enough words
+      if(chars > 0 && cc >= chars) break; // chars limit reached
     }
+    // if word, delete last car prepend?
   }
 
   

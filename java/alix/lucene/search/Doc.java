@@ -465,23 +465,45 @@ public class Doc
     String xml = get(field);
     Rail rail = new Rail(tvek, include, null);
     final Token[] toks = rail.toks;
-    ArrayList<String> lines = new ArrayList<String>();
     Chain line = new Chain();
-    if (limit < 0) limit = toks.length;
-    else limit = Math.min(limit, toks.length);
-    for (int i = 0; i < limit; i++) {
-      final Token tok = toks[i];
-      line.append("</span><span class=\"right\"><mark>");
-      line.append(tok.form);
-      line.append("</mark>");
-      ML.appendText(xml, tok.end, right, line);
-      line.append("</span>");
-      ML.prependText(xml, tok.start - 1, left, line);
+    int length = toks.length;
+    if (limit < 0) limit = length;
+    else limit = Math.min(limit, length);
+    // store lines to get the ones with more occurrences
+    Top<String> lines = new Top<String>(limit);
+    // loop on all occs to get the best 
+    for (int i = 0; i < length; i++) {
+      Token tok = toks[i];
+      // prepend left context, because search of full text is progressing from right to left
+      ML.prependChars(xml, tok.start - 1, line, left);
       line.prepend("<span class=\"left\">");
-      lines.add(line.toString());
+      // build the keyword, maybe multi word
+      line.append("</span><span class=\"right\"><mark>");
+      line.append(xml, tok.start, tok.end);
+      int pos = tok.pos;
+      int score = 1;
+      while (i + 1 < length) {
+        int gap = toks[i+1].pos - tok.pos;
+        if (gap > 3) break; // too far, open a new line
+        if (gap == 0) continue; // token at same position, should be sorted longest first
+        if (gap > 1) { // insert some words betweem matched toks
+          line.append(" <i>");
+          ML.appendWords(xml, tok.end, line, gap - 1);
+          line.append("</i>");
+        }
+        score++;
+        i++;
+        tok = toks[i];
+        line.append(' ');
+        line.append(xml, tok.start, tok.end);
+      }
+      line.append("</mark>");
+      ML.appendChars(xml, tok.end, line, right);
+      line.append("</span>");
+      lines.push(score, line.toString());
       line.reset();
     }
-    return lines.toArray(STRINGS);
+    return lines.toArray();
   }
 
   /**

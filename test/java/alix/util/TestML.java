@@ -35,27 +35,39 @@ public class TestML
   
   public static void detag()
   {
-    System.out.println(ML.detag("<a href=\"#\" class=\"bibl\"><span class=\"byline\"><span class=\"persName\"><span class=\"surname\">Lamartine</span>, "
+    String xml = "<a href=\"#\" class=\"bibl\"><span class=\"byline\"><span class=\"persName\"><span class=\"surname\">Lamartine</span>, "
         + "Alphonse de</span>.</span> <span class=\"year\">(1864)</span> <span class=\"title\">Cours familier de littérature. XVII</span>. "
         + "\n<span class=\"pages\">pp. 153-232</span>.  « <span class=\"analytic\">XCIX<sup>e</sup> entretien.   Benvenuto Cellini (1<sup>re</sup>partie)</span> »\n" + 
-        "</a>"
-    ));
+        "</a>";
+    System.out.println(ML.detag(xml));
   }
 
+  public static void words()
+  {
+    String from = "<a FROM=\"blah blah\">";
+    String xml =  "<a>01<a> 23\n  45<five> 67        89"+from+"\n\t\n1234 <b>5</b> 67        89";
+    int pos =xml.indexOf(from) + from.length()/2;
+    Chain chain = new Chain();
+    ML.prependWords(xml, pos, chain, 3);
+    System.out.println(chain);
+    chain.append('|');
+    ML.appendWords(xml, pos, chain, 3);
+    System.out.println(chain);
+  }
   public static void conc()
   {
     String xml = "12 3\n  45<five>6789<CENTER>\n\t\n1234<b>5</b>67        89";
     Chain chain = new Chain();
-    ML.appendText(xml, 22, 11, chain);
+    ML.appendChars(xml, 22, chain, 11);
     System.out.println(chain);
     chain.prepend('|');
-    ML.prependText(xml, 22, 11, chain);
+    ML.prependChars(xml, 22, chain, 11);
     System.out.println(chain);
   }
 
   public static void main(String args[]) throws IOException, SQLException, ParseException
   {
-    conc();
+    words();
   }
 
 }
