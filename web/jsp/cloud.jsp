@@ -24,7 +24,7 @@ final String cat = tools.getString("cat", Cat.NOSTOP.name(), "catFreqs");
         <option>500</option>
         <option>1000</option>
        </select>
-    
+
        <select name="cat" onchange="this.form.submit()">
           <option/>
           <%= catOptions(cat) %>
@@ -32,7 +32,7 @@ final String cat = tools.getString("cat", Cat.NOSTOP.name(), "catFreqs");
        <input type="hidden" name="q" value="<%=Jsp.escape(q)%>"/>
     </form>
     <div id="wordcloud2"></div>
-    <script src="../static/vendors/wordcloud2.js">//</script>
+    <script src="../static/vendor/wordcloud2.js">//</script>
     <script src="../static/js/cloud.js">//</script>
 </body>
 </html>

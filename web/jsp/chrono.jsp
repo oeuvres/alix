@@ -16,7 +16,7 @@
       <button>▶</button>
     </form>
     <div id="chart" class="dygraph"></div>
-    <script src="../static/vendors/dygraph.min.js">//</script>
+    <script src="../static/vendor/dygraph.min.js">//</script>
     <script src="../static/js/chrono.js">//</script>
 </body>
 </html>

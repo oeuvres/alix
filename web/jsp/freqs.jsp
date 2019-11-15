@@ -24,11 +24,11 @@ private static String lines(final TopTerms dic, int max, final Mime mime, final 
 {
   max = Math.min(max, dic.size());
   StringBuilder sb = new StringBuilder();
-  
+
   Cat catSwitch = Cat.NOSTOP;
   try { catSwitch = Cat.valueOf(cat); }
   catch (Exception e) { }
-  
+
   int no = 1;
   Tag zetag;
   // dictonaries coming fron analysis, wev need to test attributes
@@ -73,7 +73,7 @@ private static String lines(final TopTerms dic, int max, final Mime mime, final 
     }
     if (dic.occs() == 0) break;
     if (no >= max) break;
-    
+
     switch(mime) {
       case json:
         if (!first) sb.append(",\n");
@@ -190,7 +190,7 @@ if (Mime.json.equals(mime)) {
   out.println("  \"data\":[");
   out.println( lines(dic, hpp, mime, cat, hasScore));
   out.println("\n  ]");
-  out.println("\n}");  
+  out.println("\n}");
 }
 else if (Mime.csv.equals(mime)) {
   response.setContentType(Mime.csv.type);
@@ -204,14 +204,15 @@ else {
   <head>
     <meta charset="UTF-8">
     <title>Fréquences, <%= (corpus != null) ? Jsp.escape(corpus.name())+", " : "" %><%=props.get("name")%> [Obvil]</title>
-    <link href="../static/obvil.css" rel="stylesheet"/>
     <script src="../static/js/common.js">//</script>
+    <link href="../static/vendor/sortable.css" rel="stylesheet"/>
+    <link href="../static/obvil.css" rel="stylesheet"/>
   </head>
   <body>
     <table class="sortable">
       <caption>
         <form id="sortForm">
-        <input type="submit" 
+        <input type="submit"
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
        tabindex="-1" />
              <%
@@ -253,10 +254,10 @@ else {
         <%= lines(dic, hpp, mime, cat, hasScore) %>
       </tbody>
     </table>
-    <script src="../static/vendors/Sortable.js">//</script>
+    <script src="../static/vendor/Sortable.js">//</script>
   </body>
   <!-- <%= ((System.nanoTime() - time) / 1000000.0) %> ms  -->
-  
+
 </html>
 <%
 }

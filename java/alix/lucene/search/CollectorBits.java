@@ -43,7 +43,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
- * Collect found document as at set of docids in a bitSet.
+ * Collect found document as a set of docids in a bitSet.
  * Caching should be ensure by user.
  * @author fred
  *
@@ -66,7 +66,7 @@ public class CollectorBits extends SimpleCollector implements Collector
   }
   
   /**
-   * Get a document iterator
+   * Get the document filter.
    */
   public BitSet bits()
   {

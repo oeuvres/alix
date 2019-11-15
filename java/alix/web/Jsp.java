@@ -32,6 +32,11 @@
  */
 package alix.web;
 
+import java.util.HashMap;
+
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.jsp.PageContext;
 
 /**
@@ -39,15 +44,44 @@ import javax.servlet.jsp.PageContext;
  */
 public class Jsp
 {
+  /** Original request */
+  final HttpServletRequest request;
+  /** Original response */
+  final HttpServletResponse response;
   /** Jsp page context */
   final PageContext page;
+  /** Cookies */
+  HashMap<String, String> cookies;
+  /** for cookies */
+  private final static int MONTH = 60 * 60 * 24 *30;
 
-  /** Wrap a jsp page */
-  public Jsp(PageContext page)
+  /** Wrap the global jsp variables */
+  public Jsp(final HttpServletRequest request, final HttpServletResponse response, PageContext page)
   {
+    this.request = request;
+    this.response = response;
     this.page = page;
   }
 
+  /**
+   * Get a cookie value by name.
+   * @param name
+   * @return null if not set
+   */
+  public String getCookie(final String name)
+  {
+    if (cookies == null) {
+      Cookie[] cooks = request.getCookies();
+      if (cooks == null) return null;
+      cookies = new HashMap<String, String>();
+      for (int i=0; i<cooks.length; i++) {
+        Cookie cook = cooks[i];
+        cookies.put(cook.getName(), cook.getValue());
+      }
+    }
+    return cookies.get(name);
+  }
+  
   /** Check if a String is significant */
   public static boolean check(String s)
   {
@@ -59,7 +93,7 @@ public class Jsp
   }
 
   /**
-   * Ensure that a String could be included as an html attribute with quotes
+   * Ensure that a String could be included in an html attribute with quotes
    */
   public static String escape(final String s)
   {
@@ -76,35 +110,64 @@ public class Jsp
     return out.toString();
   }
 
+
+  public void setCookie(String name, String value) 
+  {
+    if (name == null) return;
+    Cookie cookie = new Cookie(name, value);
+    cookie.setMaxAge(MONTH);
+    response.addCookie(cookie);
+  }
+  public void resetCookie(String name) 
+  {
+    if (name == null) return;
+    Cookie cookie = new Cookie(name, "");
+    cookie.setMaxAge(-MONTH); // set in the past should reset
+    response.addCookie(cookie);
+  }
+
   /**
-   * Get a request parameter as an int with default value, or optional session
-   * persistency.
+   * Get a request parameter as an int with a default value.
    */
   public int getInt(final String name, final int fallback)
   {
     return getInt(name, fallback, null);
   }
 
-  public int getInt(final String name, final int fallback, final String key)
+  
+  public int getInt(final String name, final int fallback, final String cookie)
   {
-    String value = page.getRequest().getParameter(name);
-    int ret;
+    String value = request.getParameter(name);
+    int ret = fallback;
     // a string submitted ?
     if (check(value)) {
       try {
         ret = Integer.parseInt(value);
+        setCookie(cookie, ""+ret); // value seems ok, try to store it as cookie
       }
       catch (NumberFormatException e) {
-        return fallback;
+        ret = fallback;
       }
-      if (key != null) page.getSession().setAttribute(key, ret);
+    }
+    if (cookie == null) return ret; // if no cookie key, nothing more todo
+    // param has an empty value, seems that client wants to reset cookie
+    // do not give back the stored value
+    if (value != null && !check(value)) {
+      resetCookie(name);
       return ret;
     }
-    if (key != null) {
-      Integer o = (Integer) page.getSession().getAttribute(key);
-      if (o != null) return o;
+    value = getCookie(cookie);
+    if (value == null) return ret;
+    // verify stored value before send it
+    try {
+      ret = Integer.parseInt(value);
     }
-    return fallback;
+    catch (NumberFormatException e) {
+      ret = fallback;
+      // bad cookie value, reset it
+      resetCookie(name);
+    }
+    return ret;
   }
 
   /**
@@ -115,26 +178,36 @@ public class Jsp
     return getFloat(name, fallback, null);
   }
 
-  public float getFloat(final String name, final float fallback, final String key)
+  public float getFloat(final String name, final float fallback, final String cookie)
   {
-    String value = page.getRequest().getParameter(name);
-    float ret;
-    // a string submitted ?
+    String value = request.getParameter(name);
+    float ret = fallback;
     if (check(value)) {
       try {
-        ret = Float.parseFloat(value);
+        ret = Float.parseFloat(value);;
+        setCookie(cookie, ""+ret); // value seems ok, store it as a cookie
       }
       catch (NumberFormatException e) {
-        return fallback;
+        ret = fallback;
       }
-      if (key != null) page.getSession().setAttribute(key, ret);
+    }
+    if (cookie == null) return ret; // if no cookie key, nothing more todo
+    if (value != null && !check(value)) {
+      resetCookie(name);
       return ret;
     }
-    if (key != null) {
-      Float o = (Float) page.getSession().getAttribute(key);
-      if (o != null) return o;
+    value = getCookie(cookie);
+    if (value == null) return ret;
+    // verify stored value before send it
+    try {
+      ret = Integer.parseInt(value);
     }
-    return fallback;
+    catch (NumberFormatException e) {
+      // bad cookie value, reset it
+      resetCookie(name);
+      ret = fallback;
+    }
+    return ret;
   }
 
   /**
@@ -146,17 +219,19 @@ public class Jsp
     return getString(name, fallback, null);
   }
 
-  public String getString(final String name, final String fallback, String key)
+  public String getString(final String name, final String fallback, String cookie)
   {
-    String value = page.getRequest().getParameter(name);
+    String value = request.getParameter(name);
     if (check(value)) {
-      if (key != null) page.getSession().setAttribute(key, value);
+      setCookie(cookie, value);
       return value;
     }
-    if (key != null) {
-      value = (String) page.getSession().getAttribute(key);
-      if (value != null) return value;
-    }
+    if (cookie == null) return fallback;
+    // try to deal with cookie
+    value = getCookie(cookie);
+    if (check(value)) return value;
+    // cookie seenms to have a problem, reset it
+    resetCookie(cookie);
     return fallback;
   }
 

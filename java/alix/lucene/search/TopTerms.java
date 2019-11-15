@@ -340,13 +340,18 @@ public class TopTerms
   {
     this.docs = docs;
   }
+  
+  /**
+   * Returns a vector in termId order, with count of documents.
+   * @return
+   */
   public int[] getDocs()
   {
     return docs;
   }
 
   /**
-   * Get the total count of documents relevant for thi term.
+   * Get the total count of documents relevant for the current term.
    * @return
    */
   public int docs()

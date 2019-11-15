@@ -50,6 +50,8 @@ article.kwic header {text-align:left; font-weight: bold; margin-bottom: 0.5rem;}
         </label>
       </form>
     <main>
+     <%= getQuery(alix, q, corpus) %>
+     <%= alix.qParse("text", q) %>
     <%
 if (topDocs != null) {
   final String field = TEXT;

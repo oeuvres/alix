@@ -62,7 +62,7 @@ catch (IllegalArgumentException e) {} // unknown id
       out.print("Comparaison, document");
         }
     %> [Obvil]</title>
-    <link href="../static/vendors/teinte.css" rel="stylesheet"/>
+    <link href="../static/vendor/teinte.css" rel="stylesheet"/>
     <link href="../static/obvil.css" rel="stylesheet"/>
     <script src="../static/js/common.js">//</script>
     <script>
@@ -101,7 +101,7 @@ catch (IllegalArgumentException e) {} // unknown id
       <a class="up" target="_top" href=".?id=<%= id %>" title="Retour au bureau">▲</a>
     </header>
     <%
-    
+
   Top<String> top;
 
   if (refDocId >= 0) {
@@ -137,7 +137,7 @@ catch (IllegalArgumentException e) {} // unknown id
   out.println("<a class=\"goright\" href=\"meta?reftype=theme&amp;refid="+id+"\" target=\"right\">⮞</a>");
   out.println("</nav>");
 */
-  
+
   top = doc.names(TEXT);
   out.println("<nav class=\"biflex\">");
   out.println("<p class=\"keywords\">");

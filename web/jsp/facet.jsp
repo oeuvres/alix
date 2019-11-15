@@ -15,8 +15,7 @@ if (facetField.equals("author")) facetName = "Auteur";
 else if (facetField.equals("title")) facetName = "Titre";
 
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
-BitSet filter = null;
-if (corpus != null) filter = corpus.bits();
+BitSet bits = bits(pageContext, alix, corpus, q);
 TermList terms = alix.qTermList(TEXT, q);
 
 // is there a score (= query) ?
@@ -36,7 +35,7 @@ if (!score && "score".equals(ord)) ord = "freq";
   <body class="facet">
     <form id="qform" target="_self">
       <input type="submit" style="position: absolute; left: -9999px; width: 1px; height: 1px;"  tabindex="-1" />
-      <input type="hidden" id="q" name="q" value="<%=q%>" autocomplete="off"/>
+      <input type="hidden" id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off"/>
       <select name="ord" onchange="this.form.submit()">
         <option/>
         <%= biblSortOptions(ord, score) %>
@@ -48,13 +47,14 @@ if (score) out.println("<h4>occurrences (chapitres) "+facetName+"</h4>");
 else out.println("<h4>(chapitres) "+facetName+"</h4>");
 Facet facet = alix.facet(facetField, TEXT);
 // a query
-if (terms != null && terms.size() > 0) { 
+if (terms != null && terms.size() > 0) {
   // Hack to use facet as a navigator in results, cache results in the field of the facet order
   TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, facetField);
   // get the position of the first document for each facet
   int[] nos = facet.nos(topDocs);
-  TopTerms facetEnum = facet.topTerms(filter, terms, null);
+  TopTerms facetEnum = facet.topTerms(bits, terms, null);
   facetEnum.setNos(nos);
+  
   if ("alpha".equals(ord)) facetEnum.sort();
   else if ("score".equals(ord)) facetEnum.sort(facetEnum.getScores());
   else if ("freq".equals(ord)) facetEnum.sort(facetEnum.getOccs());
@@ -75,7 +75,7 @@ if (terms != null && terms.size() > 0) {
   }
 }
 else {
-  TopTerms facetEnum = facet.topTerms(filter, terms, null);
+  TopTerms facetEnum = facet.topTerms(bits, terms, null);
   if ("alpha".equals(ord)) facetEnum.sort();
   else if ("freq".equals(ord)) facetEnum.sort(facetEnum.getDocs());
   else facetEnum.sort();
@@ -83,7 +83,7 @@ else {
     facetEnum.next();
     int docs = facetEnum.docs();
     // if a filter but no query, hits is set, test it
-    if (filter != null && facetEnum.hits() < 1) continue;
+    if (bits != null && facetEnum.hits() < 1) continue;
     if (docs < 1) continue; // if in alpha order, do not stop here
     out.print("<div class=\"term\">");
     out.print("<span>(<i>"+docs+"</i>)</span>    ");

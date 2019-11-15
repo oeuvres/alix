@@ -16,25 +16,36 @@ static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new
 // params for this page
 String q = tools.getString("q", null);
 String ord = tools.getString("ord", "score", "corpusSort");
-    
+
     
 // global variables
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
-Set<String> bookids = null; 
+Set<String> bookids = null;
 if (corpus != null) bookids = corpus.books();
 Facet facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.TYPE, Alix.BOOK));
 IntSeries years = alix.intSeries(YEAR); // to get min() max() year
 TermList qTerms = alix.qTermList(TEXT, q);
 TopTerms dic = null;
 boolean score = (qTerms != null && qTerms.size() > 0);
+
+BitSet bits = bits(pageContext, alix, corpus, q);
+if (score && corpus != null) {
+  dic = facet.topTerms(bits, qTerms, null);
+}
+else if (score) {
+  dic = facet.topTerms(bits, qTerms, null);
+}
+else {
+  dic = facet.topTerms();
+}
+
 %>
 <!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8">
     <title>Corpus [Alix]</title>
-    <link href="../static/obvil.css" rel="stylesheet"/>
-    <link href="../static/vendors/teinte.css" rel="stylesheet"/>
+    <link href="../static/vendor/sortable.css" rel="stylesheet"/>
     <link href="../static/obvil.css" rel="stylesheet"/>
     <script src="../static/js/common.js">//</script>
     <script type="text/javascript">
@@ -65,11 +76,13 @@ const base = "<%=base%>"; // give code of texts base to further Javascript
       <form method="post" id="corpus" target="_top" action=".">
         <table class="sortable" id="bib">
          <caption>
+         <%= getQuery(alix, q, corpus) %>
+            <%=  (bits != null)?bits.cardinality():alix.reader().maxDoc() %> documents.
             <input type="hidden" name="q" value="<%=Jsp.escape(q)%>"/>
             <button style="float: right;" name="save" type="submit">Enregistrer</button>
             <input style="float: right;" type="text" size="10" id="name" name="name" value="<%= (corpus != null) ? Jsp.escape(corpus.name()) : "" %>"
-            title="Donner un nom à cette sélection" 
-            placeholder="Nom ?" 
+            title="Donner un nom à cette sélection"
+            placeholder="Nom ?"
             oninvalid="this.setCustomValidity('Un nom est nécessaire pour enregistrer votre sélection.')"
             oninput="this.setCustomValidity('')"
             required="required"/>
@@ -90,23 +103,21 @@ const base = "<%=base%>"; // give code of texts base to further Javascript
           </thead>
           <tbody>
     <%
-  if (score && corpus != null) {
-    dic = facet.topTerms(corpus.bits(), qTerms, null);
-  }
-  else if (score) {
-    dic = facet.topTerms(null, qTerms, null);
-  }
-  else {
-    dic = facet.topTerms();
-  }
-    
+
   // sorting
   if ("alpha".equals(ord)) dic.sort();
   else if (score && "score".equals(ord)) dic.sort(dic.getScores());
   else if ("freq".equals(ord)) dic.sort(dic.getOccs());
   else if (score) dic.sort(dic.getScores());
   else dic.sort();
-    
+ 
+  // Hack to use facet as a navigator in results, cache results in the field of the facet order
+  TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, "author");
+  // get the position of the first document for each facet
+  int[] nos = facet.nos(topDocs);
+  dic.setNos(nos);
+
+
   while (dic.hasNext()) {
     dic.next();
     int coverId = dic.cover();
@@ -114,7 +125,7 @@ const base = "<%=base%>"; // give code of texts base to further Javascript
     String bookid = doc.get(Alix.BOOKID);
     // for results, do not diplay not relevant results
     if (score && dic.occs() == 0) continue;
-    
+
     out.println("<tr>");
     out.println("  <td class=\"checkbox\">");
     out.print("    <input type=\"checkbox\" name=\"book\" id=\""+bookid+"\" value=\""+bookid+"\"");
@@ -128,12 +139,22 @@ const base = "<%=base%>"; // give code of texts base to further Javascript
     out.print("</label>");
     out.println("</td>");
     out.println("  <td class=\"year\">"+doc.get("year")+"</td>");
-    out.println("  <td class=\"title\">"+doc.get("title")+"</td>");
+    out.println("  <td class=\"title\">");
+    int n = dic.n();
+    String href;
+    // hpp?
+    if (score) href = "kwic?sort=author&amp;q="+q+"&amp;start="+(n+1);
+    else href = "doc?sort=author&amp;start="+(n+1);
+    out.print("<a href=\""+href+"\">");
+    // out.println("<a href=\"kwic?sort="+facetField+"&amp;q="+q+"&start="+(n+1)+"&amp;hpp="+hits+"\">");
+    out.print(doc.get("title"));
+    out.println("</a>");
+    out.println("  </td>");
     out.println("  <td class=\"docs num\">"+dic.docs()+"</td>");
     out.println("  <td class=\"length num\">"+dfint.format(dic.length())+"</td>");
     if (score) {
-      out.println("  <td class=\"occs num\">" +dic.occs()+"</td>"); 
-      out.println("  <td class=\"score num\">" +dfScoreFr.format(dic.score())+"</td>"); 
+      out.println("  <td class=\"occs num\">" +dic.occs()+"</td>");
+      out.println("  <td class=\"score num\">" +dfScoreFr.format(dic.score())+"</td>");
     }
     out.println("</tr>");
   }
@@ -145,7 +166,7 @@ const base = "<%=base%>"; // give code of texts base to further Javascript
       </form>
     </main>
 
-    <script src="../static/vendors/Sortable.js">//</script>
+    <script src="../static/vendor/Sortable.js">//</script>
               <datalist id="author-data">
     <%
     facet = alix.facet("author", TEXT);

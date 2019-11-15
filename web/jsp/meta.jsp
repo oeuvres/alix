@@ -4,9 +4,9 @@
 <%@ page import="alix.lucene.search.Doc" %>
 <%@ page import="alix.lucene.search.Marker" %>
 <%@ page import="alix.util.Top" %>
-<%!final static Analyzer ANAMET = new MetaAnalyzer();
+<%!
+final static Analyzer ANAMET = new MetaAnalyzer();
 final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
-final static Query QUERY_LEVEL = new TermQuery(new Term(Alix.TYPE, Alix.CHAPTER));
 
 /**
  * Build a query fron page params, a selected  corpus a reference 
@@ -32,13 +32,13 @@ private Query query(final Jsp tools, final Corpus corpus, final Doc refDoc) thro
   // meta, restric document type
   else if(query != null && q != null) {
     query = new BooleanQuery.Builder()
-      .add(QUERY_LEVEL, Occur.FILTER)
+      .add(QUERY_CHAPTER, Occur.FILTER)
       .add(query, Occur.MUST)
     .build();
   }
   // no queries by parameter
   else if (query == null) {
-    query = QUERY_LEVEL;
+    query = QUERY_CHAPTER;
   }
   return query;
 }

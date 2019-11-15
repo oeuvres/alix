@@ -14,6 +14,7 @@
 <%@ page import="org.apache.lucene.index.Term" %>
 <%@ page import="org.apache.lucene.search.BooleanClause.Occur" %>
 <%@ page import="org.apache.lucene.search.BooleanQuery" %>
+<%@ page import="org.apache.lucene.search.Collector" %>
 <%@ page import="org.apache.lucene.search.IndexSearcher" %>
 <%@ page import="org.apache.lucene.search.Query" %>
 <%@ page import="org.apache.lucene.search.ScoreDoc" %>
@@ -30,6 +31,7 @@
 <%@ page import="alix.web.Mime" %>
 <%@ page import="alix.lucene.Alix" %>
 <%@ page import="alix.lucene.analysis.FrAnalyzer" %>
+<%@ page import="alix.lucene.search.CollectorBits" %>
 <%@ page import="alix.lucene.search.Corpus" %>
 <%@ page import="alix.lucene.search.CorpusQuery" %>
 <%@ page import="alix.lucene.search.SimilarityOccs" %>
@@ -46,6 +48,8 @@ public static String TEXT = "text";
 final static String YEAR = "year";
 /** Key prefix for current corpus in session */
 public static String CORPUS_ = "corpus_";
+/** A filter for documents */
+final static Query QUERY_CHAPTER = new TermQuery(new Term(Alix.TYPE, Alix.CHAPTER));
 
 /**
  * Build a filtering query with a corpus
@@ -138,25 +142,25 @@ public static String catOptions(String catPar) throws IOException
 
 /**
  * Build a text query fron a String and an optional Corpus.
+ * Will return null if there is no terms in the query,
+ * even if there is a corpus.
  */
 public static Query getQuery(Alix alix, String q, Corpus corpus) throws IOException
 {
   String fieldName = TEXT;
   Query qWords = alix.qParse(fieldName, q);
-  if (qWords == null) return null;
-  Query query;
-  BitSet filter= null;
-  if (corpus != null) filter = corpus.bits();
-  if (filter != null) {
-    query = new BooleanQuery.Builder()
-      .add(new CorpusQuery(corpus.name(), filter), Occur.FILTER)
+  if (qWords == null) {
+    return null;
+    // return filter;
+  }
+  if (corpus != null) {
+    Query filter = new CorpusQuery(corpus.name(), corpus.bits());
+    return new BooleanQuery.Builder()
+      .add(filter, Occur.FILTER)
       .add(qWords, Occur.MUST)
       .build();
   }
-  else {
-    query = qWords;
-  }
-  return query;
+  return qWords;
 }
 
 
@@ -172,6 +176,9 @@ public static Sort getSort(final String sortSpec)
     return new Sort(new SortField(YEAR, SortField.Type.INT, true));
   }
   else if ("author".equals(sortSpec)) {
+    return new Sort(new SortField(Alix.ID, SortField.Type.STRING));
+  }
+  else if ("id".equals(sortSpec)) {
     return new Sort(new SortField(Alix.ID, SortField.Type.STRING));
   }
   else if ("author-inv".equals(sortSpec)) {
@@ -201,14 +208,32 @@ public static Similarity getSimilarity(final String sortSpec)
 }
 
 /**
+ * Get a bitSet of a query. Seems quite fast (2ms)
+ */
+public BitSet bits(PageContext page, Alix alix, Corpus corpus, String q) throws IOException
+{
+  Query query = getQuery(alix, q, corpus);
+  if (query == null) {
+    if (corpus == null) return null;
+    return corpus.bits();
+  }
+  IndexSearcher searcher = alix.searcher();
+  CollectorBits collector = new CollectorBits(searcher);
+  searcher.search(query, collector);
+  return collector.bits();
+}
+
+/**
  * Get a cached set of results.
+ * Ensure to always give something
  */
 public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, String sortSpec) throws IOException
 {
+  // build the key 
   Query query = getQuery(alix, q, corpus);
-  if (query == null) return null;
-  IndexSearcher searcher = alix.searcher();
-  int totalHitsThreshold = Integer.MAX_VALUE;
+  if (query != null); // get a query, nothing to do
+  else if (corpus != null) query = new CorpusQuery(corpus.name(), corpus.bits());
+  else query = QUERY_CHAPTER;
   Sort sort = getSort(sortSpec);
   String key = ""+page.getRequest().getAttribute(Obvil.BASE)+"?"+query;
   if (sort != null)  key+= " " + sort;
@@ -219,7 +244,9 @@ public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, 
   }
   TopDocs topDocs = (TopDocs)page.getSession().getAttribute(key);
   if (topDocs != null) return topDocs;
-  
+
+  IndexSearcher searcher = alix.searcher();
+  int totalHitsThreshold = Integer.MAX_VALUE;
   final int numHits = 12000;
   TopDocsCollector<?> collector;
   if (sort != null) {
@@ -241,10 +268,12 @@ public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, 
   topDocs = collector.topDocs();
   page.getSession().setAttribute(key, topDocs);
   return topDocs;
-}%>
+}
+
+%>
 <%
 final long time = System.nanoTime();
-final Jsp tools = new Jsp(pageContext);
+final Jsp tools = new Jsp(request, response, pageContext);
 final String obvilDir = (String)request.getAttribute(Obvil.OBVIL_DIR);
 final String base = (String)request.getAttribute(Obvil.BASE);
 final Properties props = (Properties)request.getAttribute(Obvil.PROPS);

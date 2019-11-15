@@ -43,7 +43,7 @@ else {
 //prepare a corpus ?
 String js = "";
 Corpus corpus = null;
-if ("POST".equalsIgnoreCase(request.getMethod())) { 
+if ("POST".equalsIgnoreCase(request.getMethod())) {
 // handle paramaters to change the corpus
 String name = tools.getString("name", null);
 String desc = tools.getString("desc", null);
@@ -79,7 +79,7 @@ corpus = (Corpus)session.getAttribute(corpusKey);
     <title><%= (corpus != null) ? Jsp.escape(corpus.name())+", " : "" %><%=props.get("name")%> [Obvil]</title>
     <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
     <script> const base = "<%=base%>"; </script> <%-- give code of the text base for all further js  --%>
-    <script src="../static/vendors/split.js">//</script>
+    <script src="../static/vendor/split.js">//</script>
     <script src="../static/js/common.js">//</script>
     <script src="../static/js/corpora.js">//</script>
     <script>
@@ -92,7 +92,7 @@ corpus = (Corpus)session.getAttribute(corpusKey);
    if (corpus != null) {
      String name = corpus.name();
      out.println("<mark><a title=\"Déselectionner ce corpus\" href=\"?corpus=new&amp;q="+Jsp.escape(q)+"\">🗙</a>  "+name+"</mark>");
-     
+
    }
  %></span>
       <a class="logo" href="." title="Annuler les recherches en cours"><img alt="Obvil app" src="../static/img/obvil_50.png"/></a>
@@ -102,13 +102,11 @@ corpus = (Corpus)session.getAttribute(corpusKey);
         <div id="tabs">
           <a href="corpus" target="page">Corpus</a>
           <a href="snip" target="page">Résultats</a>
+          <a href="kwic" target="page">Concordance</a>
           <a href="doc" target="page">Document</a>
           <a href="freqs" target="page">Fréquences</a>
           <a href="cloud" target="page">Nuage</a>
           <a href="comparer">Comparer</a>
-          <!-- 
-          <a href="kwic" target="page">Concordancier</a>
-           -->
         </div>
       </form>
     </header>

@@ -633,6 +633,11 @@ u   * @throws IOException
   {
     return qParse(field, q, this.analyzer);
   }
+  
+  static public Query qParse(final String field, final String q, final Analyzer analyzer) throws IOException
+  {
+    return qParse(field, q, analyzer, Occur.SHOULD);
+  }
 
   /**
    * 
@@ -641,40 +646,45 @@ u   * @throws IOException
    * @return
    * @throws IOException
    */
-  static public Query qParse(final String field, final String q, final Analyzer analyzer) throws IOException
+  static public Query qParse(final String field, final String q, final Analyzer analyzer, final Occur occur) throws IOException
   {
     if (q == null || "".equals(q.trim())) return null;
     // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
     // int boostLength = boosts.length;
     // float boostDefault = boosts[boostLength - 1];
-    TokenStream ts = analyzer.tokenStream("q", q);
+    TokenStream ts = analyzer.tokenStream(AlixReuseStrategy.QUERY, q);
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
 
     ts.reset();
     Query qTerm = null;
     BooleanQuery.Builder bq = null;
-    Occur occur = null;
+    Occur op = null;
     bq = null;
+    int neg = 0;
+    int aff = 0;
     try {
       while (ts.incrementToken()) {
         if (Tag.isPun(flags.getFlags())) continue;
         if (bq == null && qTerm != null) { // second term, create boolean
           bq = new BooleanQuery.Builder();
-          bq.add(qTerm, occur);
+          bq.add(qTerm, op);
         }
         String word;
         if (token.charAt(0) == '-') {
-          occur = Occur.MUST_NOT;
+          op = Occur.MUST_NOT;
           word = token.subSequence(1, token.length()).toString();
+          neg++;
         }
         else if (token.charAt(0) == '+') {
-          occur = Occur.MUST;
+          op = Occur.MUST;
           word = token.subSequence(1, token.length()).toString();
+          aff++;
         }
         else {
-          occur = Occur.SHOULD;
+          op = occur;
           word = token.toString();
+          aff++;
         }
         
         
@@ -684,7 +694,7 @@ u   * @throws IOException
         else qTerm = new TermQuery(new Term(field, word));
 
         if (bq != null) { // more than one term
-          bq.add(qTerm, occur);
+          bq.add(qTerm, op);
         }
 
       }
@@ -693,9 +703,10 @@ u   * @throws IOException
     finally {
       ts.close();
     }
+    if (neg > 0 && aff == 0 && bq != null) bq.add(new MatchAllDocsQuery(), Occur.MUST);
     if (bq != null) return bq.build();
     
-    if (Occur.MUST_NOT.equals(occur)) {
+    if (neg > 0 && aff == 0) {
       bq = new BooleanQuery.Builder();
       bq.add(new MatchAllDocsQuery(), Occur.MUST);
       bq.add(qTerm, occur);
@@ -723,7 +734,7 @@ u   * @throws IOException
     TermList terms = new TermList();
     // what is null here ? returns an empty term list
     if (q == null || "".equals(q.trim())) return terms;
-    TokenStream ts = analyzer.tokenStream("pun", q); // keep punctuation to group terms
+    TokenStream ts = analyzer.tokenStream(AlixReuseStrategy.QUERY, q); // keep punctuation to group terms
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     // not generic for other analyzers but may become interesting for a query parser
     // CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);

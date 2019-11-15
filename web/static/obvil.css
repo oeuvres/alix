@@ -61,7 +61,6 @@ html {
 }
 
 button,
-table.sortable caption,
 #chapters a:hover,
 .gutter {
   background: #E1DDCF;
@@ -180,12 +179,10 @@ body.facet a span i,
 article.hit mark,
 table.sortable th,
 button.magnify,
+.sortable td.title a:hover,
 .term .occs {
   color: #ea5b0c;
 }
-
-
-
 
 select {
   background-color: #FFFFFF;
@@ -630,8 +627,20 @@ body.corpus {
   padding: 0;
 }
 
+body.corpus caption {
+  text-align: left;
+}
+
 body.corpus main {
   padding: 1rem;
+}
+
+td.title a {
+  text-decoration: none;
+  display: block;
+}
+
+td.title a:hover {
 }
 
 #filter label {

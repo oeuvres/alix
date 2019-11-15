@@ -6,26 +6,16 @@ else if (window.name == "left") sibling = window.parent.frames["right"];
 var text = document.getElementById("text");
 
 // scrol after anchor clicked
-window.addEventListener('load', function () {
-  let id = location.hash;
-  if (id[0] == "#") id = id.substring(1);
-  if (document.getElementById(id)) {
-    window.scrollBy(0, -100);
-  }
-});
-
-window.onhashchange = function (e)
+function scrollAnchor()
 {
-  let url = new URL(e.newURL);
-  let hash = url.hash;
-  let id = decodeURIComponent(hash);
-  if (id[0] == "#") id = id.substring(1);
+  let id = location.hash;
   if (!id) return;
-  // hash exists as an id
-  if (document.getElementById(id)) {
-    window.scrollBy(0, -100);
-  }
+  if (id[0] == "#") id = id.substring(1);
+  if (!document.getElementById(id)) return;
+  window.scrollBy(0, -100);
 }
+window.addEventListener('load', scrollAnchor);
+window.addEventListener('hashchange', scrollAnchor);
 
 // a set of colors for hilite tokens
 var styleMap = {

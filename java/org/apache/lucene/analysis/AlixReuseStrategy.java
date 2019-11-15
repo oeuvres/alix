@@ -74,11 +74,11 @@ import alix.lucene.SAXIndexer;
 
 public class AlixReuseStrategy extends ReuseStrategy
 {
-
+  public static String QUERY = "query";
   @Override
   public TokenStreamComponents getReusableComponents(Analyzer analyzer, String fieldName)
   {
-    if ("query".startsWith(fieldName)) return (TokenStreamComponents) getStoredValue(analyzer);
+    if (QUERY.startsWith(fieldName)) return (TokenStreamComponents) getStoredValue(analyzer);
     return analyzer.createComponents(fieldName);
   }
 

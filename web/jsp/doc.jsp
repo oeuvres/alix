@@ -89,11 +89,11 @@ if (doc != null) title = ML.detag(doc.doc().get("bibl"));
   <head>
     <meta charset="UTF-8">
     <title><%=title%> [Obvil]</title>
-    <link href="../static/vendors/teinte.css" rel="stylesheet"/>
+    <link href="../static/vendor/teinte.css" rel="stylesheet"/>
     <link href="../static/obvil.css" rel="stylesheet"/>
     <script>
 <%
-if (doc != null) { // document id is verified, give it to javascript 
+if (doc != null) { // document id is verified, give it to javascript
   out.println("var docLength="+doc.length(TEXT)+";");
   out.println("var id=\""+doc.id()+"\";");
 }
