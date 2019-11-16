@@ -38,11 +38,11 @@
 <%@ page import="alix.lucene.search.SimilarityTheme" %>
 <%@ page import="alix.lucene.search.TopTerms" %>
 <%@ page import="alix.util.ML" %>
+<%@ page import="alix.util.EnumOption" %>
 <%@ page import="obvil.web.Obvil" %>
 <%@ page import="obvil.web.Cat" %>
-<%!
-
-/** Field name containing canonized text */
+<%@ page import="obvil.web.FacetSort" %>
+<%!/** Field name containing canonized text */
 public static String TEXT = "text";
 /** Field Name with int date */
 final static String YEAR = "year";
@@ -97,24 +97,18 @@ public static String sortOptions(String sortSpec) throws IOException
 /**
  * Sort options for facets or corpus
  */
-public static String biblSortOptions(final String sortPar, final boolean score) throws IOException
+public static String options(final EnumOption option) throws IOException
 {
   StringBuilder sb = new StringBuilder();
-  String[] value = {
-    "alpha", "freq", "score"
-  };
-  String[] label = {
-    "Alphabétique", "Fréquence", "Pertinence"
-  };
-  for (int i = 0, length = value.length; i < length; i++) {
-    if ("score".equals(value[i]) && !score) continue;
+  for (EnumOption opt : option.list()) {
+    String value = opt.toString();
     sb.append("<option");
-    if (value[i].equals(sortPar)) sb.append(" selected=\"selected\"");
+    if (option == opt) sb.append(" selected=\"selected\"");
     sb.append(" value=\"");
-    sb.append(value[i]);
+    sb.append(value);
     sb.append("\">");
-    sb.append(label[i]);
-    sb.append("</option>");
+    sb.append(opt.label());
+    sb.append("</option>\n");
   }
   return sb.toString();
 }
@@ -208,9 +202,9 @@ public static Similarity getSimilarity(final String sortSpec)
 }
 
 /**
- * Get a bitSet of a query. Seems quite fast (2ms)
+ * Get a bitSet of a query. Seems quite fast (2ms), no cache needed.
  */
-public BitSet bits(PageContext page, Alix alix, Corpus corpus, String q) throws IOException
+public BitSet bits(Alix alix, Corpus corpus, String q) throws IOException
 {
   Query query = getQuery(alix, q, corpus);
   if (query == null) {
@@ -268,9 +262,7 @@ public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, 
   topDocs = collector.topDocs();
   page.getSession().setAttribute(key, topDocs);
   return topDocs;
-}
-
-%>
+}%>
 <%
 final long time = System.nanoTime();
 final Jsp tools = new Jsp(request, response, pageContext);

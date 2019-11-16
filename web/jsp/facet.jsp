@@ -3,24 +3,23 @@
 <%@ page import="alix.lucene.search.Facet" %>
 <%@ page import="alix.lucene.search.TermList" %>
 <%@ page import="alix.lucene.search.TopTerms" %>
+<%@ page import="alix.lucene.search.TopTerms" %>
+<%@ page import="obvil.web.FacetField" %>
+
 <%
-//Params for the page
+// Params for the page
 String q = tools.getString("q", null);
-String ord = tools.getString("ord", "alpha", "facetSort");
 String facetField = tools.getString("facet", "author"); 
+FacetSort sort = (FacetSort)tools.getEnum("ord", FacetSort.alpha, "facetSort");
 
 //global variables
-String facetName = facetField;
-if (facetField.equals("author")) facetName = "Auteur";
-else if (facetField.equals("title")) facetName = "Titre";
-
+FacetField field = FacetField.author;
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
-BitSet bits = bits(pageContext, alix, corpus, q);
-TermList terms = alix.qTermList(TEXT, q);
-
-// is there a score (= query) ?
-final boolean score =  (terms != null && terms.size() > 1);
-if (!score && "score".equals(ord)) ord = "freq";
+BitSet bits = bits(alix, corpus, q);
+// is there a query and scores to get ?
+TermList qTerms = alix.qTermList(TEXT, q);
+final boolean score =  (qTerms != null && qTerms.size() > 0);
+if(!score && sort == FacetSort.score) sort = FacetSort.freq;
 
 %>
 <!DOCTYPE html>
@@ -38,60 +37,63 @@ if (!score && "score".equals(ord)) ord = "freq";
       <input type="hidden" id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off"/>
       <select name="ord" onchange="this.form.submit()">
         <option/>
-        <%= biblSortOptions(ord, score) %>
+        <%= options(sort) %>
       </select>
     </form>
     <main>
     <%
-if (score) out.println("<h4>occurrences (chapitres) "+facetName+"</h4>");
-else out.println("<h4>(chapitres) "+facetName+"</h4>");
+    
 Facet facet = alix.facet(facetField, TEXT);
-// a query
-if (terms != null && terms.size() > 0) {
-  // Hack to use facet as a navigator in results, cache results in the field of the facet order
-  TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, facetField);
-  // get the position of the first document for each facet
-  int[] nos = facet.nos(topDocs);
-  TopTerms facetEnum = facet.topTerms(bits, terms, null);
-  facetEnum.setNos(nos);
-  
-  if ("alpha".equals(ord)) facetEnum.sort();
-  else if ("score".equals(ord)) facetEnum.sort(facetEnum.getScores());
-  else if ("freq".equals(ord)) facetEnum.sort(facetEnum.getOccs());
-  else facetEnum.sort();
-  while (facetEnum.hasNext()) {
-    facetEnum.next();
-    int hits = facetEnum.hits();
-    int docs = facetEnum.docs();
-    long occs = facetEnum.occs();
-    if (occs < 1) continue; // in alpha order, try next
-    int n = facetEnum.n();
-    out.print("<div class=\"term\">");
-    out.print("<a href=\"snip?sort="+facetField+"&amp;q="+q+"&start="+(n+1)+"&amp;hpp="+hits+"\">");
-    out.print("<span><span class=\"occs\">"+occs+"</span> ("+hits+" <i>/"+docs+"</i>)</span>    ");
-    out.print(facetEnum.term());
-    out.print("</a>");
-    out.println("</div>");
-  }
-}
-else {
-  TopTerms facetEnum = facet.topTerms(bits, terms, null);
-  if ("alpha".equals(ord)) facetEnum.sort();
-  else if ("freq".equals(ord)) facetEnum.sort(facetEnum.getDocs());
-  else facetEnum.sort();
-  while (facetEnum.hasNext()) {
-    facetEnum.next();
-    int docs = facetEnum.docs();
-    // if a filter but no query, hits is set, test it
-    if (bits != null && facetEnum.hits() < 1) continue;
-    if (docs < 1) continue; // if in alpha order, do not stop here
-    out.print("<div class=\"term\">");
-    out.print("<span>(<i>"+docs+"</i>)</span>    ");
-    out.print(facetEnum.term());
-    out.println("</div>");
-  }
+TopTerms dic = facet.topTerms(bits, qTerms, null);
+
+
+
+if (score)  out.println("<h4><span class=\"occs\" title=\"Nombre d’occurrences\">occs</span>  "
+    +field.label+" <span class=\"docs\" title=\"Nombre de documents\">(chapitres)</span></h4>");
+else out.println("<h4>"+field.label+" <span class=\"docs\" title=\"Nombre de documents\">(chapitres)</span></h4>");
+
+switch(sort){
+  case alpha:
+    dic.sort();
+    break;
+  case freq:
+    if (score) dic.sort(dic.getOccs());
+    else dic.sort(dic.getDocs());
+    break;
+  case score:
+    if (score) dic.sort(dic.getScores());
+    else dic.sort(dic.getDocs());
+    break;
+  default:
+    dic.sort();
 }
 
+// Hack to use facet as a navigator in results, cache results in the facet order
+TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, facetField);
+int[] nos = facet.nos(topDocs);
+dic.setNos(nos);
+
+
+int hits = 0, docs= 0, n = 0;
+long occs = 0;
+while (dic.hasNext()) {
+  dic.next();
+  n = dic.n();
+  docs = dic.docs();
+  if (score) {
+    hits = dic.hits();
+    occs = dic.occs();
+    if (hits < 1) continue; // in alpha order, try next
+  }
+  out.print("<div class=\"term\">");
+  if (score) out.print("<span class=\"occs\">"+occs+"</span> ");
+  out.print("<a href=\"snip?sort="+facetField+"&amp;q="+q+"&start="+(n+1)+"&amp;hpp="+hits+"\">");
+  out.print(dic.term());
+  out.print("</a>");
+  if (score) out.print(" <span class=\"docs\">("+hits+" / "+docs+")</span>    ");
+  else out.print(" <span class=\"docs\">("+docs+")</span>    ");
+  out.println("</div>");
+}
     %>
     </main>
     <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>

@@ -168,8 +168,6 @@ h4,
 select,
 body.facet,
 .sortable caption,
-body.facet a,
-body.facet a span i,
 .hit .bibl a {
   color: rgb(120, 105, 101);
 }
@@ -180,6 +178,7 @@ article.hit mark,
 table.sortable th,
 button.magnify,
 .sortable td.title a:hover,
+h4 .occs,
 .term .occs {
   color: #ea5b0c;
 }
@@ -711,6 +710,13 @@ body.facet div.term {
   white-space: nowrap;
 }
 
+body.facet h4 .occs,
+.term .occs {
+  display: inline-block;
+  width: 2rem;
+  text-align: right;
+  margin-right: 1rem;
+}
 /**
  * Document view
  */

@@ -25,19 +25,10 @@ if (corpus != null) bookids = corpus.books();
 Facet facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.TYPE, Alix.BOOK));
 IntSeries years = alix.intSeries(YEAR); // to get min() max() year
 TermList qTerms = alix.qTermList(TEXT, q);
-TopTerms dic = null;
 boolean score = (qTerms != null && qTerms.size() > 0);
 
-BitSet bits = bits(pageContext, alix, corpus, q);
-if (score && corpus != null) {
-  dic = facet.topTerms(bits, qTerms, null);
-}
-else if (score) {
-  dic = facet.topTerms(bits, qTerms, null);
-}
-else {
-  dic = facet.topTerms();
-}
+BitSet bits = bits(alix, corpus, q);
+TopTerms dic = facet.topTerms(bits, qTerms, null);
 
 %>
 <!DOCTYPE html>
@@ -111,9 +102,9 @@ const base = "<%=base%>"; // give code of texts base to further Javascript
   else if (score) dic.sort(dic.getScores());
   else dic.sort();
  
-  // Hack to use facet as a navigator in results, cache results in the field of the facet order
+  // Hack to use facet as a navigator in results
+  // get and cache results in facet order, find a index 
   TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, "author");
-  // get the position of the first document for each facet
   int[] nos = facet.nos(topDocs);
   dic.setNos(nos);
 
@@ -169,24 +160,30 @@ const base = "<%=base%>"; // give code of texts base to further Javascript
     <script src="../static/vendor/Sortable.js">//</script>
               <datalist id="author-data">
     <%
-    facet = alix.facet("author", TEXT);
-    TopTerms facetEnum = facet.topTerms();
-    while (facetEnum.hasNext()) {
-      facetEnum.next();
-      // long weight = facetEnum.weight();
-      out.println("<option value=\""+facetEnum.term()+"\"/>");
+    {
+      facet = alix.facet("author", TEXT);
+      dic = facet.topTerms();
+      dic.sort();
+      while (dic.hasNext()) {
+        dic.next();
+        // long weight = facetEnum.weight();
+        out.println("<option value=\""+dic.term()+"\"/>");
+      }
     }
     %>
 
           </datalist>
           <datalist id="title-data">
     <%
-    facet = alix.facet("title", TEXT);
-    facetEnum = facet.topTerms();
-    while (facetEnum.hasNext()) {
-      facetEnum.next();
-      // long weight = facetEnum.weight();
-      out.println("<option value=\""+facetEnum.term()+"\"/>");
+    {
+      facet = alix.facet("title", TEXT);
+      dic = facet.topTerms();
+      dic.sort();
+      while (dic.hasNext()) {
+        dic.next();
+        // long weight = facetEnum.weight();
+        out.println("<option value=\""+dic.term()+"\"/>");
+      }
     }
     %>
           </datalist>

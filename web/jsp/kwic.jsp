@@ -31,7 +31,9 @@ span.left {display: inline-block; text-align: right; width: <%= Math.round(left 
 div.line a { font-weight: bold; padding: 0 1ex; background: #FFFFFF; color: #ea5b0c; }
 div.line a:hover { text-decoration: none; color: #000;}
 article.kwic { margin: 1rem 0;}
-article.kwic header {text-align:left; font-weight: bold; margin-bottom: 0.5rem;}
+article.kwic header {text-align:left; margin-bottom: 0.5rem; background-color: #FFF; font-size: 105%; border-bottom: 1px solid rgb(120, 105, 101); padding: 0 0.5rem;}
+article.kwic header a {display: block; color: rgb(120, 105, 101);}
+article.kwic header a:hover {color: #ea5b0c; text-decoration: none; }
     </style>
   </head>
   <body class="results">

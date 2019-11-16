@@ -6,20 +6,13 @@ import java.util.List;
 
 import alix.util.EnumOption;
 
-public enum Cat implements EnumOption {
-  NOSTOP("Mots pleins"), 
-  SUB("Substantifs"), 
-  NAME("Noms propres"),
-  VERB("Verbes"),
-  ADJ("Adjectifs"),
-  ADV("Adverbes"),
-  ALL("Tout"),
+public enum FacetField implements EnumOption {
+  author("Auteur"), 
   ;
   public final String label;
-  private Cat(final String label) {  
+  private FacetField(final String label) {  
     this.label = label ;
   }
-  
   public String label()
   {
     return label;

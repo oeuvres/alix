@@ -282,13 +282,7 @@ public class Facet
    * @throws IOException
    */
   public TopTerms topTerms() throws IOException {
-    // do not cache here, user wants his own pointer
-    TopTerms dic = new TopTerms(hashDic);
-    dic.setDocs(facetDocs);
-    dic.setLengths(facetLength);
-    dic.setCovers(facetCover);
-    dic.sort(); // default orthographc sort
-    return dic;
+    return topTerms(null, null, null);
   }
 
   /**
