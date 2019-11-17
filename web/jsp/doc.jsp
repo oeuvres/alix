@@ -3,23 +3,8 @@
 <%@ page import="alix.lucene.search.Doc" %>
 <%@ page import="alix.util.Top" %>
 
-<%!final static HashSet<String> DOC_SHORT = new HashSet<String>(Arrays.asList(new String[] {Alix.ID, Alix.BOOKID, "bibl"}));
-public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOException
-{
-  StringBuilder out = new StringBuilder();
-  ScoreDoc[] hits = docs.scoreDocs;
-  for (int i = 0, len = hits.length; i < len; i++) {
-    int docId = hits[i].doc;
-    if (docSrc == docId) continue;
-    Document doc = reader.document(docId, DOC_SHORT);
-    out.append("<li>");
-    out.append("<a href=\"?docid="+docId+"\">");
-    out.append(doc.get("bibl"));
-    out.append("</a>");
-    out.append("</li>\n");
-  }
-  return out.toString();
-}%>
+<%!
+%>
 <%
   /**
  * display a doc from the index.
@@ -34,7 +19,7 @@ public String results(TopDocs docs, IndexReader reader, int docSrc) throws  IOEx
 int docId = tools.getInt("docid", -1); // get doc by lucene internal docId or persistant String id
 String id = tools.getString("id", null);
 String q = tools.getString("q", null); // if no doc, get params to navigate in a results series
-String sort = tools.getString("sort", null);
+DocSort sorter = (DocSort)tools.getEnum("sort", DocSort.score);
 int start = tools.getInt("start", 1);
 if (request.getParameter("prev") != null) { // if submit prev
   start = tools.getInt("prevn", start);
@@ -50,6 +35,23 @@ TopDocs topDocs = null;
 
 // try to populate globals with params
 
+// if a query, or a sort specification, provide navigation in documents
+if (q != null || sorter != DocSort.score) {
+  final long now = System.nanoTime();
+  topDocs = getTopDocs(pageContext, alix, corpus, q, sorter);
+  ScoreDoc[] hits = topDocs.scoreDocs;
+  // ? a no result reponse caches ? Quite idiot, but that's life
+  if (hits.length == 0) {
+    topDocs = null;
+    start = 0;
+  }
+  else {
+    if (start < 1 || (start - 1) >= hits.length) start = 1;
+    docId = hits[start - 1].doc;
+  }
+}
+
+
 try { // load full document
   if (id != null) doc = new Doc(alix, id);
   else if (docId >= 0) {
@@ -57,32 +59,16 @@ try { // load full document
     id = doc.id();
   }
 }
-// doc not found
-catch (IllegalArgumentException e) {
+catch (IllegalArgumentException e) { // doc not found
   id = null;
 }
-// if a query, provide navigation in documents
-if (q != null) {
-  topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
-  ScoreDoc[] hits = topDocs.scoreDocs;
-  // ? a no result reponse caches ? Quite idiot, but...
-  if (hits.length == 0) {
-    topDocs = null;
-    start = 0;
-  }
-  else {
-    if (start < 1 || (start - 1) >= hits.length) start = 1;
-    if (doc == null) {
-      docId = hits[start - 1].doc;
-      doc = new Doc(alix, docId); // should be right
-      id = doc.id();
-    }
-  }
-}
+
 
 // bibl ref with no tags
 String title = "";
 if (doc != null) title = ML.detag(doc.doc().get("bibl"));
+
+SortField sf2 = new SortField(Alix.ID, SortField.Type.STRING);
 %>
 <!DOCTYPE html>
 <html>
@@ -120,7 +106,7 @@ if (doc != null) { // document id is verified, give it to javascript
         <input id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" type="hidden"/>
         <select name="sort" onchange="this.form.submit()" title="Ordre">
             <option/>
-            <%= sortOptions(sort) %>
+            <%= options(sorter) %>
         </select>
         <%
           if (topDocs != null && start > 1) {
@@ -145,7 +131,6 @@ if (doc != null) { // document id is verified, give it to javascript
       out.println("<div class=\"heading\">");
       out.println(doc.doc().get("bibl"));
       out.println("</div>");
-      out.println( alix.qTermList(q, TEXT));
       // hilite
       if (!"".equals(q)) {
         String[] terms = alix.qTermList(TEXT, q).toArray();
@@ -158,5 +143,6 @@ if (doc != null) { // document id is verified, give it to javascript
     %>
     </main>
     <script src="../static/js/doc.js">//</script>
+    <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
   </body>
 </html>

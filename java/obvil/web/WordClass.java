@@ -6,7 +6,7 @@ import java.util.List;
 
 import alix.util.EnumOption;
 
-public enum Cat implements EnumOption {
+public enum WordClass implements EnumOption {
   NOSTOP("Mots pleins"), 
   SUB("Substantifs"), 
   NAME("Noms propres"),
@@ -16,7 +16,7 @@ public enum Cat implements EnumOption {
   ALL("Tout"),
   ;
   public final String label;
-  private Cat(final String label) {  
+  private WordClass(final String label) {  
     this.label = label ;
   }
   

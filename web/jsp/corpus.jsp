@@ -13,16 +13,16 @@ final static DecimalFormat dfint = new DecimalFormat("###,###,##0", frsyms);
 final static HashSet<String> FIELDS = new HashSet<String>(Arrays.asList(new String[] {Alix.BOOKID, "byline", "year", "title"}));
 static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT));%>
 <%
+
 // params for this page
 String q = tools.getString("q", null);
-String ord = tools.getString("ord", "score", "corpusSort");
-
+FacetSort sort = (FacetSort)tools.getEnum("ord", FacetSort.alpha, "corpusSort");
     
 // global variables
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 Set<String> bookids = null;
 if (corpus != null) bookids = corpus.books();
-Facet facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.TYPE, Alix.BOOK));
+Facet facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.TYPE, DocType.book.name()));
 IntSeries years = alix.intSeries(YEAR); // to get min() max() year
 TermList qTerms = alix.qTermList(TEXT, q);
 boolean score = (qTerms != null && qTerms.size() > 0);
@@ -53,7 +53,7 @@ const base = "<%=base%>"; // give code of texts base to further Javascript
             <label for="ord">Tri par défaut</label>
             <select name="ord" onchange="this.form.submit()">
               <option/>
-              <%= biblSortOptions(ord, score) %>
+              <%= options(sort) %>
             </select>
           </form>
           <label for="start">Années</label>
@@ -67,8 +67,7 @@ const base = "<%=base%>"; // give code of texts base to further Javascript
       <form method="post" id="corpus" target="_top" action=".">
         <table class="sortable" id="bib">
          <caption>
-         <%= getQuery(alix, q, corpus) %>
-            <%=  (bits != null)?bits.cardinality():alix.reader().maxDoc() %> documents.
+            <%=  (bits != null)?bits.cardinality():facet.docsAll %> documents.
             <input type="hidden" name="q" value="<%=Jsp.escape(q)%>"/>
             <button style="float: right;" name="save" type="submit">Enregistrer</button>
             <input style="float: right;" type="text" size="10" id="name" name="name" value="<%= (corpus != null) ? Jsp.escape(corpus.name()) : "" %>"
@@ -96,15 +95,25 @@ const base = "<%=base%>"; // give code of texts base to further Javascript
     <%
 
   // sorting
-  if ("alpha".equals(ord)) dic.sort();
-  else if (score && "score".equals(ord)) dic.sort(dic.getScores());
-  else if ("freq".equals(ord)) dic.sort(dic.getOccs());
-  else if (score) dic.sort(dic.getScores());
-  else dic.sort();
+switch(sort){
+  case alpha:
+    dic.sort();
+    break;
+  case freq:
+    if (score) dic.sort(dic.getOccs());
+    else dic.sort(dic.getDocs());
+    break;
+  case score:
+    if (score) dic.sort(dic.getScores());
+    else dic.sort(dic.getDocs());
+    break;
+  default:
+    dic.sort();
+}
  
   // Hack to use facet as a navigator in results
   // get and cache results in facet order, find a index 
-  TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, "author");
+  TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, DocSort.author);
   int[] nos = facet.nos(topDocs);
   dic.setNos(nos);
 

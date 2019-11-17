@@ -1,4 +1,6 @@
-/** Update an URL parameter in location bar of parent window if caller is in a frame */
+/**
+ * Update an URL parameter in location bar of parent window if caller is in a frame
+ */
 function parTop(key, value) {
   if (!key) return;
   const topUrl = top.location;
@@ -9,7 +11,10 @@ function parTop(key, value) {
   if (value !== null) pars.append(key, value);
   top.history.replaceState(null, null, "?"+pars.toString());
 }
-/** give  */
+
+/**
+ * Find name without extension from a location or a link object
+ */
 function url4name(link) {
   let parts = link.pathname.split('/');
   // if trailing slash, name will be empty
@@ -17,8 +22,13 @@ function url4name(link) {
   return name.replace(/\.[^/.]+$/, "");
 }
 
+/**
+ * Store a parameter
+ */
 
-/** Inform parent window (desk) of view */
+/**
+ * Inform parent window (desk) of view
+ */
 if (self != top) {
   var topName = url4name(top.location);
   var selfName = url4name(window.location);
@@ -34,6 +44,8 @@ if (self != top) {
   }
   // probably the desk
   else {
+    let panel = top.frames['panel'];
+    console.log(panel.document);
     switch(selfName) {
       case "facet":
       case "chrono":

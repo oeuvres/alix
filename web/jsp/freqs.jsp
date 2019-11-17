@@ -20,14 +20,11 @@ private static final int OUT_CSV = 1;
 private static final int OUT_JSON = 2;
 
 
-private static String lines(final TopTerms dic, int max, final Mime mime, final String cat, final boolean hasScore)
+private static String lines(final TopTerms dic, int max, final Mime mime, final WordClass cat, final boolean hasScore)
 {
   max = Math.min(max, dic.size());
   StringBuilder sb = new StringBuilder();
 
-  Cat catSwitch = Cat.NOSTOP;
-  try { catSwitch = Cat.valueOf(cat); }
-  catch (Exception e) { }
 
   int no = 1;
   Tag zetag;
@@ -51,7 +48,7 @@ private static String lines(final TopTerms dic, int max, final Mime mime, final 
       zetag = new Tag(0);
     }
     // filtering
-    switch (catSwitch) {
+    switch (cat) {
       case NOSTOP:
         if (FrDics.isStop(term)) continue;
         break;
@@ -62,13 +59,15 @@ private static String lines(final TopTerms dic, int max, final Mime mime, final 
         if (!zetag.isName()) continue;
         break;
       case VERB:
-        if (!zetag.equals(Tag.VERB)) continue;
+        if (zetag.code() != Tag.VERB) continue;
         break;
       case ADJ:
         if (!zetag.isAdj()) continue;
         break;
       case ADV:
-        if (!zetag.equals(Tag.ADV)) continue;
+        if (zetag.code() != Tag.ADV) continue;
+        break;
+      case ALL:
         break;
     }
     if (dic.occs() == 0) break;
@@ -137,9 +136,7 @@ static private void jsonLine(StringBuilder sb, final TopTerms dic, final Tag tag
   sb.append(Tag.label(tag.group()));
   sb.append("\"}");
   sb.append("}");
-}
-
-%>
+}%>
 <%
   //parameters
 final String q = tools.getString("q", null);
@@ -147,7 +144,7 @@ int hpp = tools.getInt("hpp", -1);
 if (hpp < 1 || hpp > 2000) hpp = 500;
 
 final String sorter = tools.getString("sorter", "score", "freqSorter");
-final String cat = tools.getString("cat", Cat.NOSTOP.name(), "catFreqs");
+WordClass cat = (WordClass)tools.getEnum("cat", WordClass.NOSTOP, "catFreqs");
 
 int left = tools.getInt("left", 5, "freqLeft");
 if (left < 0) left = 0;
@@ -197,7 +194,6 @@ else if (Mime.csv.equals(mime)) {
   out.println( lines(dic, -1, mime, cat, hasScore));
 }
 else {
-
 %>
 <!DOCTYPE html>
 <html>
@@ -232,7 +228,7 @@ else {
              %>
            <select name="cat" onchange="this.form.submit()">
               <option/>
-              <%= catOptions(cat) %>
+              <%= options(cat) %>
            </select>
         </form>
       </caption>

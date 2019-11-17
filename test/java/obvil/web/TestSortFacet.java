@@ -25,6 +25,6 @@ public class TestSortFacet
   static public void main(String[] args) 
   {
     lookup(FacetSort.score);
-    lookup(Cat.ADJ);
+    lookup(WordClass.ADJ);
   }
 }

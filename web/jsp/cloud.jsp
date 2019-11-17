@@ -2,8 +2,7 @@
 <%@ include file="prelude.jsp" %>
 <%
 final String q = tools.getString("q", null);
-final String cat = tools.getString("cat", Cat.NOSTOP.name(), "catFreqs");
-
+WordClass cat = (WordClass)tools.getEnum("cat", WordClass.NOSTOP, "catFreqs");
 %>
 <!DOCTYPE html>
 <html>
@@ -27,7 +26,7 @@ final String cat = tools.getString("cat", Cat.NOSTOP.name(), "catFreqs");
 
        <select name="cat" onchange="this.form.submit()">
           <option/>
-          <%= catOptions(cat) %>
+          <%= options(cat) %>
        </select>
        <input type="hidden" name="q" value="<%=Jsp.escape(q)%>"/>
     </form>

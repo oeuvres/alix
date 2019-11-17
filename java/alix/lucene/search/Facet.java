@@ -55,6 +55,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
+import org.apache.lucene.util.FixedBitSet;
 
 import alix.lucene.Alix;
 import alix.util.IntList;
@@ -192,18 +193,17 @@ public class Facet
       Bits live = leaf.getLiveDocs();
       while ((docLeaf = docs4terms.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         if (live != null && !live.get(docLeaf)) continue; // deleted doc
-        int docId = docBase + docLeaf;
-        long docOccs = docLength[docId];
-        docsAll++; // one more doc for this facet
-        occsAll += docOccs; // count of tokens for this doc
+        final int docId = docBase + docLeaf;
+        final long docOccs = docLength[docId];
         int ord;
         if (type == DocValuesType.SORTED) {
           ord = ((SortedDocValues)docs4terms).ordValue();
-          // doc is a cover, record it and do not add to stats
+          // doc is a cover
           if (coverBits != null && coverBits.get(docId)) {
             leafCover[ord] = docId;
           }
-          else {
+          // do not add stats for empty docs
+          if(docOccs > 0) { 
             leafDocs[ord]++;
             leafOccs[ord] += docOccs;
           }
@@ -215,12 +215,16 @@ public class Facet
             if (coverBits != null && coverBits.get(docId)) {
               leafCover[ord] = docId;
             }
-            else {
+            // do not add stats for empty docs
+            if(docOccs > 0) { 
               leafDocs[ord]++;
               leafOccs[ord] += docOccs;
             }
           }
         }
+        if(docOccs <= 0) continue;
+        docsAll++; // one more doc for this facet
+        occsAll += docOccs; // count of tokens for this doc
       }
       BytesRef bytes = null;
       // build a local map for this leaf to record the ord -> facetId
@@ -297,10 +301,11 @@ public class Facet
     ScoreDoc[] scoreDocs = topDocs.scoreDocs;
     // loop on doc in order
     for (int n = 0, docs = scoreDocs.length; n < docs ; n ++) {
-      int[] facets = docFacets[scoreDocs[n].doc]; // get the facets of this doc
+      final int docId = scoreDocs[n].doc;
+      int[] facets = docFacets[docId]; // get the facets of this doc
       if (facets == null) continue; // could be null if doc not faceted
       for (int i = 0, length = facets.length; i < length; i++) {
-        int facetId = facets[i];
+        final int facetId = facets[i];
         if (nos[facetId] > -0) continue; // already set
         nos[facetId] = n;
       }
@@ -318,6 +323,8 @@ public class Facet
     dic.setLengths(facetLength);
     dic.setCovers(facetCover);
     dic.setDocs(facetDocs);
+    // keep memory of already counted docs
+    BitSet docMap = new FixedBitSet(reader.maxDoc());
     // A term query, get matched occurrences and calculate score
     if (terms != null && terms.sizeNotNull() != 0) {
       double[] scores = new double[size];
@@ -345,16 +352,20 @@ public class Facet
             int docId = docBase + docLeaf;
             if (filter != null && !filter.get(docId)) continue; // document not in the metadata fillter
             if ((freq = postings.freq()) == 0) continue; // no occurrence for this term (?)
+            final boolean docSeen = docMap.get(docId);
             int[] facets = docFacets[docId]; // get the facets of this doc
             if (facets == null) continue; // could be null if doc matching but not faceted
             occsMatch += freq;
             for (int i = 0, length = facets.length; i < length; i++) {
               int facetId = facets[i];
-              hits[facetId]++; // matched docs by facets
               // first match for this facet, increment the counter of matched facets
-              if (occs[facetId] == 0) facetMatch++;
+              if (occs[facetId] == 0) {
+                facetMatch++;
+              }
+              if (!docSeen) hits[facetId]++; // if doc not already counted for another, increment hits for this facet
               occs[facetId] += freq; // add the matched occs for this doc to the facet
             }
+            if (!docSeen) docMap.set(docId); // do not recount this doc as hit for another term
           }
         }
       }

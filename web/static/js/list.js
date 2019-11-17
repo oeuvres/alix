@@ -1,4 +1,4 @@
-const input= document.getElementById("q");
+const input = document.getElementById("q");
 const nav = document.getElementById("chapters");
 /** update results */
 function resup(e)

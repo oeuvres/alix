@@ -6,14 +6,15 @@
 <%
 // parameters
 final String q = tools.getString("q", null);
-final String sort = request.getParameter("sort");
+DocSort sorter = (DocSort)tools.getEnum("sort", DocSort.score, "docSorter");
 final int hpp = tools.getInt("hpp", 100);
 int start = tools.getInt("start", 1);
 if (start < 1) start = 1;
 // global variables
 final String fieldName = TEXT;
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
-TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
+TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sorter);
+
 %>
 <!DOCTYPE html>
 <html>
@@ -30,13 +31,16 @@ TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
        Tri
         <select name="sort" onchange="this.form.submit()">
           <option>Pertinence</option>
-          <%= sortOptions(sort) %>
+          <%= options(sorter) %>
         </select>
       </label>
     </form>
     <main>
     <%
-if (topDocs != null) {
+if (topDocs == null) {
+  // what shal we do ?
+}
+else if (q!=null) { // a query, something to hilite
 
   UnifiedHighlighter uHiliter = new UnifiedHighlighter(searcher, alix.analyzer());
   uHiliter.setMaxLength(500000); // biggest text size to process
@@ -65,7 +69,7 @@ if (topDocs != null) {
     out.println("  <div class=\"bibl\">");
     out.println("<small>"+(start + i)+".</small> ");
     qhref.append( "&amp;start="+(i + start));
-    if (sort != null) qhref.append( "&amp;sort="+sort);
+    if (sorter != DocSort.score) qhref.append( "&amp;sort="+sorter.name());
     out.println("<a href=\"doc" + qhref.toString()+"\">");
     out.println(document.get("bibl"));
     out.println("</a>");
@@ -75,6 +79,39 @@ if (topDocs != null) {
       out.println(fragments[i]);
       out.println("</p>");
     }
+    out.println("</article>");
+  }
+}
+else { // list title of documents
+  ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+  // start has here a public value, starting at 1
+  if (start > scoreDocs.length) start = 1;
+  int limit = Math.min(start + hpp, scoreDocs.length+1);
+  
+  final StringBuilder qhref = new StringBuilder();
+  qhref.append("?");
+  final int qhreflength = qhref.length();
+  while(start < limit) {
+    qhref.setLength(qhreflength); // reset query String
+    final int docId = scoreDocs[start - 1].doc;
+    Document document = searcher.doc(docId);
+    out.println("<article class=\"hit\">");
+    out.println("  <div class=\"bibl\">");
+    out.println("<small>"+(start)+".</small> ");
+    qhref.append( "&amp;start="+(start));
+    if (sorter != DocSort.score) qhref.append( "&amp;sort="+sorter.name());
+    out.println("<a href=\"doc" + qhref.toString()+"\">");
+    out.println(document.get("bibl"));
+    out.println("</a>");
+    out.println("  </div>");
+    /*
+    if (fragments[i] != null) {
+      out.print("<p class=\"frags\">");
+      out.println(fragments[i]);
+      out.println("</p>");
+    }
+    */
+    start++;
     out.println("</article>");
   }
 }

@@ -117,6 +117,9 @@ public class Doc
   public Doc(final Alix alix, final String id, final HashSet<String> fieldsToLoad) throws IOException 
   {
     int docId = alix.getDocId(id);
+    if (docId < 0) {
+      throw new IllegalArgumentException("No document found with id: "+id);
+    }
     if (fieldsToLoad == null) {
       document = alix.reader().document(docId);
     } 

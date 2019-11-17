@@ -30,6 +30,7 @@
 <%@ page import="alix.web.Jsp" %>
 <%@ page import="alix.web.Mime" %>
 <%@ page import="alix.lucene.Alix" %>
+<%@ page import="alix.lucene.DocType" %>
 <%@ page import="alix.lucene.analysis.FrAnalyzer" %>
 <%@ page import="alix.lucene.search.CollectorBits" %>
 <%@ page import="alix.lucene.search.Corpus" %>
@@ -40,16 +41,20 @@
 <%@ page import="alix.util.ML" %>
 <%@ page import="alix.util.EnumOption" %>
 <%@ page import="obvil.web.Obvil" %>
-<%@ page import="obvil.web.Cat" %>
+<%@ page import="obvil.web.WordClass" %>
 <%@ page import="obvil.web.FacetSort" %>
-<%!/** Field name containing canonized text */
+<%@ page import="obvil.web.DocSort" %>
+
+<%!
+
+/** Field name containing canonized text */
 public static String TEXT = "text";
 /** Field Name with int date */
 final static String YEAR = "year";
 /** Key prefix for current corpus in session */
 public static String CORPUS_ = "corpus_";
 /** A filter for documents */
-final static Query QUERY_CHAPTER = new TermQuery(new Term(Alix.TYPE, Alix.CHAPTER));
+final static Query QUERY_CHAPTER = new TermQuery(new Term(Alix.TYPE, DocType.chapter.name()));
 
 /**
  * Build a filtering query with a corpus
@@ -67,34 +72,6 @@ public static Query corpusQuery(Corpus corpus, Query query) throws IOException
 }
 
 /**
- * Used by snip.jsp, and doc.jsp
- */
-public static String sortOptions(String sortSpec) throws IOException
-{
-  StringBuilder sb = new StringBuilder();
-  String[] value = {
-    "score", "year", "year-inv", "author", "author-inv", "occs", "theme",
-    // "tf-idf", "bm25", "dfi_chi2", "dfi_std", "dfi_sat", 
-    // "lmd", "lmd0.1", "lmd0.7", "dfr", "ib"
-  };
-  String[] label = {
-    "Pertinence", "Année (+ ancien)", "Année (+ récent)", "Auteur (A-Z)", "Auteur (Z-A)", "Occurrences", "Thème",
-    // "tf-idf", "BM25", "DFI chi²", "DFI standard", "DFI saturé", 
-    // "LMD", "LMD λ=0.1", "LMD λ=0.7", "DFR", "IB"
-  };
-  for (int i = 0, length = value.length; i < length; i++) {
-    sb.append("<option");
-    if (value[i].equals(sortSpec)) sb.append(" selected=\"selected\"");
-    sb.append(" value=\"");
-    sb.append(value[i]);
-    sb.append("\">");
-    sb.append(label[i]);
-    sb.append("</option>");
-  }
-  return sb.toString();
-}
-
-/**
  * Sort options for facets or corpus
  */
 public static String options(final EnumOption option) throws IOException
@@ -108,26 +85,6 @@ public static String options(final EnumOption option) throws IOException
     sb.append(value);
     sb.append("\">");
     sb.append(opt.label());
-    sb.append("</option>\n");
-  }
-  return sb.toString();
-}
-
-
-/**
- * Different cat of words
- */
-public static String catOptions(String catPar) throws IOException
-{
-  StringBuilder sb = new StringBuilder();
-  for (Cat cat : Cat.values()) {
-    String value = cat.name();
-    sb.append("<option");
-    if (value.equals(catPar)) sb.append(" selected=\"selected\"");
-    sb.append(" value=\"");
-    sb.append(value);
-    sb.append("\">");
-    sb.append(cat.label);
     sb.append("</option>\n");
   }
   return sb.toString();
@@ -159,49 +116,6 @@ public static Query getQuery(Alix alix, String q, Corpus corpus) throws IOExcept
 
 
 /**
- * Get a sort specification by a name
- */
-public static Sort getSort(final String sortSpec)
-{
-  if ("year".equals(sortSpec)) {
-    return new Sort(new SortField(YEAR, SortField.Type.INT));
-  }
-  else if ("year-inv".equals(sortSpec)) {
-    return new Sort(new SortField(YEAR, SortField.Type.INT, true));
-  }
-  else if ("author".equals(sortSpec)) {
-    return new Sort(new SortField(Alix.ID, SortField.Type.STRING));
-  }
-  else if ("id".equals(sortSpec)) {
-    return new Sort(new SortField(Alix.ID, SortField.Type.STRING));
-  }
-  else if ("author-inv".equals(sortSpec)) {
-    return new Sort(new SortField(Alix.ID, SortField.Type.STRING, true));
-  }
-  else if ("length".equals(sortSpec)) {
-    return new Sort(new SortField(TEXT, SortField.Type.INT));
-  }
-  return null;
-}
-
-public static Similarity getSimilarity(final String sortSpec)
-{
-  Similarity similarity = null;
-  if ("dfi_chi2".equals(sortSpec)) similarity = new DFISimilarity(new IndependenceChiSquared());
-  else if ("dfi_std".equals(sortSpec)) similarity = new DFISimilarity(new IndependenceStandardized());
-  else if ("dfi_sat".equals(sortSpec)) similarity = new DFISimilarity(new IndependenceSaturated());
-  else if ("tfidf".equals(sortSpec)) similarity = new ClassicSimilarity();
-  else if ("lmd".equals(sortSpec)) similarity = new LMDirichletSimilarity();
-  else if ("lmd0.1".equals(sortSpec)) similarity = new LMJelinekMercerSimilarity(0.1f);
-  else if ("lmd0.7".equals(sortSpec)) similarity = new LMJelinekMercerSimilarity(0.7f);
-  else if ("dfr".equals(sortSpec)) similarity = new DFRSimilarity(new BasicModelG(), new AfterEffectB(), new NormalizationH1());
-  else if ("ib".equals(sortSpec)) similarity = new IBSimilarity(new DistributionLL(), new LambdaDF(), new NormalizationH3());
-  else if ("theme".equals(sortSpec)) similarity = new SimilarityTheme();
-  else if ("occs".equals(sortSpec)) similarity = new SimilarityOccs();
-  return similarity;
-}
-
-/**
  * Get a bitSet of a query. Seems quite fast (2ms), no cache needed.
  */
 public BitSet bits(Alix alix, Corpus corpus, String q) throws IOException
@@ -221,34 +135,42 @@ public BitSet bits(Alix alix, Corpus corpus, String q) throws IOException
  * Get a cached set of results.
  * Ensure to always give something
  */
-public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, String sortSpec) throws IOException
+public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, DocSort sorter) throws IOException
 {
   // build the key 
   Query query = getQuery(alix, q, corpus);
   if (query != null); // get a query, nothing to do
   else if (corpus != null) query = new CorpusQuery(corpus.name(), corpus.bits());
   else query = QUERY_CHAPTER;
-  Sort sort = getSort(sortSpec);
+  Sort sort = sorter.sort();
   String key = ""+page.getRequest().getAttribute(Obvil.BASE)+"?"+query;
   if (sort != null)  key+= " " + sort;
+  /*
   Similarity oldSim = null;
   Similarity similarity = getSimilarity(sortSpec);
   if (similarity != null) {
     key += " <"+similarity+">";
   }
-  TopDocs topDocs = (TopDocs)page.getSession().getAttribute(key);
+  */
+  TopDocs topDocs;
+  
+  topDocs = (TopDocs)page.getSession().getAttribute(key);
   if (topDocs != null) return topDocs;
 
   IndexSearcher searcher = alix.searcher();
   int totalHitsThreshold = Integer.MAX_VALUE;
-  final int numHits = 12000;
+  final int numHits = alix.reader().maxDoc();
+  // TODO allDocs collector
   TopDocsCollector<?> collector;
+  SortField sf2 = new SortField(Alix.ID, SortField.Type.STRING);
+  Sort sort2 = new Sort(sf2);
   if (sort != null) {
     collector = TopFieldCollector.create(sort, numHits, totalHitsThreshold);
   }
   else {
     collector = TopScoreDocCollector.create(numHits, totalHitsThreshold);
   }
+  /*
   if (similarity != null) {
     oldSim = searcher.getSimilarity();
     searcher.setSimilarity(similarity);
@@ -257,12 +179,35 @@ public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, 
     searcher.setSimilarity(oldSim);
   }
   else {
-    searcher.search(query, collector);
   }
+  */
+  searcher.search(query, collector);
   topDocs = collector.topDocs();
   page.getSession().setAttribute(key, topDocs);
   return topDocs;
-}%>
+}
+
+/**
+ * Was used for testing the similarities.
+ */
+public static Similarity getSimilarity(final String sortSpec)
+{
+  Similarity similarity = null;
+  if ("dfi_chi2".equals(sortSpec)) similarity = new DFISimilarity(new IndependenceChiSquared());
+  else if ("dfi_std".equals(sortSpec)) similarity = new DFISimilarity(new IndependenceStandardized());
+  else if ("dfi_sat".equals(sortSpec)) similarity = new DFISimilarity(new IndependenceSaturated());
+  else if ("tfidf".equals(sortSpec)) similarity = new ClassicSimilarity();
+  else if ("lmd".equals(sortSpec)) similarity = new LMDirichletSimilarity();
+  else if ("lmd0.1".equals(sortSpec)) similarity = new LMJelinekMercerSimilarity(0.1f);
+  else if ("lmd0.7".equals(sortSpec)) similarity = new LMJelinekMercerSimilarity(0.7f);
+  else if ("dfr".equals(sortSpec)) similarity = new DFRSimilarity(new BasicModelG(), new AfterEffectB(), new NormalizationH1());
+  else if ("ib".equals(sortSpec)) similarity = new IBSimilarity(new DistributionLL(), new LambdaDF(), new NormalizationH3());
+  else if ("theme".equals(sortSpec)) similarity = new SimilarityTheme();
+  else if ("occs".equals(sortSpec)) similarity = new SimilarityOccs();
+  return similarity;
+}
+
+%>
 <%
 final long time = System.nanoTime();
 final Jsp tools = new Jsp(request, response, pageContext);

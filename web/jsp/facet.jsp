@@ -9,7 +9,6 @@
 <%
 // Params for the page
 String q = tools.getString("q", null);
-String facetField = tools.getString("facet", "author"); 
 FacetSort sort = (FacetSort)tools.getEnum("ord", FacetSort.alpha, "facetSort");
 
 //global variables
@@ -29,7 +28,7 @@ if(!score && sort == FacetSort.score) sort = FacetSort.freq;
     <title>Facettes</title>
     <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
     <script src="../static/js/common.js">//</script>
-    <base target="page"/>
+    <base target="page" href="snip"/>
   </head>
   <body class="facet">
     <form id="qform" target="_self">
@@ -43,7 +42,7 @@ if(!score && sort == FacetSort.score) sort = FacetSort.freq;
     <main>
     <%
     
-Facet facet = alix.facet(facetField, TEXT);
+Facet facet = alix.facet(field.name(), TEXT);
 TopTerms dic = facet.topTerms(bits, qTerms, null);
 
 
@@ -51,6 +50,12 @@ TopTerms dic = facet.topTerms(bits, qTerms, null);
 if (score)  out.println("<h4><span class=\"occs\" title=\"Nombre d’occurrences\">occs</span>  "
     +field.label+" <span class=\"docs\" title=\"Nombre de documents\">(chapitres)</span></h4>");
 else out.println("<h4>"+field.label+" <span class=\"docs\" title=\"Nombre de documents\">(chapitres)</span></h4>");
+
+//Hack to use facet as a navigator in results, cache results in the facet order
+TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, DocSort.author);
+int[] nos = facet.nos(topDocs);
+dic.setNos(nos);
+
 
 switch(sort){
   case alpha:
@@ -68,14 +73,16 @@ switch(sort){
     dic.sort();
 }
 
-// Hack to use facet as a navigator in results, cache results in the facet order
-TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, facetField);
-int[] nos = facet.nos(topDocs);
-dic.setNos(nos);
 
 
 int hits = 0, docs= 0, n = 0;
 long occs = 0;
+
+final StringBuilder href = new StringBuilder();
+href.append("?sort=author");
+if (q != null) href.append("&amp;q="+q);
+final int hrefLength = href.length();
+
 while (dic.hasNext()) {
   dic.next();
   n = dic.n();
@@ -85,9 +92,16 @@ while (dic.hasNext()) {
     occs = dic.occs();
     if (hits < 1) continue; // in alpha order, try next
   }
+  href.setLength(hrefLength);
+  href.append("&amp;start=" + (n+1)); // parenthesis for addition!
+  href.append("&amp;hpp=");
+  if (score) href.append(hits);
+  else href.append(docs);
+
+        
   out.print("<div class=\"term\">");
   if (score) out.print("<span class=\"occs\">"+occs+"</span> ");
-  out.print("<a href=\"snip?sort="+facetField+"&amp;q="+q+"&start="+(n+1)+"&amp;hpp="+hits+"\">");
+  out.print("<a href=\""+href+"\">");
   out.print(dic.term());
   out.print("</a>");
   if (score) out.print(" <span class=\"docs\">("+hits+" / "+docs+")</span>    ");

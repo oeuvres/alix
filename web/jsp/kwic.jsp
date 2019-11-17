@@ -7,7 +7,7 @@
 <%
   // parameters
 final String q = tools.getString("q", null);
-final String sort = request.getParameter("sort");
+DocSort sort = (DocSort)tools.getEnum("sort", DocSort.score, "docSorter");
 final int hpp = tools.getInt("hpp", 100);
 final boolean expression = tools.getBoolean("expression", false);
 
@@ -43,7 +43,7 @@ article.kwic header a:hover {color: #ea5b0c; text-decoration: none; }
          Tri
           <select name="sort" onchange="this.form.submit()">
             <option>Pertinence</option>
-            <%= sortOptions(sort) %>
+            <%= options(sort) %>
           </select>
         </label>
         <label title="">
@@ -77,7 +77,7 @@ if (topDocs != null) {
     final Doc doc = new Doc(alix, docId);
     String type = doc.doc().get(Alix.TYPE);
     // TODO Enenum
-    if (type.equals(Alix.BOOK)) continue;
+    if (type.equals(DocType.book.name())) continue;
     if (doc.doc().get(TEXT) == null) continue;
     String href = "doc?id=" + doc.id()+"&amp;q="+q;
     String[] lines = doc.kwic(field, include, href, 200, left, right, gap, expression);

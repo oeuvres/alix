@@ -145,12 +145,6 @@ public class Alix
   public static final String TYPE = "alix:type";
   /** Just the mandatory fields */
   final static HashSet<String> FIELDS_ID = new HashSet<String>(Arrays.asList(new String[] { Alix.ID}));
-  /** Document type, book containing chapters */
-  public static final String BOOK = "book";
-  /** Document type, chapter in a book */
-  public static final String CHAPTER = "chapter";
-  /** Document type, independent article */
-  public static final String ARTICLE = "article";
   /** A binary stored field with an array of offsets */
   public static final String _OFFSETS = ":offsets";
   /** A binary stored with {@link Tag} by position */
@@ -618,7 +612,7 @@ u   * @throws IOException
     String key = "AlixBooks" + sort;
     int[] books = (int[]) cache(key);
     if (books != null) return books;
-    Query qBook = new TermQuery(new Term(Alix.TYPE, Alix.BOOK));
+    Query qBook = new TermQuery(new Term(Alix.TYPE, DocType.book.name()));
     TopFieldDocs top = searcher.search(qBook, MAXBOOKS, sort);
     int length = top.scoreDocs.length;
     ScoreDoc[] docs = top.scoreDocs;
@@ -730,9 +724,11 @@ u   * @throws IOException
    */
   public static TermList qTermList(final String field, final String q, final Analyzer analyzer) throws IOException
   {
+    // no default field, cry
+    if (field == null) throw new NullPointerException("Field should be not null to build terms");
     // TermList terms = new TermList(freqs(field));
     TermList terms = new TermList();
-    // what is null here ? returns an empty term list
+    // what does mean null here ? returns an empty term list
     if (q == null || "".equals(q.trim())) return terms;
     TokenStream ts = analyzer.tokenStream(AlixReuseStrategy.QUERY, q); // keep punctuation to group terms
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
