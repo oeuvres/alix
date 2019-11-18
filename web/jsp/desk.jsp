@@ -8,16 +8,23 @@ String json = tools.getString("json", null);
 String q = tools.getString("q", null);
 String id = tools.getString("id", null);
 String view = tools.getString("view", null);
-int start = tools.getInt("view", -1);
+int start = tools.getInt("start", -1);
+final boolean expression = tools.getBoolean("expression", false);
+
 String url;
 
 // pars
 String pars = "";
-if (q != null) pars += "q=" + Jsp.escUrl(q);
+if (q != null) {
+  pars += "q=" + Jsp.escUrl(q);
+  if (start > 1) pars += "&amp;start="+start;
+  if (expression) pars += "&amp;expression=true";
+}
 if (id != null) {
   if (pars.length() > 0) pars += "&amp;";
   pars += "id="+id;
 }
+
 if (pars.length() > 0) pars = "?" + pars;
 
 if (checks != null || json != null) {
@@ -28,11 +35,11 @@ else if (id != null) {
   view = "doc";
   url = view + pars;
 }
-else if ("corpus".equals(view) || "snip".equals(view) || "freqs".equals(view) || "cloud".equals(view) ) {
+else if ("corpus".equals(view) || "snip".equals(view)  || "kwic".equals(view) || "freqs".equals(view) || "cloud".equals(view) ) {
   url = view + pars;
 }
 else if (q != null) {
-  view = "snip";
+  view = "kwic";
   url = view + pars;
 }
 else {

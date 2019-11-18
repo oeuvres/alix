@@ -78,6 +78,10 @@ if (self != top) {
         parTop("view", selfName);
         top.document.body.className = "split view_"+selfName;
         parTop("id", null);
+        if(selfName == "kwic") {
+          let expression = pars.get("expression");
+          if (expression) parTop("expression", "true");
+        }
         break;
     }
     // console.log(window.id);
