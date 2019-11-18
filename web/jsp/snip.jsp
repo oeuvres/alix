@@ -4,16 +4,19 @@
 <%@ page import="org.apache.lucene.search.uhighlight.DefaultPassageFormatter" %>
 <%@ page import="alix.lucene.search.HiliteFormatter" %>
 <%
+final int hppDefault = 100;
+final int hppMax = 1000;
 // parameters
+int hpp = tools.getInt("hpp", hppDefault);
+if (hpp > hppMax || hpp < 1) hpp = hppDefault;
 final String q = tools.getString("q", null);
-DocSort sorter = (DocSort)tools.getEnum("sort", DocSort.score, "docSorter");
-final int hpp = tools.getInt("hpp", 100);
+DocSort sort = (DocSort)tools.getEnum("sort", DocSort.score, Cookies.docSort);
 int start = tools.getInt("start", 1);
 if (start < 1) start = 1;
 // global variables
 final String fieldName = TEXT;
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
-TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sorter);
+TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
 
 %>
 <!DOCTYPE html>
@@ -26,20 +29,39 @@ TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sorter);
   </head>
   <body class="results">
     <form id="qform">
-      <input id="q" name="q" type="hidden" value="<%=Jsp.escape(q)%>" autocomplete="off" size="60" autofocus="autofocus" onclick="this.select();"/>
-      <label>
-       Tri
-        <select name="sort" onchange="this.form.submit()">
-          <option>Pertinence</option>
-          <%= options(sorter) %>
-        </select>
-      </label>
+      <input type="submit"
+       style="position: absolute; left: -9999px; width: 1px; height: 1px;"
+       tabindex="-1" />
+        <%
+if (start > 1 && q != null) {
+  int n = Math.max(1, start-hppDefault);
+  out.println("<button name=\"prev\" type=\"submit\" onclick=\"this.form['start'].value="+n+"\">◀</button>");
+}
+        %>
+      <input type="hidden" id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" size="60" autofocus="autofocus" 
+        onfocus="this.setSelectionRange(this.value.length,this.value.length);"
+        oninput="this.form['start'].value='';"/>
+      <script>if(self == top) { input = document.getElementById("q"); if (input && input.type == "hidden") input.type = "text";}</script>
+      <select name="sort" onchange="this.form['start'].value=''; this.form.submit()" title="Ordre">
+        <option/>
+        <%= options(sort) %>
+      </select>
+               <%
+if (topDocs != null) {
+  long max = topDocs.totalHits.value;
+  out.println("<input  name=\"start\" value=\""+start+"\" autocomplete=\"off\" class=\"start\"/>");
+  out.println("<span class=\"hits\"> / "+ max  + "</span>");
+  int n = start + hpp;
+  if (n < max) out.println("<button name=\"next\" type=\"submit\" onclick=\"this.form['start'].value="+n+"\">▶</button>");
+}
+        %>
     </form>
     <main>
     <%
 if (topDocs == null) {
   // what shal we do ?
 }
+// TODO: merge these two blocks
 else if (q!=null) { // a query, something to hilite
 
   UnifiedHighlighter uHiliter = new UnifiedHighlighter(searcher, alix.analyzer());
@@ -57,23 +79,23 @@ else if (q!=null) { // a query, something to hilite
   Map<String, String[]> res = uHiliter.highlightFields(new String[]{fieldName}, query, docIds, new int[]{5});
   String[] fragments = res.get(fieldName);
 
-  final StringBuilder qhref = new StringBuilder();
-  qhref.append("?q="+q);
-  final int qhreflength = qhref.length();
+  final StringBuilder href = new StringBuilder();
+  href.append("?q=").append(Jsp.escUrl(q));
+  final int hrefLen = href.length();
   for (int i = 0; i < len; i++) {
-    qhref.setLength(qhreflength); // reset query String
+    href.setLength(hrefLen); // reset query String
     int docId = docIds[i];
     Document document = searcher.doc(docId);
-    out.println("<article class=\"hit\">");
+    out.println("<article class=\"res\">");
     // hits[i].doc
-    out.println("  <div class=\"bibl\">");
+    out.println("  <header>");
     out.println("<small>"+(start + i)+".</small> ");
-    qhref.append( "&amp;start="+(i + start));
-    if (sorter != DocSort.score) qhref.append( "&amp;sort="+sorter.name());
-    out.println("<a href=\"doc" + qhref.toString()+"\">");
+    href.append( "&amp;start=").append((i + start));
+    if (sort != DocSort.score) href.append( "&amp;sort=").append(sort.name());
+    out.println("<a href=\"doc" + href.toString()+"\">");
     out.println(document.get("bibl"));
     out.println("</a>");
-    out.println("  </div>");
+    out.println("  </header>");
     if (fragments[i] != null) {
       out.print("<p class=\"frags\">");
       out.println(fragments[i]);
@@ -88,22 +110,22 @@ else { // list title of documents
   if (start > scoreDocs.length) start = 1;
   int limit = Math.min(start + hpp, scoreDocs.length+1);
   
-  final StringBuilder qhref = new StringBuilder();
-  qhref.append("?");
-  final int qhreflength = qhref.length();
+  final StringBuilder href = new StringBuilder();
+  href.append("?");
+  final int hrefLen = href.length();
   while(start < limit) {
-    qhref.setLength(qhreflength); // reset query String
+    href.setLength(hrefLen); // reset query String
     final int docId = scoreDocs[start - 1].doc;
     Document document = searcher.doc(docId);
-    out.println("<article class=\"hit\">");
-    out.println("  <div class=\"bibl\">");
+    out.println("<article class=\"res\">");
+    out.println("  <header>");
     out.println("<small>"+(start)+".</small> ");
-    qhref.append( "&amp;start="+(start));
-    if (sorter != DocSort.score) qhref.append( "&amp;sort="+sorter.name());
-    out.println("<a href=\"doc" + qhref.toString()+"\">");
+    href.append( "&amp;start=").append((start));
+    if (sort != DocSort.score) href.append( "&amp;sort=").append(sort.name());
+    out.println("<a href=\"doc" + href.toString()+"\">");
     out.println(document.get("bibl"));
     out.println("</a>");
-    out.println("  </div>");
+    out.println("  </header>");
     /*
     if (fragments[i] != null) {
       out.print("<p class=\"frags\">");

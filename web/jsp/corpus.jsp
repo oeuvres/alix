@@ -16,7 +16,6 @@ static Sort SORT = new Sort(new SortField("author1", SortField.Type.STRING), new
 
 // params for this page
 String q = tools.getString("q", null);
-FacetSort sort = (FacetSort)tools.getEnum("ord", FacetSort.alpha, "corpusSort");
     
 // global variables
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
@@ -26,6 +25,11 @@ Facet facet = alix.facet(Alix.BOOKID, TEXT, new Term(Alix.TYPE, DocType.book.nam
 IntSeries years = alix.intSeries(YEAR); // to get min() max() year
 TermList qTerms = alix.qTermList(TEXT, q);
 boolean score = (qTerms != null && qTerms.size() > 0);
+
+FacetSort fallback = FacetSort.alpha;
+if (score) fallback = FacetSort.score;
+FacetSort sort = (FacetSort)tools.getEnum("ord", fallback, Cookies.corpusSort);
+
 
 BitSet bits = bits(alix, corpus, q);
 TopTerms dic = facet.topTerms(bits, qTerms, null);
@@ -143,7 +147,7 @@ switch(sort){
     int n = dic.n();
     String href;
     // hpp?
-    if (score) href = "kwic?sort=author&amp;q="+q+"&amp;start="+(n+1);
+    if (score) href = "kwic?sort=author&amp;q="+Jsp.escape(q)+"&amp;start="+(n+1);
     else href = "doc?sort=author&amp;start="+(n+1);
     out.print("<a href=\""+href+"\">");
     // out.println("<a href=\"kwic?sort="+facetField+"&amp;q="+q+"&start="+(n+1)+"&amp;hpp="+hits+"\">");

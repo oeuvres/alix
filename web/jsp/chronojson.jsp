@@ -4,7 +4,8 @@
 <%@ page import="alix.lucene.search.Scale.Tick" %>
 <%@ page import="alix.lucene.search.TermList" %>
 
-<%!/** A record used to sort docid by date */
+<%!
+/** A record used to sort docid by date */
 
 /**
  * Return a json view of ticks for 
@@ -69,14 +70,9 @@ public String ticks(Scale scale) throws IOException  {
 final String q = tools.getString("q", null);
 
 // global variables
-Scale scale;
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
-if (corpus == null) {
-  scale = new Scale(alix, YEAR, TEXT);
-}
-else {
-  scale = new Scale(alix, corpus.bits(), YEAR, TEXT);
-}
+BitSet bits = bits(alix, corpus, q);
+Scale scale = new Scale(alix, bits, YEAR, TEXT);
 // number of fots by curve, could be a parameter
 int dots = tools.getInt("dots", 200);
 

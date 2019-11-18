@@ -18,5 +18,5 @@
     <div id="chart" class="dygraph"></div>
     <script src="../static/vendor/dygraph.min.js">//</script>
     <script src="../static/js/chrono.js">//</script>
-</body>
+  </body>
 </html>

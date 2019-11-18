@@ -40,11 +40,7 @@
 <%@ page import="alix.lucene.search.TopTerms" %>
 <%@ page import="alix.util.ML" %>
 <%@ page import="alix.util.EnumOption" %>
-<%@ page import="obvil.web.Obvil" %>
-<%@ page import="obvil.web.WordClass" %>
-<%@ page import="obvil.web.FacetSort" %>
-<%@ page import="obvil.web.DocSort" %>
-
+<%@ page import="obvil.web.*" %>
 <%!
 
 /** Field name containing canonized text */

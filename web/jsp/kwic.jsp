@@ -5,10 +5,13 @@
 <%@ page import="alix.lucene.search.Doc" %>
 <%@ page import="alix.lucene.util.WordsAutomatonBuilder" %>
 <%
+final int hppDefault = 100;
+final int hppMax = 1000;
   // parameters
+int hpp = tools.getInt("hpp", hppDefault);
+if (hpp > hppMax || hpp < 1) hpp = hppDefault;
 final String q = tools.getString("q", null);
-DocSort sort = (DocSort)tools.getEnum("sort", DocSort.score, "docSorter");
-final int hpp = tools.getInt("hpp", 100);
+DocSort sort = (DocSort)tools.getEnum("sort", DocSort.score, Cookies.docSort);
 final boolean expression = tools.getBoolean("expression", false);
 
 int start = tools.getInt("start", 1);
@@ -18,6 +21,10 @@ Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
 final int left = 70;
 final int right = 50;
+// terms of the query
+final String field = TEXT;
+String[] terms = alix.qTermList(field, q).toArray();
+
 %>
 <!DOCTYPE html>
 <html>
@@ -28,37 +35,47 @@ final int right = 50;
     <link href="../static/obvil.css" rel="stylesheet"/>
     <style>
 span.left {display: inline-block; text-align: right; width: <%= Math.round(left * 1.0)%>ex; padding-right: 1ex;}
-div.line a { font-weight: bold; padding: 0 1ex; background: #FFFFFF; color: #ea5b0c; }
-div.line a:hover { text-decoration: none; color: #000;}
-article.kwic { margin: 1rem 0;}
-article.kwic header {text-align:left; margin-bottom: 0.5rem; background-color: #FFF; font-size: 105%; border-bottom: 1px solid rgb(120, 105, 101); padding: 0 0.5rem;}
-article.kwic header a {display: block; color: rgb(120, 105, 101);}
-article.kwic header a:hover {color: #ea5b0c; text-decoration: none; }
     </style>
   </head>
   <body class="results">
       <form id="qform">
-        <input type="hidden" id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" size="60" autofocus="autofocus" onfocus="this.setSelectionRange(this.value.length,this.value.length);"/>
-        <label>
-         Tri
-          <select name="sort" onchange="this.form.submit()">
-            <option>Pertinence</option>
-            <%= options(sort) %>
-          </select>
-        </label>
-        <label title="">
-         Locutions
-            <input type="checkbox" name="expression" <%= (expression)?"checked=\"checked\"":""  %> onclick="this.form.submit()"/>
-        </label>
+        <input type="submit"
+       style="position: absolute; left: -9999px; width: 1px; height: 1px;"
+       tabindex="-1" />
+        <%
+if (start > 1 && q != null) {
+  int n = Math.max(1, start-hppDefault);
+  out.println("<button name=\"next\" type=\"submit\" onclick=\"this.form['start'].value="+n+"\">◀</button>");
+}
+        %>
+        <input type="hidden" id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" size="60" autofocus="autofocus" 
+          onfocus="this.setSelectionRange(this.value.length,this.value.length);"
+          oninput="this.form['start'].value='';"
+        />
+        <script>if(self == top) { input = document.getElementById("q"); if (input && input.type == "hidden") input.type = "text";}</script>
+        <select name="sort" onchange="this.form['start'].value=''; this.form.submit()" title="Ordre">
+          <option/>
+          <%= options(sort) %>
+        </select>
+               <%
+if (terms.length > 1 ) {
+  out.println("<label title=\"Sélectionner les occurrences où plusieurs termes de la requête sont proches.\">");
+  out.println("<input type=\"checkbox\" name=\"expression\""+ ((expression)?" checked=\"checked\"":"") +" onclick=\"this.form.submit()\"/>");
+  out.println("Locutions</label>");
+}
+if (topDocs != null) {
+  long max = topDocs.totalHits.value;
+  out.println("<input  name=\"start\" value=\""+start+"\" autocomplete=\"off\" class=\"start\"/>");
+  out.println("<span class=\"hits\"> / "+ max  + "</span>");
+  int n = start + hpp;
+  if (n < max) out.println("<button name=\"next\" type=\"submit\" onclick=\"this.form['start'].value="+n+"\">▶</button>");
+}
+        %>
+        
       </form>
     <main>
-     <%= getQuery(alix, q, corpus) %>
-     <%= alix.qParse("text", q) %>
     <%
 if (topDocs != null) {
-  final String field = TEXT;
-  // compile automaton for the searched terms
-  String[] terms = alix.qTermList(field, q).toArray();
   Automaton automaton = WordsAutomatonBuilder.buildFronStrings(terms);
   ByteRunAutomaton include = new ByteRunAutomaton(automaton);
   // get the index in results
@@ -71,20 +88,41 @@ if (topDocs != null) {
   // loop on docs
   int docs = 0;
   final int gap = 3;
+  
+  final StringBuilder href = new StringBuilder();
+  href.append("doc?");
+  if (q != null) href.append("q=").append(Jsp.escape(q));
+  final int hrefLen = href.length();
+
   while (i < max) {
     final int docId = scoreDocs[i].doc;
-    i++; // do not forget to increment 
+    i++; // is now a public start
     final Doc doc = new Doc(alix, docId);
     String type = doc.doc().get(Alix.TYPE);
     // TODO Enenum
     if (type.equals(DocType.book.name())) continue;
     if (doc.doc().get(TEXT) == null) continue;
-    String href = "doc?id=" + doc.id()+"&amp;q="+q;
-    String[] lines = doc.kwic(field, include, href, 200, left, right, gap, expression);
+    href.setLength(hrefLen); // reset href
+    href.append("&amp;id=").append(doc.id()).append("&amp;start=").append(i);
+    if (terms == null || terms.length == 0) {
+      out.println("<article class=\"res\">");
+      out.println("<header>");
+      out.println("<small>"+(i)+".</small> ");
+      out.println("<a href=\""+href+"\">"+doc.get("bibl")+"</a>");
+      out.println("</header>");
+      out.println("</article>");
+      if (++docs >= hpp) break;
+      continue;
+    }
+    
+    String[] lines = doc.kwic(field, include, href.toString(), 200, left, right, gap, expression);
     if (lines == null || lines.length < 1) continue;
     // doc.kwic(field, include, 50, 50, 100);
-    out.println("<article class=\"kwic\">");
-    out.println("<header><a href=\""+href+"\">"+doc.get("bibl")+"</a></header>");
+    out.println("<article class=\"res\">");
+    out.println("<header>");
+    out.println("<small>"+(i)+".</small> ");
+
+    out.println("<a href=\""+href+"\">"+doc.get("bibl")+"</a></header>");
     for (String l: lines) {
       out.println("<div class=\"line\">"+l+"</div>");
     }

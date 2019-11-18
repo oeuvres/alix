@@ -44,8 +44,21 @@ if (self != top) {
   }
   // probably the desk
   else {
+    let url = location;
+    let pars = new URLSearchParams(url.search);
+    // update start index in general form
+    let start = pars.get("start");
+    let hpp = pars.get("hpp");
+    let qform = top.document.forms[0];
+
+    if (start && qform['start']) qform['start'].value = start;
+    if (hpp && qform['hpp']) qform['hpp'].value = hpp;
+
     let panel = top.frames['panel'];
-    console.log(panel.document);
+    let panDoc = panel.document || panel.contentWindow.document || panel.contentDocument;
+    let panBase = panDoc.getElementsByTagName('base')[0];
+    var cursorViews = {"snip":1, "kwic":1, "doc": 1};
+    if(selfName in cursorViews) panBase.href = selfName;
     switch(selfName) {
       case "facet":
       case "chrono":
@@ -54,8 +67,8 @@ if (self != top) {
         parTop("view", selfName);
         top.document.body.className = "split view_"+selfName;
         // id should be defined by server who knows if doc exists
-        if (window.id) {
-          let id = window.id;
+        if (window.docId) {
+          let id = window.docId;
           parTop("id", id);
           var butComp = top.document.querySelector("#tabs .comparer");
           if (butComp) butComp.href = butComp.pathname + "?leftid=" + id;

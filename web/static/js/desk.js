@@ -46,11 +46,11 @@ function dispatch(form)
   parTop("q", q); // update URL
   // get frame as a window object
   if (chrono.offsetHeight > 10 && chrono.offsetWidth > 10) {
-    chrono.src = "chrono.jsp?q=" + q;
+    chrono.src = "chrono.jsp?q=" + encodeURIComponent(q);
   }
   if (panel.offsetHeight > 10 && panel.offsetWidth > 10) {
     var url = new URL(panel.src);
-    panel.src = url.pathname+"?q="+q;
+    panel.src = url.pathname+"?q=" + encodeURIComponent(q);
   }
   return true;
 }

@@ -52,7 +52,6 @@ for (String s: new String[] {
           }
           out.println("</dd>");
         }
-        
       }
       %>
     </article>

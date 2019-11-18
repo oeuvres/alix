@@ -31,7 +31,6 @@ body.facet a span {
   font-family: Arial, sans-serif;
 }
 
-
 body,
 .biflex,
 .gutter.but {
@@ -76,6 +75,7 @@ header.biblbar,
 header.biblbar a {
   color: #FFFFFF;
 }
+
 header.biblbar a:hover {
   color: #000;
 }
@@ -102,7 +102,8 @@ header {
   border-color: #FFFFFF;
 }
 
-::-moz-selection { /* let it alone for Chrome */
+::-moz-selection {
+  /* let it alone for Chrome */
   background: rgba(120, 105, 101, 0.8);
   color: #FFFFFF;
 }
@@ -147,7 +148,6 @@ mark:target b {
 input[type=text]:focus,
 textarea:focus {
   box-shadow: 0 0 5px rgba(42, 45, 84, 0.7);
-  border: 1px solid rgba(42, 45, 84, 0.7);
 }
 
 #header .base mark,
@@ -172,12 +172,17 @@ body.facet,
   color: rgb(120, 105, 101);
 }
 
+a:hover,
+div.term a:hover,
 #q,
 .mark,
-article.hit mark,
+article.res mark,
 table.sortable th,
 button.magnify,
 .sortable td.title a:hover,
+article.res header a:hover, /* title in short result */
+article.res div.line a, /* pivot word in kwic */
+body.facet .active,
 h4 .occs,
 .term .occs {
   color: #ea5b0c;
@@ -205,32 +210,37 @@ select {
   rgba(128, 70, 13, 0.5);
 }
 
-a:hover {
-  color: #000;
-  text-decoration: underline #151a54;
-}
-
 /**
  * Global styling
  */
-
 #header form {
   width: 80%;
   margin-left: calc(15vw + 100px);
 }
 
-#q {
+input.start,
+input[type=text] {
+  -webkit-appearance: none;
+  outline: none;
+  font-size: 120%;
+  margin: 1px;
   outline: 1px solid #CCC;
-  /*
   border: none;
-  */
-  padding: 2px 1rem;
   border-width: 1px;
-  font-weight: bold;
+}
+
+input.start {
+  text-align: right;
+}
+
+
+#q {
   font-size: 1.3rem;
-  width: 90%;
+  padding: 2px 1rem;
+  font-weight: bold;
   min-width: 8rem;
   max-width: 60rem;
+  width: 90%;
 }
 
 main {
@@ -304,19 +314,6 @@ details {
   border-width: 1px;
 }
 
-input[type=text], input[type=number] {
-  -webkit-appearance: none;
-}
-
-input[type=text], input[type=number] {
-  -webkit-appearance: none;
-  outline: none;
-  font-size: 120%;
-  padding: 1px 2px;
-  margin: 1px;
-  border: none;
-}
-
 [type=checkbox] {
   margin: 0;
   padding: 0;
@@ -341,7 +338,6 @@ body > header {
   border-bottom-style: solid;
   padding: 0 1rem 0 1rem;
 }
-
 
 input.year {
   width: 10ex;
@@ -475,14 +471,17 @@ iframe {
 }
 
 #header .base mark a {
-  color:red ;
+  color: red;
 }
+
 #header .base mark a:hover {
-  color:red ;
+  color: red;
 }
+
 #tabs {
   margin-top: 3px;
 }
+
 #tabs a {
   color: #000;
   font-weight: bold;
@@ -506,7 +505,6 @@ iframe {
 body.view_doc #tabs a.comparer {
   display: inline;
 }
-
 
 #alert {
   font-weight: bold;
@@ -639,8 +637,7 @@ td.title a {
   display: block;
 }
 
-td.title a:hover {
-}
+td.title a:hover {}
 
 #filter label {
   display: inline-block;
@@ -717,6 +714,12 @@ body.facet h4 .occs,
   text-align: right;
   margin-right: 1rem;
 }
+
+body.facet .active {
+  background-color: #FFF;
+  font-weight: bold;
+}
+
 /**
  * Document view
  */
@@ -773,7 +776,6 @@ header.biblbar a.up {
   line-height: 1.1rem;
 }
 
-
 table.prevnext {
   border-collapse: collapse;
   width: 100%;
@@ -829,6 +831,15 @@ body.document header.bibl a.but,
   background-color: #FFFFFF;
 }
 
+input.start {
+  width: 6ex;
+}
+
+a.prev,
+a.next {
+  font-size: 1.5rem;
+}
+
 header.biblbar a.prev {
   border-right: 2px transparent inset;
 }
@@ -872,21 +883,26 @@ header.biblbar a.but:hover {
   position: absolute;
   right: -2rem;
 }
-#ruloccs div { /* fixed container fro the ticks */
+
+#ruloccs div {
+  /* fixed container fro the ticks */
   position: fixed;
   top: 2.5rem;
   bottom: 0.5rem;
   width: 1rem;
 }
+
 #ruloccs a {
   position: absolute;
 }
+
 #rulhi {
   position: fixed;
   border-width: 2px;
   border-top-style: solid;
   border-bottom-style: solid;
 }
+
 #rulhi a {
   position: absolute;
 }
@@ -912,20 +928,22 @@ body.right .biflex {
 /**
  * comparison
  */
-
 body.left {
   background: top 2rem left 10px / 195% auto fixed no-repeat url("img/obvil.svg");
   background: top 2rem left 10px / 195% auto fixed no-repeat url("img/obvil.svg"),
-  linear-gradient(90deg, hsla(32, 8%, 54%, 0.5), 5%, rgba(255, 255, 255, 1), 25%, #FFF);
+    linear-gradient(90deg, hsla(32, 8%, 54%, 0.5), 5%, rgba(255, 255, 255, 1), 25%, #FFF);
 }
+
 body.right {
   background: top 2rem right 10px / 195% auto fixed no-repeat url("img/obvil_r.svg");
   background: top 2rem right 10px / 195% auto fixed no-repeat url("img/obvil_r.svg"),
-  linear-gradient(270deg, hsla(32, 8%, 54%, 0.5), 5%, rgba(255, 255, 255, 1), 25%, #FFF);
+    linear-gradient(270deg, hsla(32, 8%, 54%, 0.5), 5%, rgba(255, 255, 255, 1), 25%, #FFF);
 }
+
 html.right {
   scrollbar-color: #faf9f6 hsla(32, 8%, 54%, 0.5);
 }
+
 body.right::-webkit-scrollbar {
   background: hsla(32, 8%, 54%, 0.5);
 }
@@ -933,7 +951,6 @@ body.right::-webkit-scrollbar {
 body.right::-webkit-scrollbar-thumb {
   background: #faf9f6;
 }
-
 
 body.help {
   background-image: url("img/obvil_help.svg");
@@ -948,12 +965,10 @@ body.comp.left main {
   padding-right: 2.5rem;
 }
 
-
 body.comp.right main {
   padding-left: 2.5rem;
   padding-right: 2rem;
 }
-
 
 body.comp {
   padding-top: 1.6rem;
@@ -963,7 +978,6 @@ body.comp a.pb,
 body.comp .marginnote {
   display: none;
 }
-
 
 body.comp #text, ul.legend {
   font-size: 112%;
@@ -979,9 +993,7 @@ body.comp #text, ul.legend {
   padding: 1rem 0.5rem 1rem 1rem;
 }
 
-
-.keywords {
-}
+.keywords {}
 
 #text a, .keywords a {
   cursor: pointer;
@@ -1091,15 +1103,13 @@ a.tk5 {
 .em9 {
   font-weight: 700;
 }
+
 /**
- * Search results
+ * Search results, kwic or snips
  */
+body.results main {}
 
-body.results main {
-
-}
-
-body.results header {
+body.results > header {
   text-align: center;
   margin-left: auto;
   margin-right: auto;
@@ -1109,22 +1119,51 @@ body.results form {
   text-align: center;
 }
 
-
-article.hit {
-  padding-top: 1em;
+article.res {
+  margin: 1rem 0;
 }
 
-article.hit .bibl {
-  line-height: 115%;
+article.res header {
+  text-align: left;
+  margin-bottom: 0.5rem;
+  background-color: #FFF;
+  line-height: 110%;
+  border-bottom: 1px solid rgb(120, 105, 101);
+  padding: 1px 0.5rem;
 }
 
-article.hit .surname {
+article.res header small {
+  float: left;
+  margin: 0.3ex 1ex 0 0;
+}
+
+article.res header a {
+  display: block;
+  color: rgb(120, 105, 101);
+}
+
+article.res header a:hover {
+  text-decoration: none;
+}
+
+div.line a {
+  font-weight: bold;
+  padding: 0 1ex;
+  background: #FFFFFF;
+}
+
+article.res div.line a:hover {
+  text-decoration: none;
+  color: #000;
+}
+
+article.res .surname {
   font-variant: small-caps;
   font-size: 115%;
   font-weight: bold;
 }
 
-article.hit .title {
+article.res .title {
   font-style: italic;
 }
 
@@ -1136,8 +1175,8 @@ article.hit p.frags {
   text-align: justify;
 }
 
-article.hit mark {
-  background: transparent;
+article.res mark {
+  background: #FFF;
   font-weight: bold;
 }
 
@@ -1149,7 +1188,7 @@ article.hit mark {
   padding: 0 0.5rem;
 }
 
-#chapters > a:hover {
+#chapters>a:hover {
   text-decoration: none;
 }
 

@@ -19,14 +19,10 @@
 int docId = tools.getInt("docid", -1); // get doc by lucene internal docId or persistant String id
 String id = tools.getString("id", null);
 String q = tools.getString("q", null); // if no doc, get params to navigate in a results series
-DocSort sorter = (DocSort)tools.getEnum("sort", DocSort.score);
+
+DocSort sort = (DocSort)tools.getEnum("sort", DocSort.score, Cookies.docSort);
+
 int start = tools.getInt("start", 1);
-if (request.getParameter("prev") != null) { // if submit prev
-  start = tools.getInt("prevn", start);
-}
-else if (request.getParameter("next") != null) { //if submit next
-  start = tools.getInt("nextn", start);
-}
 
 // global variables
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
@@ -36,9 +32,9 @@ TopDocs topDocs = null;
 // try to populate globals with params
 
 // if a query, or a sort specification, provide navigation in documents
-if (q != null || sorter != DocSort.score) {
+if (q != null || sort != DocSort.score) {
   final long now = System.nanoTime();
-  topDocs = getTopDocs(pageContext, alix, corpus, q, sorter);
+  topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
   ScoreDoc[] hits = topDocs.scoreDocs;
   // ? a no result reponse caches ? Quite idiot, but that's life
   if (hits.length == 0) {
@@ -80,8 +76,8 @@ SortField sf2 = new SortField(Alix.ID, SortField.Type.STRING);
     <script>
 <%
 if (doc != null) { // document id is verified, give it to javascript
-  out.println("var docLength="+doc.length(TEXT)+";");
-  out.println("var id=\""+doc.id()+"\";");
+  out.println("var docLength = "+doc.length(TEXT)+";");
+  out.println("var docId = \""+doc.id()+"\";");
 }
 %>
     </script>
@@ -103,25 +99,24 @@ if (doc != null) { // document id is verified, give it to javascript
         <input type="submit"
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
        tabindex="-1" />
-        <input id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" type="hidden"/>
-        <select name="sort" onchange="this.form.submit()" title="Ordre">
-            <option/>
-            <%= options(sorter) %>
-        </select>
         <%
-          if (topDocs != null && start > 1) {
-              out.println("<input type=\"hidden\" name=\"prevn\" value=\""+(start - 1)+"\"/>");
-              out.println("<button type=\"submit\" name=\"prev\">◀</button>");
-            }
+        if (topDocs != null && start > 1) {
+          out.println("<button name=\"prev\" type=\"submit\" onclick=\"this.form['start'].value="+(start - 1)+"\">◀</button>");
+        }
         %>
+        <input id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" type="hidden"/>
+        <script>if(self == top) { input = document.getElementById("q"); if (input && input.type == "hidden") input.type = "text";}</script>
+        <select name="sort" onchange="this.form['start'].value=''; this.form.submit()" title="Ordre">
+            <option/>
+            <%= options(sort) %>
+        </select>
         <input id="start" name="start" value="<%=start%>" autocomplete="off" size="1"/>
                <%
         if (topDocs != null) {
           long max = topDocs.totalHits.value;
           out.println("<span class=\"hits\"> / "+ max  + "</span>");
           if (start < max) {
-            out.println("<input type=\"hidden\" name=\"nextn\" value=\""+(start + 1)+"\"/>");
-            out.println("<button type=\"submit\" name=\"next\">▶</button>");
+            out.println("<button name=\"next\" type=\"submit\" onclick=\"this.form['start'].value="+(start + 1)+"\">▶</button>");
           }
         }
         %>

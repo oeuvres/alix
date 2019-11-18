@@ -11,7 +11,6 @@ String q = tools.getString("q", null);
 // global variables
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 
-
 String url1;
 String ref = "";
 if (id1 != null) { // doc by id requested

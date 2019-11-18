@@ -9,7 +9,7 @@
 <%
 // Params for the page
 String q = tools.getString("q", null);
-FacetSort sort = (FacetSort)tools.getEnum("ord", FacetSort.alpha, "facetSort");
+FacetSort sort = (FacetSort)tools.getEnum("ord", FacetSort.alpha, Cookies.facetSort);
 
 //global variables
 FacetField field = FacetField.author;
@@ -80,8 +80,8 @@ long occs = 0;
 
 final StringBuilder href = new StringBuilder();
 href.append("?sort=author");
-if (q != null) href.append("&amp;q="+q);
-final int hrefLength = href.length();
+if (q != null) href.append("&amp;q=").append(Jsp.escUrl(q));;
+final int hrefLen = href.length();
 
 while (dic.hasNext()) {
   dic.next();
@@ -92,7 +92,7 @@ while (dic.hasNext()) {
     occs = dic.occs();
     if (hits < 1) continue; // in alpha order, try next
   }
-  href.setLength(hrefLength);
+  href.setLength(hrefLen);
   href.append("&amp;start=" + (n+1)); // parenthesis for addition!
   href.append("&amp;hpp=");
   if (score) href.append(hits);
@@ -111,5 +111,6 @@ while (dic.hasNext()) {
     %>
     </main>
     <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
+    <script src="../static/js/facet.js">//</script>
   </body>
 </html>

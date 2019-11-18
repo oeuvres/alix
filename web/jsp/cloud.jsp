@@ -2,7 +2,7 @@
 <%@ include file="prelude.jsp" %>
 <%
 final String q = tools.getString("q", null);
-WordClass cat = (WordClass)tools.getEnum("cat", WordClass.NOSTOP, "catFreqs");
+WordClass cat = (WordClass)tools.getEnum("cat", WordClass.NOSTOP, Cookies.wordClass);
 %>
 <!DOCTYPE html>
 <html>

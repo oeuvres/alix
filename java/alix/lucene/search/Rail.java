@@ -102,6 +102,7 @@ public class Rail
    */
   public Token[] group(final int gap, final boolean expression)
   {
+    if (this.toks == null || this.toks.length < 2) return this.toks; 
     Token[] toks = this.toks;
     ArrayList<Token> offsets = new ArrayList<Token>();
     Token last = toks[0];

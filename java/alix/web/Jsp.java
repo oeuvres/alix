@@ -52,7 +52,7 @@ public class Jsp
   final HttpServletResponse response;
   /** Jsp page context */
   final PageContext page;
-  /** Cookies */
+  /** Cookie */
   HashMap<String, String> cookies;
   /** for cookies */
   private final static int MONTH = 60 * 60 * 24 *30;
@@ -65,25 +65,6 @@ public class Jsp
     this.page = page;
   }
 
-  /**
-   * Get a cookie value by name.
-   * @param name
-   * @return null if not set
-   */
-  public String getCookie(final String name)
-  {
-    if (cookies == null) {
-      Cookie[] cooks = request.getCookies();
-      if (cooks == null) return null;
-      cookies = new HashMap<String, String>();
-      for (int i=0; i<cooks.length; i++) {
-        Cookie cook = cooks[i];
-        cookies.put(cook.getName(), cook.getValue());
-      }
-    }
-    return cookies.get(name);
-  }
-  
   /** Check if a String is significant */
   public static boolean check(String s)
   {
@@ -111,32 +92,69 @@ public class Jsp
     }
     return out.toString();
   }
-  
+
   /**
-   * Inform client that a cookie is out of date.
-   * @param name
+   * Ensure that a String could be included in an html attribute with quotes
    */
-  public void cookie(String name) 
+  public static String escUrl(final String s)
   {
-    if (name == null) return;
-    Cookie cookie = new Cookie(name, "");
-    cookie.setMaxAge(-MONTH); // set in the past should reset
-    response.addCookie(cookie);
+    if (s == null) return "";
+    final StringBuilder out = new StringBuilder(Math.max(16, s.length()));
+    for (int i = 0; i < s.length(); i++) {
+      char c = s.charAt(i);
+      if (c == '"') out.append("&quot;");
+      else if (c == '<') out.append("&lt;");
+      else if (c == '>') out.append("&gt;");
+      else if (c == '&') out.append("&amp;");
+      else if (c == '+') out.append("%2B");
+      else out.append(c);
+    }
+    return out.toString();
   }
 
+  /**
+   * Get a cookie value by name.
+   * @param name
+   * @return null if not set
+   */
+  public String cookieGet(final String name)
+  {
+    if (cookies == null) {
+      Cookie[] cooks = request.getCookies();
+      if (cooks == null) return null;
+      cookies = new HashMap<String, String>();
+      for (int i=0; i<cooks.length; i++) {
+        Cookie cook = cooks[i];
+        cookies.put(cook.getName(), cook.getValue());
+      }
+    }
+    return cookies.get(name);
+  }
+  
   /**
    * Send a cookie to client.
    * @param name
    * @param value
    */
-  public void cookie(String name, String value) 
+  public void cookieSet(String name, String value) 
   {
     if (name == null) return;
     Cookie cookie = new Cookie(name, value);
     cookie.setMaxAge(MONTH);
     response.addCookie(cookie);
   }
-  
+
+  /**
+   * Inform client that a cookie is out of date.
+   * @param name
+   */
+  public void cookieDel(String name) 
+  {
+    if (name == null) return;
+    Cookie cookie = new Cookie(name, "");
+    cookie.setMaxAge(-MONTH); // set in the past should reset
+    response.addCookie(cookie);
+  }
 
   /**
    * Get a request parameter as an int with a default value.
@@ -146,7 +164,15 @@ public class Jsp
    */
   public int getInt(final String name, final int fallback)
   {
-    return getInt(name, fallback, null);
+    String value = request.getParameter(name);
+    if (!check(value)) return fallback;
+    try {
+      int ret = Integer.parseInt(value);
+      return ret;
+    }
+    catch (NumberFormatException e) {
+    }
+    return fallback;
   }
 
   /**
@@ -154,42 +180,40 @@ public class Jsp
    * with a cookie persistency.
    * @param name
    * @param fallback
-   * @param cookie
+   * @param cookie Name of a cookie is given as an Enum to control cookies proliferation.
    * @return
    */
-  public int getInt(final String name, final int fallback, final String cookie)
+  public int getInt(final String name, final int fallback, final Enum<?> cookie)
   {
     String value = request.getParameter(name);
-    int ret = fallback;
-    // a string submitted ?
+    // a string submitted
     if (check(value)) {
       try {
-        ret = Integer.parseInt(value);
-        cookie(cookie, ""+ret); // value seems ok, try to store it as cookie
+        int ret = Integer.parseInt(value);
+        cookieSet(cookie.name(), ""+ret); // value seems ok, try to store it as cookie
+        return ret;
       }
       catch (NumberFormatException e) {
-        ret = fallback;
       }
     }
-    if (cookie == null) return ret; // if no cookie key, nothing more todo
     // param has an empty value, seems that client wants to reset cookie
     // do not give back the stored value
     if (value != null && !check(value)) {
-      cookie(name);
-      return ret;
+      cookieDel(name);
+      return fallback;
     }
-    value = getCookie(cookie);
-    if (value == null) return ret;
+    value = cookieGet(cookie.name());
+    if (value == null) return fallback;
     // verify stored value before send it
     try {
-      ret = Integer.parseInt(value);
+      int ret = Integer.parseInt(value);
+      return ret;
     }
     catch (NumberFormatException e) {
-      ret = fallback;
       // bad cookie value, reset it
-      cookie(name);
+      cookieDel(name);
+      return fallback;
     }
-    return ret;
   }
 
   /**
@@ -200,47 +224,55 @@ public class Jsp
    */
   public float getFloat(final String name, final float fallback)
   {
-    return getFloat(name, fallback, null);
+    String value = request.getParameter(name);
+    if (check(value)) {
+      try {
+        float ret = Float.parseFloat(value);
+        return ret;
+      }
+      catch (NumberFormatException e) {
+      }
+    }
+    return fallback;
   }
 
   /**
    * Get a request parameter as a float with a default value,
-   * and a cookie persistency.
+   * and a cookie persistence.
    * @param name Name of http param.
    * @param fallback Default value.
-   * @param cookie Nsme of cookie for persistency.
+   * @param cookie Name of a cookie is given as an Enum to control cookies proliferation.
    * @return Priority order: request, cookie, fallback.
    */
-  public float getFloat(final String name, final float fallback, final String cookie)
+  public float getFloat(final String name, final float fallback, final Enum<?> cookie)
   {
     String value = request.getParameter(name);
-    float ret = fallback;
     if (check(value)) {
       try {
-        ret = Float.parseFloat(value);;
-        cookie(cookie, ""+ret); // value seems ok, store it as a cookie
+        float ret = Float.parseFloat(value);;
+        cookieSet(cookie.name(), ""+ret); // value seems ok, store it as a cookie
+        return ret;
       }
       catch (NumberFormatException e) {
-        ret = fallback;
       }
     }
-    if (cookie == null) return ret; // if no cookie key, nothing more todo
+    // reset cookie
     if (value != null && !check(value)) {
-      cookie(name);
-      return ret;
+      cookieDel(cookie.name());
+      return fallback;
     }
-    value = getCookie(cookie);
-    if (value == null) return ret;
+    value = cookieGet(cookie.name());
+    if (value == null) return fallback;
     // verify stored value before send it
     try {
-      ret = Integer.parseInt(value);
+      float ret = Integer.parseInt(value);
+      return ret;
     }
     catch (NumberFormatException e) {
       // bad cookie value, reset it
-      cookie(name);
-      ret = fallback;
+      cookieDel(name);
+      return fallback;
     }
-    return ret;
   }
 
   /**
@@ -249,7 +281,9 @@ public class Jsp
    */
   public String getString(final String name, final String fallback)
   {
-    return getString(name, fallback, null);
+    String value = request.getParameter(name);
+    if (check(value)) return value;
+    return fallback;
   }
 
   /**
@@ -257,27 +291,26 @@ public class Jsp
    * cookie persistence.
    * @param name Name of http param.
    * @param fallback Default value.
-   * @param cookie Nsme of cookie for persistency.
+   * @param cookie Name of a cookie is given as an Enum to control cookies proliferation.
    * @return Priority order: request, cookie, fallback.
    */
-  public String getString(final String name, final String fallback, String cookie)
+  public String getString(final String name, final String fallback, final Enum<?> cookie)
   {
     String value = request.getParameter(name);
     if (check(value)) {
-      cookie(cookie, value);
+      cookieSet(cookie.name(), value);
       return value;
     }
     // param is not null, reset cookie
     if (value != null) {
-      cookie(cookie);
+      cookieDel(cookie.name());
       return fallback;
     }
-    if (cookie == null) return fallback;
     // try to deal with cookie
-    value = getCookie(cookie);
+    value = cookieGet(cookie.name());
     if (check(value)) return value;
-    // cookie seenms to have a problem, reset it
-    cookie(cookie);
+    // cookie seems to have a problem, reset it
+    cookieDel(cookie.name());
     return fallback;
   }
 
@@ -286,7 +319,10 @@ public class Jsp
    */
   public boolean getBoolean(final String name, final boolean fallback)
   {
-    return getBoolean(name, fallback, null);
+    String value = request.getParameter(name);
+    if ("false".equals(value) || "0".equals(value) || "null".equals(value)) return false;
+    if (check(value)) return true;
+    return fallback;
   }
 
   /**
@@ -294,41 +330,57 @@ public class Jsp
    * cookie persistence.
    * @param name Name of a request parameter.
    * @param fallback Default value.
-   * @param cookie Name of a cookie for persistence.
+   * @param cookie Name of a cookie is given as an Enum to control cookies proliferation.
    * @return Priority order: request, cookie, fallback.
    */
-  public boolean getBoolean(final String name, final boolean fallback, String cookie)
+  public boolean getBoolean(final String name, final boolean fallback, final Enum<?> cookie)
   {
     String value = request.getParameter(name);
     // value explicitly defined to false, set a cookie
     if ("false".equals(value) || "0".equals(value) || "null".equals(value)) {
-      cookie(cookie, "0");
+      cookieSet(cookie.name(), "0");
       return false;
     }
     // some content, we are true
     if (check(value)) {
-      cookie(cookie, value);
+      cookieSet(cookie.name(), "1");
       return true;
     }
-    // param is not null, reset cookie
+    // param is empty but not null, reset cookie
     if (value != null) {
-      cookie(cookie);
+      cookieDel(cookie.name());
       return fallback;
     }
-    // no cookie to search for, send fallback
-    if (cookie == null) return fallback;
     // try to deal with cookie
-    value = getCookie(cookie);
+    value = cookieGet(cookie.name());
     if ("0".equals(value)) return false;
     if (check(value)) return true;
-    // cookie seenms to have a problem, reset it
-    cookie(cookie);
+    // cookie seems to have a problem, reset it
+    cookieDel(cookie.name());
     return fallback;
   }
-
+  /**
+   * Get a request parameter as an {@link Enum} value
+   * that will ensure a closed list of values,
+   * with a default value if wrong.
+   * @param name
+   * @param fallback
+   * @return
+   */
+  @SuppressWarnings({ "unchecked", "static-access" })
   public Enum<?> getEnum(final String name, final Enum<?> fallback)
   {
-    return getEnum(name, fallback, null);
+    String value = request.getParameter(name);
+    if (!check(value)) return fallback;
+    // try/catch seems a bit heavy, but behind valueOf, there is a lazy static Map optimized for Enum
+    try {
+      Enum<?> ret = fallback.valueOf(fallback.getClass(), value);
+      return ret;
+    }
+    catch(Exception e) {
+      
+    }
+    return fallback;
   }
   /**
    * Get a request parameter as an {@link Enum} value
@@ -341,38 +393,34 @@ public class Jsp
    * @return Priority order: request, cookie, fallback.
    */
   @SuppressWarnings({ "unchecked", "static-access" })
-  public Enum<?> getEnum(final String name, final Enum<?> fallback, final String cookie)
+  public Enum<?> getEnum(final String name, final Enum<?> fallback, final Enum<?> cookie)
   {
     String value = request.getParameter(name);
     if (check(value)) {
-      // try/catch seems a bit heavy, but behind valueOf, there is a lazy static Map optimized for Enum
       try {
         Enum<?> ret = fallback.valueOf(fallback.getClass(), value);
-        cookie(cookie, ret.name());
+        cookieSet(cookie.name(), ret.name());
         return ret;
       }
       catch(Exception e) {
-        
       }
     }
-    // param is not null, reset cookie
+    // param is empty but not null, reset cookie
     if (value != null) {
-      cookie(cookie);
+      cookieDel(cookie.name());
       return fallback;
     }
-    // no cookie to search for, send fallback
-    if (cookie == null) return fallback;
     // try to deal with cookie
-    value = getCookie(cookie);
+    value = cookieGet(cookie.name());
     try {
       Enum<?> ret = fallback.valueOf(fallback.getClass(), value);
       return ret;
     }
     catch(Exception e) {
       // cookie seenms to have a problem, reset it
-      cookie(cookie);
+      cookieDel(cookie.name());
+      return (Enum<?>)fallback;
     }
-    return (Enum<?>)fallback;
   }
 
 }

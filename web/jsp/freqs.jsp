@@ -20,7 +20,7 @@ private static final int OUT_CSV = 1;
 private static final int OUT_JSON = 2;
 
 
-private static String lines(final TopTerms dic, int max, final Mime mime, final WordClass cat, final boolean hasScore)
+private static String lines(final TopTerms dic, int max, final Mime mime, final WordClass cat, final boolean hasScore, final String q)
 {
   max = Math.min(max, dic.size());
   StringBuilder sb = new StringBuilder();
@@ -82,7 +82,7 @@ private static String lines(final TopTerms dic, int max, final Mime mime, final 
         csvLine(sb, dic, zetag, no, hasScore);
         break;
       default:
-        htmlLine(sb, dic, zetag, no, hasScore);
+        htmlLine(sb, dic, zetag, no, hasScore, q);
     }
     no++;
     first = false;
@@ -94,15 +94,30 @@ private static String lines(final TopTerms dic, int max, final Mime mime, final 
 /**
  * An html table row &lt;tr&gt; for lexical frequence result.
  */
-private static void htmlLine(StringBuilder sb, final TopTerms dic, final Tag zetag, final int no, final boolean hasScore)
+private static void htmlLine(StringBuilder sb, final TopTerms dic, final Tag zetag, final int no, boolean hasScore, final String q)
 {
   sb.append("  <tr>\n");
   sb.append("    <td class=\"num\">");
   sb.append(no) ;
   sb.append("</td>\n");
-  String t = dic.term().toString().replace('_', ' ');
-  sb.append("    <td><a target=\"_top\" href=\".?q="+t+"\">");
-  sb.append(t);
+  String term = dic.term().toString();
+  // .replace('_', ' ') ?
+  sb.append("    <td><a");
+  if (q != null) {
+    sb.append(" href=\"kwic?sort=score&amp;q=");
+    sb.append(q);
+    sb.append(" %2B").append(term);
+    sb.append("&amp;expression=on");
+    sb.append("\"");
+  }
+  else {
+    sb.append(" href=\".?q=");
+    sb.append(term);
+    sb.append("\"");
+    sb.append(" target=\"_top\"");
+  }
+  sb.append(">");
+  sb.append(term);
   sb.append("</a></td>\n");
   sb.append("    <td>");
   sb.append(zetag) ;
@@ -143,13 +158,13 @@ final String q = tools.getString("q", null);
 int hpp = tools.getInt("hpp", -1);
 if (hpp < 1 || hpp > 2000) hpp = 500;
 
-final String sorter = tools.getString("sorter", "score", "freqSorter");
-WordClass cat = (WordClass)tools.getEnum("cat", WordClass.NOSTOP, "catFreqs");
+final FacetSort sort = (FacetSort)tools.getEnum("sort", FacetSort.score, Cookies.freqsSort);
+WordClass cat = (WordClass)tools.getEnum("cat", WordClass.NOSTOP, Cookies.wordClass);
 
-int left = tools.getInt("left", 5, "freqLeft");
+int left = tools.getInt("left", 5, Cookies.coocLeft);
 if (left < 0) left = 0;
 else if (left > 10) left = 10;
-int right = tools.getInt("right", 5, "freqRight");
+int right = tools.getInt("right", 5, Cookies.coocRight);
 if (right < 0) right = 0;
 else if (right > 10) right = 10;
 
@@ -163,7 +178,7 @@ if (corpus != null) filter = corpus.bits();
 if (q == null) {
   Freqs freqs = alix.freqs(field);
   dic = freqs.topTerms(filter);
-  if ("score".equals(sorter)) dic.sort(dic.getScores());
+  if (sort == FacetSort.score) dic.sort(dic.getScores());
   else dic.sort(dic.getOccs());
 }
 else {
@@ -185,13 +200,13 @@ if (Mime.json.equals(mime)) {
   response.setContentType(Mime.json.type);
   out.println("{");
   out.println("  \"data\":[");
-  out.println( lines(dic, hpp, mime, cat, hasScore));
+  out.println( lines(dic, hpp, mime, cat, hasScore, q));
   out.println("\n  ]");
   out.println("\n}");
 }
 else if (Mime.csv.equals(mime)) {
   response.setContentType(Mime.csv.type);
-  out.println( lines(dic, -1, mime, cat, hasScore));
+  out.println( lines(dic, -1, mime, cat, hasScore, q));
 }
 else {
 %>
@@ -247,7 +262,7 @@ else {
         <tr>
       </thead>
       <tbody>
-        <%= lines(dic, hpp, mime, cat, hasScore) %>
+        <%= lines(dic, hpp, mime, cat, hasScore, q) %>
       </tbody>
     </table>
     <script src="../static/vendor/Sortable.js">//</script>

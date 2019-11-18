@@ -8,11 +8,12 @@ String json = tools.getString("json", null);
 String q = tools.getString("q", null);
 String id = tools.getString("id", null);
 String view = tools.getString("view", null);
+int start = tools.getInt("view", -1);
 String url;
 
 // pars
 String pars = "";
-if (q != null) pars += "q=" + Jsp.escape(q);
+if (q != null) pars += "q=" + Jsp.escUrl(q);
 if (id != null) {
   if (pars.length() > 0) pars += "&amp;";
   pars += "id="+id;
@@ -91,17 +92,22 @@ corpus = (Corpus)session.getAttribute(corpusKey);
       <span class="base"><%=props.get("name")%> <%
    if (corpus != null) {
      String name = corpus.name();
-     out.println("<mark><a title=\"Déselectionner ce corpus\" href=\"?corpus=new&amp;q="+Jsp.escape(q)+"\">🗙</a>  "+name+"</mark>");
+     out.println("<mark><a title=\"Déselectionner ce corpus\" href=\"?corpus=new&amp;q="+Jsp.escUrl(q)+"\">🗙</a>  "+name+"</mark>");
 
    }
  %></span>
       <a class="logo" href="." title="Annuler les recherches en cours"><img alt="Obvil app" src="../static/img/obvil_50.png"/></a>
       <form id="qform" name="qform" onsubmit="return dispatch(this)" target="page" action="<%=view%>">
-        <input id="q" name="q" autocomplete="off" autofocus="true" value="<%=Jsp.escape(q)%>"/>
+        <input type="hidden" name="start" value="<%= ((start > 0)?""+start:"") %>"/>
+        <input type="hidden" name="hpp"/>
+        <input id="q" name="q" autocomplete="off" autofocus="true" value="<%=Jsp.escape(q)%>"
+          onfocus="this.setSelectionRange(this.value.length,this.value.length);"
+          oninput="this.form['start'].value=''; this.form['hpp'].value=''"
+        />
         <button type="submit" name="send" tabindex="-1" class="magnify">⚲</button>
         <div id="tabs">
           <a href="corpus" target="page">Corpus</a>
-          <a href="snip" target="page">Résultats</a>
+          <a href="snip" target="page">Extraits</a>
           <a href="kwic" target="page">Concordance</a>
           <a href="doc" target="page">Document</a>
           <a href="freqs" target="page">Fréquences</a>
