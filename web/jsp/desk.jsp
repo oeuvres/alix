@@ -52,26 +52,25 @@ else {
 String js = "";
 Corpus corpus = null;
 if ("POST".equalsIgnoreCase(request.getMethod())) {
-// handle paramaters to change the corpus
-String name = tools.getString("name", null);
-String desc = tools.getString("desc", null);
-if (name == null) name = "Ma sélection";
-if (checks != null) {
-  corpus = new Corpus(alix, Alix.BOOKID, name, desc);
-  corpus.add(checks);
-  session.setAttribute(corpusKey, corpus);
-  json = corpus.json();
-  // corpus has been modified, store on client
-  js += "corpusStore(\""+name+"\", \""+desc+"\", '"+json+"');\n";
-
-}
-//json send, client wants to load a new corpus
-else if (json != null) {
- corpus = new Corpus(alix, Alix.BOOKID, json);
- name = corpus.name();
- desc = corpus.desc();
- session.setAttribute(corpusKey, corpus);
-}
+  // handle paramaters to change the corpus
+  String name = tools.getString("name", null);
+  String desc = tools.getString("desc", null);
+  if (name == null) name = "Ma sélection";
+  if (checks != null) {
+    corpus = new Corpus(alix, Alix.BOOKID, name, desc);
+    corpus.add(checks);
+    session.setAttribute(corpusKey, corpus);
+    json = corpus.json();
+    // corpus has been modified, store on client
+    js += "corpusStore(\""+name+"\", \""+desc+"\", '"+json+"');\n";
+  }
+  //json send, client wants to load a new corpus
+  else if (json != null) {
+   corpus = new Corpus(alix, Alix.BOOKID, json);
+   name = corpus.name();
+   desc = corpus.desc();
+   session.setAttribute(corpusKey, corpus);
+  }
 }
 else if ("new".equals(tools.getString("corpus", null))) {
   session.setAttribute(corpusKey, null);
@@ -105,6 +104,7 @@ corpus = (Corpus)session.getAttribute(corpusKey);
  %></span>
       <a class="logo" href="." title="Annuler les recherches en cours"><img alt="Obvil app" src="../static/img/obvil_50.png"/></a>
       <form id="qform" name="qform" onsubmit="return dispatch(this)" target="page" action="<%=view%>">
+        <a href="." class="reset">⟲</a>
         <input type="hidden" name="start" value="<%= ((start > 0)?""+start:"") %>"/>
         <input type="hidden" name="hpp"/>
         <input id="q" name="q" autocomplete="off" autofocus="true" value="<%=Jsp.escape(q)%>"

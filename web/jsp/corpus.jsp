@@ -71,7 +71,7 @@ const base = "<%=base%>"; // give code of texts base to further Javascript
       <form method="post" id="corpus" target="_top" action=".">
         <table class="sortable" id="bib">
          <caption>
-            <%=  (bits != null)?bits.cardinality():facet.docsAll %> documents.
+            <%=  (bits != null)?bits.cardinality():facet.docsAll %> chapitres.
             <input type="hidden" name="q" value="<%=Jsp.escape(q)%>"/>
             <button style="float: right;" name="save" type="submit">Enregistrer</button>
             <input style="float: right;" type="text" size="10" id="name" name="name" value="<%= (corpus != null) ? Jsp.escape(corpus.name()) : "" %>"
@@ -104,12 +104,12 @@ switch(sort){
     dic.sort();
     break;
   case freq:
-    if (score) dic.sort(dic.getOccs());
-    else dic.sort(dic.getDocs());
+    if (score) dic.sortByOccs();
+    else dic.sort();
     break;
   case score:
-    if (score) dic.sort(dic.getScores());
-    else dic.sort(dic.getDocs());
+    if (score) dic.sortByScores();
+    else dic.sort();
     break;
   default:
     dic.sort();

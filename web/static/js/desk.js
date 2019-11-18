@@ -42,7 +42,6 @@ var panel = document.getElementById("panel");
 function dispatch(form)
 {
   var q = form['q'].value;
-  console.log(q);
   parTop("q", q); // update URL
   // get frame as a window object
   if (chrono.offsetHeight > 10 && chrono.offsetWidth > 10) {

@@ -178,14 +178,14 @@ if (corpus != null) filter = corpus.bits();
 if (q == null) {
   Freqs freqs = alix.freqs(field);
   dic = freqs.topTerms(filter);
-  if (sort == FacetSort.score) dic.sort(dic.getScores());
-  else dic.sort(dic.getOccs());
+  if (sort == FacetSort.score) dic.sortByScores();
+  else dic.sortByOccs();
 }
 else {
   Cooc cooc = alix.cooc(field);
   TermList terms = alix.qTermList(TEXT, q);
   dic = cooc.topTerms(terms, left, right, filter);
-  dic.sort(dic.getOccs());
+  dic.sortByOccs();
 }
 // cooccurrences has not yet score
 final boolean hasScore = (q == null);

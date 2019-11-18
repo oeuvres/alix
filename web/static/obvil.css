@@ -179,6 +179,7 @@ div.term a:hover,
 article.res mark,
 table.sortable th,
 button.magnify,
+a.reset,
 .sortable td.title a:hover,
 article.res header a:hover, /* title in short result */
 article.res div.line a, /* pivot word in kwic */
@@ -435,6 +436,9 @@ iframe {
   padding: 5px 2px 0 2px;
   position: relative;
   height: 68px;
+  margin: 0;
+  width: 100%;
+  overflow: hidden; /* scroll pb */
   /* check #win top */
 }
 
@@ -814,6 +818,7 @@ table.prevnext a:hover {
 }
 
 body.document header.bibl a.but,
+a.reset,
 #qform button {
   font-size: 1.5rem;
   border-radius: unset;
@@ -1269,8 +1274,9 @@ body.chrono form {
 
 #chart {
   font-family: sans-serif;
-  width: 100%;
+  width: 99%;
   height: 100%;
+  cursor: pointer;
 }
 
 .dygraph-annotation, .dygraph-legend {
@@ -1284,8 +1290,8 @@ body.chrono form {
   pointer-events: none;
   line-height: 100%;
   left: 4em !important;
-  top: 2em !important;
-  font-size: 12px;
+  top: 0.5rem !important;
+  font-size: 17px;
   z-index: 10;
   width: 250px;
   background: #fff;

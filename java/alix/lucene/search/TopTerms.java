@@ -189,31 +189,6 @@ public class TopTerms
     cursor = -1;
   }
 
-  /**
-   * Set a long value to each term.
-   * @param scores
-   */
-  public void setScores(final double[] scores)
-  {
-    this.scores = scores;
-  }
-  public double[] getScores()
-  {
-    return scores;
-  }
-  /**
-   * Sort the terms according to a vector of scores by termId.
-   * @param doubles An array in termId order.
-   */
-  public void sort(final double[] doubles)
-  {
-    Entry[] sorter = sorter();
-    for (int i = 0, max = size; i < max; i++) {
-      sorter[i].rank = doubles[i];
-    }
-    sort(sorter);
-  }
-  
   private void sort(Entry[] sorter)
   {
     Arrays.sort(sorter, new Comparator<Entry>() {
@@ -230,9 +205,22 @@ public class TopTerms
 
   /**
    * Sort the terms according to a vector of scores by termId.
+   * @param ints An array in termId order.
+   */
+  private void sort(final int[] ints)
+  {
+    Entry[] sorter = sorter();
+    for (int i = 0, max = size; i < max; i++) {
+      sorter[i].rank = ints[i];
+    }
+    sort(sorter);
+  }
+
+  /**
+   * Sort the terms according to a vector of scores by termId.
    * @param longs An array in termId order.
    */
-  public void sort(final long[] longs)
+  private void sort(final long[] longs)
   {
     Entry[] sorter = sorter();
     for (int i = 0, max = size; i < max; i++) {
@@ -243,32 +231,112 @@ public class TopTerms
 
   /**
    * Sort the terms according to a vector of scores by termId.
-   * @param ints An array in termId order.
+   * @param doubles An array in termId order.
    */
-  public void sort(final int[] ints)
+  private void sort(final double[] doubles)
   {
     Entry[] sorter = sorter();
     for (int i = 0, max = size; i < max; i++) {
-      sorter[i].rank = ints[i];
+      sorter[i].rank = doubles[i];
     }
     sort(sorter);
   }
 
   /**
-   * Test if a term is in the dictionary.
-   * If exists, identifier will be kept to get infos on it.
-   * @param term
-   * @return
+   * Set an optional array of values (in termId order).
+   * 
+   * @param docs
    */
-  public boolean contains(String term)
+  public void setDocs(final int[] docs)
   {
-    BytesRef bytes = new BytesRef(term);
-    int termId = hashDic.find(bytes);
-    if (termId < 0) return false;
-    this.termId = termId;
-    return true;
+    this.docs = docs;
   }
-  
+  public void sortByDocs()
+  {
+    if (docs == null) throw new NullPointerException("No docs to sort on, see setHits()");
+    sort(docs);
+  }
+
+  /**
+   * Set an optional array of values (in termId order).
+   * 
+   * @param lengths
+   */
+  public void setLengths(final long[] lengths)
+  {
+    this.lengths = lengths;
+  }
+  public void sortByLengths()
+  {
+    if (lengths == null) throw new NullPointerException("No lengths to sort on, see setLength()");
+    sort(lengths);
+  }
+
+  /**
+   * Set an optional array of values (in termId order).
+   * @param hits
+   */
+  public void setHits(final int[] hits)
+  {
+    this.hits = hits;
+  }
+
+  public void sortByHits()
+  {
+    if (hits == null) throw new NullPointerException("No hits to sort on, see setHits()");
+    sort(hits);
+  }
+
+  /**
+   * Set an optional array of values (in termId order), occurrences.
+   * 
+   * @param occs
+   */
+  public void setOccs(final int[] occs)
+  {
+    this.occs = occs;
+  }
+
+  public void sortByOccs()
+  {
+    if (occs == null) throw new NullPointerException("No occs to sort on, see setOccs()");
+    sort(occs);
+  }
+
+  /**
+   * Set a long value to each term.
+   * @param scores
+   */
+  public void setScores(final double[] scores)
+  {
+    this.scores = scores;
+  }
+
+  public void sortByScores()
+  {
+    if (scores == null) throw new NullPointerException("No scores to sort on, see setScores()");
+    sort(scores);
+  }
+
+  /**
+   * Set an optional int array of docids in termId order.
+   * @param covers
+   */
+  public void setCovers(final int[] covers)
+  {
+    this.covers = covers;
+  }
+
+  /**
+   * Set an optional array of values (in termId order).
+   * 
+   * @param nos
+   */
+  public void setNos(final int[] nos)
+  {
+    this.nos = nos;
+  }
+
   /**
    * Reset the internal cursor when iterating in the sorter.
    */
@@ -291,6 +359,21 @@ public class TopTerms
     // if too far, let's array cry
     cursor++;
     termId = sorter[cursor].termId;
+  }
+
+  /**
+   * Test if a term is in the dictionary.
+   * If exists, identifier will be kept to get infos on it.
+   * @param term
+   * @return
+   */
+  public boolean contains(String term)
+  {
+    BytesRef bytes = new BytesRef(term);
+    int termId = hashDic.find(bytes);
+    if (termId < 0) return false;
+    this.termId = termId;
+    return true;
   }
 
   /**
@@ -331,24 +414,7 @@ public class TopTerms
     return ref.utf8ToString();
   }
 
-  /**
-   * Set an optional array of values (in termId order).
-   * 
-   * @param docs
-   */
-  public void setDocs(final int[] docs)
-  {
-    this.docs = docs;
-  }
-  
-  /**
-   * Returns a vector in termId order, with count of documents.
-   * @return
-   */
-  public int[] getDocs()
-  {
-    return docs;
-  }
+
 
   /**
    * Get the total count of documents relevant for the current term.
@@ -357,15 +423,6 @@ public class TopTerms
   public int docs()
   {
     return docs[termId];
-  }
-
-  /**
-   * Set an optional array of values (in termId order).
-   * @param hits
-   */
-  public void setHits(final int[] hits)
-  {
-    this.hits = hits;
   }
 
   /**
@@ -378,32 +435,12 @@ public class TopTerms
   }
 
   /**
-   * Set an optional array of values (in termId order).
-   * 
-   * @param nos
-   */
-  public void setNos(final int[] nos)
-  {
-    this.nos = nos;
-  }
-
-  /**
    * Get the no of the current term.
    * @return
    */
   public int n()
   {
     return nos[termId];
-  }
-
-  /**
-   * Set an optional array of values (in termId order).
-   * 
-   * @param lengths
-   */
-  public void setLengths(final long[] lengths)
-  {
-    this.lengths = lengths;
   }
 
   /**
@@ -417,21 +454,6 @@ public class TopTerms
   }
 
   /**
-   * Set an optional array of values (in termId order), occurrences.
-   * 
-   * @param occs
-   */
-  public void setOccs(final int[] occs)
-  {
-    this.occs = occs;
-  }
-
-  public int[] getOccs()
-  {
-    return occs;
-  }
-
-  /**
    * Current term, number of occurrences.
    * 
    * @return
@@ -439,15 +461,6 @@ public class TopTerms
   public long occs()
   {
     return occs[termId];
-  }
-
-  /**
-   * Set an optional int array of docids in termId order.
-   * @param covers
-   */
-  public void setCovers(final int[] covers)
-  {
-    this.covers = covers;
   }
 
   /**

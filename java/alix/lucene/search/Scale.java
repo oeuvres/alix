@@ -159,10 +159,10 @@ public class Scale
     long cumul = 0;
     for (int i = 0; i < card; i++) {
       Tick tick = byValue[i];
+      tick.cumul = cumul; // cumul of previous length
       long length = tick.length;
       // length should never been less 0, quick fix
       if (length > 0) cumul += length;
-      tick.pos = cumul;
     }
     this.byValue = byValue;
     this.byDocid = byDocid;
@@ -175,7 +175,7 @@ public class Scale
     public final int docId;
     public final int value;
     public final long length;
-    public long pos;
+    public long cumul;
 
     public Tick(final int docid, final int value, final long length)
     {
@@ -187,7 +187,7 @@ public class Scale
     @Override
     public String toString()
     {
-      return "docId=" + docId + " value=" + value + " length=" + length + " pos=" + pos;
+      return "docId=" + docId + " value=" + value + " length=" + length + " cumul=" + cumul;
     }
   }
 
@@ -208,7 +208,7 @@ public class Scale
   }
 
   /**
-   * Returns the total count of occurrences for the  the corpus
+   * Returns the total count of occurrences for this scale
    */
   public long length()
   {
@@ -216,7 +216,7 @@ public class Scale
   }
 
   /**
-   * Return data to displax an axis for the corpus
+   * Return data to display an axis for the corpus
    * @return
    */
   public Tick[] axis()
@@ -224,13 +224,52 @@ public class Scale
     return byValue;
   }
   /**
+   * 
+   */
+  public long[][] legend(int dots)
+  {
+    long[][] data = new long[3][dots];
+    // width of a step between two dots, should be same as curves
+    long step = (long)((double)length / dots);
+    long[] index = data[0]; // index in count of tokens
+    long[] values = data[1]; // value of int field
+    long[] docN = data[2]; // index of doc in the series
+    Tick tick = null;
+    Tick[] ticks = this.byValue; // docid in value order
+    int value;
+    int max = ticks.length;
+    long cumul = 0;
+    int n = 0; // 
+    for (int i = 0; i < dots; i++) {
+      // cumul should be exactly the same as curves
+      index[i] = cumul;
+      // find int value for this cumul
+      while(n < max) {
+        tick = ticks[n];
+        if (tick.cumul >= cumul) break;
+        n++;
+      }
+      value = tick.value;
+      // find first tick with this value
+      while(n > 1) {
+        if (ticks[n-1].value < value) break;
+        n--;
+      }
+      values[i] = value;
+      docN[i] = n;
+      cumul += step; // increment 
+    }
+    return data;
+  }
+  
+  /**
    * Cross index to get term counts in date order.
    * @param terms An organized list of lucene terms.
-   * @param def Definition, number of dots by curve.
+   * @param dots Number of dots by curve.
    * @return
    * @throws IOException
    */
-  public long[][] curves(TermList terms, int def) throws IOException
+  public long[][] curves(TermList terms, int dots) throws IOException
   {
     if (terms.size() < 1) return null;
     // ticks should be in doc order
@@ -241,13 +280,13 @@ public class Scale
     // if there are only a few books, hundred of dots doesn't make sense
     // def = Math.min(def, docs);
     // table of data to populate
-    long[][] data = new long[groups + 1][def];
+    long[][] data = new long[groups + 1][dots];
     // width of a step between two dots, 
-    long step = (long)((double)length / def);
+    long step = (long)((double)length / dots);
     // populate the first column, index in the axis
     long cumul = 0;
     long[] column = data[0];
-    for (int i = 0; i < def; i++) {
+    for (int i = 0; i < dots; i++) {
       column[i] = cumul;
       cumul += step;
     }
@@ -260,7 +299,9 @@ public class Scale
       LeafReader leaf = ctx.reader();
       int docBase = ctx.docBase;
       int col = 1; // start to populate on second column
-      int ordMax = ordBase;
+      // multi leaves not yet really tested
+      // assert byDocid[ordBase - 1].docId < docBase <= byDocid[ordBase]
+      int ordMax = ordBase; // keep memory of biggest ord found for each terms, to set ordBase
       // Do as a termQuery, loop on PostingsEnum.FREQS for each term
       for(Term term: terms) {
         if (term == null) { // null terms are group separators
@@ -284,19 +325,19 @@ public class Scale
             // find the index of the doc found in the axis data
             while(byDocid[ord].docId != docId) ord++;
             // should be the right tick here
-            pos = byDocid[ord].pos;
+            pos = byDocid[ord].cumul;
           }
           else {
-            pos = byDocid[docId].pos;
+            pos = byDocid[docId].cumul;
           }
           // affect occurrences count to a dot, according to the absolute position of the doc in axis
           int row = (int)((double)pos / step);
-          if (row >= def) row = def - 1; // because of rounding on big numbers last row could be missed
+          if (row >= dots) row = dots - 1; // because of rounding on big numbers last row could be missed
           column[row] += freq;
         }
         if (ordMax < ord) ordMax = ord;
       }
-      ordBase = ordMax;
+      ordBase = ordMax + 1;
     }
     return data;
   }

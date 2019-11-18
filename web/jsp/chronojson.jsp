@@ -48,7 +48,7 @@ public String ticks(Scale scale) throws IOException  {
     label = year - year % yearStep;
    
     sb.append(",\n");
-    cumul = axis[i].pos;
+    cumul = axis[i].cumul;
     sb.append("    {");
     sb.append("\"v\": "+cumul);
     // let space between labels
@@ -79,6 +79,7 @@ int dots = tools.getInt("dots", 200);
 
 
 out.println("{");
+if (q != null) out.print( "  \"q\": \""+q.replace("\"", "\\\"")+"\",\n");
 // display ticks
 long partial = System.nanoTime();
 out.print( "  \"ticks\": "+ticks(scale)+",\n");
@@ -139,6 +140,26 @@ if (terms.size() > 0) {
     out.print("]");
   }
   out.println("\n  ],");
+  // labels for points
+  out.println("  \"legend\": {");
+  data = scale.legend(dots);
+  first = true;
+  long[] cumul = data[0];
+  long[] year = data[1];
+  long[] start = data[2];
+  for (int row = 0; row < rows; row++) {
+    if (first) first = false;
+    else out.print(",\n");
+    out.print("    \"");
+    out.print(cumul[row]);
+    out.print("\": {");
+    out.print("\"year\":");
+    out.print(year[row]);
+    out.print(", \"start\":");
+    out.print(start[row]);
+    out.print("}");
+  }
+  out.println("\n  },");
 }
 out.println("  \"time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\"");
 out.println("\n}");

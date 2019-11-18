@@ -17,10 +17,11 @@ var div = document.getElementById("chart");
 var dots = url.searchParams.get("dots");
 if (!dots) dots = "";
 var ticks;
+var legend;
 function load(q) {
   // download the json data, only if a query
   if (!q) return;
-  var jsonUrl = "chronojson?q="+q+"&dots="+dots;
+  var jsonUrl = "chronojson?q="+encodeURIComponent(q)+"&dots="+dots;
   fetch(jsonUrl).then(
     function(response) {
       return response.json();
@@ -28,6 +29,7 @@ function load(q) {
   ).then(
     function(json) {
       ticks = json.ticks;
+      legend = json.legend;
       draw(div, json.data, json.labels);
     }
   );
@@ -37,9 +39,42 @@ load(q, dots);
 var rollPeriod = localStorage.getItem('chronoRollPeriod');
 if (!rollPeriod) rollPeriod = 20;
 // function for the ticker
-var yearTicks = function(a, b, pixels, opts, dygraph, vals) {
+const yearTicks = function(a, b, pixels, opts, dygraph, vals) {
   return ticks;
 }
+const yearFormat = function(num) {
+  // console.log(num);
+  return legend[num].year;
+}
+const xClick = function(event, x, points) {
+  if (!legend[x]) return; // no legend ?
+
+  var href;
+  let base = document.getElementsByTagName('base')[0];
+  if(base && base.target) {
+    win = top.frames[base.target];
+  }
+  if(base && base.href) {
+    href = base.href;
+  } else {
+    href = "kwic";
+  }
+  href += "?q="+encodeURIComponent(q)+"&sort=year";
+  href += "&start=" + (1 + legend[x].start);
+  if(!win) win = self;
+  win.location = href;
+}
+
+const hiCirc = function(g, name, ctx, cx, cy, color, radius) {
+  ctx.beginPath();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#ea5b0c";
+  ctx.fillStyle = "white";
+  ctx.arc(cx, cy, radius, 0, 2 * Math.PI, false);
+  // ctx.fill();
+  ctx.stroke();
+}
+
 // draw the graph with all the configuration
 function draw(div, data, labels) {
   attrs = {
@@ -52,6 +87,7 @@ function draw(div, data, labels) {
     // xlabel: "Répartition des années en nombre de mots",
     showRoller: true,
     rollPeriod: rollPeriod,
+    clickCallback: xClick,
     drawCallback: function() {
       localStorage.setItem('chronoRollPeriod', this.rollPeriod());
     },
@@ -68,6 +104,8 @@ function draw(div, data, labels) {
     colors:['rgba(146,137,127, 0.7)', 'rgba(234, 91, 12, 0.5)', 'rgba(26, 26, 128, 0.5)', 'rgba(192, 128, 0, 0.5)', 'rgba(0, 128, 192, 0.5)'],
     strokeBorderWidth: 0.5,
     strokeWidth: 5,
+    highlightCircleSize: 8,
+    drawHighlightPointCallback : hiCirc,
     drawGapEdgePoints: true,
 
     // logscale: true,
@@ -76,6 +114,7 @@ function draw(div, data, labels) {
         independentTicks: true,
         drawGrid: true,
         ticker: yearTicks,
+        valueFormatter: yearFormat,
         // gridLineColor: "rgba( 128, 128, 128, 0.1)",
         // gridLineWidth: 1,
       },

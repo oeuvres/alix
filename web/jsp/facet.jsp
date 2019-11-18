@@ -15,10 +15,11 @@ FacetSort sort = (FacetSort)tools.getEnum("ord", FacetSort.alpha, Cookies.facetS
 FacetField field = FacetField.author;
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 BitSet bits = bits(alix, corpus, q);
+final boolean filtered = (bits !=null);
 // is there a query and scores to get ?
 TermList qTerms = alix.qTermList(TEXT, q);
-final boolean score =  (qTerms != null && qTerms.size() > 0);
-if(!score && sort == FacetSort.score) sort = FacetSort.freq;
+final boolean queried =  (qTerms != null && qTerms.size() > 0);
+if(!queried && sort == FacetSort.score) sort = FacetSort.freq;
 
 %>
 <!DOCTYPE html>
@@ -29,6 +30,7 @@ if(!score && sort == FacetSort.score) sort = FacetSort.freq;
     <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
     <script src="../static/js/common.js">//</script>
     <base target="page" href="snip"/>
+    <script type="text/javascript">console.log(location.search)</script>
   </head>
   <body class="facet">
     <form id="qform" target="_self">
@@ -44,17 +46,16 @@ if(!score && sort == FacetSort.score) sort = FacetSort.freq;
     
 Facet facet = alix.facet(field.name(), TEXT);
 TopTerms dic = facet.topTerms(bits, qTerms, null);
-
-
-
-if (score)  out.println("<h4><span class=\"occs\" title=\"Nombre d’occurrences\">occs</span>  "
-    +field.label+" <span class=\"docs\" title=\"Nombre de documents\">(chapitres)</span></h4>");
-else out.println("<h4>"+field.label+" <span class=\"docs\" title=\"Nombre de documents\">(chapitres)</span></h4>");
-
 //Hack to use facet as a navigator in results, cache results in the facet order
 TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, DocSort.author);
 int[] nos = facet.nos(topDocs);
 dic.setNos(nos);
+
+
+
+if (queried)  out.println("<h4><span class=\"occs\" title=\"Nombre d’occurrences\">occs</span>  "
+    +field.label+" <span class=\"docs\" title=\"Nombre de documents\">(chapitres)</span></h4>");
+else out.println("<h4>"+field.label+" <span class=\"docs\" title=\"Nombre de documents\">(chapitres)</span></h4>");
 
 
 switch(sort){
@@ -62,12 +63,14 @@ switch(sort){
     dic.sort();
     break;
   case freq:
-    if (score) dic.sort(dic.getOccs());
-    else dic.sort(dic.getDocs());
+    if (queried) dic.sortByOccs();
+    else if (filtered) dic.sortByHits();
+    else dic.sortByLengths();
     break;
   case score:
-    if (score) dic.sort(dic.getScores());
-    else dic.sort(dic.getDocs());
+    if (queried) dic.sortByScores();
+    else if (filtered) dic.sortByHits();
+    else dic.sortByLengths();
     break;
   default:
     dic.sort();
@@ -85,26 +88,29 @@ final int hrefLen = href.length();
 
 while (dic.hasNext()) {
   dic.next();
-  n = dic.n();
+  n = 0; // dic.n();
   docs = dic.docs();
-  if (score) {
+  if (filtered) {
     hits = dic.hits();
+    if (hits < 1) continue; // in alpha order, try next
+  }
+  if (queried) {
     occs = dic.occs();
     if (hits < 1) continue; // in alpha order, try next
   }
   href.setLength(hrefLen);
   href.append("&amp;start=" + (n+1)); // parenthesis for addition!
   href.append("&amp;hpp=");
-  if (score) href.append(hits);
+  if (filtered || queried) href.append(hits);
   else href.append(docs);
 
         
   out.print("<div class=\"term\">");
-  if (score) out.print("<span class=\"occs\">"+occs+"</span> ");
+  if (queried) out.print("<span class=\"occs\">"+occs+"</span> ");
   out.print("<a href=\""+href+"\">");
   out.print(dic.term());
   out.print("</a>");
-  if (score) out.print(" <span class=\"docs\">("+hits+" / "+docs+")</span>    ");
+  if (filtered || queried) out.print(" <span class=\"docs\">("+hits+" / "+docs+")</span>    ");
   else out.print(" <span class=\"docs\">("+docs+")</span>    ");
   out.println("</div>");
 }

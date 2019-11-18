@@ -55,10 +55,19 @@ if (self != top) {
     if (hpp && qform['hpp']) qform['hpp'].value = hpp;
 
     let panel = top.frames['panel'];
-    let panDoc = panel.document || panel.contentWindow.document || panel.contentDocument;
-    let panBase = panDoc.getElementsByTagName('base')[0];
+    let panelDoc = panel.document || panel.contentWindow.document || panel.contentDocument;
+    let panelBase = panelDoc.getElementsByTagName('base')[0];
+
+    let chrono = top.frames['chrono'];
+    let chronoDoc = chrono.document || chrono.contentWindow.document || chrono.contentDocument;
+    let chronoBase = chronoDoc.getElementsByTagName('base')[0];
+
     var cursorViews = {"snip":1, "kwic":1, "doc": 1};
-    if(selfName in cursorViews) panBase.href = selfName;
+    if(selfName in cursorViews) {
+      if (panelBase) panelBase.href = selfName;
+      if (chronoBase) chronoBase.href = selfName;
+    }
+
     switch(selfName) {
       case "facet":
       case "chrono":
@@ -81,6 +90,7 @@ if (self != top) {
         if(selfName == "kwic") {
           let expression = pars.get("expression");
           if (expression) parTop("expression", "true");
+          else parTop("expression", null);
         }
         break;
     }

@@ -3,9 +3,9 @@ var url = new URL(window.location.href);
 
 let pars = [];
 
-const SORTER = "sorter";
-var sorter = url.searchParams.get(SORTER);
-if (sorter) pars.push(SORTER+"="+sorter);
+const SORT = "sort";
+var sort = url.searchParams.get(SORT);
+if (sort) pars.push(SORT+"="+sort);
 
 const CAT = "cat";
 var cat = url.searchParams.get(CAT);
@@ -17,7 +17,7 @@ if (hpp) pars.push(HPP+"="+hpp);
 
 const Q = "q";
 var q = url.searchParams.get(Q);
-if (q) pars.push(Q+"="+q);
+if (q) pars.push(Q+"="+encodeURIComponent(q));
 
 let query = "";
 if (pars.length > 0) query = "?"+pars.join('&');
