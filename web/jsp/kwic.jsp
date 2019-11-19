@@ -12,7 +12,7 @@ int hpp = tools.getInt("hpp", hppDefault);
 if (hpp > hppMax || hpp < 1) hpp = hppDefault;
 final String q = tools.getString("q", null);
 DocSort sort = (DocSort)tools.getEnum("sort", DocSort.score, Cookies.docSort);
-final boolean expression = tools.getBoolean("expression", false, Cookies.expression);
+boolean expression = tools.getBoolean("expression", false);
 
 int start = tools.getInt("start", 1);
 if (start < 1) start = 1;
@@ -95,6 +95,9 @@ if (topDocs != null) {
   href.append("doc?");
   if (q != null) href.append("q=").append(Jsp.escape(q));
   final int hrefLen = href.length();
+
+  // be careful, if one term, no expression possible, this will loop till the end of corpus
+  if (terms == null || terms.length < 2) expression = false;
 
   while (i < max) {
     final int docId = scoreDocs[i].doc;

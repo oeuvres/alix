@@ -79,6 +79,7 @@ public class TestDoc
     ByteRunAutomaton include = new ByteRunAutomaton(automaton);
 
     String[] lines = doc.kwic("text", include, "", 200, 50, 50, 1, true);
+    if (lines == null) return;
     for (String l:lines) { // null is OK if noting to group
       System.out.println(l);
     }

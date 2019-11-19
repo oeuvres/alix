@@ -98,14 +98,12 @@ public class Rail
   }
   
   /**
-   * Compact the token Array (destructve)
+   * Group the token Array to get expressions
    */
-  public Token[] group(final int gap, final boolean expression)
+  public Token[] group(final int gap)
   {
     if (this.toks == null) return null;
-    if (this.toks.length > 1 ); // maybe something to group
-    else if (expression) return null; // multi words required but there is only one
-    else return this.toks; // return one word
+    if (this.toks.length < 2 ) return null; // multi words required but there is only one
     Token[] toks = this.toks;
     ArrayList<Token> offsets = new ArrayList<Token>();
     Token last = toks[0];
@@ -117,10 +115,10 @@ public class Rail
       if (last.pos == tok.pos) continue;
       // distant tokens
       if (tok.pos - last.posLast > gap) {
-        // we are not filtering expressions, always send last token
-        if (!expression) offsets.add(last);
+        // if we are not filtering expressions, we can record last token
+        // if (!expression) offsets.add(last);
         // for expression, send only multi word tokens
-        else if (last.phrase) offsets.add(last);
+        if (last.phrase) offsets.add(last);
         // remember last and continue
         last = tok;
         continue;

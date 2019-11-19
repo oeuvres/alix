@@ -458,9 +458,11 @@ public class Doc
     Terms tvek = getTermVector(field);
     String xml = get(field);
     Rail rail = new Rail(tvek, include, null);
+    Token[] toks = rail.toks;
     // group tokens for expression ?
+    System.out.println(include.getSize());
     // do better testing here
-    final Token[] toks = rail.group(gap, expressions);
+    if(expressions) toks = rail.group(gap);
     // no token or expression found
     if (toks == null || toks.length < 1) return null;
     Chain line = new Chain();
