@@ -52,6 +52,8 @@ if (self != top) {
     let start = pars.get("start");
     let hpp = pars.get("hpp");
     let qform = top.document.forms[0];
+    let topDoc = top.document || top.contentWindow.document || top.contentDocument;
+    let comparer = topDoc.getElementById("comparer");
 
     if (start && qform['start']) qform['start'].value = start;
     if (hpp && qform['hpp']) qform['hpp'].value = hpp;
@@ -69,6 +71,7 @@ if (self != top) {
       if (panelBase) panelBase.href = selfName;
       if (chronoBase) chronoBase.href = selfName;
     }
+    if (comparer && selfName != "doc") comparer.style.display = "none";
 
     if(selfName != "cloud" && selfName != "freqs") parTop("cat", null);
     switch(selfName) {
@@ -89,6 +92,7 @@ if (self != top) {
           parTop("id", id);
           if (qform['leftid']) qform['leftid'].value = id;
         }
+        if (comparer) comparer.style.display = "inline";
         break;
       default:
         parTop("view", selfName);

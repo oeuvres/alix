@@ -115,7 +115,7 @@ corpus = (Corpus)session.getAttribute(corpusKey);
           <a href="snip" target="page">Extraits</a>
           <a href="kwic" target="page">Concordance</a>
           <a href="doc" target="page">Document</a>
-          <button type="submit" onclick="this.form.target='_self'; this.form.action = 'comparer'; this.form.submit()">Comparer</button>
+          <button type="submit" id="comparer" style="display: none" onclick="this.form.target='_self'; this.form.action = 'comparer'; this.form.submit()">Comparer</button>
         </div>
       </form>
     </header>

@@ -182,6 +182,7 @@ a.reset,
 article.res header a:hover, /* title in short result */
 article.res div.line a, /* pivot word in kwic */
 #chapters mark, /* hilite in chapter research */
+a.delete,
 body.facet .active,
 h4 .occs,
 .term .occs {
@@ -509,6 +510,7 @@ iframe {
 #tabs button,
 #tabs a {
   color: #000;
+  background: transparent;
   font-weight: bold;
   font-size: 11px;
   line-height: 100%;
@@ -1076,9 +1078,6 @@ body.document .goright {
   right: 1rem;
 }
 
-a.delete {
-  color: red;
-}
 
 a.delete:hover,
 .goright:hover {
