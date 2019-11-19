@@ -12,7 +12,7 @@ int hpp = tools.getInt("hpp", hppDefault);
 if (hpp > hppMax || hpp < 1) hpp = hppDefault;
 final String q = tools.getString("q", null);
 DocSort sort = (DocSort)tools.getEnum("sort", DocSort.score, Cookies.docSort);
-final boolean expression = tools.getBoolean("expression", false);
+final boolean expression = tools.getBoolean("expression", false, Cookies.expression);
 
 int start = tools.getInt("start", 1);
 if (start < 1) start = 1;
@@ -58,10 +58,12 @@ if (start > 1 && q != null) {
           <%= options(sort) %>
         </select>
                <%
-if (terms.length > 1 ) {
-  out.println("<label title=\"Sélectionner les occurrences où plusieurs termes de la requête sont proches.\">");
-  out.println("<input type=\"checkbox\" name=\"expression\""+ ((expression)?" checked=\"checked\"":"") +" onclick=\"this.form.submit()\"/>");
-  out.println("Locutions</label>");
+if (terms.length < 2 );
+else if (expression) {
+  out.println("<button title=\"Cliquer pour dégrouper les locutions\" type=\"submit\" name=\"expression\" value=\"false\">✔ Locutions</button>");
+}
+else {
+  out.println("<button title=\"Cliquer pour grouper les locutions\" type=\"submit\" name=\"expression\" value=\"true\">☐ Locutions</button>");
 }
 if (topDocs != null) {
   long max = topDocs.totalHits.value;
@@ -104,6 +106,8 @@ if (topDocs != null) {
     if (doc.doc().get(TEXT) == null) continue;
     href.setLength(hrefLen); // reset href
     href.append("&amp;id=").append(doc.id()).append("&amp;start=").append(i);
+    
+    // show simple metadata
     if (terms == null || terms.length == 0) {
       out.println("<article class=\"res\">");
       out.println("<header>");
@@ -120,7 +124,7 @@ if (topDocs != null) {
     // doc.kwic(field, include, 50, 50, 100);
     out.println("<article class=\"res\">");
     out.println("<header>");
-    out.println("<small>"+(i)+".</small> ");
+    out.println("<small>"+(i)+"</small> ");
 
     out.println("<a href=\""+href+"\">"+doc.get("bibl")+"</a></header>");
     for (String l: lines) {
@@ -133,5 +137,7 @@ if (topDocs != null) {
 }
     %>
     </main>
+    <a href="#" id="gotop">▲</a>
+    <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
   </body>
 </html>

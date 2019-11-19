@@ -82,23 +82,20 @@ catch (IllegalArgumentException e) {} // unknown id
 
 <%
   } else { // doc found
-%>
-
-<%
   String bibl = doc.doc().get("bibl");
 %>
+
     <header class="biblbar" title="<%=ML.detag(bibl)%>">
-        <%
-          // link to go back to results
-            String url = "meta.jsp";
-            if (q != null) url += "?q=" + Jsp.escape(q);
-            else if (refId != null) url += "?refid=" + refId;
-            else if (refDocId > -1) url += "?refdocid=" + refDocId;
-            if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromScore;
-        %>
+      <%
+      // link to go back to results
+      String url = "meta.jsp";
+      if (q != null) url += "?q=" + Jsp.escape(q);
+      else if (refId != null) url += "?refid=" + refId;
+      else if (refDocId > -1) url += "?refdocid=" + refDocId;
+      if (fromDoc >= 0) url += "&amp;fromdoc=" + fromDoc + "&amp;fromscore=" + fromScore;
+      %>
       <a class="back" href="<%=url %>" title="Retour aux résultats">⮐</a>
       <a href="#" class="bibl"><%= bibl %></a>
-      <a class="up" target="_top" href=".?id=<%= id %>" title="Retour au bureau">▲</a>
     </header>
     <%
 
@@ -153,6 +150,7 @@ catch (IllegalArgumentException e) {} // unknown id
         <%= doc.paint(TEXT) %>
       </article>
     </main>
+    <a href="#" id="gotop">▲</a>
     <nav id="rulhi">
     </nav>
 <% } %>

@@ -26,10 +26,13 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 import alix.lucene.Alix;
 import alix.lucene.analysis.FrAnalyzer;
 import alix.lucene.analysis.MetaAnalyzer;
+import alix.lucene.util.WordsAutomatonBuilder;
 import alix.util.Dir;
 
 public class TestDoc
@@ -68,6 +71,19 @@ public class TestDoc
     return alix;
   }
   
+  public static void kwic() throws IOException, NoSuchFieldException
+  {
+    final Alix alix = Alix.instance("web/WEB-INF/obvil/critique/", new FrAnalyzer());
+    Doc doc = new Doc(alix, 2717);
+    Automaton automaton = WordsAutomatonBuilder.buildFronStrings(new String[] {"esprit", "philosophique"});
+    ByteRunAutomaton include = new ByteRunAutomaton(automaton);
+
+    String[] lines = doc.kwic("text", include, "", 200, 50, 50, 1, true);
+    for (String l:lines) { // null is OK if noting to group
+      System.out.println(l);
+    }
+  }
+  
   public static void contrast() throws IOException, NoSuchFieldException
   {
     Alix alix = index();
@@ -78,6 +94,7 @@ public class TestDoc
   }
 
   public static void main(String args[]) throws Exception
-  {    
+  {
+    kwic();
   }
 }

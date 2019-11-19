@@ -47,9 +47,9 @@ function cloud(div, list) {
     // origin : [0, 0],
     // drawOutOfBound: false,
     // minSize : fontmin,
-    minRotation: -Math.PI / 4,
-    maxRotation: Math.PI / 4,
-    rotationSteps: 5,
+    minRotation: -Math.PI / 3.5,
+    maxRotation: Math.PI / 3.5,
+    rotationSteps: 6,
     rotateRatio: 1,
     shuffle: false,
     shape: 'square',
@@ -58,13 +58,15 @@ function cloud(div, list) {
     color: null,
     fontWeight: function(word, weight, fontSize) {
       var ratio = (fontSize - fontMin) / (fontMax - fontMin);
-      var bold = 300 + Math.round(ratio * 12) * 50;
+      var bold = 300 + Math.round(ratio * 16) * 50;
       return "" + bold;
     },
     backgroundColor: null,
     opacity : function(word, weight, fontSize) {
-      var ratio = (fontSize - fontMin) / (fontMax - fontMin);
-      return 1 - ratio * 0.8;
+      var ratio = 1 - Math.pow( 1 - ((fontSize - fontMin) / (fontMax - fontMin)), 1.4);
+      const dec = 100;
+      let opacity = Math.round(dec * (1 - ratio * 0.9)) / dec;
+      return opacity;
     },
   });
 }

@@ -94,17 +94,10 @@ if (terms.size() > 0) {
   out.print("  \"labels\": [\"\"");
   boolean first = true;
   for(Term t: terms) {
-    if (t == null) {
-      out.print("\"");
-      first = true;
-      continue;
-    }
-    if (first) {
-      out.print(", \"");
-      first = false;
-    }
-    else out.print(", ");
-    out.print(t.text());
+    if (t == null) continue;
+    out.print(", \"");
+    out.print(t.text().replace("\"", ""));
+    out.print("\"");
   }
   out.println("],");
   // get dots by curve

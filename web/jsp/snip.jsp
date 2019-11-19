@@ -139,5 +139,6 @@ else { // list title of documents
 }
     %>
     </main>
+    <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
   </body>
 </html>

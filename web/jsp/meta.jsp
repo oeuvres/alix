@@ -196,6 +196,8 @@ if (corpus != null) {
         <%= results(tools, corpus, refDoc, searcher) %>
       </nav>
     </main>
+    <a href="#" id="gotop">▲</a>
+    <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
     <script src="../static/js/list.js">//</script>
   </body>
 </html>

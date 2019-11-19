@@ -101,12 +101,13 @@ function draw(div, data, labels) {
         fillGraph: true,
       },
     },
-    colors:['rgba(146,137,127, 0.7)', 'rgba(234, 91, 12, 0.5)', 'rgba(26, 26, 128, 0.5)', 'rgba(192, 128, 0, 0.5)', 'rgba(0, 128, 192, 0.5)'],
+    colors:['rgba(26, 26, 128, 0.5)', 'rgba(192, 128, 0, 0.5)', 'rgba(0, 128, 192, 0.5)', 'rgba(146,137,127, 0.7)'],
     strokeBorderWidth: 0.5,
     strokeWidth: 5,
     highlightCircleSize: 8,
     drawHighlightPointCallback : hiCirc,
     drawGapEdgePoints: true,
+    logscale: true,
 
     // logscale: true,
     axes : {

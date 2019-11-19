@@ -30,8 +30,9 @@ function url4name(link) {
  * Inform parent window (desk) of view
  */
 if (self != top) {
-  var topName = url4name(top.location);
   var selfName = url4name(window.location);
+  if (top.hiTab) top.hiTab(selfName);
+  var topName = url4name(top.location);
   // the compare view
   if (topName == "comparer") {
     // to style left or right frame
@@ -44,6 +45,7 @@ if (self != top) {
   }
   // probably the desk
   else {
+
     let url = location;
     let pars = new URLSearchParams(url.search);
     // update start index in general form
@@ -68,7 +70,13 @@ if (self != top) {
       if (chronoBase) chronoBase.href = selfName;
     }
 
+    if(selfName != "cloud" && selfName != "freqs") parTop("cat", null);
     switch(selfName) {
+      case "freqs":
+      case "cloud":
+        let cat = pars.get("cat");
+        if (cat) parTop("cat", cat);
+        break;
       case "facet":
       case "chrono":
         break;

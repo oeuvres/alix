@@ -265,10 +265,10 @@ else {
         <%= lines(dic, hpp, mime, cat, hasScore, q) %>
       </tbody>
     </table>
+    <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
     <script src="../static/vendor/Sortable.js">//</script>
   </body>
   <!-- <%= ((System.nanoTime() - time) / 1000000.0) %> ms  -->
-
 </html>
 <%
 }

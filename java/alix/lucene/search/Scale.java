@@ -275,12 +275,13 @@ public class Scale
     // ticks should be in doc order
     IndexReader reader = alix.reader();
     // terms maybe organized in groups
-    int groups = terms.groups();
+    int cols = terms.sizeNotNull();
+    if (cols > 10) cols = 10;
 
     // if there are only a few books, hundred of dots doesn't make sense
     // def = Math.min(def, docs);
     // table of data to populate
-    long[][] data = new long[groups + 1][dots];
+    long[][] data = new long[cols + 1][dots];
     // width of a step between two dots, 
     long step = (long)((double)length / dots);
     // populate the first column, index in the axis
@@ -298,16 +299,15 @@ public class Scale
     for (LeafReaderContext ctx : reader.leaves()) {
       LeafReader leaf = ctx.reader();
       int docBase = ctx.docBase;
-      int col = 1; // start to populate on second column
+      int col = 0; 
       // multi leaves not yet really tested
       // assert byDocid[ordBase - 1].docId < docBase <= byDocid[ordBase]
       int ordMax = ordBase; // keep memory of biggest ord found for each terms, to set ordBase
       // Do as a termQuery, loop on PostingsEnum.FREQS for each term
       for(Term term: terms) {
-        if (term == null) { // null terms are group separators
-          col++;
-          continue;
-        }
+        if (term == null) continue; // null terms are group separators
+        if (col >= cols) break;
+        col++; // start col at 1
         // for each term, reset the pointer in the axis
         int ord = ordBase;
         PostingsEnum postings = leaf.postings(term);

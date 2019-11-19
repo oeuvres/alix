@@ -102,7 +102,10 @@ public class Rail
    */
   public Token[] group(final int gap, final boolean expression)
   {
-    if (this.toks == null || this.toks.length < 2) return this.toks; 
+    if (this.toks == null) return null;
+    if (this.toks.length > 1 ); // maybe something to group
+    else if (expression) return null; // multi words required but there is only one
+    else return this.toks; // return one word
     Token[] toks = this.toks;
     ArrayList<Token> offsets = new ArrayList<Token>();
     Token last = toks[0];

@@ -30,7 +30,6 @@ if(!queried && sort == FacetSort.score) sort = FacetSort.freq;
     <link rel="stylesheet" type="text/css" href="../static/obvil.css"/>
     <script src="../static/js/common.js">//</script>
     <base target="page" href="snip"/>
-    <script type="text/javascript">console.log(location.search)</script>
   </head>
   <body class="facet">
     <form id="qform" target="_self">
@@ -88,7 +87,7 @@ final int hrefLen = href.length();
 
 while (dic.hasNext()) {
   dic.next();
-  n = 0; // dic.n();
+  n = dic.n();
   docs = dic.docs();
   if (filtered) {
     hits = dic.hits();
@@ -116,7 +115,7 @@ while (dic.hasNext()) {
 }
     %>
     </main>
-    <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
     <script src="../static/js/facet.js">//</script>
+    <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
   </body>
 </html>

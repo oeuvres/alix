@@ -27,15 +27,11 @@ if (id != null) {
 
 if (pars.length() > 0) pars = "?" + pars;
 
-if (checks != null || json != null) {
-  view = "corpus";
-  url = view;
+if (view != null) { // client knows what he wants, give it
+  url = view + pars;
 }
 else if (id != null) {
   view = "doc";
-  url = view + pars;
-}
-else if ("corpus".equals(view) || "snip".equals(view)  || "kwic".equals(view) || "freqs".equals(view) || "cloud".equals(view) ) {
   url = view + pars;
 }
 else if (q != null) {
@@ -108,17 +104,16 @@ corpus = (Corpus)session.getAttribute(corpusKey);
         <input type="hidden" name="start" value="<%= ((start > 0)?""+start:"") %>"/>
         <input type="hidden" name="hpp"/>
         <input id="q" name="q" autocomplete="off" autofocus="true" value="<%=Jsp.escape(q)%>"
-          onfocus="this.setSelectionRange(this.value.length,this.value.length);"
           oninput="this.form['start'].value=''; this.form['hpp'].value=''"
         />
         <button type="submit" name="send" tabindex="-1" class="magnify">⚲</button>
         <div id="tabs">
           <a href="corpus" target="page">Corpus</a>
+          <a href="cloud" target="page">Nuage</a>
+          <a href="freqs" target="page">Fréquences</a>
           <a href="snip" target="page">Extraits</a>
           <a href="kwic" target="page">Concordance</a>
           <a href="doc" target="page">Document</a>
-          <a href="freqs" target="page">Fréquences</a>
-          <a href="cloud" target="page">Nuage</a>
           <a href="comparer">Comparer</a>
         </div>
       </form>

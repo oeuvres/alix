@@ -27,7 +27,8 @@ body.facet a span {
   font-family: "Arial Narrow", sans-serif;
 }
 
-#tabs a {
+#tabs a,
+#tabs button {
   font-family: Arial, sans-serif;
 }
 
@@ -59,7 +60,6 @@ html {
   color: #92897F;
 }
 
-button,
 #chapters a:hover,
 .gutter {
   background: #E1DDCF;
@@ -93,6 +93,7 @@ select:hover,
 select:focus,
 details,
 #tabs a,
+#tabs button,
 .marginnote,
 .gutter.but {
   border-color: #c3b7aa;
@@ -108,17 +109,13 @@ header {
   color: #FFFFFF;
 }
 
-body.view_corpus #tabs .corpus,
-body.view_snip #tabs .snip,
-body.view_kwic #tabs .kwic,
-body.view_doc #tabs .doc,
-body.view_freqs #tabs .freqs,
-body.view_cloud #tabs .cloud,
+#tabs button.here,
 #tabs a.here {
   background: rgba(120, 105, 101, 0.8);
   color: #FFFFFF;
 }
 
+#tabs button:hover,
 #tabs a:hover {
   background: hsl(31, 17%, 80%);
 }
@@ -173,6 +170,7 @@ body.facet,
 }
 
 a:hover,
+#gotop:hover,
 div.term a:hover,
 #q,
 .mark,
@@ -183,6 +181,7 @@ a.reset,
 .sortable td.title a:hover,
 article.res header a:hover, /* title in short result */
 article.res div.line a, /* pivot word in kwic */
+#chapters mark, /* hilite in chapter research */
 body.facet .active,
 h4 .occs,
 .term .occs {
@@ -418,6 +417,27 @@ td.num {
   text-align: right;
 }
 
+#gotop,
+.goright {
+  font-size: 3rem;
+  line-height: 3rem;
+  padding: 0 0.3rem 0 0.5rem;
+  text-decoration: none;
+  border-bottom: none;
+  opacity: 0.5;
+  z-index: 10;
+}
+
+#gotop {
+  color: #888;
+  position: fixed;
+  bottom: 0.5rem;
+  right: 0rem;
+  z-index: 10;
+}
+
+
+
 /**
  * Welcome desk
  */
@@ -486,6 +506,7 @@ iframe {
   margin-top: 3px;
 }
 
+#tabs button,
 #tabs a {
   color: #000;
   font-weight: bold;
@@ -496,6 +517,7 @@ iframe {
   border-style: solid;
   border-width: 1px;
   margin-right: 2px;
+  cursor: pointer;
 }
 
 #tabs a:hover {
@@ -746,6 +768,12 @@ body.document #qform {
   text-align: center;
 }
 
+body.document #q {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 #n {
   text-align: center;
   width: 4rem;
@@ -818,22 +846,23 @@ table.prevnext a:hover {
 }
 
 body.document header.bibl a.but,
-a.reset,
-#qform button {
+button.magnify,
+a.reset {
   font-size: 1.5rem;
   border-radius: unset;
   border: none !important;
   background: transparent;
 }
 
+button.magnify:hover,
+a.reset:hover {
+  color: #000;
+}
+
 #qform #corpus button {
   color: inherit;
   font-size: inherit;
   font-weight: bold;
-}
-
-#qform button:hover {
-  background-color: #FFFFFF;
 }
 
 input.start {
@@ -933,6 +962,23 @@ body.right .biflex {
 /**
  * comparison
  */
+body.comparer iframe {
+  border: none;
+  margin: 0;
+  padding: 0;
+  width: 50%;
+  top: 0px;
+  bottom: 0px;
+  height: 100%;
+  position: absolute;
+}
+body.comparer #left {
+}
+
+body.comparer #right {
+  right: 0 ;
+}
+
 body.left {
   background: top 2rem left 10px / 195% auto fixed no-repeat url("img/obvil.svg");
   background: top 2rem left 10px / 195% auto fixed no-repeat url("img/obvil.svg"),
@@ -1023,14 +1069,6 @@ a.delete {
   font-size: 2rem;
   line-height: 0.7rem;
   vertical-align: bottom;
-}
-
-.goright {
-  font-size: 3rem;
-  line-height: 3rem;
-  padding: 0 0.3rem 0 0.5rem;
-  text-decoration: none;
-  opacity: 0.5;
 }
 
 body.document .goright {
@@ -1133,7 +1171,6 @@ article.res header {
   margin-bottom: 0.5rem;
   background-color: #FFF;
   line-height: 110%;
-  border-bottom: 1px solid rgb(120, 105, 101);
   padding: 1px 0.5rem;
 }
 
@@ -1151,10 +1188,9 @@ article.res header a:hover {
   text-decoration: none;
 }
 
+#chapters mark,
 div.line a {
   font-weight: bold;
-  padding: 0 1ex;
-  background: #FFFFFF;
 }
 
 article.res div.line a:hover {
@@ -1193,7 +1229,7 @@ article.res mark {
   padding: 0 0.5rem;
 }
 
-#chapters>a:hover {
+#chapters > a:hover {
   text-decoration: none;
 }
 

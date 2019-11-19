@@ -8,6 +8,10 @@
   >
   <display-name>Obvil</display-name>
   <description>Corpus explorer</description>
+  <welcome-file-list>
+   <welcome-file>index.html</welcome-file>
+   <welcome-file>index.jsp</welcome-file>
+  </welcome-file-list>
   <jsp-config>
     <taglib>
       <taglib-uri>/tags/obvil</taglib-uri>

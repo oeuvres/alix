@@ -88,8 +88,13 @@ public class TokenLemCloud extends TokenFilter
     }
     // filter some names
     if (Tag.isName(tag)) {
-      // if (termAtt.length() < 3) return false;
-      // filter first names ?
+      if (termAtt.length() < 3) return false;
+      // filter first names 
+      if (tag == Tag.NAMEpersf || tag == Tag.NAMEpersm) return false;
+      // M., A.
+      if (termAtt.charAt(termAtt.length() - 1) == '.') return false;
+      // J.-J
+      if (termAtt.charAt(termAtt.length() - 2) == '-') return false;
       return true;
     }
     return true;

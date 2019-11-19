@@ -6,47 +6,25 @@
 <%!
 %>
 <%
-  /**
- * display a doc from the index.
- * Different case
- *  — direct read of a docid
- *  — find a doc by id field
- *  — query with an index order
- */
 
 // params for the page
 
 int docId = tools.getInt("docid", -1); // get doc by lucene internal docId or persistant String id
 String id = tools.getString("id", null);
 String q = tools.getString("q", null); // if no doc, get params to navigate in a results series
-
 DocSort sort = (DocSort)tools.getEnum("sort", DocSort.score, Cookies.docSort);
-
 int start = tools.getInt("start", 1);
 
 // global variables
-Corpus corpus = (Corpus)session.getAttribute(corpusKey);
 Doc doc = null;
-TopDocs topDocs = null;
-
-// try to populate globals with params
-
-// if a query, or a sort specification, provide navigation in documents
-if (q != null || sort != DocSort.score) {
-  final long now = System.nanoTime();
-  topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
-  ScoreDoc[] hits = topDocs.scoreDocs;
-  // ? a no result reponse caches ? Quite idiot, but that's life
-  if (hits.length == 0) {
-    topDocs = null;
-    start = 0;
-  }
-  else {
-    if (start < 1 || (start - 1) >= hits.length) start = 1;
-    docId = hits[start - 1].doc;
-  }
+Corpus corpus = (Corpus)session.getAttribute(corpusKey);
+TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
+ScoreDoc[] hits = topDocs.scoreDocs;
+if (hits.length == 0) {
+  topDocs = null;
+  start = 0;
 }
-
+if (start < 1 || start >= hits.length) start = 1;
 
 try { // load full document
   if (id != null) doc = new Doc(alix, id);
@@ -58,6 +36,16 @@ try { // load full document
 catch (IllegalArgumentException e) { // doc not found
   id = null;
 }
+
+
+// if a query, or a sort specification, provide navigation in documents
+if (doc == null && start > 0) {
+  docId = hits[start - 1].doc;
+  doc = new Doc(alix, docId);
+  id = doc.id();
+}
+
+
 
 
 // bibl ref with no tags
@@ -99,13 +87,13 @@ if (doc != null) { // document id is verified, give it to javascript
         <input type="submit"
        style="position: absolute; left: -9999px; width: 1px; height: 1px;"
        tabindex="-1" />
+        <input id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" type="hidden"/>
+        <script>if(self == top) { input = document.getElementById("q"); if (input && input.type == "hidden") input.type = "text";}</script>
         <%
         if (topDocs != null && start > 1) {
           out.println("<button name=\"prev\" type=\"submit\" onclick=\"this.form['start'].value="+(start - 1)+"\">◀</button>");
         }
         %>
-        <input id="q" name="q" value="<%=Jsp.escape(q)%>" autocomplete="off" type="hidden"/>
-        <script>if(self == top) { input = document.getElementById("q"); if (input && input.type == "hidden") input.type = "text";}</script>
         <select name="sort" onchange="this.form['start'].value=''; this.form.submit()" title="Ordre">
             <option/>
             <%= options(sort) %>
@@ -137,6 +125,7 @@ if (doc != null) { // document id is verified, give it to javascript
     }
     %>
     </main>
+    <a href="#" id="gotop">▲</a>
     <script src="../static/js/doc.js">//</script>
     <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
   </body>

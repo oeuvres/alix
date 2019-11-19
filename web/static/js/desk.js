@@ -23,10 +23,11 @@ if (q) {
 */
 
 
-var tabs = document.getElementById('tabs').getElementsByTagName('a');
+const tabs = document.getElementById('tabs').getElementsByTagName('a');
 for (var i = 0; i < tabs.length; i++) {
   var name = url4name(tabs[i]);
   tabs[i].id = name;
+  tabs[i].name = name;
   tabs[i].className = name;
   // do not add an event to a tab that will not go in frame
   if (!tabs[i].target) continue;
@@ -34,6 +35,16 @@ for (var i = 0; i < tabs.length; i++) {
     form.action = this.href;
     form.submit();
     return false;
+  }
+}
+
+function hiTab (name) {
+  if (name == "facet" || name == "chrono") return false;
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].className = tabs[i].className.replace(/ *here */, "");
+    if (tabs[i].name == name) {
+      tabs[i].className += " here";
+    }
   }
 }
 
