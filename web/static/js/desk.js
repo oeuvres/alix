@@ -11,17 +11,6 @@ var splitV = Split(['#body', '#footer'], {
 
 
 var form = document.getElementById("qform");
-/*
-// fill form
-var url = new URL(window.location.href);
-var q = url.searchParams.get("q");
-form['q'].value = q;
-if (q) {
-  form.submit();
-  dispatch(form);
-}
-*/
-
 
 const tabs = document.getElementById('tabs').getElementsByTagName('a');
 for (var i = 0; i < tabs.length; i++) {
@@ -52,6 +41,7 @@ var chrono = document.getElementById("chrono");
 var panel = document.getElementById("panel");
 function dispatch(form)
 {
+  console.log("dispatch");
   var q = form['q'].value;
   parTop("q", q); // update URL
   // get frame as a window object

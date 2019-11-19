@@ -87,8 +87,7 @@ if (self != top) {
         if (window.docId) {
           let id = window.docId;
           parTop("id", id);
-          var butComp = top.document.querySelector("#tabs .comparer");
-          if (butComp) butComp.href = butComp.pathname + "?leftid=" + id;
+          if (qform['leftid']) qform['leftid'].value = id;
         }
         break;
       default:

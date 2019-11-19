@@ -103,6 +103,7 @@ corpus = (Corpus)session.getAttribute(corpusKey);
         <a href="." class="reset">⟲</a>
         <input type="hidden" name="start" value="<%= ((start > 0)?""+start:"") %>"/>
         <input type="hidden" name="hpp"/>
+        <input type="hidden" name="leftid"/>
         <input id="q" name="q" autocomplete="off" autofocus="true" value="<%=Jsp.escape(q)%>"
           oninput="this.form['start'].value=''; this.form['hpp'].value=''"
         />
@@ -114,7 +115,7 @@ corpus = (Corpus)session.getAttribute(corpusKey);
           <a href="snip" target="page">Extraits</a>
           <a href="kwic" target="page">Concordance</a>
           <a href="doc" target="page">Document</a>
-          <a href="comparer">Comparer</a>
+          <button type="submit" onclick="this.form.target='_self'; this.form.action = 'comparer'; this.form.submit()">Comparer</button>
         </div>
       </form>
     </header>
