@@ -95,7 +95,6 @@ corpus = (Corpus)session.getAttribute(corpusKey);
    if (corpus != null) {
      String name = corpus.name();
      out.println("<mark><a title=\"Déselectionner ce corpus\" href=\"?corpus=new&amp;q="+Jsp.escUrl(q)+"\">🗙</a>  "+name+"</mark>");
-
    }
  %></span>
       <a class="logo" href="." title="Annuler les recherches en cours"><img alt="Obvil app" src="../static/img/obvil_50.png"/></a>

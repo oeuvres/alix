@@ -117,6 +117,7 @@ public static Query getQuery(Alix alix, String q, Corpus corpus) throws IOExcept
 public BitSet bits(Alix alix, Corpus corpus, String q) throws IOException
 {
   Query query = getQuery(alix, q, corpus);
+  
   if (query == null) {
     if (corpus == null) return null;
     return corpus.bits();
@@ -129,7 +130,9 @@ public BitSet bits(Alix alix, Corpus corpus, String q) throws IOException
 
 /**
  * Get a cached set of results.
- * Ensure to always give something
+ * Ensure to always give something.
+ * Seems quite fast (2ms), no cache needed.
+ * Cache bug if corpus is changed under same name.
  */
 public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, DocSort sorter) throws IOException
 {
@@ -148,9 +151,9 @@ public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, 
     key += " <"+similarity+">";
   }
   */
-  TopDocs topDocs;
+  TopDocs topDocs = null;
   
-  topDocs = (TopDocs)page.getSession().getAttribute(key);
+  // topDocs = (TopDocs)page.getSession().getAttribute(key);
   if (topDocs != null) return topDocs;
 
   IndexSearcher searcher = alix.searcher();
@@ -179,7 +182,7 @@ public TopDocs getTopDocs(PageContext page, Alix alix, Corpus corpus, String q, 
   */
   searcher.search(query, collector);
   topDocs = collector.topDocs();
-  page.getSession().setAttribute(key, topDocs);
+  // page.getSession().setAttribute(key, topDocs);
   return topDocs;
 }
 

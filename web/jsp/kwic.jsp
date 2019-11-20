@@ -18,7 +18,11 @@ int start = tools.getInt("start", 1);
 if (start < 1) start = 1;
 // global variables
 Corpus corpus = (Corpus)session.getAttribute(corpusKey);
+long nanos = System.nanoTime();
 TopDocs topDocs = getTopDocs(pageContext, alix, corpus, q, sort);
+out.println("<!-- get topDocs "+(System.nanoTime() - nanos) / 1000000.0 + "ms\" -->");
+
+
 final int left = 70;
 final int right = 50;
 // terms of the query
