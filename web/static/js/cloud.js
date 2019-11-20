@@ -11,9 +11,10 @@ const CAT = "cat";
 var cat = url.searchParams.get(CAT);
 if (cat) pars.push(CAT+"="+cat);
 
-const HPP = "hpp";
-var hpp = url.searchParams.get(HPP);
-if (hpp) pars.push(HPP+"="+hpp);
+const COUNT = "count";
+// cout maybe set from server
+if(!count) count = url.searchParams.get(COUNT);
+if (count) pars.push(COUNT+"="+count);
 
 const Q = "q";
 var q = url.searchParams.get(Q);
@@ -63,7 +64,8 @@ function cloud(div, list) {
     },
     backgroundColor: null,
     opacity : function(word, weight, fontSize) {
-      var ratio = 1 - Math.pow( 1 - ((fontSize - fontMin) / (fontMax - fontMin)), 1.4);
+      var ratio = (fontSize - fontMin) / (fontMax - fontMin);
+      var ratio = 1 - Math.pow( 1 - (ratio), 1.4);
       const dec = 100;
       let opacity = Math.round(dec * (1 - ratio * 0.9)) / dec;
       return opacity;

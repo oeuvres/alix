@@ -5,6 +5,7 @@ package obvil.web;
  */
 public enum Cookies
 {
+  count,
   coocLeft,
   coocRight,
   corpusSort,

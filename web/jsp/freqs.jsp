@@ -155,8 +155,9 @@ static private void jsonLine(StringBuilder sb, final TopTerms dic, final Tag tag
 <%
   //parameters
 final String q = tools.getString("q", null);
-int hpp = tools.getInt("hpp", -1);
-if (hpp < 1 || hpp > 2000) hpp = 500;
+int count = tools.getInt("count", -1);
+if (count < 1 || count > 2000) count = 500;
+
 
 final FacetSort sort = (FacetSort)tools.getEnum("sort", FacetSort.score, Cookies.freqsSort);
 WordClass cat = (WordClass)tools.getEnum("cat", WordClass.NOSTOP, Cookies.wordClass);
@@ -200,7 +201,7 @@ if (Mime.json.equals(mime)) {
   response.setContentType(Mime.json.type);
   out.println("{");
   out.println("  \"data\":[");
-  out.println( lines(dic, hpp, mime, cat, hasScore, q));
+  out.println( lines(dic, count, mime, cat, hasScore, q));
   out.println("\n  ]");
   out.println("\n}");
 }
@@ -262,7 +263,7 @@ else {
         <tr>
       </thead>
       <tbody>
-        <%= lines(dic, hpp, mime, cat, hasScore, q) %>
+        <%= lines(dic, count, mime, cat, hasScore, q) %>
       </tbody>
     </table>
     <% out.println("<!-- time\" : \"" + (System.nanoTime() - time) / 1000000.0 + "ms\" -->"); %>
