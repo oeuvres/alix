@@ -1,7 +1,5 @@
 package alix.web;
 
-import java.io.IOException;
-
 public enum Mime
 {
   html("text/html; charset=UTF-8"),

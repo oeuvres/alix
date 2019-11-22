@@ -220,30 +220,35 @@ public class XMLIndexer implements Runnable
    * @throws NoSuchMethodException
    * @throws SecurityException
    */
-  static public void index(final IndexWriter writer, int threads, String xsl, String glob)
-      throws IOException, InterruptedException, TransformerConfigurationException, ParserConfigurationException,
-      SAXException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
-      NoSuchMethodException, SecurityException
+  static public void index(final IndexWriter writer, String glob)
+      throws TransformerConfigurationException, ParserConfigurationException, SAXException, InterruptedException, IOException 
   {
-    index(writer, threads, xsl, new String[] { glob });
+    final int threads = Runtime.getRuntime().availableProcessors() - 1;
+    index(writer, new String[] { glob }, SrcFormat.alix, threads);
+  }
+
+  static public void index(final IndexWriter writer, String glob, final SrcFormat format)
+      throws TransformerConfigurationException, ParserConfigurationException, SAXException, InterruptedException, IOException 
+  {
+    final int threads = Runtime.getRuntime().availableProcessors() - 1;
+    index(writer, new String[] { glob }, format, threads);
+  }
+
+  static public void index(final IndexWriter writer, String[] globs, final SrcFormat format)
+      throws TransformerConfigurationException, ParserConfigurationException, SAXException, InterruptedException, IOException 
+  {
+    final int threads = Runtime.getRuntime().availableProcessors() - 1;
+    index(writer, globs, format, threads);
   }
 
   /**
    * Recursive indexation of an XML folder, multi-threadeded.
-   * @param writer
-   * @param threads
-   * @param xsl
-   * @param globs
-   * @throws TransformerConfigurationException 
-   * @throws SAXException 
-   * @throws ParserConfigurationException 
-   * @throws InterruptedException 
-   * @throws IOException 
    */
-  static public void index(final IndexWriter writer, int threads, String xsl, String[] globs) throws TransformerConfigurationException, ParserConfigurationException, SAXException, InterruptedException, IOException
+  static public void index(final IndexWriter writer, final String[] globs, SrcFormat format, final int threads) 
+      throws TransformerConfigurationException, ParserConfigurationException, SAXException, InterruptedException, IOException 
   {
-
-    info("Lucene index:" + writer.getDirectory() + "; parser: " + xsl + "; files: " + String.join(", ", globs));
+    if (format == null) format = SrcFormat.alix;
+    info("Lucene index:" + writer.getDirectory() + "; files: " + String.join(", ", globs)+  "; format: " + format);
     // preload dictionaries
     List<File> files = null;
     for (String glob : globs) {
@@ -253,8 +258,9 @@ public class XMLIndexer implements Runnable
 
     // compile XSLT 1 time
     Templates templates = null;
-    if (xsl != null) {
-      templates = XSLFactory.newTemplates(new StreamSource(xsl));
+    if (format == SrcFormat.tei) {
+      // TODO
+      // templates = XSLFactory.newTemplates(new StreamSource(xsl));
     }
 
     // multithread pool

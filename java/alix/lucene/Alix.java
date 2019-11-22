@@ -440,6 +440,19 @@ public class Alix
   }
 
   /**
+   * Get infos for a field.
+   * 
+   * @param field
+   * @return
+   * @throws IOException
+   */
+  public FieldInfo info(Enum<?> field) throws IOException
+  {
+    reader(); // ensure reader or decache
+    return fieldInfos.fieldInfo(field.name());
+  }
+
+  /**
    * Returns an array in docId order with the value of an intPoint field (ex:
    * year).
    * 

@@ -134,6 +134,14 @@ public class Facet
    */
   public Facet(final Alix alix, final String facet, final String text, final Term coverTerm) throws IOException
   {
+    FieldInfo info = alix.info(facet);
+    if (info == null) {
+      throw new IllegalArgumentException("Field \"" + facet + "\" is not known in this index.");
+    }
+    type = info.getDocValuesType();
+    if (type != DocValuesType.SORTED_SET && type != DocValuesType.SORTED) {
+      throw new IllegalArgumentException("Field \"" + facet + "\", the type "+type+" is not supported as a facet.");
+    }
     final BytesRefHash hashDic = new BytesRefHash();
     // get a vector of possible docids used as a cover for a facetId
     BitSet coverBits = null;
@@ -143,14 +151,6 @@ public class Facet
       CollectorBits coverCollector = new CollectorBits(searcher);
       searcher.search(coverQuery, coverCollector);
       coverBits = coverCollector.bits();
-    }
-    FieldInfo info = alix.info(facet);
-    if (info == null) {
-      throw new IllegalArgumentException("Field \"" + facet + "\" is not known in this index.");
-    }
-    type = info.getDocValuesType();
-    if (type != DocValuesType.SORTED_SET && type != DocValuesType.SORTED) {
-      throw new IllegalArgumentException("Field \"" + facet + "\", the type "+type+" is not supported as a facet.");
     }
     this.facet = facet;
     this.text = text;

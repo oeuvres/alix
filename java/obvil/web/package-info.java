@@ -1,4 +1,0 @@
-/**
- * Driver of the OBVIL web application using Alix.
- */
-package obvil.web;
