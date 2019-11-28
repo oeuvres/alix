@@ -35,6 +35,7 @@ package alix.lucene;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -49,10 +50,13 @@ import java.util.concurrent.TimeUnit;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
+import javax.xml.transform.Source;
 import javax.xml.transform.Templates;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.URIResolver;
 import javax.xml.transform.sax.SAXResult;
 import javax.xml.transform.stream.StreamSource;
 
@@ -60,6 +64,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.SAXException;
 
 import alix.util.Dir;
+import alix.xml.JarResolver;
 
 /**
  * A worker for parallel lucene indexing.
@@ -100,11 +105,12 @@ public class XMLIndexer implements Runnable
    * @param writer
    * @param it
    * @param templates
-   * @throws TransformerConfigurationException 
-   * @throws SAXException 
-   * @throws ParserConfigurationException 
+   * @throws TransformerConfigurationException
+   * @throws SAXException
+   * @throws ParserConfigurationException
    */
-  public XMLIndexer(IndexWriter writer, Iterator<File> it, Templates templates) throws TransformerConfigurationException, ParserConfigurationException, SAXException 
+  public XMLIndexer(IndexWriter writer, Iterator<File> it, Templates templates)
+      throws TransformerConfigurationException, ParserConfigurationException, SAXException
   {
     this.it = it;
     handler = new SAXIndexer(writer);
@@ -143,7 +149,7 @@ public class XMLIndexer implements Runnable
       catch (Exception e) {
         Exception ee = new Exception("ERROR in file " + file, e);
         // error(ee);
-        
+
       }
     }
   }
@@ -204,15 +210,16 @@ public class XMLIndexer implements Runnable
 
   /**
    * Wrapper for simple glob.
+   * 
    * @param writer
    * @param threads
    * @param xsl
    * @param glob
    * @throws IOException
    * @throws InterruptedException
-   * @throws TransformerConfigurationException
    * @throws ParserConfigurationException
    * @throws SAXException
+   * @throws TransformerException 
    * @throws InstantiationException
    * @throws IllegalAccessException
    * @throws IllegalArgumentException
@@ -220,22 +227,23 @@ public class XMLIndexer implements Runnable
    * @throws NoSuchMethodException
    * @throws SecurityException
    */
-  static public void index(final IndexWriter writer, String glob)
-      throws TransformerConfigurationException, ParserConfigurationException, SAXException, InterruptedException, IOException 
+  static public void index(final IndexWriter writer, String glob) throws ParserConfigurationException, SAXException, InterruptedException, IOException, TransformerException
   {
     final int threads = Runtime.getRuntime().availableProcessors() - 1;
     index(writer, new String[] { glob }, SrcFormat.alix, threads);
   }
 
   static public void index(final IndexWriter writer, String glob, final SrcFormat format)
-      throws TransformerConfigurationException, ParserConfigurationException, SAXException, InterruptedException, IOException 
+      throws ParserConfigurationException, SAXException, InterruptedException,
+      IOException, TransformerException
   {
     final int threads = Runtime.getRuntime().availableProcessors() - 1;
     index(writer, new String[] { glob }, format, threads);
   }
 
   static public void index(final IndexWriter writer, String[] globs, final SrcFormat format)
-      throws TransformerConfigurationException, ParserConfigurationException, SAXException, InterruptedException, IOException 
+      throws ParserConfigurationException, SAXException, InterruptedException,
+      IOException, TransformerException
   {
     final int threads = Runtime.getRuntime().availableProcessors() - 1;
     index(writer, globs, format, threads);
@@ -243,12 +251,15 @@ public class XMLIndexer implements Runnable
 
   /**
    * Recursive indexation of an XML folder, multi-threadeded.
+   * @throws TransformerException 
    */
-  static public void index(final IndexWriter writer, final String[] globs, SrcFormat format, final int threads) 
-      throws TransformerConfigurationException, ParserConfigurationException, SAXException, InterruptedException, IOException 
+  static public void index(final IndexWriter writer, final String[] globs, SrcFormat format, final int threads)
+      throws ParserConfigurationException, SAXException, InterruptedException,
+      IOException, TransformerException
   {
-    if (format == null) format = SrcFormat.alix;
-    info("Lucene index:" + writer.getDirectory() + "; files: " + String.join(", ", globs)+  "; format: " + format);
+    if (format == null) format = SrcFormat.alix; // direct alix xml alix:document/alix:field
+
+    info("Lucene index:" + writer.getDirectory() + "; files: " + String.join(", ", globs) + "; format: " + format);
     // preload dictionaries
     List<File> files = null;
     for (String glob : globs) {
@@ -256,11 +267,13 @@ public class XMLIndexer implements Runnable
     }
     Iterator<File> it = files.iterator();
 
-    // compile XSLT 1 time
+    // compile XSLT, maybe it could be done before?
     Templates templates = null;
     if (format == SrcFormat.tei) {
-      // TODO
-      // templates = XSLFactory.newTemplates(new StreamSource(xsl));
+      JarResolver resloader = new JarResolver();
+      XSLFactory.setURIResolver(resloader);
+      StreamSource xsltSrc = new StreamSource(resloader.resolve("alix.xsl"));
+      templates = XSLFactory.newTemplates(xsltSrc);
     }
 
     // multithread pool

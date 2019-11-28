@@ -22,20 +22,19 @@ import alix.util.Dir;
 
 public class TestXMLIndexer
 {
-  public static void main(String[] args) throws IOException, TransformerConfigurationException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException, InterruptedException, ParserConfigurationException, SAXException
+  public static void main(String[] args) throws Exception
   {
     String[][] corpora = {
-      {"critique", "/var/www/html/critique/.*\\.xml"},
-      {"haine-theatre", "/var/www/html/haine-theatre/xml/.*\\.xml", "/var/www/html/haine-theatre/xml-diplo/.*\\.xml" },
-      {"mercure-galant", "/var/www/html/mercure-galant/xml/MG-.*\\.xml"},
+      // {"critique", "/var/www/html/critique/.*\\.xml"},
+      // {"haine-theatre", "/var/www/html/haine-theatre/xml/.*\\.xml", "/var/www/html/haine-theatre/xml-diplo/.*\\.xml" },
+      // {"mercure-galant", "/var/www/html/mercure-galant/xml/MG-.*\\.xml"},
       {"test", "/var/www/html/critique/bergson/.*\\.xml"},
     };
     long time;
     // no gain but no loss observed when more threads than processors
     int threads = Runtime.getRuntime().availableProcessors() - 1;
     // where to write indexes
-    String indexes = "web/WEB-INF/obvil/";
-    String xsl = "/var/www/html/Teinte/xsl/alix.xsl";
+    String indexes = "../obvie/WEB-INF/bases/";
     for (String[] corpus : corpora) {
       time = System.nanoTime();
       String name = corpus[0];
@@ -45,9 +44,8 @@ public class TestXMLIndexer
       Alix alix = Alix.instance(path, new FrAnalyzer());
       // Alix alix = Alix.instance(path, "org.apache.lucene.analysis.core.WhitespaceAnalyzer");
       IndexWriter writer = alix.writer();
-      for (int i = 1; i < corpus.length; i++) {
-        XMLIndexer.index(writer, threads, xsl, corpus[i]);
-      }
+      String[] globs = corpus[1].split("[ ,]+");
+      XMLIndexer.index(writer, globs, SrcFormat.tei);
       // index here will be committed and merged but need to be closed to prepare
       writer.close();
       // XMLIndexer.index(writer, threads, "work/xml/.*\\.xml",

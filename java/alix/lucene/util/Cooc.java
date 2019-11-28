@@ -190,8 +190,8 @@ public class Cooc
     final int END = DocIdSetIterator.NO_MORE_DOCS;
     // collector of scores
     int size = this.hashDic.size();
-    int[] freqs = new int[size];
-    int[] hits = new int[size];
+    int[] freqs = new int[size]; // by term, occurrences counts
+    int[] hits = new int[size]; // by term, document counts
     // to count documents, a set to count only first occ in a doc
     java.util.BitSet dicSet = new java.util.BitSet(size);
 

@@ -414,7 +414,13 @@ public class TopTerms
     return ref.utf8ToString();
   }
 
-
+  /**
+   * Current term, get the TermId for the global dic.
+   */
+  public int termId()
+  {
+    return termId;
+  }
 
   /**
    * Get the total count of documents relevant for the current term.
@@ -435,7 +441,7 @@ public class TopTerms
   }
 
   /**
-   * Get the no of the current term.
+   * For the current term, get a number set by {@link #setNos(int[])}.
    * @return
    */
   public int n()
