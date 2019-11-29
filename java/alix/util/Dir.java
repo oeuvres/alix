@@ -33,11 +33,11 @@
 package alix.util;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -69,7 +69,7 @@ public class Dir
     File[] ls = file.listFiles();
     if (ls != null) {
       for (File f : ls) {
-        rm(file);
+        rm(f);
       }
     }
     return file.delete();
@@ -82,14 +82,15 @@ public class Dir
    * 
    * @param path
    * @return
+   * @throws FileNotFoundException 
    */
-  public static List<File> ls(String path)
+  public static List<File> ls(String path) throws FileNotFoundException
   {
     ArrayList<File> files = new ArrayList<File>();
     return ls(path, files);
   }
 
-  public static List<File> ls(String path, List<File> files)
+  public static List<File> ls(String path, List<File> files) throws FileNotFoundException
   {
     if (files == null) files = new ArrayList<File>();
     File dir = new File(path);
@@ -97,7 +98,9 @@ public class Dir
     if (!dir.isDirectory()) {
       re = dir.getName();
       dir = dir.getParentFile();
-      // if (!dir.isDirectory()) let exception go
+      if (!dir.isDirectory()) {
+        throw new FileNotFoundException(path + " does not exists.");
+      }
     }
     collect(dir, Pattern.compile(re), files);
     return files;
