@@ -34,8 +34,8 @@ package alix.lucene;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -50,13 +50,11 @@ import java.util.concurrent.TimeUnit;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
-import javax.xml.transform.Source;
 import javax.xml.transform.Templates;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.URIResolver;
 import javax.xml.transform.sax.SAXResult;
 import javax.xml.transform.stream.StreamSource;
 
@@ -123,6 +121,52 @@ public class XMLIndexer implements Runnable
     }
   }
 
+  /**
+   * A debug indexer as one thread, will stop on first error
+   * @param writer
+   * @param it
+   * @param templates
+   * @throws SAXException 
+   * @throws ParserConfigurationException 
+   * @throws IOException 
+   * @throws TransformerException 
+   */
+  static private void write(IndexWriter writer, Iterator<File> it, Templates templates) 
+      throws ParserConfigurationException, SAXException, IOException, TransformerException
+  {
+    SAXIndexer handler = new SAXIndexer(writer);
+    Transformer transformer = null;
+    SAXResult result = null;
+    SAXParser SAXParser = null;
+    if (templates != null) {
+      transformer = templates.newTransformer();
+      result = new SAXResult(handler);
+    }
+    else {
+      SAXParser = SAXFactory.newSAXParser();
+    }
+    while (it.hasNext()) {
+      File file = it.next();
+      String filename = file.getName();
+      filename = filename.substring(0, filename.lastIndexOf('.'));
+      info(filename + "                        ".substring(Math.min(22, filename.length())) + file.getParent());
+      byte[] bytes = null;
+      // read file as fast as possible to release disk resource for other threads
+      bytes = Files.readAllBytes(file.toPath());
+      handler.setFileName(filename);
+      if (transformer != null) {
+        StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
+        transformer.setParameter("filename", filename);
+        transformer.transform(source, result);
+      }
+      else {
+        SAXParser.parse(new ByteArrayInputStream(bytes), handler);
+      }
+    }
+    
+  }
+
+  
   @Override
   public void run()
   {
@@ -141,6 +185,7 @@ public class XMLIndexer implements Runnable
           StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
           transformer.setParameter("filename", filename);
           transformer.transform(source, result);
+          System.out.println("transform() ok?");
         }
         else {
           SAXParser.parse(new ByteArrayInputStream(bytes), handler);
@@ -148,8 +193,7 @@ public class XMLIndexer implements Runnable
       }
       catch (Exception e) {
         Exception ee = new Exception("ERROR in file " + file, e);
-        // error(ee);
-
+        error(ee);
       }
     }
   }
@@ -163,19 +207,6 @@ public class XMLIndexer implements Runnable
   {
     if (!it.hasNext()) return null;
     return it.next();
-  }
-
-  /**
-   * A quiet output for the XSL errors.
-   */
-  @SuppressWarnings("unused")
-  private static class NullOutputStream extends OutputStream
-  {
-    @Override
-    public void write(int b) throws IOException
-    {
-      return;
-    }
   }
 
   /**
@@ -253,18 +284,24 @@ public class XMLIndexer implements Runnable
    * Recursive indexation of an XML folder, multi-threadeded.
    * @throws TransformerException 
    */
-  static public void index(final IndexWriter writer, final String[] globs, SrcFormat format, final int threads)
+  static public void index(final IndexWriter writer, final String[] globs, SrcFormat format, int threads)
       throws ParserConfigurationException, SAXException, InterruptedException,
       IOException, TransformerException
   {
     if (format == null) format = SrcFormat.alix; // direct alix xml alix:document/alix:field
 
-    info("Lucene index:" + writer.getDirectory() + "; files: " + String.join(", ", globs) + "; format: " + format);
+    info("["+Alix.NAME+"]"+ " format=\"" + format + "\"" + " threads=" + threads + " globs=\"" + String.join(", ", globs) + "\""+ " lucene=\"" + writer.getDirectory() + "\"");
     // preload dictionaries
     List<File> files = null;
     for (String glob : globs) {
       files = Dir.ls(glob, files); // CopyOnWriteArrayList produce some duplicates
     }
+    if (files.size() < 1) {
+      throw new FileNotFoundException("\n["+Alix.NAME+"] No file found to index globs=\""+ String.join(", ", globs) + "\"");
+    }
+    if (threads < 1) threads = 1;
+
+    
     Iterator<File> it = files.iterator();
 
     // compile XSLT, maybe it could be done before?
@@ -275,15 +312,20 @@ public class XMLIndexer implements Runnable
       StreamSource xsltSrc = new StreamSource(resloader.resolve("alix.xsl"));
       templates = XSLFactory.newTemplates(xsltSrc);
     }
-
-    // multithread pool
-    ExecutorService pool = Executors.newFixedThreadPool(threads);
-    for (int i = 0; i < threads; i++) {
-      pool.submit(new XMLIndexer(writer, it, templates));
+    // one thread, try it as static to start
+    if (threads == 1) {
+      XMLIndexer.write(writer, it, templates);
     }
-    pool.shutdown();
-    // ? verify what should be done here if it hangs
-    pool.awaitTermination(30, TimeUnit.MINUTES);
+    // multithread pool
+    else {
+      ExecutorService pool = Executors.newFixedThreadPool(threads);
+      for (int i = 0; i < threads; i++) {
+        pool.submit(new XMLIndexer(writer, it, templates));
+      }
+      pool.shutdown();
+      // ? verify what should be done here if it hangs
+      pool.awaitTermination(30, TimeUnit.MINUTES);
+    }
     writer.commit();
     writer.forceMerge(1);
   }

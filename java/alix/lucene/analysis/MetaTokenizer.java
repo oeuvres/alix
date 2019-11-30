@@ -48,7 +48,7 @@ public class MetaTokenizer extends Tokenizer
 {
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-  private int offset = 0, bufferIndex = 0, dataLen = 0, finalOffset = 0;
+  private int offset = 0, bufferIndex = 0, dataLen = 0;
   private static final int IO_BUFFER_SIZE = 4096;
   private final CharacterBuffer ioBuffer = CharacterUtils.newCharacterBuffer(IO_BUFFER_SIZE);
   private final boolean xml = true;
@@ -74,7 +74,7 @@ public class MetaTokenizer extends Tokenizer
           if (length > 0) {
             break;
           } else {
-            finalOffset = correctOffset(offset);
+            correctOffset(offset);
             return false;
           }
         }
@@ -84,7 +84,6 @@ public class MetaTokenizer extends Tokenizer
       char c = ioBuffer.getBuffer()[bufferIndex];
       bufferIndex++;
 
-      /*
       Chain test = this.test; // localize variable for efficiency
 
 
@@ -142,7 +141,7 @@ public class MetaTokenizer extends Tokenizer
           continue;
         }
       }
-      */
+
       // soft hyphen, do not append to term
       if (c == 0xAD) continue;
 
@@ -163,7 +162,7 @@ public class MetaTokenizer extends Tokenizer
       length++;
     }
     end = offset + bufferIndex + endAdjust;
-    offsetAtt.setOffset(correctOffset(start), finalOffset = correctOffset(end));
+    offsetAtt.setOffset(correctOffset(start), correctOffset(end));
     return true;
   }
   
@@ -173,7 +172,6 @@ public class MetaTokenizer extends Tokenizer
     bufferIndex = 0;
     offset = 0;
     dataLen = 0;
-    finalOffset = 0;
     ioBuffer.reset(); // make sure to reset the IO buffer!!
   }
 

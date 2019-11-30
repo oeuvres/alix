@@ -135,6 +135,8 @@ import alix.lucene.util.Cooc;
  */
 public class Alix
 {
+  /** Name of the application (for messages) */
+  public static final String NAME = "Alix";
   /** Mandatory field, XML source file name, used for update */
   public static final String FILENAME = "alix:filename";
   /** Mandatory field, unique id for a book and its chapters */

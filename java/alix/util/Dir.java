@@ -36,18 +36,21 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+
 /**
  * Static tools to deal with directories (and  files). Kept in java 7.
  */
 public class Dir
 {
 
-  /**7
+  /**
    * Delete a folder by path
    * (use java.nio stream, should be faster then {@link #rm(File)})
    */
@@ -93,16 +96,34 @@ public class Dir
   public static List<File> ls(String path, List<File> files) throws FileNotFoundException
   {
     if (files == null) files = new ArrayList<File>();
-    File dir = new File(path);
-    String re = ".*\\.xml";
-    if (!dir.isDirectory()) {
-      re = dir.getName();
-      dir = dir.getParentFile();
-      if (!dir.isDirectory()) {
-        throw new FileNotFoundException(path + " does not exists.");
+    PathMatcher matcher = FileSystems.getDefault(). getPathMatcher("glob:"+path);
+
+    
+    Path dir = new File(path).toPath().normalize();
+    Pattern globish = Pattern.compile("[\\*?\\[\\]{}]");
+    
+    int levels = dir.getNameCount();
+    int depth = 0;
+    while(globish.matcher(dir.getName(levels -1).toString()).find()) {
+      dir = dir.getParent();
+      levels--;
+      depth++;
+      if (dir == null) {
+        // this will avoid /*/*, which is not so bad
+        dir = new File(".").toPath();
+        matcher = FileSystems.getDefault(). getPathMatcher("glob:./"+path);
+        System.out.println(dir);
+        break;
       }
     }
-    collect(dir, Pattern.compile(re), files);
+    if (!Files.exists(dir)) return files;
+    if (Files.isRegularFile(dir)) {
+      if (matcher.matches(dir)) files.add(dir.toFile());
+      return files;
+    }
+    // no depth limit
+    if (path.contains("**")) depth = -1;
+    collect(dir.toFile(), matcher, depth, files);
     return files;
   }
 
@@ -113,14 +134,16 @@ public class Dir
    * @param pattern
    * @return
    */
-  private static void collect(File dir, Pattern pattern, final List<File> files)
+  private static void collect(File dir, PathMatcher matcher, int depth, final List<File> files)
   {
     File[] ls = dir.listFiles();
     for (File entry : ls) {
       String name = entry.getName();
-      if (name.startsWith(".")) continue;
-      else if (entry.isDirectory()) collect(entry, pattern, files);
-      else if (!pattern.matcher(name).matches()) continue;
+      if (name.startsWith(".")) continue; // ? find a way to work around ?
+      else if (entry.isDirectory()) {
+        if (depth > 1 || depth < 0) collect(entry, matcher, depth - 1, files);
+      }
+      else if (!matcher.matches(entry.toPath())) continue;
       else files.add(entry);
     }
   }

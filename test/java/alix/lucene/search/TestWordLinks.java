@@ -14,7 +14,7 @@ public class TestWordLinks
   public static void main(String args[]) throws IOException
   {
     String field = "text_rail";
-    Path path = Paths.get("../obvue/WEB-INF/bases/critique");
+    Path path = Paths.get("../obvie/WEB-INF/bases/critique");
     Alix alix = Alix.instance(path, new FrAnalyzer());
     WordLinks coocs = new WordLinks(alix, field, null, 50);
     

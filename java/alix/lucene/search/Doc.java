@@ -55,8 +55,6 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
-import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
 
 import alix.lucene.Alix;
 import alix.lucene.analysis.FrDics;
@@ -92,8 +90,6 @@ public class Doc
   private HashMap<String, Terms> vectors = new HashMap<>();
   /** Cache of different top terms */
   private HashMap<String, Top<String>> tops =  new HashMap<>();
-  /** An empty String array used for toArray() in collections */
-  static final private String[] STRINGS = new  String[0];
   
   /**
    * Get a document by String id (persists as long as the source XML doc is not modified)
@@ -310,8 +306,8 @@ public class Doc
     int len1 = docLength[docId];
     int len2 = docLength[docId2];
     Terms vek1 = getTermVector(field);
-    double max1 = Double.MIN_VALUE;
-    double max2 = Double.MIN_VALUE;
+    // double max1 = Double.MIN_VALUE;
+    // double max2 = Double.MIN_VALUE;
     TermsEnum termit1 = vek1.iterator();
     TermsEnum termit2 = vek2.iterator();
     BytesRef term1;
@@ -338,7 +334,7 @@ public class Doc
       if (count2 == 0) continue;
       count1 = count1 / len1;
       count2 = count2 / len2;
-      final double ratio = Math.max(count1, count2) / Math.min(count1, count2);
+      // final double ratio = Math.max(count1, count2) / Math.min(count1, count2);
       top.push(count1 + count2, form);
     }
     return top;
