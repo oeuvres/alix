@@ -185,7 +185,6 @@ public class XMLIndexer implements Runnable
           StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
           transformer.setParameter("filename", filename);
           transformer.transform(source, result);
-          System.out.println("transform() ok?");
         }
         else {
           SAXParser.parse(new ByteArrayInputStream(bytes), handler);

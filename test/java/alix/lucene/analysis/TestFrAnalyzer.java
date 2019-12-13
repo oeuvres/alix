@@ -183,6 +183,6 @@ public class TestFrAnalyzer
 
   public static void main(String[] args) throws IOException
   {
-    vertical("Victor Hugo et George Sand", new FrAnalyzer());
+    vertical("Victor Hugo et George Sand, Monsieur le comte Auguste Comte.", new FrAnalyzer());
   }
 }

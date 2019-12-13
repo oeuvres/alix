@@ -81,7 +81,10 @@ import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.store.NIOFSDirectory;
+import org.apache.lucene.store.SimpleFSDirectory;
 import org.apache.lucene.util.Bits;
 
 import alix.fr.Tag;
@@ -148,9 +151,9 @@ public class Alix
   /** Just the mandatory fields */
   final static HashSet<String> FIELDS_ID = new HashSet<String>(Arrays.asList(new String[] { Alix.ID}));
   /** A binary stored field with an array of offsets */
-  public static final String _OFFSETS = ":offsets";
+  // public static final String _OFFSETS = ":offsets";
   /** A binary stored with {@link Tag} by position */
-  public static final String _TAGS = ":tags";
+  // public static final String _TAGS = ":tags";
   /** Suffix for a text field containing only names */
   public static final String _NAMES = ":names";
   /** Max books */
@@ -203,6 +206,18 @@ public class Alix
   /** Analyzer for indexation and query */
   final private Analyzer analyzer;
 
+  public enum FSDirectoryType {
+    MMapDirectory,
+    NIOFSDirectory,
+    SimpleFSDirectory,
+    FSDirectory
+  }
+  
+  private Alix(final Path path, final Analyzer analyzer) throws IOException
+  {
+    this(path, analyzer, FSDirectoryType.FSDirectory);
+  }
+
   /**
    * Avoid construction, maintain a pool by file path to ensure unicity.
    * 
@@ -211,16 +226,28 @@ public class Alix
    * @throws IOException
    * @throws ClassNotFoundException 
    */
-  private Alix(final Path path, final Analyzer analyzer) throws IOException
+  private Alix(final Path path, final Analyzer analyzer, FSDirectoryType dirType) throws IOException
   {
     // this default locale will work for English
     this.locale = Locale.FRANCE;
     this.path = path;
     Files.createDirectories(path);
     this.similarity = new BM25Similarity(); // default similarity
-    // dir = FSDirectory.open(indexPath);
-    // open directory as a memory map, very efficient, https://dzone.com/articles/use-lucene’s-mmapdirectory
-    dir = MMapDirectory.open(path);
+    if(dirType == null) dirType = FSDirectoryType.FSDirectory;
+    switch(dirType) {
+      case MMapDirectory:
+        dir = MMapDirectory.open(path);
+        break;
+      case NIOFSDirectory:
+        dir = NIOFSDirectory.open(path);
+        break;
+      case SimpleFSDirectory:
+        dir = SimpleFSDirectory.open(path);
+        break;
+      default:
+        dir = FSDirectory.open(path);
+        break;
+    }
     this.analyzer = new AnalyzerReuseControl(analyzer, new AlixReuseStrategy());
   }
 
@@ -233,7 +260,17 @@ public class Alix
    */
   public static Alix instance(final String path, final Analyzer analyzer) throws IOException 
   {
-    return instance(Paths.get(path), analyzer);
+    return instance(Paths.get(path), analyzer, FSDirectoryType.FSDirectory);
+  }
+
+  public static Alix instance(final String path, final Analyzer analyzer, final FSDirectoryType dirType) throws IOException 
+  {
+    return instance(Paths.get(path), analyzer, dirType);
+  }
+
+  public static Alix instance(final Path path, final Analyzer analyzer) throws IOException 
+  {
+    return instance(path, analyzer, FSDirectoryType.FSDirectory);
   }
 
   /**
@@ -243,12 +280,12 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public static Alix instance(Path path, final Analyzer analyzer) throws IOException 
+  public static Alix instance(Path path, final Analyzer analyzer, FSDirectoryType dirType) throws IOException 
   {
     path = path.toAbsolutePath().normalize(); // normalize path to be a key
     Alix alix = pool.get(path);
     if (alix == null) {
-      alix = new Alix(path, analyzer);
+      alix = new Alix(path, analyzer, dirType);
       pool.put(path, alix);
     }
     return alix;
@@ -791,6 +828,7 @@ u   * @throws IOException
   {
     StringBuffer sb = new StringBuffer();
     sb.append(path + "\n");
+    sb.append(dir + "\n");
     try {
       reader(); // get FieldInfos
     }

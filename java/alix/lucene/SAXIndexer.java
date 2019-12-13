@@ -429,15 +429,19 @@ public class SAXIndexer extends DefaultHandler
           case TEXT:
             doc.add(new StoredField(name , text)); // text has to be stored for snippets and conc
             TokenStream source = analyzer.tokenStream("stats", text);
-            TokenStats stats = new TokenStats(source);
+            doc.add(new Field(name, source, Alix.ftypeText)); // indexation of the chosen tokens
             // source.reset();
+            /*
             // A caching token stream allow to replay the tokens and get here stats to add to the document
+            // but some server complain about out of memory
+            TokenStats stats = new TokenStats(source);
             TokenStream caching = new CachingTokenFilter(stats);
             caching.reset(); // reset upper filters ?
             caching.incrementToken(); // cache all tokens
             doc.add(new StoredField(name+Alix._OFFSETS , stats.offsets().getBytesRef()));
             doc.add(new StoredField(name+Alix._TAGS , stats.tags().getBytesRef()));
             doc.add(new Field(name, caching, Alix.ftypeText)); // indexation of the chosen tokens
+            */
             break;
           default:
             throw new SAXException("</"+qName+"> @name=\""+name+"\" unkown type: "+type);

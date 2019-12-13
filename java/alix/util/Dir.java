@@ -69,6 +69,8 @@ public class Dir
    * (maybe a bit slow for lots of big folders)
    */
   public static boolean rm(File file) {
+    if (!file.exists()) return false;
+    if (file.isFile()) return file.delete();
     File[] ls = file.listFiles();
     if (ls != null) {
       for (File f : ls) {
