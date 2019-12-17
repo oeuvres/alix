@@ -44,7 +44,7 @@ public class MetaAnalyzer extends Analyzer
   protected TokenStreamComponents createComponents(String fieldName)
   {
     final Tokenizer source = new MetaTokenizer();
-    TokenStream result = new ASCIIFoldingFilter(source); // no accentrs
+    TokenStream result = new ASCIIFoldingFilter(source); // no accents
     return new TokenStreamComponents(source, result);
   }
 
