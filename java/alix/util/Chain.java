@@ -107,7 +107,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    *          a char array
    * @param start
    *          offset index where a string start
-   * @param size
+   * @param len
    *          length of the string
    */
   public Chain(final char[] a, final int start, final int len)
@@ -142,7 +142,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    *          a char sequence (String, but also String buffers or builders)
    * @param start
    *          start offset index from source string
-   * @param size
+   * @param len
    *          number of chars from offset
    */
   public Chain(final CharSequence cs, final int start, final int len)
@@ -239,9 +239,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    * 
    * @param cs
    *          a char sequence
-   * @param start
+   * @param from
    *          index of the string from where to copy chars
-   * @param size
+   * @param amount
    *          number of chars to copy
    * @return the Chain object for chaining, or null if the String provided is null
    *         (for testing)
@@ -302,7 +302,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
    *          text as char array
    * @param begin
    *          start index of the string from where to copy chars
-   * @param size
+   * @param amount
    *          number of chars to copy
    * @return the Chain object for chaining
    */

@@ -18,7 +18,7 @@ import alix.lucene.Alix;
  * Collect cooccurrences data from texts, according to 
  * Stefan Evert. 2005, 
  * <a href="https://elib.uni-stuttgart.de/bitstream/11682/2573/1/Evert2005phd.pdf">The Statistics of Word Cooccurrences, Word Pairs and Collocations.</a> 
- * and Gambette & Véronis 2009 
+ * and Gambette &amp; Véronis 2009 
  * <a href="http://igm.univ-mlv.fr/~gambette/2009GambetteVeronis.pdf">Visualising a Text with a Tree Cloud</a>,
  * allowing to draw dendrograms or networks.
  * </p>
@@ -48,11 +48,11 @@ import alix.lucene.Alix;
  * </p>
  * <p>
  * Compiling statistic literature about this topic, Evert presents a lots of possible metric calculation using ab11, ab10, ab01, ab00,
- * but without a critic examination to choose one or another. Gambette & Veronis has evaluated 14 formula, and found that some are 
+ * but without a critic examination to choose one or another. Gambette &amp; Veronis has evaluated 14 formula, and found that some are 
  * not enough robust (ex: delete one word out 5 does not affect too much sense for a human, it should not affect a calculated picture).
  * People who have played with such visualization know how volatile can be trees, classifications or pictures, with little modifications of parameters.
  * Good metrics should be robust.
- * The Gambette & Veronis results are very instructive, but they do not try an explanation of their observations. 
+ * The Gambette &amp; Veronis results are very instructive, but they do not try an explanation of their observations. 
  * </p>
  * <ul>
  *  <li>Jaccard: a ∩ b / a ∪ b = ab11 / (ab11 + ab10 + ab01) </li>
@@ -60,7 +60,7 @@ import alix.lucene.Alix;
  *  <li>Mutual information: log(P(a, b)/P(a)P(b)) = (ab11 / N) / (a1/N * b1/N) = log(N * ab11 / a1*b1)</li>
  * </ul>
  * <p>
- * According to Gambette & Veronis, mutual information is the worst distance measure for their protocol, and Jaccard among the best.
+ * According to Gambette &amp; Veronis, mutual information is the worst distance measure for their protocol, and Jaccard among the best.
  * The expected value (probability P(x)) is very common in statistics, but does it make sense for texts?
  * Expectation is said of random variables, like a dice, where the values from 1 to 6 define a closed and complete universe.
  * For texts, absence of a word does not make sense, because a corpus is never complete, there is always a universe outside of texts, 
@@ -91,7 +91,7 @@ public class WordLinks
    * <ol>
    *  <li>Get the freqlist of terms for the set of documents, with a global int index for each term</li>
    *  <li>
-   *  <li>A map from global term index to the local index (< nu
+   *  <li>A map from global term index to the local index
    * </ol>
    * @throws IOException 
 

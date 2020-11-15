@@ -242,8 +242,6 @@ public class XMLIndexer implements Runnable
    * Wrapper for simple glob.
    * 
    * @param writer
-   * @param threads
-   * @param xsl
    * @param glob
    * @throws IOException
    * @throws InterruptedException

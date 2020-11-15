@@ -1,3 +1,4 @@
+alix.cli
 alix.fr
 alix.grep
 alix.grep.query
@@ -8,4 +9,5 @@ alix.lucene.search
 alix.lucene.util
 alix.util
 alix.web
+alix.xml
 org.apache.lucene.analysis

@@ -172,7 +172,6 @@ public class ML
   /**
    * From a random point in an xml file, append text (with possibly broken tag), limit to an amount of chars, or words.
    * @param xml
-   * @return
    */
   public static void append(final String xml, int offset, final Chain chain, int chars, int words)
   {
@@ -254,7 +253,6 @@ public class ML
   /**
    * Provide a text version of an xml excerpt (possibly broken).
    * @param xml
-   * @return
    */
   public static void prepend(final String xml, int offset, final Chain chain, int chars, int words)
   {
