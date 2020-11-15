@@ -84,7 +84,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
-import org.apache.lucene.store.SimpleFSDirectory;
 import org.apache.lucene.util.Bits;
 
 import alix.fr.Tag;
@@ -209,13 +208,12 @@ public class Alix
   public enum FSDirectoryType {
     MMapDirectory,
     NIOFSDirectory,
-    SimpleFSDirectory,
     FSDirectory
   }
   
   private Alix(final Path path, final Analyzer analyzer) throws IOException
   {
-    this(path, analyzer, FSDirectoryType.FSDirectory);
+    this(path, analyzer, null);
   }
 
   /**
@@ -241,9 +239,6 @@ public class Alix
       case NIOFSDirectory:
         dir = NIOFSDirectory.open(path);
         break;
-      case SimpleFSDirectory:
-        dir = SimpleFSDirectory.open(path);
-        break;
       default:
         dir = FSDirectory.open(path);
         break;
@@ -260,7 +255,7 @@ public class Alix
    */
   public static Alix instance(final String path, final Analyzer analyzer) throws IOException 
   {
-    return instance(Paths.get(path), analyzer, FSDirectoryType.FSDirectory);
+    return instance(Paths.get(path), analyzer, null);
   }
 
   public static Alix instance(final String path, final Analyzer analyzer, final FSDirectoryType dirType) throws IOException 
@@ -270,7 +265,7 @@ public class Alix
 
   public static Alix instance(final Path path, final Analyzer analyzer) throws IOException 
   {
-    return instance(path, analyzer, FSDirectoryType.FSDirectory);
+    return instance(path, analyzer, null);
   }
 
   /**
@@ -835,7 +830,7 @@ u   * @throws IOException
     catch (Exception e) {
     }
     for (FieldInfo info : fieldInfos) {
-      sb.append(info.name + " PointDataDimensionCount=" + info.getPointDataDimensionCount() + " DocValuesType="
+      sb.append(info.name + " PointDataDimensionCount=" + info.getPointDimensionCount() + " DocValuesType="
           + info.getDocValuesType() + " IndexOptions=" + info.getIndexOptions() + "\n");
     }
     sb.append(fieldInfos.toString());

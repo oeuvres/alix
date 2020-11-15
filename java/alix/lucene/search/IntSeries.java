@@ -81,11 +81,11 @@ public class IntSeries
     FieldInfo info = fieldInfos.fieldInfo(field);
     // check infos
     if (info.getDocValuesType() == DocValuesType.NUMERIC); // OK
-    if (info.getPointDataDimensionCount() > 1) { // multiple dimension IntPoint, cry
-      throw new IllegalArgumentException("Field \"" + field + "\" " + info.getPointDataDimensionCount()
+    if (info.getPointDimensionCount() > 1) { // multiple dimension IntPoint, cry
+      throw new IllegalArgumentException("Field \"" + field + "\" " + info.getPointDimensionCount()
           + " dimensions, too much for an int tag by doc.");
     }
-    else if (info.getPointDataDimensionCount() <= 0) { // not an IntPoint, cry
+    else if (info.getPointDimensionCount() <= 0) { // not an IntPoint, cry
       throw new IllegalArgumentException(
           "Field \"" + field + "\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
     }
@@ -123,7 +123,7 @@ public class IntSeries
       }
     }
     // IntPoint
-    else if (info.getPointDataDimensionCount() > 0) {
+    else if (info.getPointDimensionCount() > 0) {
       IntPointVisitor visitor = new IntPointVisitor(docInt);
       for (LeafReaderContext context : reader.leaves()) {
         visitor.setContext(context); // for liveDocs and docBase

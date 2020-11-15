@@ -82,17 +82,17 @@ According to Lucene model, there are 3 levels of objects inside Alix.
     </p>
     <ul>
       <li><a:el>field</a:el>, corresponding to a lucene 
-        <a href="https://lucene.apache.org/core/8_2_0/core/org/apache/lucene/document/Field.html">Field</a>.
+        <a href="https://lucene.apache.org/core/8_7_0/core/org/apache/lucene/document/Field.html">Field</a>.
         A field has a name, a type, and a content.
         Alix defines a limited set of types, dedicated to text documents, content depends on type.
       </li>
       <li><a:el>document</a:el>, a set of <a:el>field</a:el>s corresponding to a lucene 
-        <a href="https://lucene.apache.org/core/8_2_0/core/org/apache/lucene/document/Document.html">Document</a>
+        <a href="https://lucene.apache.org/core/8_7_0/core/org/apache/lucene/document/Document.html">Document</a>
       </li>
       <li><a:el>book</a:el>, a set of <a:el>chapter</a:el>s, 
         corresponding to an advance feature in lucene, allowing to index a group of Document objects,
         with a specefic one used as a cover
-        <a href="https://lucene.apache.org/core/8_2_0/core/org/apache/lucene/index/IndexWriter.html#addDocuments-java.lang.Iterable-">IndexReader.addDocuments()</a>.
+        <a href="https://lucene.apache.org/core/8_7_0/core/org/apache/lucene/index/IndexWriter.html#addDocuments-java.lang.Iterable-">IndexReader.addDocuments()</a>.
         A book is a useful unit in Alix for faceting results, or defining a corpus.
         For Lucene, a <a:el>chapter</a:el> is like a document. 
       </li>
