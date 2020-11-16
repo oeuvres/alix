@@ -6,7 +6,6 @@ import java.io.StringReader;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -16,8 +15,6 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
 import alix.fr.Tag;
-import alix.lucene.analysis.tokenattributes.CharsAtt;
-import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
 public class TestFrAnalyzer
@@ -151,7 +148,7 @@ public class TestFrAnalyzer
 
     // get the CharTermAttribute from the TokenStream
     CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
-    CharsLemAtt lem = stream.addAttribute(CharsLemAtt.class);
+    // CharsLemAtt lem = stream.addAttribute(CharsLemAtt.class);
     CharsOrthAtt orth = stream.addAttribute(CharsOrthAtt.class);
     OffsetAttribute offset = stream.addAttribute(OffsetAttribute.class);
     FlagsAttribute flags = stream.addAttribute(FlagsAttribute.class);

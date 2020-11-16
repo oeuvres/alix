@@ -39,7 +39,6 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -59,7 +58,6 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.MetaAnalyzer;
-import alix.lucene.analysis.TokenStats;
 
 
 /**

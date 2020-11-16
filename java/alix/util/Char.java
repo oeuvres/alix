@@ -31,9 +31,6 @@
  * limitations under the License.
  */
 package alix.util;
-
-import java.util.HashMap;
-
 /**
  * <p>
  * Efficient character categorizer, faster than Character.is*(),

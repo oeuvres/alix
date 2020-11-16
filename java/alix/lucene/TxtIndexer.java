@@ -41,12 +41,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -54,21 +52,13 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
-import org.xml.sax.Attributes;
-import org.xml.sax.SAXException;
-import org.xml.sax.helpers.DefaultHandler;
 
-import alix.fr.Tag.TagFilter;
-import alix.lucene.analysis.FrAnalyzer;
 import alix.lucene.analysis.MetaAnalyzer;
-import alix.lucene.analysis.TokenStats;
-import alix.lucene.util.Cooc;
 import alix.util.Dir;
 
 
@@ -107,10 +97,13 @@ public class TxtIndexer
     // destinataire
     String address = br.readLine();
     String[] pers = address.split(" to ");
-    if (!pers[0].equals("Voltaire")) return null;
+    if (!pers[0].equals("Voltaire")) {
+      br.close();
+      return null;
+    }
     String dest = pers[1];
     // Lieu d’envoi
-    String place = br.readLine();
+    // br.readLine();
     // date 
     String dateline = br.readLine();
     int year = Integer.parseInt(dateline.substring(0, 4));
@@ -127,6 +120,7 @@ public class TxtIndexer
     sb.append("</p>\n");
     String text = sb.toString();
     text = text.replaceAll("\\d([  ;,?.])", "$1").replaceAll("&", "&amp;");
+    br.close();
     
     StringBuffer xml = new StringBuffer();
     xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -199,7 +193,10 @@ public class TxtIndexer
     bibl = line;
     
     String[] pers = line.split(" to ");
-    if (!pers[0].equals("Voltaire")) return;
+    if (!pers[0].equals("Voltaire")) {
+      br.close();
+      return;
+    }
     
     final String author = "author";
     book.add(new SortedDocValuesField(author, new BytesRef(pers[1])));
@@ -241,6 +238,7 @@ public class TxtIndexer
       if ("".equals(line)) sb.append("\n<p/>\n");
       else sb.append(line);
     }
+    br.close();
     String text = sb.toString();
     text = text.replaceAll("\\d([  ;,?.])", "$1");
     
@@ -260,7 +258,7 @@ public class TxtIndexer
     Dir.rm(lucpath);
 
     
-    long time = System.nanoTime();
+    // long time = System.nanoTime();
     /*
     Alix alix = Alix.instance(lucpath, new FrAnalyzer());
     IndexWriter writer = alix.writer();
@@ -269,7 +267,7 @@ public class TxtIndexer
     File dir = new File("/home/fred/code/voltaire/corrtext");
     File[] files = dir.listFiles();
     Arrays.sort(files);
-    int i = 10;
+    // int i = 10;
     for(File f : files) {
       String xml = tei(f);
       if (xml == null) continue;

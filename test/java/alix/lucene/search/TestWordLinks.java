@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.apache.lucene.util.BitSet;
-
 import alix.lucene.Alix;
 import alix.lucene.analysis.FrAnalyzer;
 

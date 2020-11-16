@@ -121,7 +121,7 @@ public class Facet
   /** The reader from which to get freqs */
   private IndexReader reader;
   /** A cached vector for each docId, size in occurrences */
-  private final int[] docLength;
+  // private final int[] docLength;
 
   /**
    * Build data to have frequencies on a facet field.
@@ -164,7 +164,7 @@ public class Facet
     int[] facetCover = new int[32];
 
     int[] docLength = alix.docLength(text); // length of each doc for the text field
-    this.docLength = docLength;
+    // this.docLength = docLength;
     // max int for an array collecttor
     int ordMax = -1;
     for (LeafReaderContext context: reader.leaves()) { // loop on the reader leaves

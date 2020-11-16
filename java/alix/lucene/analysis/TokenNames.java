@@ -47,14 +47,14 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import alix.fr.Tag;
 import alix.lucene.analysis.FrDics.NameEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
-import alix.lucene.analysis.tokenattributes.CharsLemAtt;
+import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
 /**
  * Plug behind TokenLem
  * @author fred
  *
  */
-public class TokenCompound extends TokenFilter
+public class TokenNames extends TokenFilter
 {
   /** Particles in names  */
   public static final HashSet<CharsAtt> PARTICLES = new HashSet<CharsAtt>();
@@ -72,19 +72,16 @@ public class TokenCompound extends TokenFilter
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
   /** Current term */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-  /** A lemma when possible */
-  private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
+  /** A normalized orthographic form */
+  private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
   /** A stack of sates  */
   private LinkedList<State> stack = new LinkedList<State>();
   /** A term used to concat names */
   private CharsAtt name = new CharsAtt();
 
-  /** Number of tokens to cache for compounds */
-  final int size;
-  public TokenCompound(TokenStream input, final int size)
+  public TokenNames(TokenStream input)
   {
     super(input);
-    this.size = size;
   }
 
   @Override
@@ -97,38 +94,64 @@ public class TokenCompound extends TokenFilter
     if (!input.incrementToken()) {
       return false;
     }
-    CharTermAttribute term = termAtt;
-    CharsLemAtt lem = lemAtt;
-    PositionIncrementAttribute posInc = posIncAtt;
-    OffsetAttribute offset = offsetAtt;
+    // test compound names : NAME (particle|NAME)* NAME
     FlagsAttribute flags = flagsAtt;
     final int tag = flags.getFlags();
+    if (!Tag.isName(tag)) return true;
+    CharsAtt orth = (CharsAtt) orthAtt;
+    CharTermAttribute term = termAtt;
+    PositionIncrementAttribute posInc = posIncAtt;
+    OffsetAttribute offset = offsetAtt;
     
-    /*
-    // compounds start by lem, ex : faire comme si
-    if (lem.length() != 0) {
-      if (!FrDics.compound1(lem)) return true;
+    // test compound names : NAME (particle|NAME)* NAME
+    final int startOffset = offsetAtt.startOffset();
+    int endOffset = offsetAtt.endOffset();
+    int pos = posInc.getPositionIncrement(); 
+    name.copy(term);
+    int lastlen = name.length();
+    boolean notlast;
+    while ((notlast = input.incrementToken())) {
+      if (Tag.isName(flags.getFlags())) {
+        endOffset = offset.endOffset();
+        if (name.charAt(name.length()-1) != '\'') name.append(' ');
+        name.append(term);
+        lastlen = name.length(); // store the last length of name
+        stack.clear(); // empty the stored paticles
+        pos += posInc.getPositionIncrement(); // increment position
+        continue;
+      }
+      // test if it is a particle, but store it, avoid [Europe de l']atome
+      if (PARTICLES.contains(term)) {
+        stack.addFirst(captureState());
+        name.append(' ').append(term);
+        pos += posInc.getPositionIncrement();
+        continue;
+      }
+      break;
+    }
+    // are there particles to exhaust ?
+    if (!stack.isEmpty()) {
+      pos = pos - stack.size();
+      name.setLength(lastlen);
+    }
+    if (notlast) stack.addFirst(captureState());
+    offsetAtt.setOffset(startOffset, endOffset);
+    posIncAtt.setPositionIncrement(pos);
+    posLenAtt.setPositionLength(pos);
+    // get tag
+    NameEntry entry = FrDics.name(name);
+    if (entry == null) {
+      flagsAtt.setFlags(Tag.NAME);
+      term.setEmpty().append(name);
+      orth.setEmpty().append(name);
     }
     else {
-      if (!FrDics.compound1(term)) return true;
+      flagsAtt.setFlags(entry.tag);
+      // normalized version is same as lem
+      if (entry.orth != null) orth.setEmpty().append(entry.orth);
+      else orth.setEmpty().append(name);
+      term.setEmpty().append(name);
     }
-    
-    
-    while (input.incrementToken()) {
-      if (!cache.isFull()) {
-        State state = captureState();
-        cache.push(state);
-      }
-      if cha
-      if (accept()) {
-        if (skippedPositions != 0) {
-          posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
-        }
-        return true;
-      }
-      skippedPositions += posIncrAtt.getPositionIncrement();
-    }
-    */
     return true;
   }
   @Override

@@ -1,8 +1,6 @@
 package alix.lucene.search;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 
 import org.apache.lucene.analysis.Analyzer;

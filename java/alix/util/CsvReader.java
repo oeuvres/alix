@@ -52,7 +52,7 @@ public class CsvReader
   /** The cell delimiter char */
   private final char sep;
   /** The text delimiter char */
-  private final char quote;
+  // private final char quote;
   /** Row to populate */
   private Row row;
   /** line number */
@@ -67,7 +67,7 @@ public class CsvReader
   {
     this.reader = reader;
     row = new Row(cols);
-    quote = '"';
+    // quote = '"';
     this.sep = sep;
   }
 

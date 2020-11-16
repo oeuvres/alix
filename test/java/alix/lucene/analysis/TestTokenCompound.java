@@ -13,6 +13,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
 import alix.fr.Tag;
+import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
 public class TestTokenCompound
 {
@@ -24,6 +25,7 @@ public class TestTokenCompound
     {
       final Tokenizer source = new FrTokenizer();
       TokenStream result = new FrTokenLem(source);
+      result = new TokenNames(result);
       result = new TokenCompound(result, 5);
       return new TokenStreamComponents(source, result);
     }
@@ -47,13 +49,16 @@ public class TestTokenCompound
       FlagsAttribute flags = stream.addAttribute(FlagsAttribute.class);
       PositionIncrementAttribute posInc = stream.addAttribute(PositionIncrementAttribute.class);
       PositionLengthAttribute posLen = stream.addAttribute(PositionLengthAttribute.class);
+      CharsOrthAtt orth = stream.addAttribute(CharsOrthAtt.class);
       try {
         stream.reset();
         // print all tokens until stream is exhausted
         while (stream.incrementToken()) {
           System.out.print("\"" + term + "\" +" + posInc.getPositionIncrement() + " " + posLen.getPositionLength() + " "
-              + offset.startOffset() + "-" + offset.endOffset() + " " + Tag.label(flags.getFlags()) + " |");
-          System.out.println(text.substring(offset.startOffset(), offset.endOffset()) + "|");
+              + offset.startOffset() + "-" + offset.endOffset() + " " + Tag.label(flags.getFlags()));
+          System.out.print(" |"+text.substring(offset.startOffset(), offset.endOffset()) + "|");
+          System.out.print(" "+orth);
+          System.out.println();
         }
 
         stream.end();

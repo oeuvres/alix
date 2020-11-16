@@ -7,9 +7,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.BytesRef;
 
 import alix.lucene.Alix;
 
@@ -56,7 +54,6 @@ import alix.lucene.Alix;
  * </p>
  * <ul>
  *  <li>Jaccard: a ∩ b / a ∪ b = ab11 / (ab11 + ab10 + ab01) </li>
- *  <li>Odds Ratio: log(
  *  <li>Mutual information: log(P(a, b)/P(a)P(b)) = (ab11 / N) / (a1/N * b1/N) = log(N * ab11 / a1*b1)</li>
  * </ul>
  * <p>
@@ -67,10 +64,11 @@ import alix.lucene.Alix;
  * with lost opuses and works to be written.
  * A corpus, even a supposed perfect book like Bible or Coran,
  * can always be another (different versions), so lexical statistics should not rely on the total of words N (expected value or negation).
- * A well known example will help. Consider the dictionary like a supermarket with lots of products. We can compare the basket of 2 people (2 texts)
- * according to what they have not buy (no children toys for each, does it mean that they have no children?). 
- * It is much more interesting to compare the products they have in common, and the ones they do not
- * share. It is exactly the goal of Jaccard formula a ∩ b / a ∪ b. Jaccard was a Swiss botanist comparing ecosystems, he knew that 
+ * A simple example will help. Consider the dictionary like a supermarket with lots of products. We can compare the basket of 2 people (2 texts)
+ * and compare the products they have in common, and the ones they do not share.
+ * We can’t conclude a lot about what the two have not bought (if they have not bought toys, 
+ * does it mean that they have no children? it is not noël? Nothing sure can’t be said with this information). 
+ * It is exactly the goal of Jaccard formula a ∩ b / a ∪ b. Jaccard was a Swiss botanist comparing ecosystems, he knew that 
  * we can’t be confident in the absence of a species, all conclusions should rely on presences.
  * </p>
  * 
