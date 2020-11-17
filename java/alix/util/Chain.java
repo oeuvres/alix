@@ -156,7 +156,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
   {
     return size;
   }
-
+  
   /**
    * Is Chain with no chars ?
    * 

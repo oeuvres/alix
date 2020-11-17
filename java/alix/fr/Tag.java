@@ -289,10 +289,12 @@ public final class Tag
     return ret;
   }
 
-  public static String label(final int code)
+  public static String label(int flags)
   {
-    if (code == 0) return "";
-    String ret = LABEL.get(code);
+    // the int may be used as a more complex bit flag
+    flags = flags & 0xFF;
+    if (flags == 0) return "";
+    String ret = LABEL.get(flags);
     if (ret == null)
       return LABEL.get(UNKNOWN);
     return ret;

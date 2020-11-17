@@ -91,7 +91,7 @@ public final class FrTokenLem extends TokenFilter
   private boolean waspun = true; // first word considered as if it follows a dot
   /** Store state */
   private State save;
-  /** Reusable char sequence for some tests and tranformations */
+  /** Reusable char sequence for some tests and transformations */
   private final CharsAtt copy = new CharsAtt();
 
 

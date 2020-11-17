@@ -76,8 +76,12 @@ public class FrDics
   /** Abbreviations with a final dot */
   public final static HashMap<CharsAtt, CharsAtt> BREVIDOT = new HashMap<CharsAtt, CharsAtt>((int) (100 / 0.75));
   /** First word of a compound */
-  public final static HashSet<CharsAtt> COMPOUND1 = new HashSet<CharsAtt>();
-  /* Load dictionaries */
+  public final static HashMap<CharsAtt, Integer> COMPOUND = new HashMap<CharsAtt, Integer>();
+  /** In a compound tree, say it’s not finished */
+  public final static int BRANCH = 0x10000;
+  /** In a compound tree, say it could be end of a word (but also could continue) */
+  public final static int LEAF = 0x20000;
+  /** Load dictionaries */
   static {
     String res = null;
     CsvReader csv = null;
@@ -138,9 +142,9 @@ public class FrDics
 
   private static void load(String res, HashMap<CharsAtt, CharsAtt> map)
   {
-    Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
     CsvReader csv = null;
     try {
+      Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
       csv = new CsvReader(reader, 2);
       csv.readRow(); // skip first line
       while (csv.readRow()) {
@@ -152,10 +156,51 @@ public class FrDics
       }
     }
     catch (Exception e) {
-      System.out.println("Dictionary parse error in file "+res+" line "+csv.line());
+      System.out.println("Dictionary parse error in file "+res);
+      if (csv != null) System.out.println(" line "+csv.line());
+      else System.out.println();
       e.printStackTrace();
     }
   }
+  
+  public static void tree(String res, HashMap<CharsAtt, Integer> map)
+  {
+    CsvReader csv = null;
+    try {
+      Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
+      csv = new CsvReader(reader, 2);
+      csv.readRow(); // skip first line
+      while (csv.readRow()) {
+        Chain word = csv.row().get(0);
+        if (word.isEmpty() || word.charAt(0) == '#') continue;
+        int len = word.length();
+        for(int i = 0; i < len; i++) {
+          char c = word.charAt(i);
+          if (c != '\'' && c != '’' && c != ' ') continue;
+          CharsAtt key = null;
+          if (c == '’') word.setCharAt(i, '\'');
+          if (c == '\'' || c == '’') key = new CharsAtt(word.array(), 0, i+1);
+          else if (c == ' ') key = new CharsAtt(word.array(), 0, i);
+          Integer value = map.get(key);
+          if (value == null) {
+            value = BRANCH;
+            map.put(key, value);
+          }
+          else map.put(key, value | BRANCH);
+        }
+        CharsAtt key = new CharsAtt(word.array(), 0, len);
+        Integer value = Tag.code(csv.row().get(1)) | LEAF;
+        map.put(key, value);
+      }
+    }
+    catch (Exception e) {
+      System.out.print("Dictionary parse error in file "+res);
+      if (csv != null) System.out.println(" line "+csv.line());
+      else System.out.println();
+      e.printStackTrace();
+    }
+  }
+  
   public static LexEntry word(CharsAtt att)
   {
     return WORD.get(att);
@@ -174,10 +219,6 @@ public class FrDics
     if (val == null) return false;
     if (!val.isEmpty()) att.copy(val);
     return true;
-  }
-  public static boolean compound1(CharsAtt att)
-  {
-    return COMPOUND1.contains(att);
   }
 
   public static boolean norm(CharsAtt att)

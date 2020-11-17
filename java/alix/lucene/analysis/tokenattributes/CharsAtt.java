@@ -104,6 +104,17 @@ public class CharsAtt extends AttributeImpl
     System.arraycopy(token.chars, 0, chars, 0, len);
   }
 
+  /**
+   * 
+   * @param token
+   */
+  public CharsAtt(char[] buffer, int offset, int length)
+  {
+    len = length;
+    chars = new char[length];
+    System.arraycopy(buffer, offset, chars, 0, len);
+  }
+
   @Override
   public final void copyBuffer(char[] buffer, int offset, int length)
   {

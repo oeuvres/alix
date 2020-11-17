@@ -56,12 +56,6 @@ import alix.lucene.analysis.tokenattributes.CharsLemAtt;
  */
 public class TokenCompound extends TokenFilter
 {
-  /** Particles in names  */
-  public static final HashSet<CharsAtt> PARTICLES = new HashSet<CharsAtt>();
-  static {
-    for (String w : new String[] { "d'", "D'", "de", "De", "du", "Du", "l'", "L'", "le", "Le", "la", "La", "von", "Von" })
-      PARTICLES.add(new CharsAtt(w));
-  }
   /** Increment position of a token */
   private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
   /** Position length of a token */
@@ -103,6 +97,8 @@ public class TokenCompound extends TokenFilter
     OffsetAttribute offset = offsetAtt;
     FlagsAttribute flags = flagsAtt;
     final int tag = flags.getFlags();
+    
+    //
     
     /*
     // compounds start by lem, ex : faire comme si

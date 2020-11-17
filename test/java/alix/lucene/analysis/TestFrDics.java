@@ -6,6 +6,7 @@ import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 
 import org.apache.lucene.analysis.CharArraySet;
@@ -127,9 +128,27 @@ public class TestFrDics
     }
   }
   
+  public static void compounds()
+  {
+    HashMap<CharsAtt, Integer> compounds = new HashMap<CharsAtt, Integer>();
+    FrDics.tree("/alix/lucene/analysis/TestCompounds.csv", compounds);
+    System.out.println(compounds);
+    CharsAtt key = new CharsAtt();
+    for (String word: new String[] {"chemin", "chemin de", "chemin de fer", "chemin de fer d'intérêt local"}) {
+      System.out.print(word);
+      key.setEmpty().append(word);
+      Integer flags = compounds.get(key);
+      System.out.print(" "+flags);
+      System.out.print(" "+Tag.label(flags));
+      if ( (flags & FrDics.BRANCH) > 0 ) System.out.print(" BRANCH");
+      if ( (flags & FrDics.LEAF) > 0 ) System.out.print(" LEAF");
+      System.out.println();
+    }
+  }
+  
   public static void main(String[] args) throws IOException
   {
-    automat();
+    compounds();
   }
 
 }
