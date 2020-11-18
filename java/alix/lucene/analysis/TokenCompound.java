@@ -33,7 +33,6 @@
 package alix.lucene.analysis;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.LinkedList;
 
 import org.apache.lucene.analysis.TokenFilter;
@@ -41,13 +40,11 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
 import alix.fr.Tag;
-import alix.lucene.analysis.FrDics.NameEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
+import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
 /**
  * Plug behind TokenLem
@@ -56,76 +53,115 @@ import alix.lucene.analysis.tokenattributes.CharsLemAtt;
  */
 public class TokenCompound extends TokenFilter
 {
-  /** Increment position of a token */
-  private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
-  /** Position length of a token */
-  private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
   /** Current char offset */
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
   /** Current Flags */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-  /** Current term */
+  /** Current original term */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  /** A normalized orthographic form (ex : capitalization) */
+  private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
   /** A lemma when possible */
   private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
   /** A stack of sates  */
   private LinkedList<State> stack = new LinkedList<State>();
-  /** A term used to concat names */
-  private CharsAtt name = new CharsAtt();
+  /** A term used to concat a compound */
+  private CharsAtt comlem = new CharsAtt();
+  /** A term used to concat a compound */
+  private CharsAtt comorth = new CharsAtt();
 
-  /** Number of tokens to cache for compounds */
-  final int size;
-  public TokenCompound(TokenStream input, final int size)
+  public TokenCompound(TokenStream input)
   {
     super(input);
-    this.size = size;
   }
 
+  @SuppressWarnings("unlikely-arg-type")
   @Override
   public boolean incrementToken() throws IOException
   {
+    // send back forward lookup
     if (!stack.isEmpty()) {
       restoreState(stack.removeLast());
       return true;
     }
-    if (!input.incrementToken()) {
-      return false;
-    }
-    CharTermAttribute term = termAtt;
-    CharsLemAtt lem = lemAtt;
-    PositionIncrementAttribute posInc = posIncAtt;
-    OffsetAttribute offset = offsetAtt;
-    FlagsAttribute flags = flagsAtt;
-    final int tag = flags.getFlags();
+    boolean ret = input.incrementToken();
+    // punctuation do not start a ompound
+    int tag = flagsAtt.getFlags();
+    boolean tagBreak = Tag.isPun(tag);
+    if (tagBreak) return ret; // leave fast
+    // may first token start a compound ?
+    Integer trieO = null;
+    if (lemAtt.length() != 0) trieO = FrDics.COMPOUND.get(lemAtt);
+    else if (orthAtt.length() != 0) trieO = FrDics.COMPOUND.get(orthAtt);
+    else trieO = FrDics.COMPOUND.get(termAtt);
+    // no the start of compound, bye
+    if(trieO == null) return ret;
     
-    //
+    // go ahead to search for a compound
+    comlem.setEmpty();
+    comorth.setEmpty();
+    if (lemAtt.length() != 0) comlem.append(lemAtt);
+    else if (orthAtt.length() != 0) comlem.append(orthAtt);
+    else comlem.append(termAtt);
+    if (orthAtt.length() != 0) comorth.append(orthAtt);
+    else comorth.append(termAtt);
+    final int startOffset = offsetAtt.startOffset();
+    stack.addFirst(captureState()); // keep this token
     
-    /*
-    // compounds start by lem, ex : faire comme si
-    if (lem.length() != 0) {
-      if (!FrDics.compound1(lem)) return true;
-    }
-    else {
-      if (!FrDics.compound1(term)) return true;
-    }
-    
-    
-    while (input.incrementToken()) {
-      if (!cache.isFull()) {
-        State state = captureState();
-        cache.push(state);
+    while (true) {
+      // append space if last is not apos
+      if (comlem.lastChar() != '\'') {
+        comlem.append(' ');
+        comorth.append(' ');
       }
-      if cha
-      if (accept()) {
-        if (skippedPositions != 0) {
-          posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
-        }
-        return true;
+      // get next token, and keep end event
+      ret = input.incrementToken();
+      tag = flagsAtt.getFlags();
+      // end of compound by tag
+      tagBreak = Tag.isPun(tag);
+      // token is not a tag breaker
+      if (!tagBreak) {
+        if (lemAtt.length() != 0) comlem.append(lemAtt);
+        else if(orthAtt.length() != 0) comlem.append(orthAtt);
+        else comlem.append(termAtt);
+        if(orthAtt.length() != 0) comorth.append(orthAtt);
+        else comorth.append(termAtt);
+        System.out.println(comlem);
+        // is this chain known from compound dictionary ?
+        trieO = FrDics.COMPOUND.get(comlem);
+        /*
+        System.out.println(comlem + "-"+trieO+" "
+          +FrDics.COMPOUND.get(new CharsAtt(comlem)));
+        */
       }
-      skippedPositions += posIncrAtt.getPositionIncrement();
+      // end of a look ahead
+      if (trieO == null) {
+        // store present state with no change
+        stack.addFirst(captureState());
+        // restore the first recorded state, and go away
+        restoreState(stack.removeLast());
+        return true; // let continue to empty the stack
+      }
+
+      int trieflags = trieO;
+      // it’s a compound
+      if ((trieflags & FrDics.LEAF) > 0) {
+        stack.clear();
+        termAtt.setEmpty().append(comorth);
+        orthAtt.setEmpty().append(comorth);
+        lemAtt.setEmpty().append(comlem);
+        flagsAtt.setFlags(trieflags & 0xFF); // set tag (without the trie flags)
+        offsetAtt.setOffset(startOffset, offsetAtt.endOffset());
+        // no more compound with this prefix, we are happy
+        if ((trieflags & FrDics.BRANCH) == 0) return true;
+        // compound may continue, lookahead should continue, store this step
+        stack.addFirst(captureState());
+      }
+      // should be a part of a compound, store state if it’s a no way
+      else {
+        stack.addFirst(captureState());
+      }
     }
-    */
-    return true;
   }
   @Override
   public void reset() throws IOException {

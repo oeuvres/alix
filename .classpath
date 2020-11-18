@@ -16,7 +16,7 @@
 			<attribute name="javadoc_location" value="http://lucene.apache.org/core/8_7_0/analyzers-common/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="lib/lucene-core-8.7.0.jar">
+	<classpathentry kind="lib" path="lib/lucene-core-8.7.0.jar" sourcepath="/home/fred/code/lucene-src/core/src/java">
 		<attributes>
 			<attribute name="javadoc_location" value="http://lucene.apache.org/core/8_7_0/core/"/>
 		</attributes>

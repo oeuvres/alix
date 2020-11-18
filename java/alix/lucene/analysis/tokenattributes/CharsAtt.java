@@ -211,6 +211,7 @@ public class CharsAtt extends AttributeImpl
   @Override
   public final CharTermAttribute append(CharSequence csq)
   {
+    this.hash = 0;
     if (csq == null) // needed for Appendable compliance
       return appendNull();
     return append(csq, 0, csq.length());
@@ -219,8 +220,9 @@ public class CharsAtt extends AttributeImpl
   @Override
   public final CharTermAttribute append(CharSequence csq, int start, int end)
   {
-    if (csq == null) // needed for Appendable compliance
-      csq = "null";
+    hash = 0;
+    // needed for Appendable compliance
+    if (csq == null) csq = "null";
     // TODO: the optimized cases (jdk methods) will already do such checks, maybe
     // re-organize this?
     FutureObjects.checkFromToIndex(start, end, csq.length());
@@ -263,6 +265,7 @@ public class CharsAtt extends AttributeImpl
   @Override
   public final CharTermAttribute append(char c)
   {
+    hash = 0;
     resizeBuffer(len + 1)[len++] = c;
     return this;
   }
@@ -272,8 +275,9 @@ public class CharsAtt extends AttributeImpl
   @Override
   public final CharTermAttribute append(String s)
   {
-    if (s == null) // needed for Appendable compliance
-      return appendNull();
+    hash = 0;
+    // needed for Appendable compliance
+    if (s == null) return appendNull();
     final int length = s.length();
     s.getChars(0, length, resizeBuffer(this.len + length), this.len);
     this.len += length;
@@ -283,8 +287,9 @@ public class CharsAtt extends AttributeImpl
   @Override
   public final CharTermAttribute append(StringBuilder s)
   {
-    if (s == null) // needed for Appendable compliance
-      return appendNull();
+    hash = 0;
+    // needed for Appendable compliance
+    if (s == null) return appendNull();
     final int length = s.length();
     s.getChars(0, length, resizeBuffer(this.len + length), this.len);
     this.len += length;
@@ -292,10 +297,11 @@ public class CharsAtt extends AttributeImpl
   }
 
   @Override
-  public final CharTermAttribute append(CharTermAttribute ta)
+  public final CharTermAttribute append(final CharTermAttribute ta)
   {
-    if (ta == null) // needed for Appendable compliance
-      return appendNull();
+    hash = 0;
+    // needed for Appendable compliance
+    if (ta == null) return appendNull();
     final int length = ta.length();
     System.arraycopy(ta.buffer(), 0, resizeBuffer(this.len + length), this.len, length);
     len += length;
@@ -309,14 +315,15 @@ public class CharsAtt extends AttributeImpl
    */
   public final CharTermAttribute copy(CharTermAttribute ta)
   {
-    len = ta.length();
     hash = 0;
+    len = ta.length();
     System.arraycopy(ta.buffer(), 0, resizeBuffer(this.len), 0, len);
     return this;
   }
 
   private CharTermAttribute appendNull()
   {
+    hash = 0;
     resizeBuffer(len + 4);
     chars[len++] = 'n';
     chars[len++] = 'u';
@@ -403,7 +410,12 @@ public class CharsAtt extends AttributeImpl
       i--;
     }
     return true;
-  };
+  }
+  
+  public char lastChar()
+  {
+    return chars[len -1];
+  }
   
   @Override
   public boolean equals(final Object other)

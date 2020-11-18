@@ -32,9 +32,11 @@
  */
 package alix.lucene.analysis.tokenattributes;
 
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.Attribute;
 /**
  * A recast of CharsAtt
  */
 public interface CharsOrthAtt extends Attribute, CharSequence, Appendable {
+  CharTermAttribute setEmpty();
 }

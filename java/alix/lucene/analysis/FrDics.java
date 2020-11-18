@@ -138,6 +138,7 @@ public class FrDics
     load("orth.csv", NORM);
     load("ellision.csv", ELISION);
     load("brevidot.csv", BREVIDOT);
+    tree("compound.csv", COMPOUND);
   }
 
   private static void load(String res, HashMap<CharsAtt, CharsAtt> map)

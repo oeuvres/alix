@@ -15,9 +15,10 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
 import alix.fr.Tag;
+import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
-public class TestFrAnalyzer
+public class TestAnalyzer
 {
   static class LuceneStandard extends Analyzer
   {
@@ -75,6 +76,35 @@ public class TestFrAnalyzer
     }
 
   }
+  
+  static class AnalyzerNames extends Analyzer
+  {
+
+    @Override
+    protected TokenStreamComponents createComponents(String fieldName)
+    {
+      final Tokenizer source = new FrTokenizer();
+      TokenStream result = new FrTokenLem(source);
+      result = new TokenNames(result);
+      return new TokenStreamComponents(source, result);
+    }
+
+  }
+
+  static class AnalyzerCompounds extends Analyzer
+  {
+
+    @Override
+    protected TokenStreamComponents createComponents(String fieldName)
+    {
+      final Tokenizer source = new FrTokenizer();
+      TokenStream result = new FrTokenLem(source);
+      result = new TokenCompound(result);
+      return new TokenStreamComponents(source, result);
+    }
+
+  }
+
   
   static Analyzer anaStd = new LuceneStandard();
   static Analyzer anaWhite = new LuceneWhite();
@@ -148,7 +178,7 @@ public class TestFrAnalyzer
 
     // get the CharTermAttribute from the TokenStream
     CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
-    // CharsLemAtt lem = stream.addAttribute(CharsLemAtt.class);
+    CharsLemAtt lem = stream.addAttribute(CharsLemAtt.class);
     CharsOrthAtt orth = stream.addAttribute(CharsOrthAtt.class);
     OffsetAttribute offset = stream.addAttribute(OffsetAttribute.class);
     FlagsAttribute flags = stream.addAttribute(FlagsAttribute.class);
@@ -160,8 +190,9 @@ public class TestFrAnalyzer
       while (stream.incrementToken()) {
         System.out.print(
           term 
+          + "\t" + orth  
           + "\t" + Tag.label(flags.getFlags())
-          +"\t" + orth  
+          + "\t" + lem  
           + " |" + text.substring(offset.startOffset(), offset.endOffset()) + "|"
           + " " + offset.startOffset() + "-" + offset.endOffset()
           + " (" + posInc.getPositionIncrement() + ", " + posLen.getPositionLength() + ")"
@@ -177,9 +208,25 @@ public class TestFrAnalyzer
     }
     System.out.println();
   }
+  
+  public static void names() throws IOException
+  {
+    // text to tokenize
+    final String text = "V. Hugo. Victor Hugo. Jules Marie, Pierre de Martin ou Peut-être lol ? Les U.S.A., un grand pays. L'orange et l'Europe de l'acier. ";
+    vertical(text, new AnalyzerNames());
+  }
+  
+  public static void compounds() throws IOException
+  {
+    // text to tokenize
+    final String text = "Allons-y ! Je, ça va, suis content de chemin de fer, fini."
+        + "";
+    vertical(text, new AnalyzerCompounds());
+  }
+
 
   public static void main(String[] args) throws IOException
   {
-    vertical("Victor Hugo et George Sand, Monsieur le comte Auguste Comte.", new FrAnalyzer());
+    compounds();
   }
 }

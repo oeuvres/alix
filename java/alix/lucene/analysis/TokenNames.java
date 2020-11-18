@@ -41,8 +41,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
 import alix.fr.Tag;
 import alix.lucene.analysis.FrDics.NameEntry;
@@ -62,10 +60,6 @@ public class TokenNames extends TokenFilter
     for (String w : new String[] { "d'", "D'", "de", "De", "du", "Du", "l'", "L'", "le", "Le", "la", "La", "von", "Von" })
       PARTICLES.add(new CharsAtt(w));
   }
-  /** Increment position of a token */
-  private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
-  /** Position length of a token */
-  private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
   /** Current char offset */
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
   /** Current Flags */
@@ -100,15 +94,17 @@ public class TokenNames extends TokenFilter
     if (!Tag.isName(tag)) return true;
     CharsAtt orth = (CharsAtt) orthAtt;
     CharTermAttribute term = termAtt;
-    PositionIncrementAttribute posInc = posIncAtt;
+    // names are compounding, changing position is an error
+    // PositionIncrementAttribute posInc = posIncAtt;
     OffsetAttribute offset = offsetAtt;
     
     // test compound names : NAME (particle|NAME)* NAME
     final int startOffset = offsetAtt.startOffset();
     int endOffset = offsetAtt.endOffset();
-    int pos = posInc.getPositionIncrement(); 
+    // int pos = posInc.getPositionIncrement(); 
     name.copy(term);
     int lastlen = name.length();
+    // a bug possible here if last token is a name ?
     boolean notlast;
     while ((notlast = input.incrementToken())) {
       if (Tag.isName(flags.getFlags())) {
@@ -117,27 +113,27 @@ public class TokenNames extends TokenFilter
         name.append(term);
         lastlen = name.length(); // store the last length of name
         stack.clear(); // empty the stored paticles
-        pos += posInc.getPositionIncrement(); // increment position
+        // pos += posInc.getPositionIncrement(); // increment position
         continue;
       }
       // test if it is a particle, but store it, avoid [Europe de l']atome
       if (PARTICLES.contains(term)) {
         stack.addFirst(captureState());
         name.append(' ').append(term);
-        pos += posInc.getPositionIncrement();
+        // pos += posInc.getPositionIncrement();
         continue;
       }
       break;
     }
     // are there particles to exhaust ?
     if (!stack.isEmpty()) {
-      pos = pos - stack.size();
+      // pos = pos - stack.size();
       name.setLength(lastlen);
     }
     if (notlast) stack.addFirst(captureState());
     offsetAtt.setOffset(startOffset, endOffset);
-    posIncAtt.setPositionIncrement(pos);
-    posLenAtt.setPositionLength(pos);
+    // posIncAtt.setPositionIncrement(pos);
+    // posLenAtt.setPositionLength(pos);
     // get tag
     NameEntry entry = FrDics.name(name);
     if (entry == null) {
