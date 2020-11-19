@@ -79,12 +79,14 @@ public class TokenCompound extends TokenFilter
   @Override
   public boolean incrementToken() throws IOException
   {
-    // send back forward lookup
+    boolean ret = true;
+    // send back forward lookup, a compound may start 
     if (!stack.isEmpty()) {
       restoreState(stack.removeLast());
-      return true;
     }
-    boolean ret = input.incrementToken();
+    else {
+      ret = input.incrementToken();
+    }
     // punctuation do not start a ompound
     int tag = flagsAtt.getFlags();
     boolean tagBreak = Tag.isPun(tag);
@@ -119,21 +121,21 @@ public class TokenCompound extends TokenFilter
       tag = flagsAtt.getFlags();
       // end of compound by tag
       tagBreak = Tag.isPun(tag);
-      // token is not a tag breaker
-      if (!tagBreak) {
-        if (lemAtt.length() != 0) comlem.append(lemAtt);
-        else if(orthAtt.length() != 0) comlem.append(orthAtt);
-        else comlem.append(termAtt);
-        if(orthAtt.length() != 0) comorth.append(orthAtt);
-        else comorth.append(termAtt);
-        System.out.println(comlem);
-        // is this chain known from compound dictionary ?
-        trieO = FrDics.COMPOUND.get(comlem);
-        /*
-        System.out.println(comlem + "-"+trieO+" "
-          +FrDics.COMPOUND.get(new CharsAtt(comlem)));
-        */
+      if (tagBreak) {
+        stack.addFirst(captureState());
+        restoreState(stack.removeLast());
+        return true; // let continue to empty the stack
       }
+      // token is not a tag breaker
+      if (termAtt.length() == 0);
+      else if (orthAtt.charAt(orthAtt.length() - 1) == '\'') comlem.append(orthAtt);
+      else if (lemAtt.length() != 0) comlem.append(lemAtt);
+      else if(orthAtt.length() != 0) comlem.append(orthAtt);
+      else comlem.append(termAtt);
+      if(orthAtt.length() != 0) comorth.append(orthAtt);
+      else comorth.append(termAtt);
+      // is this chain known from compound dictionary ?
+      trieO = FrDics.COMPOUND.get(comlem);
       // end of a look ahead
       if (trieO == null) {
         // store present state with no change

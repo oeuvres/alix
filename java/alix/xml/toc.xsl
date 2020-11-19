@@ -19,7 +19,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
   exclude-result-prefixes="tei" 
   >
   <xsl:import href="common.xsl"/>
-
+  <xsl:strip-space elements="tei:TEI tei:TEI.2 tei:body tei:castList  tei:div tei:div1 tei:div2  tei:docDate tei:docImprint tei:docTitle tei:fileDesc tei:front tei:group tei:index tei:listWit tei:publicationStmp tei:publicationStmt tei:sourceDesc tei:SourceDesc tei:sources tei:text tei:teiHeader tei:text tei:titleStmt"/>
   <!-- Generate an absolute table of sections -->
   <xsl:template name="toc">
     <xsl:variable name="html">
@@ -43,41 +43,71 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
     </ul>
   </xsl:template>
   
-  <xsl:template match="*" mode="toclocal"/>
+  
+  <!-- List toc entries with a split link -->
+  <xsl:template match="*" mode="tocsplit"/>
+  <xsl:template match="tei:div" mode="tocsplit">
+    <xsl:choose>
+      <xsl:when test="descendant::*[key('split', generate-id())]">
+        <details>
+          <summary>
+            <xsl:choose>
+              <xsl:when test="key('split', generate-id())">
+                <xsl:call-template name="a"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:call-template name="title"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </summary>
+          <xsl:apply-templates select="*" mode="tocsplit"/>
+        </details>
+      </xsl:when>
+      <xsl:otherwise>
+        <div>
+          <xsl:choose>
+            <xsl:when test="key('split', generate-id())">
+              <xsl:call-template name="a"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:call-template name="title"/>
+            </xsl:otherwise>
+          </xsl:choose>
+        </div>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
 
+  <xsl:template match="*" mode="toclocal"/>
   <xsl:template match="tei:div" mode="toclocal">
     <xsl:param name="localid"/>
     <xsl:variable name="children" select="tei:castList | tei:div | tei:titlePage"/>
     <li>
-      <xsl:if test="generate-id() = $localid">
-        <xsl:attribute name="class">here</xsl:attribute>
-      </xsl:if>
+      <xsl:attribute name="class">
+        <xsl:choose>
+          <xsl:when test="generate-id() = $localid">here</xsl:when>
+          <xsl:when test="ancestor::*[generate-id() = $localid]">descendant</xsl:when>
+          <xsl:when test="descendant::*[generate-id() = $localid]">ancestor</xsl:when>
+          <xsl:otherwise>collateral</xsl:otherwise>
+        </xsl:choose>
+      </xsl:attribute>
       <!-- link only on last split child -->
       <xsl:choose>
         <!-- no link when no split -->
         <xsl:when test="descendant::*[key('split', generate-id())]">
-          <span>
+          <div>
             <xsl:call-template name="title"/>
-          </span>
+          </div>
         </xsl:when>
         <xsl:when test="key('split', generate-id())">
-          <xsl:variable name="id">
-            <xsl:text>go</xsl:text>
-            <xsl:call-template name="id"/>
-          </xsl:variable>
           <a>
             <xsl:attribute name="href">
               <xsl:choose>
                 <xsl:when test="generate-id() = $localid">#</xsl:when>
                 <xsl:otherwise>
                   <xsl:call-template name="href"/>
-                  <xsl:text>#</xsl:text>
-                  <xsl:value-of select="$id"/>
                 </xsl:otherwise>
               </xsl:choose>
-            </xsl:attribute>
-            <xsl:attribute name="id">
-              <xsl:value-of select="$id"/>
             </xsl:attribute>
             <xsl:call-template name="title"/>
           </a>

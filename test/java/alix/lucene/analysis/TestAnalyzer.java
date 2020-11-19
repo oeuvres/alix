@@ -219,7 +219,8 @@ public class TestAnalyzer
   public static void compounds() throws IOException
   {
     // text to tokenize
-    final String text = "Allons-y ! Je, ça va, suis content de chemin de fer, fini."
+    final String text = "Allons-y ! Mon Dieu ! Chemin de fer d’intérêt local. "
+        + "Je, ça va, suis content de chemin de fer, aïe. mal"
         + "";
     vertical(text, new AnalyzerCompounds());
   }

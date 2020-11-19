@@ -49,7 +49,7 @@ public class Load {
         + "\n<entry key=\"src\">../corpus1/*.xml;../corpus2/*.xml</entry>");
     String[] globs = src.split(" *[;:] *");
     // resolve globs relative to the folder of the properties field
-    File base = file.getParentFile().getCanonicalFile();
+    File base = file.getCanonicalFile().getParentFile();
     for (int i=0; i < globs.length; i++) {
       if (!globs[i].startsWith("/")) globs[i] = new File(base, globs[i]).getCanonicalPath();
     }
