@@ -56,7 +56,7 @@ public class Load {
     // test here if it's folder ?
     long time = System.nanoTime();
     
-    String tmpName = "000_alix";
+    String tmpName = name+"_new";
     // indexer d'abord dans un index temporaire
     File tmpDir = new File(file.getParentFile(), tmpName);
     if (tmpDir.exists()) {
@@ -101,13 +101,16 @@ public class Load {
     cooc.write();
     System.out.println("["+APP+"] "+name+" indexed in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     
+    /*
     TimeZone tz = TimeZone.getTimeZone("UTC");
     DateFormat df = new SimpleDateFormat("yyyy-MM-dd_HH:mm:ss");
     df.setTimeZone(tz);
-    File oldDir = new File(file.getParentFile(), "_"+name+"_"+df.format(new Date()));
+    */
+    String oldName = name+"_old";
+    File oldDir = new File(file.getParentFile(), oldName);
     File theDir = new File(file.getParentFile(), name);
-    System.out.println(theDir);
     if (theDir.exists()) {
+      if (oldDir.exists()) Dir.rm(oldDir);
       theDir.renameTo(oldDir);
       System.out.println("["+APP+"] For safety, you old index is preserved in folder :\n"+oldDir);
     }

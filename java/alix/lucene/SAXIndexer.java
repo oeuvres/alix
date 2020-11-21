@@ -467,7 +467,7 @@ public class SAXIndexer extends DefaultHandler
       try {
         writer.addDocuments(chapters);
       }
-      catch (IOException e) {
+      catch (Exception e) {
         throw new SAXException(e);
       }
       finally {

@@ -50,12 +50,10 @@ public class FrAnalyzer extends Analyzer
   @Override
   public TokenStreamComponents createComponents(String field)
   {
-    /*
-    Tokenizer tokenizer = new LetterTokenizer();
-    return new TokenStreamComponents(tokenizer);
-    */
     final Tokenizer source = new FrTokenizer(); // segment words
     TokenStream result = new FrTokenLem(source); // provide lemma+pos
+    // result = new TokenNames(result); // link names, V. Hugo
+    result = new TokenCompound(result); // compounds, parce que
     boolean pun = false;
     if ("query".startsWith(field)) pun = true; // keep punctuation, ex, to parse query
     result = new TokenLemCloud(result, pun); // select lemmas as term to index

@@ -69,35 +69,69 @@ public class TokenCompound extends TokenFilter
   private CharsAtt comlem = new CharsAtt();
   /** A term used to concat a compound */
   private CharsAtt comorth = new CharsAtt();
+  /** Exit value */
+  private boolean exit = true;
+  /** Counter */
+  private int count;
 
   public TokenCompound(TokenStream input)
   {
     super(input);
   }
 
+  public String toString(LinkedList<State> stack) {
+    String out = "";
+    State restore = captureState();
+    boolean first = true;
+    for(State s: stack) {
+      if (first) first = false;
+      else out += ", ";
+      restoreState(s);
+      out += termAtt;
+    }
+    restoreState(restore);
+    return out;
+  }
+  
   @SuppressWarnings("unlikely-arg-type")
   @Override
   public boolean incrementToken() throws IOException
   {
-    boolean ret = true;
-    // send back forward lookup, a compound may start 
-    if (!stack.isEmpty()) {
-      restoreState(stack.removeLast());
+    count++;
+    /*
+    System.out.println(
+        "[" + count + "] "
+        + stack.size() + " (" + toString(stack) + ")"
+        + termAtt + "\t" 
+        + orthAtt + "\t" 
+        + Tag.label(flagsAtt.getFlags())+ "\t" 
+        + lemAtt + "\t" 
+        + offsetAtt.startOffset() + "-" + offsetAtt.endOffset() + "\t"
+      );
+    */
+    if (stack.isEmpty()) {
+      exit = input.incrementToken();
+      if (!exit) return false;
     }
     else {
-      ret = input.incrementToken();
+      restoreState(stack.remove());
+      // if last token from stack and text, inform consumer
+      if (stack.isEmpty() && !exit) return false;
+      // TODO, do not exit here, try to continue forward lookup, but we have a bug 
+      // else return true;
     }
-    // punctuation do not start a ompound
+    
+    // punctuation do not start a compound
     int tag = flagsAtt.getFlags();
     boolean tagBreak = Tag.isPun(tag);
-    if (tagBreak) return ret; // leave fast
+    if (tagBreak) return true;
     // may first token start a compound ?
     Integer trieO = null;
     if (lemAtt.length() != 0) trieO = FrDics.COMPOUND.get(lemAtt);
     else if (orthAtt.length() != 0) trieO = FrDics.COMPOUND.get(orthAtt);
     else trieO = FrDics.COMPOUND.get(termAtt);
     // no the start of compound, bye
-    if(trieO == null) return ret;
+    if (trieO == null) return true;
     
     // go ahead to search for a compound
     comlem.setEmpty();
@@ -108,7 +142,9 @@ public class TokenCompound extends TokenFilter
     if (orthAtt.length() != 0) comorth.append(orthAtt);
     else comorth.append(termAtt);
     final int startOffset = offsetAtt.startOffset();
-    stack.addFirst(captureState()); // keep this token
+    
+    // capture, if we have to go back, reinsert at start if token was pop from stack
+    stack.addFirst(captureState());
     
     while (true) {
       // append space if last is not apos
@@ -116,14 +152,17 @@ public class TokenCompound extends TokenFilter
         comlem.append(' ');
         comorth.append(' ');
       }
+      
+      
       // get next token, and keep end event
-      ret = input.incrementToken();
+      exit = input.incrementToken();
+
       tag = flagsAtt.getFlags();
       // end of compound by tag
       tagBreak = Tag.isPun(tag);
       if (tagBreak) {
-        stack.addFirst(captureState());
-        restoreState(stack.removeLast());
+        stack.add(captureState());
+        restoreState(stack.remove());
         return true; // let continue to empty the stack
       }
       // token is not a tag breaker
@@ -139,9 +178,9 @@ public class TokenCompound extends TokenFilter
       // end of a look ahead
       if (trieO == null) {
         // store present state with no change
-        stack.addFirst(captureState());
+        stack.add(captureState());
         // restore the first recorded state, and go away
-        restoreState(stack.removeLast());
+        restoreState(stack.remove());
         return true; // let continue to empty the stack
       }
 
@@ -157,11 +196,11 @@ public class TokenCompound extends TokenFilter
         // no more compound with this prefix, we are happy
         if ((trieflags & FrDics.BRANCH) == 0) return true;
         // compound may continue, lookahead should continue, store this step
-        stack.addFirst(captureState());
+        stack.add(captureState());
       }
       // should be a part of a compound, store state if it’s a no way
       else {
-        stack.addFirst(captureState());
+        stack.add(captureState());
       }
     }
   }

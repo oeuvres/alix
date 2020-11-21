@@ -18,7 +18,7 @@ public class TestXMLIndexer
     String[][] corpora = {
       // {"critique", "/var/www/html/critique/.*\\.xml"},
       // {"haine-theatre", "/var/www/html/haine-theatre/xml/.*\\.xml", "/var/www/html/haine-theatre/xml-diplo/.*\\.xml" },
-      // {"mercure-galant", "/var/www/html/mercure-galant/xml/MG-.*\\.xml"},
+      // {"mercure-galant", "/var/www/html/mercure-galan/xml/MG-.*\\.xml"},
       {"test", "/var/www/html/critique/bergson/.*\\.xml"},
     };
     long time;

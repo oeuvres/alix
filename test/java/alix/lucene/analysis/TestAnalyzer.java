@@ -99,6 +99,7 @@ public class TestAnalyzer
     {
       final Tokenizer source = new FrTokenizer();
       TokenStream result = new FrTokenLem(source);
+      result = new TokenNames(result);
       result = new TokenCompound(result);
       return new TokenStreamComponents(source, result);
     }
@@ -219,9 +220,9 @@ public class TestAnalyzer
   public static void compounds() throws IOException
   {
     // text to tokenize
-    final String text = "Allons-y ! Mon Dieu ! Chemin de fer d’intérêt local. "
-        + "Je, ça va, suis content de chemin de fer, aïe. mal"
-        + "";
+    String text = "Allons-y ! Mon Dieu ! Chemin de fer d’intérêt local. "
+        + "Je, ça va, suis content de chemin de fer, aïe. Ici la clé de ma composition. Le 21 juin 1938.</byline>\n</div>"
+    ;
     vertical(text, new AnalyzerCompounds());
   }
 

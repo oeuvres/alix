@@ -325,6 +325,7 @@ public class FrTokenizer extends Tokenizer
 
       // Possible sentence delimiters
       if (c == '.' || c == '…' || c == '?' || c == '!' || c == '«' || c == '—' || c == ':') {
+        
         // token starting by a sentence punctuation
         if (length == 0) {
           flags.setFlags(Tag.PUNsent);
@@ -392,11 +393,14 @@ public class FrTokenizer extends Tokenizer
           startOffset = offset + bufIndex - 1;
         }
 
-        // soft hyphen, do not append to term
-        if (c == (char) 0xAD) continue;
+        
+        if (c == (char) 0xAD) continue; // soft hyphen, do not append to term
         if (c == '’') c = '\''; // normalize apos
         term.append(c);
+        
+        // Is hyphen breakable?
         if (hyphOffset > 0 && c != '-') test.append(c);
+        // Is apos breakable?
         if (c == '\'') {
           CharsAtt val = FrDics.ELISION.get(term);
           if (val != null) {
@@ -404,6 +408,7 @@ public class FrTokenizer extends Tokenizer
             break;
           }
         }
+        // something get wrong in loops or it is not a text with space, for example 
         if (length >= maxTokenLen) break; // a too big token stop
       }
       // a non token char, a word to send
@@ -415,16 +420,19 @@ public class FrTokenizer extends Tokenizer
     }
     // send term event
     int endOffset = offset + bufIndex - offLast;
+    
+    /* Buggy when ends like 15 juin 1938. (ending dot)
     // something like 1. 2.
     if ((c == '.' || c == ')' || c == '°') && flags.getFlags() == Tag.NUM) {
       term.setEmpty().append('#');
       endOffset++;
-      bufIndex++; // bad fix
+      bufIndex++; // bad fix, big problem with last char
       flags.setFlags(Tag.PUNsent);
     }
+    */
     // splitable hyphen ? split on souviens-toi, murmura-t-elle, but not
     // Joinville-le-Pont,
-    else if (hyphOffset > 0 && HYPHEN_POST.contains(test)) {
+    if (hyphOffset > 0 && HYPHEN_POST.contains(test)) {
       // swap terms to store state of word after hyphen
       // Laisse-moi ! Réveille-le. eploi-t-il ?
       int len = term.length() - test.length() - 1;

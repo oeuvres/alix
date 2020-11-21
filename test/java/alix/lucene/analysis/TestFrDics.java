@@ -136,14 +136,16 @@ public class TestFrDics
     */
     
     CharsAtt key = new CharsAtt();
-    for (String word: new String[] {"chemin", "chemin de", "chemin de fer", "chemin de fer d'intérêt local"}) {
+    for (String word: new String[] {"chemin", "chemin de", "chemin de fer", "chemin de fer d'intérêt local", "ma"}) {
       System.out.print(word);
       key.setEmpty().append(word);
       Integer flags = FrDics.COMPOUND.get(key);
-      System.out.print(" "+flags);
-      System.out.print(" "+Tag.label(flags));
-      if ( (flags & FrDics.BRANCH) > 0 ) System.out.print(" BRANCH");
-      if ( (flags & FrDics.LEAF) > 0 ) System.out.print(" LEAF");
+      if (flags != null) {
+        System.out.print(" "+flags);
+        System.out.print(" "+Tag.label(flags));
+        if ( (flags & FrDics.BRANCH) > 0 ) System.out.print(" BRANCH");
+        if ( (flags & FrDics.LEAF) > 0 ) System.out.print(" LEAF");
+      }
       System.out.println();
     }
   }
