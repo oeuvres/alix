@@ -45,6 +45,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import alix.fr.Tag;
 import alix.lucene.analysis.FrDics.NameEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
+import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 import alix.util.Char;
 
@@ -79,6 +80,8 @@ public class FrPersnameFilter extends TokenFilter
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   /** A normalized orthographic form */
   private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
+  /** A lemma, needed to restore states */
+  private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
   /** A stack of sates  */
   private LinkedList<State> stack = new LinkedList<State>();
   /** A term used to concat names */
@@ -108,6 +111,7 @@ public class FrPersnameFilter extends TokenFilter
     else return true;
     
     CharsAtt orth = (CharsAtt) orthAtt;
+    CharsAtt lem = (CharsAtt) lemAtt;
     // names are compounding, changing position is an error
     // PositionIncrementAttribute posInc = posIncAtt;
     OffsetAttribute offset = offsetAtt;
@@ -149,6 +153,7 @@ public class FrPersnameFilter extends TokenFilter
     // posIncAtt.setPositionIncrement(pos);
     // posLenAtt.setPositionLength(pos);
     // get tag
+    lem.setEmpty(); // the actual stop token may have set a lemma not relevant for names
     NameEntry entry = FrDics.name(name);
     if (entry == null) {
       flagsAtt.setFlags(Tag.NAME);

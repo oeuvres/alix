@@ -24,6 +24,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
+import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsDic;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
@@ -78,15 +79,18 @@ public class TestCompound
     Analyzer analyzer = new AnalyzerTest();
     TokenStream stream;
     CharsDic dic = new CharsDic();
-
-    List<File> ls = Dir.ls("/var/www/html/ddr-livres/ddr1972ao*\\.xml");
+    // ddr1982partdia_part-diable
+    // ddr1972ao
+    List<File> ls = Dir.ls("/home/fred/code/ddr-test/ddr1977aena*\\.xml");
     System.out.println(ls);
     
-    TagFilter tagfilter = new TagFilter().setGroup(Tag.NAME).setGroup(Tag.SUB).setGroup(Tag.VERB).clear(Tag.VERBaux).clear(Tag.VERBsup).setGroup(Tag.ADJ)
-        .set(Tag.NULL);
+    TagFilter tagfilter = new TagFilter().setGroup(Tag.NAME).setGroup(Tag.SUB).setGroup(Tag.ADJ)
+        .setGroup(Tag.VERB).clear(Tag.VERBaux).clear(Tag.VERBsup)
+        .set(Tag.NULL).setGroup(Tag.NAME);
     for (File entry : ls) {
       out.println(entry.getName());
       Path path = entry.toPath();
+      String text = Files.readString(path);
       InputStream is = Files.newInputStream(path, StandardOpenOption.READ);
       BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
       stream = analyzer.tokenStream("cloud", reader);
@@ -107,6 +111,12 @@ public class TestCompound
           occs++; // loop on all tokens
           int tag = flags.getFlags();
           boolean plainword = tagfilter.accept(tag);
+          /*
+          if (plainword) {
+            if (lem.length() > 0) dic.inc((CharsAtt)lem);
+            else dic.inc((CharsAtt)orth);
+          }
+          */
           if (wc == 0 && !plainword) continue;
           boolean pun = Tag.isPun(tag);
           if (pun || wc >= width) {
@@ -114,15 +124,19 @@ public class TestCompound
             wc = 0;
             continue;
           }
-          if (Tag.isAdj(tag)) compound.add(orth);
-          // else if (lem.length() > 0) compound.add(lem);
+          
+          if (lem.length() > 0 && Tag.isVerb(tag)) {
+            compound.add(lem);
+          }
           else compound.add(orth);
           wc++;
           // 2nd plain word, restart shingle, and keep the current word
           if (wc > 1 && plainword) {
             dic.inc(compound.chars());
             compound.clear();
-            if (lem.length() > 0) compound.add(lem);
+            if (lem.length() > 0 && Tag.isVerb(tag)) {
+              compound.add(lem);
+            }
             else compound.add(orth);
             wc = 1;
           }

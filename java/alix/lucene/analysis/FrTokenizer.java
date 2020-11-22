@@ -142,11 +142,12 @@ public class FrTokenizer extends Tokenizer
   /** tag content to skip */
   public static final HashMap<CharsAtt, CharsAtt> SKIP = new HashMap<CharsAtt, CharsAtt>();
   static {
-    SKIP.put(new CharsAtt("teiHeader"), new CharsAtt("/teiHeader"));
+    SKIP.put(new CharsAtt("bibl"), new CharsAtt("/bibl"));
     SKIP.put(new CharsAtt("head"), new CharsAtt("/head"));
+    SKIP.put(new CharsAtt("?index_off?"), new CharsAtt("?index_on?"));
     SKIP.put(new CharsAtt("script"), new CharsAtt("/script"));
     SKIP.put(new CharsAtt("style"), new CharsAtt("/style"));
-    SKIP.put(new CharsAtt("?index_off?"), new CharsAtt("?index_on?"));
+    SKIP.put(new CharsAtt("teiHeader"), new CharsAtt("/teiHeader"));
   }
   /** Store closing tag to skip */
   private CharsAtt skip = null;
