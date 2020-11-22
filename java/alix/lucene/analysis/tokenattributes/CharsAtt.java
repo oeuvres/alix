@@ -153,7 +153,7 @@ public class CharsAtt extends AttributeImpl
   }
 
   @Override
-  public final CharTermAttribute setLength(int length)
+  public final CharsAtt setLength(int length)
   {
     hash = 0;
     FutureObjects.checkFromIndexSize(0, length, chars.length);
@@ -162,7 +162,7 @@ public class CharsAtt extends AttributeImpl
   }
 
   @Override
-  public final CharTermAttribute setEmpty()
+  public final CharsAtt setEmpty()
   {
     hash = 0;
     len = 0;

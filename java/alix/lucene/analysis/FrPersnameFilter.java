@@ -46,19 +46,30 @@ import alix.fr.Tag;
 import alix.lucene.analysis.FrDics.NameEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import alix.util.Char;
 
 /**
- * Plug behind TokenLem
+ * Plug behind a linguistic tagger, will concat names like 
+ * Victor Hugo, V. Hugo, Jean de La Salle…
+ * A dictionary of proper names allow to provide canonical versions for
+ * known strings (J.-J. Rousseau => Rousseau, Jean-Jacques)
+ * 
  * @author fred
  *
  */
-public class TokenNames extends TokenFilter
+public class FrPersnameFilter extends TokenFilter
 {
   /** Particles in names  */
   public static final HashSet<CharsAtt> PARTICLES = new HashSet<CharsAtt>();
   static {
     for (String w : new String[] { "d'", "D'", "de", "De", "du", "Du", "l'", "L'", "le", "Le", "la", "La", "von", "Von" })
       PARTICLES.add(new CharsAtt(w));
+  }
+  /** Titles */
+  public static final HashSet<CharsAtt> TITLES = new HashSet<CharsAtt>();
+  static {
+    for (String w : new String[] { "M.", "Mme", "Madame", "madame", "Maître", "Maitre", "Monsieur", "monsieur", "Saint", "saint", "Sainte", "sainte" })
+      TITLES.add(new CharsAtt(w));
   }
   /** Current char offset */
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
@@ -73,7 +84,7 @@ public class TokenNames extends TokenFilter
   /** A term used to concat names */
   private CharsAtt name = new CharsAtt();
 
-  public TokenNames(TokenStream input)
+  public FrPersnameFilter(TokenStream input)
   {
     super(input);
   }
@@ -88,12 +99,15 @@ public class TokenNames extends TokenFilter
     if (!input.incrementToken()) {
       return false;
     }
-    // test compound names : NAME (particle|NAME)* NAME
+    // is it start of a name?
+    CharTermAttribute term = termAtt;
     FlagsAttribute flags = flagsAtt;
     final int tag = flags.getFlags();
-    if (!Tag.isName(tag)) return true;
+    if (Tag.isName(tag)); // NAME…
+    else if (TITLES.contains(term)); // Saint, Maître…
+    else return true;
+    
     CharsAtt orth = (CharsAtt) orthAtt;
-    CharTermAttribute term = termAtt;
     // names are compounding, changing position is an error
     // PositionIncrementAttribute posInc = posIncAtt;
     OffsetAttribute offset = offsetAtt;
@@ -107,12 +121,12 @@ public class TokenNames extends TokenFilter
     // a bug possible here if last token is a name ?
     boolean notlast;
     while ((notlast = input.incrementToken())) {
-      if (Tag.isName(flags.getFlags())) {
+      if (Char.isUpperCase(term.charAt(0))) {
         endOffset = offset.endOffset();
         if (name.charAt(name.length()-1) != '\'') name.append(' ');
         name.append(term);
         lastlen = name.length(); // store the last length of name
-        stack.clear(); // empty the stored paticles
+        stack.clear(); // empty the stored particles
         // pos += posInc.getPositionIncrement(); // increment position
         continue;
       }
@@ -149,14 +163,5 @@ public class TokenNames extends TokenFilter
       term.setEmpty().append(name);
     }
     return true;
-  }
-  @Override
-  public void reset() throws IOException {
-    super.reset();
-  }
-
-  @Override
-  public void end() throws IOException {
-    super.end();
   }
 }

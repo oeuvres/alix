@@ -62,7 +62,7 @@ import alix.util.Char;
  * <p>
  * The original {@link CharTermAttribute} provide by the step before is not
  * modified, allowing further filters to choose which token to index,
- * see {@link TokenLemCloud} or {@link TokenFlagFilter}. 
+ * see {@link FlagCloudFilter} or {@link FlagFilter}. 
  * </p>
  * <p>
  * The found lemma+pos is dictionary based. No disambiguation is tried,
@@ -77,7 +77,7 @@ import alix.util.Char;
  * (not compatible with German for example).
  * </p>
  */
-public final class FrTokenLem extends TokenFilter
+public final class FrLemFilter extends TokenFilter
 {
   /** The term provided by the Tokenizer */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -99,7 +99,7 @@ public final class FrTokenLem extends TokenFilter
   /**
    * Default constructor
    */
-  public FrTokenLem(TokenStream input)
+  public FrLemFilter(TokenStream input)
   {
     super(input);
   }
@@ -107,6 +107,9 @@ public final class FrTokenLem extends TokenFilter
   @Override
   public boolean incrementToken() throws IOException
   {
+    // was last token a sentence punctuation ?
+    boolean waspun = this.waspun;
+    this.waspun = false;
     if (save != null) {
       restoreState(save);
       save = null;
@@ -130,11 +133,11 @@ public final class FrTokenLem extends TokenFilter
     if (!Char.isToken(c1)) return true;
     
     
-    this.waspun = false;
     LexEntry word;
     NameEntry name;
     // First letter of token is upper case, is it a name ? Is it an upper case header ?
     if (Char.isUpperCase(c1)) {
+      
       // roman number already detected
       if (flagsAtt.getFlags() == Tag.NUM) return true;
       int n = Calcul.roman2int(orth.buffer(), 0, orth.length());
@@ -158,7 +161,7 @@ public final class FrTokenLem extends TokenFilter
       if (word != null) { // known word
         // if not after a pun, maybe a capitalized concept État, or a name La Fontaine, 
         // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc. 
-        // if (!waspun)
+        if (waspun) termAtt.buffer()[0] = Char.toLower(c1);
         flagsAtt.setFlags(word.tag);
         if (word.lem != null) {
           lemAtt.append(word.lem);

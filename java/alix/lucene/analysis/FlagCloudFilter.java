@@ -53,7 +53,7 @@ import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
  * This allows simple computation of a token context
  * (ex: span queries, co-occurrences).
  */
-public class TokenLemCloud extends TokenFilter
+public class FlagCloudFilter extends TokenFilter
 {
   /** The term provided by the Tokenizer */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -66,7 +66,7 @@ public class TokenLemCloud extends TokenFilter
   /** output pun or not ? */
   boolean pun;
 
-  public TokenLemCloud(TokenStream in, boolean pun)
+  public FlagCloudFilter(TokenStream in, boolean pun)
   {
     super(in);
     this.pun = pun;

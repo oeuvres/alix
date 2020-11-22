@@ -346,7 +346,7 @@ public class FrTokenizer extends Tokenizer
           if (FrDics.brevidot(term)) {
             continue; // keep dot
           }
-          // Fin de phrase.
+          // End on sentence.
           else if (Char.isLowerCase(lastChar)) {
             term.setLength(term.length() - 1);
           }

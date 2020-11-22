@@ -32,12 +32,13 @@
  */
 package alix.lucene.analysis;
 
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 
 /**
- * A mutable String used to merge compunds words.
+ * A mutable String used to merge compounds words.
+ * An index of each token is kept to easily test different sizes of the String,
+ * with no more writing.
+ * 
  * 
  * @author fred
  *
@@ -88,6 +89,10 @@ public class Compound
 
   public CharsAtt chars()
   {
+    if (size == 0) {
+      term.setLength(0);
+      return term;
+    }
     term.setLength(length[size - 1]);
     return term;
   }
@@ -106,10 +111,19 @@ public class Compound
   /**
    * Set the number of tokens
    */
-  public void add(CharTermAttribute token, final int tag)
+  public void add(CharSequence token)
+  {
+    add(token, 0);
+  }
+  /**
+   * Set the number of tokens
+   */
+  public void add(CharSequence token, final int tag)
   {
     final int cap = capacity;
     int len = token.length();
+    // do nothing for empty term
+    if (len == 0) return;
     if (size == 0) {
       offset[0] = 0;
       length[0] = len;
@@ -118,6 +132,7 @@ public class Compound
       size++;
       return;
     }
+    // shift
     if (size == cap) {
       int from = offset[1];
       // System.arrayCopy do not seems to create crossing problems
@@ -131,8 +146,8 @@ public class Compound
     }
     // restore length after explorations
     term.setLength(length[size - 1]);
-    char lastchar = term.charAt(length[size - 1] - 1);
     offset[size] = length[size - 1];
+    char lastchar = term.charAt(length[size - 1] - 1);
     if (lastchar != '\'') {
       term.append(' ');
       offset[size]++;

@@ -51,7 +51,7 @@ import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
  * @author fred
  *
  */
-public class TokenCompound extends TokenFilter
+public class CompoundFilter extends TokenFilter
 {
   /** Current char offset */
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
@@ -74,7 +74,7 @@ public class TokenCompound extends TokenFilter
   /** Counter */
   private int count;
 
-  public TokenCompound(TokenStream input)
+  public CompoundFilter(TokenStream input)
   {
     super(input);
   }

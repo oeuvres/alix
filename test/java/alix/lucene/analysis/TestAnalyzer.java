@@ -70,8 +70,8 @@ public class TestAnalyzer
     protected TokenStreamComponents createComponents(String fieldName)
     {
       final Tokenizer source = new FrTokenizer();
-      TokenStream result = new FrTokenLem(source);
-      result = new TokenLemFull(result);
+      TokenStream result = new FrLemFilter(source);
+      result = new FlagAllFilter(result);
       return new TokenStreamComponents(source, result);
     }
 
@@ -84,8 +84,8 @@ public class TestAnalyzer
     protected TokenStreamComponents createComponents(String fieldName)
     {
       final Tokenizer source = new FrTokenizer();
-      TokenStream result = new FrTokenLem(source);
-      result = new TokenNames(result);
+      TokenStream result = new FrLemFilter(source);
+      result = new FrPersnameFilter(result);
       return new TokenStreamComponents(source, result);
     }
 
@@ -98,9 +98,9 @@ public class TestAnalyzer
     protected TokenStreamComponents createComponents(String fieldName)
     {
       final Tokenizer source = new FrTokenizer();
-      TokenStream result = new FrTokenLem(source);
-      result = new TokenNames(result);
-      result = new TokenCompound(result);
+      TokenStream result = new FrLemFilter(source);
+      result = new FrPersnameFilter(result);
+      result = new CompoundFilter(result);
       return new TokenStreamComponents(source, result);
     }
 
@@ -185,6 +185,7 @@ public class TestAnalyzer
     FlagsAttribute flags = stream.addAttribute(FlagsAttribute.class);
     PositionIncrementAttribute posInc = stream.addAttribute(PositionIncrementAttribute.class);
     PositionLengthAttribute posLen = stream.addAttribute(PositionLengthAttribute.class);
+    
     try {
       stream.reset();
       // print all tokens until stream is exhausted
@@ -213,15 +214,16 @@ public class TestAnalyzer
   public static void names() throws IOException
   {
     // text to tokenize
-    final String text = "V. Hugo. Victor Hugo. Jules Marie, Pierre de Martin ou Peut-être lol ? Les U.S.A., un grand pays. L'orange et l'Europe de l'acier. ";
+    final String text = "V. Hugo. Victor Hugo. À Vrai dire… De Maître Eckhart à Jean de la Croix.  Jules Marie, Pierre de Martin ou Peut-être lol ? Les U.S.A., un grand pays. L'orange et l'Europe de l'acier. ";
     vertical(text, new AnalyzerNames());
   }
   
   public static void compounds() throws IOException
   {
     // text to tokenize
-    String text = "Allons-y ! Mon Dieu ! Chemin de fer d’intérêt local. "
-        + "Je, ça va, suis content de chemin de fer, aïe. Ici la clé de ma composition. Le 21 juin 1938.</byline>\n</div>"
+    String text = "Allons-y ! Mon Dieu ! Chemin de fer d’intérêt local. <num>xiii<hi rend=\"sup\">e</hi></num> siècle."
+        + " Traduction française par J. Herbomez et R. Beaurieux. faire faire <pb n=\"404\" xml:id=\"p404\"/> l’amour. "
+        + " Je, ça va, suis content de chemin de fer, aïe. Ici la clé de ma composition. Le 21 juin 1938.</byline>\n</div>"
     ;
     vertical(text, new AnalyzerCompounds());
   }

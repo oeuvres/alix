@@ -51,12 +51,12 @@ public class FrAnalyzer extends Analyzer
   public TokenStreamComponents createComponents(String field)
   {
     final Tokenizer source = new FrTokenizer(); // segment words
-    TokenStream result = new FrTokenLem(source); // provide lemma+pos
-    // result = new TokenNames(result); // link names, V. Hugo
-    result = new TokenCompound(result); // compounds, parce que
+    TokenStream result = new FrLemFilter(source); // provide lemma+pos
+    result = new FrPersnameFilter(result); // link names: V. Hugo
+    result = new CompoundFilter(result); // compounds: parce que
     boolean pun = false;
     if ("query".startsWith(field)) pun = true; // keep punctuation, ex, to parse query
-    result = new TokenLemCloud(result, pun); // select lemmas as term to index
+    result = new FlagCloudFilter(result, pun); // select lemmas as term to index
     return new TokenStreamComponents(source, result);
   }
   

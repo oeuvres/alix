@@ -100,7 +100,9 @@ public class CharsDic
     public String toString()
     {
       StringBuilder sb = new StringBuilder();
-      sb.append(key).append(" (").append(Tag.label(tag)).append("): ").append(count);
+      sb.append(key);
+      if (tag > 0) sb.append(" ").append(Tag.label(tag)).append(" ");
+      sb.append(" (").append(count).append(")");
       return sb.toString();
     }
   }

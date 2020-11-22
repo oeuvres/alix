@@ -48,8 +48,7 @@ import alix.fr.Tag.TagFilter; // for documentation
  * providing codes for part-of-speech.
  * Positions with holes are kept.
  */
-@SuppressWarnings("unused")
-public class TokenFlagFilter extends FilteringTokenFilter
+public class FlagFilter extends FilteringTokenFilter
 {
   /** A linguistic category as a short number, from Tag */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
@@ -60,7 +59,7 @@ public class TokenFlagFilter extends FilteringTokenFilter
    * 
    * @param in
    */
-  public TokenFlagFilter(TokenStream in, final BitSet filter)
+  public FlagFilter(TokenStream in, final BitSet filter)
   {
     super(in);
     this.filter = filter;

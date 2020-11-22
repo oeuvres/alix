@@ -611,6 +611,7 @@ en bas;ADV
 en catimini;ADV;
 en connaissance de cause;ADV
 en effet;ADV;
+en fin de compte;ADV
 en général;ADV
 en grande partie;ADV
 en haut;ADV
@@ -794,6 +795,7 @@ argent de poche;SUB
 arrêt maladie;SUB
 arrière-train;SUB
 assemblée générale;SUB
+autre chose;SUB
 avocat général;SUB
 ayants droit;SUB
 back up;SUB
@@ -1301,6 +1303,39 @@ XXVI e;DETnum
 XXVII e;DETnum
 XXVIII e;DETnum
 XXX e;DETnum
+
+i e;DETnum
+i er;DETnum
+ii e;DETnum
+ii nd;DETnum
+iii e;DETnum
+iv e;DETnum
+v e;DETnum
+vi e;DETnum
+vii e;DETnum
+viii e;DETnum
+ix e;DETnum
+x e;DETnum
+xi e;DETnum
+xii e;DETnum
+xiii e;DETnum
+xiv e;DETnum
+xvi e;DETnum
+xvii e;DETnum
+xviii e;DETnum
+xix e;DETnum
+xx e;DETnum
+xxi e;DETnum
+xxii e;DETnum
+xxiii e;DETnum
+xxiv e;DETnum
+xxv e;DETnum
+xxvi e;DETnum
+xxvii e;DETnum
+xxviii e;DETnum
+xxix e;DETnum
+xxx e;DETnum
+
 qui aime bien châtie bien;SUB
 
 # EXCL

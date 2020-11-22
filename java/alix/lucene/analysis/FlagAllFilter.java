@@ -36,85 +36,66 @@ import java.io.IOException;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
-import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import alix.fr.Tag;
-import alix.lucene.util.BinaryUbytes;
-import alix.lucene.util.Offsets;
+import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 
 /**
- * A token filter counting tokens. 
- * Before a CachingTokenFilter, it allows to get some 
- * counts if the token stream has been exhausted.
+ * A token Filter to plug after a Lemmatizer.
+ * Merge flows of forms, lemmas and pos in same line of terms.
+ * 
+ * @author fred
+ *
  */
-
-public class TokenStats extends TokenFilter
+public class FlagAllFilter extends TokenFilter
 {
-  /** Current char offset */
-  private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
   /** The term provided by the Tokenizer */
-  PositionIncrementAttribute posAtt = addAttribute(PositionIncrementAttribute.class);
-  /** A linguistic category as a short number see {@link Tag} */
+  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  /** A linguistic category as a short number, from Tag */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-  /** Last position */
-  int pos;
-  /** Record tags by position */
-  private BinaryUbytes tags =  new BinaryUbytes(1024);
-  /** Record offsets by position */
-  private Offsets offsets =  new Offsets(1024);
-
-
-  public TokenStats(TokenStream in)
+  /** A lemma when possible */
+  private final CharsLemAtt charsLemAtt = addAttribute(CharsLemAtt.class); 
+  /** A lemma when possible */
+  private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class); 
+  /** Flag to say a tag has to be send */
+  int tag;
+  /** Flag to say */
+  boolean lem;
+  
+  /**
+   * 
+   * @param in
+   */
+  public FlagAllFilter(TokenStream in)
   {
     super(in);
   }
-
   @Override
   public boolean incrementToken() throws IOException
   {
-    if (!input.incrementToken()) return false; // end of stream
-    offsets.put(pos, offsetAtt.startOffset(), offsetAtt.endOffset());
-    tags.put(pos, flagsAtt.getFlags());
-    pos += posAtt.getPositionIncrement();
+    CharTermAttribute term = this.termAtt;
+    // purge things
+    if (lem) {
+      posIncAtt.setPositionIncrement(0);
+      term.setEmpty().append(charsLemAtt);
+      lem = false;
+      return true;
+    }
+    if (tag != Tag.NULL) {
+      posIncAtt.setPositionIncrement(0);
+      term.setEmpty().append(Tag.label(tag));
+      tag = Tag.NULL;
+      return true;
+    }
+    
+    // end of stream
+    if (!input.incrementToken()) return false;
+    tag = flagsAtt.getFlags();
+    if (this.charsLemAtt.length() != 0) lem = true;
     return true;
   }
-
-  /**
-   * Returns the cuurent position (or length when stream is consumed).
-   * @return
-   */
-  public int pos() {
-    return pos;
-  }
-
-  /**
-   * Return the offsets index for a document, ready to be indexed.
-   * @return
-   */
-  public Offsets offsets()
-  {
-    return offsets;
-  }
-
-  /**
-   * Return the tags in position order.
-   * @return
-   */
-  public BinaryUbytes tags()
-  {
-    return tags;
-  }
-
-  @Override
-  public void reset() throws IOException
-  {
-    super.reset();
-    pos = 0;
-    tags.reset();
-    offsets.reset();
-  }
-
 
 }

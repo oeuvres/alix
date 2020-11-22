@@ -483,11 +483,23 @@ public final class Tag
       return this;
     }
 
+    public TagFilter clear(final int tag) {
+      bits.clear(tag);
+      return this;
+    }
+
     public TagFilter setGroup(int tag) {
       tag = tag & 0xF0;
       bits.set(tag, tag + 16, true);
       return this;
     }
+
+    public TagFilter clearGroup(int tag) {
+      tag = tag & 0xF0;
+      bits.set(tag, tag + 16, false);
+      return this;
+    }
+    
     public boolean accept(int tag) {
       return bits.get(tag);
     }
