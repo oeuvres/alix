@@ -41,7 +41,7 @@ import org.apache.lucene.util.BytesRef;
 
 /**
  * Data structure to write and read unsigned bytes (0-255)
- * in a binary form suited for stored field 
+ * in a binary form suited for lucene stored field 
  * {@link StoredField#StoredField(String, BytesRef)},
  * {@link Document#getBinaryValue(String)}
  * or binary fields {@link BinaryDocValuesField},

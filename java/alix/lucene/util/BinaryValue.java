@@ -44,7 +44,7 @@ import org.apache.lucene.util.BytesRef;
 import alix.util.Calcul;
 
 /**
- * For data in a binary form suited for stored field 
+ * For data in a binary form suited for lucene stored field 
  * {@link StoredField#StoredField(String, BytesRef)},
  * {@link Document#getBinaryValue(String)}
  * or binary fields {@link BinaryDocValuesField},

@@ -121,6 +121,14 @@ public final class Tag
   public final static int CONJcoord = 0x81;
   /** Conjonction de subordination : comme, si, parce que… */
   public final static int CONJsubord = 0x82;
+  /** Nombres */
+  public final static int NUM = 0x90;
+  /** Cardinal */
+  public final static int NUMcard = 0x91;
+  /** Ordinaux */
+  public final static int NUMord = 0x92;
+  /** Unités */
+  public final static int NUMunit = 0x93;
   /** Nom propre */
   public final static int NAME = 0xB0;
   /** Nom de personne */
@@ -163,8 +171,6 @@ public final class Tag
   public final static int ABBR = 0xF1;
   /** Exclamation */
   public final static int EXCL = 0xF2;
-  /** Numéro */
-  public final static int NUM = 0xF3;
   /** Mathematical operator */
   public final static int MATH = 0xF4;
   /** A number used as a reference, like a page, a note */

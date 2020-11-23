@@ -24,11 +24,10 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
+import alix.lucene.analysis.CharsDic.Entry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
-import alix.lucene.analysis.tokenattributes.CharsDic;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
-import alix.lucene.analysis.tokenattributes.CharsDic.Entry;
 import alix.util.Dir;;
 
 public class TestCompound
@@ -86,7 +85,8 @@ public class TestCompound
     
     TagFilter tagfilter = new TagFilter().setGroup(Tag.NAME).setGroup(Tag.SUB).setGroup(Tag.ADJ)
         .setGroup(Tag.VERB).clear(Tag.VERBaux).clear(Tag.VERBsup)
-        .set(Tag.NULL).setGroup(Tag.NAME);
+        .set(Tag.NULL).setGroup(Tag.NAME)
+    ;
     for (File entry : ls) {
       out.println(entry.getName());
       Path path = entry.toPath();

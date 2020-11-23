@@ -1,27 +1,5 @@
 GRAPH;CAT;ORTH;FREQ
 
-# NAMEq
-NAME NAME;NAMEpers
-NAME NUM;NAMEpers
-NAME NAME de NAME;NAMEpers
-NAME de NAME;NAMEpers
-NAME d'NAME;NAME
-NAME de La NAME;NAMEpers
-NAME du NAME;NAMEpers
-NAME Le NAME;NAMEpers
-# NAME en NAME;NAMEplace # "Vienne en Autriche", trop de bruit, mieux vaut liste
-# d'NAME;NAMEpers
-place NAME;NAMEplace
-place de NAME;NAMEplace
-place NAME NAME;NAMEplace
-place NAME NUM;NAMEplace
-rue NAME;NAMEplace
-rue de NAME;NAMEplace
-rue NAME NAME;NAMEplace
-rue NAME NUM;NAMEplace
-saint NAME;NAMEpers
-sainte NAME;NAMEpers
-
 # TITULATURES
 
 # Monsieur (frère du roi)
@@ -1097,7 +1075,10 @@ modern style;SUB
 modus operandi;SUB
 modus vivendi;SUB
 mot d’ordre;SUB
+Moyen Âge;SUB
+Moyen Age;SUB
 moyen âge;SUB;moyen-âge
+moyen age;SUB;moyen-âge
 moyen-âge;SUB;
 music hall;SUB
 negro spiritual;SUB
