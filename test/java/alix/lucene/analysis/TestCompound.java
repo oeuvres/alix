@@ -2,7 +2,6 @@ package alix.lucene.analysis;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -19,8 +18,6 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
@@ -50,7 +47,7 @@ public class TestCompound
   public static void cycle()
   {
     Compound compound = new Compound(3);
-    String[] words = "Le grand fromager de l’ interzone vous mangera confit".split("\\s+");
+    String[] words = "Le grand fromager de l’ interzone vous mangera confit. Mais alors ?".split("\\s+");
     for (String w: words) {
       compound.add(w, Tag.SUB);
       System.out.print(compound+"\t");
@@ -163,7 +160,7 @@ public class TestCompound
   
   public static void main(String[] args) throws IOException
   {
-    collocs();
-    // cycle();
+    // collocs();
+    cycle();
   }
 }

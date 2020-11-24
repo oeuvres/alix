@@ -33,49 +33,148 @@
 package alix.lucene.analysis;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 
 import alix.fr.Tag;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
+import alix.util.IntPair;
+import alix.util.IntRoll;
 
 /**
- * A dictionary optimized for lucene analysis using {@link CharsAtt} as key.
+ * A dictionary to record 
  */
 public class CharsNet
 {
-  private HashMap<CharsAtt, Counter> tokens = new HashMap<CharsAtt, Entry>();
+  /** Record edge directions ? */
+  final boolean directed;
+  /** width of tokens to link between */
+  final int width;
+  /** last Node seen for the graph */
+  private final IntRoll nodeRoll;
+  /** Set if node slider is full */
+  private boolean nodeFull;
+  /** Auto-increment node id */
+  private int nodeAutoid;
+  /** Dictionary of nodes */
+  private HashMap<CharsAtt, Node> nodeHash = new HashMap<CharsAtt, Node>();
+  /** Node index by id */
+  private Node[] nodeList;
+  /** Auto-increment edge id */
+  private int edgeAutoid;
+  /** Dictionary of edges */
+  private HashMap<IntPair, Edge> edgeHash = new HashMap<IntPair, Edge>();
+  /** Edge tester */
+  private IntPair edgeKey = new IntPair();
 
-  public int inc(final CharsAtt token)
+  public CharsNet(final int width, final boolean directed)
   {
-    return inc(token, 0);
+    this.directed = directed;
+    if (width < 2)
+      throw new IndexOutOfBoundsException("Width of nodes window should have 2 or more nodes to link between.");
+    this.width = width;
+    nodeRoll = new IntRoll(1 - width, 0);
   }
 
-  public int inc(final CharsAtt token, final int tag)
+  public void inc(final CharsAtt token)
   {
-    Entry entry = tokens.get(token);
-    if (entry == null) {
+    inc(token, 0);
+  }
+
+  public void inc(final CharsAtt token, final int tag)
+  {
+    Node node = nodeHash.get(token);
+    if (node == null) {
       CharsAtt key = new CharsAtt(token);
-      entry = new Entry(key, tag);
-      tokens.put(key, entry);
+      node = new Node(key, tag);
+      nodeHash.put(key, node);
+      nodeList = null; // modification of nodeList
     }
-    return ++entry.count;
+    node.inc();
+    int pivotid = node.id;
+    nodeRoll.push(pivotid);
+    if (!nodeFull) {
+      if (nodeRoll.pushCount() < width) return;
+      nodeFull = true;
+    }
+    
+    for (int i = 1 - width; i < 0; i++) {
+      int leftid = nodeRoll.get(i);
+      // directed ?
+      if (directed) edgeKey.set(leftid, pivotid);
+      else edgeKey.set(Math.min(leftid, pivotid), Math.max(leftid, pivotid));
+      Edge edge = edgeHash.get(edgeKey);
+      if (edge == null) {
+        edge = new Edge(edgeKey);
+        edgeHash.put(edgeKey, edge);
+      }
+      edge.inc();
+    }
+  }
+  
+  public Node node(int id)
+  {
+    if (nodeList == null) {
+      nodeList = new Node[nodeHash.size()];
+      nodeHash.values().toArray(nodeList);
+      Arrays.sort(nodeList, new Comparator<Node>() {
+        @Override
+        public int compare(Node o1, Node o2) {
+           return Integer.compare(o1.id, o2.id);
+        }
+      });
+    }
+    return nodeList[id];
+  }
+  
+  public Node[] nodes()
+  {
+    Node[] nodes = new Node[nodeHash.size()];
+    nodeHash.values().toArray(nodes);
+    Arrays.sort(nodes, new Comparator<Node>() {
+      @Override
+      public int compare(Node o1, Node o2) {
+         return Integer.compare(o2.count, o1.count);
+      }
+    });
+    return nodes;
   }
 
-  public class Entry implements Comparable<Entry>
+  public Edge[] edges()
   {
-    private int count;
-    private final CharsAtt key;
-    private final int tag;
+    Edge[] edges = new Edge[edgeHash.size()];
+    edgeHash.values().toArray(edges);
+    Arrays.sort(edges, new Comparator<Edge>() {
+      @Override
+      public int compare(Edge o1, Edge o2) {
+         return Integer.compare(o2.count, o1.count);
+      }
+    });
+    return edges;
+  }
 
-    public Entry(final CharsAtt key, final int tag)
+  public class Node
+  {
+    private final int id;
+    private final CharsAtt label;
+    private final int tag;
+    private int count;
+
+    public Node(final CharsAtt label, final int tag)
     {
-      this.key = key;
+      this.label = new CharsAtt(label);
       this.tag = tag;
+      this.id = nodeAutoid++;
     }
 
-    public CharsAtt key()
+    public int id()
     {
-      return key;
+      return id;
+    }
+
+    public CharsAtt label()
+    {
+      return label;
     }
 
     public int tag()
@@ -88,31 +187,78 @@ public class CharsNet
       return count;
     }
 
-    /**
-     * Default comparator for chain informations,
-     */
-    @Override
-    public int compareTo(Entry o)
+    public int inc()
     {
-      return o.count - count;
+      return ++count;
     }
 
     @Override
     public String toString()
     {
       StringBuilder sb = new StringBuilder();
-      sb.append(key);
+      sb.append(label);
       if (tag > 0) sb.append(" ").append(Tag.label(tag)).append(" ");
       sb.append(" (").append(count).append(")");
       return sb.toString();
     }
   }
 
-  public Entry[] sorted()
+  public class Edge
   {
-    Entry[] entries = new Entry[tokens.size()];
-    tokens.values().toArray(entries);
-    Arrays.sort(entries);
-    return entries;
+    private final int id;
+    private final int source;
+    private final int target;
+    private int count;
+
+    public Edge(final IntPair pair)
+    {
+      this.id = edgeAutoid++;
+      this.source = pair.x();
+      this.target = pair.y();
+    }
+
+    public Edge(final int source, final int target)
+    {
+      this.id = ++edgeAutoid;
+      this.source = source;
+      this.target = target;
+    }
+
+    public int source()
+    {
+      return source;
+    }
+
+    public int target()
+    {
+      return target;
+    }
+
+    public int count()
+    {
+      return count;
+    }
+
+    public int id()
+    {
+      return id;
+    }
+
+    public int inc()
+    {
+      return ++count;
+    }
+
+    @Override
+    public String toString()
+    {
+      StringBuilder sb = new StringBuilder();
+      sb.append(node(source).label);
+      if (directed) sb.append(" -> ");
+      else sb.append(" -- ");
+      sb.append(node(target).label);
+      sb.append(" (").append(count).append(")");
+      return sb.toString();
+    }
   }
 }

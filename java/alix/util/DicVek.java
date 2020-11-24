@@ -89,7 +89,7 @@ public class DicVek
   /** Index of right context */
   public final int right;
   /** Sliding window of occurrences */
-  private OccRoller occs;
+  private OccRoll occs;
   /** Current Vector to work on */
   // private IntIntMap vek;
   /** threshold of non stop words */
@@ -545,7 +545,7 @@ public class DicVek
    */
   public void tokenize(Path file) throws IOException
   {
-    occs = new OccRoller(left, right);
+    occs = new OccRoll(left, right);
     // values = new IntRoller( left, right );
     String text = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
     Tokenizer toks = new Tokenizer(text);

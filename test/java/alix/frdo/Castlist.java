@@ -11,7 +11,7 @@ import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.DicFreq;
 import alix.util.Occ;
-import alix.util.OccRoller;
+import alix.util.OccRoll;
 
 public class Castlist
 {
@@ -29,7 +29,7 @@ public class Castlist
 
   public void pivot(String xml, PrintWriter out, Tag tag, int left, int right)
   {
-    OccRoller win = new OccRoller(left, right);
+    OccRoll win = new OccRoll(left, right);
     Tokenizer toks = new Tokenizer(xml);
     while (toks.word(win.add())) {
       System.out.println(win.get(0));
@@ -59,7 +59,7 @@ public class Castlist
 
   public void pivot(String xml, PrintWriter out, String pivot, int left, int right)
   {
-    OccRoller win = new OccRoller(left, right);
+    OccRoll win = new OccRoll(left, right);
     Tokenizer toks = new Tokenizer(xml);
     while (toks.word(win.add())) {
       if (!win.get(0).orth().equals(pivot))

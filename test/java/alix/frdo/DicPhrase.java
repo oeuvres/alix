@@ -25,7 +25,7 @@ import alix.fr.Tokenizer;
 import alix.util.Chain;
 import alix.util.Char;
 import alix.util.DicFreq;
-import alix.util.IntRoller;
+import alix.util.IntRoll;
 import alix.util.IntVector;
 import alix.util.IntTuple;
 
@@ -118,7 +118,7 @@ public class DicPhrase
     return ref.inc();
   }
 
-  public int inc(final IntRoller key)
+  public int inc(final IntRoll key)
   {
     @SuppressWarnings("unlikely-arg-type")
     Ref ref = tupleDic.get(key);
@@ -144,7 +144,7 @@ public class DicPhrase
     ref.label = label;
   }
 
-  public void label(final IntRoller key, final String label)
+  public void label(final IntRoll key, final String label)
   {
     @SuppressWarnings("unlikely-arg-type")
     Ref ref = tupleDic.get(key);
@@ -159,7 +159,7 @@ public class DicPhrase
     return true;
   }
 
-  public boolean contains(final IntRoller win)
+  public boolean contains(final IntRoll win)
   {
     @SuppressWarnings("unlikely-arg-type")
     Ref ref = tupleDic.get(win);
@@ -255,8 +255,8 @@ public class DicPhrase
     final int size = 2; // taille des expressions
     boolean locs = true;
 
-    IntRoller gram = new IntRoller(0, size - 1); // collocation wheel
-    IntRoller wordmarks = new IntRoller(0, size - 1); // positions of words recorded in the collocation key
+    IntRoll gram = new IntRoll(0, size - 1); // collocation wheel
+    IntRoll wordmarks = new IntRoll(0, size - 1); // positions of words recorded in the collocation key
 
     DicFreq dic = new DicFreq();
     DicPhrase phrases = new DicPhrase();
@@ -279,7 +279,7 @@ public class DicPhrase
       if (code > senselevel) senselevel = code;
     }
 
-    IntRoller wordflow = new IntRoller(-15, 0);
+    IntRoll wordflow = new IntRoll(-15, 0);
     int code;
     StringBuffer label = new StringBuffer();
     for (File src : new File(dir).listFiles()) {

@@ -143,13 +143,14 @@ public final class FrLemFilter extends TokenFilter
       int n = Calcul.roman2int(orth.buffer(), 0, orth.length());
       if (n > 0) {
         flagsAtt.setFlags(Tag.NUM);
+        orth.append(""+n);
         return true;
       }
       // USA ?
       orth.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
       FrDics.norm(orth); // normalise : Etat -> État
       copy.copy(orth);
-      c1 = orth.charAt(0); // keep initial cap, maybe useful
+      // c1 = orth.charAt(0); // keep initial cap, maybe useful
       name = FrDics.name(orth); // known name ?
       if (name != null) {
         flagsAtt.setFlags(name.tag);
@@ -161,7 +162,8 @@ public final class FrLemFilter extends TokenFilter
       if (word != null) { // known word
         // if not after a pun, maybe a capitalized concept État, or a name La Fontaine, 
         // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc. 
-        if (waspun) termAtt.buffer()[0] = Char.toLower(c1);
+        // restore initial cap
+        if (!waspun) termAtt.buffer()[0] = c1;
         flagsAtt.setFlags(word.tag);
         if (word.lem != null) {
           lemAtt.append(word.lem);

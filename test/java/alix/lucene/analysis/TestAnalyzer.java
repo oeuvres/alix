@@ -99,7 +99,7 @@ public class TestAnalyzer
     {
       final Tokenizer source = new FrTokenizer();
       TokenStream result = new FrLemFilter(source);
-      result = new FrPersnameFilter(result);
+      // result = new FrPersnameFilter(result);
       result = new CompoundFilter(result);
       return new TokenStreamComponents(source, result);
     }
@@ -181,7 +181,7 @@ public class TestAnalyzer
     CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
     CharsLemAtt lem = stream.addAttribute(CharsLemAtt.class);
     CharsOrthAtt orth = stream.addAttribute(CharsOrthAtt.class);
-    OffsetAttribute offset = stream.addAttribute(OffsetAttribute.class);
+    OffsetAttribute offsets = stream.addAttribute(OffsetAttribute.class);
     FlagsAttribute flags = stream.addAttribute(FlagsAttribute.class);
     PositionIncrementAttribute posInc = stream.addAttribute(PositionIncrementAttribute.class);
     PositionLengthAttribute posLen = stream.addAttribute(PositionLengthAttribute.class);
@@ -195,8 +195,8 @@ public class TestAnalyzer
           + "\t" + orth  
           + "\t" + Tag.label(flags.getFlags())
           + "\t" + lem  
-          + " |" + text.substring(offset.startOffset(), offset.endOffset()) + "|"
-          + " " + offset.startOffset() + "-" + offset.endOffset()
+          + " |" + text.substring(offsets.startOffset(), offsets.endOffset()) + "|"
+          + " " + offsets.startOffset() + "-" + offsets.endOffset()
           + " (" + posInc.getPositionIncrement() + ", " + posLen.getPositionLength() + ")"
         );
         System.out.println();
@@ -214,14 +214,14 @@ public class TestAnalyzer
   public static void names() throws IOException
   {
     // text to tokenize
-    final String text = "V. Hugo. Victor Hugo. À Vrai dire… De Maître Eckhart à Jean de la Croix.  Jules Marie, Pierre de Martin ou Peut-être lol ? Les U.S.A., un grand pays. L'orange et l'Europe de l'acier. ";
-    vertical(text, new AnalyzerNames());
+    final String text = "V. Hugo. Victor Hugo. Les États-Nations, à Vrai dire… De Maître Eckhart à Jean de la Croix.  Jules Marie, Pierre de Martin ou Peut-être lol ? Les U.S.A., un grand pays. L'orange et l'Europe de l'acier. ";
+    vertical(text, new FrAnalyzer());
   }
   
   public static void compounds() throws IOException
   {
     // text to tokenize
-    String text = "Allons-y ! Mon Dieu ! Chemin de fer d’intérêt local au moyen âge. <num>xiii<hi rend=\"sup\">e</hi></num> siècle."
+    String text = "Allons-y ! Mon Dieu… Mais alors ? D’abord, le chemin de fer d’intérêt local au moyen âge. <num>xiii<hi rend=\"sup\">e</hi></num> siècle."
         + " J’ai écrit ce livre à New York, dit l’Évangile."
         + " Et l’Éternel Dieu dit : Qui t’a appris que tu es nu ? "
         + " Traduction française par J. Herbomez et R. Beaurieux. faire faire <pb n=\"404\" xml:id=\"p404\"/> l’amour. "

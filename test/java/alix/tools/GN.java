@@ -43,7 +43,7 @@ import java.nio.file.Paths;
 import alix.fr.Tag;
 import alix.fr.Tokenizer;
 import alix.util.DicFreq;
-import alix.util.OccRoller;
+import alix.util.OccRoll;
 
 public class GN
 {
@@ -127,7 +127,7 @@ public class GN
   public DicFreq parse(PrintWriter out, int limit)
   {
     DicFreq dic = new DicFreq();
-    OccRoller win = new OccRoller(left, right);
+    OccRoll win = new OccRoll(left, right);
     // loop on all tokens
     while (toks.word(win.add())) {
       // limited concordance
@@ -239,7 +239,7 @@ public class GN
   /**
    * Write the window
    */
-  private void html(PrintWriter out, final OccRoller win, final int lpos, final int rpos)
+  private void html(PrintWriter out, final OccRoll win, final int lpos, final int rpos)
   {
     n++;
     out.print("<tr>");

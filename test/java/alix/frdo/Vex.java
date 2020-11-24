@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import alix.util.Chain;
 import alix.util.Char;
-import alix.util.IntRoller;
+import alix.util.IntRoll;
 import alix.util.IntIntMap;
 import alix.util.Top;
 
@@ -108,7 +108,7 @@ public class Vex
     for (int row = 0; row < rows; row++) {
       mat[row] = new IntIntMap(row, byIndex[row]);
     }
-    IntRoller slider = new IntRoller(left, right);
+    IntRoll slider = new IntRoll(left, right);
     int size = slider.size();
     for (int i = 0; i < size; i++)
       slider.push(-1);

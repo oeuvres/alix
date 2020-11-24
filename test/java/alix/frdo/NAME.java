@@ -15,7 +15,7 @@ import java.util.LinkedList;
 
 import alix.fr.Tokenizer;
 import alix.util.Occ;
-import alix.util.OccRoller;
+import alix.util.OccRoll;
 
 public class NAME
 {
@@ -107,7 +107,7 @@ public class NAME
   public void parse(String filename, String date, String text) throws IOException
   {
     Tokenizer toks = new Tokenizer(text);
-    OccRoller win = new OccRoller(left, right);
+    OccRoll win = new OccRoll(left, right);
     // une pile FIFO,
     LinkedList<Source> stack = new LinkedList<Source>();
     int wn = 0; // le compteur de mots

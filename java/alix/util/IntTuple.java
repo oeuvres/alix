@@ -57,7 +57,7 @@ public class IntTuple implements Comparable<IntTuple>
    * Build a key from an int roller.
    * @param roller
    */
-  public IntTuple(final IntRoller roller)
+  public IntTuple(final IntRoll roller)
   {
     throw new UnsupportedOperationException("TODO implements");
   }

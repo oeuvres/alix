@@ -142,6 +142,7 @@ public class FrTokenizer extends Tokenizer
   /** tag content to skip */
   public static final HashMap<CharsAtt, CharsAtt> SKIP = new HashMap<CharsAtt, CharsAtt>();
   static {
+    SKIP.put(new CharsAtt("note"), new CharsAtt("/note"));
     SKIP.put(new CharsAtt("bibl"), new CharsAtt("/bibl"));
     SKIP.put(new CharsAtt("head"), new CharsAtt("/head"));
     SKIP.put(new CharsAtt("?index_off?"), new CharsAtt("?index_on?"));

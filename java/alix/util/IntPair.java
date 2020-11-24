@@ -35,7 +35,7 @@ package alix.util;
 /**
  * A mutable pair of ints. Works well as a key for a HashMap (hascode()
  * implemented), comparable is good for perfs in buckets. After test,
- * concating ints in longs is not more efficient in HashMap.
+ * it is more efficient than concating ints in longs in an HashMap.
  * 
  *
  * @author glorieux-f
@@ -122,8 +122,8 @@ public class IntPair implements Comparable<IntPair>
       if (y != series.data[1]) return false;
       return true;
     }
-    if (o instanceof IntRoller) {
-      IntRoller roll = (IntRoller) o;
+    if (o instanceof IntRoll) {
+      IntRoll roll = (IntRoll) o;
       if (roll.size != 2) return false;
       if (x != roll.get(roll.right)) return false;
       if (y != roll.get(roll.right + 1)) return false;

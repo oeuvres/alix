@@ -49,7 +49,7 @@ import alix.fr.Lexik;
 import alix.util.Chain;
 import alix.util.Char;
 import alix.util.IntPair;
-import alix.util.IntRoller;
+import alix.util.IntRoll;
 import alix.util.SparseMat;
 import alix.util.Top;
 
@@ -200,7 +200,7 @@ public class PPMI
   @SuppressWarnings("unlikely-arg-type")
   public void coocs(String textFile) throws IOException
   {
-    IntRoller slider = new IntRoller(left, right);
+    IntRoll slider = new IntRoll(left, right);
     int size = slider.size();
     for (int i = 0; i < size; i++)
       slider.push(-1);
