@@ -32,6 +32,8 @@
  */
 package alix.util;
 
+import java.util.Arrays;
+
 /**
  * A mutable list of ints.
  */
@@ -96,9 +98,10 @@ public class IntList implements Comparable<IntList>
    */
   public void push(int value)
   {
-    onWrite(size);
-    data[size] = value;
+    final int pos = size;
     size++;
+    grow(pos);
+    data[pos] = value;
   }
 
   /**
@@ -109,7 +112,7 @@ public class IntList implements Comparable<IntList>
   protected void push(int[] data)
   {
     int newSize = this.size + data.length;
-    onWrite(newSize);
+    grow(newSize);
     System.arraycopy(data, 0, this.data, size, data.length);
     size = newSize;
   }
@@ -134,7 +137,7 @@ public class IntList implements Comparable<IntList>
    */
   public void put(int pos, int value)
   {
-    onWrite(pos);
+    grow(pos);
     data[pos] = value;
     if (pos > size) size = pos;
   }
@@ -147,7 +150,7 @@ public class IntList implements Comparable<IntList>
    */
   public void add(int pos, int value)
   {
-    if (onWrite(pos)) ;
+    grow(pos) ;
     data[pos] += value;
     if (pos > size) size = pos;
   }
@@ -159,9 +162,29 @@ public class IntList implements Comparable<IntList>
    */
   public void inc(int pos)
   {
-    if (onWrite(pos)) ;
+    grow(pos);
     data[pos]++;
     if (pos > size) size = pos;
+  }
+  
+  /**
+   * Return an int array of unique values from this list 
+   */
+  public int[] uniq()
+  {
+    int[] work = new int[size];
+    System.arraycopy(data, 0, work, 0, size);
+    Arrays.sort(work);
+    int destSize = 1;
+    int last = work[0];
+    for (int i = destSize; i < size; i++) {
+      if (work[i] == last) continue;
+      work[destSize] = last = work[i];
+      destSize++;
+    }
+    int[] dest = new int[destSize];
+    System.arraycopy(work, 0, dest, 0, destSize);
+    return dest;
   }
 
   /**
@@ -170,7 +193,8 @@ public class IntList implements Comparable<IntList>
    * @param position
    * @return true if resized (? good ?)
    */
-  protected boolean onWrite(final int position)
+
+  protected boolean grow(final int position)
   {
     hash = 0;
     if (position < data.length) return false;
