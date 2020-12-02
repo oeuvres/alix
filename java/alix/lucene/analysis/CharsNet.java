@@ -55,13 +55,13 @@ public class CharsNet
   /** Set if node slider is full */
   private boolean nodeFull;
   /** Auto-increment node id */
-  private int nodeAutoid;
+  private int nodecount;
   /** Dictionary of nodes */
   private HashMap<CharsAtt, Node> nodeHash = new HashMap<CharsAtt, Node>();
   /** Node index by id */
   private Node[] nodeList;
   /** Auto-increment edge id */
-  private int edgeAutoid;
+  private int edgecount;
   /** Dictionary of edges */
   private HashMap<IntPair, Edge> edgeHash = new HashMap<IntPair, Edge>();
   /** Edge tester */
@@ -92,7 +92,7 @@ public class CharsNet
       nodeHash.put(key, pivot);
       nodeList = null; // modification of nodeList
     }
-    pivot.inc();
+    pivot.size++;
     nodeRoll.push(pivot);
     int nodes = width;
     if (!nodeFull) {
@@ -112,10 +112,101 @@ public class CharsNet
         else edge = new Edge(pivot, left);
         edgeHash.put(edgeKey, edge);
       }
-      edge.inc();
+      edge.size++;
     }
   }
   
+  public class Node
+  {
+    /** persistent id */
+    private final int id;
+    /** persistent label */
+    private final CharsAtt label;
+    /** persistent tag from source  */
+    private final int tag;
+    /** growable size */
+    private int size;
+    /** count of edges connected */
+    private int edges;
+    /** mutable type */
+    private int type;
+    /** a counter locally used */
+    private int counter;
+  
+    public Node(final CharsAtt label, final int tag)
+    {
+      this.label = new CharsAtt(label);
+      this.tag = tag;
+      this.id = nodecount++; // start at 0
+    }
+  
+    public int id()
+    {
+      return id;
+    }
+  
+    public CharsAtt label()
+    {
+      return label;
+    }
+  
+    public int tag()
+    {
+      return tag;
+    }
+  
+    public int size()
+    {
+      return size;
+    }
+  
+    public int edges()
+    {
+      return edges;
+    }
+  
+    public void type(final int type)
+    {
+      this.type = type;
+    }
+  
+    public int type()
+    {
+      return type;
+    }
+  
+    public int counter()
+    {
+      return counter;
+    }
+  
+    public void counter(final int counter)
+    {
+      this.counter = counter;
+    }
+  
+    public int counterInc()
+    {
+      return ++counter;
+    }
+  
+    
+    @Override
+    public String toString()
+    {
+      StringBuilder sb = new StringBuilder();
+      sb.append(label);
+      if (tag > 0) sb.append(" ").append(Tag.label(tag)).append(" ");
+      sb.append(" (").append(size).append(")");
+      return sb.toString();
+    }
+  }
+
+  public int nodecount()
+  {
+    return nodecount;
+  }
+
   public Node node(final CharsAtt token)
   {
     return nodeHash.get(token);
@@ -149,95 +240,10 @@ public class CharsNet
     Arrays.sort(nodes, new Comparator<Node>() {
       @Override
       public int compare(Node o1, Node o2) {
-         return Integer.compare(o2.count, o1.count);
+         return Integer.compare(o2.size, o1.size);
       }
     });
     return nodes;
-  }
-
-  public Edge[] edges()
-  {
-    Edge[] edges = new Edge[edgeHash.size()];
-    edgeHash.values().toArray(edges);
-    Arrays.sort(edges, new Comparator<Edge>() {
-      @Override
-      public int compare(Edge o1, Edge o2) {
-         return Integer.compare(o2.count, o1.count);
-      }
-    });
-    return edges;
-  }
-
-  public class Node
-  {
-    private final int id;
-    private final CharsAtt label;
-    private final int tag;
-    private int count;
-    private int count2;
-    private boolean active;
-
-    public Node(final CharsAtt label, final int tag)
-    {
-      this.label = new CharsAtt(label);
-      this.tag = tag;
-      this.id = nodeAutoid++;
-    }
-
-    public int id()
-    {
-      return id;
-    }
-
-    public CharsAtt label()
-    {
-      return label;
-    }
-
-    public int tag()
-    {
-      return tag;
-    }
-
-    public int count()
-    {
-      return count;
-    }
-
-    public int inc()
-    {
-      return ++count;
-    }
-
-    public int inc2()
-    {
-      return ++count2;
-    }
-
-    public void reset2()
-    {
-      this.count2 = 0;
-    }
-
-    public void active(final boolean active)
-    {
-      this.active = active;
-    }
-
-    public boolean active()
-    {
-      return this.active;
-    }
-
-    @Override
-    public String toString()
-    {
-      StringBuilder sb = new StringBuilder();
-      sb.append(label);
-      if (tag > 0) sb.append(" ").append(Tag.label(tag)).append(" ");
-      sb.append(" (").append(count).append(")");
-      return sb.toString();
-    }
   }
 
   public class Edge
@@ -245,40 +251,36 @@ public class CharsNet
     private final int id;
     private final Node source;
     private final Node target;
-    private int count;
-
+    private int size;
+  
     public Edge(final Node source, final Node target)
     {
-      this.id = ++edgeAutoid;
+      this.id = edgecount++; // start at 0
       this.source = source;
       this.target = target;
     }
-
+  
     public Node source()
     {
       return source;
     }
-
+  
     public Node target()
     {
       return target;
     }
-
-    public int count()
+  
+    public int size()
     {
-      return count;
+      return size;
     }
-
+  
     public int id()
     {
       return id;
     }
-
-    public int inc()
-    {
-      return ++count;
-    }
-
+  
+  
     @Override
     public String toString()
     {
@@ -287,8 +289,25 @@ public class CharsNet
       if (directed) sb.append(" -> ");
       else sb.append(" -- ");
       sb.append(target.label());
-      sb.append(" (").append(count).append(")");
+      sb.append(" (").append(size).append(")");
       return sb.toString();
     }
+  }
+
+  public int edgecount() {
+    return edgecount;
+  }
+  
+  public Edge[] edges()
+  {
+    Edge[] edges = new Edge[edgeHash.size()];
+    edgeHash.values().toArray(edges);
+    Arrays.sort(edges, new Comparator<Edge>() {
+      @Override
+      public int compare(Edge o1, Edge o2) {
+         return Integer.compare(o2.size, o1.size);
+      }
+    });
+    return edges;
   }
 }
