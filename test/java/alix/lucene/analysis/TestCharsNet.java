@@ -12,7 +12,7 @@ public class TestCharsNet
 {
   public static void directed()
   {
-    CharsNet net = new CharsNet(3, true);
+    CharsNet net = new CharsNet(3, false);
     String[] words = "A B C D C B A B".split("\\s+");
     CharsAtt token = new CharsAtt();
     for (String w: words) {

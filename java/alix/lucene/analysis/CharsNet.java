@@ -40,6 +40,7 @@ import alix.fr.Tag;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.IntPair;
 import alix.util.IntRoll;
+import alix.util.ObjRoll;
 
 /**
  * A dictionary to record 
@@ -51,7 +52,7 @@ public class CharsNet
   /** width of tokens to link between */
   final int width;
   /** last Node seen for the graph */
-  private final IntRoll nodeRoll;
+  private final ObjRoll<Node> nodeRoll;
   /** Set if node slider is full */
   private boolean nodeFull;
   /** Auto-increment node id */
@@ -66,6 +67,8 @@ public class CharsNet
   private HashMap<IntPair, Edge> edgeHash = new HashMap<IntPair, Edge>();
   /** Edge tester */
   private IntPair edgeKey = new IntPair();
+  /** Node tester */
+  private CharsAtt nodeKey = new CharsAtt();
 
   public CharsNet(final int width, final boolean directed)
   {
@@ -73,7 +76,7 @@ public class CharsNet
     if (width < 2)
       throw new IndexOutOfBoundsException("Width of nodes window should have 2 or more nodes to link between.");
     this.width = width;
-    nodeRoll = new IntRoll(1 - width, 0);
+    nodeRoll = new ObjRoll<Node>(1 - width, 0);
   }
 
   public void inc(final CharsAtt token)
@@ -83,35 +86,46 @@ public class CharsNet
 
   public void inc(final CharsAtt token, final int tag)
   {
-    Node node = nodeHash.get(token);
-    if (node == null) {
+    Node pivot = nodeHash.get(token);
+    if (pivot == null) {
       CharsAtt key = new CharsAtt(token);
-      node = new Node(key, tag);
-      nodeHash.put(key, node);
+      pivot = new Node(key, tag);
+      nodeHash.put(key, pivot);
       nodeList = null; // modification of nodeList
     }
-    node.inc();
-    int pivotid = node.id;
-    nodeRoll.push(pivotid);
+    pivot.inc();
+    nodeRoll.push(pivot);
     if (!nodeFull) {
       if (nodeRoll.pushCount() < width) return;
       nodeFull = true;
     }
     
     for (int i = 1 - width; i < 0; i++) {
-      int leftid = nodeRoll.get(i);
+      Node left = nodeRoll.get(i);
       // directed ?
-      if (directed) edgeKey.set(leftid, pivotid);
-      else edgeKey.set(Math.min(leftid, pivotid), Math.max(leftid, pivotid));
+      if (directed || left.id <  pivot.id) edgeKey.set(left.id, pivot.id);
+      else edgeKey.set(pivot.id, left.id);
       Edge edge = edgeHash.get(edgeKey);
       if (edge == null) {
-        edge = new Edge(edgeKey);
+        if (directed || left.id <  pivot.id) edge = new Edge(left, pivot);
+        else edge = new Edge(pivot, left);
         edgeHash.put(edgeKey, edge);
       }
       edge.inc();
     }
   }
   
+  public Node node(final CharsAtt token)
+  {
+    return nodeHash.get(token);
+  }
+
+  public Node node(final String token)
+  {
+    nodeKey.setEmpty().append(token);
+    return nodeHash.get(nodeKey);
+  }
+
   public Node node(int id)
   {
     if (nodeList == null) {
@@ -159,6 +173,8 @@ public class CharsNet
     private final CharsAtt label;
     private final int tag;
     private int count;
+    private int count2;
+    private boolean active;
 
     public Node(final CharsAtt label, final int tag)
     {
@@ -192,6 +208,26 @@ public class CharsNet
       return ++count;
     }
 
+    public int inc2()
+    {
+      return ++count2;
+    }
+
+    public void reset2()
+    {
+      this.count2 = 0;
+    }
+
+    public void active(final boolean active)
+    {
+      this.active = active;
+    }
+
+    public boolean active()
+    {
+      return this.active;
+    }
+
     @Override
     public String toString()
     {
@@ -206,30 +242,23 @@ public class CharsNet
   public class Edge
   {
     private final int id;
-    private final int source;
-    private final int target;
+    private final Node source;
+    private final Node target;
     private int count;
 
-    public Edge(final IntPair pair)
-    {
-      this.id = edgeAutoid++;
-      this.source = pair.x();
-      this.target = pair.y();
-    }
-
-    public Edge(final int source, final int target)
+    public Edge(final Node source, final Node target)
     {
       this.id = ++edgeAutoid;
       this.source = source;
       this.target = target;
     }
 
-    public int source()
+    public Node source()
     {
       return source;
     }
 
-    public int target()
+    public Node target()
     {
       return target;
     }
@@ -253,10 +282,10 @@ public class CharsNet
     public String toString()
     {
       StringBuilder sb = new StringBuilder();
-      sb.append(node(source).label);
+      sb.append(source.label());
       if (directed) sb.append(" -> ");
       else sb.append(" -- ");
-      sb.append(node(target).label);
+      sb.append(target.label());
       sb.append(" (").append(count).append(")");
       return sb.toString();
     }
