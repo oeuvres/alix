@@ -12,7 +12,7 @@ public class TestCharsNet
 {
   public static void directed()
   {
-    CharsNet net = new CharsNet(3, false);
+    CharsNet net = new CharsNet(3, true);
     String[] words = "A B C D C B A B".split("\\s+");
     CharsAtt token = new CharsAtt();
     for (String w: words) {
@@ -22,6 +22,9 @@ public class TestCharsNet
     
     
     Edge[] edges = net.edges();
+    for (Edge e: edges) {
+      System.out.println(e);
+    }
     System.out.println("{");
     System.out.println("  edges: [");
     boolean first = true;

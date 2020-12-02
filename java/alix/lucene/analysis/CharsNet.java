@@ -39,7 +39,6 @@ import java.util.HashMap;
 import alix.fr.Tag;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.IntPair;
-import alix.util.IntRoll;
 import alix.util.ObjRoll;
 
 /**
@@ -95,12 +94,14 @@ public class CharsNet
     }
     pivot.inc();
     nodeRoll.push(pivot);
+    int nodes = width;
     if (!nodeFull) {
-      if (nodeRoll.pushCount() < width) return;
-      nodeFull = true;
+      nodes = nodeRoll.pushCount();
+      if (nodes < 2) return; // not enough nodes
+      if (nodes >= width) nodeFull = true; // roll is full
     }
     
-    for (int i = 1 - width; i < 0; i++) {
+    for (int i = 1 - nodes; i < 0; i++) {
       Node left = nodeRoll.get(i);
       // directed ?
       if (directed || left.id <  pivot.id) edgeKey.set(left.id, pivot.id);

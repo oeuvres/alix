@@ -88,5 +88,4 @@ public abstract class Roll
      */
     return (((center + pos) % size) + size) % size;
   }
-
 }
