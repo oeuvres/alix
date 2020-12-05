@@ -130,13 +130,9 @@ public class TestFrDics
   
   public static void compounds()
   {
-    /*
-    HashMap<CharsAtt, Integer> compounds = new HashMap<CharsAtt, Integer>();
-    FrDics.tree("/alix/lucene/analysis/TestCompounds.csv", compounds);
-    */
     
     CharsAtt key = new CharsAtt();
-    for (String word: new String[] {"chemin", "chemin de", "chemin de fer", "chemin de fer d'intérêt local", "ma"}) {
+    for (String word: new String[] {"chemin", "chemin de", "d'abord", "d'ailleurs", "chemin de fer", "chemin de fer d'intérêt local", "ma"}) {
       System.out.print(word);
       key.setEmpty().append(word);
       Integer flags = FrDics.COMPOUND.get(key);
@@ -150,8 +146,16 @@ public class TestFrDics
     }
   }
   
+  public static void compoundsDic()
+  {
+    HashMap<CharsAtt, Integer> compounds = new HashMap<CharsAtt, Integer>();
+    FrDics.tree("/alix/lucene/analysis/TestCompounds.csv", compounds);
+    System.out.println(compounds);
+  }
+  
   public static void main(String[] args) throws IOException
   {
+    compoundsDic();
     compounds();
   }
 

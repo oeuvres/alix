@@ -411,7 +411,22 @@ public class CharsAtt extends AttributeImpl
     }
     return true;
   }
-  
+
+  /**
+   * Test an endinc char
+   * @param c
+   * @return
+   */
+  public boolean endsWith(final char c)
+  {
+    if (len < 1) return false;
+    return (chars[len -1] == c);
+  }
+
+  /**
+   * Get last char
+   * @return
+   */
   public char lastChar()
   {
     return chars[len -1];

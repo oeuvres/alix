@@ -221,7 +221,8 @@ public class TestAnalyzer
   public static void compounds() throws IOException
   {
     // text to tokenize
-    String text = "Allons-y ! Mon Dieu… Mais alors ? D’abord, le chemin de fer d’intérêt local au moyen âge. <num>xiii<hi rend=\"sup\">e</hi></num> siècle."
+    String text = "Allons-y ! Mon Dieu… Mais alors ? D’abord, d’autre part, d’ailleurs, "
+        + "le chemin de fer d’intérêt local au moyen âge. <num>xiii<hi rend=\"sup\">e</hi></num> siècle."
         + " J’ai écrit ce livre à New York, dit l’Évangile."
         + " Et l’Éternel Dieu dit : Qui t’a appris que tu es nu ? "
         + " Traduction française par J. Herbomez et R. Beaurieux. faire faire <pb n=\"404\" xml:id=\"p404\"/> l’amour. "

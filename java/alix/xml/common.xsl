@@ -306,7 +306,7 @@ Gobal TEI parameters and variables are divided in different categories
   <!-- File for generated messages -->
   <xsl:param name="messages">tei.rdfs</xsl:param>
   <!--  Load messages, document('') works to resolve relative paths  -->
-  <xsl:variable name="rdf:Property" select="document($messages, document(''))/*/rdf:Property"/>
+  <xsl:variable name="rdf:Property" select="document($messages)/*/rdf:Property"/>
   <!-- A separate page for footnotes (used by epub) -->
   <xsl:param name="fnpage"/>
   <!-- A dest folder for graphics (used by epub) -->

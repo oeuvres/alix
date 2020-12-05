@@ -58,9 +58,9 @@ public class CompoundFilter extends TokenFilter
   /** Current Flags */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
   /** Current original term */
-  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  private final CharsAtt termAtt = (CharsAtt)addAttribute(CharTermAttribute.class);
   /** A normalized orthographic form (ex : capitalization) */
-  private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
+  private final CharsAtt orthAtt = (CharsAtt)addAttribute(CharsOrthAtt.class);
   /** A lemma when possible */
   private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
   /** A stack of sates  */
@@ -127,7 +127,8 @@ public class CompoundFilter extends TokenFilter
     if (tagBreak) return true;
     // may first token start a compound ?
     Integer trieO = null;
-    if (lemAtt.length() != 0) trieO = FrDics.COMPOUND.get(lemAtt);
+    if (orthAtt.endsWith('\'')) trieO = FrDics.COMPOUND.get(orthAtt);
+    else if (lemAtt.length() != 0) trieO = FrDics.COMPOUND.get(lemAtt);
     else if (orthAtt.length() != 0) trieO = FrDics.COMPOUND.get(orthAtt);
     else trieO = FrDics.COMPOUND.get(termAtt);
     // no the start of compound, bye
@@ -136,7 +137,8 @@ public class CompoundFilter extends TokenFilter
     // go ahead to search for a compound
     comlem.setEmpty();
     comorth.setEmpty();
-    if (lemAtt.length() != 0) comlem.append(lemAtt);
+    if (orthAtt.endsWith('\'')) comlem.append(orthAtt);
+    else if (lemAtt.length() != 0) comlem.append(lemAtt);
     else if (orthAtt.length() != 0) comlem.append(orthAtt);
     else comlem.append(termAtt);
     if (orthAtt.length() != 0) comorth.append(orthAtt);

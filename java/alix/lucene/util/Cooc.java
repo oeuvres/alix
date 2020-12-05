@@ -166,7 +166,7 @@ public class Cooc
 
   
   /**
-   * Get cooccurrences fron a multi term query.
+   * Get cooccurrences from a multi term query.
    * Each document should be available as an int vector
    * see {@link #rail(Terms, BinaryInts)}.
    * A loop will cross all docs, and 
