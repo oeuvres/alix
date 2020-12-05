@@ -12,7 +12,7 @@ public class TestCharsNet
 {
   public static void directed()
   {
-    CharsNet net = new CharsNet(3, true);
+    CharsNet net = new CharsNet(2, false);
     String[] words = "A B C D C B A B".split("\\s+");
     CharsAtt token = new CharsAtt();
     for (String w: words) {
@@ -34,7 +34,7 @@ public class TestCharsNet
       if (first) first = false;
       else System.out.println(", ");
       // {id:'e384606', source:'n907', target:'n4225', size:4, color:'rgba(192, 192, 192, 0.4)', type:'halo'}
-      System.out.print("    {id:'e" + edge.id() + "', source:'n" + edge.source() + "', target:'n" + edge.target() + "', size:" + edge.size() + "}");
+      System.out.print("    {id:'e" + edge.id() + "', source:'n" + edge.source() + "', target:'n" + edge.target() + "', size:" + edge.count() + "}");
     }
     System.out.println("\n  ],");
     Node[] nodes = net.nodes();
@@ -46,7 +46,7 @@ public class TestCharsNet
       if (first) first = false;
       else System.out.println(", ");
       // {id:'n204', label:'coeur', x:-16, y:99, size:86, color:'hsla(0, 86%, 42%, 0.95)'},
-      System.out.print("    {id:'n" + node.id() + "', label:'" + node.label() + "', size:" + node.size() + "}");
+      System.out.print("    {id:'n" + node.id() + "', label:'" + node.label() + "', size:" + node.count() + "}");
     }
     System.out.println("\n  ]");
     System.out.println("}");

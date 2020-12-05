@@ -92,7 +92,7 @@ public class CharsNet
       nodeHash.put(key, pivot);
       nodeList = null; // modification of nodeList
     }
-    pivot.size++;
+    pivot.count++;
     nodeRoll.push(pivot);
     int nodes = width;
     if (!nodeFull) {
@@ -112,7 +112,7 @@ public class CharsNet
         else edge = new Edge(pivot, left);
         edgeHash.put(edgeKey, edge);
       }
-      edge.size++;
+      edge.count++;
     }
   }
   
@@ -125,13 +125,13 @@ public class CharsNet
     /** persistent tag from source  */
     private final int tag;
     /** growable size */
-    private int size;
+    private int count;
     /** count of edges connected */
     private int edges;
     /** mutable type */
     private int type;
     /** a counter locally used */
-    private int counter;
+    private float score;
   
     public Node(final CharsAtt label, final int tag)
     {
@@ -155,9 +155,9 @@ public class CharsNet
       return tag;
     }
   
-    public int size()
+    public int count()
     {
-      return size;
+      return count;
     }
   
     public int edges()
@@ -175,19 +175,19 @@ public class CharsNet
       return type;
     }
   
-    public int counter()
+    public float score()
     {
-      return counter;
+      return score;
     }
   
-    public void counter(final int counter)
+    public void score(final int score)
     {
-      this.counter = counter;
+      this.score = score;
     }
   
-    public int counterInc()
+    public float scoreInc()
     {
-      return ++counter;
+      return ++score;
     }
   
     
@@ -197,7 +197,7 @@ public class CharsNet
       StringBuilder sb = new StringBuilder();
       sb.append(label);
       if (tag > 0) sb.append(" ").append(Tag.label(tag)).append(" ");
-      sb.append(" (").append(size).append(")");
+      sb.append(" (").append(count).append(")");
       return sb.toString();
     }
   }
@@ -240,7 +240,7 @@ public class CharsNet
     Arrays.sort(nodes, new Comparator<Node>() {
       @Override
       public int compare(Node o1, Node o2) {
-         return Integer.compare(o2.size, o1.size);
+         return Integer.compare(o2.count, o1.count);
       }
     });
     return nodes;
@@ -251,7 +251,8 @@ public class CharsNet
     private final int id;
     private final Node source;
     private final Node target;
-    private int size;
+    private int count;
+    private float score;
   
     public Edge(final Node source, final Node target)
     {
@@ -270,11 +271,22 @@ public class CharsNet
       return target;
     }
   
-    public int size()
+    public int count()
     {
-      return size;
+      return count;
     }
-  
+
+    public float jaccard()
+    {
+      score = ((float)count / (width - 1)) / (source.count + target.count);
+      return score;
+    }
+    
+    public float score()
+    {
+      return score;
+    }
+
     public int id()
     {
       return id;
@@ -284,12 +296,13 @@ public class CharsNet
     @Override
     public String toString()
     {
+      jaccard();
       StringBuilder sb = new StringBuilder();
       sb.append(source.label());
       if (directed) sb.append(" -> ");
       else sb.append(" -- ");
       sb.append(target.label());
-      sb.append(" (").append(size).append(")");
+      sb.append(" (").append(count).append(", ").append(score).append(")");
       return sb.toString();
     }
   }
@@ -302,10 +315,11 @@ public class CharsNet
   {
     Edge[] edges = new Edge[edgeHash.size()];
     edgeHash.values().toArray(edges);
+    for (Edge e: edges) e.jaccard();
     Arrays.sort(edges, new Comparator<Edge>() {
       @Override
       public int compare(Edge o1, Edge o2) {
-         return Integer.compare(o2.size, o1.size);
+         return Float.compare(o2.score, o1.score);
       }
     });
     return edges;

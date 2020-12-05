@@ -85,7 +85,7 @@ public class TestAnalyzer
     {
       final Tokenizer source = new FrTokenizer();
       TokenStream result = new FrLemFilter(source);
-      result = new FrPersnameFilter(result);
+      // result = new FrPersnameFilter(result);
       return new TokenStreamComponents(source, result);
     }
 
@@ -214,8 +214,8 @@ public class TestAnalyzer
   public static void names() throws IOException
   {
     // text to tokenize
-    final String text = "V. Hugo. Victor Hugo. Les États-Nations, à Vrai dire… De Maître Eckhart à Jean de la Croix.  Jules Marie, Pierre de Martin ou Peut-être lol ? Les U.S.A., un grand pays. L'orange et l'Europe de l'acier. ";
-    vertical(text, new FrAnalyzer());
+    final String text = "V. Hugo. Victor Hugo. Les États-Nations, les états-nations, l’État, l’état, à Vrai dire… De Maître Eckhart à Jean de la Croix.  Jules Marie, Pierre de Martin ou Peut-être lol ? Les U.S.A., un grand pays. L'orange et l'Europe de l'acier. ";
+    vertical(text, new AnalyzerNames());
   }
   
   public static void compounds() throws IOException
@@ -234,6 +234,7 @@ public class TestAnalyzer
 
   public static void main(String[] args) throws IOException
   {
-    compounds();
+    // compounds();
+    names();
   }
 }
