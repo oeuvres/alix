@@ -117,7 +117,7 @@ public class IntPair implements Comparable<IntPair>
     }
     if (o instanceof IntVector) {
       IntVector series = (IntVector) o;
-      if (series.size() != 2) return false;
+      if (series.length() != 2) return false;
       if (x != series.data[0]) return false;
       if (y != series.data[1]) return false;
       return true;

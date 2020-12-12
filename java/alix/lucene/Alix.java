@@ -196,6 +196,8 @@ public class Alix
   private Directory dir;
   /** The IndexReader if requested */
   private IndexReader reader;
+  /** Max for docId */
+  int maxDoc;
   /** The infos on field */
   private FieldInfos fieldInfos;
   /** The IndexSearcher if requested */
@@ -353,6 +355,7 @@ public class Alix
     cache.clear(); // clean cache on renew the reader
     reader = DirectoryReader.open(dir);
     fieldInfos = FieldInfos.getMergedFieldInfos(reader);
+    maxDoc = reader.maxDoc();
     return reader;
   }
 
@@ -401,6 +404,16 @@ public class Alix
   public Analyzer analyzer()
   {
     return this.analyzer;
+  }
+  
+  /** 
+   * @return @see IndexReader#maxDoc() 
+   * @throws IOException 
+   */
+  public int maxDoc() throws IOException
+  {
+    if (reader == null) reader();
+    return maxDoc;
   }
 
   /**

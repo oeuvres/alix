@@ -54,7 +54,7 @@ public class IntBtree
   /**
    * Constructor with a capacity, and a default merge mode
    * 
-   * @param size
+   * @param length
    */
   public IntBtree(int capacity, final int mode) {
     if (capacity < 2)

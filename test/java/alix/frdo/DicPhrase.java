@@ -88,7 +88,7 @@ public class DicPhrase
       }
     }
     // ?? allow simple words ?
-    if (buffer.size() < 1) return false;
+    if (buffer.length() < 1) return false;
     // Add phrase to dictionary
     inc(buffer);
     // here we could add more info on the compound

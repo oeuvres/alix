@@ -125,6 +125,7 @@ public class Freqs
     this.termDocs = termDocs;
     this.termLength = termLength;
     this.docLength = docLength;
+    
   }
 
   /**
@@ -226,7 +227,7 @@ public class Freqs
     int[] occs = new int[size];
     int[] hits = new int[size];
     // A set to avoid duplicate for count of docs bay term
-    final java.util.BitSet docSet = new java.util.BitSet(reader.maxDoc());
+    // final java.util.BitSet docSet = new java.util.BitSet(reader.maxDoc());
     BytesRef bytes;
     final int[] docLength = this.docLength; // localize var
     

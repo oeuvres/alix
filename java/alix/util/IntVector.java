@@ -34,7 +34,7 @@ package alix.util;
 
 /**
  * A mutable list of ints with useful metadata, for example to calculate
- * average. This object is not protected, for fast acess to fields, be careful
+ * average. This object is not protected, for fast access to fields, be careful
  * to enjoy speed. Not suitable as a key for a hash (mutable).
  *
  * @author glorieux-f
@@ -139,7 +139,7 @@ public class IntVector extends IntList
    */
   public void cache()
   {
-    int size = this.size;
+    int size = this.length;
     if (size == 0) {
       min = 0;
       max = 0;

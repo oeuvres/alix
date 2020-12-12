@@ -201,9 +201,9 @@ public class IntRoll extends Roll
     }
     if (o instanceof IntList) {
       IntList list = (IntList) o;
-      if (list.size() != size)
+      if (list.length() != size)
         return false;
-      int ilist = list.size() - 1;
+      int ilist = list.length() - 1;
       int i = right;
       do {
         if (get(i) != list.get(ilist))

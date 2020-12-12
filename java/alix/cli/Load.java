@@ -58,7 +58,7 @@ public class Load {
     if (tmpDir.exists()) {
       long modified = tmpDir.lastModified();
       Duration duration = Duration.ofMillis(System.currentTimeMillis() - modified);
-      throw new IOException("\n  ["+APP+"] Another process seems indexing till "+duration+"\n" + tmpDir
+      throw new IOException("\n  ["+APP+"] Another process seems indexing till "+duration.toSeconds()+" s.\n" + tmpDir
           + "\nIf you think it’s an error, this folfder should be deleted by you");
     }
     Path tmpPath = tmpDir.toPath();

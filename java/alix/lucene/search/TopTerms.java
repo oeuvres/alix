@@ -431,6 +431,16 @@ public class TopTerms
     return docs[termId];
   }
 
+
+  /**
+   * Get the total count of documents for all terms.
+   * @return
+   */
+  public int docsAll()
+  {
+    return docsAll;
+  }
+
   /**
    * Get the count of matched documents for the current term.
    * @return
@@ -502,11 +512,11 @@ public class TopTerms
   public String toString()
   {
     StringBuilder sb = new StringBuilder();
-    int max = Math.min(200, sorter.length);
     if (sorter == null) {
       sb.append("Dictionary has not be sorted, use alphabetic order");
       sort();
     }
+    int max = Math.min(200, sorter.length);
     BytesRef ref = new BytesRef();
     for (int i = 0; i < max; i++) {
       int facetId = sorter[i].termId;

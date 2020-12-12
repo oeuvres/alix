@@ -2,6 +2,8 @@ package alix.lucene.analysis;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -228,13 +230,18 @@ public class TestAnalyzer
         + " Traduction française par J. Herbomez et R. Beaurieux. faire faire <pb n=\"404\" xml:id=\"p404\"/> l’amour. "
         + " Je, ça va, suis content de chemin de fer, aïe. Ici la clé de ma composition. Le 21 juin 1938.</byline>\n</div>"
     ;
+    // text = Files.readString(Paths.get("/home/fred/code/xmlbug/hugo_prefaces.xml"));
+    String text2 = "Tous les principes que cette époque a posés, pour\n" + 
+        "              le monde des intelligences comme pour le monde des affaires, amènent déjà rapidement\n" + 
+        "              leurs conséquences. Espérons qu’un jour le dix-neuvième siècle, politique et\n" + 
+        "              littéraire, pourra être résumé d’un mot : la liberté dans l’ordre, la liberté dans\n" + 
+        "              l’art.</p>"; // bug on art.
     vertical(text, new AnalyzerCompounds());
   }
 
 
   public static void main(String[] args) throws IOException
   {
-    // compounds();
-    names();
+    compounds();
   }
 }

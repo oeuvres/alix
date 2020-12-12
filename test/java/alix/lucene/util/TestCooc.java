@@ -8,13 +8,17 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 
 import alix.lucene.Alix;
 import alix.lucene.TestIndex;
 import alix.lucene.analysis.FrAnalyzer;
+import alix.lucene.search.Freqs;
 import alix.lucene.search.TermList;
 import alix.lucene.search.TopTerms;
+import alix.lucene.util.Cooc;
 
 public class TestCooc
 {
@@ -59,9 +63,9 @@ public class TestCooc
       }
 
     }
-    TermList terms = alix.qTerms("a", TestIndex.TEXT);
+    TermList terms = alix.qTermList("a", TestIndex.TEXT);
     TopTerms dic = cooc.topTerms(terms, 1, 1, null);
-    dic.sort(dic.getOccs());
+    // dic.sort(dic.occs()); // ???
     System.out.println(dic);
   }
   
@@ -76,13 +80,44 @@ public class TestCooc
     // cooc.prepare();
     System.out.println("Prepare in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     time = System.nanoTime();
-    TermList terms = alix.qTerms("justice", field);
+    TermList terms = alix.qTermList("justice", field);
     TopTerms dic = cooc.topTerms(terms, 5, 5, null);
     // 
     
     System.out.println("\n\nCoocs in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     System.out.println(dic);
   }
+
+  /**
+   * Compare freqlist algos
+   * @throws IOException 
+   */
+  public static void freqs() throws IOException
+  {
+    String path = "/home/fred/code/ddrlab/WEB-INF/bases/critique";
+    Alix alix = Alix.instance(path, new FrAnalyzer());
+    final String field = "text";
+    Freqs stats = alix.freqs(field);
+    int maxDoc = alix.reader().maxDoc();
+    
+    FixedBitSet filter = new FixedBitSet(maxDoc);
+    filter.set(0, maxDoc);
+    
+    
+    long time;
+    
+    time = System.nanoTime();
+    TopTerms top = stats.topTerms(filter);
+    System.out.println("By term vector in " + ((System.nanoTime() - time) / 1000000) + " ms.");
+    top.sortByOccs();
+    System.out.println(top);
+
+    Cooc cooc = new Cooc(alix, field);
+    time = System.nanoTime();
+    cooc.freqs(filter);
+    System.out.println("By rails in " + ((System.nanoTime() - time) / 1000000) + " ms.");
+  }
+
   
   static public void test() throws ClassNotFoundException, IOException
   {
@@ -102,7 +137,7 @@ public class TestCooc
   }
   public static void main(String[] args) throws Exception
   {
-    small();
+    freqs();
   }
 
 }

@@ -57,10 +57,10 @@ public class CompoundFilter extends TokenFilter
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
   /** Current Flags */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-  /** Current original term */
-  private final CharsAtt termAtt = (CharsAtt)addAttribute(CharTermAttribute.class);
+  /** Current original term, do not cast here, or effects could be inpredictable */
+  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   /** A normalized orthographic form (ex : capitalization) */
-  private final CharsAtt orthAtt = (CharsAtt)addAttribute(CharsOrthAtt.class);
+  private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
   /** A lemma when possible */
   private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
   /** A stack of sates  */
@@ -97,58 +97,63 @@ public class CompoundFilter extends TokenFilter
   @Override
   public boolean incrementToken() throws IOException
   {
+    CharsAtt orth = (CharsAtt) orthAtt;
     count++;
-    /*
-    System.out.println(
-        "[" + count + "] "
-        + stack.size() + " (" + toString(stack) + ")"
-        + termAtt + "\t" 
-        + orthAtt + "\t" 
-        + Tag.label(flagsAtt.getFlags())+ "\t" 
-        + lemAtt + "\t" 
-        + offsetAtt.startOffset() + "-" + offsetAtt.endOffset() + "\t"
-      );
-    */
     if (stack.isEmpty()) {
       exit = input.incrementToken();
       if (!exit) return false;
     }
     else {
-      restoreState(stack.remove());
       // if last token from stack and text, inform consumer
-      if (stack.isEmpty() && !exit) return false;
+      if (!exit && stack.isEmpty()) return false;  // 
+      restoreState(stack.remove());
       // TODO, do not exit here, try to continue forward lookup, but we have a bug 
       // else return true;
     }
-    
+    /*
+    System.out.println(
+        "[" + count + "] "
+        + stack.size() + " (" + toString(stack) + ")\t"
+        + termAtt + "\t" 
+        + orth + "\t" 
+        + Tag.label(flagsAtt.getFlags())+ "\t" 
+        + lemAtt + "\t" 
+        + offsetAtt.startOffset() + "-" + offsetAtt.endOffset() + "\t"
+      );
+    */
     // punctuation do not start a compound
     int tag = flagsAtt.getFlags();
     boolean tagBreak = Tag.isPun(tag);
     if (tagBreak) return true;
     // may first token start a compound ?
     Integer trieO = null;
-    if (orthAtt.endsWith('\'')) trieO = FrDics.COMPOUND.get(orthAtt);
+    if (orth.endsWith('\'')) trieO = FrDics.COMPOUND.get(orth);
     else if (lemAtt.length() != 0) trieO = FrDics.COMPOUND.get(lemAtt);
-    else if (orthAtt.length() != 0) trieO = FrDics.COMPOUND.get(orthAtt);
+    else if (orth.length() != 0) trieO = FrDics.COMPOUND.get(orth);
     else trieO = FrDics.COMPOUND.get(termAtt);
     // no the start of compound, bye
     if (trieO == null) return true;
+
+
     
     // go ahead to search for a compound
     comlem.setEmpty();
     comorth.setEmpty();
-    if (orthAtt.endsWith('\'')) comlem.append(orthAtt);
+    if (orth.endsWith('\'')) comlem.append(orth);
     else if (lemAtt.length() != 0) comlem.append(lemAtt);
-    else if (orthAtt.length() != 0) comlem.append(orthAtt);
+    else if (orth.length() != 0) comlem.append(orth);
     else comlem.append(termAtt);
-    if (orthAtt.length() != 0) comorth.append(orthAtt);
+    if (orth.length() != 0) comorth.append(orth);
     else comorth.append(termAtt);
     final int startOffset = offsetAtt.startOffset();
     
     // capture, if we have to go back, reinsert at start if token was pop from stack
     stack.addFirst(captureState());
     
-    while (true) {
+    int loop = 0;
+    boolean more;
+    do {
+      loop++;
       // append space if last is not apos
       if (comlem.lastChar() != '\'') {
         comlem.append(' ');
@@ -158,6 +163,11 @@ public class CompoundFilter extends TokenFilter
       
       // get next token, and keep end event
       exit = input.incrementToken();
+      if (!exit) {
+        if(stack.isEmpty()) return false;
+        restoreState(stack.remove());
+        return true; // let continue to empty the stack
+      }
 
       tag = flagsAtt.getFlags();
       // end of compound by tag
@@ -169,11 +179,11 @@ public class CompoundFilter extends TokenFilter
       }
       // token is not a tag breaker
       if (termAtt.length() == 0);
-      else if (orthAtt.charAt(orthAtt.length() - 1) == '\'') comlem.append(orthAtt);
+      else if (orth.endsWith('\'')) comlem.append(orth);
       else if (lemAtt.length() != 0) comlem.append(lemAtt);
-      else if(orthAtt.length() != 0) comlem.append(orthAtt);
+      else if(orth.length() != 0) comlem.append(orth);
       else comlem.append(termAtt);
-      if(orthAtt.length() != 0) comorth.append(orthAtt);
+      if(orth.length() != 0) comorth.append(orth);
       else comorth.append(termAtt);
       // is this chain known from compound dictionary ?
       trieO = FrDics.COMPOUND.get(comlem);
@@ -191,7 +201,7 @@ public class CompoundFilter extends TokenFilter
       if ((trieflags & FrDics.LEAF) > 0) {
         stack.clear();
         termAtt.setEmpty().append(comorth);
-        orthAtt.setEmpty().append(comorth);
+        orth.setEmpty().append(comorth);
         lemAtt.setEmpty().append(comlem);
         flagsAtt.setFlags(trieflags & 0xFF); // set tag (without the trie flags)
         offsetAtt.setOffset(startOffset, offsetAtt.endOffset());
@@ -204,7 +214,9 @@ public class CompoundFilter extends TokenFilter
       else {
         stack.add(captureState());
       }
-    }
+      more = true;
+    } while (more);
+    return true; // ?? pb à la fin
   }
   @Override
   public void reset() throws IOException {
