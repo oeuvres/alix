@@ -104,10 +104,11 @@ public class TopTerms
    * @param occsAll Total count of occurrences in the collection.
    * @param docsAll Total count of documents in the collection.
    */
-  public void setAll(final long occsAll, final int docsAll) 
+  public TopTerms setAll(final long occsAll, final int docsAll) 
   {
     this.occsAll = occsAll;
     this.docsAll = docsAll;
+    return this;
   }
 
   /**
@@ -167,7 +168,7 @@ public class TopTerms
   /**
    * Sort the terms by value
    */
-  public void sort()
+  public TopTerms sort()
   {
     Entry[] sorter = sorter();
     Collator collator = Collator.getInstance(Locale.FRANCE);
@@ -187,6 +188,7 @@ public class TopTerms
     );
     this.sorter = sorter;
     cursor = -1;
+    return this;
   }
 
   private void sort(Entry[] sorter)
@@ -247,14 +249,16 @@ public class TopTerms
    * 
    * @param docs
    */
-  public void setDocs(final int[] docs)
+  public TopTerms setDocs(final int[] docs)
   {
     this.docs = docs;
+    return this;
   }
-  public void sortByDocs()
+  public TopTerms sortByDocs()
   {
     if (docs == null) throw new NullPointerException("No docs to sort on, see setHits()");
     sort(docs);
+    return this;
   }
 
   /**
@@ -262,29 +266,33 @@ public class TopTerms
    * 
    * @param lengths
    */
-  public void setLengths(final long[] lengths)
+  public TopTerms setLengths(final long[] lengths)
   {
     this.lengths = lengths;
+    return this;
   }
-  public void sortByLengths()
+  public TopTerms sortByLengths()
   {
     if (lengths == null) throw new NullPointerException("No lengths to sort on, see setLength()");
     sort(lengths);
+    return this;
   }
 
   /**
    * Set an optional array of values (in termId order).
    * @param hits
    */
-  public void setHits(final int[] hits)
+  public TopTerms setHits(final int[] hits)
   {
     this.hits = hits;
+    return this;
   }
 
-  public void sortByHits()
+  public TopTerms sortByHits()
   {
     if (hits == null) throw new NullPointerException("No hits to sort on, see setHits()");
     sort(hits);
+    return this;
   }
 
   /**
@@ -292,39 +300,44 @@ public class TopTerms
    * 
    * @param occs
    */
-  public void setOccs(final int[] occs)
+  public TopTerms setOccs(final int[] occs)
   {
     this.occs = occs;
+    return this;
   }
 
-  public void sortByOccs()
+  public TopTerms sortByOccs()
   {
     if (occs == null) throw new NullPointerException("No occs to sort on, see setOccs()");
     sort(occs);
+    return this;
   }
 
   /**
    * Set a long value to each term.
    * @param scores
    */
-  public void setScores(final double[] scores)
+  public TopTerms setScores(final double[] scores)
   {
     this.scores = scores;
+    return this;
   }
 
-  public void sortByScores()
+  public TopTerms sortByScores()
   {
     if (scores == null) throw new NullPointerException("No scores to sort on, see setScores()");
     sort(scores);
+    return this;
   }
 
   /**
    * Set an optional int array of docids in termId order.
    * @param covers
    */
-  public void setCovers(final int[] covers)
+  public TopTerms setCovers(final int[] covers)
   {
     this.covers = covers;
+    return this;
   }
 
   /**
@@ -332,17 +345,19 @@ public class TopTerms
    * 
    * @param nos
    */
-  public void setNos(final int[] nos)
+  public TopTerms setNos(final int[] nos)
   {
     this.nos = nos;
+    return this;
   }
 
   /**
    * Reset the internal cursor when iterating in the sorter.
    */
-  public void reset()
+  public TopTerms reset()
   {
     cursor = -1;
+    return this;
   }
 
   /**

@@ -34,7 +34,7 @@ package alix.lucene.search;
 
 import java.io.IOException;
 
-import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -46,10 +46,15 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
-public class Freqs
+/**
+ * An object recording different stats for a text field
+ * @author fred
+ *
+ */
+public class FieldStats
 {
   /** The reader from which to get freqs */
-  final IndexReader reader;
+  final DirectoryReader reader;
   /** Name of the indexed field */
   public final String field;
   /** Number of different terms */
@@ -66,10 +71,10 @@ public class Freqs
   private int[] termDocs;
   /** Count of occurrences by termId */
   private final long[] termLength;
-  /** An internal pointer on a term, to get some stats about it */
-  private int termId;
+  // No internal pointer on a term, not thread safe // private int termId;
 
-  public Freqs(final IndexReader reader, final String field) throws IOException
+
+  public FieldStats(final DirectoryReader reader, final String field) throws IOException
   {
     final int END = DocIdSetIterator.NO_MORE_DOCS;
     this.reader = reader;
@@ -103,6 +108,7 @@ public class Freqs
       // because terms are sorted, we could merge dics more efficiently
       // between leaves, but index in Alix are generally merged
       while ((ref = tenum.next()) != null) {
+        if (ref.length == 0) continue;
         int termId = hashDic.add(ref);
         if (termId < 0) termId = -termId - 1; // value already given
         // growing is needed if index has more than one leaf
@@ -159,22 +165,21 @@ public class Freqs
   }
 
   /**
-   * Set an internal cursor on a term
+   * Returns termId >= 0 if exists, or < 0 if not.
+   * @param bytes
+   * @return 
    */
-  public boolean contains(final BytesRef bytes)
+  public int termId(final BytesRef bytes)
   {
-    final int id = hashDic.find(bytes);
-    if (id < 0) return false;
-    termId = id;
-    return true;
+    return hashDic.find(bytes);
   }
   
-  public long length()
+  public long length(int termId)
   {
     return termLength[termId];
   }
 
-  public int docs()
+  public int docs(int termId)
   {
     return termDocs[termId];
   }
@@ -267,7 +272,7 @@ public class Freqs
    * @return
    * @throws IOException
    */
-  static public BytesRefHash terms(IndexReader reader, String field) throws IOException
+  static public BytesRefHash terms(DirectoryReader reader, String field) throws IOException
   {
     BytesRefHash hashDic = new BytesRefHash();
     BytesRef ref;
@@ -284,6 +289,7 @@ public class Freqs
     }
     return hashDic;
   }
+
 
   @Override
   public String toString()

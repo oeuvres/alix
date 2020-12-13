@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import alix.lucene.Alix;
 import alix.lucene.analysis.FrAnalyzer;
-import alix.lucene.search.Freqs;
+import alix.lucene.search.FieldStats;
 import alix.lucene.search.TopTerms;
 
 public class TestFreqs
@@ -26,7 +26,7 @@ public class TestFreqs
     Alix alix = Alix.instance("web/WEB-INF/obvil/test", new FrAnalyzer());
     String field = "bibl";
     time = System.nanoTime();
-    Freqs freqs = alix.freqs(field);
+    FieldStats freqs = alix.fieldStats(field);
     System.out.println(freqs);
     System.out.println("Terms in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     time = System.nanoTime();

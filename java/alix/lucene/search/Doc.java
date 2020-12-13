@@ -577,15 +577,15 @@ public class Doc
     Terms vector = getTermVector(field);
     int docLen = docLength[docId];
     // get index term stats
-    Freqs freqs = alix.freqs(field);
+    FieldStats fstats = alix.fieldStats(field);
     // loop on all terms of the document, get score, keep the top 
     TermsEnum termit = vector.iterator();
     final Top<String> names = new Top<String>(100);
     final Top<String> happax = new Top<String>(100);
     final Top<String> theme = new Top<String>(100);
     final Top<String> frequent = new Top<String>(100);
-    long occsAll= freqs.occsAll;
-    int docsAll = freqs.docsAll;
+    long occsAll= fstats.occsAll;
+    int docsAll = fstats.docsAll;
     Scorer scorer = new ScorerBM25();
     // Scorer scorerTheme = new ScorerTheme();
     // Scorer scorerTfidf = new ScorerTfidf();
@@ -593,10 +593,11 @@ public class Doc
     CharsAtt att = new CharsAtt();
     while(termit.next() != null) {
       BytesRef bytes = termit.term();
-      if (!freqs.contains(bytes)) continue; // should not arrive, set a pointer
+      final int termId = fstats.termId(bytes);
+      if (termId < 0) continue; // should not arrive, set a pointer
       // count 
-      int termDocs = freqs.docs(); // count of docs with this word
-      long termOccs = freqs.length(); // count of occs accross base
+      int termDocs = fstats.docs(termId); // count of docs with this word
+      long termOccs = fstats.length(termId); // count of occs accross base
       scorer.weight(termOccs, termDocs); // collection level stats
       int occsDoc = (int)termit.totalTermFreq(); // c
       double score = scorer.score(occsDoc, docLen);

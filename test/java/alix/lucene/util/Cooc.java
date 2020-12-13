@@ -56,11 +56,13 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
 import alix.lucene.Alix;
-import alix.lucene.search.Freqs;
+import alix.lucene.search.FieldStats;
 import alix.lucene.search.TermList;
 import alix.lucene.search.TopTerms;
 
 /** 
+ * BUGGY and inefficient.
+ * 
  * A co-occurrences scanner in a  {@link org.apache.lucene.document.TextField} of a lucene index.
  * This field should store term vectors with positions
  * {@link org.apache.lucene.document.FieldType#setStoreTermVectorPositions(boolean)}.
@@ -78,7 +80,7 @@ public class Cooc
   /** Name of the binary field storing the int vector of documents */
   private final String fieldRail;
   /** Keep the freqs for the field */
-  private final Freqs freqs;
+  private final FieldStats freqs;
   /** Dictionary of terms for this field */
   private final BytesRefHash hashDic;
   /** State of the index */
@@ -95,7 +97,7 @@ public class Cooc
     this.alix = alix;
     this.field = field;
     this.fieldRail = field + _RAIL;
-    this.freqs = alix.freqs(field); // build and cache the dictionary of cache for the field
+    this.freqs = alix.fieldStats(field); // build and cache the dictionary of cache for the field
     this.hashDic = freqs.hashDic();
   }
   
@@ -257,13 +259,18 @@ public class Cooc
         pivots.clear();
         // loop on term iterator to get positions for this doc
         for (PostingsEnum postings: termDocs) {
-          int doc = postings.docID();
-          if (doc == END || doc > docLeaf) continue;
-          // 
-          if (doc < docLeaf) doc = postings.advance(docLeaf - 1);
-          if (doc > docLeaf) continue;
+          int docPost = postings.docID(); // get current doc for these term postings
+          if (docPost == docLeaf);
+          else if (docPost == END) continue; // end of postings, try next term
+          else if (docPost > docLeaf) continue; // postings ahead of current doc, try next term 
+          else if (docPost < docLeaf) {
+            docPost = postings.advance(docLeaf); // try to advance postings to this doc
+            if (docPost > docLeaf) continue; // next doc for this term is ahead current term
+          }
+          if (docPost != docLeaf) System.out.println("BUG cooc, docLeaf=" + docLeaf + " docPost=" + docPost); // ? bug ?;
           int freq = postings.freq();
-          if (freq == 0) continue;
+          if (freq == 0) System.out.println("BUG cooc, term=" + postings.toString() + " docId="+docId+" freq=0"); // ? bug ?
+          
           found = true;
           for (; freq > 0; freq --) {
             final int position = postings.nextPosition();
@@ -272,6 +279,7 @@ public class Cooc
             contexts.set(fromIndex, toIndex);
             pivots.set(position);
           }
+          
         }
         if (!found) continue;
         // substract pivots from context, this way should avoid counting pivot

@@ -6,7 +6,7 @@ import java.io.IOException;
 import org.apache.lucene.util.FixedBitSet;
 
 import alix.lucene.analysis.FrAnalyzer;
-import alix.lucene.search.Freqs;
+import alix.lucene.search.FieldStats;
 import alix.lucene.search.TopTerms;
 import alix.lucene.util.Cooc;
 import net.openhft.chronicle.core.values.IntValue;
@@ -51,7 +51,7 @@ public final class TestStore
     FixedBitSet filter = new FixedBitSet(maxDoc);
     filter.set(0, maxDoc);
 
-    Freqs freqs = alix.freqs(field);
+    FieldStats freqs = alix.fieldStats(field);
     
     for (int i = 0; i < 10; i++) {
       System.out.println("---");

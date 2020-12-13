@@ -89,7 +89,7 @@ import org.apache.lucene.util.Bits;
 import alix.fr.Tag;
 import alix.lucene.search.Facet;
 import alix.lucene.search.Scale;
-import alix.lucene.search.Freqs;
+import alix.lucene.search.FieldStats;
 import alix.lucene.search.IntSeries;
 import alix.lucene.search.TermList;
 import alix.lucene.util.Cooc;
@@ -123,7 +123,7 @@ import alix.lucene.util.Cooc;
  * <ul>
  *   <li>{@link #intSeries(String)} All values of a unique numeric field per document 
  *   ({@link IntPoint}, {@link NumericDocValuesField}).</li>
- *   <li>{@link #freqs(String)} All terms indexed in a {@link TextField}, with stats,
+ *   <li>{@link #fieldStats(String)} All terms indexed in a {@link TextField}, with stats,
  *   useful for list of terms and advanced lexical statistics.</li>
  *   <li>{@link #docLength(String)} Size (in tokens) of indexed documents in a {@link TextField}</li>
  *   <li>{@link #facet(String, String)} All terms of a facet field
@@ -195,7 +195,7 @@ public class Alix
   /** The lucene directory, kept private, to avoid closing by a thread */
   private Directory dir;
   /** The IndexReader if requested */
-  private IndexReader reader;
+  private DirectoryReader reader;
   /** Max for docId */
   int maxDoc;
   /** The infos on field */
@@ -336,7 +336,7 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public IndexReader reader() throws IOException
+  public DirectoryReader reader() throws IOException
   {
     return reader(false);
   }
@@ -349,7 +349,7 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public IndexReader reader(final boolean force) throws IOException
+  public DirectoryReader reader(final boolean force) throws IOException
   {
     if (!force && reader != null) return reader;
     cache.clear(); // clean cache on renew the reader
@@ -614,12 +614,12 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public Freqs freqs(final String field) throws IOException
+  public FieldStats fieldStats(final String field) throws IOException
   {
     String key = "AlixFreqs" + field;
-    Freqs freqs = (Freqs) cache(key);
+    FieldStats freqs = (FieldStats) cache(key);
     if (freqs != null) return freqs;
-    freqs = new Freqs(reader(), field);
+    freqs = new FieldStats(reader(), field);
     cache(key, freqs);
     return freqs;
   }
@@ -657,7 +657,7 @@ u   * @throws IOException
    */
   public int[] docLength(String field) throws IOException
   {
-    return freqs(field).docLength;
+    return fieldStats(field).docLength;
   }
 
   /**

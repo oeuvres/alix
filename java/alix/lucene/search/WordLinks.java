@@ -96,7 +96,7 @@ public class WordLinks
    */
   public WordLinks(Alix alix, String field, BitSet docs, int dim) throws IOException {
     int winWidth = 30;
-    Freqs freqs = alix.freqs(field);
+    FieldStats freqs = alix.fieldStats(field);
     int[] global2local = new int[freqs.size];
     Arrays.fill(global2local, -1);
     TopTerms dic = freqs.topTerms(docs);

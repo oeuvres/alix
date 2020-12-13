@@ -15,7 +15,7 @@ import org.apache.lucene.util.FixedBitSet;
 import alix.lucene.Alix;
 import alix.lucene.TestIndex;
 import alix.lucene.analysis.FrAnalyzer;
-import alix.lucene.search.Freqs;
+import alix.lucene.search.FieldStats;
 import alix.lucene.search.TermList;
 import alix.lucene.search.TopTerms;
 import alix.lucene.util.Cooc;
@@ -97,7 +97,7 @@ public class TestCooc
     String path = "/home/fred/code/ddrlab/WEB-INF/bases/critique";
     Alix alix = Alix.instance(path, new FrAnalyzer());
     final String field = "text";
-    Freqs stats = alix.freqs(field);
+    FieldStats stats = alix.fieldStats(field);
     int maxDoc = alix.reader().maxDoc();
     
     FixedBitSet filter = new FixedBitSet(maxDoc);

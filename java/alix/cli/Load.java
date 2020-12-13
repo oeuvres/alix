@@ -20,7 +20,6 @@ import alix.lucene.Alix;
 import alix.lucene.SrcFormat;
 import alix.lucene.XMLIndexer;
 import alix.lucene.analysis.FrAnalyzer;
-import alix.lucene.util.Cooc;
 import alix.util.Dir;
 
 public class Load {
@@ -93,8 +92,6 @@ public class Load {
     XMLIndexer.index(writer, globs, SrcFormat.tei, threads);
     // index here will be committed and merged but need to be closed for cooccurrences
     writer.close();
-    Cooc cooc = new Cooc(alix, "text");
-    cooc.write();
     System.out.println("["+APP+"] "+name+" indexed in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     
     /*
