@@ -35,6 +35,7 @@ package alix.util;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 /**
  * A queue to select the top elements from an int array
@@ -42,10 +43,10 @@ import java.util.NoSuchElementException;
  */
 public class TopInt implements Iterable<TopInt.Entry>
 {
-  /** Data stored as a Pair rank+object, easy to sort before exported as an array. */
-  private final Entry[] data;
   /** Max size of the top to extract */
   private final int size;
+  /** Data stored as a Pair rank+object, easy to sort before exported as an array. */
+  private final Entry[] data;
   /** Fill data before */
   private boolean full;
   /** Index of fill factor, before data full */
@@ -58,21 +59,7 @@ public class TopInt implements Iterable<TopInt.Entry>
   private int max = Integer.MIN_VALUE;
 
   /**
-   * Constructor with data 
-   * 
-   * @param size
-   */
-  public TopInt(final int size, final int[] freqs)
-  {
-    this.size = size;
-    data = new Entry[size];
-    int length = freqs.length;
-    for (int id = 0; id < length; id++) push(id, freqs[id]);
-  }
-
-  /**
-   * Constructor with fixed size.
-   * 
+   * Constructor without data, for reuse
    * @param size
    */
   public TopInt(final int size)
@@ -82,34 +69,34 @@ public class TopInt implements Iterable<TopInt.Entry>
   }
 
   /**
-   * A private class that implements iteration over the pairs.
+   * Constructor with an array where index is id, and value is score.
    * 
-   * @author glorieux-f
+   * @param size
+   * @param freqs
    */
-  class TopIterator implements Iterator<Entry>
+  public TopInt(final int size, final int[] freqs)
   {
-    int current = 0; // the current element we are looking at
-
-    /**
-     * If cursor is less than size, return OK.
-     */
-    @Override
-    public boolean hasNext()
-    {
-      if (current < fill) return true;
-      else return false;
-    }
-
-    /**
-     * Return current element
-     */
-    @Override
-    public Entry next()
-    {
-      if (!hasNext()) throw new NoSuchElementException();
-      return data[current++];
-    }
+    this(size);
+    int length = freqs.length;
+    for (int id = 0; id < length; id++) push(id, freqs[id]);
   }
+  
+
+  /**
+   * Constructor with an array where index is id, and value is score.
+   * 
+   * @param size
+   * @param freqs
+   */
+  public TopInt(final int size, final AtomicIntegerArray freqs)
+  {
+    this(size);
+    int length = freqs.length();
+    for (int id = 0; id < length; id++) push(id, freqs.get(id));
+  }
+
+  
+
 
   @Override
   public Iterator<Entry> iterator()
@@ -208,6 +195,7 @@ public class TopInt implements Iterable<TopInt.Entry>
     last();
     return true;
   }
+  
 
   /**
    * Return the values, sorted by rank, biggest first.
@@ -295,4 +283,35 @@ public class TopInt implements Iterable<TopInt.Entry>
     }
 
   }
+  
+  /**
+   * A private class that implements iteration over the pairs.
+   * 
+   * @author glorieux-f
+   */
+  class TopIterator implements Iterator<Entry>
+  {
+    int current = 0; // the current element we are looking at
+
+    /**
+     * If cursor is less than size, return OK.
+     */
+    @Override
+    public boolean hasNext()
+    {
+      if (current < fill) return true;
+      else return false;
+    }
+
+    /**
+     * Return current element
+     */
+    @Override
+    public Entry next()
+    {
+      if (!hasNext()) throw new NoSuchElementException();
+      return data[current++];
+    }
+  }
+
 }

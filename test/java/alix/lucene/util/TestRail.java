@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.document.Document;
@@ -40,6 +41,7 @@ public class TestRail
       field.setStringValue(text);
       writer.addDocument(doc);
       System.out.println("add(docId=" + docId + ")   {" + text + "}");
+      docId++;
     }
     writer.addDocument(new Document()); // add empty doc with no value for this field
     writer.commit();
@@ -58,12 +60,19 @@ public class TestRail
     }
     FixedBitSet filter = new FixedBitSet(maxDoc);
     filter.set(0, maxDoc);
+    
     int[] freqs = rail.freqs(filter);
     TopInt top = new TopInt(10, freqs);
     for(TopInt.Entry entry: top) {
       System.out.println(rail.form(entry.id()) + " " + df.format(entry.score()));
     }
-  }
+
+    AtomicIntegerArray freqs2 = rail.freqsParallel(filter);
+    top = new TopInt(10, freqs2);
+    for(TopInt.Entry entry: top) {
+      System.out.println(rail.form(entry.id()) + " " + df.format(entry.score()));
+    }
+}
   
   public static void freqs() throws IOException
   {
@@ -100,7 +109,7 @@ public class TestRail
     runtime.gc();
     long mem1 = runtime.totalMemory() - runtime.freeMemory();
     int[] freqs = null;
-    System.out.print("By rail in ");
+    System.out.print("By rail file.map in ");
     for (int i=0; i < 10; i++) {
       time = System.nanoTime();
       freqs = rail.freqs(filter);
@@ -108,11 +117,27 @@ public class TestRail
     }
     System.out.println();
     System.out.println("mem0=" + ((float)mem0 / MB) +" Mb, mem1=" + ((float)mem1 / MB) + " Mb, diff="+ ((float)(mem1 - mem0) / MB));
-    
     TopInt topi = new TopInt(10, freqs);
     for(TopInt.Entry entry: topi) {
       System.out.println(rail.form(entry.id()) + " " +  df.format(entry.score()));
     }
+
+    
+    System.out.print("By rail parallel in ");
+    AtomicIntegerArray freqs2 = null;
+    for (int i=0; i < 10; i++) {
+      time = System.nanoTime();
+      freqs2 = rail.freqsParallel(filter);
+      System.out.print(((System.nanoTime() - time) / 1000000) + "ms, ");
+    }
+    System.out.println();
+    topi = new TopInt(10, freqs2);
+    for(TopInt.Entry entry: topi) {
+      System.out.println(rail.form(entry.id()) + " " +  df.format(entry.score()));
+    }
+
+    
+    
     
     TopTerms top = null;
     for (int i=0; i < 10; i++) {
@@ -124,6 +149,7 @@ public class TestRail
     System.out.println(top);
   }
 
+  
   public static void main(String[] args) throws Exception
   {
     // miniWrite();

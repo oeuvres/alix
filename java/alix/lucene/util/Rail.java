@@ -1,12 +1,8 @@
 package alix.lucene.util;
 
 import java.io.DataInputStream;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
-import java.nio.LongBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
@@ -14,17 +10,14 @@ import java.nio.channels.FileLock;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.stream.IntStream;
 
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
@@ -98,14 +91,14 @@ public class Rail
     
     int[] docLength = freqs.docLength;
 
-    long byteCap = 4 + 4 * maxDoc;
+    long capInt = 1 + maxDoc;
     for (int i = 0; i < maxDoc; i++) {
-      byteCap += (docLength[i]+1) * 4;
+      capInt += docLength[i] + 1 ;
     }
     
-    // first store, the maxDoc count, will help to predict array sizes
-    MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_WRITE, 0, byteCap);
+    MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_WRITE, 0, capInt * 4);
     IntBuffer bufint = buf.asIntBuffer();
+    // first store, the maxDoc count, will help to predict array sizes
     bufint.put(maxDoc);
     bufint.put(docLength);
     IntList ints = new IntList();
@@ -149,7 +142,6 @@ public class Rail
     this.limInt = limInt;
     this.channel = channel;
     this.channelMap = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
-    
   }
   
   public String toString(int docId) throws IOException
@@ -172,6 +164,41 @@ public class Rail
   }
   
   /**
+   * Parallel freqs calculation, it works but is more expensive than serial,
+   * because of concurrency cost.
+   * 
+   * @param filter
+   * @return
+   * @throws IOException
+   */
+  protected AtomicIntegerArray freqsParallel(final BitSet filter) throws IOException
+  {
+    // may take big place in mem
+    int[] rail = new int[(int)(channel.size() / 4)];
+    channelMap.asIntBuffer().get(rail);
+    AtomicIntegerArray freqs = new AtomicIntegerArray(hashDic.size());
+    boolean hasFilter = (filter != null);
+    int maxDoc = this.maxDoc;
+    int[] posInt = this.posInt;
+    int[] limInt = this.limInt;
+    
+    IntStream loop = IntStream.range(0, maxDoc).filter(docId -> {
+      if (limInt[docId] == 0) return false;
+      if (hasFilter && !filter.get(docId)) return false;
+      return true;
+    }).parallel().map(docId -> {
+      // to use a channelMap in parallel, we need a new IntBuffer for each doc, too expensive
+      for (int i = posInt[docId], max = posInt[docId] + limInt[docId] ; i < max; i++) {
+        int termId = rail[i];
+        freqs.getAndIncrement(termId);
+      }
+      return docId;
+    });
+    loop.count(); // go
+    return freqs;
+  }
+  
+  /**
    * From a set of documents provided as a BitSet,
    * return a freqlist as an int vector,
    * where index is the termId for the field,
@@ -183,40 +210,22 @@ public class Rail
   {
     int[] freqs = new int[hashDic.size()];
     boolean hasFilter = (filter != null);
-    IndexReader reader = alix.reader();
     int maxDoc = this.maxDoc;
     int[] posInt = this.posInt;
     int[] limInt = this.limInt;
-    /*
-    // parallel is slower and hard to ensure
-    IntStream loop = IntStream.range(0, maxDoc).filter(docId -> {
-      if (limInt[docId] == 0) return false;
-      if (hasFilter && !filter.get(docId)) return false;
-      return true;
-    }).parallel().map(docId -> {
-      // channelMap.position(posByte[docId]).asIntBuffer() DO NOT change the channelMap pos in parallell
-      MappedByteBuffer buf = null;
-      try { // create a buffer has no cost
-        buf = channel.map(FileChannel.MapMode.READ_ONLY, posByte[docId], limInt[docId] * 4);
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-      IntBuffer bufInt = buf.asIntBuffer();
-      while (bufInt.hasRemaining()) {
-        int termId = bufInt.get();
-        freqs[termId]++;
-      }
-      return docId;
-    });
-    loop.count(); // go
-    */
-    // no cost in time and memory to take an int view
-    IntBuffer bufInt = channelMap.asIntBuffer();
+    
+    
+    /* 
+    // if channelMap is copied here as int[], same cost as IntBuffer
+    // gain x2 if int[] is preloaded at class level, but cost mem
+    int[] rail = new int[(int)(channel.size() / 4)];
+    channelMap.asIntBuffer().get(rail);
+     */
+    // no cost in time and memory to take one int view, seems faster to loop
+    IntBuffer bufInt = channelMap.rewind().asIntBuffer();
     for (int docId = 0; docId < maxDoc; docId++) {
       if (limInt[docId] == 0) continue; // deleted or with no value for this field
       if (hasFilter && !filter.get(docId)) continue; // document not in the filter
-      // new buffer is expensive for each doc
-      // MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_ONLY, posByte[docId], limInt[docId] * 4);
       bufInt.position(posInt[docId]);
       for (int i = 0, max = limInt[docId] ; i < max; i++) {
         int termId = bufInt.get();
@@ -224,6 +233,10 @@ public class Rail
       }
     }
     return freqs;
+    // build a new memory map, even here, has a cost ; build on for each doc is much more expensive
+    // MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
+    /*
+    */
   }
   
   
