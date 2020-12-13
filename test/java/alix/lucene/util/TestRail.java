@@ -80,7 +80,7 @@ public class TestRail
     time = System.nanoTime();
     System.out.print("Load a big index in ");
     String path = "/home/fred/code/ddrlab/WEB-INF/bases/critique";
-    Alix alix = Alix.instance(path, new FrAnalyzer());
+    Alix alix = Alix.instance(path, new FrAnalyzer(), Alix.FSDirectoryType.MMapDirectory);
     System.out.println(((System.nanoTime() - time) / 1000000) + " ms.");
     final String field = "text";
     time = System.nanoTime();
@@ -109,6 +109,7 @@ public class TestRail
     runtime.gc();
     long mem1 = runtime.totalMemory() - runtime.freeMemory();
     int[] freqs = null;
+    
     System.out.print("By rail file.map in ");
     for (int i=0; i < 10; i++) {
       time = System.nanoTime();
@@ -136,8 +137,18 @@ public class TestRail
       System.out.println(rail.form(entry.id()) + " " +  df.format(entry.score()));
     }
 
-    
-    
+    System.out.print("By cooc in ");
+    Cooc cooc = new Cooc(alix, field);
+    for (int i=0; i < 10; i++) {
+      time = System.nanoTime();
+      freqs = cooc.freqs(filter);
+      System.out.print(((System.nanoTime() - time) / 1000000) + "ms, ");
+    }
+    System.out.println();
+    topi = new TopInt(10, freqs);
+    for(TopInt.Entry entry: topi) {
+      System.out.println(rail.form(entry.id()) + " " +  df.format(entry.score()));
+    }
     
     TopTerms top = null;
     for (int i=0; i < 10; i++) {

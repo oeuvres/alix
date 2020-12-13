@@ -25,5 +25,6 @@
 			<attribute name="javadoc_location" value="http://lucene.apache.org/core/8_7_0/highlighter/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="lib/servlet-api_tomcat7.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>

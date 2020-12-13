@@ -34,6 +34,7 @@ package alix.lucene.util;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 
 import org.apache.lucene.document.BinaryDocValuesField;
@@ -163,7 +164,36 @@ public class Cooc
     }
   }
   
+  public int[] freqs(final BitSet filter) throws IOException
+  {
+    int[] freqs = new int[hashDic.size()];
+    boolean hasFilter = (filter != null);
+    final int END = DocIdSetIterator.NO_MORE_DOCS;
+    IndexReader reader = alix.reader();
+    // loop on leafs
+    for (LeafReaderContext context : reader.leaves()) {
+      int docBase = context.docBase;
+      int docLeaf;
+      LeafReader leaf = context.reader();
+      BinaryDocValues binDocs = leaf.getBinaryDocValues(fieldRail);
+      if (binDocs == null) continue; // probably nothing indexed
+      final Bits liveDocs = leaf.getLiveDocs();
+      while ( (docLeaf = binDocs.nextDoc()) != END) {
+        if (liveDocs != null && !liveDocs.get(docLeaf)) continue; // deleted doc
+        int docId = docBase + docLeaf;
+        if (filter != null && !filter.get(docId)) continue; // document not in the metadata fillter
+        BytesRef ref = binDocs.binaryValue();
+        IntBuffer buf = ByteBuffer.wrap(ref.bytes, ref.offset, ref.length).asIntBuffer();
+        while (buf.hasRemaining()) {
+          int termId = buf.get();
+          freqs[termId]++;
+        }
+      }
+    }
+    return freqs;
+  }
 
+  
   
   /**
    * Get cooccurrences from a multi term query.
@@ -186,8 +216,8 @@ public class Cooc
     dic.setLengths(termLength);
     dic.setDocs(termDocs);
     */
-    IndexReader reader = alix.reader();
     final int END = DocIdSetIterator.NO_MORE_DOCS;
+    IndexReader reader = alix.reader();
     // collector of scores
     int size = this.hashDic.size();
     int[] freqs = new int[size]; // by term, occurrences counts
@@ -204,10 +234,8 @@ public class Cooc
       int docBase = context.docBase;
       int docLeaf;
       LeafReader leaf = context.reader();
-      // loop carefully on docs with a rail
       BinaryDocValues binDocs = leaf.getBinaryDocValues(fieldRail);
-      // probably nothing indexed
-      if (binDocs == null) continue; 
+      if (binDocs == null) continue; // probably nothing indexed
       // start iterators for each term
       ArrayList<PostingsEnum> list = new ArrayList<PostingsEnum>();
       for (Term term : terms) {
@@ -250,7 +278,6 @@ public class Cooc
         contexts.andNot(pivots);
         BytesRef ref = binDocs.binaryValue();
         ByteBuffer buf = ByteBuffer.wrap(ref.bytes, ref.offset, ref.length);
-        // loop on the positions 
         int pos = contexts.nextSetBit(0);
         if (pos < 0) continue; // word found but without context, ex: first word without left
         int max = ref.length - 3;

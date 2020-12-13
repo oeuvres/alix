@@ -163,40 +163,6 @@ public class Rail
     return sb.toString();
   }
   
-  /**
-   * Parallel freqs calculation, it works but is more expensive than serial,
-   * because of concurrency cost.
-   * 
-   * @param filter
-   * @return
-   * @throws IOException
-   */
-  protected AtomicIntegerArray freqsParallel(final BitSet filter) throws IOException
-  {
-    // may take big place in mem
-    int[] rail = new int[(int)(channel.size() / 4)];
-    channelMap.asIntBuffer().get(rail);
-    AtomicIntegerArray freqs = new AtomicIntegerArray(hashDic.size());
-    boolean hasFilter = (filter != null);
-    int maxDoc = this.maxDoc;
-    int[] posInt = this.posInt;
-    int[] limInt = this.limInt;
-    
-    IntStream loop = IntStream.range(0, maxDoc).filter(docId -> {
-      if (limInt[docId] == 0) return false;
-      if (hasFilter && !filter.get(docId)) return false;
-      return true;
-    }).parallel().map(docId -> {
-      // to use a channelMap in parallel, we need a new IntBuffer for each doc, too expensive
-      for (int i = posInt[docId], max = posInt[docId] + limInt[docId] ; i < max; i++) {
-        int termId = rail[i];
-        freqs.getAndIncrement(termId);
-      }
-      return docId;
-    });
-    loop.count(); // go
-    return freqs;
-  }
   
   /**
    * From a set of documents provided as a BitSet,
@@ -233,10 +199,6 @@ public class Rail
       }
     }
     return freqs;
-    // build a new memory map, even here, has a cost ; build on for each doc is much more expensive
-    // MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
-    /*
-    */
   }
   
   
@@ -297,6 +259,41 @@ public class Rail
   public String form(final int termId) {
     this.hashDic.get(termId, ref);
     return ref.utf8ToString();
+  }
+
+  /**
+   * Parallel freqs calculation, it works but is more expensive than serial,
+   * because of concurrency cost.
+   * 
+   * @param filter
+   * @return
+   * @throws IOException
+   */
+  protected AtomicIntegerArray freqsParallel(final BitSet filter) throws IOException
+  {
+    // may take big place in mem
+    int[] rail = new int[(int)(channel.size() / 4)];
+    channelMap.asIntBuffer().get(rail);
+    AtomicIntegerArray freqs = new AtomicIntegerArray(hashDic.size());
+    boolean hasFilter = (filter != null);
+    int maxDoc = this.maxDoc;
+    int[] posInt = this.posInt;
+    int[] limInt = this.limInt;
+    
+    IntStream loop = IntStream.range(0, maxDoc).filter(docId -> {
+      if (limInt[docId] == 0) return false;
+      if (hasFilter && !filter.get(docId)) return false;
+      return true;
+    }).parallel().map(docId -> {
+      // to use a channelMap in parallel, we need a new IntBuffer for each doc, too expensive
+      for (int i = posInt[docId], max = posInt[docId] + limInt[docId] ; i < max; i++) {
+        int termId = rail[i];
+        freqs.getAndIncrement(termId);
+      }
+      return docId;
+    });
+    loop.count(); // go
+    return freqs;
   }
 
 }
