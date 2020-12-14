@@ -38,10 +38,10 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 /**
- * A queue to select the top elements from an int array
+ * A queue to select the top elements from a score array
  * where index is a kind of id, and value is a score.
  */
-public class TopInt implements Iterable<TopInt.Entry>
+public class TopArray implements Iterable<TopArray.Entry>
 {
   /** Max size of the top to extract */
   private final int size;
@@ -54,15 +54,15 @@ public class TopInt implements Iterable<TopInt.Entry>
   /** Index of the minimum rank in data */
   private int last;
   /** Min score */
-  private int min = Integer.MAX_VALUE;
+  private double min = Double.MAX_VALUE;
   /** Max score */
-  private int max = Integer.MIN_VALUE;
+  private double max = Double.MIN_VALUE;
 
   /**
    * Constructor without data, for reuse
    * @param size
    */
-  public TopInt(final int size)
+  public TopArray(final int size)
   {
     this.size = size;
     data = new Entry[size];
@@ -74,7 +74,7 @@ public class TopInt implements Iterable<TopInt.Entry>
    * @param size
    * @param freqs
    */
-  public TopInt(final int size, final int[] freqs)
+  public TopArray(final int size, final int[] freqs)
   {
     this(size);
     int length = freqs.length;
@@ -88,7 +88,7 @@ public class TopInt implements Iterable<TopInt.Entry>
    * @param size
    * @param freqs
    */
-  public TopInt(final int size, final AtomicIntegerArray freqs)
+  public TopArray(final int size, final AtomicIntegerArray freqs)
   {
     this(size);
     int length = freqs.length();
@@ -111,9 +111,9 @@ public class TopInt implements Iterable<TopInt.Entry>
   private void last()
   {
     int last = 0;
-    int min = data[0].score;
+    double min = data[0].score;
     for (int i = 1; i < size; i++) {
-      if (Integer.compare(data[i].score, min) >= 0) continue;
+      if (Double.compare(data[i].score, min) >= 0) continue;
       min = data[i].score;
       last = i;
     }
@@ -141,7 +141,7 @@ public class TopInt implements Iterable<TopInt.Entry>
    * Returns the minimum score.
    * @return
    */
-  public int min()
+  public double min()
   {
     return min;
   }
@@ -150,7 +150,7 @@ public class TopInt implements Iterable<TopInt.Entry>
    * Returns the maximum score.
    * @return
    */
-  public int max()
+  public double max()
   {
     return max;
   }
@@ -170,12 +170,12 @@ public class TopInt implements Iterable<TopInt.Entry>
    * @param score
    * @param value
    */
-  public boolean push(final int id, final int score)
+  public boolean push(final int id, final double score)
   {
     // should fill initial array
     if (!full) {
-      if (Integer.compare(score, max) > 0) max = score;
-      if (Integer.compare(score, min) < 0) min = score;
+      if (Double.compare(score, max) > 0) max = score;
+      if (Double.compare(score, min) < 0) min = score;
       data[fill] = new Entry(id, score);
       fill++;
       if (fill < size) return true;
@@ -187,8 +187,8 @@ public class TopInt implements Iterable<TopInt.Entry>
     }
     // less than min, go away
     // compare by object is more precise, no less efficient
-    if (Integer.compare(score, min) <= 0) return false;
-    if (Integer.compare(score, max) > 0) max = score;
+    if (Double.compare(score, min) <= 0) return false;
+    if (Double.compare(score, max) > 0) max = score;
     // bigger than last, modify it
     data[last].set(id, score);
     // find last
@@ -234,7 +234,7 @@ public class TopInt implements Iterable<TopInt.Entry>
     /** Object id */
     int id;
     /** Score to compare values */
-    int score;
+    double score;
 
     /**
      * Constructor
@@ -242,7 +242,7 @@ public class TopInt implements Iterable<TopInt.Entry>
      * @param score
      * @param value
      */
-    Entry(final int id, final int score)
+    Entry(final int id, final double score)
     {
       this.id = id;
       this.score = score;
@@ -254,7 +254,7 @@ public class TopInt implements Iterable<TopInt.Entry>
      * @param score
      * @param value
      */
-    protected void set(final int id, final int score)
+    protected void set(final int id, final double score)
     {
       this.id = id;
       this.score = score;
@@ -265,7 +265,7 @@ public class TopInt implements Iterable<TopInt.Entry>
       return id;
     }
 
-    public int score()
+    public double score()
     {
       return score;
     }
@@ -273,7 +273,7 @@ public class TopInt implements Iterable<TopInt.Entry>
     @Override
     public int compareTo(Entry pair)
     {
-      return Integer.compare(pair.score, score);
+      return Double.compare(pair.score, score);
     }
 
     @Override

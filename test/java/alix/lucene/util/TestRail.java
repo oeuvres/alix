@@ -11,6 +11,8 @@ import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
@@ -21,7 +23,7 @@ import alix.lucene.search.FieldStats;
 import alix.lucene.search.TermList;
 import alix.lucene.search.TopTerms;
 import alix.util.Dir;
-import alix.util.TopInt;
+import alix.util.TopArray;
 
 public class TestRail
 {
@@ -66,10 +68,10 @@ public class TestRail
     filter.set(0, maxDoc);
     
     int[] freqs = rail.freqs(filter);
-    showFreqs(fstats, new TopInt(10, freqs));
+    showTop(fstats, new TopArray(10, freqs));
 
     AtomicIntegerArray freqs2 = rail.freqsParallel(filter);
-    showFreqs(fstats, new TopInt(10, freqs2));
+    showTop(fstats, new TopArray(10, freqs2));
   }
   
   public static void miniCooc() throws IOException
@@ -83,7 +85,7 @@ public class TestRail
     int[] freqs = rail.cooc(terms, 1, 1, null);
     System.out.println("Cooc by rail");
     System.out.println(Arrays.toString(freqs));
-    showFreqs(fstats, new TopInt(10, freqs));
+    showTop(fstats, new TopArray(10, freqs));
     
     Cooc cooc = new Cooc(alix, fieldName);
     TopTerms dic = cooc.topTerms(terms, 1, 1, null);
@@ -93,13 +95,28 @@ public class TestRail
   }
   
 
-  public static void showFreqs(FieldStats fstats, final TopInt top)
+  public static void showTop(FieldStats fstats, final TopArray top)
   {
     BytesRefHash dic = fstats.hashDic();
     BytesRef ref = new BytesRef();
-    for(TopInt.Entry entry: top) {
+    for(TopArray.Entry entry: top) {
       dic.get(entry.id(), ref);
-      System.out.println(ref.utf8ToString() + " " +  df.format(entry.score()));
+      System.out.print(ref.utf8ToString() + " " +  df.format(entry.score())+", ");
+    }
+  }
+
+  public static void showJaccard(FieldStats fstats, long pivotFreq, final int[] coocs, int limit)
+  {
+    TopArray top = new TopArray(limit);
+    for (int id = 0, length = coocs.length; id < length; id++) {
+      double score = (double)2 * coocs[id] / (fstats.length(id) * fstats.length(id) + pivotFreq * pivotFreq);
+      top.push(id, score);
+    }
+    BytesRefHash dic = fstats.hashDic();
+    BytesRef ref = new BytesRef();
+    for(TopArray.Entry entry: top) {
+      dic.get(entry.id(), ref);
+      System.out.println(ref.utf8ToString() + " — " + df.format(coocs[entry.id()]) + " — " + entry.score());
     }
   }
 
@@ -144,7 +161,7 @@ public class TestRail
     }
     System.out.println();
     System.out.println("mem0=" + ((float)mem0 / MB) +" Mb, mem1=" + ((float)mem1 / MB) + " Mb, diff="+ ((float)(mem1 - mem0) / MB));
-    showFreqs(fstats, new TopInt(10, freqs));
+    showTop(fstats, new TopArray(10, freqs));
 
     
     System.out.print("Freqs by rail parallel in ");
@@ -155,7 +172,7 @@ public class TestRail
       System.out.print(((System.nanoTime() - time) / 1000000) + "ms, ");
     }
     System.out.println();
-    showFreqs(fstats, new TopInt(10, freqs2));
+    showTop(fstats, new TopArray(10, freqs2));
 
     System.out.print("Freqs by cooc in ");
     Cooc cooc = new Cooc(alix, field);
@@ -165,7 +182,7 @@ public class TestRail
       System.out.print(((System.nanoTime() - time) / 1000000) + "ms, ");
     }
     System.out.println();
-    showFreqs(fstats, new TopInt(10, freqs));
+    showTop(fstats, new TopArray(10, freqs));
     
     TopTerms top = null;
     System.out.print("Freqs by term vector in ");
@@ -186,18 +203,29 @@ public class TestRail
     Alix alix = Alix.instance(path, new FrAnalyzer(), Alix.FSDirectoryType.MMapDirectory);
     FieldStats fstats = alix.fieldStats(fieldName);
 
-    for (String word: new String[] {"poire", "vie", "esprit", "vie esprit", "de"}) {
+    for (String word: new String[] {"vie", "poire", "esprit", "vie esprit", "de"}) {
       TermList terms = alix.qTermList(fieldName, word);
+      // get freq for the pivot
+      long freq1 = 0;
+      long freq2 = 0;
+      for (Term term : terms) {
+        if (term == null) continue;
+        freq1 += alix.reader().totalTermFreq(term);
+        freq2 += fstats.length(term.bytes());
+      }
+      System.out.print(word + ": freq1=" + freq1 + " freq2=" + freq2 + " coocs by rail in ");
       int[] freqs = null;
       Rail rail = new Rail(alix, fieldName);
-      System.out.print(word + ": coocs by rail in ");
       for (int i=0; i < 10; i++) {
         time = System.nanoTime();
-        freqs = rail.cooc(terms, 20, 20, null);
+        freqs = rail.cooc(terms, 15, 15, null);
         System.out.print(((System.nanoTime() - time) / 1000000) + "ms, ");
       }
+      System.out.println("--- Top normal");
+      showTop(fstats, new TopArray(100, freqs));
+      System.out.println("--- Top Jaccard");
+      showJaccard(fstats, freq1, freqs, 20);
       System.out.println();
-      showFreqs(fstats, new TopInt(10, freqs));
     }
 
     /*
