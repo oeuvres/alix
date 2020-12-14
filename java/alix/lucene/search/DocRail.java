@@ -45,7 +45,7 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
 /**
  * A flatten version of a term vector for a document field.
  */
-public class Rail
+public class DocRail
 {
   /** The list of tokens in prder of the document */
   final Token[] toks;
@@ -60,7 +60,7 @@ public class Rail
    * @throws NoSuchFieldException
    * @throws IOException
    */
-  public Rail(Terms tvek, ByteRunAutomaton include, ByteRunAutomaton exclude) throws NoSuchFieldException, IOException
+  public DocRail(Terms tvek, ByteRunAutomaton include, ByteRunAutomaton exclude) throws NoSuchFieldException, IOException
   {
     if (!tvek.hasFreqs() || !tvek.hasPositions() || !tvek.hasOffsets()) {
       throw new NoSuchFieldException("Missig offsets in terms Vector; see FieldType.setStoreTermVectorOffsets(true)");

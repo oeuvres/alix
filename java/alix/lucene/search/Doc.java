@@ -59,7 +59,7 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
 import alix.lucene.Alix;
 import alix.lucene.analysis.FrDics;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
-import alix.lucene.search.Rail.Token;
+import alix.lucene.search.DocRail.Token;
 import alix.lucene.util.WordsAutomatonBuilder;
 import alix.util.Chain;
 import alix.util.Char;
@@ -250,7 +250,7 @@ public class Doc
   {
     Terms tvek = getTermVector(field);
     String text = get(field);
-    final Rail rail = new Rail(tvek, null, FrDics.STOP_BYTES);
+    final DocRail rail = new DocRail(tvek, null, FrDics.STOP_BYTES);
     final int countMax = rail.countMax;
     final Token[] toks = rail.toks;
     final StringBuilder sb = new StringBuilder();
@@ -453,7 +453,7 @@ public class Doc
     if (right < 0 || right > 500) right = 50;
     Terms tvek = getTermVector(field);
     String xml = get(field);
-    Rail rail = new Rail(tvek, include, null);
+    DocRail rail = new DocRail(tvek, include, null);
     Token[] toks = rail.toks;
     // group tokens for expression ?
     System.out.println(include.getSize());
@@ -503,7 +503,7 @@ public class Doc
   {
     Terms tvek = getTermVector(field);
     String text = get(field);
-    Rail rail = new Rail(tvek, include, null);
+    DocRail rail = new DocRail(tvek, include, null);
     final Token[] toks = rail.toks;
     StringBuilder sb = new StringBuilder();
 

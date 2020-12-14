@@ -37,6 +37,7 @@ import java.lang.ref.SoftReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -89,10 +90,9 @@ import org.apache.lucene.util.Bits;
 import alix.fr.Tag;
 import alix.lucene.search.Facet;
 import alix.lucene.search.Scale;
+import alix.lucene.util.Rail;
 import alix.lucene.search.FieldStats;
 import alix.lucene.search.IntSeries;
-import alix.lucene.search.TermList;
-import alix.lucene.util.Cooc;
 
 /**
  * <p>
@@ -631,14 +631,14 @@ public class Alix
    * @return
 u   * @throws IOException
    */
-  public Cooc cooc(final String field) throws IOException
+  public Rail rail(final String field) throws IOException
   {
-    String key = "AlixCooc" + field;
-    Cooc cooc = (Cooc) cache(key);
-    if (cooc != null) return cooc;
-    cooc = new Cooc(this, field);
-    cache(key, cooc);
-    return cooc;
+    String key = "AlixRail" + field;
+    Rail rail = (Rail) cache(key);
+    if (rail != null) return rail;
+    rail = new Rail(this, field);
+    cache(key, rail);
+    return rail;
   }
 
   /**
@@ -769,27 +769,36 @@ u   * @throws IOException
     return qTerm;
   }
   
-  public TermList qTermList(final String field, final String q) throws IOException
-  {
-    return qTermList(field, q, this.analyzer);
-  }
-
   /**
-   * Provide tokens as a table of terms
+   * Analyze a query according to the default analyzer of this base,
+   * is especially needed for multi-words ex: "en effet" 
+   * return terms as an array of string,
+   * supposing that caller knows the field he wants to query.
    * 
    * @param q
    * @param field
    * @return
    * @throws IOException
    */
-  public static TermList qTermList(final String field, final String q, final Analyzer analyzer) throws IOException
+  public String[] qAnalyze(final String q) throws IOException
   {
-    // no default field, cry
-    if (field == null) throw new NullPointerException("Field should be not null to build terms");
-    // TermList terms = new TermList(freqs(field));
-    TermList terms = new TermList();
-    // what does mean null here ? returns an empty term list
-    if (q == null || "".equals(q.trim())) return terms;
+    return qAnalyze(q, this.analyzer);
+  }
+
+  /**
+   * Analyze a query according to the current analyzer of this base ; return terms 
+   * 
+   * @param q
+   * @param field
+   * @return
+   * @throws IOException
+   */
+  public static String[] qAnalyze(final String q, final Analyzer analyzer) throws IOException
+  {
+    // create an arrayList on each query and let gc works
+    ArrayList<String> terms = new ArrayList<String>();
+    // what should mean null here ?
+    if (q == null || "".equals(q.trim())) return null;
     TokenStream ts = analyzer.tokenStream(AlixReuseStrategy.QUERY, q); // keep punctuation to group terms
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     // not generic for other analyzers but may become interesting for a query parser
@@ -818,17 +827,17 @@ u   * @throws IOException
         }
         */
         if (",".equals(word) || ";".equals(word)) {
-          terms.add(null);
+          // terms.add(null);
           continue;
         }
-        terms.add(new Term(field, word));
+        terms.add(word);
       }
       ts.end();
     }
     finally {
       ts.close();
     }
-    return terms;
+    return terms.toArray(new String[terms.size()]);
   }
 
   @Override

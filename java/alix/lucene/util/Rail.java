@@ -1,3 +1,35 @@
+/*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
+ * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
+ *                Frédéric Glorieux <frederic.glorieux@fictif.org>
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
+ *
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache license.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
+ * for a java course at Inalco  http://www.er-tim.fr/
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
+ * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * http://savannah.nongnu.org/projects/sdx/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package alix.lucene.util;
 
 import java.io.DataInputStream;
@@ -14,7 +46,6 @@ import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.stream.IntStream;
 
-import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -26,11 +57,11 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.BytesRefHash;
 
 import alix.lucene.Alix;
 import alix.lucene.search.FieldStats;
-import alix.lucene.search.TermList;
 import alix.util.IntList;
 
 /**
@@ -49,9 +80,9 @@ public class Rail
   /** State of the index */
   private final Alix alix;
   /** Name of the reference text field */
-  private final String field;
+  private final String fieldName;
   /** Keep the freqs for the field */
-  private final FieldStats freqs;
+  private final FieldStats fstats;
   /** Dictionary of terms for this field */
   private final BytesRefHash hashDic;
   /** The path of underlaying file store */
@@ -73,9 +104,9 @@ public class Rail
   public Rail(Alix alix, String field) throws IOException
   {
     this.alix = alix;
-    this.field = field;
-    this.freqs = alix.fieldStats(field); // build and cache the dictionary of cache for the field
-    this.hashDic = freqs.hashDic();
+    this.fieldName = field;
+    this.fstats = alix.fieldStats(field); // build and cache the dictionary of cache for the field
+    this.hashDic = fstats.hashDic();
     this.path = Paths.get( alix.path.toString(), field+".rail");
     load();
   }
@@ -97,7 +128,7 @@ public class Rail
     lock = channel.lock(); // may throw OverlappingFileLockException if someone else has lock
     
     
-    int[] docLength = freqs.docLength;
+    int[] docLength = fstats.docLength;
 
     long capInt = headerInt + maxDoc;
     for (int i = 0; i < maxDoc; i++) {
@@ -114,7 +145,7 @@ public class Rail
     IntList ints = new IntList();
     
     for (int docId = 0; docId < maxDoc; docId++) {
-      Terms termVector = reader.getTermVector(docId, field);
+      Terms termVector = reader.getTermVector(docId, fieldName);
       if (termVector == null) {
         bufint.put(-1);
         continue;
@@ -223,11 +254,15 @@ public class Rail
     }
     return freqs;
   }
-  
+
+  public int[] cooc(final String term, final int left, final int right, final BitSet filter) throws IOException {
+    return cooc(new String[] {term}, left, right, filter);
+  }
+
   /**
    * Get a cooccurrence top
    */
-  public int[] cooc(final TermList terms, final int left, final int right, final BitSet filter) throws IOException
+  public int[] cooc(final String[] terms, final int left, final int right, final BitSet filter) throws IOException
   {
     final boolean hasFilter = (filter != null);
     final int END = DocIdSetIterator.NO_MORE_DOCS;
@@ -241,15 +276,17 @@ public class Rail
     java.util.BitSet contexts = new java.util.BitSet();
     java.util.BitSet pivots = new java.util.BitSet();
     IntBuffer bufInt = channelMap.rewind().asIntBuffer();
-
+    BytesRefBuilder bytesBuilder = new BytesRefBuilder();
+    Term term = new Term(fieldName, bytesBuilder); // reusable term for queries
     // loop on leafs
     for (LeafReaderContext context : reader.leaves()) {
       final int docBase = context.docBase;
       LeafReader leaf = context.reader();
       // collect all “postings” for the requested terms
       ArrayList<PostingsEnum> termDocs = new ArrayList<PostingsEnum>();
-      for (Term term : terms) {
-        if (term == null) continue;
+      for (String word : terms) {
+        if (word == null) continue;
+        bytesBuilder.copyChars(word);
         PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS|PostingsEnum.POSITIONS);
         if (postings == null) continue;
         final int docPost = postings.nextDoc(); // advance cursor to the first doc

@@ -5,13 +5,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
@@ -84,19 +82,12 @@ public class TestRail
     FieldStats fstats = alix.fieldStats(fieldName);
     System.out.println(fstats.topTerms().sortByOccs());
     
-    TermList terms = alix.qTermList(fieldName, "B");
     Rail rail = new Rail(alix, fieldName);
-    int[] freqs = rail.cooc(terms, 1, 1, null);
+    int[] freqs = rail.cooc("B", 1, 1, null);
     System.out.println("Cooc by rail");
     System.out.println(Arrays.toString(freqs));
     showTop(fstats, freqs, 10);
     fstats = alix.fieldStats(fieldName);
-    
-    Cooc cooc = new Cooc(alix, fieldName);
-    TopTerms dic = cooc.topTerms(terms, 1, 1, null);
-    dic.sortByOccs();
-    System.out.println("Cooc by cooc");
-    System.out.println(dic);
   }
   
 
@@ -221,21 +212,21 @@ public class TestRail
     Rail rail = new Rail(alix, fieldName);
     System.out.println(((System.nanoTime() - time) / 1000000) + "ms, ");
 
-    for (String word: new String[] {"vie", "poire", "esprit", "vie esprit", "de"}) {
-      TermList terms = alix.qTermList(fieldName, word);
+    for (String q: new String[] {"vie", "poire", "esprit", "vie esprit", "de"}) {
+      String[] terms = alix.qAnalyze(q);
       // get freq for the pivot
       long freq1 = 0;
       long freq2 = 0;
-      for (Term term : terms) {
+      for (String term : terms) {
         if (term == null) continue;
-        freq1 += alix.reader().totalTermFreq(term);
-        freq2 += fstats.length(term.bytes());
+        freq1 += alix.reader().totalTermFreq(new Term(fieldName, term));
+        freq2 += fstats.length(term);
       }
-      System.out.print(word + ": freq1=" + freq1 + " freq2=" + freq2 + " coocs by rail in ");
+      System.out.print(q + ": freq1=" + freq1 + " freq2=" + freq2 + " coocs by rail in ");
       int[] freqs = null;
       for (int i=0; i < 10; i++) {
         time = System.nanoTime();
-        freqs = rail.cooc(terms, 15, 15, null);
+        freqs = rail.cooc(q.split("[\\s,;]+"), 5, 5, null);
         System.out.print(((System.nanoTime() - time) / 1000000) + "ms, ");
       }
       System.out.println("\n--- Top normal");
