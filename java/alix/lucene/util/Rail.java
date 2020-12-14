@@ -331,7 +331,7 @@ public class Rail
     int minpos = Integer.MAX_VALUE;
     while ((bytes = tenum.next()) != null) {
       int termId = hashDic.find(bytes);
-      if (termId < 0) System.out.println("unknown term? "+bytes.utf8ToString());
+      if (termId < 0) System.out.println("unknown term? \""+bytes.utf8ToString() + "\"");
       postings = tenum.postings(postings, PostingsEnum.POSITIONS);
       postings.nextDoc(); // always one doc
       int freq = postings.freq();

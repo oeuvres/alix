@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
@@ -210,10 +211,16 @@ public class FrDics
   {
     return NAME.get(att);
   }
+  public static boolean isStop(BytesRef ref)
+  {
+    return STOP_BYTES.run(ref.bytes, ref.offset, ref.length);
+  }
+  
   public static boolean isStop(CharsAtt att)
   {
     return STOP.contains(att);
   }
+
   public static boolean brevidot(CharsAtt att)
   {
     CharsAtt val = BREVIDOT.get(att);

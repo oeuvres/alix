@@ -90,7 +90,8 @@ public class Load {
     // Alix alix = Alix.instance(path, "org.apache.lucene.analysis.core.WhitespaceAnalyzer");
     IndexWriter writer = alix.writer();
     XMLIndexer.index(writer, globs, SrcFormat.tei, threads);
-    // index here will be committed and merged but need to be closed for cooccurrences
+    System.out.println("["+APP+"] "+name+" Merging");
+    writer.commit();
     writer.close();
     System.out.println("["+APP+"] "+name+" indexed in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     

@@ -68,15 +68,19 @@ public class TestRail
     filter.set(0, maxDoc);
     
     int[] freqs = rail.freqs(filter);
-    showTop(fstats, new TopArray(10, freqs));
+    showTop(fstats, freqs, 10);
 
+    /*
     AtomicIntegerArray freqs2 = rail.freqsParallel(filter);
-    showTop(fstats, new TopArray(10, freqs2));
+    showTop(fstats, freqs2, 10);
+    */
   }
   
   public static void miniCooc() throws IOException
   {
+    System.out.println("Mini cooc");
     Alix alix = Alix.instance(path, new SimpleAnalyzer());
+    System.out.println("Field stats, load");
     FieldStats fstats = alix.fieldStats(fieldName);
     System.out.println(fstats.topTerms().sortByOccs());
     
@@ -85,7 +89,8 @@ public class TestRail
     int[] freqs = rail.cooc(terms, 1, 1, null);
     System.out.println("Cooc by rail");
     System.out.println(Arrays.toString(freqs));
-    showTop(fstats, new TopArray(10, freqs));
+    showTop(fstats, freqs, 10);
+    fstats = alix.fieldStats(fieldName);
     
     Cooc cooc = new Cooc(alix, fieldName);
     TopTerms dic = cooc.topTerms(terms, 1, 1, null);
@@ -95,8 +100,13 @@ public class TestRail
   }
   
 
-  public static void showTop(FieldStats fstats, final TopArray top)
+  public static void showTop(FieldStats fstats, final int[] coocs, int limit)
   {
+    TopArray top = new TopArray(limit);
+    for (int termId = 0, length = coocs.length; termId < length; termId++) {
+      if (fstats.isStop(termId)) continue;
+      top.push(termId, coocs[termId]);
+    }
     BytesRefHash dic = fstats.hashDic();
     BytesRef ref = new BytesRef();
     for(TopArray.Entry entry: top) {
@@ -116,7 +126,7 @@ public class TestRail
     BytesRef ref = new BytesRef();
     for(TopArray.Entry entry: top) {
       dic.get(entry.id(), ref);
-      System.out.println(ref.utf8ToString() + " — " + df.format(coocs[entry.id()]) + " — " + entry.score());
+      System.out.println(ref.utf8ToString() + " — " + coocs[entry.id()] + " / " + fstats.length(entry.id()) + " — " + entry.score());
     }
   }
 
@@ -161,9 +171,9 @@ public class TestRail
     }
     System.out.println();
     System.out.println("mem0=" + ((float)mem0 / MB) +" Mb, mem1=" + ((float)mem1 / MB) + " Mb, diff="+ ((float)(mem1 - mem0) / MB));
-    showTop(fstats, new TopArray(10, freqs));
+    showTop(fstats, freqs, 10);
 
-    
+    /*
     System.out.print("Freqs by rail parallel in ");
     AtomicIntegerArray freqs2 = null;
     for (int i=0; i < 10; i++) {
@@ -173,7 +183,9 @@ public class TestRail
     }
     System.out.println();
     showTop(fstats, new TopArray(10, freqs2));
-
+    */
+    
+    /*
     System.out.print("Freqs by cooc in ");
     Cooc cooc = new Cooc(alix, field);
     for (int i=0; i < 10; i++) {
@@ -183,6 +195,7 @@ public class TestRail
     }
     System.out.println();
     showTop(fstats, new TopArray(10, freqs));
+    */
     
     TopTerms top = null;
     System.out.print("Freqs by term vector in ");
@@ -202,6 +215,11 @@ public class TestRail
     String path = "/home/fred/code/ddrlab/WEB-INF/bases/critique";
     Alix alix = Alix.instance(path, new FrAnalyzer(), Alix.FSDirectoryType.MMapDirectory);
     FieldStats fstats = alix.fieldStats(fieldName);
+    
+    time = System.nanoTime();
+    System.out.print("Build rail in ");
+    Rail rail = new Rail(alix, fieldName);
+    System.out.println(((System.nanoTime() - time) / 1000000) + "ms, ");
 
     for (String word: new String[] {"vie", "poire", "esprit", "vie esprit", "de"}) {
       TermList terms = alix.qTermList(fieldName, word);
@@ -215,15 +233,14 @@ public class TestRail
       }
       System.out.print(word + ": freq1=" + freq1 + " freq2=" + freq2 + " coocs by rail in ");
       int[] freqs = null;
-      Rail rail = new Rail(alix, fieldName);
       for (int i=0; i < 10; i++) {
         time = System.nanoTime();
         freqs = rail.cooc(terms, 15, 15, null);
         System.out.print(((System.nanoTime() - time) / 1000000) + "ms, ");
       }
-      System.out.println("--- Top normal");
-      showTop(fstats, new TopArray(100, freqs));
-      System.out.println("--- Top Jaccard");
+      System.out.println("\n--- Top normal");
+      showTop(fstats, freqs, 100);
+      System.out.println("\n--- Top Jaccard");
       showJaccard(fstats, freq1, freqs, 20);
       System.out.println();
     }
@@ -247,8 +264,10 @@ public class TestRail
   
   public static void main(String[] args) throws Exception
   {
-    // miniWrite();
-    // miniCooc();
+    /*
+    miniWrite();
+    miniCooc();
+    */
     coocs();
     // miniRead();
     // freqs();

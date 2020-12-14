@@ -46,6 +46,8 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
+import alix.lucene.analysis.FrDics;
+
 /**
  * An object recording different stats for a text field
  * @author fred
@@ -71,19 +73,23 @@ public class FieldStats
   private int[] termDocs;
   /** Count of occurrences by termId */
   private final long[] termLength;
-  // No internal pointer on a term, not thread safe // private int termId;
+  /** Stop words known as a bitSet, according to termId, java.util.BitSet is growable */
+  private java.util.BitSet stops = new java.util.BitSet(); 
+  // No internal pointer on a term, not thread safe
+  
 
 
   public FieldStats(final DirectoryReader reader, final String field) throws IOException
   {
+    System.out.println(field+" stats");
     final int END = DocIdSetIterator.NO_MORE_DOCS;
     this.reader = reader;
     final int[] docLength = new int[reader.maxDoc()];
     this.field = field;
     BytesRefHash hashDic = new BytesRefHash();
-    hashDic.add(new BytesRef("")); // ensure that 0 is not a word
-    // False good idea, preaffect stopwords to the dictionary.
-    // no sense for a field where stopwors are skipped
+    // False good ideas
+    // – preaffect stopwords to the dictionary (no sense for a field where stopwords are skipped)
+    hashDic.add(new BytesRef("")); // add empty string as termId=0 for empty positions
     this.docsAll = reader.getDocCount(field);
     this.occsAll = reader.getSumTotalTermFreq(field);
     // BM25 seems the best scorer
@@ -108,9 +114,10 @@ public class FieldStats
       // because terms are sorted, we could merge dics more efficiently
       // between leaves, but index in Alix are generally merged
       while ((ref = tenum.next()) != null) {
-        if (ref.length == 0) continue;
+        // if (ref.length == 0) continue; // maybe an empty position, keep it
         int termId = hashDic.add(ref);
         if (termId < 0) termId = -termId - 1; // value already given
+        if (FrDics.isStop(ref)) stops.set(termId);
         // growing is needed if index has more than one leaf
         termDocs = ArrayUtil.grow(termDocs, termId + 1);
         termLength = ArrayUtil.grow(termLength, termId + 1);
@@ -174,15 +181,36 @@ public class FieldStats
     return hashDic.find(bytes);
   }
   
+  /**
+   * How many occs for this term ?
+   * @param termId
+   * @return
+   */
   public long length(int termId)
   {
     return termLength[termId];
   }
 
+  /**
+   * How many docs for this termId ?
+   * @param termId
+   * @return
+   */
   public int docs(int termId)
   {
     return termDocs[termId];
   }
+  
+  /**
+   * Is this termId a StopWord ?
+   * @param termId
+   * @return
+   */
+  public boolean isStop(int termId)
+  {
+    return stops.get(termId);
+  }
+
 
   /**
    * Get global length (occurrences) for a term
