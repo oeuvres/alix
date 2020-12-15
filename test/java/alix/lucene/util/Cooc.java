@@ -80,7 +80,7 @@ public class Cooc
   /** Name of the binary field storing the int vector of documents */
   private final String fieldRail;
   /** Keep the freqs for the field */
-  private final FieldStats freqs;
+  private final FieldStats fstats;
   /** Dictionary of terms for this field */
   private final BytesRefHash hashDic;
   /** State of the index */
@@ -97,8 +97,8 @@ public class Cooc
     this.alix = alix;
     this.field = field;
     this.fieldRail = field + _RAIL;
-    this.freqs = alix.fieldStats(field); // build and cache the dictionary of cache for the field
-    this.hashDic = freqs.hashDic();
+    this.fstats = alix.fieldStats(field); // build and cache the dictionary of cache for the field
+    this.hashDic = fstats.hashDic;
   }
   
   /**

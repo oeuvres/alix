@@ -597,7 +597,7 @@ public class Doc
       if (termId < 0) continue; // should not arrive, set a pointer
       // count 
       int termDocs = fstats.docs(termId); // count of docs with this word
-      long termOccs = fstats.length(termId); // count of occs accross base
+      long termOccs = fstats.freq(termId); // count of occs accross base
       scorer.weight(termOccs, termDocs); // collection level stats
       int occsDoc = (int)termit.totalTermFreq(); // c
       double score = scorer.score(occsDoc, docLen);

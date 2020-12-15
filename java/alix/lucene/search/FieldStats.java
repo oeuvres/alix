@@ -49,7 +49,8 @@ import org.apache.lucene.util.BytesRefHash;
 import alix.lucene.analysis.FrDics;
 
 /**
- * An object recording different stats for a text field
+ * An object recording different stats for a text field. 
+ * For performances, all fields are visible, so it is unsafe.
  * @author fred
  *
  */
@@ -68,11 +69,11 @@ public class FieldStats
   /** Count of occurrences by document for this field (for stats) */
   public final int[] docLength;
   /** Store and populate the terms and get the id */
-  private final BytesRefHash hashDic;
+  public final BytesRefHash hashDic;
   /** Count of docs by termId */
-  private int[] termDocs;
+  public int[] termDocs;
   /** Count of occurrences by termId */
-  private final long[] termLength;
+  public final long[] termFreq;
   /** Stop words known as a bitSet, according to termId, java.util.BitSet is growable */
   private java.util.BitSet stops = new java.util.BitSet(); 
   // No internal pointer on a term, not thread safe
@@ -136,26 +137,11 @@ public class FieldStats
     this.hashDic = hashDic;
     this.size = hashDic.size();
     this.termDocs = termDocs;
-    this.termLength = termLength;
+    this.termFreq = termLength;
     this.docLength = docLength;
     
   }
 
-  /**
-   * Return the array of length for each docs;
-   */
-  public int[] docLength()
-  {
-    return docLength;
-  }
-
-  /**
-   * A short access to the hash to get the codes of term
-   */
-  public BytesRefHash hashDic()
-  {
-    return hashDic;
-  }
   
   /**
    * Return the global dictionary of terms for this field with some stats.
@@ -180,15 +166,26 @@ public class FieldStats
   {
     return hashDic.find(bytes);
   }
-  
+
+  /**
+   * Returns termId >= 0 if exists, or < 0 if not.
+   * @param bytes
+   * @return 
+   */
+  public int termId(final String term)
+  {
+    BytesRef bytes = new BytesRef(term);
+    return hashDic.find(bytes);
+  }
+
   /**
    * How many occs for this term ?
    * @param termId
    * @return
    */
-  public long length(int termId)
+  public long freq(int termId)
   {
-    return termLength[termId];
+    return termFreq[termId];
   }
 
   /**
@@ -211,18 +208,40 @@ public class FieldStats
     return stops.get(termId);
   }
 
+  /**
+   * Get String value for a termId.
+   * @param termId
+   * @return
+   */
+  public String label(final int termId)
+  {
+    BytesRef bytes = new BytesRef();
+    this.hashDic.get(termId, bytes);
+    return bytes.utf8ToString();
+  }
+
+  /**
+   * Get a String value for termId, using a mutable array of bytes.
+   * @param termId
+   * @param bytes
+   * @return
+   */
+  public BytesRef label(int termId, BytesRef bytes)
+  {
+    return this.hashDic.get(termId, bytes);
+  }
 
   /**
    * Get global length (occurrences) for a term
    * 
    * @param s
    */
-  public long length(final String s)
+  public long freq(final String s)
   {
     final BytesRef bytes = new BytesRef(s);
     final int id = hashDic.find(bytes);
     if (id < 0) return -1;
-    return termLength[id];
+    return termFreq[id];
   }
 
   /**
@@ -230,11 +249,11 @@ public class FieldStats
    * 
    * @param bytes
    */
-  public long length(final BytesRef bytes)
+  public long freq(final BytesRef bytes)
   {
     final int id = hashDic.find(bytes);
     if (id < 0) return -1;
-    return termLength[id];
+    return termFreq[id];
   }
 
   /**
@@ -254,7 +273,7 @@ public class FieldStats
     // BM25 seems the best scorer
     Scorer scorer = new ScorerBM25(); 
     scorer.setAll(occsAll, docsAll);
-    dic.setLengths(termLength);
+    dic.setLengths(termFreq);
     dic.setDocs(termDocs);
     double[] scores = new double[size];
     int[] occs = new int[size];
@@ -275,7 +294,7 @@ public class FieldStats
         int termId = hashDic.find(bytes);
         // if termId is negative, let the error go, problem in reader
         // for each term, set scorer with global stats
-        scorer.weight(termLength[termId], termDocs[termId]);
+        scorer.weight(termFreq[termId], termDocs[termId]);
         docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
         int docLeaf;
         while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
@@ -327,7 +346,7 @@ public class FieldStats
     int len = Math.min(size, 200);
     for (int i = 0; i < len; i++) {
       hashDic.get(i, ref);
-      string.append(ref.utf8ToString() + ": " + termLength[i] + "\n");
+      string.append(ref.utf8ToString() + ": " + termFreq[i] + "\n");
     }
     return string.toString();
   }

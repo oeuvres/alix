@@ -65,7 +65,7 @@ public class TestRail
     FixedBitSet filter = new FixedBitSet(maxDoc);
     filter.set(0, maxDoc);
     
-    int[] freqs = rail.freqs(filter);
+    long[] freqs = rail.freqs(filter);
     showTop(fstats, freqs, 10);
 
     /*
@@ -83,22 +83,22 @@ public class TestRail
     System.out.println(fstats.topTerms().sortByOccs());
     
     Rail rail = new Rail(alix, fieldName);
-    int[] freqs = rail.cooc("B", 1, 1, null);
+    long[] cooc = rail.cooc("b", 1, 1, null);
     System.out.println("Cooc by rail");
-    System.out.println(Arrays.toString(freqs));
-    showTop(fstats, freqs, 10);
+    System.out.println(Arrays.toString(cooc));
+    showTop(fstats, cooc, 10);
     fstats = alix.fieldStats(fieldName);
   }
   
 
-  public static void showTop(FieldStats fstats, final int[] coocs, int limit)
+  public static void showTop(FieldStats fstats, final long[] cooc, int limit)
   {
     TopArray top = new TopArray(limit);
-    for (int termId = 0, length = coocs.length; termId < length; termId++) {
+    for (int termId = 0, length = cooc.length; termId < length; termId++) {
       if (fstats.isStop(termId)) continue;
-      top.push(termId, coocs[termId]);
+      top.push(termId, cooc[termId]);
     }
-    BytesRefHash dic = fstats.hashDic();
+    BytesRefHash dic = fstats.hashDic;
     BytesRef ref = new BytesRef();
     for(TopArray.Entry entry: top) {
       dic.get(entry.id(), ref);
@@ -106,18 +106,18 @@ public class TestRail
     }
   }
 
-  public static void showJaccard(FieldStats fstats, long pivotFreq, final int[] coocs, int limit)
+  public static void showJaccard(FieldStats fstats, long pivotFreq, final long[] freqs, int limit)
   {
     TopArray top = new TopArray(limit);
-    for (int id = 0, length = coocs.length; id < length; id++) {
-      double score = (double)2 * coocs[id] / (fstats.length(id) * fstats.length(id) + pivotFreq * pivotFreq);
+    for (int id = 0, length = freqs.length; id < length; id++) {
+      double score = (double)2 * freqs[id] / (fstats.freq(id) * fstats.freq(id) + pivotFreq * pivotFreq);
       top.push(id, score);
     }
-    BytesRefHash dic = fstats.hashDic();
+    BytesRefHash dic = fstats.hashDic;
     BytesRef ref = new BytesRef();
     for(TopArray.Entry entry: top) {
       dic.get(entry.id(), ref);
-      System.out.println(ref.utf8ToString() + " — " + coocs[entry.id()] + " / " + fstats.length(entry.id()) + " — " + entry.score());
+      System.out.println(ref.utf8ToString() + " — " + freqs[entry.id()] + " / " + fstats.freq(entry.id()) + " — " + entry.score());
     }
   }
 
@@ -152,7 +152,7 @@ public class TestRail
     System.out.println(((System.nanoTime() - time) / 1000000) + " ms.");
     runtime.gc();
     long mem1 = runtime.totalMemory() - runtime.freeMemory();
-    int[] freqs = null;
+    long[] freqs = null;
     
     System.out.print("Freqs by rail file.map in ");
     for (int i=0; i < 10; i++) {
@@ -217,16 +217,18 @@ public class TestRail
       // get freq for the pivot
       long freq1 = 0;
       long freq2 = 0;
+      System.out.println("Coocs by rail");
       for (String term : terms) {
         if (term == null) continue;
-        freq1 += alix.reader().totalTermFreq(new Term(fieldName, term));
-        freq2 += fstats.length(term);
+        freq1 = alix.reader().totalTermFreq(new Term(fieldName, term));
+        freq2 = fstats.freq(term);
+        System.out.println(term+ ": freq1=" + freq1 + " freq2=" + freq2 );
       }
-      System.out.print(q + ": freq1=" + freq1 + " freq2=" + freq2 + " coocs by rail in ");
-      int[] freqs = null;
+      System.out.print(q + " coocs by rail in ");
+      long[] freqs = null;
       for (int i=0; i < 10; i++) {
         time = System.nanoTime();
-        freqs = rail.cooc(q.split("[\\s,;]+"), 5, 5, null);
+        freqs = rail.cooc(terms, 5, 5, null, null);
         System.out.print(((System.nanoTime() - time) / 1000000) + "ms, ");
       }
       System.out.println("\n--- Top normal");
@@ -257,10 +259,10 @@ public class TestRail
   {
     /*
     miniWrite();
+    miniRead();
     miniCooc();
     */
     coocs();
-    // miniRead();
     // freqs();
   }
 

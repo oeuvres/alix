@@ -53,19 +53,14 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
         <xsl:copy-of select="$byline"/>
       </alix:field>
     </xsl:if>
-    <alix:field name="year" type="int">
-      <xsl:variable name="value" select="substring($docdate, 1, 4)"/>
-      <xsl:if test="$value &lt;= 0">
-        <xsl:message terminate="yes">
-          <xsl:value-of select="$value"/>
-          <xsl:text> bad DATE in </xsl:text>
-          <xsl:value-of select="$filename"/>
-        </xsl:message>
-      </xsl:if>
-      <xsl:attribute name="value">
-        <xsl:value-of select="$value"/>
-      </xsl:attribute>
-    </alix:field>
+    <xsl:variable name="year" select="substring($docdate, 1, 4)"/>
+    <xsl:if test="string(number($year)) != 'NaN'">
+      <alix:field name="year" type="int">
+        <xsl:attribute name="value">
+          <xsl:value-of select="$year"/>
+        </xsl:attribute>
+      </alix:field>
+    </xsl:if>
   </xsl:variable>
   <!-- an html bibliographic line -->
   <xsl:variable name="bibl-book">

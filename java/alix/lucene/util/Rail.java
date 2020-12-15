@@ -33,6 +33,7 @@
 package alix.lucene.util;
 
 import java.io.DataInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.IntBuffer;
 import java.nio.MappedByteBuffer;
@@ -93,6 +94,8 @@ public class Rail
   private MappedByteBuffer channelMap;
   /** Max for docId */
   private int maxDoc;
+  /** Max for termId */
+  private final int maxTerm;
   /** Size of file header */
   static final int headerInt = 3;
   /** Index of  positions for each doc im channel */
@@ -106,7 +109,13 @@ public class Rail
     this.alix = alix;
     this.fieldName = field;
     this.fstats = alix.fieldStats(field); // build and cache the dictionary of cache for the field
-    this.hashDic = fstats.hashDic();
+    this.hashDic = fstats.hashDic;
+    this.maxTerm = hashDic.size();
+    /*
+    File tmp = new File(System.getProperty("java.io.tmpdir"), "alix");
+    tmp.mkdirs();
+    this.path = Paths.get(tmp.getPath(), alix.path.getFileName()+"_"+field+".rail");
+    */
     this.path = Paths.get( alix.path.toString(), field+".rail");
     load();
   }
@@ -226,9 +235,9 @@ public class Rail
    * Counts are extracted from stored <i>rails</i>.
    * @throws IOException 
    */
-  public int[] freqs(final BitSet filter) throws IOException
+  public long[] freqs(final BitSet filter) throws IOException
   {
-    int[] freqs = new int[hashDic.size()];
+    long[] freqs = new long[hashDic.size()];
     final boolean hasFilter = (filter != null);
     int maxDoc = this.maxDoc;
     int[] posInt = this.posInt;
@@ -255,29 +264,28 @@ public class Rail
     return freqs;
   }
 
-  public int[] cooc(final String term, final int left, final int right, final BitSet filter) throws IOException {
-    return cooc(new String[] {term}, left, right, filter);
+  public long[] cooc(final String term, final int left, final int right, final BitSet filter) throws IOException {
+    return cooc(new String[] {term}, left, right, filter, null);
   }
 
   /**
-   * Get a cooccurrence top
+   * Get a cooccurrence freqList in termId order.
    */
-  public int[] cooc(final String[] terms, final int left, final int right, final BitSet filter) throws IOException
+  public long[] cooc(final String[] terms, final int left, final int right, final BitSet filter, long[] freqs) throws IOException
   {
+    // allow reuse of freqs
+    if (freqs == null || freqs.length != maxTerm) freqs = new long[maxTerm]; // by term, occurrences counts
     final boolean hasFilter = (filter != null);
     final int END = DocIdSetIterator.NO_MORE_DOCS;
     DirectoryReader reader = alix.reader();
     // collector of scores
     int dicSize = this.hashDic.size();
-    int[] freqs = new int[dicSize]; // by term, occurrences counts
 
     // for each doc, a bit set is used to record the relevant positions
     // this will avoid counting interferences when terms are close
     java.util.BitSet contexts = new java.util.BitSet();
     java.util.BitSet pivots = new java.util.BitSet();
     IntBuffer bufInt = channelMap.rewind().asIntBuffer();
-    BytesRefBuilder bytesBuilder = new BytesRefBuilder();
-    Term term = new Term(fieldName, bytesBuilder); // reusable term for queries
     // loop on leafs
     for (LeafReaderContext context : reader.leaves()) {
       final int docBase = context.docBase;
@@ -286,7 +294,8 @@ public class Rail
       ArrayList<PostingsEnum> termDocs = new ArrayList<PostingsEnum>();
       for (String word : terms) {
         if (word == null) continue;
-        bytesBuilder.copyChars(word);
+        // Do not try to reuse terms, expensive
+        Term term = new Term(fieldName, word);
         PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS|PostingsEnum.POSITIONS);
         if (postings == null) continue;
         final int docPost = postings.nextDoc(); // advance cursor to the first doc

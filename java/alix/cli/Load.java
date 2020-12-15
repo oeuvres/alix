@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
@@ -51,9 +52,21 @@ public class Load {
     // test here if it's folder ?
     long time = System.nanoTime();
     
+
+    File dstdir;
+    String prop = props.getProperty("dstdir");
+    if (prop != null) {
+      dstdir = new File(prop);
+      System.out.println("prop? "+dstdir+" abs ?"+dstdir.isAbsolute());
+      if (!dstdir.isAbsolute()) dstdir = new File(file.getParentFile(), prop);
+    }
+    else {
+      dstdir = file.getParentFile();
+    }
+
     String tmpName = name+"_new";
     // indexer d'abord dans un index temporaire
-    File tmpDir = new File(file.getParentFile(), tmpName);
+    File tmpDir = new File(dstdir, tmpName);
     if (tmpDir.exists()) {
       long modified = tmpDir.lastModified();
       Duration duration = Duration.ofMillis(System.currentTimeMillis() - modified);
@@ -101,8 +114,8 @@ public class Load {
     df.setTimeZone(tz);
     */
     String oldName = name+"_old";
-    File oldDir = new File(file.getParentFile(), oldName);
-    File theDir = new File(file.getParentFile(), name);
+    File oldDir = new File(dstdir, oldName);
+    File theDir = new File(dstdir, name);
     if (theDir.exists()) {
       if (oldDir.exists()) Dir.rm(oldDir);
       theDir.renameTo(oldDir);
