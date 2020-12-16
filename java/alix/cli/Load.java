@@ -57,7 +57,6 @@ public class Load {
     String prop = props.getProperty("dstdir");
     if (prop != null) {
       dstdir = new File(prop);
-      System.out.println("prop? "+dstdir+" abs ?"+dstdir.isAbsolute());
       if (!dstdir.isAbsolute()) dstdir = new File(file.getParentFile(), prop);
     }
     else {
@@ -148,7 +147,9 @@ public class Load {
       System.exit(1);
     }
     for(; i < args.length; i++) {
-      index(new File(args[i]), threads);
+      File file = new File(args[i]);
+      if (file.getCanonicalPath().endsWith("WEB-INF/web.xml")) continue;
+      index(file, threads);
     }
   }
 

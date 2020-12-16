@@ -4,9 +4,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import alix.util.EnumOption;
-
-public enum WordClass implements EnumOption {
+public enum WordClass implements Select {
   NOSTOP("Mots pleins"), 
   SUB("Substantifs"), 
   NAME("Noms propres"),
@@ -25,12 +23,12 @@ public enum WordClass implements EnumOption {
     return label;
   }
   @Override
-  public List<EnumOption> list()
+  public List<Select> list()
   {
     return list;
   }
-  public static List<EnumOption> list;
+  public static List<Select> list;
   static {
-    list = Collections.unmodifiableList(Arrays.asList((EnumOption[])values()));
+    list = Collections.unmodifiableList(Arrays.asList((Select[])values()));
   }
 }

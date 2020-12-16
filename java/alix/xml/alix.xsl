@@ -90,7 +90,17 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
     <!-- XML book is handled as nested lucene documents (chapters) -->
     <alix:book>
       <xsl:attribute name="xml:id">
-        <xsl:value-of select="$filename"/>
+        <xsl:choose>
+          <xsl:when test="/*/@xml:id and /*/@xml:id != ''">
+            <xsl:value-of select="@xml:id"/>
+          </xsl:when>
+          <xsl:when test="$filename != ''">
+            <xsl:value-of select="$filename"/>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:message terminate="no">NO id for this book, will be hard to retrieve</xsl:message>
+          </xsl:otherwise>
+        </xsl:choose>
       </xsl:attribute>
       <xsl:copy-of select="$info"/>
       <alix:field name="bibl" type="meta">

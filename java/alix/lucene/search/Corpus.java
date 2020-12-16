@@ -127,7 +127,24 @@ public class Corpus
     }
     add(books);
   }
-  
+
+  /**
+   * @param alix
+   *          Link to a lucene index.
+   * @param json
+   *          Data to rebuild the corpus
+   * @throws IOException
+   */
+  public Corpus(Alix alix, String[] books) throws IOException
+  {
+    this.alix = alix;
+    this.field = Alix.BOOKID;
+    IndexReader reader = alix.reader();
+    this.maxDoc = reader.maxDoc();
+    this.docs = new FixedBitSet(maxDoc);
+    add(books);
+  }
+
   /**
    * Provide the documents as a bitset.
    * @return
@@ -317,4 +334,14 @@ public class Corpus
     abstract void update(int docid);
   }
 
+  @Override
+  public String toString()
+  {
+    try {
+      return json();
+    } 
+    catch (JSONException | IOException e) {
+      return e.toString();
+    }
+  }
 }

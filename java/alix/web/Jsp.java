@@ -184,12 +184,16 @@ public class Jsp
    */
   public int getInt(final String name, final int fallback, final Enum<?> cookie)
   {
+    return getInt(name, fallback, cookie.name());
+  }
+  public int getInt(final String name, final int fallback, final String cookie)
+  {
     String value = request.getParameter(name);
     // a string submitted
     if (check(value)) {
       try {
         int ret = Integer.parseInt(value);
-        cookieSet(cookie.name(), ""+ret); // value seems ok, try to store it as cookie
+        cookieSet(cookie, ""+ret); // value seems ok, try to store it as cookie
         return ret;
       }
       catch (NumberFormatException e) {
@@ -201,7 +205,7 @@ public class Jsp
       cookieDel(name);
       return fallback;
     }
-    value = cookieGet(cookie.name());
+    value = cookieGet(cookie);
     if (value == null) return fallback;
     // verify stored value before send it
     try {
@@ -245,11 +249,15 @@ public class Jsp
    */
   public float getFloat(final String name, final float fallback, final Enum<?> cookie)
   {
+    return getFloat(name, fallback, cookie.name());
+  }
+  public float getFloat(final String name, final float fallback, final String cookie)
+  {
     String value = request.getParameter(name);
     if (check(value)) {
       try {
         float ret = Float.parseFloat(value);;
-        cookieSet(cookie.name(), ""+ret); // value seems ok, store it as a cookie
+        cookieSet(cookie, ""+ret); // value seems ok, store it as a cookie
         return ret;
       }
       catch (NumberFormatException e) {
@@ -257,10 +265,10 @@ public class Jsp
     }
     // reset cookie
     if (value != null && !check(value)) {
-      cookieDel(cookie.name());
+      cookieDel(cookie);
       return fallback;
     }
-    value = cookieGet(cookie.name());
+    value = cookieGet(cookie);
     if (value == null) return fallback;
     // verify stored value before send it
     try {
@@ -295,21 +303,25 @@ public class Jsp
    */
   public String getString(final String name, final String fallback, final Enum<?> cookie)
   {
+    return getString(name, fallback, cookie.name());
+  }
+  public String getString(final String name, final String fallback, final String cookie)
+  {
     String value = request.getParameter(name);
     if (check(value)) {
-      cookieSet(cookie.name(), value);
+      cookieSet(cookie, value);
       return value;
     }
     // param is not null, reset cookie
     if (value != null) {
-      cookieDel(cookie.name());
+      cookieDel(cookie);
       return fallback;
     }
     // try to deal with cookie
-    value = cookieGet(cookie.name());
+    value = cookieGet(cookie);
     if (check(value)) return value;
     // cookie seems to have a problem, reset it
-    cookieDel(cookie.name());
+    cookieDel(cookie);
     return fallback;
   }
 
@@ -334,28 +346,32 @@ public class Jsp
    */
   public boolean getBoolean(final String name, final boolean fallback, final Enum<?> cookie)
   {
+    return getBoolean(name, fallback, cookie.name());
+  }
+  public boolean getBoolean(final String name, final boolean fallback, final String cookie)
+  {
     String value = request.getParameter(name);
     // value explicitly defined to false, set a cookie
     if ("false".equals(value) || "0".equals(value) || "null".equals(value)) {
-      cookieSet(cookie.name(), "0");
+      cookieSet(cookie, "0");
       return false;
     }
     // some content, we are true
     if (check(value)) {
-      cookieSet(cookie.name(), "1");
+      cookieSet(cookie, "1");
       return true;
     }
     // param is empty but not null, reset cookie
     if (value != null) {
-      cookieDel(cookie.name());
+      cookieDel(cookie);
       return fallback;
     }
     // try to deal with cookie
-    value = cookieGet(cookie.name());
+    value = cookieGet(cookie);
     if ("0".equals(value)) return false;
     if (check(value)) return true;
     // cookie seems to have a problem, reset it
-    cookieDel(cookie.name());
+    cookieDel(cookie);
     return fallback;
   }
   /**
@@ -391,14 +407,18 @@ public class Jsp
    * @param cookie Name of a cookie for persistence.
    * @return Priority order: request, cookie, fallback.
    */
-  @SuppressWarnings({ "unchecked", "static-access" })
   public Enum<?> getEnum(final String name, final Enum<?> fallback, final Enum<?> cookie)
+  {
+    return getEnum(name, fallback, cookie.name());
+  }
+  @SuppressWarnings({ "unchecked", "static-access" })
+  public Enum<?> getEnum(final String name, final Enum<?> fallback, final String cookie)
   {
     String value = request.getParameter(name);
     if (check(value)) {
       try {
         Enum<?> ret = fallback.valueOf(fallback.getClass(), value);
-        cookieSet(cookie.name(), ret.name());
+        cookieSet(cookie, ret.name());
         return ret;
       }
       catch(Exception e) {
@@ -406,18 +426,18 @@ public class Jsp
     }
     // param is empty but not null, reset cookie
     if (value != null) {
-      cookieDel(cookie.name());
+      cookieDel(cookie);
       return fallback;
     }
     // try to deal with cookie
-    value = cookieGet(cookie.name());
+    value = cookieGet(cookie);
     try {
       Enum<?> ret = fallback.valueOf(fallback.getClass(), value);
       return ret;
     }
     catch(Exception e) {
       // cookie seenms to have a problem, reset it
-      cookieDel(cookie.name());
+      cookieDel(cookie);
       return (Enum<?>)fallback;
     }
   }
