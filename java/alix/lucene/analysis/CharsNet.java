@@ -83,6 +83,8 @@ public class CharsNet
     inc(token, 0);
   }
 
+  
+  
   public void inc(final CharsAtt token, final int tag)
   {
     Node pivot = nodeHash.get(token);

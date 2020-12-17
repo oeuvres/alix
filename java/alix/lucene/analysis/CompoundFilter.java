@@ -104,6 +104,7 @@ public class CompoundFilter extends TokenFilter
     orthCom.setEmpty();
     Integer trie;
     int loop = -1;
+    int startOffset = offsetAtt.startOffset();;
     do {
       loop++;
       more = false;
@@ -121,6 +122,7 @@ public class CompoundFilter extends TokenFilter
         exit = input.incrementToken();
         token = true; // avoid too much stack copy for simple words
       }
+      if (loop == 0) startOffset = offsetAtt.startOffset();
       
       int tag = flagsAtt.getFlags();
       /*
@@ -167,7 +169,6 @@ public class CompoundFilter extends TokenFilter
       }
       
       
-      final int startOffset = offsetAtt.startOffset();
       int flags = trie;
       // it’s a compound
       if ((flags & FrDics.LEAF) > 0) {
