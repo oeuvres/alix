@@ -18,6 +18,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
   <xsl:import href="flow.xsl"/>
   <xsl:import href="notes.xsl"/>
   <xsl:import href="toc.xsl"/>
+  <xsl:strip-space elements="*"/>
   <xsl:output indent="yes" encoding="UTF-8" method="xml" />
   <!-- chapter split policy -->
   <xsl:key name="split" match="

@@ -1,1338 +1,1325 @@
 GRAPH;CAT;ORTH;FREQ
-
-# TITULATURES
-
-# Monsieur (frère du roi)
-Altesse;NAMEpers
-Altesse Royale;NAMEpers
-Son Excellence;NAMEpers
-Votre Excellence;NAMEpers
-le bon Dieu;NAMEgod
-
-
-# EN TEST
-
-le premier;DETnum
-la première;DETnum
-les premiers;DETnum
-les premières;DETnum
-un premier;DETnum
-une première;DETnum
-le second;DETnum
-la seconde;DETnum
-les seconds;DETnum
-les secondes;DETnum
-les deux;DETnum
-un second;DETnum
-le second;DETnum
-le deuxième;DETnum
-la deuxième;DETnum
-les deuxièmes;DETnum
-un deuxième;DETnum
-une deuxième;DETnum
-les trois;DETnum
-le troisième;DETnum
-la troisième;DETnum
-un troisième;DETnum
-une troisième;DETnum
-le quatrième;DETnum
-la quatrième;DETnum
-un quatrième;DETnum
-une quatrième;DETnum
-le cinquième;DETnum
-la cinquième;DETnum
-un cinquième;DETnum
-une cinquième;DETnum
-le sixième;DETnum
-la sixième;DETnum
-un sixième;DETnum
-une sixième;DETnum
-le septième;DETnum
-la septième;DETnum
-un septième;DETnum
-une septième;DETnum
-le huitième;DETnum
-la huitième;DETnum
-un huitième;DETnum
-une huitième;DETnum
-le neuvième;DETnum
-la neuvième;DETnum
-un neuvième;DETnum
-une neuvième;DETnum
-le dixième;DETnum
-la dixième;DETnum
-un dixième;DETnum
-une dixième;DETnum
-le onzième;DETnum
-la onzième;DETnum
-un onzième;DETnum
-une onzième;DETnum
-le douzième;DETnum
-la douzième;DETnum
-un douzième;DETnum
-une douzième;DETnum
-le treizième;DETnum
-la treizième;DETnum
-un treizième;DETnum
-une treizième;DETnum
-le vingtième;DETnum
-la vingtième;DETnum
-un vingtième;DETnum
-une vingtième;DETnum
-un tas de;DETnum
-
-
-
-# locutions préposiotionnelles
-
-à bas de;PREP
-à bord de;PREP
-à bord du;PREP;à bord de
-à bout de;PREP
-à cause de;PREP
-à cet égard;PREP
-à compter de;PREP
-à condition de;PREP
-à côté de;PREP
-à coup de;PREP
-à défaut de;PREP
-à dessein de;PREP
-à destination de;PREP
-à fin de;PREP
-afin d;PREP
-afin d';PREP
-afin de;PREP
-à force de;PREP
-à grand renfort de;PREP
-à la condition de;PREP
-à la lumière d’;PREP
-à la lumière de;PREP
-à la lumière des;PREP
-à la lumière du;PREP
-à la manière d’;PREP
-à la manière de;PREP
-à la manière des;PREP
-à la mémoire de;PREP
-à la place de;PREP
-à la réserve de;PREP
-à la sortie de;PREP
-à la suite de;PREP
-à l'autre bout de;PREP
-à la vue de;PREP
-à la zeub;PREP
-à l’adresse de;PREP
-à l’aide de;PREP
-à l’appui de;PREP
-à l’aulne de;PREP
-à l’aune de;PREP
-à l’avenant;PREP
-à l’effet de;PREP
-à l’égal de;PREP
-à l’égard de;PREP
-à l’encontre;PREP
-à l’endroit de;PREP
-à l’entour de;PREP
-à l’épreuve de;PREP
-à l’exemple de;PREP
-à l’extérieur de;PREP
-à l’imitation de;PREP
-à l’instar de;PREP
-à l’intérieur de;PREP
-à l’ombre de;PREP
-à l’opposé de;PREP
-à l’unisson;PREP
-à part;PREP
-à part ça;PREP
-à partir de;PREP
-à partir de là;PREP
-à peine de;PREP
-à propos de;PREP
-à raison de;PREP
-à rebours de;PREP
-à terme;PREP
-à titre de;PREP
-à travers;PREP
-à valeurs dans;PREP
-à voir;PREP
-afin de;PREP
-au bas de;PREP
-au bas du;PREP;au bas de
-au bas d';PREP;au bas de
-au beau milieu de;PREP
-au bord d';PREP;au bord de
-au bord de;PREP
-au bord des;PREP;au bord de
-au bord du;PREP;au bord de
-au bout d';PREP;au bout de
-au bout de;PREP
-au bout des;PREP;au bout de
-au bout du;PREP;au bout de
-au contraire de;PREP
-au droit de;PREP
-au détriment de;PREP
-au lieu et place de;PREP
-au milieu d';PREP;au milieu de
-au milieu de;PREP
-au milieu des;PREP;au milieu de
-au milieu du;PREP;au milieu de
-au moment de;PREP
-au moment où;PREP
-au moyen de;PREP
-au niveau de;PREP
-au nom d’;PREP
-au nom de;PREP
-au nom du;PREP
-# au point de;PREP
-au préjudice de;PREP
-au prétexte de;PREP
-au prix de;PREP
-au ras de;PREP
-au rebours de;PREP
-au regard de;PREP
-au risque de;PREP
-au sein d’;PREP
-au sein de;PREP
-au sein du;PREP
-au sortir de;PREP
-au spectacle de;PREP
-au sujet de;PREP
-au temps de;PREP
-au travers de;PREP
-au vu de;PREP
-au vu et au su de;PREP
-au vu et su de;PREP
-au-dedans de;PREP
-au-dessous de;PREP
-auprès de;PREP
-aussi peu que;PREP
-autour de;PREP
-aux dépens de;PREP
-aux fins de;PREP
-aux lieu et place de;PREP
-aux portes de;PREP
-avant de;PREP
-avant que de;PREP
-bien loin de;PREP
-cela supposé;PREP
-compte tenu de;PREP
-conformément à;PREP
-conséquemment à;PREP
-crainte de;PREP
-dans la crainte de;PREP
-dans le moment où;PREP
-dans le moment que;PREP
-dans le viseur de;PREP
-dans l’optique de;PREP
-d’après;PREP
-d’au milieu de;PREP
-d’avec;PREP
-de crainte de;PREP
-défense de;PREP
-défini sur;PREP
-d’entre;PREP
-devant notaire;PREP
-de façon à;PREP
-de la part d’;PREP
-de la part de;PREP
-de la part du;PREP
-de manière à;PREP
-de mon côté;PREP
-de niveau avec;PREP
-de par;PREP
-de parmi;PREP
-de peur de;PREP
-de préférence à;PREP
-d’ici;PREP
-Dieu sait;PREP
-du côté de;PREP
-du milieu de;PREP
-d'un autre côté;PREP
-du temps que;PREP
-du vivant de;PREP
-en amont d’;PREP
-en amont de;PREP
-en amont des;PREP
-en amont du;PREP
-en arrière de;PREP
-en aval d’;PREP
-en aval de;PREP
-en aval des;PREP
-en aval du;PREP
-en avant de;PREP
-en ce qui concerne;PREP
-en compagnie de;PREP
-en comparaison de;PREP
-en conformité de;PREP
-en conséquence de;PREP
-en considération de;PREP
-en deçà de;PREP
-en dépit de;PREP
-en dessous;PREP
-en exécution de;PREP
-en face de;PREP
-en fait de;PREP
-en fonction de;PREP
-en forme de;PREP
-en lieu et place de;PREP
-en matière de;PREP
-en même temps que;PREP
-en mémoire de;PREP
-en partant;PREP
-en passant;PREP
-en passe de;PREP
-en présence de;PREP
-en raison de;PREP
-en regard de;PREP
-en sus de;PREP
-en termes de;PREP
-en train de;PREP
-en vertu de;PREP
-en vue de;PREP
-entenant de;PREP
-étant donné;PREP
-eu égard à;PREP
-face à;PREP
-faute de;PREP
-foi de;PREP
-grâce à;PREP
-grâces à;PREP
-hors de;PREP
-il être possible que;PREP
-il n’empêche que;PREP
-il n’en reste pas moins que;PREP
-il pourrait bien se faire que;PREP
-il se pourrait que;PREP
-il serait possible que;PREP
-il y avoir;PREP;il y a
-il y avoir avoir;PREP;il y a
-in illo tempore;PREP
-# jusqu’à;PREP
-jusqu'à la fin;PREP
-jusques à;PREP
-jusques et y compris;PREP
-le diable soit de;PREP
-le long de;PREP
-le long des;PREP
-le long du;PREP
-loin de;PREP
-lors de;PREP
-manque de;PREP
-mort à;PREP
-n’empêche que;PREP
-non content de;PREP
-non plus que;PREP
-non sans;PREP
-par certains côtés;PREP
-par comparaison à;PREP
-par crainte de;PREP
-par devers;PREP
-par l’intermédiaire de;PREP
-par manque de;PREP
-par opposition à;PREP
-par préférence à;PREP
-par rapport à;PREP
-par suite de;PREP
-par-devant notaire;PREP
-pas plus que;PREP
-pas plus tard que;PREP
-pour autant que;PREP
-pour ce qui est de;PREP
-pour des prunes;PREP
-pour ma part;PREP
-pour tout;PREP
-pour un peu;PREP
-près de;PREP
-prêt à;PREP
-proche de;PREP
-quand et quand;PREP
-quant à;PREP
-quant aux;PREP
-quel que soit;PREP
-quoi qu’il en fût;PREP
-s’agissant de;PREP
-sans compter;PREP
-sans plus de;PREP
-sans pour autant;PREP
-sans préjudice de;PREP
-sauf à;PREP
-si peu que;PREP
-sous couleur de;PREP
-sous couvert de;PREP
-sous forme de;PREP
-sous la houlette de;PREP
-sous la plume de;PREP
-sous le couvert de;PREP
-sous le prétexte de;PREP
-sous le rapport de;PREP
-sous les yeux de;PREP
-sous l’ombre de;PREP
-sous peine de;PREP
-sous prétexte de;PREP
-sous réserve de;PREP
-sous un nouveau jour;PREP
-suite à;PREP
-supposé que;PREP
-sur le plan;PREP
-sur le point de;PREP
-sus le sujet de;PREP
-tant et si bien que;PREP
-tant qu’à;PREP
-une fois;PREP
-va pour;PREP
-vent debout contre;PREP
-vis-à-vis de;PREP
-y compris;PREP
-
-# locutions pronominales
-
-ce dernier;PROindef
-celle ci;PROdem;celle-ci
-celle-ci;PROdem;
-celle là;PROdem;celle-là
-celle-là;PROdem;
-celui-ci;PROdem;
-celui-là;PROdem;
-celui ci;PROdem;celui-ci
-celui là;PROdem;celui-là
-ces derniers;PROindef
-cette dernière;PROindef
-ceux ci;PROdem;ceux-ci
-ceux là;PROdem;ceux-là
-d'autres;PROindef
-l’autre;PROindef
-la dernière;PROindef
-la mienne;PROposs
-la plupart;PROindef
-la sienne;PROposs
-la tienne;PROposs
-le dernier;PROindef
-le mien;PROposs
-le nôtre;PROposs
-le sien;PROposs
-le tien;PROposs
-le vôtre;PROposs
-les miennes;PROposs
-les miens;PROposs
-les nôtres;PROposs
-les siennes;PROposs
-les siens;PROposs
-les tiennes;PROposs
-les tiens;PROposs
-les vôtres;PROposs
-l'un;PROindef
-l'une;PROindef
-n'importe qui;PROindef
-n'importe quoi;PROindef
-quelque chose;PROindef
-qu'est-ce que;PROinter
-tous deux;PROindef
-tous les deux;PROindef
-tous les trois;PROindef
-
-
-# locutions conjonctives
-
-à chaque fois que;CONJsubord
-afin qu;CONJsubord
-afin que;CONJsubord
-alors que;CONJcoord
-après que;CONJsubord
-au cas où;CONJsubord
-auquel cas;CONJcoord
-avant que;CONJsubord
-avant même que;CONJsubord
-bien que;CONJsubord
-cependant que;CONJsubord
-cette fois où;CONJbord
-chaque fois que;CONJsubord
-d'autant que;CONJcoord
-de même que;CONJcoord
-des fois que;CONJsubord
-dès que;CONJsubord
-dès lors que;CONJsubord
-de sorte que;CONJsubord
-en sorte que;CONJsubord
-jusqu'à ce que;CONJsubord
-la fois où;CONJsubord
-les fois où;CONJsubord
-les fois que;CONJsubord
-même si;CONJsubord
-même quand;CONJsubors
-ou bien;CONJcoord
-pendant que;CONJsubord
-parce qu;CONJsubord
-parce qu';CONJsubord
-parce que;CONJsubord
-pour une fois que;CONJsubord
-pour que;CONJsubord
-quoi que;CONJsubord
-qui que;CONJsubord
-sans cela;CONJcoord
-sans que;CONJsubord
-si bien que;CONJsubord
-toutes les fois que;CONJsubord
-tandis que;CONJsubord
-tandis qu;CONJsubord;tandis que
-tandis qu';CONJsubord;tandis que
-une fois que;CONJsubord
-
-
-# locution adverbiales
-
-à bord;ADV
-à brûle-pourpoint;ADV;
-a capella;ADV;
-a cappella;ADV;
-à chaque fois;ADV;
-à cloche-pied;ADV;
-a contrario;ADV;
-à coup sûr;ADV
-à fond;ADV;
-à fond;ADV;
-a fortiori;ADV;
-à fortiori;ADV;
-a giorno;ADV;
-à giorno;ADV;
-à glagla;ADV;
-à haute voix;ADV
-à jeun;ADV;
-à jeun;ADV;
-à la longue;ADV
-à l'aveuglette;ADV;
-à l'aveuglette;ADV;
-à l'encan;ADV;
-à l'encan;ADV;
-à l'envi;ADV;
-à l'envi;ADV;
-à l'improviste;ADV;
-à l'improviste;ADV;
-à la fois;ADV;
-à la saint-glinglin;ADV;
-à leur encontre;ADV;
-à l’instant;ADV
-à l'instant même;ADV
-à lurelure;ADV;
-à mon encontre;ADV;
-à notre encontre;ADV;
-à NUM fois;ADV;
-à perte de vue;ADV
-à peu près;ADV
-a posteriori;ADV;
-à posteriori;ADV;
-à présent;ADV;
-a priori;ADV;
-à priori;ADV;
-à quoi bon;ADVinter
-à ras bord;ADV
-à rebours;ADV
-à rebrousse-poil;ADV;
-à son encontre;ADV;
-à tâtons;ADV;
-à tire-larigot;ADV;
-à ton encontre;ADV;
-à touche-touche;ADV;
-à tue-tête;ADV;
-au bas;ADV
-au delà;ADV;
-aujourd'hui;ADV
-au moins;ADV;
-autre part;ADV
-aux aguets;ADV;
-à voix basse;ADV
-à voix haute;ADV
-à votre encontre;ADV;
-à vrai dire;ADV
-bien entendu;ADV
-bien sûr;ADV
-bon gré mal gré;ADV
-bras dessus bras dessous;ADV
-c'est-à-dire;ADV;
-cette fois-ci;ADV;
-cette fois-là;ADV;
-cette fois ci;ADV;
-cette fois là;ADV;
-chaque fois;ADV;
-côte à côte;ADV
-coup sur coup;ADV
-d'abord;ADV;
-d'accord;ADV;
-d'ailleurs;ADV;
-d'autre part;ADV;
-dare dare;ADV;
-de auditu;ADV;
-de bonne heure;ADVtemp
-de facto;ADV;
-de guingois;ADV;
-d'emblée;ADV;
-de même;ADV
-de plano;ADV;
-de plein gré;ADV
-de plus;ADV;
-deux fois;ADV;
-deux fois par an;ADV;
-deux fois par mois;ADV;
-deux fois par semaine;ADV;
-d'ores et déjà;ADV;
-de haut en bas;ADV
-de long en large;ADV
-de traviole;ADV;
-dès lors;ADVtemp
-de temps en temps;ADVtemp
-de visu;ADV;
-du fond du cœur;ADV
-du haut en bas;ADV
-d'une part;ADV;
-du reste;ADV;
-du tac au tac;ADV
-ecce homo;ADV;
-en bas;ADV
-en catimini;ADV;
-en connaissance de cause;ADV
-en effet;ADV;
-en fin de compte;ADV
-en général;ADV
-en grande partie;ADV
-en haut;ADV
-en loucedé;ADV;
-en outre;ADV;
-en pleine connaissance de cause;ADV
-en plein jour;ADV
-en quelque sorte;ADV
-en sus;ADV;
-en tapinois;ADV;
-en tous cas;ADV;
-encore une fois;ADV;
-est-ce qu;ADV;
-est-ce qu';ADV;
-est-ce que;ADV;
-et cætera;ADVquant;
-et caetera;ADVquant;etc.
-et cetera;ADVquant;etc.
-et seq;ADV;
-ex abrupto;ADV;
-ex nihilo;ADV;
-fort bien;ADV;
-goutte à goutte;ADV
-gratis pro deo;ADV;
-grosso modo;ADV;
-hic et nunc;ADV;
-honoris causa;ADV;
-il était une fois;ADV;
-in absentia;ADV;
-in abstracto;ADV;
-in anima vili;ADV;
-in cauda venenum;ADV;
-in extenso;ADV;
-in extremis;ADV;
-in memoriam;ADV;
-in petto;ADV;
-in utero;ADV;
-in vino veritas;ADV;
-in vitro;ADV;
-in vivo;ADV;
-intra muros;ADV;
-ipso facto;ADV;
-jour après jour;ADV
-jusqu’au bout;ADV;
-jusqu’ici;ADV
-la première fois;ADV;
-le moment venu;ADV
-made in;ADV;
-malgré tout;ADV
-manu militari;ADV;
-mezza voce;ADV;
-motu proprio;ADV;
-mutatis mutandis;ADV;
-n'est-ce pas;ADV
-n'est ce pas;ADV;n'est-ce pas
-ne varietur;ADV;
-nihil obstat;ADV;
-non troppo;ADV;
-nota bene;ADV;
-nulle part;ADV
-off the record;ADV
-par ailleurs;ADV;
-par mégarde;ADV;
-par écrit;ADV
-peu à peu;ADV;
-peu ou prou;ADV;
-plutôt deux fois que une;ADV;
-post mortem;ADV;
-pour cette fois;ADV;
-pour une fois;ADV;
-quand même;ADV
-quelque part;ADV
-qui plus est;ADV;
-recto tono;ADV;
-ric et rac;ADV;
-sans cesse;ADV
-sans doute;ADV
-sans perdre de temps;ADV
-sine die;ADV;
-sine qua non;ADV;
-souventes fois;ADV;
-stricto sensu;ADV;
-sursum corda;ADV;
-tantôt à droite tantôt à gauche;ADV
-tant pis;ADV;
-tôt ou tard;ADV
-tour à tour;ADV
-tout de même;ADV
-toutes les fois;ADV;
-trois fois;ADV;
-trois fois par an;ADV;
-trois fois par mois;ADV;
-trois fois par semaine;ADV;
-tutti frutti;ADV;
-tutti quanti;ADV;
-une autre fois;ADV;
-une bonne fois;ADV;
-une bonne fois pour toutes;ADV;
-une fois;ADV;
-une fois pour toutes;ADV;
-une fois par an;ADV;
-une fois par mois;ADV;
-une fois par semaine;ADV;
-vis-à-vis;ADV;
-vis à vis;ADV;vis-à-vis
-urbi et orbi;ADV;
-tout de même;ADV
-vade retro;ADV;
-vae soli;ADV;
-vae victis;ADV;
-
-# locutions verbales
-
-avoir l'air;VERB;
-avoir lieu;VERB
-aller droit;VERB
-demander pardon;VERB
-devoir dire;VERB
-donner la main;VERB
-donner l'ordre;VERB
-donner l’impression;VERB
-éclater de rire;VERB
-entendre parler;VERB
-entrer en ligne de compte;VERB
-faire partie;VERB
-laisser passer;VERB
-laisser tomber;VERB
-mettre la table;VERB
-mettre en examen;VERB
-mettre en peine;VERB
-prendre contact;VERB
-prendre du plaisir;VERB
-prendre en compte;VERB
-prendre en charge;VERB
-prendre garde;VERB
-prendre l’air;VERB
-prendre la peine;VERB
-prendre le soin de;VERB
-prendre part;VERB
-prendre place;VERB
-prendre ses jambes à son cou;VERB
-prendre soin;VERB
-rendre compte;VERB
-rendre grâce;VERB
-rendre hommage;VERB
-rendre justice;VERB
-rendre service;VERB
-rendre un service;VERB
-rendre visite;VERB
-savoir bien;VERB
-serrer la main;VERB
-tenir compte;VERB
-venir à bout;VERB
-vouloir dire;VERB
-
-# locutions nominales
-
-académie des sciences;SUB;Académie des Sciences
-Académie des Sciences;SUB
-académie des sciences morales;SUB;Académie des Sciences morales et politiques
-Académie des Sciences morales;SUB
-académie des sciences morales et politiques;SUB;Académie des Sciences morales et politiques
-Académie des Sciences morales et politiques;SUB
-acte sexuel;SUB
-actes sexuels;SUB;acte sexuel
-acid jazz;SUB
-action painting;SUB
-administrateur général;SUB
-after shave;SUB
-affaires étrangères;SUB
-agent de change;SUB
-agents de change;SUB
-agnus dei;SUB
-aide de camp;SUB
-air bag;SUB
-alter ego;SUB
-amour propre;SUB
-appareil photo;SUB
-a priori;SUB
-argent de poche;SUB
-arrêt maladie;SUB
-arrière-train;SUB
-assemblée générale;SUB
-autre chose;SUB
-avocat général;SUB
-ayants droit;SUB
-back up;SUB
-bain de mer;SUB
-bains de mer;SUB
-bande à part;SUB;
-bas de page;SUB
-bas-ventre;SUB
-bas ventre;SUB;bas-ventre
-beat generation;SUB
-beau temps;SUB
-beau fils;SUB;beau-fils
-beau frère;SUB;beau-frère
-beau père;SUB;beau-père
-bec de gaz;SUB
-becs de gaz;SUB
-bel canto;SUB
-bel esprit;SUB
-beaux esprits;SUB;bel esprit
-belle fille;SUB;belle-fille
-belle lurette;SUB
-belle mère;SUB;belle-mère
-belle sœur;SUB;belle-sœur
-best of;SUB
-big band;SUB
-big bang;SUB
-birth control;SUB
-bla bla;SUB
-bloody mary;SUB
-blouson de cuir;SUB
-blue jeans;SUB
-blue note;SUB
-boîte aux lettres;SUB
-bon cœur;SUB
-bon goût;SUB
-bonne foi;SUB
-bonne fortune;SUB
-bonne humeur;SUB
-bonne volonté;SUB
-bon sens;SUB
-bouche bée;SUB
-bouton d’or;SUB
-brown sugar;SUB
-bubble gum;SUB
-buen retiro;SUB
-cabinet de toilette;SUB
-café au lait;SUB
-cage d’escalier;SUB
-call girl;SUB
-call girls;SUB
-canadian river;SUB
-caput mortuum;SUB
-cas particulier;SUB
-casus belli;SUB
-chambre à coucher;SUB
-Chambre des députés;SUB
-champ de bataille;SUB
-chapeau haut de forme;SUB
-check up;SUB
-chef d'entreprise;SUB
-chef d'oeuvre;SUB;chef-d'œuvre
-chef d'œuvre;SUB;chef-d'œuvre
-chef-d'oeuvre;SUB;chef-d'œuvre
-chef-d'œuvre;SUB
-chefs d'oeuvre;SUB
-chefs d'œuvre;SUB
-chefs-d'oeuvre;SUB
-chefs-d'œuvre;SUB
-chemin de fer;SUB
-chemin de fer d'intérêt local;SUB
-chemins de fer;SUB
-chewing gum;SUB
-chien de fusil;SUB
-chop suey;SUB
-chute libre;SUB
-chemise de nuit;SUB
-citizen band;SUB
-clair de lune;SUB
-clin d'œil;SUB
-coffee shop;SUB
-coin de l’œil;SUB
-coin de l’oeil;SUB
-comic book;SUB
-comic books;SUB
-commedia dell'arte;SUB
-conférence de presse;SUB
-connaissance de cause;SUB
-conseil d'administration;SUB
-conseil d'Etat;SUB;Conseil d'État
-conseil d'état;SUB;Conseil d'État
-conseil d'etat;SUB;Conseil d'État
-conseil général;SUB
-conseiller général;SUB
-corn flakes;SUB
-corps de garde;SUB
-coup de balai;SUB
-coups de balai;SUB;coup de balai
-coup de bâton;SUB
-coups de bâton;SUB;coup de bâton
-coup de feu;SUB
-coups de feu;SUB
-coup de fil;SUB
-coup de fusil;SUB
-coups de fusil;SUB;coup de fusil
-coup de main;SUB
-coups de main;SUB
-coup d'épée;SUB
-coups d'épée;SUB
-coup de pistolet;SUB
-coups de pistolet;SUB
-coup d'œil;SUB
-coup d'oeil;SUB
-coups d'œil;SUB
-coups d'oeil;SUB
-coup de pied;SUB
-coups de pied;SUB
-coup de poing;SUB
-coups de poings;SUB
-coup de vent;SUB
-coups de vent;SUB
-coups et blessures;SUB
-coups et blessures aggravés;SUB
-cour d'assises;SUB
-courrier électronique;SUB
-cri de joie;SUB
-critique d'art;SUB
-curriculum vitae;SUB
-dame patronnesse;SUB
-dames patronnesses;SUB
-de amicis;SUB
-de profundis;SUB
-de santis;SUB
-delirium tremens;SUB
-dernier soupir;SUB
-deus ex machina;SUB
-dies irae;SUB
-dîner en ville;SUB
-directeur général;SUB
-direction générale;SUB
-disque dur;SUB
-droit d’ainesse;SUB
-eau minérale;SUB
-éclat de rire;SUB
-éclats de rire;SUB;éclat de rire
-École polytechnique;SUB;École Polytechnique
-École Polytechnique;SUB
-empreinte digitale;SUB
-empreintes digitales;SUB;empreinte digitale
-enfant de chœur;SUB
-enfants de chœur;SUB
-enfant de choeur;SUB;enfant de chœur
-enfants de choeur;SUB;enfants de chœur
-état civil;SUB
-face à face;SUB
-fast food;SUB
-fauteuil roulant;SUB
-faux monnayeurs;SUB
-femme de chambre;SUB
-femmes de chambre;SUB;femme de chambre
-five o'clock;SUB
-flatus vocis;SUB
-fond de l’âme;SUB
-foreign office;SUB
-free jazz;SUB
-fur et à mesure;SUB
-garde nationale;SUB
-garde national;SUB
-gardes nationaux;SUB
-garde du corps;SUB
-gardes du corps;SUB;garde du corps
-gengis khan;SUB
-gens du monde;SUB
-garde champêtre;SUB
-garde du roi;SUB
-gardes du roi;SUB;garde du roi
-gare centrale;SUB
-général en chef;SUB
-girl friend;SUB
-grain de beauté;SUB
-grand'chose;SUB;grand-chose
-grand chose;SUB;grand-chose
-grand dieu;SUB
-grande partie;SUB
-grand mère;SUB;grand-mère
-grand'mère;SUB;grand-mère
-grand oncle;SUB;grand-oncle
-grand père;SUB;grand-père
-grand'père;SUB;grand-père
-grand seigneur;SUB
-grands seigneurs;SUB;grand seigneur
-grands dieux;SUB
-grand'tante;SUB
-grève générale;SUB
-happy end;SUB
-happy ends;SUB
-happy few;SUB
-hard edge;SUB
-has been;SUB
-haut de forme;SUB;haut-de-forme
-haut-de-forme;SUB
-haut fait;SUB
-haut rang;SUB
-haute vertu;SUB
-hauts faits;SUB;haut fait
-high life;SUB
-hold up;SUB
-homo erectus;SUB
-homo habilis;SUB
-honnêtes gens;SUB
-hong kong;SUB
-hot dog;SUB
-hot dogs;SUB
-hôtel de police;SUB
-hôtel de ville;SUB
-house music;SUB
-ice cream;SUB
-in pace;SUB
-inspecteur de police;SUB
-intérêt général;SUB
-invisible piston;SUB
-irish coffee;SUB
-ite missa est;SUB
-jeune fille;SUB
-jeunes filles;SUB
-jeunes gens;SUB
-jeune homme;SUB
-jeunes hommes;SUB
-jet society;SUB
-jour de l'an;SUB
-juge de paix;SUB
-juge d’instruction;SUB
-juste ciel;SUB
-kung fu;SUB
-kyrie eleison;SUB
-la plata;SUB
-lacryma christi;SUB
-légion d'honneur;SUB
-lieutenant de police;SUB
-ligne de compte;SUB
-lit de sangle;SUB
-livre sterling;SUB
-livres sterling;SUB;livre sterling
-livres de rente;SUB
-loc. cit.;SUB
-lutte des classes;SUB
-machine à vapeur;SUB
-madre de dios;SUB
-maison d’arrêt;SUB
-maison de campagne;SUB
-maison d'édition;SUB
-maison de passe;SUB
-maisons de passe;SUB
-maître queux;SUB
-maître d'école;SUB
-maître d'hôtel;SUB
-maître de maison;SUB
-maître de poste;SUB
-maître des requêtes;SUB
-maîtresse de maison;SUB
-malade mental;SUB
-maladie mentale;SUB
-marchand de vin;SUB
-marchands de vin;SUB
-maréchal des logis;SUB
-mass media;SUB
-mater dolorosa;SUB
-mauvaise conscience;SUB
-mauvaise grâce;SUB
-mauvaise foi;SUB
-mauvaise humeur;SUB
-mauvais goût;SUB
-mauvais sort;SUB
-maux de tête;SUB
-mea culpa;SUB
-melting pot;SUB
-mètres carrés;SUB
-middle class;SUB
-milk shake;SUB
-ministère public;SUB
-ministère de l'Intérieur;SUB
-ministère de l'intérieur;SUB;ministère de l'Intérieur
-ministère des finances;SUB;ministère des Finances
-ministère des Finances;SUB
-ministre de la guerre;SUB
-ministre de la justice;SUB
-ministre de l'Intérieur;SUB
-ministre de l'intérieur;SUB;ministre de l'Intérieur
-ministre des affaires étrangères;SUB;Ministre des Affaires étrangères
-ministre des Affaires étrangères;SUB;Ministre des Affaires étrangères
-Ministre des Affaires étrangères;SUB
-ministre des finances;SUB;ministre des Finances
-ministre des Finances;SUB
-minus habens;SUB
-mise en cause;SUB
-mise en œuvre;SUB
-mise en oeuvre;SUB;mise en œuvre
-mise en place;SUB
-modern style;SUB
-modus operandi;SUB
-modus vivendi;SUB
-mot d’ordre;SUB
-Moyen Âge;SUB
-Moyen Age;SUB
-moyen âge;SUB;moyen-âge
-moyen age;SUB;moyen-âge
-moyen-âge;SUB;
-music hall;SUB
-negro spiritual;SUB
-negro spirituals;SUB
-nerf de bœuf;SUB
-new wave;SUB
-night club;SUB
-no man's land;SUB
-no man's land;SUB
-numéro de immatriculation;SUB
-numéro de téléphone;SUB
-numerus clausus;SUB
-ordinateur de poche;SUB
-ordinateur portable;SUB
-œuvre d'art;SUB
-oeuvre d'art;SUB
-œuvres d'art;SUB
-œuvre d'art;SUB
-officier de la légion d'honneur;SUB
-olla podrida;SUB
-op. cit.;SUB
-osso buco;SUB
-ouvr. cit.;SUB
-pieds de haut;SUB
-plaque d'immatriculation;SUB
-pompes funèbres;SUB
-porte cochère;SUB
-pan bagnat;SUB
-parole d'honneur;SUB
-part time;SUB
-paso doble;SUB
-pater familias;SUB
-pater noster;SUB
-pauvre diable;SUB
-pax americana;SUB
-persona non grata;SUB
-peu de chose;SUB
-photo d'identité;SUB
-pied de grue;SUB
-pied de lit;SUB
-pieds de lit;SUB
-pit bull;SUB
-play back;SUB
-plein air;SUB;
-poignée de main;SUB
-poignées de main;SUB
-point de vue;SUB
-pomme de terre;SUB
-pommes de terre;SUB
-pom-pom girl;SUB
-pom-pom girls;SUB
-porte de derrière;SUB
-porte d’entrée;SUB
-post it;SUB
-premier âge;SUB
-premier consul;SUB
-premier ministre;SUB;Premier ministre
-Premier ministre;SUB
-presse écrite;SUB
-prime time;SUB
-procureur du roi;SUB
-public schools;SUB
-punching ball;SUB
-quart d'heure;SUB
-quartier général;SUB
-red river;SUB
-reine mère;SUB
-raison d'état;SUB
-raisons d'état;SUB;raison d'état
-rapport sexuel;SUB
-rapports sexuels;SUB
-rédacteur en chef;SUB
-rédactrice en chef;SUB;rédacteur en chef
-relation sexuelle;SUB
-relations sexuelles;SUB
-rendez vous;SUB;rendez-vous
-répétition générale;SUB
-requiescat in pace;SUB
-révérende mère;SUB
-rhythm and blues;SUB
-roast beef;SUB
-rocking chair;SUB
-robe de chambre;SUB
-rouge à lèvres;SUB
-sac à dos;SUB
-sainte nitouche;SUB
-salle à manger;SUB
-salle de bains;SUB
-scenic railway;SUB
-secrétaire de rédaction;SUB
-secrétaire général;SUB
-sedia gestatoria;SUB
-self-made man;SUB
-sens commun;SUB
-services sociaux;SUB
-signe de tête;SUB
-signe de croix;SUB
-signe de la croix;SUB
-soutien-gorge;SUB
-soutien gorge;SUB;soutien-gorge
-sri lankais;SUB
-stabat mater;SUB
-statu quo;SUB
-story board;SUB
-struggle for life;SUB
-table de chevet;SUB
-table d’écoute;SUB
-table des matières;SUB
-taï chi;SUB
-talavera de la reina;SUB
-tarte à la crème;SUB
-te deum;SUB
-téléphone portable;SUB
-temps à perdre;SUB
-terra incognita;SUB
-toile cirée;SUB
-top models;SUB
-total général;SUB
-tout le monde;SUB
-traveller's chèques;SUB
-trésorier général;SUB
-Tribunal de Commerce;SUB
-tribunal de commerce;SUB;Tribunal de Commerce
-tribunal de Commerce;SUB;Tribunal de Commerce
-tribunal d’instance;SUB
-tribunal d’instance;SUB
-tss tss;SUB
-tu autem;SUB
-ultima ratio;SUB
-valet de chambre;SUB
-valet de pied;SUB
-verre à vin;SUB
-vice-président général;SUB
-vieille dame;SUB
-vie privée;SUB
-vox populi;SUB
-vulgum pecus;SUB
-wait and see;SUB
-wall street;SUB
-way of life;SUB
-week end;SUB
-world music;SUB
-yom kippour;SUB
-yom kippur;SUB
-
-# locutions adjectivales
-
-à bout de force;ADJ
-ad hoc;ADJ
-à ras;ADJ
-bon marché;ADJ
-by night;ADJ
-dans la merde;ADJ
-d'ordre général;ADJ
-high tech;ADJ
-in utero;ADJ
-in vitro;ADJ
-modern style;ADJ
-mal à l’aise;ADJ
-persona grata;ADJ
-sri lankais;ADJ
-sui generis;ADJ
-too much;ADJ
-
-
-# autres locutions
-
-beaucoup de;DETindef
-la plupart de;DETindef
-la plupart des;DETindef
-la plupart du;DETindef
-peu de;DETindef
-tant de;DETindef
-un peu de;DETindef
-I e;DETnum
-I er;DETnum
-II e;DETnum
-II nd;DETnum
-III e;DETnum
-IV e;DETnum
-IX e;DETnum
-V e;DETnum
-VI e;DETnum
-VII e;DETnum
-VIII e;DETnum
-X e;DETnum
-XI e;DETnum
-XII e;DETnum
-XIII e;DETnum
-XIV e;DETnum
-XIX e;DETnum
-XVI e;DETnum
-XVII e;DETnum
-XVIII e;DETnum
-XX e;DETnum
-XXI e;DETnum
-XXII e;DETnum
-XXIII e;DETnum
-XXIV e;DETnum
-XXIX e;DETnum
-XXV e;DETnum
-XXVI e;DETnum
-XXVII e;DETnum
-XXVIII e;DETnum
-XXX e;DETnum
-
-i e;DETnum
-i er;DETnum
-ii e;DETnum
-ii nd;DETnum
-iii e;DETnum
-iv e;DETnum
-v e;DETnum
-vi e;DETnum
-vii e;DETnum
-viii e;DETnum
-ix e;DETnum
-x e;DETnum
-xi e;DETnum
-xii e;DETnum
-xiii e;DETnum
-xiv e;DETnum
-xvi e;DETnum
-xvii e;DETnum
-xviii e;DETnum
-xix e;DETnum
-xx e;DETnum
-xxi e;DETnum
-xxii e;DETnum
-xxiii e;DETnum
-xxiv e;DETnum
-xxv e;DETnum
-xxvi e;DETnum
-xxvii e;DETnum
-xxviii e;DETnum
-xxix e;DETnum
-xxx e;DETnum
-
-qui aime bien châtie bien;SUB
-
-# EXCL
-
-aller aller;EXCL
-allez allez;EXCL
-allons allons;EXCL
-bon Dieu;EXCL
-bordel de merde;EXCL
-drelin drelin;EXCL
-hay hay;EXCL
-hi hi;EXCL
-hi hi hi;EXCL
-hi hi hi hi;EXCL
-juste ciel;EXCL
-Juste ciel;EXCL
-mon Dieu;EXCL
-Oh ! ciel;EXCL
-que le diable l'emporte;EXCL
+# au point de;PREP;;
+# autres locutions;;;
+# EN TEST;;;
+# EXCL;;;
+# jusqu’à;PREP;;
+# locution adverbiales;;;
+# locutions adjectivales;;;
+# locutions conjonctives;;;
+# locutions nominales;;;
+# locutions prépositionnelles;;;
+# locutions pronominales;;;
+# locutions verbales;;;
+# Monsieur (frère du roi);;;
+# TITULATURES;;;
+à bas de;PREP;;
+à bon droit;ADV;;
+à bord;ADV;;
+à bord de;PREP;;
+à bord du;PREP;à bord de;
+à bout de;PREP;;
+à bout de force;ADJ;;
+à brûle-pourpoint;ADV;;
+a capella;ADV;;
+a cappella;ADV;;
+à cause de;PREP;;
+à cet égard;PREP;;
+à chaque fois;ADV;;
+à chaque fois que;CONJsubord;;
+à cloche-pied;ADV;;
+à compter de;PREP;;
+à condition de;PREP;;
+a contrario;ADV;;
+à côté de;PREP;;
+à coup de;PREP;;
+à coup sûr;ADV;;
+à défaut de;PREP;;
+à dessein de;PREP;;
+à destination de;PREP;;
+à fin de;PREP;;
+à fond;ADV;;
+à fond;ADV;;
+à force de;PREP;;
+a fortiori;ADV;;
+à fortiori;ADV;;
+a giorno;ADV;;
+à giorno;ADV;;
+à glagla;ADV;;
+à grand renfort de;PREP;;
+à haute voix;ADV;;
+à jeun;ADV;;
+à jeun;ADV;;
+à l'autre bout de;PREP;;
+à l'aveuglette;ADV;;
+à l'aveuglette;ADV;;
+à l'encan;ADV;;
+à l'encan;ADV;;
+à l'envi;ADV;;
+à l'envi;ADV;;
+à l'improviste;ADV;;
+à l'improviste;ADV;;
+à l'instant même;ADV;;
+à l’adresse de;PREP;;
+à l’aide de;PREP;;
+à l’appui de;PREP;;
+à l’aulne de;PREP;;
+à l’aune de;PREP;;
+à l’avenant;PREP;;
+à l’effet de;PREP;;
+à l’égal de;PREP;;
+à l’égard de;PREP;;
+à l’encontre;PREP;;
+à l’endroit de;PREP;;
+à l’entour de;PREP;;
+à l’épreuve de;PREP;;
+à l’exemple de;PREP;;
+à l’extérieur de;PREP;;
+à l’imitation de;PREP;;
+à l’instant;ADV;;
+à l’instar de;PREP;;
+à l’intérieur de;PREP;;
+à l’ombre de;PREP;;
+à l’opposé de;PREP;;
+à l’unisson;PREP;;
+à la condition de;PREP;;
+à la fois;ADV;;
+à la longue;ADV;;
+à la lumière d’;PREP;;
+à la lumière de;PREP;;
+à la lumière des;PREP;;
+à la lumière du;PREP;;
+à la manière d’;PREP;;
+à la manière de;PREP;;
+à la manière des;PREP;;
+à la mémoire de;PREP;;
+à la place de;PREP;;
+à la réserve de;PREP;;
+à la saint-glinglin;ADV;;
+à la sortie de;PREP;;
+à la suite de;PREP;;
+à la vue de;PREP;;
+à la zeub;PREP;;
+à leur encontre;ADV;;
+à lurelure;ADV;;
+à mon encontre;ADV;;
+à notre encontre;ADV;;
+à NUM fois;ADV;;
+à part;PREP;;
+à part ça;PREP;;
+à partir de;PREP;;
+à partir de là;PREP;;
+à peine de;PREP;;
+à perte de vue;ADV;;
+à peu près;ADV;;
+a posteriori;ADV;;
+à posteriori;ADV;;
+à présent;ADV;;
+a priori;ADV;;
+a priori;SUB;;
+à priori;ADV;;
+à propos de;PREP;;
+à quoi bon;ADVinter;;
+à raison de;PREP;;
+à ras;ADJ;;
+à ras bord;ADV;;
+à rebours;ADV;;
+à rebours de;PREP;;
+à rebrousse-poil;ADV;;
+à son encontre;ADV;;
+à tâtons;ADV;;
+à terme;PREP;;
+à tire-larigot;ADV;;
+à titre de;PREP;;
+à ton encontre;ADV;;
+à touche-touche;ADV;;
+à travers;PREP;;
+à tue-tête;ADV;;
+à valeurs dans;PREP;;
+à voir;PREP;;
+à voix basse;ADV;;
+à voix haute;ADV;;
+à votre encontre;ADV;;
+à vrai dire;ADV;;
+académie des sciences;SUB;Académie des Sciences;
+Académie des Sciences;SUB;;
+académie des sciences morales;SUB;Académie des Sciences morales et politiques;
+Académie des Sciences morales;SUB;;
+académie des sciences morales et politiques;SUB;Académie des Sciences morales et politiques;
+Académie des Sciences morales et politiques;SUB;;
+acid jazz;SUB;;
+acte sexuel;SUB;;
+actes sexuels;SUB;acte sexuel;
+action painting;SUB;;
+ad hoc;ADJ;;
+administrateur général;SUB;;
+affaires étrangères;SUB;;
+afin d;PREP;;
+afin d';PREP;;
+afin de;PREP;;
+afin de;PREP;;
+afin qu;CONJsubord;;
+afin que;CONJsubord;;
+after shave;SUB;;
+agent de change;SUB;;
+agents de change;SUB;;
+agnus dei;SUB;;
+aide de camp;SUB;;
+air bag;SUB;;
+aller aller;EXCL;;
+aller droit;VERB;;
+allez allez;EXCL;;
+allons allons;EXCL;;
+alors que;CONJcoord;;
+alter ego;SUB;;
+Altesse;NAMEpers;;
+Altesse Royale;NAMEpers;;
+amour propre;SUB;;
+appareil photo;SUB;;
+après que;CONJsubord;;
+argent de poche;SUB;;
+arrêt maladie;SUB;;
+arrière-train;SUB;;
+assemblée générale;SUB;;
+au bas;ADV;;
+au bas d';PREP;au bas de;
+au bas de;PREP;;
+au bas du;PREP;au bas de;
+au beau milieu de;PREP;;
+au bord d';PREP;au bord de;
+au bord de;PREP;;
+au bord des;PREP;au bord de;
+au bord du;PREP;au bord de;
+au bout d';PREP;au bout de;
+au bout de;PREP;;
+au bout des;PREP;au bout de;
+au bout du;PREP;au bout de;
+au cas où;CONJsubord;;
+au contraire de;PREP;;
+au delà;ADV;;
+au détriment de;PREP;;
+au droit de;PREP;;
+au lieu et place de;PREP;;
+au milieu d';PREP;au milieu de;
+au milieu de;PREP;;
+au milieu des;PREP;au milieu de;
+au milieu du;PREP;au milieu de;
+au moins;ADV;;
+au moment de;PREP;;
+au moment où;PREP;;
+au moyen de;PREP;;
+au niveau de;PREP;;
+au nom d’;PREP;;
+au nom de;PREP;;
+au nom du;PREP;;
+au préjudice de;PREP;;
+au prétexte de;PREP;;
+au prix de;PREP;;
+au ras de;PREP;;
+au rebours de;PREP;;
+au regard de;PREP;;
+au risque de;PREP;;
+au sein d’;PREP;;
+au sein de;PREP;;
+au sein du;PREP;;
+au sortir de;PREP;;
+au spectacle de;PREP;;
+au sujet de;PREP;;
+au temps de;PREP;;
+au travers de;PREP;;
+au vu de;PREP;;
+au vu et au su de;PREP;;
+au vu et su de;PREP;;
+au-dedans de;PREP;;
+au-dessous de;PREP;;
+aujourd'hui;ADV;;
+auprès de;PREP;;
+auquel cas;CONJcoord;;
+aussi peu que;PREP;;
+autour de;PREP;;
+autre chose;SUB;;
+autre part;ADV;;
+aux aguets;ADV;;
+aux dépens de;PREP;;
+aux fins de;PREP;;
+aux lieu et place de;PREP;;
+aux portes de;PREP;;
+avant de;PREP;;
+avant même que;CONJsubord;;
+avant que;CONJsubord;;
+avant que de;PREP;;
+avocat général;SUB;;
+avoir l'air;VERB;;
+avoir lieu;VERB;;
+ayants droit;SUB;;
+back up;SUB;;
+bain de mer;SUB;;
+bains de mer;SUB;;
+bande à part;SUB;;
+bas de page;SUB;;
+bas ventre;SUB;bas-ventre;
+bas-ventre;SUB;;
+beat generation;SUB;;
+beau fils;SUB;beau-fils;
+beau frère;SUB;beau-frère;
+beau père;SUB;beau-père;
+beau temps;SUB;;
+beaucoup de;DETindef;;
+beaux esprits;SUB;bel esprit;
+bec de gaz;SUB;;
+becs de gaz;SUB;;
+bel canto;SUB;;
+bel esprit;SUB;;
+belle fille;SUB;belle-fille;
+belle lurette;SUB;;
+belle mère;SUB;belle-mère;
+belle sœur;SUB;belle-sœur;
+best of;SUB;;
+bien entendu;ADV;;
+bien loin de;PREP;;
+bien que;CONJsubord;;
+bien sûr;ADV;;
+big band;SUB;;
+big bang;SUB;;
+birth control;SUB;;
+bla bla;SUB;;
+bloody mary;SUB;;
+blouson de cuir;SUB;;
+blue jeans;SUB;;
+blue note;SUB;;
+boîte aux lettres;SUB;;
+bon cœur;SUB;;
+bon Dieu;EXCL;;
+bon goût;SUB;;
+bon gré;SUB;;
+bon gré mal gré;ADV;;
+bon marché;ADJ;;
+bon point;SUB;;
+bon sens;SUB;;
+bon vieux temps;SUB;;
+bonne conscience;SUB;;
+bonne femme;SUB;
+bonne foi;SUB;;
+bonne fortune;SUB;;
+bonne humeur;SUB;;
+bonne manière;SUB;;
+boone part;SUB;;
+bonne volonté;SUB;;
+bonnes gens;SUB;;
+bordel de merde;EXCL;;
+bouche bée;SUB;;
+bouton d’or;SUB;;
+bras dessus bras dessous;ADV;;
+brown sugar;SUB;;
+bubble gum;SUB;;
+buen retiro;SUB;;
+by night;ADJ;;
+c'est-à-dire;ADV;;
+cabinet de toilette;SUB;;
+café au lait;SUB;;
+cage d’escalier;SUB;;
+call girl;SUB;;
+call girls;SUB;;
+canadian river;SUB;;
+caput mortuum;SUB;;
+cas particulier;SUB;;
+casus belli;SUB;;
+ce dernier;PROindef;;
+cela supposé;PREP;;
+celle ci;PROdem;celle-ci;
+celle là;PROdem;celle-là;
+celle-ci;PROdem;;
+celle-là;PROdem;;
+celui ci;PROdem;celui-ci;
+celui là;PROdem;celui-là;
+celui-ci;PROdem;;
+celui-là;PROdem;;
+cependant que;CONJsubord;;
+ces derniers;PROindef;;
+cette dernière;PROindef;;
+cette fois ci;ADV;;
+cette fois là;ADV;;
+cette fois où;CONJbord;;
+cette fois-ci;ADV;;
+cette fois-là;ADV;;
+ceux ci;PROdem;ceux-ci;
+ceux là;PROdem;ceux-là;
+chambre à coucher;SUB;;
+Chambre des députés;SUB;;
+champ de bataille;SUB;;
+chapeau haut de forme;SUB;;
+chaque fois;ADV;;
+chaque fois que;CONJsubord;;
+check up;SUB;;
+chef d'entreprise;SUB;;
+chef d'oeuvre;SUB;chef-d'œuvre;
+chef d'œuvre;SUB;chef-d'œuvre;
+chef-d'oeuvre;SUB;chef-d'œuvre;
+chef-d'œuvre;SUB;;
+chefs d'oeuvre;SUB;;
+chefs d'œuvre;SUB;;
+chefs-d'oeuvre;SUB;;
+chefs-d'œuvre;SUB;;
+chemin de fer;SUB;;
+chemin de fer d'intérêt local;SUB;;
+chemins de fer;SUB;;
+chemise de nuit;SUB;;
+chewing gum;SUB;;
+chien de fusil;SUB;;
+chop suey;SUB;;
+chute libre;SUB;;
+citizen band;SUB;;
+clair de lune;SUB;;
+clin d'œil;SUB;;
+coffee shop;SUB;;
+coin de l’oeil;SUB;;
+coin de l’œil;SUB;;
+comic book;SUB;;
+comic books;SUB;;
+commedia dell'arte;SUB;;
+compte tenu de;PREP;;
+conférence de presse;SUB;;
+conformément à;PREP;;
+connaissance de cause;SUB;;
+conseil d'administration;SUB;;
+conseil d'Etat;SUB;Conseil d'État;
+conseil d'etat;SUB;Conseil d'État;
+conseil d'état;SUB;Conseil d'État;
+conseil général;SUB;;
+conseiller général;SUB;;
+conséquemment à;PREP;;
+corn flakes;SUB;;
+corps de garde;SUB;;
+côte à côte;ADV;;
+coup d'épée;SUB;;
+coup d'oeil;SUB;;
+coup d'œil;SUB;;
+coup de balai;SUB;;
+coup de bâton;SUB;;
+coup de feu;SUB;;
+coup de fil;SUB;;
+coup de fusil;SUB;;
+coup de main;SUB;;
+coup de pied;SUB;;
+coup de pistolet;SUB;;
+coup de poing;SUB;;
+coup de vent;SUB;;
+coup sur coup;ADV;;
+coups d'épée;SUB;;
+coups d'oeil;SUB;;
+coups d'œil;SUB;;
+coups de balai;SUB;coup de balai;
+coups de bâton;SUB;coup de bâton;
+coups de feu;SUB;;
+coups de fusil;SUB;coup de fusil;
+coups de main;SUB;;
+coups de pied;SUB;;
+coups de pistolet;SUB;;
+coups de poings;SUB;;
+coups de vent;SUB;;
+coups et blessures;SUB;;
+coups et blessures aggravés;SUB;;
+cour d'assises;SUB;;
+courrier électronique;SUB;;
+crainte de;PREP;;
+cri de joie;SUB;;
+critique d'art;SUB;;
+curriculum vitae;SUB;;
+d'abord;ADV;;
+d'accord;ADV;;
+d'ailleurs;ADV;;
+d'autant que;CONJcoord;;
+d'autre part;ADV;;
+d'autres;PROindef;;
+d'emblée;ADV;;
+d'ordre général;ADJ;;
+d'ores et déjà;ADV;;
+d'un autre côté;PREP;;
+d'une part;ADV;;
+d’après;PREP;;
+d’au milieu de;PREP;;
+d’avec;PREP;;
+d’entre;PREP;;
+d’ici;PREP;;
+dame patronnesse;SUB;;
+dames patronnesses;SUB;;
+dans l’optique de;PREP;;
+dans la crainte de;PREP;;
+dans la merde;ADJ;;
+dans le moment où;PREP;;
+dans le moment que;PREP;;
+dans le viseur de;PREP;;
+dare dare;ADV;;
+de amicis;SUB;;
+de auditu;ADV;;
+de bon cœur;ADV;;
+de bonne heure;ADVtemp;;
+de crainte de;PREP;;
+de façon à;PREP;;
+de facto;ADV;;
+de guingois;ADV;;
+de haut en bas;ADV;;
+de la part d’;PREP;;
+de la part de;PREP;;
+de la part du;PREP;;
+de long en large;ADV;;
+de manière à;PREP;;
+de même;ADV;;
+de même que;CONJcoord;;
+de mon côté;PREP;;
+de niveau avec;PREP;;
+de par;PREP;;
+de parmi;PREP;;
+de peur de;PREP;;
+de plano;ADV;;
+de plein gré;ADV;;
+de plus;ADV;;
+de préférence à;PREP;;
+de profundis;SUB;;
+de santis;SUB;;
+de sorte que;CONJsubord;;
+de temps en temps;ADVtemp;;
+de traviole;ADV;;
+de visu;ADV;;
+défense de;PREP;;
+défini sur;PREP;;
+delirium tremens;SUB;;
+demander pardon;VERB;;
+dernier soupir;SUB;;
+des fois que;CONJsubord;;
+dès lors;ADVtemp;;
+dès lors que;CONJsubord;;
+dès que;CONJsubord;;
+deus ex machina;SUB;;
+deux fois;ADV;;
+deux fois par an;ADV;;
+deux fois par mois;ADV;;
+deux fois par semaine;ADV;;
+devant notaire;PREP;;
+devoir dire;VERB;;
+dies irae;SUB;;
+Dieu sait;PREP;;
+dîner en ville;SUB;;
+directeur général;SUB;;
+direction générale;SUB;;
+disque dur;SUB;;
+donner l'ordre;VERB;;
+donner l’impression;VERB;;
+donner la main;VERB;;
+drelin drelin;EXCL;;
+droit d’ainesse;SUB;;
+du côté de;PREP;;
+du fond du cœur;ADV;;
+du haut en bas;ADV;;
+du milieu de;PREP;;
+du reste;ADV;;
+du tac au tac;ADV;;
+du temps que;PREP;;
+du vivant de;PREP;;
+eau minérale;SUB;;
+ecce homo;ADV;;
+éclat de rire;SUB;;
+éclater de rire;VERB;;
+éclats de rire;SUB;éclat de rire;
+École polytechnique;SUB;École Polytechnique;
+École Polytechnique;SUB;;
+empreinte digitale;SUB;;
+empreintes digitales;SUB;empreinte digitale;
+en amont d’;PREP;;
+en amont de;PREP;;
+en amont des;PREP;;
+en amont du;PREP;;
+en arrière de;PREP;;
+en aval d’;PREP;;
+en aval de;PREP;;
+en aval des;PREP;;
+en aval du;PREP;;
+en avant de;PREP;;
+en bas;ADV;;
+en bonne voie;ADV;
+en catimini;ADV;;
+en ce qui concerne;PREP;;
+en compagnie de;PREP;;
+en comparaison de;PREP;;
+en conformité de;PREP;;
+en connaissance de cause;ADV;;
+en conséquence de;PREP;;
+en considération de;PREP;;
+en deçà de;PREP;;
+en dépit de;PREP;;
+en dessous;PREP;;
+en effet;ADV;;
+en exécution de;PREP;;
+en face de;PREP;;
+en fait de;PREP;;
+en fin de compte;ADV;;
+en fonction de;PREP;;
+en forme de;PREP;;
+en général;ADV;;
+en grande partie;ADV;;
+en haut;ADV;;
+en lieu et place de;PREP;;
+en loucedé;ADV;;
+en matière de;PREP;;
+en même temps que;PREP;;
+en mémoire de;PREP;;
+en outre;ADV;;
+en partant;PREP;;
+en passant;PREP;;
+en passe de;PREP;;
+en plein jour;ADV;;
+en pleine connaissance de cause;ADV;;
+en présence de;PREP;;
+en quelque sorte;ADV;;
+en raison de;PREP;;
+en regard de;PREP;;
+en sorte que;CONJsubord;;
+en sus;ADV;;
+en sus de;PREP;;
+en tapinois;ADV;;
+en termes de;PREP;;
+en tous cas;ADV;;
+en train de;PREP;;
+en vertu de;PREP;;
+en vue de;PREP;;
+encore une fois;ADV;;
+enfant de choeur;SUB;enfant de chœur;
+enfant de chœur;SUB;;
+enfants de choeur;SUB;enfants de chœur;
+enfants de chœur;SUB;;
+entenant de;PREP;;
+entendre parler;VERB;;
+entrer en ligne de compte;VERB;;
+est-ce qu;ADV;;
+est-ce qu';ADV;;
+est-ce que;ADV;;
+et caetera;ADVquant;etc.;
+et cætera;ADVquant;;
+et cetera;ADVquant;etc.;
+et seq;ADV;;
+étant donné;PREP;;
+état civil;SUB;;
+eu égard à;PREP;;
+ex abrupto;ADV;;
+ex nihilo;ADV;;
+face à;PREP;;
+face à face;SUB;;
+faire partie;VERB;;
+fast food;SUB;;
+faute de;PREP;;
+fauteuil roulant;SUB;;
+faux monnayeurs;SUB;;
+femme de chambre;SUB;;
+femmes de chambre;SUB;femme de chambre;
+five o'clock;SUB;;
+flatus vocis;SUB;;
+foi de;PREP;;
+fond de l’âme;SUB;;
+foreign office;SUB;;
+fort bien;ADV;;
+free jazz;SUB;;
+fur et à mesure;SUB;;
+garde champêtre;SUB;;
+garde du corps;SUB;;
+garde du roi;SUB;;
+garde national;SUB;;
+garde nationale;SUB;;
+gardes du corps;SUB;garde du corps;
+gardes du roi;SUB;garde du roi;
+gardes nationaux;SUB;;
+gare centrale;SUB;;
+général en chef;SUB;;
+gengis khan;SUB;;
+gens du monde;SUB;;
+girl friend;SUB;;
+goutte à goutte;ADV;;
+grâce à;PREP;;
+grâces à;PREP;;
+grain de beauté;SUB;;
+grand chose;SUB;grand-chose;
+grand dieu;SUB;;
+grand mère;SUB;grand-mère;
+grand oncle;SUB;grand-oncle;
+grand père;SUB;grand-père;
+grand seigneur;SUB;;
+grand'chose;SUB;grand-chose;
+grand'mère;SUB;grand-mère;
+grand'père;SUB;grand-père;
+grand'tante;SUB;;
+grande partie;SUB;;
+grands dieux;SUB;;
+grands seigneurs;SUB;grand seigneur;
+gratis pro deo;ADV;;
+grève générale;SUB;;
+grosso modo;ADV;;
+happy end;SUB;;
+happy ends;SUB;;
+happy few;SUB;;
+hard edge;SUB;;
+has been;SUB;;
+haut de forme;SUB;haut-de-forme;
+haut fait;SUB;;
+haut rang;SUB;;
+haut-de-forme;SUB;;
+haute vertu;SUB;;
+hauts faits;SUB;haut fait;
+hay hay;EXCL;;
+hi hi;EXCL;;
+hi hi hi;EXCL;;
+hi hi hi hi;EXCL;;
+hic et nunc;ADV;;
+high life;SUB;;
+high tech;ADJ;;
+hold up;SUB;;
+homo erectus;SUB;;
+homo habilis;SUB;;
+hong kong;SUB;;
+honnêtes gens;SUB;;
+honoris causa;ADV;;
+hors de;PREP;;
+hot dog;SUB;;
+hot dogs;SUB;;
+hôtel de police;SUB;;
+hôtel de ville;SUB;;
+house music;SUB;;
+I e;DETnum;;
+i e;DETnum;;
+I er;DETnum;;
+i er;DETnum;;
+ice cream;SUB;;
+II e;DETnum;;
+ii e;DETnum;;
+II nd;DETnum;;
+ii nd;DETnum;;
+III e;DETnum;;
+iii e;DETnum;;
+il était une fois;ADV;;
+il être possible que;PREP;;
+il n’empêche que;PREP;;
+il n’en reste pas moins que;PREP;;
+il pourrait bien se faire que;PREP;;
+il se pourrait que;PREP;;
+il serait possible que;PREP;;
+il y avoir;PREP;il y a;
+il y avoir avoir;PREP;il y a;
+in absentia;ADV;;
+in abstracto;ADV;;
+in anima vili;ADV;;
+in cauda venenum;ADV;;
+in extenso;ADV;;
+in extremis;ADV;;
+in illo tempore;PREP;;
+in memoriam;ADV;;
+in pace;SUB;;
+in petto;ADV;;
+in utero;ADV;;
+in utero;ADJ;;
+in vino veritas;ADV;;
+in vitro;ADV;;
+in vitro;ADJ;;
+in vivo;ADV;;
+inspecteur de police;SUB;;
+intérêt général;SUB;;
+intra muros;ADV;;
+invisible piston;SUB;;
+ipso facto;ADV;;
+irish coffee;SUB;;
+ite missa est;SUB;;
+IV e;DETnum;;
+iv e;DETnum;;
+IX e;DETnum;;
+ix e;DETnum;;
+jet society;SUB;;
+jeune fille;SUB;;
+jeune homme;SUB;;
+jeunes filles;SUB;;
+jeunes gens;SUB;;
+jeunes hommes;SUB;;
+jour après jour;ADV;;
+jour de l'an;SUB;;
+juge d’instruction;SUB;;
+juge de paix;SUB;;
+jusqu'à ce que;CONJsubord;;
+jusqu'à la fin;PREP;;
+jusqu’au bout;ADV;;
+jusqu’ici;ADV;;
+jusques à;PREP;;
+jusques et y compris;PREP;;
+juste ciel;SUB;;
+juste ciel;EXCL;;
+Juste ciel;EXCL;;
+kung fu;SUB;;
+kyrie eleison;SUB;;
+l'un;PROindef;;
+l'une;PROindef;;
+l’autre;PROindef;;
+la cinquième;DETnum;;
+la dernière;PROindef;;
+la deuxième;DETnum;;
+la dixième;DETnum;;
+la douzième;DETnum;;
+la fois où;CONJsubord;;
+la huitième;DETnum;;
+la mienne;PROposs;;
+la neuvième;DETnum;;
+la onzième;DETnum;;
+la plata;SUB;;
+la plupart;PROindef;;
+la plupart de;DETindef;;
+la plupart des;DETindef;;
+la plupart du;DETindef;;
+la première;DETnum;;
+la première fois;ADV;;
+la quatrième;DETnum;;
+la seconde;DETnum;;
+la septième;DETnum;;
+la sienne;PROposs;;
+la sixième;DETnum;;
+la tienne;PROposs;;
+la treizième;DETnum;;
+la troisième;DETnum;;
+la vingtième;DETnum;;
+lacryma christi;SUB;;
+laisser passer;VERB;;
+laisser tomber;VERB;;
+le bon Dieu;NAMEgod;;
+le cinquième;DETnum;;
+le dernier;PROindef;;
+le deuxième;DETnum;;
+le diable soit de;PREP;;
+le dixième;DETnum;;
+le douzième;DETnum;;
+le huitième;DETnum;;
+le long de;PREP;;
+le long des;PREP;;
+le long du;PREP;;
+le mien;PROposs;;
+le moment venu;ADV;;
+le neuvième;DETnum;;
+le nôtre;PROposs;;
+le onzième;DETnum;;
+le premier;DETnum;;
+le quatrième;DETnum;;
+le second;DETnum;;
+le second;DETnum;;
+le septième;DETnum;;
+le sien;PROposs;;
+le sixième;DETnum;;
+le tien;PROposs;;
+le treizième;DETnum;;
+le troisième;DETnum;;
+le vingtième;DETnum;;
+le vôtre;PROposs;;
+légion d'honneur;SUB;;
+les deux;DETnum;;
+les deuxièmes;DETnum;;
+les fois où;CONJsubord;;
+les fois que;CONJsubord;;
+les miennes;PROposs;;
+les miens;PROposs;;
+les nôtres;PROposs;;
+les premières;DETnum;;
+les premiers;DETnum;;
+les secondes;DETnum;;
+les seconds;DETnum;;
+les siennes;PROposs;;
+les siens;PROposs;;
+les tiennes;PROposs;;
+les tiens;PROposs;;
+les trois;DETnum;;
+les vôtres;PROposs;;
+lieutenant de police;SUB;;
+ligne de compte;SUB;;
+lit de sangle;SUB;;
+livre sterling;SUB;;
+livres de rente;SUB;;
+livres sterling;SUB;livre sterling;
+loc. cit.;SUB;;
+loin de;PREP;;
+lors de;PREP;;
+lutte des classes;SUB;;
+machine à vapeur;SUB;;
+made in;ADV;;
+madre de dios;SUB;;
+maison d'édition;SUB;;
+maison d’arrêt;SUB;;
+maison de campagne;SUB;;
+maison de passe;SUB;;
+maisons de passe;SUB;;
+maître d'école;SUB;;
+maître d'hôtel;SUB;;
+maître de maison;SUB;;
+maître de poste;SUB;;
+maître des requêtes;SUB;;
+maître queux;SUB;;
+maîtresse de maison;SUB;;
+mal à l’aise;ADJ;;
+malade mental;SUB;;
+maladie mentale;SUB;;
+malgré tout;ADV;;
+manque de;PREP;;
+manu militari;ADV;;
+marchand de vin;SUB;;
+marchands de vin;SUB;;
+maréchal des logis;SUB;;
+mass media;SUB;;
+mater dolorosa;SUB;;
+mauvais goût;SUB;;
+mauvais sort;SUB;;
+mauvaise conscience;SUB;;
+mauvaise foi;SUB;;
+mauvaise grâce;SUB;;
+mauvaise humeur;SUB;;
+maux de tête;SUB;;
+mea culpa;SUB;;
+melting pot;SUB;;
+même quand;CONJsubors;;
+même si;CONJsubord;;
+mètres carrés;SUB;;
+mettre en examen;VERB;;
+mettre en peine;VERB;;
+mettre la table;VERB;;
+mezza voce;ADV;;
+middle class;SUB;;
+milk shake;SUB;;
+ministère de l'Intérieur;SUB;;
+ministère de l'intérieur;SUB;ministère de l'Intérieur;
+ministère des finances;SUB;ministère des Finances;
+ministère des Finances;SUB;;
+ministère public;SUB;;
+ministre de l'Intérieur;SUB;;
+ministre de l'intérieur;SUB;ministre de l'Intérieur;
+ministre de la guerre;SUB;;
+ministre de la justice;SUB;;
+ministre des affaires étrangères;SUB;Ministre des Affaires étrangères;
+ministre des Affaires étrangères;SUB;Ministre des Affaires étrangères;
+Ministre des Affaires étrangères;SUB;;
+ministre des finances;SUB;ministre des Finances;
+ministre des Finances;SUB;;
+minus habens;SUB;;
+mise en cause;SUB;;
+mise en oeuvre;SUB;mise en œuvre;
+mise en œuvre;SUB;;
+mise en ordre;SUB;;
+mise en place;SUB;;
+mise en question;SUB;;
+modern style;SUB;;
+modern style;ADJ;;
+modus operandi;SUB;;
+modus vivendi;SUB;;
+mon Dieu;EXCL;;
+mort à;PREP;;
+mot d’ordre;SUB;;
+motu proprio;ADV;;
+Moyen Age;SUB;;
+moyen age;SUB;moyen-âge;
+Moyen Âge;SUB;;
+moyen âge;SUB;moyen-âge;
+moyen-âge;SUB;;
+music hall;SUB;;
+mutatis mutandis;ADV;;
+n'est ce pas;ADV;n'est-ce pas;
+n'est-ce pas;ADV;;
+n'importe qui;PROindef;;
+n'importe quoi;PROindef;;
+n’empêche que;PREP;;
+ne varietur;ADV;;
+negro spiritual;SUB;;
+negro spirituals;SUB;;
+nerf de bœuf;SUB;;
+new wave;SUB;;
+night club;SUB;;
+nihil obstat;ADV;;
+no man's land;SUB;;
+no man's land;SUB;;
+non content de;PREP;;
+non plus que;PREP;;
+non sans;PREP;;
+non troppo;ADV;;
+nota bene;ADV;;
+nulle part;ADV;;
+numéro de immatriculation;SUB;;
+numéro de téléphone;SUB;;
+numerus clausus;SUB;;
+oeuvre d'art;SUB;;
+œuvre d'art;SUB;;
+œuvre d'art;SUB;;
+œuvres d'art;SUB;;
+off the record;ADV;;
+officier de la légion d'honneur;SUB;;
+Oh ! ciel;EXCL;;
+olla podrida;SUB;;
+op. cit.;SUB;;
+ordinateur de poche;SUB;;
+ordinateur portable;SUB;;
+osso buco;SUB;;
+ou bien;CONJcoord;;
+ouvr. cit.;SUB;;
+pan bagnat;SUB;;
+par ailleurs;ADV;;
+par certains côtés;PREP;;
+par comparaison à;PREP;;
+par crainte de;PREP;;
+par devers;PREP;;
+par écrit;ADV;;
+par l’intermédiaire de;PREP;;
+par manque de;PREP;;
+par mégarde;ADV;;
+par opposition à;PREP;;
+par préférence à;PREP;;
+par rapport à;PREP;;
+par suite de;PREP;;
+par-devant notaire;PREP;;
+parce qu;CONJsubord;;
+parce qu';CONJsubord;;
+parce que;CONJsubord;;
+parole d'honneur;SUB;;
+part time;SUB;;
+pas plus que;PREP;;
+pas plus tard que;PREP;;
+paso doble;SUB;;
+pater familias;SUB;;
+pater noster;SUB;;
+pauvre diable;SUB;;
+pax americana;SUB;;
+pendant que;CONJsubord;;
+persona grata;ADJ;;
+persona non grata;SUB;;
+peu à peu;ADV;;
+peu de;DETindef;;
+peu de chose;SUB;;
+peu ou prou;ADV;;
+photo d'identité;SUB;;
+pied de grue;SUB;;
+pied de lit;SUB;;
+pieds de haut;SUB;;
+pieds de lit;SUB;;
+pit bull;SUB;;
+plaque d'immatriculation;SUB;;
+play back;SUB;;
+plein air;SUB;;
+plutôt deux fois que une;ADV;;
+poignée de main;SUB;;
+poignées de main;SUB;;
+point de vue;SUB;;
+pom-pom girl;SUB;;
+pom-pom girls;SUB;;
+pomme de terre;SUB;;
+pommes de terre;SUB;;
+pompes funèbres;SUB;;
+pon point;SUB;;
+porte cochère;SUB;;
+porte d’entrée;SUB;;
+porte de derrière;SUB;;
+post it;SUB;;
+post mortem;ADV;;
+pour autant que;PREP;;
+pour ce qui est de;PREP;;
+pour cette fois;ADV;;
+pour des prunes;PREP;;
+pour ma part;PREP;;
+pour que;CONJsubord;;
+pour tout;PREP;;
+pour un peu;PREP;;
+pour une bonne part;ADV;;
+pour une fois;ADV;;
+pour une fois que;CONJsubord;;
+premier âge;SUB;;
+premier consul;SUB;;
+premier ministre;SUB;Premier ministre;
+Premier ministre;SUB;;
+prendre contact;VERB;;
+prendre du plaisir;VERB;;
+prendre en charge;VERB;;
+prendre en compte;VERB;;
+prendre garde;VERB;;
+prendre l’air;VERB;;
+prendre la peine;VERB;;
+prendre le soin de;VERB;;
+prendre part;VERB;;
+prendre place;VERB;;
+prendre ses jambes à son cou;VERB;;
+prendre soin;VERB;;
+près de;PREP;;
+presse écrite;SUB;;
+prêt à;PREP;;
+prime time;SUB;;
+proche de;PREP;;
+procureur du roi;SUB;;
+public schools;SUB;;
+punching ball;SUB;;
+qu'est-ce que;PROinter;;
+quand et quand;PREP;;
+quand même;ADV;;
+quant à;PREP;;
+quant aux;PREP;;
+quart d'heure;SUB;;
+quartier général;SUB;;
+que le diable l'emporte;EXCL;;
+quel que soit;PREP;;
+quelque chose;PROindef;;
+quelque part;ADV;;
+qui aime bien châtie bien;SUB;;
+qui plus est;ADV;;
+qui que;CONJsubord;;
+quoi qu’il en fût;PREP;;
+quoi que;CONJsubord;;
+raison d'état;SUB;;
+raisons d'état;SUB;raison d'état;
+rapport sexuel;SUB;;
+rapports sexuels;SUB;;
+recto tono;ADV;;
+red river;SUB;;
+rédacteur en chef;SUB;;
+rédactrice en chef;SUB;rédacteur en chef;
+reine mère;SUB;;
+relation sexuelle;SUB;;
+relations sexuelles;SUB;;
+rendez vous;SUB;rendez-vous;
+rendre compte;VERB;;
+rendre grâce;VERB;;
+rendre hommage;VERB;;
+rendre justice;VERB;;
+rendre service;VERB;;
+rendre un service;VERB;;
+rendre visite;VERB;;
+répétition générale;SUB;;
+requiescat in pace;SUB;;
+révérende mère;SUB;;
+rhythm and blues;SUB;;
+ric et rac;ADV;;
+roast beef;SUB;;
+robe de chambre;SUB;;
+rocking chair;SUB;;
+rouge à lèvres;SUB;;
+s’agissant de;PREP;;
+sac à dos;SUB;;
+sainte nitouche;SUB;;
+salle à manger;SUB;;
+salle de bains;SUB;;
+sans cela;CONJcoord;;
+sans cesse;ADV;;
+sans compter;PREP;;
+sans doute;ADV;;
+sans perdre de temps;ADV;;
+sans plus de;PREP;;
+sans pour autant;PREP;;
+sans préjudice de;PREP;;
+sans que;CONJsubord;;
+sauf à;PREP;;
+savoir bien;VERB;;
+scenic railway;SUB;;
+secrétaire de rédaction;SUB;;
+secrétaire général;SUB;;
+sedia gestatoria;SUB;;
+self-made man;SUB;;
+sens commun;SUB;;
+serrer la main;VERB;;
+services sociaux;SUB;;
+si bien que;CONJsubord;;
+si peu que;PREP;;
+signe de croix;SUB;;
+signe de la croix;SUB;;
+signe de tête;SUB;;
+sine die;ADV;;
+sine qua non;ADV;;
+Son Excellence;NAMEpers;;
+sous couleur de;PREP;;
+sous couvert de;PREP;;
+sous forme de;PREP;;
+sous l’ombre de;PREP;;
+sous la houlette de;PREP;;
+sous la plume de;PREP;;
+sous le couvert de;PREP;;
+sous le prétexte de;PREP;;
+sous le rapport de;PREP;;
+sous les yeux de;PREP;;
+sous peine de;PREP;;
+sous prétexte de;PREP;;
+sous réserve de;PREP;;
+sous un nouveau jour;PREP;;
+soutien gorge;SUB;soutien-gorge;
+soutien-gorge;SUB;;
+souventes fois;ADV;;
+sri lankais;SUB;;
+sri lankais;ADJ;;
+stabat mater;SUB;;
+statu quo;SUB;;
+story board;SUB;;
+stricto sensu;ADV;;
+struggle for life;SUB;;
+sui generis;ADJ;;
+suite à;PREP;;
+supposé que;PREP;;
+sur le plan;PREP;;
+sur le point de;PREP;;
+sursum corda;ADV;;
+sus le sujet de;PREP;;
+table d’écoute;SUB;;
+table de chevet;SUB;;
+table des matières;SUB;;
+taï chi;SUB;;
+talavera de la reina;SUB;;
+tandis qu;CONJsubord;tandis que;
+tandis qu';CONJsubord;tandis que;
+tandis que;CONJsubord;;
+tant de;DETindef;;
+tant et si bien que;PREP;;
+tant pis;ADV;;
+tant qu’à;PREP;;
+tantôt à droite tantôt à gauche;ADV;;
+tarte à la crème;SUB;;
+te deum;SUB;;
+téléphone portable;SUB;;
+temps à perdre;SUB;;
+tenir compte;VERB;;
+terra incognita;SUB;;
+tiers monde;SUB;
+toile cirée;SUB;;
+too much;ADJ;;
+top models;SUB;;
+tôt ou tard;ADV;;
+total général;SUB;;
+tour à tour;ADV;;
+tous deux;PROindef;;
+tous les deux;PROindef;;
+tous les trois;PROindef;;
+tout de même;ADV;;
+tout de même;ADV;;
+tout le monde;SUB;;
+toutes les fois;ADV;;
+toutes les fois que;CONJsubord;;
+traveller's chèques;SUB;;
+trésorier général;SUB;;
+tribunal d’instance;SUB;;
+tribunal d’instance;SUB;;
+Tribunal de Commerce;SUB;;
+tribunal de commerce;SUB;Tribunal de Commerce;
+tribunal de Commerce;SUB;Tribunal de Commerce;
+trois fois;ADV;;
+trois fois par an;ADV;;
+trois fois par mois;ADV;;
+trois fois par semaine;ADV;;
+tss tss;SUB;;
+tu autem;SUB;;
+tutti frutti;ADV;;
+tutti quanti;ADV;;
+ultima ratio;SUB;;
+un cinquième;DETnum;;
+un deuxième;DETnum;;
+un dixième;DETnum;;
+un douzième;DETnum;;
+un huitième;DETnum;;
+un neuvième;DETnum;;
+un onzième;DETnum;;
+un peu de;DETindef;;
+un premier;DETnum;;
+un quatrième;DETnum;;
+un second;DETnum;;
+un septième;DETnum;;
+un sixième;DETnum;;
+un tas de;DETnum;;
+un treizième;DETnum;;
+un troisième;DETnum;;
+un vingtième;DETnum;;
+une autre fois;ADV;;
+une bonne fois;ADV;;
+une bonne fois pour toutes;ADV;;
+une bonne partie;DET;
+une cinquième;DETnum;;
+une deuxième;DETnum;;
+une dixième;DETnum;;
+une douzième;DETnum;;
+une fois;PREP;;
+une fois;ADV;;
+une fois par an;ADV;;
+une fois par mois;ADV;;
+une fois par semaine;ADV;;
+une fois pour toutes;ADV;;
+une fois que;CONJsubord;;
+une huitième;DETnum;;
+une neuvième;DETnum;;
+une onzième;DETnum;;
+une première;DETnum;;
+une quatrième;DETnum;;
+une septième;DETnum;;
+une sixième;DETnum;;
+une treizième;DETnum;;
+une troisième;DETnum;;
+une vingtième;DETnum;;
+urbi et orbi;ADV;;
+V e;DETnum;;
+v e;DETnum;;
+va pour;PREP;;
+vade retro;ADV;;
+vae soli;ADV;;
+vae victis;ADV;;
+valet de chambre;SUB;;
+valet de pied;SUB;;
+venir à bout;VERB;;
+vent debout contre;PREP;;
+verre à vin;SUB;;
+VI e;DETnum;;
+vi e;DETnum;;
+vice-président général;SUB;;
+vie privée;SUB;;
+vieille dame;SUB;;
+VII e;DETnum;;
+vii e;DETnum;;
+VIII e;DETnum;;
+viii e;DETnum;;
+vis à vis;ADV;vis-à-vis;
+vis-à-vis;ADV;;
+vis-à-vis de;PREP;;
+Votre Excellence;NAMEpers;;
+vouloir dire;VERB;;
+vox populi;SUB;;
+vulgum pecus;SUB;;
+wait and see;SUB;;
+wall street;SUB;;
+way of life;SUB;;
+week end;SUB;;
+world music;SUB;;
+X e;DETnum;;
+x e;DETnum;;
+XI e;DETnum;;
+xi e;DETnum;;
+XII e;DETnum;;
+xii e;DETnum;;
+XIII e;DETnum;;
+xiii e;DETnum;;
+XIV e;DETnum;;
+xiv e;DETnum;;
+XIX e;DETnum;;
+xix e;DETnum;;
+XVI e;DETnum;;
+xvi e;DETnum;;
+XVII e;DETnum;;
+xvii e;DETnum;;
+XVIII e;DETnum;;
+xviii e;DETnum;;
+XX e;DETnum;;
+xx e;DETnum;;
+XXI e;DETnum;;
+xxi e;DETnum;;
+XXII e;DETnum;;
+xxii e;DETnum;;
+XXIII e;DETnum;;
+xxiii e;DETnum;;
+XXIV e;DETnum;;
+xxiv e;DETnum;;
+XXIX e;DETnum;;
+xxix e;DETnum;;
+XXV e;DETnum;;
+xxv e;DETnum;;
+XXVI e;DETnum;;
+xxvi e;DETnum;;
+XXVII e;DETnum;;
+xxvii e;DETnum;;
+XXVIII e;DETnum;;
+xxviii e;DETnum;;
+XXX e;DETnum;;
+xxx e;DETnum;;
+y compris;PREP;;
+yom kippour;SUB;;
+yom kippur;SUB;;

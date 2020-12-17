@@ -124,21 +124,34 @@ public class ML
     if (end > xml.length()) end = xml.length();
     if (begin > end) return;
     
-    boolean lt = false, first = true, space = false;
+    
+    boolean start = true; // before first tag (avoid broken tag)
+    boolean lt = false; //  tag is started
+    boolean closing = false; // closing tag </…>
+    boolean space = false; // a space have been sent
+
+    char lastPrint = ' ';
+    char lastChar = ' ';
     for (int i = begin; i < end; i++) {
       char c = xml.charAt(i);
       switch (c) {
         case '<':
           space = false; // renew space flag
-          first = false; // no broken tag at start
+          start = false; // no broken tag at start
           lt = true;
+          // pb with bad indent html
+          //tique.</p><p class="p">Ains
+          if (lastChar == '>' && Char.isPUNsent(lastPrint)) {
+            lastPrint = ' ';
+            dest.append(' ');
+          }
           break;
         case '>':
           lt = false;
           // a broken tag at start, erase what was appended
-          if (first) {
+          if (start) {
             dest.reset();
-            first = false;
+            start = false;
             break;
           }
           break;
@@ -150,12 +163,15 @@ public class ML
           if(space) break; // second or more space, skip
           space = true; // stop record space
           dest.append(' ');
+          lastPrint = ' ';
           break;
         default:
           if (lt) break; // char in tag, skip
           space = false; // renew space flag
           dest.append(c);
+          lastPrint = c;
       }
+      lastChar = c;
     }
   }
 

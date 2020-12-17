@@ -42,9 +42,11 @@ import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FutureObjects;
+import org.apache.lucene.util.UnicodeUtil;
 
 import alix.util.Chain;
 import alix.util.Char;
+import alix.lucene.analysis.FrDics;
 
 /**
  * An implementation of Lucene {@link CharTermAttribute} designed to be
@@ -156,6 +158,11 @@ public class CharsAtt extends AttributeImpl
   public final CharsAtt setLength(int length)
   {
     hash = 0;
+    if (length < 0) {
+      len += length;
+      if (len < 0) throw new IndexOutOfBoundsException("len < "+-length);
+      return this;
+    }
     FutureObjects.checkFromIndexSize(0, length, chars.length);
     len = length;
     return this;
@@ -318,6 +325,24 @@ public class CharsAtt extends AttributeImpl
     hash = 0;
     len = ta.length();
     System.arraycopy(ta.buffer(), 0, resizeBuffer(this.len), 0, len);
+    return this;
+  }
+
+  /**
+   * Copy UTF-8 bytes {@link BytesRef} in the char[] buffer.
+   * Used by Alix to test UTF-8 bytes against chars[] stores in HashMap
+   * {@link FrDics}
+   * @param ta
+   * @return
+   */
+  public final CharTermAttribute copy(BytesRef bytes)
+  {
+    // content modified, reset hashCode
+    hash = 0;
+    // ensure buffer size at bytes length
+    char[] chars = resizeBuffer(bytes.length);
+    // get the length in chars after conversion
+    this.len = UnicodeUtil.UTF8toUTF16(bytes.bytes, bytes.offset, bytes.length, chars);
     return this;
   }
 

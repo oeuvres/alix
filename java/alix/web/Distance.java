@@ -6,7 +6,7 @@ import java.util.List;
 
 public enum Distance implements Select
 {
-  none("Aucune", new None()),
+  none("Occurrences", new None()),
   jaccard("Jaccard", new Jaccard()),
   dice("Dice", new Jaccard())
   ;

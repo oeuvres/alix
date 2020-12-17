@@ -54,7 +54,6 @@ public class FrAnalyzer extends Analyzer
     TokenStream result = new FrLemFilter(source); // provide lemma+pos
     result = new FrPersnameFilter(result); // link names: V. Hugo
     result = new CompoundFilter(result); // compounds: parce que
-    // TokenStream result = new CompoundFilter(source);
     boolean pun = false;
     if ("query".startsWith(field)) pun = true; // keep punctuation, ex, to parse query
     result = new FlagCloudFilter(result, pun); // select lemmas as term to index

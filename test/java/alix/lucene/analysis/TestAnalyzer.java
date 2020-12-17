@@ -222,9 +222,10 @@ public class TestAnalyzer
   
   public static void compounds() throws IOException
   {
-    // text to tokenize
-    String text = "Allons-y ! Mon Dieu… Mais alors ? D’abord, d’autre part, d’ailleurs, "
-        + "le chemin de fer d’intérêt local au moyen âge. <num>xiii<hi rend=\"sup\">e</hi></num> siècle."
+    String text = "";// text to tokenize
+    text = " qui a de bons points (un bon point). Or les bons points vont aux parfaits imitateurs."
+        + " Allons-y ! Mon Dieu… Mais alors ? D’abord, d’autre part, d’ailleurs, "
+        + " le chemin de fer d’intérêt local au moyen âge. <num>xiii<hi rend=\"sup\">e</hi></num> siècle."
         + " J’ai écrit ce livre à New York, dit l’Évangile."
         + " Et l’Éternel Dieu dit : Qui t’a appris que tu es nu ? "
         + " Traduction française par J. Herbomez et R. Beaurieux. faire faire <pb n=\"404\" xml:id=\"p404\"/> l’amour. "
@@ -236,6 +237,8 @@ public class TestAnalyzer
         "              leurs conséquences. Espérons qu’un jour le dix-neuvième siècle, politique et\n" + 
         "              littéraire, pourra être résumé d’un mot : la liberté dans l’ordre, la liberté dans\n" + 
         "              l’art.</p>"; // bug on art.
+    text = " Le bon point du chemin de toits, c’est celui du chemin de fer d’intérêt local.";
+    text = "Les bonnes volontés sont engagées.";
     vertical(text, new AnalyzerCompounds());
   }
 

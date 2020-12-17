@@ -23,8 +23,8 @@ public class TestML
   
   public static void detag()
   {
-    String xml = "<a href=\"#\" class=\"bibl\"><span class=\"byline\"><span class=\"persName\"><span class=\"surname\">Lamartine</span>, "
-        + "Alphonse de</span>.</span> <span class=\"year\">(1864)</span> <span class=\"title\">Cours familier de littérature. XVII</span>. "
+    String xml = " class=\"bibl\"><span class=\"byline\"><span class=\"persName\"><span class=\"surname\">Lamartine</span>, "
+        + "Alphonse de</span>.</span>\n<span class=\"year\">(1864)</span>.</p><p><span class=\"title\">Cours familier de littérature. XVII</span>. "
         + "\n<span class=\"pages\">pp. 153-232</span>.  « <span class=\"analytic\">XCIX<sup>e</sup> entretien.   Benvenuto Cellini (1<sup>re</sup>partie)</span> »\n" + 
         "</a>";
     System.out.println(ML.detag(xml));
@@ -55,7 +55,7 @@ public class TestML
 
   public static void main(String args[]) throws IOException, SQLException, ParseException
   {
-    words();
+    detag();
   }
 
 }

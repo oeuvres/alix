@@ -219,7 +219,7 @@ public class TestChar
   
   public static void props()
   {
-    String test = "^1Aa  😀();-,_.;!? ■A\n°^�&-.6<Œ" + (char) 0xAD;
+    String test = "⁂^1Aa  😀();-,_.;!? ■A\n°^�&-.6<Œ" + (char) 0xAD;
     for (int i = 0, n = test.length(); i < n; i++) {
       char c = test.charAt(i);
       System.out.println(Char.toString(c));
@@ -230,12 +230,15 @@ public class TestChar
    */
   public static void main(String args[]) throws Exception
   {
+    /*
     String sent = "Pour découper\nles mots, rapidement : rappelez-vous votre binaire";
     System.out.println("Character_isWhiteSpace "+tokenize(sent, new Character_isWhiteSpace()));
     System.out.println("Character_isSpaceChar "+tokenize(sent, new Character_isSpaceChar()));
     System.out.println("Character_isPunOrSpace "+tokenize(sent, new Character_isPunOrSpace()));
     System.out.println("Char_isPunctuationOrSpace "+tokenize(sent, new Char_isPunctuationOrSpace()));
     charIs();
+    */
+    props();
   }
 
 }

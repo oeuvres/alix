@@ -456,7 +456,6 @@ public class Doc
     DocRail rail = new DocRail(tvek, include, null);
     Token[] toks = rail.toks;
     // group tokens for expression ?
-    System.out.println(include.getSize());
     // do better testing here
     if(expressions) toks = rail.group(gap);
     // no token or expression found
@@ -489,6 +488,9 @@ public class Doc
 
   public String hilite(final String field, final String[] terms) throws NoSuchFieldException, IOException
   {
+    if (terms == null || terms.length < 1) {
+      return get(field);
+    }
     Automaton automaton = WordsAutomatonBuilder.buildFronStrings(terms);
     ByteRunAutomaton include = new ByteRunAutomaton(automaton);
     return hilite(field, include);

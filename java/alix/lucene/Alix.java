@@ -720,6 +720,8 @@ u   * @throws IOException
     try {
       while (ts.incrementToken()) {
         if (Tag.isPun(flags.getFlags())) continue;
+        // position may have been striped
+        if (token.length() == 0) continue;
         if (bq == null && qTerm != null) { // second term, create boolean
           bq = new BooleanQuery.Builder();
           bq.add(qTerm, op);

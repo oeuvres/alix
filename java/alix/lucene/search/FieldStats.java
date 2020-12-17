@@ -50,7 +50,7 @@ import alix.lucene.analysis.FrDics;
 
 /**
  * An object recording different stats for a text field. 
- * For performances, all fields are visible, so it is unsafe.
+ * For performances, all fields of the class are visible, so it is unsafe.
  * @author fred
  *
  */

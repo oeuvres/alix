@@ -478,6 +478,9 @@ public final class Tag
     public void clear() {
       bits.clear();
     }
+    public TagFilter setSub() {
+      return setGroup(SUB);
+    }
     public TagFilter setName() {
       return setGroup(NAME);
     }
