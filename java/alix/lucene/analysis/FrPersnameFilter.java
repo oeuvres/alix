@@ -43,7 +43,7 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import alix.fr.Tag;
-import alix.lucene.analysis.FrDics.NameEntry;
+import alix.lucene.analysis.FrDics.LexEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
@@ -154,7 +154,7 @@ public class FrPersnameFilter extends TokenFilter
     // posLenAtt.setPositionLength(pos);
     // get tag
     lem.setEmpty(); // the actual stop token may have set a lemma not relevant for names
-    NameEntry entry = FrDics.name(name);
+    LexEntry entry = FrDics.name(name);
     if (entry == null) {
       flagsAtt.setFlags(Tag.NAME);
       term.setEmpty().append(name);
@@ -163,7 +163,7 @@ public class FrPersnameFilter extends TokenFilter
     else {
       flagsAtt.setFlags(entry.tag);
       // normalized version is same as lem
-      if (entry.orth != null) orth.setEmpty().append(entry.orth);
+      if (entry.lem != null) orth.setEmpty().append(entry.lem);
       else orth.setEmpty().append(name);
       term.setEmpty().append(name);
     }

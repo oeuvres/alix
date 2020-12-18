@@ -302,7 +302,7 @@ public class Lexer
      * Test if rule is relevant to an occurrence and its context TODO: how to get an
      * occurrence next if needed to test rule?
      * 
-     * @param center
+     * @param pointer
      * @return false if rule do not apply
      */
     public boolean match(final Occ occ)

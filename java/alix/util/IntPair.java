@@ -125,8 +125,8 @@ public class IntPair implements Comparable<IntPair>
     if (o instanceof IntRoll) {
       IntRoll roll = (IntRoll) o;
       if (roll.size != 2) return false;
-      if (x != roll.get(roll.right)) return false;
-      if (y != roll.get(roll.right + 1)) return false;
+      if (x != roll.get(0)) return false;
+      if (y != roll.get(1)) return false;
       return true;
     }
     return false;

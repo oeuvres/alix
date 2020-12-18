@@ -7,7 +7,8 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-import alix.util.DicVek.SimRow;
+import alix.deprecated.DicVek;
+import alix.deprecated.DicVek.SimRow;
 
 public class TestDicVek
 {

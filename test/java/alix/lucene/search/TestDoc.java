@@ -56,12 +56,13 @@ public class TestDoc
   
   public static void kwic() throws IOException, NoSuchFieldException
   {
-    final Alix alix = Alix.instance("web/WEB-INF/obvil/critique/", new FrAnalyzer());
-    Doc doc = new Doc(alix, 2717);
-    Automaton automaton = WordsAutomatonBuilder.buildFronStrings(new String[] {"esprit", "philosophique"});
+    final Alix alix = Alix.instance("/home/fred/code/ddrlab/WEB-INF/bases/rougemont", new FrAnalyzer());
+    Doc doc = new Doc(alix, 228);
+    System.out.println(doc.id);
+    Automaton automaton = WordsAutomatonBuilder.buildFronStrings(new String[] {"état"});
     ByteRunAutomaton include = new ByteRunAutomaton(automaton);
 
-    String[] lines = doc.kwic("text", include, "", 200, 50, 50, 1, true);
+    String[] lines = doc.kwic("text", include, "", 200, 50, 50, 1, false);
     if (lines == null) return;
     for (String l:lines) { // null is OK if noting to group
       System.out.println(l);

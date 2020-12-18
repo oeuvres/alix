@@ -42,9 +42,11 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import alix.fr.Tag;
+import alix.lucene.analysis.FrDics.LexEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import alix.util.Roll;
 
 /**
  * Plug behind TokenLem
@@ -64,7 +66,7 @@ public class CompoundFilter extends TokenFilter
   /** A lemma when possible */
   private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
   /** A stack of sates  */
-  private LinkedList<State> stack = new LinkedList<State>();
+  private Roll<State> stack = new Roll<State>(10);
   /** A term used to concat a compound */
   private CharsAtt lemCom = new CharsAtt();
   /** A term used to concat a compound */
@@ -102,7 +104,7 @@ public class CompoundFilter extends TokenFilter
     boolean token = false;
     lemCom.setEmpty();
     orthCom.setEmpty();
-    Integer trie;
+    LexEntry entry;
     int loop = -1;
     int startOffset = offsetAtt.startOffset();;
     do {
@@ -154,11 +156,11 @@ public class CompoundFilter extends TokenFilter
       if (loop > 0 && !orthCom.endsWith('\'')) orthCom.append(' '); 
       if (orth.length() != 0) orthCom.append(orth);
       else orthCom.append(termAtt);
-      trie = FrDics.COMPOUND.get(orthCom);
-      if (trie == null) trie = FrDics.COMPOUND.get(lemCom);
+      entry = FrDics.COMPOUND.get(orthCom);
+      if (entry == null) entry = FrDics.COMPOUND.get(lemCom);
       
 
-      if (trie == null) {
+      if (entry == null) {
         // if nothing in stack, and new token, go out with current state
         if (stack.isEmpty() && loop == 0) return exit;
         // if stack is not empty and a new token, add it to the stack
@@ -169,17 +171,17 @@ public class CompoundFilter extends TokenFilter
       }
       
       
-      int flags = trie;
       // it’s a compound
-      if ((flags & FrDics.LEAF) > 0) {
+      if (entry.isLeaf()) {
         stack.clear();
         termAtt.setEmpty().append(orthCom);
-        orth.setEmpty().append(orthCom);
-        lemAtt.setEmpty().append(lemCom);
-        flagsAtt.setFlags(flags & 0xFF); // set tag (without the trie flags)
+        orth.setEmpty().append(lemCom);
+        if (entry.lem != null) lemAtt.setEmpty().append(entry.lem);
+        else lemAtt.setEmpty().append(lemCom);
+        flagsAtt.setFlags(entry.tag); 
         offsetAtt.setOffset(startOffset, offsetAtt.endOffset());
         // no more compound with this prefix, we are happy
-        if ((flags & FrDics.BRANCH) == 0) return exit;
+        if (!entry.isBranch()) return exit;
         // compound may continue, lookahead should continue, store this step
         stack.add(captureState());
       }

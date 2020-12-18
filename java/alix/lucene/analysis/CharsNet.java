@@ -39,7 +39,7 @@ import java.util.HashMap;
 import alix.fr.Tag;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.IntPair;
-import alix.util.ObjRoll;
+import alix.util.Roll;
 
 /**
  * A dictionary to record 
@@ -51,7 +51,7 @@ public class CharsNet
   /** width of tokens to link between */
   final int width;
   /** last Node seen for the graph */
-  private final ObjRoll<Node> nodeRoll;
+  private final Roll<Node> nodeRoll;
   /** Set if node slider is full */
   private boolean nodeFull;
   /** Auto-increment node id */
@@ -75,7 +75,7 @@ public class CharsNet
     if (width < 2)
       throw new IndexOutOfBoundsException("Width of nodes window should have 2 or more nodes to link between.");
     this.width = width;
-    nodeRoll = new ObjRoll<Node>(1 - width, 0);
+    nodeRoll = new Roll<Node>(width);
   }
 
   public void inc(final CharsAtt token)
@@ -95,10 +95,10 @@ public class CharsNet
       nodeList = null; // modification of nodeList
     }
     pivot.count++;
-    nodeRoll.push(pivot);
+    nodeRoll.add(pivot);
     int nodes = width;
     if (!nodeFull) {
-      nodes = nodeRoll.pushCount();
+      nodes = nodeRoll.size();
       if (nodes < 2) return; // not enough nodes
       if (nodes >= width) nodeFull = true; // roll is full
     }

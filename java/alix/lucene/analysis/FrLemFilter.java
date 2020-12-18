@@ -41,7 +41,6 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import alix.fr.Tag;
 import alix.lucene.analysis.FrDics.LexEntry;
-import alix.lucene.analysis.FrDics.NameEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
@@ -133,8 +132,7 @@ public final class FrLemFilter extends TokenFilter
     if (!Char.isToken(c1)) return true;
     
     
-    LexEntry word;
-    NameEntry name;
+    LexEntry entry;
     // First letter of token is upper case, is it a name ? Is it an upper case header ?
     if (Char.isUpperCase(c1)) {
       
@@ -151,22 +149,22 @@ public final class FrLemFilter extends TokenFilter
       FrDics.norm(orth); // normalise : Etat -> État
       copy.copy(orth);
       // c1 = orth.charAt(0); // keep initial cap, maybe useful
-      name = FrDics.name(orth); // known name ?
-      if (name != null) {
-        flagsAtt.setFlags(name.tag);
+      entry = FrDics.name(orth); // known name ?
+      if (entry != null) {
+        flagsAtt.setFlags(entry.tag);
         // maybe a normalized form for the name
-        if (name.orth != null) orth.copy(name.orth);
+        if (entry.lem != null) orth.copy(entry.lem);
         return true;
       }
-      word = FrDics.word(orth.toLower()); // known word ?
-      if (word != null) { // known word
+      entry = FrDics.word(orth.toLower()); // known word ?
+      if (entry != null) { // known word
         // if not after a pun, maybe a capitalized concept État, or a name La Fontaine, 
         // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc. 
         // restore initial cap
         if (!waspun) termAtt.buffer()[0] = c1;
-        flagsAtt.setFlags(word.tag);
-        if (word.lem != null) {
-          lemAtt.append(word.lem);
+        flagsAtt.setFlags(entry.tag);
+        if (entry.lem != null) {
+          lemAtt.append(entry.lem);
         }
         return true;
       }
@@ -178,13 +176,13 @@ public final class FrLemFilter extends TokenFilter
     }
     else {
       FrDics.norm(orth); // normalise oeil -> œil
-      word = FrDics.word(orth);
-      if (word == null) return true;
+      entry = FrDics.word(orth);
+      if (entry == null) return true;
       // known word
-      flagsAtt.setFlags(word.tag);
-      if (word.lem != null) {
+      flagsAtt.setFlags(entry.tag);
+      if (entry.lem != null) {
         // who set length to 0 here ?
-        lemAtt.append(word.lem);
+        lemAtt.append(entry.lem);
       }
     }
     return true;

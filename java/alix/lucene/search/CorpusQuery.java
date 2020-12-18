@@ -64,7 +64,8 @@ public class CorpusQuery extends Query
    * @param corpus
    */
   public CorpusQuery(final String name, final BitSet corpus) {
-    this.name = name;
+    if (name == null) this.name = "mon corpus";
+    else this.name = name;
     this.corpus = corpus;
   }
   

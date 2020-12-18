@@ -230,12 +230,12 @@ public class Expressions
   public static void main(String[] args) throws IOException
   {
     Expressions collocs = new Expressions();
-    /*
-    collocs.parse("Le con joue le rôle de la victime.", true);
+
+    collocs.parse("Le xx<sup>e</sup> siècle.", true);
     System.out.println(collocs.top(10));
-    */
-    collocs.glob("/var/www/html/ddr-livres/*.xml");
-    System.out.println(collocs.top(100));
+    
+    // collocs.glob("/var/www/html/ddr-livres/*.xml");
+    // System.out.println(collocs.top(100));
   }
   
 }

@@ -40,6 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import alix.fr.Tag;
+import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
@@ -78,8 +79,8 @@ public class FlagCloudFilter extends TokenFilter
     // filter some non semantic token
     if (Tag.isPun(tag) && !pun) return false;
     if (Tag.isNum(tag)) return false;
-    // replace term by lemma for substantives, adjectives and verbs
-    if ((Tag.isAdj(tag) || Tag.isVerb(tag) || Tag.isSub(tag)) && (lemAtt.length() != 0)) {
+    // replace term by lemma when available
+    if (lemAtt.length() != 0) {
       termAtt.setEmpty().append(lemAtt);
     }
     // or take the normalized form
@@ -88,6 +89,7 @@ public class FlagCloudFilter extends TokenFilter
     }
     // filter some names
     if (Tag.isName(tag)) {
+      /*
       if (termAtt.length() < 3) return false;
       // filter first names 
       if (tag == Tag.NAMEpersf || tag == Tag.NAMEpersm) return false;
@@ -95,8 +97,11 @@ public class FlagCloudFilter extends TokenFilter
       if (termAtt.charAt(termAtt.length() - 1) == '.') return false;
       // J.-J
       if (termAtt.charAt(termAtt.length() - 2) == '-') return false;
-      return true;
+      */
     }
+    // last normalization
+    CharsAtt val = FrDics.LOCAL.get(termAtt);
+    if (val != null) termAtt.setEmpty().append(val);
     return true;
   }
 

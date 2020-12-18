@@ -3,6 +3,7 @@ package alix.lucene.analysis;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 
 import alix.fr.Tag;
+import alix.lucene.analysis.FrDics.LexEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.util.WordsAutomatonBuilder;
 import alix.util.Chain;
@@ -132,15 +134,14 @@ public class TestFrDics
   {
     
     CharsAtt key = new CharsAtt();
-    for (String word: new String[] {"chemin", "chemin de", "d'abord", "d'ailleurs", "chemin de fer", "chemin de fer d'intérêt local", "ma"}) {
+    for (String word: new String[] {"chemin", "douzième", "douzième siècle", "chemin de", "rien", "d'abord", "d'ailleurs", "chemin de fer", "chemin de fer d'intérêt local", "moustérien"}) {
       System.out.print(word);
       key.setEmpty().append(word);
-      Integer flags = FrDics.COMPOUND.get(key);
-      if (flags != null) {
-        System.out.print(" "+flags);
-        System.out.print(" "+Tag.label(flags));
-        if ( (flags & FrDics.BRANCH) > 0 ) System.out.print(" BRANCH");
-        if ( (flags & FrDics.LEAF) > 0 ) System.out.print(" LEAF");
+      LexEntry entry = FrDics.COMPOUND.get(key);
+      if (entry != null) {
+        System.out.print(" "+Tag.label(entry.tag));
+        if ( entry.isBranch() ) System.out.print(" BRANCH");
+        if ( entry.isLeaf() ) System.out.print(" LEAF");
       }
       System.out.println();
     }
@@ -148,13 +149,20 @@ public class TestFrDics
   
   public static void compoundsDic()
   {
-    HashMap<CharsAtt, Integer> compounds = new HashMap<CharsAtt, Integer>();
-    FrDics.tree("/alix/lucene/analysis/TestCompounds.csv", compounds);
+    HashMap<CharsAtt, LexEntry> compounds = new HashMap<CharsAtt, LexEntry>();
+    String entries = "GRAPH;CAT\n"
+     + "chemin de fer;SUB\n"
+     + "douzième siècle;SUB;12e siècle\n"
+     + "chemin de fer d'intérêt local;SUB\n"
+     + "chemin vicinal;SUB\n"
+    ;
+    FrDics.tree(new StringReader(entries), compounds);
     System.out.println(compounds);
   }
   
   public static void main(String[] args) throws IOException
   {
+    // hashing();
     compoundsDic();
     compounds();
   }

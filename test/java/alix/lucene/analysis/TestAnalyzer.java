@@ -237,8 +237,9 @@ public class TestAnalyzer
         "              leurs conséquences. Espérons qu’un jour le dix-neuvième siècle, politique et\n" + 
         "              littéraire, pourra être résumé d’un mot : la liberté dans l’ordre, la liberté dans\n" + 
         "              l’art.</p>"; // bug on art.
-    text = " Le bon point du chemin de toits, c’est celui du chemin de fer d’intérêt local.";
-    text = "Les bonnes volontés sont engagées.";
+    text = " Le bon point du chemin au douzième siècle, 12e siècle, c’est celui du chemin de fer d’intérêt local.";
+    text = "Il y avait beaucoup de bonnes volontés engagées.";
+    text = " n’était qu’un Pacte d’alliance entre vingt‑cinq </span><span class=\"right\"><a href=\"#pos99\">États</a> absolument souverains.";
     vertical(text, new AnalyzerCompounds());
   }
 
