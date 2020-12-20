@@ -60,16 +60,20 @@ public class TopTerms
   private double[] scores;
   /** An optional field by termId, total count of words */
   private long[] lengths;
-  /** Total count of documents in the collection. */
+  /** Total count of documents in the collection (for scorer) */
   protected int docsAll;
+  /** Count of docs for this dictionary */
+  protected int docsCount;
   /** An optional field by termId, total of relevant docs b */
   protected int[] docs;
   /** An optional field by termId, relevant  docs b */
   protected int[] hits;
-  /** Total count of occurrences in the collection. */
+  /** Total count of occurrences in the collection (for scorer) */
   protected long occsAll;
+  /** Count of occs for this dictionary */
+  protected long occsCount;
   /** An optional field by termId, count of matching occurences */
-  protected int[] occs;
+  protected long[] occs;
   /** An optional field by termId, docid used as a cover for a term like a title or an author */
   protected int[] covers;
   /** An optional field by termId, index of term in a series, like a sorted query */
@@ -101,14 +105,35 @@ public class TopTerms
 
   /**
    * Set global stats.
-   * @param occsAll Total count of occurrences in the collection.
-   * @param docsAll Total count of documents in the collection.
+   * @param occsAll Total count of occurrences of the full collection.
+   * @param docsAll Total count of documents of the full collection.
    */
   public TopTerms setAll(final long occsAll, final int docsAll) 
   {
     this.occsAll = occsAll;
     this.docsAll = docsAll;
     return this;
+  }
+
+  /**
+   * Set stats for the part of collection
+   * @param occsCount Count of occurrences from which the dictionary is extracted
+   * @param docsCount Count of documents from which the dictionary is extracted
+   */
+  public TopTerms setCounts(final long occsCount, final int docsCount) 
+  {
+    this.occsCount = occsCount;
+    this.docsCount = docsCount;
+    return this;
+  }
+  
+  public long occsCount()
+  {
+    return occsCount;
+  }
+  public long docsCount()
+  {
+    return docsCount;
   }
 
   /**
@@ -300,7 +325,7 @@ public class TopTerms
    * 
    * @param occs
    */
-  public TopTerms setOccs(final int[] occs)
+  public TopTerms setOccs(final long[] occs)
   {
     this.occs = occs;
     return this;
@@ -330,6 +355,14 @@ public class TopTerms
     return this;
   }
 
+  public TopTerms sortByFrantext()
+  {
+    if (scores == null) throw new NullPointerException("No scores to sort on, see setScores()");
+    sort(scores);
+    return this;
+  }
+
+  
   /**
    * Set an optional int array of docids in termId order.
    * @param covers
@@ -492,6 +525,21 @@ public class TopTerms
   public long occs()
   {
     return occs[termId];
+  }
+  
+
+  public long occs(final int termId)
+  {
+    return occs[termId];
+  }
+
+  /**
+   * Get the total count of occurrences for the set of documents.
+   * @return
+   */
+  public long occsAll()
+  {
+    return occsAll;
   }
 
   /**

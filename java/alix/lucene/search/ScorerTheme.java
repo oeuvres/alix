@@ -35,7 +35,7 @@ package alix.lucene.search;
 public class ScorerTheme extends Scorer
 {
   /** Store idf */
-  float freqAvg;
+  double freqAvg;
 
   public ScorerTheme()
   {
@@ -51,11 +51,11 @@ public class ScorerTheme extends Scorer
   @Override
   public void weight(final long occsMatch, final int docsMatch)
   {
-    this.freqAvg = (float) occsMatch / docsMatch;
+    this.freqAvg = (double) occsMatch / docsMatch;
   }
 
   @Override
-  public double score(final int occsDoc, final long docLen)
+  public double score(final long occsDoc, final long docLen)
   {
     if (occsDoc == 0) return 0;
     // float avg = (float) occsDoc / docLen;

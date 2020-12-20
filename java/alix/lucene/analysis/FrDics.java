@@ -271,9 +271,9 @@ public class FrDics
   {
     public int tag;
     public CharsAtt lem;
-    public float freq = 3;
-    boolean branch;
-    boolean leaf;
+    public float lemfreq = 3;
+    private boolean branch;
+    private boolean leaf;
 
     /**
      * Empty lex 
@@ -295,11 +295,11 @@ public class FrDics
       else this.lem = new CharsAtt(lem);
     }
 
-    public LexEntry(final Chain tag, final Chain lem, final Chain freq) throws ParseException
+    public LexEntry(final Chain tag, final Chain lem, final Chain lemfreq) throws ParseException
     {
       this(tag, lem);
-      if (!freq.isEmpty()) try {
-        this.freq = Float.parseFloat(freq.toString());
+      if (!lemfreq.isEmpty()) try {
+        this.lemfreq = Float.parseFloat(lemfreq.toString());
       }
       catch (NumberFormatException e) {
       }

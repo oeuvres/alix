@@ -128,6 +128,11 @@ public class Corpus
     add(books);
   }
 
+  public Corpus(Alix alix, String bookid) throws IOException
+  {
+    this(alix, new String[] {bookid});
+  }
+  
   /**
    * @param alix
    *          Link to a lucene index.
@@ -245,18 +250,32 @@ public class Corpus
   private int addBits(Query q) throws IOException
   {
     IndexSearcher searcher = alix.searcher();
-    CollectorBits collector = new AddBits();
+    CollectorBits collector = new AddBits(docs);
     searcher.search(q, collector);
     return collector.hits;
   }
 
+  static public BitSet bits(Alix alix, String field,  String[] books) throws IOException
+  {
+    BitSet bits = new FixedBitSet(alix.maxDoc());
+    BooleanQuery.Builder bq = new BooleanQuery.Builder();
+    for (String bookid : books) {
+      bq.add(new TermQuery(new Term(field, bookid)), BooleanClause.Occur.SHOULD);
+    }
+    Query q = bq.build();
+    IndexSearcher searcher = alix.searcher();
+    CollectorBits collector = new AddBits(bits);
+    searcher.search(q, collector);
+    return bits;
+  }
+  
   /**
    * Modifiy the local vector of docs according to a query of bookids.
    */
   private int removeBits(Query q) throws IOException
   {
     IndexSearcher searcher = alix.searcher();
-    CollectorBits collector = new RemoveBits();
+    CollectorBits collector = new RemoveBits(docs);
     searcher.search(q, collector);
     return collector.hits;
   }
@@ -280,37 +299,54 @@ public class Corpus
   /**
    * Local collector used to add docId to the vector.
    */
-  class AddBits extends CollectorBits
+  static class AddBits extends CollectorBits
   {
+    public AddBits(BitSet bits)
+    {
+      super(bits);
+    }
+
     @Override
     void update(int docid)
     {
-      docs.set(docid);
+      bits.set(docid);
     }
   }
 
   /**
    * Local collector used to remove docId from the vector.
    */
-  class RemoveBits extends CollectorBits
+  static class RemoveBits extends CollectorBits
   {
+    public RemoveBits(BitSet bits)
+    {
+      super(bits);
+    }
+
     @Override
     void update(int docid)
     {
-      docs.clear(docid);
+      bits.clear(docid);
     }
   }
 
   /**
    * Abstract collector
    */
-  abstract class CollectorBits extends SimpleCollector
+  static abstract class CollectorBits extends SimpleCollector
   {
+    /** A lucene fixed BitSet of docId */
+    final BitSet bits;
     /** The base of the leaf index */
     private int docBase;
     /** Docs matched */
     private int hits = 0;
 
+    public CollectorBits(final BitSet bits)
+    {
+      this.bits = bits;
+    }
+    
     @Override
     protected void doSetNextReader(LeafReaderContext context) throws IOException
     {

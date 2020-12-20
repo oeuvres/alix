@@ -77,10 +77,10 @@ public abstract class Scorer
    * Get a score for an item in a collection (ex: a document in a corpus)
    * like the tf (Term Frequency) in the tf-idf
    * 
-   * @param occsDoc Count of matching occurrences in this document.
+   * @param occsDoc Count of matching occurrences in a document (or a section of corpus).
    * @param docLen Total count of occurrences for this document.
    * @return
    */
-  abstract public double score(final int occsDoc, final long docLen);
+  abstract public double score(final long occsDoc, final long docLen);
 
 }

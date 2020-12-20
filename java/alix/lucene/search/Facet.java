@@ -329,7 +329,7 @@ public class Facet
     if (terms != null && terms.sizeNotNull() != 0) {
       double[] scores = new double[size];
       int[] hits = new int[size];
-      int[] occs = new int[size]; // a vector to count matched occurrences by facet
+      long[] occs = new long[size]; // a vector to count matched occurrences by facet
       if (scorer == null) scorer = new ScorerBM25(); // default scorer is BM25 (for now)
       scorer.setAll(occsAll, size);
       // loop on each term of the query to update the score vector

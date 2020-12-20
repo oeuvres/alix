@@ -57,7 +57,7 @@ public class ScorerTfidf extends Scorer
   }
 
   @Override
-  public double score(final int occsMatch, final long docLen)
+  public double score(final long occsMatch, final long docLen)
   {
     return idf * (k + (1 - k) * (double) occsMatch / (double) docLen);
     // return idf * (1 +(float)Math.log(occsMatch));

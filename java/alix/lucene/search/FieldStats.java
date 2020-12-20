@@ -73,7 +73,7 @@ public class FieldStats
   /** Count of docs by termId */
   public int[] termDocs;
   /** Count of occurrences by termId */
-  public final long[] termFreq;
+  public final long[] termOccs;
   /** Stop words known as a bitSet, according to termId, java.util.BitSet is growable */
   private java.util.BitSet stops = new java.util.BitSet(); 
   // No internal pointer on a term, not thread safe
@@ -97,7 +97,7 @@ public class FieldStats
     Scorer scorer = new ScorerBM25(); 
     scorer.setAll(occsAll, docsAll);
     int[] termDocs = null;
-    long[] termLength = null;
+    long[] termOccs = null;
     BytesRef ref;
     // loop on the index leaves
     for (LeafReaderContext context : reader.leaves()) {
@@ -108,7 +108,7 @@ public class FieldStats
       // first leaf
       if (termDocs == null) {
         termDocs = new int[(int) terms.size()];
-        termLength = new long[(int) terms.size()];
+        termOccs = new long[(int) terms.size()];
       }
       TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
       PostingsEnum docsEnum = null;
@@ -121,7 +121,7 @@ public class FieldStats
         if (FrDics.isStop(ref)) stops.set(termId);
         // growing is needed if index has more than one leaf
         termDocs = ArrayUtil.grow(termDocs, termId + 1);
-        termLength = ArrayUtil.grow(termLength, termId + 1);
+        termOccs = ArrayUtil.grow(termOccs, termId + 1);
         termDocs[termId] += tenum.docFreq();
         // termLength[termId] += tenum.totalTermFreq(); // not faster if not yet cached
         docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
@@ -129,7 +129,7 @@ public class FieldStats
         while ((docLeaf = docsEnum.nextDoc()) != END) {
           int freq = docsEnum.freq();
           docLength[docBase + docLeaf] += freq;
-          termLength[termId] += freq;
+          termOccs[termId] += freq;
         }
       }
     }
@@ -137,7 +137,7 @@ public class FieldStats
     this.hashDic = hashDic;
     this.size = hashDic.size();
     this.termDocs = termDocs;
-    this.termFreq = termLength;
+    this.termOccs = termOccs;
     this.docLength = docLength;
     
   }
@@ -183,9 +183,9 @@ public class FieldStats
    * @param termId
    * @return
    */
-  public long freq(int termId)
+  public long occs(int termId)
   {
-    return termFreq[termId];
+    return termOccs[termId];
   }
 
   /**
@@ -213,7 +213,7 @@ public class FieldStats
    * @param termId
    * @return
    */
-  public String label(final int termId)
+  public String term(final int termId)
   {
     BytesRef bytes = new BytesRef();
     this.hashDic.get(termId, bytes);
@@ -226,7 +226,7 @@ public class FieldStats
    * @param bytes
    * @return
    */
-  public BytesRef label(int termId, BytesRef bytes)
+  public BytesRef term(int termId, BytesRef bytes)
   {
     return this.hashDic.get(termId, bytes);
   }
@@ -236,12 +236,12 @@ public class FieldStats
    * 
    * @param s
    */
-  public long freq(final String s)
+  public long occs(final String s)
   {
     final BytesRef bytes = new BytesRef(s);
     final int id = hashDic.find(bytes);
     if (id < 0) return -1;
-    return termFreq[id];
+    return termOccs[id];
   }
 
   /**
@@ -249,11 +249,11 @@ public class FieldStats
    * 
    * @param bytes
    */
-  public long freq(final BytesRef bytes)
+  public long occs(final BytesRef bytes)
   {
     final int id = hashDic.find(bytes);
     if (id < 0) return -1;
-    return termFreq[id];
+    return termOccs[id];
   }
 
   /**
@@ -268,15 +268,21 @@ public class FieldStats
    */
   public TopTerms topTerms(final BitSet filter) throws IOException
   {
+    boolean hasFilter = (filter != null);
     TopTerms dic = new TopTerms(hashDic);
     dic.setAll(occsAll, docsAll);
     // BM25 seems the best scorer
     Scorer scorer = new ScorerBM25(); 
     scorer.setAll(occsAll, docsAll);
-    dic.setLengths(termFreq);
+    dic.setLengths(termOccs);
     dic.setDocs(termDocs);
+    
+    long occsCount = 0;
+    int docsCount = docsAll;
+    if (hasFilter) docsCount = filter.cardinality();
+    
     double[] scores = new double[size];
-    int[] occs = new int[size];
+    long[] occs = new long[size];
     int[] hits = new int[size];
     // A set to avoid duplicate for count of docs bay term
     // final java.util.BitSet docSet = new java.util.BitSet(reader.maxDoc());
@@ -294,19 +300,21 @@ public class FieldStats
         int termId = hashDic.find(bytes);
         // if termId is negative, let the error go, problem in reader
         // for each term, set scorer with global stats
-        scorer.weight(termFreq[termId], termDocs[termId]);
+        scorer.weight(termOccs[termId], termDocs[termId]);
         docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
         int docLeaf;
         while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           int docId = docBase + docLeaf;
-          if (filter != null && !filter.get(docId)) continue; // document not in the filter
+          if (hasFilter && !filter.get(docId)) continue; // document not in the filter
           int freq = docsEnum.freq();
           hits[termId]++;
           scores[termId] += scorer.score(freq, docLength[docId]);
           occs[termId] += freq;
+          occsCount += freq;
         }
       }
     }
+    dic.setCounts(occsCount, docsCount);
     dic.setHits(hits);
     dic.setOccs(occs);
     dic.setScores(scores);
@@ -346,7 +354,7 @@ public class FieldStats
     int len = Math.min(size, 200);
     for (int i = 0; i < len; i++) {
       hashDic.get(i, ref);
-      string.append(ref.utf8ToString() + ": " + termFreq[i] + "\n");
+      string.append(ref.utf8ToString() + ": " + termOccs[i] + "\n");
     }
     return string.toString();
   }

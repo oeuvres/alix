@@ -24,7 +24,7 @@ public class TestCsvReader
       // Path path = Paths.get(Tag.class.getResource("word.csv").toURI());
       // reader = Files.newBufferedReader(path, StandardCharsets.UTF_8);
       reader = new InputStreamReader(Tag.class.getResourceAsStream("word.csv"));
-      CsvReader csv = new CsvReader(reader, 4);
+      CsvReader csv = new CsvReader(reader, 6);
       time = System.nanoTime();
       while (csv.readRow()) {
         i++;

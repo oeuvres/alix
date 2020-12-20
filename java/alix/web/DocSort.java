@@ -55,4 +55,10 @@ public enum DocSort implements Select
   static {
     list = Collections.unmodifiableList(Arrays.asList((Select[]) values()));
   }
+  @Override
+  public String hint()
+  {
+    // TODO Auto-generated method stub
+    return null;
+  }
 }

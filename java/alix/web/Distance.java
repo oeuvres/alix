@@ -6,70 +6,44 @@ import java.util.List;
 
 public enum Distance implements Select
 {
-  none("Occurrences", new None()),
-  jaccard("Jaccard", new Jaccard()),
-  dice("Dice", new Jaccard())
-  ;
-  public final String label;
-  public final Scorer scorer;
-  private Distance(final String label, final Scorer scorer)
-  {
-    this.label = label;
-    this.scorer = scorer;
-  }
-  
-  public double score(final double m11, final double m10, final double m01, final double m00)
-  {
-    return scorer.score(m11, m10, m01, m00);
-  }
-  
-  static public interface Scorer
-  {
-    public double score(final double m11, final double m10, final double m01, final double m00);
-  }
-  
-  static public class None implements Scorer
-  {
+  none("Occurrences", "m11") {
     @Override
     public double score(final double m11, final double m10, final double m01, final double m00)
     {
       return m11;
     }
-  }
-  static public class Jaccard implements Scorer
-  {
+  },
+  jaccard("Jaccard", "m11 / (m10 + m01 + m11)") {
     @Override
     public double score(final double m11, final double m10, final double m01, final double m00)
     {
       return m11 / (m01 + m10 + m11);
     }
-  }
-  static public class Dice implements Scorer
-  {
+  },
+  dice("Dice", "2*m11 / (m10² + m01²)") {
     @Override
     public double score(final double m11, final double m10, final double m01, final double m00)
     {
       return 2 * m11 / (m10 * m10 + m01 * m01);
     }
   }
+  ;
+  private Distance(final String label, final String hint)
+  {
+    this.label = label;
+    this.hint = hint;
+  }
   
-  // sadly repeating myself because enum can’t inherit from an abstract class (an
-  // Enum already extends a class).
+  abstract public double score(final double m11, final double m10, final double m01, final double m00);
+  
+  // sadly repeating myself because enum can’t inherit from an abstract class 
+  final public String label;
+  public String label() { return label; }
+  static final public List<Select> list;
+  static { list = Collections.unmodifiableList(Arrays.asList((Select[]) values())); }
+  public List<Select> list() { return list; }
+  final public String hint;
+  public String hint() { return hint; }
 
-  @Override
-  public String label()
-  {
-    return label;
-  }
 
-  @Override
-  public List<Select> list()
-  {
-    return list;
-  }
-
-  public static List<Select> list;
-  static {
-    list = Collections.unmodifiableList(Arrays.asList((Select[]) values()));
-  }
 }

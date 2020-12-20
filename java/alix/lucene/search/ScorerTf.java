@@ -49,7 +49,7 @@ public class ScorerTf extends Scorer
   }
 
   @Override
-  public double score(final int occsDoc, final long docLen)
+  public double score(final long occsDoc, final long docLen)
   {
     return (double) occsDoc / docLen;
   }

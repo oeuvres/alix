@@ -60,7 +60,7 @@ public class ScorerBM25 extends Scorer
   }
 
   @Override
-  public double score(final int occsDoc, final long docLen)
+  public double score(final long occsDoc, final long docLen)
   {
     return idf * (occsDoc * (k1 + 1)) / (occsDoc + k1 * (1 - b + b * docLen / docAvg));
   }

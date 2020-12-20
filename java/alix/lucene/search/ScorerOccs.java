@@ -49,7 +49,7 @@ public class ScorerOccs extends Scorer
   }
 
   @Override
-  public double score(final int occsMatch, final long docLen)
+  public double score(final long occsMatch, final long docLen)
   {
     return occsMatch;
   }
