@@ -6,28 +6,22 @@ import alix.lucene.Alix;
 import alix.lucene.TestAlix;
 import alix.lucene.analysis.FrAnalyzer;
 import alix.lucene.search.FieldStats;
-import alix.lucene.search.TopTerms;
 
 public class TestFieldStats
 {
-  static public void print(TopTerms terms) {
-    terms.reset();
-    int lines = 100;
-    while (terms.hasNext()) {
-      terms.next();
-      System.out.println(terms.term()+" occs="+terms.occs()+" score="+terms.score());
-      if (--lines <= 0) break;
-    }
-  }
 
   static public void mini() throws IOException
   {
     Alix alix = TestAlix.miniBase();
     String fieldName = TestAlix.fieldName;
     FieldStats fstats = alix.fieldStats(fieldName);
-    TopTerms terms = fstats.topTerms();
-    terms.sortByOccs();
-    print(terms);
+    TermIterator terms = fstats.iterator(-1, null, null, null);
+    terms.reset();
+    while(terms.hasNext()) {
+      terms.next();
+      System.out.println(terms.term()+" occs="+terms.occsMatching() + "/"+ terms.docsField() + " docs=" + terms.docsMatching() + "/" + terms.docsField());
+    }
+    System.out.println(terms);
   }
   
   static public void perfs() throws IOException
@@ -40,7 +34,9 @@ public class TestFieldStats
     System.out.println(fstats);
     System.out.println("Terms in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     time = System.nanoTime();
-    TopTerms terms = fstats.topTerms();
+    // TODO optimize terms
+    /*
+    TermIterator terms terms = fstats.topTerms();
     System.out.println("\n\nDic in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     time = System.nanoTime();
     terms.sortByOccs();
@@ -50,6 +46,7 @@ public class TestFieldStats
     terms.sortByScores();
     System.out.println("\n\nSort by occ in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     print(terms);
+    */
   }
   
   public static void main(String[] args) throws IOException 

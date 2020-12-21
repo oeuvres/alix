@@ -33,6 +33,9 @@
 package alix.lucene.search;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Iterator;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReader;
@@ -46,11 +49,24 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
+import alix.fr.Tag;
+import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.FrDics;
+import alix.lucene.analysis.FrDics.LexEntry;
+import alix.lucene.analysis.tokenattributes.CharsAtt;
+import alix.util.Char;
+import alix.util.TopArray;
 
 /**
- * An object recording different stats for a text field. 
+ * <p>
+ * An object recording different stats for a lucene text field.
+ * Is stable according to a state of the index, could be cached.
+ * Record all counts useful for stats.
  * For performances, all fields of the class are visible, so it is unsafe.
+ * </p>
+ * <p>
+ * Provide slices of stats for Terms as s sorted Iterator
+ * </p>
  * @author fred
  *
  */
@@ -74,6 +90,8 @@ public class FieldStats
   public int[] termDocs;
   /** Count of occurrences by termId */
   public final long[] termOccs;
+  /** A tag by termId (maybe used for filtering) */
+  public int[] termTag;
   /** Stop words known as a bitSet, according to termId, java.util.BitSet is growable */
   private java.util.BitSet stops = new java.util.BitSet(); 
   // No internal pointer on a term, not thread safe
@@ -139,22 +157,28 @@ public class FieldStats
     this.termDocs = termDocs;
     this.termOccs = termOccs;
     this.docLength = docLength;
-    
-  }
-
-  
-  /**
-   * Return the global dictionary of terms for this field with some stats.
-   * frequent first.
-   * 
-   * @return
-   * @throws IOException 
-   */
-  public TopTerms topTerms() throws IOException
-  {
-    // do not cache, user wants its own pointer
-    // global precalculates scores could be cached for efficiency
-    return topTerms(null);
+    // loop on all term ids to get a tag from dictionaries
+    int[] tags = new int[size];
+    BytesRef bytes = new BytesRef();
+    CharsAtt chars = new CharsAtt();
+    for (int termId = 0, max = size; termId < max; termId++) {
+      hashDic.get(termId, bytes);
+      if (bytes.length < 1) continue;
+      chars.copy(bytes);
+      LexEntry entry = FrDics.word(chars);
+      if (entry != null) {
+        tags[termId] = entry.tag;
+        continue;
+      }
+      entry = FrDics.name(chars);
+      if (entry != null) {
+        tags[termId] = entry.tag;
+        continue;
+      }
+      if (chars.length() < 1) continue;
+      if (Char.isUpperCase(chars.charAt(0))) tags[termId] = Tag.NAME;
+    }
+    this.termTag = tags;
   }
 
   /**
@@ -256,39 +280,29 @@ public class FieldStats
     return termOccs[id];
   }
 
+
   /**
    * Count of occurrences by term for a subset of the index,
-   * defined as a BitSet. The return dictionary is not sorted.
-   * Contrasted scores are available by the method scores()
-   * in the dictionary.
-   * 
-   * @param filter
-   * @return A dictionary of terms with diffrent stats.
-   * @throws IOException
+   * defined as a BitSet. Returns an iterator sorted according 
+   * to a scorer. If scorer is null, default is count of occurences.
    */
-  public TopTerms topTerms(final BitSet filter) throws IOException
+  public TermIterator iterator(int limit, final BitSet docs, Scorer scorer, TagFilter tags) throws IOException
   {
-    boolean hasFilter = (filter != null);
-    TopTerms dic = new TopTerms(hashDic);
-    dic.setAll(occsAll, docsAll);
-    // BM25 seems the best scorer
-    Scorer scorer = new ScorerBM25(); 
+    boolean hasDocs = (docs != null);
+    boolean hasTags = (tags != null);
+    boolean noStop = (tags != null && tags.noStop());
+    if (scorer == null) scorer = new ScorerOccs();
     scorer.setAll(occsAll, docsAll);
-    dic.setLengths(termOccs);
-    dic.setDocs(termDocs);
     
     long occsCount = 0;
-    int docsCount = docsAll;
-    if (hasFilter) docsCount = filter.cardinality();
     
     double[] scores = new double[size];
     long[] occs = new long[size];
     int[] hits = new int[size];
-    // A set to avoid duplicate for count of docs bay term
-    // final java.util.BitSet docSet = new java.util.BitSet(reader.maxDoc());
     BytesRef bytes;
     final int[] docLength = this.docLength; // localize var
-    
+    final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
+    // loop an all index to calculate a score for each term before build a more expensive object
     for (LeafReaderContext context : reader.leaves()) {
       int docBase = context.docBase;
       LeafReader leaf = context.reader();
@@ -298,14 +312,17 @@ public class FieldStats
       PostingsEnum docsEnum = null;
       while ((bytes = tenum.next()) != null) {
         int termId = hashDic.find(bytes);
+        // filter some tags
+        if (noStop && isStop(termId)) continue;
+        if (hasTags && !tags.accept(termTag[termId])) continue;
         // if termId is negative, let the error go, problem in reader
         // for each term, set scorer with global stats
         scorer.weight(termOccs[termId], termDocs[termId]);
         docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
         int docLeaf;
-        while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        while ((docLeaf = docsEnum.nextDoc()) != NO_MORE_DOCS) {
           int docId = docBase + docLeaf;
-          if (hasFilter && !filter.get(docId)) continue; // document not in the filter
+          if (hasDocs && !docs.get(docId)) continue; // document not in the filter
           int freq = docsEnum.freq();
           hits[termId]++;
           scores[termId] += scorer.score(freq, docLength[docId]);
@@ -314,12 +331,31 @@ public class FieldStats
         }
       }
     }
-    dic.setCounts(occsCount, docsCount);
-    dic.setHits(hits);
-    dic.setOccs(occs);
-    dic.setScores(scores);
-    return dic;
+    
+    // now we have all we need to build a sorted iterator on entries
+    TopArray top = new TopArray(limit, scores);
+    TermIterator it = new TermIterator(this, top.toArray());
+    // add some more stats on this iterator
+    
+    it.hits = hits;
+    it.occs = occs;
+    it.scores = scores;
+    it.occsCount = occsCount;
+
+    return it;
   }
+  
+
+  /**
+   * A reusable entry, useful to get pointer on different data.
+   */
+  public class Entry
+  {
+  }
+
+  
+
+
   /**
    * Get a dictionary of terms, without statistics.
    * @param reader

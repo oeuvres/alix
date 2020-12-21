@@ -74,13 +74,38 @@ public class TopArray implements Iterable<TopArray.Entry>
    * @param size
    * @param freqs
    */
-  public TopArray(final int size, final int[] freqs)
+  public TopArray(int size, final int[] freqs)
   {
     this(size);
     int length = freqs.length;
     for (int id = 0; id < length; id++) push(id, freqs[id]);
   }
-  
+
+  /**
+   * Constructor with an array where index is id, and value is score.
+   * 
+   * @param size
+   * @param freqs
+   */
+  public TopArray(int size, final double[] freqs)
+  {
+    if (size < 1) {
+      size = freqs.length;
+      this.size = size;
+      data = new Entry[size];
+      fill = size;
+      full = true;
+      for (int id = 0; id < size; id++) data[id] = new Entry(id, freqs[id]);
+      sort();
+    }
+    else {
+      this.size = size;
+      data = new Entry[size];
+      int length = freqs.length;
+      for (int id = 0; id < length; id++) push(id, freqs[id]);
+    }
+  }
+
 
   /**
    * Constructor with an array where index is id, and value is score.
@@ -124,7 +149,7 @@ public class TopArray implements Iterable<TopArray.Entry>
   private void sort()
   {
     Arrays.sort(data, 0, fill);
-    last = size - 1;
+    last = fill - 1;
   }
 
   /**

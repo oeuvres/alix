@@ -33,7 +33,6 @@
 package alix.lucene.util;
 
 import java.io.DataInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.nio.IntBuffer;
 import java.nio.MappedByteBuffer;
@@ -58,7 +57,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.BytesRefHash;
 
 import alix.lucene.Alix;
@@ -69,13 +67,14 @@ import alix.util.IntList;
  * Persistent storage of full sequence of all document terms for a field.
  * Used for co-occurrences stats.
  * Data structure of the file
+ * <p>
  * int:maxDoc, maxDoc*[int:docLength], maxDoc*[docLength*[int:termId], int:-1]
  * 
- * ChronicleMap has been tested, but it is not more than x2 compared to lucene BinaryField.
  * 
  * @author fred
  *
  */
+// ChronicleMap has been tested, but it is not more than x2 compared to lucene BinaryField.
 public class Rail
 {
   /** State of the index */
@@ -108,14 +107,9 @@ public class Rail
   {
     this.alix = alix;
     this.fieldName = field;
-    this.fstats = alix.fieldStats(field); // build and cache the dictionary of cache for the field
+    this.fstats = alix.fieldStats(field); // build and cache the dictionary for the field
     this.hashDic = fstats.hashDic;
     this.maxTerm = hashDic.size();
-    /*
-    File tmp = new File(System.getProperty("java.io.tmpdir"), "alix");
-    tmp.mkdirs();
-    this.path = Paths.get(tmp.getPath(), alix.path.getFileName()+"_"+field+".rail");
-    */
     this.path = Paths.get( alix.path.toString(), field+".rail");
     load();
   }
@@ -168,8 +162,6 @@ public class Rail
     lock.close();
     channel.close();
   }
-  
-  
   
   /**
    * Load and calculate index for the rail file

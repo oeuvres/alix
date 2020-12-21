@@ -33,6 +33,7 @@
 package alix.fr;
 
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 
@@ -470,50 +471,62 @@ public final class Tag
   }
 
   /**
-   * A filter for different pos code, implemented as a {@link BitSet};
+   * A filter for different pos code, implemented as a boolean vector.
    */
   public static class TagFilter
   {
-    final BitSet bits = new BitSet(256);
-    public void clear() {
-      bits.clear();
+    /** A boolean vector is a bit more efficient than a bitSet, and is not heavy here. */
+    boolean[] rule = new boolean[256];
+    boolean noStop;
+    
+    
+    
+    public TagFilter clearAll() {
+      rule = new boolean[256];
+      noStop = false;
+      return this;
     }
-    public TagFilter setSub() {
-      return setGroup(SUB);
+    public TagFilter setAll() {
+      Arrays.fill(rule, true);
+      noStop = false;
+      return this;
     }
-    public TagFilter setName() {
-      return setGroup(NAME);
+
+    
+    public boolean noStop() {
+      return noStop;
     }
-    public TagFilter setAdj() {
-      return setGroup(ADJ);
+
+    public TagFilter noStop(boolean value) {
+      noStop = value;
+      return this;
     }
+
     public TagFilter set(final int tag) {
-      bits.set(tag);
+      rule[tag] = true;
       return this;
     }
 
     public TagFilter clear(final int tag) {
-      bits.clear(tag);
+      rule[tag] = false;
       return this;
     }
 
     public TagFilter setGroup(int tag) {
       tag = tag & 0xF0;
-      bits.set(tag, tag + 16, true);
+      for (; tag < tag+16; tag++) rule[tag] = true;
       return this;
     }
 
     public TagFilter clearGroup(int tag) {
       tag = tag & 0xF0;
-      bits.set(tag, tag + 16, false);
+      for (; tag < tag+16; tag++) rule[tag] = false;
       return this;
     }
     
     public boolean accept(int tag) {
-      return bits.get(tag);
+      return rule[tag];
     }
-    public BitSet bits() {
-      return bits;
-    }
+    
   }
 }
