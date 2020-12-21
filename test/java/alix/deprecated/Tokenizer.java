@@ -1,9 +1,10 @@
-package alix.fr;
+package alix.deprecated;
 
 import java.io.IOException;
 import java.io.Writer;
 import java.util.HashSet;
 
+import alix.fr.Tag;
 import alix.grep.query.Lexer;
 import alix.util.Chain;
 import alix.util.Char;
@@ -12,7 +13,7 @@ import alix.util.OccChain;
 import alix.util.StemTrie.Stem;
 
 /**
- * A tokenizer for French, build for efficiency AND precision.
+ * A tokenizer for French, without dependancies to Lucene.
  * 
  * Design Token is extracted by a char loop on a big internal string of the text
  * to tokenize Char array is a bit faster than String.charAt() but not enough to

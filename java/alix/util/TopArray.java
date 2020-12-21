@@ -64,6 +64,7 @@ public class TopArray implements Iterable<TopArray.Entry>
    */
   public TopArray(final int size)
   {
+    if (size < 0) throw new IndexOutOfBoundsException("Negative size, no sense:" + size);
     this.size = size;
     data = new Entry[size];
   }
@@ -82,6 +83,18 @@ public class TopArray implements Iterable<TopArray.Entry>
   }
 
   /**
+   * Constructor without a size but to get all records ordered
+   * @param freqs
+   */
+  public TopArray(final double[] freqs)
+  {
+    this(freqs.length);
+    fill = size;
+    full = true;
+    for (int id = 0; id < size; id++) data[id] = new Entry(id, freqs[id]);
+    sort();
+  }
+  /**
    * Constructor with an array where index is id, and value is score.
    * 
    * @param size
@@ -89,21 +102,9 @@ public class TopArray implements Iterable<TopArray.Entry>
    */
   public TopArray(int size, final double[] freqs)
   {
-    if (size < 1) {
-      size = freqs.length;
-      this.size = size;
-      data = new Entry[size];
-      fill = size;
-      full = true;
-      for (int id = 0; id < size; id++) data[id] = new Entry(id, freqs[id]);
-      sort();
-    }
-    else {
-      this.size = size;
-      data = new Entry[size];
-      int length = freqs.length;
-      for (int id = 0; id < length; id++) push(id, freqs[id]);
-    }
+    this(size);
+    int length = freqs.length;
+    for (int id = 0; id < length; id++) push(id, freqs[id]);
   }
 
 

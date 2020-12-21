@@ -57,14 +57,14 @@ public class TestFacet
   {
     Path path = Paths.get("web/WEB-INF/lucene");
     Alix alix = Alix.instance(path, new FrAnalyzer());
-    Facet facet = new Facet(alix, "author", "text", null);
+    FieldFacet facet = new FieldFacet(alix, "author", "text", null);
     // System.out.println(facet);
     // TopTerms terms = facet.topTerms(null, alix.qTerms("prière", "text"), null);
     TopTerms terms = facet.topTerms();
     terms.sort();
     while (terms.hasNext()) {
       terms.next();
-      System.out.println(terms.term());
+      System.out.println(terms.label());
     }
   }
 }

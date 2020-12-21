@@ -40,8 +40,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import alix.deprecated.Tokenizer;
 import alix.fr.Tag;
-import alix.fr.Tokenizer;
 import alix.util.DicFreq;
 import alix.util.OccRoll;
 

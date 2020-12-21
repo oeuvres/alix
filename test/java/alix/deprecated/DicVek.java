@@ -51,7 +51,6 @@ import java.util.Collections;
 
 import alix.fr.Lexik;
 import alix.fr.Tag;
-import alix.fr.Tokenizer;
 import alix.util.DicFreq;
 import alix.util.IntIntMap;
 import alix.util.IntOMap;

@@ -1,4 +1,4 @@
-package alix.fr.dic;
+package alix.fr;
 
 import java.io.IOException;
 
@@ -22,7 +22,9 @@ public class TestTag
     System.out.println("UNKNOW tag " + Tag.code("TEST"));
     System.out.println("prefix label by number category ADVint : " + Tag.group(Tag.ADVinter));
     TagFilter filter = new TagFilter();
-    filter.setGroup(5);
+    filter.setGroup(Tag.VERBppass);
+    filter.setGroup(Tag.NAMEauthor);
+    System.out.println(filter);
   }
 
 }

@@ -52,7 +52,7 @@ import org.apache.lucene.util.Bits;
  * Retrieve all values of an int field, store it in docId order,
  * calculate some statistics.
  */
-public class IntSeries
+public class FieldInt
 {
   /** Field name */
   private final String field;
@@ -73,7 +73,7 @@ public class IntSeries
   /** Median of the series */
   private double median;
   
-  public IntSeries(IndexReader reader, String field) throws IOException
+  public FieldInt(IndexReader reader, String field) throws IOException
   {
     this.field = field;
     FieldInfos fieldInfos = FieldInfos.getMergedFieldInfos(reader);

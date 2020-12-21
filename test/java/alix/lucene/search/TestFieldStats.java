@@ -5,7 +5,7 @@ import java.io.IOException;
 import alix.lucene.Alix;
 import alix.lucene.TestAlix;
 import alix.lucene.analysis.FrAnalyzer;
-import alix.lucene.search.FieldStats;
+import alix.lucene.search.FieldText;
 
 public class TestFieldStats
 {
@@ -14,12 +14,12 @@ public class TestFieldStats
   {
     Alix alix = TestAlix.miniBase();
     String fieldName = TestAlix.fieldName;
-    FieldStats fstats = alix.fieldStats(fieldName);
-    TermIterator terms = fstats.iterator(-1, null, null, null);
+    FieldText fstats = alix.fieldStats(fieldName);
+    SortEnum terms = fstats.iterator(-1, null, null, null);
     terms.reset();
     while(terms.hasNext()) {
       terms.next();
-      System.out.println(terms.term()+" occs="+terms.occsMatching() + "/"+ terms.docsField() + " docs=" + terms.docsMatching() + "/" + terms.docsField());
+      System.out.println(terms.label()+" occs="+terms.occsMatching() + "/"+ terms.docsField() + " docs=" + terms.docsMatching() + "/" + terms.docsField());
     }
     System.out.println(terms);
   }
@@ -30,7 +30,7 @@ public class TestFieldStats
     Alix alix = Alix.instance("web/WEB-INF/obvil/test", new FrAnalyzer());
     String field = "bibl";
     time = System.nanoTime();
-    FieldStats fstats = alix.fieldStats(field);
+    FieldText fstats = alix.fieldStats(field);
     System.out.println(fstats);
     System.out.println("Terms in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     time = System.nanoTime();

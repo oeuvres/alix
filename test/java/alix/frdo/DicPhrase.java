@@ -19,9 +19,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
+import alix.deprecated.Tokenizer;
 import alix.fr.Lexik;
 import alix.fr.Tag;
-import alix.fr.Tokenizer;
 import alix.util.Chain;
 import alix.util.Char;
 import alix.util.DicFreq;

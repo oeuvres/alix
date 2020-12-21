@@ -34,7 +34,6 @@ package alix.fr;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.HashMap;
 
 import alix.util.Chain;
@@ -514,19 +513,33 @@ public final class Tag
 
     public TagFilter setGroup(int tag) {
       tag = tag & 0xF0;
-      for (; tag < tag+16; tag++) rule[tag] = true;
+      int lim = tag +16;
+      // System.out.println(String.format("0x%02X", tag));
+      for (; tag < lim; tag++) rule[tag] = true;
       return this;
     }
 
     public TagFilter clearGroup(int tag) {
       tag = tag & 0xF0;
-      for (; tag < tag+16; tag++) rule[tag] = false;
+      int lim = tag +16;
+      for (; tag < lim; tag++) rule[tag] = false;
       return this;
     }
     
     public boolean accept(int tag) {
       return rule[tag];
     }
-    
+    @Override
+    public String toString()
+    {
+      StringBuilder sb = new StringBuilder();
+      for (int tag = 0; tag < 256; tag++) {
+        if ((tag % 16) == 0) sb.append(Tag.label(tag)).append("\t");
+        if (rule[tag]) sb.append(1);
+        else sb.append('·');
+        if ((tag % 16) == 15) sb.append("\n");
+      }
+      return sb.toString();
+    }
   }
 }

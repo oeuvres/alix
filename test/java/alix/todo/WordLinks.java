@@ -1,4 +1,4 @@
-package alix.lucene.search;
+package alix.todo;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -10,6 +10,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BitSet;
 
 import alix.lucene.Alix;
+import alix.lucene.search.FieldText;
 
 /**
  * <p>
@@ -96,7 +97,7 @@ public class WordLinks
    */
   public WordLinks(Alix alix, String field, BitSet docs, int dim) throws IOException {
     int winWidth = 30;
-    FieldStats freqs = alix.fieldStats(field);
+    FieldText freqs = alix.fieldStats(field);
     int[] global2local = new int[freqs.size];
     Arrays.fill(global2local, -1);
     TopTerms dic = freqs.topTerms(docs);

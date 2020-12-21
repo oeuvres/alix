@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 
 import alix.fr.Lexik;
-import alix.fr.Tokenizer;
 
 /**
  * Attempt for a faster alternative to HashMap<String>, FAILED

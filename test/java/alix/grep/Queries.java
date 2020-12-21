@@ -53,7 +53,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import alix.fr.Tokenizer;
+import alix.deprecated.Tokenizer;
 import alix.grep.query.Query;
 import alix.util.Chain;
 import alix.util.Occ;

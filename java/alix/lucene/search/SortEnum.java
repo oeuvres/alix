@@ -8,22 +8,29 @@ import java.util.Locale;
 
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
+import org.apache.lucene.util.UnicodeUtil;
+
+import alix.lucene.analysis.tokenattributes.CharsAtt;
 
 /**
- * An iterator over terms already sorted it a set of documemts.
+ * An iterator over a sorted array of termId.
  * @author glorieux-f
  */
-public class TermIterator {
+public class SortEnum {
   /** An array of termId in the order we want to iterate on, requested */
   private final int[] terms;
   /** Limit for this iterator */
   final private int size;
-  /** Field dictionnary */
+  /** Field dictionary */
   final private BytesRefHash hashDic;
   /** Count of docs by termId */
   final private int[] termDocs;
   /** Count of occurrences by termId */
   final private long[] termOccs;
+  /** A docId by term used as a cover (example: metas for books or authors) */
+  final private int[] termCover;
+  /** An optional tag for each terms (relevant for textField) */
+  final private int[] termTag;
   /** Count of occurrences for the match odcs */
   protected long occsCount;
   /** Number of documents matched, index by termId */
@@ -40,16 +47,30 @@ public class TermIterator {
   BytesRef bytes = new BytesRef();
 
   
-  /** Build the iterator on an ordered arrays of termId */
-  public TermIterator(final FieldStats field, final int[] terms)
+  /** Build an iterator from a text field with an ordered arrays of termId */
+  public SortEnum(final FieldText field, final int[] terms)
   {
     this.hashDic = field.hashDic;
     this.termDocs = field.termDocs;
     this.termOccs = field.termOccs;
     this.terms = terms;
     size = terms.length;
+    this.termCover = null;
+    this.termTag = field.termTag;
   }
-  
+
+  /** Build an iterator from a facet field with an ordered arrays of termId */
+  public SortEnum(final FieldFacet field, final int[] terms)
+  {
+    this.hashDic = field.hashDic;
+    this.termDocs = field.facetDocs;
+    this.termOccs = field.facetOccs;
+    this.termCover = field.facetCover;
+    this.terms = terms;
+    size = terms.length;
+    this.termTag = null;
+  }
+
   /**
    * Count of occurrences for this query
    * @return
@@ -135,7 +156,7 @@ public class TermIterator {
    * 
    * @param ref
    */
-  public void term(BytesRef bytes)
+  public void label(BytesRef bytes)
   {
     hashDic.get(termId, bytes);
   }
@@ -144,7 +165,7 @@ public class TermIterator {
    * Get the current term as a String     * 
    * @return
    */
-  public String term()
+  public String label()
   {
     hashDic.get(termId, bytes);
     return bytes.utf8ToString();
@@ -152,21 +173,23 @@ public class TermIterator {
 
   
 
-  /*
-  public CharsAtt term(CharsAtt term)
+  /**
+   * Copy the current term in a reusable char array  * 
+   * @return
+   */
+  public CharsAtt label(CharsAtt term)
   {
-    hashDic.get(termId, ref);
+    hashDic.get(termId, bytes);
     // ensure size of the char array
-    int length = ref.length;
+    int length = bytes.length;
     char[] chars = term.resizeBuffer(length);
-    final int len = UnicodeUtil.UTF8toUTF16(ref.bytes, ref.offset, length, chars);
+    final int len = UnicodeUtil.UTF8toUTF16(bytes.bytes, bytes.offset, length, chars);
     term.setLength(len);
     return term;
   }
-  */
 
   /**
-   * Value used for sorting.
+   * Value used for sorting for current term.
    * 
    * @return
    */
@@ -174,55 +197,43 @@ public class TermIterator {
   {
     return scores[termId];
   }
-
-  /*
-  Double.compare(((EntryScore) o).score, score);
-  key.compareTo(((EntryString) o).key);
-   */
   
   /**
-   * Cover docid for this term
+   * Cover docid for current term
    * @return
    */
-  /**
   public int cover()
   {
-    return covers[termId];
+    return termCover[termId];
   }
-  **/
 
-  /* todo, alphabetic
-  Entry[] sorter = sorter();
-  Collator collator = Collator.getInstance(Locale.FRANCE);
-  collator.setStrength(Collator.TERTIARY);
-  collator.setDecomposition(Collator.CANONICAL_DECOMPOSITION);
-  for (int i = 0, max = size; i < max; i++) {
-    hashDic.get(i, ref);
-    sorter[i].key = collator.getCollationKey(ref.utf8ToString());
+  /**
+   * An int tag for term if it’s coming from a text field.
+   * @return
+   */
+  public int tag()
+  {
+    return termTag[termId];
   }
-  Arrays.sort(sorter,  new Comparator<Entry>() {
-      @Override
-      public int compare(Entry arg0, Entry arg1)
-      {
-        return arg0.key.compareTo(arg1.key);
-      }
-    }
-  );
-  this.sorter = sorter;
-  cursor = -1;
-  return this;
-  */
 
-  public void sortAlpha()
+  /**
+   * Returns an array of termId in alphabetic order for all terms
+   * of dictionary. 
+   *
+   * @param hashDic
+   * @return
+   */
+  static public int[] sortAlpha(BytesRefHash hashDic)
   {
     Collator collator = Collator.getInstance(Locale.FRANCE);
     collator.setStrength(Collator.TERTIARY);
     collator.setDecomposition(Collator.CANONICAL_DECOMPOSITION);
+    int size = hashDic.size();
+    BytesRef bytes = new BytesRef();
     Entry[] sorter = new Entry[size];
-    for (int i = 0, max = size; i < max; i++) {
-      int termId = terms[cursor];
+    for (int termId = 0; termId < size; termId++) {
       hashDic.get(termId, bytes);
-      sorter[i] = new Entry(termId, collator.getCollationKey(bytes.utf8ToString()));
+      sorter[termId] = new Entry(termId, collator.getCollationKey(bytes.utf8ToString()));
     }
     Arrays.sort(sorter,  new Comparator<Entry>() {
         @Override
@@ -232,13 +243,14 @@ public class TermIterator {
         }
       }
     );
-    // rewrite the termId array in order
+    int[] terms = new int[size];
     for (int i = 0, max = size; i < max; i++) {
       terms[i] = sorter[i].termId;
     }
+    return terms;
   }
   
-  private class Entry
+  static private class Entry
   {
     final CollationKey key;
     final int termId;
@@ -262,11 +274,14 @@ public class TermIterator {
   @Override
   public String toString()
   {
+    boolean hasScore = (scores != null);
     StringBuilder sb = new StringBuilder();
     for(int pos = 0; pos < size; pos++) {
       int termId = terms[pos];
       hashDic.get(termId, bytes);
-      sb.append(termId + ". " + bytes.utf8ToString() + " (" + scores[termId] + ")\n");
+      sb.append(termId + ". " + bytes.utf8ToString());
+      if (hasScore) sb.append( " scores=" + scores[termId]);
+      sb.append("\n");
     }
     return sb.toString();
   }

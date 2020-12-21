@@ -33,9 +33,6 @@
 package alix.lucene.search;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Iterator;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReader;
@@ -70,7 +67,7 @@ import alix.util.TopArray;
  * @author fred
  *
  */
-public class FieldStats
+public class FieldText
 {
   /** The reader from which to get freqs */
   final DirectoryReader reader;
@@ -83,7 +80,7 @@ public class FieldStats
   /** Global number of docs relevant for this field */
   public final int docsAll;
   /** Count of occurrences by document for this field (for stats) */
-  public final int[] docLength;
+  public final int[] docOccs;
   /** Store and populate the terms and get the id */
   public final BytesRefHash hashDic;
   /** Count of docs by termId */
@@ -98,12 +95,12 @@ public class FieldStats
   
 
 
-  public FieldStats(final DirectoryReader reader, final String field) throws IOException
+  public FieldText(final DirectoryReader reader, final String field) throws IOException
   {
     System.out.println(field+" stats");
     final int END = DocIdSetIterator.NO_MORE_DOCS;
     this.reader = reader;
-    final int[] docLength = new int[reader.maxDoc()];
+    final int[] docOccs = new int[reader.maxDoc()];
     this.field = field;
     BytesRefHash hashDic = new BytesRefHash();
     // False good ideas
@@ -146,7 +143,7 @@ public class FieldStats
         int docLeaf;
         while ((docLeaf = docsEnum.nextDoc()) != END) {
           int freq = docsEnum.freq();
-          docLength[docBase + docLeaf] += freq;
+          docOccs[docBase + docLeaf] += freq;
           termOccs[termId] += freq;
         }
       }
@@ -156,7 +153,7 @@ public class FieldStats
     this.size = hashDic.size();
     this.termDocs = termDocs;
     this.termOccs = termOccs;
-    this.docLength = docLength;
+    this.docOccs = docOccs;
     // loop on all term ids to get a tag from dictionaries
     int[] tags = new int[size];
     BytesRef bytes = new BytesRef();
@@ -286,7 +283,7 @@ public class FieldStats
    * defined as a BitSet. Returns an iterator sorted according 
    * to a scorer. If scorer is null, default is count of occurences.
    */
-  public TermIterator iterator(int limit, final BitSet docs, Scorer scorer, TagFilter tags) throws IOException
+  public SortEnum iterator(int limit, final BitSet docs, Scorer scorer, TagFilter tags) throws IOException
   {
     boolean hasDocs = (docs != null);
     boolean hasTags = (tags != null);
@@ -300,7 +297,7 @@ public class FieldStats
     long[] occs = new long[size];
     int[] hits = new int[size];
     BytesRef bytes;
-    final int[] docLength = this.docLength; // localize var
+    final int[] docLength = this.docOccs; // localize var
     final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
     // loop an all index to calculate a score for each term before build a more expensive object
     for (LeafReaderContext context : reader.leaves()) {
@@ -333,8 +330,10 @@ public class FieldStats
     }
     
     // now we have all we need to build a sorted iterator on entries
-    TopArray top = new TopArray(limit, scores);
-    TermIterator it = new TermIterator(this, top.toArray());
+    TopArray top;
+    if (limit < 1) top = new TopArray(scores); // all terms
+    else top = new TopArray(limit, scores);
+    SortEnum it = new SortEnum(this, top.toArray());
     // add some more stats on this iterator
     
     it.hits = hits;

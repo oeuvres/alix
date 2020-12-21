@@ -6,8 +6,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import alix.deprecated.Tokenizer;
 import alix.fr.Tag;
-import alix.fr.Tokenizer;
 import alix.util.Char;
 import alix.util.Occ;
 

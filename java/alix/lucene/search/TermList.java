@@ -70,7 +70,7 @@ public class TermList implements Iterable<Term>
   /** Current column in row */
   private int col = 0;
   /** A dictionary to get freqs */
-  private final FieldStats dic;
+  private final FieldText dic;
 
   public TermList()
   {
@@ -78,7 +78,7 @@ public class TermList implements Iterable<Term>
   }
 
   
-  public TermList(final FieldStats dic)
+  public TermList(final FieldText dic)
   {
     this.dic = dic;
   }

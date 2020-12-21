@@ -88,11 +88,11 @@ import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
 
 import alix.fr.Tag;
-import alix.lucene.search.Facet;
+import alix.lucene.search.FieldFacet;
 import alix.lucene.search.Scale;
 import alix.lucene.util.Rail;
-import alix.lucene.search.FieldStats;
-import alix.lucene.search.IntSeries;
+import alix.lucene.search.FieldText;
+import alix.lucene.search.FieldInt;
 
 /**
  * <p>
@@ -125,7 +125,7 @@ import alix.lucene.search.IntSeries;
  *   ({@link IntPoint}, {@link NumericDocValuesField}).</li>
  *   <li>{@link #fieldStats(String)} All terms indexed in a {@link TextField}, with stats,
  *   useful for list of terms and advanced lexical statistics.</li>
- *   <li>{@link #docLength(String)} Size (in tokens) of indexed documents in a {@link TextField}</li>
+ *   <li>{@link #docOccs(String)} Size (in tokens) of indexed documents in a {@link TextField}</li>
  *   <li>{@link #facet(String, String)} All terms of a facet field
  *   ({@link SortedDocValuesField} or {@link SortedSetDocValuesField}) with lexical statistics from a
  *   {@link TextField} (ex: count of words for an author facet)</li>
@@ -506,13 +506,13 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public IntSeries intSeries(String field) throws IOException
+  public FieldInt intSeries(String field) throws IOException
   {
     IndexReader reader = reader(); // ensure reader, or decache
     String key = "AlixIntSeries" + field;
-    IntSeries ints = (IntSeries) cache(key);
+    FieldInt ints = (FieldInt) cache(key);
     if (ints != null) return ints;
-    ints = new IntSeries(reader, field);
+    ints = new FieldInt(reader, field);
     cache(key, ints);
     return ints;
   }
@@ -557,7 +557,7 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public Facet facet(final String facetField, final String textField) throws IOException
+  public FieldFacet facet(final String facetField, final String textField) throws IOException
   {
     return facet(facetField, textField, null);
   }
@@ -577,12 +577,12 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public Facet facet(final String facetField, final String textField, final Term coverTerm) throws IOException
+  public FieldFacet facet(final String facetField, final String textField, final Term coverTerm) throws IOException
   {
     String key = "AlixFacet" + facetField + textField;
-    Facet facet = (Facet) cache(key);
+    FieldFacet facet = (FieldFacet) cache(key);
     if (facet != null) return facet;
-    facet = new Facet(this, facetField, textField, coverTerm);
+    facet = new FieldFacet(this, facetField, textField, coverTerm);
     cache(key, facet);
     return facet;
   }
@@ -614,12 +614,12 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public FieldStats fieldStats(final String field) throws IOException
+  public FieldText fieldStats(final String field) throws IOException
   {
     String key = "AlixFreqs" + field;
-    FieldStats freqs = (FieldStats) cache(key);
+    FieldText freqs = (FieldText) cache(key);
     if (freqs != null) return freqs;
-    freqs = new FieldStats(reader(), field);
+    freqs = new FieldText(reader(), field);
     cache(key, freqs);
     return freqs;
   }
@@ -655,9 +655,9 @@ u   * @throws IOException
    * @return
    * @throws IOException
    */
-  public int[] docLength(String field) throws IOException
+  public int[] docOccs(String field) throws IOException
   {
-    return fieldStats(field).docLength;
+    return fieldStats(field).docOccs;
   }
 
   /**

@@ -6,6 +6,7 @@ import java.nio.file.Paths;
 
 import alix.lucene.Alix;
 import alix.lucene.analysis.FrAnalyzer;
+import alix.todo.WordLinks;
 
 public class TestWordLinks
 {

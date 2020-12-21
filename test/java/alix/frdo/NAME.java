@@ -13,7 +13,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import alix.fr.Tokenizer;
+import alix.deprecated.Tokenizer;
 import alix.util.Occ;
 import alix.util.OccRoll;
 

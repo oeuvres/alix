@@ -12,8 +12,8 @@ import java.util.HashMap;
 
 import javax.imageio.ImageIO;
 
+import alix.deprecated.Tokenizer;
 import alix.fr.Lexik;
-import alix.fr.Tokenizer;
 import alix.util.DicFreq;
 import alix.util.Occ;
 

@@ -98,7 +98,7 @@ public class Scale
     Tick[] byValue = new Tick[card];
     Tick[] byDocid = new Tick[card];
     int ord = 0; // pointer in the array of axis
-    int[] docLength = alix.docLength(fieldText);
+    int[] docLength = alix.docOccs(fieldText);
     int min = Integer.MAX_VALUE;
     int max = Integer.MIN_VALUE;
     int last = -1;

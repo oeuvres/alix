@@ -71,10 +71,10 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import alix.deprecated.Tokenizer;
 import alix.fr.Lexik;
 import alix.fr.Lexik.LexEntry;
 import alix.fr.Tag;
-import alix.fr.Tokenizer;
 import alix.util.DicFreq;
 import alix.util.DicFreq.Entry;
 import alix.util.Occ;

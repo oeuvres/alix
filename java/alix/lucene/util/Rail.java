@@ -60,7 +60,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
 import alix.lucene.Alix;
-import alix.lucene.search.FieldStats;
+import alix.lucene.search.FieldText;
 import alix.util.IntList;
 
 /**
@@ -82,7 +82,7 @@ public class Rail
   /** Name of the reference text field */
   private final String fieldName;
   /** Keep the freqs for the field */
-  private final FieldStats fstats;
+  private final FieldText fstats;
   /** Dictionary of terms for this field */
   private final BytesRefHash hashDic;
   /** The path of underlaying file store */
@@ -131,7 +131,7 @@ public class Rail
     lock = channel.lock(); // may throw OverlappingFileLockException if someone else has lock
     
     
-    int[] docLength = fstats.docLength;
+    int[] docLength = fstats.docOccs;
 
     long capInt = headerInt + maxDoc;
     for (int i = 0; i < maxDoc; i++) {

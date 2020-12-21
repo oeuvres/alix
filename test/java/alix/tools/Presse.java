@@ -54,7 +54,7 @@ import java.util.Calendar;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import alix.fr.Tokenizer;
+import alix.deprecated.Tokenizer;
 import alix.util.Occ;
 
 /**

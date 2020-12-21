@@ -48,7 +48,7 @@ import org.apache.lucene.util.BitSet;
  * https://github.com/apache/lucene-solr/blob/master/lucene/join/src/java/org/apache/lucene/search/join/QueryBitSetProducer.java
  * Rely on the default LRU lucene cache, instead of an hard cache.
  * 
- * @author fred
+ * @author glorieux-f
  *
  */
 public class BitsFromQuery

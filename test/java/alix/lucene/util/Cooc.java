@@ -56,7 +56,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
 import alix.lucene.Alix;
-import alix.lucene.search.FieldStats;
+import alix.lucene.search.FieldText;
 import alix.lucene.search.TermList;
 import alix.lucene.search.TopTerms;
 
@@ -80,7 +80,7 @@ public class Cooc
   /** Name of the binary field storing the int vector of documents */
   private final String fieldRail;
   /** Keep the freqs for the field */
-  private final FieldStats fstats;
+  private final FieldText fstats;
   /** Dictionary of terms for this field */
   private final BytesRefHash hashDic;
   /** State of the index */

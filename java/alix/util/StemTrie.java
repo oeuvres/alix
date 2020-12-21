@@ -41,8 +41,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import alix.deprecated.Tokenizer;
 import alix.fr.Tag;
-import alix.fr.Tokenizer;
 
 /**
  * 

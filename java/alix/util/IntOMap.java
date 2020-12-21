@@ -39,7 +39,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 
-import alix.fr.Tokenizer;
+import alix.deprecated.Tokenizer;
 
 /**
  * An efficient int-Object Map implementation. source:

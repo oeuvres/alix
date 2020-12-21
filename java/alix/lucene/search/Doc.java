@@ -201,7 +201,7 @@ public class Doc
    */
   public int length(String field) throws IOException
   {
-    return alix.docLength(field)[this.docId];
+    return alix.docOccs(field)[this.docId];
   }
 
   /**
@@ -302,7 +302,7 @@ public class Doc
   {
     Terms vek2 = alix.reader().getTermVector(docId2, field);
     Top<String> top = new Top<String>(100);
-    int[] docLength = alix.docLength(field);
+    int[] docLength = alix.docOccs(field);
     int len1 = docLength[docId];
     int len2 = docLength[docId2];
     Terms vek1 = getTermVector(field);
@@ -354,7 +354,7 @@ public class Doc
     String text = get(field);
     StringBuilder sb = new StringBuilder();
 
-    int[] docLength = alix.docLength(field);
+    int[] docLength = alix.docOccs(field);
     int length1 = docLength[docId];
     int length2 = docLength[docId2];
     Terms vek1 = getTermVector(field);
@@ -575,11 +575,11 @@ public class Doc
    */
   private void topWords(String field) throws IOException, NoSuchFieldException
   {
-    int[] docLength = alix.docLength(field);
+    int[] docLength = alix.docOccs(field);
     Terms vector = getTermVector(field);
     int docLen = docLength[docId];
     // get index term stats
-    FieldStats fstats = alix.fieldStats(field);
+    FieldText fstats = alix.fieldStats(field);
     // loop on all terms of the document, get score, keep the top 
     TermsEnum termit = vector.iterator();
     final Top<String> names = new Top<String>(100);

@@ -56,7 +56,6 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
-import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.MetaAnalyzer;
 
 
@@ -78,11 +77,6 @@ import alix.lucene.analysis.MetaAnalyzer;
  */
 public class SAXIndexer extends DefaultHandler
 {
-  /**  */
-  private final static TagFilter nameFilter = new TagFilter();
-  static {
-    nameFilter.setName();
-  }
   final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
   final static DecimalFormat df000 = new DecimalFormat("000", frsyms);
   /** Field type */
