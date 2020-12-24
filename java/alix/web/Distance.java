@@ -1,10 +1,7 @@
 package alix.web;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
-public enum Distance implements Select
+public enum Distance implements Option
 {
   none("Occurrences", "m11") {
     @Override
@@ -28,6 +25,10 @@ public enum Distance implements Select
     }
   }
   ;
+  final public String label;
+  public String label() { return label; }
+  final public String hint;
+  public String hint() { return hint; }
   private Distance(final String label, final String hint)
   {
     this.label = label;
@@ -36,14 +37,6 @@ public enum Distance implements Select
   
   abstract public double score(final double m11, final double m10, final double m01, final double m00);
   
-  // sadly repeating myself because enum can’t inherit from an abstract class 
-  final public String label;
-  public String label() { return label; }
-  static final public List<Select> list;
-  static { list = Collections.unmodifiableList(Arrays.asList((Select[]) values())); }
-  public List<Select> list() { return list; }
-  final public String hint;
-  public String hint() { return hint; }
 
 
 }

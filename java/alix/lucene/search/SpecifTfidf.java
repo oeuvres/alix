@@ -32,35 +32,34 @@
  */
 package alix.lucene.search;
 
-public class ScorerTheme extends Scorer
+public class SpecifTfidf extends Specif
 {
   /** Store idf */
-  double freqAvg;
+  double idf;
+  /** A traditional coefficient */
+  final double k = 0.2F;
 
-  public ScorerTheme()
+  public SpecifTfidf()
   {
     
   }
-
-  public ScorerTheme(final long occsAll, final int docsAll)
-  {
-    setAll(occsAll, docsAll);
-  }
-
   
-  @Override
-  public void weight(final long occsMatch, final int docsMatch)
+  SpecifTfidf(long wcAll, int docsAll)
   {
-    this.freqAvg = (double) occsMatch / docsMatch;
+    setAll(wcAll, docsAll);
   }
 
   @Override
-  public double score(final long occsDoc, final long docLen)
+  public void weight(final int docsPart, final long wcPart)
   {
-    if (occsDoc == 0) return 0;
-    // float avg = (float) occsDoc / docLen;
-    // return (float) Math.log( (occsDoc - freqAvg) / freqAvg );
-    return (double) (occsDoc - freqAvg) / freqAvg;
+    double l = 1; // 
+    this.idf =  Math.pow((double)1 + Math.log((docsAll +l ) / (double) (docsPart + l)), 2 );
+  }
+
+  @Override
+  public double score(final long formPart, final long formAll, final long wcDoc)
+  {
+    return idf * (k + (1 - k) * (double) formPart / (double) wcDoc);
   }
 
 }

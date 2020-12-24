@@ -90,6 +90,14 @@ import alix.util.ML;
  */
 public class FrTokenizer extends Tokenizer
 {
+  /** local flag for constructor */
+  static final public int XML = 0x01;
+  /** Parse as XML */
+  final boolean xml;
+  /** local flag for constructor */
+  static final public int QUERY = 0x02;
+  /** Parse for a search query with some special characters like + or - */
+  final boolean query;
   /** Current char offset */
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
   /** Current Flags */
@@ -123,9 +131,6 @@ public class FrTokenizer extends Tokenizer
         "leur", "lui", "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y" })
       HYPHEN_POST.add(new CharsAtt(w));
   }
-
-  /** Parse as XML */
-  boolean xml = true;
   /** tags to send as token events and translate */
   public static final HashMap<CharsAtt, CharsAtt> TAGS = new HashMap<CharsAtt, CharsAtt>();
   static {
@@ -155,7 +160,7 @@ public class FrTokenizer extends Tokenizer
 
   public FrTokenizer()
   {
-    this(true);
+    this(XML);
   }
 
   /**
@@ -163,10 +168,13 @@ public class FrTokenizer extends Tokenizer
    * 
    * @param xml
    */
-  public FrTokenizer(boolean xml)
+  public FrTokenizer(int flags)
   {
     super(new AlixAttributeFactory(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
-    this.xml = xml;
+    if ((flags & XML) > 0) this.xml = true;
+    else this.xml = false;
+    if ((flags & QUERY) > 0) this.query = true;
+    else this.query = false;
   }
 
   @Override
@@ -381,14 +389,21 @@ public class FrTokenizer extends Tokenizer
         bufIndex--;
         break;
       }
-
-      // store the position of an hyphen, and check if there is not one
-      if (c == '-' && length != 0) {
-        hyphOffset = offset + bufIndex;
-        test.setEmpty();
+      
+      if (c == '-') {
+        // hypen inside word, do what is needed to check things like ceux-là
+        if (length != 0) {
+          hyphOffset = offset + bufIndex;
+          test.setEmpty();
+        }
+        // token starting by '-', probably a problem of OCR on —, bad for numbers
+        else if (!query) {
+          continue;
+        }
       }
+      
       // it's a token char, + is for queries
-      if (Char.isToken(c) || c == '+') {
+      if (Char.isToken(c) || (query && c == '+')) {
         // start of token, record startOffset
         if (length == 0) {
           if (Char.isDigit(c)) flagsAtt.setFlags(Tag.NUM);

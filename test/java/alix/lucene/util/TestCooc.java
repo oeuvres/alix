@@ -97,7 +97,7 @@ public class TestCooc
     String path = "/home/fred/code/ddrlab/WEB-INF/bases/critique";
     Alix alix = Alix.instance(path, new FrAnalyzer());
     final String field = "text";
-    FieldText stats = alix.fieldStats(field);
+    FieldText stats = alix.fieldText(field);
     int maxDoc = alix.reader().maxDoc();
     
     FixedBitSet filter = new FixedBitSet(maxDoc);

@@ -123,7 +123,7 @@ import alix.lucene.search.FieldInt;
  * <ul>
  *   <li>{@link #intSeries(String)} All values of a unique numeric field per document 
  *   ({@link IntPoint}, {@link NumericDocValuesField}).</li>
- *   <li>{@link #fieldStats(String)} All terms indexed in a {@link TextField}, with stats,
+ *   <li>{@link #fieldText(String)} All terms indexed in a {@link TextField}, with stats,
  *   useful for list of terms and advanced lexical statistics.</li>
  *   <li>{@link #docOccs(String)} Size (in tokens) of indexed documents in a {@link TextField}</li>
  *   <li>{@link #facet(String, String)} All terms of a facet field
@@ -614,7 +614,7 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public FieldText fieldStats(final String field) throws IOException
+  public FieldText fieldText(final String field) throws IOException
   {
     String key = "AlixFreqs" + field;
     FieldText freqs = (FieldText) cache(key);
@@ -657,7 +657,7 @@ u   * @throws IOException
    */
   public int[] docOccs(String field) throws IOException
   {
-    return fieldStats(field).docOccs;
+    return fieldText(field).docOccs;
   }
 
   /**
@@ -778,7 +778,7 @@ u   * @throws IOException
    * supposing that caller knows the field he wants to query.
    * 
    * @param q
-   * @param field
+   * @param fieldName
    * @return
    * @throws IOException
    */
@@ -791,7 +791,7 @@ u   * @throws IOException
    * Analyze a query according to the current analyzer of this base ; return terms 
    * 
    * @param q
-   * @param field
+   * @param fieldName
    * @return
    * @throws IOException
    */

@@ -107,8 +107,8 @@ public class Rail
   {
     this.alix = alix;
     this.fieldName = field;
-    this.fstats = alix.fieldStats(field); // build and cache the dictionary for the field
-    this.hashDic = fstats.hashDic;
+    this.fstats = alix.fieldText(field); // build and cache the dictionary for the field
+    this.hashDic = fstats.formDic;
     this.maxTerm = hashDic.size();
     this.path = Paths.get( alix.path.toString(), field+".rail");
     load();

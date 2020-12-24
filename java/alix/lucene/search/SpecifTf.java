@@ -32,26 +32,16 @@
  */
 package alix.lucene.search;
 
-public class ScorerTf extends Scorer
+/**
+ * @author glorieux-f
+ */
+public class SpecifTf extends Specif
 {
-  public  ScorerTf()
-  {
-    
-  }
-  public  ScorerTf(long occsAll, int docsAll)
-  {
-    setAll(occsAll, docsAll);
-  }
 
   @Override
-  public void weight(final long occsMatch, final int docsMatch)
+  public double score(final long formPart, final long formAll)
   {
-  }
-
-  @Override
-  public double score(final long occsDoc, final long docLen)
-  {
-    return (double) occsDoc / docLen;
+    return (double)1000000 * formPart / occsPart;
   }
 
 }

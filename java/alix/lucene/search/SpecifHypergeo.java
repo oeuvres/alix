@@ -31,38 +31,30 @@
  * limitations under the License.
  */
 package alix.lucene.search;
-
-public class ScorerBM25 extends Specif
+import org.apache.commons.math3.distribution.HypergeometricDistribution;
+/**
+ * Implementation of the Lafon algorithm, used to score terms
+ * https://www.persee.fr/docAsPDF/mots_0243-6450_1980_num_1_1_1008.pdf
+ * 
+ * <li>N, population size, corpus word count, wcAll
+ * <li>K, number of success, corpus form  occurrences, formAll
+ * <li>n, number of draws, part word count, wcPart
+ * <li>k, number of observed success, part form occurrences, formPart
+ * 
+ * @author glorieux-f
+ *
+ */
+public class SpecifHypergeo extends Specif
 {
-
-  /** Classical BM25 param */
-  private final double k1 = 1.2f;
-  /** Classical BM25 param */
-  private final double b = 0.75f;
-  /** Store idf */
-  double idf;
-
-  public ScorerBM25()
+  final static int FLOOR = 3;
+  @Override
+  public double score(final long formPart, final long formAll)
   {
+    if (formPart < FLOOR) return 0;
+    // (int populationSize, int numberOfSuccesses, int sampleSize)
+    HypergeometricDistribution hyper = new HypergeometricDistribution((int)occsAll, (int)formAll, (int)occsPart);
+    return -Math.log10(hyper.probability((int)formPart));
     
   }
-
-  public ScorerBM25(final long occsAll, final int docsAll)
-  {
-    setAll(occsAll, docsAll);
-  }
-
   
-  @Override
-  public void weight(final int docsPart, final long wcPart)
-  {
-    this.idf = Math.log(1.0 + (docsAll - docsPart + 0.5D) / (docsPart + 0.5D));
-  }
-
-  @Override
-  public double score(final long formPart, final long formAll, final long wcDoc)
-  {
-    return idf * (formPart * (k1 + 1)) / (formPart + k1 * (1 - b + b * wcDoc / docAvg));
-  }
-
 }

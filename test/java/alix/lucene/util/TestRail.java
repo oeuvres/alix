@@ -58,7 +58,7 @@ public class TestRail
     Alix alix = Alix.instance(path, new SimpleAnalyzer());
     int maxDoc = alix.maxDoc();
     Rail rail = new Rail(alix, fieldName);
-    FieldText fstats = alix.fieldStats(fieldName);
+    FieldText fstats = alix.fieldText(fieldName);
     for (int docId = 0; docId < maxDoc; docId++) {
       System.out.println("rail(docId=" + docId + ")   {" + rail.toString(docId) + "}");
     }
@@ -79,7 +79,7 @@ public class TestRail
     System.out.println("Mini cooc");
     Alix alix = Alix.instance(path, new SimpleAnalyzer());
     System.out.println("Field stats, load");
-    FieldText fstats = alix.fieldStats(fieldName);
+    FieldText fstats = alix.fieldText(fieldName);
     System.out.println(fstats.topTerms().sortByOccs());
     
     Rail rail = new Rail(alix, fieldName);
@@ -87,7 +87,7 @@ public class TestRail
     System.out.println("Cooc by rail");
     System.out.println(Arrays.toString(cooc));
     showTop(fstats, cooc, 10);
-    fstats = alix.fieldStats(fieldName);
+    fstats = alix.fieldText(fieldName);
   }
   
 
@@ -98,7 +98,7 @@ public class TestRail
       if (fstats.isStop(termId)) continue;
       top.push(termId, cooc[termId]);
     }
-    BytesRefHash dic = fstats.hashDic;
+    BytesRefHash dic = fstats.formDic;
     BytesRef ref = new BytesRef();
     for(TopArray.Entry entry: top) {
       dic.get(entry.id(), ref);
@@ -113,7 +113,7 @@ public class TestRail
       double score = (double)2 * freqs[id] / (fstats.occs(id) * fstats.occs(id) + pivotFreq * pivotFreq);
       top.push(id, score);
     }
-    BytesRefHash dic = fstats.hashDic;
+    BytesRefHash dic = fstats.formDic;
     BytesRef ref = new BytesRef();
     for(TopArray.Entry entry: top) {
       dic.get(entry.id(), ref);
@@ -133,7 +133,7 @@ public class TestRail
     final String field = "text";
     time = System.nanoTime();
     System.out.print("Calculate freqs in ");
-    FieldText fstats = alix.fieldStats(field);
+    FieldText fstats = alix.fieldText(field);
     System.out.println(((System.nanoTime() - time) / 1000000) + " ms.");
     int maxDoc = alix.reader().maxDoc();
     
@@ -205,7 +205,7 @@ public class TestRail
     long time;
     String path = "/home/fred/code/ddrlab/WEB-INF/bases/critique";
     Alix alix = Alix.instance(path, new FrAnalyzer(), Alix.FSDirectoryType.MMapDirectory);
-    FieldText fstats = alix.fieldStats(fieldName);
+    FieldText fstats = alix.fieldText(fieldName);
     
     time = System.nanoTime();
     System.out.print("Build rail in ");

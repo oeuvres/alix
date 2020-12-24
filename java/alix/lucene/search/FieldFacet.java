@@ -126,7 +126,7 @@ public class FieldFacet
   /** A cached vector for each docId, size in occurrences  */
   private final int[] docOccs;
   /** Default term enumerator of all terms in alphabetic sort order */
-  private final SortEnum terms;
+  private final FormEnum terms;
 
   /**
    * Build data to have frequencies on a facet field.
@@ -283,12 +283,12 @@ public class FieldFacet
     this.docsAll = docsAll;
     this.occsAll = occsAll;
     this.hashDic = hashDic;
-    this.alpha = SortEnum.sortAlpha(hashDic);
+    this.alpha = FormEnum.sortAlpha(hashDic);
     this.size = hashDic.size();
     this.facetOccs = facetOccs;
     this.facetDocs = facetDocs;
     this.facetCover = facetCover;
-    terms = new SortEnum(this, alpha);
+    terms = new FormEnum(this, alpha);
   }
 
   
@@ -298,7 +298,7 @@ public class FieldFacet
    * @return
    * @throws IOException
    */
-  public SortEnum iterator() throws IOException {
+  public FormEnum iterator() throws IOException {
     terms.reset();
     return terms;
   }
@@ -335,7 +335,7 @@ public class FieldFacet
    * @return
    * @throws IOException
    */
-  public SortEnum iterator(final int limit, final BitSet filter, final TermList terms, Scorer scorer) throws IOException
+  public FormEnum iterator(final int limit, final BitSet filter, final TermList terms, Specif scorer) throws IOException
   {
     // If the query is against another text field,  (TODO bad stats if more than one text field)
     if (terms == null || terms.sizeNotNull() == 0) { 
@@ -388,7 +388,7 @@ public class FieldFacet
         }
       }
     }
-    SortEnum it;
+    FormEnum it;
     if (hasScorer) {
       scorer.weight(occsMatch, facetMatch); // prepare the scorer for this term
       for (int facetId = 0, length = occs.length; facetId < length; facetId++) { // get score for each facet
@@ -398,11 +398,11 @@ public class FieldFacet
       TopArray top;
       if (limit < 1) top = new TopArray(scores); // all terms
       else top = new TopArray(limit, scores);
-      it = new SortEnum(this, top.toArray());
+      it = new FormEnum(this, top.toArray());
     } 
     // no scorer, supposed to want the terms in alpha order
     else {
-      it = new SortEnum(this, alpha);
+      it = new FormEnum(this, alpha);
     }
     
     it.hits = hits;
@@ -423,7 +423,7 @@ public class FieldFacet
    * @return
    * @throws IOException
    */
-    public SortEnum iterator(final int limit, final BitSet filter) throws IOException
+    public FormEnum iterator(final int limit, final BitSet filter) throws IOException
     {
       boolean hasFilter = (filter != null);
       int[] hits = new int[size];
@@ -454,7 +454,7 @@ public class FieldFacet
         }
       }
       // build the ordered array of termId
-      SortEnum it = new SortEnum(this, alpha);
+      FormEnum it = new FormEnum(this, alpha);
       it.hits = hits;
       it.occs = occs;
       return it;

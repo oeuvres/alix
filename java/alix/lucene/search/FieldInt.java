@@ -50,7 +50,7 @@ import org.apache.lucene.util.Bits;
 
 /**
  * Retrieve all values of an int field, store it in docId order,
- * calculate some statistics.
+ * calculate some stats..
  */
 public class FieldInt
 {

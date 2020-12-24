@@ -8,9 +8,9 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 
 import alix.lucene.Alix;
-import alix.web.Select;
+import alix.web.Option;
 
-public enum DocSort implements Select
+public enum DocSort implements Option
 {
   score("Pertinence", null),
   year("Année (+ ancien)", new Sort(new SortField("year", SortField.Type.INT))),
@@ -46,14 +46,14 @@ public enum DocSort implements Select
   }
 
   @Override
-  public List<Select> list()
+  public List<Option> list()
   {
     return list;
   }
 
-  public static List<Select> list;
+  public static List<Option> list;
   static {
-    list = Collections.unmodifiableList(Arrays.asList((Select[]) values()));
+    list = Collections.unmodifiableList(Arrays.asList((Option[]) values()));
   }
   @Override
   public String hint()

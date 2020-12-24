@@ -32,26 +32,18 @@
  */
 package alix.lucene.search;
 
-public class ScorerOccs extends Scorer
+/**
+ * "Jaccard", "m11 / (m10 + m01 + m11)"
+ * 
+ * @author glorieux-f
+ */
+public class SpecifJaccard extends Specif
 {
-  public ScorerOccs()
-  {
-    
-  }
-  public ScorerOccs(long occsAll, int docsAll)
-  {
-    setAll(occsAll, docsAll);
-  }
 
   @Override
-  public void weight(final long occsMatch, final int docsMatch)
+  public double score(final long formPart, final long formAll)
   {
-  }
-
-  @Override
-  public double score(final long occsMatch, final long docLen)
-  {
-    return occsMatch;
+    return (double)formPart / (formAll + occsPart + formPart);
   }
 
 }

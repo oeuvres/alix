@@ -33,18 +33,30 @@
 package alix.lucene.search;
 
 /**
- * Interface for a scorer, similar to tf-idf.
+ * Interface for a scorer, similar to tf-idf. Some counts that can
+ * be captures
+ * 
+ * — wcAll : corpus, global word count
+ * — docsAll : corpus, global document count
+ * — formAll : corpus, one form count
+ * — wcPart : part, word count
+ * — formPart : count of occurrences for a form in a corpus
+
  * @author fred
  *
  */
-public abstract class Scorer
+public abstract class Specif
 {
-  /** Total count of occurrences in the collection. */
+  /** Total count of occurrences in the base (big word count) ; as double to avoid casting */
   protected double occsAll;
-  /** Total count of documents in the collection. */
+  /** Total count of documents in the base */
   protected double docsAll;
-  /** Average occ length */
+  /** Average of document length */
   protected double docAvg;
+  /** Word count for part */
+  protected double occsPart;
+  /** Document count for part */
+  protected double docsPart;
   
 
   /**
@@ -65,22 +77,29 @@ public abstract class Scorer
     return (int)docsAll;
   }
   /**
-   * Set collection level variables for a query.
-   * like the idf (independant document frequency) in the tf-idf
+   * Set variables common to a part of corpus (a “query”), with no reference to a form
+   * (like the Independant Document Frequency in the tf-idf).
+   * The word count for the part is not used in classical tf-idf but is used in lexicometry.
    * 
-   * @param occsMatch Count of occurrences in a corpus containing a term.
-   * @param docsMatch Count of documents in a corpus containing a term.
+   * @param occsPart, the small word count
+   * @param docsPart count of documents in the part
    */
-  abstract public void weight(final long occsMatch, final int docsMatch);
+  public void weight(final long occsPart, final int docsPart) {
+    this.occsPart = occsPart;
+    this.docsPart = docsPart;
+  }
 
   /**
-   * Get a score for an item in a collection (ex: a document in a corpus)
-   * like the tf (Term Frequency) in the tf-idf
+   * Calculate score with form specific variables (like the “Term Frequency” in tf-idf).
+   * The size of a relevant document is classical in tf-idf but assumes it is the only
+   * relevant unit.
    * 
-   * @param occsDoc Count of matching occurrences in a document (or a section of corpus).
+   * 
+   * @param formPart count of matching occurrences in a document (or a section of corpus).
    * @param docLen Total count of occurrences for this document.
    * @return
    */
-  abstract public double score(final long occsDoc, final long docLen);
+  abstract public double score(final long formPart, final long formAll);
+  
 
 }

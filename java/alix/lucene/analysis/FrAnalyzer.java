@@ -50,7 +50,9 @@ public class FrAnalyzer extends Analyzer
   @Override
   public TokenStreamComponents createComponents(String field)
   {
-    final Tokenizer source = new FrTokenizer(); // segment words
+    int flags = FrTokenizer.XML;
+    if ("query".startsWith(field)) flags = flags | FrTokenizer.QUERY;
+    final Tokenizer source = new FrTokenizer(flags); // segment words
     TokenStream result = new FrLemFilter(source); // provide lemma+pos
     result = new FrPersnameFilter(result); // link names: V. Hugo
     result = new CompoundFilter(result); // compounds: parce que

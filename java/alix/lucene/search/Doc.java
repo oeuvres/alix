@@ -579,7 +579,7 @@ public class Doc
     Terms vector = getTermVector(field);
     int docLen = docLength[docId];
     // get index term stats
-    FieldText fstats = alix.fieldStats(field);
+    FieldText fstats = alix.fieldText(field);
     // loop on all terms of the document, get score, keep the top 
     TermsEnum termit = vector.iterator();
     final Top<String> names = new Top<String>(100);
@@ -588,7 +588,7 @@ public class Doc
     final Top<String> frequent = new Top<String>(100);
     long occsAll= fstats.occsAll;
     int docsAll = fstats.docsAll;
-    Scorer scorer = new ScorerBM25();
+    Specif scorer = new ScorerBM25();
     // Scorer scorerTheme = new ScorerTheme();
     // Scorer scorerTfidf = new ScorerTfidf();
     scorer.setAll(occsAll, docsAll);
@@ -602,7 +602,7 @@ public class Doc
       long termOccs = fstats.occs(termId); // count of occs accross base
       scorer.weight(termOccs, termDocs); // collection level stats
       int occsDoc = (int)termit.totalTermFreq(); // c
-      double score = scorer.score(occsDoc, docLen);
+      double score = scorer.score(occsDoc, docLen, 0);
       String term = bytes.utf8ToString();
       
       // keep all names, even uniques
@@ -615,7 +615,7 @@ public class Doc
       else {
         att.setEmpty().append(term);
         if (FrDics.isStop(att)) continue;
-        theme.push(scorer.score(occsDoc, docLen), term);
+        theme.push(scorer.score(occsDoc, docLen, 0), term);
         frequent.push(occsDoc, term);
       }
       

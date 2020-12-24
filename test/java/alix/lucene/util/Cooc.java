@@ -97,8 +97,8 @@ public class Cooc
     this.alix = alix;
     this.field = field;
     this.fieldRail = field + _RAIL;
-    this.fstats = alix.fieldStats(field); // build and cache the dictionary of cache for the field
-    this.hashDic = fstats.hashDic;
+    this.fstats = alix.fieldText(field); // build and cache the dictionary of cache for the field
+    this.hashDic = fstats.formDic;
   }
   
   /**

@@ -33,6 +33,7 @@
 package alix.util;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -43,10 +44,18 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
  */
 public class TopArray implements Iterable<TopArray.Entry>
 {
+  /** Flag, reverse order */
+  static final public int REVERSE = 0x01;
+  /** Default sort order is bigger to smaller */
+  final private boolean reverse; 
+  /** Flag, strip 0 values */
+  static final public int NO_ZERO = 0x02;
+  /** Do not push 0 values */
+  final private boolean noZero; 
   /** Max size of the top to extract */
-  private final int size;
+  final private int size;
   /** Data stored as a Pair rank+object, easy to sort before exported as an array. */
-  private final Entry[] data;
+  final protected Entry[] data;
   /** Fill data before */
   private boolean full;
   /** Index of fill factor, before data full */
@@ -62,11 +71,23 @@ public class TopArray implements Iterable<TopArray.Entry>
    * Constructor without data, for reuse
    * @param size
    */
-  public TopArray(final int size)
+  public TopArray(final int size, final int flags)  
   {
+    if ((flags & REVERSE) > 0) this.reverse = true;
+    else reverse = false;
+    if ((flags & NO_ZERO) > 0) this.noZero = true;
+    else noZero = false;
     if (size < 0) throw new IndexOutOfBoundsException("Negative size, no sense:" + size);
     this.size = size;
     data = new Entry[size];
+  }
+  /**
+   * Constructor without data but a fixed size
+   * @param size
+   */
+  public TopArray(final int size)
+  {
+    this(size, NO_ZERO);
   }
 
   /**
@@ -82,17 +103,34 @@ public class TopArray implements Iterable<TopArray.Entry>
     for (int id = 0; id < length; id++) push(id, freqs[id]);
   }
 
+  public TopArray(final double[] freqs) {
+    this(freqs, 0);
+  }
   /**
    * Constructor without a size but to get all records ordered
    * @param freqs
    */
-  public TopArray(final double[] freqs)
+  public TopArray(final double[] freqs, final int flags)
   {
-    this(freqs.length);
-    fill = size;
-    full = true;
-    for (int id = 0; id < size; id++) data[id] = new Entry(id, freqs[id]);
+    this(freqs.length, flags);
+    int fill = 0; // localize
+    for (int id = 0; id < size; id++) {
+      if (noZero && freqs[id] == 0) continue; 
+      data[fill] = new Entry(id, freqs[id]);
+      fill++;
+    }
+    this.fill = fill;
+    if (fill == size) full = true;
     sort();
+  }
+  /**
+   * Constructor with an array where index is id, and value is score.
+   * @param size
+   * @param freqs
+   */
+  public TopArray(int size, final double[] freqs)
+  {
+    this(size, freqs, 0);
   }
   /**
    * Constructor with an array where index is id, and value is score.
@@ -100,9 +138,9 @@ public class TopArray implements Iterable<TopArray.Entry>
    * @param size
    * @param freqs
    */
-  public TopArray(int size, final double[] freqs)
+  public TopArray(int size, final double[] freqs, final int flags)
   {
-    this(size);
+    this(size, flags);
     int length = freqs.length;
     for (int id = 0; id < length; id++) push(id, freqs[id]);
   }
@@ -132,37 +170,45 @@ public class TopArray implements Iterable<TopArray.Entry>
   }
 
   /**
-   * Set internal pointer to the minimum score.
+   * Set internal pointer to the “last” element according to the order, 
+   * the one to be replaced, and against which compare future score 
+   * to insert.
    */
   private void last()
   {
     int last = 0;
-    double min = data[0].score;
-    for (int i = 1; i < size; i++) {
-      if (Double.compare(data[i].score, min) >= 0) continue;
-      min = data[i].score;
-      last = i;
+    if (reverse) { // find the bigger score, to be replaced when insertion
+      double max = data[0].score; // localize
+      for (int i = 1; i < size; i++) {
+        if (Double.compare(data[i].score, max) <= 0) continue;
+        max = data[i].score;
+        last = i;
+      }
+      this.max = max;
     }
-    this.min = min;
+    else { // find the smaller score, to be replaced when insertion
+      double min = data[0].score; // localize
+      for (int i = 1; i < size; i++) {
+        if (Double.compare(data[i].score, min) >= 0) continue;
+        min = data[i].score;
+        last = i;
+      }
+      this.min = min;
+    }
     this.last = last;
   }
 
+  /**
+   * Sort the data
+   */
   private void sort()
   {
-    Arrays.sort(data, 0, fill);
+    if (reverse) Arrays.sort(data, 0, fill, Collections.reverseOrder());
+    else Arrays.sort(data, 0, fill);
     last = fill - 1;
   }
 
-  /**
-   * Test if score is bigger than the smallest.
-   * 
-   * @param score
-   */
-  public boolean isInsertable(final float score)
-  {
-    return (!full || (score <= data[last].score));
-  }
-
+  
   /**
    * Returns the minimum score.
    * @return
@@ -189,6 +235,17 @@ public class TopArray implements Iterable<TopArray.Entry>
   {
     return fill;
   }
+  /**
+   * Clear all entries
+   * @return
+   */
+  public TopArray clear()
+  {
+    fill = 0;
+    min = Double.MAX_VALUE;
+    max = Double.MIN_VALUE;
+    return this;
+  }
 
   /**
    * Push a new Pair, keep it in the top if score is bigger than the smallest.
@@ -196,35 +253,57 @@ public class TopArray implements Iterable<TopArray.Entry>
    * @param score
    * @param value
    */
-  public boolean push(final int id, final double score)
+  public TopArray push(final int id, final double score)
   {
+    if (noZero && score == 0) return this;
     // should fill initial array
     if (!full) {
       if (Double.compare(score, max) > 0) max = score;
       if (Double.compare(score, min) < 0) min = score;
       data[fill] = new Entry(id, score);
       fill++;
-      if (fill < size) return true;
+      if (fill < size) return this;
       // finished
       full = true;
-      // find index of minimum rank
+      // find index of element to replace in the order ()
       last();
-      return true;
+      return this;
     }
-    // less than min, go away
-    // compare by object is more precise, no less efficient
-    if (Double.compare(score, min) <= 0) return false;
-    if (Double.compare(score, max) > 0) max = score;
-    // bigger than last, modify it
+    if (reverse) {
+      if (Double.compare(score, max) >= 0) return this; // not insertable
+      if (Double.compare(score, min) < 0) min = score;
+    }
+    else {
+      if (Double.compare(score, min) <= 0) return this; // not insertable
+      if (Double.compare(score, max) > 0) max = score;
+    }
+    // modify the last element in the vector
     data[last].set(id, score);
-    // find last
-    last();
-    return true;
+    last(); // search for the last element of the series according to order
+    return this;
   }
   
+  /**
+   * Test if score is insertable, true if 
+   * <li>top is not full
+   * <li>score is bigger than {@link #min()} in natural order
+   * <li>score is lower than {@link #max()} in reverse order
+   * 
+   * 
+   * @param score
+   */
+  public boolean isInsertable(final double score)
+  {
+    if (noZero && score == 0) return false;
+    if (!full) return true;
+    if (reverse) return (Double.compare(score, max) < 0);
+    return (Double.compare(score, min) > 0);
+  }
+
 
   /**
-   * Return the values, sorted by rank, biggest first.
+   * Return the ids, sorted according to the chosen order,
+   * default is bigger first, reverse is smaller first.
    * 
    * @return
    */
@@ -305,7 +384,7 @@ public class TopArray implements Iterable<TopArray.Entry>
     @Override
     public String toString()
     {
-      return "(" + id + ", " + score + ")";
+      return score + "[" + id + "]";
     }
 
   }

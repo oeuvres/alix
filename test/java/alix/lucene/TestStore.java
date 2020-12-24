@@ -51,7 +51,7 @@ public final class TestStore
     FixedBitSet filter = new FixedBitSet(maxDoc);
     filter.set(0, maxDoc);
 
-    FieldText freqs = alix.fieldStats(field);
+    FieldText freqs = alix.fieldText(field);
     
     for (int i = 0; i < 10; i++) {
       System.out.println("---");

@@ -10,74 +10,75 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.UnicodeUtil;
 
+import alix.fr.Tag;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 
 /**
- * An iterator over a sorted array of termId.
+ * An iterator over a sorted array of formId.
  * @author glorieux-f
  */
-public class SortEnum {
-  /** An array of termId in the order we want to iterate on, requested */
-  private final int[] terms;
+public class FormEnum {
+  /** An array of formId in the order we want to iterate on, requested */
+  private final int[] formSorted;
   /** Limit for this iterator */
   final private int size;
   /** Field dictionary */
-  final private BytesRefHash hashDic;
-  /** Count of docs by termId */
-  final private int[] termDocs;
-  /** Count of occurrences by termId */
-  final private long[] termOccs;
+  final private BytesRefHash formDic;
+  /** Count of docs by formId */
+  final private int[] formDocs;
+  /** Count of occurrences by formId */
+  final private long[] formOccs;
   /** A docId by term used as a cover (example: metas for books or authors) */
-  final private int[] termCover;
+  final private int[] formCover;
   /** An optional tag for each terms (relevant for textField) */
-  final private int[] termTag;
-  /** Count of occurrences for the match odcs */
-  protected long occsCount;
-  /** Number of documents matched, index by termId */
+  final private int[] formTag;
+  /** Count of occurrences for the match docs */
+  protected long occsPart;
+  /** Number of documents matched, index by formId */
   protected int[] hits;
-  /** Number of occurrences matched, index by termId */
+  /** Number of occurrences matched, index by formId */
   protected long[] occs;
-  /** Scores, index by termId */
+  /** Scores, index by formId */
   protected double[] scores;
   /** Cursor, to iterate in the sorter */
   private int cursor = -1;
-  /** Current termId, set by next */
-  private int termId;
+  /** Current formId, set by next */
+  private int formId;
   /** used to read in the dic */
   BytesRef bytes = new BytesRef();
 
   
-  /** Build an iterator from a text field with an ordered arrays of termId */
-  public SortEnum(final FieldText field, final int[] terms)
+  /** Build an iterator from a text field with an ordered arrays of formId */
+  public FormEnum(final FieldText field, final int[] terms)
   {
-    this.hashDic = field.hashDic;
-    this.termDocs = field.termDocs;
-    this.termOccs = field.termOccs;
-    this.terms = terms;
+    this.formDic = field.formDic;
+    this.formDocs = field.formDocs;
+    this.formOccs = field.formCount;
+    this.formSorted = terms;
     size = terms.length;
-    this.termCover = null;
-    this.termTag = field.termTag;
+    this.formCover = null;
+    this.formTag = field.formTag;
   }
 
-  /** Build an iterator from a facet field with an ordered arrays of termId */
-  public SortEnum(final FieldFacet field, final int[] terms)
+  /** Build an iterator from a facet field with an ordered arrays of formId */
+  public FormEnum(final FieldFacet field, final int[] terms)
   {
-    this.hashDic = field.hashDic;
-    this.termDocs = field.facetDocs;
-    this.termOccs = field.facetOccs;
-    this.termCover = field.facetCover;
-    this.terms = terms;
+    this.formDic = field.hashDic;
+    this.formDocs = field.facetDocs;
+    this.formOccs = field.facetOccs;
+    this.formCover = field.facetCover;
+    this.formSorted = terms;
     size = terms.length;
-    this.termTag = null;
+    this.formTag = null;
   }
 
   /**
    * Count of occurrences for this query
    * @return
    */
-  public long occsCount()
+  public long occsPart()
   {
-    return occsCount;
+    return occsPart;
   }
   /**
    * Global number of occurrences for this term
@@ -86,7 +87,7 @@ public class SortEnum {
    */
   public long occsField()
   {
-    return termOccs[termId];
+    return formOccs[formId];
   }
 
   /**
@@ -95,7 +96,7 @@ public class SortEnum {
    */
   public int docsField()
   {
-    return termDocs[termId];
+    return formDocs[formId];
   }
 
   /**
@@ -104,7 +105,7 @@ public class SortEnum {
    */
   public long occsMatching()
   {
-    return occs[termId];
+    return occs[formId];
   }
 
   /**
@@ -113,7 +114,7 @@ public class SortEnum {
    */
   public int docsMatching()
   {
-    return hits[termId];
+    return hits[formId];
   }
 
   /**
@@ -131,7 +132,7 @@ public class SortEnum {
   public void next()
   {
     cursor++;
-    termId = terms[cursor];
+    formId = formSorted[cursor];
   }
 
   /**
@@ -144,11 +145,11 @@ public class SortEnum {
 
 
   /**
-   * Current term, get the TermId for the global dic.
+   * Current term, get the formId for the global dic.
    */
-  public int termId()
+  public int formId()
   {
-    return termId;
+    return formId;
   }
 
   /**
@@ -158,7 +159,7 @@ public class SortEnum {
    */
   public void label(BytesRef bytes)
   {
-    hashDic.get(termId, bytes);
+    formDic.get(formId, bytes);
   }
   
   /**
@@ -167,7 +168,7 @@ public class SortEnum {
    */
   public String label()
   {
-    hashDic.get(termId, bytes);
+    formDic.get(formId, bytes);
     return bytes.utf8ToString();
   }
 
@@ -179,7 +180,7 @@ public class SortEnum {
    */
   public CharsAtt label(CharsAtt term)
   {
-    hashDic.get(termId, bytes);
+    formDic.get(formId, bytes);
     // ensure size of the char array
     int length = bytes.length;
     char[] chars = term.resizeBuffer(length);
@@ -195,7 +196,7 @@ public class SortEnum {
    */
   public double score()
   {
-    return scores[termId];
+    return scores[formId];
   }
   
   /**
@@ -204,7 +205,7 @@ public class SortEnum {
    */
   public int cover()
   {
-    return termCover[termId];
+    return formCover[formId];
   }
 
   /**
@@ -213,11 +214,11 @@ public class SortEnum {
    */
   public int tag()
   {
-    return termTag[termId];
+    return formTag[formId];
   }
 
   /**
-   * Returns an array of termId in alphabetic order for all terms
+   * Returns an array of formId in alphabetic order for all terms
    * of dictionary. 
    *
    * @param hashDic
@@ -231,9 +232,9 @@ public class SortEnum {
     int size = hashDic.size();
     BytesRef bytes = new BytesRef();
     Entry[] sorter = new Entry[size];
-    for (int termId = 0; termId < size; termId++) {
-      hashDic.get(termId, bytes);
-      sorter[termId] = new Entry(termId, collator.getCollationKey(bytes.utf8ToString()));
+    for (int formId = 0; formId < size; formId++) {
+      hashDic.get(formId, bytes);
+      sorter[formId] = new Entry(formId, collator.getCollationKey(bytes.utf8ToString()));
     }
     Arrays.sort(sorter,  new Comparator<Entry>() {
         @Override
@@ -245,7 +246,7 @@ public class SortEnum {
     );
     int[] terms = new int[size];
     for (int i = 0, max = size; i < max; i++) {
-      terms[i] = sorter[i].termId;
+      terms[i] = sorter[i].formId;
     }
     return terms;
   }
@@ -253,10 +254,10 @@ public class SortEnum {
   static private class Entry
   {
     final CollationKey key;
-    final int termId;
-    Entry (final int termId, final CollationKey key) {
+    final int formId;
+    Entry (final int formId, final CollationKey key) {
       this.key = key;
-      this.termId = termId;
+      this.formId = formId;
     }
   }
 
@@ -267,7 +268,7 @@ public class SortEnum {
   /* Very specific to some fields type
   public int n()
   {
-    return nos[termId];
+    return nos[formId];
   }
   */
 
@@ -275,12 +276,24 @@ public class SortEnum {
   public String toString()
   {
     boolean hasScore = (scores != null);
+    boolean hasTag = (formTag != null);
+    boolean hasHits = (hits != null);
+    boolean hasDocs = (formDocs != null);
+    boolean hasToccs = (formOccs != null);
+    boolean hasOccs = (occs != null);
     StringBuilder sb = new StringBuilder();
     for(int pos = 0; pos < size; pos++) {
-      int termId = terms[pos];
-      hashDic.get(termId, bytes);
-      sb.append(termId + ". " + bytes.utf8ToString());
-      if (hasScore) sb.append( " scores=" + scores[termId]);
+      int formId = formSorted[pos];
+      formDic.get(formId, bytes);
+      sb.append(formId + ". " + bytes.utf8ToString());
+      if (hasTag) sb.append( " "+Tag.label(formTag[formId]));
+      if (hasScore) sb.append( " score=" + scores[formId]);
+      if (hasToccs && hasOccs) sb.append(" occs="+occs[formId]+"/"+formOccs[formId]);
+      else if(hasDocs) sb.append(" voc="+formDocs[formId]);
+      else if(hasHits) sb.append(" occs="+occs[formId]);
+      if (hasHits && hasDocs) sb.append(" hits="+hits[formId]+"/"+formDocs[formId]);
+      else if(hasDocs) sb.append(" docs="+formDocs[formId]);
+      else if(hasHits) sb.append(" hits="+hits[formId]);
       sb.append("\n");
     }
     return sb.toString();

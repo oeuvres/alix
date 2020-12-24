@@ -32,37 +32,39 @@
  */
 package alix.lucene.search;
 
-public class ScorerBM25 extends Specif
+/**
+ * Implemtation of the “Stella” scorer for a term like described by TXM
+ * http://textometrie.ens-lyon.fr/html/doc/manual/0.7.9/fr/manual43.xhtml
+ * 
+ * <li>formPart  f : la fréquence de l’événement dans la partie ;
+ * <li>formAll   F : la fréquence totale de l’événement dans le corpus ;
+ * <li>wcPart    t : le nombre total d’événements ayant lieu dans la partie ;
+ * <li>wcAll     T : le nombre total d’événements ayant lieu dans l’ensemble des parties.
+ * 
+ * 
+ * @author fred
+ *
+ */
+public class ScorerStella extends Specif
 {
-
-  /** Classical BM25 param */
-  private final double k1 = 1.2f;
-  /** Classical BM25 param */
-  private final double b = 0.75f;
-  /** Store idf */
-  double idf;
-
-  public ScorerBM25()
+  public  ScorerStella()
   {
     
   }
-
-  public ScorerBM25(final long occsAll, final int docsAll)
+  public  ScorerStella(long occsAll, int docsAll)
   {
     setAll(occsAll, docsAll);
   }
 
-  
   @Override
-  public void weight(final int docsPart, final long wcPart)
+  public void weight(final long wcPart, final int docsPart)
   {
-    this.idf = Math.log(1.0 + (docsAll - docsPart + 0.5D) / (docsPart + 0.5D));
   }
 
   @Override
   public double score(final long formPart, final long formAll, final long wcDoc)
   {
-    return idf * (formPart * (k1 + 1)) / (formPart + k1 * (1 - b + b * wcDoc / docAvg));
+    return (double)1000000 * formPart / wcDoc;
   }
 
 }

@@ -381,21 +381,23 @@ public class Jsp
    * @param name
    * @param fallback
    * @return
+   * @throws Exception 
    */
-  @SuppressWarnings({ "unchecked", "static-access" })
-  public Enum<?> getEnum(final String name, final Enum<?> fallback)
+  // @SuppressWarnings({ "unchecked", "static-access" })
+  public Enum<?> getEnum(final String name, final Enum<?> fallback) throws Exception
   {
     String value = request.getParameter(name);
     if (!check(value)) return fallback;
     // try/catch seems a bit heavy, but behind valueOf, there is a lazy static Map optimized for Enum
     try {
-      Enum<?> ret = fallback.valueOf(fallback.getClass(), value);
+      Enum<?> ret = Enum.valueOf(fallback.getDeclaringClass(), value);
+      // Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
       return ret;
     }
     catch(Exception e) {
-      
+      throw new Exception("Not found ?");
     }
-    return fallback;
+    // return fallback;
   }
   /**
    * Get a request parameter as an {@link Enum} value
@@ -417,7 +419,7 @@ public class Jsp
     String value = request.getParameter(name);
     if (check(value)) {
       try {
-        Enum<?> ret = fallback.valueOf(fallback.getClass(), value);
+        Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
         cookieSet(cookie, ret.name());
         return ret;
       }
@@ -432,7 +434,7 @@ public class Jsp
     // try to deal with cookie
     value = cookieGet(cookie);
     try {
-      Enum<?> ret = fallback.valueOf(fallback.getClass(), value);
+      Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
       return ret;
     }
     catch(Exception e) {

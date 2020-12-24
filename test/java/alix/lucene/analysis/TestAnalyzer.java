@@ -240,12 +240,23 @@ public class TestAnalyzer
     text = " Le bon point du chemin au douzième siècle, 12e siècle, c’est celui du chemin de fer d’intérêt local.";
     text = "Il y avait beaucoup de bonnes volontés engagées.";
     text = " n’était qu’un Pacte d’alliance entre vingt‑cinq </span><span class=\"right\"><a href=\"#pos99\">États</a> absolument souverains.";
+    text = "le rebondissement de l<emph>’action</emph>.";
     vertical(text, new AnalyzerCompounds());
   }
 
+  public static void tokfr() throws IOException
+  {
+    String text;
+    // mode query
+    text =  "monnaie d’un -nombre toujours plus restreint";
+    // TODO, does not work
+    text = "le rebondissement de l<emph>’action</emph>, E<anchor xml:id=\"_GoBack\"/>h";
+    vertical(text, new AnalyzerTokfr());
+  }
+  
 
   public static void main(String[] args) throws IOException
   {
-    compounds();
+    tokfr();
   }
 }
