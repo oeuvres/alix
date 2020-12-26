@@ -30,37 +30,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package alix.lucene.analysis;
-
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
+package alix.lucene.search;
 
 /**
- * Analysis scenario for French in Alix.
- * The linguistic features of Alix are language dependent.
+ * 
+ * @author glorieux-f
  */
-public class FrAnalyzer extends Analyzer
+public class SpecifBM25 extends Specif
 {
-  /** 
-   * Force creation of a new token stream pipeline, for multi threads 
-   * indexing.
-   */
-  
+
+  /** Classical BM25 param */
+  private final double k1 = 1.2f;
+  /** Classical BM25 param */
+  private final double b = 0.75f;
+  /** Cache idf for a term */
+  private double idf;
   @Override
-  public TokenStreamComponents createComponents(String field)
-  {
-    int flags = FrTokenizer.XML;
-    if ("query".startsWith(field)) flags = flags | FrTokenizer.QUERY;
-    final Tokenizer source = new FrTokenizer(flags); // segment words
-    TokenStream result = new FrLemFilter(source); // provide lemma+pos
-    result = new LocutionFilter(result); // compounds: parce que
-    // result = new FrPersnameFilter(result); // link unknown names, seems buggy
-    boolean pun = false;
-    if ("query".startsWith(field)) pun = true; // keep punctuation, ex, to parse query
-    result = new FlagCloudFilter(result, pun); // select lemmas as term to index
-    return new TokenStreamComponents(source, result);
+  public int type() {
+    return TYPE_TFIDF;
   }
   
+  @Override
+  public double idf(final long formAllOccs, final int formAllDocs)
+  {
+    this.formAllOccs = formAllOccs;
+    this.formAllDocs = formAllDocs;
+    double l = 1; // 
+    this.idf = Math.log(1.0 + (allDocs - formAllDocs + 0.5D) / (formAllDocs + 0.5D));
+    return idf;
+  }
+
+  @Override
+  public double tf(final int formDocOccs, final int docOccs)
+  {
+    return idf * (formDocOccs * (k1 + 1)) / (formDocOccs + k1 * (1 - b + b * docOccs / docAvg));
+  }
 
 }

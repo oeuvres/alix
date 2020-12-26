@@ -792,6 +792,18 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
 
   /**
    * 
+   * @param c
+   * @return
+   */
+  public boolean contains(final char c)
+  {
+    for (int i = start + 1; i < size; i++) {
+      if (c == data[i]) return true;
+    }
+    return false;
+  }
+  /**
+   * 
    * @return
    */
   private static boolean globsearch(CharSequence glob, int globstart, int globend, CharSequence text, int textstart,

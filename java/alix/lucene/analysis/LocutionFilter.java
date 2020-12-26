@@ -53,7 +53,7 @@ import alix.util.Roll;
  * @author fred
  *
  */
-public class CompoundFilter extends TokenFilter
+public class LocutionFilter extends TokenFilter
 {
   /** Current char offset */
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
@@ -76,7 +76,7 @@ public class CompoundFilter extends TokenFilter
   /** Counter */
   private int count;
 
-  public CompoundFilter(TokenStream input)
+  public LocutionFilter(TokenStream input)
   {
     super(input);
   }
@@ -95,7 +95,6 @@ public class CompoundFilter extends TokenFilter
     return out;
   }
   
-  @SuppressWarnings("unlikely-arg-type")
   @Override
   public boolean incrementToken() throws IOException
   {
@@ -104,9 +103,11 @@ public class CompoundFilter extends TokenFilter
     boolean token = false;
     lemCom.setEmpty();
     orthCom.setEmpty();
-    LexEntry entry;
+    Integer treeState;
+    final int BRANCH = FrDics.BRANCH; // localize
+    final int LEAF = FrDics.LEAF; // localize
     int loop = -1;
-    int startOffset = offsetAtt.startOffset();;
+    int startOffset = offsetAtt.startOffset();
     do {
       loop++;
       more = false;
@@ -156,11 +157,17 @@ public class CompoundFilter extends TokenFilter
       if (loop > 0 && !orthCom.endsWith('\'')) orthCom.append(' '); 
       if (orth.length() != 0) orthCom.append(orth);
       else orthCom.append(termAtt);
-      entry = FrDics.COMPOUND.get(orthCom);
-      if (entry == null) entry = FrDics.COMPOUND.get(lemCom);
+      
+      // keep the key working to find entry in the tree of locutions
+      CharsAtt key = orthCom;
+      treeState = FrDics.TREELOC.get(key);
+      if (treeState == null) {
+        key = lemCom;
+        treeState = FrDics.TREELOC.get(key);
+      }
       
 
-      if (entry == null) {
+      if (treeState == null) {
         // if nothing in stack, and new token, go out with current state
         if (stack.isEmpty() && loop == 0) return exit;
         // if stack is not empty and a new token, add it to the stack
@@ -172,16 +179,28 @@ public class CompoundFilter extends TokenFilter
       
       
       // it’s a compound
-      if (entry.isLeaf()) {
+      if ((treeState & LEAF) > 0) {
         stack.clear();
-        termAtt.setEmpty().append(orthCom);
-        orth.setEmpty().append(lemCom);
-        if (entry.lem != null) lemAtt.setEmpty().append(entry.lem);
-        else lemAtt.setEmpty().append(lemCom);
-        flagsAtt.setFlags(entry.tag); 
+        // get its entry 
+        LexEntry entry = FrDics.WORDS.get(key);
+        if (entry == null) entry = FrDics.NAMES.get(key);
+        if (entry != null) {
+          flagsAtt.setFlags(entry.tag);
+          termAtt.setEmpty().append(orthCom);
+          if (entry.orth != null) orth.setEmpty().append(entry.orth);
+          else orth.setEmpty().append(lemCom);
+          if (entry.lem != null) lemAtt.setEmpty().append(entry.lem);
+          else lemAtt.setEmpty();
+        }
+        else {
+          termAtt.setEmpty().append(orthCom);
+          orth.setEmpty().append(lemCom);
+          lemAtt.setEmpty().append(lemCom);
+        }
+        
         offsetAtt.setOffset(startOffset, offsetAtt.endOffset());
         // no more compound with this prefix, we are happy
-        if (!entry.isBranch()) return exit;
+        if ((treeState & BRANCH) == 0) return exit;
         // compound may continue, lookahead should continue, store this step
         stack.add(captureState());
       }

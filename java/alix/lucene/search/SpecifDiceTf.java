@@ -32,37 +32,23 @@
  */
 package alix.lucene.search;
 
-public class ScorerBM25 extends Specif
+/**
+ * Dice, "2*m11 / (m10² + m01²)"
+ * 
+ * @author glorieux-f
+ */
+public class SpecifDiceTf extends Specif
 {
-
-  /** Classical BM25 param */
-  private final double k1 = 1.2f;
-  /** Classical BM25 param */
-  private final double b = 0.75f;
-  /** Store idf */
-  double idf;
-
-  public ScorerBM25()
-  {
-    
-  }
-
-  public ScorerBM25(final long occsAll, final int docsAll)
-  {
-    setAll(occsAll, docsAll);
-  }
-
   
   @Override
-  public void weight(final int docsPart, final long wcPart)
-  {
-    this.idf = Math.log(1.0 + (docsAll - docsPart + 0.5D) / (docsPart + 0.5D));
+  public int type() {
+    return TYPE_TFIDF;
   }
 
   @Override
-  public double score(final long formPart, final long formAll, final long wcDoc)
+  public double tf(final int formDocOccs, final int docOccs)
   {
-    return idf * (formPart * (k1 + 1)) / (formPart + k1 * (1 - b + b * wcDoc / docAvg));
+   return (double)2 * formDocOccs / (Math.pow(formAllOccs - formDocOccs, 2) + Math.pow(docOccs - formDocOccs, 2));
   }
 
 }

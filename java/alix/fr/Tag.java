@@ -177,6 +177,8 @@ public final class Tag
   public final static int REF = 0xF5;
   /** Particules démonstratives -ci, -là */
   public final static int PARTdem = 0xFC;
+  /** Utiles pour tests */
+  public final static int TEST = 0xFF;
   /** Category */
   private int code;
   /** Dictionnaire des codes par nom */

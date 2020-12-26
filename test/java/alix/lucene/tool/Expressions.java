@@ -18,7 +18,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
-import alix.lucene.analysis.CompoundFilter;
+import alix.lucene.analysis.LocutionFilter;
 import alix.lucene.analysis.FrDics;
 import alix.lucene.analysis.FrLemFilter;
 import alix.lucene.analysis.FrPersnameFilter;
@@ -69,7 +69,7 @@ public class Expressions
       final Tokenizer source = new FrTokenizer(); // segment words
       TokenStream result = new FrLemFilter(source); // provide lemma+pos
       result = new FrPersnameFilter(result); // link names: V. Hugo
-      result = new CompoundFilter(result); // compounds: parce que
+      result = new LocutionFilter(result); // compounds: parce que
       return new TokenStreamComponents(source, result);
     }
   }

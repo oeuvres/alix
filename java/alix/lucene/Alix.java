@@ -121,7 +121,7 @@ import alix.lucene.search.FieldInt;
  * </p>
  * 
  * <ul>
- *   <li>{@link #intSeries(String)} All values of a unique numeric field per document 
+ *   <li>{@link #fieldInt(String)} All values of a unique numeric field per document 
  *   ({@link IntPoint}, {@link NumericDocValuesField}).</li>
  *   <li>{@link #fieldText(String)} All terms indexed in a {@link TextField}, with stats,
  *   useful for list of terms and advanced lexical statistics.</li>
@@ -506,10 +506,10 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public FieldInt intSeries(String field) throws IOException
+  public FieldInt fieldInt(String field) throws IOException
   {
     IndexReader reader = reader(); // ensure reader, or decache
-    String key = "AlixIntSeries" + field;
+    String key = "AlixFiedInt" + field;
     FieldInt ints = (FieldInt) cache(key);
     if (ints != null) return ints;
     ints = new FieldInt(reader, field);

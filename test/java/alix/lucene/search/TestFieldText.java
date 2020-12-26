@@ -39,10 +39,10 @@ public class TestFieldText
     System.out.println();
     terms = fstats.iterator(-1, bits, null, null);
     System.out.println(terms);
-    terms = fstats.iterator(-1, bits, new SpecifJaccard(), null);
+    terms = fstats.iterator(-1, bits, new SpecifJaccardTf(), null);
     System.out.println(terms);
     System.out.println("Reverse");
-    terms = fstats.iterator(3, bits, new SpecifJaccard(), null, true);
+    terms = fstats.iterator(3, bits, new SpecifJaccardTf(), null, true);
     System.out.println(terms);
     while (terms.hasNext()) {
       terms.next();

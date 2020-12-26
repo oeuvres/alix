@@ -3,7 +3,6 @@ package alix.lucene.analysis;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -20,6 +19,7 @@ import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.util.WordsAutomatonBuilder;
 import alix.util.Chain;
 import alix.util.CsvReader;
+import alix.util.CsvReader.Row;
 
 public class TestFrDics
 {
@@ -41,8 +41,9 @@ public class TestFrDics
     reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
     csv = new CsvReader(reader, 1);
     csv.readRow(); // pass first line
-    while (csv.readRow()) {
-      Chain cell0 = csv.row().get(0);
+    Row row;
+    while ((row = csv.readRow()) != null) {
+      Chain cell0 = row.get(0);
       if (cell0.isEmpty() || cell0.charAt(0) == '#') continue;
       javaHash.add(new CharsAtt(cell0));
       words.add(cell0.toString());
@@ -137,11 +138,13 @@ public class TestFrDics
     for (String word: new String[] {"chemin", "douzième", "douzième siècle", "chemin de", "rien", "d'abord", "d'ailleurs", "chemin de fer", "chemin de fer d'intérêt local", "moustérien"}) {
       System.out.print(word);
       key.setEmpty().append(word);
-      LexEntry entry = FrDics.COMPOUND.get(key);
-      if (entry != null) {
-        System.out.print(" "+Tag.label(entry.tag));
-        if ( entry.isBranch() ) System.out.print(" BRANCH");
-        if ( entry.isLeaf() ) System.out.print(" LEAF");
+      Integer treeFlag = FrDics.TREELOC.get(key);
+      if (treeFlag != null) {
+        if ((treeFlag & FrDics.BRANCH) > 0) System.out.print(" BRANCH");
+        if ((treeFlag & FrDics.LEAF) > 0) System.out.print(" LEAF");
+        LexEntry entry = FrDics.WORDS.get(key);
+        if (entry == null) entry = FrDics.NAMES.get(key);
+        if (entry != null) System.out.print(" "+entry);
       }
       System.out.println();
     }
@@ -149,21 +152,20 @@ public class TestFrDics
   
   public static void compoundsDic()
   {
-    HashMap<CharsAtt, LexEntry> compounds = new HashMap<CharsAtt, LexEntry>();
-    String entries = "GRAPH;CAT\n"
-     + "chemin de fer;SUB\n"
-     + "douzième siècle;SUB;12e siècle\n"
-     + "chemin de fer d'intérêt local;SUB\n"
-     + "chemin vicinal;SUB\n"
-    ;
-    FrDics.tree(new StringReader(entries), compounds);
-    System.out.println(compounds);
+    HashMap<CharsAtt, Integer> tree = new HashMap<CharsAtt, Integer>();
+    Chain graph = new Chain();
+    for (String word: new String[] {"chemin de fer", "douzième siècle", "chemin de fer d'intérêt local", "chemin vicinal"}) {
+      graph.copy(word);
+      // is private 
+      FrDics.compound(graph, tree);
+    }
+    System.out.println(tree);
   }
   
   public static void main(String[] args) throws IOException
   {
     // hashing();
-    compoundsDic();
+    // compoundsDic();
     compounds();
   }
 

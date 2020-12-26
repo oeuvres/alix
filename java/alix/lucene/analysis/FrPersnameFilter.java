@@ -119,7 +119,7 @@ public class FrPersnameFilter extends TokenFilter
     // test compound names : NAME (particle|NAME)* NAME
     final int startOffset = offsetAtt.startOffset();
     int endOffset = offsetAtt.endOffset();
-    // int pos = posInc.getPositionIncrement(); 
+    // int pos = posInc.getPositionIncrement();
     name.copy(term);
     int lastlen = name.length();
     // a bug possible here if last token is a name ?

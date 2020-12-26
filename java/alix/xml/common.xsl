@@ -234,7 +234,7 @@ Gobal TEI parameters and variables are divided in different categories
   </xsl:param>
   <xsl:template name="docdate">
     <xsl:choose>
-      <xsl:when test="/*/tei:teiHeader/tei:profileDesc/tei:creation/tei:date[concat(.,@when,@notBefore,@notAfter)!='']">
+      <xsl:when test="/*/tei:teiHeader/tei:profileDesc/tei:creation/tei:date[concat(.,@when,@notBefore,@notAfter,@from,@to)!='']">
         <xsl:apply-templates mode="year" select="/*/tei:teiHeader/tei:profileDesc/tei:creation[1]/tei:date[1]"/>
       </xsl:when>
       <xsl:when test="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:biblFull/tei:publicationStmt/tei:date">
@@ -398,11 +398,17 @@ Gobal TEI parameters and variables are divided in different categories
       <xsl:when test="@when">
         <xsl:value-of select="substring(@when, 1, 4)"/>
       </xsl:when>
+      <xsl:when test="@to">
+        <xsl:value-of select="substring(@to, 1, 4)"/>
+      </xsl:when>
       <xsl:when test="@notAfter">
         <xsl:value-of select="substring(@notAfter, 1, 4)"/>
       </xsl:when>
       <xsl:when test="@notBefore">
         <xsl:value-of select="substring(@notBefore, 1, 4)"/>
+      </xsl:when>
+      <xsl:when test="@to">
+        <xsl:value-of select="substring(@to, 1, 4)"/>
       </xsl:when>
       <xsl:when test="@n">
         <xsl:value-of select="substring(@n, 1, 4)"/>

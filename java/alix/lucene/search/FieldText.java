@@ -86,9 +86,9 @@ public class FieldText
   /** Store and populate the terms and get the id */
   public final BytesRefHash formDic;
   /** Count of docs by formId */
-  public int[] formDocs;
+  public int[] formAllDocs;
   /** Count of occurrences by formId */
-  public final long[] formCount;
+  public final long[] formAllOccs;
   /** A tag by formId (maybe used for filtering) */
   public int[] formTag;
   /** Stop words known as a bitSet, according to formId (growable java.util.BitSet is prefered to lucene fixed ones)  */
@@ -149,8 +149,8 @@ public class FieldText
     // for a dictionary with scorer, we need global stats here
     this.formDic = hashDic;
     this.size = hashDic.size();
-    this.formDocs = termDocs;
-    this.formCount = termOccs;
+    this.formAllDocs = termDocs;
+    this.formAllOccs = termOccs;
     this.docOccs = docOccs;
     // loop on all term ids to get a tag from dictionaries
     int[] tags = new int[size];
@@ -204,7 +204,7 @@ public class FieldText
    */
   public long occs(int formId)
   {
-    return formCount[formId];
+    return formAllOccs[formId];
   }
 
   /**
@@ -214,7 +214,7 @@ public class FieldText
    */
   public int docs(int formId)
   {
-    return formDocs[formId];
+    return formAllDocs[formId];
   }
   
   /**
@@ -260,7 +260,7 @@ public class FieldText
     final BytesRef bytes = new BytesRef(s);
     final int id = formDic.find(bytes);
     if (id < 0) return -1;
-    return formCount[id];
+    return formAllOccs[id];
   }
 
   /**
@@ -272,7 +272,7 @@ public class FieldText
   {
     final int id = formDic.find(bytes);
     if (id < 0) return -1;
-    return formCount[id];
+    return formAllOccs[id];
   }
 
   public FormEnum iterator(int limit, final BitSet filter, Specif specif, TagFilter tags) throws IOException
@@ -297,7 +297,9 @@ public class FieldText
       for (int formId=0; formId < size; formId++) {
         if (noStop && isStop(formId)) continue;
         if (hasTags && !tags.accept(formTag[formId])) continue;
-        scores[formId] = formCount[formId];
+        // specif.idf(formOccs[formId], formDocs[formId] );
+        // loop on all docs containing the term ?
+        scores[formId] = formAllOccs[formId];
       }
       // now we have all we need to build a sorted iterator on entries
       TopArray top;
@@ -305,14 +307,16 @@ public class FieldText
       else top = new TopArray(limit, scores);
       FormEnum it = new FormEnum(this, top.toArray());
       it.scores = scores;
-      it.hits = formDocs;
-      it.occs = formCount;
+      it.hits = formAllDocs;
+      it.occs = formAllOccs;
 
       return it;
     }
     
     if (specif == null) specif = new SpecifOccs();
-    specif.setAll(occsAll, docsAll);
+    specif.all(occsAll, docsAll);
+    boolean isTfidf = (specif.type() == Specif.TYPE_TFIDF);
+    boolean isProb = (specif.type() == Specif.TYPE_PROB);
     
     BitSet hitsVek = new FixedBitSet(reader.maxDoc());
     
@@ -335,7 +339,7 @@ public class FieldText
         if (hasTags && !tags.accept(formTag[formId])) continue;
         // if formId is negative, let the error go, problem in reader
         // for each term, set scorer with global stats
-        // scorer.weight(termDocs[formId], termOccs[formId]);
+        if (isTfidf) specif.idf(formAllOccs[formId], formAllDocs[formId] );
         docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
         int docLeaf;
         while ((docLeaf = docsEnum.nextDoc()) != NO_MORE_DOCS) {
@@ -345,8 +349,8 @@ public class FieldText
           if (freq < 1) throw new ArithmeticException("??? field="+fieldName+" docId=" + docId+" term="+bytes.utf8ToString()+" freq="+freq);
           hitsVek.set(docId);
           hits[formId]++;
-          // for full corpus, search contrast by doc
-          // if (!hasDocs) scores[formId] += scorer.score(freq, docLength[docId]);
+          // if it’s a tf-idf like score
+          if (isTfidf) scores[formId] += specif.tf(freq, docOccs[docId]);
           occs[formId] += freq;
         }
       }
@@ -355,18 +359,20 @@ public class FieldText
     
     // We have counts, calculate scores
     // loop on the bitSet to have the part Size
-    long occsPart = 0;
+    long partOccs = 0;
     for (int docId = hitsVek.nextSetBit(0); docId != NO_MORE_DOCS; docId = hitsVek.nextSetBit(docId + 1)) {
-      occsPart += docOccs[docId];
+      partOccs += docOccs[docId];
     }
-    specif.weight(occsPart, hitsVek.cardinality());
+    if (isProb) {
+      specif.part(partOccs, hitsVek.cardinality());
+      // loop on all form to calculate scores
+      for (int formId = 0; formId < size; formId++) {
+        long formPartOccs = occs[formId];
+        if (formPartOccs < 1) continue;
+        scores[formId]  = specif.prob(formPartOccs, formAllOccs[formId]);
+      }
+    }
     
-    // loop on all form to calculate scores
-    for (int formId = 0; formId < size; formId++) {
-      long formPart = occs[formId];
-      if (formPart < 1) continue;
-      scores[formId] = specif.score(formPart, formCount[formId]);
-    }
     
     // now we have all we need to build a sorted iterator on entries
     TopArray top;
@@ -380,7 +386,7 @@ public class FieldText
     it.hits = hits;
     it.occs = occs;
     it.scores = scores;
-    it.occsPart = occsPart;
+    it.occsPart = partOccs;
 
     return it;
   }
@@ -430,7 +436,7 @@ public class FieldText
     int len = Math.min(size, 200);
     for (int i = 0; i < len; i++) {
       formDic.get(i, ref);
-      string.append(ref.utf8ToString() + ": " + formCount[i] + "\n");
+      string.append(ref.utf8ToString() + ": " + formAllOccs[i] + "\n");
     }
     return string.toString();
   }

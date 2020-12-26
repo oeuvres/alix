@@ -30,37 +30,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package alix.lucene.analysis;
-
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
+package alix.lucene.search;
 
 /**
- * Analysis scenario for French in Alix.
- * The linguistic features of Alix are language dependent.
+ * Implemtation of the “Stella” scorer for a term like described by TXM
+ * http://textometrie.ens-lyon.fr/html/doc/manual/0.7.9/fr/manual43.xhtml
+ * 
+ * <li>formPart  f : la fréquence de l’événement dans la partie ;
+ * <li>formAll   F : la fréquence totale de l’événement dans le corpus ;
+ * <li>wcPart    t : le nombre total d’événements ayant lieu dans la partie ;
+ * <li>wcAll     T : le nombre total d’événements ayant lieu dans l’ensemble des parties.
+ * 
+ * 
+ * @author fred
+ *
  */
-public class FrAnalyzer extends Analyzer
+public class SpecifBinomial extends Specif
 {
-  /** 
-   * Force creation of a new token stream pipeline, for multi threads 
-   * indexing.
-   */
-  
-  @Override
-  public TokenStreamComponents createComponents(String field)
+  public  SpecifBinomial()
   {
-    int flags = FrTokenizer.XML;
-    if ("query".startsWith(field)) flags = flags | FrTokenizer.QUERY;
-    final Tokenizer source = new FrTokenizer(flags); // segment words
-    TokenStream result = new FrLemFilter(source); // provide lemma+pos
-    result = new LocutionFilter(result); // compounds: parce que
-    // result = new FrPersnameFilter(result); // link unknown names, seems buggy
-    boolean pun = false;
-    if ("query".startsWith(field)) pun = true; // keep punctuation, ex, to parse query
-    result = new FlagCloudFilter(result, pun); // select lemmas as term to index
-    return new TokenStreamComponents(source, result);
+    
   }
-  
+  public  SpecifBinomial(long occsAll, int docsAll)
+  {
+    all(occsAll, docsAll);
+  }
+
+  @Override
+  public void weight(final long wcPart, final int docsPart)
+  {
+  }
+
+  @Override
+  public double score(final long formPart, final long formAll, final long wcDoc)
+  {
+    return (double)1000000 * formPart / wcDoc;
+  }
 
 }

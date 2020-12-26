@@ -41,9 +41,14 @@ public class SpecifJaccard extends Specif
 {
 
   @Override
-  public double score(final long formPart, final long formAll)
+  public int type() {
+    return TYPE_PROB;
+  }
+
+  @Override
+  public double prob(final long formPartOccs, final long formAllOccs)
   {
-    return (double)formPart / (formAll + occsPart + formPart);
+    return (double)formPartOccs / (formAllOccs + partOccs + formPartOccs);
   }
 
 }

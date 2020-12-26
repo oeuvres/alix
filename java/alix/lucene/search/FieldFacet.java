@@ -342,7 +342,7 @@ public class FieldFacet
       // TODO CRY!
     }
     boolean hasScorer = (scorer != null);
-    if (hasScorer) scorer.setAll(occsAll, docsAll);
+    if (hasScorer) scorer.all(occsAll, docsAll);
     boolean hasFilter = (filter != null);
 
     // Crawl index to get stats by facet term about the text query
@@ -389,10 +389,11 @@ public class FieldFacet
       }
     }
     FormEnum it;
+    // TODO, think better on scorer
     if (hasScorer) {
-      scorer.weight(occsMatch, facetMatch); // prepare the scorer for this term
+      // scorer.weight(occsMatch, facetMatch); // prepare the scorer for this term
       for (int facetId = 0, length = occs.length; facetId < length; facetId++) { // get score for each facet
-        scores[facetId] = scorer.score(occs[facetId], facetOccs[facetId]);
+        scores[facetId] = occs[facetId];
       }
       // now we have all we need to build a sorted iterator on entries
       TopArray top;

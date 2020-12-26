@@ -31,40 +31,37 @@
  * limitations under the License.
  */
 package alix.lucene.search;
-
+import org.apache.commons.math3.distribution.HypergeometricDistribution;
 /**
- * Implemtation of the “Stella” scorer for a term like described by TXM
- * http://textometrie.ens-lyon.fr/html/doc/manual/0.7.9/fr/manual43.xhtml
+ * Implementation of the Lafon algorithm, used to score terms
+ * https://www.persee.fr/docAsPDF/mots_0243-6450_1980_num_1_1_1008.pdf
  * 
- * <li>formPart  f : la fréquence de l’événement dans la partie ;
- * <li>formAll   F : la fréquence totale de l’événement dans le corpus ;
- * <li>wcPart    t : le nombre total d’événements ayant lieu dans la partie ;
- * <li>wcAll     T : le nombre total d’événements ayant lieu dans l’ensemble des parties.
+ * <li>N, population size, corpus word count, occsAll
+ * <li>K, number of success, corpus form occurrences, formAll
+ * <li>n, number of draws, part word count, occsPart
+ * <li>k, number of observed success, part form occurrences, formPart
  * 
- * 
- * @author fred
+ * @author glorieux-f
  *
  */
-public class ScorerStella extends Specif
+public class SpecifLognormal extends Specif
 {
-  public  ScorerStella()
+  final static int FLOOR = 3;
+  @Override
+  public int type() {
+    return TYPE_PROB;
+  }
+
+  @Override
+  public double prob(final long formPartOccs, final long formAllOccs)
   {
+    if (formPartOccs < FLOOR) return 0;
+    // (int populationSize, int numberOfSuccesses, int sampleSize)
+    HypergeometricDistribution hyper = new HypergeometricDistribution((int)allOccs, (int)formAllOccs, (int)partOccs);
+    // -Math.log10(
+    double p = - hyper.logProbability((int)formPartOccs);
+    return p;
     
   }
-  public  ScorerStella(long occsAll, int docsAll)
-  {
-    setAll(occsAll, docsAll);
-  }
-
-  @Override
-  public void weight(final long wcPart, final int docsPart)
-  {
-  }
-
-  @Override
-  public double score(final long formPart, final long formAll, final long wcDoc)
-  {
-    return (double)1000000 * formPart / wcDoc;
-  }
-
+  
 }

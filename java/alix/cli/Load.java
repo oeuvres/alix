@@ -4,9 +4,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.InvalidPropertiesFormatException;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -20,46 +23,85 @@ import alix.lucene.Alix;
 import alix.lucene.SrcFormat;
 import alix.lucene.XMLIndexer;
 import alix.lucene.analysis.FrAnalyzer;
+import alix.lucene.analysis.FrDics;
 import alix.util.Dir;
 
 public class Load {
   public static String APP = "Alix";
-  static public void index(File file, int threads) throws IOException, NoSuchFieldException, ParserConfigurationException, SAXException, InterruptedException, TransformerException 
+  static public void index(File propsFile, int threads) throws IOException, NoSuchFieldException, ParserConfigurationException, SAXException, InterruptedException, TransformerException 
   {
-    String name = file.getName().replaceFirst("\\..+$", "");
-    if (!file.exists()) throw new FileNotFoundException("\n  ["+APP+"] "+file.getAbsolutePath()+"\nProperties file not found");
+    String name = propsFile.getName().replaceFirst("\\..+$", "");
+    if (!propsFile.exists()) throw new FileNotFoundException("\n  ["+APP+"] "+propsFile.getAbsolutePath()+"\nProperties file not found");
     Properties props = new Properties();
     try {
-      props.loadFromXML(new FileInputStream(file));
+      props.loadFromXML(new FileInputStream(propsFile));
     }
     catch (InvalidPropertiesFormatException e) {
-      throw new InvalidPropertiesFormatException("\n  ["+APP+"] "+file+"\nXML error in properties file\n"
+      throw new InvalidPropertiesFormatException("\n  ["+APP+"] "+propsFile+"\nXML error in properties file\n"
           +"cf. https://docs.oracle.com/javase/8/docs/api/java/util/Properties.html");
     }
     catch (IOException e) {
-      throw new IOException("\n  ["+APP+"] "+file.getAbsolutePath()+"\nProperties file not readable");
+      throw new IOException("\n  ["+APP+"] "+propsFile.getAbsolutePath()+"\nProperties file not readable");
     }
-    String src = props.getProperty("src");
-    if (src == null) throw new NoSuchFieldException("\n  ["+APP+"] "+file+"\nan src entry is needed, to have path to index"
-        + "\n<entry key=\"src\">../corpus1/*.xml;../corpus2/*.xml</entry>");
-    String[] globs = src.split(" *[;:] *");
-    // resolve globs relative to the folder of the properties field
-    File base = file.getCanonicalFile().getParentFile();
-    for (int i=0; i < globs.length; i++) {
-      if (!globs[i].startsWith("/")) globs[i] = new File(base, globs[i]).getCanonicalPath();
+    
+    String prop;
+    ArrayList<String> globs = new ArrayList<String>();
+    String key;
+    
+    key = "srclist";
+    prop = props.getProperty(key);
+    if (prop != null) {
+      File file = new File(prop);
+      if (!file.isAbsolute()) file = new File(propsFile.getParentFile(), prop);
+      if (!file.exists()) {
+        throw new FileNotFoundException("File list <entry key=\"" + key + "\">" + prop + "</entry>, resolved as " + file.getAbsolutePath());
+      }
+      File base = file.getCanonicalFile().getParentFile();
+      List<String> lines = Files.readAllLines(file.toPath());
+      for (int i = 0; i < lines.size(); i++) {
+        String glob = lines.get(i);
+        if (glob.startsWith("#")) continue;
+        if (!new File (glob).isAbsolute()) globs.add(new File(base, glob).toString());
+        else globs.add(glob);
+      }
+    }
+    else {
+      String src = props.getProperty("src");
+      
+      if (src == null) throw new NoSuchFieldException("\n  ["+APP+"] "+propsFile+"\nan src entry is needed, to have path to index"
+          + "\n<entry key=\"src\">../corpus1/*.xml;../corpus2/*.xml</entry>");
+      String[] blurf = src.split(" *[;:] *");
+      // resolve globs relative to the folder of the properties field
+      File base = propsFile.getCanonicalFile().getParentFile();
+      for (String glob: blurf) {
+        if (!new File (glob).isAbsolute()) globs.add(new File(base, glob).toString());
+        else globs.add(glob);
+      }
     }
     // test here if it's folder ?
     long time = System.nanoTime();
     
 
+    key = "dicfile";
+    prop = props.getProperty(key);
+    if (prop != null) {
+      File dicfile = new File(prop);
+      if (!dicfile.isAbsolute()) dicfile = new File(propsFile.getParentFile(), prop);
+      if (!dicfile.exists()) {
+        throw new FileNotFoundException("Local dictionary <entry key=\"" + key + "\">" + prop + "</entry>, resolved as " + dicfile.getAbsolutePath());
+      }
+      FrDics.load(dicfile);
+    }
+
+    
     File dstdir;
-    String prop = props.getProperty("dstdir");
+    prop = props.getProperty("dstdir");
     if (prop != null) {
       dstdir = new File(prop);
-      if (!dstdir.isAbsolute()) dstdir = new File(file.getParentFile(), prop);
+      if (!dstdir.isAbsolute()) dstdir = new File(propsFile.getParentFile(), prop);
     }
     else {
-      dstdir = file.getParentFile();
+      dstdir = propsFile.getParentFile();
     }
 
     String tmpName = name+"_new";
@@ -100,7 +142,7 @@ public class Load {
     Alix alix = Alix.instance(tmpPath, new FrAnalyzer());
     // Alix alix = Alix.instance(path, "org.apache.lucene.analysis.core.WhitespaceAnalyzer");
     IndexWriter writer = alix.writer();
-    XMLIndexer.index(writer, globs, SrcFormat.tei, threads);
+    XMLIndexer.index(writer, globs.toArray(new String[globs.size()]), SrcFormat.tei, threads);
     System.out.println("["+APP+"] "+name+" Merging");
     writer.commit();
     writer.close();

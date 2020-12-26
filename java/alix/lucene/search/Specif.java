@@ -33,73 +33,104 @@
 package alix.lucene.search;
 
 /**
- * Interface for a scorer, similar to tf-idf. Some counts that can
- * be captures
+ * Interface for a scorer to calculate specific terms from a corpus or a part.
+ * There are two approaches :
+ * <li>Classical probabilities, considering a part compared to a whole corpus
+ * <li>Tf-idf like, considering corpus divided in documents
  * 
- * — wcAll : corpus, global word count
- * — docsAll : corpus, global document count
- * — formAll : corpus, one form count
- * — wcPart : part, word count
- * — formPart : count of occurrences for a form in a corpus
-
- * @author fred
+ * <p>These approaches needs different strategy to cache values to have a result.
+ * An implementation should answer if it is tf() like, or prob() like.
+ * 
+ * <p>Common variables
+ * <li>allOccs : corpus, global word count
+ * <li>allDocs : corpus, global document count
+ * <li>formAllOccs : one form, all occurrences
+ * <li>partOccs : part, word count
+ * <li>formPart : count of occurrences for a form in a corpus
  *
+ * @author glorieux-f
  */
 public abstract class Specif
 {
+  /** tf-idf like scorer */
+  final static int TYPE_TFIDF = 1; 
+  /** classical proba like score */
+  final static int TYPE_PROB = 2; 
   /** Total count of occurrences in the base (big word count) ; as double to avoid casting */
-  protected double occsAll;
+  protected double allOccs;
   /** Total count of documents in the base */
-  protected double docsAll;
+  protected double allDocs;
+  /** Total count of occurrences for a form */
+  protected double formAllOccs;
+  /** Total count of documents for a form */
+  protected double formAllDocs;
   /** Average of document length */
   protected double docAvg;
-  /** Word count for part */
-  protected double occsPart;
-  /** Document count for part */
-  protected double docsPart;
+  /** Word count for a part */
+  protected double partOccs;
+  /** Document count for a part */
+  protected double partDocs;
   
 
+  abstract int type();
   /**
    * Set colletion stats, not modified by queries.
    * @param occsAll Total count of occurrences in the collection.
    * @param docsAll Total count of documents in the collection.
    */
-  public void setAll(final long occsAll, final int docsAll) {
-    this.occsAll = occsAll;
-    this.docsAll = docsAll;
-    this.docAvg = (double) occsAll / docsAll;
+  public void all(final long allOccs, final int allDocs) {
+    this.allOccs = allOccs;
+    this.allDocs = allDocs;
+    this.docAvg = (double) allOccs / allDocs;
   }
   
-  public long occsAll() {
-    return (long)occsAll;
+  public long allOccs() {
+    return (long)allOccs;
   }
-  public int docsAll() {
-    return (int)docsAll;
+  public int allDocs() {
+    return (int)allDocs;
   }
+  
   /**
-   * Set variables common to a part of corpus (a “query”), with no reference to a form
-   * (like the Independant Document Frequency in the tf-idf).
-   * The word count for the part is not used in classical tf-idf but is used in lexicometry.
-   * 
-   * @param occsPart, the small word count
-   * @param docsPart count of documents in the part
+   * Set variables useful to calculate an idf (inverse document frequency) for a form.
    */
-  public void weight(final long occsPart, final int docsPart) {
-    this.occsPart = occsPart;
-    this.docsPart = docsPart;
+  public double idf(final long formAllOccs, final int formAllDocs) {
+    this.formAllOccs = formAllOccs;
+    this.formAllDocs = formAllDocs;
+    return 0;
   }
 
   /**
-   * Calculate score with form specific variables (like the “Term Frequency” in tf-idf).
-   * The size of a relevant document is classical in tf-idf but assumes it is the only
-   * relevant unit.
+   * Returns a score for a term frequency in a document (tf)
+   */
+  public double tf(final int formDocOccs, final int docOccs) {
+    return 0;
+  }
+
+  /**
+   * Set variables common to a part of a corpus, with no reference to a form.
+   * These variables are not used in classical tf-idf, but more in lexicometry.
    * 
+   * @param partOccs, word count for the part
+   * @param partDocs, count of documents in the part
+   */
+  public double part(final long partOccs, final int partDocs) {
+    this.partOccs = partDocs;
+    this.partDocs = partDocs;
+    return 0;
+  }
+
+  /**
+   * Calculate the probability of a form in a part, according to a distribution 
+   * inferred from all corpus.
    * 
-   * @param formPart count of matching occurrences in a document (or a section of corpus).
-   * @param docLen Total count of occurrences for this document.
+   * @param formPartOccs 
+   * @param formAllOccs
    * @return
    */
-  abstract public double score(final long formPart, final long formAll);
+  public double prob(final long formPartOccs, final long formAllOccs) {
+    return 0;
+  }
   
 
 }

@@ -79,18 +79,22 @@ public class FlagCloudFilter extends TokenFilter
     // filter some non semantic token
     if (Tag.isPun(tag) && !pun) return false;
     if (Tag.isNum(tag)) return false;
+    if (tag == Tag.TEST) {
+      System.out.println(termAtt+" — "+orthAtt);
+    }
     // replace term by lemma when available
     if (lemAtt.length() != 0) {
       termAtt.setEmpty().append(lemAtt);
     }
     // or take the normalized form
-    else {
+    else if (orthAtt.length() != 0) {
       termAtt.setEmpty().append(orthAtt);
     }
     // filter some names
     if (Tag.isName(tag)) {
-      /*
+      // A., B.…
       if (termAtt.length() < 3) return false;
+      /*
       // filter first names 
       if (tag == Tag.NAMEpersf || tag == Tag.NAMEpersm) return false;
       // M., A.
@@ -99,9 +103,6 @@ public class FlagCloudFilter extends TokenFilter
       if (termAtt.charAt(termAtt.length() - 2) == '-') return false;
       */
     }
-    // last normalization
-    CharsAtt val = FrDics.LOCAL.get(termAtt);
-    if (val != null) termAtt.setEmpty().append(val);
     return true;
   }
 

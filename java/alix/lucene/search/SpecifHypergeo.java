@@ -36,9 +36,9 @@ import org.apache.commons.math3.distribution.HypergeometricDistribution;
  * Implementation of the Lafon algorithm, used to score terms
  * https://www.persee.fr/docAsPDF/mots_0243-6450_1980_num_1_1_1008.pdf
  * 
- * <li>N, population size, corpus word count, wcAll
- * <li>K, number of success, corpus form  occurrences, formAll
- * <li>n, number of draws, part word count, wcPart
+ * <li>N, population size, corpus word count, occsAll
+ * <li>K, number of success, corpus form occurrences, formAll
+ * <li>n, number of draws, part word count, occsPart
  * <li>k, number of observed success, part form occurrences, formPart
  * 
  * @author glorieux-f
@@ -48,13 +48,22 @@ public class SpecifHypergeo extends Specif
 {
   final static int FLOOR = 3;
   @Override
-  public double score(final long formPart, final long formAll)
+  public int type() {
+    return TYPE_PROB;
+  }
+
+  @Override
+  public double prob(final long formPartOccs, final long formAllOccs)
   {
-    if (formPart < FLOOR) return 0;
+    if (formPartOccs < FLOOR) return 0;
     // (int populationSize, int numberOfSuccesses, int sampleSize)
-    HypergeometricDistribution hyper = new HypergeometricDistribution((int)occsAll, (int)formAll, (int)occsPart);
-    return -Math.log10(hyper.probability((int)formPart));
-    
+    HypergeometricDistribution hyper = new HypergeometricDistribution((int)allOccs, (int)formAllOccs, (int)partOccs);
+    // double p = - hyper.logProbability((int)formPartOccs);
+    double p = hyper.probability((int)formPartOccs); // NO positive or negative infinity found proba for Rougemont
+    // if (p == Double.NEGATIVE_INFINITY) return -formPartOccs; 
+    // else if (p == Double.POSITIVE_INFINITY) return formPartOccs; 
+    if (p == 0) return 0;
+    return -Math.log10(p);
   }
   
 }

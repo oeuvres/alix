@@ -118,7 +118,7 @@ public final class FrLemFilter extends TokenFilter
     if (!input.incrementToken()) return false;
     // get a local version of orth
     CharsAtt orth = (CharsAtt) orthAtt;
-    orth.copy(termAtt); // alwas copy original term
+    orth.copy(termAtt); // start with original term
     int flags = flagsAtt.getFlags();
     // pass through zero-length terms
     if (orth.length() == 0) return true;
@@ -153,7 +153,7 @@ public final class FrLemFilter extends TokenFilter
       if (entry != null) {
         flagsAtt.setFlags(entry.tag);
         // maybe a normalized form for the name
-        if (entry.lem != null) orth.copy(entry.lem);
+        if (entry.orth != null) orth.copy(entry.orth);
         return true;
       }
       entry = FrDics.word(orth.toLower()); // known word ?
@@ -163,9 +163,8 @@ public final class FrLemFilter extends TokenFilter
         // restore initial cap
         if (!waspun) termAtt.buffer()[0] = c1;
         flagsAtt.setFlags(entry.tag);
-        if (entry.lem != null) {
-          lemAtt.append(entry.lem);
-        }
+        if (entry.lem != null) lemAtt.append(entry.lem);
+        if (entry.orth != null) orth.copy(entry.orth);
         return true;
       }
       else { // unknown word, infer it's a MAME
@@ -180,10 +179,8 @@ public final class FrLemFilter extends TokenFilter
       if (entry == null) return true;
       // known word
       flagsAtt.setFlags(entry.tag);
-      if (entry.lem != null) {
-        // who set length to 0 here ?
-        lemAtt.append(entry.lem);
-      }
+      if (entry.lem != null) lemAtt.append(entry.lem);
+      if (entry.orth != null) orth.copy(entry.orth);
     }
     return true;
   }

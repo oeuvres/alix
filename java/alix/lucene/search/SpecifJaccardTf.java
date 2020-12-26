@@ -33,15 +33,23 @@
 package alix.lucene.search;
 
 /**
+ * "Jaccard", "m11 / (m10 + m01 + m11)"
+ * 
  * @author glorieux-f
  */
-public class SpecifTf extends Specif
+public class SpecifJaccardTf extends Specif
 {
 
   @Override
-  public double score(final long formPart, final long formAll)
-  {
-    return (double)1000000 * formPart / occsPart;
+  public int type() {
+    return TYPE_TFIDF;
   }
+
+  @Override
+  public double tf(final int formDocOccs, final int docOccs)
+  {
+    return (double) formDocOccs / (formAllOccs + docOccs + formDocOccs);
+  }
+
 
 }

@@ -22,7 +22,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.CharsDic;
-import alix.lucene.analysis.CompoundFilter;
+import alix.lucene.analysis.LocutionFilter;
 import alix.lucene.analysis.FrLemFilter;
 import alix.lucene.analysis.FrPersnameFilter;
 import alix.lucene.analysis.FrTokenizer;
@@ -43,7 +43,7 @@ public class TestCompound
       final Tokenizer source = new FrTokenizer();
       TokenStream result = new FrLemFilter(source);
       result = new FrPersnameFilter(result); // link names: V. Hugo
-      result = new CompoundFilter(result); // link locutions: XX e
+      result = new LocutionFilter(result); // link locutions: XX e
       return new TokenStreamComponents(source, result);
     }
 

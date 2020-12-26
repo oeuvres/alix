@@ -588,10 +588,10 @@ public class Doc
     final Top<String> frequent = new Top<String>(100);
     long occsAll= fstats.occsAll;
     int docsAll = fstats.docsAll;
-    Specif scorer = new ScorerBM25();
+    Specif scorer = new SpecifBM25();
     // Scorer scorerTheme = new ScorerTheme();
     // Scorer scorerTfidf = new ScorerTfidf();
-    scorer.setAll(occsAll, docsAll);
+    scorer.all(occsAll, docsAll);
     CharsAtt att = new CharsAtt();
     while(termit.next() != null) {
       BytesRef bytes = termit.term();

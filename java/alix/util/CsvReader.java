@@ -32,8 +32,13 @@
  */
 package alix.util;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 
 /**
  * A light fast csv parser without Strings, especially to load jar resources.
@@ -58,17 +63,29 @@ public class CsvReader
   /** line number */
   private int line = -1;
 
-  public CsvReader(Reader reader, int cols)
+  public CsvReader(final File file, final int cols) throws FileNotFoundException
+  {
+    this.reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
+    row = new Row(cols);
+    this.sep = ';';
+  }
+
+  public CsvReader(Reader reader, final int cols)
   {
     this(reader, cols, ';');
   }
 
-  public CsvReader(Reader reader, int cols, char sep)
+  public CsvReader(Reader reader, final int cols, final char sep)
   {
     this.reader = reader;
     row = new Row(cols);
     // quote = '"';
     this.sep = sep;
+  }
+  
+  public void close() throws IOException
+  {
+    reader.close();
   }
 
   public Row row()
@@ -81,9 +98,9 @@ public class CsvReader
     return this.line;
   }
 
-  public boolean readRow() throws IOException 
+  public Row readRow() throws IOException 
   {
-    if (this.bufPos < 0) return false;
+    if (this.bufPos < 0) return null;
     Row row = this.row.reset();
     Chain cell = row.next();
     int bufPos = this.bufPos;
@@ -133,7 +150,7 @@ public class CsvReader
     if (cell != null) cell.append(buf, bufMark, bufPos - bufMark - 1 - crlf);
     this.bufPos = bufPos;
     line++;
-    return true;
+    return row;
   }
 
   public class Row

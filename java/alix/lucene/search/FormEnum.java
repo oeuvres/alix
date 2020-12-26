@@ -52,8 +52,8 @@ public class FormEnum {
   public FormEnum(final FieldText field, final int[] terms)
   {
     this.formDic = field.formDic;
-    this.formDocs = field.formDocs;
-    this.formOccs = field.formCount;
+    this.formDocs = field.formAllDocs;
+    this.formOccs = field.formAllOccs;
     this.formSorted = terms;
     size = terms.length;
     this.formCover = null;
@@ -72,6 +72,15 @@ public class FormEnum {
     this.formTag = null;
   }
 
+  /**
+   * Count of values
+   * @return
+   */
+  public int size()
+  {
+    return size();
+  }
+  
   /**
    * Count of occurrences for this query
    * @return

@@ -33,18 +33,22 @@
 package alix.lucene.search;
 
 /**
- * "Jaccard", "m11 / (m10 + m01 + m11)"
+ * Dice, "2*m11 / (m10² + m01²)"
  * 
  * @author glorieux-f
  */
 public class SpecifDice extends Specif
 {
+  @Override
+  public int type() {
+    return TYPE_PROB;
+  }
 
   @Override
-  // 2*m11 / (m10² + m01²)
-  public double score(final long formPart, final long formAll)
+  // 
+  public double prob(final long formPartOccs, final long formAllOccs)
   {
-    return (double)2 * formPart / (formAll * formAll + occsPart * occsPart);
+    return (double)2 * formPartOccs / (Math.pow(formAllOccs - formPartOccs, 2) + Math.pow(partOccs - formPartOccs, 2));
   }
 
 }

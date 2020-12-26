@@ -1,8 +1,10 @@
 package alix.lucene.analysis;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -87,7 +89,7 @@ public class TestAnalyzer
     {
       final Tokenizer source = new FrTokenizer();
       TokenStream result = new FrLemFilter(source);
-      // result = new FrPersnameFilter(result);
+      result = new FrPersnameFilter(result);
       return new TokenStreamComponents(source, result);
     }
 
@@ -101,8 +103,8 @@ public class TestAnalyzer
     {
       final Tokenizer source = new FrTokenizer();
       TokenStream result = new FrLemFilter(source);
-      // result = new FrPersnameFilter(result);
-      result = new CompoundFilter(result);
+      result = new FrPersnameFilter(result);
+      result = new LocutionFilter(result);
       return new TokenStreamComponents(source, result);
     }
 
@@ -238,9 +240,8 @@ public class TestAnalyzer
         "              littéraire, pourra être résumé d’un mot : la liberté dans l’ordre, la liberté dans\n" + 
         "              l’art.</p>"; // bug on art.
     text = " Le bon point du chemin au douzième siècle, 12e siècle, c’est celui du chemin de fer d’intérêt local.";
-    text = "Il y avait beaucoup de bonnes volontés engagées.";
-    text = " n’était qu’un Pacte d’alliance entre vingt‑cinq </span><span class=\"right\"><a href=\"#pos99\">États</a> absolument souverains.";
-    text = "le rebondissement de l<emph>’action</emph>.";
+    // text = "Il y avait beaucoup de bonnes volontés engagées.";
+    // text = " n’était qu’un Pacte d’alliance entre vingt‑cinq </span><span class=\"right\"><a href=\"#pos99\">États</a> absolument souverains.";
     vertical(text, new AnalyzerCompounds());
   }
 
@@ -253,10 +254,32 @@ public class TestAnalyzer
     text = "le rebondissement de l<emph>’action</emph>, E<anchor xml:id=\"_GoBack\"/>h";
     vertical(text, new AnalyzerTokfr());
   }
-  
+
+  public static void localDic() throws IOException
+  {
+    Path tmpfile = Files.createTempFile("alix-", ".csv");
+    String dic = "Club de Rome;NAMEorg"
+      + "\nclub de Rome;NAMEorg;Club de Rome;"
+      + "\nClub des Jacobins;NAMEorg;"
+      + "\nsuisse;NAME;Suisse"
+      + "\nsuisses;NAME;Suisse"
+    ;
+    Files.write(tmpfile, dic.getBytes());
+    FrDics.load(tmpfile.toFile());
+    String text;
+    // mode query
+    text =  "Les temps sont proches, nous dit le rapport du Club de Rome. Nous avons vu aussi que l’industrie suisse n’est pas comme les suisses.";
+    System.out.println("———————————");
+    vertical(text, new AnalyzerNames());
+    System.out.println("———————————");
+    vertical(text, new FrAnalyzer());
+  }
+
 
   public static void main(String[] args) throws IOException
   {
-    tokfr();
+    // tokfr();
+    // compounds();
+    localDic();
   }
 }
