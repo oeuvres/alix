@@ -35,6 +35,11 @@ package alix.util;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+/**
+ * 
+ * https://github.com/stanfordnlp/CoreNLP/blob/master/src/edu/stanford/nlp/math/SloppyMath.java
+ * @author glorieux-f
+ */
 public class Calcul
 {
   private static final BigDecimal SQRT_DIG = new BigDecimal(15);
@@ -107,14 +112,36 @@ public class Calcul
     return n + 1;
   }
 
-  public static void main(String[] args)
-  {
-    int[] a = { -20, -1, 0, 2, 3, 11, 1001001001, Integer.MAX_VALUE };
-    for (int i = 0; i < a.length; i++) {
-      System.out.println(a[i] + " " + Calcul.nextSquare(a[i]));
+  /**
+   * From http://nadeausoftware.com/articles/2009/08/java_tip_how_parse_integers_quickly
+   *
+   * Parse an integer very quickly, without sanity checks.
+   */
+  public static long parseInt( final String s ) {
+    // Check for a sign.
+    long num  = 0;
+    long sign = -1;
+    final int len  = s.length( );
+    final char ch  = s.charAt( 0 );
+    if ( ch == '-' ) {
+      sign = 1;
     }
+    else {
+      final long d = ch - '0';
+      num = -d;
+    }
+    // Build the number.
+    final long max = (sign == -1) ?
+        -Long.MAX_VALUE : Long.MIN_VALUE;
+    final long multmax = max / 10;
+    int i = 1;
+    while ( i < len ) {
+      long d = s.charAt(i++) - '0';
+      num *= 10;
+      num -= d;
+    }
+    return sign * num;
   }
-
   static class Num
   {
     final char[] chars;

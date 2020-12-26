@@ -115,7 +115,7 @@ public abstract class Specif
    * @param partDocs, count of documents in the part
    */
   public double part(final long partOccs, final int partDocs) {
-    this.partOccs = partDocs;
+    this.partOccs = partOccs;
     this.partDocs = partDocs;
     return 0;
   }

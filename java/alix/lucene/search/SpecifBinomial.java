@@ -33,38 +33,53 @@
 package alix.lucene.search;
 
 /**
- * Implemtation of the “Stella” scorer for a term like described by TXM
- * http://textometrie.ens-lyon.fr/html/doc/manual/0.7.9/fr/manual43.xhtml
+ * Implementation of a binomial scorer. Crash number limits.
  * 
- * <li>formPart  f : la fréquence de l’événement dans la partie ;
- * <li>formAll   F : la fréquence totale de l’événement dans le corpus ;
- * <li>wcPart    t : le nombre total d’événements ayant lieu dans la partie ;
- * <li>wcAll     T : le nombre total d’événements ayant lieu dans l’ensemble des parties.
- * 
- * 
- * @author fred
- *
+ * @author glorieux-f
  */
 public class SpecifBinomial extends Specif
 {
-  public  SpecifBinomial()
-  {
-    
+  @Override
+  public int type() {
+    return TYPE_PROB;
   }
-  public  SpecifBinomial(long occsAll, int docsAll)
-  {
-    all(occsAll, docsAll);
+
+  static double binomialCoef(final long n, long k) 
+  { 
+      double res = 1.0; 
+
+      // Since C(n, k) = C(n, n-k) 
+      if (k > n - k) k = n - k; 
+
+      // Calculate value of 
+      // [n * (n-1) *---* (n-k+1)] / [k * (k-1) *----* 1] 
+      for (int i = 0; i < k; ++i) { 
+          res *= (n - i); 
+          res /= (i + 1); 
+      } 
+
+      return res; 
+  } 
+  
+  /**
+   * Find a one tailed exact binomial test probability.  Finds the chance
+   * of this or a higher result
+   *
+   * @param k number of successes
+   * @param n Number of trials
+   * @param p Probability of a success
+   */
+  public static double binomial(final long n, final long k, double p) {
+    // maybe cached if we use the same in a loop
+    double coef = binomialCoef(n, k);
+    return coef * Math.pow(p, k) * Math.pow(1.0 - p, n - k);
   }
 
   @Override
-  public void weight(final long wcPart, final int docsPart)
+  public double prob(final long formPartOccs, final long formAllOccs)
   {
-  }
-
-  @Override
-  public double score(final long formPart, final long formAll, final long wcDoc)
-  {
-    return (double)1000000 * formPart / wcDoc;
+    double p = binomial((int)formPartOccs,  (int)partOccs, ((double)formAllOccs / allOccs));
+    return p;
   }
 
 }

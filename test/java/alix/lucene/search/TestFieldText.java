@@ -27,7 +27,7 @@ public class TestFieldText
     String fieldName = TestAlix.fieldName;
     FieldText fstats = alix.fieldText(fieldName);
     FormEnum terms = fstats.iterator(-1, null, null, null);
-    terms.reset();
+    System.out.println("terms, alpha");
     System.out.println(terms);
     FixedBitSet bits = new FixedBitSet(alix.maxDoc());
     bits.set(2);
@@ -36,13 +36,15 @@ public class TestFieldText
       if (bits.get(docId)) System.out.print('1');
       else System.out.print('·');
     }
-    System.out.println();
+    System.out.println("Filtered terms, occurrences");
     terms = fstats.iterator(-1, bits, null, null);
     System.out.println(terms);
-    terms = fstats.iterator(-1, bits, new SpecifJaccardTf(), null);
+    System.out.println("Filtered terms, with a scorer");
+    terms = fstats.iterator(-1, bits, new SpecifBinomial(), null);
     System.out.println(terms);
-    System.out.println("Reverse");
-    terms = fstats.iterator(3, bits, new SpecifJaccardTf(), null, true);
+
+    System.out.println("Filtered terms, reverse chi2");
+    terms = fstats.iterator(3, bits, new SpecifChi2(), null, true);
     System.out.println(terms);
     while (terms.hasNext()) {
       terms.next();
@@ -74,6 +76,8 @@ public class TestFieldText
     print(terms);
     */
   }
+  
+  
   
   public static void main(String[] args) throws IOException 
   {

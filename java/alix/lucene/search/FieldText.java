@@ -34,7 +34,6 @@ package alix.lucene.search;
 
 import java.io.IOException;
 
-import org.apache.commons.math3.distribution.HypergeometricDistribution;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -369,7 +368,8 @@ public class FieldText
       for (int formId = 0; formId < size; formId++) {
         long formPartOccs = occs[formId];
         if (formPartOccs < 1) continue;
-        scores[formId]  = specif.prob(formPartOccs, formAllOccs[formId]);
+        double p = specif.prob(formPartOccs, formAllOccs[formId]);
+        scores[formId] = p;
       }
     }
     

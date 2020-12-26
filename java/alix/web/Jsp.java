@@ -395,9 +395,8 @@ public class Jsp
       return ret;
     }
     catch(Exception e) {
-      throw new Exception("Not found ?");
+      return (Enum<?>)fallback;
     }
-    // return fallback;
   }
   /**
    * Get a request parameter as an {@link Enum} value
