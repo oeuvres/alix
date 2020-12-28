@@ -33,8 +33,12 @@
 package alix.lucene.search;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -98,6 +102,15 @@ public class FieldText
 
   public FieldText(final DirectoryReader reader, final String fieldName) throws IOException
   {
+    FieldInfos fieldInfos = FieldInfos.getMergedFieldInfos(reader);
+    FieldInfo info = fieldInfos.fieldInfo(fieldName);
+    if (info == null) {
+      throw new IllegalArgumentException("Field \"" + fieldName + "\" is not known in this index");
+    }
+    IndexOptions options = info.getIndexOptions();
+    if (options == IndexOptions.NONE || options == IndexOptions.DOCS) {
+      throw new IllegalArgumentException("Field \"" + fieldName + "\" of type " + options + " has no FREQS (see IndexOptions)");
+    }
     final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
     this.reader = reader;
     final int[] docOccs = new int[reader.maxDoc()];

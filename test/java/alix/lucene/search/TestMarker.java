@@ -16,7 +16,7 @@ public class TestMarker
 
   public static void query() throws IOException
   {
-    System.out.println(Alix.qParse("q", "ant* ", new MetaAnalyzer()));
+    System.out.println(Alix.query("q", "ant* ", new MetaAnalyzer()));
   }
   public static void main(String args[]) throws Exception
   {

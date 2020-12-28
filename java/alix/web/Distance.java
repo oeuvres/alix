@@ -25,6 +25,9 @@ public enum Distance implements Option
     }
   }
   ;
+  
+  abstract public double score(final double m11, final double m10, final double m01, final double m00);
+
   final public String label;
   public String label() { return label; }
   final public String hint;
@@ -35,7 +38,6 @@ public enum Distance implements Option
     this.hint = hint;
   }
   
-  abstract public double score(final double m11, final double m10, final double m01, final double m00);
   
 
 

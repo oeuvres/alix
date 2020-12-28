@@ -60,8 +60,7 @@ public class TestFacet
     FieldFacet facet = new FieldFacet(alix, "author", "text", null);
     // System.out.println(facet);
     // TopTerms terms = facet.topTerms(null, alix.qTerms("prière", "text"), null);
-    TopTerms terms = facet.topTerms();
-    terms.sort();
+    FormEnum terms = facet.iterator();
     while (terms.hasNext()) {
       terms.next();
       System.out.println(terms.label());

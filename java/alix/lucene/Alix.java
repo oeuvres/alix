@@ -126,7 +126,7 @@ import alix.lucene.search.FieldInt;
  *   <li>{@link #fieldText(String)} All terms indexed in a {@link TextField}, with stats,
  *   useful for list of terms and advanced lexical statistics.</li>
  *   <li>{@link #docOccs(String)} Size (in tokens) of indexed documents in a {@link TextField}</li>
- *   <li>{@link #facet(String, String)} All terms of a facet field
+ *   <li>{@link #fieldFacet(String, String)} All terms of a facet field
  *   ({@link SortedDocValuesField} or {@link SortedSetDocValuesField}) with lexical statistics from a
  *   {@link TextField} (ex: count of words for an author facet)</li>
  *   <li>{@link #scale(String, String)} Data to build chronologies or other charts.</li>
@@ -289,48 +289,6 @@ public class Alix
   }
 
   /**
-   * See {@link #writer(Similarity)}
-   * 
-   * @return
-   * @throws IOException
-   */
-  public IndexWriter writer() throws IOException
-  {
-    return writer(null);
-  }
-
-  /**
-   * Get a lucene writer
-   * 
-   * @throws IOException
-   */
-  public IndexWriter writer(final Similarity similarity) throws IOException
-  {
-    if (writer != null && writer.isOpen()) return writer;
-    IndexWriterConfig conf = new IndexWriterConfig(analyzer);
-    conf.setUseCompoundFile(false); // show separate file by segment
-    // may needed, increase the max heap size to the JVM (eg add -Xmx512m or
-    // -Xmx1g):
-    conf.setRAMBufferSizeMB(48);
-    conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
-    //
-    if (similarity != null) conf.setSimilarity(similarity);
-    else conf.setSimilarity(this.similarity);
-    // no effect found with modification ConcurrentMergeScheduler
-    /*
-     * int threads = Runtime.getRuntime().availableProcessors() - 1;
-     * ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
-     * cms.setMaxMergesAndThreads(threads, threads); cms.disableAutoIOThrottle();
-     * conf.setMergeScheduler(cms);
-     */
-    // order docId by a field after merge ? No functionality should rely on such
-    // order
-    // conf.setIndexSort(new Sort(new SortField(YEAR, SortField.Type.INT)));
-    writer = new IndexWriter(dir, conf);
-    return writer;
-  }
-
-  /**
    * See {@link #reader(boolean)}
    * 
    * @return
@@ -397,6 +355,48 @@ public class Alix
     return searcher;
   }
   
+  /**
+   * See {@link #writer(Similarity)}
+   * 
+   * @return
+   * @throws IOException
+   */
+  public IndexWriter writer() throws IOException
+  {
+    return writer(null);
+  }
+
+  /**
+   * Get a lucene writer
+   * 
+   * @throws IOException
+   */
+  public IndexWriter writer(final Similarity similarity) throws IOException
+  {
+    if (writer != null && writer.isOpen()) return writer;
+    IndexWriterConfig conf = new IndexWriterConfig(analyzer);
+    conf.setUseCompoundFile(false); // show separate file by segment
+    // may needed, increase the max heap size to the JVM (eg add -Xmx512m or
+    // -Xmx1g):
+    conf.setRAMBufferSizeMB(48);
+    conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
+    //
+    if (similarity != null) conf.setSimilarity(similarity);
+    else conf.setSimilarity(this.similarity);
+    // no effect found with modification ConcurrentMergeScheduler
+    /*
+     * int threads = Runtime.getRuntime().availableProcessors() - 1;
+     * ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
+     * cms.setMaxMergesAndThreads(threads, threads); cms.disableAutoIOThrottle();
+     * conf.setMergeScheduler(cms);
+     */
+    // order docId by a field after merge ? No functionality should rely on such
+    // order
+    // conf.setIndexSort(new Sort(new SortField(YEAR, SortField.Type.INT)));
+    writer = new IndexWriter(dir, conf);
+    return writer;
+  }
+
   /**
    * Returns the analyzer shared with this base.
    * @return
@@ -500,24 +500,6 @@ public class Alix
   }
 
   /**
-   * Returns an array in docId order with the value of an intPoint field (ex:
-   * year).
-   * 
-   * @return
-   * @throws IOException
-   */
-  public FieldInt fieldInt(String field) throws IOException
-  {
-    IndexReader reader = reader(); // ensure reader, or decache
-    String key = "AlixFiedInt" + field;
-    FieldInt ints = (FieldInt) cache(key);
-    if (ints != null) return ints;
-    ints = new FieldInt(reader, field);
-    cache(key, ints);
-    return ints;
-  }
-
-  /**
    * Get value by docId of a unique store field, desired type is given by the
    * array to load. Very slow, ~1.5 s. / 1000 books
    * @param field
@@ -550,16 +532,16 @@ public class Alix
   }
 
   /**
-   * See {@link #facet(String, String, Term)}
+   * See {@link #fieldFacet(String, String, Term)}
    * 
    * @param facetField
    * @param textField
    * @return
    * @throws IOException
    */
-  public FieldFacet facet(final String facetField, final String textField) throws IOException
+  public FieldFacet fieldFacet(final String facetField, final String textField) throws IOException
   {
-    return facet(facetField, textField, null);
+    return fieldFacet(facetField, textField, null);
   }
 
   /**
@@ -577,7 +559,7 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public FieldFacet facet(final String facetField, final String textField, final Term coverTerm) throws IOException
+  public FieldFacet fieldFacet(final String facetField, final String textField, final Term coverTerm) throws IOException
   {
     String key = "AlixFacet" + facetField + textField;
     FieldFacet facet = (FieldFacet) cache(key);
@@ -585,6 +567,41 @@ public class Alix
     facet = new FieldFacet(this, facetField, textField, coverTerm);
     cache(key, facet);
     return facet;
+  }
+
+  /**
+   * Returns an array in docId order with the value of an intPoint field (ex:
+   * year).
+   * 
+   * @return
+   * @throws IOException
+   */
+  public FieldInt fieldInt(String field) throws IOException
+  {
+    IndexReader reader = reader(); // ensure reader, or decache
+    String key = "AlixFiedInt" + field;
+    FieldInt ints = (FieldInt) cache(key);
+    if (ints != null) return ints;
+    ints = new FieldInt(reader, field);
+    cache(key, ints);
+    return ints;
+  }
+
+  /**
+   * Get a frequence object.
+   * 
+   * @param field
+   * @return
+   * @throws IOException
+   */
+  public FieldText fieldText(final String field) throws IOException
+  {
+    String key = "AlixFreqs" + field;
+    FieldText fieldText = (FieldText) cache(key);
+    if (fieldText != null) return fieldText;
+    fieldText = new FieldText(reader(), field);
+    cache(key, fieldText);
+    return fieldText;
   }
 
   /**
@@ -605,23 +622,6 @@ public class Alix
     scale = new Scale(this, null, fieldInt, fieldText);
     cache(key, scale);
     return scale;
-  }
-
-  /**
-   * Get a frequence object.
-   * 
-   * @param field
-   * @return
-   * @throws IOException
-   */
-  public FieldText fieldText(final String field) throws IOException
-  {
-    String key = "AlixFreqs" + field;
-    FieldText freqs = (FieldText) cache(key);
-    if (freqs != null) return freqs;
-    freqs = new FieldText(reader(), field);
-    cache(key, freqs);
-    return freqs;
   }
 
   /**
@@ -683,14 +683,14 @@ u   * @throws IOException
     cache(key, books);
     return books;
   }
-  public Query qParse(final String field, final String q) throws IOException
+  public Query query(final String field, final String q) throws IOException
   {
-    return qParse(field, q, this.analyzer);
+    return query(field, q, this.analyzer);
   }
   
-  static public Query qParse(final String field, final String q, final Analyzer analyzer) throws IOException
+  static public Query query(final String field, final String q, final Analyzer analyzer) throws IOException
   {
-    return qParse(field, q, analyzer, Occur.SHOULD);
+    return query(field, q, analyzer, Occur.SHOULD);
   }
 
   /**
@@ -700,7 +700,7 @@ u   * @throws IOException
    * @return
    * @throws IOException
    */
-  static public Query qParse(final String field, final String q, final Analyzer analyzer, final Occur occur) throws IOException
+  static public Query query(final String field, final String q, final Analyzer analyzer, final Occur occur) throws IOException
   {
     if (q == null || "".equals(q.trim())) return null;
     // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
@@ -782,9 +782,9 @@ u   * @throws IOException
    * @return
    * @throws IOException
    */
-  public String[] qAnalyze(final String q) throws IOException
+  public String[] forms(final String q) throws IOException
   {
-    return qAnalyze(q, this.analyzer);
+    return forms(q, this.analyzer);
   }
 
   /**
@@ -795,7 +795,7 @@ u   * @throws IOException
    * @return
    * @throws IOException
    */
-  public static String[] qAnalyze(final String q, final Analyzer analyzer) throws IOException
+  public static String[] forms(final String q, final Analyzer analyzer) throws IOException
   {
     // create an arrayList on each query and let gc works
     ArrayList<String> terms = new ArrayList<String>();

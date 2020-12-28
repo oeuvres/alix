@@ -33,8 +33,7 @@
 package alix.lucene.search;
 
 /**
- * Implemtation of the “Stella” scorer for a term like described by TXM
- * http://textometrie.ens-lyon.fr/html/doc/manual/0.7.9/fr/manual43.xhtml
+ * Implementation of a Chi2 scorer
  * 
  * <li>formPart  f : la fréquence de l’événement dans la partie ;
  * <li>formAll   F : la fréquence totale de l’événement dans le corpus ;
@@ -65,7 +64,7 @@ public class SpecifChi2 extends Specif
    */
   public static double chi2(long N, int K, int n, int k) {
     if (k < 0 || K > N || n > N || N <= 0 || n < 0 || K < 0) {
-      throw new IllegalArgumentException("Invalid vhi2 params"+" N="+N+" K="+K+" n="+n+" k="+k);
+      throw new IllegalArgumentException("Invalid chi2 params"+" N="+N+" K="+K+" n="+n+" k="+k);
     }
     long[][] cg = {{k, K - k}, {n - k, N - (k + (K - k) + (n - k))}};
     long[] cgr = {K, N - K};
@@ -83,10 +82,14 @@ public class SpecifChi2 extends Specif
   @Override
   public double prob(final long formPartOccs, final long formAllOccs)
   {
+    if (formAllOccs < 4) return 0;
+
     // if (formPartOccs < FLOOR) return 0;
     double p = chi2((int)allOccs, (int)formAllOccs,  (int)partOccs, (int)formPartOccs);
     // System.out.println("N="+ (int)allOccs +" K="+ (int)formAllOccs +" n="+(int)partOccs + " k="+(int)formPartOccs+ " p="+p);
-    return p;
+    double mean = (double)formAllOccs / allOccs;
+    if ((formPartOccs / partOccs) > mean) return p;
+    else return -p;
   }
 
 }

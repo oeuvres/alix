@@ -52,7 +52,7 @@ public class TestAlix
     final String field = "text";
     String q =  "+maintenant -loin Littré, +demain; -hier";
     // q = "Littré";
-    Query query = Alix.qParse(field, q, analyzer);
+    Query query = Alix.query(field, q, analyzer);
     System.out.println(query);
     // TermList terms = Alix.qTermList(field, q, analyzer);
     // System.out.println(terms);

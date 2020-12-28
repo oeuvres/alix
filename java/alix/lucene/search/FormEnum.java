@@ -63,7 +63,7 @@ public class FormEnum {
   /** Build an iterator from a facet field with an ordered arrays of formId */
   public FormEnum(final FieldFacet field, final int[] terms)
   {
-    this.formDic = field.hashDic;
+    this.formDic = field.facetDic;
     this.formDocs = field.facetDocs;
     this.formOccs = field.facetOccs;
     this.formCover = field.facetCover;

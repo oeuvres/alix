@@ -78,8 +78,10 @@ public class SpecifBinomial extends Specif
   @Override
   public double prob(final long formPartOccs, final long formAllOccs)
   {
-    double p = binomial((int)formPartOccs,  (int)partOccs, ((double)formAllOccs / allOccs));
-    return p;
+    double mean = (double)formAllOccs / allOccs;
+    double p = binomial((long)partOccs, formPartOccs, mean);
+    if (((float)formPartOccs / partOccs) > mean) return p;
+    else return -p;
   }
 
 }

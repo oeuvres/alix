@@ -163,7 +163,9 @@ public class SpecifHypergeo extends Specif
   @Override
   public double prob(final long formPartOccs, final long formAllOccs)
   {
-    if (formPartOccs < 4) return 0;
+    if (formAllOccs < 4) return 0;
+    double mean = (double)formAllOccs / allOccs;
+    
     // (int populationSize, int numberOfSuccesses, int sampleSize)
     // HypergeometricDistribution hyper = new HypergeometricDistribution((int)(allOccs), (int)(formAllOccs), (int)(partOccs));
     /*
@@ -177,12 +179,9 @@ public class SpecifHypergeo extends Specif
     // else if (p == Double.POSITIVE_INFINITY) return formPartOccs; 
     // if (p == 0) return 758.25;
     // return -Math.log10(p);
-    if (p == 0) {
-      // could save some high significant words;
-      // p = hypergeometric((int)formPartOccs / 2, (int)allOccs, (int)formAllOccs, (int)partOccs);
-      if (p == 0) return 0;
-    }
-    return -Math.log10(p);
+    if (p == 0) return 0;
+    if ((formPartOccs / partOccs) > mean) return -Math.log10(p);
+    else return Math.log10(p);
   }
   
 }

@@ -33,6 +33,7 @@
 package alix.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.apache.lucene.index.DocValuesType;
@@ -91,26 +92,26 @@ import alix.util.TopArray;
  * This facet dic is backed on a lucene hash of terms. This handy object provide
  * a sequential int id for each term. This is used as a pointer in different
  * growing arrays. On creation, object is populated with data non dependent of a
- * query. Those internal vectors are stored as arrays with termId index.
+ * query. Those internal vectors are stored as arrays with facetId index.
  * <p>
  *
  */
 public class FieldFacet
 {
   /** Name of the field for facets, source key for this dictionary */
-  public final String facet;
+  public final String fieldName;
   /** The field type */
   public final DocValuesType type;
   /** Name of the field for text, source of different value counts */
-  public final String text;
+  public final FieldText fieldText;
   /** Store and populate the terms */
-  protected final BytesRefHash hashDic;
-  /** All termId in alphabetic order */
+  protected final BytesRefHash facetDic;
+  /** All facetId in alphabetic order */
   protected final int[] alpha;
   /** Global number of docs relevant for this facet */
-  protected final int docsAll;
+  protected final int allDocs;
   /** Global number of occurrences in the text field */
-  protected final long occsAll;
+  protected final long allOccs;
   /** Global number of values for this facet */
   public final int size;
   /** Count of docs by facet */
@@ -125,8 +126,6 @@ public class FieldFacet
   private IndexReader reader;
   /** A cached vector for each docId, size in occurrences  */
   private final int[] docOccs;
-  /** Default term enumerator of all terms in alphabetic sort order */
-  private final FormEnum terms;
 
   /**
    * Build data to have frequencies on a facet field.
@@ -140,8 +139,7 @@ public class FieldFacet
   public FieldFacet(final Alix alix, final String facet, final String text, final Term coverTerm) throws IOException
   {
     // final int[] docOccs = new int[reader.maxDoc()];
-
-    
+    this.fieldText = alix.fieldText(text);
     FieldInfo info = alix.info(facet);
     if (info == null) {
       throw new IllegalArgumentException("Field \"" + facet + "\" is not known in this index.");
@@ -160,8 +158,7 @@ public class FieldFacet
       searcher.search(coverQuery, coverCollector);
       coverBits = coverCollector.bits();
     }
-    this.facet = facet;
-    this.text = text;
+    this.fieldName = facet;
     this.reader = alix.reader();
     docFacets = new int[reader.maxDoc()][];
     int docsAll = 0;
@@ -280,27 +277,25 @@ public class FieldFacet
       }
     }
     // this should avoid some opcode upper
-    this.docsAll = docsAll;
-    this.occsAll = occsAll;
-    this.hashDic = hashDic;
+    this.allDocs = docsAll;
+    this.allOccs = occsAll;
+    this.facetDic = hashDic;
     this.alpha = FormEnum.sortAlpha(hashDic);
     this.size = hashDic.size();
     this.facetOccs = facetOccs;
     this.facetDocs = facetDocs;
     this.facetCover = facetCover;
-    terms = new FormEnum(this, alpha);
   }
 
   
   
   /**
-   * Returns an enumerator on all terms for this facet in orthographic order
+   * Returns a new enumerator on all terms for this facet in orthographic order
    * @return
    * @throws IOException
    */
   public FormEnum iterator() throws IOException {
-    terms.reset();
-    return terms;
+    return new FormEnum(this, alpha);
   }
 
   /**
@@ -335,14 +330,23 @@ public class FieldFacet
    * @return
    * @throws IOException
    */
-  public FormEnum iterator(final int limit, final BitSet filter, final TermList terms, Specif scorer) throws IOException
+  public FormEnum iterator(final int limit, final BitSet filter, final String[] forms, Specif specif) throws IOException
   {
-    // If the query is against another text field,  (TODO bad stats if more than one text field)
-    if (terms == null || terms.sizeNotNull() == 0) { 
-      // TODO CRY!
+    ArrayList<Term> terms = new ArrayList<Term>();
+    if (forms != null && forms.length != 0) { 
+      for (String f: forms) {
+        if (f == null) continue;
+        if (f.isEmpty()) continue;
+        terms.add(new Term(fieldText.fieldName, f));
+      }
     }
-    boolean hasScorer = (scorer != null);
-    if (hasScorer) scorer.all(occsAll, docsAll);
+    long[] formAllOccs = fieldText.formAllOccs; // localize
+
+    boolean hasSpecif = (specif != null);
+    if (specif == null) specif = new SpecifOccs();
+    specif.all(allOccs, allDocs);
+    // boolean isTfidf = (specif.type() == Specif.TYPE_TFIDF);
+    boolean isProb = (specif.type() == Specif.TYPE_PROB);
     boolean hasFilter = (filter != null);
 
     // Crawl index to get stats by facet term about the text query
@@ -354,23 +358,25 @@ public class FieldFacet
     // loop on each term of the query to update the score vector
     int facetMatch = 0; // number of matched facets by this query
     long occsMatch = 0; // total occurrences matched
-    // loop first on the reader leaves, opening has a disk cost
-    for (LeafReaderContext context : reader.leaves()) {
-      int docBase = context.docBase;
-      LeafReader leaf = context.reader();
-      // loop on terms for this leaf
-      for (Term term : terms) {
-        if (term == null) continue;
-        // get the ocurrence count for the query in each doc
+    // loop on terms, this order of loops may be not efficient for a big list of terms
+    // loop by term is better for some stats
+    for (Term term : terms) {
+      long[] formPartOccs = new long[size]; // a vector to count matched occurrences for this term, by facet
+      final int formId = fieldText.formId(term.bytes());
+      // loop on the reader leaves (opening may have disk cost)
+      for (LeafReaderContext context : reader.leaves()) {
+        LeafReader leaf = context.reader();
+        // get the ocurrence count for the term
         PostingsEnum postings = leaf.postings(term);
         if (postings == null) continue;
+        final int docBase = context.docBase;
         int docLeaf;
-        long freq;
         // loop on the docs for this term
         while ((docLeaf = postings.nextDoc()) != NO_MORE_DOCS) {
           int docId = docBase + docLeaf;
           if (hasFilter && !filter.get(docId)) continue; // document not in the metadata fillter
-          if ((freq = postings.freq()) == 0) continue; // no occurrence for this term (why fond with no occs ?)
+          final int freq = postings.freq();
+          if (freq == 0) continue; // no occurrence for this term (why found with no occs ?)
           final boolean docSeen = docMap.get(docId); // doc has been seen for another term in the query
           int[] facets = docFacets[docId]; // get the facets of this doc
           if (facets == null) continue; // could be null if doc matching but not faceted
@@ -383,31 +389,41 @@ public class FieldFacet
             }
             if (!docSeen) hits[facetId]++; // if doc not already counted for another, increment hits for this facet
             occs[facetId] += freq; // add the matched occs for this doc to the facet
+            formPartOccs[facetId] += freq;
+            // term frequency
+            // if (isTfidf) scores[facetId] += specif.tf(freq, docOccs[docId]);
+
           }
           if (!docSeen) docMap.set(docId); // do not recount this doc as hit for another term
         }
       }
+      // set stats by term
+      if (isProb) {
+        for (int facetId = 0, length = occs.length; facetId < length; facetId++) { // get score for each facet
+          specif.part(facetOccs[facetId], facetDocs[facetId]);
+          scores[facetId] += specif.prob(formPartOccs[facetId], formAllOccs[formId]); // ;
+        }
+      }
+      // if (isTfidf) specif.idf(fieldText.formAllOccs[formId], fieldText.formAllDocs[formId] );
+
     }
     FormEnum it;
-    // TODO, think better on scorer
-    if (hasScorer) {
-      // scorer.weight(occsMatch, facetMatch); // prepare the scorer for this term
-      for (int facetId = 0, length = occs.length; facetId < length; facetId++) { // get score for each facet
-        scores[facetId] = occs[facetId];
-      }
-      // now we have all we need to build a sorted iterator on entries
+    // a scorer, terms desired in alphabetic order with stats, let user choose what to do with empty 
+    if (hasSpecif) {
       TopArray top;
       if (limit < 1) top = new TopArray(scores); // all terms
       else top = new TopArray(limit, scores);
       it = new FormEnum(this, top.toArray());
+      
+      
     } 
-    // no scorer, supposed to want the terms in alpha order
+    // no scorer, terms desired in alphabetic order with stats, let user choose what to do with no hits
     else {
       it = new FormEnum(this, alpha);
     }
     
     it.hits = hits;
-    it.occs = occs;
+    it.occs = occs; // occs is bad here
     it.scores = scores;
     // it.occsCount = occsCount;
     return it;
@@ -416,7 +432,7 @@ public class FieldFacet
   /**
    * Crawl the index to find relevant documents according to a filter.
    * Will cry if filter is null. Prefers {#iterator(int, Scorer)} if you want to iterate on 
-   * all terms for this facel;
+   * all terms for this facet;
    * 
    * @param limit
    * @param filter
@@ -426,7 +442,6 @@ public class FieldFacet
    */
     public FormEnum iterator(final int limit, final BitSet filter) throws IOException
     {
-      boolean hasFilter = (filter != null);
       int[] hits = new int[size];
       long[] occs = new long[size];
       final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
@@ -436,7 +451,7 @@ public class FieldFacet
         int docBase = ctx.docBase;
         LeafReader leaf = ctx.reader();
         // get a doc iterator for the facet field
-        SortedSetDocValues docs4terms = leaf.getSortedSetDocValues(facet);
+        SortedSetDocValues docs4terms = leaf.getSortedSetDocValues(fieldName);
         if (docs4terms == null) continue;
 
         // loop on the docs with a facet
@@ -454,7 +469,7 @@ public class FieldFacet
           }
         }
       }
-      // build the ordered array of termId
+      // build the ordered array of facetId
       FormEnum it = new FormEnum(this, alpha);
       it.hits = hits;
       it.occs = occs;
@@ -469,7 +484,7 @@ public class FieldFacet
    */
   public int size()
   {
-    return hashDic.size();
+    return facetDic.size();
   }
 
   @Override
@@ -478,7 +493,7 @@ public class FieldFacet
     StringBuilder string = new StringBuilder();
     BytesRef ref = new BytesRef();
     for (int i = 0; i < size; i++) {
-      hashDic.get(i, ref);
+      facetDic.get(i, ref);
       string.append(ref.utf8ToString() + ": " + facetOccs[i] + "\n");
     }
     return string.toString();

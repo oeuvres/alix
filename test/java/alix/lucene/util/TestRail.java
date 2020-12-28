@@ -213,7 +213,7 @@ public class TestRail
     System.out.println(((System.nanoTime() - time) / 1000000) + "ms, ");
 
     for (String q: new String[] {"vie", "poire", "esprit", "vie esprit", "de"}) {
-      String[] terms = alix.qAnalyze(q);
+      String[] terms = alix.forms(q);
       // get freq for the pivot
       long freq1 = 0;
       long freq2 = 0;

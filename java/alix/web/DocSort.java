@@ -1,9 +1,5 @@
 package alix.web;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 
@@ -23,7 +19,6 @@ public enum DocSort implements Option
   // "tf-idf", "BM25", "DFI chi²", "DFI standard", "DFI saturé", 
   // "LMD", "LMD λ=0.1", "LMD λ=0.7", "DFR", "IB"
   ;
-  public final String label;
   public final Sort sort;
   private DocSort(final String label, final Sort sort)
   {
@@ -37,28 +32,7 @@ public enum DocSort implements Option
   }
   
   // sadly repeating myself because enum can’t inherit from an abstract class (an
-  // Enum already extends a class).
-
-  @Override
-  public String label()
-  {
-    return label;
-  }
-
-  @Override
-  public List<Option> list()
-  {
-    return list;
-  }
-
-  public static List<Option> list;
-  static {
-    list = Collections.unmodifiableList(Arrays.asList((Option[]) values()));
-  }
-  @Override
-  public String hint()
-  {
-    // TODO Auto-generated method stub
-    return null;
-  }
+  final public String label;
+  public String label() { return label; }
+  public String hint() { return ""; }
 }

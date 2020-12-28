@@ -68,7 +68,7 @@ import alix.util.IntList;
  * Used for co-occurrences stats.
  * Data structure of the file
  * <p>
- * int:maxDoc, maxDoc*[int:docLength], maxDoc*[docLength*[int:termId], int:-1]
+ * int:maxDoc, maxDoc*[int:docLength], maxDoc*[docLength*[int:formId], int:-1]
  * 
  * 
  * @author fred
@@ -82,7 +82,7 @@ public class Rail
   /** Name of the reference text field */
   private final String fieldName;
   /** Keep the freqs for the field */
-  private final FieldText fstats;
+  private final FieldText fieldText;
   /** Dictionary of terms for this field */
   private final BytesRefHash hashDic;
   /** The path of underlaying file store */
@@ -93,8 +93,8 @@ public class Rail
   private MappedByteBuffer channelMap;
   /** Max for docId */
   private int maxDoc;
-  /** Max for termId */
-  private final int maxTerm;
+  /** Max for formId */
+  private final int maxForm;
   /** Size of file header */
   static final int headerInt = 3;
   /** Index of  positions for each doc im channel */
@@ -107,9 +107,9 @@ public class Rail
   {
     this.alix = alix;
     this.fieldName = field;
-    this.fstats = alix.fieldText(field); // build and cache the dictionary for the field
-    this.hashDic = fstats.formDic;
-    this.maxTerm = hashDic.size();
+    this.fieldText = alix.fieldText(field); // build and cache the dictionary for the field
+    this.hashDic = fieldText.formDic;
+    this.maxForm = hashDic.size();
     this.path = Paths.get( alix.path.toString(), field+".rail");
     load();
   }
@@ -131,7 +131,7 @@ public class Rail
     lock = channel.lock(); // may throw OverlappingFileLockException if someone else has lock
     
     
-    int[] docLength = fstats.docOccs;
+    int[] docLength = fieldText.docOccs;
 
     long capInt = headerInt + maxDoc;
     for (int i = 0; i < maxDoc; i++) {
@@ -207,8 +207,8 @@ public class Rail
     bufInt.limit(limInt[docId]);
     BytesRef ref = new BytesRef();
     while (bufInt.hasRemaining()) {
-      int termId = bufInt.get();
-      this.hashDic.get(termId, ref);
+      int formId = bufInt.get();
+      this.hashDic.get(formId, ref);
       sb.append(ref.utf8ToString());
       sb.append(" ");
       if (limit-- <= 0) {
@@ -222,7 +222,7 @@ public class Rail
   /**
    * From a set of documents provided as a BitSet,
    * return a freqlist as an int vector,
-   * where index is the termId for the field,
+   * where index is the formId for the field,
    * the value is count of occurrences of the term.
    * Counts are extracted from stored <i>rails</i>.
    * @throws IOException 
@@ -249,8 +249,8 @@ public class Rail
       if (hasFilter && !filter.get(docId)) continue; // document not in the filter
       bufInt.position(posInt[docId]);
       for (int i = 0, max = limInt[docId] ; i < max; i++) {
-        int termId = bufInt.get();
-        freqs[termId]++;
+        int formId = bufInt.get();
+        freqs[formId]++;
       }
     }
     return freqs;
@@ -261,12 +261,12 @@ public class Rail
   }
 
   /**
-   * Get a cooccurrence freqList in termId order.
+   * Get a cooccurrence freqList in formId order.
    */
   public long[] cooc(final String[] terms, final int left, final int right, final BitSet filter, long[] freqs) throws IOException
   {
     // allow reuse of freqs
-    if (freqs == null || freqs.length != maxTerm) freqs = new long[maxTerm]; // by term, occurrences counts
+    if (freqs == null || freqs.length != maxForm) freqs = new long[maxForm]; // by term, occurrences counts
     final boolean hasFilter = (filter != null);
     final int END = DocIdSetIterator.NO_MORE_DOCS;
     DirectoryReader reader = alix.reader();
@@ -338,8 +338,8 @@ public class Rail
         final int posDoc = posInt[docId];
         int pos = contexts.nextSetBit(0);
         while (pos >= 0) {
-          int termId = bufInt.get(posDoc + pos);
-          freqs[termId]++;
+          int formId = bufInt.get(posDoc + pos);
+          freqs[formId]++;
           pos = contexts.nextSetBit(pos+1);
         }
       }
@@ -368,8 +368,8 @@ public class Rail
     int maxpos = -1;
     int minpos = Integer.MAX_VALUE;
     while ((bytes = tenum.next()) != null) {
-      int termId = hashDic.find(bytes);
-      if (termId < 0) System.out.println("unknown term? \""+bytes.utf8ToString() + "\"");
+      int formId = hashDic.find(bytes);
+      if (formId < 0) System.out.println("unknown term? \""+bytes.utf8ToString() + "\"");
       postings = tenum.postings(postings, PostingsEnum.POSITIONS);
       postings.nextDoc(); // always one doc
       int freq = postings.freq();
@@ -377,7 +377,7 @@ public class Rail
         int pos = postings.nextPosition();
         if (pos > maxpos) maxpos = pos;
         if (pos < minpos) minpos = pos;
-        buf.put(pos, termId);
+        buf.put(pos, formId);
       }
     }
   }
@@ -396,8 +396,8 @@ public class Rail
     String[] words = new String[len];
     BytesRef ref = new BytesRef();
     for (int i = 0; i < len; i++) {
-      int termId = rail[i];
-      this.hashDic.get(termId, ref);
+      int formId = rail[i];
+      this.hashDic.get(formId, ref);
       words[i] = ref.utf8ToString();
     }
     return words;
@@ -429,8 +429,8 @@ public class Rail
     }).parallel().map(docId -> {
       // to use a channelMap in parallel, we need a new IntBuffer for each doc, too expensive
       for (int i = posInt[docId], max = posInt[docId] + limInt[docId] ; i < max; i++) {
-        int termId = rail[i];
-        freqs.getAndIncrement(termId);
+        int formId = rail[i];
+        freqs.getAndIncrement(formId);
       }
       return docId;
     });
