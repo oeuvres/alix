@@ -2,7 +2,8 @@ package alix.util;
 
 import java.io.IOException;
 
-import alix.util.StemTrie.Stem;
+import alix.deprecated.StemTrie;
+import alix.deprecated.StemTrie.Stem;
 
 public class TestStemTrie
 {

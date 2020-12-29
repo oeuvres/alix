@@ -354,6 +354,7 @@ public class FrTokenizer extends Tokenizer
           term.append('.');
           // M., etc.
           if (FrDics.brevidot(term)) {
+            flags.setFlags(Tag.ABBR);
             continue; // keep dot
           }
           // End on sentence.

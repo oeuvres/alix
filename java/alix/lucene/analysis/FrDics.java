@@ -256,9 +256,17 @@ public class FrDics
         // load the word in the global dic (last win)
         int tag = Tag.code(row.get(1));
         CharsAtt key = new CharsAtt(graph);
-        LexEntry entry = new LexEntry(tag, row.get(2), null);
-        if (Tag.isName(tag)) NAMES.put(key, entry);
-        else WORDS.put(key, entry);
+        Chain orth = row.get(2);
+        LexEntry entry = new LexEntry(tag, orth, null);
+        // entry may be known by normalized key only
+        if (Tag.isName(tag)) {
+          NAMES.put(key, entry);
+          if (orth != null && !NAMES.containsKey(orth)) NAMES.put(new CharsAtt(orth), entry);
+        }
+        else {
+          WORDS.put(key, entry);
+          if (orth != null && !WORDS.containsKey(orth)) WORDS.put(new CharsAtt(orth), entry);
+        }
       }
       reader.close();
     }

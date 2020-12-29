@@ -579,30 +579,30 @@ public class Doc
     Terms vector = getTermVector(field);
     int docLen = docLength[docId];
     // get index term stats
-    FieldText fstats = alix.fieldText(field);
+    FieldText fieldText = alix.fieldText(field);
     // loop on all terms of the document, get score, keep the top 
     TermsEnum termit = vector.iterator();
     final Top<String> names = new Top<String>(100);
     final Top<String> happax = new Top<String>(100);
     final Top<String> theme = new Top<String>(100);
     final Top<String> frequent = new Top<String>(100);
-    long occsAll= fstats.occsAll;
-    int docsAll = fstats.docsAll;
+    long occsAll= fieldText.occsAll;
+    int docsAll = fieldText.docsAll;
     Specif scorer = new SpecifBM25();
     // Scorer scorerTheme = new ScorerTheme();
     // Scorer scorerTfidf = new ScorerTfidf();
-    scorer.all(occsAll, docsAll);
+    // scorer.all(occsAll, docsAll);
     CharsAtt att = new CharsAtt();
     while(termit.next() != null) {
       BytesRef bytes = termit.term();
-      final int termId = fstats.termId(bytes);
-      if (termId < 0) continue; // should not arrive, set a pointer
+      final int formId = fieldText.formId(bytes);
+      if (formId < 0) continue; // should not arrive, set a pointer
       // count 
-      int termDocs = fstats.docs(termId); // count of docs with this word
-      long termOccs = fstats.occs(termId); // count of occs accross base
-      scorer.weight(termOccs, termDocs); // collection level stats
+      int termDocs = fieldText.docs(formId); // count of docs with this word
+      long termOccs = fieldText.occs(formId); // count of occs accross base
+      // scorer.weight(termOccs, termDocs); // collection level stats
       int occsDoc = (int)termit.totalTermFreq(); // c
-      double score = scorer.score(occsDoc, docLen, 0);
+      double score = 0; // scorer.score(occsDoc, docLen, 0);
       String term = bytes.utf8ToString();
       
       // keep all names, even uniques
@@ -615,7 +615,7 @@ public class Doc
       else {
         att.setEmpty().append(term);
         if (FrDics.isStop(att)) continue;
-        theme.push(scorer.score(occsDoc, docLen, 0), term);
+        theme.push(score, term);
         frequent.push(occsDoc, term);
       }
       

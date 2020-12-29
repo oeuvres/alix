@@ -179,7 +179,10 @@ public class SpecifHypergeo extends Specif
     // else if (p == Double.POSITIVE_INFINITY) return formPartOccs; 
     // if (p == 0) return 758.25;
     // return -Math.log10(p);
-    if (p == 0) return 0;
+    if (p == 0) {
+      if ((formPartOccs / partOccs) > mean) return Double.POSITIVE_INFINITY;
+      else return Double.NEGATIVE_INFINITY;
+    }
     if ((formPartOccs / partOccs) > mean) return -Math.log10(p);
     else return Math.log10(p);
   }

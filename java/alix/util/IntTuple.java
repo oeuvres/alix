@@ -53,14 +53,7 @@ public class IntTuple implements Comparable<IntTuple>
     this.size = size;
     data = new int[size];
   }
-  /**
-   * Build a key from an int roller.
-   * @param roller
-   */
-  public IntTuple(final IntRoll roller)
-  {
-    throw new UnsupportedOperationException("TODO implements");
-  }
+
   @Override
   public int hashCode()
   {

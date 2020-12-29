@@ -1,7 +1,5 @@
 alix.cli
 alix.fr
-alix.grep
-alix.grep.query
 alix.lucene
 alix.lucene.analysis
 alix.lucene.analysis.tokenattributes

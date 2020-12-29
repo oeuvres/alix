@@ -30,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package alix.util;
+package alix.deprecated;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -41,8 +41,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import alix.deprecated.Tokenizer;
 import alix.fr.Tag;
+import alix.util.Chain;
+import alix.util.Char;
 
 /**
  * 

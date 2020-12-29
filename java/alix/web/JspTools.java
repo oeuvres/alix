@@ -43,24 +43,24 @@ import javax.servlet.jsp.PageContext;
 /**
  * Jsp toolbox.
  */
-public class Jsp
+public class JspTools
 {
+  /** Jsp page context */
+  final PageContext page;
   /** Original request */
   final HttpServletRequest request;
   /** Original response */
   final HttpServletResponse response;
-  /** Jsp page context */
-  final PageContext page;
   /** Cookie */
   HashMap<String, String> cookies;
   /** for cookies */
   private final static int MONTH = 60 * 60 * 24 *30;
 
   /** Wrap the global jsp variables */
-  public Jsp(final HttpServletRequest request, final HttpServletResponse response, PageContext page)
+  public JspTools(final PageContext page)
   {
-    this.request = request;
-    this.response = response;
+    this.request = (HttpServletRequest) page.getRequest();
+    this.response = (HttpServletResponse) page.getResponse();
     this.page = page;
   }
 
@@ -384,7 +384,7 @@ public class Jsp
    * @throws Exception 
    */
   // @SuppressWarnings({ "unchecked", "static-access" })
-  public Enum<?> getEnum(final String name, final Enum<?> fallback) throws Exception
+  public Enum<?> getEnum(final String name, final Enum<?> fallback)
   {
     String value = request.getParameter(name);
     if (!check(value)) return fallback;
@@ -412,12 +412,13 @@ public class Jsp
   {
     return getEnum(name, fallback, cookie.name());
   }
-  @SuppressWarnings({ "unchecked", "static-access" })
+
   public Enum<?> getEnum(final String name, final Enum<?> fallback, final String cookie)
   {
     String value = request.getParameter(name);
     if (check(value)) {
       try {
+        @SuppressWarnings("static-access")
         Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
         cookieSet(cookie, ret.name());
         return ret;
@@ -433,6 +434,7 @@ public class Jsp
     // try to deal with cookie
     value = cookieGet(cookie);
     try {
+      @SuppressWarnings("static-access")
       Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
       return ret;
     }

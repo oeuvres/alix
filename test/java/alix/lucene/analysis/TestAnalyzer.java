@@ -240,6 +240,7 @@ public class TestAnalyzer
         "              littéraire, pourra être résumé d’un mot : la liberté dans l’ordre, la liberté dans\n" + 
         "              l’art.</p>"; // bug on art.
     text = " Le bon point du chemin au douzième siècle, 12e siècle, c’est celui du chemin de fer d’intérêt local.";
+    text = " Il y aurait bien trop une fois, la plupart des fois.";
     // text = "Il y avait beaucoup de bonnes volontés engagées.";
     // text = " n’était qu’un Pacte d’alliance entre vingt‑cinq </span><span class=\"right\"><a href=\"#pos99\">États</a> absolument souverains.";
     vertical(text, new AnalyzerCompounds());
@@ -280,6 +281,6 @@ public class TestAnalyzer
   {
     // tokfr();
     // compounds();
-    localDic();
+    // localDic();
   }
 }

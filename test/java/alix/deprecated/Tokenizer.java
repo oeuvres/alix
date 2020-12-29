@@ -4,13 +4,13 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.HashSet;
 
+import alix.deprecated.StemTrie.Stem;
 import alix.fr.Tag;
 import alix.grep.query.Lexer;
 import alix.util.Chain;
 import alix.util.Char;
 import alix.util.Occ;
 import alix.util.OccChain;
-import alix.util.StemTrie.Stem;
 
 /**
  * A tokenizer for French, without dependancies to Lucene.

@@ -1,4 +1,4 @@
-GRAPH;CAT;ORTH;FREQ
+GRAPH;CAT;ORTH;LEM
 # jusqu’à;PREP;;
 # Monsieur (frère du roi);;;
 à base de;PREP;;
@@ -185,6 +185,7 @@ au bout du;PREP;au bout de;
 au cas où;CONJsubord;;
 au contraire de;PREP;;
 au delà;ADV;;
+au dépourvu;ADV;;
 au détriment de;PREP;;
 au droit de;PREP;;
 au lieu et place de;PREP;;
@@ -291,8 +292,9 @@ bonne foi;SUB;;
 bonne fortune;SUB;;
 bonne humeur;SUB;;
 bonne manière;SUB;;
-boone part;SUB;;
+bonne part;SUB;;
 bonne volonté;SUB;;
+bonnes volontés;SUB;;bonne volonté
 bonnes gens;SUB;;
 bordel de merde;EXCL;;
 bouche bée;SUB;;
@@ -328,8 +330,8 @@ cette dernière;PROindef;;
 cette fois ci;ADV;;
 cette fois là;ADV;;
 cette fois où;CONJbord;;
-cette fois-ci;ADV;;
-cette fois-là;ADV;;
+cette fois-ci;ADV;cette fois ci;
+cette fois-là;ADV;cette fois ci;
 ceux ci;PROdem;ceux-ci;
 ceux là;PROdem;ceux-là;
 chambre à coucher;SUB;;
@@ -344,13 +346,13 @@ chef d'oeuvre;SUB;chef-d'œuvre;
 chef d'œuvre;SUB;chef-d'œuvre;
 chef-d'oeuvre;SUB;chef-d'œuvre;
 chef-d'œuvre;SUB;;
-chefs d'oeuvre;SUB;;
-chefs d'œuvre;SUB;;
-chefs-d'oeuvre;SUB;;
-chefs-d'œuvre;SUB;;
+chefs d'oeuvre;SUB;;chef-d'œuvre
+chefs d'œuvre;SUB;chefs-d'œuvre;chef-d'œuvre
+chefs-d'oeuvre;SUB;chefs-d'œuvre;chef-d'œuvre
+chefs-d'œuvre;SUB;chefs-d'œuvre;chef-d'œuvre
 chemin de fer;SUB;;
 chemin de fer d'intérêt local;SUB;;
-chemins de fer;SUB;;
+chemins de fer;SUB;;chemin de fer
 chemise de nuit;SUB;;
 chewing gum;SUB;;
 chien de fusil;SUB;;
@@ -693,8 +695,8 @@ il n’en reste pas moins que;PREP;;
 il pourrait bien se faire que;PREP;;
 il se pourrait que;PREP;;
 il serait possible que;PREP;;
-il y avoir;PREP;il y a;
-il y avoir avoir;PREP;il y a;
+il y avoir;VERBaux;il y a;
+il y avoir avoir;VERBaux;il y a;
 in absentia;ADV;;
 in abstracto;ADV;;
 in anima vili;ADV;;
@@ -756,10 +758,10 @@ la mienne;PROposs;;
 la neuvième;DETnum;;
 la onzième;DETnum;;
 la plata;SUB;;
-la plupart;PROindef;;
-la plupart de;DETindef;;
-la plupart des;DETindef;;
-la plupart du;DETindef;;
+la plupart;PROindef;;la plupart
+la plupart de;DETindef;;la plupart
+la plupart des;DETindef;;la plupart
+la plupart du;DETindef;;la plupart
 la première;DETnum;;
 la première fois;ADV;;
 la quatrième;DETnum;;
@@ -1273,6 +1275,8 @@ wall street;SUB;;
 way of life;SUB;;
 week end;SUB;;
 world music;SUB;;
+1 e;DETnum;1er;
+1 er;DETnum;1er;
 I e;DETnum;1er;
 i e;DETnum;1er;
 I er;DETnum;1er;
@@ -1286,6 +1290,9 @@ i er siècle;SUB;1er siècle;
 Ier siècle;SUB;1er siècle;
 ier siècle;SUB;1er siècle;
 premier siècle;SUB;1er siècle;
+2 e;DETnum;2e;
+2 eme;DETnum;2e;
+2 ème;DETnum;2e;
 II e;DETnum;2e;
 ii e;DETnum;2e;
 II nd;DETnum;2e;

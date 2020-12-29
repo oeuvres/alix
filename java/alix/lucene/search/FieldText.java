@@ -189,7 +189,7 @@ public class FieldText
   }
 
   /**
-   * Returns formId >= 0 if exists, or < 0 if not.
+   * Returns formId &gt;= 0 if exists, or &lt; 0 if not.
    * @param bytes
    * @return 
    */
@@ -199,7 +199,7 @@ public class FieldText
   }
 
   /**
-   * Returns formId >= 0 if exists, or < 0 if not.
+   * Returns formId &gt;= 0 if exists, or &lt; 0 if not.
    * @param bytes
    * @return 
    */

@@ -20,19 +20,16 @@ public enum DocSort implements Option
   // "LMD", "LMD λ=0.1", "LMD λ=0.7", "DFR", "IB"
   ;
   public final Sort sort;
+  final public String label;
   private DocSort(final String label, final Sort sort)
   {
     this.label = label;
     this.sort = sort;
   }
-  
   public Sort sort()
   {
     return sort;
   }
-  
-  // sadly repeating myself because enum can’t inherit from an abstract class (an
-  final public String label;
   public String label() { return label; }
   public String hint() { return ""; }
 }

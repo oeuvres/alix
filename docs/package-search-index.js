@@ -1,1 +1,1 @@
-packageSearchIndex = [{"l":"alix.cli"},{"l":"alix.grep"},{"l":"alix.grep.query"},{"l":"alix.lucene.analysis.tokenattributes"},{"l":"alix.web"},{"l":"alix.xml"},{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.lucene.analysis"}]
+packageSearchIndex = [{"l":"alix.cli"},{"l":"alix.lucene.analysis.tokenattributes"},{"l":"alix.xml"},{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.lucene.analysis"}]

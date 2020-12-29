@@ -68,9 +68,9 @@ public class LocutionFilter extends TokenFilter
   /** A stack of sates  */
   private Roll<State> stack = new Roll<State>(10);
   /** A term used to concat a compound */
-  private CharsAtt lemCom = new CharsAtt();
+  private CharsAtt compound = new CharsAtt();
   /** A term used to concat a compound */
-  private CharsAtt orthCom = new CharsAtt();
+  // private CharsAtt orthCom = new CharsAtt();
   /** Exit value */
   private boolean exit = true;
   /** Counter */
@@ -101,8 +101,7 @@ public class LocutionFilter extends TokenFilter
     CharsAtt orth = (CharsAtt) orthAtt;
     boolean more = false;
     boolean token = false;
-    lemCom.setEmpty();
-    orthCom.setEmpty();
+    compound.setEmpty();
     Integer treeState;
     final int BRANCH = FrDics.BRANCH; // localize
     final int LEAF = FrDics.LEAF; // localize
@@ -133,40 +132,14 @@ public class LocutionFilter extends TokenFilter
       boolean tagBreak = Tag.isPun(tag);
       if (tagBreak) return exit;
       */
-      // build a lem candidate
-      if (loop > 0 && !lemCom.endsWith('\'')) lemCom.append(' '); 
+      // build a compound candidate
+      if (loop > 0 && !compound.endsWith('\'')) compound.append(' '); 
+      // for verbs, the compound key is the lemma, for others takes an orthographic form
+      if (Tag.isVerb(tag) && lemAtt.length() != 0) compound.append(lemAtt);
+      else if (orth.length() != 0) compound.append(orth);
+      else compound.append(termAtt);
       
-      // d’avance
-      if (orth.endsWith('\'')) {
-        lemCom.append(orth);
-      }
-      // bonnes volontés
-      else if (Tag.isAdj(tag) && !orth.isEmpty() && orth.endsWith('s')) {
-        lemCom.append(orth).setLength(-1);
-      }
-      else if (lemAtt.length() != 0) {
-        lemCom.append(lemAtt);
-      }
-      else if (orth.length() != 0) {
-        lemCom.append(orth);
-      }
-      else {
-        lemCom.append(termAtt);
-      }
-      // build an orthographic form
-      if (loop > 0 && !orthCom.endsWith('\'')) orthCom.append(' '); 
-      if (orth.length() != 0) orthCom.append(orth);
-      else orthCom.append(termAtt);
-      
-      // keep the key working to find entry in the tree of locutions
-      CharsAtt key = orthCom;
-      treeState = FrDics.TREELOC.get(key);
-      if (treeState == null) {
-        key = lemCom;
-        treeState = FrDics.TREELOC.get(key);
-      }
-      
-
+      treeState = FrDics.TREELOC.get(compound);
       if (treeState == null) {
         // if nothing in stack, and new token, go out with current state
         if (stack.isEmpty() && loop == 0) return exit;
@@ -182,20 +155,20 @@ public class LocutionFilter extends TokenFilter
       if ((treeState & LEAF) > 0) {
         stack.clear();
         // get its entry 
-        LexEntry entry = FrDics.WORDS.get(key);
-        if (entry == null) entry = FrDics.NAMES.get(key);
+        LexEntry entry = FrDics.WORDS.get(compound);
+        if (entry == null) entry = FrDics.NAMES.get(compound);
         if (entry != null) {
           flagsAtt.setFlags(entry.tag);
-          termAtt.setEmpty().append(orthCom);
+          termAtt.setEmpty().append(compound);
           if (entry.orth != null) orth.setEmpty().append(entry.orth);
-          else orth.setEmpty().append(lemCom);
+          else orth.setEmpty().append(compound);
           if (entry.lem != null) lemAtt.setEmpty().append(entry.lem);
           else lemAtt.setEmpty();
         }
         else {
-          termAtt.setEmpty().append(orthCom);
-          orth.setEmpty().append(lemCom);
-          lemAtt.setEmpty().append(lemCom);
+          termAtt.setEmpty().append(compound);
+          orth.setEmpty().append(compound);
+          lemAtt.setEmpty();
         }
         
         offsetAtt.setOffset(startOffset, offsetAtt.endOffset());

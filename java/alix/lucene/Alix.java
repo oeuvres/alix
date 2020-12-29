@@ -130,7 +130,6 @@ import alix.lucene.search.FieldInt;
  *   ({@link SortedDocValuesField} or {@link SortedSetDocValuesField}) with lexical statistics from a
  *   {@link TextField} (ex: count of words for an author facet)</li>
  *   <li>{@link #scale(String, String)} Data to build chronologies or other charts.</li>
- *   <li>{@link #cooc(String)}} Returns a co-occurrences reader (needs a specific indexation, {@link Cooc}).</li>
  * </ul>
  * 
  * @author Pierre Dittgen (2009, original idea, creation)
@@ -318,7 +317,7 @@ public class Alix
   }
 
   /**
-   * A real time reader only used for some updates (see {@link Cooc#write()}).
+   * A real time reader only used for some updates.
    * 
    * @return
    * @throws IOException
