@@ -119,7 +119,7 @@ public class Char
         if (c == '-' || c == 0xAD || c == '\'' || c == '’' || c == '_') {
           properties |= TOKEN;
         }
-        if (c == '�') properties |= LETTER | TOKEN;
+        if (c == '�' || c == '°') properties |= LETTER | TOKEN;
         if ('.' == c || '…' == c || '?' == c || '!' == c) properties |= PUNsent;
         else if (',' == c || ';' == c || ':' == c || '(' == c || ')' == c || '—' == c || '–' == c || '⁂' == c || '»' == c || '«' == c) properties |= PUNcl;
       }

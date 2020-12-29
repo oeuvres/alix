@@ -279,7 +279,7 @@ public class TestAnalyzer
 
   public static void main(String[] args) throws IOException
   {
-    // tokfr();
+    tokfr();
     // compounds();
     // localDic();
   }

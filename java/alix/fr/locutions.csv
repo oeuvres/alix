@@ -185,6 +185,7 @@ au bout du;PREP;au bout de;
 au cas où;CONJsubord;;
 au contraire de;PREP;;
 au delà;ADV;;
+au-delà;ADV;au delà;
 au dépourvu;ADV;;
 au détriment de;PREP;;
 au droit de;PREP;;
@@ -233,6 +234,8 @@ aux dépens de;PREP;;
 aux fins de;PREP;;
 aux lieu et place de;PREP;;
 aux portes de;PREP;;
+av. J.-C.;NUM;
+avant J.-C.;NUM;av. J.-C.
 avant de;PREP;;
 avant même que;CONJsubord;;
 avant que;CONJsubord;;
@@ -824,7 +827,10 @@ les trois;DETnum;;
 les vôtres;PROposs;;
 lieutenant de police;SUB;;
 ligne de compte;SUB;;
+lieu-commun;SUB;lieu commun
 lieu commun;SUB;
+lieux communs;SUB;;lieu commun
+lieux-communs;SUB;lieux communs;lieu commun
 lit de sangle;SUB;;
 livre sterling;SUB;;
 livres de rente;SUB;;

@@ -229,6 +229,8 @@ public class FrTokenizer extends Tokenizer
       // a very light XML parser
       if (!xml) ;
       else if (c == '<') { // start tag
+        
+        /*
         // a word was started, send it, ex Word<note>2</note>
         if (length != 0) {
           bufIndex--;
@@ -236,6 +238,7 @@ public class FrTokenizer extends Tokenizer
           // offLast = offset - ltOffset;
           break;
         }
+        */
         // keep memory of start index of this tag
         ltOffset = offset + bufIndex - 1;
         intag = true;
