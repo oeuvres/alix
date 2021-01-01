@@ -9,6 +9,9 @@ import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.search.Query;
 
@@ -19,6 +22,19 @@ import alix.util.Dir;
 
 public class TestAlix
 {
+  public static final FieldType FTYPE = new FieldType();
+  static {
+    FTYPE.setTokenized(true);
+    // freqs required, position needed for co-occurrences
+    FTYPE.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    FTYPE.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
+    FTYPE.setStoreTermVectors(true);
+    FTYPE.setStoreTermVectorPositions(true);
+    FTYPE.setStoreTermVectorOffsets(true);
+    FTYPE.setStored(true); // set store here
+    FTYPE.freeze();
+  }
+
   static Path path = Paths.get("/tmp/alix/test");
   static public final String fieldName = "text";
   public static Alix miniBase(Analyzer analyzer) throws IOException
@@ -32,8 +48,8 @@ public class TestAlix
   static public void write(Alix alix, String[] corpus) throws IOException
   {
     IndexWriter writer = alix.writer();
-    Field field = new Field(fieldName, "", Alix.ftypeText);
     Document doc = new Document();
+    Field field = new Field(fieldName, "", FTYPE);
     doc.add(field);
     int docId = 0;
     for (String text: corpus) {

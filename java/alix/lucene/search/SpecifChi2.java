@@ -33,16 +33,16 @@
 package alix.lucene.search;
 
 /**
- * Implementation of a Chi2 scorer
- * 
- * <li>formPart  f : la fréquence de l’événement dans la partie ;
- * <li>formAll   F : la fréquence totale de l’événement dans le corpus ;
- * <li>wcPart    t : le nombre total d’événements ayant lieu dans la partie ;
- * <li>wcAll     T : le nombre total d’événements ayant lieu dans l’ensemble des parties.
- * 
- * 
- * @author fred
+ * Implementation of a Chi2 scorer (Pearson) like described by C. Muller (1968)
+ * <br/>Oi = Observation i
+ * <br/>Ei = Expectation i
+ * <br/>ΣOi = ΣEi = N (total of events)
+ * <br/>Chi2 = Σ(Oi - Ei)²/Ei
  *
+ * https://en.wikipedia.org/wiki/Chi-squared_test
+ * 
+ * 
+ * @author glorieux-f
  */
 public class SpecifChi2 extends Specif
 {
@@ -53,16 +53,15 @@ public class SpecifChi2 extends Specif
 
 
   /**
-   * Find a 2x2 chi-square value.
-   * Note: could do this more neatly using simplified formula for 2x2 case.
+   * A 2x2 chi-square value.
    *
    * @param N The total number of balls
    * @param K The number of black balls
    * @param n The number of balls drawn
    * @param k The number of black balls drawn
-   * @return The Fisher's exact p-value
    */
-  public static double chi2(long N, int K, int n, int k) {
+  public static double chi2(double N, double K, double n, double k) {
+    /* Manning code, not exactly expressive
     if (k < 0 || K > N || n > N || N <= 0 || n < 0 || K < 0) {
       throw new IllegalArgumentException("Invalid chi2 params"+" N="+N+" K="+K+" n="+n+" k="+k);
     }
@@ -77,6 +76,11 @@ public class SpecifChi2 extends Specif
       }
     }
     return total;
+     */
+    // is not conform to theory but produce exactly the same order of results;
+    double E0 = n * K / N;
+    double O0_E0 = k - E0;
+    return O0_E0 * O0_E0 / E0;
   }
 
   @Override

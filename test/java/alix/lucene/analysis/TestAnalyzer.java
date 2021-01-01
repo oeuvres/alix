@@ -252,7 +252,7 @@ public class TestAnalyzer
     // mode query
     text =  "monnaie d’un -nombre toujours plus restreint";
     // TODO, does not work
-    text = "le rebondissement de l<emph>’action</emph>, E<anchor xml:id=\"_GoBack\"/>h";
+    text = "le rebondissement de l<emph>’action</emph>, E<anchor xml:id=\"_GoBack\"/>h, la V<hi rend=\"sup\">e</hi> République";
     vertical(text, new AnalyzerTokfr());
   }
 

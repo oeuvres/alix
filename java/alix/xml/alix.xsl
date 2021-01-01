@@ -211,6 +211,12 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
       <alix:field name="bibl" type="meta">
         <xsl:call-template name="bibl"/>
       </alix:field>
+      <alix:field name="analytic" type="meta">
+        <xsl:call-template name="analytic"/>
+      </alix:field>
+      <alix:field name="pages" type="meta">
+        <xsl:call-template name="pages"/>
+      </alix:field>
       <xsl:variable name="prev">
         <xsl:call-template name="prev"/>
       </xsl:variable>     

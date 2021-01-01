@@ -10,6 +10,19 @@ public enum Ranking implements Option {
     }
   },
   
+  g("G-Test") {
+    @Override
+    public Specif specif() {
+      return new SpecifG();
+    }
+  },
+  chi2("Chi2 (Muller)") {
+    @Override
+    public Specif specif() {
+      return new SpecifChi2();
+    }
+  },
+
   hypergeo("Loi hypergeometrique (Lafon)") {
     @Override
     public Specif specif() {
@@ -17,12 +30,6 @@ public enum Ranking implements Option {
     }
   },
 
-  chi2("Chi2 (Muller)") {
-    @Override
-    public Specif specif() {
-      return new SpecifChi2();
-    }
-  },
 
   /* pas bon 
   binomial("Loi binomiale") {

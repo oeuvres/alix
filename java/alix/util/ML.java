@@ -101,6 +101,7 @@ public class ML
   
   public static String detag(final String xml)
   {
+    if (xml == null || xml.isEmpty()) return "";
     return detag(xml, 0, xml.length());
   }
 
@@ -109,6 +110,7 @@ public class ML
    */
   public static String detag(final String xml, final int begin, final int end)
   {
+    if (xml == null || xml.isEmpty()) return "";
     Chain dest = new Chain();
     detag(xml, begin, end, dest);
     return dest.toString();

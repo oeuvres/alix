@@ -148,10 +148,6 @@ public class Alix
   public static final String TYPE = "alix:type";
   /** Just the mandatory fields */
   final static HashSet<String> FIELDS_ID = new HashSet<String>(Arrays.asList(new String[] { Alix.ID}));
-  /** A binary stored field with an array of offsets */
-  // public static final String _OFFSETS = ":offsets";
-  /** A binary stored with {@link Tag} by position */
-  // public static final String _TAGS = ":tags";
   /** Suffix for a text field containing only names */
   public static final String _NAMES = ":names";
   /** Max books */
@@ -178,7 +174,7 @@ public class Alix
     ftypeMeta.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
     ftypeMeta.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
     ftypeMeta.setStoreTermVectors(false); // no vectors, hilite done by anlalyzer
-    ftypeMeta.setStored(false); // store not allowed when indexoing token stream
+    ftypeMeta.setStored(false); // store not allowed when indexing token stream
     ftypeMeta.freeze();
   }
   /** Pool of instances, unique by path */

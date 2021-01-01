@@ -251,8 +251,8 @@ public class FrDics
       while ((row = csv.readRow()) != null) {
         Chain graph = row.get(0);
         if (graph.isEmpty() || graph.charAt(0) == '#') continue;
-        // load the form in the compound tree
-        compound(graph, TREELOC);
+        // load the form in the compound tree if it is multi token (badly sometimes not)
+        if (graph.contains(' ') || graph.contains('’') || graph.contains('\'')) compound(graph, TREELOC);
         // load the word in the global dic (last win)
         int tag = Tag.code(row.get(1));
         CharsAtt key = new CharsAtt(graph);
