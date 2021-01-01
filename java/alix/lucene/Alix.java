@@ -139,17 +139,15 @@ public class Alix
   /** Name of the application (for messages) */
   public static final String NAME = "Alix";
   /** Mandatory field, XML source file name, used for update */
-  public static final String FILENAME = "alix:filename";
+  public static final String FILENAME = "alix.filename";
   /** Mandatory field, unique id for a book and its chapters */
-  public static final String BOOKID = "alix:bookid";
+  public static final String BOOKID = "alix.bookid";
   /** Mandatory field, unique id provide by user for all documents */
-  public static final String ID = "alix:id";
+  public static final String ID = "alix.id";
   /** Mandatory field, define the level of a leaf (book/chapter, article) */
-  public static final String TYPE = "alix:type";
+  public static final String TYPE = "alix.type";
   /** Just the mandatory fields */
-  final static HashSet<String> FIELDS_ID = new HashSet<String>(Arrays.asList(new String[] { Alix.ID}));
-  /** Suffix for a text field containing only names */
-  public static final String _NAMES = ":names";
+  final static HashSet<String> FIELDS_ID = new HashSet<String>(Arrays.asList(new String[] {Alix.ID}));
   /** Max books */
   private static final int MAXBOOKS = 10000;
   /** Lucene field type for alix text field */
@@ -162,8 +160,7 @@ public class Alix
     ftypeText.setStoreTermVectors(true);
     ftypeText.setStoreTermVectorPositions(true);
     ftypeText.setStoreTermVectorOffsets(true);
-    // do not store here to allow fine grain control
-    ftypeText.setStored(false); // store not allowed 
+    ftypeText.setStored(false); // TokenStream fields cannot be stored 
     ftypeText.freeze();
   }
   /** lucene field type for alix meta type */
@@ -174,7 +171,7 @@ public class Alix
     ftypeMeta.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
     ftypeMeta.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
     ftypeMeta.setStoreTermVectors(false); // no vectors, hilite done by anlalyzer
-    ftypeMeta.setStored(false); // store not allowed when indexing token stream
+    ftypeMeta.setStored(false); // TokenStream fields cannot be stored 
     ftypeMeta.freeze();
   }
   /** Pool of instances, unique by path */

@@ -74,14 +74,14 @@ public class SpecifG extends Specif
   }
 
   @Override
-  public double prob(final long formPartOccs, final long formAllOccs)
+  public double prob(final double formPartOccs, final double formAllOccs)
   {
     if (formAllOccs < 4) return 0;
 
     // if (formPartOccs < FLOOR) return 0;
-    double p = g((int)allOccs, (int)formAllOccs,  (int)partOccs, (int)formPartOccs);
+    double p = g(allOccs, formAllOccs,  partOccs, formPartOccs);
     // System.out.println("N="+ (int)allOccs +" K="+ (int)formAllOccs +" n="+(int)partOccs + " k="+(int)formPartOccs+ " p="+p);
-    double mean = (double)formAllOccs / allOccs;
+    double mean = formAllOccs / allOccs;
     if ((formPartOccs / partOccs) > mean) return p;
     else return -p;
   }

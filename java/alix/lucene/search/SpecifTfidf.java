@@ -73,17 +73,18 @@ public class SpecifTfidf extends Specif
     return TYPE_TFIDF;
   }
   @Override
-  public double idf(final long formAllOccs, final int formAllDocs)
+  public double idf(final double formAllOccs, final double formAllDocs)
   {
     this.formAllOccs = formAllOccs;
     this.formAllDocs = formAllDocs;
-    double l = 1; // 
-    this.idf =  Math.pow((double)1 + Math.log((allDocs +l ) / (double) (formAllDocs + l)), 2 );
+    final double l = 1d; // 
+    final double toPow = 1d + Math.log((allDocs +l ) / (formAllDocs + l));
+    this.idf =  toPow * toPow;
     return idf;
   }
 
   @Override
-  public double tf(final int formDocOccs, final int docOccs)
+  public double tf(final double formDocOccs, final double docOccs)
   {
     return idf * (k + (1 - k) * (double) formDocOccs / (double) docOccs);
   }

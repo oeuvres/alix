@@ -46,9 +46,9 @@ public class SpecifDice extends Specif
 
   @Override
   // 
-  public double prob(final long formPartOccs, final long formAllOccs)
+  public double prob(final double formPartOccs, final double formAllOccs)
   {
-    return (double)2 * formPartOccs / (Math.pow(formAllOccs - formPartOccs, 2) + Math.pow(partOccs - formPartOccs, 2));
+    return 2.0d * formPartOccs / (Math.pow(formAllOccs - formPartOccs, 2) + Math.pow(partOccs - formPartOccs, 2));
   }
 
 }

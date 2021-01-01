@@ -37,6 +37,7 @@ import java.math.RoundingMode;
 
 /**
  * 
+ * https://nic.schraudolph.org/pubs/Schraudolph99.pdf
  * https://github.com/stanfordnlp/CoreNLP/blob/master/src/edu/stanford/nlp/math/SloppyMath.java
  * @author glorieux-f
  */

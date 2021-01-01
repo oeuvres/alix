@@ -78,7 +78,7 @@ public abstract class Specif
    * @param occsAll Total count of occurrences in the collection.
    * @param docsAll Total count of documents in the collection.
    */
-  public void all(final long allOccs, final int allDocs) {
+  public void all(final double allOccs, final double allDocs) {
     this.allOccs = allOccs;
     this.allDocs = allDocs;
     this.docAvg = (double) allOccs / allDocs;
@@ -93,8 +93,9 @@ public abstract class Specif
   
   /**
    * Set variables useful to calculate an idf (inverse document frequency) for a form.
+   * Are also used by classical prob metrics.
    */
-  public double idf(final long formAllOccs, final int formAllDocs) {
+  public double idf(final double formAllOccs, final double formAllDocs) {
     this.formAllOccs = formAllOccs;
     this.formAllDocs = formAllDocs;
     return 0;
@@ -103,18 +104,19 @@ public abstract class Specif
   /**
    * Returns a score for a term frequency in a document (tf)
    */
-  public double tf(final int formDocOccs, final int docOccs) {
+  public double tf(final double formDocOccs, final double docOccs) {
     return 0;
   }
 
   /**
    * Set variables common to a part of a corpus, with no reference to a form.
-   * These variables are not used in classical tf-idf, but more in lexicometry.
+   * These variables are not used in classical tf-idf, but in lexicometry
+   * where a corpus is not supposed to be divided in documents.
    * 
    * @param partOccs, word count for the part
    * @param partDocs, count of documents in the part
    */
-  public double part(final long partOccs, final int partDocs) {
+  public double part(final double partOccs, final double partDocs) {
     this.partOccs = partOccs;
     this.partDocs = partDocs;
     return 0;
@@ -128,7 +130,7 @@ public abstract class Specif
    * @param formAllOccs
    * @return
    */
-  public double prob(final long formPartOccs, final long formAllOccs) {
+  public double prob(final double formPartOccs, final double formAllOccs) {
     return 0;
   }
   

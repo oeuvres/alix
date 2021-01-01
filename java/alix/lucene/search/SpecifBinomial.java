@@ -44,7 +44,7 @@ public class SpecifBinomial extends Specif
     return TYPE_PROB;
   }
 
-  static double binomialCoef(final long n, long k) 
+  static double binomialCoef(final double n, double k) 
   { 
       double res = 1.0; 
 
@@ -69,14 +69,14 @@ public class SpecifBinomial extends Specif
    * @param n Number of trials
    * @param p Probability of a success
    */
-  public static double binomial(final long n, final long k, double p) {
+  public static double binomial(final double n, final double k, double p) {
     // maybe cached if we use the same in a loop
     double coef = binomialCoef(n, k);
     return coef * Math.pow(p, k) * Math.pow(1.0 - p, n - k);
   }
 
   @Override
-  public double prob(final long formPartOccs, final long formAllOccs)
+  public double prob(final double formPartOccs, final double formAllOccs)
   {
     double mean = (double)formAllOccs / allOccs;
     double p = binomial((long)partOccs, formPartOccs, mean);

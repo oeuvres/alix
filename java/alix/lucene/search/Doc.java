@@ -56,6 +56,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
+import alix.fr.Tag.TagFilter;
 import alix.lucene.Alix;
 import alix.lucene.analysis.FrDics;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
@@ -65,6 +66,7 @@ import alix.util.Chain;
 import alix.util.Char;
 import alix.util.ML;
 import alix.util.Top;
+import alix.util.TopArray;
 
 
 /**
@@ -86,10 +88,6 @@ public class Doc
   final private HashSet<String> fieldsToLoad;
   /** The loaded fields */
   final private Document document;
-  /** Cache of term vector by fields */
-  private HashMap<String, Terms> vectors = new HashMap<>();
-  /** Cache of different top terms */
-  private HashMap<String, Top<String>> tops =  new HashMap<>();
   
   /**
    * Get a document by String id (persists as long as the source XML doc is not modified)
@@ -231,11 +229,12 @@ public class Doc
    */
   public Terms getTermVector(String field) throws IOException, NoSuchFieldException
   {
+    /* Shall we cache ?
     Terms tvek = vectors.get(field);
     if (tvek != null) return tvek; // cache OK
-    tvek = alix.reader().getTermVector(docId, field);
+    */
+    Terms tvek = alix.reader().getTermVector(docId, field);
     if (tvek == null) throw new NoSuchFieldException("Missig terms Vector for field="+field+" docId="+docId);
-    vectors.put(field, tvek);
     return tvek;
   }
 
@@ -568,87 +567,65 @@ public class Doc
   //
   
   /**
-   * Prepare list of terms 
+   * Count of occurrences by term for the document. Returns an iterator sorted according 
+   * to a scorer. If scorer is null, default is count of occurences.
+   * {@link FieldText#iterator(int, org.apache.lucene.util.BitSet, Specif, TagFilter)}
+   * 
    * @param field
+   * @param limit
+   * @param specif
+   * @param tags
+   * @param reverse
+   * @return
    * @throws IOException
-   * @throws NoSuchFieldException 
+   * @throws NoSuchFieldException
    */
-  private void topWords(String field) throws IOException, NoSuchFieldException
+  public FormEnum iterator(String field, int limit, Specif specif, TagFilter tags, final boolean reverse) throws IOException, NoSuchFieldException
   {
-    int[] docLength = alix.docOccs(field);
-    Terms vector = getTermVector(field);
-    int docLen = docLength[docId];
-    // get index term stats
+    boolean hasTags = (tags != null);
+    boolean noStop = (tags != null && tags.noStop());
+    boolean isTfidf = (specif != null && specif.type() == Specif.TYPE_TFIDF);
+    boolean isProb = (specif != null && specif.type() == Specif.TYPE_PROB);
+    // sorting default, may alpha be better ?
+    if (specif == null) specif = new SpecifOccs();
+    
+    // get index term stats and localize some arrays
     FieldText fieldText = alix.fieldText(field);
+    double[] scores = new double[fieldText.size];
+    long[] occs = new long[fieldText.size]; // occs by form
+    int[] formTag = fieldText.formTag;
+    long[] formAllOccs = fieldText.formAllOccs;
+    int[] formAllDocs = fieldText.formAllDocs;
+    int docOccs = alix.docOccs(field)[docId];
+    specif.all(fieldText.occsAll, fieldText.docsAll);
+    specif.part(docOccs, 1); // part has one doc, not really 
     // loop on all terms of the document, get score, keep the top 
+    Terms vector = getTermVector(field); // get the term vector to loop on
     TermsEnum termit = vector.iterator();
-    final Top<String> names = new Top<String>(100);
-    final Top<String> happax = new Top<String>(100);
-    final Top<String> theme = new Top<String>(100);
-    final Top<String> frequent = new Top<String>(100);
-    long occsAll= fieldText.occsAll;
-    int docsAll = fieldText.docsAll;
-    Specif scorer = new SpecifBM25();
-    // Scorer scorerTheme = new ScorerTheme();
-    // Scorer scorerTfidf = new ScorerTfidf();
-    // scorer.all(occsAll, docsAll);
-    CharsAtt att = new CharsAtt();
     while(termit.next() != null) {
       BytesRef bytes = termit.term();
       final int formId = fieldText.formId(bytes);
-      if (formId < 0) continue; // should not arrive, set a pointer
-      // count 
-      int termDocs = fieldText.docs(formId); // count of docs with this word
-      long termOccs = fieldText.occs(formId); // count of occs accross base
+      if (hasTags && !tags.accept(formTag[formId])) continue;
+      // if (formId < 0) continue; // should not arrive, let cry
+      specif.idf(formAllOccs[formId], formAllDocs[formId]); // term specific stats
       // scorer.weight(termOccs, termDocs); // collection level stats
-      int occsDoc = (int)termit.totalTermFreq(); // c
-      double score = 0; // scorer.score(occsDoc, docLen, 0);
-      String term = bytes.utf8ToString();
-      
-      // keep all names, even uniques
-      if (Char.isUpperCase(term.charAt(0))) {
-        names.push(occsDoc, term);
-      }
-      else if (termDocs < 2) {
-        happax.push(score, term);
-      }
-      else {
-        att.setEmpty().append(term);
-        if (FrDics.isStop(att)) continue;
-        theme.push(score, term);
-        frequent.push(occsDoc, term);
-      }
-      
+      long formDocOccs = termit.totalTermFreq();
+      occs[formId] = formDocOccs;
+      if (isTfidf) scores[formId] = specif.tf(formDocOccs, docOccs);
+      else if (isProb)  scores[formId] = specif.prob(formDocOccs, formAllOccs[formId]);
     }
-    tops.put(field+"_frequent", frequent);
-    tops.put(field+"_theme", theme);
-    tops.put(field+"_names", names);
-    tops.put(field+"_happax", happax);
-  }
-
-  public Top<String> frequent(String field) throws IOException, NoSuchFieldException {
-    String key = field+"_frequent";
-    Top<String> ret = tops.get(key);
-    if (ret == null) topWords(field);
-    return tops.get(key);
-  }
-  
-  public Top<String> names(String field) throws IOException, NoSuchFieldException {
-    Top<String> ret = tops.get(field+"_names");
-    if (ret == null) topWords(field);
-    return tops.get(field+"_names");
-  }
-
-  public Top<String> theme(String field) throws IOException, NoSuchFieldException {
-    Top<String> ret = tops.get(field+"_theme");
-    if (ret == null) topWords(field);
-    return tops.get(field+"_theme");
-  }
-
-  public Top<String> happax(String field) throws IOException, NoSuchFieldException {
-    Top<String> ret = tops.get(field+"_happax");
-    if (ret == null) topWords(field);
-    return tops.get(field+"_happax");
+    // now we have all we need to build a sorted iterator on entries
+    TopArray top;
+    int flags = TopArray.NO_ZERO;
+    if (reverse) flags |= TopArray.REVERSE;
+    if (limit < 1) top = new TopArray(scores, flags); // all terms
+    else top = new TopArray(limit, scores, flags);
+    FormEnum it = new FormEnum(fieldText, top.toArray());
+    // add some more stats on this iterator
+    it.occs = occs;
+    it.scores = scores;
+    it.occsPart = docOccs;
+    return it;
   }
 
   /**

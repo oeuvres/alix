@@ -46,9 +46,9 @@ public class SpecifJaccard extends Specif
   }
 
   @Override
-  public double prob(final long formPartOccs, final long formAllOccs)
+  public double prob(final double formPartOccs, final double formAllOccs)
   {
-    return (double)formPartOccs / (formAllOccs + partOccs + formPartOccs);
+    return formPartOccs / (formAllOccs + partOccs + formPartOccs);
   }
 
 }

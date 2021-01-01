@@ -38,18 +38,18 @@ import org.apache.lucene.search.similarities.SimilarityBase;
 
 /**
  * Implementation of a Chi2 Scoring with negative scores to get the 
- * most repulsed doc from a query. 
+ * most repulsed doc from a query. Code structure taken form {@link org.apache.lucene.search.similarities.DFISimilarity}
  */
 public class SimilarityChi2 extends SimilarityBase {
-  // private final Independence independence;
-
 
   @Override
   protected double score(BasicStats stats, double freq, double docLen) {
     // if (stats.getNumberOfFieldTokens() == 0) return 0; // ??
     final double expected = stats.getTotalTermFreq() * docLen / stats.getNumberOfFieldTokens();
-    // if the observed frequency is less than or equal to the expected value, then return zero.
     final double measure = (freq - expected) * (freq - expected) / expected;
+    // DFISimilarity returns log, with a 
+    // return stats.getBoost() * log2(measure + 1);
+    // if the observed frequency is less than expected, return negative (should be nice in multi term query)
     if (freq < expected) return -measure;
     return measure;
   }

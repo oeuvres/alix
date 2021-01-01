@@ -161,19 +161,11 @@ public class SpecifHypergeo extends Specif
   }
   
   @Override
-  public double prob(final long formPartOccs, final long formAllOccs)
+  public double prob(final double formPartOccs, final double formAllOccs)
   {
     if (formAllOccs < 4) return 0;
-    double mean = (double)formAllOccs / allOccs;
+    double mean = formAllOccs / allOccs;
     
-    // (int populationSize, int numberOfSuccesses, int sampleSize)
-    // HypergeometricDistribution hyper = new HypergeometricDistribution((int)(allOccs), (int)(formAllOccs), (int)(partOccs));
-    /*
-     * @param k The number of black balls drawn
-     * @param n The total number of balls
-     * @param r The number of black balls
-     * @param m The number of balls drawn
-     */
     double p = hypergeometric((int)formPartOccs, (int)allOccs, (int)formAllOccs, (int)partOccs);
     // if (p == Double.NEGATIVE_INFINITY) return -formPartOccs; 
     // else if (p == Double.POSITIVE_INFINITY) return formPartOccs; 

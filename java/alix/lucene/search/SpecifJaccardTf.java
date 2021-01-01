@@ -46,9 +46,9 @@ public class SpecifJaccardTf extends Specif
   }
 
   @Override
-  public double tf(final int formDocOccs, final int docOccs)
+  public double tf(final double formDocOccs, final double docOccs)
   {
-    return (double) formDocOccs / (formAllOccs + docOccs + formDocOccs);
+    return formDocOccs / (formAllOccs + docOccs + formDocOccs);
   }
 
 

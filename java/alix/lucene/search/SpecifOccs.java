@@ -40,7 +40,7 @@ public class SpecifOccs extends Specif
     return Specif.TYPE_PROB;
   }
   @Override
-  public double prob(final long formPart, final long formAll)
+  public double prob(final double formPart, final double formAll)
   {
     return formPart;
   }

@@ -77,21 +77,29 @@ public class SpecifChi2 extends Specif
     }
     return total;
      */
+    /*
+    double E0 = n * K / N;
+    double O0_E0 = k - E0;
+    double E1 = N - E0;
+    double O1_E1 = (N - k) - E1;
+    return (O0_E0 * O0_E0 / E0) + (O1_E1 * O1_E1 / E1);
+      
+     */
     // is not conform to theory but produce exactly the same order of results;
+    // ΣOi != ΣEi != N (total of events)
+    // should work better for multiterm
     double E0 = n * K / N;
     double O0_E0 = k - E0;
     return O0_E0 * O0_E0 / E0;
   }
 
   @Override
-  public double prob(final long formPartOccs, final long formAllOccs)
+  public double prob(final double formPartOccs, final double formAllOccs)
   {
+    // minimum 
     if (formAllOccs < 4) return 0;
-
-    // if (formPartOccs < FLOOR) return 0;
-    double p = chi2((int)allOccs, (int)formAllOccs,  (int)partOccs, (int)formPartOccs);
-    // System.out.println("N="+ (int)allOccs +" K="+ (int)formAllOccs +" n="+(int)partOccs + " k="+(int)formPartOccs+ " p="+p);
-    double mean = (double)formAllOccs / allOccs;
+    double p = chi2(allOccs, formAllOccs,  partOccs, formPartOccs);
+    double mean = formAllOccs / allOccs;
     if ((formPartOccs / partOccs) > mean) return p;
     else return -p;
   }

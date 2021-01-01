@@ -51,7 +51,7 @@ public class SpecifBM25 extends Specif
   }
   
   @Override
-  public double idf(final long formAllOccs, final int formAllDocs)
+  public double idf(final double formAllOccs, final double formAllDocs)
   {
     this.formAllOccs = formAllOccs;
     this.formAllDocs = formAllDocs;
@@ -61,7 +61,7 @@ public class SpecifBM25 extends Specif
   }
 
   @Override
-  public double tf(final int formDocOccs, final int docOccs)
+  public double tf(final double formDocOccs, final double docOccs)
   {
     return idf * (formDocOccs * (k1 + 1)) / (formDocOccs + k1 * (1 - b + b * docOccs / docAvg));
   }

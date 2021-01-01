@@ -46,9 +46,9 @@ public class SpecifDiceTf extends Specif
   }
 
   @Override
-  public double tf(final int formDocOccs, final int docOccs)
+  public double tf(final double formDocOccs, final double docOccs)
   {
-   return (double)2 * formDocOccs / (Math.pow(formAllOccs - formDocOccs, 2) + Math.pow(docOccs - formDocOccs, 2));
+   return 2.0d * formDocOccs / (Math.pow(formAllOccs - formDocOccs, 2) + Math.pow(docOccs - formDocOccs, 2));
   }
 
 }
