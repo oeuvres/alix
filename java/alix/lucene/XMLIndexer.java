@@ -157,6 +157,7 @@ public class XMLIndexer implements Runnable
       if (transformer != null) {
         StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
         transformer.setParameter("filename", filename);
+        transformer.setParameter("index", true); // will strip bad things for indexation
         transformer.transform(source, result);
       }
       else {

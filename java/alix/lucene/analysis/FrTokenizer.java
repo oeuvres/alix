@@ -143,6 +143,8 @@ public class FrTokenizer extends Tokenizer
     TAGS.put(new CharsAtt("h6"), new CharsAtt("<p>"));
     TAGS.put(new CharsAtt("section"), new CharsAtt("<section>"));
     TAGS.put(new CharsAtt("/section"), new CharsAtt("</section>"));
+    TAGS.put(new CharsAtt("article"), new CharsAtt("<section>"));
+    TAGS.put(new CharsAtt("/article"), new CharsAtt("</section>"));
   }
   /** tag content to skip */
   public static final HashMap<CharsAtt, CharsAtt> SKIP = new HashMap<CharsAtt, CharsAtt>();

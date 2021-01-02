@@ -3,10 +3,11 @@ package alix.web;
 import alix.lucene.search.*;
 
 public enum Ranking implements Option {
-  occs("Occurrences") {
+  
+  chi2("Chi2 (Muller)") {
     @Override
     public Specif specif() {
-      return new SpecifOccs();
+      return new SpecifChi2();
     }
   },
   
@@ -14,12 +15,6 @@ public enum Ranking implements Option {
     @Override
     public Specif specif() {
       return new SpecifG();
-    }
-  },
-  chi2("Chi2 (Muller)") {
-    @Override
-    public Specif specif() {
-      return new SpecifChi2();
     }
   },
 
@@ -55,7 +50,7 @@ public enum Ranking implements Option {
     }
     
   },
-
+  /* Bof
   jaccard("Jaccard") {
     @Override
     public Specif specif() {
@@ -81,6 +76,13 @@ public enum Ranking implements Option {
     @Override
     public Specif specif() {
       return new SpecifDiceTf();
+    }
+  },
+  */
+  occs("Occurrences") {
+    @Override
+    public Specif specif() {
+      return new SpecifOccs();
     }
   },
 

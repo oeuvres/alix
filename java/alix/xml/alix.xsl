@@ -72,9 +72,9 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
     </xsl:if>
     <xsl:if test="$doctitle != ''">
       <xsl:text> </xsl:text>
-      <span class="title">
+      <em class="title">
         <xsl:copy-of select="$doctitle"/>
-      </span>
+      </em>
     </xsl:if>
     <xsl:variable name="year" select="substring($docdate, 1, 4)"/>
     <xsl:if test="string(number($year)) != 'NaN'">
@@ -214,9 +214,14 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
       <alix:field name="analytic" type="meta">
         <xsl:call-template name="analytic"/>
       </alix:field>
-      <alix:field name="pages" type="meta">
+      <xsl:variable name="pages">
         <xsl:call-template name="pages"/>
-      </alix:field>
+      </xsl:variable>     
+      <xsl:if test="$pages != ''">
+        <alix:field name="pages" type="meta">
+          <xsl:copy-of select="$pages"/>
+        </alix:field>
+      </xsl:if>
       <xsl:variable name="prev">
         <xsl:call-template name="prev"/>
       </xsl:variable>     

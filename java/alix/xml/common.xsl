@@ -366,9 +366,9 @@ Gobal TEI parameters and variables are divided in different categories
     </xsl:if>
     <xsl:if test="$doctitle != ''">
       <xsl:text> </xsl:text>
-      <span class="title">
+      <em class="title">
         <xsl:copy-of select="$doctitle"/>
-      </span>
+      </em>
     </xsl:if>
   </xsl:variable>
   
@@ -504,13 +504,6 @@ Gobal TEI parameters and variables are divided in different categories
     <xsl:variable name="pages">
       <xsl:call-template name="pages"/>
     </xsl:variable>
-    <xsl:if test="$pages != ''">
-      <xsl:text>. </xsl:text>
-      <span class="pages">
-        <xsl:value-of select="$pages"/>
-      </span>
-      <xsl:text>. </xsl:text>
-    </xsl:if>
     <xsl:variable name="analytic">
       <xsl:call-template name="analytic"/>
     </xsl:variable>
@@ -520,6 +513,13 @@ Gobal TEI parameters and variables are divided in different categories
         <xsl:copy-of select="$analytic"/>
       </span>
       <xsl:text> »</xsl:text>
+    </xsl:if>
+    <xsl:if test="$pages != ''">
+      <xsl:text> </xsl:text>
+      <span class="pages">
+        <xsl:value-of select="$pages"/>
+      </span>
+      <xsl:text> </xsl:text>
     </xsl:if>
   </xsl:template>
   
