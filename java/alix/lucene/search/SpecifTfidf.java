@@ -33,25 +33,25 @@
 package alix.lucene.search;
 
 /**
- * <p>“tf-idf” used as an algorithm to find specific terms of one or more
+ * <p>“tf-idf” used as an algorithm to find specific search of one or more
  * documents (a part), compared to the whole corpus.
  * 
  * <p>“tf-idf” is a family of algorithms, quite fast to calculate,
  * commonly used for information retrieval
- * to score relevant documents according to a query 
- * (one or a few terms against texts to find most relevant texts).
+ * to score relevant documents according to a search 
+ * (one or a few search against texts to find most relevant texts).
  * In such formulas, a very common word among a corpus 
  * (ex : a function word, “de”) will have a light effect to score a document.
  * The score should be affected by a term less common, and more specific.
  * It is the idea of the “idf” (inverse document frequency), to weight more
- * the uncommon terms.
- * The total score for a document is the sum of scores of each term of the query
+ * the uncommon search.
+ * The total score for a document is the sum of scores of each term of the search
  * against this document.
  * Nice tuning is coming from coefficients and order of magnitudes
  * (log, power, square root…)
  * 
  * 
- * <p>Using it to find most relevant terms from a part (a few documents),
+ * <p>Using it to find most relevant search from a part (a few documents),
  * compared to a whole (complete corpora), is less common, but produce
  * interesting results. Idea is to use the same score 
  * between a term and a document, and adding them for each term 

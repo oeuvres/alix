@@ -44,7 +44,7 @@ import org.apache.lucene.util.UnicodeUtil;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 
 /**
- * A dictionary of terms with frequencies, for lucene.
+ * A dictionary of search with frequencies, for lucene.
  */
 public class DicBytes implements Iterable<Integer>
 {
@@ -54,11 +54,11 @@ public class DicBytes implements Iterable<Integer>
   public int docs;
   /** Number of occurrences */
   public long occs;
-  /** Store and populate the terms */
+  /** Store and populate the search */
   private final BytesRefHash hash = new BytesRefHash();
   /** Frequencies in the hash id order */
   private long[] counts = new long[32];
-  /** Array of terms sorted by count */
+  /** Array of search sorted by count */
   private Entry[] sorted;
   /** Cache size after sorting */
   private int size;
@@ -69,7 +69,7 @@ public class DicBytes implements Iterable<Integer>
   }
 
   /**
-   * Populate the list of terms, and add the value.
+   * Populate the list of search, and add the value.
    * 
    * @param bytes
    * @param more
@@ -109,7 +109,7 @@ public class DicBytes implements Iterable<Integer>
   }
 
   /**
-   * Number of terms in the list.
+   * Number of search in the list.
    * 
    * @return
    */
@@ -167,7 +167,7 @@ public class DicBytes implements Iterable<Integer>
   }
 
   /**
-   * A private cursor in the list of terms, sorted by count.
+   * A private cursor in the list of search, sorted by count.
    */
   public class Cursor implements Iterator<Integer>
   {
@@ -264,7 +264,7 @@ public class DicBytes implements Iterable<Integer>
     StringBuilder string = new StringBuilder();
     int max = 100;
     Cursor cursor = this.iterator();
-    string.append(name).append(", docs=").append(docs).append(" occs=").append(occs).append("\n");
+    string.append(name).append(", docs=").append(docs).append(" freqs=").append(occs).append("\n");
     while (cursor.hasNext()) {
       cursor.next();
       string.append(cursor.term()).append(": ").append(cursor.count()).append("\n");

@@ -82,13 +82,13 @@ public class WordLinks
    * To build a word distance matrix we need
    * <ul>
    *  <li>{@link Alix} alix: an index (lucene)</li>
-   *  <li>String field: a field with indexed terms</li>
+   *  <li>String field: a field with indexed search</li>
    *  <li>BitSet filter: a set of documents</li>
-   *  <li>int dim: The number of terms to explore as a matrix, usually, the most frequents</li>
+   *  <li>int dim: The number of search to explore as a matrix, usually, the most frequents</li>
    * </ul>
    * Steps of construction
    * <ol>
-   *  <li>Get the freqlist of terms for the set of documents, with a global int index for each term</li>
+   *  <li>Get the freqlist of search for the set of documents, with a global int index for each term</li>
    *  <li>
    *  <li>A map from global term index to the local index
    * </ol>

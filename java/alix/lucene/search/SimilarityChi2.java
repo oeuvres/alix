@@ -38,7 +38,7 @@ import org.apache.lucene.search.similarities.SimilarityBase;
 
 /**
  * Implementation of a Chi2 Scoring with negative scores to get the 
- * most repulsed doc from a query. Code structure taken form {@link org.apache.lucene.search.similarities.DFISimilarity}
+ * most repulsed doc from a search. Code structure taken form {@link org.apache.lucene.search.similarities.DFISimilarity}
  */
 public class SimilarityChi2 extends SimilarityBase {
 
@@ -49,7 +49,7 @@ public class SimilarityChi2 extends SimilarityBase {
     final double measure = (freq - expected) * (freq - expected) / expected;
     // DFISimilarity returns log, with a 
     // return stats.getBoost() * log2(measure + 1);
-    // if the observed frequency is less than expected, return negative (should be nice in multi term query)
+    // if the observed frequency is less than expected, return negative (should be nice in multi term search)
     if (freq < expected) return -measure;
     return measure;
   }
@@ -90,7 +90,7 @@ public class SimilarityChi2 extends SimilarityBase {
             + ", freq="
             + freq.getValue()
             + "), computed as boost * log2(measure + 1) from:",
-        Explanation.match((float) stats.getBoost(), "boost, query boost"),
+        Explanation.match((float) stats.getBoost(), "boost, search boost"),
         explMeasure);
   }
   */

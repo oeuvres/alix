@@ -47,7 +47,7 @@ import alix.lucene.SAXIndexer;
 /**
  * <p>
  * Reuse strategy of {@link TokenStreamComponents} in Alix: 
- * no cache for indexation, reuse for query parsing.
+ * no cache for indexation, reuse for search parsing.
  * </p>
  * 
  * <p>
@@ -74,7 +74,7 @@ import alix.lucene.SAXIndexer;
 
 public class AlixReuseStrategy extends ReuseStrategy
 {
-  public static String QUERY = "query";
+  public static String QUERY = "search";
   @Override
   public TokenStreamComponents getReusableComponents(Analyzer analyzer, String fieldName)
   {

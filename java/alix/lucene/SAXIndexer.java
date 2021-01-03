@@ -300,7 +300,7 @@ public class SAXIndexer extends DefaultHandler
             throw new SAXException("<alix:field name=\""+name+"\" type=\"" + type + "\"> @value=\""+value+"\" is not a number.");
           }
           // doc.add(new NumericDocValuesField(name, val)); why ?
-          doc.add(new IntPoint(name, val)); // to query
+          doc.add(new IntPoint(name, val)); // to search
           doc.add(new StoredField(name, val)); // to show
           doc.add(new NumericDocValuesField(name, val)); // to sort
           break;

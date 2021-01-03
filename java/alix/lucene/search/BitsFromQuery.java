@@ -44,7 +44,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitSet;
 
 /**
- * A query giving results as bits. Code from QueryBitSetProducer.java
+ * A search giving results as bits. Code from QueryBitSetProducer.java
  * https://github.com/apache/lucene-solr/blob/master/lucene/join/src/java/org/apache/lucene/search/join/QueryBitSetProducer.java
  * Rely on the default LRU lucene cache, instead of an hard cache.
  * 
@@ -57,9 +57,9 @@ public class BitsFromQuery
   private final Query query;
 
   /**
-   * Wraps another query's to get bits by LeafReaderContext
+   * Wraps another search's to get bits by LeafReaderContext
    * 
-   * @param query
+   * @param search
    *          Query to cache results of
    */
   public BitsFromQuery(Query query)
@@ -68,9 +68,9 @@ public class BitsFromQuery
   }
 
   /**
-   * Returns the contained query.
+   * Returns the contained search.
    * 
-   * @return the contained query.
+   * @return the contained search.
    */
   public Query getQuery()
   {

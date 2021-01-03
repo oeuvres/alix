@@ -90,8 +90,8 @@ import org.apache.lucene.util.Bits;
 import alix.fr.Tag;
 import alix.lucene.search.FieldFacet;
 import alix.lucene.search.Scale;
-import alix.lucene.util.Rail;
 import alix.lucene.search.FieldText;
+import alix.lucene.search.FieldRail;
 import alix.lucene.search.FieldInt;
 
 /**
@@ -123,10 +123,10 @@ import alix.lucene.search.FieldInt;
  * <ul>
  *   <li>{@link #fieldInt(String)} All values of a unique numeric field per document 
  *   ({@link IntPoint}, {@link NumericDocValuesField}).</li>
- *   <li>{@link #fieldText(String)} All terms indexed in a {@link TextField}, with stats,
- *   useful for list of terms and advanced lexical statistics.</li>
+ *   <li>{@link #fieldText(String)} All search indexed in a {@link TextField}, with stats,
+ *   useful for list of search and advanced lexical statistics.</li>
  *   <li>{@link #docOccs(String)} Size (in tokens) of indexed documents in a {@link TextField}</li>
- *   <li>{@link #fieldFacet(String, String)} All terms of a facet field
+ *   <li>{@link #fieldFacet(String, String)} All search of a facet field
  *   ({@link SortedDocValuesField} or {@link SortedSetDocValuesField}) with lexical statistics from a
  *   {@link TextField} (ex: count of words for an author facet)</li>
  *   <li>{@link #scale(String, String)} Data to build chronologies or other charts.</li>
@@ -180,7 +180,7 @@ public class Alix
   public final Path path;
   /** Shared Similarity for indexation and searching */
   public final Similarity similarity;
-  /** A locale used for sorting terms */
+  /** A locale used for sorting search */
   public final Locale locale;
   /** A global cache for objects */
   private final ConcurrentHashMap<String, SoftReference<Object>> cache = new ConcurrentHashMap<>();
@@ -196,7 +196,7 @@ public class Alix
   private IndexSearcher searcher;
   /** The IndexWriter if requested */
   private IndexWriter writer;
-  /** Analyzer for indexation and query */
+  /** Analyzer for indexation and search */
   final private Analyzer analyzer;
 
   public enum FSDirectoryType {
@@ -537,7 +537,7 @@ public class Alix
   }
 
   /**
-   * Get a “facet” object, a cached list of terms from a field of type
+   * Get a “facet” object, a cached list of search from a field of type
    * {@link SortedDocValuesField} or {@link SortedSetDocValuesField} ; to get lexical stats from a
    * text field. An optional “term” (field:value) maybe used to catch a “cover”
    * document (ex: a document carrying metada about a title or an author).
@@ -623,14 +623,14 @@ public class Alix
    * @return
 u   * @throws IOException
    */
-  public Rail rail(final String field) throws IOException
+  public FieldRail fieldRail(final String field) throws IOException
   {
     String key = "AlixRail" + field;
-    Rail rail = (Rail) cache(key);
-    if (rail != null) return rail;
-    rail = new Rail(this, field);
-    cache(key, rail);
-    return rail;
+    FieldRail fieldRail = (FieldRail) cache(key);
+    if (fieldRail != null) return fieldRail;
+    fieldRail = new FieldRail(this, field);
+    cache(key, fieldRail);
+    return fieldRail;
   }
 
   /**
@@ -764,10 +764,10 @@ u   * @throws IOException
   }
   
   /**
-   * Analyze a query according to the default analyzer of this base,
+   * Analyze a search according to the default analyzer of this base,
    * is especially needed for multi-words ex: "en effet" 
-   * return terms as an array of string,
-   * supposing that caller knows the field he wants to query.
+   * return search as an array of string,
+   * supposing that caller knows the field he wants to search.
    * 
    * @param q
    * @param fieldName
@@ -780,7 +780,7 @@ u   * @throws IOException
   }
 
   /**
-   * Analyze a query according to the current analyzer of this base ; return terms 
+   * Analyze a search according to the current analyzer of this base ; return search 
    * 
    * @param q
    * @param fieldName
@@ -789,13 +789,13 @@ u   * @throws IOException
    */
   public static String[] forms(final String q, final Analyzer analyzer) throws IOException
   {
-    // create an arrayList on each query and let gc works
+    // create an arrayList on each search and let gc works
     ArrayList<String> terms = new ArrayList<String>();
     // what should mean null here ?
     if (q == null || "".equals(q.trim())) return null;
-    TokenStream ts = analyzer.tokenStream(AlixReuseStrategy.QUERY, q); // keep punctuation to group terms
+    TokenStream ts = analyzer.tokenStream(AlixReuseStrategy.QUERY, q); // keep punctuation to group search
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
-    // not generic for other analyzers but may become interesting for a query parser
+    // not generic for other analyzers but may become interesting for a search parser
     // CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
     // FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
     ts.reset();
@@ -815,13 +815,13 @@ u   * @throws IOException
         if (Tag.isPun(tag)) {
           // start a new line
           if (token.equals(";") || tag == Tag.PUNsent) {
-            terms.add(null);
+            search.add(null);
           }
           continue;
         }
         */
         if (",".equals(word) || ";".equals(word)) {
-          // terms.add(null);
+          // search.add(null);
           continue;
         }
         terms.add(word);

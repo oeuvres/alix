@@ -31,6 +31,6 @@
  * limitations under the License.
  */
 /**
- * An automaton to query a stream of tokens.
+ * An automaton to search a stream of tokens.
  */
 package alix.grep.query;

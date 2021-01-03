@@ -59,7 +59,7 @@ public class CorpusQuery extends Query
   /** Name of the corpus, unique for a user */
   final String name;
   /**
-   * Build the query with a BitSet of docids, and a name, used as a key for caching.
+   * Build the search with a BitSet of docids, and a name, used as a key for caching.
    * @param name
    * @param corpus
    */

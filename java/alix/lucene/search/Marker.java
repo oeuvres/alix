@@ -47,13 +47,13 @@ import org.apache.lucene.util.automaton.Operations;
 /**
  * A light hiliter using a Lucene analyzer and a compiled automaton,
  * designed for short texts (ex: show found words when searching in titles).
- * Supports wildcard query.
+ * Supports wildcard search.
  */
 public class Marker
 {
-  /** The query String */
+  /** The search String */
   final String q;
-  /** The analyzer used for query string and text to parse */
+  /** The analyzer used for search string and text to parse */
   final Analyzer analyzer;
   /** Caching token stream ? */
   /** Automaton */

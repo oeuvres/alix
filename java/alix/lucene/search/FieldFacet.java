@@ -75,7 +75,7 @@ import alix.util.TopArray;
  * 
  * <p>
  * Different variables could be used in such formulas. Some are only relative to
- * all index, some are cacheable for each facet value, other are query
+ * all index, some are cacheable for each facet value, other are search
  * dependent.
  * <p>
  * 
@@ -84,15 +84,15 @@ import alix.util.TopArray;
  * <li>index, total occurrences count</li>
  * <li>facet, total document count</li>
  * <li>facet, total occurrences count</li>
- * <li>query, matching document count</li>
- * <li>query, matching occurrences count</li>
+ * <li>search, matching document count</li>
+ * <li>search, matching occurrences count</li>
  * </ul>
  * 
  * <p>
- * This facet dic is backed on a lucene hash of terms. This handy object provide
+ * This facet dic is backed on a lucene hash of search. This handy object provide
  * a sequential int id for each term. This is used as a pointer in different
  * growing arrays. On creation, object is populated with data non dependent of a
- * query. Those internal vectors are stored as arrays with facetId index.
+ * search. Those internal vectors are stored as arrays with facetId index.
  * <p>
  *
  */
@@ -104,7 +104,7 @@ public class FieldFacet
   public final DocValuesType type;
   /** Name of the field for text, source of different value counts */
   public final FieldText fieldText;
-  /** Store and populate the terms */
+  /** Store and populate the search */
   protected final BytesRefHash facetDic;
   /** All facetId in alphabetic order */
   protected final int[] alpha;
@@ -253,7 +253,7 @@ public class FieldFacet
         facetOccs[facetId] += leafOccs[ord];
         ordFacetId[ord] = facetId;
       }
-      // global dic has set a unified int id for terms
+      // global dic has set a unified int id for search
       // build a map docId -> facetId*n, used to get freqs from docs found
       // restart the loop on docs
       if (type == DocValuesType.SORTED) docs4terms = leaf.getSortedDocValues(facet);
@@ -290,16 +290,18 @@ public class FieldFacet
   
   
   /**
-   * Returns a new enumerator on all terms for this facet in orthographic order
+   * Returns a new enumerator on all search for this facet in orthographic order
    * @return
    * @throws IOException
    */
   public FormEnum iterator() throws IOException {
-    return new FormEnum(this, alpha);
+    FormEnum it = new FormEnum(this);
+    it.sorter(alpha);
+    return it;
   }
 
   /**
-   * Use a list of terms as a navigator for a list of doc ids.
+   * Use a list of search as a navigator for a list of doc ids.
    * The list is supposed to be sorted in a relevant order for this facet
    * ex : (author, title) or (author, date) for an author facet.
    * Get the index of the first relevant document for each faceted term.
@@ -323,18 +325,18 @@ public class FieldFacet
   }
   
   /**
-   * Results of a text query according to a facet field terms.
+   * Results of a text search according to a facet field search.
    * Query maybe restricted by a doc filter (a corpus).
-   * If there are no terms in the query, will cry.
-   * Returns an iterator on terms of this facet, with scores and other stats.   
+   * If there are no search in the search, will cry.
+   * Returns an iterator on search of this facet, with scores and other stats.   
    * @return
    * @throws IOException
    */
-  public FormEnum iterator(final int limit, final BitSet filter, final String[] forms, Specif specif) throws IOException
+  public FormEnum iterator(final String[] search, final BitSet filter, Specif specif, final int limit) throws IOException
   {
     ArrayList<Term> terms = new ArrayList<Term>();
-    if (forms != null && forms.length != 0) { 
-      for (String f: forms) {
+    if (search != null && search.length != 0) { 
+      for (String f: search) {
         if (f == null) continue;
         if (f.isEmpty()) continue;
         terms.add(new Term(fieldText.fieldName, f));
@@ -349,16 +351,16 @@ public class FieldFacet
     boolean isProb = (specif.type() == Specif.TYPE_PROB);
     boolean hasFilter = (filter != null);
 
-    // Crawl index to get stats by facet term about the text query
+    // Crawl index to get stats by facet term about the text search
     final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
     BitSet docMap = new FixedBitSet(reader.maxDoc()); // keep memory of already counted docs
     double[] scores = new double[size];
     int[] hits = new int[size];
     long[] occs = new long[size]; // a vector to count matched occurrences by facet
-    // loop on each term of the query to update the score vector
-    int facetMatch = 0; // number of matched facets by this query
+    // loop on each term of the search to update the score vector
+    int facetMatch = 0; // number of matched facets by this search
     long occsMatch = 0; // total occurrences matched
-    // loop on terms, this order of loops may be not efficient for a big list of terms
+    // loop on search, this order of loops may be not efficient for a big list of search
     // loop by term is better for some stats
     for (Term term : terms) {
       long[] formPartOccs = new long[size]; // a vector to count matched occurrences for this term, by facet
@@ -374,10 +376,10 @@ public class FieldFacet
         // loop on the docs for this term
         while ((docLeaf = postings.nextDoc()) != NO_MORE_DOCS) {
           int docId = docBase + docLeaf;
-          if (hasFilter && !filter.get(docId)) continue; // document not in the metadata fillter
+          if (hasFilter && !filter.get(docId)) continue; // document not in the metadata filter
           final int freq = postings.freq();
-          if (freq == 0) continue; // no occurrence for this term (why found with no occs ?)
-          final boolean docSeen = docMap.get(docId); // doc has been seen for another term in the query
+          if (freq == 0) continue; // no occurrence for this term (why found with no freqs ?)
+          final boolean docSeen = docMap.get(docId); // doc has been seen for another term in the search
           int[] facets = docFacets[docId]; // get the facets of this doc
           if (facets == null) continue; // could be null if doc matching but not faceted
           occsMatch += freq;
@@ -388,7 +390,7 @@ public class FieldFacet
               facetMatch++;
             }
             if (!docSeen) hits[facetId]++; // if doc not already counted for another, increment hits for this facet
-            occs[facetId] += freq; // add the matched occs for this doc to the facet
+            occs[facetId] += freq; // add the matched freqs for this doc to the facet
             formPartOccs[facetId] += freq;
             // term frequency
             // if (isTfidf) scores[facetId] += specif.tf(freq, docOccs[docId]);
@@ -408,22 +410,24 @@ public class FieldFacet
 
     }
     FormEnum it;
-    // a scorer, terms desired in alphabetic order with stats, let user choose what to do with empty 
+    // a scorer, search desired in alphabetic order with stats, let user choose what to do with empty 
     if (hasSpecif) {
       TopArray top;
-      if (limit < 1) top = new TopArray(scores); // all terms
+      if (limit < 1) top = new TopArray(scores); // all search
       else top = new TopArray(limit, scores);
-      it = new FormEnum(this, top.toArray());
+      it = new FormEnum(this);
+      it.sorter(top.toArray());
       
       
     } 
-    // no scorer, terms desired in alphabetic order with stats, let user choose what to do with no hits
+    // no scorer, search desired in alphabetic order with stats, let user choose what to do with no hits
     else {
-      it = new FormEnum(this, alpha);
+      it = new FormEnum(this);
+      it.sorter(alpha);
     }
     
     it.hits = hits;
-    it.occs = occs; // occs is bad here
+    it.freqs = occs; // freqs is bad here
     it.scores = scores;
     // it.occsCount = occsCount;
     return it;
@@ -432,7 +436,7 @@ public class FieldFacet
   /**
    * Crawl the index to find relevant documents according to a filter.
    * Will cry if filter is null. Prefers {#iterator(int, Scorer)} if you want to iterate on 
-   * all terms for this facet;
+   * all search for this facet;
    * 
    * @param limit
    * @param filter
@@ -440,7 +444,7 @@ public class FieldFacet
    * @return
    * @throws IOException
    */
-    public FormEnum iterator(final int limit, final BitSet filter) throws IOException
+    public FormEnum iterator(final BitSet filter, final int limit) throws IOException
     {
       int[] hits = new int[size];
       long[] occs = new long[size];
@@ -470,15 +474,16 @@ public class FieldFacet
         }
       }
       // build the ordered array of facetId
-      FormEnum it = new FormEnum(this, alpha);
+      FormEnum it = new FormEnum(this);
+      it.sorter(alpha);
       it.hits = hits;
-      it.occs = occs;
+      it.freqs = occs;
       return it;
     }
 
 
   /**
-   * Number of terms in the list.
+   * Number of search in the list.
    * 
    * @return
    */

@@ -142,7 +142,7 @@ public class TestCompound
             else compound.add(orth);
             wc = 1;
           }
-          // if (occs > 100) break;
+          // if (freqs > 100) break;
         }
         stream.end();
       }

@@ -189,8 +189,8 @@ public class CombineMaps
     statsPerYear.put(cells[UserInterface.colYear], tmp);
 
     // statsPourListeDocs[1]=String.valueOf(countOccurrences);
-    // statsPourListeDocs[2]=String.valueOf( occs );
-    // statsPourListeDocs[0]=String.valueOf((countOccurrences*1000000)/ occs );
+    // statsPourListeDocs[2]=String.valueOf( freqs );
+    // statsPourListeDocs[0]=String.valueOf((countOccurrences*1000000)/ freqs );
     // //Relative Frequency
     // statsPourListeDocs[3]=cells[UserInterface.colAuthor]; //Authors name
     // statsPourListeDocs[4]=cells[UserInterface.colYear]; // Year

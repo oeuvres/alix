@@ -70,7 +70,7 @@ public class Scale
   private final int docs;
   /** Data, sorted in fieldInt order, used to write an axis */
   private final Tick[] byValue;
-  /** Data, sorted in docid order, used in term query stats */
+  /** Data, sorted in docid order, used in term search stats */
   private final Tick[] byDocid;
   /** Global width of the corpus in occurrences of the text field */
   private final long length;
@@ -155,7 +155,7 @@ public class Scale
         return 0;
       }
     });
-    // update positon on an axis, with cumulation of length in occs
+    // update positon on an axis, with cumulation of length in freqs
     long cumul = 0;
     for (int i = 0; i < card; i++) {
       Tick tick = byValue[i];
@@ -264,7 +264,7 @@ public class Scale
   
   /**
    * Cross index to get term counts in date order.
-   * @param terms An organized list of lucene terms.
+   * @param search An organized list of lucene search.
    * @param dots Number of dots by curve.
    * @return
    * @throws IOException
@@ -274,7 +274,7 @@ public class Scale
     if (terms.size() < 1) return null;
     // ticks should be in doc order
     IndexReader reader = alix.reader();
-    // terms maybe organized in groups
+    // search maybe organized in groups
     int cols = terms.sizeNotNull();
     if (cols > 10) cols = 10;
 
@@ -302,10 +302,10 @@ public class Scale
       int col = 0; 
       // multi leaves not yet really tested
       // assert byDocid[ordBase - 1].docId < docBase <= byDocid[ordBase]
-      int ordMax = ordBase; // keep memory of biggest ord found for each terms, to set ordBase
+      int ordMax = ordBase; // keep memory of biggest ord found for each search, to set ordBase
       // Do as a termQuery, loop on PostingsEnum.FREQS for each term
       for(Term term: terms) {
-        if (term == null) continue; // null terms are group separators
+        if (term == null) continue; // null search are group separators
         if (col >= cols) break;
         col++; // start col at 1
         // for each term, reset the pointer in the axis

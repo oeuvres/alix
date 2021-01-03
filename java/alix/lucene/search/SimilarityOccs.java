@@ -47,7 +47,7 @@ public class SimilarityOccs extends SimilarityBase
   @Override
   public String toString()
   {
-    return "occs";
+    return "freqs";
   }
 
 }

@@ -120,7 +120,7 @@ public final class FrLemFilter extends TokenFilter
     CharsAtt orth = (CharsAtt) orthAtt;
     orth.copy(termAtt); // start with original term
     int flags = flagsAtt.getFlags();
-    // pass through zero-length terms
+    // pass through zero-length search
     if (orth.length() == 0) return true;
     if (flags == Tag.PUNdiv || flags == Tag.PUNsent) {
       this.waspun = true;

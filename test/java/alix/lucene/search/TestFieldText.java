@@ -62,18 +62,18 @@ public class TestFieldText
     System.out.println(fstats);
     System.out.println("Terms in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     time = System.nanoTime();
-    // TODO optimize terms
+    // TODO optimize search
     /*
-    TermIterator terms terms = fstats.topTerms();
+    TermIterator search search = fstats.topTerms();
     System.out.println("\n\nDic in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     time = System.nanoTime();
-    terms.sortByOccs();
+    search.sortByOccs();
     System.out.println("\n\nSort by score in " + ((System.nanoTime() - time) / 1000000) + " ms.");
-    print(terms);
+    print(search);
     time = System.nanoTime();
-    terms.sortByScores();
+    search.sortByScores();
     System.out.println("\n\nSort by occ in " + ((System.nanoTime() - time) / 1000000) + " ms.");
-    print(terms);
+    print(search);
     */
   }
   

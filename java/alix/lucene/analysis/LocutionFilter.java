@@ -107,6 +107,7 @@ public class LocutionFilter extends TokenFilter
     final int LEAF = FrDics.LEAF; // localize
     int loop = -1;
     int startOffset = offsetAtt.startOffset();
+    boolean maybeVerb = false;
     do {
       loop++;
       more = false;
@@ -135,7 +136,13 @@ public class LocutionFilter extends TokenFilter
       // build a compound candidate
       if (loop > 0 && !compound.endsWith('\'')) compound.append(' '); 
       // for verbs, the compound key is the lemma, for others takes an orthographic form
-      if (Tag.isVerb(tag) && lemAtt.length() != 0) compound.append(lemAtt);
+      if (Tag.isVerb(tag) && lemAtt.length() != 0) {
+        maybeVerb = true;
+        compound.append(lemAtt);
+      }
+      else if (maybeVerb && orth.equals("pas")) {
+        compound.setLength(compound.length() - 1); // suppres last ' '
+      } // ne fait pas l’affaire
       else if (orth.length() != 0) compound.append(orth);
       else compound.append(termAtt);
       

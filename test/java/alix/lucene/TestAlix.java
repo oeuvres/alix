@@ -70,8 +70,8 @@ public class TestAlix
     // q = "Littré";
     Query query = Alix.query(field, q, analyzer);
     System.out.println(query);
-    // TermList terms = Alix.qTermList(field, q, analyzer);
-    // System.out.println(terms);
+    // TermList search = Alix.qTermList(field, q, analyzer);
+    // System.out.println(search);
   }
   public static void main(String args[]) throws Exception
   {

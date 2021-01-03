@@ -40,9 +40,9 @@ import org.apache.lucene.search.uhighlight.PassageFormatter;
  * This implementation strip tags from an html input.
  */
 public class HiliteFormatter extends PassageFormatter {
-  /** text that will appear before highlighted terms */
+  /** text that will appear before highlighted search */
   protected final String preTag;
-  /** text that will appear after highlighted terms */
+  /** text that will appear after highlighted search */
   protected final String postTag;
   /** text that will appear between two unconnected passages */
   protected final String ellipsis;
@@ -92,7 +92,7 @@ public class HiliteFormatter extends PassageFormatter {
 
         int end = passage.getMatchEnds()[i];
         assert end > start;
-        // its possible to have overlapping terms.
+        // its possible to have overlapping search.
         //   Look ahead to expand 'end' past all overlapping:
         while (i + 1 < passage.getNumMatches() && passage.getMatchStarts()[i+1] < end) {
           end = passage.getMatchEnds()[++i];

@@ -43,7 +43,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder; // doc
 
 /**
- * An object to store lucene terms with a frequency indice. A hack allow to
+ * An object to store lucene search with a frequency indice. A hack allow to
  * separate different rows, by a null entry. Different sort can change the order
  * <ul>
  * <li>sortByPos (restore input order)</li>
@@ -59,7 +59,7 @@ public class TermList implements Iterable<Term>
 {
   /** Keep memory of last input term, to avoid too much null separators */
   private Term termLast = null;
-  /** The terms with fields to sort on */
+  /** The search with fields to sort on */
   private ArrayList<Entry> data = new ArrayList<>();
   /** Current global ord counter */
   private int ord = 0;
@@ -136,7 +136,7 @@ public class TermList implements Iterable<Term>
   
   /**
    * Add a term to the series, handle a null label as a group separator,
-   * get term frequence to strip unknown terms, and sort in inverse frequency.
+   * get term frequence to strip unknown search, and sort in inverse frequency.
    * @param term
    */
   public void add(Term term)
@@ -184,7 +184,7 @@ public class TermList implements Iterable<Term>
   }
 
   /**
-   * Sort terms rows
+   * Sort search rows
    */
   public void sortByRowFreq()
   {
@@ -236,7 +236,7 @@ public class TermList implements Iterable<Term>
   }
   
   /**
-   * Output list of terms as a collection of bytes reference 
+   * Output list of search as a collection of bytes reference 
    * suited for automaton in Lucene {@link DaciukMihovAutomatonBuilder#build(Collection)}.
    * @return
    */

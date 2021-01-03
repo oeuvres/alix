@@ -71,7 +71,7 @@ public class TestGap extends Test
 
   /**
    * @param gap,
-   *          set gap to a new value, may be used in a kind of query
+   *          set gap to a new value, may be used in a kind of search
    */
   public void gap(int gap)
   {

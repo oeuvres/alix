@@ -18,6 +18,7 @@ import org.apache.lucene.util.FixedBitSet;
 import alix.lucene.Alix;
 import alix.lucene.analysis.FrAnalyzer;
 import alix.lucene.search.FieldText;
+import alix.lucene.search.FieldRail;
 import alix.lucene.search.TermList;
 import alix.lucene.search.TopTerms;
 import alix.util.Dir;
@@ -57,15 +58,15 @@ public class TestRail
   {
     Alix alix = Alix.instance(path, new SimpleAnalyzer());
     int maxDoc = alix.maxDoc();
-    Rail rail = new Rail(alix, fieldName);
+    FieldRail fieldRail = new FieldRail(alix, fieldName);
     FieldText fstats = alix.fieldText(fieldName);
     for (int docId = 0; docId < maxDoc; docId++) {
-      System.out.println("rail(docId=" + docId + ")   {" + rail.toString(docId) + "}");
+      System.out.println("rail(docId=" + docId + ")   {" + fieldRail.toString(docId) + "}");
     }
     FixedBitSet filter = new FixedBitSet(maxDoc);
     filter.set(0, maxDoc);
     
-    long[] freqs = rail.freqs(filter);
+    long[] freqs = fieldRail.freqs(filter);
     showTop(fstats, freqs, 10);
 
     /*
@@ -82,8 +83,8 @@ public class TestRail
     FieldText fstats = alix.fieldText(fieldName);
     System.out.println(fstats.topTerms().sortByOccs());
     
-    Rail rail = new Rail(alix, fieldName);
-    long[] cooc = rail.cooc("b", 1, 1, null);
+    FieldRail fieldRail = new FieldRail(alix, fieldName);
+    long[] cooc = fieldRail.cooc("b", 1, 1, null);
     System.out.println("Cooc by rail");
     System.out.println(Arrays.toString(cooc));
     showTop(fstats, cooc, 10);
@@ -147,8 +148,8 @@ public class TestRail
     runtime.gc();
     long mem0 = runtime.totalMemory() - runtime.freeMemory();
     time = System.nanoTime();
-    System.out.print("Rail loaded in ");
-    Rail rail = new Rail(alix, field);
+    System.out.print("FieldRail loaded in ");
+    FieldRail fieldRail = new FieldRail(alix, field);
     System.out.println(((System.nanoTime() - time) / 1000000) + " ms.");
     runtime.gc();
     long mem1 = runtime.totalMemory() - runtime.freeMemory();
@@ -157,7 +158,7 @@ public class TestRail
     System.out.print("Freqs by rail file.map in ");
     for (int i=0; i < 10; i++) {
       time = System.nanoTime();
-      freqs = rail.freqs(filter);
+      freqs = fieldRail.freqs(filter);
       System.out.print(((System.nanoTime() - time) / 1000000) + "ms, ");
     }
     System.out.println();
@@ -209,7 +210,7 @@ public class TestRail
     
     time = System.nanoTime();
     System.out.print("Build rail in ");
-    Rail rail = new Rail(alix, fieldName);
+    FieldRail fieldRail = new FieldRail(alix, fieldName);
     System.out.println(((System.nanoTime() - time) / 1000000) + "ms, ");
 
     for (String q: new String[] {"vie", "poire", "esprit", "vie esprit", "de"}) {
@@ -228,7 +229,7 @@ public class TestRail
       long[] freqs = null;
       for (int i=0; i < 10; i++) {
         time = System.nanoTime();
-        freqs = rail.cooc(terms, 5, 5, null, null);
+        freqs = fieldRail.cooc(terms, 5, 5, null, null);
         System.out.print(((System.nanoTime() - time) / 1000000) + "ms, ");
       }
       System.out.println("\n--- Top normal");
@@ -239,13 +240,13 @@ public class TestRail
     }
 
     /*
-    TermList terms = alix.qTermList(fieldName, "de");
+    TermList search = alix.qTermList(fieldName, "de");
     Cooc cooc = new Cooc(alix, fieldName);
     TopTerms dic = null;
     System.out.print("Coocs by rail in ");
     for (int i=0; i < 10; i++) {
       time = System.nanoTime();
-      dic = cooc.topTerms(terms, 5, 5, null);
+      dic = cooc.topTerms(search, 5, 5, null);
       System.out.print(((System.nanoTime() - time) / 1000000) + "ms, ");
     }
     System.out.println();

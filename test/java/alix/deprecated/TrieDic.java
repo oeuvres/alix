@@ -238,7 +238,7 @@ public class TrieDic
           if (attSet.contains(terms[i])) yes++;
         }
       }
-      System.out.println("Term in Set of terms: " + ((System.nanoTime() - time) / 1000000) + " ms yes="+yes);
+      System.out.println("Term in Set of search: " + ((System.nanoTime() - time) / 1000000) + " ms yes="+yes);
 
       yes = 0;
       time = System.nanoTime();
@@ -247,7 +247,7 @@ public class TrieDic
           if (attMap.containsKey(chains[i])) yes++;
         }
       }
-      System.out.println("Term in Map of terms: " + ((System.nanoTime() - time) / 1000000) + " ms yes="+yes);
+      System.out.println("Term in Map of search: " + ((System.nanoTime() - time) / 1000000) + " ms yes="+yes);
 
       yes = 0;
       time = System.nanoTime();

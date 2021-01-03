@@ -60,7 +60,7 @@ import alix.util.DicFreq.Entry;
 import alix.util.IntIntMap.Pair;
 
 /**
- * A data structure for sparse matrix of terms, optimized for cosine similarity.
+ * A data structure for sparse matrix of search, optimized for cosine similarity.
  * Each chain is mapped to an int code by an internal dictionary. For each head
  * code is stored a vector of values, corresponding
  * 
@@ -630,9 +630,9 @@ public class DicVek
     });
     // suppress small vectors is not efficient
     /*
-     * 8,5% < FREQMIN not useful String[] list = terms.byCount(); int id; for ( int
-     * i=list.length - 1; i > -1; i-- ) { if ( terms.count( list[i] ) > FREQMIN )
-     * break; id = terms.index( list[i] ); vectors.remove( id ); }
+     * 8,5% < FREQMIN not useful String[] list = search.byCount(); int id; for ( int
+     * i=list.length - 1; i > -1; i-- ) { if ( search.count( list[i] ) > FREQMIN )
+     * break; id = search.index( list[i] ); vectors.remove( id ); }
      */
     if (out != null) out.flush();
   }

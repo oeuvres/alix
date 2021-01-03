@@ -96,7 +96,7 @@ public class FrTokenizer extends Tokenizer
   final boolean xml;
   /** local flag for constructor */
   static final public int QUERY = 0x02;
-  /** Parse for a search query with some special characters like + or - */
+  /** Parse for a search search with some special characters like + or - */
   final boolean query;
   /** Current char offset */
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
@@ -456,7 +456,7 @@ public class FrTokenizer extends Tokenizer
     // splitable hyphen ? split on souviens-toi, murmura-t-elle, but not
     // Joinville-le-Pont,
     if (hyphOffset > 0 && HYPHEN_POST.contains(test)) {
-      // swap terms to store state of word after hyphen
+      // swap search to store state of word after hyphen
       // Laisse-moi ! Réveille-le. eploi-t-il ?
       int len = term.length() - test.length() - 1;
       term.setLength(len); 

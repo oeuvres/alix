@@ -33,7 +33,7 @@
 package alix.lucene.analysis.tokenattributes;
 
 /**
- * Used in a Lucene Analyzer, a LIFO stack of terms to keep trace of tokens for
+ * Used in a Lucene Analyzer, a LIFO stack of search to keep trace of tokens for
  * compounds.
  * 
  * @author fred

@@ -44,7 +44,7 @@ public class TestFacet
     writer.commit();
     writer.close();
     IndexSearcher searcher = alix.searcher();
-    // A SortedDocValuesField is not visible as a normal query
+    // A SortedDocValuesField is not visible as a normal search
     Query query = new TermQuery(new Term(field, "A"));
     TopDocs top = searcher.search(query, 100);
     System.out.println(top.totalHits);
@@ -59,7 +59,7 @@ public class TestFacet
     Alix alix = Alix.instance(path, new FrAnalyzer());
     FieldFacet facet = new FieldFacet(alix, "author", "text", null);
     // System.out.println(facet);
-    // TopTerms terms = facet.topTerms(null, alix.qTerms("prière", "text"), null);
+    // TopTerms search = facet.topTerms(null, alix.qTerms("prière", "text"), null);
     FormEnum terms = facet.iterator();
     while (terms.hasNext()) {
       terms.next();

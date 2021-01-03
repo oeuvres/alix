@@ -30,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package alix.lucene.util;
+package alix.lucene.search;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -43,6 +43,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.stream.IntStream;
 
@@ -59,12 +60,13 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
+import alix.fr.Tag.TagFilter;
 import alix.lucene.Alix;
-import alix.lucene.search.FieldText;
 import alix.util.IntList;
+import alix.util.TopArray;
 
 /**
- * Persistent storage of full sequence of all document terms for a field.
+ * Persistent storage of full sequence of all document search for a field.
  * Used for co-occurrences stats.
  * Data structure of the file
  * <p>
@@ -75,7 +77,7 @@ import alix.util.IntList;
  *
  */
 // ChronicleMap has been tested, but it is not more than x2 compared to lucene BinaryField.
-public class Rail
+public class FieldRail
 {
   /** State of the index */
   private final Alix alix;
@@ -83,7 +85,7 @@ public class Rail
   private final String fieldName;
   /** Keep the freqs for the field */
   private final FieldText fieldText;
-  /** Dictionary of terms for this field */
+  /** Dictionary of search for this field */
   private final BytesRefHash hashDic;
   /** The path of underlaying file store */
   private final Path path;
@@ -103,7 +105,7 @@ public class Rail
   private int[] limInt;
 
 
-  public Rail(Alix alix, String field) throws IOException
+  public FieldRail(Alix alix, String field) throws IOException
   {
     this.alix = alix;
     this.fieldName = field;
@@ -116,7 +118,7 @@ public class Rail
   
   /**
    * Reindex all documents of the text field as an int vector
-   * storing terms at their positions
+   * storing search at their positions
    * {@link org.apache.lucene.document.BinaryDocValuesField}.
    * Byte ordering is the java default.
    * 
@@ -256,25 +258,39 @@ public class Rail
     return freqs;
   }
 
-  public long[] cooc(final String term, final int left, final int right, final BitSet filter) throws IOException {
-    return cooc(new String[] {term}, left, right, filter, null);
-  }
-
   /**
-   * Get a cooccurrence freqList in formId order.
+   * Build  a cooccurrence freqList in formId order, attached to a FormEnum object.
+   * This oculd be sorted after in different manner accordin to Specif.
+   * Returns the count of occurences found.
    */
-  public long[] cooc(final String[] terms, final int left, final int right, final BitSet filter, long[] freqs) throws IOException
+  public long coocs(FormEnum dic) throws IOException
   {
-    // allow reuse of freqs
-    if (freqs == null || freqs.length != maxForm) freqs = new long[maxForm]; // by term, occurrences counts
+    if (dic.search == null || dic.search.length == 0) throw new IllegalArgumentException("Search term(s) missing, FormEnum.search should be not null");
+    final int left = dic.left;
+    final int right = dic.right;
+    if (left < 0 || right < 0 || (left + right) < 1) throw new IllegalArgumentException("FormEnum.left=" + left + " FormEnum.right=" + right + " not enough context to extract cooccurrences.");
+    final BitSet filter = dic.filter;
     final boolean hasFilter = (filter != null);
+    // create or reuse freqs
+    if (dic.freqs == null || dic.freqs.length != maxForm) dic.freqs = new long[maxForm]; // by term, occurrences counts
+    else Arrays.fill(dic.freqs, 0); // Renew, or not ?
+    final long[] freqs = dic.freqs;
+    // create or reuse hits
+    if (dic.hits == null || dic.hits.length != maxForm) dic.hits = new int[maxForm]; // by term, document counts
+    else Arrays.fill(dic.hits, 0); // Renew, or not ?
+    final int[] hits = dic.hits;
+    // A vector needed to no recount doc
+    boolean[] docSeen = new boolean[maxForm];
+    long found = 0;
     final int END = DocIdSetIterator.NO_MORE_DOCS;
     DirectoryReader reader = alix.reader();
     // collector of scores
     int dicSize = this.hashDic.size();
+    
+    long partOccs = 0;
 
     // for each doc, a bit set is used to record the relevant positions
-    // this will avoid counting interferences when terms are close
+    // this will avoid counting interferences when search occurrences are close
     java.util.BitSet contexts = new java.util.BitSet();
     java.util.BitSet pivots = new java.util.BitSet();
     IntBuffer bufInt = channelMap.rewind().asIntBuffer();
@@ -282,11 +298,11 @@ public class Rail
     for (LeafReaderContext context : reader.leaves()) {
       final int docBase = context.docBase;
       LeafReader leaf = context.reader();
-      // collect all “postings” for the requested terms
+      // collect all “postings” for the requested search
       ArrayList<PostingsEnum> termDocs = new ArrayList<PostingsEnum>();
-      for (String word : terms) {
+      for (String word : dic.search) {
         if (word == null) continue;
-        // Do not try to reuse terms, expensive
+        // Do not try to reuse search, expensive
         Term term = new Term(fieldName, word);
         PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS|PostingsEnum.POSITIONS);
         if (postings == null) continue;
@@ -306,7 +322,7 @@ public class Rail
         // reset the positions of the rail
         contexts.clear();
         pivots.clear();
-        boolean found = false;
+        boolean hit = false;
         // loop on each term iterator to get positions for this doc
         for (PostingsEnum postings: termDocs) {
           int docPost = postings.docID(); // get current doc for these term postings
@@ -321,36 +337,100 @@ public class Rail
           int freq = postings.freq();
           if (freq == 0) System.out.println("BUG cooc, term=" + postings.toString() + " docId="+docId+" freq=0"); // ? bug ?
           
-          found = true;
+          hit = true;
           for (; freq > 0; freq--) {
             final int position = postings.nextPosition();
             final int fromIndex = Math.max(0, position - left);
             final int toIndex = Math.min(docLen, position + right + 1); // be careful of end Doc
             contexts.set(fromIndex, toIndex);
             pivots.set(position);
+            found++;
           }
           // postings.advance(docLeaf);
         }
-        if (!found) continue;
-        // substract pivots from context, this way should avoid counting pivot
-        contexts.andNot(pivots);
-        // load the document rail and loop on the context
+        if (!hit) continue;
+        // count all freqs with pivot 
+        partOccs += contexts.cardinality();
+        // TODISCUSS substract search from contexts
+        // contexts.andNot(search);
+        // load the document rail and loop on the contexts to count co-occurrents
         final int posDoc = posInt[docId];
         int pos = contexts.nextSetBit(0);
+        Arrays.fill(docSeen, false);
         while (pos >= 0) {
           int formId = bufInt.get(posDoc + pos);
           freqs[formId]++;
+          if (!docSeen[formId]) {
+            hits[formId]++;
+            docSeen[formId] = true;
+          }
           pos = contexts.nextSetBit(pos+1);
         }
       }
     }
-    return freqs;
+    dic.partOccs = partOccs; // add or renew ?
+    return found;
   }
 
-  
+  /**
+   * Scores a {@link FormEnum} with freqs extracted by {@link #coocs(FormEnum)}.
+   * For the {@link Specif} algorithm, the search and co-occurrences contexts are considered as a part in the corpus.
+   * For tf-idf like scoring, this part is considered like a single document.
+   */
+  // In case of a corpus filter, shall we score compared to full corpus or only the part filtered?
+  public void score(FormEnum dic)
+  {
+    if (dic.limit == 0) throw new IllegalArgumentException("How many sorted forms do you want? set FormEnum.limit");
+    if (dic.partOccs < 1) throw new IllegalArgumentException("Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
+    long partOccs = dic.partOccs;
+    if (dic.freqs == null || dic.freqs.length != maxForm) throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
+    long[] freqs = dic.freqs;
+    if (dic.hits == null || dic.hits.length != maxForm) throw new IllegalArgumentException("Scoring this FormEnum required a doc count by formId in FormEnum.hits");
+    int[] hits = dic.hits;
+    
+    // final long[] freqs, final int limit, Specif specif, final TagFilter tags, final boolean reverse
+    Specif specif = dic.specif;
+    if (specif == null) specif = new SpecifOccs();
+    boolean isTfidf = (specif!= null && specif.type() == Specif.TYPE_TFIDF);
+    boolean isProb = (specif!= null && specif.type() == Specif.TYPE_PROB);
+    TagFilter tags = dic.tags;
+    boolean hasTags = (tags != null);
+    boolean noStop = (tags != null && tags.noStop());
+    // localize
+    long[] formAllOccs = fieldText.formAllOccs;
+    int[] formAllDocs = fieldText.formAllDocs;
+    
+    
+    // loop on all freqs to calculate scores
+    specif.all(fieldText.occsAll, fieldText.docsAll);
+    specif.part(partOccs, 1);
+    int length = freqs.length;
+    double[] scores = new double[length];
+    for (int formId = 0; formId < length; formId++) {
+      if (noStop && fieldText.isStop(formId)) continue;
+      if (hasTags && !tags.accept(fieldText.formTag[formId])) continue;
+      if (freqs[formId] == 0) continue;
+      if (isTfidf) {
+        specif.idf(formAllOccs[formId], formAllDocs[formId]);
+        scores[formId] = specif.tf(freqs[formId], partOccs);
+      }
+      else if (isProb) {
+        scores[formId] = specif.prob(freqs[formId], formAllOccs[formId]);
+      }
+    }
+
+    dic.scores = scores;
+    TopArray top;
+    int flags = TopArray.NO_ZERO;
+    if (dic.reverse) flags |= TopArray.REVERSE;
+    if (dic.limit < 1) top = new TopArray(scores, flags); // all search
+    else top = new TopArray(dic.limit, scores, flags);
+    
+    dic.sorter(top.toArray());
+  }
   
   /**
-   * Flatten terms of a document in a position order, according to the dictionary of terms.
+   * Flatten search of a document in a position order, according to the dictionary of search.
    * Write it in a binary buffer, ready to to be stored in a BinaryField.
    * {@link org.apache.lucene.document.BinaryDocValuesField}
    * The buffer could be modified if resizing was needed.

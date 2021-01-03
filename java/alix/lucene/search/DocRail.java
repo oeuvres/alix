@@ -63,7 +63,7 @@ public class DocRail
   public DocRail(Terms tvek, ByteRunAutomaton include, ByteRunAutomaton exclude) throws NoSuchFieldException, IOException
   {
     if (!tvek.hasFreqs() || !tvek.hasPositions() || !tvek.hasOffsets()) {
-      throw new NoSuchFieldException("Missig offsets in terms Vector; see FieldType.setStoreTermVectorOffsets(true)");
+      throw new NoSuchFieldException("Missig offsets in search Vector; see FieldType.setStoreTermVectorOffsets(true)");
     }
     int max = 0; // get max token count
     ArrayList<Token> offsets = new ArrayList<Token>();
@@ -152,7 +152,7 @@ public class DocRail
     final int termId;
     /** Freq of term in document (repeated for each occurrences), used for info */
     final int count;
-    /** Width in positions, used for concatenantion of terms */
+    /** Width in positions, used for concatenantion of search */
     int span;
     /** A second possible freq, for info */
     final int count2;

@@ -76,7 +76,7 @@ public class SpecifChi2 extends Specif
       }
     }
     return total;
-     */
+    // */
     /*
     double E0 = n * K / N;
     double O0_E0 = k - E0;
@@ -84,13 +84,15 @@ public class SpecifChi2 extends Specif
     double O1_E1 = (N - k) - E1;
     return (O0_E0 * O0_E0 / E0) + (O1_E1 * O1_E1 / E1);
       
-     */
+    // */
     // is not conform to theory but produce exactly the same order of results;
     // ΣOi != ΣEi != N (total of events)
     // should work better for multiterm
+    // /*
     double E0 = n * K / N;
     double O0_E0 = k - E0;
     return O0_E0 * O0_E0 / E0;
+    // */
   }
 
   @Override

@@ -232,7 +232,7 @@ public class Corpus
   }
 
   /**
-   * Add the results of a query to the filter, return number of hits found.
+   * Add the results of a search to the filter, return number of hits found.
    */
   public int add(String[] books) throws IOException
   {
@@ -245,7 +245,7 @@ public class Corpus
   }
 
   /**
-   * Add documents by query
+   * Add documents by search
    */
   private int addBits(Query q) throws IOException
   {
@@ -270,7 +270,7 @@ public class Corpus
   }
   
   /**
-   * Modifiy the local vector of docs according to a query of bookids.
+   * Modifiy the local vector of docs according to a search of bookids.
    */
   private int removeBits(Query q) throws IOException
   {
@@ -281,7 +281,7 @@ public class Corpus
   }
 
   /**
-   * Add the results of a query to the filter, return number of hits found.
+   * Add the results of a search to the filter, return number of hits found.
    */
   public int add(String bookid) throws IOException
   {
@@ -289,7 +289,7 @@ public class Corpus
   }
 
   /**
-   * Remove the results of a query to the filter, return number of hits found.
+   * Remove the results of a search to the filter, return number of hits found.
    */
   public int remove(String bookid) throws IOException
   {

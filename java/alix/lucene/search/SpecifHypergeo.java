@@ -33,7 +33,7 @@
 package alix.lucene.search;
 
 /**
- * Implementation of the Lafon algorithm, used to score terms
+ * Implementation of the Lafon algorithm, used to score search
  * https://www.persee.fr/docAsPDF/mots_0243-6450_1980_num_1_1_1008.pdf
  * Does not work for real life corpus, too much Infinity or NaN.
  * 

@@ -78,7 +78,7 @@ public class FieldText
   final DirectoryReader reader;
   /** Name of the indexed field */
   public final String fieldName;
-  /** Number of different terms */
+  /** Number of different search */
   public final int size;
   /** Global number of occurrences for this field */
   public final long occsAll;
@@ -86,7 +86,7 @@ public class FieldText
   public final int docsAll;
   /** Count of occurrences by document for this field (for stats) */
   public final int[] docOccs;
-  /** Store and populate the terms and get the id */
+  /** Store and populate the search and get the id */
   public final BytesRefHash formDic;
   /** Count of docs by formId */
   public int[] formAllDocs;
@@ -137,7 +137,7 @@ public class FieldText
       }
       TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
       PostingsEnum docsEnum = null;
-      // because terms are sorted, we could merge dics more efficiently
+      // because search are sorted, we could merge dics more efficiently
       // between leaves, but index in Alix are generally merged
       while ((ref = tenum.next()) != null) {
         // if (ref.length == 0) continue; // maybe an empty position, keep it
@@ -210,7 +210,7 @@ public class FieldText
   }
 
   /**
-   * How many occs for this term ?
+   * How many freqs for this term ?
    * @param formId
    * @return
    */
@@ -287,9 +287,9 @@ public class FieldText
     return formAllOccs[id];
   }
 
-  public FormEnum iterator(int limit, final BitSet filter, Specif specif, TagFilter tags) throws IOException
+  public FormEnum iterator(final int limit, final Specif specif, final BitSet filter, final TagFilter tags) throws IOException
   {
-    return iterator(limit, filter, specif, tags, false);
+    return iterator(limit, specif, filter, tags, false);
   }
 
   
@@ -298,12 +298,15 @@ public class FieldText
    * defined as a BitSet. Returns an iterator sorted according 
    * to a scorer. If scorer is null, default is count of occurences.
    */
-  public FormEnum iterator(int limit, final BitSet filter, Specif specif, TagFilter tags, final boolean reverse) throws IOException
+  public FormEnum iterator(final int limit, Specif specif, final BitSet filter, final TagFilter tags, final boolean reverse) throws IOException
   {
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
+    if (specif == null) specif = new SpecifOccs();
+    boolean isTfidf = (specif!= null && specif.type() == Specif.TYPE_TFIDF);
+    boolean isProb = (specif!= null && specif.type() == Specif.TYPE_PROB);
     double[] scores = new double[size];
-    // no filter, send all terms
+    // no filter, send all docs
     // TODO, find a good specific scorer
     if (filter == null || filter.cardinality() < 1) {
       for (int formId=0; formId < size; formId++) {
@@ -315,24 +318,21 @@ public class FieldText
       }
       // now we have all we need to build a sorted iterator on entries
       TopArray top;
-      if (limit < 1) top = new TopArray(scores); // all terms
+      if (limit < 1) top = new TopArray(scores); // all search
       else top = new TopArray(limit, scores);
-      FormEnum it = new FormEnum(this, top.toArray());
+      FormEnum it = new FormEnum(this);
       it.scores = scores;
       it.hits = formAllDocs;
-      it.occs = formAllOccs;
-
+      it.freqs = formAllOccs;
+      it.sorter(top.toArray());
       return it;
     }
     
-    if (specif == null) specif = new SpecifOccs();
     specif.all(occsAll, docsAll);
-    boolean isTfidf = (specif.type() == Specif.TYPE_TFIDF);
-    boolean isProb = (specif.type() == Specif.TYPE_PROB);
     
     BitSet hitsVek = new FixedBitSet(reader.maxDoc());
     
-    long[] occs = new long[size];
+    long[] freqs = new long[size];
     int[] hits = new int[size];
     BytesRef bytes;
     final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
@@ -363,7 +363,7 @@ public class FieldText
           hits[formId]++;
           // if it’s a tf-idf like score
           if (isTfidf) scores[formId] += specif.tf(freq, docOccs[docId]);
-          occs[formId] += freq;
+          freqs[formId] += freq;
         }
       }
     }
@@ -379,7 +379,7 @@ public class FieldText
       specif.part(partOccs, hitsVek.cardinality());
       // loop on all form to calculate scores
       for (int formId = 0; formId < size; formId++) {
-        long formPartOccs = occs[formId];
+        long formPartOccs = freqs[formId];
         if (formPartOccs < 1) continue;
         double p = specif.prob(formPartOccs, formAllOccs[formId]);
         scores[formId] = p;
@@ -391,32 +391,23 @@ public class FieldText
     TopArray top;
     int flags = TopArray.NO_ZERO;
     if (reverse) flags |= TopArray.REVERSE;
-    if (limit < 1) top = new TopArray(scores, flags); // all terms
+    if (limit < 1) top = new TopArray(scores, flags); // all search
     else top = new TopArray(limit, scores, flags);
-    FormEnum it = new FormEnum(this, top.toArray());
+    FormEnum it = new FormEnum(this);
+    it.sorter(top.toArray());
     // add some more stats on this iterator
     
     it.hits = hits;
-    it.occs = occs;
+    it.freqs = freqs;
     it.scores = scores;
-    it.occsPart = partOccs;
+    it.partOccs = partOccs;
 
     return it;
   }
   
 
   /**
-   * A reusable entry, useful to get pointer on different data.
-   */
-  public class Entry
-  {
-  }
-
-  
-
-
-  /**
-   * Get a dictionary of terms, without statistics.
+   * Get a dictionary of search, without statistics.
    * @param reader
    * @param field
    * @return

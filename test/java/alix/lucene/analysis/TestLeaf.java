@@ -27,7 +27,7 @@ public class TestLeaf
   public static void main(String args[]) throws Exception
   {
     Alix alix = TestIndex.index();
-    // Loop on the terms of a text field to get the top terms from a filter
+    // Loop on the search of a text field to get the top search from a filter
     BooleanQuery filterQuery = new BooleanQuery.Builder().add(IntPoint.newExactQuery(TestIndex.INT, 0), Occur.SHOULD)
         .add(IntPoint.newExactQuery(TestIndex.INT, 1), Occur.SHOULD).build();
     /*
@@ -70,8 +70,8 @@ public class TestLeaf
     
     /* term vector has no valuable id
     for (int docId = 0, maxDoc = reader.maxDoc(); docId < maxDoc; docId++) {
-      Terms terms = reader.getTermVector(docId, Indexer.TEXT);
-      TermsEnum termsEnum = terms.iterator();
+      Terms search = reader.getTermVector(docId, Indexer.TEXT);
+      TermsEnum termsEnum = search.iterator();
       BytesRef term = null;
       System.out.println(docId);
       while ((term = termsEnum.next()) != null) {

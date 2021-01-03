@@ -37,7 +37,7 @@ import alix.util.Occ;
 import alix.util.OccList;
 
 /**
- * A query builder of Occ events TODO document query syntax
+ * A search builder of Occ events TODO document search syntax
  * 
  * Possible backtracking silences "A A B B", "A * B" » will not fire 2x
  * 
@@ -53,13 +53,13 @@ public class Query
   private Test current;
   /** The pattern found */
   OccList found = new OccList();
-  /** position in the query parser */
+  /** position in the search parser */
   private int pos = 0;
-  /** a static value for query parsing */
+  /** a static value for search parsing */
   static final int OR = 1;
 
   /**
-   * Parse a human query to build a test object tree
+   * Parse a human search to build a test object tree
    * 
    * @param q
    */
@@ -90,7 +90,7 @@ public class Query
         }
         // stopword, add it to found chain
         found.add(occ);
-        // query sequence may continue
+        // search sequence may continue
         return false;
       }
       // next test success, jump the gap, and works like a test success
@@ -176,14 +176,14 @@ public class Query
   }
 
   /**
-   * Parse a query String, return a test object
+   * Parse a search String, return a test object
    * 
    * @param q
    * @return
    */
   private Test parse(String q)
   {
-    // first pass, normalize query String to simplify tests
+    // first pass, normalize search String to simplify tests
     if (pos == 0)
       q = q.replaceAll("\\s+", " ").replaceAll("\\s*,\\s*", ", ").replaceAll("([^\\s])\\(", "$1 (").trim();
     int length = q.length();
@@ -222,7 +222,7 @@ public class Query
       }
 
       // now, the complex work, should be end of chain
-      // a chain is set, build an orphan query
+      // a chain is set, build an orphan search
       if (term.length() > 0) {
         orphan = Test.create(term.toString());
         term.setLength(0); // reset chain buffer
@@ -270,7 +270,7 @@ public class Query
         // for next turn
         op = OR;
       }
-      // end of parenthesis or end of query, break after Test parsing
+      // end of parenthesis or end of search, break after Test parsing
       if (c == ')') {
         break;
       }

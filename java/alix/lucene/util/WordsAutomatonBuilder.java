@@ -50,7 +50,7 @@ import org.apache.lucene.util.automaton.Automaton;
 public final class WordsAutomatonBuilder {
 
   /**
-   * This builder rejects terms that are more than 1k chars long since it then
+   * This builder rejects search that are more than 1k chars long since it then
    * uses recursion based on the length of the string, which might cause stack
    * overflows.
    */

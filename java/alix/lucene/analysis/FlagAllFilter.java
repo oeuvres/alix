@@ -45,7 +45,7 @@ import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 
 /**
  * A token Filter to plug after a Lemmatizer.
- * Merge flows of forms, lemmas and pos in same line of terms.
+ * Merge flows of forms, lemmas and pos in same line of search.
  * 
  * @author fred
  *

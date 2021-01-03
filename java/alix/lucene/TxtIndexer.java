@@ -216,7 +216,7 @@ public class TxtIndexer
     int val = Integer.parseInt(line.substring(0, 4));
     String name = "year";
     
-    book.add(new IntPoint(name, val)); // to query
+    book.add(new IntPoint(name, val)); // to search
     book.add(new StoredField(name, val)); // to show
     book.add(new NumericDocValuesField(name, val)); // to sort
 
@@ -228,7 +228,7 @@ public class TxtIndexer
     chapter.add(new Field("bibl", ts, Alix.ftypeMeta)); // indexation of the chosen tokens
 
     
-    chapter.add(new IntPoint(name, val)); // to query
+    chapter.add(new IntPoint(name, val)); // to search
     chapter.add(new StoredField(name, val)); // to show
     chapter.add(new NumericDocValuesField(name, val)); // to sort
     // passer la ligne;

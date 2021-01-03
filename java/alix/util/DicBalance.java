@@ -49,9 +49,9 @@ public class DicBalance
 {
   /** Unit for frequences, by million, like Frantext */
   static final int unit = 1000000;
-  /** Total count of terms for side 1, used to calculate frequences */
+  /** Total count of search for side 1, used to calculate frequences */
   private long total1;
-  /** Total count of terms for side 2, used to calculate frequences */
+  /** Total count of search for side 2, used to calculate frequences */
   private long total2;
   /** Last total when freqs calculation has bee done */
   private long markFreqs;

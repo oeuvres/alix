@@ -6,22 +6,28 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
 
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.UnicodeUtil;
 
 import alix.fr.Tag;
+import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 
 /**
- * An iterator over a sorted array of formId.
+ * This object is build to collect list of search with 
+ * useful stats for semantic interpretations and score calculations.
+ * This class is a wrapper around different pre-calculated arrays,
+ * and is also used to record search specific counts like freqs and hits.
+ * 
  * @author glorieux-f
  */
 public class FormEnum {
-  /** An array of formId in the order we want to iterate on, requested */
-  private final int[] formSorted;
-  /** Limit for this iterator */
-  final private int size;
+  /** An array of formId in the order we want to iterate on, should be set before iteration */
+  private int[] sorter;
+  /** Ensure size */
+  private int size;
   /** Field dictionary */
   final private BytesRefHash formDic;
   /** Count of docs by formId */
@@ -30,14 +36,14 @@ public class FormEnum {
   final private long[] formOccs;
   /** A docId by term used as a cover (example: metas for books or authors) */
   final private int[] formCover;
-  /** An optional tag for each terms (relevant for textField) */
+  /** An optional tag for each search (relevant for textField) */
   final private int[] formTag;
-  /** Count of occurrences for the match docs */
-  protected long occsPart;
+  /** Count of occurrences for the part explored */
+  public long partOccs;
   /** Number of documents matched, index by formId */
   protected int[] hits;
   /** Number of occurrences matched, index by formId */
-  protected long[] occs;
+  protected long[] freqs;
   /** Scores, index by formId */
   protected double[] scores;
   /** Cursor, to iterate in the sorter */
@@ -46,48 +52,67 @@ public class FormEnum {
   private int formId;
   /** used to read in the dic */
   BytesRef bytes = new BytesRef();
+  /** Limit for this iterator */
+  public int limit;
+  /** Optional, for a co-occurrence search, count of occurrences to capture on the left */
+  public int left;
+  /** Optional, for a co-occurrence search, count of occurrences to capture on the right */
+  public int right;
+  /** Optional, for a co-occurrence search, pivot words */
+  public String[] search;
+  /** Optional, a set of documents to limit occurrences collect */
+  public BitSet filter;
+  /** Optional, a set of tags to filter form to collect */
+  public TagFilter tags;
+  /** Reverse order of sorting */
+  public boolean reverse;
+  /** Optional, a sort algorithm to select specific words according a norm (ex: compare formOccs / freqs) */
+  public Specif specif;
 
   
-  /** Build an iterator from a text field with an ordered arrays of formId */
-  public FormEnum(final FieldText field, final int[] terms)
+  /** Build a form iterator from a text field */
+  public FormEnum(final FieldText field)
   {
     this.formDic = field.formDic;
     this.formDocs = field.formAllDocs;
     this.formOccs = field.formAllOccs;
-    this.formSorted = terms;
-    size = terms.length;
     this.formCover = null;
     this.formTag = field.formTag;
   }
 
   /** Build an iterator from a facet field with an ordered arrays of formId */
-  public FormEnum(final FieldFacet field, final int[] terms)
+  public FormEnum(final FieldFacet field)
   {
     this.formDic = field.facetDic;
     this.formDocs = field.facetDocs;
     this.formOccs = field.facetOccs;
     this.formCover = field.facetCover;
-    this.formSorted = terms;
-    size = terms.length;
     this.formTag = null;
   }
 
   /**
-   * Count of values
+   * Set the sorted vector of ids
+   */
+  public void sorter(final int[] sorter) {
+    this.sorter = sorter;
+    this.size = sorter.length;
+  }
+  
+  /**
+   * Size of enumeration
    * @return
    */
   public int size()
   {
-    return size();
+    return size;
   }
-  
   /**
-   * Count of occurrences for this query
+   * Count of occurrences for this search
    * @return
    */
   public long occsPart()
   {
-    return occsPart;
+    return partOccs;
   }
   /**
    * Global number of occurrences for this term
@@ -114,7 +139,7 @@ public class FormEnum {
    */
   public long occsMatching()
   {
-    return occs[formId];
+    return freqs[formId];
   }
 
   /**
@@ -127,21 +152,22 @@ public class FormEnum {
   }
 
   /**
-   * There are terms left
+   * There are search left
    * @return
    */
   public boolean hasNext()
   {
+    
     return (cursor < size - 1);
   }
 
   /**
-   * Advance the cursor to next elemwnt
+   * Advance the cursor to next element
    */
   public void next()
   {
     cursor++;
-    formId = formSorted[cursor];
+    formId = sorter[cursor];
   }
 
   /**
@@ -227,7 +253,7 @@ public class FormEnum {
   }
 
   /**
-   * Returns an array of formId in alphabetic order for all terms
+   * Returns an array of formId in alphabetic order for all search
    * of dictionary. 
    *
    * @param hashDic
@@ -284,22 +310,23 @@ public class FormEnum {
   @Override
   public String toString()
   {
+    if (sorter == null) throw new IllegalArgumentException("Set FormEnum.sorter with an array of ordered formId before to loop on");
     boolean hasScore = (scores != null);
     boolean hasTag = (formTag != null);
     boolean hasHits = (hits != null);
     boolean hasDocs = (formDocs != null);
     boolean hasToccs = (formOccs != null);
-    boolean hasOccs = (occs != null);
+    boolean hasOccs = (freqs != null);
     StringBuilder sb = new StringBuilder();
     for(int pos = 0; pos < size; pos++) {
-      int formId = formSorted[pos];
+      int formId = sorter[pos];
       formDic.get(formId, bytes);
       sb.append(formId + ". " + bytes.utf8ToString());
       if (hasTag) sb.append( " "+Tag.label(formTag[formId]));
       if (hasScore) sb.append( " score=" + scores[formId]);
-      if (hasToccs && hasOccs) sb.append(" occs="+occs[formId]+"/"+formOccs[formId]);
+      if (hasToccs && hasOccs) sb.append(" freqs="+freqs[formId]+"/"+formOccs[formId]);
       else if(hasDocs) sb.append(" voc="+formDocs[formId]);
-      else if(hasHits) sb.append(" occs="+occs[formId]);
+      else if(hasHits) sb.append(" freqs="+freqs[formId]);
       if (hasHits && hasDocs) sb.append(" hits="+hits[formId]+"/"+formDocs[formId]);
       else if(hasDocs) sb.append(" docs="+formDocs[formId]);
       else if(hasHits) sb.append(" hits="+hits[formId]);

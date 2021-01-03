@@ -1,5 +1,4 @@
 GRAPH;CAT;ORTH;LEM
-# jusqu’à;PREP;;
 # Monsieur (frère du roi);;;
 à base de;PREP;;
 à bon droit;ADV;;
@@ -41,6 +40,10 @@ a giorno;ADV;;
 à l'autre bout de;PREP;;
 à l'aveuglette;ADV;;
 à l'aveuglette;ADV;;
+à l'égard de;PREP;à l'égard de;
+à l'égard du;PREP;à l'égard de;
+à l'égard des;PREP;à l'égard de;
+à l'égard d';PREP;à l'égard de;
 à l'encan;ADV;;
 à l'encan;ADV;;
 à l'envi;ADV;;
@@ -97,6 +100,7 @@ a giorno;ADV;;
 à part ça;PREP;;
 à partir de;PREP;;
 à partir de là;PREP;;
+à peine;ADV;;
 à peine de;PREP;;
 à perte de vue;ADV;;
 à peu près;ADV;;
@@ -106,7 +110,10 @@ a posteriori;ADV;;
 a priori;ADV;;
 a priori;SUB;;
 à priori;ADV;;
-à propos de;PREP;;
+à propos de;PREP;à propos de;
+à propos des;PREP;à propos de;
+à propos du;PREP;à propos de;
+à propos d';PREP;à propos de;
 à quoi bon;ADVinter;;
 à raison de;PREP;;
 à ras;ADJ;;
@@ -156,6 +163,7 @@ aide de camp;SUB;;
 air bag;SUB;;
 aller aller;EXCL;;
 aller droit;VERB;;
+aller de soi;VERB
 allez allez;EXCL;;
 allons allons;EXCL;;
 alors que;CONJcoord;;
@@ -189,6 +197,8 @@ au-delà;ADV;au delà;
 au dépourvu;ADV;;
 au détriment de;PREP;;
 au droit de;PREP;;
+au lieu de;PREP
+au lieu d';PREP
 au lieu et place de;PREP;;
 au milieu d';PREP;au milieu de;
 au milieu de;PREP;;
@@ -319,8 +329,8 @@ cas particulier;SUB;;
 casus belli;SUB;;
 ce dernier;PROindef;;
 cela supposé;PREP;;
-celle ci;PROdem;celle-ci;
-celle là;PROdem;celle-là;
+celle ci;PROdem;celle-ci
+celle là;PROdem;celle-là
 celle-ci;PROdem;;
 celle-là;PROdem;;
 celui ci;PROdem;celui-ci;
@@ -372,7 +382,9 @@ comic books;SUB;;
 commedia dell'arte;SUB;;
 compte tenu de;PREP;;
 conférence de presse;SUB;;
-conformément à;PREP;;
+conformément à;PREP;conformément à
+conformément au;PREP;conformément à
+conformément aux;PREP;conformément à
 connaissance de cause;SUB;;
 conseil d'administration;SUB;;
 conseil d'Etat;SUB;Conseil d'État;
@@ -381,6 +393,9 @@ conseil d'état;SUB;Conseil d'État;
 conseil général;SUB;;
 conseiller général;SUB;;
 conséquemment à;PREP;;
+contrairement à;PREP;contrairement à
+contrairement au;PREP;contrairement à
+contrairement aux;PREP;contrairement à
 corn flakes;SUB;;
 corps de garde;SUB;;
 côte à côte;ADV;;
@@ -455,9 +470,10 @@ de façon à;PREP;;
 de facto;ADV;;
 de guingois;ADV;;
 de haut en bas;ADV;;
-de la part d’;PREP;;
-de la part de;PREP;;
-de la part du;PREP;;
+de la part de;PREP;de la part de
+de la part d’;PREP;de la part de
+de la part du;PREP;de la part de
+de la part des;PREP;de la part de
 de long en large;ADV;;
 de manière à;PREP;;
 de même;ADV;;
@@ -470,12 +486,16 @@ de parmi;PREP;;
 de peur de;PREP;;
 de plano;ADV;;
 de plein gré;ADV;;
-de plus;ADV;;
-de préférence à;PREP;;
+de plus;ADV
+de plus en plus;ADV
+de préférence à;PREP;de préférence à
+de préférence au;PREP;de préférence à
+de préférence aux;PREP;de préférence à
 de profundis;SUB;;
 de santis;SUB;;
 de sorte que;CONJsubord;;
 de temps en temps;ADVtemp;;
+de toutes parts;ADV;;
 de traviole;ADV;;
 de visu;ADV;;
 défense de;PREP;;
@@ -500,6 +520,7 @@ dîner en ville;SUB;;
 directeur général;SUB;;
 direction générale;SUB;;
 disque dur;SUB;;
+donner lieu;VERB;;
 donner l'ordre;VERB;;
 donner l’impression;VERB;;
 donner la main;VERB;;
@@ -526,6 +547,8 @@ en amont d’;PREP;;
 en amont de;PREP;;
 en amont des;PREP;;
 en amont du;PREP;;
+en apparence;ADV
+en arrière;ADV;;
 en arrière de;PREP;;
 en aval d’;PREP;;
 en aval de;PREP;;
@@ -542,42 +565,99 @@ en conformité de;PREP;;
 en connaissance de cause;ADV;;
 en conséquence de;PREP;;
 en considération de;PREP;;
+en d’autres termes;ADV
+en deçà;ADV;;
 en deçà de;PREP;;
-en dépit de;PREP;;
+en définitive;ADV
+en dehors de;ADV;en dehors de;
+en dehors du;ADV;en dehors de;
+en dehors des;ADV;en dehors de;
+en dehors d’;ADV;en dehors de;
+en dépit de;PREP;en dépit de
+en dépit du;PREP;en dépit de
+en dépit des;PREP;en dépit de
+en dépit d';PREP;en dépit de
 en dessous;PREP;;
 en effet;ADV;;
 en exécution de;PREP;;
-en face de;PREP;;
+en face;ADV;
+en face de;PREP;en face de;
+en face du;PREP;en face de;
+en face des;PREP;en face de;
+en face d’;PREP;en face de;
 en fait de;PREP;;
+en faveur de;ADV;en faveur de;
+en faveur du;ADV;en faveur de;
+en faveur des;ADV;en faveur de;
+en faveur d’;ADV;en faveur de;
+en filigrane;ADV
 en fin de compte;ADV;;
 en fonction de;PREP;;
+en forme;ADV
 en forme de;PREP;;
+en friche;ADJ
 en général;ADV;;
 en grande partie;ADV;;
+en guise de;PREP;en guise de
+en guise d’;PREP;en guise de
 en haut;ADV;;
 en lieu et place de;PREP;;
 en loucedé;ADV;;
+en marge;ADV;;
+en marge de;PREP;en marge de;
+en marge des;PREP;en marge de;
+en marge du;PREP;en marge de;
+en marge d’;PREP;en marge de;
 en matière de;PREP;;
+en même temps;ADV
 en même temps que;PREP;;
 en mémoire de;PREP;;
 en outre;ADV;;
-en partant;PREP;;
-en passant;PREP;;
+en partant;ADV;;
+en particulier;ADV
+en passant;ADV
 en passe de;PREP;;
+en permanence;ADV
+en plein;ADV;;
+en pleine;ADV;;en plein
 en plein jour;ADV;;
 en pleine connaissance de cause;ADV;;
-en présence de;PREP;;
+en présence;ADV;;
+en présence de;PREP;en présence de;
+en présence du;PREP;en présence de;
+en présence des;PREP;en présence de;
+en présence d’;PREP;en présence de;
+en proie à;PREP;en proie à
+en proie au;PREP;en proie à
+en proie aux;PREP;en proie à
 en quelque sorte;ADV;;
 en raison de;PREP;;
+en réalité;ADV;;
 en regard de;PREP;;
+en retour;ADV;;
+en revanche;ADV;;
+en second lieu;ADV
+en premier lieu;ADV
 en sorte que;CONJsubord;;
+en soi;ADV
+en somme;ADV
 en sus;ADV;;
 en sus de;PREP;;
 en tapinois;ADV;;
-en termes de;PREP;;
+en tapinois;ADV;;
+en tant que;CONJ
+en termes de;PREP;en termes de
+en termes d';PREP;en termes de
 en tous cas;ADV;;
-en train de;PREP;;
-en vertu de;PREP;;
+en train de;ADV
+en train d';ADV
+en vain;ADV
+en vérité;ADV
+en vertu de;PREP;en vertu de;
+en vertu du;PREP;en vertu de;
+en vertu des;PREP;en vertu de;
+en vertu d’;PREP;en vertu de;
+en vigueur;ADV;;
 en vue de;PREP;;
 encore une fois;ADV;;
 enfant de choeur;SUB;enfant de chœur;
@@ -604,12 +684,30 @@ et seq;ADV;;
 état de grâce;SUB
 état de nature;SUB
 état de siège;SUB
-eu égard à;PREP;;
+être parti;VERB;;partir
+être partis;VERB;;partir
+être partie;VERB;;partir
+être parties;VERB;;partir
+être tenu;VERB;;être tenu
+être tenus;VERB;;être tenu
+être tenue;VERB;;être tenu
+être tenues;VERB;;être tenu
+eu égard à;PREP;eu égard à
+eu égard au;PREP;eu égard à
+eu égard aux;PREP;eu égard à
 ex abrupto;ADV;;
 ex nihilo;ADV;;
-face à;PREP;;
+face à;PREP;face à
+face au;PREP;face à
+face aux;PREP;face à
 face à face;SUB;;
+faire abstraction;VERB
+faire face;VERB
+faire grief;VERB
+faire mine;VERB
+faire place;VERB;;
 faire partie;VERB;;
+faire semblant;VERB
 fast food;SUB;;
 faute de;PREP;;
 fauteuil roulant;SUB;;
@@ -638,7 +736,9 @@ gengis khan;SUB;;
 gens du monde;SUB;;
 girl friend;SUB;;
 goutte à goutte;ADV;;
-grâce à;PREP;;
+grâce à;PREP;grace à
+grâce au;PREP;grace à
+grâce aux;PREP;grace à
 grâces à;PREP;;
 grain de beauté;SUB;;
 grand chose;SUB;grand-chose;
@@ -735,6 +835,9 @@ jour après jour;ADV;;
 jour de l'an;SUB;;
 juge d’instruction;SUB;;
 juge de paix;SUB;;
+jusqu’à;PREP;jusque;
+jusqu’au;PREP;jusque;
+jusqu’aux;PREP;jusque;
 jusqu'à ce que;CONJsubord;;
 jusqu'à la fin;PREP;;
 jusqu'à nouvel ordre;ADV
@@ -877,8 +980,14 @@ melting pot;SUB;;
 même quand;CONJsubors;;
 même si;CONJsubord;;
 mètres carrés;SUB;;
+mettre en doute;VERB
 mettre en examen;VERB;;
-mettre en peine;VERB;;
+mettre en exergue;VERB
+mettre en garde;VERB;;
+mettre en lumière;VERB
+mettre en œuvre;VERB
+mettre en peine;VERB
+mettre en question;VERB;;
 mettre la table;VERB;;
 mezza voce;ADV;;
 middle class;SUB;;
@@ -909,7 +1018,6 @@ modern style;ADJ;;
 modus operandi;SUB;;
 modus vivendi;SUB;;
 mon Dieu;EXCL;;
-mort à;PREP;;
 mot d’ordre;SUB;;
 motu proprio;ADV;;
 Moyen Age;SUB;;
@@ -958,23 +1066,47 @@ osso buco;SUB;;
 ou bien;CONJcoord;;
 ouvr. cit.;SUB;;
 pan bagnat;SUB;;
+par accident;ADV
 par ailleurs;ADV;;
 par certains côtés;PREP;;
-par comparaison à;PREP;;
+par comparaison;ADV
+par comparaison à;PREP;par comparaison à
+par comparaison au;PREP;par comparaison à
+par comparaison aux;PREP;par comparaison à
+par conséquent;CONJ
 par crainte de;PREP;;
+par delà;PREP
+par derrière;PREP;par-derrière
+par devant;PREP;par-devant
+par-devant notaire;PREP;;
 par devers;PREP;;
+par dessous;PREP;par-dessous
+par dessus;PREP;par-dessus
+par définition;ADV
 par écrit;ADV;;
+par essence;ADV
+par excellence;ADV
+par exemple;ADV
+par hasard;ADV
+par là;ADV
 par l’intermédiaire de;PREP;;
 par manque de;PREP;;
 par mégarde;ADV;;
-par opposition à;PREP;;
-par préférence à;PREP;;
-par rapport à;PREP;;
+par opposition à;PREP;par opposition à
+par opposition au;PREP;par opposition à
+par opposition aux;PREP;par opposition à
+par préférence à;PREP;par préférence à
+par préférence au;PREP;par préférence à
+par préférence aux;PREP;par préférence à
+par rapport à;PREP;par rapport à
+par rapport au;PREP;par rapport à
+par rapport aux;PREP;par rapport à
+par suite;ADV
 par suite de;PREP;;
-par-devant notaire;PREP;;
-parce qu;CONJsubord;;
-parce qu';CONJsubord;;
+par surcroît;
 parce que;CONJsubord;;
+parce qu;CONJsubord;parce que
+parce qu';CONJsubord;parce que
 parole d'honneur;SUB;;
 part time;SUB;;
 parti pris;SUB;
@@ -1020,7 +1152,9 @@ pour autant que;PREP;;
 pour ce qui est de;PREP;;
 pour cette fois;ADV;;
 pour des prunes;PREP;;
-pour ma part;PREP;;
+pour ma part;PREP;pour ma part
+pour sa part;PREP;pour ma part
+pour ta part;PREP;pour ma part
 pour que;CONJsubord;;
 pour tout;PREP;;
 pour un peu;PREP;;
@@ -1050,7 +1184,7 @@ prendre ses jambes à son cou;VERB;;
 prendre soin;VERB;;
 près de;PREP;;
 presse écrite;SUB;;
-prêt à;PREP;;
+prêt à;PREP
 prime time;SUB;;
 proche de;PREP;;
 procureur du roi;SUB;;
@@ -1059,8 +1193,9 @@ punching ball;SUB;;
 qu'est-ce que;PROinter;;
 quand et quand;PREP;;
 quand même;ADV;;
-quant à;PREP;;
-quant aux;PREP;;
+quant à;PREP;quant à
+quant au;PREP;quant à
+quant aux;PREP;quant à
 quart d'heure;SUB;;
 quartier général;SUB;;
 que le diable l'emporte;EXCL;;
@@ -1083,6 +1218,7 @@ rédactrice en chef;SUB;rédacteur en chef;
 reine mère;SUB;;
 relation sexuelle;SUB;;
 relations sexuelles;SUB;;
+remettre en question;VERB;;
 rendez vous;SUB;rendez-vous;
 rendre compte;VERB;;
 rendre grâce;VERB;;
@@ -1100,6 +1236,9 @@ roast beef;SUB;;
 robe de chambre;SUB;;
 rocking chair;SUB;;
 rouge à lèvres;SUB;;
+s’en tenir à;VERB;s’en tenir à
+s’en tenir au;VERB;s’en tenir à
+s’en tenir aux;VERB;s’en tenir à
 s’agissant de;PREP;;
 sac à dos;SUB;;
 sainte nitouche;SUB;;
@@ -1114,7 +1253,7 @@ sans plus de;PREP;;
 sans pour autant;PREP;;
 sans préjudice de;PREP;;
 sans que;CONJsubord;;
-sauf à;PREP;;
+sauf à;PREP
 savoir bien;VERB;;
 scenic railway;SUB;;
 secrétaire de rédaction;SUB;;
@@ -1157,7 +1296,9 @@ story board;SUB;;
 stricto sensu;ADV;;
 struggle for life;SUB;;
 sui generis;ADJ;;
-suite à;PREP;;
+suite à;PREP;suite à
+suite au;PREP;suite à
+suite aux;PREP;suite à
 supposé que;PREP;;
 sur le plan;PREP;;
 sur le point de;PREP;;
@@ -1180,7 +1321,9 @@ tarte à la crème;SUB;;
 te deum;SUB;;
 téléphone portable;SUB;;
 temps à perdre;SUB;;
-tenir compte;VERB;;
+tenir compte;VERB
+tenir lieu de;VERB
+ne tenir pas lieu de;VERB;tenir lieu de
 terra incognita;SUB;;
 tiers monde;SUB;
 toile cirée;SUB;;
@@ -1193,7 +1336,7 @@ tous deux;PROindef;;
 tous les deux;PROindef;;
 tous les trois;PROindef;;
 tout de même;ADV;;
-tout de même;ADV;;
+tout de suite;ADV
 tout le monde;SUB;;
 toutes les fois;ADV;;
 toutes les fois que;CONJsubord;;

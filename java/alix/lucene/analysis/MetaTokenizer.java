@@ -145,7 +145,7 @@ public class MetaTokenizer extends Tokenizer
       // soft hyphen, do not append to term
       if (c == 0xAD) continue;
 
-      // for a query parser, keep wildcard
+      // for a search parser, keep wildcard
       if (c == '*');
       // not a token char
       else if (!Char.isToken(c) || c == '-' || c == '\'' || c == '’') {

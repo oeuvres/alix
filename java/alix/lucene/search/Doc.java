@@ -234,7 +234,7 @@ public class Doc
     if (tvek != null) return tvek; // cache OK
     */
     Terms tvek = alix.reader().getTermVector(docId, field);
-    if (tvek == null) throw new NoSuchFieldException("Missig terms Vector for field="+field+" docId="+docId);
+    if (tvek == null) throw new NoSuchFieldException("Missig search Vector for field="+field+" docId="+docId);
     return tvek;
   }
 
@@ -290,7 +290,7 @@ public class Doc
   }
   
   /**
-   * Get the terms shared between 2 documents
+   * Get the search shared between 2 documents
    * @param field
    * @param docId2
    * @return
@@ -312,7 +312,7 @@ public class Doc
     BytesRef term1;
     BytesRef term2 = termit2.next();
     ByteRunAutomaton tomat = FrDics.STOP_BYTES;
-    // loop on source terms
+    // loop on source search
     while( (term1 = termit1.next()) != null) {
       // filter stop word
       if (tomat.run(term1.bytes, term1.offset, term1.length)) continue;
@@ -364,7 +364,7 @@ public class Doc
     BytesRef term2 = termit2.next();
     ArrayList<Token> offsets = new ArrayList<Token>();
     PostingsEnum postings = null;
-    // loop on terms source, compare with dest
+    // loop on search source, compare with dest
     double max1 = Double.MIN_VALUE;
     double max2 = Double.MIN_VALUE;
     CharsAtt att = new CharsAtt();
@@ -436,7 +436,7 @@ public class Doc
   }
   
   /**
-   * Extract a kwic (Key Word In Context) for a query.
+   * Extract a kwic (Key Word In Context) for a search.
    * @param field
    * @param include
    * @param left
@@ -465,7 +465,7 @@ public class Doc
     else limit = Math.min(limit, length);
     // store lines to get the ones with more occurrences
     Top<String> lines = new Top<String>(limit);
-    // loop on all occs to get the best 
+    // loop on all freqs to get the best 
     for (int i = 0; i < length; i++) {
       Token tok = toks[i];
       // prepend left context, because search of full text is progressing from right to left
@@ -495,7 +495,7 @@ public class Doc
     return hilite(field, include);
   }
   /**
-   * Hilite terms in a stored document as html.
+   * Hilite search in a stored document as html.
    * @param field
    * @throws IOException 
    * @throws NoSuchFieldException 
@@ -592,14 +592,14 @@ public class Doc
     // get index term stats and localize some arrays
     FieldText fieldText = alix.fieldText(field);
     double[] scores = new double[fieldText.size];
-    long[] occs = new long[fieldText.size]; // occs by form
+    long[] occs = new long[fieldText.size]; // freqs by form
     int[] formTag = fieldText.formTag;
     long[] formAllOccs = fieldText.formAllOccs;
     int[] formAllDocs = fieldText.formAllDocs;
     int docOccs = alix.docOccs(field)[docId];
     specif.all(fieldText.occsAll, fieldText.docsAll);
     specif.part(docOccs, 1); // part has one doc, not really 
-    // loop on all terms of the document, get score, keep the top 
+    // loop on all search of the document, get score, keep the top 
     Terms vector = getTermVector(field); // get the term vector to loop on
     TermsEnum termit = vector.iterator();
     while(termit.next() != null) {
@@ -618,18 +618,19 @@ public class Doc
     TopArray top;
     int flags = TopArray.NO_ZERO;
     if (reverse) flags |= TopArray.REVERSE;
-    if (limit < 1) top = new TopArray(scores, flags); // all terms
+    if (limit < 1) top = new TopArray(scores, flags); // all search
     else top = new TopArray(limit, scores, flags);
-    FormEnum it = new FormEnum(fieldText, top.toArray());
+    FormEnum it = new FormEnum(fieldText);
+    it.sorter(top.toArray());
     // add some more stats on this iterator
-    it.occs = occs;
+    it.freqs = occs;
     it.scores = scores;
-    it.occsPart = docOccs;
+    it.partOccs = docOccs;
     return it;
   }
 
   /**
-   * Create the More like This query from a PriorityQueue
+   * Create the More like This search from a PriorityQueue
    */
   static public Query moreLikeThis(String field, Top<String> top, int words) {
     BooleanQuery.Builder query = new BooleanQuery.Builder();

@@ -81,14 +81,14 @@ public class Cooc
   private final String fieldRail;
   /** Keep the freqs for the field */
   private final FieldText fstats;
-  /** Dictionary of terms for this field */
+  /** Dictionary of search for this field */
   private final BytesRefHash hashDic;
   /** State of the index */
   private final Alix alix;
   /**
    * Build a co-occurrences scanner.
    * 
-   * @param alix A link to a lucene Index, with tools to get terms.
+   * @param alix A link to a lucene Index, with tools to get search.
    * @param field A text field name with term vectors.
    * @throws IOException
    */
@@ -103,7 +103,7 @@ public class Cooc
   
   /**
    * Reindex all documents of the text field as an int vector
-   * storing terms at their positions
+   * storing search at their positions
    * {@link org.apache.lucene.document.BinaryDocValuesField}.
    * Byte ordering is the java default.
    * 
@@ -134,7 +134,7 @@ public class Cooc
   }
 
   /**
-   * Flatten terms of a document in a position order, according to the dictionary of terms.
+   * Flatten search of a document in a position order, according to the dictionary of search.
    * Write it in a binary buffer, ready to to be stored in a BinaryField.
    * {@link org.apache.lucene.document.BinaryDocValuesField}
    * The buffer could be modified if resizing was needed.
@@ -198,11 +198,11 @@ public class Cooc
   
   
   /**
-   * Get cooccurrences from a multi term query.
+   * Get cooccurrences from a multi term search.
    * Each document should be available as an int vector
    * see {@link #rail(Terms, BinaryInts)}.
    * A loop will cross all docs, and 
-   * @param terms List of terms to search accross docs to get positions.
+   * @param search List of search to search accross docs to get positions.
    * @param left Number of tokens to catch at the left of the pivot.
    * @param right Number of tokens to catch at the right of the pivot.
    * @param filter Optional filter to limit the corpus of documents.
@@ -228,7 +228,7 @@ public class Cooc
     java.util.BitSet dicSet = new java.util.BitSet(size);
 
     // for each doc, a bit set is used to record the relevant positions
-    // this will avoid counting interferences when terms are close
+    // this will avoid counting interferences when search are close
     java.util.BitSet contexts = new java.util.BitSet();
     java.util.BitSet pivots = new java.util.BitSet();
     // loop on leafs
@@ -282,7 +282,7 @@ public class Cooc
           
         }
         if (!found) continue;
-        // substract pivots from context, this way should avoid counting pivot
+        // substract search from context, this way should avoid counting pivot
         contexts.andNot(pivots);
         BytesRef ref = binDocs.binaryValue();
         ByteBuffer buf = ByteBuffer.wrap(ref.bytes, ref.offset, ref.length);

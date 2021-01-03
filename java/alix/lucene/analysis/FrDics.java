@@ -245,7 +245,7 @@ public class FrDics
   {
     CsvReader csv = null;
     try {
-      csv = new CsvReader(reader, 3);
+      csv = new CsvReader(reader, 4);
       csv.readRow(); // skip first line
       Row row;
       while ((row = csv.readRow()) != null) {
@@ -257,7 +257,7 @@ public class FrDics
         int tag = Tag.code(row.get(1));
         CharsAtt key = new CharsAtt(graph);
         Chain orth = row.get(2);
-        LexEntry entry = new LexEntry(tag, orth, null);
+        LexEntry entry = new LexEntry(tag, orth, row.get(3));
         // entry may be known by normalized key only
         if (Tag.isName(tag)) {
           NAMES.put(key, entry);

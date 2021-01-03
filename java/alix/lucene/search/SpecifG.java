@@ -66,7 +66,7 @@ public class SpecifG extends Specif
     double E0 = n * K / N;
     double O1 = N - k;
     double E1 = N - E0;
-    
+    // bad results  O0 * Math.log(O0 / E0);
     double sum = 0d;
     sum += O0 * Math.log(O0 / E0);
     sum += O1 * Math.log(O1 / E1);

@@ -33,7 +33,7 @@
 package alix.lucene.search;
 
 /**
- * Interface for a scorer to calculate specific terms from a corpus or a part.
+ * Interface for a scorer to calculate specific search from a corpus or a part.
  * There are two approaches :
  * <li>Classical probabilities, considering a part compared to a whole corpus
  * <li>Tf-idf like, considering corpus divided in documents

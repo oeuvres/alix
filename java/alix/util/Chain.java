@@ -50,7 +50,7 @@ import java.util.ArrayList;
  * <p>
  * The same internal char array could be shared by multiple Chain
  * instances (with different offset and size). Some convenient methods are
- * provided for lexical terms ex {@link #normCase()}, 
+ * provided for lexical search ex {@link #normCase()}, 
  * or searching by prefix and/or suffix {@link #glob(CharSequence)}.
  * </p>
  */

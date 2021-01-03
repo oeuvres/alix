@@ -197,7 +197,7 @@ public class StemTrie
     // else node.orth( chain ); // Bad for names NAME NAME
   }
   /**
-   * Populate dictionary with a list of multi-words terms
+   * Populate dictionary with a list of multi-words search
    * 
    * @param lexicon
    */

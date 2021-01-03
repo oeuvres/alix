@@ -101,7 +101,7 @@ public class TestChain
     System.out.println();
     System.out.println(Arrays.toString(line.split(',')));
     System.out.println("trim() \"     \" \"" + new Chain("     ").trim(" ") + "\"");
-    System.out.println("// Illustration of char data shared between two terms");
+    System.out.println("// Illustration of char data shared between two search");
     line = new Chain("01234567890123456789"); System.out.println("line: \"" + line + "\""); 
     Chain span = new Chain(); 
     // span.link(line, 3, 4);
