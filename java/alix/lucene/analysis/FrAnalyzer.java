@@ -55,7 +55,7 @@ public class FrAnalyzer extends Analyzer
     final Tokenizer source = new FrTokenizer(flags); // segment words
     TokenStream result = new FrLemFilter(source); // provide lemma+pos
     result = new LocutionFilter(result); // compounds: parce que
-    // result = new FrPersnameFilter(result); // link unknown names, seems buggy
+    result = new FrPersnameFilter(result); // link unknown names, seems buggy
     boolean pun = false;
     if ("search".startsWith(field)) pun = true; // keep punctuation, ex, to parse search
     result = new FlagCloudFilter(result, pun); // select lemmas as term to index

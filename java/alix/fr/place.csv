@@ -30,6 +30,9 @@ Phénicie;NAMEplace
 Sardaigne;NAMEplace
 Scandinavie;NAMEplace
 Tahiti;NAMEplace
+Galles;NAMEplace
+Pays de Galles;NAMEplace
+pays de Galles;NAMEplace;Pays de Galles
 
 # VILLES
 
@@ -220,6 +223,7 @@ Kuwait City;NAMEplace
 Kwangju;NAMEplace
 Kyoto;NAMEplace
 La Haye;NAMEplace
+la Haye;NAMEplace;La Haye
 La Matanza;NAMEplace
 La Mecque;NAMEplace
 Lagos;NAMEplace

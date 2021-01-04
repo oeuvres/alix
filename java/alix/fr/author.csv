@@ -34,6 +34,7 @@ Andersen;NAMEauthor;
 André Gide;NAMEauthor;Gide
 A. Gide;NAMEauthor;Gide
 Apollinaire;NAMEauthor;
+Guillaume Apollinaire;NAMEauthor;Apollinaire
 Arabia;NAMEauthor
 Aragon;NAMEauthor;
 Arioste;NAMEauthor;
@@ -408,7 +409,9 @@ Mutel;NAMEauthor;
 Myro;NAMEauthor;
 Myro de Corinthe;NAMEauthor;
 Napoléon;NAMEauthor;
-Nerval;NAMEauthor;
+Nerval;NAMEauthor;Nerval
+de Nerval;NAMEauthor;Nerval
+Gérard de Nerval;NAMEauthor;Nerval
 Nietzsche;NAMEauthor;
 Nimier;NAMEauthor;
 Nodier;NAMEauthor;
@@ -518,6 +521,12 @@ Starobinsky;NAMEauthor;
 Stravinsky;NAMEauthor;
 Spinosa;NAMEauthor;Spinoza
 Spinoza;NAMEauthor;
+Mme de Staël;NAMEauthor;Mme de Staël
+Madame de Staël;NAMEauthor;Mme de Staël
+mme de Staël;NAMEauthor;Mme de Staël
+madame de Staël;NAMEauthor;Mme de Staël
+Germaine de Staël;NAMEauthor;Mme de Staël
+la baronne de Staël;NAMEauthor;Mme de Staël
 Steiner;NAMEauthor;
 Stendhal;NAMEauthor;
 Stevenson;NAMEauthor;
@@ -549,6 +558,8 @@ Tolstoj;NAMEauthor;Tolstoï
 Tolstoï;NAMEauthor;
 Tressan;NAMEauthor;
 Tresséol;NAMEauthor;
+Chrétien de Troyes;NAMEauthor;Chrétien de Troyes
+Chr. de Troyes;NAMEauthor;Chrétien de Troyes
 Turgenev;NAMEauthor;
 Twain;NAMEauthor;
 Valery;NAMEauthor;Valéry

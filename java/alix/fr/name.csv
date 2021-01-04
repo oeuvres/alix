@@ -18,11 +18,17 @@ Sûreté générale;NAMEorg
 États;NAMEorg;État
 
 
+
 # Autres personne
 
 Christ;NAMEpers
 Ciel;NAMEgod
 Dieu;NAMEgod
+général de Gaulle;NAMEpers;de Gaulle
+Général de Gaulle;NAMEpers;de Gaulle
+de Gaulle;NAMEpers;de Gaulle
+Charles de Gaulle;NAMEpers;de Gaulle
+De Gaulle;NAMEpers;de Gaulle
 Dreyfus;NAMEpers;
 Duguesclin;NAMEpers;Du Guesclin
 Du Guesclin;NAMEpers
@@ -44,6 +50,8 @@ Mussolini;NAMEpers;
 Renaissance;NAMEevent;
 République;NAMEorg
 Révolution;NAMEevent
+de Rougemont;NAMEpers;Rougemont
+Denis de Rougemont;NAMEpers;Rougemont
 Seigneur;NAMEgod
 Thiers;NAMEpers
 
@@ -274,7 +282,6 @@ Eson;NAMEdemhum
 Etéocle;NAMEdemhum
 Étéocle;NAMEdemhum
 Euridice;NAMEdemhum
-Europe;NAMEdemhum
 Eurydice;NAMEdemhum
 Eurynome;NAMEdemhum
 Eurysthée;NAMEdemhum

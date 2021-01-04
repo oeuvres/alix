@@ -138,7 +138,9 @@ public class FrDics
           if (graph.isEmpty() || graph.charAt(0) == '#') continue;
           LexEntry entry = new LexEntry(row.get(1), row.get(2), null);
           NAMES.put(new CharsAtt(graph), entry);
-          if (graph.contains(' ')) compound(graph, TREELOC);
+          if (graph.contains(' ')) {
+            compound(graph, TREELOC);
+          }
         }
         csv.close();
       }
