@@ -118,7 +118,6 @@ public class FieldText
     this.fieldName = fieldName;
     BytesRefHash hashDic = new BytesRefHash();
     // False good ideas
-    // – preaffect stopwords to the dictionary (no sense for a field where stopwords are skipped)
     hashDic.add(new BytesRef("")); // add empty string as formId=0 for empty positions
     this.docsAll = reader.getDocCount(fieldName);
     this.occsAll = reader.getSumTotalTermFreq(fieldName);
@@ -126,6 +125,7 @@ public class FieldText
     long[] termOccs = null;
     BytesRef ref;
     java.util.BitSet stopRecord = new java.util.BitSet(); // record StopWords to build an optimized BitSet
+
     // loop on the index leaves
     for (LeafReaderContext context : reader.leaves()) {
       LeafReader leaf = context.reader();
@@ -160,6 +160,8 @@ public class FieldText
         }
       }
     }
+    // 
+    
     
     // for a dictionary with scorer, we need global stats here
     this.formDic = hashDic;

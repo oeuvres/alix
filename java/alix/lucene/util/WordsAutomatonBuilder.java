@@ -365,9 +365,15 @@ public final class WordsAutomatonBuilder {
   public static Automaton buildFronStrings(String[] words) {
     Arrays.sort(words);
     final WordsAutomatonBuilder builder = new WordsAutomatonBuilder();
+    int count = 0;
     for (String word : words) {
+      if (word == null) continue;
+      if (word.isBlank()) continue;
       builder.add(word);
+      count++;
     }
+    // no word found, returns null
+    if (count == 0) return null;
     
     Automaton.Builder a = new Automaton.Builder();
     convert(a,

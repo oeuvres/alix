@@ -70,8 +70,6 @@ public class LocutionFilter extends TokenFilter
   private Roll<State> stack = new Roll<State>(10);
   /** A term used to concat a compound */
   private CharsAtt compound = new CharsAtt();
-  /** Exit value */
-  private boolean exit = true;
   /** Counter */
   private int count;
 
@@ -106,36 +104,42 @@ public class LocutionFilter extends TokenFilter
     int loop = -1;
     int startOffset = offsetAtt.startOffset();
     boolean maybeVerb = false;
-    int tag = flagsAtt.getFlags();
     do {
       loop++;
-      // something in stack, loop in it
+      // something in stack, try to loop on it
+      // this test avoid infinite loop (pop and push the same token)
       if (stack.size() > loop) {
         restoreState(stack.get(loop));
+        if (Tag.isPun(flagsAtt.getFlags()) || termAtt.length() == 0) {
+          if (stack.isEmpty()) return true;
+        }
       }
       else {
-        exit = input.incrementToken();
-        if (Tag.isPun(tag) || termAtt.length() == 0) {
-          // if nothing in stack, and new token, go out with current state
-          if (stack.isEmpty() && loop == 0) return exit;
-          // if stack is not empty and a new token, add it to the stack
-          if (token) stack.add(captureState());
+        boolean more = input.incrementToken();
+        if (!more) { // stream is exhausted, exhaust the stack, 
+          if (stack.isEmpty()) return false; // nothing more to find
           restoreState(stack.remove());
-          if (stack.isEmpty()) return exit;
-          else return true;
+          return true;
         }
-        token = true; // avoid too much stack copy for simple words
-
+        // is a branch stop, exhaust stack
+        if (Tag.isPun(flagsAtt.getFlags()) || termAtt.length() == 0) {
+          // if nothing in stack, go out with current state
+          if (stack.isEmpty()) return true;
+          // if stack is not empty, restore first, add this state to the stack
+          if (!stack.isEmpty()) stack.add(captureState());
+          restoreState(stack.remove());
+          return true;
+        }
+       token = true; // avoid too much stack copy for simple words
       }
+      // first token of a compound candidate, remember start offset
       if (loop == 0) startOffset = offsetAtt.startOffset();
       
-      /*
-      // punctuation do not start a compound, possible optimization
-      boolean tagBreak = Tag.isPun(tag);
-      if (tagBreak) return exit;
-      */
       // build a compound candidate
       if (loop > 0 && !compound.endsWith('\'')) compound.append(' '); 
+      
+      int tag = flagsAtt.getFlags();
+      // System.out.println(" == " + Tag.label(tag) + " " + termAtt);
       // for verbs, the compound key is the lemma, for others takes an orthographic form
       if (Tag.isVerb(tag) && lemAtt.length() != 0) {
         maybeVerb = true;
@@ -145,20 +149,20 @@ public class LocutionFilter extends TokenFilter
       else if (maybeVerb && orth.equals("pas")) {
         compound.setLength(compound.length() - 1); // suppres last ' '
       }
-      // Fanon (orth is here bad)
-      else if (Char.isUpperCase(termAtt.charAt(0))) compound.append(termAtt);
+      // for names, test the original forms
+      else if (Tag.isName(tag)) compound.append(termAtt);
+      // for other words, orth may have correct initial capital of sentence
       else if (orth.length() != 0) compound.append(orth);
       else compound.append(termAtt);
       
       treeState = FrDics.TREELOC.get(compound);
       if (treeState == null) {
         // if nothing in stack, and new token, go out with current state
-        if (stack.isEmpty() && loop == 0) return exit;
+        if (stack.isEmpty() && loop == 0) return true;
         // if stack is not empty and a new token, add it to the stack
         if (token) stack.add(captureState());
         restoreState(stack.remove());
-        if (stack.isEmpty()) return exit;
-        else return true;
+        return true;
       }
       
       
@@ -184,7 +188,7 @@ public class LocutionFilter extends TokenFilter
         
         offsetAtt.setOffset(startOffset, offsetAtt.endOffset());
         // no more compound with this prefix, we are happy
-        if ((treeState & BRANCH) == 0) return exit;
+        if ((treeState & BRANCH) == 0) return true;
         // compound may continue, lookahead should continue, store this step
         stack.add(captureState());
       }
@@ -196,10 +200,9 @@ public class LocutionFilter extends TokenFilter
     } while(loop < 10); // a compound bigger than 10, there’s a problem, should not arrive
     if (!stack.isEmpty()) {
       restoreState(stack.remove());
-      if (stack.isEmpty()) return exit;
-      else return true;
+      return true;
     }
-    return exit; // ?? pb à la fin
+    return true; // ?? pb à la fin
   }
   @Override
   public void reset() throws IOException {

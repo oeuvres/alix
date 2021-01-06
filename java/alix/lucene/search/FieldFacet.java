@@ -51,6 +51,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
@@ -59,6 +60,7 @@ import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 
 import alix.lucene.Alix;
+import alix.lucene.DocType;
 import alix.util.IntList;
 import alix.util.TopArray;
 
@@ -122,10 +124,10 @@ public class FieldFacet
   private final int[][] docFacets;
   /** A docId by facet uses as a “cover“ doc (not counted  */
   protected final int[] facetCover;
-  /** Cache the state of a reader from which all freqs are counted */
-  private IndexReader reader;
   /** A cached vector for each docId, size in occurrences  */
   private final int[] docOccs;
+  /** Cache the state of a reader from which all freqs are counted */
+  private IndexReader reader;
 
   /**
    * Build data to have frequencies on a facet field.
@@ -287,7 +289,15 @@ public class FieldFacet
     this.facetCover = facetCover;
   }
 
-  
+  /** 
+   * Get first available facetId for this docId or -1 if nothing found
+   */
+  public int facetId(final int docId)
+  {
+    int[] results = docFacets[docId];
+    if (results == null || results.length < 1) return -1;
+    return results[0];
+  }
   
   /**
    * Returns a new enumerator on all search for this facet in orthographic order

@@ -54,14 +54,6 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
         <xsl:copy-of select="$byline"/>
       </alix:field>
     </xsl:if>
-    <xsl:variable name="year" select="substring($docdate, 1, 4)"/>
-    <xsl:if test="string(number($year)) != 'NaN'">
-      <alix:field name="year" type="int">
-        <xsl:attribute name="value">
-          <xsl:value-of select="$year"/>
-        </xsl:attribute>
-      </alix:field>
-    </xsl:if>
   </xsl:variable>
   <!-- an html bibliographic line -->
   <xsl:variable name="bibl-book">
@@ -104,6 +96,16 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
         </xsl:choose>
       </xsl:attribute>
       <xsl:copy-of select="$info"/>
+      <!-- Date of global book -->
+      <xsl:variable name="year" select="substring($docdate, 1, 4)"/>
+      <xsl:if test="string(number($year)) != 'NaN'">
+        <alix:field name="year" type="int">
+          <xsl:attribute name="value">
+            <xsl:value-of select="$year"/>
+          </xsl:attribute>
+        </alix:field>
+      </xsl:if>
+
       <alix:field name="bibl" type="meta">
         <xsl:copy-of select="$bibl-book"/>
       </alix:field>
@@ -158,7 +160,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
       <xsl:when test="self::tei:body">
         <xsl:apply-templates select="*" mode="alix"/>
       </xsl:when>
-      <xsl:when test="./*//tei:head[contains(., 'Chapitre')]">
+      <xsl:when test="./*//tei:head[contains(., 'Chapitre') or contains(., 'chapitre')]">
         <xsl:apply-templates select="*" mode="alix"/>
       </xsl:when>
       <!-- maybe not best grain, but not too small -->
@@ -208,6 +210,17 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
   <xsl:template name="chapter">
     <alix:chapter>
       <xsl:copy-of select="$info"/>
+      <!-- local date or replicate book date ? -->
+      <xsl:variable name="chapyear" select="substring(@when, 1, 4)"/>
+      <xsl:variable name="bookyear" select="substring($docdate, 1, 4)"/>
+      <xsl:choose>
+        <xsl:when test="string(number($chapyear)) != 'NaN'">
+          <alix:field name="year" type="int" value="{$chapyear}"/>
+        </xsl:when>
+        <xsl:when test="string(number($bookyear)) != 'NaN'">
+          <alix:field name="year" type="int" value="{$bookyear}"/>
+        </xsl:when>
+      </xsl:choose>
       <alix:field name="bibl" type="meta">
         <xsl:call-template name="bibl"/>
       </alix:field>

@@ -80,7 +80,7 @@ public class FormEnum {
     this.formTag = field.formTag;
   }
 
-  /** Build an iterator from a facet field with an ordered arrays of formId */
+  /** Build an iterator from a facet field */
   public FormEnum(final FieldFacet field)
   {
     this.formDic = field.facetDic;
@@ -110,7 +110,7 @@ public class FormEnum {
    * Count of occurrences for this search
    * @return
    */
-  public long occsPart()
+  public long partOccs()
   {
     return partOccs;
   }
@@ -119,7 +119,7 @@ public class FormEnum {
    * 
    * @return
    */
-  public long occsField()
+  public long formOccs()
   {
     return formOccs[formId];
   }
@@ -128,7 +128,7 @@ public class FormEnum {
    * Get the total count of documents relevant for the current term.
    * @return
    */
-  public int docsField()
+  public int formDocs()
   {
     return formDocs[formId];
   }

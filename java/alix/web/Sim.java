@@ -24,6 +24,7 @@ public enum Sim implements Option {
       return similarity;
     }
   },
+  /*
   gsimple("G-Test simplifié") {
     private Similarity similarity = new SimilarityGsimple();
     @Override
@@ -31,6 +32,7 @@ public enum Sim implements Option {
       return similarity;
     }
   },
+  */
   chi2("Chi2") {
     private Similarity similarity = new SimilarityChi2();
     @Override

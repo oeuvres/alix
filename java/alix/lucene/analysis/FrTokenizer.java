@@ -324,7 +324,7 @@ public class FrTokenizer extends Tokenizer
         lastChar = c; // for 6. 7.
         continue;
       }
-
+      
       // Clause punctuation, send a punctuation event to separate tokens
       if (Char.isPUNcl(c)) {
         // send term before
@@ -366,8 +366,8 @@ public class FrTokenizer extends Tokenizer
           else if (Char.isLowerCase(lastChar)) {
             term.setLength(term.length() - 1);
           }
-          // 1.5
-          else if (!Char.isUpperCase(lastChar)) {
+          // J.-P. ?
+          else if (Char.isUpperCase(lastChar)) {
             continue;
           }
           // XVIII.

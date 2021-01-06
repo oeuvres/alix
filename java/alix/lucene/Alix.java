@@ -654,25 +654,21 @@ u   * @throws IOException
 
   /**
    * Get docId parent documents (books) of nested documents (chapters), sorted by
-   * a sort specification.
+   * a sort specification. Calculation is not really expensive, do not cache.
    * 
    * @throws IOException
    */
   public int[] books(Sort sort) throws IOException
   {
     IndexSearcher searcher = searcher(); // ensure reader or decache
-    String key = "AlixBooks" + sort;
-    int[] books = (int[]) cache(key);
-    if (books != null) return books;
     Query qBook = new TermQuery(new Term(Alix.TYPE, DocType.book.name()));
     TopFieldDocs top = searcher.search(qBook, MAXBOOKS, sort);
     int length = top.scoreDocs.length;
     ScoreDoc[] docs = top.scoreDocs;
-    books = new int[length];
+    int[] books = new int[length];
     for (int i = 0; i < length; i++) {
       books[i] = docs[i].doc;
     }
-    cache(key, books);
     return books;
   }
   public Query query(final String field, final String q) throws IOException
@@ -790,7 +786,7 @@ u   * @throws IOException
   public static String[] forms(final String q, final Analyzer analyzer) throws IOException
   {
     // create an arrayList on each search and let gc works
-    ArrayList<String> terms = new ArrayList<String>();
+    ArrayList<String> forms = new ArrayList<String>();
     // what should mean null here ?
     if (q == null || "".equals(q.trim())) return null;
     TokenStream ts = analyzer.tokenStream(AlixReuseStrategy.QUERY, q); // keep punctuation to group search
@@ -824,14 +820,14 @@ u   * @throws IOException
           // search.add(null);
           continue;
         }
-        terms.add(word);
+        forms.add(word);
       }
       ts.end();
     }
     finally {
       ts.close();
     }
-    return terms.toArray(new String[terms.size()]);
+    return forms.toArray(new String[forms.size()]);
   }
 
   @Override

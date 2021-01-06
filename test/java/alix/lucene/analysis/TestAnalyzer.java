@@ -101,8 +101,8 @@ public class TestAnalyzer
     {
       final Tokenizer source = new FrTokenizer();
       TokenStream result = new FrLemFilter(source);
-      result = new FrPersnameFilter(result);
       result = new LocutionFilter(result);
+      // result = new FrPersnameFilter(result);
       return new TokenStreamComponents(source, result);
     }
 
@@ -257,7 +257,8 @@ public class TestAnalyzer
   public static void localDic() throws IOException
   {
     Path tmpfile = Files.createTempFile("alix-", ".csv");
-    String dic = "Club de Rome;NAMEorg"
+    String dic = "\n"
+        + "Club de Rome;NAMEorg"
       + "\nclub de Rome;NAMEorg;Club de Rome;"
       + "\nClub des Jacobins;NAMEorg;"
       + "\nsuisse;NAME;Suisse"
@@ -271,13 +272,15 @@ public class TestAnalyzer
     ;
     Files.write(tmpfile, dic.getBytes());
     FrDics.load(tmpfile.toFile());
-    System.out.println(FrDics.word("marxisme"));
+    System.out.println(FrDics.name("Club de Rome"));
     String text;
     // mode search
     text =  "Les temps sont proches, nous dit le rapport du Club de Rome. Les marxistes ne sont pas d’Europe de l’atome. Donc c’est Jean Monnet qui a vu juste. "
-        + "La préface de J.-P. Sartre au livre de Frantz Fanon. Et M. Frantz Fanon ?"; // TODO bug J.P. Sartre
+        + "La préface de J.-P. Sartre au livre de Frantz Fanon. Et M. Fanon ?"; // TODO bug J.P. Sartre
+    /*
     System.out.println("———————————");
     vertical(text, new AnalyzerNames());
+    */
     System.out.println("———————————");
     vertical(text, new FrAnalyzer());
   }
@@ -286,7 +289,7 @@ public class TestAnalyzer
   public static void main(String[] args) throws IOException
   {
     // tokfr();
-    // compounds();
-    localDic();
+    compounds();
+    // localDic();
   }
 }
