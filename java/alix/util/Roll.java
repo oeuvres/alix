@@ -166,8 +166,7 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
   @Override
   public boolean remove(Object arg0)
   {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
+    throw new UnsupportedOperationException("Not relevant, use LinkedList instead");
   }
 
   @Override
@@ -264,8 +263,7 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
   @Override
   public E remove(int arg0)
   {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
+    throw new UnsupportedOperationException("Not relevant, use LinkedList instead");
   }
 
   @Override

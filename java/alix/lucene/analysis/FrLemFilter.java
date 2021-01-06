@@ -163,11 +163,13 @@ public final class FrLemFilter extends TokenFilter
         // restore initial cap
         if (!waspun) termAtt.buffer()[0] = c1;
         flagsAtt.setFlags(entry.tag);
-        if (entry.lem != null) lemAtt.append(entry.lem);
-        if (entry.orth != null) orth.copy(entry.orth);
+        if (entry.lem != null) lemAtt.setEmpty().append(entry.lem);
+        if (entry.orth != null) {
+          orth.copy(entry.orth);
+        }
         return true;
       }
-      else { // unknown word, infer it's a MAME
+      else { // unknown word, infer it's a NAME
         flagsAtt.setFlags(Tag.NAME);
         orth.copy(copy);
         return true;
@@ -180,7 +182,9 @@ public final class FrLemFilter extends TokenFilter
       // known word
       flagsAtt.setFlags(entry.tag);
       if (entry.lem != null) lemAtt.append(entry.lem);
-      if (entry.orth != null) orth.copy(entry.orth);
+      if (entry.orth != null) {
+        orth.copy(entry.orth);
+      }
     }
     return true;
   }

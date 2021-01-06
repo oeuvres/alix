@@ -33,6 +33,7 @@
 package alix.lucene.analysis.tokenattributes;
 
 import java.nio.CharBuffer;
+import java.util.Arrays;
 
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
@@ -319,12 +320,13 @@ public class CharsAtt extends AttributeImpl
    * Copy a {@link CharTermAttribute} in the buffer.
    * @param ta
    * @return
+   * @throws Exception 
    */
   public final CharTermAttribute copy(CharTermAttribute ta)
   {
     hash = 0;
     len = ta.length();
-    System.arraycopy(ta.buffer(), 0, resizeBuffer(this.len), 0, len);
+    System.arraycopy(ta.buffer(), 0, resizeBuffer(len), 0, len);
     return this;
   }
 

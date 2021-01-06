@@ -137,7 +137,7 @@ public class FormEnum {
    * Get the count of matching occureences
    * @return
    */
-  public long occsMatching()
+  public long freq()
   {
     return freqs[formId];
   }
@@ -146,7 +146,7 @@ public class FormEnum {
    * Get the count of matched documents for the current term.
    * @return
    */
-  public int docsMatching()
+  public int hits()
   {
     return hits[formId];
   }

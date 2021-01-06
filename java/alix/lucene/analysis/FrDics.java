@@ -187,7 +187,9 @@ public class FrDics
         NAMES.remove(graph);
         continue;
       }
-      // don’t mind if exists, will be replaced
+      // remove other versions (ex : Russes => Russie)
+      WORDS.remove(graph);
+      NAMES.remove(graph);
       CharsAtt key = new CharsAtt(graph);
       LexEntry entry = new LexEntry(row.get(1), row.get(2), row.get(3));
       if (graph.isFirstUpper()) NAMES.put(key, entry);
@@ -203,7 +205,12 @@ public class FrDics
     load(reader, map);
   }
 
-  
+  /**
+   * Simple load of table equivalent
+   * 
+   * @param reader
+   * @param map
+   */
   private static void load(final Reader reader, final HashMap<CharsAtt, CharsAtt> map)
   {
     CsvReader csv = null;

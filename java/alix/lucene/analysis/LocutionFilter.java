@@ -46,6 +46,7 @@ import alix.lucene.analysis.FrDics.LexEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import alix.util.Char;
 import alix.util.Roll;
 
 /**
@@ -65,12 +66,10 @@ public class LocutionFilter extends TokenFilter
   private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
   /** A lemma when possible */
   private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
-  /** A stack of sates  */
+  /** A stack of states  */
   private Roll<State> stack = new Roll<State>(10);
   /** A term used to concat a compound */
   private CharsAtt compound = new CharsAtt();
-  /** A term used to concat a compound */
-  // private CharsAtt orthCom = new CharsAtt();
   /** Exit value */
   private boolean exit = true;
   /** Counter */
@@ -99,7 +98,6 @@ public class LocutionFilter extends TokenFilter
   public boolean incrementToken() throws IOException
   {
     CharsAtt orth = (CharsAtt) orthAtt;
-    boolean more = false;
     boolean token = false;
     compound.setEmpty();
     Integer treeState;
@@ -108,26 +106,29 @@ public class LocutionFilter extends TokenFilter
     int loop = -1;
     int startOffset = offsetAtt.startOffset();
     boolean maybeVerb = false;
+    int tag = flagsAtt.getFlags();
     do {
       loop++;
-      more = false;
       // something in stack, loop in it
       if (stack.size() > loop) {
         restoreState(stack.get(loop));
-        // System.out.println(" -- state " + orth + " loop="+loop);
       }
-      /*
-      else if (branch && stack.size() > 1) {
-        // restoreState(stack.remove());
-      }
-      */
       else {
         exit = input.incrementToken();
+        if (Tag.isPun(tag) || termAtt.length() == 0) {
+          // if nothing in stack, and new token, go out with current state
+          if (stack.isEmpty() && loop == 0) return exit;
+          // if stack is not empty and a new token, add it to the stack
+          if (token) stack.add(captureState());
+          restoreState(stack.remove());
+          if (stack.isEmpty()) return exit;
+          else return true;
+        }
         token = true; // avoid too much stack copy for simple words
+
       }
       if (loop == 0) startOffset = offsetAtt.startOffset();
       
-      int tag = flagsAtt.getFlags();
       /*
       // punctuation do not start a compound, possible optimization
       boolean tagBreak = Tag.isPun(tag);
@@ -140,9 +141,12 @@ public class LocutionFilter extends TokenFilter
         maybeVerb = true;
         compound.append(lemAtt);
       }
+      // ne fait pas l’affaire
       else if (maybeVerb && orth.equals("pas")) {
         compound.setLength(compound.length() - 1); // suppres last ' '
-      } // ne fait pas l’affaire
+      }
+      // Fanon (orth is here bad)
+      else if (Char.isUpperCase(termAtt.charAt(0))) compound.append(termAtt);
       else if (orth.length() != 0) compound.append(orth);
       else compound.append(termAtt);
       
@@ -168,7 +172,7 @@ public class LocutionFilter extends TokenFilter
           flagsAtt.setFlags(entry.tag);
           termAtt.setEmpty().append(compound);
           if (entry.orth != null) orth.setEmpty().append(entry.orth);
-          else orth.setEmpty().append(compound);
+          else orth.setEmpty();
           if (entry.lem != null) lemAtt.setEmpty().append(entry.lem);
           else lemAtt.setEmpty();
         }

@@ -50,6 +50,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.SparseFixedBitSet;
 
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
@@ -95,7 +96,7 @@ public class FieldText
   /** A tag by formId (maybe used for filtering) */
   public int[] formTag;
   /** Stop words known as a bitSet, according to formId (growable java.util.BitSet is prefered to lucene fixed ones)  */
-  private java.util.BitSet stops = new java.util.BitSet(); 
+  protected final BitSet stops; 
   // No internal pointer on a term, not thread safe
   
 
@@ -124,6 +125,7 @@ public class FieldText
     int[] termDocs = null;
     long[] termOccs = null;
     BytesRef ref;
+    java.util.BitSet stopRecord = new java.util.BitSet(); // record StopWords to build an optimized BitSet
     // loop on the index leaves
     for (LeafReaderContext context : reader.leaves()) {
       LeafReader leaf = context.reader();
@@ -143,7 +145,7 @@ public class FieldText
         // if (ref.length == 0) continue; // maybe an empty position, keep it
         int formId = hashDic.add(ref);
         if (formId < 0) formId = -formId - 1; // value already given
-        if (FrDics.isStop(ref)) stops.set(formId);
+        if (FrDics.isStop(ref)) stopRecord.set(formId);
         // growing is needed if index has more than one leaf
         termDocs = ArrayUtil.grow(termDocs, formId + 1);
         termOccs = ArrayUtil.grow(termOccs, formId + 1);
@@ -158,6 +160,7 @@ public class FieldText
         }
       }
     }
+    
     // for a dictionary with scorer, we need global stats here
     this.formDic = hashDic;
     this.size = hashDic.size();
@@ -186,6 +189,13 @@ public class FieldText
       if (Char.isUpperCase(chars.charAt(0))) tags[formId] = Tag.NAME;
     }
     this.formTag = tags;
+    // because terms are stored by Lucene in unicode order after indexing, formId is quite alphabetic
+    // so no optimization is here expected on th bitSet size
+    BitSet stops = new SparseFixedBitSet(size);
+    for (int formId = stopRecord.nextSetBit(0); formId != -1; formId = stopRecord.nextSetBit(formId + 1)) {
+      stops.set(formId);
+    }
+    this.stops = stops;
   }
 
   /**
@@ -244,7 +254,7 @@ public class FieldText
    * @param formId
    * @return
    */
-  public String term(final int formId)
+  public String label(final int formId)
   {
     BytesRef bytes = new BytesRef();
     this.formDic.get(formId, bytes);
@@ -257,7 +267,7 @@ public class FieldText
    * @param bytes
    * @return
    */
-  public BytesRef term(int formId, BytesRef bytes)
+  public BytesRef label(int formId, BytesRef bytes)
   {
     return this.formDic.get(formId, bytes);
   }

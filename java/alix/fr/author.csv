@@ -221,6 +221,8 @@ Etiemble;NAMEauthor;
 Eugène Sue;NAMEauthor;
 Euripide;NAMEauthor;
 Fallet;NAMEauthor;
+Fanon;NAMEauthor;Frantz Fanon
+Frantz Fanon;NAMEauthor
 Fargue;NAMEauthor;
 Faulkner;NAMEauthor;
 Fautrier;NAMEauthor;
@@ -292,7 +294,6 @@ J. Racine;NAMEauthor;Racine
 Jaccottet;NAMEauthor;
 Jammes;NAMEauthor;
 Jean de La Fontaine;NAMEauthor;La Fontaine
-Jean Paul Sartre;NAMEauthor;Sartre
 Jouhandeau;NAMEauthor
 Jossaud;NAMEauthor;
 Jouve;NAMEauthor;
@@ -491,6 +492,9 @@ Sand;NAMEauthor;
 Saphos;NAMEauthor;
 Sarcey;NAMEauthor;
 Sartre;NAMEauthor;
+Jean Paul Sartre;NAMEauthor;Sartre
+J.-P. Sartre;NAMEauthor;Sartre
+J.-P Sartre;NAMEauthor;Sartre
 Scaron;NAMEauthor;
 Scarron;NAMEauthor;
 Schehadé;NAMEauthor;

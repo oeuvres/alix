@@ -33,17 +33,18 @@
 package alix.lucene.search;
 
 /**
- * Implementation of a G-test scorer
+ * Implementation of a G-test scorer with a wrong formula and…
+ * bad results.
  * <br/>Oi = Observation i
  * <br/>Ei = Expectation i
- * <br/>ΣOi = ΣEi = N (total of observation)
+ * <br/>sould be but is not here ΣOi = ΣEi = N (total of observation)
  * <br/>G = 2 Σ(Oi.ln(Oi/Ei))
  * https://en.wikipedia.org/wiki/G-test
  * 
  * @author glorieux-f
  *
  */
-public class SpecifG extends Specif
+public class SpecifGsimple extends Specif
 {
   @Override
   public int type() {
@@ -64,13 +65,15 @@ public class SpecifG extends Specif
     
     double O0 = k;
     double E0 = n * K / N;
+    return O0 * Math.log(O0 / E0);
+    /*
     double O1 = N - k;
     double E1 = N - E0;
-    // bad results  O0 * Math.log(O0 / E0);
     double sum = 0d;
     sum += O0 * Math.log(O0 / E0);
     sum += O1 * Math.log(O1 / E1);
     return sum * 2.0;
+    */
   }
 
   @Override

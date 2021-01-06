@@ -1,4 +1,4 @@
-package alix.lucene.tool;
+package alix.frdo;
 
 import java.io.File;
 import java.io.IOException;

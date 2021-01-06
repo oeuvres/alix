@@ -4,19 +4,27 @@ import alix.lucene.search.*;
 
 public enum Ranking implements Option {
   
-  chi2("Chi2 (Muller)") {
+  occs("Occurrences") {
     @Override
     public Specif specif() {
-      return new SpecifChi2();
+      return new SpecifOccs();
     }
   },
   
-  g("G-Test") {
+  g("G-Test (Frantext 2018)") {
     @Override
     public Specif specif() {
       return new SpecifG();
     }
   },
+
+  chi2("Chi2 (Muller, Brunet)") {
+    @Override
+    public Specif specif() {
+      return new SpecifChi2();
+    }
+  },
+
 
   hypergeo("Loi hypergeometrique (Lafon)") {
     @Override
@@ -79,12 +87,6 @@ public enum Ranking implements Option {
     }
   },
   */
-  occs("Occurrences") {
-    @Override
-    public Specif specif() {
-      return new SpecifOccs();
-    }
-  },
 
   alpha("Alphabétique") {
     @Override

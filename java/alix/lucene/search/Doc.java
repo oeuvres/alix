@@ -52,6 +52,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
@@ -597,8 +598,10 @@ public class Doc
     long[] formAllOccs = fieldText.formAllOccs;
     int[] formAllDocs = fieldText.formAllDocs;
     int docOccs = alix.docOccs(field)[docId];
+    BitSet stops = fieldText.stops;
+
     specif.all(fieldText.occsAll, fieldText.docsAll);
-    specif.part(docOccs, 1); // part has one doc, not really 
+    specif.part(docOccs, 1); // part has one doc
     // loop on all search of the document, get score, keep the top 
     Terms vector = getTermVector(field); // get the term vector to loop on
     TermsEnum termit = vector.iterator();
@@ -606,6 +609,7 @@ public class Doc
       BytesRef bytes = termit.term();
       final int formId = fieldText.formId(bytes);
       if (hasTags && !tags.accept(formTag[formId])) continue;
+      if (noStop && stops.get(formId)) continue;
       // if (formId < 0) continue; // should not arrive, let cry
       specif.idf(formAllOccs[formId], formAllDocs[formId]); // term specific stats
       // scorer.weight(termOccs, termDocs); // collection level stats

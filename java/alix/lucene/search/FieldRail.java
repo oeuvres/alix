@@ -44,6 +44,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.stream.IntStream;
 
@@ -63,6 +65,8 @@ import org.apache.lucene.util.BytesRefHash;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.Alix;
 import alix.util.IntList;
+import alix.util.IntPair;
+import alix.util.Top;
 import alix.util.TopArray;
 
 /**
@@ -461,6 +465,57 @@ public class FieldRail
       }
     }
   }
+  
+  /**
+   * Loop on the rail to find expression (2 plain word with 
+   * @return
+   * @throws IOException
+   */
+  public Top<IntPair> expressions(int limit) throws IOException
+  {
+    Map<IntPair, Counter> expressions = new HashMap<IntPair, Counter>();
+
+    IntPair key = new IntPair();
+    
+    int maxDoc = this.maxDoc;
+    int[] posInt = this.posInt;
+    int[] limInt = this.limInt;
+    BitSet stops = fieldText.stops;
+    // no cost in time and memory to take one int view, seems faster to loop
+    IntBuffer bufInt = channelMap.rewind().asIntBuffer();
+    int lastId = 0;
+    for (int docId = 0; docId < maxDoc; docId++) {
+      if (limInt[docId] == 0) continue; // deleted or with no value for this field
+      // if (hasFilter && !filter.get(docId)) continue; // document not in the filter
+      bufInt.position(posInt[docId]);
+      for (int i = 0, max = limInt[docId] ; i < max; i++) {
+        int formId = bufInt.get();
+        if (stops.get(formId)) continue;
+        key.set(lastId, formId);
+        Counter count = expressions.get(key);
+        if (count != null) count.inc();
+        else expressions.put(new IntPair(key), new Counter());
+        lastId = formId;
+      }
+    }
+    StringBuilder sb = new StringBuilder();
+    Top<IntPair> top= new Top<IntPair>(limit);
+    for (Map.Entry<IntPair, Counter> entry: expressions.entrySet()) {
+      top.push(entry.getValue().count, entry.getKey());
+    }
+
+    return top;
+  }
+
+  class Counter
+  {
+    int count = 1;
+    public int inc()
+    {
+      return ++count;
+    }
+  }
+
   
   /**
    * Tokens of a doc as strings from a byte array

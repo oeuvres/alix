@@ -1,11 +1,9 @@
 package alix.lucene.analysis;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -264,12 +262,20 @@ public class TestAnalyzer
       + "\nClub des Jacobins;NAMEorg;"
       + "\nsuisse;NAME;Suisse"
       + "\nsuisses;NAME;Suisse"
+      + "marxisme;NAME;Marx\n" + 
+      "marxisme;NAME;Marx\n" + 
+      "marxiste;NAME;Marx\n" + 
+      "marxistes;NAME;Marx\n" + 
+      "Karl Marx;NAME;Marx\n" + 
+      ""
     ;
     Files.write(tmpfile, dic.getBytes());
     FrDics.load(tmpfile.toFile());
+    System.out.println(FrDics.word("marxisme"));
     String text;
     // mode search
-    text =  "Les temps sont proches, nous dit le rapport du Club de Rome. Nous avons vu aussi que l’industrie suisse n’est pas comme les suisses.";
+    text =  "Les temps sont proches, nous dit le rapport du Club de Rome. Les marxistes ne sont pas d’Europe de l’atome. Donc c’est Jean Monnet qui a vu juste. "
+        + "La préface de J.-P. Sartre au livre de Frantz Fanon. Et M. Frantz Fanon ?"; // TODO bug J.P. Sartre
     System.out.println("———————————");
     vertical(text, new AnalyzerNames());
     System.out.println("———————————");
@@ -280,7 +286,7 @@ public class TestAnalyzer
   public static void main(String[] args) throws IOException
   {
     // tokfr();
-    compounds();
-    // localDic();
+    // compounds();
+    localDic();
   }
 }

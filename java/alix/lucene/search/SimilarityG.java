@@ -32,36 +32,19 @@
  */
 package alix.lucene.search;
 
+import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.similarities.BasicStats;
+import org.apache.lucene.search.similarities.SimilarityBase;
+
 /**
- * Implementation of a G-test scorer
- * <br/>Oi = Observation i
- * <br/>Ei = Expectation i
- * <br/>ΣOi = ΣEi = N (total of observation)
- * <br/>G = 2 Σ(Oi.ln(Oi/Ei))
- * https://en.wikipedia.org/wiki/G-test
- * 
- * @author glorieux-f
- *
+ * Implementation of a G-test Scoring with negative scores to get the 
+ * most repulsed doc from a search. Code structure taken form {@link org.apache.lucene.search.similarities.DFISimilarity}
  */
-public class SpecifG extends Specif
-{
+public class SimilarityG extends SimilarityBase {
+
   @Override
-  public int type() {
-    return TYPE_PROB;
-  }
-
-
-  /**
-   * A G-score for 2 observations
-   *
-   * @param N The total number of balls
-   * @param K The number of black balls
-   * @param n The number of balls drawn
-   * @param k The number of black balls drawn
-   * @return The Fisher's exact p-value
-   */
-  public static double g(double N, double K, double n, double k) {
-    
+  protected double score(BasicStats stats, double freq, double docLen) {
+    /*
     double O0 = k;
     double E0 = n * K / N;
     double O1 = N - k;
@@ -71,19 +54,21 @@ public class SpecifG extends Specif
     sum += O0 * Math.log(O0 / E0);
     sum += O1 * Math.log(O1 / E1);
     return sum * 2.0;
+    */
+    // if (stats.getNumberOfFieldTokens() == 0) return 0; // ??
+    final double N = stats.getNumberOfFieldTokens();
+    final double E0 = stats.getTotalTermFreq() * docLen / N;
+    double sum = freq * Math.log(freq / E0);
+    final double O1 = N - freq;
+    sum += O1 * Math.log(O1 / (N - E0));
+    // if the observed frequency is less than expected, is negative a good idea ? (think to multi term search)
+    if (freq < E0) return -sum;
+    return sum;
   }
+
 
   @Override
-  public double prob(final double formPartOccs, final double formAllOccs)
-  {
-    if (formAllOccs < 4) return 0;
-    if (formPartOccs == 0) return 0;
-    // if (formPartOccs < FLOOR) return 0;
-    double p = g(allOccs, formAllOccs,  partOccs, formPartOccs);
-    // System.out.println("N="+ (int)allOccs +" K="+ (int)formAllOccs +" n="+(int)partOccs + " k="+(int)formPartOccs+ " p="+p);
-    double mean = formAllOccs / allOccs;
-    if ((formPartOccs / partOccs) > mean) return p;
-    else return -p;
+  public String toString() {
+    return "G-test";
   }
-
 }

@@ -13,6 +13,24 @@ import alix.lucene.search.FieldText;
 public class TestFieldText
 {
 
+  static public void stops() throws IOException
+  {
+    Alix alix = TestAlix.miniBase(new WhitespaceAnalyzer());
+    TestAlix.write(alix, new String[] {
+      "Le petit chat est mort ce matin.", 
+      "La vies est un long fleuve tranquille.", 
+      "Les mots s’ajoutent peu à et se perdent.",
+      "À partir de quand ne trouve-t-on plus de mots vides ?", 
+      "Les chats de la comtesse sont aphones.", 
+    });
+    String fieldName = TestAlix.fieldName;
+    FieldText fstats = alix.fieldText(fieldName);
+    System.out.println("V="+fstats.size + " stops.size="+fstats.size);
+    for (int formId = 0; formId < fstats.size; formId++) {
+      System.out.println(formId + "=" + fstats.label(formId));
+    }
+  }
+
   static public void mini() throws IOException
   {
     Alix alix = TestAlix.miniBase(new WhitespaceAnalyzer());
@@ -37,14 +55,14 @@ public class TestFieldText
       else System.out.print('·');
     }
     System.out.println("Filtered forms, occurrences");
-    terms = fstats.iterator(-1, bits, null, null);
+    terms = fstats.iterator(-1, null, bits, null);
     System.out.println(terms);
     System.out.println("Filtered forms, with a scorer");
-    terms = fstats.iterator(-1, bits, new SpecifBinomial(), null);
+    terms = fstats.iterator(-1, new SpecifBinomial(), bits, null);
     System.out.println(terms);
 
     System.out.println("Filtered forms, reverse chi2");
-    terms = fstats.iterator(3, bits, new SpecifChi2(), null, true);
+    terms = fstats.iterator(3, new SpecifChi2(), bits, null, true);
     System.out.println(terms);
     while (terms.hasNext()) {
       terms.next();
@@ -81,6 +99,7 @@ public class TestFieldText
   
   public static void main(String[] args) throws IOException 
   {
-    mini();
+    // mini();
+    stops();
   }
 }
