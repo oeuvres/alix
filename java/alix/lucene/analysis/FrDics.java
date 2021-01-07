@@ -178,11 +178,11 @@ public class FrDics
 
   
   /** 
-   * Insert a local csv dictionary of 4 cols
-   * <li>0. GRAPH. Required, graphical form used as a key (could be a lemma for verbs like “avoir l’air”).
+   * Insert a local csv (comma separated values) dictionary of 4 cols
+   * <li>0. GRAPH. Required, graphical form used as a key (could be a lemma for verbs in locutions like “avoir l’air”).
    * <li>1. TAG. Required, morpho-syntaxic code
    * <li>2. ORTH. Optional, form normalization
-   * <li>3. LEM. Optional, local prefered lemmatization
+   * <li>3. LEM. Optional, lemmatization
    * @throws IOException 
    * @throws ParseException 
    */

@@ -55,7 +55,7 @@ public class CsvReader
   /** The char source */
   private Reader reader;
   /** The cell delimiter char */
-  private final char sep;
+  private char sep;
   /** The text delimiter char */
   // private final char quote;
   /** Row to populate */
@@ -67,12 +67,11 @@ public class CsvReader
   {
     this.reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
     row = new Row(cols);
-    this.sep = ';';
   }
 
   public CsvReader(Reader reader, final int cols)
   {
-    this(reader, cols, ';');
+    this(reader, cols, (char) 0);
   }
 
   public CsvReader(Reader reader, final int cols, final char sep)
@@ -98,6 +97,11 @@ public class CsvReader
     return this.line;
   }
 
+  /**
+   * Read one row (should stop at each 
+   * @return
+   * @throws IOException
+   */
   public Row readRow() throws IOException 
   {
     if (this.bufPos < 0) return null;
@@ -105,7 +109,8 @@ public class CsvReader
     Chain cell = row.next();
     int bufPos = this.bufPos;
     int bufMark = bufPos; // from where to start a copy
-    char sep = this.sep;
+    char sep = this.sep; // localize
+    boolean sep1 = (sep != 0);
     // char quote = this.quote;
     // boolean inquote;
     char lastChar = 0;
@@ -128,7 +133,7 @@ public class CsvReader
         bufPos = 0;
       }
       final char c = buf[bufPos++];
-      // escaping char ? what to do
+      // escaping char ? shall we do something ?
       if (lastChar == CR) {
         if (c != LF) { // old mac line
           bufPos--;
@@ -139,12 +144,17 @@ public class CsvReader
       lastChar = c;
       if (c == LF) break;
       if (c == CR) continue;
-      // cell separator
-      if (c == sep) {
-        if (cell != null) cell.append(buf, bufMark, bufPos - bufMark - 1);
-        bufMark = bufPos;
-        cell = row.next();
+      // exclude case of cell separator
+      if (sep1) { // one char declared for cell separator
+        if (c != sep) continue;
       }
+      else { // nice sugar on common separators
+        if (c != '\t' && c != ',' && c != ';') continue;
+      }
+      // here we should change of cell
+      if (cell != null) cell.append(buf, bufMark, bufPos - bufMark - 1);
+      bufMark = bufPos;
+      cell = row.next();
     }
     // append pending chars to current cell
     if (cell != null) cell.append(buf, bufMark, bufPos - bufMark - 1 - crlf);

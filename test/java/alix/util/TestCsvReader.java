@@ -26,7 +26,7 @@ public class TestCsvReader
       reader = new InputStreamReader(Tag.class.getResourceAsStream("word.csv"));
       CsvReader csv = new CsvReader(reader, 6);
       time = System.nanoTime();
-      while (csv.readRow()) {
+      while (csv.readRow() != null) {
         i++;
         if (i < 10) System.out.println(""+i+csv.row());
         // dic1.put(new CharsAtt(csv.row().get(0)), new LexEntry(csv.row().get(1),
