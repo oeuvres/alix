@@ -88,7 +88,7 @@ public enum Ranking implements Option {
   },
   */
 
-  alpha("Alphabétique") {
+  alpha("Naturel") {
     @Override
     public Specif specif() {
       return null;

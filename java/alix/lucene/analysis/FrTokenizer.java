@@ -353,6 +353,10 @@ public class FrTokenizer extends Tokenizer
         if (flags.getFlags() == Tag.PUNsent) {
           continue;
         }
+        // O.N…
+        if (c == '…' && flags.getFlags() == Tag.ABBR) {
+          term.append('.');
+        }
         // test if it's an abreviation with a dot
         if (c == '.') {
           // int roman;

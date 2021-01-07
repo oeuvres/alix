@@ -49,7 +49,7 @@ public class FormEnum {
   /** Cursor, to iterate in the sorter */
   private int cursor = -1;
   /** Current formId, set by next */
-  private int formId;
+  private int formId = -1; // break if no next
   /** used to read in the dic */
   BytesRef bytes = new BytesRef();
   /** Limit for this iterator */
@@ -176,6 +176,7 @@ public class FormEnum {
   public void reset()
   {
     cursor = -1;
+    formId = -1;
   }
 
 

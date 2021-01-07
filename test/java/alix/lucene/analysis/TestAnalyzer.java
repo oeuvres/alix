@@ -5,7 +5,9 @@ import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.apache.lucene.analysis.AlixReuseStrategy;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.AnalyzerReuseControl;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
@@ -178,6 +180,11 @@ public class TestAnalyzer
     System.out.println(analyzer.getClass());
     System.out.println();
     TokenStream stream = analyzer.tokenStream("stats", new StringReader(text));
+    vertical(text, stream);
+    analyzer.close();
+  }
+  public static void vertical(final String text, final TokenStream stream) throws IOException
+  {
 
     // get the CharTermAttribute from the TokenStream
     CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
@@ -208,7 +215,6 @@ public class TestAnalyzer
     }
     finally {
       stream.close();
-      analyzer.close();
     }
     System.out.println();
   }
@@ -249,8 +255,8 @@ public class TestAnalyzer
     String text;
     // mode search
     text =  "monnaie d’un -nombre toujours plus restreint";
-    // TODO, does not work
     text = "le rebondissement de l<emph>’action</emph>, E<anchor xml:id=\"_GoBack\"/>h, la V<hi rend=\"sup\">e</hi> République";
+    text = " L’O.N. est une revue. L’O.N… sale exception.";
     vertical(text, new AnalyzerTokfr());
   }
 
@@ -262,6 +268,7 @@ public class TestAnalyzer
       + "\nclub de Rome;NAMEorg;Club de Rome;"
       + "\nClub des Jacobins;NAMEorg;"
       + "\nsuisse;NAME;Suisse"
+      + "\nO.N.;NAMEtitle;Ordre nouveau"
       + "\nsuisses;NAME;Suisse"
       + "marxisme;NAME;Marx\n" + 
       "marxisme;NAME;Marx\n" + 
@@ -276,7 +283,8 @@ public class TestAnalyzer
     String text;
     // mode search
     text =  "Les temps sont proches, nous dit le rapport du Club de Rome. Les marxistes ne sont pas d’Europe de l’atome. Donc c’est Jean Monnet qui a vu juste. "
-        + "La préface de J.-P. Sartre au livre de Frantz Fanon. Et M. Fanon ?"; // TODO bug J.P. Sartre
+        + "La préface de J.-P. Sartre au livre de Frantz Fanon. Et M. Fanon ?"
+        + " la vie politique O.N. sont identiques à ceux qui seront à la base de la vie sociale"; 
     /*
     System.out.println("———————————");
     vertical(text, new AnalyzerNames());
@@ -285,11 +293,21 @@ public class TestAnalyzer
     vertical(text, new FrAnalyzer());
   }
 
+  public static void query() throws IOException
+  {
+    String text;
+    text = "Messageries";
+    Analyzer analyzer = new AnalyzerReuseControl(new FrAnalyzer(), new AlixReuseStrategy());
+    TokenStream ts = analyzer.tokenStream(AlixReuseStrategy.QUERY, text); // keep punctuation to group search
+    CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
+    vertical(text, ts);
+  }
 
   public static void main(String[] args) throws IOException
   {
+    // query();
     // tokfr();
-    compounds();
-    // localDic();
+    // compounds();
+    localDic();
   }
 }

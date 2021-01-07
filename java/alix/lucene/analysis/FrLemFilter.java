@@ -134,6 +134,7 @@ public final class FrLemFilter extends TokenFilter
     
     LexEntry entry;
     // First letter of token is upper case, is it a name ? Is it an upper case header ?
+    // Do no touch to abbreviations
     if (Char.isUpperCase(c1)) {
       
       // roman number already detected
@@ -144,8 +145,8 @@ public final class FrLemFilter extends TokenFilter
         orth.append(""+n);
         return true;
       }
-      // USA ?
-      orth.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
+      // Do not touch to recognized ABBR, like O.N.
+      if (flagsAtt.getFlags() != Tag.ABBR) orth.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
       FrDics.norm(orth); // normalise : Etat -> État
       copy.copy(orth);
       // c1 = orth.charAt(0); // keep initial cap, maybe useful

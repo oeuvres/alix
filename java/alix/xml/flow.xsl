@@ -557,10 +557,16 @@ Sections
   
   <xsl:template match="tei:listBibl | tei:listPerson">
     <xsl:param name="from"/>
+    <xsl:if test="$index">
+      <xsl:processing-instruction name="index_off"/>
+    </xsl:if>
     <div>
       <xsl:call-template name="atts"/>
       <xsl:apply-templates/>
     </div>
+    <xsl:if test="$index">
+      <xsl:processing-instruction name="index_on"/>
+    </xsl:if>
   </xsl:template>
   <!-- Pseudo-listes  -->
   <xsl:template match="tei:respStmt">
@@ -1237,9 +1243,6 @@ Tables
         <xsl:if test="$mixed != ''">
           <xsl:value-of select="$lf"/>
         </xsl:if>
-        <xsl:if test="$index">
-          <xsl:processing-instruction name="index_off"/>
-        </xsl:if>
         <a class="{normalize-space($class)}">
           <xsl:choose>
             <!-- @xml:base ? -->
@@ -1270,9 +1273,6 @@ Tables
           -->
           <xsl:value-of select="$text"/>
         </a>
-        <xsl:if test="$index">
-          <xsl:processing-instruction name="index_on"/>
-        </xsl:if>
         <xsl:if test="$mixed != ''">
           <xsl:value-of select="$lf"/>
         </xsl:if>

@@ -34,6 +34,7 @@ package alix.lucene.analysis;
 
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -155,6 +156,7 @@ public class FrDics
     load("ellision.csv", ELISION);
     load("brevidot.csv", BREVIDOT);
     locutions("locutions.csv");
+    load("num.csv");
     /*
     File zejar = new File(FrDics.class.getProtectionDomain().getCodeSource().getLocation().getPath());
     File localdic = new File(zejar.getParentFile(), "alix-cloud.csv");
@@ -162,6 +164,19 @@ public class FrDics
     */
   }
 
+  private static void load(final String res)
+  {
+    Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
+    load(reader);
+  }
+
+  public static void load(final File file) throws IOException
+  {
+    Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
+    load(reader);
+  }
+
+  
   /** 
    * Insert a local csv dictionary of 4 cols
    * <li>0. GRAPH. Required, graphical form used as a key (could be a lemma for verbs like “avoir l’air”).
@@ -171,32 +186,40 @@ public class FrDics
    * @throws IOException 
    * @throws ParseException 
    */
-  static public void load(final File file) throws IOException
+  static public void load(final Reader reader)
   {
     CsvReader csv = null;
-    csv = new CsvReader(file, 4);
-    csv.readRow(); // skip first line
-    Row row;
-    while ((row = csv.readRow()) != null) {
-      Chain graph = row.get(0);
-      if (graph.isEmpty() || graph.charAt(0) == '#') continue;
-      // entry to remove
-      if (graph.first() == '-') {
-        graph.firstDel();
+    try {
+      csv = new CsvReader(reader, 4);
+      csv.readRow(); // skip first line
+      Row row;
+      while ((row = csv.readRow()) != null) {
+        Chain graph = row.get(0);
+        if (graph.isEmpty() || graph.charAt(0) == '#') continue;
+        // entry to remove
+        if (graph.first() == '-') {
+          graph.firstDel();
+          WORDS.remove(graph);
+          NAMES.remove(graph);
+          continue;
+        }
+        // remove other versions (ex : Russes => Russie)
         WORDS.remove(graph);
         NAMES.remove(graph);
-        continue;
+        CharsAtt key = new CharsAtt(graph);
+        LexEntry entry = new LexEntry(row.get(1), row.get(2), row.get(3));
+        if (graph.isFirstUpper()) NAMES.put(key, entry);
+        else WORDS.put(key, entry);
+        if (graph.contains(' ')) compound(graph, TREELOC);
       }
-      // remove other versions (ex : Russes => Russie)
-      WORDS.remove(graph);
-      NAMES.remove(graph);
-      CharsAtt key = new CharsAtt(graph);
-      LexEntry entry = new LexEntry(row.get(1), row.get(2), row.get(3));
-      if (graph.isFirstUpper()) NAMES.put(key, entry);
-      else WORDS.put(key, entry);
-      if (graph.contains(' ')) compound(graph, TREELOC);
+      csv.close();
     }
-    csv.close();
+    catch (Exception e) {
+      System.out.println("Dictionary parse error in file "+reader);
+      if (csv != null) System.out.println(" line "+csv.line());
+      else System.out.println();
+      e.printStackTrace();
+    }
   }
 
   private static void load(final String res, final HashMap<CharsAtt, CharsAtt> map)

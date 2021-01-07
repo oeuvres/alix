@@ -3,9 +3,11 @@
 To index TEI files in lucene with Alix
 
 LGPL  http://www.gnu.org/licenses/lgpl.html
-© 2019 Frederic.Glorieux@fictif.org & Opteos &
+© 2019 Frederic.Glorieux@fictif.org & Opteos
 
 
+cdata-section-elements="cdata"
+Attribute @cdata-section-elements is not allowed on element <xsl:transform>
 
 -->
 <xsl:transform version="1.0"
@@ -13,13 +15,15 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
   xmlns="http://www.w3.org/1999/xhtml"
   xmlns:tei="http://www.tei-c.org/ns/1.0"
   xmlns:alix="http://alix.casa"
+  xmlns:saxon="http://saxon.sf.net/"
+  
+  
   exclude-result-prefixes="tei"
 >
   <xsl:import href="flow.xsl"/>
   <xsl:import href="notes.xsl"/>
   <xsl:import href="toc.xsl"/>
-  <xsl:strip-space elements="*"/>
-  <xsl:output indent="yes" encoding="UTF-8" method="xml" />
+  <xsl:output indent="yes" encoding="UTF-8" method="xml"/>
   <!-- chapter split policy -->
   <xsl:key name="split" match="
     tei:*[self::tei:div or self::tei:div1 or self::tei:div2][normalize-space(.) != ''][@type][
@@ -33,6 +37,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
     | tei:group/tei:text
     | tei:TEI/tei:text/tei:*/tei:*[self::tei:div or self::tei:div1 or self::tei:group or self::tei:titlePage  or self::tei:castList][normalize-space(.) != '']"
     use="generate-id(.)"/>
+  <xsl:variable name="idHigh" select="/*/tei:teiHeader/tei:encodingDesc/tei:refsDecl//tei:att[text() = 'xm:id'][@cert='high']"/>
   <!-- Name of file, provided by caller -->
   <xsl:param name="filename"/>
   <!-- Get metas as a global var to insert fields in all chapters -->
@@ -209,6 +214,12 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
   
   <xsl:template name="chapter">
     <alix:chapter>
+      <!-- id is here supposed to be unique ; maybe dangerous… -->
+      <xsl:if test="@xml:id and $idHigh">
+        <xsl:attribute name="xml:id">
+          <xsl:value-of select="@xml:id"/>
+        </xsl:attribute>
+      </xsl:if>
       <xsl:copy-of select="$info"/>
       <!-- local date or replicate book date ? -->
       <xsl:variable name="chapyear" select="substring(@when, 1, 4)"/>
@@ -253,7 +264,9 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
       </xsl:if>
       <alix:field name="text" type="text">
         <xsl:apply-templates/>
+        <xsl:processing-instruction name="index_off"/>
         <xsl:call-template name="footnotes"/>
+        <xsl:processing-instruction name="index_on"/>
       </alix:field>
     </alix:chapter>
   </xsl:template>

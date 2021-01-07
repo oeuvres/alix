@@ -33,6 +33,7 @@
 package alix.lucene;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -55,6 +56,7 @@ import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.sax.SAXResult;
+import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
 import org.apache.lucene.index.IndexWriter;
@@ -158,7 +160,12 @@ public class XMLIndexer implements Runnable
         StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
         transformer.setParameter("filename", filename);
         transformer.setParameter("index", true); // will strip bad things for indexation
-        transformer.transform(source, result);
+        // Michael Kay dixit, if we want indentation, we have to serialize
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        StreamResult res = new StreamResult(baos);
+        transformer.transform(source, res);
+        SAXParser = SAXFactory.newSAXParser();
+        SAXParser.parse(new ByteArrayInputStream(baos.toByteArray()), handler);
       }
       else {
         SAXParser.parse(new ByteArrayInputStream(bytes), handler);

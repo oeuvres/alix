@@ -444,5 +444,27 @@ public class JspTools
       return (Enum<?>)fallback;
     }
   }
+  
+  /**
+   * Build url parameters 
+   */
+  public String url(final String[] pars)
+  {
+    StringBuilder href = new StringBuilder();
+    boolean first =  true;
+    for (String par: pars) {
+      String value = request.getParameter(par);
+      if (value == null) continue;
+      if (first) {
+        first = false;
+        // href.append("?");
+      }
+      else {
+        href.append("&amp;");
+      }
+      href.append(par).append("=").append(escape(value));
+    }
+    return href.toString();
+  }
 
 }
