@@ -42,6 +42,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -175,9 +176,11 @@ public class Alix
     ftypeMeta.freeze();
   }
   /** Pool of instances, unique by path */
-  public static final HashMap<Path, Alix> pool = new HashMap<Path, Alix>();
+  public static final HashMap<String, Alix> pool = new HashMap<String, Alix>();
   /** Normalized path */
   public final Path path;
+  /** User properties for the base, freely set or modified */
+  public final Properties props;
   /** Shared Similarity for indexation and searching */
   public final Similarity similarity;
   /** A locale used for sorting search */
@@ -189,7 +192,7 @@ public class Alix
   /** The IndexReader if requested */
   private DirectoryReader reader;
   /** Max for docId */
-  int maxDoc;
+  private int maxDoc;
   /** The infos on field */
   private FieldInfos fieldInfos;
   /** The IndexSearcher if requested */
@@ -238,28 +241,13 @@ public class Alix
         break;
     }
     this.analyzer = new AnalyzerReuseControl(analyzer, new AlixReuseStrategy());
+    this.props = new Properties();
   }
 
-  /**
-   * See {@link #instance(Path, Analyzer)}
-   * @param path
-   * @param analyzer
-   * @return
-   * @throws IOException
-   */
-  public static Alix instance(final String path, final Analyzer analyzer) throws IOException 
-  {
-    return instance(Paths.get(path), analyzer, null);
-  }
 
-  public static Alix instance(final String path, final Analyzer analyzer, final FSDirectoryType dirType) throws IOException 
+  public static Alix instance(String name) 
   {
-    return instance(Paths.get(path), analyzer, dirType);
-  }
-
-  public static Alix instance(final Path path, final Analyzer analyzer) throws IOException 
-  {
-    return instance(path, analyzer, null);
+    return pool.get(name);
   }
 
   /**
@@ -269,13 +257,12 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public static Alix instance(Path path, final Analyzer analyzer, FSDirectoryType dirType) throws IOException 
+  public static Alix instance(String name, Path path, final Analyzer analyzer, FSDirectoryType dirType) throws IOException 
   {
-    path = path.toAbsolutePath().normalize(); // normalize path to be a key
-    Alix alix = pool.get(path);
+    Alix alix = pool.get(name);
     if (alix == null) {
       alix = new Alix(path, analyzer, dirType);
-      pool.put(path, alix);
+      pool.put(name, alix);
     }
     return alix;
   }
