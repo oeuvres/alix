@@ -7,7 +7,6 @@ import org.apache.lucene.util.FixedBitSet;
 
 import alix.lucene.Alix;
 import alix.lucene.TestAlix;
-import alix.lucene.analysis.FrAnalyzer;
 import alix.lucene.search.FieldText;
 
 public class TestFieldText
@@ -35,17 +34,17 @@ public class TestFieldText
   {
     Alix alix = TestAlix.miniBase(new WhitespaceAnalyzer());
     TestAlix.write(alix, new String[] {
-      "C C A", 
-      "A A A B", 
+      "C C C A", 
+      "A C C B", 
       "B A A",
       "C B B", 
-      "A B A A A",
+      "A B C A C C ",
       "B B B",
     });
     String fieldName = TestAlix.fieldName;
     FieldText fstats = alix.fieldText(fieldName);
     FormEnum terms = fstats.iterator(-1, null, null, null);
-    System.out.println("forms, alpha");
+    System.out.println("forms, in formId order");
     System.out.println(terms);
     FixedBitSet bits = new FixedBitSet(alix.maxDoc());
     bits.set(2);
@@ -56,9 +55,6 @@ public class TestFieldText
     }
     System.out.println("Filtered forms, occurrences");
     terms = fstats.iterator(-1, null, bits, null);
-    System.out.println(terms);
-    System.out.println("Filtered forms, with a scorer");
-    terms = fstats.iterator(-1, new SpecifBinomial(), bits, null);
     System.out.println(terms);
 
     System.out.println("Filtered forms, reverse chi2");
@@ -72,16 +68,15 @@ public class TestFieldText
   
   static public void perfs() throws IOException
   {
+    /*
     long time;
-    Alix alix = Alix.instance("web/WEB-INF/obvil/test", new FrAnalyzer());
+    Alix alix = Alix.instance("", "web/WEB-INF/obvil/test", new FrAnalyzer());
     String field = "bibl";
     time = System.nanoTime();
     FieldText fstats = alix.fieldText(field);
     System.out.println(fstats);
     System.out.println("Terms in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     time = System.nanoTime();
-    // TODO optimize search
-    /*
     TermIterator search search = fstats.topTerms();
     System.out.println("\n\nDic in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     time = System.nanoTime();
@@ -99,7 +94,7 @@ public class TestFieldText
   
   public static void main(String[] args) throws IOException 
   {
-    // mini();
-    stops();
+    mini();
+    // stops();
   }
 }

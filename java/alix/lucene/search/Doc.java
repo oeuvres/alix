@@ -61,7 +61,7 @@ import alix.fr.Tag.TagFilter;
 import alix.lucene.Alix;
 import alix.lucene.analysis.FrDics;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
-import alix.lucene.search.DocRail.Token;
+import alix.lucene.search.DocHiliter.Token;
 import alix.lucene.util.WordsAutomatonBuilder;
 import alix.util.Chain;
 import alix.util.Char;
@@ -210,15 +210,15 @@ public class Doc
    * @return
    * @throws NoSuchFieldException
    */
-  public String get(String field) throws NoSuchFieldException
+  public String get(String field) throws NoSuchFieldException 
   {
+    // inform user that he has not load the field he wants
     if (fieldsToLoad != null && !fieldsToLoad.contains(field)) {
       throw new NoSuchFieldException("The field \""+field+"\" has not been loaded with the document \""+id+"\"");
     }
     String text = document.get(field);
-    if (text == null) {
-      throw new NoSuchFieldException("No text for the field \""+field+"\" in the document \""+id+"\"");
-    }
+    // too hard to send exceptions when used with wild life documents. Let user deal with null
+    // throw new NoSuchFieldException("No text for the field \""+field+"\" in the document \""+id+"\"");
     return text;
   }
   
@@ -250,7 +250,7 @@ public class Doc
   {
     Terms tvek = getTermVector(field);
     String text = get(field);
-    final DocRail rail = new DocRail(tvek, null, FrDics.STOP_BYTES);
+    final DocHiliter rail = new DocHiliter(tvek, null, FrDics.STOP_BYTES);
     final int countMax = rail.countMax;
     final Token[] toks = rail.toks;
     final StringBuilder sb = new StringBuilder();
@@ -447,17 +447,17 @@ public class Doc
    * @throws NoSuchFieldException
    * @throws IOException
    */
-  public String[] kwic(final String field, ByteRunAutomaton include, final String href, int limit, int left, int right, final int gap, final boolean expressions) throws NoSuchFieldException, IOException
+  public String[] kwic(final String field, ByteRunAutomaton include, final String href, int limit, int left, int right, final int gap, final boolean expressions, final boolean repetitions) throws NoSuchFieldException, IOException
   {
     if (left < 0 || left > 500) left = 50;
     if (right < 0 || right > 500) right = 50;
     Terms tvek = getTermVector(field);
     String xml = get(field);
-    DocRail rail = new DocRail(tvek, include, null);
+    DocHiliter rail = new DocHiliter(tvek, include, null);
     Token[] toks = rail.toks;
     // group tokens for expression ?
     // do better testing here
-    if(expressions) toks = rail.group(gap);
+    if(expressions) toks = rail.group(gap, repetitions);
     // no token or expression found
     if (toks == null || toks.length < 1) return null;
     Chain line = new Chain();
@@ -505,7 +505,7 @@ public class Doc
   {
     Terms tvek = getTermVector(field);
     String text = get(field);
-    DocRail rail = new DocRail(tvek, include, null);
+    DocHiliter rail = new DocHiliter(tvek, include, null);
     final Token[] toks = rail.toks;
     StringBuilder sb = new StringBuilder();
 

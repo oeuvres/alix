@@ -43,11 +43,11 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 /**
- * A flatten version of a term vector for a document field.
+ * Build a flatten version of a term vector for a document, to hilite some terms.
  */
-public class DocRail
+public class DocHiliter
 {
-  /** The list of tokens in prder of the document */
+  /** The list of tokens in order of the document */
   final Token[] toks;
   /** Max count for the most frequent token */
   final int countMax;
@@ -60,7 +60,7 @@ public class DocRail
    * @throws NoSuchFieldException
    * @throws IOException
    */
-  public DocRail(Terms tvek, ByteRunAutomaton include, ByteRunAutomaton exclude) throws NoSuchFieldException, IOException
+  public DocHiliter(Terms tvek, ByteRunAutomaton include, ByteRunAutomaton exclude) throws NoSuchFieldException, IOException
   {
     if (!tvek.hasFreqs() || !tvek.hasPositions() || !tvek.hasOffsets()) {
       throw new NoSuchFieldException("Missig offsets in search Vector; see FieldType.setStoreTermVectorOffsets(true)");
@@ -74,6 +74,7 @@ public class DocRail
     TermsEnum tenum = tvek.iterator();
     PostingsEnum postings = null;
     int termId = 1;
+    // the loop is here not very efficient for just a few term
     while (tenum.next() != null) {
       BytesRef ref = tenum.term();
       if (exclude != null && exclude.run(ref.bytes, ref.offset, ref.length)) continue; 
@@ -100,11 +101,12 @@ public class DocRail
   /**
    * Group the token Array to get expressions
    */
-  public Token[] group(final int gap)
+  public Token[] group(final int gap, boolean repetitions)
   {
-    if (this.toks == null) return null;
-    if (this.toks.length < 2 ) return null; // multi words required but there is only one
-    Token[] toks = this.toks;
+    if (this.toks == null) return null; // ?? why ? Shall we send an exception ?
+    // if only one word, should capture repetitions
+    if (this.toks.length < 2 ) return null; // only one word found, no group possible
+    Token[] toks = this.toks; // localize the rail
     ArrayList<Token> offsets = new ArrayList<Token>();
     Token last = toks[0];
     // loop on sorted tokens, 
@@ -128,7 +130,9 @@ public class DocRail
       last.end = tok.end;
       last.posLast = tok.pos;
       last.form = last.form+'_'+tok.form;
-      if (last.termId != tok.termId) last.phrase = true;
+      if (repetitions) last.phrase = true; // allow repetitions
+      else if (last.termId != tok.termId) last.phrase = true; // or not
+      
       // keep pos and start, nothing relevant to do with count
     }
     toks = offsets.toArray(TOKEN0);
@@ -136,7 +140,7 @@ public class DocRail
   }
   
   /**
-   * A record to sort term vectors occurrences
+   * A record to sort term vectors occurrences with offsets for hilite
    */
   static class Token implements Comparable<Token>
   {

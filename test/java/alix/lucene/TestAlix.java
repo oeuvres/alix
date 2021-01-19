@@ -41,7 +41,7 @@ public class TestAlix
   {
     if (analyzer == null) analyzer = new WhitespaceAnalyzer();
     Dir.rm(path);
-    Alix alix = Alix.instance(path, analyzer);
+    Alix alix = Alix.instance("test", path, analyzer, null);
     return alix;
   }
   

@@ -33,7 +33,9 @@
 package alix.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
@@ -47,6 +49,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
@@ -101,6 +104,16 @@ public class FieldText
   
 
 
+  /**
+   * Build the dictionaries and stats. Each form indexed for the field will be identified by an int (formid).
+   * This id will be in freq order, so that the form with formid=1 is the most frequent for the index
+   * (formId=0 is the empty string). This order allows optimizations for co-occurrences matrix,
+   * 
+   * 
+   * @param reader
+   * @param fieldName
+   * @throws IOException
+   */
   public FieldText(final DirectoryReader reader, final String fieldName) throws IOException
   {
     FieldInfos fieldInfos = FieldInfos.getMergedFieldInfos(reader);
@@ -112,71 +125,81 @@ public class FieldText
     if (options == IndexOptions.NONE || options == IndexOptions.DOCS) {
       throw new IllegalArgumentException("Field \"" + fieldName + "\" of type " + options + " has no FREQS (see IndexOptions)");
     }
-    final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
     this.reader = reader;
     final int[] docOccs = new int[reader.maxDoc()];
+    final FixedBitSet docs =  new FixedBitSet(reader.maxDoc()); // used to count exactly docs with more than one term
     this.fieldName = fieldName;
-    BytesRefHash hashDic = new BytesRefHash();
-    // False good ideas
-    hashDic.add(new BytesRef("")); // add empty string as formId=0 for empty positions
-    this.docsAll = reader.getDocCount(fieldName);
-    this.occsAll = reader.getSumTotalTermFreq(fieldName);
-    int[] termDocs = null;
-    long[] termOccs = null;
-    BytesRef ref;
-    java.util.BitSet stopRecord = new java.util.BitSet(); // record StopWords to build an optimized BitSet
+    
+    
+    long occsAll = 0;
+    ArrayList<FormRecord> stack = new ArrayList<FormRecord>();
+    BytesRef bytes;
 
-    // loop on the index leaves
+    // read in IndexReader.totalTermFreq(Term term)
+    // «Note that, like other term measures, this measure does not take deleted documents into account.»
+    // So it is more efficient to use a term iterator on all terms
+    final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
+    // a tmp dic used as an id provider, is needed if there are more than on leave to the index
+    // is also used to remmeber the UTF8 bytes to reorder
+    BytesRefHash tmpDic = new BytesRefHash();
+    // loop on the index leaves to get all terms and freqs
     for (LeafReaderContext context : reader.leaves()) {
       LeafReader leaf = context.reader();
       int docBase = context.docBase;
       Terms terms = leaf.terms(fieldName);
       if (terms == null) continue;
-      // first leaf
-      if (termDocs == null) {
-        termDocs = new int[(int) terms.size()];
-        termOccs = new long[(int) terms.size()];
-      }
       TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
       PostingsEnum docsEnum = null;
-      // because search are sorted, we could merge dics more efficiently
-      // between leaves, but index in Alix are generally merged
-      while ((ref = tenum.next()) != null) {
-        // if (ref.length == 0) continue; // maybe an empty position, keep it
-        int formId = hashDic.add(ref);
-        if (formId < 0) formId = -formId - 1; // value already given
-        if (FrDics.isStop(ref)) stopRecord.set(formId);
-        // growing is needed if index has more than one leaf
-        termDocs = ArrayUtil.grow(termDocs, formId + 1);
-        termOccs = ArrayUtil.grow(termOccs, formId + 1);
-        termDocs[formId] += tenum.docFreq();
+      while ((bytes = tenum.next()) != null) {
+        if (bytes.length == 0) continue; // maybe an empty position, do not count
+        FormRecord rec;
+        int tmpId = tmpDic.add(bytes);
+        // form already encountered, probabbly another leave
+        if (tmpId < 0) {
+          tmpId = -tmpId - 1;
+          rec = stack.get(tmpId); // should be OK, but has not be tested
+        }
+        else {
+          rec = new FormRecord(tmpId);
+          stack.add(tmpId, rec);
+        }
         // termLength[formId] += tenum.totalTermFreq(); // not faster if not yet cached
         docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
         int docLeaf;
+        Bits live = leaf.getLiveDocs();
+        boolean hasLive = (live != null);
         while ((docLeaf = docsEnum.nextDoc()) != NO_MORE_DOCS) {
+          if (hasLive && !live.get(docLeaf)) continue; // deleted doc
           int freq = docsEnum.freq();
+          if (freq == 0) continue; // strange, is’n it ? Will probably not arrive
+          rec.docs++;
+          rec.occs += freq;
+          occsAll += freq;
           docOccs[docBase + docLeaf] += freq;
-          termOccs[formId] += freq;
+          docs.set(docBase + docLeaf);
         }
       }
     }
-    // 
-    
-    
-    // for a dictionary with scorer, we need global stats here
-    this.formDic = hashDic;
-    this.size = hashDic.size();
-    this.formAllDocs = termDocs;
-    this.formAllOccs = termOccs;
-    this.docOccs = docOccs;
-    // loop on all term ids to get a tag from dictionaries
-    int[] tags = new int[size];
-    BytesRef bytes = new BytesRef();
-    CharsAtt chars = new CharsAtt();
-    for (int formId = 0, max = size; formId < max; formId++) {
-      hashDic.get(formId, bytes);
-      if (bytes.length < 1) continue;
-      chars.copy(bytes);
+    this.size = stack.size()+1; // should be the stack of non empty term + empty term
+    // here we should have all we need to affect a freq formId
+    // sort forms, and reloop on them to get optimized things
+    java.util.BitSet stopRecord = new java.util.BitSet(); // record StopWords to build an optimized BitSet
+    BytesRefHash hashDic = new BytesRefHash(); // populate a new hash dic with values
+    hashDic.add(new BytesRef("")); // add empty string as formId=0 for empty positions
+    long[] formOccs = new long[this.size];
+    int[] formDocs = new int[this.size];
+    int[] tags = new int[this.size];
+    Collections.sort(stack); // should sort by frequences
+    CharsAtt chars = new CharsAtt(); // to test against indexation dicos
+    bytes = new BytesRef();
+    for (FormRecord rec: stack)
+    {
+      tmpDic.get(rec.tmpId, bytes); // get the term
+      final int formId = hashDic.add(bytes); // copy it and get an id for it
+      formOccs[formId] = rec.occs;
+      formDocs[formId] = rec.docs;
+      if (FrDics.isStop(bytes)) stopRecord.set(formId);
+      chars.copy(bytes); // not a lot efficient, but better than have a copy of the stop words dictionary as UTF8 bytes
       LexEntry entry = FrDics.word(chars);
       if (entry != null) {
         tags[formId] = entry.tag;
@@ -187,17 +210,47 @@ public class FieldText
         tags[formId] = entry.tag;
         continue;
       }
-      if (chars.length() < 1) continue;
+      if (chars.length() < 1) continue; // ?
       if (Char.isUpperCase(chars.charAt(0))) tags[formId] = Tag.NAME;
     }
-    this.formTag = tags;
-    // because terms are stored by Lucene in unicode order after indexing, formId is quite alphabetic
-    // so no optimization is here expected on th bitSet size
-    BitSet stops = new SparseFixedBitSet(size);
+    // here we should be happy and set class fields
+    BitSet stops = new FixedBitSet(stopRecord.length()); // because most common words are probably stop words, the bitset maybe optimized
+    // quite a dangerous loop but should work
     for (int formId = stopRecord.nextSetBit(0); formId != -1; formId = stopRecord.nextSetBit(formId + 1)) {
       stops.set(formId);
     }
     this.stops = stops;
+    this.occsAll = occsAll;
+    this.docsAll = docs.cardinality();
+    this.formDic = hashDic;
+    this.formAllDocs = formDocs;
+    this.formAllOccs = formOccs;
+    this.docOccs = docOccs;
+    this.formTag = tags;
+  }
+  
+  /**
+   * A temporary record used to sort collected terms from global index.
+   */
+  private class FormRecord implements Comparable<FormRecord>
+  {
+    final int tmpId;
+    int docs;
+    long occs;
+    
+    FormRecord(final int tmpId) {
+      this.tmpId = tmpId;
+    }
+
+    @Override
+    public int compareTo(FormRecord o)
+    {
+      int cp = Long.compare(o.occs, occs);
+      if (cp != 0) return cp;
+      // not the nicest alpha sort order
+      return Integer.compare(tmpId, o.tmpId);
+    }
+    
   }
 
   /**
