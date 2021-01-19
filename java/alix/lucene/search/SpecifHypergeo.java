@@ -49,10 +49,6 @@ package alix.lucene.search;
 public class SpecifHypergeo extends Specif
 {
   final static int FLOOR = 3;
-  @Override
-  public int type() {
-    return TYPE_PROB;
-  }
 
   /**
    * Find a hypergeometric distribution.  This uses exact math, trying
@@ -161,7 +157,7 @@ public class SpecifHypergeo extends Specif
   }
   
   @Override
-  public double prob(final double formPartOccs, final double formAllOccs)
+  public double prob(final double tfSum, final double formPartOccs, final double formAllOccs)
   {
     if (formAllOccs < 4) return 0;
     double mean = formAllOccs / allOccs;
@@ -177,6 +173,12 @@ public class SpecifHypergeo extends Specif
     }
     if ((formPartOccs / partOccs) > mean) return -Math.log10(p);
     else return Math.log10(p);
+  }
+
+  @Override
+  public double tf(double formDocOccs, double docOccs)
+  {
+    return 0;
   }
   
 }

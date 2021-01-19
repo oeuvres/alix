@@ -354,11 +354,10 @@ public class FieldFacet
     }
     long[] formAllOccs = fieldText.formAllOccs; // localize
 
-    boolean hasSpecif = (specif != null);
     if (specif == null) specif = new SpecifOccs();
-    specif.all(allOccs, allDocs);
+    boolean hasSpecif = (specif != null);
+    if (hasSpecif) specif.all(allOccs, allDocs);
     // boolean isTfidf = (specif.type() == Specif.TYPE_TFIDF);
-    boolean isProb = (specif.type() == Specif.TYPE_PROB);
     boolean hasFilter = (filter != null);
 
     // Crawl index to get stats by facet term about the text search
@@ -375,12 +374,16 @@ public class FieldFacet
     for (Term term : terms) {
       long[] formPartOccs = new long[size]; // a vector to count matched occurrences for this term, by facet
       final int formId = fieldText.formId(term.bytes());
+      if (hasSpecif) specif.idf(fieldText.formAllOccs[formId], fieldText.formAllDocs[formId] );
       // loop on the reader leaves (opening may have disk cost)
       for (LeafReaderContext context : reader.leaves()) {
         LeafReader leaf = context.reader();
         // get the ocurrence count for the term
         PostingsEnum postings = leaf.postings(term);
         if (postings == null) continue;
+        
+
+        
         final int docBase = context.docBase;
         int docLeaf;
         // loop on the docs for this term
@@ -403,20 +406,19 @@ public class FieldFacet
             occs[facetId] += freq; // add the matched freqs for this doc to the facet
             formPartOccs[facetId] += freq;
             // term frequency
-            // if (isTfidf) scores[facetId] += specif.tf(freq, docOccs[docId]);
+            if (hasSpecif) scores[facetId] += specif.tf(freq, docOccs[docId]);
 
           }
           if (!docSeen) docMap.set(docId); // do not recount this doc as hit for another term
         }
       }
       // set stats by term
-      if (isProb) {
+      if (hasSpecif) {
         for (int facetId = 0, length = occs.length; facetId < length; facetId++) { // get score for each facet
           specif.part(facetOccs[facetId], facetDocs[facetId]);
-          scores[facetId] += specif.prob(formPartOccs[facetId], formAllOccs[formId]); // ;
+          scores[facetId] += specif.prob(0, formPartOccs[facetId], formAllOccs[formId]); // ;
         }
       }
-      // if (isTfidf) specif.idf(fieldText.formAllOccs[formId], fieldText.formAllDocs[formId] );
 
     }
     FormEnum it;

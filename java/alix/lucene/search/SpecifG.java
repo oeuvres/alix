@@ -45,10 +45,6 @@ package alix.lucene.search;
  */
 public class SpecifG extends Specif
 {
-  @Override
-  public int type() {
-    return TYPE_PROB;
-  }
 
 
   /**
@@ -74,7 +70,7 @@ public class SpecifG extends Specif
   }
 
   @Override
-  public double prob(final double formPartOccs, final double formAllOccs)
+  public double prob(final double tfSum, final double formPartOccs, final double formAllOccs)
   {
     if (formAllOccs < 4) return 0;
     if (formPartOccs == 0) return 0;
@@ -84,6 +80,12 @@ public class SpecifG extends Specif
     double mean = formAllOccs / allOccs;
     if ((formPartOccs / partOccs) > mean) return p;
     else return -p;
+  }
+
+  @Override
+  public double tf(double formDocOccs, double docOccs)
+  {
+    return 0;
   }
 
 }

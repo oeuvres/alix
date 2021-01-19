@@ -395,8 +395,7 @@ public class FieldRail
     // final long[] freqs, final int limit, Specif specif, final TagFilter tags, final boolean reverse
     Specif specif = dic.specif;
     if (specif == null) specif = new SpecifOccs();
-    boolean isTfidf = (specif!= null && specif.type() == Specif.TYPE_TFIDF);
-    boolean isProb = (specif!= null && specif.type() == Specif.TYPE_PROB);
+    boolean hasSpecif = (specif != null);
     TagFilter tags = dic.tags;
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
@@ -414,12 +413,10 @@ public class FieldRail
       if (noStop && fieldText.isStop(formId)) continue;
       if (hasTags && !tags.accept(fieldText.formTag[formId])) continue;
       if (freqs[formId] == 0) continue;
-      if (isTfidf) {
+      if (hasSpecif) {
         specif.idf(formAllOccs[formId], formAllDocs[formId]);
         scores[formId] = specif.tf(freqs[formId], partOccs);
-      }
-      else if (isProb) {
-        scores[formId] = specif.prob(freqs[formId], formAllOccs[formId]);
+        scores[formId] = specif.prob(scores[formId], freqs[formId], formAllOccs[formId]);
       }
     }
 

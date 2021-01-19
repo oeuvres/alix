@@ -33,22 +33,41 @@
 package alix.lucene.search;
 
 /**
- * "Jaccard", "m11 / (m10 + m01 + m11)"
+ * Implementation of a Chi2 scorer (Pearson) like described by C. Muller (1968)
+ * <br/>Oi = Observation i
+ * <br/>Ei = Expectation i
+ * <br/>ΣOi = ΣEi = N (total of events)
+ * <br/>Chi2 = Σ(Oi - Ei)²/Ei
+ *
+ * https://en.wikipedia.org/wiki/Chi-squared_test
+ * 
  * 
  * @author glorieux-f
  */
-public class SpecifJaccard extends Specif
+public class SpecifChi2tf extends Specif
 {
 
   @Override
-  public int type() {
-    return TYPE_PROB;
+  public double tf(final double Oi, final double docOccs) {
+    double Ei = docOccs * formAllOccs / allOccs;
+    return (Oi - Ei) * (Oi - Ei) / Ei;
   }
 
+  
   @Override
-  public double prob(final double formPartOccs, final double formAllOccs)
+  public double prob(final double tfSum, final double formPartOccs, final double formAllOccs)
   {
-    return formPartOccs / (formAllOccs + partOccs + formPartOccs);
+    // minimum 
+    if (formAllOccs < 4) return 0;
+    double Oz = allOccs - formPartOccs;
+    double Ez = allOccs - (formAllOccs * partOccs / allOccs);
+    double p = tfSum + (Oz - Ez) * (Oz - Ez) / Ez;
+
+    
+    double mean = formAllOccs / allOccs;
+    if ((formPartOccs / partOccs) > mean) return p;
+    else return -p;
   }
+
 
 }

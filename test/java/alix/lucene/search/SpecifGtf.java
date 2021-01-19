@@ -33,22 +33,40 @@
 package alix.lucene.search;
 
 /**
- * Dice, "2*m11 / (m10² + m01²)"
+ * Implementation of a G-test scorer
+ * <br/>Oi = Observation i
+ * <br/>Ei = Expectation i
+ * <br/>ΣOi = ΣEi = N (total of observation)
+ * <br/>G = 2 Σ(Oi.ln(Oi/Ei))
+ * https://en.wikipedia.org/wiki/G-test
  * 
  * @author glorieux-f
+ *
  */
-public class SpecifDiceTf extends Specif
+public class SpecifGtf extends Specif
 {
-  
+  /**
+   * Returns a score for a term frequency in a document (tf): Oi*ln(Oi/Ei).
+   * idf() supposed to have been called to set correct formAllOccs.
+   */
   @Override
-  public int type() {
-    return TYPE_TFIDF;
+  public double tf(final double Oi, final double docOccs) {
+    double Ei = docOccs * formAllOccs / allOccs;
+    return Oi*Math.log(Oi / Ei);
   }
 
   @Override
-  public double tf(final double formDocOccs, final double docOccs)
+  public double prob(final double tfSum, final double formPartOccs, final double formAllOccs)
   {
-   return 2.0d * formDocOccs / (Math.pow(formAllOccs - formDocOccs, 2) + Math.pow(docOccs - formDocOccs, 2));
+    if (formAllOccs < 4) return 0;
+    if (formPartOccs == 0) return 0;
+    // last member of the sum
+    double Oz = allOccs - formPartOccs;
+    double Ez = allOccs - (formAllOccs * partOccs / allOccs);
+    double p = 2.0 * (tfSum + Oz * Math.log(Oz / Ez));
+    double mean = formAllOccs / allOccs;
+    if ((formPartOccs / partOccs) > mean) return p;
+    else return -p;
   }
 
 }

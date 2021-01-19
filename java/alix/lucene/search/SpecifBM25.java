@@ -45,10 +45,6 @@ public class SpecifBM25 extends Specif
   private final double b = 0.75f;
   /** Cache idf for a term */
   private double idf;
-  @Override
-  public int type() {
-    return TYPE_TFIDF;
-  }
   
   @Override
   public double idf(final double formAllOccs, final double formAllDocs)
@@ -64,6 +60,12 @@ public class SpecifBM25 extends Specif
   public double tf(final double formDocOccs, final double docOccs)
   {
     return idf * (formDocOccs * (k1 + 1)) / (formDocOccs + k1 * (1 - b + b * docOccs / docAvg));
+  }
+
+  @Override
+  public double prob(double tfSum, double formPartOccs, double formAllOccs)
+  {
+    return tfSum;
   }
 
 }

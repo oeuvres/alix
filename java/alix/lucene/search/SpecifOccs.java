@@ -35,14 +35,14 @@ package alix.lucene.search;
 public class SpecifOccs extends Specif
 {
   @Override
-  int type()
-  {
-    return Specif.TYPE_PROB;
-  }
-  @Override
-  public double prob(final double formPart, final double formAll)
+  public double prob(final double tf, final double formPart, final double formAll)
   {
     return formPart;
+  }
+  @Override
+  public double tf(double formDocOccs, double docOccs)
+  {
+    return 0;
   }
 
 

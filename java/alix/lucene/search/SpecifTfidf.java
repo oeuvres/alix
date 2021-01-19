@@ -69,10 +69,6 @@ public class SpecifTfidf extends Specif
   final double k = 0.2F;
 
   @Override
-  public int type() {
-    return TYPE_TFIDF;
-  }
-  @Override
   public double idf(final double formAllOccs, final double formAllDocs)
   {
     this.formAllOccs = formAllOccs;
@@ -87,6 +83,11 @@ public class SpecifTfidf extends Specif
   public double tf(final double formDocOccs, final double docOccs)
   {
     return idf * (k + (1 - k) * (double) formDocOccs / (double) docOccs);
+  }
+  @Override
+  public double prob(double tfSum, double formPartOccs, double formAllOccs)
+  {
+    return tfSum;
   }
 
 }

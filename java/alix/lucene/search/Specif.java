@@ -52,10 +52,6 @@ package alix.lucene.search;
  */
 public abstract class Specif
 {
-  /** tf-idf like scorer */
-  final static int TYPE_TFIDF = 1; 
-  /** classical proba like score */
-  final static int TYPE_PROB = 2; 
   /** Total count of occurrences in the base (big word count) ; as double to avoid casting */
   protected double allOccs;
   /** Total count of documents in the base */
@@ -71,8 +67,6 @@ public abstract class Specif
   /** Document count for a part */
   protected double partDocs;
   
-
-  abstract int type();
   /**
    * Set colletion stats, not modified by queries.
    * @param occsAll Total count of occurrences in the collection.
@@ -104,14 +98,11 @@ public abstract class Specif
   /**
    * Returns a score for a term frequency in a document (tf)
    */
-  public double tf(final double formDocOccs, final double docOccs) {
-    return 0;
-  }
+  public abstract double tf(final double formDocOccs, final double docOccs);
 
   /**
    * Set variables common to a part of a corpus, with no reference to a form.
-   * These variables are not used in classical tf-idf, but in lexicometry
-   * where a corpus is not supposed to be divided in documents.
+   * These variables are not used in classical tf-idf, but in lexicometry.
    * 
    * @param partOccs, word count for the part
    * @param partDocs, count of documents in the part
@@ -124,15 +115,15 @@ public abstract class Specif
 
   /**
    * Calculate the probability of a form in a part, according to a distribution 
-   * inferred from all corpus.
+   * inferred from all corpus. The tfSum maybe used in some formulas and should
+   * be maintained by caller.
    * 
+   * @param tfSum
    * @param formPartOccs 
    * @param formAllOccs
    * @return
    */
-  public double prob(final double formPartOccs, final double formAllOccs) {
-    return 0;
-  }
+  public abstract double prob(final double tfSum, final double formPartOccs, final double formAllOccs);
   
 
 }

@@ -46,9 +46,11 @@ public class SimilarityChi2 extends SimilarityBase {
   protected double score(BasicStats stats, double freq, double docLen) {
     // if (stats.getNumberOfFieldTokens() == 0) return 0; // ??
     final double expected = stats.getTotalTermFreq() * docLen / stats.getNumberOfFieldTokens();
-    final double measure = (freq - expected) * (freq - expected) / expected;
-    // DFISimilarity returns a log to limit boost effect
-    // return stats.getBoost() * log2(measure + 1);
+    double measure = (freq - expected) * (freq - expected) / expected;
+    if (measure == 0) return 0;
+    // against theory, a log is necessary to limit effect of too common word in a multi term query
+    // results are less relevant than default BM25
+    measure = stats.getBoost() * log2(measure);
     // if the observed frequency is less than expected, return negative (should be nice in multi term search)
     if (freq < expected) return -measure;
     return measure;

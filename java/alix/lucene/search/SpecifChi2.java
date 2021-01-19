@@ -46,11 +46,6 @@ package alix.lucene.search;
  */
 public class SpecifChi2 extends Specif
 {
-  @Override
-  public int type() {
-    return TYPE_PROB;
-  }
-
 
   /**
    * A 2x2 chi-square value.
@@ -96,7 +91,7 @@ public class SpecifChi2 extends Specif
   }
 
   @Override
-  public double prob(final double formPartOccs, final double formAllOccs)
+  public double prob(final double tfSum, final double formPartOccs, final double formAllOccs)
   {
     // minimum 
     if (formAllOccs < 4) return 0;
@@ -104,6 +99,12 @@ public class SpecifChi2 extends Specif
     double mean = formAllOccs / allOccs;
     if ((formPartOccs / partOccs) > mean) return p;
     else return -p;
+  }
+
+  @Override
+  public double tf(double formDocOccs, double docOccs)
+  {
+    return 0;
   }
 
 }

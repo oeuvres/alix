@@ -585,8 +585,7 @@ public class Doc
   {
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
-    boolean isTfidf = (specif != null && specif.type() == Specif.TYPE_TFIDF);
-    boolean isProb = (specif != null && specif.type() == Specif.TYPE_PROB);
+    boolean hasSpecif = (specif != null);
     // sorting default, may alpha be better ?
     if (specif == null) specif = new SpecifOccs();
     
@@ -615,8 +614,10 @@ public class Doc
       // scorer.weight(termOccs, termDocs); // collection level stats
       long formDocOccs = termit.totalTermFreq();
       occs[formId] = formDocOccs;
-      if (isTfidf) scores[formId] = specif.tf(formDocOccs, docOccs);
-      else if (isProb)  scores[formId] = specif.prob(formDocOccs, formAllOccs[formId]);
+      if (hasSpecif) {
+        scores[formId] = specif.tf(formDocOccs, docOccs);
+        scores[formId] = specif.prob(scores[formId], formDocOccs, formAllOccs[formId]);
+      }
     }
     // now we have all we need to build a sorted iterator on entries
     TopArray top;

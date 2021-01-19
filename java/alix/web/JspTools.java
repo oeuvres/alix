@@ -32,7 +32,11 @@
  */
 package alix.web;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -140,6 +144,7 @@ public class JspTools
     if (name == null) return;
     Cookie cookie = new Cookie(name, value);
     cookie.setMaxAge(MONTH);
+    cookie.setSecure(true);
     response.addCookie(cookie);
   }
 
@@ -444,6 +449,46 @@ public class JspTools
       return (Enum<?>)fallback;
     }
   }
+  
+  /**
+   * Get a value from a map (usually static)
+   */
+  public Object getMap(final String name, Map<String,?> map, String fallback)
+  {
+    String value = request.getParameter(name);
+    if (!map.containsKey(value)) return map.get(fallback);
+    return map.get(value);
+  }
+
+  /**
+   * Get a value from a map (usually static), with cookie persistance
+   */
+  public Object getMap(final String name, Map<String,?> map, String fallback, String cookie)
+  {
+    String value = request.getParameter(name);
+    // a value requested, let’s try it
+    if (check(value)) {
+      // it works, store it and send it
+      if (map.containsKey(value)) {
+        cookieSet(cookie, value);
+        return map.get(value);
+      }
+    }
+    // value is not null but empty, reset cookie, return default
+    if (value != null && "".equals(value.trim())) {
+      cookieDel(cookie);
+      return map.get(fallback);
+    }
+    // bad request or null request, try to get cookie
+    value = cookieGet(cookie);
+    // bad memory, things has changed, reset cookie
+    if (!map.containsKey(value)) {
+      cookieDel(cookie);
+      value = fallback;
+    }
+    return map.get(value);
+  }
+
   
   /**
    * Build url parameters 

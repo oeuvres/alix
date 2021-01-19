@@ -45,12 +45,12 @@ import org.apache.lucene.util.FixedBitSet;
 /**
  * Collect found document as a set of docids in a bitSet.
  * Caching should be ensure by user.
- * @author fred
- *
+ * 
+ * @author glorieux-f
  */
 public class CollectorBits extends SimpleCollector implements Collector
 {
-  /** The bitset (optimized for spare or all bits) */
+  /** The bitset (optimized for sparse or all bits) */
   private BitSet bits;
   /** Number of hits */
   private int hits = 0;

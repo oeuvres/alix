@@ -139,7 +139,8 @@ public class Load {
         }
       }
     });
-    Alix alix = Alix.instance(tmpPath, new FrAnalyzer());
+    // command line, cache doesn’t matter
+    Alix alix = Alix.instance( name, tmpPath, new FrAnalyzer(), null);
     // Alix alix = Alix.instance(path, "org.apache.lucene.analysis.core.WhitespaceAnalyzer");
     IndexWriter writer = alix.writer();
     XMLIndexer.index(writer, globs.toArray(new String[globs.size()]), SrcFormat.tei, threads);
