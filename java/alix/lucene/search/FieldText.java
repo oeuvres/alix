@@ -304,6 +304,35 @@ public class FieldText
     return iterator(limit, specif, filter, tags, false);
   }
 
+  /**
+   * Global termlist, maybe filtered but not scored. More efficient than a scorer
+   * that loop on each term for global.
+   * @return
+   */
+  public FormEnum iterator(final int limit, final TagFilter tags, final boolean reverse)
+  {
+    boolean hasTags = (tags != null);
+    boolean noStop = (tags != null && tags.noStop());
+    double[] scores = new double[size];
+    for (int formId=0; formId < size; formId++) {
+      if (noStop && isStop(formId)) continue;
+      if (hasTags && !tags.accept(formTag[formId])) continue;
+      // specif.idf(formOccs[formId], formDocs[formId] );
+      // loop on all docs containing the term ?
+      scores[formId] = formAllOccs[formId];
+    }
+    // now we have all we need to build a sorted iterator on entries
+    TopArray top;
+    if (limit < 1) top = new TopArray(scores); // all search
+    else top = new TopArray(limit, scores);
+    FormEnum it = new FormEnum(this);
+    it.scores = scores;
+    it.hits = formAllDocs;
+    it.freqs = formAllOccs;
+    it.sorter(top.toArray());
+    return it;
+  }
+  
   
   /**
    * Count of occurrences by term for a subset of the index,
@@ -315,32 +344,11 @@ public class FieldText
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
     if (specif == null) specif = new SpecifOccs();
-    boolean isTfidf = (specif!= null && specif.type() == Specif.TYPE_TFIDF);
-    boolean isProb = (specif!= null && specif.type() == Specif.TYPE_PROB);
+    boolean hasSpecif = (specif!= null);
     double[] scores = new double[size];
-    // no filter, send all docs
-    // TODO, find a good specific scorer
-    if (filter == null || filter.cardinality() < 1) {
-      for (int formId=0; formId < size; formId++) {
-        if (noStop && isStop(formId)) continue;
-        if (hasTags && !tags.accept(formTag[formId])) continue;
-        // specif.idf(formOccs[formId], formDocs[formId] );
-        // loop on all docs containing the term ?
-        scores[formId] = formAllOccs[formId];
-      }
-      // now we have all we need to build a sorted iterator on entries
-      TopArray top;
-      if (limit < 1) top = new TopArray(scores); // all search
-      else top = new TopArray(limit, scores);
-      FormEnum it = new FormEnum(this);
-      it.scores = scores;
-      it.hits = formAllDocs;
-      it.freqs = formAllOccs;
-      it.sorter(top.toArray());
-      return it;
-    }
+    boolean hasFilter = (filter != null && filter.cardinality() > 0);
     
-    specif.all(occsAll, docsAll);
+    if (hasSpecif) specif.all(occsAll, docsAll);
     
     BitSet hitsVek = new FixedBitSet(reader.maxDoc());
     
@@ -363,18 +371,18 @@ public class FieldText
         if (hasTags && !tags.accept(formTag[formId])) continue;
         // if formId is negative, let the error go, problem in reader
         // for each term, set scorer with global stats
-        if (isTfidf) specif.idf(formAllOccs[formId], formAllDocs[formId] );
+        if (hasSpecif) specif.idf(formAllOccs[formId], formAllDocs[formId] );
         docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
         int docLeaf;
         while ((docLeaf = docsEnum.nextDoc()) != NO_MORE_DOCS) {
           int docId = docBase + docLeaf;
-          if (!filter.get(docId)) continue; // document not in the filter
+          if (hasFilter && !filter.get(docId)) continue; // document not in the filter
           int freq = docsEnum.freq();
           if (freq < 1) throw new ArithmeticException("??? field="+fieldName+" docId=" + docId+" term="+bytes.utf8ToString()+" freq="+freq);
           hitsVek.set(docId);
           hits[formId]++;
           // if it’s a tf-idf like score
-          if (isTfidf) scores[formId] += specif.tf(freq, docOccs[docId]);
+          if (hasSpecif) scores[formId] += specif.tf(freq, docOccs[docId]);
           freqs[formId] += freq;
         }
       }
@@ -387,13 +395,13 @@ public class FieldText
     for (int docId = hitsVek.nextSetBit(0); docId != NO_MORE_DOCS; docId = hitsVek.nextSetBit(docId + 1)) {
       partOccs += docOccs[docId];
     }
-    if (isProb) {
+    if (hasSpecif) {
       specif.part(partOccs, hitsVek.cardinality());
       // loop on all form to calculate scores
       for (int formId = 0; formId < size; formId++) {
         long formPartOccs = freqs[formId];
         if (formPartOccs < 1) continue;
-        double p = specif.prob(formPartOccs, formAllOccs[formId]);
+        double p = specif.prob(scores[formId], formPartOccs, formAllOccs[formId]);
         scores[formId] = p;
       }
     }
