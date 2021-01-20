@@ -44,6 +44,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -301,6 +302,7 @@ public class FieldText
    */
   public boolean isStop(int formId)
   {
+    if ((formId + 1) > stops.length()) return false; // outside the set bits, shoul be not a step word
     return stops.get(formId);
   }
 
@@ -317,7 +319,7 @@ public class FieldText
   }
 
   /**
-   * Get a String value for formId, using a mutable array of bytes.
+   * Get a String value for a formId, using a mutable array of bytes.
    * @param formId
    * @param bytes
    * @return
@@ -386,6 +388,121 @@ public class FieldText
     return it;
   }
   
+  /**
+   * Because a sorted query will not calculate scores, here is something 
+   * to have stats for docs about a query.
+   * @throws IOException 
+   */
+  public DocStats docStats(String[] forms, Specif specif, final BitSet filter) throws IOException 
+  {
+    if (forms == null || forms.length == 0) return null;
+    int[] freqs = new int[reader.maxDoc()];
+    double[] scores = new double[reader.maxDoc()];
+    final boolean hasFilter = (filter != null && filter.cardinality() > 0);
+    if (specif == null) specif = new SpecifBM25();
+    final boolean hasSpecif = (specif != null);
+    if (hasSpecif) specif.all(occsAll, docsAll);
+    final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
+    // loop an all index to calculate a score for the forms
+    for (LeafReaderContext context : reader.leaves()) {
+      int docBase = context.docBase;
+      LeafReader leaf = context.reader();
+      Bits live = leaf.getLiveDocs();
+      final boolean hasLive = (live != null);
+      // loop on forms as lucene term
+      for (String form: forms) {
+        final int formId = formId(form);
+        if (hasSpecif) specif.idf(formAllOccs[formId], formAllDocs[formId] );
+        Term term = new Term(fieldName, form);
+        PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS);
+        int docLeaf;
+        while ((docLeaf = postings.nextDoc()) != NO_MORE_DOCS) {
+          if (hasLive && !live.get(docLeaf)) continue; // deleted doc
+          int docId = docBase + docLeaf;
+          if (hasFilter && !filter.get(docId)) continue; // document not in the filter
+          int freq = postings.freq();
+          if (freq < 1) throw new ArithmeticException("??? field="+fieldName+" docId=" + docId+" form="+form+" freq="+freq);
+          freqs[docId] += freq;
+          if (hasSpecif) {
+            // if it’s a tf-idf like score
+            scores[docId] += specif.tf(freq, docOccs[docId]);
+            // if it’s a classical stat (but we know now that idf is more relevant)
+            specif.part(docOccs[docId], 1);
+            scores[docId] += specif.prob(scores[docId], freq, formAllOccs[formId]); // tf(freq, docOccs[docId]);
+          }
+          
+        }
+      }
+    }
+    return new DocStats(freqs, scores);
+  }
+  
+  
+  public class DocStats 
+  {
+    /** count of occurences matches */
+    private final int[] docOccs;
+    /** a calculated score according to a formula */
+    private final double[] docScore;
+    /** count of doc sets */
+    int cardinality = -1;
+    /** useful for graphics */
+    double scoreMax;
+    /** useful for graphics */
+    double scoreMin;
+    
+    DocStats (final int[] docOccs, final double[] docScore) {
+      this.docOccs = docOccs;
+      this.docScore = docScore;
+    }
+    
+    public double score(final int docId) {
+      return docScore[docId];
+    }
+
+    public int occs(final int docId) 
+    {
+      return docOccs[docId];
+    }
+    
+    public int cardinality()
+    {
+      if (cardinality < 0) stats();
+      return cardinality;
+    }
+
+    public double scoreMax()
+    {
+      if (cardinality < 0) stats();
+      return scoreMax;
+    }
+
+    public double scoreMin()
+    {
+      if (cardinality < 0) stats();
+      return scoreMin;
+    }
+
+    /** 
+     * Calculate minimum stats for the series
+     */
+    private void stats() 
+    {
+      int cardinality = 0;
+      double scoreMax = Double.MIN_VALUE;
+      double scoreMin = Double.MAX_VALUE;
+      for (int docId = 0, docMax = docOccs.length; docId < docMax; docId++) {
+        int occs = docOccs[docId];
+        if (occs < 1) continue;
+        cardinality++;
+        if (docScore[docId] > scoreMax) scoreMax = docScore[docId];
+        if (docScore[docId] < scoreMin) scoreMin = docScore[docId];
+      }
+      this.cardinality = cardinality;
+      this.scoreMax = scoreMax;
+      this.scoreMin = scoreMin;
+    }
+  }
   
   /**
    * Count of occurrences by term for a subset of the index,
@@ -397,14 +514,13 @@ public class FieldText
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
     if (specif == null) specif = new SpecifOccs();
-    boolean hasSpecif = (specif!= null);
-    double[] scores = new double[size];
+    boolean hasSpecif = (specif != null);
     boolean hasFilter = (filter != null && filter.cardinality() > 0);
     
     if (hasSpecif) specif.all(occsAll, docsAll);
-    
     BitSet hitsVek = new FixedBitSet(reader.maxDoc());
     
+    double[] scores = new double[size];
     long[] freqs = new long[size];
     int[] hits = new int[size];
     BytesRef bytes;
@@ -413,6 +529,8 @@ public class FieldText
     for (LeafReaderContext context : reader.leaves()) {
       int docBase = context.docBase;
       LeafReader leaf = context.reader();
+      Bits live = leaf.getLiveDocs();
+      final boolean hasLive = (live != null);
       Terms terms = leaf.terms(fieldName);
       if (terms == null) continue;
       TermsEnum tenum = terms.iterator();
@@ -428,6 +546,7 @@ public class FieldText
         docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
         int docLeaf;
         while ((docLeaf = docsEnum.nextDoc()) != NO_MORE_DOCS) {
+          if (hasLive && !live.get(docLeaf)) continue; // deleted doc
           int docId = docBase + docLeaf;
           if (hasFilter && !filter.get(docId)) continue; // document not in the filter
           int freq = docsEnum.freq();

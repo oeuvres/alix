@@ -26,7 +26,7 @@ import alix.util.Chain;
 import alix.util.Char;
 import alix.util.DicFreq;
 import alix.util.IntRoll;
-import alix.util.IntVector;
+import alix.util.IntSeries;
 import alix.util.IntTuple;
 
 /**
@@ -45,7 +45,7 @@ public class DicPhrase
    * A local mutable Phrase for testing in the Map of phrases, efficient but not
    * thread safe
    */
-  private IntVector buffer = new IntVector();
+  private IntSeries buffer = new IntSeries();
   /** A local mutable String for locution insertion, not thread safe */
   private Chain token = new Chain();
 
@@ -69,7 +69,7 @@ public class DicPhrase
     final int lim = compound.length();
     if (lim == 0) return false;
     int code;
-    IntVector buffer = this.buffer; // take a ref to avoid a lookup
+    IntSeries buffer = this.buffer; // take a ref to avoid a lookup
     buffer.reset();
     Chain token = this.token.reset(); // a temp mutable string
     for (int i = 0; i < lim; i++) {
@@ -105,7 +105,7 @@ public class DicPhrase
     return tupleDic.size();
   }
 
-  public int inc(final IntVector key)
+  public int inc(final IntSeries key)
   {
     Ref ref = tupleDic.get(key);
     occs++;
@@ -137,7 +137,7 @@ public class DicPhrase
    * @param buffer
    * @return ???
    */
-  public void label(final IntVector key, final String label)
+  public void label(final IntSeries key, final String label)
   {
     Ref ref = tupleDic.get(key);
     if (ref == null) return; // create it ?
@@ -152,7 +152,7 @@ public class DicPhrase
     ref.label = label;
   }
 
-  public boolean contains(final IntVector key)
+  public boolean contains(final IntSeries key)
   {
     Ref ref = tupleDic.get(key);
     if (ref == null) return false;

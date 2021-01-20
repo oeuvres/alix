@@ -2,11 +2,12 @@
 <!--
 
 LGPL  http://www.gnu.org/licenses/lgpl.html
+© 2017 Frederic.Glorieux@fictif.org & Université de Genève/Rougemont 2.0
 © 2013 Frederic.Glorieux@fictif.org & LABEX OBVIL
 © 2012 Frederic.Glorieux@fictif.org 
 © 2010 Frederic.Glorieux@fictif.org & École nationale des chartes
 © 2007 Frederic.Glorieux@fictif.org
-© 2005 ajlsm.com (Cybertheses)
+© 2005 ajlsm.com & Lyon 2/Cybertheses
 
 
 Different templates shared among the callers
@@ -537,14 +538,30 @@ Gobal TEI parameters and variables are divided in different categories
         <xsl:when test="count($pb) &gt; 1">pp. </xsl:when>
         <xsl:otherwise>p. </xsl:otherwise>
       </xsl:choose>
-      <xsl:value-of select="$pb[1]/@n"/>
-      <xsl:variable name="last" select="$pb[position() != 1][position() = last()]/@n"/>
-      <xsl:if test="$last &gt; 1">
+      <xsl:variable name="n1" select="translate($pb[1]/@n, ' ', ' ')"/>
+      <xsl:choose>
+        <xsl:when test="starts-with($n1, 'p.')">
+          <xsl:value-of select="normalize-space(substring-after($n1, 'p.'))"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="$n1"/>
+        </xsl:otherwise>
+      </xsl:choose>
+      <xsl:if test="count($pb) &gt; 1">
+        <xsl:variable name="nlast" select="translate($pb[position() = last()]/@n, ' ', ' ')"/>
         <xsl:text>-</xsl:text>
-        <xsl:value-of select="$last"/>
+        <xsl:choose>
+          <xsl:when test="starts-with($nlast, 'p.')">
+            <xsl:value-of select="normalize-space(substring-after($nlast, 'p.'))"/>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:value-of select="$nlast"/>
+          </xsl:otherwise>
+        </xsl:choose>
       </xsl:if>
     </xsl:if>
   </xsl:template>
+  
 
   <xsl:template name="id">
     <xsl:apply-templates select="." mode="id"/>
