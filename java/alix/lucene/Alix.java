@@ -1,9 +1,9 @@
 /*
  * Alix, A Lucene Indexer for XML documents.
  * 
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
- * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
  * Alix is a java library to index and search XML text documents
  * with Lucene https://lucene.apache.org/core/
@@ -555,13 +555,13 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public FieldInt fieldInt(String field) throws IOException
+  public FieldInt fieldInt(final String fintName, final String ftextName) throws IOException
   {
     IndexReader reader = reader(); // ensure reader, or decache
-    String key = "AlixFiedInt" + field;
+    String key = "AlixFiedInt" + fintName + "_" + ftextName;
     FieldInt ints = (FieldInt) cache(key);
     if (ints != null) return ints;
-    ints = new FieldInt(reader, field);
+    ints = new FieldInt(this, fintName, ftextName);
     cache(key, ints);
     return ints;
   }

@@ -34,6 +34,9 @@ package alix.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
 
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.DocValuesType;
@@ -48,105 +51,202 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 
+import alix.lucene.Alix;
+
 /**
  * Retrieve all values of an int field, store it in docId order,
  * calculate some stats..
  */
 public class FieldInt
 {
-  /** Field name */
-  private final String field;
-  /** The values in docId order */
+  /** Name of the int field name */
+  private final String fieldName;
+  /** Name of text field to get some occs stats */
+  private final String ftextName;
+  /** The int values for each docId */
   private final int[] docInt;
+  /** A copy of values, sorted, to use as a cursor */
+  private final int[] sorted;
+  /** Size in occs  for each int value, in the order of the sorted cursor */
+  private final long[] intOccs;
+  /** Count of docs by int value int the order of the sorted cursor */
+  private final int[] intDocs;
   /** Maximum value */
   private final int maximum;
   /** Minimum value */
   private final int minimum;
-  /** Number of values found */
-  private final int cardinal;
-  /** Arithmetic sum */
-  private final long sum;
-  /** Mean of the series */
-  private final double mean;
-  /** A copy of values, sorted, to get median and other n-tiles (on demand) */
-  private int[] sorted;
+  /** Number of documents traversed */
+  private final int docs;
+  /** Number of different values found */
+  private final int cardinality;
   /** Median of the series */
   private double median;
   
-  public FieldInt(IndexReader reader, String field) throws IOException
+  /**
+   * Build lexical stats around an int field
+   * @param reader
+   * @param field
+   * @throws IOException
+   */
+  public FieldInt(final Alix alix, final String fintName, final String ftextName) throws IOException
   {
-    this.field = field;
+    
+    IndexReader reader = alix.reader();
     FieldInfos fieldInfos = FieldInfos.getMergedFieldInfos(reader);
-    // build the list
-    FieldInfo info = fieldInfos.fieldInfo(field);
+    FieldInfo info = fieldInfos.fieldInfo(fintName);
     // check infos
     if (info.getDocValuesType() == DocValuesType.NUMERIC); // OK
-    if (info.getPointDimensionCount() > 1) { // multiple dimension IntPoint, cry
-      throw new IllegalArgumentException("Field \"" + field + "\" " + info.getPointDimensionCount()
+    else if (info.getPointDimensionCount() > 1) { // multiple dimension IntPoint, cry
+      throw new IllegalArgumentException("Field \"" + fintName + "\" " + info.getPointDimensionCount()
           + " dimensions, too much for an int tag by doc.");
     }
     else if (info.getPointDimensionCount() <= 0) { // not an IntPoint, cry
       throw new IllegalArgumentException(
-          "Field \"" + field + "\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
+          "Field \"" + fintName + "\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
     }
     // should be NumericDocValues or IntPoint with one dimension here
+    this.fieldName = fintName;
+    this.ftextName = ftextName;
+
+    
 
     int maxDoc = reader.maxDoc();
     final int[] docInt = new int[maxDoc];
     // fill with min value for docs deleted or with no values
     Arrays.fill(docInt, Integer.MIN_VALUE);
     
-    int min = Integer.MAX_VALUE; // min
-    int max = Integer.MIN_VALUE; // max
-    int card = 0; // card
-    long sum = 0; // sum
     // NumericDocValues
+    
+    // occs by int value (ex : year)
+    Map<Integer, long[]> counter = new TreeMap<Integer, long[]>();
+    // text stats
+    int[] docOccs = alix.fieldText(ftextName).docOccs;
+    
+    
     if (info.getDocValuesType() == DocValuesType.NUMERIC) {
+      int min = Integer.MAX_VALUE; // min
+      int max = Integer.MIN_VALUE; // max
+      int docs = 0; // card
+      long sum = 0; // sum
       for (LeafReaderContext context : reader.leaves()) {
         LeafReader leaf = context.reader();
-        NumericDocValues docs4num = leaf.getNumericDocValues(field);
+        NumericDocValues docs4num = leaf.getNumericDocValues(fintName);
         // no values for this leaf, go next
         if (docs4num == null) continue;
         final Bits liveDocs = leaf.getLiveDocs();
+        final boolean hasLive = (liveDocs != null);
         final int docBase = context.docBase;
         int docLeaf;
         while ((docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          if (liveDocs != null && !liveDocs.get(docLeaf)) continue;
+          if (hasLive && !liveDocs.get(docLeaf)) continue; // not living doc, probably deleted
+          final int docId = docBase + docLeaf;
           // TODO, if no value ?
-          int v = (int) docs4num.longValue(); // long value is force to int;
-          card++;
-          sum += v;
-          docInt[docBase + docLeaf] = v;
-          if (min > v) min = v;
-          if (max < v) max = v;
+          int value = (int) docs4num.longValue(); // long value is here force to int;
+          docs++;
+          sum += value;
+          docInt[docId] = value;
+          if (min > value) min = value;
+          if (max < value) max = value;
+          long[] count = counter.get(value);
+          if (count == null) {
+            count = new long[2];
+            counter.put(value, count);
+          }
+          count[0]++;
+          count[1] += docOccs[docId];
+
         }
       }
+      this.minimum = min;
+      this.maximum = max;
+      this.docs = docs;
     }
     // IntPoint
     else if (info.getPointDimensionCount() > 0) {
-      IntPointVisitor visitor = new IntPointVisitor(docInt);
+      IntPointVisitor visitor = new IntPointVisitor(docInt, counter, docOccs);
       for (LeafReaderContext context : reader.leaves()) {
         visitor.setContext(context); // for liveDocs and docBase
         LeafReader leaf = context.reader();
-        PointValues points = leaf.getPointValues(field);
+        PointValues points = leaf.getPointValues(fintName);
         points.intersect(visitor);
       }
-      min = visitor.min;
-      max = visitor.max;
-      card = visitor.card;
-      sum = visitor.sum;
+      this.minimum = visitor.min;
+      this.maximum = visitor.max;
+      this.docs= visitor.docs;
     }
-    this.minimum = min;
-    this.maximum = max;
-    this.cardinal = card;
-    this.sum = sum;
+    else {
+      throw new IllegalArgumentException(
+          "Field \"" + fintName + "\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
+    }
+    // get values of treeMap, should be ordered
+    this.cardinality = counter.size();
+    int[] sorted = new int[cardinality];
+    long[] intOccs = new long[cardinality];
+    int[] intDocs = new int[cardinality];
+    int i = 0;
+    for(Map.Entry<Integer,long[]> entry : counter.entrySet()) {
+      sorted[i] = entry.getKey();
+      intDocs[i] = (int)entry.getValue()[0];
+      intOccs[i] = entry.getValue()[1];
+      i++;
+    }
+    
     this.docInt = docInt;
-    this.mean = (double)sum / card;
+    this.sorted = sorted;
+    this.intOccs = intOccs;
+    this.intDocs = intDocs;
   }
 
-  public String field()
+  /**
+   * Enumerator on all values of the field and count of occs
+   * @return
+   */
+  public IntEnum iterator()
   {
-    return this.field;
+    return new IntEnum();
+  }
+
+  public class IntEnum
+  {
+    private int cursor = -1;
+    /**
+     * There are search left
+     * @return
+     */
+    public boolean hasNext()
+    {
+      return (cursor < (cardinality - 1));
+    }
+    
+    /**
+     * Advance the cursor to next element
+     */
+    public void next()
+    {
+      cursor++;
+    }
+
+    /**
+     * Count of occs for this position
+     */
+    public long occs()
+    {
+      return intOccs[cursor];
+    }
+    /**
+     * Count of documents for this position
+     */
+    public int docs()
+    {
+      return intDocs[cursor];
+    }
+    /**
+     * The int value in sortes order
+     */
+    public long value()
+    {
+      return sorted[cursor];
+    }
   }
 
   public int min()
@@ -161,32 +261,31 @@ public class FieldInt
 
   public int card()
   {
-    return this.cardinal;
+    return this.cardinality;
   }
 
-  public double mean()
+  public int cardinality()
   {
-    return this.mean;
+    return this.cardinality;
   }
 
-  public long sum()
-  {
-    return this.sum;
-  }
-
-  class IntPointVisitor implements PointValues.IntersectVisitor
+  private class IntPointVisitor implements PointValues.IntersectVisitor
   {
     public final int[] docInt;
+    public Map<Integer, long[]> counter;
+    private final int[] docOccs;
     private Bits liveDocs;
     private int docBase;
     public int min = Integer.MAX_VALUE;
     public int max = Integer.MIN_VALUE;
-    public int card = 0;
-    public long sum = 0;
+    public int docs = 0;
     
-    public IntPointVisitor(int[] docInt)
+    public IntPointVisitor(final int[] docInt, final Map<Integer, long[]> counter, final int[] docOccs)
     {
       this.docInt = docInt;
+      this.counter = counter;
+      this.docOccs = docOccs;
+      
     }
     
     
@@ -211,12 +310,18 @@ public class FieldInt
       if (liveDocs != null && !liveDocs.get(docLeaf)) return;
       // in case of multiple values, take the first one
       if (docInt[docId] > Integer.MIN_VALUE) return;
-      int v = IntPoint.decodeDimension(packedValue, 0);
-      docInt[docId] = v;
-      card++;
-      if (min > v) min = v;
-      if (max < v) max = v;
-      sum += v;
+      int value = IntPoint.decodeDimension(packedValue, 0);
+      docInt[docId] = value;
+      docs++;
+      if (min > value) min = value;
+      if (max < value) max = value;
+      long[] count = counter.get(value);
+      if (count == null) {
+        count = new long[2];
+        counter.put(value, count);
+      }
+      count[0]++;
+      count[1] += docOccs[docId];
     }
 
     @Override

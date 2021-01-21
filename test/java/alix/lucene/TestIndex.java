@@ -27,8 +27,8 @@ public class TestIndex
   public final static String FACET = "facet";
   static class Indexer implements Runnable
   {
-    final static String[] docs = { "go b a c ", "b a c e d ", "zz b aa c ee d zz", "a b f d e ",
-        "b a f e d ", "aa b c d ee zz zz 88 99 14"};
+    final static String[] docs = { "go b a c c", "b a c e d ", "zz b aa c ee ", "a b f d e ",
+        "b a f e d "};
     final IndexWriter writer;
     final int no;
 
@@ -71,7 +71,7 @@ public class TestIndex
     // test base
     Path path = Paths.get("work/test");
     Dir.rm(path);
-    Alix alix = Alix.instance(path, new WhitespaceAnalyzer()); // .
+    Alix alix = Alix.instance("test", path, new WhitespaceAnalyzer(), null); // .
     IndexWriter writer = alix.writer();
     final int threads = 10;
 
