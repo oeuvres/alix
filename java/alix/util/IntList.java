@@ -34,6 +34,8 @@ package alix.util;
 
 import java.util.Arrays;
 
+import alix.maths.Calcul;
+
 /**
  * A mutable list of ints.
  */

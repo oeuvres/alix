@@ -89,7 +89,7 @@ public class FieldText
   public final long occsAll;
   /** Global number of docs relevant for this field */
   public final int docsAll;
-  /** Count of occurrences by document for this field (for stats) */
+  /** Count of occurrences by document for this field (for stats), different from docLenghth (empty positions) */
   public final int[] docOccs;
   /** Store and populate the search and get the id */
   public final BytesRefHash formDic;
@@ -113,7 +113,7 @@ public class FieldText
    * 
    * @param reader
    * @param fieldName
-   * @throws IOException
+   * @throws Exception 
    */
   public FieldText(final DirectoryReader reader, final String fieldName) throws IOException
   {
@@ -152,7 +152,7 @@ public class FieldText
       TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
       PostingsEnum docsEnum = null;
       while ((bytes = tenum.next()) != null) {
-        if (bytes.length == 0) continue; // maybe an empty position, do not count
+        if (bytes.length == 0) continue; // should not count empty position
         FormRecord rec;
         int tmpId = tmpDic.add(bytes);
         // form already encountered, probabbly another leave
@@ -193,10 +193,13 @@ public class FieldText
     Collections.sort(stack); // should sort by frequences
     CharsAtt chars = new CharsAtt(); // to test against indexation dicos
     bytes = new BytesRef();
+    
+    
     for (FormRecord rec: stack)
     {
       tmpDic.get(rec.tmpId, bytes); // get the term
-      final int formId = hashDic.add(bytes); // copy it and get an id for it
+      final int formId = hashDic.add(bytes); // copy it in the other dic and get its definitive id
+      // if (bytes.length == 0) formId = 0; // if empty pos is counted
       formOccs[formId] = rec.occs;
       formDocs[formId] = rec.docs;
       if (FrDics.isStop(bytes)) stopRecord.set(formId);
@@ -536,6 +539,7 @@ public class FieldText
       TermsEnum tenum = terms.iterator();
       PostingsEnum docsEnum = null;
       while ((bytes = tenum.next()) != null) {
+        if (bytes.length == 0) continue; // do not count empty positions
         int formId = formDic.find(bytes);
         // filter some tags
         if (noStop && isStop(formId)) continue;

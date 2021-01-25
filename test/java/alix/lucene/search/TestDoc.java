@@ -26,7 +26,7 @@ public class TestDoc
     // test base
     Path path = Paths.get("work/test");
     Dir.rm(path);
-    Alix alix = Alix.instance(path, new WhitespaceAnalyzer());
+    Alix alix = Alix.instance("test", path, new WhitespaceAnalyzer(), null);
     IndexWriter writer = alix.writer();
     final FieldType fieldType = new FieldType();
     {
@@ -56,13 +56,13 @@ public class TestDoc
   
   public static void kwic() throws IOException, NoSuchFieldException
   {
-    final Alix alix = Alix.instance("/home/fred/code/ddrlab/WEB-INF/bases/rougemont", new FrAnalyzer());
+    final Alix alix = Alix.instance("test", Paths.get("/home/fred/code/ddrlab/WEB-INF/bases/rougemont"), new FrAnalyzer(), null);
     Doc doc = new Doc(alix, 228);
     System.out.println(doc.id);
     Automaton automaton = WordsAutomatonBuilder.buildFronStrings(new String[] {"état"});
     ByteRunAutomaton include = new ByteRunAutomaton(automaton);
 
-    String[] lines = doc.kwic("text", include, "", 200, 50, 50, 1, false);
+    String[] lines = doc.kwic("text", include, "", 200, 50, 50, 1, false, false);
     if (lines == null) return;
     for (String l:lines) { // null is OK if noting to group
       System.out.println(l);

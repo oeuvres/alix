@@ -34,7 +34,7 @@ public class TestFacet
     // test base
     Path path = Paths.get("work/test");
     Dir.rm(path);
-    Alix alix = Alix.instance(path, new FrAnalyzer());
+    Alix alix = Alix.instance("test", path, new FrAnalyzer(), null);
     IndexWriter writer = alix.writer();
     for (String w : new String[] {"A", "B", "C"}) {
       Document doc = new Document();
@@ -56,7 +56,7 @@ public class TestFacet
   public static void main(String args[]) throws Exception
   {
     Path path = Paths.get("web/WEB-INF/lucene");
-    Alix alix = Alix.instance(path, new FrAnalyzer());
+    Alix alix = Alix.instance("test", path, new FrAnalyzer(), null);
     FieldFacet facet = new FieldFacet(alix, "author", "text", null);
     // System.out.println(facet);
     // TopTerms search = facet.topTerms(null, alix.qTerms("prière", "text"), null);

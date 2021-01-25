@@ -41,7 +41,7 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.util.BytesRef;
 
-import alix.util.Calcul;
+import alix.maths.Calcul;
 
 /**
  * For data in a binary form suited for lucene stored field 

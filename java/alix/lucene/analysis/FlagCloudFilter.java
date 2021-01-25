@@ -38,6 +38,7 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import alix.fr.Tag;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
@@ -58,6 +59,8 @@ public class FlagCloudFilter extends TokenFilter
 {
   /** The term provided by the Tokenizer */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  /** The position increment (inform it if positions are stripped) */
+  private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
   /** A linguistic category as a short number, see {@link Tag} */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
   /** A normalized orthographic form */
@@ -66,6 +69,9 @@ public class FlagCloudFilter extends TokenFilter
   private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
   /** output pun or not ? */
   boolean pun;
+  /** keep right position order */
+  private int skippedPositions;
+
 
   public FlagCloudFilter(TokenStream in, boolean pun)
   {
@@ -73,17 +79,49 @@ public class FlagCloudFilter extends TokenFilter
     this.pun = pun;
   }
 
+  @Override
+  public final boolean incrementToken() throws IOException
+  {
+    // skipping positions will create holes, the count of tokens will be different from the count of positions
+    skippedPositions = 0;
+    while (input.incrementToken()) {
+      if (accept()) {
+        if (skippedPositions != 0) {
+          posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
+        }
+        return true;
+      }
+      skippedPositions += posIncrAtt.getPositionIncrement();
+    }
+    /*
+    while (input.incrementToken()) {
+      if (accept()) return true;
+    }
+    */
+    return false;
+  }
+
+  /**
+   * Most of the tokens are not rejected but rewrited
+   * @return
+   * @throws IOException
+   */
   protected boolean accept() throws IOException
   {
     int tag = flagsAtt.getFlags();
-    // filter some non semantic token
-    if (Tag.isPun(tag) && !pun) return false;
-    if (Tag.isNum(tag)) return false;
     if (tag == Tag.TEST) {
       System.out.println(termAtt+" — "+orthAtt);
     }
+    // record an empty token at puctuation position
+    if (Tag.isPun(tag) && !pun) {
+      termAtt.setEmpty().append("");
+    }
+    // unify numbers
+    else if (Tag.isNum(tag)) {
+      termAtt.setEmpty().append("000");
+    }
     // replace term by lemma when available
-    if (lemAtt.length() != 0) {
+    else if (lemAtt.length() != 0) {
       termAtt.setEmpty().append(lemAtt);
     }
     // or take the normalized form
@@ -104,15 +142,6 @@ public class FlagCloudFilter extends TokenFilter
       */
     }
     return true;
-  }
-
-  @Override
-  public final boolean incrementToken() throws IOException
-  {
-    while (input.incrementToken()) {
-      if (accept()) return true;
-    }
-    return false;
   }
 
   @Override

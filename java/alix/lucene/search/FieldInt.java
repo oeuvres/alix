@@ -47,11 +47,14 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 
 import alix.lucene.Alix;
+import alix.lucene.search.FieldText.DocStats;
 
 /**
  * Retrieve all values of an int field, store it in docId order,
@@ -59,18 +62,20 @@ import alix.lucene.Alix;
  */
 public class FieldInt
 {
+  /** The lucene index on wich stats are build */
+  private final IndexReader reader;
   /** Name of the int field name */
   private final String fieldName;
   /** Name of text field to get some occs stats */
   private final String ftextName;
-  /** The int values for each docId */
-  private final int[] docInt;
-  /** A copy of values, sorted, to use as a cursor */
+  /** A copy of values, sorted, position in this array is an internal id for the value */
   private final int[] sorted;
+  /** For each docId, the id of the  int value in the sorted vector */
+  private final int[] docValue;
   /** Size in occs  for each int value, in the order of the sorted cursor */
-  private final long[] intOccs;
+  private final long[] valueOccs;
   /** Count of docs by int value int the order of the sorted cursor */
-  private final int[] intDocs;
+  private final int[] valueDocs;
   /** Maximum value */
   private final int maximum;
   /** Minimum value */
@@ -92,6 +97,7 @@ public class FieldInt
   {
     
     IndexReader reader = alix.reader();
+    this.reader = reader;
     FieldInfos fieldInfos = FieldInfos.getMergedFieldInfos(reader);
     FieldInfo info = fieldInfos.fieldInfo(fintName);
     // check infos
@@ -117,7 +123,7 @@ public class FieldInt
     
     // NumericDocValues
     
-    // occs by int value (ex : year)
+    // stats by int value (ex : year)
     Map<Integer, long[]> counter = new TreeMap<Integer, long[]>();
     // text stats
     int[] docOccs = alix.fieldText(ftextName).docOccs;
@@ -181,24 +187,66 @@ public class FieldInt
     // get values of treeMap, should be ordered
     this.cardinality = counter.size();
     int[] sorted = new int[cardinality];
-    long[] intOccs = new long[cardinality];
-    int[] intDocs = new int[cardinality];
-    int i = 0;
+    long[] valOccs = new long[cardinality];
+    int[] valDocs = new int[cardinality];
+    Map<Integer, Integer> valueDic = new TreeMap<Integer, Integer>(); // a dic intValue => idValue
+    int valueId = 0;
     for(Map.Entry<Integer,long[]> entry : counter.entrySet()) {
-      sorted[i] = entry.getKey();
-      intDocs[i] = (int)entry.getValue()[0];
-      intOccs[i] = entry.getValue()[1];
-      i++;
+      final int valueInt = entry.getKey();
+      sorted[valueId] = valueInt;
+      valueDic.put(valueInt, valueId);
+      valDocs[valueId] = (int)entry.getValue()[0];
+      valOccs[valueId] = entry.getValue()[1];
+      valueId++;
+    }
+    // for each docId, replace the int value by it’s id 
+    for (int docId = 0; docId < maxDoc; docId++) {
+      int valueInt = docInt[docId];
+      if (valueInt == Integer.MIN_VALUE) continue;
+      docInt[docId] = valueDic.get(valueInt); // should not be null, let cry
     }
     
-    this.docInt = docInt;
+    this.docValue = docInt;
     this.sorted = sorted;
-    this.intOccs = intOccs;
-    this.intDocs = intDocs;
+    this.valueOccs = valOccs;
+    this.valueDocs = valDocs;
   }
 
   /**
-   * Enumerator on all values of the field and count of occs
+   * Add stats about one form to an iterator over the int values
+   * @throws IOException 
+   */
+  public void form(IntEnum iterator, String form) throws IOException
+  {
+    Term term = new Term(ftextName, form);
+    if (reader.docFreq(term) < 1) return; // nothing added to iterator, shall we say it ?
+    final long[] freqs = new long[cardinality]; // array to populate
+    int[] docValue = this.docValue; // localize
+    final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
+    // loop an all index to get occs for the term for each valueId
+    for (LeafReaderContext context : reader.leaves()) {
+      int docBase = context.docBase;
+      LeafReader leaf = context.reader();
+      Bits live = leaf.getLiveDocs();
+      final boolean hasLive = (live != null);
+      PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS);
+      int docLeaf;
+      while ((docLeaf = postings.nextDoc()) != NO_MORE_DOCS) {
+        if (hasLive && !live.get(docLeaf)) continue; // deleted doc
+        int docId = docBase + docLeaf;
+        int freq = postings.freq();
+        if (freq < 1) throw new ArithmeticException("??? field="+fieldName+" docId=" + docId+" form="+form+" freq="+freq);
+        final int valueId = docValue[docId]; // get the value id of this doc
+        freqs[valueId] += freq; // add freq 
+      }
+    }
+    if (iterator.dicOccs == null) iterator.dicOccs = new HashMap<String, long[]>();
+    iterator.dicOccs.put(form, freqs);
+  }
+  
+  
+  /**
+   * Enumerator on all values of the int field with different stats
    * @return
    */
   public IntEnum iterator()
@@ -208,7 +256,10 @@ public class FieldInt
 
   public class IntEnum
   {
+    /** Internal cursor */
     private int cursor = -1;
+    /** List of forms with stats by years in order of the sorted vector */
+    private Map<String, long[]> dicOccs;
     /**
      * There are search left
      * @return
@@ -231,14 +282,24 @@ public class FieldInt
      */
     public long occs()
     {
-      return intOccs[cursor];
+      return valueOccs[cursor];
+    }
+    /**
+     * Count of occs for a form, -1 if form not in the dictionary
+     */
+    public long occs(String form)
+    {
+      if (dicOccs == null) return -1;
+      long[] stats = dicOccs.get(form);
+      if (stats == null) return -1;
+      return stats[cursor];
     }
     /**
      * Count of documents for this position
      */
     public int docs()
     {
-      return intDocs[cursor];
+      return valueDocs[cursor];
     }
     /**
      * The int value in sortes order

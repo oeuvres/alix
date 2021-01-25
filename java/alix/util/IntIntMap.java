@@ -38,6 +38,8 @@ import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import alix.maths.Calcul;
+
 /**
  * An efficient int-int Map implementation, encoded in a long array for key and
  * value. A special method is used to modify a value by addition. Used for word

@@ -49,6 +49,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import alix.maths.Calcul;
+
 /**
  * A specialized table for a dictionary of search, with an int code, an int
  * counter, and an int tag. Conceived for performances, for linguistic usage,

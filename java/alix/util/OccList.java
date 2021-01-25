@@ -32,6 +32,8 @@
  */
 package alix.util;
 
+import alix.maths.Calcul;
+
 /**
  * A sequence of mutable Occs.
  * 

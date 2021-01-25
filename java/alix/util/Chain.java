@@ -37,6 +37,8 @@ import java.io.Writer;
 import java.nio.CharBuffer;
 import java.util.ArrayList;
 
+import alix.maths.Calcul;
+
 /**
  * <p>
  * A mutable string implementation that grows on the right ({@link Appendable},

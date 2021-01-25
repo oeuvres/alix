@@ -48,7 +48,7 @@ import org.apache.lucene.util.AttributeImpl;
 
 import alix.fr.Tag;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
-import alix.util.Calcul;
+import alix.maths.Calcul;
 import alix.util.Char;
 import alix.util.ML;
 

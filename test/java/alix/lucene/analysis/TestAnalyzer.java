@@ -292,6 +292,13 @@ public class TestAnalyzer
     System.out.println("———————————");
     vertical(text, new FrAnalyzer());
   }
+  
+  public static void pun() throws IOException
+  {
+    // text to tokenize
+    final String text = "V. Hugo. Victor Hugo. Les États-Nations, les états-nations, l’État, l’état, à Vrai dire… De Maître Eckhart à Jean de la Croix.  Jules Marie, Pierre de Martin ou Peut-être lol ? Les U.S.A., un grand pays. L'orange et l'Europe de l'acier. ";
+    vertical(text, new FrAnalyzer());
+  }
 
   public static void query() throws IOException
   {

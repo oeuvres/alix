@@ -44,7 +44,7 @@ import alix.lucene.analysis.FrDics.LexEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
-import alix.util.Calcul;
+import alix.maths.Calcul;
 import alix.util.Char;
 
 /**

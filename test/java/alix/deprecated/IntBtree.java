@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Random;
 
-import alix.util.Calcul;
+import alix.maths.Calcul;
 import alix.util.IntIntMap;
 
 /**

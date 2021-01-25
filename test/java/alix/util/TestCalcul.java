@@ -1,5 +1,6 @@
 package alix.util;
 
+import alix.maths.Calcul;
 
 public class TestCalcul
 {

@@ -47,6 +47,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 import java.util.stream.IntStream;
 
 import org.apache.lucene.index.DirectoryReader;
@@ -68,6 +70,7 @@ import alix.util.IntList;
 import alix.util.IntPair;
 import alix.util.Top;
 import alix.util.TopArray;
+import alix.web.Webinf;
 
 /**
  * Persistent storage of full sequence of all document search for a field.
@@ -83,6 +86,7 @@ import alix.util.TopArray;
 // ChronicleMap has been tested, but it is not more than x2 compared to lucene BinaryField.
 public class FieldRail
 {
+  static Logger LOGGER = Logger.getLogger(FieldRail.class.getName());
   /** State of the index */
   private final Alix alix;
   /** Name of the reference text field */
@@ -137,11 +141,17 @@ public class FieldRail
     lock = channel.lock(); // may throw OverlappingFileLockException if someone else has lock
     
     
-    int[] docLength = fieldText.docOccs;
+    // get document sizes
+    // fieldText.docOccs is not correct because of holes
+    int[] docLen = new int[maxDoc];
+    for (int docId = 0; docId < maxDoc; docId++) {
+      Terms termVector = reader.getTermVector(docId, fieldName);
+      docLen[docId] = length(termVector);
+    }
 
     long capInt = headerInt + maxDoc;
     for (int i = 0; i < maxDoc; i++) {
-      capInt += docLength[i] + 1 ;
+      capInt += docLen[i] + 1 ;
     }
     
     MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_WRITE, 0, capInt * 4);
@@ -150,7 +160,7 @@ public class FieldRail
     // the intBuffer 
     IntBuffer bufint = buf.asIntBuffer();
     bufint.put(maxDoc);
-    bufint.put(docLength);
+    bufint.put(docLen);
     IntList ints = new IntList();
     
     for (int docId = 0; docId < maxDoc; docId++) {
@@ -306,8 +316,7 @@ public class FieldRail
       ArrayList<PostingsEnum> termDocs = new ArrayList<PostingsEnum>();
       for (String word : dic.search) {
         if (word == null) continue;
-        // Do not try to reuse search, expensive
-        Term term = new Term(fieldName, word);
+        Term term = new Term(fieldName, word); // do not try to reuse term, false optimisation
         PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS|PostingsEnum.POSITIONS);
         if (postings == null) continue;
         final int docPost = postings.nextDoc(); // advance cursor to the first doc
@@ -354,7 +363,7 @@ public class FieldRail
         }
         if (!hit) continue;
         // count all freqs with pivot 
-        partOccs += contexts.cardinality();
+        // partOccs += contexts.cardinality(); // no, do not count holes
         // TODISCUSS substract search from contexts
         // contexts.andNot(search);
         // load the document rail and loop on the contexts to count co-occurrents
@@ -363,12 +372,14 @@ public class FieldRail
         Arrays.fill(docSeen, false);
         while (pos >= 0) {
           int formId = bufInt.get(posDoc + pos);
+          pos = contexts.nextSetBit(pos+1);
+          if (formId == 0) continue;
+          partOccs++;
           freqs[formId]++;
           if (!docSeen[formId]) {
             hits[formId]++;
             docSeen[formId] = true;
           }
-          pos = contexts.nextSetBit(pos+1);
         }
       }
     }
@@ -429,6 +440,28 @@ public class FieldRail
     
     dic.sorter(top.toArray());
   }
+  
+  /**
+   * Count document size by the positions in the term vector
+   */
+  public int length(Terms termVector) throws IOException
+  {
+    if (termVector == null) return 0;
+    int len = Integer.MIN_VALUE;
+    TermsEnum tenum = termVector.iterator();
+    PostingsEnum postings = null;
+    while (tenum.next() != null) {
+      postings = tenum.postings(postings, PostingsEnum.POSITIONS);
+      postings.nextDoc(); // always one doc
+      int freq = postings.freq();
+      for (int i = 0; i < freq; i++) {
+        int pos = postings.nextPosition();
+        if (pos > len) len = pos;
+      }
+    }
+    return len + 1;
+  }
+  
   
   /**
    * Flatten search of a document in a position order, according to the dictionary of search.
