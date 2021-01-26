@@ -503,7 +503,7 @@ public class FieldRail
    */
   public Top<IntPair> expressions(int limit) throws IOException
   {
-    Map<IntPair, Counter> expressions = new HashMap<IntPair, Counter>();
+    Map<IntPair, Bigram> expressions = new HashMap<IntPair, Bigram>();
 
     IntPair key = new IntPair();
     
@@ -522,24 +522,64 @@ public class FieldRail
         int formId = bufInt.get();
         if (stops.get(formId)) continue;
         key.set(lastId, formId);
-        Counter count = expressions.get(key);
+        Bigram count = expressions.get(key);
         if (count != null) count.inc();
-        else expressions.put(new IntPair(key), new Counter());
+        else expressions.put(new IntPair(key), new Bigram(key.x(), key.y()));
         lastId = formId;
       }
     }
-    StringBuilder sb = new StringBuilder();
     Top<IntPair> top= new Top<IntPair>(limit);
-    for (Map.Entry<IntPair, Counter> entry: expressions.entrySet()) {
+    for (Map.Entry<IntPair, Bigram> entry: expressions.entrySet()) {
       top.push(entry.getValue().count, entry.getKey());
     }
 
     return top;
   }
-
-  class Counter
+  
+  /**
+   * Loop on the rail to get bigrams without any intelligence.
+   * @return
+   * @throws IOException
+   */
+  public Map<IntPair, Bigram> bigrams(final BitSet filter) throws IOException
   {
-    int count = 1;
+    Map<IntPair, Bigram> dic = new HashMap<IntPair, Bigram>();
+    final boolean hasFilter = (filter != null);
+    IntPair key = new IntPair();
+    int maxDoc = this.maxDoc;
+    int[] posInt = this.posInt;
+    int[] limInt = this.limInt;
+    IntBuffer bufInt = channelMap.rewind().asIntBuffer();
+    int lastId = 0;
+    for (int docId = 0; docId < maxDoc; docId++) {
+      if (hasFilter && !filter.get(docId)) continue; 
+      if (limInt[docId] == 0) continue; // deleted or with no value for this field
+      bufInt.position(posInt[docId]);
+      for (int i = 0, max = limInt[docId] ; i < max; i++) {
+        int formId = bufInt.get();
+        // here we can skip holes, pun, or stop words
+        // if (stops.get(formId)) continue;
+        key.set(lastId, formId);
+        Bigram count = dic.get(key);
+        if (count != null) count.inc();
+        else dic.put(new IntPair(key), new Bigram(key.x(), key.y()));
+        lastId = formId;
+      }
+    }
+    return dic;
+  }
+
+
+  public class Bigram
+  {
+    public final int a;
+    public final int b;
+    public int count = 1;
+    public double score;
+    Bigram (final int a, final int b) {
+      this.a = a;
+      this.b = b;
+    }
     public int inc()
     {
       return ++count;

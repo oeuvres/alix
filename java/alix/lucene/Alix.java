@@ -694,7 +694,7 @@ u   * @throws IOException
     int aff = 0;
     try {
       while (ts.incrementToken()) {
-        if (Tag.isPun(flags.getFlags())) continue;
+        // if (Tag.isPun(flags.getFlags())) continue;
         // position may have been striped
         if (token.length() == 0) continue;
         if (bq == null && qTerm != null) { // second term, create boolean
@@ -803,10 +803,11 @@ u   * @throws IOException
           continue;
         }
         */
+        /* 
         if (",".equals(word) || ";".equals(word)) {
-          // search.add(null);
           continue;
         }
+        */
         forms.add(word);
       }
       ts.end();

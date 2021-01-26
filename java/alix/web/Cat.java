@@ -38,7 +38,8 @@ import alix.fr.Tag.TagFilter;
 /**
  * Options for filters by grammatical types
  */
-public enum Cat implements Option {
+public enum Cat implements Option 
+{
   
   ALL("Tout", null),
   NOSTOP("Mots pleins", new TagFilter().setAll().noStop(true)), 

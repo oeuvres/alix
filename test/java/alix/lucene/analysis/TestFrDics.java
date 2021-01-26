@@ -166,7 +166,11 @@ public class TestFrDics
   {
     // hashing();
     // compoundsDic();
-    compounds();
+    // compounds();
+    // stopping();
+    System.out.println(FrDics.isStop(","));
+    System.out.println(FrDics.isStop("a"));
+    System.out.println(FrDics.isStop("§"));
   }
 
 }

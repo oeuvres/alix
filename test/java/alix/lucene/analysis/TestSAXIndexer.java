@@ -21,7 +21,7 @@ public class TestSAXIndexer
   {
     Path path = Paths.get("work/test/");
     Dir.rm(path);
-    Alix alix = Alix.instance(path, new FrAnalyzer());
+    Alix alix = Alix.instance("test", path, new FrAnalyzer(), null);
     IndexWriter writer = alix.writer();
     SAXParserFactory factory = SAXParserFactory.newInstance();
     factory.setNamespaceAware(true);

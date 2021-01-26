@@ -58,7 +58,8 @@ public class FrAnalyzer extends Analyzer
     result = new FrPersnameFilter(result); // link unknown names, seems buggy
     boolean pun = false;
     if ("search".startsWith(field)) pun = true; // keep punctuation, ex, to parse search
-    result = new FlagCloudFilter(result, pun); // select lemmas as term to index
+    if (field.endsWith("orth")) result = new FlagOrthFilter(result); // select lemmas as term to index
+    else result = new FlagCloudFilter(result, pun); // select lemmas as term to index
     return new TokenStreamComponents(source, result);
   }
   

@@ -48,14 +48,10 @@ import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 /**
  * A final token filter before indexation,
  * to plug after a lemmatizer filter,
- * providing most significant tokens for word cloud. 
- * Index lemma instead of forms when available.
- * Strip punctuation and numbers.
- * Positions of striped tokens  are deleted.
- * This allows simple computation of a token context
- * (ex: span queries, co-occurrences).
+ * keep orthographic normalize form 
+ * (names with capital, common words with 
  */
-public class FlagCloudFilter extends TokenFilter
+public class FlagOrthFilter extends TokenFilter
 {
   /** The term provided by the Tokenizer */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -67,37 +63,20 @@ public class FlagCloudFilter extends TokenFilter
   private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
   /** A lemma when possible */
   private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
-  /** output pun or not ? */
-  boolean pun;
-  /** keep right position order */
-  private int skippedPositions;
 
 
-  public FlagCloudFilter(TokenStream in, boolean pun)
+  public FlagOrthFilter(TokenStream in)
   {
     super(in);
-    this.pun = pun;
   }
 
   @Override
   public final boolean incrementToken() throws IOException
   {
-    // skipping positions will create holes, the count of tokens will be different from the count of positions
-    skippedPositions = 0;
-    while (input.incrementToken()) {
-      if (accept()) {
-        if (skippedPositions != 0) {
-          posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
-        }
-        return true;
-      }
-      skippedPositions += posIncrAtt.getPositionIncrement();
-    }
-    /*
+    // squeeze deleted positions, do not record holes
     while (input.incrementToken()) {
       if (accept()) return true;
     }
-    */
     return false;
   }
 
@@ -110,36 +89,22 @@ public class FlagCloudFilter extends TokenFilter
   {
     int tag = flagsAtt.getFlags();
     if (tag == Tag.TEST) {
-      System.out.println(termAtt+" — "+orthAtt);
+      System.out.println(termAtt+" orth="+orthAtt+" lem="+lemAtt);
     }
-    // record an empty token at puctuation position
-    if (Tag.isPun(tag) && !pun) {
-      termAtt.setEmpty().append("");
+    // record an empty token at punctuation position for collocations
+    if (Tag.isPun(tag)) {
+      if (tag == Tag.PUNcl) termAtt.setEmpty().append(",");
+      else if (tag == Tag.PUNsent) termAtt.setEmpty().append(".");
+      else if (tag == Tag.PUNdiv) termAtt.setEmpty().append("§");
+      else termAtt.setEmpty().append("");
     }
     // unify numbers
     else if (Tag.isNum(tag)) {
       termAtt.setEmpty().append("NUM");
     }
-    // replace term by lemma when available
-    else if (lemAtt.length() != 0) {
-      termAtt.setEmpty().append(lemAtt);
-    }
-    // or take the normalized form
+    // replace term by normalized form if available
     else if (orthAtt.length() != 0) {
       termAtt.setEmpty().append(orthAtt);
-    }
-    // filter some names
-    if (Tag.isName(tag)) {
-      // A., B.…
-      if (termAtt.length() < 3) return false;
-      /*
-      // filter first names 
-      if (tag == Tag.NAMEpersf || tag == Tag.NAMEpersm) return false;
-      // M., A.
-      if (termAtt.charAt(termAtt.length() - 1) == '.') return false;
-      // J.-J
-      if (termAtt.charAt(termAtt.length() - 2) == '-') return false;
-      */
     }
     return true;
   }

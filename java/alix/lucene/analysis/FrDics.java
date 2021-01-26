@@ -96,7 +96,9 @@ public class FrDics
     Reader reader;
     try {
       // unmodifiable map with jdk10 Map.copyOf is not faster
-      STOP.add(new CharsAtt(";"));
+      STOP.add(new CharsAtt(";")); // add common col separator
+      STOP.add(new CharsAtt(",")); // the csv parser is not very robust
+      STOP.add(new CharsAtt("\t"));
       res = "stop.csv";
       reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
       csv = new CsvReader(reader, 1);
@@ -370,6 +372,10 @@ public class FrDics
   public static boolean isStop(CharsAtt att)
   {
     return STOP.contains(att);
+  }
+  public static boolean isStop(String form)
+  {
+    return STOP.contains(new CharsAtt(form));
   }
 
   public static boolean brevidot(CharsAtt att)

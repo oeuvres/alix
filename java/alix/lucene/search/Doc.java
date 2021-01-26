@@ -452,7 +452,9 @@ public class Doc
     if (left < 0 || left > 500) left = 50;
     if (right < 0 || right > 500) right = 50;
     Terms tvek = getTermVector(field);
-    String xml = get(field);
+    String fstore = field;
+    if (fstore.endsWith("_orth")) fstore = fstore.substring(0, fstore.lastIndexOf('_'));
+    String xml = get(fstore);
     DocHiliter rail = new DocHiliter(tvek, include, null);
     Token[] toks = rail.toks;
     // group tokens for expression ?

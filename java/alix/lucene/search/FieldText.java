@@ -34,7 +34,6 @@ package alix.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 
 import org.apache.lucene.index.DirectoryReader;
@@ -48,13 +47,11 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.SparseFixedBitSet;
 
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
@@ -171,13 +168,14 @@ public class FieldText
         boolean hasLive = (live != null);
         while ((docLeaf = docsEnum.nextDoc()) != NO_MORE_DOCS) {
           if (hasLive && !live.get(docLeaf)) continue; // deleted doc
+          final int docId = docBase + docLeaf;
           int freq = docsEnum.freq();
           if (freq == 0) continue; // strange, is’n it ? Will probably not arrive
           rec.docs++;
           rec.occs += freq;
           occsAll += freq;
-          docOccs[docBase + docLeaf] += freq;
-          docs.set(docBase + docLeaf);
+          docOccs[docId] += freq;
+          docs.set(docId);
         }
       }
     }
@@ -390,6 +388,48 @@ public class FieldText
     it.sorter(top.toArray());
     return it;
   }
+  
+  /**
+   * Get occs by formId from a subset of documents, useful for scoring inside a slice of corpus
+   * @throws IOException 
+   */
+  public long[] formOccs(BitSet filter) throws IOException
+  {
+    long[] formOccs = new long[formDic.size()];
+    long partOccs = 0;
+    BytesRef bytes;
+    final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
+    // loop an all index to calculate a score for the forms
+    for (LeafReaderContext context : reader.leaves()) {
+      LeafReader leaf = context.reader();
+      int docBase = context.docBase;
+      Terms terms = leaf.terms(fieldName);
+      if (terms == null) continue;
+      TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
+      PostingsEnum docsEnum = null;
+      while ((bytes = tenum.next()) != null) {
+        final int formId = formDic.find(bytes);
+        int docLeaf;
+        Bits live = leaf.getLiveDocs();
+        boolean hasLive = (live != null);
+        docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
+        // we should do faster here, navigating by the BitSet
+        while ((docLeaf = docsEnum.nextDoc()) != NO_MORE_DOCS) {
+          if (hasLive && !live.get(docLeaf)) continue; // deleted doc
+          final int docId = docBase + docLeaf;
+          if (!filter.get(docId)) continue;
+          int freq = docsEnum.freq();
+          if (freq == 0) continue; // strange, is’n it ? Will probably not arrive
+          formOccs[formId] += freq;
+          partOccs += freq;
+        }
+      }
+    }
+    formOccs[0] = partOccs; // quite a hack to have sum
+    return formOccs;
+  }
+  
+  
   
   /**
    * Because a sorted query will not calculate scores, here is something 

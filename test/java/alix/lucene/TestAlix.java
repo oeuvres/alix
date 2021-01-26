@@ -3,6 +3,7 @@ package alix.lucene;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
@@ -67,9 +68,12 @@ public class TestAlix
     Analyzer analyzer = new FrAnalyzer();
     final String field = "text";
     String q =  "+maintenant -loin Littré, +demain; -hier";
+    q = "de ,";
     // q = "Littré";
     Query query = Alix.query(field, q, analyzer);
     System.out.println(query);
+    String[] forms = Alix.forms(q, analyzer);
+    System.out.println(Arrays.toString(forms));
     // TermList search = Alix.qTermList(field, q, analyzer);
     // System.out.println(search);
   }

@@ -10,7 +10,7 @@ package alix.maths;
  * https://github.com/s-andrews/SeqMonk/tree/master/edu/northwestern/at/utils
  */
 
-public class FishersExactTest
+public class Fisher
 {
   /**  Calculate Fisher's exact test from the four cell counts.
    *
@@ -25,7 +25,7 @@ public class FishersExactTest
    *          [2]  = right-tail Fisher's exact test.
    */
 
-  public static double[] fishersExactTest
+  public static double[] test
   (
     int n11 ,
     int n12 ,
@@ -155,7 +155,7 @@ public class FishersExactTest
   /**  Don't allow instantiation but do allow overrides.
    */
 
-  protected FishersExactTest()
+  protected Fisher()
   {
   }
 }

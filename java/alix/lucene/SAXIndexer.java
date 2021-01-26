@@ -422,12 +422,16 @@ public class SAXIndexer extends DefaultHandler
             break;
           case TEXT:
             doc.add(new StoredField(name , text)); // text has to be stored for snippets and conc
-            TokenStream source = analyzer.tokenStream("stats", text);
-            doc.add(new Field(name, source, Alix.ftypeText)); // indexation of the chosen tokens
+            TokenStream source1 = analyzer.tokenStream(name, text);
+            doc.add(new Field(name, source1, Alix.ftypeText)); 
+            // replay the stream, not optmized,
+            // but a caching token stream has produce out of memory on some server with big docs
+            String name_orth = name + "_orth";
+            TokenStream source2 = analyzer.tokenStream(name_orth, text);
+            doc.add(new Field(name_orth, source2, Alix.ftypeText)); // indexation of the chosen tokens
+            // 
             // source.reset();
             /*
-            // A caching token stream allow to replay the tokens and get here stats to add to the document
-            // but some server complain about out of memory
             TokenStats stats = new TokenStats(source);
             TokenStream caching = new CachingTokenFilter(stats);
             caching.reset(); // reset upper filters ?
