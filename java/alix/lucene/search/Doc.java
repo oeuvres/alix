@@ -599,7 +599,7 @@ public class Doc
     long[] formAllOccs = fieldText.formAllOccs;
     int[] formAllDocs = fieldText.formAllDocs;
     int docOccs = alix.docOccs(field)[docId];
-    BitSet stops = fieldText.stops;
+    BitSet stops = fieldText.formStop;
 
     specif.all(fieldText.occsAll, fieldText.docsAll);
     specif.part(docOccs, 1); // part has one doc

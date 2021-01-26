@@ -77,9 +77,19 @@ public class IntList implements Comparable<IntList>
   /**
    * Light reset data, with no erase.
    */
-  public void reset()
+  public IntList reset()
   {
     length = 0;
+    return this;
+  }
+  
+  /**
+   * Test if vector is empty
+   * @return
+   */
+  public boolean isEmpty()
+  {
+    return (length < 1);
   }
 
   /**
@@ -98,12 +108,13 @@ public class IntList implements Comparable<IntList>
    * 
    * @param value
    */
-  public void push(int value)
+  public IntList push(int value)
   {
     final int pos = length;
     length++;
     grow(pos);
     data[pos] = value;
+    return this;
   }
 
   /**
@@ -111,12 +122,13 @@ public class IntList implements Comparable<IntList>
    * 
    * @param data
    */
-  protected void push(int[] data)
+  protected IntList push(int[] data)
   {
     int newSize = this.length + data.length;
     grow(newSize);
     System.arraycopy(data, 0, this.data, length, data.length);
     length = newSize;
+    return this;
   }
   
   /**
@@ -130,6 +142,30 @@ public class IntList implements Comparable<IntList>
     return data[pos];
   }
 
+  /**
+   * Get first value or cry if list is empty
+   * 
+   * @param pos
+   * @return
+   */
+  public int first()
+  {
+    if (length < 1) throw new ArrayIndexOutOfBoundsException("The list is empty, no first element");
+    return data[0];
+  }
+
+  /**
+   * Get last value or cry if list is empty
+   * 
+   * @param pos
+   * @return
+   */
+  public int last()
+  {
+    if (length < 1) throw new ArrayIndexOutOfBoundsException("The list is empty, no first element");
+    return data[length - 1];
+  }
+
 
   /**
    * Change value at a position
@@ -137,10 +173,11 @@ public class IntList implements Comparable<IntList>
    * @param pos
    * @param value
    */
-  public void put(int pos, int value)
+  public IntList put(int pos, int value)
   {
     grow(pos);
     data[pos] = value;
+    return this;
   }
 
   /**
@@ -149,10 +186,11 @@ public class IntList implements Comparable<IntList>
    * @param pos
    * @param value
    */
-  public void add(int pos, int value)
+  public IntList add(int pos, int value)
   {
     grow(pos) ;
     data[pos] += value;
+    return this;
   }
 
   /**
@@ -160,10 +198,11 @@ public class IntList implements Comparable<IntList>
    * 
    * @param pos
    */
-  public void inc(int pos)
+  public IntList inc(int pos)
   {
     grow(pos);
     data[pos]++;
+    return this;
   }
   
   /**

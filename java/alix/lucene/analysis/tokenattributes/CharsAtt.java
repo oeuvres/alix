@@ -440,7 +440,7 @@ public class CharsAtt extends AttributeImpl
   }
 
   /**
-   * Test an endinc char
+   * Test an ending char
    * @param c
    * @return
    */
@@ -448,6 +448,19 @@ public class CharsAtt extends AttributeImpl
   {
     if (len < 1) return false;
     return (chars[len -1] == c);
+  }
+  
+  /**
+   * 
+   * @param c
+   * @return
+   */
+  public boolean contains(final char c)
+  {
+    for (int i = 0; i < len; i++) {
+      if (c == chars[i]) return true;
+    }
+    return false;
   }
 
   /**

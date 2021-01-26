@@ -24,7 +24,7 @@ public class TestFieldText
     });
     String fieldName = TestAlix.fieldName;
     FieldText fstats = alix.fieldText(fieldName);
-    System.out.println("V="+fstats.size + " stops.size="+fstats.size);
+    System.out.println("V="+fstats.size + " formStop.size="+fstats.size);
     for (int formId = 0; formId < fstats.size; formId++) {
       System.out.println(formId + "=" + fstats.label(formId));
     }
@@ -95,6 +95,6 @@ public class TestFieldText
   public static void main(String[] args) throws IOException 
   {
     mini();
-    // stops();
+    // formStop();
   }
 }

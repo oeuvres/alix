@@ -55,10 +55,10 @@ public final class Tag
   public final static int VERBppass = 0x12;
   /** Participe présent, a souvent un emploi adjectif ou substantif */
   public final static int VERBppres = 0x13;
-  /**
-   * Verbe support, fréquent mais peut significatif, comme aller (je vais faire)
-   */
+  /** Verbe support, fréquent mais peut significatif, comme aller (je vais faire) */
   public final static int VERBsup = 0x15;
+  /** Locution verbale */
+  public final static int VERBloc = 0x1F;
   /** Substantif */
   public final static int SUB = 0x20;
   /** Substantif masculin (pas encore renseigné) */
@@ -67,8 +67,12 @@ public final class Tag
   public final static int SUBf = 0x22;
   /** Catégorie un peu adhoc pour monsieur, madame, prince… */
   public final static int SUBtit = 0x28;
+  /** Locution substantive */
+  public final static int SUBloc = 0x1F;
   /** Adjectif */
   public final static int ADJ = 0x30;
+  /** Locution adjectivale */
+  public final static int ADJloc = 0x3F;
   /** Adverbe */
   public final static int ADV = 0x40;
   /** Adverbe de négation : ne, pas, point… */
@@ -83,8 +87,12 @@ public final class Tag
   public final static int ADVindef = 0x4A;
   /** Adverbe interrogatif : est-ce que, comment… */
   public final static int ADVinter = 0x4B;
+  /** Locution adverbiale */
+  public final static int ADVloc = 0x4F;
   /** Préposition */
   public final static int PREP = 0x50;
+  /** locution prépositionnelle */
+  public final static int PREPloc = 0x5F;
   /** Déterminant */
   public final static int DET = 0x60;
   /** Déterminant article : le, la, un, des… */
@@ -143,7 +151,7 @@ public final class Tag
   public final static int NAMEorg = 0xB5;
   /** Nom de peuple */
   public final static int NAMEpeople = 0xB6;
-  /** Nom d’événement : la Révolution, la Seconde Guerre mondiale… */
+  /** Nom d’événement : la Révolution, XIIe siècle… */
   public final static int NAMEevent = 0xB7;
   /** Nom de personne auteur */
   public final static int NAMEauthor = 0xB8;
@@ -479,6 +487,7 @@ public final class Tag
     /** A boolean vector is a bit more efficient than a bitSet, and is not heavy here. */
     boolean[] rule = new boolean[256];
     boolean noStop;
+    boolean locutions;
     
     
     
@@ -500,6 +509,15 @@ public final class Tag
 
     public TagFilter noStop(boolean value) {
       noStop = value;
+      return this;
+    }
+
+    public boolean locutions() {
+      return locutions;
+    }
+
+    public TagFilter locutions(boolean value) {
+      locutions = value;
       return this;
     }
 

@@ -96,9 +96,10 @@ public class FieldText
   public final long[] formAllOccs;
   /** A tag by formId (maybe used for filtering) */
   public int[] formTag;
-  /** Stop words known as a bitSet, according to formId (growable java.util.BitSet is prefered to lucene fixed ones)  */
-  protected final BitSet stops; 
-  // No internal pointer on a term, not thread safe
+  /** Stop words known, as a bitSet for each formId */
+  protected final BitSet formStop; 
+  /** Locution known, as a bitSet for each formId */
+  protected final BitSet formLoc; 
   
 
 
@@ -183,6 +184,7 @@ public class FieldText
     // here we should have all we need to affect a freq formId
     // sort forms, and reloop on them to get optimized things
     java.util.BitSet stopRecord = new java.util.BitSet(); // record StopWords to build an optimized BitSet
+    BitSet locs = new FixedBitSet(this.size); // record locutions, size of BitSet will be full
     BytesRefHash hashDic = new BytesRefHash(); // populate a new hash dic with values
     hashDic.add(new BytesRef("")); // add empty string as formId=0 for empty positions
     long[] formOccs = new long[this.size];
@@ -201,7 +203,8 @@ public class FieldText
       formOccs[formId] = rec.occs;
       formDocs[formId] = rec.docs;
       if (FrDics.isStop(bytes)) stopRecord.set(formId);
-      chars.copy(bytes); // not a lot efficient, but better than have a copy of the stop words dictionary as UTF8 bytes
+      chars.copy(bytes); // convert utf-8 bytes to utf-16 chars
+      if (chars.contains(' ')) locs.set(formId);
       LexEntry entry = FrDics.word(chars);
       if (entry != null) {
         tags[formId] = entry.tag;
@@ -212,16 +215,18 @@ public class FieldText
         tags[formId] = entry.tag;
         continue;
       }
-      if (chars.length() < 1) continue; // ?
-      if (Char.isUpperCase(chars.charAt(0))) tags[formId] = Tag.NAME;
+      if (Char.isPunctuation(chars.charAt(0))) tags[formId] = Tag.PUN;
+      else if (chars.length() < 1) continue; // ?
+      else if (Char.isUpperCase(chars.charAt(0))) tags[formId] = Tag.NAME;
     }
-    // here we should be happy and set class fields
+    // convert a java.lang growable BitSets in fixed lucene ones
     BitSet stops = new FixedBitSet(stopRecord.length()); // because most common words are probably stop words, the bitset maybe optimized
-    // quite a dangerous loop but should work
     for (int formId = stopRecord.nextSetBit(0); formId != -1; formId = stopRecord.nextSetBit(formId + 1)) {
       stops.set(formId);
     }
-    this.stops = stops;
+    // here we should be happy and set class fields
+    this.formStop = stops;
+    this.formLoc = locs;
     this.occsAll = occsAll;
     this.docsAll = docs.cardinality();
     this.formDic = hashDic;
@@ -303,8 +308,8 @@ public class FieldText
    */
   public boolean isStop(int formId)
   {
-    if ((formId + 1) > stops.length()) return false; // outside the set bits, shoul be not a step word
-    return stops.get(formId);
+    if ((formId + 1) > formStop.length()) return false; // outside the set bits, shoul be not a step word
+    return formStop.get(formId);
   }
 
   /**
@@ -369,9 +374,11 @@ public class FieldText
   {
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
+    boolean locs = (tags != null && tags.locutions());
     double[] scores = new double[size];
     for (int formId=0; formId < size; formId++) {
       if (noStop && isStop(formId)) continue;
+      if (locs && !formLoc.get(formId)) continue;
       if (hasTags && !tags.accept(formTag[formId])) continue;
       // specif.idf(formOccs[formId], formDocs[formId] );
       // loop on all docs containing the term ?
@@ -556,6 +563,7 @@ public class FieldText
   {
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
+    boolean locs = (tags != null && tags.locutions());
     if (specif == null) specif = new SpecifOccs();
     boolean hasSpecif = (specif != null);
     boolean hasFilter = (filter != null && filter.cardinality() > 0);
@@ -582,6 +590,7 @@ public class FieldText
         if (bytes.length == 0) continue; // do not count empty positions
         int formId = formDic.find(bytes);
         // filter some tags
+        if (locs && !formLoc.get(formId)) continue;
         if (noStop && isStop(formId)) continue;
         if (hasTags && !tags.accept(formTag[formId])) continue;
         // if formId is negative, let the error go, problem in reader

@@ -64,8 +64,10 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
+import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.Alix;
+import alix.util.Chain;
 import alix.util.IntList;
 import alix.util.IntPair;
 import alix.util.Top;
@@ -497,43 +499,72 @@ public class FieldRail
   }
   
   /**
-   * Loop on the rail to find expression (2 plain word with 
+   * Loop on the rail to find expression (2 plain words with possible stop words between 
+   * but no holes or punctuation)
    * @return
    * @throws IOException
    */
-  public Top<IntPair> expressions(int limit) throws IOException
+  public Map<IntPair, Bigram> expressions(final BitSet filter) throws IOException
   {
+    final boolean hasFilter = (filter != null);
     Map<IntPair, Bigram> expressions = new HashMap<IntPair, Bigram>();
-
-    IntPair key = new IntPair();
     
     int maxDoc = this.maxDoc;
     int[] posInt = this.posInt;
     int[] limInt = this.limInt;
-    BitSet stops = fieldText.stops;
+    BitSet stops = fieldText.formStop;
+    int[] formTag = fieldText.formTag;
+    BytesRefHash formDic = fieldText.formDic;
     // no cost in time and memory to take one int view, seems faster to loop
     IntBuffer bufInt = channelMap.rewind().asIntBuffer();
-    int lastId = 0;
+    // a vector to record formId events
+    IntList slider = new IntList();
+    Chain chain = new Chain();
+    BytesRef bytes = new BytesRef();
     for (int docId = 0; docId < maxDoc; docId++) {
       if (limInt[docId] == 0) continue; // deleted or with no value for this field
-      // if (hasFilter && !filter.get(docId)) continue; // document not in the filter
-      bufInt.position(posInt[docId]);
+      if (hasFilter && !filter.get(docId)) continue; // document not in the filter
+      bufInt.position(posInt[docId]); // position cursor in the rail
+      IntPair key = new IntPair();
       for (int i = 0, max = limInt[docId] ; i < max; i++) {
         int formId = bufInt.get();
-        if (stops.get(formId)) continue;
-        key.set(lastId, formId);
-        Bigram count = expressions.get(key);
-        if (count != null) count.inc();
-        else expressions.put(new IntPair(key), new Bigram(key.x(), key.y()));
-        lastId = formId;
+        // pun or 
+        int tag = formTag[formId];
+        if (formId == 0 || Tag.isPun(tag)) {
+          slider.reset();
+          continue;
+        }
+        final boolean isStop = stops.get(formId);
+        if (isStop) {
+          if (slider.isEmpty()) continue;
+          slider.push(formId);
+          continue;
+        }
+        // should be a plain word here
+        if (slider.isEmpty()) { // start of an expression
+          slider.push(formId);
+          continue;
+        }
+        // here we have something to test or to store
+        slider.push(formId); // don’t forget the cuurent formId
+        key.set(slider.first(), formId);
+        Bigram bigram = expressions.get(key);
+        if (bigram == null) { // new expression
+          chain.reset();
+          for (int jj = 0, len = slider.length(); jj < len; jj++) {
+            if (jj > 0 && chain.last() != '\'') chain.append(' ');
+            formDic.get(slider.get(jj), bytes);
+            chain.append(bytes);
+          }
+          bigram = new Bigram(key.x(), key.y(), chain.toString());
+          expressions.put(new IntPair(key), bigram);
+        }
+        bigram.inc();
+        // reset candidate compound, and start by current form
+        slider.reset().push(formId);
       }
     }
-    Top<IntPair> top= new Top<IntPair>(limit);
-    for (Map.Entry<IntPair, Bigram> entry: expressions.entrySet()) {
-      top.push(entry.getValue().count, entry.getKey());
-    }
-
-    return top;
+    return expressions;
   }
   
   /**
@@ -543,8 +574,8 @@ public class FieldRail
    */
   public Map<IntPair, Bigram> bigrams(final BitSet filter) throws IOException
   {
-    Map<IntPair, Bigram> dic = new HashMap<IntPair, Bigram>();
     final boolean hasFilter = (filter != null);
+    Map<IntPair, Bigram> dic = new HashMap<IntPair, Bigram>();
     IntPair key = new IntPair();
     int maxDoc = this.maxDoc;
     int[] posInt = this.posInt;
@@ -558,7 +589,7 @@ public class FieldRail
       for (int i = 0, max = limInt[docId] ; i < max; i++) {
         int formId = bufInt.get();
         // here we can skip holes, pun, or stop words
-        // if (stops.get(formId)) continue;
+        // if (formStop.get(formId)) continue;
         key.set(lastId, formId);
         Bigram count = dic.get(key);
         if (count != null) count.inc();
@@ -576,9 +607,16 @@ public class FieldRail
     public final int b;
     public int count = 1;
     public double score;
+    final public String label;
     Bigram (final int a, final int b) {
       this.a = a;
       this.b = b;
+      this.label = null;
+    }
+    Bigram (final int a, final int b, final String label) {
+      this.a = a;
+      this.b = b;
+      this.label = label;
     }
     public int inc()
     {

@@ -33,6 +33,7 @@
 package alix.lucene.analysis;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.LinkedList;
 
 import org.apache.lucene.analysis.TokenFilter;
@@ -50,9 +51,8 @@ import alix.util.Char;
 import alix.util.Roll;
 
 /**
- * Plug behind TokenLem
+ * Plug behind TokenLem, take a Trie dictionary, and try to compound locutions.
  * @author fred
- *
  */
 public class LocutionFilter extends TokenFilter
 {
@@ -72,6 +72,13 @@ public class LocutionFilter extends TokenFilter
   private CharsAtt compound = new CharsAtt();
   /** Counter */
   private int count;
+  /** past paticiples to not take as infinitives */
+  public static final HashSet<CharsAtt> ORTH = new HashSet<CharsAtt>();
+  static {
+    for (String w : new String[] { "pris", "prise'", "prises" })
+      ORTH.add(new CharsAtt(w));
+  }
+
 
   public LocutionFilter(TokenStream input)
   {
@@ -106,8 +113,9 @@ public class LocutionFilter extends TokenFilter
     boolean maybeVerb = false;
     do {
       loop++;
-      // something in stack, try to loop on it
-      // this test avoid infinite loop (pop and push the same token)
+      // something in stack, 2 cases
+      // 1. good to output
+      // 2. restart a loop
       if (stack.size() > loop) {
         restoreState(stack.get(loop));
         if (Tag.isPun(flagsAtt.getFlags()) || termAtt.length() == 0) {
@@ -130,33 +138,44 @@ public class LocutionFilter extends TokenFilter
           restoreState(stack.remove());
           return true;
         }
-       token = true; // avoid too much stack copy for simple words
+       token = true; // ???
       }
       // first token of a compound candidate, remember start offset
       if (loop == 0) startOffset = offsetAtt.startOffset();
-      
-      // build a compound candidate
+      // not the first tokem prepare compounding
       if (loop > 0 && !compound.endsWith('\'')) compound.append(' '); 
       
       int tag = flagsAtt.getFlags();
-      // System.out.println(" == " + Tag.label(tag) + " " + termAtt);
+      // for adjectives to no confuse with verbs
+      if (orthAtt.length() != 0 && ORTH.contains(orthAtt)) {
+        compound.append(orthAtt);
+      }
       // for verbs, the compound key is the lemma, for others takes an orthographic form
-      if (Tag.isVerb(tag) && lemAtt.length() != 0) {
+      else if (Tag.isVerb(tag) && lemAtt.length() != 0) {
         maybeVerb = true;
         compound.append(lemAtt);
       }
-      // ne fait pas l’affaire
+      //  "ne fait pas l’affaire"
       else if (maybeVerb && orth.equals("pas")) {
         compound.setLength(compound.length() - 1); // suppres last ' '
       }
       // for names, test the original forms
-      else if (Tag.isName(tag)) compound.append(termAtt);
+      else if (Tag.isName(tag)) {
+        compound.append(termAtt);
+      }
       // for other words, orth may have correct initial capital of sentence
-      else if (orth.length() != 0) compound.append(orth);
-      else compound.append(termAtt);
+      else if (!Tag.isSub(tag) && orth.length() != 0) {
+        compound.append(orth);
+      }
+      // Nations Unies ?
+      else {
+        compound.append(termAtt);
+      }
       
       treeState = FrDics.TREELOC.get(compound);
+      
       if (treeState == null) {
+        // here, we could try to fix "parti pris" ("pris" seen as verb "prendre") ?
         // if nothing in stack, and new token, go out with current state
         if (stack.isEmpty() && loop == 0) return true;
         // if stack is not empty and a new token, add it to the stack

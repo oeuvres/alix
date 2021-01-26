@@ -48,8 +48,9 @@ public enum Cat implements Option
   VERB("Verbes", new TagFilter().setGroup(Tag.VERB)),
   ADJ("Adjectifs", new TagFilter().setGroup(Tag.ADJ)),
   ADV("Adverbes", new TagFilter().setGroup(Tag.ADV)),
-  STOP("Mots vides", new TagFilter().setAll().clearGroup(Tag.SUB).clearGroup(Tag.NAME).clearGroup(Tag.VERB).clearGroup(Tag.ADJ).clear(0)), 
+  STOP("Mots grammaticaux", new TagFilter().setAll().clearGroup(Tag.SUB).clearGroup(Tag.NAME).clearGroup(Tag.VERB).clearGroup(Tag.ADJ).clear(0)), 
   NULL("Mots inconnus", new TagFilter().set(0)), 
+  LOC("Locutions", new TagFilter().setAll().locutions(true)), 
   ;
   final public String label;
   final public TagFilter tags;

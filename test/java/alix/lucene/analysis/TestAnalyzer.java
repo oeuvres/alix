@@ -247,6 +247,7 @@ public class TestAnalyzer
     text = " De sorte qu’alors il fut fait, au lieu d’aller partout. Ça ne va pas de soi. Elles sont parties où ? Le général de Gaulle. mme de Staël, Mme de Staël.";
     // text = "Il y avait beaucoup de bonnes volontés engagées.";
     // text = " n’était qu’un Pacte d’alliance entre vingt‑cinq </span><span class=\"right\"><a href=\"#pos99\">États</a> absolument souverains.";
+    text ="Elles sont parties où ? Le parti pris d'en rire.";
     vertical(text, new AnalyzerCompounds());
   }
 
@@ -270,11 +271,13 @@ public class TestAnalyzer
       + "\nsuisse;NAME;Suisse"
       + "\nO.N.;NAMEtitle;Ordre nouveau"
       + "\nsuisses;NAME;Suisse"
-      + "marxisme;NAME;Marx\n" + 
+      + "\neuropéennes,NAME,,Europe"
+      + "\nmarxisme;NAME;Marx\n" + 
       "marxisme;NAME;Marx\n" + 
       "marxiste;NAME;Marx\n" + 
       "marxistes;NAME;Marx\n" + 
-      "Karl Marx;NAME;Marx\n" + 
+      "Karl Marx;NAME;Marx\n"
+      + "Nations unies,NAMEorg,ONU,\n" + 
       ""
     ;
     Files.write(tmpfile, dic.getBytes());
@@ -284,7 +287,7 @@ public class TestAnalyzer
     // mode search
     text =  "Les temps sont proches, nous dit le rapport du Club de Rome. Les marxistes ne sont pas d’Europe de l’atome. Donc c’est Jean Monnet qui a vu juste. "
         + "La préface de J.-P. Sartre au livre de Frantz Fanon. Et M. Fanon ?"
-        + " la vie politique O.N. sont identiques à ceux qui seront à la base de la vie sociale"; 
+        + " O.N.: vie politique et affaires européennes. Les Nations unies."; 
     /*
     System.out.println("———————————");
     vertical(text, new AnalyzerNames());
