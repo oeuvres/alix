@@ -528,7 +528,7 @@ public class FieldRail
       IntPair key = new IntPair();
       for (int i = 0, max = limInt[docId] ; i < max; i++) {
         int formId = bufInt.get();
-        // pun or 
+        // pun or hole, reste expression
         int tag = formTag[formId];
         if (formId == 0 || Tag.isPun(tag)) {
           slider.reset();
@@ -537,6 +537,11 @@ public class FieldRail
         final boolean isStop = stops.get(formId);
         if (isStop) {
           if (slider.isEmpty()) continue;
+          // être probably not iniside a compoud
+          if (Tag.isVerb(tag)) {
+            slider.reset();
+            continue;
+          }
           slider.push(formId);
           continue;
         }
@@ -605,7 +610,7 @@ public class FieldRail
   {
     public final int a;
     public final int b;
-    public int count = 1;
+    public int count = 0;
     public double score;
     final public String label;
     Bigram (final int a, final int b) {

@@ -146,8 +146,11 @@ public class LocutionFilter extends TokenFilter
       if (loop > 0 && !compound.endsWith('\'')) compound.append(' '); 
       
       int tag = flagsAtt.getFlags();
+      if (Tag.isNum(tag)) {
+        compound.append("NUM");
+      }
       // for adjectives to no confuse with verbs
-      if (orthAtt.length() != 0 && ORTH.contains(orthAtt)) {
+      else if (orthAtt.length() != 0 && ORTH.contains(orthAtt)) {
         compound.append(orthAtt);
       }
       // for verbs, the compound key is the lemma, for others takes an orthographic form
