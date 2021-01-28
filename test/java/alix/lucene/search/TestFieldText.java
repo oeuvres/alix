@@ -62,7 +62,7 @@ public class TestFieldText
     System.out.println(terms);
     while (terms.hasNext()) {
       terms.next();
-      System.out.println(terms.label()+" "+terms.score());
+      System.out.println(terms.form()+" "+terms.score());
     }
   }
   

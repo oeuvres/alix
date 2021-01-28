@@ -42,14 +42,15 @@ public enum Cat implements Option
 {
   
   ALL("Tout", null),
-  NOSTOP("Mots pleins", new TagFilter().setAll().noStop(true)), 
+  NOSTOP("Sans mots “vides“", new TagFilter().setAll().noStop(true) ), 
+  STRONG("Mots forts", new TagFilter().setGroup(Tag.SUB).setGroup(Tag.NAME).setGroup(Tag.ADJ)), 
   SUB("Substantifs", new TagFilter().setGroup(Tag.SUB)), 
   NAME("Noms propres", new TagFilter().setGroup(Tag.NAME)),
   VERB("Verbes", new TagFilter().setGroup(Tag.VERB)),
   ADJ("Adjectifs", new TagFilter().setGroup(Tag.ADJ)),
   ADV("Adverbes", new TagFilter().setGroup(Tag.ADV)),
   STOP("Mots grammaticaux", new TagFilter().setAll().clearGroup(Tag.SUB).clearGroup(Tag.NAME).clearGroup(Tag.VERB).clearGroup(Tag.ADJ).clear(0)), 
-  NULL("Mots inconnus", new TagFilter().set(0)), 
+  UKNOWN("Mots inconnus", new TagFilter().set(0)), 
   LOC("Locutions", new TagFilter().setAll().locutions(true)), 
   ;
   final public String label;

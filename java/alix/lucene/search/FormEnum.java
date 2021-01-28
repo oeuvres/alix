@@ -225,7 +225,7 @@ public class FormEnum {
    * 
    * @param ref
    */
-  public void label(BytesRef bytes)
+  public void form(BytesRef bytes)
   {
     formDic.get(formId, bytes);
   }
@@ -234,7 +234,7 @@ public class FormEnum {
    * Get the current term as a String     * 
    * @return
    */
-  public String label()
+  public String form()
   {
     formDic.get(formId, bytes);
     return bytes.utf8ToString();
@@ -246,7 +246,7 @@ public class FormEnum {
    * Copy the current term in a reusable char array  * 
    * @return
    */
-  public CharsAtt label(CharsAtt term)
+  public CharsAtt form(CharsAtt term)
   {
     formDic.get(formId, bytes);
     // ensure size of the char array

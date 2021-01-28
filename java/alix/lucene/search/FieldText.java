@@ -300,6 +300,17 @@ public class FieldText
   {
     return formAllDocs[formId];
   }
+
+  /**
+   * Return tag attached to form according to FrDics.
+   * @param formId
+   * @return
+   */
+  public int tag(int formId)
+  {
+    return formTag[formId];
+  }
+
   
   /**
    * Is this formId a StopWord ?

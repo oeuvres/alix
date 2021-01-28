@@ -134,7 +134,7 @@ public class FrDics
         InputStream is = Tag.class.getResourceAsStream(res);
         if (is == null) throw new FileNotFoundException("Unfound resource "+ res);
         reader = new InputStreamReader(is, StandardCharsets.UTF_8);
-        csv = new CsvReader(reader, 3);
+        csv = new CsvReader(reader, 4); // some names may have a kind of lemma
         csv.readRow();
         while ((row = csv.readRow()) != null) {
           Chain graph = row.get(0);

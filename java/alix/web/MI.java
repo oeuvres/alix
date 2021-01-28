@@ -50,6 +50,20 @@ public enum MI implements Option
       return Oab;
     }
   },
+  g("G-test (log-likelihood)", "G = 2 Σ(Oi.ln(Oi/Ei))") {
+    public double score(final double Oab, final double Oa, final double Ob, final double N)
+    {
+      double[] E = E(Oab, Oa, Ob, N);
+      double[] O = O(Oab, Oa, Ob, N);
+      int n = 4;
+      double sum = 0d;
+      for (int i = 0; i < n; i++) {
+        if (O[i] == 0) continue; // is it gut ?
+        sum += O[i] * Math.log(O[i]/E[i]);
+      }
+      return sum * 2;
+    }  
+  },
   jaccard("Jaccard", "m11 / (m10 + m01 + m11)") {
     @Override
     public double score(final double Oab, final double Oa, final double Ob, final double N)
@@ -81,32 +95,17 @@ public enum MI implements Option
         sum += O_E * O_E / E[i];
       }
       return sum;
-    }  
+    }
   },
-  g("G-test (log-likelihood)", "G = 2 Σ(Oi.ln(Oi/Ei))") {
-    public double score(final double Oab, final double Oa, final double Ob, final double N)
-    {
-      double[] E = E(Oab, Oa, Ob, N);
-      double[] O = O(Oab, Oa, Ob, N);
-      int n = 4;
-      double sum = 0d;
-      for (int i = 0; i < n; i++) {
-        if (O[i] == 0) continue; // is it gut ?
-        sum += O[i] * Math.log(O[i]/E[i]);
-      }
-      return sum * 2;
-    }  
-  };
-
-  /* BUGGY ?
+  /*
   fisher("Fisher (hypergéométrique)", "p = (AB + A¬B)!(¬AB + ¬A¬B)!(AB + ¬AB)!(A¬B + ¬A¬B) / (AB!A¬B!¬AB!¬A¬B!)") {
     public double score(final double Oab, final double Oa, final double Ob, final double N)
     {
       double[] res = Fisher.test((int)Oab, (int)(Oa - Oab), (int)(Ob - Oab), (int)(N - Oa - Ob + Oab));
-      return res[0];
+      return  - res[0];
     }  
-  };
-  */
+  },*/
+  ;
 
   abstract public double score(final double Oab, final double Oa, final double Ob, final double N);
 

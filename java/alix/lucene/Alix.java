@@ -177,6 +177,8 @@ public class Alix
   }
   /** Pool of instances, unique by path */
   public static final HashMap<String, Alix> pool = new HashMap<String, Alix>();
+  /** Name of the base */
+  public final String name;
   /** Normalized path */
   public final Path path;
   /** User properties for the base, freely set or modified */
@@ -208,9 +210,9 @@ public class Alix
     FSDirectory
   }
   
-  private Alix(final Path path, final Analyzer analyzer) throws IOException
+  private Alix(final String name, final Path path, final Analyzer analyzer) throws IOException
   {
-    this(path, analyzer, null);
+    this(name, path, analyzer, null);
   }
 
   /**
@@ -221,8 +223,9 @@ public class Alix
    * @throws IOException
    * @throws ClassNotFoundException 
    */
-  private Alix(final Path path, final Analyzer analyzer, FSDirectoryType dirType) throws IOException
+  private Alix(final String name, final Path path, final Analyzer analyzer, FSDirectoryType dirType) throws IOException
   {
+    this.name = name;
     // this default locale will work for English
     this.locale = Locale.FRANCE;
     this.path = path;
@@ -257,16 +260,23 @@ public class Alix
    * @return
    * @throws IOException
    */
-  public static Alix instance(String name, Path path, final Analyzer analyzer, FSDirectoryType dirType) throws IOException 
+  public static Alix instance(final String name, final Path path, final Analyzer analyzer, FSDirectoryType dirType) throws IOException 
   {
     Alix alix = pool.get(name);
     if (alix == null) {
-      alix = new Alix(path, analyzer, dirType);
+      alix = new Alix(name, path, analyzer, dirType);
       pool.put(name, alix);
     }
     return alix;
   }
 
+  /**
+   * 
+   */
+  public String name()
+  {
+    return name;
+  }
   /**
    * See {@link #reader(boolean)}
    * 

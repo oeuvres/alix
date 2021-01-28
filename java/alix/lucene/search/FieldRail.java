@@ -534,7 +534,7 @@ public class FieldRail
           slider.reset();
           continue;
         }
-        final boolean isStop = stops.get(formId);
+        final boolean isStop = (formId < stops.length() && stops.get(formId));
         if (isStop) {
           if (slider.isEmpty()) continue;
           // être probably not iniside a compoud

@@ -4,14 +4,14 @@ import alix.lucene.search.*;
 
 public enum Ranking implements Option {
   
-  occs("Occurrences") {
+  occs("Occurrences", "") {
     @Override
     public Specif specif() {
       return new SpecifOccs();
     }
   },
   
-  bm25("BM25") {
+  bm25("BM25", "genre de tf-idf plus précis pour les documents courts") {
     @Override
     public Specif specif() {
       return new SpecifBM25();
@@ -19,21 +19,21 @@ public enum Ranking implements Option {
     
   },
 
-  tfidf("tf-idf") {
+  tfidf("tf-idf", "fréquence relative des termes par document, pondérée par la fréquence dans les autres documents") {
     @Override
     public Specif specif() {
       return new SpecifTfidf();
     }
     
   },
-  g("G-Test (Frantext 2018)") {
+  g("G-test (log-likelihood)", "G = 2 Σ(Oi.ln(Oi/Ei))") {
     @Override
     public Specif specif() {
       return new SpecifG();
     }
   },
 
-  chi2("Chi2 (Muller, Brunet)") {
+  chi2("Chi2", "Chi2 = Σ(Oi - Ei)²/Ei") {
     @Override
     public Specif specif() {
       return new SpecifChi2();
@@ -73,7 +73,7 @@ public enum Ranking implements Option {
   },
   */
 
-  alpha("Naturel") {
+  alpha("Naturel", "") {
     @Override
     public Specif specif() {
       return null;
@@ -88,12 +88,14 @@ public enum Ranking implements Option {
   abstract public Specif specif();
 
   
-  private Ranking(final String label) {  
+  private Ranking(final String label, final String hint) {  
     this.label = label ;
+    this.hint = hint ;
   }
 
   // Repeating myself
   final public String label;
+  final public String hint;
   public String label() { return label; }
-  public String hint() { return null; }
+  public String hint() { return hint; }
 }

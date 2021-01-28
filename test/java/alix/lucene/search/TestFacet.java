@@ -63,7 +63,7 @@ public class TestFacet
     FormEnum terms = facet.iterator();
     while (terms.hasNext()) {
       terms.next();
-      System.out.println(terms.label());
+      System.out.println(terms.form());
     }
   }
 }

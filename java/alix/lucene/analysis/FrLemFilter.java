@@ -117,6 +117,7 @@ public final class FrLemFilter extends TokenFilter
     // end of stream
     if (!input.incrementToken()) return false;
     // get a local version of orth
+    CharsAtt lem = (CharsAtt) lemAtt;
     CharsAtt orth = (CharsAtt) orthAtt;
     orth.copy(termAtt); // start with original term
     int flags = flagsAtt.getFlags();
@@ -146,7 +147,7 @@ public final class FrLemFilter extends TokenFilter
         return true;
       }
       // Do not touch to recognized ABBR, like O.N.
-      if (flagsAtt.getFlags() != Tag.ABBR) orth.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
+      // if (flagsAtt.getFlags() != Tag.ABBR) orth.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
       FrDics.norm(orth); // normalise : Etat -> État
       copy.copy(orth);
       // c1 = orth.charAt(0); // keep initial cap, maybe useful
@@ -155,6 +156,7 @@ public final class FrLemFilter extends TokenFilter
         flagsAtt.setFlags(entry.tag);
         // maybe a normalized form for the name
         if (entry.orth != null) orth.copy(entry.orth);
+        if (entry.lem != null) lem.copy(entry.lem);
         return true;
       }
       entry = FrDics.word(orth.toLower()); // known word ?

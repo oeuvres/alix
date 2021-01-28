@@ -44,6 +44,7 @@ import alix.fr.Tag;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import alix.util.Char;
 
 /**
  * A final token filter before indexation,
@@ -131,7 +132,7 @@ public class FlagCloudFilter extends TokenFilter
     // filter some names
     if (Tag.isName(tag)) {
       // A., B.…
-      if (termAtt.length() < 3) return false;
+      // if (termAtt.length() == 2 && Char.isUpperCase(termAtt.charAt(0)) && termAtt.charAt(1) == '.') return false;
       /*
       // filter first names 
       if (tag == Tag.NAMEpersf || tag == Tag.NAMEpersm) return false;

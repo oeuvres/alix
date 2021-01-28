@@ -71,7 +71,13 @@ public class FrPersnameFilter extends TokenFilter
   /** Titles */
   public static final HashSet<CharsAtt> TITLES = new HashSet<CharsAtt>();
   static {
-    for (String w : new String[] { "Maître", "Maitre", "Saint", "saint", "Sainte", "sainte" })
+    for (String w : new String[] {
+      "abbé", "Abbé", "Baron", "baron", "capitaine", "commodore", "comte", "Comte", "dame", "docteur", "Docteur", "frère", "frères", "juge", 
+      "Lord", "lord", "Lieutenant", "lieutenant", 
+      "Madame", "madame", "maitre", "maître", "Maître", "Maitre", "Major", "major", "Miss", "miss", "mistress", "Mistress", 
+      "père", "padre", "Saint", "saint", "Sainte", "sainte", "sir",
+      "baie", "cap", "fosse", "ile", "île", "ilot", "îlot", "mont", "plateau", "Pointe", "pointe", "villa",
+    })
       TITLES.add(new CharsAtt(w));
   }
   /** Current char offset */
