@@ -95,7 +95,7 @@ public class FrTokenizer extends Tokenizer
   /** Parse as XML */
   final boolean xml;
   /** local flag for constructor */
-  static final public int QUERY = 0x02;
+  static final public int SEARCH = 0x02;
   /** Parse for a search search with some special characters like + or - */
   final boolean query;
   /** Current char offset */
@@ -175,7 +175,7 @@ public class FrTokenizer extends Tokenizer
     super(new AlixAttributeFactory(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
     if ((flags & XML) > 0) this.xml = true;
     else this.xml = false;
-    if ((flags & QUERY) > 0) this.query = true;
+    if ((flags & SEARCH) > 0) this.query = true;
     else this.query = false;
   }
 

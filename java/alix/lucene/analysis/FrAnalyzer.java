@@ -36,6 +36,8 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 
+import alix.lucene.Alix;
+
 /**
  * Analysis scenario for French in Alix.
  * The linguistic features of Alix are language dependent.
@@ -51,13 +53,13 @@ public class FrAnalyzer extends Analyzer
   public TokenStreamComponents createComponents(String field)
   {
     int flags = FrTokenizer.XML;
-    if ("search".startsWith(field)) flags = flags | FrTokenizer.QUERY;
+    if (Alix.SEARCH.startsWith(field)) flags = flags | FrTokenizer.SEARCH;
     final Tokenizer source = new FrTokenizer(flags); // segment words
     TokenStream result = new FrLemFilter(source); // provide lemma+pos
     result = new LocutionFilter(result); // compounds: parce que (quite expensive, 20% time)
-    result = new FrPersnameFilter(result); // link unknown names, seems buggy
+    if (!Alix.SEARCH.startsWith(field)) result = new FrPersnameFilter(result); // link unknown names, bad for a search query
     boolean pun = false;
-    if ("search".startsWith(field)) pun = true; // keep punctuation, ex, to parse search
+    if (Alix.SEARCH.startsWith(field)) pun = true; // keep punctuation, ex, to parse search
     if (field.endsWith("orth")) result = new FlagOrthFilter(result); // select lemmas as term to index
     else result = new FlagCloudFilter(result, pun); // select lemmas as term to index
     return new TokenStreamComponents(source, result);

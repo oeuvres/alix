@@ -147,6 +147,8 @@ public class Alix
   public static final String ID = "alix.id";
   /** Mandatory field, define the level of a leaf (book/chapter, article) */
   public static final String TYPE = "alix.type";
+  /** Name of a field to inform Analyzer it is a search query */
+  public static final String SEARCH = "search";
   /** Just the mandatory fields */
   final static HashSet<String> FIELDS_ID = new HashSet<String>(Arrays.asList(new String[] {Alix.ID}));
   /** Max books */
@@ -691,7 +693,7 @@ u   * @throws IOException
     // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
     // int boostLength = boosts.length;
     // float boostDefault = boosts[boostLength - 1];
-    TokenStream ts = analyzer.tokenStream(AlixReuseStrategy.QUERY, q);
+    TokenStream ts = analyzer.tokenStream(SEARCH, q);
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
 
@@ -786,7 +788,7 @@ u   * @throws IOException
     ArrayList<String> forms = new ArrayList<String>();
     // what should mean null here ?
     if (q == null || "".equals(q.trim())) return null;
-    TokenStream ts = analyzer.tokenStream(AlixReuseStrategy.QUERY, q); // keep punctuation to group search
+    TokenStream ts = analyzer.tokenStream(SEARCH, q); // keep punctuation to group search
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     // not generic for other analyzers but may become interesting for a search parser
     // CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);

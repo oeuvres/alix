@@ -42,6 +42,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.IndexWriter;
 
+import alix.lucene.Alix;
 import alix.lucene.SAXIndexer;
 
 /**
@@ -74,11 +75,10 @@ import alix.lucene.SAXIndexer;
 
 public class AlixReuseStrategy extends ReuseStrategy
 {
-  public static String QUERY = "search";
   @Override
   public TokenStreamComponents getReusableComponents(Analyzer analyzer, String fieldName)
   {
-    if (QUERY.startsWith(fieldName)) return (TokenStreamComponents) getStoredValue(analyzer);
+    if (Alix.SEARCH.startsWith(fieldName)) return (TokenStreamComponents) getStoredValue(analyzer);
     return analyzer.createComponents(fieldName);
   }
 

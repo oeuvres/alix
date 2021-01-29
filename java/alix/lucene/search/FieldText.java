@@ -34,6 +34,7 @@ package alix.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 
 import org.apache.lucene.index.DirectoryReader;
@@ -413,7 +414,11 @@ public class FieldText
    */
   public long[] formOccs(BitSet filter) throws IOException
   {
+    if (filter == null) {
+      return Arrays.copyOf(formAllOccs, formAllOccs.length);
+    }
     long[] formOccs = new long[formDic.size()];
+    // no doc to filter, give a a safe copy of the stats
     long partOccs = 0;
     BytesRef bytes;
     final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;

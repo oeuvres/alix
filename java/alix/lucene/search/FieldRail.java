@@ -386,6 +386,7 @@ public class FieldRail
       }
     }
     dic.partOccs = partOccs; // add or renew ?
+    dic.reset();
     return found;
   }
 

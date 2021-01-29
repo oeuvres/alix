@@ -19,6 +19,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
 import alix.fr.Tag;
+import alix.lucene.Alix;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
@@ -308,7 +309,7 @@ public class TestAnalyzer
     String text;
     text = "Messageries";
     Analyzer analyzer = new AnalyzerReuseControl(new FrAnalyzer(), new AlixReuseStrategy());
-    TokenStream ts = analyzer.tokenStream(AlixReuseStrategy.QUERY, text); // keep punctuation to group search
+    TokenStream ts = analyzer.tokenStream(Alix.SEARCH, text); // keep punctuation to group search
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     vertical(text, ts);
   }
