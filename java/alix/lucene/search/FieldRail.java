@@ -406,7 +406,6 @@ public class FieldRail
     if (dic.hits == null || dic.hits.length != maxForm) throw new IllegalArgumentException("Scoring this FormEnum required a doc count by formId in FormEnum.hits");
     int[] hits = dic.hits;
     
-    // final long[] freqs, final int limit, Specif specif, final TagFilter tags, final boolean reverse
     Specif specif = dic.specif;
     if (specif == null) specif = new SpecifOccs();
     boolean hasSpecif = (specif != null);

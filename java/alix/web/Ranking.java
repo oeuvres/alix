@@ -11,6 +11,13 @@ public enum Ranking implements Option {
     }
   },
   
+  g("G-test (log-likelihood)", "G = 2 Σ(Oi.ln(Oi/Ei))") {
+    @Override
+    public Specif specif() {
+      return new SpecifG();
+    }
+  },
+  
   bm25("BM25", "genre de tf-idf plus précis pour les documents courts") {
     @Override
     public Specif specif() {
@@ -26,12 +33,6 @@ public enum Ranking implements Option {
     }
     
   },
-  g("G-test (log-likelihood)", "G = 2 Σ(Oi.ln(Oi/Ei))") {
-    @Override
-    public Specif specif() {
-      return new SpecifG();
-    }
-  },
 
   chi2("Chi2", "Chi2 = Σ(Oi - Ei)²/Ei") {
     @Override
@@ -39,6 +40,24 @@ public enum Ranking implements Option {
       return new SpecifChi2();
     }
   },
+
+
+  /*
+
+  dice("Dice", "2*m11 / (m10² + m01²)") {
+    @Override
+    public Specif specif() {
+      return new SpecifDice();
+    }
+  },
+
+  jaccard("Jaccard", "m11 / (m10 + m01 + m11)") {
+    @Override
+    public Specif specif() {
+      return new SpecifJaccard();
+    }
+  },
+  */
 
   /*
   hypergeo("Loi hypergeometrique (Lafon)") {
@@ -59,26 +78,15 @@ public enum Ranking implements Option {
   */
   
   /* Bof
-  jaccard("Jaccard") {
-    @Override
-    public Specif specif() {
-      return new SpecifJaccard();
-    }
-  },
-  dice("Dice") {
-    @Override
-    public Specif specif() {
-      return new SpecifDice();
-    }
-  },
-  */
-
+  
   alpha("Naturel", "") {
     @Override
     public Specif specif() {
       return null;
     }
   },
+  */
+
 
 
 

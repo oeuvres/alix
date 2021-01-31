@@ -120,7 +120,7 @@ public class JspTools
    * @param name
    * @return null if not set
    */
-  public String cookieGet(final String name)
+  public String cookie(final String name)
   {
     if (cookies == null) {
       Cookie[] cooks = request.getCookies();
@@ -139,25 +139,13 @@ public class JspTools
    * @param name
    * @param value
    */
-  public void cookieSet(String name, String value) 
+  public void cookie(String name, String value) 
   {
-    if (name == null) return;
-    Cookie cookie = new Cookie(name, value);
-    cookie.setMaxAge(MONTH);
-    cookie.setSecure(true);
-    response.addCookie(cookie);
-  }
-
-  /**
-   * Inform client that a cookie is out of date.
-   * @param name
-   */
-  public void cookieDel(String name) 
-  {
-    if (name == null) return;
-    Cookie cookie = new Cookie(name, "");
-    cookie.setMaxAge(-MONTH); // set in the past should reset
-    response.addCookie(cookie);
+    if (value == null) {
+      if (cookie(name) != null) response.addHeader("Set-Cookie", name +"=" + value + "; HttpOnly; SameSite=strict; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT");
+    } else {
+      response.addHeader("Set-Cookie", name +"=" + value + ";Max-Age=" + MONTH + "; HttpOnly; SameSite=strict");
+    }
   }
 
   /**
@@ -198,7 +186,7 @@ public class JspTools
     if (check(value)) {
       try {
         int ret = Integer.parseInt(value);
-        cookieSet(cookie, ""+ret); // value seems ok, try to store it as cookie
+        cookie(cookie, ""+ret); // value seems ok, try to store it as cookie
         return ret;
       }
       catch (NumberFormatException e) {
@@ -207,10 +195,10 @@ public class JspTools
     // param has an empty value, seems that client wants to reset cookie
     // do not give back the stored value
     if (value != null && !check(value)) {
-      cookieDel(name);
+      cookie(name, null);
       return fallback;
     }
-    value = cookieGet(cookie);
+    value = cookie(cookie);
     if (value == null) return fallback;
     // verify stored value before send it
     try {
@@ -219,7 +207,7 @@ public class JspTools
     }
     catch (NumberFormatException e) {
       // bad cookie value, reset it
-      cookieDel(name);
+      cookie(name, null);
       return fallback;
     }
   }
@@ -262,7 +250,7 @@ public class JspTools
     if (check(value)) {
       try {
         float ret = Float.parseFloat(value);;
-        cookieSet(cookie, ""+ret); // value seems ok, store it as a cookie
+        cookie(cookie, ""+ret); // value seems ok, store it as a cookie
         return ret;
       }
       catch (NumberFormatException e) {
@@ -270,10 +258,10 @@ public class JspTools
     }
     // reset cookie
     if (value != null && !check(value)) {
-      cookieDel(cookie);
+      cookie(name, null);
       return fallback;
     }
-    value = cookieGet(cookie);
+    value = cookie(cookie);
     if (value == null) return fallback;
     // verify stored value before send it
     try {
@@ -282,7 +270,7 @@ public class JspTools
     }
     catch (NumberFormatException e) {
       // bad cookie value, reset it
-      cookieDel(name);
+      cookie(name, null);
       return fallback;
     }
   }
@@ -314,19 +302,19 @@ public class JspTools
   {
     String value = request.getParameter(name);
     if (check(value)) {
-      cookieSet(cookie, value);
+      cookie(cookie, value);
       return value;
     }
     // param is not null, reset cookie
     if (value != null) {
-      cookieDel(cookie);
+      cookie(name, null);
       return fallback;
     }
     // try to deal with cookie
-    value = cookieGet(cookie);
+    value = cookie(cookie);
     if (check(value)) return value;
     // cookie seems to have a problem, reset it
-    cookieDel(cookie);
+    cookie(name, null);
     return fallback;
   }
 
@@ -358,25 +346,25 @@ public class JspTools
     String value = request.getParameter(name);
     // value explicitly defined to false, set a cookie
     if ("false".equals(value) || "0".equals(value) || "null".equals(value)) {
-      cookieSet(cookie, "0");
+      cookie(cookie, "0");
       return false;
     }
     // some content, we are true
     if (check(value)) {
-      cookieSet(cookie, "1");
+      cookie(cookie, "1");
       return true;
     }
     // param is empty but not null, reset cookie
     if (value != null) {
-      cookieDel(cookie);
+      cookie(name, null);
       return fallback;
     }
     // try to deal with cookie
-    value = cookieGet(cookie);
+    value = cookie(cookie);
     if ("0".equals(value)) return false;
     if (check(value)) return true;
     // cookie seems to have a problem, reset it
-    cookieDel(cookie);
+    cookie(name, null);
     return fallback;
   }
   /**
@@ -425,7 +413,7 @@ public class JspTools
       try {
         @SuppressWarnings("static-access")
         Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
-        cookieSet(cookie, ret.name());
+        cookie(cookie, ret.name());
         return ret;
       }
       catch(Exception e) {
@@ -433,11 +421,11 @@ public class JspTools
     }
     // param is empty but not null, reset cookie
     if (value != null) {
-      cookieDel(cookie);
+      cookie(name, null);
       return fallback;
     }
     // try to deal with cookie
-    value = cookieGet(cookie);
+    value = cookie(cookie);
     try {
       @SuppressWarnings("static-access")
       Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
@@ -445,7 +433,7 @@ public class JspTools
     }
     catch(Exception e) {
       // cookie seenms to have a problem, reset it
-      cookieDel(cookie);
+      cookie(name, null);
       return (Enum<?>)fallback;
     }
   }
@@ -470,20 +458,20 @@ public class JspTools
     if (check(value)) {
       // it works, store it and send it
       if (map.containsKey(value)) {
-        cookieSet(cookie, value);
+        cookie(cookie, value);
         return map.get(value);
       }
     }
     // value is not null but empty, reset cookie, return default
     if (value != null && "".equals(value.trim())) {
-      cookieDel(cookie);
+      cookie(name, null);
       return map.get(fallback);
     }
     // bad request or null request, try to get cookie
-    value = cookieGet(cookie);
+    value = cookie(cookie);
     // bad memory, things has changed, reset cookie
     if (!map.containsKey(value)) {
-      cookieDel(cookie);
+      cookie(name, null);
       value = fallback;
     }
     return map.get(value);
