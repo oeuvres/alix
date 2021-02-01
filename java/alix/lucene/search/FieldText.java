@@ -329,7 +329,7 @@ public class FieldText
    * @param formId
    * @return
    */
-  public String label(final int formId)
+  public String form(final int formId)
   {
     BytesRef bytes = new BytesRef();
     this.formDic.get(formId, bytes);
@@ -342,7 +342,7 @@ public class FieldText
    * @param bytes
    * @return
    */
-  public BytesRef label(int formId, BytesRef bytes)
+  public BytesRef form(int formId, BytesRef bytes)
   {
     return this.formDic.get(formId, bytes);
   }
@@ -409,15 +409,16 @@ public class FieldText
   }
   
   /**
-   * Get occs by formId from a subset of documents, useful for scoring inside a slice of corpus
+   * Get stats by formId from a subset of documents, useful for scoring inside a slice of corpus.
+   * Be careful, long[0] is not significant but is the sum of all occs.
    * @throws IOException 
    */
-  public long[] formOccs(BitSet filter) throws IOException
+  public FormEnum filter(FormEnum results) throws IOException
   {
-    if (filter == null) {
-      return Arrays.copyOf(formAllOccs, formAllOccs.length);
-    }
+    if (results.filter == null) throw new IllegalArgumentException("Doc filter missing, FormEnum.filter should be not null");; // no sense, let cry 
+    BitSet filter = results.filter;
     long[] formOccs = new long[formDic.size()];
+    int[] formDocs = new int[formDic.size()];
     // no doc to filter, give a a safe copy of the stats
     long partOccs = 0;
     BytesRef bytes;
@@ -436,20 +437,25 @@ public class FieldText
         Bits live = leaf.getLiveDocs();
         boolean hasLive = (live != null);
         docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
+        // lucene  doc says « Some implementations are considerably more efficient than a loop on all docs »
         // we should do faster here, navigating by the BitSet
-        while ((docLeaf = docsEnum.nextDoc()) != NO_MORE_DOCS) {
-          if (hasLive && !live.get(docLeaf)) continue; // deleted doc
-          final int docId = docBase + docLeaf;
-          if (!filter.get(docId)) continue;
-          int freq = docsEnum.freq();
+        
+        for (int docId = filter.nextSetBit(0); docId != NO_MORE_DOCS; docId = filter.nextSetBit(docId + 1)) {
+          final int target = docId - docBase;
+          if (docsEnum.advance(target) != target) continue;
+          final int freq = docsEnum.freq();
           if (freq == 0) continue; // strange, is’n it ? Will probably not arrive
           formOccs[formId] += freq;
+          formDocs[formId]++;
           partOccs += freq;
+          
         }
       }
     }
-    formOccs[0] = partOccs; // quite a hack to have sum
-    return formOccs;
+    results.formOccs = formOccs;
+    results.formDocs = formDocs;
+    results.partOccs = partOccs;
+    return results;
   }
   
   

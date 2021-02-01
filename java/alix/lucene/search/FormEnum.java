@@ -46,6 +46,7 @@ import org.apache.lucene.util.UnicodeUtil;
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
+import alix.web.MI;
 
 /**
  * This object is build to collect list of forms with 
@@ -63,9 +64,9 @@ public class FormEnum {
   /** Field dictionary */
   final private BytesRefHash formDic;
   /** Count of docs by formId */
-  final private int[] formDocs;
-  /** Count of occurrences by formId */
-  final private long[] formOccs;
+  protected int[] formDocs;
+  /** Count of occurrences by formId, used for counts */
+  protected long[] formOccs;
   /** A docId by term used as a cover (example: metas for books or authors) */
   final private int[] formCover;
   /** An optional tag for each search (relevant for textField) */
@@ -100,6 +101,8 @@ public class FormEnum {
   public boolean reverse;
   /** Optional, a sort algorithm to select specific words according a norm (ex: compare formOccs / freqs) */
   public Specif specif;
+  /** Optional, a sort algorithm for coocs */
+  public MI mi;
 
   
   /** Build a form iterator from a text field */
@@ -128,6 +131,7 @@ public class FormEnum {
   public void sorter(final int[] sorter) {
     this.sorter = sorter;
     this.size = sorter.length;
+    cursor = -1;
   }
   
   /**
@@ -151,16 +155,36 @@ public class FormEnum {
    * 
    * @return
    */
-  public long formOccs()
+  public long formOccs(final int formId)
   {
     return formOccs[formId];
   }
 
   /**
+   * Global number of occurrences for this term
+   * 
+   * @return
+   */
+  public long formOccs()
+  {
+    return formOccs[formId];
+  }
+
+  
+  /**
    * Get the total count of documents relevant for the current term.
    * @return
    */
   public int formDocs()
+  {
+    return formDocs[formId];
+  }
+  
+  /**
+   * Get the total count of documents relevant for the current term.
+   * @return
+   */
+  public int formDocs(final int formId)
   {
     return formDocs[formId];
   }
@@ -175,10 +199,28 @@ public class FormEnum {
   }
 
   /**
+   * Get the count of matching occureences
+   * @return
+   */
+  public long freq(final int formId)
+  {
+    return freqs[formId];
+  }
+
+  /**
    * Get the count of matched documents for the current term.
    * @return
    */
   public int hits()
+  {
+    return hits[formId];
+  }
+
+  /**
+   * Get the count of matched documents for the current term.
+   * @return
+   */
+  public int hits(final int formId)
   {
     return hits[formId];
   }

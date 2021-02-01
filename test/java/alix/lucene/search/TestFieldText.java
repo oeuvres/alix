@@ -26,7 +26,7 @@ public class TestFieldText
     FieldText fstats = alix.fieldText(fieldName);
     System.out.println("V="+fstats.size + " formStop.size="+fstats.size);
     for (int formId = 0; formId < fstats.size; formId++) {
-      System.out.println(formId + "=" + fstats.label(formId));
+      System.out.println(formId + "=" + fstats.form(formId));
     }
   }
 
@@ -38,27 +38,40 @@ public class TestFieldText
       "A C C B", 
       "B A A",
       "C B B", 
-      "A B C A C C ",
+      "A C C A C C ",
       "B B B",
     });
     String fieldName = TestAlix.fieldName;
-    FieldText fstats = alix.fieldText(fieldName);
-    FormEnum terms = fstats.iterator(-1, null, null, null);
+    FieldText ftext = alix.fieldText(fieldName);
+    FormEnum terms = ftext.iterator(-1, null, null, null);
     System.out.println("forms, in formId order");
     System.out.println(terms);
     FixedBitSet bits = new FixedBitSet(alix.maxDoc());
     bits.set(2);
-    bits.set(3);
+    bits.set(4);
     for (int docId = 0; docId < bits.length(); docId++) {
       if (bits.get(docId)) System.out.print('1');
       else System.out.print('·');
     }
+    System.out.println();
+    // get stats about the filter
+    FormEnum results = new FormEnum(ftext);
+    results.filter = bits;
+    ftext.filter(results);
+    System.out.println("ftext.filter(results)");
+    int[] sorter = {0, 1, 2, 3};
+    results.sorter(sorter);
+    while(results.hasNext()) {
+      results.next();
+      System.out.println(results.form()+" formDocs="+results.formDocs()+" formOccs="+results.formOccs());
+    }
+    
     System.out.println("Filtered forms, occurrences");
-    terms = fstats.iterator(-1, null, bits, null);
+    terms = ftext.iterator(-1, null, bits, null);
     System.out.println(terms);
 
     System.out.println("Filtered forms, reverse chi2");
-    terms = fstats.iterator(3, new SpecifChi2(), bits, null, true);
+    terms = ftext.iterator(3, new SpecifChi2(), bits, null, true);
     System.out.println(terms);
     while (terms.hasNext()) {
       terms.next();

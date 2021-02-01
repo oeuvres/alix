@@ -43,7 +43,7 @@ import alix.maths.Fisher;
  */
 public enum MI implements Option
 {
-  none("Occurrences", "Oab") {
+  occs("Occurrences", "Oab") {
     @Override
     public double score(final double Oab, final double Oa, final double Ob, final double N)
     {
@@ -70,7 +70,7 @@ public enum MI implements Option
     {
       double m10 = N - Oa - Oab;
       double m01 = N - Ob - Oab;
-      return Oab / ( m10 + m01 + Oab);
+      return 100000 * Oab / ( m10 + m01 + Oab);
     }  
   },
   dice("Dice", "2*m11 / (m10² + m01²)") {
@@ -79,7 +79,7 @@ public enum MI implements Option
     {
       double m10 = N - Oa - Oab;
       double m01 = N - Ob - Oab;
-      return 2 * Oab / (m10 * m10 + m01 * m01);
+      return 100000 * 2 * Oab / (m10 * m10 + m01 * m01);
     }
   },
   chi2("Chi2", "Chi2 = Σ(Oi - Ei)²/Ei") {

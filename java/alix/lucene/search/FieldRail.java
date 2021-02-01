@@ -72,6 +72,7 @@ import alix.util.IntList;
 import alix.util.IntPair;
 import alix.util.Top;
 import alix.util.TopArray;
+import alix.web.MI;
 import alix.web.Webinf;
 
 /**
@@ -279,22 +280,35 @@ public class FieldRail
    * This oculd be sorted after in different manner accordin to Specif.
    * Returns the count of occurences found.
    */
-  public long coocs(FormEnum dic) throws IOException
+  public long coocs(FormEnum results) throws IOException
   {
-    if (dic.search == null || dic.search.length == 0) throw new IllegalArgumentException("Search term(s) missing, FormEnum.search should be not null");
-    final int left = dic.left;
-    final int right = dic.right;
+    if (results.search == null || results.search.length == 0) throw new IllegalArgumentException("Search term(s) missing, FormEnum.search should be not null");
+    final int left = results.left;
+    final int right = results.right;
     if (left < 0 || right < 0 || (left + right) < 1) throw new IllegalArgumentException("FormEnum.left=" + left + " FormEnum.right=" + right + " not enough context to extract cooccurrences.");
-    final BitSet filter = dic.filter;
+    
+    // for future scoring, formOccs is global or relative to filter ? relative seems bad
+    /*
+    if (results.filter != null) {
+      fieldText.filter(results);
+      results.N = results.partOccs;
+    }
+    */
+    results.formOccs = fieldText.formAllOccs;
+    final BitSet filter = results.filter;
     final boolean hasFilter = (filter != null);
+    
+    
     // create or reuse freqs
-    if (dic.freqs == null || dic.freqs.length != maxForm) dic.freqs = new long[maxForm]; // by term, occurrences counts
-    else Arrays.fill(dic.freqs, 0); // Renew, or not ?
-    final long[] freqs = dic.freqs;
+    if (results.freqs == null || results.freqs.length != maxForm) results.freqs = new long[maxForm]; // by term, occurrences counts
+    else Arrays.fill(results.freqs, 0);
+    final long[] freqs = results.freqs; // localize
     // create or reuse hits
-    if (dic.hits == null || dic.hits.length != maxForm) dic.hits = new int[maxForm]; // by term, document counts
-    else Arrays.fill(dic.hits, 0); // Renew, or not ?
-    final int[] hits = dic.hits;
+    if (results.hits == null || results.hits.length != maxForm) results.hits = new int[maxForm]; // by term, document counts
+    else Arrays.fill(results.hits, 0);
+    final int[] hits = results.hits; // localize
+    
+    
     // A vector needed to no recount doc
     boolean[] docSeen = new boolean[maxForm];
     long found = 0;
@@ -316,7 +330,7 @@ public class FieldRail
       LeafReader leaf = context.reader();
       // collect all “postings” for the requested search
       ArrayList<PostingsEnum> termDocs = new ArrayList<PostingsEnum>();
-      for (String word : dic.search) {
+      for (String word : results.search) {
         if (word == null) continue;
         Term term = new Term(fieldName, word); // do not try to reuse term, false optimisation
         PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS|PostingsEnum.POSITIONS);
@@ -385,62 +399,84 @@ public class FieldRail
         }
       }
     }
-    dic.partOccs = partOccs; // add or renew ?
-    dic.reset();
+    results.partOccs = partOccs; // sum of coocs traversed
+    results.reset();
     return found;
   }
 
   /**
-   * Scores a {@link FormEnum} with freqs extracted by {@link #coocs(FormEnum)}.
-   * For the {@link Specif} algorithm, the search and co-occurrences contexts are considered as a part in the corpus.
-   * For tf-idf like scoring, this part is considered like a single document.
+   * Scores a {@link FormEnum} with freqs extracted from co-occurrences extraction in a  {@link #coocs(FormEnum)}.
+   * Scoring uses a “mutual information” {@link MI} algorithm (probability like, not tf-idf like). Parameters
+   * are 
+   * <li>Oab: count of a form (a) observed in a co-occurrency context (b)
+   * <li>Oa: count of a form in full corpus, or in a section (filter)
+   * <li>Ob: count of occs of the co-occurrency context
+   * <li>N: global count of occs from which is extracted the context (full corpus or filterd section)
+   * @throws IOException 
+   * 
    */
-  // In case of a corpus filter, shall we score compared to full corpus or only the part filtered?
-  public void score(FormEnum dic)
+  public void score(FormEnum results, final long Ob) throws IOException
   {
-    if (dic.limit == 0) throw new IllegalArgumentException("How many sorted forms do you want? set FormEnum.limit");
-    if (dic.partOccs < 1) throw new IllegalArgumentException("Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
-    long partOccs = dic.partOccs;
-    if (dic.freqs == null || dic.freqs.length != maxForm) throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
-    long[] freqs = dic.freqs;
-    if (dic.hits == null || dic.hits.length != maxForm) throw new IllegalArgumentException("Scoring this FormEnum required a doc count by formId in FormEnum.hits");
-    int[] hits = dic.hits;
-    
-    Specif specif = dic.specif;
-    if (specif == null) specif = new SpecifOccs();
-    boolean hasSpecif = (specif != null);
-    TagFilter tags = dic.tags;
+    if (results.limit == 0) throw new IllegalArgumentException("How many sorted forms do you want? set FormEnum.limit");
+    if (results.partOccs < 1) throw new IllegalArgumentException("Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
+    if (results.freqs == null || results.freqs.length != maxForm) throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
+    long[] freqs = results.freqs;
+    // int[] hits = results.hits; // not significant for a transversal cooc
+    TagFilter tags = results.tags;
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
-    // localize
-    long[] formAllOccs = fieldText.formAllOccs;
-    int[] formAllDocs = fieldText.formAllDocs;
-    
-    
-    // loop on all freqs to calculate scores
-    specif.all(fieldText.occsAll, fieldText.docsAll);
-    specif.part(partOccs, 1);
     int length = freqs.length;
-    double[] scores = new double[length];
+    // reuse score for multiple calculations
+    if (results.scores == null || results.scores.length != length) results.scores = new double[length]; // by term, occurrences counts
+    else Arrays.fill(results.scores, 0);
+    double[] scores = results.scores; // localize
+    
+    // localize the scoring reference
+    final long N = fieldText.occsAll; // global 
+    final long[] formOccs = fieldText.formAllOccs; // global for all base
+    // final long[] formOccs = results.formOccs; // do not restrict 
+    final int[] formDocs = fieldText.formAllDocs;
+    // final int[] formDocs = results.formDocs;
+    final long partOccs = results.partOccs;
+    MI mi = results.mi;
+    boolean hasSpecif = false;
+    Specif specif = results.specif;
+    if (results.specif != null) {
+      hasSpecif = true;
+      // int docsAll = fieldText.docsAll;
+      // if (results.filter != null) docsAll = results.filter.cardinality();
+      // specif.all(N, docsAll); // count relative to filter ? seems bad
+      specif.all(fieldText.occsAll, fieldText.docsAll); // count relative to all
+      specif.part(partOccs, 1);
+    }
+    else {
+      if (mi == null) mi = MI.occs;
+    }
+    
+ 
+    
     for (int formId = 0; formId < length; formId++) {
       if (noStop && fieldText.isStop(formId)) continue;
       if (hasTags && !tags.accept(fieldText.formTag[formId])) continue;
       if (freqs[formId] == 0) continue;
       if (hasSpecif) {
-        specif.idf(formAllOccs[formId], formAllDocs[formId]);
-        scores[formId] = specif.tf(freqs[formId], partOccs);
-        scores[formId] = specif.prob(scores[formId], freqs[formId], formAllOccs[formId]);
+        specif.idf(formOccs[formId], formDocs[formId]);
+        scores[formId] = specif.tf(freqs[formId], partOccs); 
+        scores[formId] = specif.prob(scores[formId], freqs[formId], formOccs[formId]);
+      }
+      else {
+        // a form in a cooccurrence, may be more frequent than the pivot (repetition in a large context)
+        long Oab = freqs[formId];
+        if (Oab > Ob) Oab = Ob;
+        scores[formId] = mi.score(Oab, formOccs[formId], Ob, N);
       }
     }
-
-    dic.scores = scores;
     TopArray top;
     int flags = TopArray.NO_ZERO;
-    if (dic.reverse) flags |= TopArray.REVERSE;
-    if (dic.limit < 1) top = new TopArray(scores, flags); // all search
-    else top = new TopArray(dic.limit, scores, flags);
-    
-    dic.sorter(top.toArray());
+    if (results.reverse) flags |= TopArray.REVERSE;
+    if (results.limit < 1) top = new TopArray(scores, flags); // all search
+    else top = new TopArray(results.limit, scores, flags);
+    results.sorter(top.toArray());
   }
   
   /**
