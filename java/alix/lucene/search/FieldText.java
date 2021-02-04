@@ -61,6 +61,7 @@ import alix.lucene.analysis.FrDics.LexEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.Char;
 import alix.util.TopArray;
+import alix.web.Distrib.Scorer;
 
 /**
  * <p>
@@ -82,11 +83,11 @@ public class FieldText
   /** Name of the indexed field */
   public final String fieldName;
   /** Number of different search */
-  public final int size;
+  public final int formMax;
   /** Global number of occurrences for this field */
-  public final long occsAll;
+  public final long allOccs;
   /** Global number of docs relevant for this field */
-  public final int docsAll;
+  public final int allDocs;
   /** Count of occurrences by document for this field (for stats), different from docLenghth (empty positions) */
   public final int[] docOccs;
   /** Store and populate the search and get the id */
@@ -181,16 +182,16 @@ public class FieldText
         }
       }
     }
-    this.size = stack.size()+1; // should be the stack of non empty term + empty term
+    this.formMax = stack.size()+1; // should be the stack of non empty term + empty term
     // here we should have all we need to affect a freq formId
     // sort forms, and reloop on them to get optimized things
     java.util.BitSet stopRecord = new java.util.BitSet(); // record StopWords to build an optimized BitSet
-    BitSet locs = new FixedBitSet(this.size); // record locutions, size of BitSet will be full
+    BitSet locs = new FixedBitSet(this.formMax); // record locutions, size of BitSet will be full
     BytesRefHash hashDic = new BytesRefHash(); // populate a new hash dic with values
     hashDic.add(new BytesRef("")); // add empty string as formId=0 for empty positions
-    long[] formOccs = new long[this.size];
-    int[] formDocs = new int[this.size];
-    int[] tags = new int[this.size];
+    long[] formOccs = new long[this.formMax];
+    int[] formDocs = new int[this.formMax];
+    int[] tags = new int[this.formMax];
     Collections.sort(stack); // should sort by frequences
     CharsAtt chars = new CharsAtt(); // to test against indexation dicos
     bytes = new BytesRef();
@@ -228,8 +229,8 @@ public class FieldText
     // here we should be happy and set class fields
     this.formStop = stops;
     this.formLoc = locs;
-    this.occsAll = occsAll;
-    this.docsAll = docs.cardinality();
+    this.allOccs = occsAll;
+    this.allDocs = docs.cardinality();
     this.formDic = hashDic;
     this.formAllDocs = formDocs;
     this.formAllOccs = formOccs;
@@ -372,23 +373,18 @@ public class FieldText
     return formAllOccs[id];
   }
 
-  public FormEnum iterator(final int limit, final Specif specif, final BitSet filter, final TagFilter tags) throws IOException
-  {
-    return iterator(limit, specif, filter, tags, false);
-  }
-
   /**
    * Global termlist, maybe filtered but not scored. More efficient than a scorer
    * that loop on each term for global.
    * @return
    */
-  public FormEnum iterator(final int limit, final TagFilter tags, final boolean reverse)
+  public FormEnum results(final int limit, final TagFilter tags, final boolean reverse)
   {
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
     boolean locs = (tags != null && tags.locutions());
-    double[] scores = new double[size];
-    for (int formId=0; formId < size; formId++) {
+    double[] scores = new double[formMax];
+    for (int formId=0; formId < formMax; formId++) {
       if (noStop && isStop(formId)) continue;
       if (locs && !formLoc.get(formId)) continue;
       if (hasTags && !tags.accept(formTag[formId])) continue;
@@ -465,15 +461,13 @@ public class FieldText
    * to have stats for docs about a query.
    * @throws IOException 
    */
-  public DocStats docStats(String[] forms, Specif specif, final BitSet filter) throws IOException 
+  public DocStats docStats(String[] forms, Scorer scorer, final BitSet filter) throws IOException 
   {
     if (forms == null || forms.length == 0) return null;
     int[] freqs = new int[reader.maxDoc()];
     double[] scores = new double[reader.maxDoc()];
     final boolean hasFilter = (filter != null && filter.cardinality() > 0);
-    if (specif == null) specif = new SpecifBM25();
-    final boolean hasSpecif = (specif != null);
-    if (hasSpecif) specif.all(occsAll, docsAll);
+    final boolean hasScorer = (scorer != null);
     final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
     // loop an all index to calculate a score for the forms
     for (LeafReaderContext context : reader.leaves()) {
@@ -484,7 +478,7 @@ public class FieldText
       // loop on forms as lucene term
       for (String form: forms) {
         final int formId = formId(form);
-        if (hasSpecif) specif.idf(formAllOccs[formId], formAllDocs[formId] );
+        if (hasScorer) scorer.idf(allOccs, allDocs, formAllOccs[formId], formAllDocs[formId]);
         Term term = new Term(fieldName, form);
         PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS);
         int docLeaf;
@@ -495,14 +489,8 @@ public class FieldText
           int freq = postings.freq();
           if (freq < 1) throw new ArithmeticException("??? field="+fieldName+" docId=" + docId+" form="+form+" freq="+freq);
           freqs[docId] += freq;
-          if (hasSpecif) {
-            // if it’s a tf-idf like score
-            scores[docId] += specif.tf(freq, docOccs[docId]);
-            // if it’s a classical stat (but we know now that idf is more relevant)
-            specif.part(docOccs[docId], 1);
-            scores[docId] += specif.prob(scores[docId], freq, formAllOccs[formId]); // tf(freq, docOccs[docId]);
-          }
-          
+          if (hasScorer) scores[docId] += scorer.tf(freq, docOccs[docId]);
+          else scores[docId] += freq;
         }
       }
     }
@@ -581,23 +569,28 @@ public class FieldText
    * defined as a BitSet. Returns an iterator sorted according 
    * to a scorer. If scorer is null, default is count of occurences.
    */
-  public FormEnum iterator(final int limit, Specif specif, final BitSet filter, final TagFilter tags, final boolean reverse) throws IOException
+  public FormEnum results(final int limit, final TagFilter tags, Scorer scorer, final BitSet filter, final boolean reverse) throws IOException
   {
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
     boolean locs = (tags != null && tags.locutions());
-    if (specif == null) specif = new SpecifOccs();
-    boolean hasSpecif = (specif != null);
+    boolean hasScorer = (scorer != null);
     boolean hasFilter = (filter != null && filter.cardinality() > 0);
     
-    if (hasSpecif) specif.all(occsAll, docsAll);
+    final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
+    long partOccs = 0;
+    if (filter != null) {
+      for (int docId = filter.nextSetBit(0); docId != NO_MORE_DOCS; docId = filter.nextSetBit(docId + 1)) {
+        partOccs += docOccs[docId];
+      }
+    }
+    // if (hasSpecif) specif.all(allOccs, allDocs);
     BitSet hitsVek = new FixedBitSet(reader.maxDoc());
     
-    double[] scores = new double[size];
-    long[] freqs = new long[size];
-    int[] hits = new int[size];
+    double[] scores = new double[formMax];
+    long[] freqs = new long[formMax];
+    int[] hits = new int[formMax];
     BytesRef bytes;
-    final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
     // loop an all index to calculate a score for each term before build a more expensive object
     for (LeafReaderContext context : reader.leaves()) {
       int docBase = context.docBase;
@@ -617,7 +610,8 @@ public class FieldText
         if (hasTags && !tags.accept(formTag[formId])) continue;
         // if formId is negative, let the error go, problem in reader
         // for each term, set scorer with global stats
-        if (hasSpecif) specif.idf(formAllOccs[formId], formAllDocs[formId] );
+        // if (hasSpecif) specif.idf(formAllOccs[formId], formAllDocs[formId] );
+        if (hasScorer) scorer.idf(allOccs, allDocs, formAllOccs[formId], formAllDocs[formId]);
         docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
         int docLeaf;
         while ((docLeaf = docsEnum.nextDoc()) != NO_MORE_DOCS) {
@@ -628,31 +622,38 @@ public class FieldText
           if (freq < 1) throw new ArithmeticException("??? field="+fieldName+" docId=" + docId+" term="+bytes.utf8ToString()+" freq="+freq);
           hitsVek.set(docId);
           hits[formId]++;
-          // if it’s a tf-idf like score
-          if (hasSpecif) scores[formId] += specif.tf(freq, docOccs[docId]);
+          if (hasScorer) {
+            final double score = scorer.tf(freq, docOccs[docId]);
+            if (score < 0) scores[formId] -= score; // all variation is significant
+            scores[formId] += score;
+          }
+          else scores[formId] += freq;
           freqs[formId] += freq;
+        }
+        if (hasScorer && filter != null) {
+          // add inverse score
+          final long restFreq = formAllOccs[formId] - freqs[formId];
+          final long restLen = allOccs - partOccs;
+          double score = scorer.last(restFreq, restLen);
+          scores[formId] -= score;
         }
       }
     }
     
-    
     // We have counts, calculate scores
     // loop on the bitSet to have the part Size
-    long partOccs = 0;
-    for (int docId = hitsVek.nextSetBit(0); docId != NO_MORE_DOCS; docId = hitsVek.nextSetBit(docId + 1)) {
-      partOccs += docOccs[docId];
-    }
+    /*
     if (hasSpecif) {
       specif.part(partOccs, hitsVek.cardinality());
       // loop on all form to calculate scores
-      for (int formId = 0; formId < size; formId++) {
+      for (int formId = 0; formId < formMax; formId++) {
         long formPartOccs = freqs[formId];
         if (formPartOccs < 1) continue;
         double p = specif.prob(scores[formId], formPartOccs, formAllOccs[formId]);
         scores[formId] = p;
       }
     }
-    
+    */
     
     // now we have all we need to build a sorted iterator on entries
     TopArray top;
@@ -704,7 +705,7 @@ public class FieldText
   {
     StringBuilder string = new StringBuilder();
     BytesRef ref = new BytesRef();
-    int len = Math.min(size, 200);
+    int len = Math.min(formMax, 200);
     for (int i = 0; i < len; i++) {
       formDic.get(i, ref);
       string.append(ref.utf8ToString() + ": " + formAllOccs[i] + "\n");

@@ -46,6 +46,8 @@ import org.apache.lucene.util.UnicodeUtil;
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
+import alix.util.TopArray;
+import alix.web.Distrib.Scorer;
 import alix.web.MI;
 
 /**
@@ -59,8 +61,6 @@ import alix.web.MI;
 public class FormEnum {
   /** An array of formId in the order we want to iterate on, should be set before iteration */
   private int[] sorter;
-  /** Ensure size */
-  private int size;
   /** Field dictionary */
   final private BytesRefHash formDic;
   /** Count of docs by formId */
@@ -100,7 +100,7 @@ public class FormEnum {
   /** Reverse order of sorting */
   public boolean reverse;
   /** Optional, a sort algorithm to select specific words according a norm (ex: compare formOccs / freqs) */
-  public Specif specif;
+  public Scorer scorer;
   /** Optional, a sort algorithm for coocs */
   public MI mi;
 
@@ -124,23 +124,37 @@ public class FormEnum {
     this.formCover = field.facetCover;
     this.formTag = null;
   }
+  
+  /**
+   * Set a vector for scores, and prepare the sorter
+   */
+  public void scores(final double[] scores, final int limit, boolean reverse)
+  {
+    this.scores = scores;
+    TopArray top;
+    int flags = TopArray.NO_ZERO;
+    if (reverse) flags |= TopArray.REVERSE;
+    if (limit < 1) top = new TopArray(scores, flags); // all search
+    else top = new TopArray(limit, scores, flags);
+    this.sorter(top.toArray());
+  }
 
   /**
    * Set the sorted vector of ids
    */
   public void sorter(final int[] sorter) {
     this.sorter = sorter;
-    this.size = sorter.length;
+    this.limit = sorter.length;
     cursor = -1;
   }
   
   /**
-   * Size of enumeration
+   * Limit enumeration
    * @return
    */
-  public int size()
+  public int limit()
   {
-    return size;
+    return limit;
   }
   /**
    * Count of occurrences for this search
@@ -232,7 +246,7 @@ public class FormEnum {
   public boolean hasNext()
   {
     
-    return (cursor < size - 1);
+    return (cursor < limit - 1);
   }
 
   /**
@@ -251,6 +265,18 @@ public class FormEnum {
   {
     cursor = -1;
     formId = -1;
+  }
+
+  public void first()
+  {
+    cursor = 0;
+    formId = sorter[cursor];
+  }
+
+  public void last()
+  {
+    cursor = sorter.length - 1;
+    formId = sorter[cursor];
   }
 
 
@@ -291,7 +317,7 @@ public class FormEnum {
   public CharsAtt form(CharsAtt term)
   {
     formDic.get(formId, bytes);
-    // ensure size of the char array
+    // ensure limit of the char array
     int length = bytes.length;
     char[] chars = term.resizeBuffer(length);
     final int len = UnicodeUtil.UTF8toUTF16(bytes.bytes, bytes.offset, length, chars);
@@ -385,23 +411,31 @@ public class FormEnum {
   @Override
   public String toString()
   {
-    if (sorter == null) throw new IllegalArgumentException("Set FormEnum.sorter with an array of ordered formId before to loop on");
+    int limit = 100;
+    StringBuilder sb = new StringBuilder();
+    int[] sorter = this.sorter;
+    if (sorter == null) {
+      limit = Math.min(formDic.size(), limit);
+      sb.append("No sorter, limit="+formDic.size()+" limit=" + limit + "\n");
+      sorter = new int[limit];
+      for (int i = 0; i < limit; i++) sorter[i] = i;
+    }
     boolean hasScore = (scores != null);
     boolean hasTag = (formTag != null);
     boolean hasHits = (hits != null);
     boolean hasDocs = (formDocs != null);
     boolean hasToccs = (formOccs != null);
     boolean hasOccs = (freqs != null);
-    StringBuilder sb = new StringBuilder();
-    for(int pos = 0; pos < size; pos++) {
+    for(int pos = 0; pos < limit; pos++) {
       int formId = sorter[pos];
       formDic.get(formId, bytes);
-      sb.append(formId + ". " + bytes.utf8ToString());
+      sb.append((pos+1) + ". [" + formId + "] " + bytes.utf8ToString());
       if (hasTag) sb.append( " "+Tag.label(formTag[formId]));
       if (hasScore) sb.append( " score=" + scores[formId]);
+      
       if (hasToccs && hasOccs) sb.append(" freqs="+freqs[formId]+"/"+formOccs[formId]);
-      else if(hasDocs) sb.append(" voc="+formDocs[formId]);
-      else if(hasHits) sb.append(" freqs="+freqs[formId]);
+      else if(hasToccs) sb.append(" freqs="+formOccs[formId]);
+      
       if (hasHits && hasDocs) sb.append(" hits="+hits[formId]+"/"+formDocs[formId]);
       else if(hasDocs) sb.append(" docs="+formDocs[formId]);
       else if(hasHits) sb.append(" hits="+hits[formId]);

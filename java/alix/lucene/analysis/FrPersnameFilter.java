@@ -119,7 +119,7 @@ public class FrPersnameFilter extends TokenFilter
     
     
     if (Tag.isName(tag) && Char.isUpperCase(term.charAt(0))); // append names, but not titles
-    else if (TITLES.contains(term)); // Saint, Maître…
+    // else if (TITLES.contains(term)); // Saint, Maître…
     else return true;
     
 

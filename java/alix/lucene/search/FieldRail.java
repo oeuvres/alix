@@ -432,26 +432,14 @@ public class FieldRail
     double[] scores = results.scores; // localize
     
     // localize the scoring reference
-    final long N = fieldText.occsAll; // global 
+    final long N = fieldText.allOccs; // global 
     final long[] formOccs = fieldText.formAllOccs; // global for all base
     // final long[] formOccs = results.formOccs; // do not restrict 
     final int[] formDocs = fieldText.formAllDocs;
     // final int[] formDocs = results.formDocs;
     final long partOccs = results.partOccs;
     MI mi = results.mi;
-    boolean hasSpecif = false;
-    Specif specif = results.specif;
-    if (results.specif != null) {
-      hasSpecif = true;
-      // int docsAll = fieldText.docsAll;
-      // if (results.filter != null) docsAll = results.filter.cardinality();
-      // specif.all(N, docsAll); // count relative to filter ? seems bad
-      specif.all(fieldText.occsAll, fieldText.docsAll); // count relative to all
-      specif.part(partOccs, 1);
-    }
-    else {
-      if (mi == null) mi = MI.occs;
-    }
+    if (mi == null) mi = MI.occs;
     
  
     
@@ -459,17 +447,9 @@ public class FieldRail
       if (noStop && fieldText.isStop(formId)) continue;
       if (hasTags && !tags.accept(fieldText.formTag[formId])) continue;
       if (freqs[formId] == 0) continue;
-      if (hasSpecif) {
-        specif.idf(formOccs[formId], formDocs[formId]);
-        scores[formId] = specif.tf(freqs[formId], partOccs); 
-        scores[formId] = specif.prob(scores[formId], freqs[formId], formOccs[formId]);
-      }
-      else {
-        // a form in a cooccurrence, may be more frequent than the pivot (repetition in a large context)
-        long Oab = freqs[formId];
-        if (Oab > Ob) Oab = Ob;
-        scores[formId] = mi.score(Oab, formOccs[formId], Ob, N);
-      }
+      long Oab = freqs[formId];
+      if (Oab > Ob) Oab = Ob; // // a form in a cooccurrence, may be more frequent than the pivot (repetition in a large context)
+      scores[formId] = mi.score(Oab, formOccs[formId], Ob, N);
     }
     TopArray top;
     int flags = TopArray.NO_ZERO;

@@ -52,15 +52,19 @@ public class FrAnalyzer extends Analyzer
   @Override
   public TokenStreamComponents createComponents(String field)
   {
+    // kind of fields
+    final boolean orth = field.endsWith("orth");
+    final boolean search = Alix.SEARCH.startsWith(field);
     int flags = FrTokenizer.XML;
-    if (Alix.SEARCH.startsWith(field)) flags = flags | FrTokenizer.SEARCH;
+    if (search) flags = flags | FrTokenizer.SEARCH;
     final Tokenizer source = new FrTokenizer(flags); // segment words
     TokenStream result = new FrLemFilter(source); // provide lemma+pos
-    result = new LocutionFilter(result); // compounds: parce que (quite expensive, 20% time)
-    if (!Alix.SEARCH.startsWith(field)) result = new FrPersnameFilter(result); // link unknown names, bad for a search query
+    
+    if (!orth) result = new LocutionFilter(result); // compounds: parce que (quite expensive, 20% time)
+    if (!search && !orth) result = new FrPersnameFilter(result); // link unknown names, bad for a search query
     boolean pun = false;
-    if (Alix.SEARCH.startsWith(field)) pun = true; // keep punctuation, ex, to parse search
-    if (field.endsWith("orth")) result = new FlagOrthFilter(result); // select lemmas as term to index
+    if (search) pun = true; // keep punctuation, ex, to parse search
+    if (orth) result = new FlagOrthFilter(result); // select lemmas as term to index
     else result = new FlagCloudFilter(result, pun); // select lemmas as term to index
     return new TokenStreamComponents(source, result);
   }

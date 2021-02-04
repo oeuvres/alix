@@ -42,8 +42,8 @@ public enum Cat implements Option
 {
   
   ALL("Tout", null),
-  NOSTOP("Sans mots “vides“", new TagFilter().setAll().noStop(true) ), 
-  STRONG("Mots forts", new TagFilter().setGroup(Tag.SUB).setGroup(Tag.NAME).setGroup(Tag.ADJ)), 
+  NOSTOP("Sans mots “vides”", new TagFilter().setAll().noStop(true) ), 
+  STRONG("Mots de la langue", new TagFilter().setGroup(Tag.SUB).setGroup(Tag.VERB).setGroup(Tag.ADJ).set(0)), 
   SUB("Substantifs", new TagFilter().setGroup(Tag.SUB)), 
   NAME("Noms propres", new TagFilter().setGroup(Tag.NAME)),
   VERB("Verbes", new TagFilter().setGroup(Tag.VERB)),

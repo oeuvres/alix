@@ -68,6 +68,8 @@ import alix.util.Char;
 import alix.util.ML;
 import alix.util.Top;
 import alix.util.TopArray;
+import alix.web.Distrib.Scorer;
+import alix.web.MI;
 
 
 /**
@@ -572,7 +574,7 @@ public class Doc
   /**
    * Count of occurrences by term for the document. Returns an iterator sorted according 
    * to a scorer. If scorer is null, default is count of occurences.
-   * {@link FieldText#iterator(int, org.apache.lucene.util.BitSet, Specif, TagFilter)}
+   * {@link FieldText#results(int, org.apache.lucene.util.BitSet, Specif, TagFilter)}
    * 
    * @param field
    * @param limit
@@ -583,27 +585,24 @@ public class Doc
    * @throws IOException
    * @throws NoSuchFieldException
    */
-  public FormEnum iterator(String field, int limit, Specif specif, TagFilter tags, final boolean reverse) throws IOException, NoSuchFieldException
+  public FormEnum results(String field, int limit, TagFilter tags, Scorer scorer, final boolean reverse) throws IOException, NoSuchFieldException
   {
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
-    boolean hasSpecif = (specif != null);
-    // sorting default, may alpha be better ?
-    if (specif == null) specif = new SpecifOccs();
+    boolean hasScorer = (scorer != null);
     
     // get index term stats and localize some arrays
     FieldText fieldText = alix.fieldText(field);
-    double[] scores = new double[fieldText.size];
-    long[] occs = new long[fieldText.size]; // freqs by form
+    double[] scores = new double[fieldText.formMax];
+    long[] occs = new long[fieldText.formMax]; // freqs by form
     int[] formTag = fieldText.formTag;
     long[] formAllOccs = fieldText.formAllOccs;
     int[] formAllDocs = fieldText.formAllDocs;
-    int docOccs = alix.docOccs(field)[docId];
+    int docOccs = fieldText.docOccs[docId];
     BitSet stops = fieldText.formStop;
 
-    specif.all(fieldText.occsAll, fieldText.docsAll);
-    specif.part(docOccs, 1); // part has one doc
-    // loop on all search of the document, get score, keep the top 
+    // loop on all forms of the document, get score, keep the top
+    final long restLen = fieldText.allOccs - docOccs;
     Terms vector = getTermVector(field); // get the term vector to loop on
     TermsEnum termit = vector.iterator();
     while(termit.next() != null) {
@@ -611,29 +610,28 @@ public class Doc
       final int formId = fieldText.formId(bytes);
       if (hasTags && !tags.accept(formTag[formId])) continue;
       if (noStop && stops.get(formId)) continue;
-      // if (formId < 0) continue; // should not arrive, let cry
-      specif.idf(formAllOccs[formId], formAllDocs[formId]); // term specific stats
+      if (formId < 0) continue; // should not arrive, let cry
+      if (hasScorer) scorer.idf(fieldText.allOccs, fieldText.allDocs, formAllOccs[formId], formAllDocs[formId]);
+
       // scorer.weight(termOccs, termDocs); // collection level stats
-      long formDocOccs = termit.totalTermFreq();
-      occs[formId] = formDocOccs;
-      if (hasSpecif) {
-        scores[formId] = specif.tf(formDocOccs, docOccs);
-        scores[formId] = specif.prob(scores[formId], formDocOccs, formAllOccs[formId]);
+      long freq = termit.totalTermFreq();
+      occs[formId] = freq;
+      if (hasScorer) {
+        scores[formId] += scorer.tf(freq, docOccs);
+        // scores[formId] -= scorer.last(formAllOccs[formId] - freq, restLen); // sub complement ?
+      }
+      else {
+        scores[formId] = freq;
       }
     }
     // now we have all we need to build a sorted iterator on entries
-    TopArray top;
-    int flags = TopArray.NO_ZERO;
-    if (reverse) flags |= TopArray.REVERSE;
-    if (limit < 1) top = new TopArray(scores, flags); // all search
-    else top = new TopArray(limit, scores, flags);
-    FormEnum it = new FormEnum(fieldText);
-    it.sorter(top.toArray());
+    FormEnum results = new FormEnum(fieldText);
+    results.scores(scores, limit, false);
     // add some more stats on this iterator
-    it.freqs = occs;
-    it.scores = scores;
-    it.partOccs = docOccs;
-    return it;
+    results.freqs = occs;
+    results.scores = scores;
+    results.partOccs = docOccs;
+    return results;
   }
 
   /**

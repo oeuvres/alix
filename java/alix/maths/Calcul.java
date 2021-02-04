@@ -203,4 +203,111 @@ public class Calcul
     }
     return value;
   }
+  
+  /**
+   * Find a hypergeometric distribution.  This uses exact math, trying
+   * fairly hard to avoid numeric overflow by interleaving
+   * multiplications and divisions.
+   * (To do: make it even better at avoiding overflow, by using loops
+   * that will do either a multiple or divide based on the size of the
+   * intermediate result.)
+   *
+   * @param k The number of black balls drawn
+   * @param n The total number of balls
+   * @param r The number of black balls
+   * @param m The number of balls drawn
+   * @return The hypergeometric value
+   */
+  public static double hypergeometric(int k, int n, int r, int m) {
+    if (k < 0 || r > n || m > n || n <= 0 || m < 0 || r < 0) {
+      throw new IllegalArgumentException("Invalid hypergeometric");
+    }
+
+    // exploit symmetry of problem
+    if (m > n / 2) {
+      m = n - m;
+      k = r - k;
+    }
+    if (r > n / 2) {
+      r = n - r;
+      k = m - k;
+    }
+    if (m > r) {
+      int temp = m;
+      m = r;
+      r = temp;
+    }
+    // now we have that k <= m <= r <= n/2
+    
+    /*
+    if (k < (m + r) - n || k > m) {
+      return 0.0;
+    }
+
+    // Do limit cases explicitly
+    // It's unclear whether this is a good idea.  I put it in fearing
+    // numerical errors when the numbers seemed off, but actually there
+    // was a bug in the Fisher's exact routine.
+    if (r == n) {
+      if (k == m) {
+        return 1.0;
+      } else {
+        return 0.0;
+      }
+    } else if (r == n - 1) {
+      if (k == m) {
+        return (n - m) / (double) n;
+      } else if (k == m - 1) {
+        return m / (double) n;
+      } else {
+        return 0.0;
+      }
+    } else if (m == 1) {
+      if (k == 0) {
+        return (n - r) / (double) n;
+      } else if (k == 1) {
+        return r / (double) n;
+      } else {
+        return 0.0;
+      }
+    } else if (m == 0) {
+      if (k == 0) {
+        return 1.0;
+      } else {
+        return 0.0;
+      }
+    } else if (k == 0) {
+      double ans = 1.0;
+      for (int m0 = 0; m0 < m; m0++) {
+        ans *= ((n - r) - m0);
+        ans /= (n - m0);
+      }
+      return ans;
+    }
+    */
+
+    double ans = 1.0;
+    // do (n-r)x...x((n-r)-((m-k)-1))/n x...x (n-((m-k-1)))
+    // leaving rest of denominator to get to multiply by (n-(m-1))
+    // that's k things which goes into next loop
+    for (int nr = n - r, n0 = n; nr > (n - r) - (m - k); nr--, n0--) {
+      // System.out.println("Multiplying by " + nr);
+      ans *= nr;
+      // System.out.println("Dividing by " + n0);
+      ans /= n0;
+    }
+    // System.out.println("Done phase 1");
+    for (int k0 = 0; k0 < k; k0++) {
+      ans *= (m - k0);
+      // System.out.println("Multiplying by " + (m-k0));
+      ans /= ((n - (m - k0)) + 1);
+      // System.out.println("Dividing by " + ((n-(m+k0)+1)));
+      ans *= (r - k0);
+      // System.out.println("Multiplying by " + (r-k0));
+      ans /= (k0 + 1);
+      // System.out.println("Dividing by " + (k0+1));
+    }
+    return ans;
+  }
+
 }

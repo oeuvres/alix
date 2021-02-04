@@ -43,7 +43,7 @@ public class TestFieldText
     });
     String fieldName = TestAlix.fieldName;
     FieldText ftext = alix.fieldText(fieldName);
-    FormEnum terms = ftext.iterator(-1, null, null, null);
+    FormEnum terms = ftext.results(-1, null, null, null);
     System.out.println("forms, in formId order");
     System.out.println(terms);
     FixedBitSet bits = new FixedBitSet(alix.maxDoc());
@@ -67,11 +67,11 @@ public class TestFieldText
     }
     
     System.out.println("Filtered forms, occurrences");
-    terms = ftext.iterator(-1, null, bits, null);
+    terms = ftext.results(-1, null, bits, null);
     System.out.println(terms);
 
     System.out.println("Filtered forms, reverse chi2");
-    terms = ftext.iterator(3, new SpecifChi2(), bits, null, true);
+    terms = ftext.results(3, new SpecifChi2(), bits, null, true);
     System.out.println(terms);
     while (terms.hasNext()) {
       terms.next();

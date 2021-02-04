@@ -63,6 +63,7 @@ import alix.lucene.Alix;
 import alix.lucene.DocType;
 import alix.util.IntList;
 import alix.util.TopArray;
+import alix.web.Distrib.Scorer;
 
 /**
  * A dedicated dictionary for facets, to allow similarity scores.
@@ -342,7 +343,7 @@ public class FieldFacet
    * @return
    * @throws IOException
    */
-  public FormEnum iterator(final String[] search, final BitSet filter, Specif specif, final int limit) throws IOException
+  public FormEnum iterator(final String[] search, final BitSet filter, Scorer scorer, final int limit) throws IOException
   {
     ArrayList<Term> terms = new ArrayList<Term>();
     if (search != null && search.length != 0) { 
@@ -353,11 +354,8 @@ public class FieldFacet
       }
     }
     long[] formAllOccs = fieldText.formAllOccs; // localize
-
-    if (specif == null) specif = new SpecifOccs();
-    boolean hasSpecif = (specif != null);
-    if (hasSpecif) specif.all(allOccs, allDocs);
-    // boolean isTfidf = (specif.type() == Specif.TYPE_TFIDF);
+    int[] formAllDocs = fieldText.formAllDocs; // localize
+    boolean hasScorer = (scorer != null);
     boolean hasFilter = (filter != null);
 
     // Crawl index to get stats by facet term about the text search
@@ -374,7 +372,7 @@ public class FieldFacet
     for (Term term : terms) {
       long[] formPartOccs = new long[size]; // a vector to count matched occurrences for this term, by facet
       final int formId = fieldText.formId(term.bytes());
-      if (hasSpecif) specif.idf(fieldText.formAllOccs[formId], fieldText.formAllDocs[formId] );
+      if (hasScorer) scorer.idf(allOccs, allDocs, formAllOccs[formId], formAllDocs[formId]);
       // loop on the reader leaves (opening may have disk cost)
       for (LeafReaderContext context : reader.leaves()) {
         LeafReader leaf = context.reader();
@@ -406,24 +404,17 @@ public class FieldFacet
             occs[facetId] += freq; // add the matched freqs for this doc to the facet
             formPartOccs[facetId] += freq;
             // term frequency
-            if (hasSpecif) scores[facetId] += specif.tf(freq, docOccs[docId]);
+            if (hasScorer) scores[facetId] += scorer.tf(freq, docOccs[docId]);
 
           }
           if (!docSeen) docMap.set(docId); // do not recount this doc as hit for another term
         }
       }
-      // set stats by term
-      if (hasSpecif) {
-        for (int facetId = 0, length = occs.length; facetId < length; facetId++) { // get score for each facet
-          specif.part(facetOccs[facetId], facetDocs[facetId]);
-          scores[facetId] += specif.prob(0, formPartOccs[facetId], formAllOccs[formId]); // ;
-        }
-      }
 
     }
     FormEnum it;
-    // a scorer, search desired in alphabetic order with stats, let user choose what to do with empty 
-    if (hasSpecif) {
+    // a scorer 
+    if (hasScorer) {
       TopArray top;
       if (limit < 1) top = new TopArray(scores); // all search
       else top = new TopArray(limit, scores);
@@ -432,7 +423,7 @@ public class FieldFacet
       
       
     } 
-    // no scorer, search desired in alphabetic order with stats, let user choose what to do with no hits
+    // no scorer, search desired in alphabetic order with stats
     else {
       it = new FormEnum(this);
       it.sorter(alpha);

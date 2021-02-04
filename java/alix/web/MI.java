@@ -32,9 +32,6 @@
  */
 package alix.web;
 
-import java.util.Arrays;
-
-import alix.maths.Fisher;
 
 /**
  * Some algorithms to score co-occurrency.
@@ -61,6 +58,7 @@ public enum MI implements Option
         if (O[i] == 0) continue; // is it gut ?
         sum += O[i] * Math.log(O[i]/E[i]);
       }
+      if (Oab < E[0]) return sum * -2;
       return sum * 2;
     }  
   },
@@ -94,6 +92,7 @@ public enum MI implements Option
         double O_E = O[i] - E[i];
         sum += O_E * O_E / E[i];
       }
+      if (Oab < E[0]) return -sum;
       return sum;
     }
   },
