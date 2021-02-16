@@ -32,6 +32,7 @@
  */
 package alix.web;
 
+import alix.maths.Fisher;
 
 /**
  * Distribution laws, to be used in sum
@@ -159,7 +160,25 @@ public enum Distrib implements Option
     }
   }
 
+  public static class ScorerLafon extends Scorer
+  {
 
+    @Override
+    public double tf(double freq, double docLen)
+    {
+      /*
+      fisher("Fisher (hypergéométrique)", "p = (AB + A¬B)!(¬AB + ¬A¬B)!(AB + ¬AB)!(A¬B + ¬A¬B) / (AB!A¬B!¬AB!¬A¬B!)") {
+        public double score(final double Oab, final double Oa, final double Ob, final double N)
+        {
+          double[] res = Fisher.test((int)Oab, (int)(Oa - Oab), (int)(Ob - Oab), (int)(N - Oa - Ob + Oab));
+          return  - res[0];
+        }  
+      }*/
+      return 0;
+    }
+    
+  }
+ 
   
   final Scorer scorer;
   final public String label;

@@ -118,7 +118,7 @@ public class LocutionFilter extends TokenFilter
       // 2. restart a loop
       if (stack.size() > loop) {
         restoreState(stack.get(loop));
-        if (Tag.isPun(flagsAtt.getFlags()) || termAtt.length() == 0) {
+        if (Tag.PUN.sameParent(flagsAtt.getFlags()) || termAtt.length() == 0) {
           if (stack.isEmpty()) return true;
         }
       }
@@ -130,7 +130,7 @@ public class LocutionFilter extends TokenFilter
           return true;
         }
         // is a branch stop, exhaust stack
-        if (Tag.isPun(flagsAtt.getFlags()) || termAtt.length() == 0) {
+        if (Tag.PUN.sameParent(flagsAtt.getFlags()) || termAtt.length() == 0) {
           // if nothing in stack, go out with current state
           if (stack.isEmpty()) return true;
           // if stack is not empty, restore first, add this state to the stack
@@ -146,7 +146,7 @@ public class LocutionFilter extends TokenFilter
       if (loop > 0 && !compound.endsWith('\'')) compound.append(' '); 
       
       int tag = flagsAtt.getFlags();
-      if (Tag.isNum(tag)) {
+      if (Tag.NUM.sameParent(tag)) {
         compound.append("NUM");
       }
       // for adjectives to no confuse with verbs
@@ -154,7 +154,7 @@ public class LocutionFilter extends TokenFilter
         compound.append(orthAtt);
       }
       // for verbs, the compound key is the lemma, for others takes an orthographic form
-      else if (Tag.isVerb(tag) && lemAtt.length() != 0) {
+      else if (Tag.VERB.sameParent(tag) && lemAtt.length() != 0) {
         maybeVerb = true;
         compound.append(lemAtt);
       }
@@ -163,11 +163,11 @@ public class LocutionFilter extends TokenFilter
         compound.setLength(compound.length() - 1); // suppres last ' '
       }
       // for names, test the original forms
-      else if (Tag.isName(tag)) {
+      else if (Tag.NAME.sameParent(tag)) {
         compound.append(termAtt);
       }
       // for other words, orth may have correct initial capital of sentence
-      else if (!Tag.isSub(tag) && orth.length() != 0) {
+      else if (!Tag.SUB.sameParent(tag) && orth.length() != 0) {
         compound.append(orth);
       }
       // Nations Unies ?

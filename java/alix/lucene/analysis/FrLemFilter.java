@@ -123,7 +123,7 @@ public final class FrLemFilter extends TokenFilter
     int flags = flagsAtt.getFlags();
     // pass through zero-length search
     if (orth.length() == 0) return true;
-    if (flags == Tag.PUNdiv || flags == Tag.PUNsent) {
+    if (flags == Tag.PUNdiv.flag || flags == Tag.PUNsent.flag) {
       this.waspun = true;
       return true;
     }
@@ -139,10 +139,10 @@ public final class FrLemFilter extends TokenFilter
     if (Char.isUpperCase(c1)) {
       
       // roman number already detected
-      if (flagsAtt.getFlags() == Tag.NUM) return true;
+      if (flagsAtt.getFlags() == Tag.NUM.flag) return true;
       int n = Calcul.roman2int(orth.buffer(), 0, orth.length());
       if (n > 0) {
-        flagsAtt.setFlags(Tag.NUM);
+        flagsAtt.setFlags(Tag.NUM.flag);
         orth.append(""+n);
         return true;
       }
@@ -173,7 +173,7 @@ public final class FrLemFilter extends TokenFilter
         return true;
       }
       else { // unknown word, infer it's a NAME
-        flagsAtt.setFlags(Tag.NAME);
+        flagsAtt.setFlags(Tag.NAME.flag);
         orth.copy(copy);
         return true;
       }

@@ -217,9 +217,9 @@ public class FieldText
         tags[formId] = entry.tag;
         continue;
       }
-      if (Char.isPunctuation(chars.charAt(0))) tags[formId] = Tag.PUN;
+      if (Char.isPunctuation(chars.charAt(0))) tags[formId] = Tag.PUN.flag;
       else if (chars.length() < 1) continue; // ?
-      else if (Char.isUpperCase(chars.charAt(0))) tags[formId] = Tag.NAME;
+      else if (Char.isUpperCase(chars.charAt(0))) tags[formId] = Tag.NAME.flag;
     }
     // convert a java.lang growable BitSets in fixed lucene ones
     BitSet stops = new FixedBitSet(stopRecord.length()); // because most common words are probably stop words, the bitset maybe optimized

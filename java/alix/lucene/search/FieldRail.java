@@ -516,11 +516,11 @@ public class FieldRail
   
   /**
    * Loop on the rail to find expression (2 plain words with possible stop words between 
-   * but no holes or punctuation)
+   * but not holes or punctuation)
    * @return
    * @throws IOException
    */
-  public Map<IntPair, Bigram> expressions(final BitSet filter) throws IOException
+  public Map<IntPair, Bigram> expressions(final BitSet filter, final boolean parceque) throws IOException
   {
     final boolean hasFilter = (filter != null);
     Map<IntPair, Bigram> expressions = new HashMap<IntPair, Bigram>();
@@ -546,15 +546,15 @@ public class FieldRail
         int formId = bufInt.get();
         // pun or hole, reste expression
         int tag = formTag[formId];
-        if (formId == 0 || Tag.isPun(tag)) {
+        if (formId == 0 || Tag.PUN.sameParent(tag)) {
           slider.reset();
           continue;
         }
         final boolean isStop = (formId < stops.length() && stops.get(formId));
-        if (isStop) {
+        if (!parceque && isStop) {
           if (slider.isEmpty()) continue;
           // être probably not iniside a compoud
-          if (Tag.isVerb(tag)) {
+          if (Tag.VERB.sameParent(tag)) {
             slider.reset();
             continue;
           }

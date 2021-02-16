@@ -84,10 +84,10 @@ public class FlagAllFilter extends TokenFilter
       lem = false;
       return true;
     }
-    if (tag != Tag.NULL) {
+    if (tag != Tag.NULL.flag) {
       posIncAtt.setPositionIncrement(0);
       term.setEmpty().append(Tag.label(tag));
-      tag = Tag.NULL;
+      tag = Tag.NULL.flag;
       return true;
     }
     

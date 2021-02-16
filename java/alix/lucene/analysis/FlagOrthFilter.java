@@ -88,18 +88,18 @@ public class FlagOrthFilter extends TokenFilter
   protected boolean accept() throws IOException
   {
     int tag = flagsAtt.getFlags();
-    if (tag == Tag.TEST) {
+    if (tag == Tag.TEST.flag) {
       System.out.println(termAtt+" orth="+orthAtt+" lem="+lemAtt);
     }
     // record an empty token at punctuation position for collocations
-    if (Tag.isPun(tag)) {
-      if (tag == Tag.PUNcl) termAtt.setEmpty().append(",");
-      else if (tag == Tag.PUNsent) termAtt.setEmpty().append(".");
-      else if (tag == Tag.PUNdiv) termAtt.setEmpty().append("§");
+    if (Tag.PUN.sameParent(tag)) {
+      if (tag == Tag.PUNcl.flag) termAtt.setEmpty().append(",");
+      else if (tag == Tag.PUNsent.flag) termAtt.setEmpty().append(".");
+      else if (tag == Tag.PUNdiv.flag) termAtt.setEmpty().append("§");
       else termAtt.setEmpty().append("");
     }
     // unify numbers
-    else if (Tag.isNum(tag)) {
+    else if (Tag.NUM.sameParent(tag)) {
       termAtt.setEmpty().append("NUM");
     }
     // replace term by normalized form if available

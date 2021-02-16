@@ -32,6 +32,7 @@
  */
 package alix.web;
 
+import alix.maths.Fisher;
 
 /**
  * Some algorithms to score co-occurrency.
@@ -101,9 +102,10 @@ public enum MI implements Option
     public double score(final double Oab, final double Oa, final double Ob, final double N)
     {
       double[] res = Fisher.test((int)Oab, (int)(Oa - Oab), (int)(Ob - Oab), (int)(N - Oa - Ob + Oab));
-      return  - res[0];
+      return - Math.log(res[0]);
     }  
-  },*/
+  },
+  */
   ;
 
   abstract public double score(final double Oab, final double Oa, final double Ob, final double N);

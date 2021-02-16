@@ -1,34 +1,34 @@
 GRAPH!,CAT!,ORTH?
-
-# TITLES
-ancien testament,NAMEtitle,Ancien Testament,
-nouveau testament,NAMEtitle,Nouveau Testament,
-
-#FICTION
-
-Baryton,NAMEfict
-Bijou,NAMEfict
-Chicot,NAMEfict
+,,
+# TITLES,,
+ancien testament,NAMEtitle,Ancien Testament
+nouveau testament,NAMEtitle,Nouveau Testament
+,,
+#FICTION,,
+,,
+Baryton,NAMEfict,
+Bijou,NAMEfict,
+Chicot,NAMEfict,
 D'Artagnan,NAMEfict,d'Artagnan
 d'Artagnan,NAMEfict,
 Diafoirus,NAMEfict,
-Don Juan,NAMEfict
-Don Quichotte,NAMEfict
+Don Juan,NAMEfict,
+Don Quichotte,NAMEfict,
 Gavroche,NAMEfict,
-Plassans,NAMEplace
-Verrières,NAMEplace
-Antarès,NAMEtitle
-Cinna,NAMEtitle
-Rodogune,NAMEfict
-
-
+Plassans,NAMEplace,
+Verrières,NAMEplace,
+Antarès,NAMEtitle,
+Cinna,NAMEtitle,
+Rodogune,NAMEfict,
+,,
+,,
 # AUTEURS,,
 Abailard,NAMEauthor,Abélard
 Abailart,NAMEauthor,Abélard
 Abeilard,NAMEauthor,Abélard
-Adamov,NAMEauthor
-Adorno,NAMEauthor
-Agatha Christie,NAMEauthor
+Adamov,NAMEauthor,
+Adorno,NAMEauthor,
+Agatha Christie,NAMEauthor,
 Aïvanhov,NAMEauthor,
 Albalat,NAMEauthor,
 Alphonse de Liguori,NAMEauthor,
@@ -39,7 +39,7 @@ André Gide,NAMEauthor,Gide
 A. Gide,NAMEauthor,Gide
 Apollinaire,NAMEauthor,
 Guillaume Apollinaire,NAMEauthor,Apollinaire
-Arabia,NAMEauthor
+Arabia,NAMEauthor,
 Aragon,NAMEauthor,
 Arioste,NAMEauthor,
 Aristophane,NAMEauthor,
@@ -104,10 +104,10 @@ Bossuet,NAMEauthor,
 Bottéro,NAMEauthor,
 Boufflers,NAMEauthor,
 Bouhier,NAMEauthor,
-Boulez,NAMEauthor
-Bounoure,NAMEauthor
+Boulez,NAMEauthor,
+Bounoure,NAMEauthor,
 Bourdic,NAMEauthor,
-Bousquet,NAMEauthor
+Bousquet,NAMEauthor,
 Brancusi,NAMEauthor,
 Brecht,NAMEauthor,
 Bremond,NAMEauthor,
@@ -129,14 +129,14 @@ Cézanne,NAMEauthor,
 Chabanon,NAMEauthor,
 Chardin,NAMEauthor,
 Chagall,NAMEauthor,
-Chardonne,NAMEauthor
+Chardonne,NAMEauthor,
 Chateaubriand,NAMEauthor,
 Chrysostome,NAMEauthor,
-Cicéron,NAMEauthor
-Cingria,NAMEauthor
-Cioran,NAMEauthor
-Claude Bernard,NAMEauthor
-Claudel,NAMEauthor
+Cicéron,NAMEauthor,
+Cingria,NAMEauthor,
+Cioran,NAMEauthor,
+Claude Bernard,NAMEauthor,
+Claudel,NAMEauthor,
 Colardeau,NAMEauthor,
 Comte,NAMEauthor,
 Cocteau,NAMEauthor,
@@ -226,13 +226,13 @@ Eugène Sue,NAMEauthor,
 Euripide,NAMEauthor,
 Fallet,NAMEauthor,
 Fanon,NAMEauthor,Frantz Fanon
-Frantz Fanon,NAMEauthor
+Frantz Fanon,NAMEauthor,
 Fargue,NAMEauthor,
 Faulkner,NAMEauthor,
 Fautrier,NAMEauthor,
 Fénelon,NAMEauthor,
 Ferlus,NAMEauthor,
-Feuerbach,NAMEauthor
+Feuerbach,NAMEauthor,
 Féval,NAMEauthor,
 Flaubert,NAMEauthor,
 Fleury,NAMEauthor,
@@ -245,7 +245,7 @@ Galien,NAMEauthor,
 Gaston Gallimard,NAMEauthor,Gallimard
 G. Gallimard,NAMEauthor,Gallimard
 G Gallimard,NAMEauthor,Gallimard
-Gallimard,NAMEauthor
+Gallimard,NAMEauthor,
 Gallus,NAMEauthor,
 García Lorca,NAMEauthor,Lorca
 G.-Bernard Shaw,NAMEauthor,Bernard Shaw
@@ -298,7 +298,7 @@ J. Racine,NAMEauthor,Racine
 Jaccottet,NAMEauthor,
 Jammes,NAMEauthor,
 Jean de La Fontaine,NAMEauthor,La Fontaine
-Jouhandeau,NAMEauthor
+Jouhandeau,NAMEauthor,
 Jossaud,NAMEauthor,
 Jouve,NAMEauthor,
 Julie Laurencin,NAMEauthor,
@@ -320,8 +320,8 @@ la Boëtie,NAMEauthor,La Boétie
 La Boëtie,NAMEauthor,La Boétie
 Labruyère,NAMEauthor,La Bruyère
 La Bruyère,NAMEauthor,La Bruyère
-Lacretelle,NAMEauthor
-Lambrichs,NAMEauthor
+Lacretelle,NAMEauthor,
+Lambrichs,NAMEauthor,
 Lafayette,NAMEauthor,La Fayette
 La Fayette,NAMEauthor,
 La Ferronays,NAMEauthor,
@@ -333,14 +333,14 @@ la harpe,NAMEauthor,
 la Mennais,NAMEauthor,Lamennais
 Lamettrie,NAMEauthor,La Mettrie
 la Mettrie,NAMEauthor,
-Lamothe,,La Mothe
-la Mothe,NAMEauthor,
+Lamothe,NAMEauthor,La Mothe
+la Mothe,NAMEauthor,La Mothe
 Lamothe le Vayer,NAMEauthor,La Mothe Le Vayer
 La Mothe Le Vayer,NAMEauthor,
 la Mothe-le-Vayer,NAMEauthor,La Mothe Le Vayer
 Lamotte,NAMEauthor,La Mothe
 la Motte,NAMEauthor,La Mothe
-Larbaud,NAMEauthor
+Larbaud,NAMEauthor,
 Larochefoucauld,NAMEauthor,La Rochefoucauld
 Larochefoucault,NAMEauthor,La Rochefoucauld
 La Rochefoucauld,NAMEauthor,La Rochefoucauld
@@ -361,7 +361,7 @@ Légier,NAMEauthor,
 Legouvé,NAMEauthor,
 Leibniz,NAMEauthor,
 Leibnitz,NAMEauthor,Leibniz
-Leiris,NAMEauthor
+Leiris,NAMEauthor,
 Lemarchand,NAMEauthor,
 Léon-paul Fargue,NAMEauthor,Léon-Paul Fargue
 Lenin,NAMEauthor,Lénine
@@ -385,7 +385,7 @@ Machiavel,NAMEauthor,
 Maine de Biran,NAMEauthor,
 Malebranche,NAMEauthor,
 Malfilatre,NAMEauthor,
-Malebranche,NAMEauthor
+Malebranche,NAMEauthor,
 Mallarmé,NAMEauthor,
 Mallebranche,NAMEauthor,Malebranche
 Malraux,NAMEauthor,
@@ -457,7 +457,7 @@ Quinte-Curce,NAMEauthor,
 Rabelais,NAMEauthor,
 Racine,NAMEauthor,
 Ramuz,NAMEauthor,
-C.F. Ramuz,NAMEauthor,Ramuz,
+C.F. Ramuz,NAMEauthor,Ramuz
 Redon,NAMEauthor,
 Reid,NAMEauthor,
 Reneville,NAMEauthor,Renéville
@@ -481,7 +481,7 @@ Rubens,NAMEauthor,
 Rudbeuf,NAMEauthor,Rutebeuf
 Ruisdael,NAMEauthor,
 Rutebœuf,NAMEauthor,Rutebeuf
-Rutebeuf,NAMEauthor
+Rutebeuf,NAMEauthor,
 Sabatier,NAMEauthor,
 Sade,NAMEauthor,
 Sadi,NAMEauthor,Saadi
@@ -491,7 +491,7 @@ Saint-Exupéry,NAMEauthor,
 Saint-John Perse,NAMEauthor,
 Sainte-Beuve,NAMEauthor,
 Saint Thomas,NAMEauthor,Saint Thomas d'Aquin
-Saint Thomas d'Aquin,NAMEauthor
+Saint Thomas d'Aquin,NAMEauthor,
 Samain,NAMEauthor,
 Sand,NAMEauthor,
 Saphos,NAMEauthor,
@@ -507,10 +507,10 @@ Schehadé,NAMEauthor,
 Schiller,NAMEauthor,
 Schmid,NAMEauthor,
 Scaron,NAMEauthor,Scarron
-Scarron,NAMEauthor
+Scarron,NAMEauthor,
 Scott,NAMEauthor,
 Scudéri,NAMEauthor,Scudéry
-Scudéry,NAMEauthor
+Scudéry,NAMEauthor,
 Seghers,NAMEauthor,
 Ségur,NAMEauthor,
 Sénèque,NAMEauthor,
@@ -519,7 +519,7 @@ Shakespeare,NAMEauthor,
 Shakspear,NAMEauthor,Shakespeare
 Shakspeare,NAMEauthor,Shakespeare
 Shakspere,NAMEauthor,Shakespeare
-Schlumberger,NAMEauthor
+Schlumberger,NAMEauthor,
 Simenon,NAMEauthor,
 Sivry,NAMEauthor,
 Socrate,NAMEauthor,
@@ -542,10 +542,10 @@ Stendhal,NAMEauthor,
 Stevenson,NAMEauthor,
 Suarès,NAMEauthor,
 Sue,NAMEauthor,Suë
-Suë,NAMEauthor
+Suë,NAMEauthor,
 Suétone,NAMEauthor,
 Supervielle,NAMEauthor,
-Swedenborg,NAMEauthor
+Swedenborg,NAMEauthor,
 Swedemborg,NAMEauthor,Swedenborg
 Swédenborg,NAMEauthor,Swedenborg
 Swift,NAMEauthor,
@@ -578,7 +578,7 @@ Valéry,NAMEauthor,
 Varron,NAMEauthor,
 Vauvenargues,NAMEauthor,
 Vega,NAMEauthor,
-Verhaeren,NAMEauthor
+Verhaeren,NAMEauthor,
 Verhæren,NAMEauthor,Verhaeren
 Verlaine,NAMEauthor,
 Verne,NAMEauthor,

@@ -118,7 +118,7 @@ public class FrPersnameFilter extends TokenFilter
     final int tag = flags.getFlags();
     
     
-    if (Tag.isName(tag) && Char.isUpperCase(term.charAt(0))); // append names, but not titles
+    if (Tag.NAME.sameParent(tag) && Char.isUpperCase(term.charAt(0))); // append names, but not titles
     // else if (TITLES.contains(term)); // Saint, Maître…
     else return true;
     
@@ -170,7 +170,7 @@ public class FrPersnameFilter extends TokenFilter
     }
     // at least one compound name to send
     name.setLength(lastlen);
-    flagsAtt.setFlags(Tag.NAME);
+    flagsAtt.setFlags(Tag.NAME.flag);
     term.setEmpty().append(name);
     orthAtt.setEmpty();
     lemAtt.setEmpty(); // the actual stop token may have set a lemma not relevant for names

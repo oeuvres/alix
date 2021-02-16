@@ -44,6 +44,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
@@ -67,6 +69,8 @@ import alix.util.CsvReader.Row;
 @SuppressWarnings("unlikely-arg-type")
 public class FrDics
 {
+  /** Logger */
+  static Logger LOGGER = Logger.getLogger(FrDics.class.getName());
   /** Flag for compound, end of term */
   static final public int LEAF = 0x100;
   /** Flag for compound, to be continued */
@@ -83,15 +87,14 @@ public class FrDics
   static final public HashMap<CharsAtt, Integer> TREELOC = new HashMap<CharsAtt, Integer>((int) (1500 / 0.75));
   /** Graphic normalization (replacement) */
   static final public HashMap<CharsAtt, CharsAtt> NORM = new HashMap<CharsAtt, CharsAtt>((int) (100 / 0.75));
-  /** Final local replacement */
-  // public final static HashMap<CharsAtt, CharsAtt> LOCAL = new HashMap<CharsAtt, CharsAtt>((int) (100 / 0.75));
   /** Elisions, for tokenization and normalization */
   static final public HashMap<CharsAtt, CharsAtt> ELISION = new HashMap<CharsAtt, CharsAtt>((int) (30 / 0.75));
   /** Abbreviations with a final dot */
   static final public HashMap<CharsAtt, CharsAtt> BREVIDOT = new HashMap<CharsAtt, CharsAtt>((int) (100 / 0.75));
+  /** current dictionnary loaded, for logging */
+  static String res;
   /** Load dictionaries */
   static {
-    String res = null;
     CsvReader csv = null;
     Reader reader;
     try {
@@ -125,7 +128,7 @@ public class FrDics
         // keep first key
         if (WORDS.containsKey(orth)) continue;
         CharsAtt key = new CharsAtt(orth);
-        WORDS.put(key, new LexEntry(row.get(1), null, row.get(2)));
+        WORDS.put(key, new LexEntry(row.get(0), row.get(1), null, row.get(2)));
       }
       // nouns, put persons after places (Molière is also a village, but not very common)
       String[] files = {"commune.csv", "france.csv", "forename.csv", "place.csv", "author.csv", "name.csv"};
@@ -139,7 +142,7 @@ public class FrDics
         while ((row = csv.readRow()) != null) {
           Chain graph = row.get(0);
           if (graph.isEmpty() || graph.charAt(0) == '#') continue;
-          LexEntry entry = new LexEntry(row.get(1), row.get(2), null);
+          LexEntry entry = new LexEntry(row.get(0), row.get(1), row.get(2), null);
           NAMES.put(new CharsAtt(graph), entry);
           if (graph.contains(' ')) {
             compound(graph, TREELOC);
@@ -168,12 +171,14 @@ public class FrDics
 
   private static void load(final String res)
   {
+    FrDics.res = res;
     Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
     load(reader);
   }
 
   public static void load(final File file) throws IOException
   {
+    FrDics.res = file.getAbsolutePath();
     Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
     load(reader);
   }
@@ -209,7 +214,7 @@ public class FrDics
         WORDS.remove(graph);
         NAMES.remove(graph);
         CharsAtt key = new CharsAtt(graph);
-        LexEntry entry = new LexEntry(row.get(1), row.get(2), row.get(3));
+        LexEntry entry = new LexEntry(row.get(0), row.get(1), row.get(2), row.get(3));
         if (graph.isFirstUpper()) NAMES.put(key, entry);
         else WORDS.put(key, entry);
         if (graph.contains(' ')) compound(graph, TREELOC);
@@ -288,12 +293,11 @@ public class FrDics
         // load the form in the compound tree if it is multi token (badly sometimes not)
         if (graph.contains(' ') || graph.contains('’') || graph.contains('\'')) compound(graph, TREELOC);
         // load the word in the global dic (last win)
-        int tag = Tag.code(row.get(1));
         CharsAtt key = new CharsAtt(graph);
         Chain orth = row.get(2);
-        LexEntry entry = new LexEntry(tag, orth, row.get(3));
+        LexEntry entry = new LexEntry(row.get(0), row.get(1), orth, row.get(3));
         // entry may be known by normalized key only
-        if (Tag.isName(tag)) {
+        if (Tag.NAME.sameParent(entry.tag)) {
           NAMES.put(key, entry);
           if (orth != null && !NAMES.containsKey(orth)) NAMES.put(new CharsAtt(orth), entry);
         }
@@ -409,36 +413,17 @@ public class FrDics
       lem = null;
     }
 
-    public LexEntry(final Chain tag, final Chain orth, final Chain lem) 
+    public LexEntry(final Chain graph, final Chain tag, final Chain orth, final Chain lem) 
     {
+      if (graph.isEmpty() || tag.isEmpty()) {
+        LOGGER.log(Level.FINEST, res+" graph="+graph+" tag="+tag);
+      }
       this.tag = Tag.code(tag);
       if (orth == null || orth.isEmpty()) this.orth = null;
       else this.orth = new CharsAtt(orth);
       if (lem == null || lem.isEmpty()) this.lem = null;
       else this.lem = new CharsAtt(lem);
     }
-
-    public LexEntry(final int tag, final Chain orth, final Chain lem)
-    {
-      this.tag = tag;
-      if (orth == null || orth.isEmpty()) this.orth = null;
-      else this.orth = new CharsAtt(orth);
-      if (lem == null || lem.isEmpty()) this.lem = null;
-      else this.lem = new CharsAtt(lem);
-    }
-
-    
-    /*
-    public LexEntry(final Chain tag, final Chain lem, final Chain lemfreq) throws ParseException
-    {
-      this(tag, lem);
-      if (!lemfreq.isEmpty()) try {
-        this.lemfreq = Float.parseFloat(lemfreq.toString());
-      }
-      catch (NumberFormatException e) {
-      }
-    }
-    */
 
     @Override
     public String toString()

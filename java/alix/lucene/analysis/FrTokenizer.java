@@ -281,7 +281,7 @@ public class FrTokenizer extends Tokenizer
             // save state with xml tag for next
             offsetAtt.setOffset(correctOffset(ltOffset), correctOffset(offset + bufIndex));
             termAtt.setEmpty().append(el);
-            flags.setFlags(Tag.PUNdiv);
+            flags.setFlags(Tag.PUNdiv.flag);
             save = captureState();
             // send the word
             restoreState(state);
@@ -290,7 +290,7 @@ public class FrTokenizer extends Tokenizer
           // A tag has to be sent
           startOffset = ltOffset;
           term.append(el);
-          flags.setFlags(Tag.PUNdiv);
+          flags.setFlags(Tag.PUNdiv.flag);
           break;
         }
         continue;
@@ -333,7 +333,7 @@ public class FrTokenizer extends Tokenizer
           break;
         }
         term.append(c);
-        flags.setFlags(Tag.PUNcl);
+        flags.setFlags(Tag.PUNcl.flag);
         startOffset = offset + bufIndex - 1;
         break;
       }
@@ -343,18 +343,18 @@ public class FrTokenizer extends Tokenizer
         
         // token starting by a sentence punctuation
         if (length == 0) {
-          flags.setFlags(Tag.PUNsent);
+          flags.setFlags(Tag.PUNsent.flag);
           startOffset = offset + bufIndex - 1;
           term.append(c);
           lastChar = c; // give for ... ???
           continue;
         }
         // for ... ???
-        if (flags.getFlags() == Tag.PUNsent) {
+        if (flags.getFlags() == Tag.PUNsent.flag) {
           continue;
         }
         // O.N…
-        if (c == '…' && flags.getFlags() == Tag.ABBR) {
+        if (c == '…' && flags.getFlags() == Tag.ABBR.flag) {
           term.append('.');
         }
         // test if it's an abreviation with a dot
@@ -363,7 +363,7 @@ public class FrTokenizer extends Tokenizer
           term.append('.');
           // M., etc.
           if (FrDics.brevidot(term)) {
-            flags.setFlags(Tag.ABBR);
+            flags.setFlags(Tag.ABBR.flag);
             continue; // keep dot
           }
           // End on sentence.
@@ -376,7 +376,7 @@ public class FrTokenizer extends Tokenizer
           }
           // XVIII.
           else if ((Calcul.roman2int(term.buffer(), 0, term.length()-1)) > 0) {
-            flagsAtt.setFlags(Tag.NUM);
+            flagsAtt.setFlags(Tag.NUM.flag);
           }
           // RODOGUNE. dot is a punctuation
           else if (term.length() > 2 && Char.isUpperCase(term.charAt(0)) && Char.isUpperCase(term.charAt(1))) {
@@ -416,7 +416,7 @@ public class FrTokenizer extends Tokenizer
       if (Char.isToken(c) || (query && c == '+')) {
         // start of token, record startOffset
         if (length == 0) {
-          if (Char.isDigit(c)) flagsAtt.setFlags(Tag.NUM);
+          if (Char.isDigit(c)) flagsAtt.setFlags(Tag.NUM.flag);
           startOffset = offset + bufIndex - 1;
         }
 

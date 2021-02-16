@@ -110,15 +110,15 @@ public class FlagCloudFilter extends TokenFilter
   protected boolean accept() throws IOException
   {
     int tag = flagsAtt.getFlags();
-    if (tag == Tag.TEST) {
+    if (tag == Tag.TEST.flag) {
       System.out.println(termAtt+" — "+orthAtt);
     }
     // record an empty token at puctuation position
-    if (Tag.isPun(tag) && !pun) {
+    if (Tag.PUN.sameParent(tag) && !pun) {
       termAtt.setEmpty().append("");
     }
     // unify numbers
-    else if (Tag.isNum(tag)) {
+    else if (Tag.NUM.sameParent(tag)) {
       termAtt.setEmpty().append("NUM");
     }
     // replace term by lemma when available
@@ -130,7 +130,7 @@ public class FlagCloudFilter extends TokenFilter
       termAtt.setEmpty().append(orthAtt);
     }
     // filter some names
-    if (Tag.isName(tag)) {
+    if (Tag.NAME.sameParent(tag)) {
       // A., B.…
       // if (termAtt.length() == 2 && Char.isUpperCase(termAtt.charAt(0)) && termAtt.charAt(1) == '.') return false;
       /*
