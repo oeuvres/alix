@@ -34,17 +34,14 @@ package alix.lucene.analysis;
 
 import java.io.IOException;
 import java.util.HashSet;
-import java.util.LinkedList;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
-import org.apache.lucene.util.AttributeSource.State;
 
 import alix.fr.Tag;
-import alix.lucene.analysis.FrDics.LexEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
@@ -129,7 +126,7 @@ public class FrPersnameFilter extends TokenFilter
      // if (!orth.isEmpty()) name.copy(orth); // a previous filter may have set something good ?
     name.copy(term);
 
-    OffsetAttribute offset = offsetAtt;
+    // OffsetAttribute offset = offsetAtt;
     // record offsets
     final int startOffset = offsetAtt.startOffset();
     int endOffset = offsetAtt.endOffset();

@@ -41,7 +41,6 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import alix.fr.Tag;
-import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 

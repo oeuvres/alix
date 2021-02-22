@@ -38,7 +38,6 @@ import java.nio.CharBuffer;
 import java.util.ArrayList;
 
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.UnicodeUtil;
 
 import alix.maths.Calcul;
 

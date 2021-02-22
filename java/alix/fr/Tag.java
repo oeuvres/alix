@@ -47,12 +47,15 @@ import java.util.logging.Logger;
  */
 public enum Tag
 {
+  // 0x, messages internes
   NULL(0, "—", "Défaut, aucune information") {
   },
   UNKNOWN(0x01, "Inconnu", "Connu comme inconnu des dictionnaires") {
   },
   TEST(0x02, "Test", "Message envoyé par une étape de traitement") {
   },
+  
+  // 1x, verbes
   VERB(0x10, "Verbe", "Verbe sémantique (hors autres catégories verbales)") {
   },
   VERBaux(0x11, "Auxilliaire", "Être, avoir.") {
@@ -65,6 +68,8 @@ public enum Tag
   },
   VERBppres(0x19, "Participe présent", "Un participe présent peut avoir un emploi adjectif ou substantif") {
   },
+  
+  // 2x, substantifs
   SUB(0x20, "Substantif", "“Nom commun“, espèce") {
   },
   /*
@@ -75,6 +80,8 @@ public enum Tag
   */
   SUBtit(0x28, "Titulature", "Monsieur, madame, prince… (pour les romans, en cours)") {
   },
+  
+  // 3x, entités nommées
   NAME(0x30, "Nom propre", "Nom propre inféré de la typographie mais pas connu d’un dictionnaire") {
   },
   NAMEpers(0x31, "Personne", "Nom de de personne reconnu par dictionnaire ou inféré") {
@@ -99,74 +106,82 @@ public enum Tag
   },
   NAMEgod(0x3F, "Divinité", "Noms de divinité") {
   },
-  ADJ(0x40, "Adjectif", "Qualificatif ou attribut") {
+  
+  // 5x, Adjectifs et adverbes sémantiques
+  ADJ(0x50, "Adjectif", "Qualificatif ou attribut") {
   },
-  ADV(0x41, "Adverbe", "Adverbe significatif, souvent en adjectif+ment") {
+  ADV(0x51, "Adverbe", "Adverbe significatif, souvent en adjectif+ment") {
   },
-  DET(0x50, "Déterminant", "Déterminant ") {
+  
+  // 6x, déterminants
+  DET(0x60, "Déterminant", "Déterminant ") {
   },
-  DETart(0x51, "Article", "Ex : le, la, un, des…") {
+  DETart(0x61, "Article", "Ex : le, la, un, des…") {
   },
-  DETprep(0x52, "Déterminant prépositionnel", "Ex : du, au") {
+  DETprep(0x62, "Déterminant prépositionnel", "Ex : du, au") {
   },
-  DETnum(0x53, "Déterminant numéral", "Ex : deux, trois") {
+  DETnum(0x63, "Déterminant numéral", "Ex : deux, trois") {
   },
-  DETindef(0x5A, "Déterminant indéfini", "tout, tous quelques…") {
+  DETindef(0x6A, "Déterminant indéfini", "tout, tous quelques…") {
   },
-  DETinter(0x5B, "Déterminant interrogatif", "Ex : quel, quelles…") {
+  DETinter(0x6B, "Déterminant interrogatif", "Ex : quel, quelles…") {
   },
-  DETdem(0x5C, "Déterminant démonstratif", "Ex : ce, cette, ces…") {
+  DETdem(0x6C, "Déterminant démonstratif", "Ex : ce, cette, ces…") {
   },
-  DETposs(0x5D, "Déterminant possessif", "Ex : son, ma, leurs…") {
+  DETposs(0x6D, "Déterminant possessif", "Ex : son, ma, leurs…") {
   },
-  PRO(0x60, "Pronom", "Pronom hors catégories particulières") {
+  
+  // 7x, pronoms
+  PRO(0x70, "Pronom", "Pronom hors catégories particulières") {
   },
-  PROpers(0x61, "Pronom personnel", "Ex : il, se, je, me, nous…") {
+  PROpers(0x71, "Pronom personnel", "Ex : il, se, je, me, nous…") {
   },
-  PROindef(0x6A, "Pronom indéfini", "Ex : y, rien, tout…") {
+  PROindef(0x7A, "Pronom indéfini", "Ex : y, rien, tout…") {
   },
-  PROdem(0x6C, "Pronom démonstratif", "Ex : c', ça, cela… ") {
+  PROdem(0x7C, "Pronom démonstratif", "Ex : c', ça, cela… ") {
   },
-  PROposs(0x6D, "Pronom possessif", "Ex : le mien, la sienne…") {
+  PROposs(0x7D, "Pronom possessif", "Ex : le mien, la sienne…") {
   },
-  // connecteurs
-  CONN(0x70, "Connecteur", "Mot invariable de connection") {
+  
+  // 8x, connecteurs
+  CONN(0x80, "Connecteur", "Mot invariable de connection") {
   },
-  CONJcoord(0x71, "Conjonction de coordination", "Ex : et, mais, ou…") {
+  CONJcoord(0x81, "Conjonction de coordination", "Ex : et, mais, ou…") {
   },
-  CONJsub(0x72, "Conjonction de subordination", "Ex : comme, si, parce que…") {
+  CONJsub(0x82, "Conjonction de subordination", "Ex : comme, si, parce que…") {
   },
-  ADVconj(0x73, "Adverbe conjonctif", "Adverbe de connexion : cependant, désormais…") {
+  ADVconj(0x83, "Adverbe conjonctif", "Adverbe de connexion : cependant, désormais…") {
   },
-  PREP(0x78, "Préposition", "Ex : De, dans, par…") {
+  PREP(0x88, "Préposition", "Ex : De, dans, par…") {
   },
 
-  ADVneg(0x80, "Négation", "Ne, pas, point…") {
+  // 9x, adverbes grammaticaux
+  ADVneg(0x90, "Négation", "Ne, pas, point…") {
   },
-  ADVasp(0x81, "Aspect", "Adverbe de temps, d’aspect : toujours, souvent…") {
+  ADVasp(0x91, "Aspect", "Adverbe de temps, d’aspect : toujours, souvent…") {
   },
-  ADVdeg(0x82, "Degré", "Adverbe d’intensité : plus, presque, très…") {
+  ADVdeg(0x92, "Degré", "Adverbe d’intensité : plus, presque, très…") {
   },
-  ADVmod(0x83, "Modalité", "Adverbe de modalité : probablement…") {
+  ADVmod(0x93, "Modalité", "Adverbe de modalité : probablement…") {
   },
-  ADVscen(0x84, "Scénique", "Adverbe de lieu ou de temps : ici, maintenant, derrière…") {
+  ADVscen(0x94, "Scénique", "Adverbe de lieu ou de temps : ici, maintenant, derrière…") {
   },
-  ADVinter(0x85, "Adverbe interrogatif", "Ex : comment, est-ce que") {
+  ADVinter(0x95, "Adverbe interrogatif", "Ex : comment, est-ce que") {
   },
   
+  // Ax, Numéraux divers
+  NUM(0xA0, "Numéral", "Nombres : 3, milliers, centième…") {
+  },
+  NUMno(0xA1, "Numéro", "Ex : 1er, second…") {
+  },
+  REF(0xA2, "Référence", "Un numéro utilisé comme référence, comme une page, une note…") {
+  },
+  MATH(0xA3, "Math", "Opérateur mathématique") {
+  },
+  NUMunit(0xA4, "Unités", "Ex : cm, mm, kg…") {
+  },
   
-
-  
-  NUM(0x90, "Numéral", "Nombres : 3, milliers, centième…") {
-  },
-  NUMno(0x91, "Numéro", "Ex : 1er, second…") {
-  },
-  REF(0x92, "Référence", "Un numéro utilisé comme référence, comme une page, une note…") {
-  },
-  MATH(0x93, "Math", "Opérateur mathématique") {
-  },
-  NUMunit(0x94, "Unités", "Ex : cm, mm, kg…") {
-  },
+  // Cx, punctuations
   PUN(0xC0, "Ponctuation", "Ponctuations divers hors catégories spéciales") {
   },
   PUNdiv(0xC1, "Ponctuation structurante", "Interprétation d’un balisage : ¶ §") {
@@ -175,6 +190,8 @@ public enum Tag
   },
   PUNcl(0xC3, "Ponctuation de clause", "Séparateur de syntagme : , ; (") {
   },
+  
+  // Fx, divers
   MISC(0xF0, "Divers", "") {
   },
   ABBR(0xF1, "Abréviation", "") {

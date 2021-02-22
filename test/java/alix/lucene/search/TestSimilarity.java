@@ -12,7 +12,6 @@ import org.apache.lucene.search.TopDocs;
 
 import alix.lucene.Alix;
 import alix.lucene.TestAlix;
-import alix.lucene.analysis.FrAnalyzer;
 
 public class TestSimilarity
 {

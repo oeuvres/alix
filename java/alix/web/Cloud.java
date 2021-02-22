@@ -52,16 +52,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.InvalidParameterException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -70,11 +66,6 @@ import javax.imageio.ImageIO;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
-
-import alix.fr.Tag;
-import alix.util.DicFreq;
-import alix.util.DicFreq.Entry;
-import alix.util.Occ;
 
 /**
  * Word Cloud in HTML from Pierre Lindenbaum

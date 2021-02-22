@@ -54,7 +54,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 
 import alix.lucene.Alix;
-import alix.lucene.search.FieldText.DocStats;
 
 /**
  * Retrieve all values of an int field, store it in docId order,

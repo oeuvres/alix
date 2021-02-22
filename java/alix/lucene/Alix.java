@@ -36,7 +36,6 @@ import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -51,7 +50,6 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.AnalyzerReuseControl;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
@@ -88,7 +86,6 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
 
-import alix.fr.Tag;
 import alix.lucene.search.FieldFacet;
 import alix.lucene.search.Scale;
 import alix.lucene.search.FieldText;
@@ -569,7 +566,7 @@ public class Alix
    */
   public FieldInt fieldInt(final String fintName, final String ftextName) throws IOException
   {
-    IndexReader reader = reader(); // ensure reader, or decache
+    reader(); // ensure reader, or decache
     String key = "AlixFiedInt" + fintName + "_" + ftextName;
     FieldInt ints = (FieldInt) cache(key);
     if (ints != null) return ints;
@@ -695,7 +692,7 @@ u   * @throws IOException
     // float boostDefault = boosts[boostLength - 1];
     TokenStream ts = analyzer.tokenStream(SEARCH, q);
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
-    FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
+    // FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
 
     ts.reset();
     Query qTerm = null;

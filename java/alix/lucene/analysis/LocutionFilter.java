@@ -47,7 +47,6 @@ import alix.lucene.analysis.FrDics.LexEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
-import alix.util.Char;
 import alix.util.Roll;
 
 /**
@@ -70,8 +69,6 @@ public class LocutionFilter extends TokenFilter
   private Roll<State> stack = new Roll<State>(10);
   /** A term used to concat a compound */
   private CharsAtt compound = new CharsAtt();
-  /** Counter */
-  private int count;
   /** past paticiples to not take as infinitives */
   public static final HashSet<CharsAtt> ORTH = new HashSet<CharsAtt>();
   static {
@@ -99,6 +96,7 @@ public class LocutionFilter extends TokenFilter
     return out;
   }
   
+  @SuppressWarnings("unlikely-arg-type")
   @Override
   public boolean incrementToken() throws IOException
   {
