@@ -32,15 +32,15 @@
  */
 package alix.web;
 
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
+import java.io.IOException;
+import java.io.Writer;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
 import javax.servlet.jsp.PageContext;
 
 
@@ -81,12 +81,12 @@ public class JspTools
   /**
    * Ensure that a String could be included in an html attribute with quotes
    */
-  public static String escape(final String s)
+  public static String escape(final CharSequence cs)
   {
-    if (s == null) return "";
-    final StringBuilder out = new StringBuilder(Math.max(16, s.length()));
-    for (int i = 0; i < s.length(); i++) {
-      char c = s.charAt(i);
+    if (cs == null) return "";
+    final StringBuilder out = new StringBuilder(Math.max(16, cs.length()));
+    for (int i = 0; i < cs.length(); i++) {
+      char c = cs.charAt(i);
       if (c == '"') out.append("&quot;");
       else if (c == '<') out.append("&lt;");
       else if (c == '>') out.append("&gt;");
@@ -96,6 +96,21 @@ public class JspTools
     return out.toString();
   }
 
+  public static void escape(final Writer out, final CharSequence cs) throws IOException
+  {
+    if (cs == null) return;
+    for (int i = 0; i < cs.length(); i++) {
+      char c = cs.charAt(i);
+      if (c == '"') out.append("&quot;");
+      else if (c == '<') out.append("&lt;");
+      else if (c == '>') out.append("&gt;");
+      else if (c == '&') out.append("&amp;");
+      else out.append(c);
+    }
+    return;
+  }
+
+  
   /**
    * Ensure that a String could be included in an html attribute with quotes
    */
@@ -477,6 +492,21 @@ public class JspTools
     return map.get(value);
   }
 
+  /**
+   * Useful for servlet 3.0 (and not 3.1)
+   * @param part
+   * @return
+   */
+  static public String getFileName(Part part)
+  {
+    for (String cd : part.getHeader("content-disposition").split(";")) {
+      if (cd.trim().startsWith("filename")) {
+        String fileName = cd.substring(cd.indexOf('=') + 1).trim().replace("\"", "");
+        return fileName.substring(fileName.lastIndexOf('/') + 1).substring(fileName.lastIndexOf('\\') + 1); // MSIE fix.
+      }
+    }
+    return null;
+  }
   
   /**
    * Build url parameters 

@@ -36,7 +36,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import alix.lucene.search.FieldMatrix;
 import alix.util.Chain;
 
 import java.util.logging.Level;
@@ -264,6 +263,7 @@ public enum Tag
   
   public static int code(final Chain label)
   {
+    @SuppressWarnings("unlikely-arg-type")
     Integer ret = byName.get(label);
     if (ret == null) {
       LOGGER.log(Level.FINEST, "[Alix] unknown tag:" + label);
