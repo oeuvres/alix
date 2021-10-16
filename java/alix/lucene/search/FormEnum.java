@@ -63,22 +63,26 @@ public class FormEnum {
   private int[] sorter;
   /** Field dictionary */
   final private BytesRefHash formDic;
-  /** Count of docs by formId */
-  protected int[] formDocs;
-  /** Count of occurrences by formId, used for counts */
-  protected long[] formOccs;
-  /** A docId by term used as a cover (example: metas for books or authors) */
+  /** By formId, count of docs, for all base  */
+  protected int[] formDocsAll;
+  /** By formId, count of docs, for a partition */
+  protected int[] formDocsPart;
+  /** By formId, count of docs, matched in a text search */
+  protected int[] formDocsHit;
+  /** By formId, count of occurrences, on all base */
+  protected long[] formOccsAll;
+  /** By formId, count of occurrences, on a partition */
+  protected long[] formOccsPart;
+  /** By formId, count of occurrences, matched in a text search */
+  protected long[] formOccsFreq;
+  /** By formId, a docId by term used as a cover (example: metas for books or authors) */
   final private int[] formCover;
   /** An optional tag for each search (relevant for textField) */
   final private int[] formTag;
   /** Count of occurrences for the part explored */
-  public long partOccs;
-  /** Number of documents matched, index by formId */
-  protected int[] hits;
-  /** Number of occurrences matched, index by formId */
-  protected long[] freqs;
-  /** Scores, index by formId */
-  protected double[] scores;
+  public long occsPart;
+  /** By formId, a relevance score calculated */
+  protected double[] formScore;
   /** Cursor, to iterate in the sorter */
   private int cursor = -1;
   /** Current formId, set by next */
@@ -109,8 +113,8 @@ public class FormEnum {
   public FormEnum(final FieldText field)
   {
     this.formDic = field.formDic;
-    this.formDocs = field.formAllDocs;
-    this.formOccs = field.formAllOccs;
+    this.formDocsAll = field.formDocsAll;
+    this.formOccsAll = field.formOccsAll;
     this.formCover = null;
     this.formTag = field.formTag;
   }
@@ -118,25 +122,25 @@ public class FormEnum {
   /** Build an iterator from a facet field */
   public FormEnum(final FieldFacet field)
   {
-    this.formDic = field.facetDic;
-    this.formDocs = field.facetDocs;
-    this.formOccs = field.facetOccs;
-    this.formCover = field.facetCover;
+    this.formDic = field.formDic;
+    this.formDocsAll = field.formDocsAll;
+    this.formOccsAll = field.formOccsAll;
+    this.formCover = field.formCover;
     this.formTag = null;
   }
   
   /**
    * Set a vector for scores, and prepare the sorter
    */
-  public void scores(final double[] scores, final int limit, boolean reverse)
+  public void sort(final int limit, boolean reverse)
   {
-    this.scores = scores;
     TopArray top;
-    int flags = TopArray.NO_ZERO;
+    int flags = TopArray.NO_ZERO; // ?
     if (reverse) flags |= TopArray.REVERSE;
-    if (limit < 1) top = new TopArray(scores, flags); // all search
-    else top = new TopArray(limit, scores, flags);
+    if (limit < 1) top = new TopArray(formScore, flags); // all search
+    else top = new TopArray(limit, formScore, flags);
     this.sorter(top.toArray());
+    reset();
   }
 
   /**
@@ -162,16 +166,16 @@ public class FormEnum {
    */
   public long partOccs()
   {
-    return partOccs;
+    return occsPart;
   }
   /**
    * Global number of occurrences for this term
    * 
    * @return
    */
-  public long formOccs(final int formId)
+  public long occs(final int formId)
   {
-    return formOccs[formId];
+    return formOccsAll[formId];
   }
 
   /**
@@ -179,37 +183,77 @@ public class FormEnum {
    * 
    * @return
    */
-  public long formOccs()
+  public long occs()
   {
-    return formOccs[formId];
+    return formOccsAll[formId];
   }
 
+  /**
+   * For current form, occurrence count in a part
+   * 
+   * @return
+   */
+  public long occsPart()
+  {
+    return formOccsPart[formId];
+  }
+
+  /**
+   * For requested form, occurrence count in a part
+   * 
+   * @return
+   */
+  public long occsPart(final int formId)
+  {
+    return formOccsPart[formId];
+  }
+
+
+  /**
+   * For current form, document count in a part
+   * 
+   * @return
+   */
+  public long docsPart()
+  {
+    return formDocsPart[formId];
+  }
+
+  /**
+   * For requested form, document count in a part
+   * 
+   * @return
+   */
+  public long docsPart(final int formId)
+  {
+    return formDocsPart[formId];
+  }
   
   /**
    * Get the total count of documents relevant for the current term.
    * @return
    */
-  public int formDocs()
+  public int docs()
   {
-    return formDocs[formId];
+    return formDocsAll[formId];
   }
   
   /**
    * Get the total count of documents relevant for the current term.
    * @return
    */
-  public int formDocs(final int formId)
+  public int docs(final int formId)
   {
-    return formDocs[formId];
+    return formDocsAll[formId];
   }
 
   /**
-   * Get the count of matching occureences
+   * Get the count of matching occurrences
    * @return
    */
   public long freq()
   {
-    return freqs[formId];
+    return formOccsFreq[formId];
   }
 
   /**
@@ -218,7 +262,7 @@ public class FormEnum {
    */
   public long freq(final int formId)
   {
-    return freqs[formId];
+    return formOccsFreq[formId];
   }
 
   /**
@@ -227,7 +271,7 @@ public class FormEnum {
    */
   public int hits()
   {
-    return hits[formId];
+    return formDocsHit[formId];
   }
 
   /**
@@ -236,7 +280,7 @@ public class FormEnum {
    */
   public int hits(final int formId)
   {
-    return hits[formId];
+    return formDocsHit[formId];
   }
 
   /**
@@ -259,7 +303,7 @@ public class FormEnum {
   }
 
   /**
-   * Reset the internal cursor if we want to rplay the list.
+   * Reset the internal cursor if we want to replay the list.
    */
   public void reset()
   {
@@ -332,7 +376,7 @@ public class FormEnum {
    */
   public double score()
   {
-    return scores[formId];
+    return formScore[formId];
   }
   
   /**
@@ -420,25 +464,25 @@ public class FormEnum {
       sorter = new int[limit];
       for (int i = 0; i < limit; i++) sorter[i] = i;
     }
-    boolean hasScore = (scores != null);
+    boolean hasScore = (formScore != null);
     boolean hasTag = (formTag != null);
-    boolean hasHits = (hits != null);
-    boolean hasDocs = (formDocs != null);
-    boolean hasToccs = (formOccs != null);
-    boolean hasOccs = (freqs != null);
+    boolean hasHits = (formDocsHit != null);
+    boolean hasDocs = (formDocsAll != null);
+    boolean hasOccs = (formOccsAll != null);
+    boolean hasFreq = (formOccsFreq != null);
     for(int pos = 0; pos < limit; pos++) {
       int formId = sorter[pos];
       formDic.get(formId, bytes);
       sb.append((pos+1) + ". [" + formId + "] " + bytes.utf8ToString());
       if (hasTag) sb.append( " "+Tag.label(formTag[formId]));
-      if (hasScore) sb.append( " score=" + scores[formId]);
+      if (hasScore) sb.append( " score=" + formScore[formId]);
       
-      if (hasToccs && hasOccs) sb.append(" freqs="+freqs[formId]+"/"+formOccs[formId]);
-      else if(hasToccs) sb.append(" freqs="+formOccs[formId]);
+      if (hasOccs && hasFreq) sb.append(" freq="+formOccsFreq[formId]+"/"+formOccsPart[formId]);
+      else if(hasOccs) sb.append(" freq="+formOccsPart[formId]);
       
-      if (hasHits && hasDocs) sb.append(" hits="+hits[formId]+"/"+formDocs[formId]);
-      else if(hasDocs) sb.append(" docs="+formDocs[formId]);
-      else if(hasHits) sb.append(" hits="+hits[formId]);
+      if (hasHits && hasDocs) sb.append(" hits="+formDocsHit[formId]+"/"+formDocsAll[formId]);
+      else if(hasDocs) sb.append(" docs="+formDocsAll[formId]);
+      else if(hasHits) sb.append(" hits="+formDocsHit[formId]);
       sb.append("\n");
     }
     return sb.toString();

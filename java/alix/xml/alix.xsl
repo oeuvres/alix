@@ -16,8 +16,8 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
   xmlns:tei="http://www.tei-c.org/ns/1.0"
   xmlns:alix="http://alix.casa"
   xmlns:saxon="http://saxon.sf.net/"
-  
-  
+
+
   exclude-result-prefixes="tei"
 >
   <xsl:import href="flow.xsl"/>
@@ -174,7 +174,7 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
-  
+
   <xsl:template name="next">
     <xsl:choose>
       <xsl:when test="following-sibling::*[1]">
@@ -204,14 +204,14 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
       </xsl:when>
     </xsl:choose>
   </xsl:template>
-  
+
   <xsl:template match="*" mode="analytic">
     <xsl:for-each select="ancestor-or-self::*[not(self::tei:TEI)][not(self::tei:text)][not(self::tei:body)]">
       <xsl:if test="position() != 1"> — </xsl:if>
       <xsl:apply-templates select="." mode="title"/>
     </xsl:for-each>
   </xsl:template>
-  
+
   <xsl:template name="chapter">
     <alix:chapter>
       <!-- id is here supposed to be unique ; maybe dangerous… -->
@@ -232,6 +232,7 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
           <alix:field name="year" type="int" value="{$bookyear}"/>
         </xsl:when>
       </xsl:choose>
+      <alix:field name="type" type="string" value="{@type}"/>
       <alix:field name="bibl" type="meta">
         <xsl:call-template name="bibl"/>
       </alix:field>
@@ -240,7 +241,7 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
       </alix:field>
       <xsl:variable name="pages">
         <xsl:call-template name="pages"/>
-      </xsl:variable>     
+      </xsl:variable>
       <xsl:if test="$pages != ''">
         <alix:field name="pages" type="meta">
           <xsl:copy-of select="$pages"/>
@@ -248,7 +249,7 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
       </xsl:if>
       <xsl:variable name="prev">
         <xsl:call-template name="prev"/>
-      </xsl:variable>     
+      </xsl:variable>
       <xsl:if test="$prev != ''">
         <alix:field name="prev" type="store">
           <xsl:value-of select="$prev"/>
@@ -256,7 +257,7 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
       </xsl:if>
       <xsl:variable name="next">
         <xsl:call-template name="next"/>
-      </xsl:variable>     
+      </xsl:variable>
       <xsl:if test="$next != ''">
         <alix:field name="next" type="store">
           <xsl:value-of select="$next"/>

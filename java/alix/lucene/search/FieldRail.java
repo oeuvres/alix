@@ -294,19 +294,16 @@ public class FieldRail
       results.N = results.partOccs;
     }
     */
-    results.formOccs = fieldText.formAllOccs;
-    final BitSet filter = results.filter;
-    final boolean hasFilter = (filter != null);
+    // results.formOccs = fieldText.formOccsAll;
+    final boolean hasFilter = (results.filter != null);
     
     
     // create or reuse freqs
-    if (results.freqs == null || results.freqs.length != maxForm) results.freqs = new long[maxForm]; // by term, occurrences counts
-    else Arrays.fill(results.freqs, 0);
-    final long[] freqs = results.freqs; // localize
+    if (results.formOccsFreq == null || results.formOccsFreq.length != maxForm) results.formOccsFreq = new long[maxForm]; // by term, occurrences counts
+    else Arrays.fill(results.formOccsFreq, 0);
     // create or reuse hits
-    if (results.hits == null || results.hits.length != maxForm) results.hits = new int[maxForm]; // by term, document counts
-    else Arrays.fill(results.hits, 0);
-    final int[] hits = results.hits; // localize
+    if (results.formDocsHit == null || results.formDocsHit.length != maxForm) results.formDocsHit = new int[maxForm]; // by term, document counts
+    else Arrays.fill(results.formDocsHit, 0);
     
     
     // A vector needed to no recount doc
@@ -316,8 +313,6 @@ public class FieldRail
     DirectoryReader reader = alix.reader();
     // collector of scores
     int dicSize = this.hashDic.size();
-    
-    long partOccs = 0;
 
     // for each doc, a bit set is used to record the relevant positions
     // this will avoid counting interferences when search occurrences are close
@@ -346,7 +341,7 @@ public class FieldRail
       for (int docLeaf = 0; docLeaf < max; docLeaf++) {
         final int docId = docBase + docLeaf;
         final int docLen = limInt[docId];
-        if (hasFilter && !filter.get(docId)) continue; // document not in the document filter
+        if (hasFilter && !results.filter.get(docId)) continue; // document not in the document filter
         if (hasLive && !liveDocs.get(docLeaf)) continue; // deleted doc
         // reset the positions of the rail
         contexts.clear();
@@ -390,16 +385,15 @@ public class FieldRail
           int formId = bufInt.get(posDoc + pos);
           pos = contexts.nextSetBit(pos+1);
           if (formId == 0) continue;
-          partOccs++;
-          freqs[formId]++;
+          results.occsPart++;
+          results.formOccsFreq[formId]++;
           if (!docSeen[formId]) {
-            hits[formId]++;
+            results.formDocsHit[formId]++;
             docSeen[formId] = true;
           }
         }
       }
     }
-    results.partOccs = partOccs; // sum of coocs traversed
     results.reset();
     return found;
   }
@@ -418,26 +412,17 @@ public class FieldRail
   public void score(FormEnum results, final long Ob) throws IOException
   {
     if (results.limit == 0) throw new IllegalArgumentException("How many sorted forms do you want? set FormEnum.limit");
-    if (results.partOccs < 1) throw new IllegalArgumentException("Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
-    if (results.freqs == null || results.freqs.length != maxForm) throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
-    long[] freqs = results.freqs;
+    if (results.occsPart < 1) throw new IllegalArgumentException("Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
+    if (results.formOccsFreq == null || results.formOccsFreq.length != maxForm) throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
     // int[] hits = results.hits; // not significant for a transversal cooc
     TagFilter tags = results.tags;
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
-    int length = freqs.length;
+    int length = results.formOccsFreq.length;
     // reuse score for multiple calculations
-    if (results.scores == null || results.scores.length != length) results.scores = new double[length]; // by term, occurrences counts
-    else Arrays.fill(results.scores, 0);
-    double[] scores = results.scores; // localize
-    
-    // localize the scoring reference
-    final long N = fieldText.allOccs; // global 
-    final long[] formOccs = fieldText.formAllOccs; // global for all base
-    // final long[] formOccs = results.formOccs; // do not restrict 
-    final int[] formDocs = fieldText.formAllDocs;
-    // final int[] formDocs = results.formDocs;
-    final long partOccs = results.partOccs;
+    if (results.formScore == null || results.formScore.length != length) results.formScore = new double[length]; // by term, occurrences counts
+    else Arrays.fill(results.formScore, 0);
+    final long N = fieldText.occsAll; // global 
     MI mi = results.mi;
     if (mi == null) mi = MI.occs;
     
@@ -446,17 +431,12 @@ public class FieldRail
     for (int formId = 0; formId < length; formId++) {
       if (noStop && fieldText.isStop(formId)) continue;
       if (hasTags && !tags.accept(fieldText.formTag[formId])) continue;
-      if (freqs[formId] == 0) continue;
-      long Oab = freqs[formId];
+      if (results.formOccsFreq[formId] == 0) continue;
+      long Oab = results.formOccsFreq[formId];
       if (Oab > Ob) Oab = Ob; // // a form in a cooccurrence, may be more frequent than the pivot (repetition in a large context)
-      scores[formId] = mi.score(Oab, formOccs[formId], Ob, N);
+      results.formScore[formId] = mi.score(Oab, fieldText.formOccsAll[formId], Ob, N);
     }
-    TopArray top;
-    int flags = TopArray.NO_ZERO;
-    if (results.reverse) flags |= TopArray.REVERSE;
-    if (results.limit < 1) top = new TopArray(scores, flags); // all search
-    else top = new TopArray(results.limit, scores, flags);
-    results.sorter(top.toArray());
+    results.sort(results.limit, results.reverse);
   }
   
   /**

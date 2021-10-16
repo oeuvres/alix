@@ -214,7 +214,7 @@ public class Cooc
     // BM25 seems the best scorer
     /*
     Scorer scorer = new ScorerBM25(); 
-    scorer.setAll(allOccs, allDocs);
+    scorer.setAll(occsAll, docsAll);
     dic.setLengths(termLength);
     dic.setDocs(termDocs);
     */

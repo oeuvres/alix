@@ -97,10 +97,10 @@ public class FieldMatrix
   {
     double[] scores = new double[formMax];
     int[] docOccs = fieldText.docOccs;
-    long[] formOccs = fieldText.formAllOccs;
-    int[] formDocs = fieldText.formAllDocs;
-    double allOccs = fieldText.allOccs;
-    double allDocs = fieldText.allDocs;
+    long[] formOccs = fieldText.formOccsAll;
+    int[] formDocs = fieldText.formDocsAll;
+    double allOccs = fieldText.occsAll;
+    double allDocs = fieldText.docsAll;
     final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
     boolean hasFilter = (filter != null);
     BytesRef bytes;
@@ -123,7 +123,7 @@ public class FieldMatrix
         int docLeaf;
         Bits live = leaf.getLiveDocs();
         boolean hasLive = (live != null);
-        // allOccs, , 
+        // occsAll, , 
         scorer.idf(allOccs, allDocs, formOccs[formId], formDocs[formId]);
         while ((docLeaf = docsEnum.nextDoc()) != NO_MORE_DOCS) {
           if (hasLive && !live.get(docLeaf)) continue; // deleted doc

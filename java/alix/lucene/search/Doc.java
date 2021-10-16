@@ -591,46 +591,35 @@ public class Doc
     boolean noStop = (tags != null && tags.noStop());
     boolean hasScorer = (scorer != null);
     
-    // get index term stats and localize some arrays
+    // get index term stats
     FieldText fieldText = alix.fieldText(field);
-    double[] scores = new double[fieldText.formMax];
-    long[] occs = new long[fieldText.formMax]; // freqs by form
-    int[] formTag = fieldText.formTag;
-    long[] formAllOccs = fieldText.formAllOccs;
-    int[] formAllDocs = fieldText.formAllDocs;
-    int docOccs = fieldText.docOccs[docId];
-    BitSet stops = fieldText.formStop;
+    FormEnum results = new FormEnum(fieldText);
+    if (hasScorer) results.formScore = new double[fieldText.formMax];
+    results.formOccsFreq = new long[fieldText.formMax]; // freqs by form
+    int occsDoc = fieldText.docOccs[docId];
 
     // loop on all forms of the document, get score, keep the top
-    final long restLen = fieldText.allOccs - docOccs;
+    final long restLen = fieldText.occsAll - occsDoc;
     Terms vector = getTermVector(field); // get the term vector to loop on
     TermsEnum termit = vector.iterator();
     while(termit.next() != null) {
       BytesRef bytes = termit.term();
       final int formId = fieldText.formId(bytes);
-      if (hasTags && !tags.accept(formTag[formId])) continue;
-      if (noStop && stops.get(formId)) continue;
+      if (hasTags && !tags.accept(fieldText.formTag[formId])) continue;
+      if (noStop && fieldText.formStop.get(formId)) continue;
       if (formId < 0) continue; // should not arrive, let cry
-      if (hasScorer) scorer.idf(fieldText.allOccs, fieldText.allDocs, formAllOccs[formId], formAllDocs[formId]);
+      if (hasScorer) scorer.idf(fieldText.occsAll, fieldText.docsAll, fieldText.formOccsAll[formId], fieldText.formDocsAll[formId]);
 
       // scorer.weight(termOccs, termDocs); // collection level stats
       long freq = termit.totalTermFreq();
-      occs[formId] = freq;
+      results.formOccsFreq[formId] = freq;
       if (hasScorer) {
-        scores[formId] += scorer.tf(freq, docOccs);
-        // scores[formId] -= scorer.last(formAllOccs[formId] - freq, restLen); // sub complement ?
-      }
-      else {
-        scores[formId] = freq;
+        results.formScore[formId] += scorer.tf(freq, occsDoc);
+        // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub complement ?
       }
     }
-    // now we have all we need to build a sorted iterator on entries
-    FormEnum results = new FormEnum(fieldText);
-    results.scores(scores, limit, false);
+    results.sort(limit, false);
     // add some more stats on this iterator
-    results.freqs = occs;
-    results.scores = scores;
-    results.partOccs = docOccs;
     return results;
   }
 

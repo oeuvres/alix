@@ -2,12 +2,11 @@
 <!--
 
 LGPL  http://www.gnu.org/licenses/lgpl.html
-© 2017 Frederic.Glorieux@fictif.org & Université de Genève/Rougemont 2.0
 © 2013 Frederic.Glorieux@fictif.org & LABEX OBVIL
 © 2012 Frederic.Glorieux@fictif.org 
 © 2010 Frederic.Glorieux@fictif.org & École nationale des chartes
 © 2007 Frederic.Glorieux@fictif.org
-© 2005 ajlsm.com & Lyon 2/Cybertheses
+© 2005 ajlsm.com (Cybertheses)
 
 
 Different templates shared among the callers
@@ -57,7 +56,7 @@ Gobal TEI parameters and variables are divided in different categories
       <xsl:when test="$xslbase != ''">
         <xsl:value-of select="$xslbase"/>
       </xsl:when>
-      <xsl:otherwise><xsl:value-of select="$http"/>oeuvres.github.io/Teinte/</xsl:otherwise>
+      <xsl:otherwise><xsl:value-of select="$http"/>oeuvres.github.io/teinte/</xsl:otherwise>
     </xsl:choose>
   </xsl:param>
   <!-- Generation date, maybe modified by caller -->
@@ -79,7 +78,7 @@ Gobal TEI parameters and variables are divided in different categories
           </xsl:otherwise>
         </xsl:choose>
       </xsl:when>
-      <xsl:otherwise>2016</xsl:otherwise>
+      <xsl:otherwise/>
     </xsl:choose>
   </xsl:param>
   <!-- Choose an output format (has been used for epub) -->
@@ -154,7 +153,7 @@ Gobal TEI parameters and variables are divided in different categories
   <xsl:template name="doctitle">
     <xsl:choose>
       <xsl:when test="/*/tei:teiHeader/tei:fileDesc/tei:titleStmt/tei:title">
-        <xsl:for-each select="/*/tei:teiHeader/tei:fileDesc/tei:titleStmt/tei:title[not(@type) or @type='main' or @type='sub']">
+        <xsl:for-each select="/*/tei:teiHeader/tei:fileDesc/tei:titleStmt/tei:title[not(@type) or @type='main']">
           <xsl:if test="position()!=1">. </xsl:if>
           <xsl:apply-templates mode="title"/>
         </xsl:for-each>
@@ -332,6 +331,7 @@ Gobal TEI parameters and variables are divided in different categories
   <xsl:variable name="epub2">epub2</xsl:variable>
   <xsl:variable name="epub3">epub3</xsl:variable>
   <xsl:variable name="html5">html5</xsl:variable>
+  <xsl:variable name="notblock"> anchor cb figure graphic index lb milestone pb </xsl:variable> 
   <!-- What kind of root element to output ? html, nav… -->
   <xsl:param name="root" select="$html"/>
   <xsl:variable name="html">html</xsl:variable>
@@ -393,7 +393,7 @@ Gobal TEI parameters and variables are divided in different categories
       </xsl:when>
     </xsl:choose>
   </xsl:template>
-  <!-- Get a year from a date tag with different possible attributes -->
+  <!-- Get a year from a date tag with different possible attributes (TODO, negative dates) -->
   <xsl:template match="*" mode="year" name="year">
     <xsl:choose>
       <xsl:when test="@when">
@@ -498,6 +498,166 @@ Gobal TEI parameters and variables are divided in different categories
     </xsl:variable>
     <xsl:value-of select="normalize-space($titlebranch)"/>
   </xsl:template>
+  
+  <!-- 
+    Is given an element and defines whether or not this element is to be rendered inline. 
+    XSLT1 can only return string (no booleans)
+    
+    $inline != '' => is inline
+    $inline = '' => is block
+    
+    BAD tests 
+    ($inline = true()) => always true
+    not($inline) => always false
+
+  -->
+  <xsl:template name="tei:isInline">
+    <xsl:param name="element" select="."/>
+    <xsl:choose>
+      <xsl:when test="count($element) = 0">true</xsl:when>
+      <xsl:otherwise>
+        <xsl:for-each select="$element">
+          <xsl:choose>
+            <!-- Children of <div>, block -->
+            <xsl:when test="parent::tei:div"/>
+            <!-- Brother of a block, block -->
+            <xsl:when test="../tei:p|../tei:l|../tei:lg|../tei:list|../tei:table"/>
+            <xsl:when test="parent::tei:cell and self::tei:quote"/>
+            <xsl:when test="not(self::tei:note) and (ancestor::tei:p | ancestor::tei:l)">true</xsl:when>
+            <xsl:when test="parent::tei:titlePage"/>
+            <xsl:when test="parent::tei:body"/>
+            <xsl:when test="parent::tei:front"/>
+            <xsl:when test="parent::tei:back"/>
+            <xsl:when test="parent::tei:list"/>
+            <xsl:when test="parent::tei:figure"/>
+            <xsl:when test="self::tei:body"/>
+            <xsl:when test="self::tei:front"/>
+            <xsl:when test="self::tei:back"/>
+            <xsl:when test="not(self::*)">true</xsl:when>
+            <xsl:when test="parent::tei:bibl/parent::tei:q">true</xsl:when>
+            <xsl:when test="contains(@rend,'inline') and not(tei:p or tei:l)">true</xsl:when>
+            <xsl:when test="self::tei:note[@place='display']"/>
+            <xsl:when test="self::tei:note[@place='block']"/>
+            <xsl:when test="self::tei:note">true</xsl:when>
+            <xsl:when test="contains(@rend,'display') or contains(@rend,'block')"/>
+            <xsl:when test="@type='display' or @type='block'"/>
+            <xsl:when test="tei:table or tei:figure or tei:list or tei:lg    or tei:q/tei:l or tei:l or tei:p or tei:biblStruct or tei:sp or tei:floatingText"/>
+            <xsl:when test="self::tei:cit[not(@rend)]">true</xsl:when>
+            <xsl:when test="parent::tei:cit[contains(@rend,'display')]"/>
+            <xsl:when test="parent::tei:cit and (tei:p or tei:l)"/>
+            <xsl:when test="parent::tei:cit and parent::cit/tei:bibl"/>
+            <xsl:when test="self::tei:docAuthor and parent::tei:byline">true</xsl:when>
+            <xsl:when test="self::tei:note[tei:cit/tei:bibl]"/>
+            <xsl:when test="self::tei:note[parent::tei:biblStruct]">true</xsl:when>
+            <xsl:when test="self::tei:note[parent::tei:bibl]">true</xsl:when>
+            <xsl:when test="self::tei:note">true</xsl:when>
+            <xsl:when test="self::tei:abbr">true</xsl:when>
+            <xsl:when test="self::tei:affiliation">true</xsl:when>
+            <xsl:when test="self::tei:altIdentifier">true</xsl:when>
+            <xsl:when test="self::tei:analytic">true</xsl:when>
+            <xsl:when test="self::tei:add">true</xsl:when>
+            <xsl:when test="self::tei:am">true</xsl:when>
+            <xsl:when test="self::tei:att">true</xsl:when>
+            <xsl:when test="self::tei:author">true</xsl:when>
+            <xsl:when test="self::tei:bibl and not(parent::tei:listBibl)">true</xsl:when>
+            <xsl:when test="self::tei:biblScope">true</xsl:when>
+            <xsl:when test="self::tei:br">true</xsl:when>
+            <xsl:when test="self::tei:byline">true</xsl:when>
+            <xsl:when test="self::tei:c">true</xsl:when>
+            <xsl:when test="self::tei:caesura">true</xsl:when>
+            <xsl:when test="self::tei:choice">true</xsl:when>
+            <xsl:when test="self::tei:code">true</xsl:when>
+            <xsl:when test="self::tei:collection">true</xsl:when>
+            <xsl:when test="self::tei:country">true</xsl:when>
+            <xsl:when test="self::tei:damage">true</xsl:when>
+            <xsl:when test="self::tei:date">true</xsl:when>
+            <xsl:when test="self::tei:del">true</xsl:when>
+            <xsl:when test="self::tei:depth">true</xsl:when>
+            <xsl:when test="self::tei:dim">true</xsl:when>
+            <xsl:when test="self::tei:dimensions">true</xsl:when>
+            <xsl:when test="self::tei:editor">true</xsl:when>
+            <xsl:when test="self::tei:editionStmt">true</xsl:when>
+            <xsl:when test="self::tei:emph">true</xsl:when>
+            <xsl:when test="self::tei:ex">true</xsl:when>
+            <xsl:when test="self::tei:expan">true</xsl:when>
+            <xsl:when test="self::tei:figure[@place='inline']">true</xsl:when>
+            <xsl:when test="self::tei:figure"/>
+            <xsl:when test="self::tei:floatingText"/>
+            <xsl:when test="self::tei:foreign">true</xsl:when>
+            <xsl:when test="self::tei:forename">true</xsl:when>
+            <xsl:when test="self::tei:g">true</xsl:when>
+            <xsl:when test="self::tei:gap">true</xsl:when>
+            <xsl:when test="self::tei:genName">true</xsl:when>
+            <xsl:when test="self::tei:geogName">true</xsl:when>
+            <xsl:when test="self::tei:gi">true</xsl:when>
+            <xsl:when test="self::tei:gloss">true</xsl:when>
+            <xsl:when test="self::tei:graphic">true</xsl:when>
+            <xsl:when test="self::tei:media">true</xsl:when>
+            <xsl:when test="self::tei:height">true</xsl:when>
+            <xsl:when test="self::tei:ident">true</xsl:when>
+            <xsl:when test="self::tei:idno">true</xsl:when>
+            <xsl:when test="self::tei:imprint">true</xsl:when>
+            <xsl:when test="self::tei:institution">true</xsl:when>
+            <xsl:when test="self::tei:label[parent::tei:list]"/>
+            <xsl:when test="self::tei:label">true</xsl:when>
+            <xsl:when test="self::tei:locus">true</xsl:when>
+            <xsl:when test="self::tei:mentioned">true</xsl:when>
+            <xsl:when test="self::tei:monogr">true</xsl:when>
+            <xsl:when test="self::tei:series">true</xsl:when>
+            <xsl:when test="self::tei:msName">true</xsl:when>
+            <xsl:when test="self::tei:name">true</xsl:when>
+            <xsl:when test="self::tei:num">true</xsl:when>
+            <xsl:when test="self::tei:orgName">true</xsl:when>
+            <xsl:when test="self::tei:orig">true</xsl:when>
+            <xsl:when test="self::tei:origDate">true</xsl:when>
+            <xsl:when test="self::tei:origPlace">true</xsl:when>
+            <xsl:when test="self::tei:pc">true</xsl:when>
+            <xsl:when test="self::tei:persName">true</xsl:when>
+            <xsl:when test="self::tei:placeName">true</xsl:when>
+            <xsl:when test="self::tei:ptr">true</xsl:when>
+            <xsl:when test="self::tei:publisher">true</xsl:when>
+            <xsl:when test="self::tei:pubPlace">true</xsl:when>
+            <xsl:when test="self::tei:lb or self::pb">true</xsl:when>
+            <xsl:when test="self::tei:quote and tei:lb"/>
+            <xsl:when test="self::tei:q">true</xsl:when>
+            <xsl:when test="self::tei:quote">true</xsl:when>
+            <xsl:when test="self::tei:ref">true</xsl:when>
+            <xsl:when test="self::tei:region">true</xsl:when>
+            <xsl:when test="self::tei:repository">true</xsl:when>
+            <xsl:when test="self::tei:roleName">true</xsl:when>
+            <xsl:when test="self::tei:rubric">true</xsl:when>
+            <xsl:when test="self::tei:rs">true</xsl:when>
+            <xsl:when test="self::tei:said">true</xsl:when>
+            <xsl:when test="self::tei:seg">true</xsl:when>
+            <xsl:when test="self::tei:sic">true</xsl:when>
+            <xsl:when test="self::tei:settlement">true</xsl:when>
+            <xsl:when test="self::tei:soCalled">true</xsl:when>
+            <xsl:when test="self::tei:summary">true</xsl:when>
+            <xsl:when test="self::tei:supplied">true</xsl:when>
+            <xsl:when test="self::tei:surname">true</xsl:when>
+            <xsl:when test="self::tei:tag">true</xsl:when>
+            <xsl:when test="self::tei:term">true</xsl:when>
+            <xsl:when test="self::tei:textLang">true</xsl:when>
+            <xsl:when test="self::tei:title">true</xsl:when>
+            <xsl:when test="self::tei:unclear">true</xsl:when>
+            <xsl:when test="self::tei:val">true</xsl:when>
+            <xsl:when test="self::tei:width">true</xsl:when>
+            <xsl:when test="self::tei:dynamicContent">true</xsl:when>
+            <!-- 
+          <xsl:when test="parent::tei:note[tei:isEndNote(.)]"/>
+          -->
+            <xsl:when test="not(self::tei:p)">
+              <xsl:call-template name="tei:isInline">
+                <xsl:with-param name="element" select=".."/>
+              </xsl:call-template>
+            </xsl:when>
+          </xsl:choose>
+        </xsl:for-each>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  
+  
   <!-- A template to get a descent bibliographic to display -->
   <xsl:template name="bibl">
     <xsl:param name="book" select="$bibl"/>
@@ -538,30 +698,14 @@ Gobal TEI parameters and variables are divided in different categories
         <xsl:when test="count($pb) &gt; 1">pp. </xsl:when>
         <xsl:otherwise>p. </xsl:otherwise>
       </xsl:choose>
-      <xsl:variable name="n1" select="translate($pb[1]/@n, ' ', ' ')"/>
-      <xsl:choose>
-        <xsl:when test="starts-with($n1, 'p.')">
-          <xsl:value-of select="normalize-space(substring-after($n1, 'p.'))"/>
-        </xsl:when>
-        <xsl:otherwise>
-          <xsl:value-of select="$n1"/>
-        </xsl:otherwise>
-      </xsl:choose>
-      <xsl:if test="count($pb) &gt; 1">
-        <xsl:variable name="nlast" select="translate($pb[position() = last()]/@n, ' ', ' ')"/>
+      <xsl:value-of select="$pb[1]/@n"/>
+      <xsl:variable name="last" select="$pb[position() != 1][position() = last()]/@n"/>
+      <xsl:if test="$last &gt; 1">
         <xsl:text>-</xsl:text>
-        <xsl:choose>
-          <xsl:when test="starts-with($nlast, 'p.')">
-            <xsl:value-of select="normalize-space(substring-after($nlast, 'p.'))"/>
-          </xsl:when>
-          <xsl:otherwise>
-            <xsl:value-of select="$nlast"/>
-          </xsl:otherwise>
-        </xsl:choose>
+        <xsl:value-of select="$last"/>
       </xsl:if>
     </xsl:if>
   </xsl:template>
-  
 
   <xsl:template name="id">
     <xsl:apply-templates select="." mode="id"/>
@@ -765,14 +909,11 @@ Un tel numéro peut etre très utile pour
     </xsl:choose>
   </xsl:template>
   <!--
-<h3>mode="title" (titre long)</h3>
+mode="title"
 
-<p>
-Ce mode permet de traverser un arbre jusqu'à trouver un élément satisfaisant pour le titrer (souvent <head>).
-Une fois cet elément trouvé, le contenu est procédé en mode texte afin de passer les notes,
-résoudre les césures, ou les alternatives éditoriales.
-</p>
-<p>Utiliser pour la génération de tables des matières, epub toc.ncx, ou site nav.html, index.html</p>
+This mode get a good candidate title for tocs (ex: without notes).
+Some simple formatting is preserved as HTML (italics, superscript…).
+Could be correct for a text only version in <xsl:value-of select=""/>
   -->
   <xsl:template match="tei:elementSpec" mode="title">
     <xsl:value-of select="@ident"/>
@@ -846,7 +987,7 @@ résoudre les césures, ou les alternatives éditoriales.
           </xsl:choose>
         </xsl:variable>
         <xsl:variable name="title">
-          <xsl:if test="@n">
+          <xsl:if test="@n and not(tei:head)">
             <xsl:value-of select="@n"/>
             <xsl:text> </xsl:text>
           </xsl:if>
@@ -1042,6 +1183,69 @@ résoudre les césures, ou les alternatives éditoriales.
     </xsl:choose>
   </xsl:template>
   
+  <xsl:template name="lspacer">
+    <xsl:if test="@part = 'M' or @part = 'm' or @part = 'F' or @part = 'f'  or @part = 'y'  or @part = 'Y'">
+      <!-- Rupted verse, get the exact spacer from previous verse -->
+      <xsl:apply-templates select="preceding::tei:l[1]" mode="lspacer"/>
+    </xsl:if>
+    
+  </xsl:template>
+  
+  <xsl:template name="head-pun">
+    <xsl:param name="prev">
+      <xsl:apply-templates/>
+    </xsl:param>
+    <xsl:param name="next">
+      <xsl:value-of select="following-sibling::*[normalize-space(.)!=''][1]"/>
+    </xsl:param>
+    <xsl:variable name="norm" select="normalize-space($prev)"/>
+    <xsl:variable name="lastc" select="substring($norm, string-length($norm))"/>
+    <xsl:variable name="nextc" select="substring(normalize-space($next), 1, 1)"/>
+    <xsl:choose>
+      <xsl:when test="$norm = ''"/>
+      <xsl:when test="contains('0123456789', $lastc)">.</xsl:when>
+      <xsl:when test="contains('.,; –—-)!?»', $lastc)"/>
+      <xsl:when test="contains($lc, $nextc)">,</xsl:when>
+      <xsl:otherwise>.</xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  
+  <xsl:template match="tei:l" mode="lspacer">
+    <xsl:variable name="txt">
+      <xsl:apply-templates mode="title"/>
+    </xsl:variable>
+    <xsl:choose>
+      <!-- encoding may have problem for ex @part="F"
+      <xsl:when test="not(@part)"/>
+      -->
+      <xsl:when test="not(ancestor::tei:body)"/>
+      <xsl:when test="@part = 'F'">
+        <xsl:apply-templates select="preceding::tei:l[1]" mode="lspacer"/>
+        <xsl:value-of select="$txt"/>
+        <xsl:text> </xsl:text>
+      </xsl:when>
+      <xsl:when test="@part = 'M'">
+        <xsl:apply-templates select="preceding::tei:l[1]" mode="lspacer"/>
+        <xsl:text> </xsl:text>
+        <xsl:value-of select="$txt"/>
+      </xsl:when>
+      <xsl:when test="@part = 'Y'">
+        <xsl:apply-templates select="preceding::tei:l[1]" mode="lspacer"/>
+        <xsl:value-of select="$txt"/>
+        <xsl:text> </xsl:text>
+      </xsl:when>
+      <xsl:when test="@part = 'I'">
+        <xsl:value-of select="$txt"/>
+      </xsl:when>
+      <!-- No part="I" ? -->
+      <xsl:otherwise>
+        <xsl:value-of select="$txt"/>
+        <xsl:text> </xsl:text>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  
+  
   <xsl:template match="tei:lb" mode="title">
     <xsl:variable name="prev" select="preceding-sibling::node()[1]"/>
     <xsl:variable name="next" select="following-sibling::node()[1]"/>
@@ -1201,20 +1405,6 @@ résoudre les césures, ou les alternatives éditoriales.
         <xsl:text>#</xsl:text>
         <xsl:value-of select="$id"/>
       </xsl:when>
-      <!-- -->
-      <xsl:when test="/*/tei:text/tei:body and count(.|/*/tei:text/tei:body)=1">
-        <xsl:value-of select="$base"/>
-        <xsl:choose>
-          <xsl:when test="$_html = ''">.</xsl:when>
-          <xsl:otherwise>index<xsl:value-of select="$_html"/></xsl:otherwise>
-        </xsl:choose>
-      </xsl:when>
-      <!-- TEI structure -->
-      <xsl:when test="count(../.. | /*) = 1">
-        <xsl:value-of select="$base"/>
-        <xsl:value-of select="$id"/>
-        <xsl:value-of select="$_html"/>
-      </xsl:when>
       <!-- is a splitted section -->
       <xsl:when test="self::*[key('split', generate-id())]">
         <xsl:value-of select="$base"/>
@@ -1237,6 +1427,24 @@ résoudre les césures, ou les alternatives éditoriales.
         <xsl:text>#</xsl:text>
         <xsl:value-of select="$id"/>
       </xsl:when>
+      <!-- ??
+      <xsl:when test="ancestor-or-self::tei:body[count(.| /*/tei:text/tei:body) = 1]">
+        <xsl:value-of select="$base"/>
+        <xsl:choose>
+          <xsl:when test="$_html = ''">.</xsl:when>
+          <xsl:otherwise>index<xsl:value-of select="$_html"/></xsl:otherwise>
+        </xsl:choose>
+        <xsl:if test="not(self::tei:body)">
+          <xsl:text>#</xsl:text>
+          <xsl:value-of select="$id"/>
+        </xsl:if>
+      </xsl:when>
+      <xsl:when test="count(../.. | /*) = 1">
+        <xsl:value-of select="$base"/>
+        <xsl:value-of select="$id"/>
+        <xsl:value-of select="$_html"/>
+      </xsl:when>
+      -->
       <!-- ???? -->
       <xsl:when test="ancestor::tei:*[local-name(../..)='TEI']">
         <xsl:for-each select="ancestor::tei:*[local-name(../..)='TEI'][1]">
@@ -1275,6 +1483,54 @@ Le mode label génère un intitulé court obtenu par une liste de valeurs locali
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
+  
+  <!-- Is <p> noindent ? -->
+  <xsl:template name="noindent">
+    <xsl:variable name="rend" select="concat(' ', normalize-space(@rend), ' ')"/>
+    <!-- first non space char -->
+    <xsl:variable name="firstchar" select="substring(translate(normalize-space(.), ' ', ''), 1, 1)"/>
+    <xsl:variable name="firstnode" select="node()[1][normalize-space(.) != '']"/>
+    <!-- previous sibling block -->
+    <xsl:variable name="prevblock" select="preceding-sibling::*[not(contains($notblock, concat(' ', local-name(), ' ')))][1]"/>
+    <!-- previous <p> -->
+    <!--
+    <xsl:variable name="prevp" select="preceding-sibling::tei:p[1]"/>
+    -->
+    <xsl:variable name="txt">
+      <xsl:apply-templates select="." mode="title"/>
+    </xsl:variable>
+    <xsl:variable name="len" select="string-length(normalize-space($txt))"/>
+    <xsl:choose>
+      <!-- force noindent -->
+      <xsl:when test="contains($rend, ' noindent ')">noindent</xsl:when>
+      <!-- force indent -->
+      <xsl:when test="contains($rend, ' indent ')"/>
+      <!-- Starting by a label, all the same -->
+      <xsl:when test="local-name($firstnode) = 'label'"/>
+      <!-- Numbering to display -->
+      <xsl:when test="@n != ''">noindent</xsl:when>
+      <!-- first char seem a pseudo item, let indent -->
+      <xsl:when test="contains('-–—1234567890', $firstchar)"/>
+      <!-- theater, first <p> of a series -->
+      <xsl:when test="name($prevblock) != 'p' and (parent::tei:sp or parent::tei:quote)">noindent</xsl:when>
+      <!-- first <p> of a series, smaller than 2 “line”, let indent -->
+      <xsl:when test="not($prevblock) and $len &lt; 80"/> 
+      <!-- first <p> of a series (> 2 lines), noindent -->
+      <xsl:when test="not($prevblock)">noindent</xsl:when>
+      <!-- if preceded by an empty <p> -->
+      <xsl:when test="name($prevblock) = 'p' and normalize-space($prevblock)=''">noindent</xsl:when>
+      <!-- if preceded by not <p> -->
+      <xsl:when test="name($prevblock) != 'p' and not(parent::tei:item)">noindent</xsl:when>
+      <!-- this para is center or right align -->
+      <xsl:when test="contains($rend, ' center ') or contains($rend, ' right ')">noindent</xsl:when>
+      <!-- prev block (maybe <p>) is center or right align -->
+      <xsl:when test="contains($prevblock/@rend, 'right')  or contains($prevblock/@rend, 'center')">noindent</xsl:when>
+      <!-- bad
+      -->
+    </xsl:choose>
+    
+  </xsl:template>
+  
   <!-- pour obtenir un chemin relatif à l'XSLT appliquée -->
   <xsl:template name="xslbase">
     <xsl:param name="path" select="/processing-instruction('xml-stylesheet')[contains(., 'xsl')]"/>
@@ -1319,18 +1575,18 @@ Le mode label génère un intitulé court obtenu par une liste de valeurs locali
   <!--
     AGA, xslt 1 donc pas de fonction replace, un template pour y remedier.
   -->
-  <xsl:template name="string-replace-all">
+  <xsl:template name="replace">
     <xsl:param name="text"/>
+    <xsl:param name="search"/>
     <xsl:param name="replace"/>
-    <xsl:param name="by"/>
     <xsl:choose>
-      <xsl:when test="contains($text,$replace)">
-        <xsl:value-of select="substring-before($text,$replace)"/>
-        <xsl:value-of select="$by"/>
-        <xsl:call-template name="string-replace-all">
-          <xsl:with-param name="text" select="substring-after($text,$replace)"/>
+      <xsl:when test="contains($text,$search)">
+        <xsl:value-of select="substring-before($text,$search)"/>
+        <xsl:value-of select="$replace"/>
+        <xsl:call-template name="replace">
+          <xsl:with-param name="text" select="substring-after($text,$search)"/>
+          <xsl:with-param name="search" select="$search"/>
           <xsl:with-param name="replace" select="$replace"/>
-          <xsl:with-param name="by" select="$by"/>
         </xsl:call-template>
       </xsl:when>
       <xsl:otherwise>

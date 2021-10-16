@@ -63,7 +63,7 @@ public class TestFieldText
     results.sorter(sorter);
     while(results.hasNext()) {
       results.next();
-      System.out.println(results.form()+" formDocs="+results.formDocs()+" formOccs="+results.formOccs());
+      System.out.println(results.form()+" formDocsAll="+results.docs()+" formOccs="+results.occs());
     }
     
     System.out.println("Filtered forms, occurrences");

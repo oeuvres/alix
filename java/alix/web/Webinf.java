@@ -45,8 +45,6 @@ import alix.lucene.analysis.FrDics;
 
 /**
  * Populate a possible list of Alix bases in a WEB-INF folder as singletons.
- * 
- *
  */
 public class Webinf
 {
@@ -54,13 +52,15 @@ public class Webinf
   static final String INDEXDIR = "indexdir";
   static public boolean bases = false;
   /**
-   * Load possible bases, used as static startup, no exception but logging
+   * Load possible bases, used as static startup, no exception but logging.
+   * A static call from here will not work.
    */
   static public void bases()
   {
     // load properties for bases in WEB-INF/*.xml on webapp restart
     File zejar = new File(FrDics.class.getProtectionDomain().getCodeSource().getLocation().getPath());
     File webinf = zejar.getParentFile().getParentFile(); // alix.jar is supposed to be in WEB-INF/lib/ 
+    if (!webinf.getName().equals("WEB-INF")) return; // jar is not in a java webapp
     for(File file: webinf.listFiles()) {
       String fileName = file.getName();
       if (fileName.startsWith("_")) continue; // easy way to unplug a base
@@ -118,5 +118,5 @@ public class Webinf
     }
     bases = true;
   }
-
+  
 }

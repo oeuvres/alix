@@ -45,7 +45,7 @@ import org.apache.lucene.util.BitSet;
 
 /**
  * A search giving results as bits. Code from QueryBitSetProducer.java
- * https://github.com/apache/lucene-solr/blob/master/lucene/join/src/java/org/apache/lucene/search/join/QueryBitSetProducer.java
+ * https://github.com/apache/lucene/blob/main/lucene/join/src/java/org/apache/lucene/search/join/QueryBitSetProducer.java
  * Rely on the default LRU lucene cache, instead of an hard cache.
  * 
  * @author glorieux-f

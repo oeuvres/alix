@@ -47,7 +47,7 @@ public class SpecifGtf extends Specif
 {
   /**
    * Returns a score for a term frequency in a document (tf): Oi*ln(Oi/Ei).
-   * idf() supposed to have been called to set correct formAllOccs.
+   * idf() supposed to have been called to set correct formOccsAll.
    */
   @Override
   public double tf(final double Oi, final double docOccs) {

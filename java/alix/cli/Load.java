@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.SAXException;
 
@@ -24,6 +26,7 @@ import alix.lucene.SrcFormat;
 import alix.lucene.XMLIndexer;
 import alix.lucene.analysis.FrAnalyzer;
 import alix.lucene.analysis.FrDics;
+import alix.lucene.search.FieldRail;
 import alix.util.Dir;
 
 public class Load {
@@ -146,7 +149,27 @@ public class Load {
     XMLIndexer.index(writer, globs.toArray(new String[globs.size()]), SrcFormat.tei, threads);
     System.out.println("["+APP+"] "+name+" Merging");
     writer.commit();
-    writer.close();
+    writer.close(); // close lucene index before indexing rail (for coocs)
+    // pre index text fields for 
+    prop = props.getProperty("textfields");
+    if (prop != null && !prop.trim().equals("")) {
+      for (String field: prop.split("[ \t,;]+")) {
+        FieldInfo info = alix.info(field);
+        if (info == null) {
+          System.out.println("["+APP+"] "+name+". \""+field+"\" is not known as a field");
+          continue;
+        }
+        IndexOptions options = info.getIndexOptions();
+        if (options != IndexOptions.DOCS_AND_FREQS_AND_POSITIONS && options != IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) {
+          System.out.println("["+APP+"] "+name+". Field \""+field+"\" has no positions indexed for cooc");
+          continue;
+        }
+        
+        System.out.println("["+APP+"] "+name+". Cooc indexation for field: "+field);
+        FieldRail rail = alix.fieldRail(field);
+      }
+    }
+    
     System.out.println("["+APP+"] "+name+" indexed in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     
     /*
