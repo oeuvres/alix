@@ -160,24 +160,64 @@ public class FormEnum {
   {
     return limit;
   }
+  
   /**
-   * Count of occurrences for this search
+   * Get the current term as a String
    * @return
    */
-  public long partOccs()
+  public String form()
   {
-    return occsPart;
-  }
-  /**
-   * Global number of occurrences for this term
-   * 
-   * @return
-   */
-  public long occs(final int formId)
-  {
-    return formOccsAll[formId];
+    formDic.get(formId, bytes);
+    return bytes.utf8ToString();
   }
 
+  /**
+   * By rank in sort order, returns form
+   * @param rank
+   * @return
+   */
+  public String formByRank(final int rank)
+  {
+    if (rank >= limit) return null;
+    final int formId = sorter[rank];
+    formDic.get(formId, bytes);
+    return bytes.utf8ToString();
+  }
+
+  /**
+   * Current term, get the formId for the global dic.
+   */
+  public int formId()
+  {
+    return formId;
+  }
+
+  /**
+   * Populate reusable bytes with current term
+   * 
+   * @param ref
+   */
+  public void form(BytesRef bytes)
+  {
+    formDic.get(formId, bytes);
+  }
+
+  /**
+   * Copy the current term in a reusable char array  * 
+   * @return
+   */
+  public CharsAtt form(CharsAtt term)
+  {
+    formDic.get(formId, bytes);
+    // ensure limit of the char array
+    int length = bytes.length;
+    char[] chars = term.resizeBuffer(length);
+    final int len = UnicodeUtil.UTF8toUTF16(bytes.bytes, bytes.offset, length, chars);
+    term.setLength(len);
+    return term;
+  }
+
+  
   /**
    * Global number of occurrences for this term
    * 
@@ -187,6 +227,30 @@ public class FormEnum {
   {
     return formOccsAll[formId];
   }
+
+
+  /**
+   * Global number of occurrences for this term
+   * 
+   * @return
+   */
+  public long occs(final int formId)
+  {
+    return formOccsAll[formId];
+  }
+  
+  /**
+   * Global number of occurrences by rank of a term
+   * 
+   * @return
+   */
+  public long occsByRank(final int rank)
+  {
+    if (rank >= limit) return -1;
+    final int formId = sorter[rank];
+    return formOccsAll[formId];
+  }
+
 
   /**
    * For current form, occurrence count in a part
@@ -230,7 +294,7 @@ public class FormEnum {
   }
   
   /**
-   * Get the total count of documents relevant for the current term.
+   * For the current term in iterator, returns the total count of documents in corpus
    * @return
    */
   public int docs()
@@ -239,13 +303,25 @@ public class FormEnum {
   }
   
   /**
-   * Get the total count of documents relevant for the current term.
+   * By formId, return total count 
    * @return
    */
   public int docs(final int formId)
   {
     return formDocsAll[formId];
   }
+  
+  /**
+   * By rank in sort order, returns total count of documents in corpus
+   * @return
+   */
+  public int docsByRank(final int rank)
+  {
+    if (rank >= limit) return -1;
+    final int formId = sorter[rank];
+    return formDocsAll[formId];
+  }
+
 
   /**
    * Get the count of matching occurrences
@@ -257,11 +333,24 @@ public class FormEnum {
   }
 
   /**
-   * Get the count of matching occureences
+   * Get the count of matching occurrences
+   * @param formId
    * @return
    */
   public long freq(final int formId)
   {
+    return formOccsFreq[formId];
+  }
+  
+  /**
+   * By rank in sort order, returns count of matching occurrences
+   * @param rank
+   * @return
+   */
+  public long freqByRank(final int rank)
+  {
+    if (rank >= limit) return -1;
+    final int formId = sorter[rank];
     return formOccsFreq[formId];
   }
 
@@ -280,6 +369,13 @@ public class FormEnum {
    */
   public int hits(final int formId)
   {
+    return formDocsHit[formId];
+  }
+
+  public int hitsByRank(final int rank)
+  {
+    if (rank >= limit) return -1;
+    final int formId = sorter[rank];
     return formDocsHit[formId];
   }
 
@@ -323,51 +419,6 @@ public class FormEnum {
     formId = sorter[cursor];
   }
 
-
-  /**
-   * Current term, get the formId for the global dic.
-   */
-  public int formId()
-  {
-    return formId;
-  }
-
-  /**
-   * Populate reusable bytes with current term
-   * 
-   * @param ref
-   */
-  public void form(BytesRef bytes)
-  {
-    formDic.get(formId, bytes);
-  }
-  
-  /**
-   * Get the current term as a String     * 
-   * @return
-   */
-  public String form()
-  {
-    formDic.get(formId, bytes);
-    return bytes.utf8ToString();
-  }
-
-  
-
-  /**
-   * Copy the current term in a reusable char array  * 
-   * @return
-   */
-  public CharsAtt form(CharsAtt term)
-  {
-    formDic.get(formId, bytes);
-    // ensure limit of the char array
-    int length = bytes.length;
-    char[] chars = term.resizeBuffer(length);
-    final int len = UnicodeUtil.UTF8toUTF16(bytes.bytes, bytes.offset, length, chars);
-    term.setLength(len);
-    return term;
-  }
 
   /**
    * Value used for sorting for current term.

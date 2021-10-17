@@ -47,158 +47,93 @@ import java.util.logging.Logger;
 public enum Tag
 {
   // 0x, messages internes
-  NULL(0, "—", "Défaut, aucune information") {
-  },
-  UNKNOWN(0x01, "Inconnu", "Connu comme inconnu des dictionnaires") {
-  },
-  TEST(0x02, "Test", "Message envoyé par une étape de traitement") {
-  },
+  NULL(0, "—", "Défaut, aucune information.") { },
+  UNKNOWN(0x01, "Inconnu", "Connu comme inconnu des dictionnaires.") { },
+  TEST(0x02, "Test", "Message envoyé par une étape de traitement.") { },
   
   // 1x, verbes
-  VERB(0x10, "Verbe", "Verbe sémantique (hors autres catégories verbales)") {
-  },
-  VERBaux(0x11, "Auxilliaire", "Être, avoir.") {
-  },
-  VERBaux2(0x12, "Semi-auxiliaire", "Aller, faire, venir de. « Je vais faire… »") {
-  },
-  VERBmod(0x13, "Modaux", "Devoir, pouvoir, falloir.") {
-  },
-  VERBppass(0x18, "Participe passé", "Un participe passé peut avoir un emploi adjectif ou substantif") {
-  },
-  VERBppres(0x19, "Participe présent", "Un participe présent peut avoir un emploi adjectif ou substantif") {
-  },
+  VERB(0x10, "Verbe", "Verbe sémantique (hors autres catégories verbales).") { },
+  VERBaux(0x11, "Auxilliaire", "Être, avoir. (verbe auxilliaire du français)") { },
+  VERBaux2(0x12, "Semi‑aux.", "« Je vais faire… », aller, faire, venir de. (verbes semi-auxilliaires, faiblement sémantiques).") { },
+  VERBmod(0x13, "Modaux", "Devoir, pouvoir, falloir. (verbes modaux).") { },
+  VERBppass(0x18, "Part. passé", "Participe passé (tous emplois : verbal, adjectif, substantif).") { },
+  VERBppres(0x19, "Part. prés.", "Participe présent (tous emplois : verbal, adjectif, substantif).") { },
   
   // 2x, substantifs
-  SUB(0x20, "Substantif", "“Nom commun“, espèce") {
-  },
+  SUB(0x20, "Substantif", "Arbre, bonheur… (“Nom commun“, espèce).") { },
+  ADJ(0x21, "Adjectif", "Adjectif, en emploi qualificatif ou attribut.") { },
   /*
-  SUBm(0x21, "Substantif masculin", "(futur)") {
-  },
-  SUBf(0x22, "Substantif féminin", "(futur)") {
-  },
+  SUBm(0x21, "Substantif masculin", "(futur)") { },
+  SUBf(0x22, "Substantif féminin", "(futur)") { },
   */
-  SUBtit(0x28, "Titulature", "Monsieur, madame, prince… (pour les romans, en cours)") {
-  },
+  SUBtit(0x2F, "Titulature", "Monsieur, madame, prince… (introduit les noms de personnes).") { },
   
   // 3x, entités nommées
-  NAME(0x30, "Nom propre", "Nom propre inféré de la typographie mais pas connu d’un dictionnaire") {
-  },
-  NAMEpers(0x31, "Personne", "Nom de de personne reconnu par dictionnaire ou inféré") {
-  },
-  NAMEpersm(0x32, "Prénom masculin", "Prénom masculin non ambigu") {
-  },
-  NAMEpersf(0x33, "Prénom féminin", "Prénom féminin non ambigu") {
-  },
-  NAMEplace(0x34, "Lieu", "Nom de lieu") {
-  },
-  NAMEorg(0x35, "Organisation", "Nom d’organisation") {
-  },
-  NAMEpeople(0x36, "Peuple", "Nom de peuple") {
-  },
-  NAMEevent(0x37, "Événement", "Nom d’événement : la Révolution, XIIe siècle…") {
-  },
-  NAMEauthor(0x38, "Auteur", "Nom de persone auteur") {
-  },
-  NAMEfict(0x39, "Personnage", "Nom de personnage fictif") {
-  },
-  NAMEtitle(0x3A, "Titre", "Titre d’œuvre") {
-  },
-  NAMEgod(0x3F, "Divinité", "Noms de divinité") {
-  },
+  NAME(0x30, "Nom propre", "Kala Matah, Taj Mah de Groüpt… (nom propre inféré de la typographie, inconnu des dictionnaires).") { },
+  NAMEpers(0x31, "Personne", "Victor Hugo, monsieur A… (Nom de de personne reconnu par dictionnaire ou inféré d’une titulature).") { },
+  NAMEpersm(0x32, "Prénom m.", "Charles, Jean… (prénom masculin non ambigu, dictionnaire).") { },
+  NAMEpersf(0x33, "Prénom f.", "Marie, Jeanne… (prénom féminin non ambigu, dictionnaire).") { },
+  NAMEplace(0x34, "Lieu", "Paris, Allemagne… (nom de lieu, dictionnaire).") { },
+  NAMEorg(0x35, "Organisation", "l’Église, l’État, P.S.… (nom d’organisation, dictionnaire).") { },
+  NAMEpeople(0x36, "Peuple", " (nom de peuple, dictionnaire).") { },
+  NAMEevent(0x37, "Événement", "La Révolution, XIIe siècle… (nom d’événement, dictionnaire).") { },
+  NAMEauthor(0x38, "Auteur", "Hugo, Racine, La Fontaine… (nom de persone auteur, dictionnaire).") { },
+  NAMEfict(0x39, "Personnage", "Rodogune, Chicot… (nom de personnage fictif, dictionnaire).") { },
+  // NAMEtitle(0x3A, "Titre", " Titre d’œuvre (dictionnaire)") { },
+  NAMEgod(0x3F, "Divinité", "Dieu, Cupidon… (noms de divinité, dictionnaire).") { },
   
-  // 5x, Adjectifs et adverbes sémantiques
-  ADJ(0x50, "Adjectif", "Qualificatif ou attribut") {
-  },
-  ADV(0x51, "Adverbe", "Adverbe significatif, souvent en adjectif+ment") {
-  },
-  
+  // 5x, Adverbes
+  ADV(0x50, "Adverbe", "Adverbe significatif, souvent en adjectif+ment.") { },
+  ADVneg(0x51, "Adv. négation", "Ne, pas, point… (adverbe de négation).") { },
+  ADVinter(0x52, "Adv. interr.", "Comment, est-ce que (adverbe interrogatif).") { },
+  ADVscen(0x53, "Adv. scène", ":Ici, maintenant, derrière… (adverbe spacio-temporel).") { },
+  ADVasp(0x54, "Adv. aspect", "Toujours, souvent… (adverbe de temps, d’aspect).") { },
+  ADVdeg(0x55, "Adv. degré", "Plus, presque, très… (adverbe d’intensité)") { },
+  ADVmod(0x56, "Adv. mode", "Probablement, peut-être… (adverbe de modalité)") { },
+
   // 6x, déterminants
-  DET(0x60, "Déterminant", "Déterminant ") {
-  },
-  DETart(0x61, "Article", "Ex : le, la, un, des…") {
-  },
-  DETprep(0x62, "Déterminant prépositionnel", "Ex : du, au") {
-  },
-  DETnum(0x63, "Déterminant numéral", "Ex : deux, trois") {
-  },
-  DETindef(0x6A, "Déterminant indéfini", "tout, tous quelques…") {
-  },
-  DETinter(0x6B, "Déterminant interrogatif", "Ex : quel, quelles…") {
-  },
-  DETdem(0x6C, "Déterminant démonstratif", "Ex : ce, cette, ces…") {
-  },
-  DETposs(0x6D, "Déterminant possessif", "Ex : son, ma, leurs…") {
-  },
+  DET(0x60, "Déterminant", "Déterminant autre que dans les autres catégories.") { },
+  DETart(0x61, "Article", "Le, la, un, des… (articles définis et indéfinis, singulier et pluriel).") { },
+  DETprep(0x62, "Dét. prép.", "Du, au… (“de le”, “à les”, déterminant prépositionnel).") { },
+  DETnum(0x63, "Dét. num.", "Deux, trois… (déterminant numéral).") { },
+  DETindef(0x6A, "Dét. indéf.", "Tout, tous quelques… (déterminant indéfini).") { },
+  DETinter(0x6B, "Dét. inter.", "Quel, quelles… (déterminant interrogatif).") { },
+  DETdem(0x6C, "Dét. dém.", "Ce, cette, ces… (déterminant démonstratif).") { },
+  DETposs(0x6D, "Dét. poss.", "Son, ma, leurs… (déterminant possessif).") { },
   
   // 7x, pronoms
-  PRO(0x70, "Pronom", "Pronom hors catégories particulières") {
-  },
-  PROpers(0x71, "Pronom personnel", "Ex : il, se, je, me, nous…") {
-  },
-  PROindef(0x7A, "Pronom indéfini", "Ex : y, rien, tout…") {
-  },
-  PROdem(0x7C, "Pronom démonstratif", "Ex : c', ça, cela… ") {
-  },
-  PROposs(0x7D, "Pronom possessif", "Ex : le mien, la sienne…") {
-  },
+  PRO(0x70, "Pronom", "Pronom hors catégories particulières.") { },
+  PROpers(0x71, "Pron. pers.", "Il, se, je, moi, nous… (pronom personnel).") { },
+  PROindef(0x7A, "Pron. indéf", "Y, rien, tout… (pronom indéfini).") { },
+  PROdem(0x7C, "Pron. dém.", "C’, ça, cela… (pronom démonstratif).") { },
+  PROposs(0x7D, "Pron. poss.", "Le mien, la sienne… (pronom possessif).") { },
   
   // 8x, connecteurs
-  CONN(0x80, "Connecteur", "Mot invariable de connection") {
-  },
-  CONJcoord(0x81, "Conjonction de coordination", "Ex : et, mais, ou…") {
-  },
-  CONJsub(0x82, "Conjonction de subordination", "Ex : comme, si, parce que…") {
-  },
-  ADVconj(0x83, "Adverbe conjonctif", "Adverbe de connexion : cependant, désormais…") {
-  },
-  PREP(0x88, "Préposition", "Ex : De, dans, par…") {
-  },
+  CONN(0x80, "Connecteur", "Mot invariable de connection hors autres catégories.") { },
+  CONJcoord(0x81, "Conj. coord.", "Et, mais, ou… (conjonction de coordination).") { },
+  CONJsub(0x82, "Conj. subord.", "Comme, si, parce que… (conjonction de subordination).") { },
+  ADVconj(0x83, "Adv. conj.", "Cependant, désormais… (adverbe de connexion).") { },
+  PREP(0x88, "Préposition", "De, dans, par…") { },
 
-  // 9x, adverbes grammaticaux
-  ADVneg(0x90, "Négation", "Ne, pas, point…") {
-  },
-  ADVasp(0x91, "Aspect", "Adverbe de temps, d’aspect : toujours, souvent…") {
-  },
-  ADVdeg(0x92, "Degré", "Adverbe d’intensité : plus, presque, très…") {
-  },
-  ADVmod(0x93, "Modalité", "Adverbe de modalité : probablement…") {
-  },
-  ADVscen(0x94, "Scénique", "Adverbe de lieu ou de temps : ici, maintenant, derrière…") {
-  },
-  ADVinter(0x95, "Adverbe interrogatif", "Ex : comment, est-ce que") {
-  },
   
   // Ax, Numéraux divers
-  NUM(0xA0, "Numéral", "Nombres : 3, milliers, centième…") {
-  },
-  NUMno(0xA1, "Numéro", "Ex : 1er, second…") {
-  },
-  REF(0xA2, "Référence", "Un numéro utilisé comme référence, comme une page, une note…") {
-  },
-  MATH(0xA3, "Math", "Opérateur mathématique") {
-  },
-  NUMunit(0xA4, "Unités", "Ex : cm, mm, kg…") {
-  },
+  NUM(0xA0, "Numéral", "3, milliers, centième… (nombre quantifiant).") { },
+  NUMno(0xA1, "Numéro", "1er, second… (nombre non quantifiant, code, “ordinal”…).") { },
+  REF(0xA2, "Référence", "p. 50, f. 2… (un numéro utilisé comme référence, comme une page, une note…") { },
+  MATH(0xA3, "Math", "+, -, /… (opérateur mathématique).") { },
+  NUMunit(0xA4, "Unités", "Cm, mm, kg… (unités métriques).") { },
   
   // Cx, punctuations
-  PUN(0xC0, "Ponctuation", "Ponctuations divers hors catégories spéciales") {
-  },
-  PUNdiv(0xC1, "Ponctuation structurante", "Interprétation d’un balisage : ¶ §") {
-  },
-  PUNsent(0xC2, "Ponctuation de phrase", ". ? !") {
-  },
-  PUNcl(0xC3, "Ponctuation de clause", "Séparateur de syntagme : , ; (") {
-  },
+  PUN(0xC0, "Ponctuation", "Ponctuations divers hors catégories spéciales.") { },
+  PUNdiv(0xC1, "Structure", "§ = section, ¶ = paragraphe (structure interprétée d’un balisage).") { },
+  PUNsent(0xC2, "Phrase", ". ? ! (ponctuation de phrase).") { },
+  PUNcl(0xC3, "Clause", ", ; (Séparateur de syntagme).") { },
   
   // Fx, divers
-  MISC(0xF0, "Divers", "") {
-  },
-  ABBR(0xF1, "Abréviation", "") {
-  },
-  EXCL(0xF2, "Exclamation", "") {
-  },
-  PARTdem(0xFC, "Particules démonstratives", "Ex : -ci, -là") {
-  },
+  MISC(0xF0, "Divers", "") { },
+  ABBR(0xF1, "Abréviation", "") { },
+  EXCL(0xF2, "Exclamation", "Ho, Ô, haha… (interjections)") { },
+  PARTdem(0xFC, "Particules démonstratives", "-ci, -là") { },
   
   ;
   /** Logger */
@@ -260,6 +195,17 @@ public enum Tag
   {
     return desc;
   }
+
+  /**
+   * Return the String description of the tag.
+   * 
+   * @return
+   */
+  public int flag()
+  {
+    return flag;
+  }
+
   
   public static int code(final Chain label)
   {
@@ -280,6 +226,14 @@ public enum Tag
     return ret;
   }
 
+  public static Tag tag(int flag)
+  {
+    // the int may be used as a more complex bit flag
+    flag = flag & 0xFF;
+    return byFlag[flag];
+  }
+  
+  
   public static String name(int flag)
   {
     // the int may be used as a more complex bit flag

@@ -41,6 +41,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -301,6 +302,7 @@ public class XMLIndexer implements Runnable
     for (String glob : globs) {
       files = Dir.ls(glob, files); // CopyOnWriteArrayList produce some duplicates
     }
+    Collections.sort(files);
     if (files.size() < 1) {
       throw new FileNotFoundException("\n["+Alix.NAME+"] No file found to index globs=\""+ String.join(", ", globs) + "\"");
     }
