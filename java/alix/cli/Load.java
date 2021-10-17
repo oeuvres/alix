@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 import java.util.Properties;
@@ -17,6 +18,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.SAXException;
@@ -149,24 +151,19 @@ public class Load {
     System.out.println("["+APP+"] "+name+" Merging");
     writer.commit();
     writer.close(); // close lucene index before indexing rail (for coocs)
-    // pre index text fields for 
-    prop = props.getProperty("textfields");
-    if (prop != null && !prop.trim().equals("")) {
-      for (String field: prop.split("[ \t,;]+")) {
-        FieldInfo info = alix.info(field);
-        if (info == null) {
-          System.out.println("["+APP+"] "+name+". \""+field+"\" is not known as a field");
-          continue;
-        }
-        IndexOptions options = info.getIndexOptions();
-        if (options != IndexOptions.DOCS_AND_FREQS_AND_POSITIONS && options != IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) {
-          System.out.println("["+APP+"] "+name+". Field \""+field+"\" has no positions indexed for cooc");
-          continue;
-        }
-        
-        System.out.println("["+APP+"] "+name+". Cooc indexation for field: "+field);
-        alix.fieldRail(field);
+    // pre index text fields for co-occurrences, so that index could stay read only by server
+    Collection<String> fields = FieldInfos.getIndexedFields(alix.reader());
+    for (String field: fields) {
+      FieldInfo info = alix.info(field);
+      IndexOptions options = info.getIndexOptions();
+      // non text fields, facets
+      if (options != IndexOptions.DOCS_AND_FREQS_AND_POSITIONS && options != IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) {
+        // System.out.println("["+APP+"] "+name+". Field \""+field+"\" has no positions indexed for cooc");
+        continue;
       }
+      
+      System.out.println("["+APP+"] "+name+". Cooc indexation for field: "+field);
+      alix.fieldRail(field);
     }
     
     System.out.println("["+APP+"] "+name+" indexed in " + ((System.nanoTime() - time) / 1000000) + " ms.");
