@@ -32,8 +32,6 @@
  */
 package alix.web;
 
-import alix.maths.Fisher;
-
 /**
  * Some algorithms to score co-occurrency.
  * 

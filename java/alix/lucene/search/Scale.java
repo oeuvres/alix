@@ -63,11 +63,11 @@ public class Scale
   /** An optional corpus as a set of docIds */
   private final BitSet filter;
   /** Field name, type: NumericDocValuesField, for int values */
-  private final String fieldInt;
+  public final String fieldInt;
   /** Field name, type. TextField, for text occurrences */
-  private final String fieldText;
+  public final String fieldText;
   /** Count of docs */
-  private final int docs;
+  public final int docs;
   /** Data, sorted in fieldInt order, used to write an axis */
   private final Tick[] byValue;
   /** Data, sorted in docid order, used in term search stats */
@@ -293,7 +293,7 @@ public class Scale
     }
     // localize data in docid order
     Tick[] byDocid = this.byDocid; // localize variable for perf
-    int docs = byDocid.length;
+    // int docs = byDocid.length;
     int ordBase = 0; // pointer in the Tick array
     // loop on contexts, because open a context is heavy, do not open too much
     for (LeafReaderContext ctx : reader.leaves()) {

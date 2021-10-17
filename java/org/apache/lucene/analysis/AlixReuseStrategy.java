@@ -32,9 +32,6 @@
  */
 package org.apache.lucene.analysis;
 
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CachingTokenFilter;
-import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Analyzer.ReuseStrategy;
 import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
 import org.apache.lucene.analysis.sinks.TeeSinkTokenFilter;

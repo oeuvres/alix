@@ -80,10 +80,12 @@ public class FieldInt
   /** Minimum value */
   private final int minimum;
   /** Number of documents traversed */
+  @SuppressWarnings("unused")
   private final int docs;
   /** Number of different values found */
   private final int cardinality;
   /** Median of the series */
+  @SuppressWarnings("unused")
   private double median;
   
   /**
@@ -132,6 +134,7 @@ public class FieldInt
       int min = Integer.MAX_VALUE; // min
       int max = Integer.MIN_VALUE; // max
       int docs = 0; // card
+      @SuppressWarnings("unused")
       long sum = 0; // sum
       for (LeafReaderContext context : reader.leaves()) {
         LeafReader leaf = context.reader();

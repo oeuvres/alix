@@ -51,7 +51,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
@@ -60,7 +59,6 @@ import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 
 import alix.lucene.Alix;
-import alix.lucene.DocType;
 import alix.util.IntList;
 import alix.util.TopArray;
 import alix.web.Distrib.Scorer;
@@ -360,7 +358,9 @@ public class FieldFacet
     results.formOccsFreq = new long[size]; // a vector to count matched occurrences by facet
     if (hasScorer) results.formScore = new double[size];
     // loop on each term of the search to update the score vector
+    @SuppressWarnings("unused")
     int facetMatch = 0; // number of matched facets by this search
+    @SuppressWarnings("unused")
     long occsMatch = 0; // total occurrences matched
     // loop on search, this order of loops may be not efficient for a big list of search
     // loop by term is better for some stats

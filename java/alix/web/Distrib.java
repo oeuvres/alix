@@ -32,8 +32,6 @@
  */
 package alix.web;
 
-import alix.maths.Fisher;
-
 /**
  * Distribution laws, to be used in sum
  * 

@@ -132,9 +132,8 @@ public class Calcul
       num = -d;
     }
     // Build the number.
-    final long max = (sign == -1) ?
-        -Long.MAX_VALUE : Long.MIN_VALUE;
-    final long multmax = max / 10;
+    // final long max = (sign == -1) ? -Long.MAX_VALUE : Long.MIN_VALUE;
+    // final long multmax = max / 10;
     int i = 1;
     while ( i < len ) {
       long d = s.charAt(i++) - '0';

@@ -8,7 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 import java.util.Properties;
@@ -27,7 +26,6 @@ import alix.lucene.SrcFormat;
 import alix.lucene.XMLIndexer;
 import alix.lucene.analysis.FrAnalyzer;
 import alix.lucene.analysis.FrDics;
-import alix.lucene.search.FieldRail;
 import alix.util.Dir;
 
 public class Load {
@@ -167,7 +165,7 @@ public class Load {
         }
         
         System.out.println("["+APP+"] "+name+". Cooc indexation for field: "+field);
-        FieldRail rail = alix.fieldRail(field);
+        alix.fieldRail(field);
       }
     }
     

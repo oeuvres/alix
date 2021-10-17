@@ -48,7 +48,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.logging.Logger;
-import java.util.logging.Level;
 import java.util.stream.IntStream;
 
 import org.apache.lucene.index.DirectoryReader;
@@ -70,10 +69,7 @@ import alix.lucene.Alix;
 import alix.util.Chain;
 import alix.util.IntList;
 import alix.util.IntPair;
-import alix.util.Top;
-import alix.util.TopArray;
 import alix.web.MI;
-import alix.web.Webinf;
 
 /**
  * Persistent storage of full sequence of all document search for a field.
@@ -312,7 +308,7 @@ public class FieldRail
     final int END = DocIdSetIterator.NO_MORE_DOCS;
     DirectoryReader reader = alix.reader();
     // collector of scores
-    int dicSize = this.hashDic.size();
+    // int dicSize = this.hashDic.size();
 
     // for each doc, a bit set is used to record the relevant positions
     // this will avoid counting interferences when search occurrences are close

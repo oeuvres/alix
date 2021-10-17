@@ -155,6 +155,7 @@ public class TxtIndexer
    * @throws IOException 
    */
 
+  @SuppressWarnings("resource")
   public void load(File file) throws IOException
   {
     String fileName = file.getName();
@@ -249,6 +250,7 @@ public class TxtIndexer
     // System.out.println(doc);
     writer.addDocument(chapter);
     writer.addDocument(book);
+    ts.close();
   }
   
   public static void main(String[] args) throws Exception

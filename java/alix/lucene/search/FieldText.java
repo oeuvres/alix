@@ -34,7 +34,6 @@ package alix.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 
 import org.apache.lucene.index.DirectoryReader;
@@ -419,9 +418,9 @@ public class FieldText
       PostingsEnum docsEnum = null;
       while ((bytes = tenum.next()) != null) {
         final int formId = formDic.find(bytes);
-        int docLeaf;
-        Bits live = leaf.getLiveDocs();
-        boolean hasLive = (live != null);
+        // int docLeaf;
+        // Bits live = leaf.getLiveDocs();
+        // boolean hasLive = (live != null);
         docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
         // lucene  doc says « Some implementations are considerably more efficient than a loop on all docs »
         // we should do faster here, navigating by the BitSet

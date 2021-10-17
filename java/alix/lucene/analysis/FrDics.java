@@ -98,15 +98,19 @@ public class FrDics
     CsvReader csv = null;
     Reader reader;
     try {
+      ArrayList<String> list = new ArrayList<String>();
       // unmodifiable map with jdk10 Map.copyOf is not faster
-      STOP.add(new CharsAtt(";")); // add common col separator
-      STOP.add(new CharsAtt(",")); // the csv parser is not very robust
+      // add common col separator, the csv parser is not very robust
+      STOP.add(new CharsAtt(";"));
+      list.add(";");
+      STOP.add(new CharsAtt(","));
+      list.add(",");
       STOP.add(new CharsAtt("\t"));
+      list.add("\t");
       res = "stop.csv";
       reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
       csv = new CsvReader(reader, 1);
       csv.readRow(); // pass first line
-      ArrayList<String> list = new ArrayList<String>();
       Row row;
       while ((row = csv.readRow()) != null) {
         Chain cell0 = row.get(0);

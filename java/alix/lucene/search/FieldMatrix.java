@@ -49,7 +49,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
 import alix.lucene.Alix;
-import alix.web.Distrib;
 import alix.web.Distrib.Scorer;
 
 
@@ -72,7 +71,7 @@ public class FieldMatrix
   /** Reference to  freqs for the field */
   private final FieldText fieldText;
   /** Max for docId */
-  final private int docMax;
+  // final private int docMax;
   /** Max for formId */
   final private int formMax;
 
@@ -83,7 +82,7 @@ public class FieldMatrix
     this.fieldName = field;
     this.fieldText = alix.fieldText(field); // build and cache the dictionary for the field
     this.formMax = fieldText.formDic.size();
-    this.docMax = alix.reader().maxDoc();
+    // this.docMax = alix.reader().maxDoc();
   }
   
   /**

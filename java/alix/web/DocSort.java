@@ -36,7 +36,6 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 
 import alix.lucene.Alix;
-import alix.web.Option;
 
 public enum DocSort implements Option
 {

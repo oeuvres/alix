@@ -129,7 +129,7 @@ public class ML
     
     boolean start = true; // before first tag (avoid broken tag)
     boolean lt = false; //  tag is started
-    boolean closing = false; // closing tag </…>
+    // boolean closing = false; // closing tag </…>
     boolean space = false; // a space have been sent
 
     char lastPrint = ' ';

@@ -53,7 +53,7 @@ public class FrAnalyzer extends Analyzer
   public TokenStreamComponents createComponents(String field)
   {
     // kind of fields
-    final boolean orth = field.endsWith("orth");
+    final boolean orth = field.endsWith("orth"); // do not select lemma but orthographic
     final boolean search = Alix.SEARCH.startsWith(field);
     int flags = FrTokenizer.XML;
     if (search) flags = flags | FrTokenizer.SEARCH;
@@ -64,7 +64,7 @@ public class FrAnalyzer extends Analyzer
     if (!search && !orth) result = new FrPersnameFilter(result); // link unknown names, bad for a search query
     boolean pun = false;
     if (search) pun = true; // keep punctuation, ex, to parse search
-    if (orth) result = new FlagOrthFilter(result); // select lemmas as term to index
+    if (orth) result = new FlagOrthFilter(result); // orthographic form (not lemma) as term to index
     else result = new FlagCloudFilter(result, pun); // select lemmas as term to index
     return new TokenStreamComponents(source, result);
   }

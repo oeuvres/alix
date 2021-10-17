@@ -313,7 +313,8 @@ public class SparseMat
   public void save(String dstFile) throws IOException
   {
     int length = counts.length;
-    try (FileChannel channel = new RandomAccessFile(dstFile, "rw").getChannel();) {
+    try (@SuppressWarnings("resource")
+    FileChannel channel = new RandomAccessFile(dstFile, "rw").getChannel();) {
       MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_WRITE, 0, (CELL_BYTE_LEN) * length);
       for (int i = 0; i < length; i++) {
         buf.putInt(rows[i]).putInt(cols[i]).putDouble(counts[i]);
@@ -329,7 +330,8 @@ public class SparseMat
     double[] counts;
     int height = 0;
     int width = 0;
-    try (FileChannel channel = new FileInputStream(srcFile).getChannel();) {
+    try (@SuppressWarnings("resource")
+    FileChannel channel = new FileInputStream(srcFile).getChannel();) {
       long size = channel.size();
       length = (int) (size / CELL_BYTE_LEN);
       MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_ONLY, 0, size);

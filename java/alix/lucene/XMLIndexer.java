@@ -138,11 +138,12 @@ public class XMLIndexer implements Runnable
   {
     SAXIndexer handler = new SAXIndexer(writer);
     Transformer transformer = null;
-    SAXResult result = null;
     SAXParser SAXParser = null;
     if (templates != null) {
       transformer = templates.newTransformer();
-      result = new SAXResult(handler);
+      // what is it for ?
+      // SAXResult result = null;
+      // result = new SAXResult(handler);
     }
     else {
       SAXParser = SAXFactory.newSAXParser();

@@ -38,7 +38,6 @@ import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 
@@ -52,7 +51,6 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
@@ -64,12 +62,9 @@ import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.search.DocHiliter.Token;
 import alix.lucene.util.WordsAutomatonBuilder;
 import alix.util.Chain;
-import alix.util.Char;
 import alix.util.ML;
 import alix.util.Top;
-import alix.util.TopArray;
 import alix.web.Distrib.Scorer;
-import alix.web.MI;
 
 
 /**
@@ -599,7 +594,7 @@ public class Doc
     int occsDoc = fieldText.docOccs[docId];
 
     // loop on all forms of the document, get score, keep the top
-    final long restLen = fieldText.occsAll - occsDoc;
+    // final long restLen = fieldText.occsAll - occsDoc;
     Terms vector = getTermVector(field); // get the term vector to loop on
     TermsEnum termit = vector.iterator();
     while(termit.next() != null) {

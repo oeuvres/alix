@@ -602,8 +602,10 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         ((StringBuilder) cs).getChars(begin, end, chars, newStart);
       } else if (cs instanceof StringBuffer) {
         ((StringBuffer) cs).getChars(begin, end, chars, newStart);
+        /* possible optimisation here ?
       } else if (cs instanceof CharBuffer && ((CharBuffer) cs).hasArray()) {
         final CharBuffer cb = (CharBuffer) cs;
+        */
       } else {
         for (int i = newStart, limit = start; i < limit; i++) {
           chars[i] = cs.charAt(begin++);

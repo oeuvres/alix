@@ -32,7 +32,6 @@
  */
 package alix.lucene.search;
 
-import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.similarities.BasicStats;
 import org.apache.lucene.search.similarities.SimilarityBase;
 

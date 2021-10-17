@@ -33,7 +33,6 @@
 package alix.lucene.analysis.tokenattributes;
 
 import java.nio.CharBuffer;
-import java.util.Arrays;
 
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
@@ -231,7 +230,6 @@ public class CharsAtt extends AttributeImpl
     hash = 0;
     // needed for Appendable compliance
     if (csq == null) csq = "null";
-    // TODO: the optimized cases (jdk methods) will already do such checks, maybe
     // re-organize this?
     FutureObjects.checkFromToIndex(start, end, csq.length());
     final int length = end - start;

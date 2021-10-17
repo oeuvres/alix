@@ -134,6 +134,7 @@ public class FrPersnameFilter extends TokenFilter
     // test compound names : NAME (particle|NAME)* NAME
     int lastlen = name.length();
     boolean simpleName = true;
+    @SuppressWarnings("unused")
     int loop = -1;
     while ((exit = input.incrementToken())) {
       loop++;
