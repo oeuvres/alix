@@ -35,6 +35,7 @@ package alix.web;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -61,7 +62,9 @@ public class Webinf
     File zejar = new File(FrDics.class.getProtectionDomain().getCodeSource().getLocation().getPath());
     File webinf = zejar.getParentFile().getParentFile(); // alix.jar is supposed to be in WEB-INF/lib/ 
     if (!webinf.getName().equals("WEB-INF")) return; // jar is not in a java webapp
-    for(File file: webinf.listFiles()) {
+    File[] files = webinf.listFiles();
+    Arrays.sort(files); // keep order 
+    for(File file: files) {
       String fileName = file.getName();
       if (fileName.startsWith("_")) continue; // easy way to unplug a base
       int pos = fileName.lastIndexOf(".");

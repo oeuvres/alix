@@ -60,7 +60,6 @@ import org.apache.lucene.util.FixedBitSet;
 
 import alix.lucene.Alix;
 import alix.util.IntList;
-import alix.util.TopArray;
 import alix.web.Distrib.Scorer;
 
 /**
@@ -114,7 +113,7 @@ public class FieldFacet
   /** Global number of occurrences in the text field */
   protected long occsAll;
   /** Global number of values for this facet */
-  public final int size;
+  public final int maxForm;
   /** By facet, Count of docs  */
   protected int[] formDocsAll;
   /** By facet, count of occurrences in a text field */
@@ -280,7 +279,7 @@ public class FieldFacet
         }
       }
     }
-    size = formDic.size();
+    maxForm = formDic.size();
     this.alpha = FormEnum.sortAlpha(formDic);
   }
 
@@ -299,7 +298,7 @@ public class FieldFacet
    * @return
    * @throws IOException
    */
-  public FormEnum iterator() throws IOException {
+  public FormEnum results() throws IOException {
     FormEnum it = new FormEnum(this);
     it.sorter(alpha);
     return it;
@@ -312,7 +311,7 @@ public class FieldFacet
    * Get the index of the first relevant document for each faceted term.
    */
   public int[] nos(final TopDocs topDocs) {
-    int[] nos = new int[size];
+    int[] nos = new int[maxForm];
     Arrays.fill(nos, Integer.MIN_VALUE);
     ScoreDoc[] scoreDocs = topDocs.scoreDocs;
     // loop on doc in order
@@ -337,7 +336,7 @@ public class FieldFacet
    * @return
    * @throws IOException
    */
-  public FormEnum iterator(final String[] search, final BitSet filter, Scorer scorer, final int limit) throws IOException
+  public FormEnum results(final String[] search, final BitSet filter, Scorer scorer) throws IOException
   {
     FormEnum results = new FormEnum(this);
     ArrayList<Term> terms = new ArrayList<Term>();
@@ -354,9 +353,9 @@ public class FieldFacet
     // Crawl index to get stats by facet term about the text search
     BitSet docMap = new FixedBitSet(reader.maxDoc()); // keep memory of already counted docs
     
-    results.formDocsHit = new int[size];
-    results.formOccsFreq = new long[size]; // a vector to count matched occurrences by facet
-    if (hasScorer) results.formScore = new double[size];
+    results.formDocsHit = new int[maxForm];
+    results.formOccsFreq = new long[maxForm]; // a vector to count matched occurrences by facet
+    if (hasScorer) results.formScore = new double[maxForm];
     // loop on each term of the search to update the score vector
     @SuppressWarnings("unused")
     int facetMatch = 0; // number of matched facets by this search
@@ -367,6 +366,8 @@ public class FieldFacet
     for (Term term : terms) {
       // long[] formPartOccs = new long[size]; // a vector to count matched occurrences for this term, by facet
       final int formId = fieldText.formId(term.bytes());
+      // shall we do something here if word not known ?
+      if (formId < 1) continue;
       if (hasScorer) scorer.idf(occsAll, docsAll, fieldText.formOccsAll[formId], fieldText.formDocsAll[formId]);
       // loop on the reader leaves (opening may have disk cost)
       for (LeafReaderContext context : reader.leaves()) {
@@ -408,17 +409,6 @@ public class FieldFacet
       }
 
     }
-    // a scorer 
-    if (hasScorer) {
-      TopArray top; // prepare sorting for results
-      if (limit < 1) top = new TopArray(results.formScore); // all search
-      else top = new TopArray(limit, results.formScore);
-      results.sorter(top.toArray());
-    } 
-    // no scorer, search desired in alphabetic order with stats
-    else {
-      results.sorter(alpha);
-    }
     return results;
   }
     
@@ -433,12 +423,12 @@ public class FieldFacet
    * @return
    * @throws IOException
    */
-    public FormEnum iterator(final BitSet filter, final int limit) throws IOException
+    public FormEnum results(final BitSet filter, final int limit) throws IOException
     {
       // build the ordered array of facetId
       FormEnum it = new FormEnum(this);
-      it.formDocsHit = new int[size];
-      it.formDocsPart = new int[size];
+      it.formDocsHit = new int[maxForm];
+      it.formDocsPart = new int[maxForm];
       final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
       // loop on the docs of the filter
       // loop on the reader leaves
@@ -484,7 +474,7 @@ public class FieldFacet
   {
     StringBuilder string = new StringBuilder();
     BytesRef ref = new BytesRef();
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < maxForm; i++) {
       formDic.get(i, ref);
       string.append(ref.utf8ToString() + ": " + formOccsAll[i] + "\n");
     }

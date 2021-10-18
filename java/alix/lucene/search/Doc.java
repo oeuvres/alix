@@ -580,7 +580,7 @@ public class Doc
    * @throws IOException
    * @throws NoSuchFieldException
    */
-  public FormEnum results(String field, int limit, TagFilter tags, Scorer scorer, final boolean reverse) throws IOException, NoSuchFieldException
+  public FormEnum results(String field, Scorer scorer, TagFilter tags) throws IOException, NoSuchFieldException
   {
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
@@ -589,8 +589,8 @@ public class Doc
     // get index term stats
     FieldText fieldText = alix.fieldText(field);
     FormEnum results = new FormEnum(fieldText);
-    if (hasScorer) results.formScore = new double[fieldText.formMax];
-    results.formOccsFreq = new long[fieldText.formMax]; // freqs by form
+    if (hasScorer) results.formScore = new double[fieldText.maxForm];
+    results.formOccsFreq = new long[fieldText.maxForm]; // freqs by form
     int occsDoc = fieldText.docOccs[docId];
 
     // loop on all forms of the document, get score, keep the top
@@ -613,7 +613,6 @@ public class Doc
         // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub complement ?
       }
     }
-    results.sort(limit, false);
     // add some more stats on this iterator
     return results;
   }

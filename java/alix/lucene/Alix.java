@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.Set;
@@ -175,7 +176,7 @@ public class Alix
     ftypeMeta.freeze();
   }
   /** Pool of instances, unique by path */
-  public static final HashMap<String, Alix> pool = new HashMap<String, Alix>();
+  public static final HashMap<String, Alix> pool = new LinkedHashMap<String, Alix>();
   /** Name of the base */
   public final String name;
   /** Normalized path */
@@ -766,9 +767,9 @@ u   * @throws IOException
    * @return
    * @throws IOException
    */
-  public String[] forms(final String q) throws IOException
+  public String[] forms(final String q, final String fieldName) throws IOException
   {
-    return forms(q, this.analyzer);
+    return forms(q, this.analyzer, fieldName);
   }
 
   /**
@@ -779,13 +780,15 @@ u   * @throws IOException
    * @return
    * @throws IOException
    */
-  public static String[] forms(final String q, final Analyzer analyzer) throws IOException
+  public static String[] forms(final String q, final Analyzer analyzer, String fieldName) throws IOException
   {
     // create an arrayList on each search and let gc works
     ArrayList<String> forms = new ArrayList<String>();
     // what should mean null here ?
     if (q == null || "".equals(q.trim())) return null;
-    TokenStream ts = analyzer.tokenStream(SEARCH, q); // keep punctuation to group search
+    // if 
+    if (fieldName == null) fieldName = SEARCH;
+    TokenStream ts = analyzer.tokenStream(fieldName, q); // keep punctuation to group search
     CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
     // not generic for other analyzers but may become interesting for a search parser
     // CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);

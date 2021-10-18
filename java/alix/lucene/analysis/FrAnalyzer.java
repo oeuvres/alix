@@ -54,7 +54,7 @@ public class FrAnalyzer extends Analyzer
   {
     // kind of fields
     final boolean orth = field.endsWith("orth"); // do not select lemma but orthographic
-    final boolean search = Alix.SEARCH.startsWith(field);
+    final boolean search = field.startsWith(Alix.SEARCH); // for seraching
     int flags = FrTokenizer.XML;
     if (search) flags = flags | FrTokenizer.SEARCH;
     final Tokenizer source = new FrTokenizer(flags); // segment words

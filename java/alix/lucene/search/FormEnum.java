@@ -59,10 +59,14 @@ import alix.web.MI;
  * @author glorieux-f
  */
 public class FormEnum {
+  /** Source field  */
+  public final String fieldName;
   /** An array of formId in the order we want to iterate on, should be set before iteration */
   private int[] sorter;
   /** Field dictionary */
-  final private BytesRefHash formDic;
+  final BytesRefHash formDic;
+  /** Biggest formId+1 (like lucene IndexReader.maxDoc()) */
+  public final int maxForm;
   /** By formId, count of docs, for all base  */
   protected int[] formDocsAll;
   /** By formId, count of docs, for a partition */
@@ -107,60 +111,104 @@ public class FormEnum {
   public Scorer scorer;
   /** Optional, a sort algorithm for coocs */
   public MI mi;
-
+  /** sort order */
+  public enum Sorter {
+    score,
+    freq,
+    hits,
+    alpha,
+    occs,
+    docs,
+  }
   
   /** Build a form iterator from a text field */
   public FormEnum(final FieldText field)
   {
+    this.maxForm = field.maxForm;
     this.formDic = field.formDic;
     this.formDocsAll = field.formDocsAll;
     this.formOccsAll = field.formOccsAll;
     this.formCover = null;
     this.formTag = field.formTag;
+    this.fieldName = field.fieldName;
   }
 
   /** Build an iterator from a facet field */
   public FormEnum(final FieldFacet field)
   {
+    this.maxForm = field.maxForm;
     this.formDic = field.formDic;
     this.formDocsAll = field.formDocsAll;
     this.formOccsAll = field.formOccsAll;
     this.formCover = field.formCover;
     this.formTag = null;
+    this.fieldName = field.fieldName;
   }
   
   /**
-   * Set a vector for scores, and prepare the sorter
+   * Cover docid for current term
+   * @return
    */
-  public void sort(final int limit, boolean reverse)
+  public int cover()
   {
-    TopArray top;
-    int flags = TopArray.NO_ZERO; // ?
-    if (reverse) flags |= TopArray.REVERSE;
-    if (limit < 1) top = new TopArray(formScore, flags); // all search
-    else top = new TopArray(limit, formScore, flags);
-    this.sorter(top.toArray());
-    reset();
+    return formCover[formId];
   }
 
   /**
-   * Set the sorted vector of ids
-   */
-  public void sorter(final int[] sorter) {
-    this.sorter = sorter;
-    this.limit = sorter.length;
-    cursor = -1;
-  }
-  
-  /**
-   * Limit enumeration
+   * For the current term in iterator, returns the total count of documents in corpus
    * @return
    */
-  public int limit()
+  public int docs()
   {
-    return limit;
+    return formDocsAll[formId];
   }
-  
+
+  /**
+   * By formId, return total count 
+   * @return
+   */
+  public int docs(final int formId)
+  {
+    return formDocsAll[formId];
+  }
+
+  /**
+   * By rank in sort order, returns total count of documents in corpus
+   * @return
+   */
+  public int docsByRank(final int rank)
+  {
+    if (rank >= limit) return -1;
+    final int formId = sorter[rank];
+    return formDocsAll[formId];
+  }
+
+  /**
+   * For current form, document count in a part
+   * 
+   * @return
+   */
+  public long docsPart()
+  {
+    return formDocsPart[formId];
+  }
+
+  /**
+   * For requested form, document count in a part
+   * 
+   * @return
+   */
+  public long docsPart(final int formId)
+  {
+    return formDocsPart[formId];
+  }
+
+  public void first()
+  {
+    cursor = 0;
+    formId = sorter[cursor];
+  }
+
   /**
    * Get the current term as a String
    * @return
@@ -219,6 +267,96 @@ public class FormEnum {
 
   
   /**
+   * Get the count of matching occurrences
+   * @return
+   */
+  public long freq()
+  {
+    return formOccsFreq[formId];
+  }
+
+  /**
+   * Get the count of matching occurrences
+   * @param formId
+   * @return
+   */
+  public long freq(final int formId)
+  {
+    return formOccsFreq[formId];
+  }
+
+  /**
+   * By rank in sort order, returns count of matching occurrences
+   * @param rank
+   * @return
+   */
+  public long freqByRank(final int rank)
+  {
+    if (rank >= limit) return -1;
+    final int formId = sorter[rank];
+    return formOccsFreq[formId];
+  }
+
+  /**
+   * There are search left
+   * @return
+   */
+  public boolean hasNext()
+  {
+    
+    return (cursor < limit - 1);
+  }
+
+  /**
+   * Get the count of matched documents for the current term.
+   * @return
+   */
+  public int hits()
+  {
+    return formDocsHit[formId];
+  }
+
+  /**
+   * Get the count of matched documents for the current term.
+   * @return
+   */
+  public int hits(final int formId)
+  {
+    return formDocsHit[formId];
+  }
+
+  public int hitsByRank(final int rank)
+  {
+    if (rank >= limit) return -1;
+    final int formId = sorter[rank];
+    return formDocsHit[formId];
+  }
+
+  public void last()
+  {
+    cursor = sorter.length - 1;
+    formId = sorter[cursor];
+  }
+
+  /**
+   * Limit enumeration
+   * @return
+   */
+  public int limit()
+  {
+    return limit;
+  }
+
+  /**
+   * Advance the cursor to next element
+   */
+  public void next()
+  {
+    cursor++;
+    formId = sorter[cursor];
+  }
+
+  /**
    * Global number of occurrences for this term
    * 
    * @return
@@ -274,151 +412,14 @@ public class FormEnum {
 
 
   /**
-   * For current form, document count in a part
-   * 
-   * @return
-   */
-  public long docsPart()
-  {
-    return formDocsPart[formId];
-  }
-
-  /**
-   * For requested form, document count in a part
-   * 
-   * @return
-   */
-  public long docsPart(final int formId)
-  {
-    return formDocsPart[formId];
-  }
-  
-  /**
-   * For the current term in iterator, returns the total count of documents in corpus
-   * @return
-   */
-  public int docs()
-  {
-    return formDocsAll[formId];
-  }
-  
-  /**
-   * By formId, return total count 
-   * @return
-   */
-  public int docs(final int formId)
-  {
-    return formDocsAll[formId];
-  }
-  
-  /**
-   * By rank in sort order, returns total count of documents in corpus
-   * @return
-   */
-  public int docsByRank(final int rank)
-  {
-    if (rank >= limit) return -1;
-    final int formId = sorter[rank];
-    return formDocsAll[formId];
-  }
-
-
-  /**
-   * Get the count of matching occurrences
-   * @return
-   */
-  public long freq()
-  {
-    return formOccsFreq[formId];
-  }
-
-  /**
-   * Get the count of matching occurrences
-   * @param formId
-   * @return
-   */
-  public long freq(final int formId)
-  {
-    return formOccsFreq[formId];
-  }
-  
-  /**
-   * By rank in sort order, returns count of matching occurrences
-   * @param rank
-   * @return
-   */
-  public long freqByRank(final int rank)
-  {
-    if (rank >= limit) return -1;
-    final int formId = sorter[rank];
-    return formOccsFreq[formId];
-  }
-
-  /**
-   * Get the count of matched documents for the current term.
-   * @return
-   */
-  public int hits()
-  {
-    return formDocsHit[formId];
-  }
-
-  /**
-   * Get the count of matched documents for the current term.
-   * @return
-   */
-  public int hits(final int formId)
-  {
-    return formDocsHit[formId];
-  }
-
-  public int hitsByRank(final int rank)
-  {
-    if (rank >= limit) return -1;
-    final int formId = sorter[rank];
-    return formDocsHit[formId];
-  }
-
-  /**
-   * There are search left
-   * @return
-   */
-  public boolean hasNext()
-  {
-    
-    return (cursor < limit - 1);
-  }
-
-  /**
-   * Advance the cursor to next element
-   */
-  public void next()
-  {
-    cursor++;
-    formId = sorter[cursor];
-  }
-
-  /**
    * Reset the internal cursor if we want to replay the list.
    */
   public void reset()
   {
+    if (sorter == null) throw new NegativeArraySizeException("No order rule to sort on. Use FormEnum.sort() before");
     cursor = -1;
     formId = -1;
   }
-
-  public void first()
-  {
-    cursor = 0;
-    formId = sorter[cursor];
-  }
-
-  public void last()
-  {
-    cursor = sorter.length - 1;
-    formId = sorter[cursor];
-  }
-
 
   /**
    * Value used for sorting for current term.
@@ -429,23 +430,59 @@ public class FormEnum {
   {
     return formScore[formId];
   }
-  
-  /**
-   * Cover docid for current term
-   * @return
-   */
-  public int cover()
+
+  public void sort(final Sorter sorter, final int limit)
   {
-    return formCover[formId];
+    sort(sorter, limit, false);
   }
 
+  
   /**
-   * An int tag for term if it’s coming from a text field.
-   * @return
+   * Set a vector for scores, and prepare the sorter
+   * @throws Exception 
    */
-  public int tag()
+  public void sort(final Sorter sorter, final int limit, final boolean reverse)
   {
-    return formTag[formId];
+    if (maxForm != formOccsFreq.length) throw new IllegalArgumentException("Corrupted FormEnum name="+fieldName+" maxForm="+maxForm+" formOccsFreq.length="+formOccsFreq.length);
+    // if (maxForm != formOccsFreq.length) throw new IllegalArgumentException("Corrupted FormEnum name="+fieldName+" maxForm="+maxForm+" formOccsFreq.length="+formOccsFreq.length);
+    int flags = TopArray.NO_ZERO; // ?
+    if (reverse) flags |= TopArray.REVERSE;
+    TopArray top = null;
+    if (limit < 1) top = new TopArray(maxForm, flags);
+    else top = new TopArray(limit, flags);
+    boolean noZeroScore = false;
+    if (formScore != null && sorter != Sorter.score) noZeroScore = true;
+    // be careful, do not use formOccsAll as a size, the growing array may be bigger than dictionary
+    for (int formId = 1, length=maxForm; formId < length; formId++) {
+      // do not output global stats if form have been filtered (ex : by cat)
+      if (formOccsFreq != null && formOccsFreq[formId] < 1) continue;
+      // do not output null score
+      if (noZeroScore && formScore[formId] ==  0) continue;
+      switch (sorter) {
+        case occs:
+          top.push(formId, formOccsAll[formId]);
+          break;
+        case docs:
+          top.push(formId, formDocsAll[formId]);
+          break;
+        case freq:
+          top.push(formId, formOccsFreq[formId]);
+          break;
+        case hits:
+          top.push(formId, formDocsHit[formId]);
+          break;
+        case score:
+          top.push(formId, formScore[formId]);
+          break;
+        default:
+          top.push(formId, formScore[formId]);
+          break;
+      }
+      // to test, do not work yet
+      // else top.push(sortAlpha(this.formDic));
+    }
+    this.sorter(top.toArray());
+    reset();
   }
 
   /**
@@ -481,7 +518,25 @@ public class FormEnum {
     }
     return terms;
   }
-  
+
+  /**
+   * Set the sorted vector of ids
+   */
+  public void sorter(final int[] sorter) {
+    this.sorter = sorter;
+    this.limit = sorter.length;
+    cursor = -1;
+  }
+
+  /**
+   * An int tag for term if it’s coming from a text field.
+   * @return
+   */
+  public int tag()
+  {
+    return formTag[formId];
+  }
+
   static private class Entry
   {
     final CollationKey key;

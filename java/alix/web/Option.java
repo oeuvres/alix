@@ -81,7 +81,7 @@ public interface Option
       try {
         opt = (Option) Enum.valueOf(cls, name);
       } catch (IllegalArgumentException e) {
-        sb.append("<!-- " + name +"  " + cls + "  " + e + "\n");
+        sb.append("<!-- " + name +"  " + cls + "  " + e + "-->\n");
         continue;
       }
       html(sb, opt);

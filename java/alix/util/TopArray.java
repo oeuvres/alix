@@ -36,7 +36,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.concurrent.atomic.AtomicIntegerArray;
 
 /**
  * A queue to select the top elements from a score array
@@ -68,7 +67,7 @@ public class TopArray implements Iterable<TopArray.Entry>
   private double max = Double.MIN_VALUE;
 
   /**
-   * Constructor without data, for reuse
+   * Constructor without data
    * @param size
    */
   public TopArray(final int size, final int flags)  
@@ -82,7 +81,7 @@ public class TopArray implements Iterable<TopArray.Entry>
     data = new Entry[size];
   }
   /**
-   * Constructor without data but a fixed size
+   * Constructor without data, for reuse
    * @param size
    */
   public TopArray(final int size)
@@ -90,26 +89,7 @@ public class TopArray implements Iterable<TopArray.Entry>
     this(size, NO_ZERO);
   }
 
-  /**
-   * Constructor with an array where index is id, and value is score.
-   * 
-   * @param size
-   * @param freqs
-   */
-  public TopArray(int size, final int[] freqs)
-  {
-    this(size);
-    int length = freqs.length;
-    for (int id = 0; id < length; id++) push(id, freqs[id]);
-  }
-
-  public TopArray(final double[] freqs) {
-    this(freqs, 0);
-  }
-  /**
-   * Constructor without a size but to get all records ordered
-   * @param freqs
-   */
+  /* Why ?
   public TopArray(final double[] freqs, final int flags)
   {
     this(freqs.length, flags);
@@ -123,44 +103,7 @@ public class TopArray implements Iterable<TopArray.Entry>
     if (fill == size) full = true;
     sort();
   }
-  /**
-   * Constructor with an array where index is id, and value is score.
-   * @param size
-   * @param freqs
-   */
-  public TopArray(int size, final double[] freqs)
-  {
-    this(size, freqs, 0);
-  }
-  /**
-   * Constructor with an array where index is id, and value is score.
-   * 
-   * @param size
-   * @param freqs
-   */
-  public TopArray(int size, final double[] freqs, final int flags)
-  {
-    this(size, flags);
-    int length = freqs.length;
-    for (int id = 0; id < length; id++) push(id, freqs[id]);
-  }
-
-
-  /**
-   * Constructor with an array where index is id, and value is score.
-   * 
-   * @param size
-   * @param freqs
-   */
-  public TopArray(final int size, final AtomicIntegerArray freqs)
-  {
-    this(size);
-    int length = freqs.length();
-    for (int id = 0; id < length; id++) push(id, freqs.get(id));
-  }
-
-  
-
+  */
 
   @Override
   public Iterator<Entry> iterator()
@@ -244,6 +187,25 @@ public class TopArray implements Iterable<TopArray.Entry>
     fill = 0;
     min = Double.MAX_VALUE;
     max = Double.MIN_VALUE;
+    return this;
+  }
+
+  
+  public TopArray push(final double[] data)
+  {
+    for (int id = 0, length=data.length; id < length; id++) push(id, data[id]);
+    return this;
+  }
+
+  public TopArray push(final int[] data)
+  {
+    for (int id = 0, length=data.length; id < length; id++) push(id, data[id]);
+    return this;
+  }
+
+  public TopArray push(final long[] data)
+  {
+    for (int id = 0, length=data.length; id < length; id++) push(id, data[id]);
     return this;
   }
 

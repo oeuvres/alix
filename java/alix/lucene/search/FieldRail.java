@@ -89,11 +89,11 @@ public class FieldRail
   /** State of the index */
   private final Alix alix;
   /** Name of the reference text field */
-  private final String fieldName;
+  public final String fieldName;
   /** Keep the freqs for the field */
   private final FieldText fieldText;
   /** Dictionary of search for this field */
-  private final BytesRefHash hashDic;
+  private final BytesRefHash formDic;
   /** The path of underlaying file store */
   private final Path path;
   /** Cache a fileChannel for read */
@@ -115,160 +115,45 @@ public class FieldRail
   public FieldRail(Alix alix, String field) throws IOException
   {
     this.alix = alix;
-    this.fieldName = field;
     this.fieldText = alix.fieldText(field); // build and cache the dictionary for the field
-    this.hashDic = fieldText.formDic;
-    this.maxForm = hashDic.size();
+    this.fieldName = fieldText.fieldName;
+    this.formDic = fieldText.formDic;
+    this.maxForm = formDic.size();
     this.path = Paths.get( alix.path.toString(), field+".rail");
     load();
   }
   
   /**
-   * Reindex all documents of the text field as an int vector
-   * storing search at their positions
-   * {@link org.apache.lucene.document.BinaryDocValuesField}.
-   * Byte ordering is the java default.
-   * 
-   * @throws IOException 
+   * Loop on the rail to get bigrams without any intelligence.
+   * @return
+   * @throws IOException
    */
-  private void store() throws IOException
+  public Map<IntPair, Bigram> bigrams(final BitSet filter) throws IOException
   {
-    final FileLock lock;
-    DirectoryReader reader = alix.reader();
-    int maxDoc = reader.maxDoc();
-    final FileChannel channel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.READ, StandardOpenOption.WRITE);
-    lock = channel.lock(); // may throw OverlappingFileLockException if someone else has lock
-    
-    
-    // get document sizes
-    // fieldText.docOccs is not correct because of holes
-    int[] docLen = new int[maxDoc];
-    for (int docId = 0; docId < maxDoc; docId++) {
-      Terms termVector = reader.getTermVector(docId, fieldName);
-      docLen[docId] = length(termVector);
-    }
-
-    long capInt = headerInt + maxDoc;
-    for (int i = 0; i < maxDoc; i++) {
-      capInt += docLen[i] + 1 ;
-    }
-    
-    MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_WRITE, 0, capInt * 4);
-    // store the version 
-    buf.putLong(reader.getVersion());
-    // the intBuffer 
-    IntBuffer bufint = buf.asIntBuffer();
-    bufint.put(maxDoc);
-    bufint.put(docLen);
-    IntList ints = new IntList();
-    
-    for (int docId = 0; docId < maxDoc; docId++) {
-      Terms termVector = reader.getTermVector(docId, fieldName);
-      if (termVector == null) {
-        bufint.put(-1);
-        continue;
-      }
-      rail(termVector, ints);
-      bufint.put(ints.data(), 0, ints.length());
-      bufint.put(-1);
-    }
-    buf.force();
-    channel.force(true);
-    lock.close();
-    channel.close();
-  }
-  
-  /**
-   * Load and calculate index for the rail file
-   * @throws IOException 
-   */
-  private void load() throws IOException
-  {
-    // file do not exists, store()
-    if (!path.toFile().exists()) store();
-    channel = FileChannel.open(path, StandardOpenOption.READ);
-    DataInputStream data = new DataInputStream(Channels.newInputStream(channel));
-    long version = data.readLong();
-    // bad version reproduce
-    if (version != alix.reader().getVersion()) {
-      data.close();
-      channel.close();
-      store();
-      channel = FileChannel.open(path, StandardOpenOption.READ);
-      data = new DataInputStream(Channels.newInputStream(channel));
-    }
-    
-    int maxDoc = data.readInt();
-    this.maxDoc = maxDoc;
-    int[] posInt = new int[maxDoc];
-    int[] limInt = new int[maxDoc];
-    int indInt = headerInt + maxDoc;
-    for(int i = 0; i < maxDoc; i++) {
-      posInt[i] = indInt;
-      int docLen = data.readInt();
-      limInt[i] = docLen;
-      indInt += docLen +1;
-    }
-    this.posInt = posInt;
-    this.limInt = limInt;
-    this.channelMap = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
-  }
-  
-  public String toString(int docId) throws IOException
-  {
-    int limit = 100;
-    StringBuilder sb = new StringBuilder();
-    IntBuffer bufInt = channelMap.position(posInt[docId] * 4).asIntBuffer();
-    bufInt.limit(limInt[docId]);
-    BytesRef ref = new BytesRef();
-    while (bufInt.hasRemaining()) {
-      int formId = bufInt.get();
-      this.hashDic.get(formId, ref);
-      sb.append(ref.utf8ToString());
-      sb.append(" ");
-      if (limit-- <= 0) {
-        sb.append("[…]");
-      }
-    }
-    return sb.toString();
-  }
-  
-  
-  /**
-   * From a set of documents provided as a BitSet,
-   * return a freqlist as an int vector,
-   * where index is the formId for the field,
-   * the value is count of occurrences of the term.
-   * Counts are extracted from stored <i>rails</i>.
-   * @throws IOException 
-   */
-  public long[] freqs(final BitSet filter) throws IOException
-  {
-    long[] freqs = new long[hashDic.size()];
     final boolean hasFilter = (filter != null);
+    Map<IntPair, Bigram> dic = new HashMap<IntPair, Bigram>();
+    IntPair key = new IntPair();
     int maxDoc = this.maxDoc;
     int[] posInt = this.posInt;
     int[] limInt = this.limInt;
-    
-    
-    /* 
-    // if channelMap is copied here as int[], same cost as IntBuffer
-    // gain x2 if int[] is preloaded at class level, but cost mem
-    int[] rail = new int[(int)(channel.size() / 4)];
-    channelMap.asIntBuffer().get(rail);
-     */
-    // no cost in time and memory to take one int view, seems faster to loop
     IntBuffer bufInt = channelMap.rewind().asIntBuffer();
+    int lastId = 0;
     for (int docId = 0; docId < maxDoc; docId++) {
+      if (hasFilter && !filter.get(docId)) continue; 
       if (limInt[docId] == 0) continue; // deleted or with no value for this field
-      if (hasFilter && !filter.get(docId)) continue; // document not in the filter
       bufInt.position(posInt[docId]);
       for (int i = 0, max = limInt[docId] ; i < max; i++) {
         int formId = bufInt.get();
-        freqs[formId]++;
+        // here we can skip holes, pun, or stop words
+        // if (formStop.get(formId)) continue;
+        key.set(lastId, formId);
+        Bigram count = dic.get(key);
+        if (count != null) count.inc();
+        else dic.put(new IntPair(key), new Bigram(key.x(), key.y()));
+        lastId = formId;
       }
     }
-    return freqs;
+    return dic;
   }
 
   /**
@@ -309,7 +194,7 @@ public class FieldRail
     DirectoryReader reader = alix.reader();
     // collector of scores
     // int dicSize = this.hashDic.size();
-
+  
     // for each doc, a bit set is used to record the relevant positions
     // this will avoid counting interferences when search occurrences are close
     java.util.BitSet contexts = new java.util.BitSet();
@@ -390,106 +275,9 @@ public class FieldRail
         }
       }
     }
-    results.reset();
     return found;
   }
 
-  /**
-   * Scores a {@link FormEnum} with freqs extracted from co-occurrences extraction in a  {@link #coocs(FormEnum)}.
-   * Scoring uses a “mutual information” {@link MI} algorithm (probability like, not tf-idf like). Parameters
-   * are 
-   * <li>Oab: count of a form (a) observed in a co-occurrency context (b)
-   * <li>Oa: count of a form in full corpus, or in a section (filter)
-   * <li>Ob: count of occs of the co-occurrency context
-   * <li>N: global count of occs from which is extracted the context (full corpus or filterd section)
-   * @throws IOException 
-   * 
-   */
-  public void score(FormEnum results, final long Ob) throws IOException
-  {
-    if (results.limit == 0) throw new IllegalArgumentException("How many sorted forms do you want? set FormEnum.limit");
-    if (results.occsPart < 1) throw new IllegalArgumentException("Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
-    if (results.formOccsFreq == null || results.formOccsFreq.length != maxForm) throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
-    // int[] hits = results.hits; // not significant for a transversal cooc
-    TagFilter tags = results.tags;
-    boolean hasTags = (tags != null);
-    boolean noStop = (tags != null && tags.noStop());
-    int length = results.formOccsFreq.length;
-    // reuse score for multiple calculations
-    if (results.formScore == null || results.formScore.length != length) results.formScore = new double[length]; // by term, occurrences counts
-    else Arrays.fill(results.formScore, 0);
-    final long N = fieldText.occsAll; // global 
-    MI mi = results.mi;
-    if (mi == null) mi = MI.occs;
-    
- 
-    
-    for (int formId = 0; formId < length; formId++) {
-      if (noStop && fieldText.isStop(formId)) continue;
-      if (hasTags && !tags.accept(fieldText.formTag[formId])) continue;
-      if (results.formOccsFreq[formId] == 0) continue;
-      long Oab = results.formOccsFreq[formId];
-      if (Oab > Ob) Oab = Ob; // // a form in a cooccurrence, may be more frequent than the pivot (repetition in a large context)
-      results.formScore[formId] = mi.score(Oab, fieldText.formOccsAll[formId], Ob, N);
-    }
-    results.sort(results.limit, results.reverse);
-  }
-  
-  /**
-   * Count document size by the positions in the term vector
-   */
-  public int length(Terms termVector) throws IOException
-  {
-    if (termVector == null) return 0;
-    int len = Integer.MIN_VALUE;
-    TermsEnum tenum = termVector.iterator();
-    PostingsEnum postings = null;
-    while (tenum.next() != null) {
-      postings = tenum.postings(postings, PostingsEnum.POSITIONS);
-      postings.nextDoc(); // always one doc
-      int freq = postings.freq();
-      for (int i = 0; i < freq; i++) {
-        int pos = postings.nextPosition();
-        if (pos > len) len = pos;
-      }
-    }
-    return len + 1;
-  }
-  
-  
-  /**
-   * Flatten search of a document in a position order, according to the dictionary of search.
-   * Write it in a binary buffer, ready to to be stored in a BinaryField.
-   * {@link org.apache.lucene.document.BinaryDocValuesField}
-   * The buffer could be modified if resizing was needed.
-   * @param termVector A term vector of a document with positions.
-   * @param buf A reusable binary buffer to index.
-   * @throws IOException
-   */
-  public void rail(Terms termVector, IntList buf) throws IOException
-  {
-    buf.reset(); // celan all
-    BytesRefHash hashDic = this.hashDic;
-    TermsEnum tenum = termVector.iterator();
-    PostingsEnum postings = null;
-    BytesRef bytes = null;
-    int maxpos = -1;
-    int minpos = Integer.MAX_VALUE;
-    while ((bytes = tenum.next()) != null) {
-      int formId = hashDic.find(bytes);
-      if (formId < 0) System.out.println("unknown term? \""+bytes.utf8ToString() + "\"");
-      postings = tenum.postings(postings, PostingsEnum.POSITIONS);
-      postings.nextDoc(); // always one doc
-      int freq = postings.freq();
-      for (int i = 0; i < freq; i++) {
-        int pos = postings.nextPosition();
-        if (pos > maxpos) maxpos = pos;
-        if (pos < minpos) minpos = pos;
-        buf.put(pos, formId);
-      }
-    }
-  }
-  
   /**
    * Loop on the rail to find expression (2 plain words with possible stop words between 
    * but not holes or punctuation)
@@ -563,40 +351,324 @@ public class FieldRail
     }
     return expressions;
   }
-  
+
   /**
-   * Loop on the rail to get bigrams without any intelligence.
-   * @return
-   * @throws IOException
+   * From a set of documents provided as a BitSet,
+   * return a freqlist as an int vector,
+   * where index is the formId for the field,
+   * the value is count of occurrences of the term.
+   * Counts are extracted from stored <i>rails</i>.
+   * @throws IOException 
    */
-  public Map<IntPair, Bigram> bigrams(final BitSet filter) throws IOException
+  public long[] freqs(final BitSet filter) throws IOException
   {
+    long[] freqs = new long[formDic.size()];
     final boolean hasFilter = (filter != null);
-    Map<IntPair, Bigram> dic = new HashMap<IntPair, Bigram>();
-    IntPair key = new IntPair();
     int maxDoc = this.maxDoc;
     int[] posInt = this.posInt;
     int[] limInt = this.limInt;
+    
+    
+    /* 
+    // if channelMap is copied here as int[], same cost as IntBuffer
+    // gain x2 if int[] is preloaded at class level, but cost mem
+    int[] rail = new int[(int)(channel.size() / 4)];
+    channelMap.asIntBuffer().get(rail);
+     */
+    // no cost in time and memory to take one int view, seems faster to loop
     IntBuffer bufInt = channelMap.rewind().asIntBuffer();
-    int lastId = 0;
     for (int docId = 0; docId < maxDoc; docId++) {
-      if (hasFilter && !filter.get(docId)) continue; 
       if (limInt[docId] == 0) continue; // deleted or with no value for this field
+      if (hasFilter && !filter.get(docId)) continue; // document not in the filter
       bufInt.position(posInt[docId]);
       for (int i = 0, max = limInt[docId] ; i < max; i++) {
         int formId = bufInt.get();
-        // here we can skip holes, pun, or stop words
-        // if (formStop.get(formId)) continue;
-        key.set(lastId, formId);
-        Bigram count = dic.get(key);
-        if (count != null) count.inc();
-        else dic.put(new IntPair(key), new Bigram(key.x(), key.y()));
-        lastId = formId;
+        freqs[formId]++;
       }
     }
-    return dic;
+    return freqs;
   }
 
+  /**
+   * Parallel freqs calculation, it works but is more expensive than serial,
+   * because of concurrency cost.
+   * 
+   * @param filter
+   * @return
+   * @throws IOException
+   */
+  protected AtomicIntegerArray freqsParallel(final BitSet filter) throws IOException
+  {
+    // may take big place in mem
+    int[] rail = new int[(int)(channel.size() / 4)];
+    channelMap.asIntBuffer().get(rail);
+    AtomicIntegerArray freqs = new AtomicIntegerArray(formDic.size());
+    boolean hasFilter = (filter != null);
+    int maxDoc = this.maxDoc;
+    int[] posInt = this.posInt;
+    int[] limInt = this.limInt;
+    
+    IntStream loop = IntStream.range(0, maxDoc).filter(docId -> {
+      if (limInt[docId] == 0) return false;
+      if (hasFilter && !filter.get(docId)) return false;
+      return true;
+    }).parallel().map(docId -> {
+      // to use a channelMap in parallel, we need a new IntBuffer for each doc, too expensive
+      for (int i = posInt[docId], max = posInt[docId] + limInt[docId] ; i < max; i++) {
+        int formId = rail[i];
+        freqs.getAndIncrement(formId);
+      }
+      return docId;
+    });
+    loop.count(); // go
+    return freqs;
+  }
+
+  /**
+   * Count document size by the positions in the term vector
+   */
+  public int length(Terms termVector) throws IOException
+  {
+    if (termVector == null) return 0;
+    int len = Integer.MIN_VALUE;
+    TermsEnum tenum = termVector.iterator();
+    PostingsEnum postings = null;
+    while (tenum.next() != null) {
+      postings = tenum.postings(postings, PostingsEnum.POSITIONS);
+      postings.nextDoc(); // always one doc
+      int freq = postings.freq();
+      for (int i = 0; i < freq; i++) {
+        int pos = postings.nextPosition();
+        if (pos > len) len = pos;
+      }
+    }
+    return len + 1;
+  }
+  
+  
+  /**
+   * Load and calculate index for the rail file
+   * @throws IOException 
+   */
+  private void load() throws IOException
+  {
+    // file do not exists, store()
+    if (!path.toFile().exists()) store();
+    channel = FileChannel.open(path, StandardOpenOption.READ);
+    DataInputStream data = new DataInputStream(Channels.newInputStream(channel));
+    long version = data.readLong();
+    // bad version reproduce
+    if (version != alix.reader().getVersion()) {
+      data.close();
+      channel.close();
+      store();
+      channel = FileChannel.open(path, StandardOpenOption.READ);
+      data = new DataInputStream(Channels.newInputStream(channel));
+    }
+    
+    int maxDoc = data.readInt();
+    this.maxDoc = maxDoc;
+    int[] posInt = new int[maxDoc];
+    int[] limInt = new int[maxDoc];
+    int indInt = headerInt + maxDoc;
+    for(int i = 0; i < maxDoc; i++) {
+      posInt[i] = indInt;
+      int docLen = data.readInt();
+      limInt[i] = docLen;
+      indInt += docLen +1;
+    }
+    this.posInt = posInt;
+    this.limInt = limInt;
+    this.channelMap = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
+  }
+
+  /**
+   * Flatten search of a document in a position order, according to the dictionary of search.
+   * Write it in a binary buffer, ready to to be stored in a BinaryField.
+   * {@link org.apache.lucene.document.BinaryDocValuesField}
+   * The buffer could be modified if resizing was needed.
+   * @param termVector A term vector of a document with positions.
+   * @param buf A reusable binary buffer to index.
+   * @throws IOException
+   */
+  public void rail(Terms termVector, IntList buf) throws IOException
+  {
+    buf.reset(); // celan all
+    BytesRefHash hashDic = this.formDic;
+    TermsEnum tenum = termVector.iterator();
+    PostingsEnum postings = null;
+    BytesRef bytes = null;
+    int maxpos = -1;
+    int minpos = Integer.MAX_VALUE;
+    while ((bytes = tenum.next()) != null) {
+      int formId = hashDic.find(bytes);
+      if (formId < 0) System.out.println("unknown term? \""+bytes.utf8ToString() + "\"");
+      postings = tenum.postings(postings, PostingsEnum.POSITIONS);
+      postings.nextDoc(); // always one doc
+      int freq = postings.freq();
+      for (int i = 0; i < freq; i++) {
+        int pos = postings.nextPosition();
+        if (pos > maxpos) maxpos = pos;
+        if (pos < minpos) minpos = pos;
+        buf.put(pos, formId);
+      }
+    }
+  }
+  
+  /**
+   * Scores a {@link FormEnum} with freqs extracted from co-occurrences extraction in a  {@link #coocs(FormEnum)}.
+   * Scoring uses a “mutual information” {@link MI} algorithm (probability like, not tf-idf like). Parameters
+   * are 
+   * <li>Oab: count of a form (a) observed in a co-occurrency context (b)
+   * <li>Oa: count of a form in full corpus, or in a section (filter)
+   * <li>Ob: count of occs of the co-occurrency context
+   * <li>N: global count of occs from which is extracted the context (full corpus or filterd section)
+   * @throws IOException 
+   * 
+   */
+  public void score(FormEnum results, final long Ob) throws IOException
+  {
+    if (this.fieldText.formDic != results.formDic) throw new IllegalArgumentException("Not the same fields. Rail for coocs: " + this.fieldText.fieldName + ", freqList build with "+results.fieldName+" field");
+    // Do not filter words from a query word in query
+    boolean hasInclude = false;
+    int[] include = null;
+    if (results.search != null || results.search.length > 0) {
+      include = new int[results.search.length];
+      int i = 0;
+      for (String form: results.search) {
+        int formId = fieldText.formId(form);
+        if (formId < 1) continue;
+        include[i] = formId;
+        i++;
+      }
+      if (i > 0) {
+        if (i != include.length) include = Arrays.copyOfRange(include, 0, i);
+        Arrays.sort(include);
+        hasInclude = true;
+      }
+    }
+    // if (results.limit == 0) throw new IllegalArgumentException("How many sorted forms do you want? set FormEnum.limit");
+    if (results.occsPart < 1) throw new IllegalArgumentException("Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
+    if (results.formOccsFreq == null || results.formOccsFreq.length < maxForm) throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
+    // int[] hits = results.hits; // not significant for a transversal cooc
+    TagFilter tags = results.tags;
+    boolean hasTags = (tags != null);
+    boolean noStop = (tags != null && tags.noStop());
+    // a bug here, results do not like
+    int length = fieldText.maxForm;
+    // reuse score for multiple calculations
+    if (results.formScore == null || results.formScore.length != length) results.formScore = new double[length]; // by term, occurrences counts
+    else Arrays.fill(results.formScore, 0);
+    final long N = fieldText.occsAll; // global 
+    MI mi = results.mi;
+    if (mi == null) mi = MI.occs;
+    for (int formId = 0; formId < length; formId++) {
+      if (hasInclude && Arrays.binarySearch(include, formId) >= 0); //include word
+      else if (noStop && fieldText.isStop(formId)) continue;
+      else if (hasTags && !tags.accept(fieldText.formTag[formId])) continue;
+      else if (results.formOccsFreq[formId] == 0) continue;
+      long Oab = results.formOccsFreq[formId];
+      if (Oab > Ob) Oab = Ob; // // a form in a cooccurrence, may be more frequent than the pivot (repetition in a large context)
+      results.formScore[formId] = mi.score(Oab, fieldText.formOccsAll[formId], Ob, N);
+    }
+    // results is populated of scores, sort it now
+    results.sort(FormEnum.Sorter.score, -1);
+  }
+
+  /**
+   * Reindex all documents of the text field as an int vector
+   * storing search at their positions
+   * {@link org.apache.lucene.document.BinaryDocValuesField}.
+   * Byte ordering is the java default.
+   * 
+   * @throws IOException 
+   */
+  private void store() throws IOException
+  {
+    final FileLock lock;
+    DirectoryReader reader = alix.reader();
+    int maxDoc = reader.maxDoc();
+    final FileChannel channel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.READ, StandardOpenOption.WRITE);
+    lock = channel.lock(); // may throw OverlappingFileLockException if someone else has lock
+    
+    
+    // get document sizes
+    // fieldText.docOccs is not correct because of holes
+    int[] docLen = new int[maxDoc];
+    for (int docId = 0; docId < maxDoc; docId++) {
+      Terms termVector = reader.getTermVector(docId, fieldName);
+      docLen[docId] = length(termVector);
+    }
+  
+    long capInt = headerInt + maxDoc;
+    for (int i = 0; i < maxDoc; i++) {
+      capInt += docLen[i] + 1 ;
+    }
+    
+    MappedByteBuffer buf = channel.map(FileChannel.MapMode.READ_WRITE, 0, capInt * 4);
+    // store the version 
+    buf.putLong(reader.getVersion());
+    // the intBuffer 
+    IntBuffer bufint = buf.asIntBuffer();
+    bufint.put(maxDoc);
+    bufint.put(docLen);
+    IntList ints = new IntList();
+    
+    for (int docId = 0; docId < maxDoc; docId++) {
+      Terms termVector = reader.getTermVector(docId, fieldName);
+      if (termVector == null) {
+        bufint.put(-1);
+        continue;
+      }
+      rail(termVector, ints);
+      bufint.put(ints.data(), 0, ints.length());
+      bufint.put(-1);
+    }
+    buf.force();
+    channel.force(true);
+    lock.close();
+    channel.close();
+  }
+
+  /**
+   * Tokens of a doc as strings from a byte array
+   * @param rail Binary version an int array
+   * @param offset Start index in the array
+   * @param length Length of bytes to consider from offset
+   * @return
+   * @throws IOException
+   */
+  public String[] strings(int[] rail) throws IOException
+  {
+    int len = rail.length;
+    String[] words = new String[len];
+    BytesRef ref = new BytesRef();
+    for (int i = 0; i < len; i++) {
+      int formId = rail[i];
+      this.formDic.get(formId, ref);
+      words[i] = ref.utf8ToString();
+    }
+    return words;
+  }
+  
+  public String toString(int docId) throws IOException
+  {
+    int limit = 100;
+    StringBuilder sb = new StringBuilder();
+    IntBuffer bufInt = channelMap.position(posInt[docId] * 4).asIntBuffer();
+    bufInt.limit(limInt[docId]);
+    BytesRef ref = new BytesRef();
+    while (bufInt.hasRemaining()) {
+      int formId = bufInt.get();
+      this.formDic.get(formId, ref);
+      sb.append(ref.utf8ToString());
+      sb.append(" ");
+      if (limit-- <= 0) {
+        sb.append("[…]");
+      }
+    }
+    return sb.toString();
+  }
 
   public class Bigram
   {
@@ -619,63 +691,6 @@ public class FieldRail
     {
       return ++count;
     }
-  }
-
-  
-  /**
-   * Tokens of a doc as strings from a byte array
-   * @param rail Binary version an int array
-   * @param offset Start index in the array
-   * @param length Length of bytes to consider from offset
-   * @return
-   * @throws IOException
-   */
-  public String[] strings(int[] rail) throws IOException
-  {
-    int len = rail.length;
-    String[] words = new String[len];
-    BytesRef ref = new BytesRef();
-    for (int i = 0; i < len; i++) {
-      int formId = rail[i];
-      this.hashDic.get(formId, ref);
-      words[i] = ref.utf8ToString();
-    }
-    return words;
-  }
-  
-  /**
-   * Parallel freqs calculation, it works but is more expensive than serial,
-   * because of concurrency cost.
-   * 
-   * @param filter
-   * @return
-   * @throws IOException
-   */
-  protected AtomicIntegerArray freqsParallel(final BitSet filter) throws IOException
-  {
-    // may take big place in mem
-    int[] rail = new int[(int)(channel.size() / 4)];
-    channelMap.asIntBuffer().get(rail);
-    AtomicIntegerArray freqs = new AtomicIntegerArray(hashDic.size());
-    boolean hasFilter = (filter != null);
-    int maxDoc = this.maxDoc;
-    int[] posInt = this.posInt;
-    int[] limInt = this.limInt;
-    
-    IntStream loop = IntStream.range(0, maxDoc).filter(docId -> {
-      if (limInt[docId] == 0) return false;
-      if (hasFilter && !filter.get(docId)) return false;
-      return true;
-    }).parallel().map(docId -> {
-      // to use a channelMap in parallel, we need a new IntBuffer for each doc, too expensive
-      for (int i = posInt[docId], max = posInt[docId] + limInt[docId] ; i < max; i++) {
-        int formId = rail[i];
-        freqs.getAndIncrement(formId);
-      }
-      return docId;
-    });
-    loop.count(); // go
-    return freqs;
   }
 
 }
