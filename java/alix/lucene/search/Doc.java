@@ -601,7 +601,7 @@ public class Doc
       BytesRef bytes = termit.term();
       final int formId = fieldText.formId(bytes);
       if (hasTags && !tags.accept(fieldText.formTag[formId])) continue;
-      if (noStop && fieldText.formStop.get(formId)) continue;
+      if (noStop && fieldText.isStop(formId)) continue;
       if (formId < 0) continue; // should not arrive, let cry
       if (hasScorer) scorer.idf(fieldText.occsAll, fieldText.docsAll, fieldText.formOccsAll[formId], fieldText.formDocsAll[formId]);
 

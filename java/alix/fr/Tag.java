@@ -66,7 +66,8 @@ public enum Tag
   SUBm(0x21, "Substantif masculin", "(futur)") { },
   SUBf(0x22, "Substantif féminin", "(futur)") { },
   */
-  SUBtit(0x2F, "Titulature", "Monsieur, madame, prince… (introduit les noms de personnes).") { },
+  SUBpers(0x28, "Titulature", "Monsieur, madame, prince… (introduit des noms de personnes).") { },
+  SUBplace(0x29, "Adressage", "Faubourg, rue, hôtel… (introduit des noms de lieux).") { },
   
   // 3x, entités nommées
   NAME(0x30, "Nom propre", "Kala Matah, Taj Mah de Groüpt… (nom propre inféré de la typographie, inconnu des dictionnaires).") { },
@@ -133,7 +134,7 @@ public enum Tag
   MISC(0xF0, "Divers", "") { },
   ABBR(0xF1, "Abréviation", "") { },
   EXCL(0xF2, "Exclamation", "Ho, Ô, haha… (interjections)") { },
-  PARTdem(0xFC, "Particules démonstratives", "-ci, -là") { },
+  PARTdem(0xFC, "Part. dém.", "-ci, -là (particule démonstrative)") { },
   
   ;
   /** Logger */
@@ -267,18 +268,35 @@ public enum Tag
     
     
     
+    public boolean accept(int flag) {
+      return rule[flag];
+    }
+    
+    public TagFilter clear(final Tag tag) {
+      return clear(tag.flag);
+    }
+
+    
+    public TagFilter clear(final int flag) {
+      rule[flag] = false;
+      return this;
+    }
+    
     public TagFilter clearAll() {
       rule = new boolean[256];
       noStop = false;
       return this;
     }
-    public TagFilter setAll() {
-      Arrays.fill(rule, true);
-      noStop = false;
+    public TagFilter clearGroup(final Tag tag) {
+      return clearGroup(tag.flag);
+    }
+    
+    public TagFilter clearGroup(int flag) {
+      flag = flag & 0xF0;
+      int lim = flag +16;
+      for (; flag < lim; flag++) rule[flag] = false;
       return this;
     }
-
-    
     public boolean noStop() {
       return noStop;
     }
@@ -297,42 +315,32 @@ public enum Tag
       return this;
     }
 
-    public TagFilter set(final int tag) {
-      rule[tag] = true;
+    public TagFilter set(Tag tag) {
+      return set(tag.flag);
+    }
+
+    public TagFilter set(final int flag) {
+      rule[flag] = true;
       return this;
     }
 
-    public TagFilter clear(final int tag) {
-      rule[tag] = false;
+    public TagFilter setAll() {
+      Arrays.fill(rule, true);
+      noStop = false;
       return this;
     }
-
     public TagFilter setGroup(Tag tag) {
       return setGroup(tag.flag);
     }
     
-    public TagFilter setGroup(int tag) {
-      tag = tag & 0xF0;
-      int lim = tag +16;
+    public TagFilter setGroup(int flag) {
+      flag = flag & 0xF0;
+      int lim = flag +16;
       // System.out.println(String.format("0x%02X", tag));
-      for (; tag < lim; tag++) rule[tag] = true;
+      for (; flag < lim; flag++) rule[flag] = true;
       return this;
     }
 
-    public TagFilter clearGroup(final Tag tag) {
-      return clearGroup(tag.flag);
-    }
-    
-    public TagFilter clearGroup(int tag) {
-      tag = tag & 0xF0;
-      int lim = tag +16;
-      for (; tag < lim; tag++) rule[tag] = false;
-      return this;
-    }
-    
-    public boolean accept(int tag) {
-      return rule[tag];
-    }
     @Override
     public String toString()
     {

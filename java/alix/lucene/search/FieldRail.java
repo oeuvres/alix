@@ -63,7 +63,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
-import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.Alix;
 import alix.util.Chain;
@@ -89,9 +88,9 @@ public class FieldRail
   /** State of the index */
   private final Alix alix;
   /** Name of the reference text field */
-  public final String fieldName;
+  public final String fname;
   /** Keep the freqs for the field */
-  private final FieldText fieldText;
+  private final FieldText ftext;
   /** Dictionary of search for this field */
   private final BytesRefHash formDic;
   /** The path of underlaying file store */
@@ -110,14 +109,15 @@ public class FieldRail
   private int[] posInt;
   /** Index of sizes for each doc */
   private int[] limInt;
+  
 
 
   public FieldRail(Alix alix, String field) throws IOException
   {
     this.alix = alix;
-    this.fieldText = alix.fieldText(field); // build and cache the dictionary for the field
-    this.fieldName = fieldText.fieldName;
-    this.formDic = fieldText.formDic;
+    this.ftext = alix.fieldText(field); // build and cache the dictionary for the field
+    this.fname = ftext.fname;
+    this.formDic = ftext.formDic;
     this.maxForm = formDic.size();
     this.path = Paths.get( alix.path.toString(), field+".rail");
     load();
@@ -208,7 +208,7 @@ public class FieldRail
       ArrayList<PostingsEnum> termDocs = new ArrayList<PostingsEnum>();
       for (String word : results.search) {
         if (word == null) continue;
-        Term term = new Term(fieldName, word); // do not try to reuse term, false optimisation
+        Term term = new Term(fname, word); // do not try to reuse term, false optimisation
         PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS|PostingsEnum.POSITIONS);
         if (postings == null) continue;
         final int docPost = postings.nextDoc(); // advance cursor to the first doc
@@ -284,17 +284,27 @@ public class FieldRail
    * @return
    * @throws IOException
    */
-  public Map<IntPair, Bigram> expressions(final BitSet filter, final boolean parceque) throws IOException
+  public Map<IntPair, Bigram> expressions(final BitSet docFilter, final TagFilter formFilter) throws IOException
   {
-    final boolean hasFilter = (filter != null);
-    Map<IntPair, Bigram> expressions = new HashMap<IntPair, Bigram>();
     
+    final boolean hasExclude;
+    BitSet exclude = null;
+    if (formFilter != null) {
+      hasExclude = true;
+      exclude = ftext.formRule(formFilter);
+    }
+    else {
+      hasExclude = false;
+    }
+    // prepare a rule of the words to exclude as pivots
+    
+    final boolean hasFilter = (docFilter != null);
+    Map<IntPair, Bigram> expressions = new HashMap<IntPair, Bigram>();
+    int[] formPun = ftext.formPun;
     int maxDoc = this.maxDoc;
     int[] posInt = this.posInt;
     int[] limInt = this.limInt;
-    BitSet stops = fieldText.formStop;
-    int[] formTag = fieldText.formTag;
-    BytesRefHash formDic = fieldText.formDic;
+    BytesRefHash formDic = ftext.formDic;
     // no cost in time and memory to take one int view, seems faster to loop
     IntBuffer bufInt = channelMap.rewind().asIntBuffer();
     // a vector to record formId events
@@ -303,27 +313,30 @@ public class FieldRail
     BytesRef bytes = new BytesRef();
     for (int docId = 0; docId < maxDoc; docId++) {
       if (limInt[docId] == 0) continue; // deleted or with no value for this field
-      if (hasFilter && !filter.get(docId)) continue; // document not in the filter
+      if (hasFilter && !docFilter.get(docId)) continue; // document not in the filter
       bufInt.position(posInt[docId]); // position cursor in the rail
       IntPair key = new IntPair();
       for (int i = 0, max = limInt[docId] ; i < max; i++) {
-        int formId = bufInt.get();
-        // pun or hole, reste expression
-        int tag = formTag[formId];
-        if (formId == 0 || Tag.PUN.sameParent(tag)) {
+        final int formId = bufInt.get();
+        // pun or hole, reset expression
+        if (formId == 0 || Arrays.binarySearch(formPun, formId) >= 0) {
           slider.reset();
           continue;
         }
-        final boolean isStop = (formId < stops.length() && stops.get(formId));
-        if (!parceque && isStop) {
-          if (slider.isEmpty()) continue;
-          // être probably not iniside a compoud
+        if (hasExclude) {
+          final boolean excluded = exclude.get(formId);
+          // do not start an expression on an excluded word
+          if (excluded) {
+            if (!slider.isEmpty()) slider.push(formId);
+            continue;
+          }
+          // reset on verb ? to check
+          /*
           if (Tag.VERB.sameParent(tag)) {
             slider.reset();
             continue;
           }
-          slider.push(formId);
-          continue;
+          */
         }
         // should be a plain word here
         if (slider.isEmpty()) { // start of an expression
@@ -331,7 +344,7 @@ public class FieldRail
           continue;
         }
         // here we have something to test or to store
-        slider.push(formId); // don’t forget the cuurent formId
+        slider.push(formId); // don’t forget the current formId
         key.set(slider.first(), formId);
         Bigram bigram = expressions.get(key);
         if (bigram == null) { // new expression
@@ -528,7 +541,7 @@ public class FieldRail
    */
   public void score(FormEnum results, final long Ob) throws IOException
   {
-    if (this.fieldText.formDic != results.formDic) throw new IllegalArgumentException("Not the same fields. Rail for coocs: " + this.fieldText.fieldName + ", freqList build with "+results.fieldName+" field");
+    if (this.ftext.formDic != results.formDic) throw new IllegalArgumentException("Not the same fields. Rail for coocs: " + this.ftext.fname + ", freqList build with "+results.fieldName+" field");
     // Do not filter words from a query word in query
     boolean hasInclude = false;
     int[] include = null;
@@ -536,7 +549,7 @@ public class FieldRail
       include = new int[results.search.length];
       int i = 0;
       for (String form: results.search) {
-        int formId = fieldText.formId(form);
+        int formId = ftext.formId(form);
         if (formId < 1) continue;
         include[i] = formId;
         i++;
@@ -555,21 +568,21 @@ public class FieldRail
     boolean hasTags = (tags != null);
     boolean noStop = (tags != null && tags.noStop());
     // a bug here, results do not like
-    int length = fieldText.maxForm;
+    int length = ftext.maxForm;
     // reuse score for multiple calculations
     if (results.formScore == null || results.formScore.length != length) results.formScore = new double[length]; // by term, occurrences counts
     else Arrays.fill(results.formScore, 0);
-    final long N = fieldText.occsAll; // global 
+    final long N = ftext.occsAll; // global 
     MI mi = results.mi;
     if (mi == null) mi = MI.occs;
     for (int formId = 0; formId < length; formId++) {
       if (hasInclude && Arrays.binarySearch(include, formId) >= 0); //include word
-      else if (noStop && fieldText.isStop(formId)) continue;
-      else if (hasTags && !tags.accept(fieldText.formTag[formId])) continue;
+      else if (noStop && ftext.isStop(formId)) continue;
+      else if (hasTags && !tags.accept(ftext.formTag[formId])) continue;
       else if (results.formOccsFreq[formId] == 0) continue;
       long Oab = results.formOccsFreq[formId];
       if (Oab > Ob) Oab = Ob; // // a form in a cooccurrence, may be more frequent than the pivot (repetition in a large context)
-      results.formScore[formId] = mi.score(Oab, fieldText.formOccsAll[formId], Ob, N);
+      results.formScore[formId] = mi.score(Oab, ftext.formOccsAll[formId], Ob, N);
     }
     // results is populated of scores, sort it now
     results.sort(FormEnum.Sorter.score, -1);
@@ -596,7 +609,7 @@ public class FieldRail
     // fieldText.docOccs is not correct because of holes
     int[] docLen = new int[maxDoc];
     for (int docId = 0; docId < maxDoc; docId++) {
-      Terms termVector = reader.getTermVector(docId, fieldName);
+      Terms termVector = reader.getTermVector(docId, fname);
       docLen[docId] = length(termVector);
     }
   
@@ -615,7 +628,7 @@ public class FieldRail
     IntList ints = new IntList();
     
     for (int docId = 0; docId < maxDoc; docId++) {
-      Terms termVector = reader.getTermVector(docId, fieldName);
+      Terms termVector = reader.getTermVector(docId, fname);
       if (termVector == null) {
         bufint.put(-1);
         continue;

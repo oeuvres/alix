@@ -34,6 +34,7 @@ package alix.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 
 import org.apache.lucene.index.DirectoryReader;
@@ -52,6 +53,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.SparseFixedBitSet;
 
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
@@ -59,6 +61,7 @@ import alix.lucene.analysis.FrDics;
 import alix.lucene.analysis.FrDics.LexEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.Char;
+import alix.util.IntList;
 import alix.web.Distrib.Scorer;
 
 /**
@@ -79,7 +82,7 @@ public class FieldText
   /** The reader from which to get freqs */
   final DirectoryReader reader;
   /** Name of the indexed field */
-  public final String fieldName;
+  public final String fname;
   /** Biggest formId+1 (like lucene IndexReader.maxDoc()) */
   public final int maxForm;
   /** Global number of occurrences for this field */
@@ -100,7 +103,8 @@ public class FieldText
   protected BitSet formStop; 
   /** By formId, is a locution  */
   protected BitSet formLoc; 
-  
+  /** By formId is Pun */
+  protected int[] formPun; 
 
 
   /**
@@ -127,7 +131,7 @@ public class FieldText
     this.reader = reader;
     docOccs = new int[reader.maxDoc()];
     final FixedBitSet docs =  new FixedBitSet(reader.maxDoc()); // used to count exactly docs with more than one term
-    this.fieldName = fieldName;
+    this.fname = fieldName;
     
     
     ArrayList<FormRecord> stack = new ArrayList<FormRecord>();
@@ -181,8 +185,10 @@ public class FieldText
     this.maxForm = stack.size()+1; // should be the stack of non empty term + empty term
     // here we should have all we need to affect a freq formId
     // sort forms, and reloop on them to get optimized things
-    java.util.BitSet stopRecord = new java.util.BitSet(); // record StopWords to build an optimized BitSet
-    formLoc = new FixedBitSet(this.maxForm); // record locutions, size of BitSet will be full
+    java.util.BitSet stopRecord = new java.util.BitSet(); // record StopWords in a growable BitSet
+    // temp array to get pun formId
+    IntList puns = new IntList();
+    formLoc = new SparseFixedBitSet(this.maxForm); // record locutions, size of BitSet will be full
     formDic = new BytesRefHash(); // populate a new hash dic with values
     formDic.add(new BytesRef("")); // add empty string as formId=0 for empty positions
     formOccsAll = new long[this.maxForm];
@@ -213,7 +219,10 @@ public class FieldText
         formTag[formId] = entry.tag;
         continue;
       }
-      if (Char.isPunctuation(chars.charAt(0))) formTag[formId] = Tag.PUN.flag;
+      if (Char.isPunctuation(chars.charAt(0))) {
+        formTag[formId] = Tag.PUN.flag;
+        puns.push(formId);
+      }
       else if (chars.length() < 1) continue; // ?
       else if (Char.isUpperCase(chars.charAt(0))) formTag[formId] = Tag.NAME.flag;
     }
@@ -222,6 +231,9 @@ public class FieldText
     for (int formId = stopRecord.nextSetBit(0); formId != -1; formId = stopRecord.nextSetBit(formId + 1)) {
       formStop.set(formId);
     }
+    formPun = puns.toArray();
+    Arrays.sort(formPun);
+    
     // here we should be happy and set class fields
     docsAll = docs.cardinality();
   }
@@ -259,7 +271,7 @@ public class FieldText
       for (String form: forms) {
         final int formId = formId(form);
         if (hasScorer) scorer.idf(occsAll, docsAll, formOccsAll[formId], formDocsAll[formId]);
-        Term term = new Term(fieldName, form);
+        Term term = new Term(fname, form);
         PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS);
         int docLeaf;
         while ((docLeaf = postings.nextDoc()) != NO_MORE_DOCS) {
@@ -267,7 +279,7 @@ public class FieldText
           int docId = docBase + docLeaf;
           if (hasFilter && !filter.get(docId)) continue; // document not in the filter
           int freq = postings.freq();
-          if (freq < 1) throw new ArithmeticException("??? field="+fieldName+" docId=" + docId+" form="+form+" freq="+freq);
+          if (freq < 1) throw new ArithmeticException("??? field="+fname+" docId=" + docId+" form="+form+" freq="+freq);
           freqs[docId] += freq;
           if (hasScorer) scores[docId] += scorer.tf(freq, docOccs[docId]);
           else scores[docId] += freq;
@@ -296,7 +308,7 @@ public class FieldText
     for (LeafReaderContext context : reader.leaves()) {
       LeafReader leaf = context.reader();
       int docBase = context.docBase;
-      Terms terms = leaf.terms(fieldName);
+      Terms terms = leaf.terms(fname);
       if (terms == null) continue;
       TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
       PostingsEnum docsEnum = null;
@@ -372,13 +384,37 @@ public class FieldText
   }
 
   /**
+   * Build a BitSet rule for efficient filtering of forms by formId.
+   * @param filter
+   * @return
+   */
+  public BitSet formRule(TagFilter filter)
+  {
+    BitSet rule = new SparseFixedBitSet(maxForm);
+    final boolean noStop = filter.noStop();
+    final int stopLim = formStop.length();
+    for (int formId=1; formId < maxForm; formId++) {
+      if (!noStop); // no tick for stopword
+      else if (formId >= stopLim); // formId out of scope of stop words
+      else if (!formStop.get(formId)); // not a stop word, let other rules play
+      else { // stop word requested and is a stop word, tick and continue
+        rule.set(formId);
+        continue;
+      }
+      // set formId by tag
+      if (filter.accept(formTag[formId])) rule.set(formId);
+    }
+    return rule;
+  }
+  
+  /**
    * Is this formId a StopWord ?
    * @param formId
    * @return
    */
   public boolean isStop(int formId)
   {
-    if ((formId + 1) > formStop.length()) return false; // outside the set bits, shoul be not a step word
+    if (formId >= formStop.length()) return false; // outside the set bits, shoul be not a stop word
     return formStop.get(formId);
   }
 
@@ -477,7 +513,7 @@ public class FieldText
       LeafReader leaf = context.reader();
       Bits live = leaf.getLiveDocs();
       final boolean hasLive = (live != null);
-      Terms terms = leaf.terms(fieldName);
+      Terms terms = leaf.terms(fname);
       if (terms == null) continue;
       TermsEnum tenum = terms.iterator();
       PostingsEnum docsEnum = null;
@@ -499,7 +535,7 @@ public class FieldText
           int docId = docBase + docLeaf;
           if (hasFilter && !filter.get(docId)) continue; // document not in the filter
           int freq = docsEnum.freq();
-          if (freq < 1) throw new ArithmeticException("??? field="+fieldName+" docId=" + docId+" term="+bytes.utf8ToString()+" freq="+freq);
+          if (freq < 1) throw new ArithmeticException("??? field="+fname+" docId=" + docId+" term="+bytes.utf8ToString()+" freq="+freq);
           hitsVek.set(docId);
           results.formDocsHit[formId]++;
           if (hasScorer) {

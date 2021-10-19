@@ -42,14 +42,14 @@ public enum Cat implements Option
 {
   
   ALL("Tout", null),
-  NOSTOP("Sans mots “vides”", new TagFilter().setAll().clearGroup(Tag.VERB).noStop(true) ), 
-  STRONG("Mots de la langue", new TagFilter().setGroup(Tag.SUB).setGroup(Tag.VERB).setGroup(Tag.ADJ).set(0)), 
-  SUB("Substantifs", new TagFilter().setGroup(Tag.SUB)), 
+  NOSTOP("Mots “pleins”", new TagFilter().setAll().noStop(true) ), 
+  STRONG("Mots “forts”", new TagFilter().set(Tag.SUB).set(Tag.VERB).set(Tag.ADJ).noStop(true)), 
+  SUB("Substantifs", new TagFilter().set(Tag.SUB)), 
   NAME("Noms propres", new TagFilter().setGroup(Tag.NAME)),
-  VERB("Verbes", new TagFilter().setGroup(Tag.VERB)),
-  ADJ("Adjectifs", new TagFilter().setGroup(Tag.ADJ)),
-  ADV("Adverbes", new TagFilter().setGroup(Tag.ADV)),
-  STOP("Mots grammaticaux", new TagFilter().setAll().clearGroup(Tag.SUB).clearGroup(Tag.NAME).clearGroup(Tag.VERB).clearGroup(Tag.ADJ).clear(0)), 
+  VERB("Verbes", new TagFilter().set(Tag.VERB)),
+  ADJ("Adjectifs", new TagFilter().set(Tag.ADJ)),
+  ADV("Adverbes", new TagFilter().set(Tag.ADV)),
+  STOP("Mots grammaticaux", new TagFilter().setAll().clearGroup(Tag.SUB).clearGroup(Tag.NAME).clear(Tag.VERB).clear(Tag.ADJ).clear(0)), 
   UKNOWN("Mots inconnus", new TagFilter().set(0)), 
   LOC("Locutions", new TagFilter().setAll().locutions(true)), 
   ;

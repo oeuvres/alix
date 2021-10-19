@@ -344,7 +344,7 @@ public class FieldFacet
       for (String f: search) {
         if (f == null) continue;
         if (f.isEmpty()) continue;
-        terms.add(new Term(fieldText.fieldName, f));
+        terms.add(new Term(fieldText.fname, f));
       }
     }
     boolean hasScorer = (scorer != null);

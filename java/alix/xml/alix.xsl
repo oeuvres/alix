@@ -124,11 +124,27 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
 
   <!-- Default mode alix -->
   <xsl:template match="tei:teiHeader" mode="alix"/>
+  <xsl:template match="/tei:TEI/tei:text/tei:front" mode="alix"/>
+  <xsl:template match="/tei:TEI/tei:text/tei:back" mode="alix"/>
   <xsl:template match="*" mode="alix">
     <xsl:apply-templates select="*" mode="alix"/>
   </xsl:template>
 
-
+  <!-- Do not output pages -->
+  <xsl:template match="tei:pb"/>
+  <!-- no output -->
+  <xsl:template match="tei:trailer"/>
+  <!-- hide speaker from indexation -->
+  <xsl:template match="tei:speaker">
+    <xsl:processing-instruction name="index_off"/>
+    <xsl:value-of select="$lf"/>
+    <p class="speaker">
+      <xsl:apply-templates/>
+    </p>
+    <xsl:value-of select="$lf"/>
+    <xsl:processing-instruction name="index_on"/>
+  </xsl:template>
+  
   <xsl:template mode="alix" match="
     tei:group/tei:text | tei:group | tei:body |
     tei:div | tei:div0 | tei:div1 | tei:div2 | tei:div3 | tei:div4 | tei:div5 | tei:div6 | tei:div7

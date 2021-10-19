@@ -29,7 +29,6 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
         </xsl:variable>
         <xsl:comment> notes ? </xsl:comment>
         <xsl:if test="$notes/*">
-          <xsl:value-of select="count($notes)"/>
           <section class="footnotes">
             <xsl:for-each select="exslt:node-set($notes)">
               <xsl:sort select="@class"/>

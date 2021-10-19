@@ -130,7 +130,7 @@ public class FormEnum {
     this.formOccsAll = field.formOccsAll;
     this.formCover = null;
     this.formTag = field.formTag;
-    this.fieldName = field.fieldName;
+    this.fieldName = field.fname;
   }
 
   /** Build an iterator from a facet field */
