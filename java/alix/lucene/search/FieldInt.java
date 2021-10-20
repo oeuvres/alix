@@ -223,7 +223,6 @@ public class FieldInt
     Term term = new Term(ftextName, form);
     if (reader.docFreq(term) < 1) return; // nothing added to iterator, shall we say it ?
     final long[] freqs = new long[cardinality]; // array to populate
-    int[] docValue = this.docValue; // localize
     final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
     // loop an all index to get occs for the term for each valueId
     for (LeafReaderContext context : reader.leaves()) {
@@ -238,8 +237,9 @@ public class FieldInt
         int docId = docBase + docLeaf;
         int freq = postings.freq();
         if (freq < 1) throw new ArithmeticException("??? field="+fieldName+" docId=" + docId+" form="+form+" freq="+freq);
-        final int valueId = docValue[docId]; // get the value id of this doc
-        freqs[valueId] += freq; // add freq 
+        final int valueInt = docValue[docId]; // get the value id of this doc
+        if (valueInt == Integer.MIN_VALUE) continue; // no value for this doc
+        freqs[valueInt] += freq; // add freq 
       }
     }
     if (iterator.dicOccs == null) iterator.dicOccs = new HashMap<String, long[]>();

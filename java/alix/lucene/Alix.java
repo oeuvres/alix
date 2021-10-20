@@ -630,24 +630,6 @@ u   * @throws IOException
     return fieldRail;
   }
 
-  /**
-   * For a field, return an array in docId order, with the total number of tokens
-   * by doc. Term vector cost 1 s. / 1000 books and is not precise. Norms for
-   * similarity is not enough precise (1 byte) see SimilarityBase.computeNorm()
-   * https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/apache/lucene/search/similarities/SimilarityBase.java#L185
-   * A field could be recorded at indexation, then user knows its name and get it
-   * by docInt(). Solution: pre-calculate the lengths by a cached Freqs object, which
-   * have loop
-   * 
-   * 
-   * @param field
-   * @return
-   * @throws IOException
-   */
-  public int[] docOccs(String field) throws IOException
-  {
-    return fieldText(field).docOccs;
-  }
 
   /**
    * Get docId parent documents (books) of nested documents (chapters), sorted by

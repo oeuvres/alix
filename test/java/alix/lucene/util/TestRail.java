@@ -111,14 +111,14 @@ public class TestRail
   {
     TopArray top = new TopArray(limit);
     for (int id = 0, length = freqs.length; id < length; id++) {
-      double score = (double)2 * freqs[id] / (fstats.occs(id) * fstats.occs(id) + pivotFreq * pivotFreq);
+      double score = (double)2 * freqs[id] / (fstats.formOccs(id) * fstats.formOccs(id) + pivotFreq * pivotFreq);
       top.push(id, score);
     }
     BytesRefHash dic = fstats.formDic;
     BytesRef ref = new BytesRef();
     for(TopArray.Entry entry: top) {
       dic.get(entry.id(), ref);
-      System.out.println(ref.utf8ToString() + " — " + freqs[entry.id()] + " / " + fstats.occs(entry.id()) + " — " + entry.score());
+      System.out.println(ref.utf8ToString() + " — " + freqs[entry.id()] + " / " + fstats.formOccs(entry.id()) + " — " + entry.score());
     }
   }
 
@@ -222,7 +222,7 @@ public class TestRail
       for (String term : terms) {
         if (term == null) continue;
         freq1 = alix.reader().totalTermFreq(new Term(fieldName, term));
-        freq2 = fstats.occs(term);
+        freq2 = fstats.formOccs(term);
         System.out.println(term+ ": freq1=" + freq1 + " freq2=" + freq2 );
       }
       System.out.print(q + " coocs by rail in ");

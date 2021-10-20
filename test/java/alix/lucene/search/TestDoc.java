@@ -77,9 +77,17 @@ public class TestDoc
     System.out.println(doc0.contrast(fieldName, 1));
     System.out.println(doc1.contrast(fieldName, 0));
   }
+  
+  public static void freqs() throws IOException, NoSuchFieldException
+  {
+    Alix alix = index();
+    Doc doc0 = new Doc(alix , 0);
+    System.out.println(doc0.freq(fieldName, new String[] {"B", "W", "A", "A"}));
+  }
 
+  
   public static void main(String args[]) throws Exception
   {
-    kwic();
+    freqs();
   }
 }

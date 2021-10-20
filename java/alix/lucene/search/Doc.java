@@ -163,15 +163,115 @@ public class Doc
     this.fieldsToLoad = fieldsToLoad;
   }
 
-  /**
-   * Returns the persistent String id of the document.
-   * @return
-   */
-  public String id()
-  {
-    return id;
-  }
+  
 
+  
+
+    
+  /**
+   * Get count 
+   */
+  
+  public String contrast(final String field, final int docId2) throws IOException, NoSuchFieldException
+  {
+    return contrast(field, docId2, false);
+  }
+  /**
+   * 
+   * @param field
+   * @param docId2
+   * @param right 
+   * @return
+   * @throws IOException
+   * @throws NoSuchFieldException
+   */
+  public String contrast(final String field, final int docId2, final boolean right) throws IOException, NoSuchFieldException
+  {
+    String text = get(field);
+    StringBuilder sb = new StringBuilder();
+  
+    FieldText ftext = alix.fieldText(field);
+    int len1 = ftext.docOccs(docId);
+    int len2 = ftext.docOccs(docId2);
+  
+    Terms vek1 = getTermVector(field);
+    Terms vek2 = alix.reader().getTermVector(docId2, field);
+    TermsEnum termit1 = vek1.iterator();
+    BytesRef term1;
+    TermsEnum termit2 = vek2.iterator();
+    BytesRef term2 = termit2.next();
+    ArrayList<Token> offsets = new ArrayList<Token>();
+    PostingsEnum postings = null;
+    // loop on search source, compare with dest
+    double max1 = Double.MIN_VALUE;
+    double max2 = Double.MIN_VALUE;
+    CharsAtt att = new CharsAtt();
+    while(termit1.next() != null) {
+      // termit1.ord(); UnsupportedOperationException
+      final int count1 = (int)termit1.totalTermFreq();
+      term1 = termit1.term();
+      String form = term1.utf8ToString();
+      att.setEmpty().append(form);
+      if (FrDics.isStop(att)) continue;
+  
+      int count2 = 0;
+      while(true) {
+        if (term2 == null) break;
+        int comp = term1.compareTo(term2);
+        if (comp < 0) break; // term2 is bigger, get it after
+        if (comp == 0) { // match
+          count2 = (int) termit2.totalTermFreq();
+          break;
+        }
+        term2 = termit2.next();
+      }
+      if (max1 < count1) max1 = count1;
+      if (max2 < count2) max2 = count2;
+      // loop on positions to get offset
+      postings = termit1.postings(postings, PostingsEnum.OFFSETS);
+      while(postings.nextDoc() != PostingsEnum.NO_MORE_DOCS) {
+        int pos = -1;
+        for (int freq = postings.freq(); freq > 0; freq --) {
+          pos = postings.nextPosition();
+          offsets.add(new Token(pos, postings.startOffset(), postings.endOffset(), form, count1, count2));
+        }
+      }
+    }
+    Collections.sort(offsets); // sort offsets before hilite
+    int off = 0;
+    final double scoremax = max1/len1 + max2/len2;
+    for (int i = 0, size = offsets.size(); i < size; i++) {
+      Token tok = offsets.get(i);
+      double count1 = tok.count;
+      double count2 = tok.count2;
+      // skip token
+      if (count2 == 0 && count1 < 2) continue;
+      sb.append(text.substring(off, tok.start)); // append text before token
+      String type = "tokshared";
+      // specific to this doc
+      if (count2 == 0) type = "tokspec"; 
+      // change boldness
+      double score = count1/len1 + count2/len2;
+      double sum = count1 + count2;
+      String level = "em1";
+      if (score >= 0.6*scoremax) level = "em9";
+      else if (score >= 0.3*scoremax) level = "em5";
+      else if (sum > 4) level = "em3";
+      else level = "em2";
+      
+      String form = tok.form.replace(' ', '_');
+      String title = "";
+      if(right) title += (int)tok.count2+" | "+ (int)tok.count;
+      else  title += (int)tok.count+" | "+ (int)tok.count2;
+      title += " occurremces";
+      sb.append("<a id=\"tok"+tok.pos+"\" class=\""+type+" "+form+" "+level+"\" title=\""+title+"\">");
+      sb.append(text.substring(tok.start, tok.end));
+      sb.append("</a>");
+      off = tok.end;
+    }
+    sb.append(text.substring(off)); // do not forget end
+    return sb.toString();
+  }
   /**
    * Returns the local Lucene int docId of the document.
    * @return
@@ -190,16 +290,38 @@ public class Doc
   }
   
   /**
-   * Return the count of tokens of this doc for field.
-   * @param field
-   * @return
-   * @throws IOException
+   * Count occurences of terms in the doc
    */
-  public int length(String field) throws IOException
+  public int freq(final String field, final String[] forms) throws NoSuchFieldException, IOException
   {
-    return alix.docOccs(field)[this.docId];
+    if (forms == null || forms.length < 1) return 0;
+    Arrays.sort(forms); // may optimize term seekink, useful for uniq
+    Terms tvek = getTermVector(field);
+    if (!tvek.hasFreqs()) {
+      throw new NoSuchFieldException("Missing freqs in TermVector for field="+field+" docId="+docId);
+    }
+    int freq = 0;
+    TermsEnum tenum = tvek.iterator();
+    if (tenum == null) {
+      throw new NoSuchFieldException("Missing freqs in TermVector for field="+field+" docId="+docId);
+    }
+    PostingsEnum postings = null;
+    String last = null;
+    if (tenum.next() != null) { // if not, Exception: DocsEnum not started
+      for (String form: forms) {
+        if (form.equals(last)) continue; // uniq
+        BytesRef ref = new BytesRef(form);
+        if (!tenum.seekExact(ref)) continue;
+        // set and get a postings to this tenum, should be there, before will not work 
+        postings = tenum.postings(postings, PostingsEnum.FREQS);
+        if(postings.nextDoc() != PostingsEnum.NO_MORE_DOCS) { // if not, Exception: DocsEnum not started
+          freq += postings.freq();
+        }
+        last = form;
+      }
+    }
+    return freq;
   }
-
   /**
    * Get contents of a field as String.
    * 
@@ -237,56 +359,71 @@ public class Doc
   }
 
   /**
-   * 
-   * @param field
-   * @return
-   * @throws IOException 
-   * @throws NoSuchFieldException 
+   * Get count 
    */
-  public String paint(final String field) throws NoSuchFieldException, IOException
-  {
-    Terms tvek = getTermVector(field);
-    String text = get(field);
-    final DocHiliter rail = new DocHiliter(tvek, null, FrDics.STOP_BYTES);
-    final int countMax = rail.countMax;
-    final Token[] toks = rail.toks;
-    final StringBuilder sb = new StringBuilder();
-    //loop on all token of text
-    int off = 0;
-    for (int i = 0, len = toks.length; i < len; i++) {
-      final Token tok = toks[i];
-      final int count = tok.count;
-      
-      final String form = tok.form;
-      sb.append(text.substring(off, tok.start)); // append text before token
-      // change boldness
-      String level;
-      if (count == 1) level = "em1";
-      else if (count < 4) level = "em2";
-      else if (count >= 0.6*countMax) level = "em9";
-      else if (count >= 0.3*countMax) level = "em5";
-      else level = "em3";
-      
-      String title = "";
-      title += count+" occurremces";
-      sb.append("<a id=\"tok"+tok.pos+"\" class=\""+csstok(form)+" "+level+"\" title=\""+title+"\">");
-      sb.append(text.substring(tok.start, tok.end));
-      sb.append("</a>");
-      off = tok.end;
-    }
-    sb.append(text.substring(off)); // do not forget end
-    return sb.toString();
-  }  
-
+  
   static public String csstok(String form) {
     return form.replaceAll("[ \\.<>&\"']", "_");
   }
   
-  public String contrast(final String field, final int docId2) throws IOException, NoSuchFieldException
+  public String hilite(final String field, final String[] terms) throws NoSuchFieldException, IOException
   {
-    return contrast(field, docId2, false);
+    if (terms == null || terms.length < 1) {
+      return get(field);
+    }
+    Automaton automaton = WordsAutomatonBuilder.buildFronStrings(terms);
+    ByteRunAutomaton include = new ByteRunAutomaton(automaton);
+    return hilite(field, include);
   }
+  /**
+   * Hilite search in a stored document as html.
+   * @param field
+   * @throws IOException 
+   * @throws NoSuchFieldException 
+   */
+  public String hilite(final String field, final ByteRunAutomaton include) throws NoSuchFieldException, IOException
+  {
+    Terms tvek = getTermVector(field);
+    String text = get(field);
+    DocHiliter rail = new DocHiliter(tvek, include, null);
+    final Token[] toks = rail.toks;
+    StringBuilder sb = new StringBuilder();
   
+    int offset = 0;
+    final int lim = toks.length;
+    for (int i = 0; i < lim; i++) {
+      Token tok = toks[i];
+      sb.append(text.substring(offset, tok.start));
+      sb.append("<mark class=\"mark\" id=\"pos"+(tok.pos)+"\">");
+      if (i > 0) sb.append("<a href=\"#pos"+(toks[i-1].pos)+"\" onclick=\"location.replace(this.href); return false;\" class=\"prev\">◀</a> ");
+      sb.append("<b>");
+      sb.append(text.substring(tok.start, tok.end));
+      sb.append("</b>");
+      if (i < lim - 1) sb.append(" <a href=\"#pos"+(toks[i+1].pos)+"\" onclick=\"location.replace(this.href); return false;\" class=\"next\">▶</a>");
+      sb.append("</mark>");
+      offset = tok.end;
+    }
+    sb.append(text.substring(offset));
+    
+    int length = text.length();
+    sb.append("<nav id=\"ruloccs\"><div>\n");
+    final DecimalFormat dfdec1 = new DecimalFormat("0.#", ensyms);
+    for (int i = 0; i < lim; i++) {
+      Token tok = toks[i];
+      offset = tok.start;
+      sb.append("<a href=\"#pos"+(tok.pos)+"\" style=\"top: "+dfdec1.format(100.0 * offset / length)+"%\"> </a>\n");
+    }
+    sb.append("</div></nav>\n");
+    return sb.toString();
+  }
+  /**
+   * Returns the persistent String id of the document.
+   * @return
+   */
+  public String id()
+  {
+    return id;
+  }
   /**
    * Get the search shared between 2 documents
    * @param field
@@ -299,9 +436,9 @@ public class Doc
   {
     Terms vek2 = alix.reader().getTermVector(docId2, field);
     Top<String> top = new Top<String>(100);
-    int[] docLength = alix.docOccs(field);
-    int len1 = docLength[docId];
-    int len2 = docLength[docId2];
+    FieldText ftext = alix.fieldText(field);
+    int len1 = ftext.docOccs(docId);
+    int len2 = ftext.docOccs(docId2);
     Terms vek1 = getTermVector(field);
     // double max1 = Double.MIN_VALUE;
     // double max2 = Double.MIN_VALUE;
@@ -335,102 +472,6 @@ public class Doc
       top.push(count1 + count2, form);
     }
     return top;
-  }
-  
-  /**
-   * 
-   * @param field
-   * @param docId2
-   * @param right 
-   * @return
-   * @throws IOException
-   * @throws NoSuchFieldException
-   */
-  public String contrast(final String field, final int docId2, final boolean right) throws IOException, NoSuchFieldException
-  {
-    String text = get(field);
-    StringBuilder sb = new StringBuilder();
-
-    int[] docLength = alix.docOccs(field);
-    int length1 = docLength[docId];
-    int length2 = docLength[docId2];
-    Terms vek1 = getTermVector(field);
-    Terms vek2 = alix.reader().getTermVector(docId2, field);
-    TermsEnum termit1 = vek1.iterator();
-    BytesRef term1;
-    TermsEnum termit2 = vek2.iterator();
-    BytesRef term2 = termit2.next();
-    ArrayList<Token> offsets = new ArrayList<Token>();
-    PostingsEnum postings = null;
-    // loop on search source, compare with dest
-    double max1 = Double.MIN_VALUE;
-    double max2 = Double.MIN_VALUE;
-    CharsAtt att = new CharsAtt();
-    while(termit1.next() != null) {
-      // termit1.ord(); UnsupportedOperationException
-      final int count1 = (int)termit1.totalTermFreq();
-      term1 = termit1.term();
-      String form = term1.utf8ToString();
-      att.setEmpty().append(form);
-      if (FrDics.isStop(att)) continue;
-
-      int count2 = 0;
-      while(true) {
-        if (term2 == null) break;
-        int comp = term1.compareTo(term2);
-        if (comp < 0) break; // term2 is bigger, get it after
-        if (comp == 0) { // match
-          count2 = (int) termit2.totalTermFreq();
-          break;
-        }
-        term2 = termit2.next();
-      }
-      if (max1 < count1) max1 = count1;
-      if (max2 < count2) max2 = count2;
-      // loop on positions to get offset
-      postings = termit1.postings(postings, PostingsEnum.OFFSETS);
-      while(postings.nextDoc() != PostingsEnum.NO_MORE_DOCS) {
-        int pos = -1;
-        for (int freq = postings.freq(); freq > 0; freq --) {
-          pos = postings.nextPosition();
-          offsets.add(new Token(pos, postings.startOffset(), postings.endOffset(), form, count1, count2));
-        }
-      }
-    }
-    Collections.sort(offsets); // sort offsets before hilite
-    int off = 0;
-    final double scoremax = max1/length1 + max2/length2;
-    for (int i = 0, size = offsets.size(); i < size; i++) {
-      Token tok = offsets.get(i);
-      double count1 = tok.count;
-      double count2 = tok.count2;
-      // skip token
-      if (count2 == 0 && count1 < 2) continue;
-      sb.append(text.substring(off, tok.start)); // append text before token
-      String type = "tokshared";
-      // specific to this doc
-      if (count2 == 0) type = "tokspec"; 
-      // change boldness
-      double score = count1/length1 + count2/length2;
-      double sum = count1 + count2;
-      String level = "em1";
-      if (score >= 0.6*scoremax) level = "em9";
-      else if (score >= 0.3*scoremax) level = "em5";
-      else if (sum > 4) level = "em3";
-      else level = "em2";
-      
-      String form = tok.form.replace(' ', '_');
-      String title = "";
-      if(right) title += (int)tok.count2+" | "+ (int)tok.count;
-      else  title += (int)tok.count+" | "+ (int)tok.count2;
-      title += " occurremces";
-      sb.append("<a id=\"tok"+tok.pos+"\" class=\""+type+" "+form+" "+level+"\" title=\""+title+"\">");
-      sb.append(text.substring(tok.start, tok.end));
-      sb.append("</a>");
-      off = tok.end;
-    }
-    sb.append(text.substring(off)); // do not forget end
-    return sb.toString();
   }
   
   /**
@@ -485,56 +526,7 @@ public class Doc
     return lines.toArray();
   }
 
-  public String hilite(final String field, final String[] terms) throws NoSuchFieldException, IOException
-  {
-    if (terms == null || terms.length < 1) {
-      return get(field);
-    }
-    Automaton automaton = WordsAutomatonBuilder.buildFronStrings(terms);
-    ByteRunAutomaton include = new ByteRunAutomaton(automaton);
-    return hilite(field, include);
-  }
-  /**
-   * Hilite search in a stored document as html.
-   * @param field
-   * @throws IOException 
-   * @throws NoSuchFieldException 
-   */
-  public String hilite(final String field, final ByteRunAutomaton include) throws NoSuchFieldException, IOException
-  {
-    Terms tvek = getTermVector(field);
-    String text = get(field);
-    DocHiliter rail = new DocHiliter(tvek, include, null);
-    final Token[] toks = rail.toks;
-    StringBuilder sb = new StringBuilder();
-
-    int offset = 0;
-    final int lim = toks.length;
-    for (int i = 0; i < lim; i++) {
-      Token tok = toks[i];
-      sb.append(text.substring(offset, tok.start));
-      sb.append("<mark class=\"mark\" id=\"pos"+(tok.pos)+"\">");
-      if (i > 0) sb.append("<a href=\"#pos"+(toks[i-1].pos)+"\" onclick=\"location.replace(this.href); return false;\" class=\"prev\">◀</a> ");
-      sb.append("<b>");
-      sb.append(text.substring(tok.start, tok.end));
-      sb.append("</b>");
-      if (i < lim - 1) sb.append(" <a href=\"#pos"+(toks[i+1].pos)+"\" onclick=\"location.replace(this.href); return false;\" class=\"next\">▶</a>");
-      sb.append("</mark>");
-      offset = tok.end;
-    }
-    sb.append(text.substring(offset));
-    
-    int length = text.length();
-    sb.append("<nav id=\"ruloccs\"><div>\n");
-    final DecimalFormat dfdec1 = new DecimalFormat("0.#", ensyms);
-    for (int i = 0; i < lim; i++) {
-      Token tok = toks[i];
-      offset = tok.start;
-      sb.append("<a href=\"#pos"+(tok.pos)+"\" style=\"top: "+dfdec1.format(100.0 * offset / length)+"%\"> </a>\n");
-    }
-    sb.append("</div></nav>\n");
-    return sb.toString();
-  }
+  
   
   /*
   String text = document.get(TEXT);
@@ -566,6 +558,77 @@ public class Doc
   */
   //
   
+  /**
+   * Return the count of tokens of this doc for field.
+   * @param field
+   * @return
+   * @throws IOException
+   */
+  public int length(String field) throws IOException
+  {
+    return alix.fieldText(field).docOccs(docId);
+  }
+  /**
+   * Create the More like This search from a PriorityQueue
+   */
+  static public Query moreLikeThis(String field, Top<String> top, int words) {
+    BooleanQuery.Builder query = new BooleanQuery.Builder();
+    // double max = top.max();
+    for (Top.Entry<String> entry: top) {
+      // if (entry.score() <= 0) break;
+      Query tq = new TermQuery(new Term(field, entry.value()));
+      /*
+      if (boost) {
+        float factor = (float)(boostFactor * entry.score() / max);
+        tq = new BoostQuery(tq, factor);
+      }
+      */
+      query.add(tq, BooleanClause.Occur.SHOULD);
+      if (--words < 0) break;
+    }
+    return query.build();
+  }
+  /**
+   * 
+   * @param field
+   * @return
+   * @throws IOException 
+   * @throws NoSuchFieldException 
+   */
+  public String paint(final String field) throws NoSuchFieldException, IOException
+  {
+    Terms tvek = getTermVector(field);
+    String text = get(field);
+    final DocHiliter rail = new DocHiliter(tvek, null, FrDics.STOP_BYTES);
+    final int countMax = rail.countMax;
+    final Token[] toks = rail.toks;
+    final StringBuilder sb = new StringBuilder();
+    //loop on all token of text
+    int off = 0;
+    for (int i = 0, len = toks.length; i < len; i++) {
+      final Token tok = toks[i];
+      final int count = tok.count;
+      
+      final String form = tok.form;
+      sb.append(text.substring(off, tok.start)); // append text before token
+      // change boldness
+      String level;
+      if (count == 1) level = "em1";
+      else if (count < 4) level = "em2";
+      else if (count >= 0.6*countMax) level = "em9";
+      else if (count >= 0.3*countMax) level = "em5";
+      else level = "em3";
+      
+      String title = "";
+      title += count+" occurremces";
+      sb.append("<a id=\"tok"+tok.pos+"\" class=\""+csstok(form)+" "+level+"\" title=\""+title+"\">");
+      sb.append(text.substring(tok.start, tok.end));
+      sb.append("</a>");
+      off = tok.end;
+    }
+    sb.append(text.substring(off)); // do not forget end
+    return sb.toString();
+  }
   /**
    * Count of occurrences by term for the document. Returns an iterator sorted according 
    * to a scorer. If scorer is null, default is count of occurences.
@@ -615,27 +678,6 @@ public class Doc
     }
     // add some more stats on this iterator
     return results;
-  }
-
-  /**
-   * Create the More like This search from a PriorityQueue
-   */
-  static public Query moreLikeThis(String field, Top<String> top, int words) {
-    BooleanQuery.Builder query = new BooleanQuery.Builder();
-    // double max = top.max();
-    for (Top.Entry<String> entry: top) {
-      // if (entry.score() <= 0) break;
-      Query tq = new TermQuery(new Term(field, entry.value()));
-      /*
-      if (boost) {
-        float factor = (float)(boostFactor * entry.score() / max);
-        tq = new BoostQuery(tq, factor);
-      }
-      */
-      query.add(tq, BooleanClause.Occur.SHOULD);
-      if (--words < 0) break;
-    }
-    return query.build();
   }
 
 }

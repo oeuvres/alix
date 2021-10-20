@@ -44,7 +44,6 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -90,7 +89,7 @@ public class FieldText
   /** Global number of docs relevant for this field */
   public int docsAll;
   /** By document, count of occurrences for this field (for stats), different from docLenghth (empty positions) */
-  public final int[] docOccs;
+  protected final int[] docOccs;
   /** Store and populate the search and get the id */
   public final BytesRefHash formDic;
   /** By formId, count of docs, for all field */
@@ -129,6 +128,12 @@ public class FieldText
       throw new IllegalArgumentException("Field \"" + fieldName + "\" of type " + options + " has no FREQS (see IndexOptions)");
     }
     this.reader = reader;
+    /*
+     Array in docId order, with the total number of tokens by doc. 
+     Term vector cost 1 s. / 1000 books and is not precise. 
+     Norms for similarity is not enough precise (1 byte) see SimilarityBase.computeNorm()
+     https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/apache/lucene/search/similarities/SimilarityBase.java#L185
+    */
     docOccs = new int[reader.maxDoc()];
     final FixedBitSet docs =  new FixedBitSet(reader.maxDoc()); // used to count exactly docs with more than one term
     this.fname = fieldName;
@@ -239,21 +244,17 @@ public class FieldText
   }
   
   /**
-   * How many docs for this formId ?
-   * @param formId
+   * Total count of occurrences (except empty positions) for doc
    * @return
    */
-  public int docs(int formId)
+  public int docOccs(final int docId)
   {
-    return formDocsAll[formId];
+    return docOccs[docId];
   }
 
-  /**
-   * Because a sorted query will not calculate scores, here is something 
-   * to have stats for docs about a query.
-   * @throws IOException 
-   */
-  public DocStats docStats(String[] forms, Scorer scorer, final BitSet filter) throws IOException 
+  /*
+   * not very efficient way to get occs for a query
+  public DocStats docStats(String[] forms, final BitSet filter) throws IOException 
   {
     if (forms == null || forms.length == 0) return null;
     int[] freqs = new int[reader.maxDoc()];
@@ -288,6 +289,7 @@ public class FieldText
     }
     return new DocStats(freqs, scores);
   }
+  */
 
   /**
    * Get stats by formId from a subset of documents, useful for scoring inside a slice of corpus.
@@ -340,6 +342,19 @@ public class FieldText
   }
 
   /**
+   * Is this formId a StopWord ?
+   * @param formId
+   * @return
+   */
+  public boolean isStop(int formId)
+  {
+    if (formId >= formStop.length()) return false; // outside the set bits, shoul be not a stop word
+    return formStop.get(formId);
+  }
+
+
+
+  /**
    * Get String value for a formId.
    * @param formId
    * @return
@@ -360,6 +375,16 @@ public class FieldText
   public BytesRef form(int formId, BytesRef bytes)
   {
     return this.formDic.get(formId, bytes);
+  }
+
+  /**
+   * How many docs for this formId ?
+   * @param formId
+   * @return
+   */
+  public int formDocs(int formId)
+  {
+    return formDocsAll[formId];
   }
 
   /**
@@ -408,22 +433,11 @@ public class FieldText
   }
   
   /**
-   * Is this formId a StopWord ?
+   * How many occs for this term ?
    * @param formId
    * @return
    */
-  public boolean isStop(int formId)
-  {
-    if (formId >= formStop.length()) return false; // outside the set bits, shoul be not a stop word
-    return formStop.get(formId);
-  }
-
-  /**
-   * How many freqs for this term ?
-   * @param formId
-   * @return
-   */
-  public long occs(int formId)
+  public long formOccs(int formId)
   {
     return formOccsAll[formId];
   }
@@ -433,7 +447,7 @@ public class FieldText
    * 
    * @param s
    */
-  public long occs(final String s)
+  public long formOccs(final String s)
   {
     final BytesRef bytes = new BytesRef(s);
     final int id = formDic.find(bytes);
@@ -446,7 +460,7 @@ public class FieldText
    * 
    * @param bytes
    */
-  public long occs(final BytesRef bytes)
+  public long formOccs(final BytesRef bytes)
   {
     final int id = formDic.find(bytes);
     if (id < 0) return -1;
@@ -608,72 +622,6 @@ public class FieldText
     return hashDic;
   }
 
-
-  public class DocStats 
-  {
-    /** count of occurences matches */
-    private final int[] docOccs;
-    /** a calculated score according to a formula */
-    private final double[] docScore;
-    /** count of doc sets */
-    int cardinality = -1;
-    /** useful for graphics */
-    double scoreMax;
-    /** useful for graphics */
-    double scoreMin;
-    
-    DocStats (final int[] docOccs, final double[] docScore) {
-      this.docOccs = docOccs;
-      this.docScore = docScore;
-    }
-    
-    public double score(final int docId) {
-      return docScore[docId];
-    }
-  
-    public int occs(final int docId) 
-    {
-      return docOccs[docId];
-    }
-    
-    public int cardinality()
-    {
-      if (cardinality < 0) stats();
-      return cardinality;
-    }
-  
-    public double scoreMax()
-    {
-      if (cardinality < 0) stats();
-      return scoreMax;
-    }
-  
-    public double scoreMin()
-    {
-      if (cardinality < 0) stats();
-      return scoreMin;
-    }
-  
-    /** 
-     * Calculate minimum stats for the series
-     */
-    private void stats() 
-    {
-      int cardinality = 0;
-      double scoreMax = Double.MIN_VALUE;
-      double scoreMin = Double.MAX_VALUE;
-      for (int docId = 0, docMax = docOccs.length; docId < docMax; docId++) {
-        int occs = docOccs[docId];
-        if (occs < 1) continue;
-        cardinality++;
-        if (docScore[docId] > scoreMax) scoreMax = docScore[docId];
-        if (docScore[docId] < scoreMin) scoreMin = docScore[docId];
-      }
-      this.cardinality = cardinality;
-      this.scoreMax = scoreMax;
-      this.scoreMin = scoreMin;
-    }
-  }
 
   /**
    * A temporary record used to sort collected terms from global index.

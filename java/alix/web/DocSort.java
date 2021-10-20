@@ -32,18 +32,59 @@
  */
 package alix.web;
 
+import java.io.IOException;
+
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopDocsCollector;
+import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.similarities.Similarity;
 
 import alix.lucene.Alix;
+import alix.lucene.search.SimilarityG;
+import alix.lucene.search.SimilarityOccs;
 
 public enum DocSort implements Option
 {
-  score("Pertinence", null),
-  year("Année (+ ancien)", new Sort(new SortField("year", SortField.Type.INT))),
-  year_inv("Année (+ récent)", new Sort(new SortField("year", SortField.Type.INT, true))),
-  author("Auteur (A-Z)", new Sort(new SortField(Alix.ID, SortField.Type.STRING))),
-  author_inv("Auteur (Z-A)", new Sort(new SortField(Alix.ID, SortField.Type.STRING, true))),
+  score(
+    "Score", 
+    null, 
+    null
+  ),
+  g(
+    "Score (G-Test)",
+    null,
+    new SimilarityG()
+  ),
+  occs(
+    "Occurrences", 
+    null, 
+    new SimilarityOccs()
+  ),
+  year(
+    "Année (+ ancien)",
+    new Sort(new SortField("year", SortField.Type.INT)),
+    null
+  ),
+  year_inv(
+    "Année (+ récent)",
+    new Sort(new SortField("year", SortField.Type.INT, true)), 
+    null
+  ),
+  author(
+    "Auteur (A-Z)", 
+    new Sort(new SortField(Alix.ID, SortField.Type.STRING)),
+    null
+  ),
+  author_inv(
+    "Auteur (Z-A)", 
+    new Sort(new SortField(Alix.ID, SortField.Type.STRING, true)),
+    null
+  ),
   //freq("Fréquence"),
   // "tf-idf", "bm25", "dfi_chi2", "dfi_std", "dfi_sat", 
   // "lmd", "lmd0.1", "lmd0.7", "dfr", "ib"
@@ -51,15 +92,61 @@ public enum DocSort implements Option
   // "LMD", "LMD λ=0.1", "LMD λ=0.7", "DFR", "IB"
   ;
   public final Sort sort;
-  final public String label;
-  private DocSort(final String label, final Sort sort)
+  public final Similarity sim;
+  public final String label;
+  private DocSort(final String label, final Sort sort, final Similarity sim)
   {
     this.label = label;
     this.sort = sort;
+    this.sim = sim;
   }
-  public Sort sort()
+  
+  /**
+   * Get a top docs with no limit (for paging)
+   * 
+   * @param searcher
+   * @param query
+   * @return
+   * @throws IOException 
+   */
+  public TopDocs top(IndexSearcher searcher, Query query) throws IOException
   {
-    return sort;
+    final int totalHitsThreshold = Integer.MAX_VALUE;
+    final int numHits = searcher.getIndexReader().maxDoc();
+    TopDocsCollector<?> collector = null;
+    if (sort != null) {
+      collector = TopFieldCollector.create(sort, numHits, totalHitsThreshold);
+    }
+    else {
+      collector = TopScoreDocCollector.create(numHits, totalHitsThreshold);
+    }
+    searcher.search(query, collector);
+    return collector.topDocs();
+  }
+  
+  /**
+   * 
+   * @param searcher
+   * @param query
+   * @param limit
+   * @return
+   * @throws IOException
+   */
+  public TopDocs top(IndexSearcher searcher, Query query, int limit) throws IOException
+  {
+    if (sort != null) {
+      return searcher.search(query, limit, sort);
+    }
+    else if (sim != null) {
+      Similarity oldSim = searcher.getSimilarity();
+      searcher.setSimilarity(sim);
+      TopDocs top = searcher.search(query, limit);
+      searcher.setSimilarity(oldSim);
+      return top;
+    }
+    else {
+      return searcher.search(query, limit);
+    }
   }
   public String label() { return label; }
   public String hint() { return ""; }

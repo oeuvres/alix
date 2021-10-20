@@ -146,7 +146,7 @@ public class TermList implements Iterable<Term>
     }
     else {
       long freq = 1;
-      if (dic != null) freq = dic.occs(term.bytes());
+      if (dic != null) freq = dic.formOccs(term.bytes());
       // unknow term
       if (freq < 1) return;
       data.add(new Entry(term, ord, row, col, freq));

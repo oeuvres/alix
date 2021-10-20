@@ -103,7 +103,7 @@ public class FieldFacet
   /** The field type */
   public final DocValuesType type;
   /** Name of the field for text, source of different value counts */
-  public final FieldText fieldText;
+  public final FieldText ftext;
   /** Store and populate the search */
   protected final BytesRefHash formDic;
   /** All facetId in alphabetic order */
@@ -144,7 +144,7 @@ public class FieldFacet
   public FieldFacet(final Alix alix, final String facet, final String text, final Term coverTerm) throws IOException
   {
     // final int[] docOccs = new int[reader.maxDoc()];
-    this.fieldText = alix.fieldText(text);
+    this.ftext = alix.fieldText(text);
     FieldInfo info = alix.info(facet);
     if (info == null) {
       throw new IllegalArgumentException("Field \"" + facet + "\" is not known in this index.");
@@ -171,7 +171,7 @@ public class FieldFacet
     formDocsAll = new int[32];
     formCover = new int[32];
 
-    int[] docOccs = alix.docOccs(text); // length of each doc for the text field
+    int[] docOccs = ftext.docOccs; // length of each doc for the text field
     this.docOccs = docOccs;
     // this.docLength = docLength;
     // max int for an array collecttor
@@ -344,7 +344,7 @@ public class FieldFacet
       for (String f: search) {
         if (f == null) continue;
         if (f.isEmpty()) continue;
-        terms.add(new Term(fieldText.fname, f));
+        terms.add(new Term(ftext.fname, f));
       }
     }
     boolean hasScorer = (scorer != null);
@@ -365,10 +365,10 @@ public class FieldFacet
     // loop by term is better for some stats
     for (Term term : terms) {
       // long[] formPartOccs = new long[size]; // a vector to count matched occurrences for this term, by facet
-      final int formId = fieldText.formId(term.bytes());
+      final int formId = ftext.formId(term.bytes());
       // shall we do something here if word not known ?
       if (formId < 1) continue;
-      if (hasScorer) scorer.idf(occsAll, docsAll, fieldText.formOccsAll[formId], fieldText.formDocsAll[formId]);
+      if (hasScorer) scorer.idf(occsAll, docsAll, ftext.formOccsAll[formId], ftext.formDocsAll[formId]);
       // loop on the reader leaves (opening may have disk cost)
       for (LeafReaderContext context : reader.leaves()) {
         LeafReader leaf = context.reader();

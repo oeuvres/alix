@@ -63,9 +63,9 @@ public class Scale
   /** An optional corpus as a set of docIds */
   private final BitSet filter;
   /** Field name, type: NumericDocValuesField, for int values */
-  public final String fieldInt;
+  public final FieldInt fint;
   /** Field name, type. TextField, for text occurrences */
-  public final String fieldText;
+  public final FieldText ftext;
   /** Count of docs */
   public final int docs;
   /** Data, sorted in fieldInt order, used to write an axis */
@@ -88,8 +88,8 @@ public class Scale
   {
     this.alix = alix;
     this.filter = filter;
-    this.fieldInt = fieldInt;
-    this.fieldText = fieldText;
+    this.fint = alix.fieldInt(fieldInt, fieldText);
+    this.ftext = alix.fieldText(fieldText);
     IndexReader reader = alix.reader();
     int card;
     if (filter == null) card = reader.maxDoc();
@@ -98,7 +98,7 @@ public class Scale
     Tick[] byValue = new Tick[card];
     Tick[] byDocid = new Tick[card];
     int ord = 0; // pointer in the array of axis
-    int[] docLength = alix.docOccs(fieldText);
+    int[] docLength = ftext.docOccs;
     int min = Integer.MAX_VALUE;
     int max = Integer.MIN_VALUE;
     int last = -1;
