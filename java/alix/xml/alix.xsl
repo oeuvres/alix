@@ -42,16 +42,16 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
   <xsl:param name="filename"/>
   <!-- Get metas as a global var to insert fields in all chapters -->
   <xsl:variable name="info">
-    <alix:field name="title" type="facet" value="{normalize-space($doctitle)}"/>
+    <alix:field name="title" type="category" value="{normalize-space($doctitle)}"/>
     <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:titleStmt">
       <xsl:for-each select="tei:author|tei:principal">
         <xsl:variable name="value">
           <xsl:apply-templates select="." mode="key"/>
         </xsl:variable>
         <xsl:if test="position() = 1">
-          <alix:field name="author1" type="facet" value="{normalize-space($value)}"/>
+          <alix:field name="author1" type="category" value="{normalize-space($value)}"/>
         </xsl:if>
-        <alix:field name="author" type="facets" value="{normalize-space($value)}"/>
+        <alix:field name="author" type="facet" value="{normalize-space($value)}"/>
       </xsl:for-each>
     </xsl:for-each>
     <xsl:if test="$byline != ''">
@@ -248,7 +248,7 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
           <alix:field name="year" type="int" value="{$bookyear}"/>
         </xsl:when>
       </xsl:choose>
-      <alix:field name="type" type="string" value="{@type}"/>
+      <alix:field name="type" type="category" value="{@type}"/>
       <alix:field name="bibl" type="meta">
         <xsl:call-template name="bibl"/>
       </alix:field>

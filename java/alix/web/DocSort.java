@@ -50,21 +50,16 @@ import alix.lucene.search.SimilarityOccs;
 
 public enum DocSort implements Option
 {
-  score(
+ score(
     "Score", 
     null, 
     null
   ),
-  g(
-    "Score (G-Test)",
-    null,
-    new SimilarityG()
-  ),
   occs(
-    "Occurrences", 
-    null, 
-    new SimilarityOccs()
-  ),
+      "Occurrences", 
+      null, 
+      new SimilarityOccs()
+    ),
   year(
     "Année (+ ancien)",
     new Sort(new SortField("year", SortField.Type.INT)),
@@ -84,6 +79,11 @@ public enum DocSort implements Option
     "Auteur (Z-A)", 
     new Sort(new SortField(Alix.ID, SortField.Type.STRING, true)),
     null
+  ),
+  g(
+      "Score (G-Test)",
+      null,
+      new SimilarityG()
   ),
   //freq("Fréquence"),
   // "tf-idf", "bm25", "dfi_chi2", "dfi_std", "dfi_sat", 
@@ -119,6 +119,14 @@ public enum DocSort implements Option
     }
     else {
       collector = TopScoreDocCollector.create(numHits, totalHitsThreshold);
+    }
+    if (sim != null) {
+      Similarity oldSim = searcher.getSimilarity();
+      searcher.setSimilarity(sim);
+      searcher.search(query, collector);
+      TopDocs top = collector.topDocs();
+      searcher.setSimilarity(oldSim);
+      return top;
     }
     searcher.search(query, collector);
     return collector.topDocs();

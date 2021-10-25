@@ -24,7 +24,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.SAXException;
 
 import alix.lucene.Alix;
-import alix.lucene.SrcFormat;
 import alix.lucene.XMLIndexer;
 import alix.lucene.analysis.FrAnalyzer;
 import alix.lucene.analysis.FrDics;
@@ -97,6 +96,9 @@ public class Load {
       FrDics.load(dicfile);
     }
 
+    // set a local xsl to generate alix:document
+    String xsl = props.getProperty("xsl");
+    
     
     File dstdir;
     prop = props.getProperty("dstdir");
@@ -147,7 +149,7 @@ public class Load {
     Alix alix = Alix.instance( name, tmpPath, new FrAnalyzer(), null);
     // Alix alix = Alix.instance(path, "org.apache.lucene.analysis.core.WhitespaceAnalyzer");
     IndexWriter writer = alix.writer();
-    XMLIndexer.index(writer, globs.toArray(new String[globs.size()]), SrcFormat.tei, threads);
+    XMLIndexer.index(writer, globs.toArray(new String[globs.size()]), threads, xsl);
     System.out.println("["+APP+"] "+name+" Merging");
     writer.commit();
     writer.close(); // close lucene index before indexing rail (for coocs)
@@ -204,7 +206,7 @@ public class Load {
     }
     if (i >= args.length) {
       System.out.println("["+APP+"] usage");
-      System.out.println("WEB-INF$ java -cp lib/alix.jar bases/base_props.xml");
+      System.out.println("WEB-INF$ java -cp lib/* bases/base_props.xml");
       System.exit(1);
     }
     for(; i < args.length; i++) {

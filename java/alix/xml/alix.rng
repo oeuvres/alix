@@ -7,7 +7,7 @@
   xmlns:a="http://relaxng.org/ns/compatibility/annotations/1.0" 
   xmlns:h="http://www.w3.org/1999/xhtml"
 >
-  <a:documentation>Alix, schema of xml to ingest</a:documentation>
+  <a:documentation>Alix, schema of xml to ingest in lucene</a:documentation>
   <div xmlns="http://www.w3.org/1999/xhtml">
     <p>
       This Relax-NG schema defines the XML tags understood by Alix to ingest text documents (articles, books…) in a <a href="https://lucene.apache.org/core/">Lucene</a> index.
@@ -158,8 +158,8 @@ According to Lucene model, there are 3 levels of objects inside Alix.
       <ref name="field-meta"/>
       <ref name="field-store"/>
       <ref name="field-int"/>
+      <ref name="field-category"/>
       <ref name="field-facet"/>
-      <ref name="field-facets"/>
     </choice>
   </define>
   <define name="field-text">
@@ -220,22 +220,22 @@ in bibliographic records by token.
       </attribute>
     </element>
   </define>
-  <define name="field-facet">
+  <define name="field-category">
     <element name="field">
       <a:documentation>A term, unique for field name by document (ex: title), used as a classifier (also available for retrieve as a stored field).</a:documentation>
       <ref name="name"/>
       <attribute name="type">
-        <value>facet</value>
+        <value>category</value>
       </attribute>
       <attribute name="value"/>
     </element>
   </define>
-  <define name="field-facets">
+  <define name="field-facet">
     <element name="field">
       <a:documentation>Set of terms by document (ex: author) used as a classifier for the collection (also available for retrieve as a stored field).</a:documentation>
       <ref name="name"/>
       <attribute name="type">
-        <value>facets</value>
+        <value>facet</value>
       </attribute>
       <attribute name="value"/>
     </element>

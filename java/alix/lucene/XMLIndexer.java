@@ -39,11 +39,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -150,6 +151,7 @@ public class XMLIndexer implements Runnable
     }
     while (it.hasNext()) {
       File file = it.next();
+      if (file == null) continue; // duplicates may have been nulled
       String filename = file.getName();
       filename = filename.substring(0, filename.lastIndexOf('.'));
       byte[] bytes = null;
@@ -214,8 +216,12 @@ public class XMLIndexer implements Runnable
    */
   synchronized public File next()
   {
-    if (!it.hasNext()) return null;
-    return it.next();
+    File f;
+    // some duplicated files may be null
+    while (it.hasNext() && (f = it.next()) != null) {
+      return f;
+    }
+    return null;
   }
 
   /**
@@ -248,61 +254,64 @@ public class XMLIndexer implements Runnable
     System.exit(1);
   }
 
-  /**
-   * Wrapper for simple glob.
-   * 
-   * @param writer
-   * @param glob
-   * @throws IOException
-   * @throws InterruptedException
-   * @throws ParserConfigurationException
-   * @throws SAXException
-   * @throws TransformerException 
-   * @throws InstantiationException
-   * @throws IllegalAccessException
-   * @throws IllegalArgumentException
-   * @throws InvocationTargetException
-   * @throws NoSuchMethodException
-   * @throws SecurityException
-   */
-  static public void index(final IndexWriter writer, String glob) throws ParserConfigurationException, SAXException, InterruptedException, IOException, TransformerException
-  {
-    final int threads = Runtime.getRuntime().availableProcessors() - 1;
-    index(writer, new String[] { glob }, SrcFormat.alix, threads);
-  }
-
-  static public void index(final IndexWriter writer, String glob, final SrcFormat format)
-      throws ParserConfigurationException, SAXException, InterruptedException,
-      IOException, TransformerException
-  {
-    final int threads = Runtime.getRuntime().availableProcessors() - 1;
-    index(writer, new String[] { glob }, format, threads);
-  }
-
-  static public void index(final IndexWriter writer, String[] globs, final SrcFormat format)
-      throws ParserConfigurationException, SAXException, InterruptedException,
-      IOException, TransformerException
-  {
-    final int threads = Runtime.getRuntime().availableProcessors() - 1;
-    index(writer, globs, format, threads);
-  }
-
+  
   /**
    * Recursive indexation of an XML folder, multi-threadeded.
    * @throws TransformerException 
    */
-  static public void index(final IndexWriter writer, final String[] globs, SrcFormat format, int threads)
-      throws ParserConfigurationException, SAXException, InterruptedException,
-      IOException, TransformerException
+  static public void index(
+    final IndexWriter writer,
+    final String[] globs,
+    int threads,
+    String xsl
+  ) throws ParserConfigurationException, SAXException, InterruptedException, IOException, TransformerException
   {
-    if (format == null) format = SrcFormat.alix; // direct alix xml alix:document/alix:field
 
-    info("["+Alix.NAME+"]"+ " format=\"" + format + "\"" + " threads=" + threads + " globs=\"" + String.join(", ", globs) + "\""+ " lucene=\"" + writer.getDirectory() + "\"");
+    // compile XSLT, maybe it could be done before?
+    Templates templates = null;
+    if (xsl == "alix");
+    else if (xsl == "tei") {
+      JarResolver resloader = new JarResolver();
+      XSLFactory.setURIResolver(resloader);
+      StreamSource xsltSrc = new StreamSource(resloader.resolve("alix.xsl"));
+      templates = XSLFactory.newTemplates(xsltSrc);
+    }
+    else if (xsl != null) {
+      if (!new File(xsl).exists()) {
+        throw new FileNotFoundException("\n["+Alix.NAME+"] XSL file not found: "+ xsl);
+      }
+      StreamSource xsltSrc = new StreamSource(xsl);
+      templates = XSLFactory.newTemplates(xsltSrc);
+    }
+
+    info("["+Alix.NAME+"]"+ " format=\"" + xsl + "\"" + " threads=" + threads + " globs=\"" + String.join(", ", globs) + "\""+ " lucene=\"" + writer.getDirectory() + "\"");
     // preload dictionaries
     List<File> files = null;
     for (String glob : globs) {
       files = Dir.ls(glob, files); // CopyOnWriteArrayList produce some duplicates
     }
+    // check if repeated filename
+    Map<String, Integer> hash = new HashMap<String, Integer>();
+    int diff = 0;
+    for (int i = 0, size = files.size(); i < size; i++) {
+      File f = files.get(i);
+      String filename = f.getName();
+      filename = filename.substring(0, filename.lastIndexOf('.'));
+      if (hash.containsKey(filename)) {
+        info("Duplicated filename "+filename+", old replaced by new");
+        int oldi = hash.get(filename) - diff;
+        info(files.get(oldi));
+        files.set(oldi, null);
+        // do not remove now, it shift the series
+        info(f);
+        hash.replace(filename, i);
+      }
+      else {
+        hash.put(filename, i);
+      }
+    }
+    // nicer list, remove null
+    while(files.remove(null));
     Collections.sort(files);
     if (files.size() < 1) {
       throw new FileNotFoundException("\n["+Alix.NAME+"] No file found to index globs=\""+ String.join(", ", globs) + "\"");
@@ -312,14 +321,8 @@ public class XMLIndexer implements Runnable
     
     Iterator<File> it = files.iterator();
 
-    // compile XSLT, maybe it could be done before?
-    Templates templates = null;
-    if (format == SrcFormat.tei) {
-      JarResolver resloader = new JarResolver();
-      XSLFactory.setURIResolver(resloader);
-      StreamSource xsltSrc = new StreamSource(resloader.resolve("alix.xsl"));
-      templates = XSLFactory.newTemplates(xsltSrc);
-    }
+    
+    
     // one thread, try it as static to start
     if (threads == 1) {
       XMLIndexer.write(writer, it, templates);

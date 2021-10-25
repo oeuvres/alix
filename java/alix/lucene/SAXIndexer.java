@@ -84,8 +84,8 @@ public class SAXIndexer extends DefaultHandler
   final static String META = "meta";
   final static String STORE = "store";
   final static String INT = "int";
+  final static String CATEGORY = "category";
   final static String FACET = "facet";
-  final static String FACETS = "facets";
   /** Lucene writer */
   private final IndexWriter writer;
   /** Current file processed */
@@ -241,9 +241,10 @@ public class SAXIndexer extends DefaultHandler
       String id = attributes.getValue("http://www.w3.org/XML/1998/namespace", "id");
       document.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
       if (id == null || id.trim().equals("")) {
-        document.add(new StringField(Alix.ID, id, Store.YES));
-        document.add(new SortedDocValuesField(Alix.ID, new BytesRef(id)));
+        throw new SAXException("<alix:document xml:id=\"REQUIRED\"> A document needs an id for recall.");
       }
+      document.add(new StringField(Alix.ID, id, Store.YES));
+      document.add(new SortedDocValuesField(Alix.ID, new BytesRef(id)));
       document.add(new StringField(Alix.TYPE, DocType.article.name(), Store.YES));
     }
     // open a field
@@ -306,15 +307,15 @@ public class SAXIndexer extends DefaultHandler
           doc.add(new StoredField(name, val)); // to show
           doc.add(new NumericDocValuesField(name, val)); // to sort
           break;
-        case FACET:
+        case CATEGORY:
           if (value == null)
-            throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"facet\"");
+            throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"A category\"");
           doc.add(new SortedDocValuesField(name, new BytesRef(value)));
           doc.add(new StoredField(name, value));
           break;
-        case FACETS:
+        case FACET:
           if (value == null)
-            throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"facets\"");
+            throw new SAXException("<alix:field name=\""+name+"\"> A field of type=\"" + type + "\" must have an attribute value=\"A facet\"");
           doc.add(new SortedSetDocValuesField(name, new BytesRef(value)));
           doc.add(new StoredField(name, value));
           break;

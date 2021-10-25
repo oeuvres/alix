@@ -44,13 +44,8 @@ import java.util.Locale;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
@@ -395,11 +390,11 @@ public class Doc
       Token tok = toks[i];
       sb.append(text.substring(offset, tok.start));
       sb.append("<mark class=\"mark\" id=\"pos"+(tok.pos)+"\">");
-      if (i > 0) sb.append("<a href=\"#pos"+(toks[i-1].pos)+"\" onclick=\"location.replace(this.href); return false;\" class=\"prev\">◀</a> ");
+      if (i > 0) sb.append("<a href=\"#pos"+(toks[i-1].pos)+"\" onclick=\"location.replace(this.href); return false;\" class=\"prev\">◀</a>");
       sb.append("<b>");
       sb.append(text.substring(tok.start, tok.end));
       sb.append("</b>");
-      if (i < lim - 1) sb.append(" <a href=\"#pos"+(toks[i+1].pos)+"\" onclick=\"location.replace(this.href); return false;\" class=\"next\">▶</a>");
+      if (i < lim - 1) sb.append("<a href=\"#pos"+(toks[i+1].pos)+"\" onclick=\"location.replace(this.href); return false;\" class=\"next\">▶</a>");
       sb.append("</mark>");
       offset = tok.end;
     }
@@ -568,26 +563,7 @@ public class Doc
   {
     return alix.fieldText(field).docOccs(docId);
   }
-  /**
-   * Create the More like This search from a PriorityQueue
-   */
-  static public Query moreLikeThis(String field, Top<String> top, int words) {
-    BooleanQuery.Builder query = new BooleanQuery.Builder();
-    // double max = top.max();
-    for (Top.Entry<String> entry: top) {
-      // if (entry.score() <= 0) break;
-      Query tq = new TermQuery(new Term(field, entry.value()));
-      /*
-      if (boost) {
-        float factor = (float)(boostFactor * entry.score() / max);
-        tq = new BoostQuery(tq, factor);
-      }
-      */
-      query.add(tq, BooleanClause.Occur.SHOULD);
-      if (--words < 0) break;
-    }
-    return query.build();
-  }
+
   /**
    * 
    * @param field
