@@ -168,8 +168,7 @@ public class Alix
   public static final FieldType ftypeMeta = new FieldType();
   static {
     ftypeMeta.setTokenized(true); // token
-    // freqs required, position needed for co-occurrences
-    ftypeMeta.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    ftypeMeta.setIndexOptions(IndexOptions.DOCS_AND_FREQS); // no position needed 
     ftypeMeta.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
     ftypeMeta.setStoreTermVectors(false); // no vectors, hilite done by anlalyzer
     ftypeMeta.setStored(false); // TokenStream fields cannot be stored 
@@ -778,6 +777,8 @@ u   * @throws IOException
     ts.reset();
     try {
       while (ts.incrementToken()) {
+        // empty token ? bad analyzer
+        if (token.length() == 0) continue;
         // a negation term
         if (token.charAt(0) == '-') continue;
         String word;

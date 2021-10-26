@@ -158,7 +158,8 @@ public class XMLIndexer implements Runnable
       // read file as fast as possible to release disk resource for other threads
       bytes = Files.readAllBytes(file.toPath());
       // info("bytes="+bytes.length);
-      info(filename + "                               ".substring(Math.min(25, filename.length() + 2)) + file.getParent());
+      // info(filename + "                               ".substring(Math.min(25, filename.length() + 2)) + file.getParent());
+      info(file.getParent()+"/    "+filename);
       handler.setFileName(filename);
       if (transformer != null) {
         StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));

@@ -68,6 +68,5 @@ public class FrAnalyzer extends Analyzer
     else result = new FlagCloudFilter(result, pun); // select lemmas as term to index
     return new TokenStreamComponents(source, result);
   }
-  
 
 }

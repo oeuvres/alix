@@ -64,4 +64,5 @@ public class AnalyzerReuseControl extends Analyzer
   {
     return analyzer.normalize(fieldName, in);
   }
+
 }

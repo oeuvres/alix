@@ -70,7 +70,7 @@ import alix.lucene.SAXIndexer;
  * 
  */
 
-public class AlixReuseStrategy extends ReuseStrategy
+public class AlixReuseStrategy extends ReuseStrategy 
 {
   @Override
   public TokenStreamComponents getReusableComponents(Analyzer analyzer, String fieldName)
@@ -84,5 +84,4 @@ public class AlixReuseStrategy extends ReuseStrategy
   {
     setStoredValue(analyzer, components);
   }
-
 }
