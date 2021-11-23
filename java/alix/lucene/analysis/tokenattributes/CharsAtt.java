@@ -117,103 +117,6 @@ public class CharsAtt extends AttributeImpl
     System.arraycopy(buffer, offset, chars, 0, len);
   }
 
-  @Override
-  public final void copyBuffer(char[] buffer, int offset, int length)
-  {
-    growTermBuffer(length);
-    System.arraycopy(buffer, offset, chars, 0, length);
-    len = length;
-  }
-
-  @Override
-  public final char[] buffer()
-  {
-    return chars;
-  }
-
-  @Override
-  public final char[] resizeBuffer(int newSize)
-  {
-    if (chars.length < newSize) {
-      // Not big enough; create a new array with slight
-      // over allocation and preserve content
-      final char[] newCharBuffer = new char[ArrayUtil.oversize(newSize, Character.BYTES)];
-      System.arraycopy(chars, 0, newCharBuffer, 0, chars.length);
-      chars = newCharBuffer;
-    }
-    return chars;
-  }
-
-  private void growTermBuffer(int newSize)
-  {
-    hash = 0;
-    if (chars.length < newSize) {
-      // Not big enough; create a new array with slight
-      // over allocation:
-      chars = new char[ArrayUtil.oversize(newSize, Character.BYTES)];
-    }
-  }
-
-  @Override
-  public final CharsAtt setLength(int length)
-  {
-    hash = 0;
-    if (length < 0) {
-      len += length;
-      if (len < 0) throw new IndexOutOfBoundsException("len < "+-length);
-      return this;
-    }
-    FutureObjects.checkFromIndexSize(0, length, chars.length);
-    len = length;
-    return this;
-  }
-
-  @Override
-  public final CharsAtt setEmpty()
-  {
-    hash = 0;
-    len = 0;
-    return this;
-  }
-
-  /**
-   * Test if there is no chars registred.
-   * @return
-   */
-  public final boolean isEmpty()
-  {
-    return (len == 0);
-  }
-  
-  // *** TermToBytesRefAttribute interface ***
-  @Override
-  public BytesRef getBytesRef()
-  {
-    builder.copyChars(chars, 0, len);
-    return builder.get();
-  }
-
-  // *** CharSequence interface ***
-  @Override
-  public final int length()
-  {
-    return len;
-  }
-
-  @Override
-  public final char charAt(int index)
-  {
-    FutureObjects.checkIndex(index, len);
-    return chars[index];
-  }
-
-  @Override
-  public final CharSequence subSequence(final int start, final int end)
-  {
-    FutureObjects.checkFromToIndex(start, end, len);
-    return new String(chars, start, end - start);
-  }
-
   // *** Appendable interface ***
   @Override
   public final CharTermAttribute append(CharSequence csq)
@@ -314,6 +217,124 @@ public class CharsAtt extends AttributeImpl
     return this;
   }
   
+  private CharTermAttribute appendNull()
+  {
+    hash = 0;
+    resizeBuffer(len + 4);
+    chars[len++] = 'n';
+    chars[len++] = 'u';
+    chars[len++] = 'l';
+    chars[len++] = 'l';
+    return this;
+  }
+
+  @Override
+  public final char[] buffer()
+  {
+    return chars;
+  }
+
+  /**
+   * Try to capitalize (initial capital only) decently,
+   * according to some rules available in latin language.
+   * ex: états-unis -&gt; États-Unis.
+   * @return
+   */
+  public CharsAtt capitalize()
+  {
+    hash = 0;
+    if (len == 0) return this;
+    char last = ' ';
+    char c = chars[0];
+    if (Char.isLowerCase(c)) chars[0] = Character.toUpperCase(c);
+    for (int i = 1; i < len; i++) {
+      c = chars[i];
+      if (last == '-' ) {
+        if (Char.isLowerCase(c)) chars[i] = Character.toUpperCase(c);
+      }
+      else if (Char.isUpperCase(c)) {
+        chars[i] = Character.toLowerCase(c);
+      }
+      last = c;
+    }
+    return this;
+  }
+
+  @Override
+  public final char charAt(int index)
+  {
+    FutureObjects.checkIndex(index, len);
+    return chars[index];
+  }
+
+  @Override
+  public void clear()
+  {
+    hash = 0;
+    len = 0;
+  }
+
+  @Override
+  public CharsAtt clone()
+  {
+    CharsAtt t = (CharsAtt) super.clone();
+    // Do a deep clone
+    t.chars = new char[this.len];
+    System.arraycopy(this.chars, 0, t.chars, 0, this.len);
+    t.builder = new BytesRefBuilder();
+    t.builder.copyBytes(builder.get());
+    t.hash = 0;
+    return t;
+  }
+
+  /**
+   * String comparison, add efficiency in a HashMap in case of hash code collisions.
+   * @param string
+   * @return
+   */
+  @Override
+  public int compareTo(String string)
+  {
+    char[] chars = this.chars;
+    int lim = Math.min(len, string.length());
+    for (int offset = 0; offset < lim; offset++) {
+      char c1 = chars[offset];
+      char c2 = string.charAt(offset);
+      if (c1 != c2) {
+        return c1 - c2;
+      }
+    }
+    return len - string.length();
+  }
+
+  public int compareTo(CharsAtt o)
+  {
+    char[] chars1 = chars;
+    char[] chars2 = o.chars;
+    int lim = Math.min(len, o.len);
+    for (int offset = 0; offset < lim; offset++) {
+      char c1 = chars1[offset];
+      char c2 = chars2[offset];
+      if (c1 != c2) {
+        return c1 - c2;
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * 
+   * @param c
+   * @return
+   */
+  public boolean contains(final char c)
+  {
+    for (int i = 0; i < len; i++) {
+      if (c == chars[i]) return true;
+    }
+    return false;
+  }
+
   /**
    * Copy a {@link CharTermAttribute} in the buffer.
    * @param ta
@@ -346,78 +367,19 @@ public class CharsAtt extends AttributeImpl
     return this;
   }
 
-  private CharTermAttribute appendNull()
-  {
-    hash = 0;
-    resizeBuffer(len + 4);
-    chars[len++] = 'n';
-    chars[len++] = 'u';
-    chars[len++] = 'l';
-    chars[len++] = 'l';
-    return this;
-  }
-  
-  /**
-   * Convert all chars from the buffer to lower case.
-   * To avoid default JDK conversion,
-   * some efficiency come from tests with the {@link Char}.
-   * @return
-   */
-  public CharsAtt toLower()
-  {
-    hash = 0;
-    char c;
-    for (int i = 0; i < len; i++) {
-      c = chars[i];
-      if (!Char.isUpperCase(c)) continue;
-      chars[i] = Character.toLowerCase(c);
-    }
-    return this;
-  }
-
-  /**
-   * Try to capitalize (initial capital only) decently,
-   * according to some rules available in latin language.
-   * ex: états-unis -&gt; États-Unis.
-   * @return
-   */
-  public CharsAtt capitalize()
-  {
-    hash = 0;
-    if (len == 0) return this;
-    char last = ' ';
-    char c = chars[0];
-    if (Char.isLowerCase(c)) chars[0] = Character.toUpperCase(c);
-    for (int i = 1; i < len; i++) {
-      c = chars[i];
-      if (last == '-' ) {
-        if (Char.isLowerCase(c)) chars[i] = Character.toUpperCase(c);
-      }
-      else if (Char.isUpperCase(c)) {
-        chars[i] = Character.toLowerCase(c);
-      }
-      last = c;
-    }
-    return this;
-  }
   @Override
-  public void clear()
+  public void copyTo(AttributeImpl target)
   {
-    hash = 0;
-    len = 0;
+    CharTermAttribute t = (CharTermAttribute) target;
+    t.copyBuffer(chars, 0, len);
   }
 
   @Override
-  public CharsAtt clone()
+  public final void copyBuffer(char[] buffer, int offset, int length)
   {
-    CharsAtt t = (CharsAtt) super.clone();
-    // Do a deep clone
-    t.chars = new char[this.len];
-    System.arraycopy(this.chars, 0, t.chars, 0, this.len);
-    t.builder = new BytesRefBuilder();
-    t.builder.copyBytes(builder.get());
-    t.hash = 0;
-    return t;
+    growTermBuffer(length);
+    System.arraycopy(buffer, offset, chars, 0, length);
+    len = length;
   }
 
   /**
@@ -446,28 +408,6 @@ public class CharsAtt extends AttributeImpl
   {
     if (len < 1) return false;
     return (chars[len -1] == c);
-  }
-  
-  /**
-   * 
-   * @param c
-   * @return
-   */
-  public boolean contains(final char c)
-  {
-    for (int i = 0; i < len; i++) {
-      if (c == chars[i]) return true;
-    }
-    return false;
-  }
-
-  /**
-   * Get last char
-   * @return
-   */
-  public char lastChar()
-  {
-    return chars[len -1];
   }
   
   @Override
@@ -519,40 +459,23 @@ public class CharsAtt extends AttributeImpl
     }
     else return false;
   }
-  
-  /**
-   * Change a char at a specific position.
-   * @param pos
-   * @param c
-   */
-  public void setCharAt(int pos, char c)
+
+  // *** TermToBytesRefAttribute interface ***
+  @Override
+  public BytesRef getBytesRef()
+  {
+    builder.copyChars(chars, 0, len);
+    return builder.get();
+  }
+
+  private void growTermBuffer(int newSize)
   {
     hash = 0;
-    chars[pos] = c;
-  }
-
-  /**
-   * Returns solely the term text as specified by the {@link CharSequence}
-   * interface.
-   */
-  @Override
-  public String toString()
-  {
-    return new String(chars, 0, len);
-  }
-
-  @Override
-  public void reflectWith(AttributeReflector reflector)
-  {
-    reflector.reflect(CharTermAttribute.class, "term", toString());
-    reflector.reflect(TermToBytesRefAttribute.class, "bytes", getBytesRef());
-  }
-
-  @Override
-  public void copyTo(AttributeImpl target)
-  {
-    CharTermAttribute t = (CharTermAttribute) target;
-    t.copyBuffer(chars, 0, len);
+    if (chars.length < newSize) {
+      // Not big enough; create a new array with slight
+      // over allocation:
+      chars = new char[ArrayUtil.oversize(newSize, Character.BYTES)];
+    }
   }
 
   /**
@@ -585,38 +508,117 @@ public class CharsAtt extends AttributeImpl
   }
 
   /**
-   * String comparison, add efficiency in a HashMap in case of hash code collisions.
-   * @param string
+   * Test if there is no chars registred.
    * @return
    */
-  @Override
-  public int compareTo(String string)
+  public final boolean isEmpty()
   {
-    char[] chars = this.chars;
-    int lim = Math.min(len, string.length());
-    for (int offset = 0; offset < lim; offset++) {
-      char c1 = chars[offset];
-      char c2 = string.charAt(offset);
-      if (c1 != c2) {
-        return c1 - c2;
-      }
-    }
-    return len - string.length();
+    return (len == 0);
   }
 
-  public int compareTo(CharsAtt o)
+  /**
+   * Get last char
+   * @return
+   */
+  public char lastChar()
   {
-    char[] chars1 = chars;
-    char[] chars2 = o.chars;
-    int lim = Math.min(len, o.len);
-    for (int offset = 0; offset < lim; offset++) {
-      char c1 = chars1[offset];
-      char c2 = chars2[offset];
-      if (c1 != c2) {
-        return c1 - c2;
-      }
+    return chars[len -1];
+  }
+  
+  // *** CharSequence interface ***
+  @Override
+  public final int length()
+  {
+    return len;
+  }
+
+  
+  @Override
+  public final char[] resizeBuffer(int newSize)
+  {
+    if (chars.length < newSize) {
+      // Not big enough; create a new array with slight
+      // over allocation and preserve content
+      final char[] newCharBuffer = new char[ArrayUtil.oversize(newSize, Character.BYTES)];
+      System.arraycopy(chars, 0, newCharBuffer, 0, chars.length);
+      chars = newCharBuffer;
     }
-    return 0;
+    return chars;
+  }
+
+  @Override
+  public void reflectWith(AttributeReflector reflector)
+  {
+    reflector.reflect(CharTermAttribute.class, "term", toString());
+    reflector.reflect(TermToBytesRefAttribute.class, "bytes", getBytesRef());
+  }
+
+  /**
+   * Change a char at a specific position.
+   * @param pos
+   * @param c
+   */
+  public void setCharAt(int pos, char c)
+  {
+    hash = 0;
+    chars[pos] = c;
+  }
+
+  @Override
+  public final CharsAtt setEmpty()
+  {
+    hash = 0;
+    len = 0;
+    return this;
+  }
+
+  @Override
+  public final CharsAtt setLength(int length)
+  {
+    hash = 0;
+    if (length < 0) {
+      len += length;
+      if (len < 0) throw new IndexOutOfBoundsException("len < "+-length);
+      return this;
+    }
+    FutureObjects.checkFromIndexSize(0, length, chars.length);
+    len = length;
+    return this;
+  }
+
+  @Override
+  public final CharSequence subSequence(final int start, final int end)
+  {
+    FutureObjects.checkFromToIndex(start, end, len);
+    return new String(chars, start, end - start);
+  }
+
+  /**
+   * Convert all chars from the buffer to lower case.
+   * To avoid default JDK conversion,
+   * some efficiency come from tests with the {@link Char}.
+   * @return
+   */
+  public CharsAtt toLower()
+  {
+    hash = 0;
+    char c;
+    for (int i = 0; i < len; i++) {
+      c = chars[i];
+      if (!Char.isUpperCase(c)) continue;
+      chars[i] = Character.toLowerCase(c);
+    }
+    return this;
+  }
+
+  /**
+   * Returns solely the term text as specified by the {@link CharSequence}
+   * interface.
+   */
+  @Override
+  public String toString()
+  {
+    return new String(chars, 0, len);
   }
 
 }

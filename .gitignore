@@ -5,4 +5,4 @@ _*
 .settings/
 *obvie*
 *.jardesc
-
+/.apt_generated/
