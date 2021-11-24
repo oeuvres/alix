@@ -19,5 +19,6 @@
 	<classpathentry kind="lib" path="lib/lucene-highlighter-8.10.1.jar"/>
 	<classpathentry kind="lib" path="ext/jsp-api_tomcat7.jar"/>
 	<classpathentry kind="lib" path="ext/servlet-api_tomcat7.jar"/>
+	<classpathentry kind="lib" path="ext/commons-math3-3.6.1.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>
