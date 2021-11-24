@@ -145,6 +145,10 @@ public class FrTokenizer extends Tokenizer
     TAGS.put(new CharsAtt("/section"), new CharsAtt("</section>"));
     TAGS.put(new CharsAtt("article"), new CharsAtt("<section>"));
     TAGS.put(new CharsAtt("/article"), new CharsAtt("</section>"));
+    TAGS.put(new CharsAtt("name"), new CharsAtt("<name>"));
+    TAGS.put(new CharsAtt("/name"), new CharsAtt("</name>"));
+    TAGS.put(new CharsAtt("persName"), new CharsAtt("<persName>"));
+    TAGS.put(new CharsAtt("/persName"), new CharsAtt("</persName>"));
   }
   /** tag content to skip */
   public static final HashMap<CharsAtt, CharsAtt> SKIP = new HashMap<CharsAtt, CharsAtt>();
@@ -231,16 +235,13 @@ public class FrTokenizer extends Tokenizer
       // a very light XML parser
       if (!xml) ;
       else if (c == '<') { // start tag
-        
-        /*
-        // a word was started, send it, ex Word<note>2</note>
+        // a word was started, send it, ex Word<note>2</note>, Dumas</name>
         if (length != 0) {
           bufIndex--;
-          // will exclude the 
+          // will exclude the <
           // offLast = offset - ltOffset;
           break;
         }
-        */
         // keep memory of start index of this tag
         ltOffset = offset + bufIndex - 1;
         intag = true;

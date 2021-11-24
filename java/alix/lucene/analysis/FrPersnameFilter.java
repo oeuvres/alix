@@ -82,11 +82,11 @@ public class FrPersnameFilter extends TokenFilter
   /** Current Flags */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
   /** Current term */
-  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  private final CharsAtt termAtt = (CharsAtt)addAttribute(CharTermAttribute.class);
   /** A normalized orthographic form */
-  private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
+  private final CharsAtt orthAtt = (CharsAtt)addAttribute(CharsOrthAtt.class);
   /** A lemma, needed to restore states */
-  private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
+  private final CharsAtt lemAtt = (CharsAtt)addAttribute(CharsLemAtt.class);
   /** An efficient stack of states  */
   private Roll<State> stack = new Roll<State>(8);
   /** A term used to concat names */
@@ -110,21 +110,28 @@ public class FrPersnameFilter extends TokenFilter
     exit = input.incrementToken();
     if (!exit) return false;
     // is it start of a name?
-    CharTermAttribute term = termAtt;
     FlagsAttribute flags = flagsAtt;
-    final int tag = flags.getFlags();
+    int tag = flags.getFlags();
     
     
-    if (Tag.NAME.sameParent(tag) && Char.isUpperCase(term.charAt(0))); // append names, but not titles
-    // else if (TITLES.contains(term)); // Saint, Maître…
+    if (Tag.NAME.sameParent(tag) && Char.isUpperCase(termAtt.charAt(0))); // append names, but not titles
+    else if (tag == Tag.SUBpers.flag); // Saint, Maître…
+    else if (tag == Tag.SUBplace.flag); // Rue, faubourg…
     else return true;
     
+    // Set final flag according to future events
+    if (flags.getFlags() == Tag.NAMEpersf.flag || flags.getFlags() == Tag.NAMEpersm.flag) {
+      tag= Tag.NAMEpers.flag;
+      flags.setFlags(tag); // if only a foreName, say it is a person
+    }
+    else if (flags.getFlags() == Tag.SUBpers.flag) tag= Tag.NAMEpers.flag;
+    else if (flags.getFlags() == Tag.SUBplace.flag) tag= Tag.NAMEplace.flag;
 
     // store state like it is in case of rewind
     stack.add(captureState());
     
-     // if (!orth.isEmpty()) name.copy(orth); // a previous filter may have set something good ?
-    name.copy(term);
+    if (!orthAtt.isEmpty()) name.copy(orthAtt); // a previous filter may have set something good, mlle > mademoisell
+    else name.copy(termAtt);
 
     // OffsetAttribute offset = offsetAtt;
     // record offsets
@@ -138,19 +145,26 @@ public class FrPersnameFilter extends TokenFilter
     int loop = -1;
     while ((exit = input.incrementToken())) {
       loop++;
+      
+      // Set final flag according to future events
+      if (flags.getFlags() == Tag.NAMEpersf.flag) tag= Tag.NAMEpers.flag;
+      else if (flags.getFlags() == Tag.NAMEpersm.flag) tag= Tag.NAMEpers.flag;
+      else if (flags.getFlags() == Tag.SUBpers.flag) tag= Tag.NAMEpers.flag;
+      else if (flags.getFlags() == Tag.SUBplace.flag) tag= Tag.NAMEplace.flag;
+
       // a particle, be careful to [Europe de l']atome
-      if (PARTICLES.contains(term)) {
+      if (PARTICLES.contains(termAtt)) {
         stack.add(captureState());
-        name.append(' ').append(term);
+        name.append(' ').append(termAtt);
         continue;
       }
       // a candidate name, append it
-      else if (Char.isUpperCase(term.charAt(0))) {
+      else if (Char.isUpperCase(termAtt.charAt(0))) {
         if (name.charAt(name.length()-1) != '\'') name.append(' ');
         // a previous filter may have set an alt value
         // but be careful to Frantz Fanon
         // if (!orth.isEmpty() && Char.isUpperCase(orth.charAt(0))) name.append(orth); 
-        name.append(term);
+        name.append(termAtt);
         lastlen = name.length();
         stack.clear(); // we can empty the stack here, sure there is something to resend
         endOffset = offsetAtt.endOffset(); // record endOffset for last Name
@@ -168,8 +182,8 @@ public class FrPersnameFilter extends TokenFilter
     }
     // at least one compound name to send
     name.setLength(lastlen);
-    flagsAtt.setFlags(Tag.NAME.flag);
-    term.setEmpty().append(name);
+    flagsAtt.setFlags(tag);
+    termAtt.setEmpty().append(name);
     orthAtt.setEmpty();
     lemAtt.setEmpty(); // the actual stop token may have set a lemma not relevant for names
     offsetAtt.setOffset(startOffset, endOffset);

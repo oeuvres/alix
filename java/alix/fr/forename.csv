@@ -8,6 +8,7 @@ PRENOM,GENRE
 # Aimée,NAMEpersf
 # Alexandria,NAMEpersf
 # Alexis,NAMEpersf
+# Amen,NAMEpersm
 # Ami,NAMEpersf
 # Amie,NAMEpersf
 # An,NAMEpers
@@ -33,7 +34,7 @@ PRENOM,GENRE
 # Bras,NAMEpersm
 # Byron,NAMEpersm
 # Cadence,NAMEpers
-Cal,NAMEpersm,Callahan
+# Cal,NAMEpersm,Callahan
 # Carroll,NAMEpersm
 # Castor,NAMEpersm
 # Céleste,NAMEpersf
@@ -803,7 +804,6 @@ Amélien,NAMEpersm
 Ameline,NAMEpersf
 Amély,NAMEpersf
 Amélyne,NAMEpersf
-Amen,NAMEpersm
 Amenhotep,NAMEpersm
 America,NAMEpersf
 Americo,NAMEpersm
@@ -4122,6 +4122,7 @@ Fancy,NAMEpersf
 Fane,NAMEpersm
 Fannie,NAMEpersf
 Fanny,NAMEpersf
+Fantine,NAMEpersf
 Faolán,NAMEpersm
 Farag,NAMEpersm
 Farah,NAMEpersf
@@ -4612,6 +4613,7 @@ Gauvain,NAMEpersm
 Gavin,NAMEpersm
 Gavino,NAMEpersm
 Gavrel,NAMEpersm
+Gavroche,NAMEpersm
 Gavriil,NAMEpersm
 Gavril,NAMEpersm
 Gawahir,NAMEpersf
@@ -11942,6 +11944,7 @@ Theodoros,NAMEpersm
 Theodosia,NAMEpersf
 Theodosius,NAMEpersm
 Theodotus,NAMEpersm
+Théodule,NAMEpersm
 Théophane,NAMEpersf
 Theophania,NAMEpersf
 Theophila,NAMEpersf

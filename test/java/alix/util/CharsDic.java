@@ -52,7 +52,7 @@ public class CharsDic
   {
     String line = new String(chars, 0, len - 1);
     String[] toks = line.split("\u0000");
-    // Arrays.sort(toks);
+    // Arrays.sort(toks); // very bad for efficiency
     return null;
     /*
     // Bad for efficiency

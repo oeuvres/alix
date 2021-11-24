@@ -203,7 +203,7 @@ public class TestAnalyzer
         System.out.print(
           term 
           + "\t" + orth  
-          + "\t" + Tag.label(flags.getFlags())
+          + "\t" + Tag.name(flags.getFlags())
           + "\t" + lem  
           + " |" + text.substring(offsets.startOffset(), offsets.endOffset()) + "|"
           + " " + offsets.startOffset() + "-" + offsets.endOffset()
