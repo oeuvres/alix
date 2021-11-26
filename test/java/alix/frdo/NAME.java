@@ -116,7 +116,7 @@ public class NAME
     while (toks.word(win.add())) {
       wn++;
       // le mot n’est pas attendu on continue;
-      if (!NODES.contains(win.get(0).orth())) {
+      if (!NODES.indexOf(win.get(0).orth())) {
         // if (win.get( 0 ).tag.isName()) win.get( 0 ).orth
         continue;
       }

@@ -33,6 +33,8 @@ import alix.lucene.analysis.FrLemFilter;
 import alix.lucene.analysis.FrPersnameFilter;
 import alix.lucene.analysis.FrTokenizer;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
+import alix.lucene.analysis.tokenattributes.CharsLemAtt;
+import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
 @Command(
   name = "Balinoms", 
@@ -41,6 +43,22 @@ import alix.lucene.analysis.tokenattributes.CharsAtt;
 )
 public class Balinoms implements Callable<Integer>
 {
+  static class Name implements Comparable<Name>
+  {
+    int count = 1;
+    int tag = Tag.NAME.flag;
+    String form;
+    Name(final String form) {
+      this.form = form;
+    }
+    public void inc() {
+      count++;
+    }
+    @Override
+    public int compareTo(Name o) {
+      return o.count - count;
+    }
+  }
   static class AnalyzerNames extends Analyzer
   {
   
@@ -55,6 +73,9 @@ public class Balinoms implements Callable<Integer>
   
   }
   static Analyzer anaNoms = new AnalyzerNames();
+  
+  Map<String, AtomicInteger> mapAll = new HashMap<>();
+  
   Map<String, AtomicInteger> mapName = new HashMap<>();
   Map<String, AtomicInteger> mapPers = new HashMap<>();
   Map<String, AtomicInteger> mapPlace = new HashMap<>();
@@ -71,6 +92,7 @@ public class Balinoms implements Callable<Integer>
       parse(new String(Files.readAllBytes(Paths.get(src.toString())), StandardCharsets.UTF_8),
           new PrintWriter(dest));
       ;
+      Files.write(Paths.get(src.getParent() + "/" + name + "_all.tsv"), top(mapAll, -1).getBytes("UTF-8"));
       Files.write(Paths.get(src.getParent() + "/" + name + "_name.tsv"), top(mapName, -1).getBytes("UTF-8"));
       Files.write(Paths.get(src.getParent() + "/" + name + "_place.tsv"), top(mapPlace, -1).getBytes("UTF-8"));
       Files.write(Paths.get(src.getParent() + "/" + name + "_pers.tsv"), top(mapPers, -1).getBytes("UTF-8"));
@@ -92,8 +114,10 @@ public class Balinoms implements Callable<Integer>
     TokenStream stream = anaNoms.tokenStream("stats", new StringReader(xml));
     int toks = 0;
     int begin= 0;
-    // get the CharTermAttribute from the TokenStream
-    final CharsAtt attChars = (CharsAtt)stream.addAttribute(CharTermAttribute.class);
+    // 
+    final CharsAtt termAtt = (CharsAtt)stream.addAttribute(CharTermAttribute.class);
+    final CharsAtt orthAtt = (CharsAtt)stream.addAttribute(CharsOrthAtt.class);
+    final CharsAtt lemAtt = (CharsAtt)stream.addAttribute(CharsLemAtt.class);
     final OffsetAttribute attOff = stream.addAttribute(OffsetAttribute.class);
     final FlagsAttribute attFlags = stream.addAttribute(FlagsAttribute.class);
     try {
@@ -106,24 +130,35 @@ public class Balinoms implements Callable<Integer>
         if (!Tag.NAME.sameParent(flag)) continue;
         out.print(xml.substring(begin, attOff.startOffset()));
         begin = attOff.endOffset();
-        if (Tag.NAMEpers.flag == flag || Tag.NAMEauthor.flag == flag || Tag.NAMEfict.flag == flag) {
-          out.print("<persName>");
-          out.write(attChars.buffer(), 0, attChars.length());
-          inc(mapPers, attChars);
-          out.print("</persName>");
-        }
-        else if (Tag.NAMEplace.flag == flag) {
+        inc(mapAll, lemAtt);
+        if (Tag.NAMEplace.flag == flag) {
           out.print("<placeName>");
-          out.write(attChars.buffer(), 0, attChars.length());
-          inc(mapPlace, attChars);
+          out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
           out.print("</placeName>");
+          inc(mapPlace, lemAtt);
         }
-        else  {
+        // personne
+        else if (Tag.NAMEpers.flag == flag || Tag.NAMEauthor.flag == flag || Tag.NAMEfict.flag == flag) {
+          out.print("<persName key=\""+lemAtt+"\">");
+          out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
+          out.print("</persName>");
+          inc(mapPers, lemAtt);
+        }
+        // non repéré supposé personne
+        else if (Tag.NAME.flag == flag) {
+          out.print("<persName key=\""+lemAtt+"\">");
+          out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
+          out.print("</persName>");
+          inc(mapPers, lemAtt);
+          inc(mapName, lemAtt);
+        }
+        else {
           out.print("<name>");
-          out.write(attChars.buffer(), 0, attChars.length());
-          inc(mapName, attChars);
+          out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
           out.print("</name>");
         }
+        
+        if (lemAtt.isEmpty()) System.out.println("term=" + termAtt + " orth=" + orthAtt + " lem=" + lemAtt);
       }
       
       stream.end();

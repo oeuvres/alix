@@ -56,12 +56,19 @@ import alix.lucene.analysis.FrDics;
 public class CharsAtt extends AttributeImpl
     implements CharTermAttribute, TermToBytesRefAttribute, Appendable, Cloneable, Comparable<String>
 {
+  /** The data */
+  private char[] chars;
+  /** The present size */
+  private int len = 0;
+  /** A mark set with @see #mark() */
+  private int mark = -1;
+  /** Keep memory of last len */
+  private int lastLen= 0;
   /** Cached hashCode */
   private int hash;
-  private static int MIN_BUFFER_SIZE = 10;
+  /** start size */
+  private final static int MIN_BUFFER_SIZE = 10;
 
-  private char[] chars;
-  private int len = 0;
 
   /**
    * May be used by subclasses to convert to different charsets / encodings for
@@ -119,18 +126,18 @@ public class CharsAtt extends AttributeImpl
 
   // *** Appendable interface ***
   @Override
-  public final CharTermAttribute append(CharSequence csq)
+  public final CharsAtt append(CharSequence csq)
   {
-    this.hash = 0;
     if (csq == null) // needed for Appendable compliance
       return appendNull();
     return append(csq, 0, csq.length());
   }
 
   @Override
-  public final CharTermAttribute append(CharSequence csq, int start, int end)
+  public final CharsAtt append(CharSequence csq, int start, int end)
   {
     hash = 0;
+    lastLen = len;
     // needed for Appendable compliance
     if (csq == null) csq = "null";
     // re-organize this?
@@ -172,9 +179,10 @@ public class CharsAtt extends AttributeImpl
   }
 
   @Override
-  public final CharTermAttribute append(char c)
+  public final CharsAtt append(char c)
   {
     hash = 0;
+    lastLen = len;
     resizeBuffer(len + 1)[len++] = c;
     return this;
   }
@@ -182,44 +190,48 @@ public class CharsAtt extends AttributeImpl
   // *** For performance some convenience methods in addition to CSQ's ***
 
   @Override
-  public final CharTermAttribute append(String s)
+  public final CharsAtt append(String s)
   {
     hash = 0;
     // needed for Appendable compliance
     if (s == null) return appendNull();
     final int length = s.length();
     s.getChars(0, length, resizeBuffer(this.len + length), this.len);
+    lastLen = len;
     this.len += length;
     return this;
   }
 
   @Override
-  public final CharTermAttribute append(StringBuilder s)
+  public final CharsAtt append(StringBuilder s)
   {
     hash = 0;
     // needed for Appendable compliance
     if (s == null) return appendNull();
     final int length = s.length();
     s.getChars(0, length, resizeBuffer(this.len + length), this.len);
+    lastLen = len;
     this.len += length;
     return this;
   }
 
   @Override
-  public final CharTermAttribute append(final CharTermAttribute ta)
+  public final CharsAtt append(final CharTermAttribute ta)
   {
     hash = 0;
     // needed for Appendable compliance
     if (ta == null) return appendNull();
     final int length = ta.length();
     System.arraycopy(ta.buffer(), 0, resizeBuffer(this.len + length), this.len, length);
+    lastLen = len;
     len += length;
     return this;
   }
   
-  private CharTermAttribute appendNull()
+  private CharsAtt appendNull()
   {
     hash = 0;
+    lastLen = len;
     resizeBuffer(len + 4);
     chars[len++] = 'n';
     chars[len++] = 'u';
@@ -271,6 +283,7 @@ public class CharsAtt extends AttributeImpl
   public void clear()
   {
     hash = 0;
+    lastLen = len;
     len = 0;
   }
 
@@ -323,27 +336,15 @@ public class CharsAtt extends AttributeImpl
   }
 
   /**
-   * 
-   * @param c
-   * @return
-   */
-  public boolean contains(final char c)
-  {
-    for (int i = 0; i < len; i++) {
-      if (c == chars[i]) return true;
-    }
-    return false;
-  }
-
-  /**
    * Copy a {@link CharTermAttribute} in the buffer.
    * @param ta
    * @return
    * @throws Exception 
    */
-  public final CharTermAttribute copy(CharTermAttribute ta)
+  public final CharsAtt copy(CharTermAttribute ta)
   {
     hash = 0;
+    lastLen = len;
     len = ta.length();
     System.arraycopy(ta.buffer(), 0, resizeBuffer(len), 0, len);
     return this;
@@ -356,12 +357,13 @@ public class CharsAtt extends AttributeImpl
    * @param ta
    * @return
    */
-  public final CharTermAttribute copy(BytesRef bytes)
+  public final CharsAtt copy(BytesRef bytes)
   {
     // content modified, reset hashCode
     hash = 0;
     // ensure buffer size at bytes length
     char[] chars = resizeBuffer(bytes.length);
+    lastLen = len;
     // get the length in chars after conversion
     this.len = UnicodeUtil.UTF8toUTF16(bytes.bytes, bytes.offset, bytes.length, chars);
     return this;
@@ -507,6 +509,20 @@ public class CharsAtt extends AttributeImpl
     return h;
   }
 
+  
+  /**
+   * 
+   * @param c
+   * @return -1 if not found or positive index if found
+   */
+  public int indexOf(final char c)
+  {
+    for (int i = 0; i < len; i++) {
+      if (c == chars[i]) return i;
+    }
+    return -1;
+  }
+
   /**
    * Test if there is no chars registred.
    * @return
@@ -525,6 +541,27 @@ public class CharsAtt extends AttributeImpl
     return chars[len -1];
   }
   
+  /**
+   * Find index of last occurrence of char
+   * @param c
+   * @return -1 if not found or positive index if found
+   */
+  public int lastIndexOf(final char c)
+  {
+    for (int i = len-1; i > 0; i--) {
+      if (c == chars[i]) return i;
+    }
+    return -1;
+  }
+
+  /**
+   * Size of chars before last operation
+   * @return
+   */
+  public final int lastLen()
+  {
+    return lastLen;
+  }
   // *** CharSequence interface ***
   @Override
   public final int length()
@@ -532,6 +569,15 @@ public class CharsAtt extends AttributeImpl
     return len;
   }
 
+  /**
+   * Record actual size of string to go back to this state with @see #rewind(),
+   * like @see java.io.Reader#mark(int).
+   */
+  public final CharsAtt mark()
+  {
+    mark = len;
+    return this;
+  }
   
   @Override
   public final char[] resizeBuffer(int newSize)
@@ -554,6 +600,18 @@ public class CharsAtt extends AttributeImpl
   }
 
   /**
+   * Restore String size like it was recorded with last @see #mark().
+   * If no mark has been set, nothing is done.
+   * Used mark is deleted, explicit @see #mark() is needed to record this state.
+   * Works a bit like @see java.io.Reader#reset() with a less confusing name.
+   */
+  public final CharsAtt rewind()
+  {
+    if (this.mark > -1) this.len = this.mark;
+    this.mark = -1; // 
+    return this;
+  }
+  /**
    * Change a char at a specific position.
    * @param pos
    * @param c
@@ -568,7 +626,9 @@ public class CharsAtt extends AttributeImpl
   public final CharsAtt setEmpty()
   {
     hash = 0;
+    lastLen = len;
     len = 0;
+    mark = -1; // unallow restore mark() ?
     return this;
   }
 
@@ -576,6 +636,7 @@ public class CharsAtt extends AttributeImpl
   public final CharsAtt setLength(int length)
   {
     hash = 0;
+    lastLen = len;
     if (length < 0) {
       len += length;
       if (len < 0) throw new IndexOutOfBoundsException("len < "+-length);
@@ -621,4 +682,13 @@ public class CharsAtt extends AttributeImpl
     return new String(chars, 0, len);
   }
 
+  /**
+   * If we can’t remember if @see #mark() has been set, ensure, reset it.
+   * @return
+   */
+  public final CharsAtt unmark()
+  {
+    mark = -1;
+    return this;
+  }
 }

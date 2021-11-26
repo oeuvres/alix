@@ -131,6 +131,14 @@ public class FrTokenizer extends Tokenizer
         "leur", "lui", "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y" })
       HYPHEN_POST.add(new CharsAtt(w));
   }
+  /*
+  public static final HashSet<CharsAtt> HYPHEN_ANTE = new HashSet<CharsAtt>();
+  static {
+    for (String w : new String[] { "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "la", "là", "le", "les",
+        "leur", "lui", "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y" })
+      HYPHEN_POST.add(new CharsAtt(w));
+  }
+  */
   /** tags to send as token events and translate */
   public static final HashMap<CharsAtt, CharsAtt> TAGS = new HashMap<CharsAtt, CharsAtt>();
   static {
@@ -460,6 +468,7 @@ public class FrTokenizer extends Tokenizer
     */
     // splitable hyphen ? split on souviens-toi, murmura-t-elle, but not
     // Joinville-le-Pont,
+    // Do not work on Allez-vous-en
     if (hyphOffset > 0 && HYPHEN_POST.contains(test)) {
       // swap search to store state of word after hyphen
       // Laisse-moi ! Réveille-le. eploi-t-il ?

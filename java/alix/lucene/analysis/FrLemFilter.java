@@ -79,13 +79,13 @@ import alix.util.Char;
 public final class FrLemFilter extends TokenFilter
 {
   /** The term provided by the Tokenizer */
-  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  private final CharsAtt termAtt = (CharsAtt)addAttribute(CharTermAttribute.class);
   /** A linguistic category as an int, from Tag */
   private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
   /** A lemma when possible */
-  private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
+  private final CharsAtt lemAtt = (CharsAtt)addAttribute(CharsLemAtt.class);
   /** A normalized orthographic form, so that original term is not modified at this step */
-  private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
+  private final CharsAtt orthAtt = (CharsAtt)addAttribute(CharsOrthAtt.class);
   /** Last token was Punctuation */
   private boolean waspun = true; // first word considered as if it follows a dot
   /** Store state */
@@ -116,19 +116,16 @@ public final class FrLemFilter extends TokenFilter
     }
     // end of stream
     if (!input.incrementToken()) return false;
-    // get a local version of orth
-    CharsAtt lem = (CharsAtt) lemAtt;
-    CharsAtt orth = (CharsAtt) orthAtt;
-    orth.copy(termAtt); // start with original term
+    orthAtt.copy(termAtt); // start with original term
     int flags = flagsAtt.getFlags();
     // pass through zero-length search
-    if (orth.length() == 0) return true;
+    if (orthAtt.length() == 0) return true;
     if (flags == Tag.PUNdiv.flag || flags == Tag.PUNsent.flag) {
       this.waspun = true;
       return true;
     }
     // Get first char
-    char c1 = orth.charAt(0);
+    char c1 = orthAtt.charAt(0);
     // Not a word
     if (!Char.isToken(c1)) return true;
     
@@ -140,26 +137,38 @@ public final class FrLemFilter extends TokenFilter
       
       // roman number already detected
       if (flagsAtt.getFlags() == Tag.NUM.flag) return true;
-      int n = Calcul.roman2int(orth.buffer(), 0, orth.length());
+      int n = Calcul.roman2int(orthAtt.buffer(), 0, orthAtt.length());
       if (n > 0) {
         flagsAtt.setFlags(Tag.NUM.flag);
-        orth.append(""+n);
+        orthAtt.append(""+n);
         return true;
       }
       // Do not touch to recognized ABBR, like O.N.
       // if (flagsAtt.getFlags() != Tag.ABBR) orth.capitalize(); // GRANDE-BRETAGNE -> Grande-Bretagne
-      FrDics.norm(orth); // normalise : Etat -> État
-      copy.copy(orth);
+      FrDics.norm(orthAtt); // normalise : Etat -> État
+      copy.copy(orthAtt);
       // c1 = orth.charAt(0); // keep initial cap, maybe useful
-      entry = FrDics.name(orth); // known name ?
+      entry = FrDics.name(orthAtt); // known name ?
       if (entry != null) {
         flagsAtt.setFlags(entry.tag);
         // maybe a normalized form for the name
-        if (entry.orth != null) orth.copy(entry.orth);
-        if (entry.lem != null) lem.copy(entry.lem);
+        if (entry.orth != null) orthAtt.copy(entry.orth);
+        if (entry.lem != null) lemAtt.copy(entry.lem);
         return true;
       }
-      entry = FrDics.word(orth.toLower()); // known word ?
+      // Charles-François-Bienvenu, Va-t’en, Allez-vous
+      int pos = orthAtt.indexOf('-');
+      if (pos > 0) {
+        int length = orthAtt.length();
+        orthAtt.setLength(pos);
+        entry = FrDics.name(orthAtt);
+        orthAtt.setLength(length);
+        if (entry != null) {
+          flagsAtt.setFlags(entry.tag);
+          return true;
+        }
+      }
+      entry = FrDics.word(orthAtt.toLower()); // known word ?
       if (entry != null) { // known word
         // if not after a pun, maybe a capitalized concept État, or a name La Fontaine, 
         // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc. 
@@ -168,25 +177,25 @@ public final class FrLemFilter extends TokenFilter
         flagsAtt.setFlags(entry.tag);
         if (entry.lem != null) lemAtt.setEmpty().append(entry.lem);
         if (entry.orth != null) {
-          orth.copy(entry.orth);
+          orthAtt.copy(entry.orth);
         }
         return true;
       }
       else { // unknown word, infer it's a NAME
         flagsAtt.setFlags(Tag.NAME.flag);
-        orth.copy(copy);
+        orthAtt.copy(copy);
         return true;
       }
     }
     else {
-      FrDics.norm(orth); // normalise oeil -> œil
-      entry = FrDics.word(orth);
+      FrDics.norm(orthAtt); // normalise oeil -> œil
+      entry = FrDics.word(orthAtt);
       if (entry == null) return true;
       // known word
       flagsAtt.setFlags(entry.tag);
       if (entry.lem != null) lemAtt.append(entry.lem);
       if (entry.orth != null) {
-        orth.copy(entry.orth);
+        orthAtt.copy(entry.orth);
       }
     }
     return true;

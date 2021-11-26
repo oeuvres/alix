@@ -2,7 +2,20 @@ GRAPH,TAG,ORTH
 
 # MONUMENT
 
+Bâtiment-Neuf,NAMEplace
+Bicêtre,NAMEplace
+Champs-Élysées,NAMEplace
+Châtelet,NAMEplace
+Filles-du-Calvaire,NAMEplace
+Haie-Sainte,NAMEplace
+Iéna,NAMEplace
 Louvre,NAMEplace
+Montmartre,NAMEplace
+Montparnasse,NAMEplace
+Nivelles,NAMEplace
+Petit-Picpus,NAMEplace
+Saint-Merry,NAMEplace
+Vaugirard,NAMEplace
 
 # AIRES
 
@@ -129,6 +142,7 @@ Ciudad Juárez,NAMEplace
 Columbia,NAMEplace
 Conakry,NAMEplace
 Córdoba,NAMEplace
+Corinthe,NAMEplace
 Curitiba,NAMEplace
 Dakar,NAMEplace
 Dalian,NAMEplace

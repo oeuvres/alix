@@ -213,7 +213,7 @@ public class FieldText
       formDocsAll[formId] = rec.docs;
       if (FrDics.isStop(bytes)) stopRecord.set(formId);
       chars.copy(bytes); // convert utf-8 bytes to utf-16 chars
-      if (chars.contains(' ')) formLoc.set(formId);
+      if (chars.indexOf(' ') < 0) formLoc.set(formId);
       LexEntry entry = FrDics.word(chars);
       if (entry != null) {
         formTag[formId] = entry.tag;

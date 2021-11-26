@@ -65,18 +65,6 @@ public class FrPersnameFilter extends TokenFilter
     for (String w : new String[] { "d'", "D'", "de", "De", "du", "Du", "l'", "L'", "le", "Le", "la", "La", "von", "Von" })
       PARTICLES.add(new CharsAtt(w));
   }
-  /** Titles */
-  public static final HashSet<CharsAtt> TITLES = new HashSet<CharsAtt>();
-  static {
-    for (String w : new String[] {
-      "abbé", "Abbé", "Baron", "baron", "capitaine", "commodore", "comte", "Comte", "dame", "docteur", "Docteur", "frère", "frères", "juge", 
-      "Lord", "lord", "Lieutenant", "lieutenant", 
-      "Madame", "madame", "maitre", "maître", "Maître", "Maitre", "Major", "major", "Miss", "miss", "mistress", "Mistress", 
-      "père", "padre", "Saint", "saint", "Sainte", "sainte", "sir",
-      "baie", "cap", "fosse", "ile", "île", "ilot", "îlot", "mont", "plateau", "Pointe", "pointe", "villa",
-    })
-      TITLES.add(new CharsAtt(w));
-  }
   /** Current char offset */
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
   /** Current Flags */
@@ -89,8 +77,12 @@ public class FrPersnameFilter extends TokenFilter
   private final CharsAtt lemAtt = (CharsAtt)addAttribute(CharsLemAtt.class);
   /** An efficient stack of states  */
   private Roll<State> stack = new Roll<State>(8);
-  /** A term used to concat names */
-  private CharsAtt name = new CharsAtt();
+  /** Chars used to concat names like in text */
+  private CharsAtt concTerm = new CharsAtt();
+  /** Chars used to concat names with some normalization, like M. > monsieur */
+  private CharsAtt concOrth = new CharsAtt();
+  /** Chars used to concat a candidate lemma for person: Mr A. Nom > Nom */
+  private CharsAtt concLem = new CharsAtt();
   /** Exit value */
   private boolean exit = false;
 
@@ -103,89 +95,115 @@ public class FrPersnameFilter extends TokenFilter
   @Override
   public boolean incrementToken() throws IOException
   {
+    // go ahead as record tokens to replay
     if (!stack.isEmpty()) {
       restoreState(stack.remove());
       return true;
     }
     exit = input.incrementToken();
     if (!exit) return false;
-    // is it start of a name?
-    FlagsAttribute flags = flagsAtt;
-    int tag = flags.getFlags();
     
-    
-    if (Tag.NAME.sameParent(tag) && Char.isUpperCase(termAtt.charAt(0))); // append names, but not titles
-    else if (tag == Tag.SUBpers.flag); // Saint, Maître…
-    else if (tag == Tag.SUBplace.flag); // Rue, faubourg…
-    else return true;
-    
-    // Set final flag according to future events
-    if (flags.getFlags() == Tag.NAMEpersf.flag || flags.getFlags() == Tag.NAMEpersm.flag) {
-      tag= Tag.NAMEpers.flag;
-      flags.setFlags(tag); // if only a foreName, say it is a person
+    final int flags = flagsAtt.getFlags();    
+    int tagEnd = flags; // ensure best tag for the name
+    // is a name starting ?
+    boolean nameFound = false;
+    // if a foreName, it is a person
+    if (flags == Tag.NAMEpersf.flag || flags == Tag.NAMEpersm.flag) {
+      tagEnd = Tag.NAMEpers.flag;
+      nameFound = true;
     }
-    else if (flags.getFlags() == Tag.SUBpers.flag) tag= Tag.NAMEpers.flag;
-    else if (flags.getFlags() == Tag.SUBplace.flag) tag= Tag.NAMEplace.flag;
+    // found as a name (capitalization resolved)
+    else if (Tag.NAME.sameParent(flags) && Char.isUpperCase(termAtt.charAt(0))) {
+      tagEnd = flags;
+      nameFound = true;
+    }
+    // possible candidates
+    else if (flags == Tag.SUBpers.flag) { // Madame, Maître…
+      tagEnd = Tag.NAMEpers.flag;
+      stack.add(captureState()); // store state in case of rewind (Monsieur Madeleine YES, Madame va bien ? NO)
+    }
+    else if (flags == Tag.SUBplace.flag) { // Rue, faubourg…
+      tagEnd = Tag.NAMEplace.flag;
+      stack.add(captureState()); // allow possibility to rewind
+    }
+    else return true; // no names, go out
 
-    // store state like it is in case of rewind
-    stack.add(captureState());
-    
-    if (!orthAtt.isEmpty()) name.copy(orthAtt); // a previous filter may have set something good, mlle > mademoisell
-    else name.copy(termAtt);
+    concTerm.setEmpty();
+    concOrth.setEmpty();
+    concLem.setEmpty();
+    // mark() is used in case of rewind [Europe] de l’]atome
+    concTerm.copy(termAtt).mark(); // record size
+    if (!orthAtt.isEmpty()) concOrth.copy(orthAtt).mark(); // a previous filter may have set something good, mlle > mademoiselle
+    else concOrth.copy(termAtt).mark();
+    if (flagsAtt.getFlags() == Tag.SUBpers.flag); // monsieur, madame, not the key
+    else if (!lemAtt.isEmpty()) concLem.copy(lemAtt).mark();
+    else concLem.copy(concOrth).mark();
 
-    // OffsetAttribute offset = offsetAtt;
     // record offsets
     final int startOffset = offsetAtt.startOffset();
     int endOffset = offsetAtt.endOffset();
     
     // test compound names : NAME (particle|NAME)* NAME
-    int lastlen = name.length();
-    boolean simpleName = true;
-    @SuppressWarnings("unused")
-    int loop = -1;
-    while ((exit = input.incrementToken())) {
-      loop++;
-      
-      // Set final flag according to future events
-      if (flags.getFlags() == Tag.NAMEpersf.flag) tag= Tag.NAMEpers.flag;
-      else if (flags.getFlags() == Tag.NAMEpersm.flag) tag= Tag.NAMEpers.flag;
-      else if (flags.getFlags() == Tag.SUBpers.flag) tag= Tag.NAMEpers.flag;
-      else if (flags.getFlags() == Tag.SUBplace.flag) tag= Tag.NAMEplace.flag;
 
+    boolean lastIsParticle = false;
+    while ((exit = input.incrementToken())) {
+      // always capture the go ahead token, stack will be empty if a name found
+      stack.add(captureState());
+      final int flags2 = flagsAtt.getFlags();
       // a particle, be careful to [Europe de l']atome
       if (PARTICLES.contains(termAtt)) {
-        stack.add(captureState());
-        name.append(' ').append(termAtt);
+        concTerm.append(" " + termAtt);
+        concOrth.append(" " + termAtt);
+        if (concLem.isEmpty()) concLem.append(termAtt); // Madame de Maintenon => "de Maintenon"
+        else concLem.append(" " + termAtt);
+        lastIsParticle = true;
         continue;
       }
-      // a candidate name, append it
-      else if (Char.isUpperCase(termAtt.charAt(0))) {
-        if (name.charAt(name.length()-1) != '\'') name.append(' ');
-        // a previous filter may have set an alt value
-        // but be careful to Frantz Fanon
-        // if (!orth.isEmpty() && Char.isUpperCase(orth.charAt(0))) name.append(orth); 
-        name.append(termAtt);
-        lastlen = name.length();
+      lastIsParticle = false;
+      // a part of name, append it
+      // char.isUpperCase(termAtt.charAt(0)) // unsafe ex : verses L’amour de ma mère // Je dirais au grand César
+      if (Tag.NAME.sameParent(flags2)) {
+        // Set final flag according to future events
+        if (flags2 == Tag.NAMEplace.flag && tagEnd != Tag.NAMEpers.flag) tagEnd = Tag.NAMEplace.flag; // Le [comte de Toulouse] is a person, not a place
+        else if (flags2 == Tag.NAMEpers.flag) tagEnd = Tag.NAMEpers.flag;
+        else if (flags2 == Tag.NAMEpersf.flag) tagEnd = Tag.NAMEpers.flag;
+        else if (flags2 == Tag.NAMEpersm.flag) tagEnd = Tag.NAMEpers.flag;
+        // separator
+        String sep = " ";
+        if (termAtt.lastChar() == '\'') sep = "";
+        concTerm.append(sep + termAtt);
+        if (!orthAtt.isEmpty()) concOrth.append(sep + orthAtt);
+        else concOrth.append(sep + termAtt);
+        
+        
+        if (concLem.isEmpty() && (flags2 == Tag.NAMEpersm.flag || flags2 == Tag.NAMEpersf.flag)); // de Suzon
+        else {
+          if (concLem.isEmpty()) sep = "" ;// lem may be empty here
+          if (!lemAtt.isEmpty()) concLem.append(sep + lemAtt);
+          else concLem.append(sep + orthAtt);
+        }
         stack.clear(); // we can empty the stack here, sure there is something to resend
         endOffset = offsetAtt.endOffset(); // record endOffset for last Name
-        simpleName = false; // no more simple name
+        // record the size of terme here if we have to rewind (ex: Europe de l’atome)
+        concTerm.mark();
+        concOrth.mark();
+        concLem.mark();
+        nameFound = true; 
         continue;
       }
       break;
     }
-    // if end of stream, do not capture a bad state
-    if (exit) stack.add(captureState());
-    // a simple name, restore its state, let empty the stack
-    if (simpleName) {
-      restoreState(stack.remove());
+    // no mame found in the go ahead, replay stack
+    if (!nameFound) { // rewind stack
+      restoreState(stack.remove()); // restore first token recorded
       return true;
     }
-    // at least one compound name to send
-    name.setLength(lastlen);
-    flagsAtt.setFlags(tag);
-    termAtt.setEmpty().append(name);
-    orthAtt.setEmpty();
-    lemAtt.setEmpty(); // the actual stop token may have set a lemma not relevant for names
+    // first token to send, a name, remember rewind(): [Europe] de l’]atome
+    flagsAtt.setFlags(tagEnd);
+    termAtt.setEmpty().append(concTerm.rewind());
+    orthAtt.setEmpty().append(concOrth.rewind());
+    if (concLem.isEmpty()) lemAtt.setEmpty().append(concOrth.rewind());
+    else lemAtt.setEmpty().append(concLem.rewind());
     offsetAtt.setOffset(startOffset, endOffset);
     return true;
   }

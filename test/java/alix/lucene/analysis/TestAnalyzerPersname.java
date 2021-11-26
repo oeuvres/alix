@@ -5,8 +5,6 @@ import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
-
 
 public class TestAnalyzerPersname {
   static class AnalyzerNames extends Analyzer
@@ -17,9 +15,11 @@ public class TestAnalyzerPersname {
     {
       final Tokenizer source = new FrTokenizer();
       // return new TokenStreamComponents(source);
+      //*
       TokenStream result = new FrLemFilter(source);
       result = new FrPersnameFilter(result);
       return new TokenStreamComponents(source, result);
+      //*/
     }
   
   }
@@ -40,5 +40,12 @@ public class TestAnalyzerPersname {
     test(" mère Sainte-Chantal (Mlle de Suzon), devenue folle");
     test("<p>— Amen, dit Fauchelevent.</p>");
     test("— Également ! s’écria G., et si la balance doit pencher, que ce soit du côté du peuple.");
+    test("— L’Europe de l’atome. Édouard Philippe de l’emmerde.");
+    test("Ça n’a ni père ni mère. Madame va bien ? La mère de tes enfants.");
+    test("une espèce de bonhomme qu’on appelait le père Champmathieu");
+    test("— Allez-vous-en, ou je fais sauter la barricade !");
+    test("<lb/><hi rend=\"i\">L’amour de ma mère</hi>\n"
+        + "              <lb/><hi rend=\"i\">Je dirais au grand César</hi>");
+    test("un volume des mémoires du duc de <hi rend=\"i\">Saint-Simon</hi>");
   }
 }
