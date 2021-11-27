@@ -36,9 +36,10 @@ import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
+
 @Command(
   name = "Balinoms", 
-  description = "Tag name in an XML/TEI file",
+  description = "Tag names in an XML/TEI file",
   mixinStandardHelpOptions = true
 )
 public class Balinoms implements Callable<Integer>

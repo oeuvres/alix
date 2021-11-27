@@ -6,12 +6,15 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -28,10 +31,38 @@ import alix.lucene.XMLIndexer;
 import alix.lucene.analysis.FrAnalyzer;
 import alix.lucene.analysis.FrDics;
 import alix.util.Dir;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 
-public class Load {
+@Command(
+  name = "alix.cli.Load", 
+  description = "Load an XML/TEI corpus in a custom Lucene index for Alix."
+)
+public class Load implements Callable<Integer>
+{
   public static String APP = "Alix";
-  static public void index(File propsFile, int threads) throws IOException, NoSuchFieldException, ParserConfigurationException, SAXException, InterruptedException, TransformerException 
+  
+  @Parameters(arity = "1..*", paramLabel = "corpus.xml", description = "base_props.xml — 1 ou more Java/XML/properties describing a document base (label, src…)")
+  File[] conflist;
+  
+  @Option(names = "-threads", description="[expert] Allow more than one thread for indexation")
+  int threads;
+  
+  @Override
+  public Integer call() throws Exception {
+    for (final File conf : conflist) {
+      if (conf.getCanonicalPath().endsWith("WEB-INF/web.xml")) continue;
+      index(conf);
+    }
+    System.out.println("C’est fini");
+    return 0;
+  }
+
+
+  
+  public void index(File propsFile) throws IOException, NoSuchFieldException, ParserConfigurationException, SAXException, InterruptedException, TransformerException 
   {
     String name = propsFile.getName().replaceFirst("\\..+$", "");
     if (!propsFile.exists()) throw new FileNotFoundException("\n  ["+APP+"] "+propsFile.getAbsolutePath()+"\nProperties file not found");
@@ -48,7 +79,7 @@ public class Load {
     }
     
     String prop;
-    ArrayList<String> globs = new ArrayList<String>();
+    ArrayList<File> globs = new ArrayList<>();
     String key;
     
     key = "srclist";
@@ -64,8 +95,8 @@ public class Load {
       for (int i = 0; i < lines.size(); i++) {
         String glob = lines.get(i);
         if (glob.startsWith("#")) continue;
-        if (!new File (glob).isAbsolute()) globs.add(new File(base, glob).toString());
-        else globs.add(glob);
+        if (!new File (glob).isAbsolute()) globs.add(new File(base, glob).getCanonicalFile());
+        else globs.add(new File(glob).getCanonicalFile());
       }
     }
     else {
@@ -73,12 +104,24 @@ public class Load {
       
       if (src == null) throw new NoSuchFieldException("\n  ["+APP+"] "+propsFile+"\nan src entry is needed, to have path to index"
           + "\n<entry key=\"src\">../corpus1/*.xml;../corpus2/*.xml</entry>");
-      String[] blurf = src.split(" *[;:] *");
+      String[] blurf = src.split(" *[;] *|[\t ]*[\n\r]+[\t ]*");
       // resolve globs relative to the folder of the properties field
-      File base = propsFile.getCanonicalFile().getParentFile();
+      final File base = propsFile.getCanonicalFile().getParentFile();
       for (String glob: blurf) {
-        if (!new File (glob).isAbsolute()) globs.add(new File(base, glob).toString());
-        else globs.add(glob);
+        if (glob.trim().equals("")) continue;
+        if (File.separatorChar == '\\') glob = glob.replaceAll("[/\\\\]", File.separator+File.separator);
+        else glob = glob.replaceAll("[/\\\\]", File.separator);
+        if (!new File (glob).isAbsolute()) {
+          File dir = base.getAbsoluteFile();
+          // glob = new File(glob).toString(); // works for windows on /, but not on linux for \
+          if (glob.startsWith("." + File.separator)) glob = glob.substring(2);
+          while(glob.startsWith(".." + File.separator)) {
+            dir = dir.getParentFile();
+            glob = glob.substring(3);
+          }
+          globs.add(new File(dir, glob));
+        }
+        else globs.add(new File(glob));
       }
     }
     // test here if it's folder ?
@@ -147,9 +190,8 @@ public class Load {
     });
     // command line, cache doesn’t matter
     Alix alix = Alix.instance( name, tmpPath, new FrAnalyzer(), null);
-    // Alix alix = Alix.instance(path, "org.apache.lucene.analysis.core.WhitespaceAnalyzer");
     IndexWriter writer = alix.writer();
-    XMLIndexer.index(writer, globs.toArray(new String[globs.size()]), threads, xsl);
+    XMLIndexer.index(writer, globs.toArray(new File[globs.size()]), threads, xsl);
     System.out.println("["+APP+"] "+name+" Merging");
     writer.commit();
     writer.close(); // close lucene index before indexing rail (for coocs)
@@ -188,32 +230,8 @@ public class Load {
 
   public static void main(String[] args) throws Exception
   {
-    if (args == null || args.length < 1) {
-      System.out.println("["+APP+"] usage");
-      System.out.println("WEB-INF$ java -cp lib/alix.jar bases/base_props.xml");
-      System.exit(1);
-    }
-    int threads = Runtime.getRuntime().availableProcessors() - 1;
-    int i = 0;
-    try {
-      int n = Integer.parseInt(args[0]);
-      if (n > 0 && n < threads) threads = n;
-      i++;
-      System.out.println("["+APP+"] threads="+threads);
-    }
-    catch (NumberFormatException e) {
-      
-    }
-    if (i >= args.length) {
-      System.out.println("["+APP+"] usage");
-      System.out.println("WEB-INF$ java -cp lib/* bases/base_props.xml");
-      System.exit(1);
-    }
-    for(; i < args.length; i++) {
-      File file = new File(args[i]);
-      if (file.getCanonicalPath().endsWith("WEB-INF/web.xml")) continue;
-      index(file, threads);
-    }
+    int exitCode = new CommandLine(new Load()).execute(args);
+    System.exit(exitCode);
   }
 
 

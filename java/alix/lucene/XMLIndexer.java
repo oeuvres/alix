@@ -40,6 +40,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -159,7 +161,7 @@ public class XMLIndexer implements Runnable
       bytes = Files.readAllBytes(file.toPath());
       // info("bytes="+bytes.length);
       // info(filename + "                               ".substring(Math.min(25, filename.length() + 2)) + file.getParent());
-      info(file.getParent()+"/    "+filename);
+      info(file.getParent()+ File.separator + "\t"+filename);
       handler.setFileName(filename);
       if (transformer != null) {
         StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
@@ -262,7 +264,7 @@ public class XMLIndexer implements Runnable
    */
   static public void index(
     final IndexWriter writer,
-    final String[] globs,
+    final File[] globs,
     int threads,
     String xsl
   ) throws ParserConfigurationException, SAXException, InterruptedException, IOException, TransformerException
@@ -284,12 +286,12 @@ public class XMLIndexer implements Runnable
       StreamSource xsltSrc = new StreamSource(xsl);
       templates = XSLFactory.newTemplates(xsltSrc);
     }
-
-    info("["+Alix.NAME+"]"+ " format=\"" + xsl + "\"" + " threads=" + threads + " globs=\"" + String.join(", ", globs) + "\""+ " lucene=\"" + writer.getDirectory() + "\"");
+    String searchPaths =  Arrays.toString(globs);
+    info("["+Alix.NAME+"]"+ " format=\"" + xsl + "\"" + " threads=" + threads + " globs=\"" + searchPaths + "\""+ " lucene=\"" + writer.getDirectory() + "\"");
     // preload dictionaries
-    List<File> files = null;
-    for (String glob : globs) {
-      files = Dir.ls(glob, files); // CopyOnWriteArrayList produce some duplicates
+    List<File> files = new ArrayList<File>();
+    for (File glob : globs) {
+      files = Dir.ls(glob.toString(), files); // CopyOnWriteArrayList produce some duplicates
     }
     // check if repeated filename
     Map<String, Integer> hash = new HashMap<String, Integer>();
@@ -299,7 +301,7 @@ public class XMLIndexer implements Runnable
       String filename = f.getName();
       filename = filename.substring(0, filename.lastIndexOf('.'));
       if (hash.containsKey(filename)) {
-        info("Duplicated filename "+filename+", old replaced by new");
+        info("Duplicated filename "+filename+", new replace old");
         int oldi = hash.get(filename) - diff;
         info(files.get(oldi));
         files.set(oldi, null);
@@ -315,7 +317,7 @@ public class XMLIndexer implements Runnable
     while(files.remove(null));
     Collections.sort(files);
     if (files.size() < 1) {
-      throw new FileNotFoundException("\n["+Alix.NAME+"] No file found to index globs=\""+ String.join(", ", globs) + "\"");
+      throw new FileNotFoundException("\n["+Alix.NAME+"] No file found to index globs=\""+ searchPaths + "\"");
     }
     if (threads < 1) threads = 1;
 

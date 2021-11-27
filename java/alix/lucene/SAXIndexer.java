@@ -113,16 +113,157 @@ public class SAXIndexer extends DefaultHandler
   /** Keep an hand on the text analyzer */
   private final Analyzer analyzer;
   
-  /**
-   * Keep same writer for 
-   * @param writer
-   */
-  public SAXIndexer(final IndexWriter writer) 
+  @Override
+  public void characters(char[] ch, int start, int length)
   {
-    this.writer = writer;
-    this.analyzer = writer.getAnalyzer();
+    empty = false;
+    if (!record) return;
+    int from = start;
+    // need to reencode entities not funny
+    String ent;
+    for (int i = start; i < length; i++) {
+      char c = ch[i];
+      switch (c) {
+        case '<':
+          ent = "&lt;";
+          break;
+        case '>':
+          ent = "&gt;";
+          break;
+        case '&':
+          ent = "&amp;";
+          break;
+        default:
+          continue;
+      }
+      xml.append(ch, from, i - from);
+      xml.append(ent);
+      from = i + 1;
+    }
+    if (from < start + length) xml.append(ch, from, start + length - from);
   }
-  
+
+  @Override
+  public void endDocument() throws SAXException
+  {
+     // ensure a name for the file, to allow deletion of document of same name
+    fileName = null;
+  }
+
+  @Override
+  public void endElement(String uri, String localName, String qName) throws SAXException
+  {
+    // output all elements inside a text field
+    if (!qName.startsWith("alix:")) {
+      if (!record) return;
+      else if (empty) {
+        xml.setLength(xml.length() - 1);
+        xml.append("/>");
+      }
+      else xml.append("</").append(qName).append(">");
+      empty = false;
+      return;
+    }
+    empty = false;
+    if ("field".equals(localName) && record) {
+      final String name = fieldName; // do not forget to reset the flags now
+      fieldName = null;
+      record = false;
+      String text = this.xml.toString();
+      this.xml.setLength(0);
+      // choose the right doc to which add the field
+      Document doc;
+      if (document != null) doc = document; // chapter or document
+      else if (book != null) doc = book; // book if not chapter
+      else throw new SAXException("</\"+qName+\"> no document is opened to write the field in. A field must be nested in one of these:"
+          + " document, book, chapter.");
+      try {
+        switch (this.type) {
+          case STORE:
+            doc.add(new StoredField(name , text));
+            break;
+          case META:
+            doc.add(new StoredField(name , text)); // (TokenStream fields cannot be stored)
+            TokenStream ts = new MetaAnalyzer().tokenStream("meta", text); // renew token stream 
+            doc.add(new Field(name, ts, Alix.ftypeMeta)); // indexation of the chosen tokens
+            break;
+          case TEXT:
+            // at this point, impossible to get document stats, tokens will be played when writer will
+            // add document(s). Caching tokens is a bad idea for big books, forget, do not retry.
+            doc.add(new StoredField(name , text)); // text has to be stored for snippets and conc
+            TokenStream source1 = analyzer.tokenStream(name, text);
+            doc.add(new Field(name, source1, Alix.ftypeText));
+            String name_orth = name + "_orth";
+            TokenStream source2 = analyzer.tokenStream(name_orth, text);
+            doc.add(new Field(name_orth, source2, Alix.ftypeText)); // indexation of the chosen tokens
+            break;
+          default:
+            throw new SAXException("</"+qName+"> @name=\""+name+"\" unkown type: "+type);
+        }
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+        System.exit(9);
+        throw new SAXException(e);
+      }
+      this.type = null;
+    }
+    else if ("chapter".equals(localName)) {
+      if (document == null)
+        throw new SAXException("</"+qName+"> empty document, nothing to add.");
+      chapters.add(document);
+      document = null;
+    }
+    else if ("book".equals(localName)) {
+      if (document != null)
+        throw new SAXException("</"+qName+"> a pending document has not been added.");
+      if (book == null)
+        throw new SAXException("</"+qName+"> a closing book document is missing.");
+      chapters.add(book);
+      try {
+        writer.addDocuments(chapters);
+      }
+      catch (Exception e) {
+        throw new SAXException(e);
+      }
+      finally {
+        document = null;
+        book = null;
+        chapters.clear();
+        chapno = 0;
+      }
+    }
+    else if ("document".equals(localName)) {
+      if (document == null)
+        throw new SAXException("</"+qName+"> empty document, nothing to add.");
+      try {
+        writer.addDocument(document);
+      }
+      catch (IOException e) {
+        throw new SAXException(e);
+      }
+      finally {
+        document = null;
+      }
+    }
+  }
+
+  @Override
+  public void ignorableWhitespace(char[] ch, int start, int length)
+  {
+    if (!record) return;
+    xml.append(ch, start, length);
+  }
+
+  @Override
+  public void processingInstruction(String target, String data) throws SAXException
+  {
+    if (!record) return;
+    xml.append("<?"+target);
+    if(data != null && ! data.isEmpty()) xml.append(" "+data);
+    xml.append("?>");
+  }
+
   /**
    * Provide a filename for the documents to be processed.
    * All document from this source will be indexed with this token.
@@ -142,7 +283,7 @@ public class SAXIndexer extends DefaultHandler
     if (this.fileName == null)
       throw new SAXException("Java error, .setFileName() sould be called before sending a document.");
   }
-  
+
   @Override
   public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException
   {
@@ -338,154 +479,13 @@ public class SAXIndexer extends DefaultHandler
     }
   }
 
-  @Override
-  public void characters(char[] ch, int start, int length)
+  /**
+   * Keep same writer for 
+   * @param writer
+   */
+  public SAXIndexer(final IndexWriter writer) 
   {
-    empty = false;
-    if (!record) return;
-    int from = start;
-    // need to reencode entities not funny
-    String ent;
-    for (int i = start; i < length; i++) {
-      char c = ch[i];
-      switch (c) {
-        case '<':
-          ent = "&lt;";
-          break;
-        case '>':
-          ent = "&gt;";
-          break;
-        case '&':
-          ent = "&amp;";
-          break;
-        default:
-          continue;
-      }
-      xml.append(ch, from, i - from);
-      xml.append(ent);
-      from = i + 1;
-    }
-    if (from < start + length) xml.append(ch, from, start + length - from);
-  }
-
-  @Override
-  public void ignorableWhitespace(char[] ch, int start, int length)
-  {
-    if (!record) return;
-    xml.append(ch, start, length);
-  }
-
-  @Override
-  public void processingInstruction(String target, String data) throws SAXException
-  {
-    if (!record) return;
-    xml.append("<?"+target);
-    if(data != null && ! data.isEmpty()) xml.append(" "+data);
-    xml.append("?>");
-  }
-
-  @Override
-  public void endElement(String uri, String localName, String qName) throws SAXException
-  {
-    // output all elements inside a text field
-    if (!qName.startsWith("alix:")) {
-      if (!record) return;
-      else if (empty) {
-        xml.setLength(xml.length() - 1);
-        xml.append("/>");
-      }
-      else xml.append("</").append(qName).append(">");
-      empty = false;
-      return;
-    }
-    empty = false;
-    if ("field".equals(localName) && record) {
-      final String name = fieldName; // do not forget to reset the flags now
-      fieldName = null;
-      record = false;
-      String text = this.xml.toString();
-      this.xml.setLength(0);
-      // choose the right doc to which add the field
-      Document doc;
-      if (document != null) doc = document; // chapter or document
-      else if (book != null) doc = book; // book if not chapter
-      else throw new SAXException("</\"+qName+\"> no document is opened to write the field in. A field must be nested in one of these:"
-          + " document, book, chapter.");
-      try {
-        switch (this.type) {
-          case STORE:
-            doc.add(new StoredField(name , text));
-            break;
-          case META:
-            doc.add(new StoredField(name , text)); // (TokenStream fields cannot be stored)
-            TokenStream ts = new MetaAnalyzer().tokenStream("meta", text); // renew token stream 
-            doc.add(new Field(name, ts, Alix.ftypeMeta)); // indexation of the chosen tokens
-            break;
-          case TEXT:
-            // at this point, impossible to get document stats, tokens will be played when writer will
-            // add document(s). Caching tokens is a bad idea for big books, forget, do not retry.
-            doc.add(new StoredField(name , text)); // text has to be stored for snippets and conc
-            TokenStream source1 = analyzer.tokenStream(name, text);
-            doc.add(new Field(name, source1, Alix.ftypeText));
-            String name_orth = name + "_orth";
-            TokenStream source2 = analyzer.tokenStream(name_orth, text);
-            doc.add(new Field(name_orth, source2, Alix.ftypeText)); // indexation of the chosen tokens
-            break;
-          default:
-            throw new SAXException("</"+qName+"> @name=\""+name+"\" unkown type: "+type);
-        }
-      }
-      catch (Exception e) {
-        e.printStackTrace();
-        System.exit(9);
-        throw new SAXException(e);
-      }
-      this.type = null;
-    }
-    else if ("chapter".equals(localName)) {
-      if (document == null)
-        throw new SAXException("</"+qName+"> empty document, nothing to add.");
-      chapters.add(document);
-      document = null;
-    }
-    else if ("book".equals(localName)) {
-      if (document != null)
-        throw new SAXException("</"+qName+"> a pending document has not been added.");
-      if (book == null)
-        throw new SAXException("</"+qName+"> a closing book document is missing.");
-      chapters.add(book);
-      try {
-        writer.addDocuments(chapters);
-      }
-      catch (Exception e) {
-        throw new SAXException(e);
-      }
-      finally {
-        document = null;
-        book = null;
-        chapters.clear();
-        chapno = 0;
-      }
-    }
-    else if ("document".equals(localName)) {
-      if (document == null)
-        throw new SAXException("</"+qName+"> empty document, nothing to add.");
-      try {
-        writer.addDocument(document);
-      }
-      catch (IOException e) {
-        throw new SAXException(e);
-      }
-      finally {
-        document = null;
-      }
-    }
-  }
-  
-  @Override
-  public void endDocument() throws SAXException
-  {
-     // ensure a name for the file, to allow deletion of document of same name
-    fileName = null;
+    this.writer = writer;
+    this.analyzer = writer.getAnalyzer();
   }
 }

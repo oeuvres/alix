@@ -37,9 +37,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -79,53 +82,50 @@ public class Dir
     }
     return file.delete();
   }
-  /**
-   * Collect files recursively from a folder. Default regex pattern to select
-   * files is : .*\.xml A regex selector can be provided by the path argument.
-   * path= "folder/to/index/.*\.tei" Be careful, pattern is a regex, not a glob
-   * (don not forger the dot for any character).
-   * 
-   * @param path
-   * @return
-   * @throws FileNotFoundException 
-   */
-  public static List<File> ls(String path) throws FileNotFoundException
+
+  public static List<File> ls(final String glob) throws IOException
   {
-    ArrayList<File> files = new ArrayList<File>();
-    return ls(path, files);
+    return ls(glob, new ArrayList<File>());
   }
 
-  public static List<File> ls(String path, List<File> files) throws FileNotFoundException
-  {
-    if (files == null) files = new ArrayList<File>();
-    PathMatcher matcher = FileSystems.getDefault(). getPathMatcher("glob:"+path);
 
+  public static List<File> ls(final String glob, final List<File> files) throws IOException
+  {
+    Path basedir = new File(glob.replaceFirst("[\\[\\*\\?\\{].*", "")+"DUMMY").getParentFile().toPath();
+    String pattern = glob;
+    if(File.separator.equals("\\")) {
+      pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes \*8
+    }
     
-    Path dir = new File(path).toPath().normalize();
-    Pattern globish = Pattern.compile("[\\*?\\[\\]{}]");
+    final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern); //  new File(glob)
     
-    int levels = dir.getNameCount();
-    int depth = 0;
-    while(globish.matcher(dir.getName(levels -1).toString()).find()) {
-      dir = dir.getParent();
-      levels--;
-      depth++;
-      if (dir == null) {
-        // this will avoid /*/*, which is not so bad
-        dir = new File(".").toPath();
-        matcher = FileSystems.getDefault(). getPathMatcher("glob:./"+path);
-        System.out.println(dir);
-        break;
+    Files.walkFileTree(basedir, new SimpleFileVisitor<Path>() {
+      @Override
+      public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) throws IOException {
+        String dirname = path.getFileName().toString();
+        if (dirname.startsWith(".") || dirname.startsWith("_")) {
+          return FileVisitResult.SKIP_SUBTREE;
+        }
+        return FileVisitResult.CONTINUE;
       }
-    }
-    if (!Files.exists(dir)) return files;
-    if (Files.isRegularFile(dir)) {
-      if (matcher.matches(dir)) files.add(dir.toFile());
-      return files;
-    }
-    // no depth limit
-    if (path.contains("**")) depth = -1;
-    collect(dir.toFile(), matcher, depth, files);
+      
+      @Override
+      public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
+        String filename = path.getFileName().toString();
+        if (filename.startsWith(".") || filename.startsWith("_")) {
+          return FileVisitResult.CONTINUE;
+        }
+        if (pathMatcher.matches(path)) {
+          files.add(path.toFile());
+        }
+        return FileVisitResult.CONTINUE;
+      }
+
+      @Override
+      public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+        return FileVisitResult.CONTINUE;
+      }
+    });
     return files;
   }
 

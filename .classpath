@@ -14,11 +14,11 @@
 	</classpathentry>
 	<classpathentry kind="lib" path="lib/saxon9.jar"/>
 	<classpathentry kind="lib" path="lib/json-20201115.jar"/>
-	<classpathentry kind="lib" path="lib/lucene-core-8.10.1.jar" sourcepath="/home/fred/code/lucene_src/core"/>
-	<classpathentry kind="lib" path="lib/lucene-analyzers-common-8.10.1.jar"/>
-	<classpathentry kind="lib" path="lib/lucene-highlighter-8.10.1.jar"/>
 	<classpathentry kind="lib" path="ext/jsp-api_tomcat7.jar"/>
 	<classpathentry kind="lib" path="ext/servlet-api_tomcat7.jar"/>
 	<classpathentry kind="lib" path="ext/commons-math3-3.6.1.jar"/>
+	<classpathentry kind="lib" path="lib/lucene-analyzers-common-8.11.0.jar"/>
+	<classpathentry kind="lib" path="lib/lucene-core-8.11.0.jar"/>
+	<classpathentry kind="lib" path="lib/lucene-highlighter-8.11.0.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>
