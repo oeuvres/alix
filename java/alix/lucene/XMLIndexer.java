@@ -36,7 +36,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
@@ -139,7 +141,7 @@ public class XMLIndexer implements Runnable
   static private void write(IndexWriter writer, Iterator<File> it, Templates templates) 
       throws ParserConfigurationException, SAXException, IOException, TransformerException
   {
-    SAXIndexer handler = new SAXIndexer(writer);
+    SAXIndexer alixSaxer = new SAXIndexer(writer);
     Transformer transformer = null;
     SAXParser SAXParser = null;
     if (templates != null) {
@@ -156,26 +158,34 @@ public class XMLIndexer implements Runnable
       if (file == null) continue; // duplicates may have been nulled
       String filename = file.getName();
       filename = filename.substring(0, filename.lastIndexOf('.'));
-      byte[] bytes = null;
+      byte[] docBytes = null;
       // read file as fast as possible to release disk resource for other threads
-      bytes = Files.readAllBytes(file.toPath());
+      docBytes = Files.readAllBytes(file.toPath());
       // info("bytes="+bytes.length);
       // info(filename + "                               ".substring(Math.min(25, filename.length() + 2)) + file.getParent());
       info(file.getParent()+ File.separator + "\t"+filename);
-      handler.setFileName(filename);
+      alixSaxer.setFileName(filename);
       if (transformer != null) {
-        StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
+        // XML/TEI source documents, transform to ALix xml for indexation
+        StreamSource docSource = new StreamSource(new ByteArrayInputStream(docBytes));
         transformer.setParameter("filename", filename);
         transformer.setParameter("index", true); // will strip bad things for indexation
         // Michael Kay dixit, if we want indentation, we have to serialize
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        StreamResult res = new StreamResult(baos);
-        transformer.transform(source, res);
+        // [2021-11] OK, but can´t remember why
+        ByteArrayOutputStream alixBaos = new ByteArrayOutputStream();
+        StreamResult alixRes = new StreamResult(alixBaos);
+        transformer.transform(docSource, alixRes);
+        /* has been useful for debug
+        try(OutputStream outputStream = new FileOutputStream("work/"+filename+".alix")) {
+          alixBaos.writeTo(outputStream);
+        }
+        */
         SAXParser = SAXFactory.newSAXParser();
-        SAXParser.parse(new ByteArrayInputStream(baos.toByteArray()), handler);
+        SAXParser.parse(new ByteArrayInputStream(alixBaos.toByteArray()), alixSaxer);
       }
       else {
-        SAXParser.parse(new ByteArrayInputStream(bytes), handler);
+        // Alix xml ready to index <document>…
+        SAXParser.parse(new ByteArrayInputStream(docBytes), alixSaxer);
       }
     }
     
@@ -190,7 +200,7 @@ public class XMLIndexer implements Runnable
       if (file == null) return; // should be the last
       String filename = file.getName();
       filename = filename.substring(0, filename.lastIndexOf('.'));
-      info(filename + "                        ".substring(Math.min(22, filename.length())) + file.getParent());
+      info(file.getParent()+ File.separator + "\t"+filename);
       byte[] bytes = null;
       try {
         // read file as fast as possible to release disk resource for other threads
@@ -273,7 +283,7 @@ public class XMLIndexer implements Runnable
     // compile XSLT, maybe it could be done before?
     Templates templates = null;
     if (xsl == "alix");
-    else if (xsl == "tei") {
+    else if (xsl == "tei" || xsl == null) {
       JarResolver resloader = new JarResolver();
       XSLFactory.setURIResolver(resloader);
       StreamSource xsltSrc = new StreamSource(resloader.resolve("alix.xsl"));

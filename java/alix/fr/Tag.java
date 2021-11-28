@@ -56,7 +56,7 @@ public enum Tag
   VERBaux(0x11, "Auxilliaire", "Être, avoir. (verbe auxilliaire du français)") { },
   VERBaux2(0x12, "Semi‑aux.", "« Je vais faire… », aller, faire, venir de. (verbes semi-auxilliaires, faiblement sémantiques).") { },
   VERBmod(0x13, "Modaux", "Devoir, pouvoir, falloir. (verbes modaux).") { },
-  VERBexpr(0x13, "V. d’expression", "Dire, répondre, s’écrier… (verbes d’expression).") { },
+  VERBexpr(0x15, "V. d’expression", "Dire, répondre, s’écrier… (verbes d’expression).") { },
   VERBppass(0x18, "Part. passé", "Participe passé (tous emplois : verbal, adjectif, substantif).") { },
   VERBppres(0x19, "Part. prés.", "Participe présent (tous emplois : verbal, adjectif, substantif).") { },
   

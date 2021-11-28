@@ -6,16 +6,14 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 import java.util.Properties;
+import java.util.Scanner;
 import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -44,27 +42,74 @@ public class Load implements Callable<Integer>
 {
   public static String APP = "Alix";
   
-  @Parameters(arity = "1..*", paramLabel = "corpus.xml", description = "base_props.xml — 1 ou more Java/XML/properties describing a document base (label, src…)")
+  @Parameters(arity = "1..*", paramLabel = "base.xml", description = "1 or more Java/XML/properties describing a document base (label, src…)")
   File[] conflist;
+  @Option(names = {"-u", "--unsafe"}, description = "For windows filesystem, no temp lucene index")
+  boolean unsafe;
   
-  @Option(names = "-threads", description="[expert] Allow more than one thread for indexation")
   int threads;
+  /** File globs to index, populated by parsing base properties */
+  ArrayList<File> globs = new ArrayList<>();
+  /** Destination directory of index of a base */
+  File dstdir;
+  /** Possible local transformation for pre-indexation */
+  String xsl;
   
+  /**
+   * Return true if a directory does not exist or if it has been removed.
+   * @param dir
+   * @return
+   * @throws IOException 
+   */
+  public boolean ask4rmdir(File dir) throws IOException
+  {
+    if (!dir.exists()) return true;
+    long modified = dir.lastModified();
+    Duration duration = Duration.ofMillis(System.currentTimeMillis() - modified);
+    System.out.println("["+APP+"] Folder exists and was modified "+duration.toSeconds()+" s. ago\n  " + dir);
+    System.out.println("Would you like to remove? y/n");
+    Scanner in = new Scanner(System.in);
+    String yes = in.nextLine();
+    in.close();
+    if (!"y".equals(yes) && !"Y".equals(yes)) {
+      System.out.println("["+APP+"] Nothing remove");
+      return false;
+    }
+    Dir.rm(dir);
+    if (dir.exists()) {
+      throw new IOException("\n  ["+APP+"] Impossible to delete temp index\n" + dir);
+    }
+    return true;
+  }
+
   @Override
   public Integer call() throws Exception {
+    String os = System.getProperty("os.name");
+    // no system properties allow to detect a linux running inside windows on windows filesystem
+    unsafe = os.startsWith("Windows");
     for (final File conf : conflist) {
+      // test here if it's folder ?
       if (conf.getCanonicalPath().endsWith("WEB-INF/web.xml")) continue;
-      index(conf);
+      long time = System.nanoTime();
+      String name = conf.getName().replaceFirst("\\..+$", "");
+      parse(conf); // populate variables
+      // write index with collected base properties
+      if (unsafe) writeUnsafe(dstdir, name);
+      else writeSafe(dstdir, name); 
+      System.out.println("["+APP+"] "+name+" indexed in " + ((System.nanoTime() - time) / 1000000) + " ms.");
     }
-    System.out.println("C’est fini");
+    System.out.println("Thats all folks.");
     return 0;
   }
 
-
-  
-  public void index(File propsFile) throws IOException, NoSuchFieldException, ParserConfigurationException, SAXException, InterruptedException, TransformerException 
+  /**
+   * Parse properties to produce an alix lucene index
+   * @param propsFile
+   * @throws IOException
+   * @throws NoSuchFieldException
+   */
+  public void parse(File propsFile) throws IOException, NoSuchFieldException
   {
-    String name = propsFile.getName().replaceFirst("\\..+$", "");
     if (!propsFile.exists()) throw new FileNotFoundException("\n  ["+APP+"] "+propsFile.getAbsolutePath()+"\nProperties file not found");
     Properties props = new Properties();
     try {
@@ -79,7 +124,6 @@ public class Load implements Callable<Integer>
     }
     
     String prop;
-    ArrayList<File> globs = new ArrayList<>();
     String key;
     
     key = "srclist";
@@ -124,8 +168,6 @@ public class Load implements Callable<Integer>
         else globs.add(new File(glob));
       }
     }
-    // test here if it's folder ?
-    long time = System.nanoTime();
     
 
     key = "dicfile";
@@ -140,10 +182,9 @@ public class Load implements Callable<Integer>
     }
 
     // set a local xsl to generate alix:document
-    String xsl = props.getProperty("xsl");
+    xsl = props.getProperty("xsl");
     
     
-    File dstdir;
     prop = props.getProperty("dstdir");
     if (prop != null) {
       dstdir = new File(prop);
@@ -152,44 +193,37 @@ public class Load implements Callable<Integer>
     else {
       dstdir = propsFile.getParentFile();
     }
-
-    String tmpName = name+"_new";
-    // indexer d'abord dans un index temporaire
-    File tmpDir = new File(dstdir, tmpName);
-    if (tmpDir.exists()) {
-      long modified = tmpDir.lastModified();
-      Duration duration = Duration.ofMillis(System.currentTimeMillis() - modified);
-      throw new IOException("\n  ["+APP+"] Another process seems indexing till "+duration.toSeconds()+" s.\n" + tmpDir
-          + "\nIf you think it’s an error, this folfder should be deleted by you");
-    }
-    Path tmpPath = tmpDir.toPath();
-    Runtime.getRuntime().addShutdownHook(new Thread() {
-      @Override
-      public void run() {
-        if (!tmpDir.exists()) return;
-        System.out.println("Indexation process interrupted, nothing has been modified, temp index will be deleted :\n" + tmpPath);
-        try {
-          TimeUnit.SECONDS.sleep(1);
-          int timeout = 10;
-          while (!tmpDir.canWrite()) {
-            TimeUnit.SECONDS.sleep(1);
-            if(--timeout == 0) throw new IOException("\n  ["+APP+"] Impossible to delete temp index\n" + tmpDir);
-          }
-          Dir.rm(tmpDir);
-          // Encore là ?
-          while (tmpDir.exists()) {
-            TimeUnit.SECONDS.sleep(1);
-            Dir.rm(tmpDir);
-            if(--timeout == 0) throw new IOException("\n  ["+APP+"] Impossible to delete temp index\n" + tmpDir);
-          }
-        }
-        catch (Exception e) {
-          e.printStackTrace();
-        }
-      }
-    });
-    // command line, cache doesn’t matter
-    Alix alix = Alix.instance( name, tmpPath, new FrAnalyzer(), null);
+    
+  }
+  
+  /**
+   * Name of an old index to save
+   * @param name
+   * @return
+   */
+  public static String nameOld(final String name)
+  {
+    return name+"_old";
+  }
+  public static String nameTmp(final String name)
+  {
+    return name+"_tmp";
+  }
+  
+  /**
+   * Write index for the globs given by the props file. 
+   * @param name Name of the base
+   * @param name Path where to write the path index
+   * @param path
+   * @throws IOException
+   * @throws ParserConfigurationException
+   * @throws SAXException
+   * @throws InterruptedException
+   * @throws TransformerException
+   */
+  public void write(String name, Path path) throws IOException, ParserConfigurationException, SAXException, InterruptedException, TransformerException
+  {
+    Alix alix = Alix.instance(name, path, new FrAnalyzer(), null);
     IndexWriter writer = alix.writer();
     XMLIndexer.index(writer, globs.toArray(new File[globs.size()]), threads, xsl);
     System.out.println("["+APP+"] "+name+" Merging");
@@ -209,24 +243,86 @@ public class Load implements Callable<Integer>
       System.out.println("["+APP+"] "+name+". Cooc indexation for field: "+field);
       alix.fieldRail(field);
     }
-    
-    System.out.println("["+APP+"] "+name+" indexed in " + ((System.nanoTime() - time) / 1000000) + " ms.");
-    
+  }
+  
+  /**
+   * A logic to write safely an index in a temp directory before affecting a running index.
+   * @param name
+   * @throws IOException
+   * @throws ParserConfigurationException
+   * @throws SAXException
+   * @throws InterruptedException
+   * @throws TransformerException
+   */
+  public void writeSafe(final File dstDir, final String name) throws IOException, ParserConfigurationException, SAXException, InterruptedException, TransformerException 
+  {
+
+    // Use a tmp dir to not overwrite a workin index on server
+    File tmpDir = new File(dstdir, nameTmp(name));
+    if (!ask4rmdir(tmpDir)) return;
+    File oldDir = new File(dstdir, nameOld(name));
+    File theDir = new File(dstdir, name);
+    /* Register thing to do at the end */
+    Runtime.getRuntime().addShutdownHook(new Thread() {
+      @Override
+      public void run() {
+        if (!tmpDir.exists()) return;
+        System.out.println("["+APP+"] ERROR Something went wrong, old index is kept.");
+      }
+    });
+    write(name, tmpDir.toPath());
     /*
     TimeZone tz = TimeZone.getTimeZone("UTC");
     DateFormat df = new SimpleDateFormat("yyyy-MM-dd_HH:mm:ss");
     df.setTimeZone(tz);
     */
-    String oldName = name+"_old";
-    File oldDir = new File(dstdir, oldName);
-    File theDir = new File(dstdir, name);
+    // test if rename works
+    File testDir = new File(dstDir, name+"_test");
+    if (!tmpDir.renameTo(testDir)) {
+      throw new IOException("\n["+APP+"] Impossible to rename tmp index.");
+    }
     if (theDir.exists()) {
       if (oldDir.exists()) Dir.rm(oldDir);
       theDir.renameTo(oldDir);
       System.out.println("["+APP+"] For safety, you old index is preserved in folder :\n"+oldDir);
     }
-    tmpDir.renameTo(theDir);
+    testDir.renameTo(theDir);
   }
+
+  /**
+   * Because a bug in Microsoft.Windows filesystem with Java, 
+   * impossible to have the same safe indexation like for unix.
+   * @param name
+   * @throws IOException 
+   */
+  public void writeUnsafe(final File dstdir, final String name) throws IOException
+  {
+    File theDir = new File(dstdir, name);
+    File oldDir = new File(dstdir, nameOld(name));
+    File tmpDir = new File(dstdir, nameTmp(name));
+    if (!ask4rmdir(tmpDir)) return;
+    if (oldDir.exists()) {
+      if (!oldDir.renameTo(tmpDir)) throw new IOException("\n["+APP+"] Impossible to rename old index to\n  " + tmpDir);
+    }
+    if (theDir.exists()) {
+      if (!theDir.renameTo(oldDir)) throw new IOException("\n["+APP+"] Impossible to rename old index to\n  " + oldDir);
+    }
+    try {
+      // only one thread
+      threads = 1;
+      write(name, theDir.toPath());
+    }
+    catch (Exception e) {
+      // try to restore old index
+      Dir.rm(theDir);
+      if (theDir.exists()) throw new IOException("\n["+APP+"] Impossible to restore old index (filesystem pb)");
+      oldDir.renameTo(theDir);
+      tmpDir.renameTo(oldDir);
+    }
+    // we are OK
+    if (tmpDir.exists()) Dir.rm(tmpDir);
+  }
+
 
   public static void main(String[] args) throws Exception
   {
