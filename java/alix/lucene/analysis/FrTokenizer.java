@@ -370,6 +370,7 @@ public class FrTokenizer extends Tokenizer
         if (c == '.') {
           // int roman;
           term.append('.');
+          final int len = term.length();
           // M., etc.
           if (FrDics.brevidot(term)) {
             flags.setFlags(Tag.ABBR.flag);
@@ -377,14 +378,15 @@ public class FrTokenizer extends Tokenizer
           }
           // End on sentence.
           else if (Char.isLowerCase(lastChar)) {
-            term.setLength(term.length() - 1);
+            term.setLength(len - 1);
           }
           // J.-P. ?
-          else if (Char.isUpperCase(lastChar)) {
+          else if ( Char.isUpperCase(lastChar) && len >= 3 && term.charAt(len - 3) == '-') {
             continue;
           }
           // XVIII.
-          else if ((Calcul.roman2int(term.buffer(), 0, term.length()-1)) > 0) {
+          else if ((Calcul.roman2int(term.buffer(), 0, len-1)) > 0) {
+            term.setLength(len - 1);
             flagsAtt.setFlags(Tag.NUM.flag);
           }
           // RODOGUNE. dot is a punctuation

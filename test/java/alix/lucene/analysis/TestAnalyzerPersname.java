@@ -47,5 +47,6 @@ public class TestAnalyzerPersname {
     test("<lb/><hi rend=\"i\">L’amour de ma mère</hi>\n"
         + "              <lb/><hi rend=\"i\">Je dirais au grand César</hi>");
     test("un volume des mémoires du duc de <hi rend=\"i\">Saint-Simon</hi>");
+    test("Chapitre I. Chapitre II. Histoire d’un progrès dans les verroteries noires Cette mère cepend");
   }
 }

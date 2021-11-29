@@ -137,10 +137,12 @@ public final class FrLemFilter extends TokenFilter
       
       // roman number already detected
       if (flagsAtt.getFlags() == Tag.NUM.flag) return true;
-      int n = Calcul.roman2int(orthAtt.buffer(), 0, orthAtt.length());
+      int len = orthAtt.length();
+      if (orthAtt.lastChar() == '.') len--;
+      int n = Calcul.roman2int(orthAtt.buffer(), 0, len);
       if (n > 0) {
         flagsAtt.setFlags(Tag.NUM.flag);
-        orthAtt.append(""+n);
+        lemAtt.append(""+n);
         return true;
       }
       // Do not touch to recognized ABBR, like O.N.

@@ -213,7 +213,8 @@ public class FieldText
       formDocsAll[formId] = rec.docs;
       if (FrDics.isStop(bytes)) stopRecord.set(formId);
       chars.copy(bytes); // convert utf-8 bytes to utf-16 chars
-      if (chars.indexOf(' ') < 0) formLoc.set(formId);
+      final int indexOfSpace = chars.indexOf(' ');
+      if (indexOfSpace > 0) formLoc.set(formId);
       LexEntry entry = FrDics.word(chars);
       if (entry != null) {
         formTag[formId] = entry.tag;
@@ -221,15 +222,54 @@ public class FieldText
       }
       entry = FrDics.name(chars);
       if (entry != null) {
-        formTag[formId] = entry.tag;
-        continue;
+        if ( entry.tag == Tag.NAMEpers.flag
+            || entry.tag == Tag.NAMEpersf.flag
+            || entry.tag == Tag.NAMEpersm.flag
+            || entry.tag == Tag.NAMEfict.flag
+            || entry.tag == Tag.NAMEauthor.flag
+        ) {
+          formTag[formId] = Tag.NAMEpers.flag;
+          continue;
+        }
+        else {
+          formTag[formId] = entry.tag;
+          continue;
+        }
       }
       if (Char.isPunctuation(chars.charAt(0))) {
         formTag[formId] = Tag.PUN.flag;
         puns.push(formId);
+        continue;
       }
-      else if (chars.length() < 1) continue; // ?
-      else if (Char.isUpperCase(chars.charAt(0))) formTag[formId] = Tag.NAME.flag;
+      if (indexOfSpace > 0) {
+        chars.setLength(indexOfSpace);
+        // monsieur Madeleine
+        entry = FrDics.word(chars);
+        if (entry != null) {
+          if (entry.tag == Tag.SUBpers.flag) {
+            formTag[formId] = Tag.NAMEpers.flag;
+            continue;
+          }
+          if (entry.tag == Tag.SUBplace.flag) {
+            formTag[formId] = Tag.NAMEplace.flag;
+            continue;
+          }
+        }
+        // Jean Valjean
+        entry = FrDics.name(chars);
+        if (entry != null) {
+          if ( entry.tag == Tag.NAMEpers.flag
+            || entry.tag == Tag.NAMEpersf.flag
+            || entry.tag == Tag.NAMEpersm.flag
+          ) {
+            formTag[formId] = Tag.NAMEpers.flag;
+            continue;
+          }
+        }
+      }
+      
+      // if (chars.length() < 1) continue; // ?
+      if (Char.isUpperCase(chars.charAt(0))) formTag[formId] = Tag.NAME.flag;
     }
     // convert a java.lang growable BitSets in fixed lucene ones
     formStop = new FixedBitSet(stopRecord.length()); // because most common words are probably stop words, the bitset maybe optimized

@@ -81,7 +81,7 @@ import alix.web.MI;
  * @author fred
  *
  */
-// ChronicleMap has been tested, but it is not more than x2 compared to lucene BinaryField.
+// ChronicleMap has been tested, but it is not more than x2 compared to lucene BinaryField, so stay in Lucene
 public class FieldRail
 {
   static Logger LOGGER = Logger.getLogger(FieldRail.class.getName());

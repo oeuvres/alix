@@ -554,14 +554,6 @@ public class CharsAtt extends AttributeImpl
     return -1;
   }
 
-  /**
-   * Size of chars before last operation
-   * @return
-   */
-  public final int lastLen()
-  {
-    return lastLen;
-  }
   // *** CharSequence interface ***
   @Override
   public final int length()

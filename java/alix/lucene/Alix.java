@@ -247,144 +247,6 @@ public class Alix
   }
 
 
-  public static Alix instance(String name) 
-  {
-    return pool.get(name);
-  }
-
-  /**
-   *  Get a a lucene directory index by file path, from cache, or created.
-   * @param path
-   * @param analyzer
-   * @return
-   * @throws IOException
-   */
-  public static Alix instance(final String name, final Path path, final Analyzer analyzer, FSDirectoryType dirType) throws IOException 
-  {
-    Alix alix = pool.get(name);
-    if (alix == null) {
-      alix = new Alix(name, path, analyzer, dirType);
-      pool.put(name, alix);
-    }
-    return alix;
-  }
-
-  /**
-   * 
-   */
-  public String name()
-  {
-    return name;
-  }
-  /**
-   * See {@link #reader(boolean)}
-   * 
-   * @return
-   * @throws IOException
-   */
-  public DirectoryReader reader() throws IOException
-  {
-    return reader(false);
-  }
-
-  /**
-   * Get a reader for this lucene index, cached or new.
-   * Allow to force renew if force is true.
-   * 
-   * @param force
-   * @return
-   * @throws IOException
-   */
-  public DirectoryReader reader(final boolean force) throws IOException
-  {
-    if (!force && reader != null) return reader;
-    cache.clear(); // clean cache on renew the reader
-    reader = DirectoryReader.open(dir);
-    fieldInfos = FieldInfos.getMergedFieldInfos(reader);
-    maxDoc = reader.maxDoc();
-    return reader;
-  }
-
-  /**
-   * A real time reader only used for some updates.
-   * 
-   * @return
-   * @throws IOException
-   */
-  public IndexReader reader(IndexWriter writer) throws IOException
-  {
-    return DirectoryReader.open(writer, true, true);
-  }
-
-  /**
-   * See {@link #searcher(boolean)}
-   * 
-   * @return
-   * @throws IOException
-   */
-  public IndexSearcher searcher() throws IOException
-  {
-    return searcher(false);
-  }
-
-  /**
-   * Get the searcher for this lucene index, allow to force renew if force is true.
-   * 
-   * @param force
-   * @return
-   * @throws IOException
-   */
-  public IndexSearcher searcher(final boolean force) throws IOException
-  {
-    if (!force && searcher != null) return searcher;
-    reader(force);
-    searcher = new IndexSearcher(reader);
-    searcher.setSimilarity(similarity);
-    return searcher;
-  }
-  
-  /**
-   * See {@link #writer(Similarity)}
-   * 
-   * @return
-   * @throws IOException
-   */
-  public IndexWriter writer() throws IOException
-  {
-    return writer(null);
-  }
-
-  /**
-   * Get a lucene writer
-   * 
-   * @throws IOException
-   */
-  public IndexWriter writer(final Similarity similarity) throws IOException
-  {
-    if (writer != null && writer.isOpen()) return writer;
-    IndexWriterConfig conf = new IndexWriterConfig(analyzer);
-    conf.setUseCompoundFile(false); // show separate file by segment
-    // may needed, increase the max heap size to the JVM (eg add -Xmx512m or
-    // -Xmx1g):
-    conf.setRAMBufferSizeMB(48);
-    conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
-    //
-    if (similarity != null) conf.setSimilarity(similarity);
-    else conf.setSimilarity(this.similarity);
-    // no effect found with modification ConcurrentMergeScheduler
-    /*
-     * int threads = Runtime.getRuntime().availableProcessors() - 1;
-     * ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
-     * cms.setMaxMergesAndThreads(threads, threads); cms.disableAutoIOThrottle();
-     * conf.setMergeScheduler(cms);
-     */
-    // order docId by a field after merge ? No functionality should rely on such
-    // order
-    // conf.setIndexSort(new Sort(new SortField(YEAR, SortField.Type.INT)));
-    writer = new IndexWriter(dir, conf);
-    return writer;
-  }
-
   /**
    * Returns the analyzer shared with this base.
    * @return
@@ -393,59 +255,25 @@ public class Alix
   {
     return this.analyzer;
   }
-  
-  /** 
-   * @return @see IndexReader#maxDoc() 
-   * @throws IOException 
-   */
-  public int maxDoc() throws IOException
-  {
-    if (reader == null) reader();
-    return maxDoc;
-  }
 
   /**
-   * Get the internal lucene docid of a document by Alix String id 
-   * (a reserved field name)
-   * @param id
-   * @return the docId, or -1 if not found, or -2 if too much found, or -3 if id was null or empty.
-   * @throws IOException
-   */
-  public int getDocId(final String id) throws IOException
-  {
-    if (id == null || id.trim().length() == 0) return -3;
-    TermQuery qid = new TermQuery(new Term(Alix.ID, id));
-    TopDocs search = searcher().search(qid, 1);
-    ScoreDoc[] hits = search.scoreDocs;
-    if (hits.length == 0) return -1;
-    if (hits.length > 1) return -2;
-    return hits[0].doc;
-  }
-
-  /**
-   * Get the the Alix String id of a document by the lucene internal docid.
-   * @param docId
-   * @return
-   * @throws IOException
-   */
-  public String getId(final int docId) throws IOException
-  {
-    Document doc = reader().document(docId, FIELDS_ID);
-    if (doc == null) return null;
-    return doc.get(Alix.ID);
-  }
-
-  /**
-   * A simple cache. Will be cleared if index reader is renewed. Use SoftReference
-   * as a value, so that Garbage Collector will silently delete object references
-   * in case of Out of memory.
+   * Get docId parent documents (books) of nested documents (chapters), sorted by
+   * a sort specification. Calculation is not really expensive, do not cache.
    * 
-   * @param key
-   * @param o
+   * @throws IOException
    */
-  public void cache(String key, Object o)
+  public int[] books(Sort sort) throws IOException
   {
-    cache.put(key, new SoftReference<Object>(o));
+    IndexSearcher searcher = searcher(); // ensure reader or decache
+    Query qBook = new TermQuery(new Term(Alix.TYPE, DocType.book.name()));
+    TopFieldDocs top = searcher.search(qBook, MAXBOOKS, sort);
+    int length = top.scoreDocs.length;
+    ScoreDoc[] docs = top.scoreDocs;
+    int[] books = new int[length];
+    for (int i = 0; i < length; i++) {
+      books[i] = docs[i].doc;
+    }
+    return books;
   }
 
   /**
@@ -462,29 +290,16 @@ public class Alix
   }
 
   /**
-   * Get infos for a field.
+   * A simple cache. Will be cleared if index reader is renewed. Use SoftReference
+   * as a value, so that Garbage Collector will silently delete object references
+   * in case of Out of memory.
    * 
-   * @param field
-   * @return
-   * @throws IOException
+   * @param key
+   * @param o
    */
-  public FieldInfo info(String field) throws IOException
+  public void cache(String key, Object o)
   {
-    reader(); // ensure reader or decache
-    return fieldInfos.fieldInfo(field);
-  }
-
-  /**
-   * Get infos for a field.
-   * 
-   * @param field
-   * @return
-   * @throws IOException
-   */
-  public FieldInfo info(Enum<?> field) throws IOException
-  {
-    reader(); // ensure reader or decache
-    return fieldInfos.fieldInfo(field.name());
+    cache.put(key, new SoftReference<Object>(o));
   }
 
   /**
@@ -576,6 +391,23 @@ public class Alix
   }
 
   /**
+     * Get a co-occurrences reader.
+     * 
+     * @param field
+     * @return
+  u   * @throws IOException
+     */
+    public FieldRail fieldRail(final String field) throws IOException
+    {
+      String key = "AlixRail" + field;
+      FieldRail fieldRail = (FieldRail) cache(key);
+      if (fieldRail != null) return fieldRail;
+      fieldRail = new FieldRail(this, field);
+      cache(key, fieldRail);
+      return fieldRail;
+    }
+
+  /**
    * Get a frequence object.
    * 
    * @param field
@@ -592,151 +424,6 @@ public class Alix
     return fieldText;
   }
 
-  /**
-   * Get a Scale object, useful to build graphs and chronology with an int field.
-   * 
-   * @param fieldInt
-   *          A NumericDocValuesField used as a sorted value.
-   * @param fieldText
-   *          A Texfield to count occurences, used as a size for docs.
-   * @return
-   * @throws IOException
-   */
-  public Scale scale(final String fieldInt, final String fieldText) throws IOException
-  {
-    String key = "AlixScale" + fieldInt + fieldText;
-    Scale scale = (Scale) cache(key);
-    if (scale != null) return scale;
-    scale = new Scale(this, null, fieldInt, fieldText);
-    cache(key, scale);
-    return scale;
-  }
-
-  /**
-   * Get a co-occurrences reader.
-   * 
-   * @param field
-   * @return
-u   * @throws IOException
-   */
-  public FieldRail fieldRail(final String field) throws IOException
-  {
-    String key = "AlixRail" + field;
-    FieldRail fieldRail = (FieldRail) cache(key);
-    if (fieldRail != null) return fieldRail;
-    fieldRail = new FieldRail(this, field);
-    cache(key, fieldRail);
-    return fieldRail;
-  }
-
-
-  /**
-   * Get docId parent documents (books) of nested documents (chapters), sorted by
-   * a sort specification. Calculation is not really expensive, do not cache.
-   * 
-   * @throws IOException
-   */
-  public int[] books(Sort sort) throws IOException
-  {
-    IndexSearcher searcher = searcher(); // ensure reader or decache
-    Query qBook = new TermQuery(new Term(Alix.TYPE, DocType.book.name()));
-    TopFieldDocs top = searcher.search(qBook, MAXBOOKS, sort);
-    int length = top.scoreDocs.length;
-    ScoreDoc[] docs = top.scoreDocs;
-    int[] books = new int[length];
-    for (int i = 0; i < length; i++) {
-      books[i] = docs[i].doc;
-    }
-    return books;
-  }
-  public Query query(final String field, final String q) throws IOException
-  {
-    return query(field, q, this.analyzer);
-  }
-  
-  static public Query query(final String field, final String q, final Analyzer analyzer) throws IOException
-  {
-    return query(field, q, analyzer, Occur.SHOULD);
-  }
-
-  /**
-   * 
-   * @param q
-   * @param field
-   * @return
-   * @throws IOException
-   */
-  static public Query query(final String field, final String q, final Analyzer analyzer, final Occur occur) throws IOException
-  {
-    if (q == null || "".equals(q.trim())) return null;
-    // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
-    // int boostLength = boosts.length;
-    // float boostDefault = boosts[boostLength - 1];
-    TokenStream ts = analyzer.tokenStream(SEARCH, q);
-    CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
-    // FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
-
-    ts.reset();
-    Query qTerm = null;
-    BooleanQuery.Builder bq = null;
-    Occur op = null;
-    bq = null;
-    int neg = 0;
-    int aff = 0;
-    try {
-      while (ts.incrementToken()) {
-        // if (Tag.isPun(flags.getFlags())) continue;
-        // position may have been striped
-        if (token.length() == 0) continue;
-        if (bq == null && qTerm != null) { // second term, create boolean
-          bq = new BooleanQuery.Builder();
-          bq.add(qTerm, op);
-        }
-        String word;
-        if (token.charAt(0) == '-') {
-          op = Occur.MUST_NOT;
-          word = token.subSequence(1, token.length()).toString();
-          neg++;
-        }
-        else if (token.charAt(0) == '+') {
-          op = Occur.MUST;
-          word = token.subSequence(1, token.length()).toString();
-          aff++;
-        }
-        else {
-          op = occur;
-          word = token.toString();
-          aff++;
-        }
-        
-        
-        int len = word.length();
-        while(--len >= 0 && word.charAt(len) != '*');
-        if (len > 0) qTerm = new WildcardQuery(new Term(field, word));
-        else qTerm = new TermQuery(new Term(field, word));
-
-        if (bq != null) { // more than one term
-          bq.add(qTerm, op);
-        }
-
-      }
-      ts.end();
-    }
-    finally {
-      ts.close();
-    }
-    if (neg > 0 && aff == 0 && bq != null) bq.add(new MatchAllDocsQuery(), Occur.MUST);
-    if (bq != null) return bq.build();
-    
-    if (neg > 0 && aff == 0) {
-      bq = new BooleanQuery.Builder();
-      bq.add(new MatchAllDocsQuery(), Occur.MUST);
-      bq.add(qTerm, occur);
-      return bq.build();
-    }
-    return qTerm;
-  }
-  
   /**
    * Analyze a search according to the default analyzer of this base,
    * is especially needed for multi-words ex: "en effet" 
@@ -813,6 +500,277 @@ u   * @throws IOException
     return forms.toArray(new String[forms.size()]);
   }
 
+  /**
+   * Get the internal lucene docid of a document by Alix String id 
+   * (a reserved field name)
+   * @param id
+   * @return the docId, or -1 if not found, or -2 if too much found, or -3 if id was null or empty.
+   * @throws IOException
+   */
+  public int getDocId(final String id) throws IOException
+  {
+    if (id == null || id.trim().length() == 0) return -3;
+    TermQuery qid = new TermQuery(new Term(Alix.ID, id));
+    TopDocs search = searcher().search(qid, 1);
+    ScoreDoc[] hits = search.scoreDocs;
+    if (hits.length == 0) return -1;
+    if (hits.length > 1) return -2;
+    return hits[0].doc;
+  }
+
+  /**
+   * Get the the Alix String id of a document by the lucene internal docid.
+   * @param docId
+   * @return
+   * @throws IOException
+   */
+  public String getId(final int docId) throws IOException
+  {
+    Document doc = reader().document(docId, FIELDS_ID);
+    if (doc == null) return null;
+    return doc.get(Alix.ID);
+  }
+
+  /**
+   * Get infos for a field.
+   * 
+   * @param field
+   * @return
+   * @throws IOException
+   */
+  public FieldInfo info(Enum<?> field) throws IOException
+  {
+    reader(); // ensure reader or decache
+    return fieldInfos.fieldInfo(field.name());
+  }
+
+  /**
+   * Get infos for a field.
+   * 
+   * @param field
+   * @return
+   * @throws IOException
+   */
+  public FieldInfo info(String field) throws IOException
+  {
+    reader(); // ensure reader or decache
+    return fieldInfos.fieldInfo(field);
+  }
+
+  public static Alix instance(String name) 
+  {
+    return pool.get(name);
+  }
+
+  /**
+   *  Get a a lucene directory index by file path, from cache, or created.
+   * @param path
+   * @param analyzer
+   * @return
+   * @throws IOException
+   */
+  public static Alix instance(final String name, final Path path, final Analyzer analyzer, FSDirectoryType dirType) throws IOException 
+  {
+    Alix alix = pool.get(name);
+    if (alix == null) {
+      alix = new Alix(name, path, analyzer, dirType);
+      pool.put(name, alix);
+    }
+    return alix;
+  }
+
+  /** 
+   * @return @see IndexReader#maxDoc() 
+   * @throws IOException 
+   */
+  public int maxDoc() throws IOException
+  {
+    if (reader == null) reader();
+    return maxDoc;
+  }
+
+  /**
+   * 
+   */
+  public String name()
+  {
+    return name;
+  }
+  public Query query(final String field, final String q) throws IOException
+  {
+    return query(field, q, this.analyzer);
+  }
+  
+  static public Query query(final String field, final String q, final Analyzer analyzer) throws IOException
+  {
+    return query(field, q, analyzer, Occur.SHOULD);
+  }
+
+  /**
+   * 
+   * @param q
+   * @param field
+   * @return
+   * @throws IOException
+   */
+  static public Query query(final String field, final String q, final Analyzer analyzer, final Occur occur) throws IOException
+  {
+    if (q == null || "".equals(q.trim())) return null;
+    // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
+    // int boostLength = boosts.length;
+    // float boostDefault = boosts[boostLength - 1];
+    TokenStream ts = analyzer.tokenStream(SEARCH, q);
+    CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
+    // FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
+
+    ts.reset();
+    Query qTerm = null;
+    BooleanQuery.Builder bq = null;
+    Occur op = null;
+    bq = null;
+    int neg = 0;
+    int aff = 0;
+    try {
+      while (ts.incrementToken()) {
+        // if (Tag.isPun(flags.getFlags())) continue;
+        // position may have been striped
+        if (token.length() == 0) continue;
+        if (bq == null && qTerm != null) { // second term, create boolean
+          bq = new BooleanQuery.Builder();
+          bq.add(qTerm, op);
+        }
+        String word;
+        if (token.charAt(0) == '-') {
+          op = Occur.MUST_NOT;
+          word = token.subSequence(1, token.length()).toString();
+          neg++;
+        }
+        else if (token.charAt(0) == '+') {
+          op = Occur.MUST;
+          word = token.subSequence(1, token.length()).toString();
+          aff++;
+        }
+        else {
+          op = occur;
+          word = token.toString();
+          aff++;
+        }
+        
+        // word.replace('_', ' ');
+        int len = word.length();
+        while(--len >= 0 && word.charAt(len) != '*');
+        if (len > 0) qTerm = new WildcardQuery(new Term(field, word));
+        else qTerm = new TermQuery(new Term(field, word));
+
+        if (bq != null) { // more than one term
+          bq.add(qTerm, op);
+        }
+
+      }
+      ts.end();
+    }
+    finally {
+      ts.close();
+    }
+    if (neg > 0 && aff == 0 && bq != null) bq.add(new MatchAllDocsQuery(), Occur.MUST);
+    if (bq != null) return bq.build();
+    
+    if (neg > 0 && aff == 0) {
+      bq = new BooleanQuery.Builder();
+      bq.add(new MatchAllDocsQuery(), Occur.MUST);
+      bq.add(qTerm, occur);
+      return bq.build();
+    }
+    return qTerm;
+  }
+  
+  /**
+   * See {@link #reader(boolean)}
+   * 
+   * @return
+   * @throws IOException
+   */
+  public DirectoryReader reader() throws IOException
+  {
+    return reader(false);
+  }
+
+  /**
+   * Get a reader for this lucene index, cached or new.
+   * Allow to force renew if force is true.
+   * 
+   * @param force
+   * @return
+   * @throws IOException
+   */
+  public DirectoryReader reader(final boolean force) throws IOException
+  {
+    if (!force && reader != null) return reader;
+    cache.clear(); // clean cache on renew the reader
+    reader = DirectoryReader.open(dir);
+    fieldInfos = FieldInfos.getMergedFieldInfos(reader);
+    maxDoc = reader.maxDoc();
+    return reader;
+  }
+
+  /**
+   * A real time reader only used for some updates.
+   * 
+   * @return
+   * @throws IOException
+   */
+  public IndexReader reader(IndexWriter writer) throws IOException
+  {
+    return DirectoryReader.open(writer, true, true);
+  }
+
+  /**
+   * Get a Scale object, useful to build graphs and chronology with an int field.
+   * 
+   * @param fieldInt
+   *          A NumericDocValuesField used as a sorted value.
+   * @param fieldText
+   *          A Texfield to count occurences, used as a size for docs.
+   * @return
+   * @throws IOException
+   */
+  public Scale scale(final String fieldInt, final String fieldText) throws IOException
+  {
+    String key = "AlixScale" + fieldInt + fieldText;
+    Scale scale = (Scale) cache(key);
+    if (scale != null) return scale;
+    scale = new Scale(this, null, fieldInt, fieldText);
+    cache(key, scale);
+    return scale;
+  }
+
+  /**
+   * See {@link #searcher(boolean)}
+   * 
+   * @return
+   * @throws IOException
+   */
+  public IndexSearcher searcher() throws IOException
+  {
+    return searcher(false);
+  }
+
+  /**
+   * Get the searcher for this lucene index, allow to force renew if force is true.
+   * 
+   * @param force
+   * @return
+   * @throws IOException
+   */
+  public IndexSearcher searcher(final boolean force) throws IOException
+  {
+    if (!force && searcher != null) return searcher;
+    reader(force);
+    searcher = new IndexSearcher(reader);
+    searcher.setSimilarity(similarity);
+    return searcher;
+  }
+
   @Override
   public String toString()
   {
@@ -830,5 +788,47 @@ u   * @throws IOException
     }
     sb.append(fieldInfos.toString());
     return sb.toString();
+  }
+
+  /**
+   * See {@link #writer(Similarity)}
+   * 
+   * @return
+   * @throws IOException
+   */
+  public IndexWriter writer() throws IOException
+  {
+    return writer(null);
+  }
+
+  /**
+   * Get a lucene writer
+   * 
+   * @throws IOException
+   */
+  public IndexWriter writer(final Similarity similarity) throws IOException
+  {
+    if (writer != null && writer.isOpen()) return writer;
+    IndexWriterConfig conf = new IndexWriterConfig(analyzer);
+    conf.setUseCompoundFile(false); // show separate file by segment
+    // may needed, increase the max heap size to the JVM (eg add -Xmx512m or
+    // -Xmx1g):
+    conf.setRAMBufferSizeMB(48);
+    conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
+    //
+    if (similarity != null) conf.setSimilarity(similarity);
+    else conf.setSimilarity(this.similarity);
+    // no effect found with modification ConcurrentMergeScheduler
+    /*
+     * int threads = Runtime.getRuntime().availableProcessors() - 1;
+     * ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
+     * cms.setMaxMergesAndThreads(threads, threads); cms.disableAutoIOThrottle();
+     * conf.setMergeScheduler(cms);
+     */
+    // order docId by a field after merge ? No functionality should rely on such
+    // order
+    // conf.setIndexSort(new Sort(new SortField(YEAR, SortField.Type.INT)));
+    writer = new IndexWriter(dir, conf);
+    return writer;
   }
 }
