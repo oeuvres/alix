@@ -133,8 +133,11 @@ public class FrPersnameFilter extends TokenFilter
     concLem.setEmpty();
     // mark() is used in case of rewind [Europe] de l’]atome
     concTerm.copy(termAtt).mark(); // record size
-    if (!orthAtt.isEmpty()) concOrth.copy(orthAtt).mark(); // a previous filter may have set something good, mlle > mademoiselle
-    else concOrth.copy(termAtt).mark();
+    if (orthAtt.isEmpty()) concOrth.copy(termAtt).mark();
+    else if (orthAtt.equals("monsieur")) concOrth.setLength(0).append("M.").mark();
+    else if (orthAtt.equals("madame")) concOrth.setLength(0).append("Mme").mark();
+    else concOrth.copy(orthAtt).mark(); // a previous filter may have set something good, mlle > mademoiselle
+    
     if (flagsAtt.getFlags() == Tag.SUBpers.flag); // monsieur, madame, not the key
     else if (!lemAtt.isEmpty()) concLem.copy(lemAtt).mark();
     else concLem.copy(concOrth).mark();
@@ -144,6 +147,7 @@ public class FrPersnameFilter extends TokenFilter
     int endOffset = offsetAtt.endOffset();
     
     // test compound names : NAME (particle|NAME)* NAME
+    // TODO: Louis XIV
 
     boolean lastIsParticle = false;
     while ((exit = input.incrementToken())) {
@@ -162,7 +166,8 @@ public class FrPersnameFilter extends TokenFilter
       lastIsParticle = false;
       // a part of name, append it
       // char.isUpperCase(termAtt.charAt(0)) // unsafe ex : verses L’amour de ma mère // Je dirais au grand César
-      if (Tag.NAME.sameParent(flags2)) {
+      // Louis le Grand ?
+      if (Char.isUpperCase(termAtt.charAt(0))) { // Tag.NAME.sameParent(flags2)
         // Set final flag according to future events
         if (flags2 == Tag.NAMEplace.flag && tagEnd != Tag.NAMEpers.flag) tagEnd = Tag.NAMEplace.flag; // Le [comte de Toulouse] is a person, not a place
         else if (flags2 == Tag.NAMEpers.flag) tagEnd = Tag.NAMEpers.flag;

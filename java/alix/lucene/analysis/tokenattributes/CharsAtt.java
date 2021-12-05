@@ -62,8 +62,6 @@ public class CharsAtt extends AttributeImpl
   private int len = 0;
   /** A mark set with @see #mark() */
   private int mark = -1;
-  /** Keep memory of last len */
-  private int lastLen= 0;
   /** Cached hashCode */
   private int hash;
   /** start size */
@@ -137,7 +135,6 @@ public class CharsAtt extends AttributeImpl
   public final CharsAtt append(CharSequence csq, int start, int end)
   {
     hash = 0;
-    lastLen = len;
     // needed for Appendable compliance
     if (csq == null) csq = "null";
     // re-organize this?
@@ -182,7 +179,6 @@ public class CharsAtt extends AttributeImpl
   public final CharsAtt append(char c)
   {
     hash = 0;
-    lastLen = len;
     resizeBuffer(len + 1)[len++] = c;
     return this;
   }
@@ -197,7 +193,6 @@ public class CharsAtt extends AttributeImpl
     if (s == null) return appendNull();
     final int length = s.length();
     s.getChars(0, length, resizeBuffer(this.len + length), this.len);
-    lastLen = len;
     this.len += length;
     return this;
   }
@@ -210,7 +205,6 @@ public class CharsAtt extends AttributeImpl
     if (s == null) return appendNull();
     final int length = s.length();
     s.getChars(0, length, resizeBuffer(this.len + length), this.len);
-    lastLen = len;
     this.len += length;
     return this;
   }
@@ -223,7 +217,6 @@ public class CharsAtt extends AttributeImpl
     if (ta == null) return appendNull();
     final int length = ta.length();
     System.arraycopy(ta.buffer(), 0, resizeBuffer(this.len + length), this.len, length);
-    lastLen = len;
     len += length;
     return this;
   }
@@ -231,7 +224,6 @@ public class CharsAtt extends AttributeImpl
   private CharsAtt appendNull()
   {
     hash = 0;
-    lastLen = len;
     resizeBuffer(len + 4);
     chars[len++] = 'n';
     chars[len++] = 'u';
@@ -283,7 +275,6 @@ public class CharsAtt extends AttributeImpl
   public void clear()
   {
     hash = 0;
-    lastLen = len;
     len = 0;
   }
 
@@ -344,7 +335,6 @@ public class CharsAtt extends AttributeImpl
   public final CharsAtt copy(CharTermAttribute ta)
   {
     hash = 0;
-    lastLen = len;
     len = ta.length();
     System.arraycopy(ta.buffer(), 0, resizeBuffer(len), 0, len);
     return this;
@@ -363,7 +353,6 @@ public class CharsAtt extends AttributeImpl
     hash = 0;
     // ensure buffer size at bytes length
     char[] chars = resizeBuffer(bytes.length);
-    lastLen = len;
     // get the length in chars after conversion
     this.len = UnicodeUtil.UTF8toUTF16(bytes.bytes, bytes.offset, bytes.length, chars);
     return this;
@@ -618,7 +607,6 @@ public class CharsAtt extends AttributeImpl
   public final CharsAtt setEmpty()
   {
     hash = 0;
-    lastLen = len;
     len = 0;
     mark = -1; // unallow restore mark() ?
     return this;
@@ -628,7 +616,6 @@ public class CharsAtt extends AttributeImpl
   public final CharsAtt setLength(int length)
   {
     hash = 0;
-    lastLen = len;
     if (length < 0) {
       len += length;
       if (len < 0) throw new IndexOutOfBoundsException("len < "+-length);

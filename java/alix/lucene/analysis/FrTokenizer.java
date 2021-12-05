@@ -131,14 +131,11 @@ public class FrTokenizer extends Tokenizer
         "leur", "lui", "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y" })
       HYPHEN_POST.add(new CharsAtt(w));
   }
-  /*
   public static final HashSet<CharsAtt> HYPHEN_ANTE = new HashSet<CharsAtt>();
   static {
-    for (String w : new String[] { "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "la", "là", "le", "les",
-        "leur", "lui", "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y" })
-      HYPHEN_POST.add(new CharsAtt(w));
+    for (String w : new String[] { "très", "Très"})
+      HYPHEN_ANTE.add(new CharsAtt(w));
   }
-  */
   /** tags to send as token events and translate */
   public static final HashMap<CharsAtt, CharsAtt> TAGS = new HashMap<CharsAtt, CharsAtt>();
   static {
