@@ -1,3 +1,35 @@
+/*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
+ * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
+ *                Frédéric Glorieux <frederic.glorieux@fictif.org>
+ *
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache license.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
+ * for a java course at Inalco  http://www.er-tim.fr/
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
+ * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * http://savannah.nongnu.org/projects/sdx/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package alix.cli;
 
 import java.io.File;
@@ -7,6 +39,7 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -29,6 +62,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
 import alix.fr.Tag;
+import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.FrLemFilter;
 import alix.lucene.analysis.FrPersnameFilter;
 import alix.lucene.analysis.FrTokenizer;
@@ -71,11 +105,24 @@ public class Balinoms implements Callable<Integer> {
 
     static Analyzer anaNoms = new AnalyzerNames();
 
-    Map<String, AtomicInteger> mapAll = new HashMap<>();
+    static class Entry implements Comparable<Entry> {
+        int count;
+        final int flag;
+        final String form;
+        Entry (final String form, final int flag) {
+            this.form = form;
+            this.flag = flag;
+            this.count = 1;
+        }
+        @Override
+        public int compareTo(Entry e) {
+            int dif = e.count - this.count;
+            if (dif == 0) return this.form.compareTo(e.form);
+            return dif;
+        }
+    }
+    Map<String, Entry> dic = new HashMap<>();
 
-    Map<String, AtomicInteger> mapName = new HashMap<>();
-    Map<String, AtomicInteger> mapPers = new HashMap<>();
-    Map<String, AtomicInteger> mapPlace = new HashMap<>();
 
     @Parameters(arity = "1..*", description = "au moins un fichier XML/TEI à baliser")
     File[] files;
@@ -86,14 +133,14 @@ public class Balinoms implements Callable<Integer> {
             String name = src.getName().substring(0, src.getName().lastIndexOf('.'));
             String ext = src.getName().substring(src.getName().lastIndexOf('.'));
             String dest = src.getParent() + "/" + name + "_alix" + ext;
+            System.out.println(src + " > " + dest + "…");
+            long time = System.nanoTime();
             parse(new String(Files.readAllBytes(Paths.get(src.toString())), StandardCharsets.UTF_8),
                     new PrintWriter(dest));
             ;
-            Files.write(Paths.get(src.getParent() + "/" + name + "_all.tsv"), top(mapAll, -1).getBytes("UTF-8"));
-            Files.write(Paths.get(src.getParent() + "/" + name + "_name.tsv"), top(mapName, -1).getBytes("UTF-8"));
-            Files.write(Paths.get(src.getParent() + "/" + name + "_place.tsv"), top(mapPlace, -1).getBytes("UTF-8"));
-            Files.write(Paths.get(src.getParent() + "/" + name + "_pers.tsv"), top(mapPers, -1).getBytes("UTF-8"));
-            System.out.println(src + " > " + dest);
+            Files.write(Paths.get(src.getParent() + "/" + name + "_names.tsv"), top(-1, null).getBytes("UTF-8"));
+            dic.clear();
+            System.out.println(((System.nanoTime() - time) / 1000000) + " ms.");
         }
         System.out.println("C’est fini");
         return 0;
@@ -125,37 +172,41 @@ public class Balinoms implements Callable<Integer> {
                 // TODO test to avoid over tagging ?
                 if (!Tag.NAME.sameParent(flag))
                     continue;
+                // Should not arrive, but it arrives
+                if (lemAtt.isEmpty()) {
+                    // System.out.println("term=" + termAtt + " orth=" + orthAtt + " lem=" + lemAtt);
+                    if (!orthAtt.isEmpty()) lemAtt.append(orthAtt);
+                    else lemAtt.append(termAtt);
+                }
+
                 out.print(xml.substring(begin, attOff.startOffset()));
                 begin = attOff.endOffset();
-                inc(mapAll, lemAtt);
                 if (Tag.NAMEplace.flag == flag) {
                     out.print("<placeName>");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</placeName>");
-                    inc(mapPlace, lemAtt);
+                    inc(lemAtt, Tag.NAMEplace.flag);
                 }
                 // personne
-                else if (Tag.NAMEpers.flag == flag || Tag.NAMEauthor.flag == flag || Tag.NAMEfict.flag == flag) {
+                else if (Tag.NAMEpers.flag == flag || Tag.NAMEfict.flag == flag) {
                     out.print("<persName key=\"" + lemAtt + "\">");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</persName>");
-                    inc(mapPers, lemAtt);
+                    inc(lemAtt, Tag.NAMEpers.flag);
                 }
                 // non repéré supposé personne
                 else if (Tag.NAME.flag == flag) {
                     out.print("<persName key=\"" + lemAtt + "\">");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</persName>");
-                    inc(mapPers, lemAtt);
-                    inc(mapName, lemAtt);
-                } else {
+                    inc(lemAtt, Tag.NAMEpers.flag);
+                } else { // || Tag.NAMEauthor.flag == flag
                     out.print("<name>");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</name>");
+                    inc(lemAtt, Tag.NAME.flag);
                 }
 
-                if (lemAtt.isEmpty())
-                    System.out.println("term=" + termAtt + " orth=" + orthAtt + " lem=" + lemAtt);
             }
 
             stream.end();
@@ -172,24 +223,25 @@ public class Balinoms implements Callable<Integer> {
     /**
      * Increment dics. This way should limit object creation
      */
-    private void inc(final Map<String, AtomicInteger> map, final CharsAtt chars) {
+    private void inc(final CharsAtt chars, final int flag) {
         @SuppressWarnings("unlikely-arg-type")
-        AtomicInteger value = map.get(chars);
-        if (value == null) {
-            map.put(chars.toString(), new AtomicInteger(1));
+        Entry entry = dic.get(chars);
+        if (entry == null) {
+            String lem = chars.toString();
+            dic.put(lem, new Entry(lem, flag));
         } else {
-            value.getAndIncrement();
+            entry.count++;
         }
     }
 
-    public String top(final Map<String, AtomicInteger> map, final int limit) {
+    public String top(final int limit, TagFilter filter) {
         StringBuffer sb = new StringBuffer();
-        List<Map.Entry<String, AtomicInteger>> list = sort(map);
-        Iterator<Map.Entry<String, AtomicInteger>> it = list.iterator();
+        Entry[] lexiq = dic.values().toArray(new Entry[0]);
+        Arrays.sort(lexiq);
+        sb.append("forme\ttype\teffectif\n");
         int n = 1;
-        while (it.hasNext()) {
-            Map.Entry<String, AtomicInteger> entry = it.next();
-            sb.append(n + ".\t" + entry.getKey() + "\t" + entry.getValue() + "\n");
+        for (Entry entry : lexiq) {
+            sb.append(entry.form + "\t" + Tag.name(entry.flag) + "\t" + entry.count + "\n");
             if (n == limit)
                 break;
             n++;
@@ -197,19 +249,6 @@ public class Balinoms implements Callable<Integer> {
         return sb.toString();
     }
 
-    private List<Map.Entry<String, AtomicInteger>> sort(Map<String, AtomicInteger> map) {
-        List<Map.Entry<String, AtomicInteger>> list = new LinkedList<>(map.entrySet());
-        list.sort(new Comparator<Map.Entry<String, AtomicInteger>>() {
-            @Override
-            public int compare(Entry<String, AtomicInteger> o1, Entry<String, AtomicInteger> o2) {
-                int dif = o2.getValue().get() - o1.getValue().get();
-                if (dif == 0)
-                    return o1.getKey().compareTo(o2.getKey());
-                return dif;
-            }
-        });
-        return list;
-    }
 
     /**
      * Test the Class

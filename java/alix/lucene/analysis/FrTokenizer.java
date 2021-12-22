@@ -128,8 +128,9 @@ public class FrTokenizer extends Tokenizer
   public static final HashSet<CharsAtt> HYPHEN_POST = new HashSet<CharsAtt>();
   static {
     for (String w : new String[] { "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "la", "là", "le", "les",
-        "leur", "lui", "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y" })
+        "leur", "lui", "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y" }){
       HYPHEN_POST.add(new CharsAtt(w));
+    }
   }
   public static final HashSet<CharsAtt> HYPHEN_ANTE = new HashSet<CharsAtt>();
   static {
@@ -139,13 +140,15 @@ public class FrTokenizer extends Tokenizer
   /** tags to send as token events and translate */
   public static final HashMap<CharsAtt, CharsAtt> TAGS = new HashMap<CharsAtt, CharsAtt>();
   static {
-    TAGS.put(new CharsAtt("p"), new CharsAtt("<p>"));
+      TAGS.put(new CharsAtt("l"), new CharsAtt("<p>"));
+      TAGS.put(new CharsAtt("p"), new CharsAtt("<p>"));
     TAGS.put(new CharsAtt("h1"), new CharsAtt("<p>"));
     TAGS.put(new CharsAtt("h2"), new CharsAtt("<p>"));
     TAGS.put(new CharsAtt("h3"), new CharsAtt("<p>"));
     TAGS.put(new CharsAtt("h4"), new CharsAtt("<p>"));
     TAGS.put(new CharsAtt("h5"), new CharsAtt("<p>"));
     TAGS.put(new CharsAtt("h6"), new CharsAtt("<p>"));
+    TAGS.put(new CharsAtt("lb"), new CharsAtt("<p>"));
     TAGS.put(new CharsAtt("section"), new CharsAtt("<section>"));
     TAGS.put(new CharsAtt("/section"), new CharsAtt("</section>"));
     TAGS.put(new CharsAtt("article"), new CharsAtt("<section>"));
