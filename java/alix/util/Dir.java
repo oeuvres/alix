@@ -81,17 +81,29 @@ public class Dir
     return file.delete();
   }
 
+  /**
+   * List files by glob
+   * @param glob
+   * @return
+   * @throws IOException
+   */
   public static List<File> ls(final String glob) throws IOException
   {
     return ls(glob, new ArrayList<File>());
   }
 
-
+  /**
+   * List files with glob
+   * @param glob
+   * @param files
+   * @return
+   * @throws IOException
+   */
   public static List<File> ls(final String glob, final List<File> files) throws IOException
   {
     Path basedir = new File(glob.replaceFirst("[\\[\\*\\?\\{].*", "")+"DUMMY").getParentFile().toPath();
     String pattern = glob;
-    if(File.separator.equals("\\")) {
+    if(File.separator.equals("\\")) { // for Windows
       pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes \*8
     }
     

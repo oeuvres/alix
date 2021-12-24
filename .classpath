@@ -20,5 +20,6 @@
 	<classpathentry kind="lib" path="lib/lucene-analysis-common-9.0.0.jar"/>
 	<classpathentry kind="lib" path="lib/lucene-core-9.0.0.jar"/>
 	<classpathentry kind="lib" path="lib/lucene-highlighter-9.0.0.jar"/>
+	<classpathentry kind="lib" path="lib/sqlite-jdbc-3.36.0.3.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>
