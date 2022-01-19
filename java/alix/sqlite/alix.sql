@@ -39,7 +39,7 @@ CREATE TABLE tok (
     id          INTEGER, -- rowid auto
     doc         INTEGER NOT NULL,  -- ! doc id
     orth        INTEGER NOT NULL,  -- ! normalized orthographic form id
-    cat         INTEGER NOT NULL,  -- ! word category id
+    cat         TEXT    NOT NULL,  -- ! word category id
     lem         INTEGER NOT NULL,  -- ! lemma form id
     offset      INTEGER NOT NULL,  -- ! start offset in source file, utf8 chars
     length      INTEGER NOT NULL,  -- ! size of token, utf8 chars
@@ -61,6 +61,7 @@ CREATE TABLE orth (
     PRIMARY KEY(id ASC)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS orth_form ON orth(form, cat);
+CREATE INDEX IF NOT EXISTS orth_lem ON orth(lem);
 
 DROP TABLE IF EXISTS lem;
 CREATE TABLE lem (
