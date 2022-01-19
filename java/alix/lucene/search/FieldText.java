@@ -61,7 +61,7 @@ import alix.lucene.analysis.FrDics.LexEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.Char;
 import alix.util.IntList;
-import alix.web.Distrib.Scorer;
+import alix.web.OptionDistrib.Scorer;
 
 /**
  * <p>

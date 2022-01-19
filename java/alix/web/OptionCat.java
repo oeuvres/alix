@@ -38,30 +38,48 @@ import alix.fr.Tag.TagFilter;
 /**
  * Options for filters by grammatical types
  */
-public enum Cat implements Option 
+public enum OptionCat implements Option
 {
-  
-  ALL("Tout", null),
-  NOSTOP("Mots “pleins”", new TagFilter().setAll().noStop(true) ), 
-  STRONG("Mots “forts”", new TagFilter().set(Tag.SUB).set(Tag.VERB).set(Tag.ADJ).noStop(true)), 
-  SUB("Substantifs", new TagFilter().set(Tag.SUB)), 
-  PERS("Personnes", new TagFilter().set(Tag.NAME).set(Tag.NAMEpers).set(Tag.NAMEpersf).set(Tag.NAMEpersm).set(Tag.NAMEauthor).set(Tag.NAMEfict)),
-  PLACE("Lieux", new TagFilter().set(Tag.NAMEplace)),
-  NAME("Autres noms propres", new TagFilter().set(Tag.NAME).set(Tag.NAMEevent).set(Tag.NAMEgod).set(Tag.NAMEorg).set(Tag.NAMEpeople)),
-  VERB("Verbes", new TagFilter().set(Tag.VERB)),
-  ADJ("Adjectifs", new TagFilter().set(Tag.ADJ)),
-  ADV("Adverbes", new TagFilter().set(Tag.ADV)),
-  STOP("Mots grammaticaux", new TagFilter().setAll().clearGroup(Tag.SUB).clearGroup(Tag.NAME).clear(Tag.VERB).clear(Tag.ADJ).clear(0)), 
-  UKNOWN("Mots inconnus", new TagFilter().set(0)), 
-  LOC("Locutions", new TagFilter().setAll().locutions(true)), 
-  ;
-  final public String label;
-  final public TagFilter tags;
-  private Cat(final String label, final TagFilter tags) {  
-    this.label = label ;
-    this.tags = tags;
-  }
-  public TagFilter tags(){ return tags; }
-  public String label() { return label; }
-  public String hint() { return null; }
+
+    ALL("Tout", null),
+    NOSTOP("Mots “pleins”", new TagFilter().setAll().noStop(true)),
+    STRONG("Mots “forts”", new TagFilter().set(Tag.SUB).set(Tag.VERB).set(Tag.ADJ).noStop(true)),
+    SUB("Substantifs", new TagFilter().set(Tag.SUB)),
+    PERS("Personnes",
+            new TagFilter().set(Tag.NAME).set(Tag.NAMEpers).set(Tag.NAMEpersf).set(Tag.NAMEpersm).set(Tag.NAMEauthor)
+                    .set(Tag.NAMEfict)),
+    PLACE("Lieux", new TagFilter().set(Tag.NAMEplace)),
+    NAME("Autres noms propres",
+            new TagFilter().set(Tag.NAME).set(Tag.NAMEevent).set(Tag.NAMEgod).set(Tag.NAMEorg).set(Tag.NAMEpeople)),
+    VERB("Verbes", new TagFilter().set(Tag.VERB)),
+    ADJ("Adjectifs", new TagFilter().set(Tag.ADJ)),
+    ADV("Adverbes", new TagFilter().set(Tag.ADV)),
+    STOP("Mots grammaticaux",
+            new TagFilter().setAll().clearGroup(Tag.SUB).clearGroup(Tag.NAME).clear(Tag.VERB).clear(Tag.ADJ).clear(0)),
+    UKNOWN("Mots inconnus", new TagFilter().set(0)),
+    LOC("Locutions", new TagFilter().setAll().locutions(true)),;
+
+    final public String label;
+    final public TagFilter tags;
+
+    private OptionCat(final String label, final TagFilter tags)
+    {
+        this.label = label;
+        this.tags = tags;
+    }
+
+    public TagFilter tags()
+    {
+        return tags;
+    }
+
+    public String label()
+    {
+        return label;
+    }
+
+    public String hint()
+    {
+        return null;
+    }
 }

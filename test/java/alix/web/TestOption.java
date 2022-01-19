@@ -8,9 +8,9 @@ public class TestOption
   static public void show()
   {
     System.out.println(
-      MI.jaccard.options()
+      OptionMI.jaccard.options()
     );
-    MI fallback = MI.jaccard;
+    OptionMI fallback = OptionMI.jaccard;
     
     System.out.println(
       Enum.valueOf(fallback.getDeclaringClass(), "none")

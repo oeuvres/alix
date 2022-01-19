@@ -68,7 +68,7 @@ import alix.lucene.Alix;
 import alix.util.Chain;
 import alix.util.IntList;
 import alix.util.IntPair;
-import alix.web.MI;
+import alix.web.OptionMI;
 
 /**
  * Persistent storage of full sequence of all document search for a field.
@@ -530,7 +530,7 @@ public class FieldRail
   
   /**
    * Scores a {@link FormEnum} with freqs extracted from co-occurrences extraction in a  {@link #coocs(FormEnum)}.
-   * Scoring uses a “mutual information” {@link MI} algorithm (probability like, not tf-idf like). Parameters
+   * Scoring uses a “mutual information” {@link OptionMI} algorithm (probability like, not tf-idf like). Parameters
    * are 
    * <li>Oab: count of a form (a) observed in a co-occurrency context (b)
    * <li>Oa: count of a form in full corpus, or in a section (filter)
@@ -573,8 +573,8 @@ public class FieldRail
     if (results.formScore == null || results.formScore.length != length) results.formScore = new double[length]; // by term, occurrences counts
     else Arrays.fill(results.formScore, 0);
     final long N = ftext.occsAll; // global 
-    MI mi = results.mi;
-    if (mi == null) mi = MI.occs;
+    OptionMI mi = results.mi;
+    if (mi == null) mi = OptionMI.occs;
     for (int formId = 0; formId < length; formId++) {
       if (hasInclude && Arrays.binarySearch(include, formId) >= 0); //include word
       else if (noStop && ftext.isStop(formId)) continue;

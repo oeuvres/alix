@@ -49,7 +49,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
 import alix.lucene.Alix;
-import alix.web.Distrib.Scorer;
+import alix.web.OptionDistrib.Scorer;
 
 
 /**

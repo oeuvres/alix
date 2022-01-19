@@ -48,7 +48,7 @@ import alix.lucene.Alix;
 import alix.lucene.search.SimilarityG;
 import alix.lucene.search.SimilarityOccs;
 
-public enum DocSort implements Option
+public enum OptionSort implements Option
 {
  score(
     "Score", 
@@ -94,7 +94,7 @@ public enum DocSort implements Option
   public final Sort sort;
   public final Similarity sim;
   public final String label;
-  private DocSort(final String label, final Sort sort, final Similarity sim)
+  private OptionSort(final String label, final Sort sort, final Similarity sim)
   {
     this.label = label;
     this.sort = sort;
@@ -133,7 +133,7 @@ public enum DocSort implements Option
   }
   
   /**
-   * 
+   * Get a topd docs with limit
    * @param searcher
    * @param query
    * @param limit

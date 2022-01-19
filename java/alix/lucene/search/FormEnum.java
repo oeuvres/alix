@@ -47,8 +47,8 @@ import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.TopArray;
-import alix.web.Distrib.Scorer;
-import alix.web.MI;
+import alix.web.OptionDistrib.Scorer;
+import alix.web.OptionMI;
 
 /**
  * This object is build to collect list of forms with 
@@ -110,7 +110,7 @@ public class FormEnum {
   /** Optional, a sort algorithm to select specific words according a norm (ex: compare formOccs / freqs) */
   public Scorer scorer;
   /** Optional, a sort algorithm for coocs */
-  public MI mi;
+  public OptionMI mi;
   /** sort order */
   public enum Sorter {
     score,

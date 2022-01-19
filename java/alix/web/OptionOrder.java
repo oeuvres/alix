@@ -2,7 +2,7 @@ package alix.web;
 
 import alix.lucene.search.FormEnum.Sorter;
 
-public enum Order implements Option 
+public enum OptionOrder implements Option 
 {
   score("Score", null, Sorter.score),
   freq("Occurrences", null, Sorter.freq),
@@ -11,7 +11,7 @@ public enum Order implements Option
   docs("Total textes", null, Sorter.docs),
   alpha("Alphabétique", null, Sorter.alpha),
   ;
-  private Order(final String label, final String hint, Sorter sorter) {  
+  private OptionOrder(final String label, final String hint, Sorter sorter) {  
     this.label = label;
     this.hint = hint;
     this.sorter = sorter;

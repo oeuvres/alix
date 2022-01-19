@@ -442,9 +442,9 @@ public class Alix
      * @return
      * @throws IOException
      */
-    public String[] forms(final String q, final String fieldName) throws IOException
+    public String[] tokenize(final String q, final String fieldName) throws IOException
     {
-        return forms(q, this.analyzer, fieldName);
+        return tokenize(q, this.analyzer, fieldName);
     }
 
     /**
@@ -456,7 +456,7 @@ public class Alix
      * @return
      * @throws IOException
      */
-    public static String[] forms(final String q, final Analyzer analyzer, String fieldName) throws IOException
+    public static String[] tokenize(final String q, final Analyzer analyzer, String fieldName) throws IOException
     {
         // create an arrayList on each search and let gc works
         ArrayList<String> forms = new ArrayList<String>();
@@ -542,6 +542,11 @@ public class Alix
         return doc.get(Alix.ID);
     }
 
+    public static boolean hasInstance(String name)
+    {
+        return pool.containsKey(name);
+    }
+
     /**
      * Get infos for a field.
      * 
@@ -566,11 +571,6 @@ public class Alix
     {
         reader(); // ensure reader or decache
         return fieldInfos.fieldInfo(field);
-    }
-
-    public static boolean hasInstance(String name)
-    {
-        return pool.containsKey(name);
     }
 
     public static Alix instance(String name)

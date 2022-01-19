@@ -73,7 +73,7 @@ public class TestCloud
     long time = System.nanoTime();
     time = System.nanoTime();
     FieldText ftext = alix.fieldText("text");
-    FormEnum results = ftext.results(500, Cat.ALL.tags(), Ranking.bm25.specif(), null, false);
+    FormEnum results = ftext.results(500, OptionCat.ALL.tags(), Ranking.bm25.specif(), null, false);
     Cloud cloud = cloud(results);
     System.out.println(((System.nanoTime() - time) / 1000000) + " ms. pour remplir le nuage");
     time = System.nanoTime();
