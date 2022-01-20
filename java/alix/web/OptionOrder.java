@@ -4,23 +4,23 @@ import alix.lucene.search.FormEnum.Sorter;
 
 public enum OptionOrder implements Option 
 {
-  score("Score", null, Sorter.score),
-  freq("Occurrences", null, Sorter.freq),
-  hits("Textes", null, Sorter.hits),
-  occs("Total occurrences", null, Sorter.occs),
-  docs("Total textes", null, Sorter.docs),
-  alpha("Alphabétique", null, Sorter.alpha),
-  ;
-  private OptionOrder(final String label, final String hint, Sorter sorter) {  
-    this.label = label;
-    this.hint = hint;
-    this.sorter = sorter;
-  }
-  final public String label;
-  final public String hint;
-  final public Sorter sorter;
-  public String label() { return label; }
-  public String hint() { return hint; }
-  public Sorter sorter() { return sorter; }
+    score("Score", null, Sorter.score),
+    freq("Occurrences", null, Sorter.freq),
+    hits("Textes", null, Sorter.hits),
+    occs("Total occurrences", null, Sorter.occs),
+    docs("Total textes", null, Sorter.docs),
+    alpha("Alphabétique", null, Sorter.alpha),
+    ;
+    private OptionOrder(final String label, final String hint, Sorter sorter) {    
+        this.label = label;
+        this.hint = hint;
+        this.sorter = sorter;
+    }
+    final public Sorter sorter;
+    final public String label;
+    final public String hint;
+    public String label() { return label; }
+    public String hint() { return hint; }
+    public Sorter sorter() { return sorter; }
 
 }

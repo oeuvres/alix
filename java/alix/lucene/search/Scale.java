@@ -269,13 +269,13 @@ public class Scale
    * @return
    * @throws IOException
    */
-  public long[][] curves(TermList terms, int dots) throws IOException
+  public long[][] curves(String[] forms, int dots) throws IOException
   {
-    if (terms.size() < 1) return null;
+    if (forms.length < 1) return null;
     // ticks should be in doc order
     IndexReader reader = alix.reader();
     // search maybe organized in groups
-    int cols = terms.sizeNotNull();
+    int cols = forms.length;
     if (cols > 10) cols = 10;
 
     // if there are only a few books, hundred of dots doesn't make sense
@@ -304,9 +304,10 @@ public class Scale
       // assert byDocid[ordBase - 1].docId < docBase <= byDocid[ordBase]
       int ordMax = ordBase; // keep memory of biggest ord found for each search, to set ordBase
       // Do as a termQuery, loop on PostingsEnum.FREQS for each term
-      for(Term term: terms) {
-        if (term == null) continue; // null search are group separators
+      for(String form: forms) {
+        if (form == null) continue; // null search are group separators
         if (col >= cols) break;
+        Term term = new Term(ftext.fname, form);
         col++; // start col at 1
         // for each term, reset the pointer in the axis
         int ord = ordBase;

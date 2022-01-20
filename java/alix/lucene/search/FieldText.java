@@ -332,8 +332,8 @@ public class FieldText
   */
 
   /**
-   * Get stats by formId from a subset of documents, useful for scoring inside a slice of corpus.
-   * Be careful, long[0] is not significant but is the sum of all occs.
+   * Populate a dictionary of forms by a bitSet of documents,
+   * the filter is found in FormEnum.filter
    * @throws IOException 
    */
   public FormEnum filter(FormEnum results) throws IOException
