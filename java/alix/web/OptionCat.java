@@ -43,13 +43,8 @@ public enum OptionCat implements Option
 
     ALL("Tout", null),
     NOSTOP("Mots “pleins”", new TagFilter().setAll().noStop(true)),
-    STRONG("Mots “forts”", new TagFilter().set(Tag.SUB).set(Tag.VERB).set(Tag.ADJ).noStop(true)),
     SUB("Substantifs", new TagFilter().set(Tag.SUB)),
-    PERS("Personnes",
-            new TagFilter().set(Tag.NAME).set(Tag.NAMEpers).set(Tag.NAMEpersf).set(Tag.NAMEpersm).set(Tag.NAMEauthor)
-                    .set(Tag.NAMEfict)),
-    PLACE("Lieux", new TagFilter().set(Tag.NAMEplace)),
-    NAME("Autres noms propres",
+    NAME("Noms propres",
             new TagFilter().set(Tag.NAME).set(Tag.NAMEevent).set(Tag.NAMEgod).set(Tag.NAMEorg).set(Tag.NAMEpeople)),
     VERB("Verbes", new TagFilter().set(Tag.VERB)),
     ADJ("Adjectifs", new TagFilter().set(Tag.ADJ)),
@@ -57,8 +52,15 @@ public enum OptionCat implements Option
     STOP("Mots grammaticaux",
             new TagFilter().setAll().clearGroup(Tag.SUB).clearGroup(Tag.NAME).clear(Tag.VERB).clear(Tag.ADJ).clear(0)),
     UKNOWN("Mots inconnus", new TagFilter().set(0)),
-    LOC("Locutions", new TagFilter().setAll().locutions(true)),;
-
+    LOC("Locutions", new TagFilter().setAll().locutions(true)),
+    PERS("Personnes",
+            new TagFilter().set(Tag.NAME).set(Tag.NAMEpers).set(Tag.NAMEpersf).set(Tag.NAMEpersm).set(Tag.NAMEauthor)
+                    .set(Tag.NAMEfict)),
+    PLACE("Lieux", new TagFilter().set(Tag.NAMEplace)),
+    RS("Autres noms propres",
+            new TagFilter().set(Tag.NAME).set(Tag.NAMEevent).set(Tag.NAMEgod).set(Tag.NAMEorg).set(Tag.NAMEpeople)),
+    STRONG("Mots “forts”", new TagFilter().set(Tag.SUB).set(Tag.VERB).set(Tag.ADJ).noStop(true)),
+    ;
     final public String label;
     final public TagFilter tags;
 

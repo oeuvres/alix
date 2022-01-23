@@ -400,6 +400,25 @@ public class FieldFacet
     }
 
     /**
+     * Number of documents by term
+     * @param filter
+     * @return
+     * @throws IOException
+     */
+    public FormEnum results(final BitSet filter) throws IOException
+    {
+        FormEnum results = new FormEnum(this);
+        results.formDocsHit = new int[maxForm];
+        for (int docId = 0, max = this.docFormOccs.length; docId < max; docId++) {
+            int[] facets = docFormOccs[docId];
+            if (facets == null) continue;
+            for (int facetId: facets) {
+                results.formDocsHit[facetId]++;
+            }
+        }
+        return results;
+    }
+    /**
      * Results of a text search according to a facet field search. Query maybe
      * restricted by a doc filter (a corpus). If there are no search in the search,
      * will cry. Returns an iterator on search of this facet, with scores and other
@@ -410,7 +429,6 @@ public class FieldFacet
      */
     public FormEnum results(final String[] search, final BitSet filter, Scorer scorer) throws IOException
     {
-        FormEnum results = new FormEnum(this);
         ArrayList<Term> terms = new ArrayList<Term>();
         if (search != null && search.length != 0) {
             for (String f : search) {
@@ -421,6 +439,8 @@ public class FieldFacet
                 terms.add(new Term(ftext.fname, f));
             }
         }
+        if (terms.size() < 1) return results(filter);
+        FormEnum results = new FormEnum(this);
         boolean hasScorer = (scorer != null);
         boolean hasFilter = (filter != null);
 
@@ -436,6 +456,7 @@ public class FieldFacet
         int facetMatch = 0; // number of matched facets by this search
         @SuppressWarnings("unused")
         long occsMatch = 0; // total occurrences matched
+        
         // loop on search, this order of loops may be not efficient for a big list of
         // search
         // loop by term is better for some stats
@@ -477,9 +498,12 @@ public class FieldFacet
                         if (results.formOccsFreq[facetId] == 0) {
                             facetMatch++;
                         }
-                        if (!docSeen)
-                            results.formDocsHit[facetId]++; // if doc not already counted for another, increment hits
-                                                            // for this facet
+                        // if doc not already counted for another, increment hits for this facet
+                        if (!docSeen) {
+                            results.formDocsHit[facetId]++; 
+                            results.docsHit++;
+                        }
+                        results.occsFreq += freq; 
                         results.formOccsFreq[facetId] += freq; // add the matched freqs for this doc to the facet
                         // what for ?
                         // formPartOccs[facetId] += freq;

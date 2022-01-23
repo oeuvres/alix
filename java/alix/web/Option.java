@@ -74,7 +74,7 @@ public interface Option
   {
     StringBuilder sb = new StringBuilder();
     // let cry if list is empty
-    String[] values = list.split("\\s+");
+    String[] values = list.split("[\\s,;]+");
     Class cls = ((Enum<?>) this).getDeclaringClass();
     for (String name: values) {
       Option opt = null;

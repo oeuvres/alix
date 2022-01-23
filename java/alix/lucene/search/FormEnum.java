@@ -77,12 +77,18 @@ public class FormEnum
     protected int[] formDocsPart;
     /** By formId, count of docs, matched in a text search */
     protected int[] formDocsHit;
+    /** Document found, Σ formDocsHit */
+    protected int docsHit;
+    /** By formId, a free int with no semantic, see FieldFace.nos() */
+    protected int[] formNos;
     /** By formId, count of occurrences, on all base */
     protected long[] formOccsAll;
     /** By formId, count of occurrences, on a partition */
     protected long[] formOccsPart;
     /** By formId, count of occurrences, matched in a text search */
     protected long[] formOccsFreq;
+    /** Occurrences found, Σ formOccsFreq */
+    protected long occsFreq;
     /**
      * By formId, a docId by term used as a cover (example: metas for books or
      * authors)
@@ -192,6 +198,14 @@ public class FormEnum
     public int docs(final int formId)
     {
         return formDocsAll[formId];
+    }
+    
+    /**
+     * Total of document found for this freq list 
+     */
+    public int docsHit()
+    {
+        return docsHit;
     }
 
     /**
@@ -393,7 +407,16 @@ public class FormEnum
     }
 
     /**
-     * Global number of occurrences for this term
+     * Current specific number
+     * @return
+     */
+    public int no()
+    {
+        return formNos[formId];
+    }
+
+    /**
+     * Current global number of occurrences for this term
      * 
      * @return
      */
@@ -401,7 +424,7 @@ public class FormEnum
     {
         return formOccsAll[formId];
     }
-
+    
     /**
      * Global number of occurrences for this term
      * 
@@ -423,6 +446,14 @@ public class FormEnum
             return -1;
         final int formId = sorter[rank];
         return formOccsAll[formId];
+    }
+
+    /**
+     * Total of occurrences found for this freq list 
+     */
+    public long occsFreq()
+    {
+        return occsFreq;
     }
 
     /**
@@ -466,6 +497,14 @@ public class FormEnum
         return formScore[formId];
     }
 
+    /**
+     * Set the sorted vector of ids
+     */
+    public void setNos(final int[] formNos)
+    {
+        this.formNos = formNos;
+    }
+
     public void sort(final Order order)
     {
         sort(order, -1, false);
@@ -482,9 +521,37 @@ public class FormEnum
      */
     public void sort(final Order order, final int limit, final boolean reverse)
     {
-        if (maxForm != formOccsFreq.length)
+        if (formOccsFreq != null && maxForm != formOccsFreq.length)
             throw new IllegalArgumentException("Corrupted FormEnum name=" + fieldName + " maxForm=" + maxForm
                     + " formOccsFreq.length=" + formOccsFreq.length);
+        switch (order) {
+            case occs:
+                if (formOccsAll == null) {
+                    throw new IllegalArgumentException("Impossible to sort by occs (occurrences total), problem, formOccsAll has not been set by producer.");
+                }
+                break;
+            case docs:
+                if (formDocsAll == null) {
+                    throw new IllegalArgumentException("Impossible to sort docs (documents total), problem, formDocsAll has not been set by producer.");
+                }
+                break;
+            case freq:
+                if (formOccsFreq == null) {
+                    throw new IllegalArgumentException("Impossible to sort by freq (occurrences found), seems not results of a search, formOccsFreq has not been set by producer.");
+                }
+                break;
+            case hits:
+                if (formDocsHit == null) {
+                    throw new IllegalArgumentException("Impossible to sort by hits (documents found), seems not results of a search, formDocsHit has not been set by producer.");
+                }
+                break;
+            case score:
+                if (formScore == null) {
+                    throw new IllegalArgumentException("Impossible to sort by score, seems not results of a search with a scorer, formScore has not been set by producer.");
+                }
+                break;
+        }
+
         // if (maxForm != formOccsFreq.length) throw new
         // IllegalArgumentException("Corrupted FormEnum name="+fieldName+"
         // maxForm="+maxForm+" formOccsFreq.length="+formOccsFreq.length);
@@ -529,7 +596,7 @@ public class FormEnum
                     top.push(formId, formScore[formId]);
                     break;
                 default:
-                    top.push(formId, formScore[formId]);
+                    top.push(formId, formOccsAll[formId]);
                     break;
             }
             // to test, do not work yet

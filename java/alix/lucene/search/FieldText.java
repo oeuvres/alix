@@ -590,6 +590,10 @@ public class FieldText
           if (hasFilter && !filter.get(docId)) continue; // document not in the filter
           int freq = docsEnum.freq();
           if (freq < 1) throw new ArithmeticException("??? field="+fname+" docId=" + docId+" term="+bytes.utf8ToString()+" freq="+freq);
+          // doc not yet encounter, we can count
+          if (!hitsVek.get(docId)) {
+              results.docsHit++;
+          }
           hitsVek.set(docId);
           results.formDocsHit[formId]++;
           if (hasScorer) {
@@ -598,6 +602,7 @@ public class FieldText
             results.formScore[formId] += score;
           }
           results.formOccsFreq[formId] += freq;
+          results.occsFreq += freq;
         }
         if (hasScorer && filter != null) {
           // add inverse score

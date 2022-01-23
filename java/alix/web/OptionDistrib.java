@@ -39,7 +39,8 @@ package alix.web;
  */
 public enum OptionDistrib implements Option
 {
-    occs("Occurrences", "", new ScorerOccs()), g("G-test (vraisemblance log)", "G = 2 Σ(Oi.ln(Oi/Ei))", new ScorerG()),
+    occs("Occurrences", "", new ScorerOccs()), 
+    g("G-test (vraisemblance log)", "G = 2 Σ(Oi.ln(Oi/Ei))", new ScorerG()),
     bm25("BM25 (genre de tf-idf)", "", new ScorerBm25()),
     chi2("Chi2 (vraisemblance carrée)", "Chi2 = Σ(Oi - Ei)²/Ei", new ScorerChi2()),
     tfidf("tf-idf", "Pondération entre “term frequency” et “inverse document frequency”", new ScorerTfidf()),
