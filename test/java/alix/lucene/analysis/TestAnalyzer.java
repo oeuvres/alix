@@ -273,13 +273,15 @@ public class TestAnalyzer
       + "\nO.N.;NAMEtitle;Ordre nouveau"
       + "\nsuisses;NAME;Suisse"
       + "\neuropéennes,NAME,,Europe"
-      + "\nmarxisme;NAME;Marx\n" + 
-      "marxisme;NAME;Marx\n" + 
-      "marxiste;NAME;Marx\n" + 
-      "marxistes;NAME;Marx\n" + 
-      "Karl Marx;NAME;Marx\n"
-      + "Nations unies,NAMEorg,ONU,\n" + 
-      ""
+      + "\nmarxisme;NAME;Marx\n" 
+      + "marxisme;NAME;Marx\n" 
+      + "marxiste;NAME;Marx\n" 
+      + "marxistes;NAME;Marx\n" 
+      + "Karl Marx;NAME;Marx\n"
+      + "Nations unies,NAMEorg,ONU,\n"
+      + "samu;NAMEorg;SAMU\n"
+      + "Samu;NAMEorg;SAMU\n"
+      + "SAMU;NAMEorg;SAMU\n"
     ;
     Files.write(tmpfile, dic.getBytes());
     FrDics.load(tmpfile.toFile());
@@ -288,7 +290,9 @@ public class TestAnalyzer
     // mode search
     text =  "Les temps sont proches, nous dit le rapport du Club de Rome. Les marxistes ne sont pas d’Europe de l’atome. Donc c’est Jean Monnet qui a vu juste. "
         + "La préface de J.-P. Sartre au livre de Frantz Fanon. Et M. Fanon ?"
-        + " O.N.: vie politique et affaires européennes. Les Nations unies."; 
+        + " O.N.: vie politique et affaires européennes. Les Nations unies."
+        + " Cette expérience m'a permis de découvrir rapidement les missions du samu social."
+    ;
     /*
     System.out.println("———————————");
     vertical(text, new AnalyzerNames());

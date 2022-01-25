@@ -2,7 +2,8 @@
 <!--
 Produce a table of contents from section structure
 
-LGPL  http://www.gnu.org/licenses/lgpl.html
+Part of Teinte https://github.com/oeuvres/teinte
+BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
 © 2019 Frederic.Glorieux@fictif.org & Opteos & LABEX OBVIL
 © 2013 Frederic.Glorieux@fictif.org & LABEX OBVIL
 © 2012 Frederic.Glorieux@fictif.org 
@@ -18,15 +19,36 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
   xmlns:tei="http://www.tei-c.org/ns/1.0"
   exclude-result-prefixes="tei" 
   >
-  <xsl:import href="common.xsl"/>
+  <xsl:import href="tei_common.xsl"/>
   <xsl:strip-space elements="tei:TEI tei:TEI.2 tei:body tei:castList  tei:div tei:div1 tei:div2  tei:docDate tei:docImprint tei:docTitle tei:fileDesc tei:front tei:group tei:index tei:listWit tei:publicationStmp tei:publicationStmt tei:sourceDesc tei:SourceDesc tei:sources tei:text tei:teiHeader tei:text tei:titleStmt"/>
+  
+  <!-- Generate a relative tree, for example in a section -->
+  <xsl:template name="tocrel">
+    <xsl:variable name="html">
+      <xsl:apply-templates select="*" mode="li"/>
+    </xsl:variable>
+    <xsl:if test="$html != ''">
+      <ol class="tree">
+        <xsl:copy-of select="$html"/>
+      </ol>
+    </xsl:if>
+  </xsl:template>
+  
   <!-- Generate an absolute table of sections -->
   <xsl:template name="toc">
     <xsl:variable name="html">
-      <xsl:apply-templates select="/*/tei:text/tei:front" mode="li"/>
-      <xsl:apply-templates select="/*/tei:text/tei:body" mode="li"/>
-      <xsl:apply-templates select="/*/tei:text/tei:group" mode="li"/>
-      <xsl:apply-templates select="/*/tei:text/tei:back" mode="li"/>
+      <xsl:apply-templates select="/*/tei:text/tei:front" mode="li">
+        <xsl:with-param name="localid" select="generate-id()"/>
+      </xsl:apply-templates>
+      <xsl:apply-templates select="/*/tei:text/tei:body" mode="li">
+        <xsl:with-param name="localid" select="generate-id()"/>
+      </xsl:apply-templates>
+      <xsl:apply-templates select="/*/tei:text/tei:group" mode="li">
+        <xsl:with-param name="localid" select="generate-id()"/>
+      </xsl:apply-templates>
+      <xsl:apply-templates select="/*/tei:text/tei:back" mode="li">
+        <xsl:with-param name="localid" select="generate-id()"/>
+      </xsl:apply-templates>   
     </xsl:variable>
     <xsl:if test="$html != ''">
       <ol class="tree">
@@ -35,6 +57,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
     </xsl:if>
   </xsl:template>
 
+  <!-- Produce an absolue light tree around an item -->
   <xsl:template name="toclocal">
     <ol>
       <xsl:apply-templates select="/*/tei:text/tei:front/* | /*/tei:text/tei:body/* | /*/tei:text/tei:group/* | /*/tei:text/tei:back/*" mode="toclocal">
@@ -215,7 +238,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
     </xsl:choose>
   </xsl:template>
   -->
-  <!-- section, liées sur leur titres  -->
+  <!-- Sections, a link should be possible on <head>  -->
   <xsl:template match="tei:body | tei:back | tei:castList | tei:div | tei:div0 | tei:div1 | tei:div2 | tei:div3 | tei:div4 | tei:div5 | tei:div6 | tei:div7 | tei:front | tei:group | tei:text" mode="a">
     <xsl:param name="class"/>
     <!-- titre long -->

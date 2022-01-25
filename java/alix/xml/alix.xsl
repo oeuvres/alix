@@ -20,9 +20,9 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
 
   exclude-result-prefixes="tei"
 >
-  <xsl:import href="flow.xsl"/>
-  <xsl:import href="notes.xsl"/>
-  <xsl:import href="toc.xsl"/>
+  <xsl:import href="tei_flow_html.xsl"/>
+  <xsl:import href="tei_notes_html.xsl"/>
+  <xsl:import href="tei_toc_html.xsl"/>
   <xsl:output indent="yes" encoding="UTF-8" method="xml"/>
   <!-- chapter split policy -->
   <xsl:key name="split" match="
@@ -96,7 +96,7 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
             <xsl:value-of select="$filename"/>
           </xsl:when>
           <xsl:otherwise>
-            <xsl:message terminate="no">NO id for this book, will be hard to retrieve</xsl:message>
+            <xsl:message terminate="no">NO id for this book, will be hard to retrieve. Set xsl:param $filename on call or in your sourcefile /tei:TEI/@xml:id</xsl:message>
           </xsl:otherwise>
         </xsl:choose>
       </xsl:attribute>
@@ -175,7 +175,7 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
         <xsl:apply-templates select="*" mode="alix"/>
       </xsl:when>
       <!-- blocks of text, open a chapter -->
-      <xsl:when test="tei:p|tei:l|tei:list|tei:argument|tei:table">
+      <xsl:when test="tei:argument | tei:l | tei:list | tei:p | tei:s | tei:table">
         <xsl:call-template name="chapter"/>
       </xsl:when>
       <xsl:when test="self::tei:body">
@@ -281,9 +281,14 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
       </xsl:if>
       <alix:field name="text" type="text">
         <xsl:apply-templates/>
-        <xsl:processing-instruction name="index_off"/>
-        <xsl:call-template name="footnotes"/>
-        <xsl:processing-instruction name="index_on"/>
+        <xsl:variable name="notes">
+          <xsl:call-template name="footnotes"/>
+        </xsl:variable>
+        <xsl:if test="$notes != ''">
+          <xsl:processing-instruction name="index_off"/>
+          <xsl:copy-of select="$notes"/>
+          <xsl:processing-instruction name="index_on"/>
+        </xsl:if>
       </alix:field>
     </alix:chapter>
   </xsl:template>

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-LGPL  http://www.gnu.org/licenses/lgpl.html
+Part of Teinte https://github.com/oeuvres/teinte
+BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
 © 2013 Frederic.Glorieux@fictif.org & LABEX OBVIL
 © 2012 Frederic.Glorieux@fictif.org 
 © 2010 Frederic.Glorieux@fictif.org & École nationale des chartes
@@ -38,7 +39,7 @@ Gobal TEI parameters and variables are divided in different categories
   <!-- base href for generated links -->
   <xsl:param name="base"/>
   <!-- Allow to change the extension of generated links -->
-  <xsl:param name="_html">.html</xsl:param>
+  <xsl:param name="_ext">.html</xsl:param>
   <!-- Corpus name passed by caller, used as a body class -->
   <xsl:param name="corpusid"/>
   <!-- If true, output processing instructions for a text indexer consumer -->
@@ -48,16 +49,6 @@ Gobal TEI parameters and variables are divided in different categories
   <!-- Path from XML file to xsl applied, useful for browser transformation -->
   <xsl:param name="xslbase">
     <xsl:call-template name="xslbase"/>
-  </xsl:param>
-  <!-- Allow caller to override protocol for theme (https) -->
-  <xsl:param name="http">https://</xsl:param>
-  <xsl:param name="theme">
-    <xsl:choose>
-      <xsl:when test="$xslbase != ''">
-        <xsl:value-of select="$xslbase"/>
-      </xsl:when>
-      <xsl:otherwise><xsl:value-of select="$http"/>oeuvres.github.io/teinte/</xsl:otherwise>
-    </xsl:choose>
   </xsl:param>
   <!-- Generation date, maybe modified by caller -->
   <xsl:param name="date">
@@ -81,8 +72,6 @@ Gobal TEI parameters and variables are divided in different categories
       <xsl:otherwise/>
     </xsl:choose>
   </xsl:param>
-  <!-- Choose an output format (has been used for epub) -->
-  <xsl:param name="format">html5</xsl:param>
   <!-- Name of file, from the caller -->
   <xsl:param name="filename"/>
   <!-- doc name -->
@@ -772,11 +761,11 @@ Gobal TEI parameters and variables are divided in different categories
       </xsl:when>
       <xsl:when test="not(ancestor::tei:group) and (self::tei:div or starts-with(local-name(), 'div'))">
         <xsl:choose>
-          <xsl:when test="ancestor::tei:body">body-</xsl:when>
-          <xsl:when test="ancestor::tei:front">front-</xsl:when>
-          <xsl:when test="ancestor::tei:back">back-</xsl:when>
+          <xsl:when test="ancestor::tei:body">s</xsl:when>
+          <xsl:when test="ancestor::tei:front">front</xsl:when>
+          <xsl:when test="ancestor::tei:back">back</xsl:when>
         </xsl:choose>
-        <xsl:number count="tei:div|tei:div1|tei:div2|tei:div3|tei:div4" format="1-1" level="multiple"/>
+        <xsl:number count="tei:div|tei:div1|tei:div2|tei:div3|tei:div4|tei:div5|tei:div6|tei:div7" format="1-1" level="multiple"/>
       </xsl:when>
       <!-- Simple hierarchy for <div>  -->
       <xsl:when test="self::tei:div and not(ancestor::tei:group)">
@@ -1401,7 +1390,7 @@ Could be correct for a text only version in <xsl:value-of select=""/>
       <xsl:when test="$class = 'noteref' and $fnpage != ''">
         <xsl:value-of select="$base"/>
         <xsl:value-of select="$fnpage"/>
-        <xsl:value-of select="$_html"/>
+        <xsl:value-of select="$_ext"/>
         <xsl:text>#</xsl:text>
         <xsl:value-of select="$id"/>
       </xsl:when>
@@ -1409,20 +1398,20 @@ Could be correct for a text only version in <xsl:value-of select=""/>
       <xsl:when test="self::*[key('split', generate-id())]">
         <xsl:value-of select="$base"/>
         <xsl:value-of select="$id"/>
-        <xsl:value-of select="$_html"/>
+        <xsl:value-of select="$_ext"/>
       </xsl:when>
       <!-- parent of a split section -->
       <xsl:when test="descendant::*[key('split', generate-id())]">
         <xsl:value-of select="$base"/>
         <xsl:value-of select="$id"/>
-        <xsl:value-of select="$_html"/>
+        <xsl:value-of select="$_ext"/>
       </xsl:when>
       <!-- Child of a split section -->
       <xsl:when test="ancestor::*[key('split', generate-id())]">
         <xsl:value-of select="$base"/>
         <xsl:for-each select="ancestor::*[key('split', generate-id())][1]">
           <xsl:call-template name="id"/>
-          <xsl:value-of select="$_html"/>
+          <xsl:value-of select="$_ext"/>
         </xsl:for-each>
         <xsl:text>#</xsl:text>
         <xsl:value-of select="$id"/>
@@ -1449,7 +1438,7 @@ Could be correct for a text only version in <xsl:value-of select=""/>
       <xsl:when test="ancestor::tei:*[local-name(../..)='TEI']">
         <xsl:for-each select="ancestor::tei:*[local-name(../..)='TEI'][1]">
           <xsl:call-template name="id"/>
-          <xsl:value-of select="$_html"/>
+          <xsl:value-of select="$_ext"/>
         </xsl:for-each>
         <xsl:text>#</xsl:text>
         <xsl:value-of select="$id"/>
@@ -1531,7 +1520,7 @@ Le mode label génère un intitulé court obtenu par une liste de valeurs locali
     
   </xsl:template>
   
-  <!-- pour obtenir un chemin relatif à l'XSLT appliquée -->
+  <!-- In case of direct XSLT transformation in browser, get the folder -->
   <xsl:template name="xslbase">
     <xsl:param name="path" select="/processing-instruction('xml-stylesheet')[contains(., 'xsl')]"/>
     <xsl:choose>
@@ -1573,7 +1562,7 @@ Le mode label génère un intitulé court obtenu par une liste de valeurs locali
   </xsl:template>
 
   <!--
-    AGA, xslt 1 donc pas de fonction replace, un template pour y remedier.
+    Xslt 1 has no replace function, a workaround
   -->
   <xsl:template name="replace">
     <xsl:param name="text"/>
@@ -1655,7 +1644,7 @@ dégrossi le travail, mais du reste à faire  -->
         <!-- xsl:message>Acte <xsl:value-of select="ancestor::text[1]/@n"/>, date non prise en charge <xsl:value-of select="."/></xsl:message --> </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
-  <!-- Pour débogage afficher un path -->
+  <!-- For debug, a linear xpath for an element -->
   <xsl:template name="idpath">
     <xsl:for-each select="ancestor-or-self::*">
       <xsl:text>/</xsl:text>
@@ -1667,7 +1656,7 @@ dégrossi le travail, mais du reste à faire  -->
       </xsl:if>
     </xsl:for-each>
   </xsl:template>
-  <!-- Mettre un point à la fin d'un contenu -->
+  <!-- Add un final as a separator -->
   <xsl:template name="dot">
     <xsl:param name="current" select="."/>
     <xsl:variable name="lastChar" select="substring($current, string-length($current))"/>

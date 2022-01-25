@@ -67,7 +67,8 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 @Command(name = "alix.cli.Load", description = "Load an XML/TEI corpus in a custom Lucene index for Alix.")
-public class Load implements Callable<Integer> {
+public class Load implements Callable<Integer>
+{
     public static String APP = "Alix";
 
     @Parameters(arity = "1..*", paramLabel = "base.xml", description = "1 or more Java/XML/properties describing a document base (label, src…)")
@@ -90,7 +91,8 @@ public class Load implements Callable<Integer> {
      * @return
      * @throws IOException
      */
-    public boolean ask4rmdir(File dir) throws IOException {
+    public boolean ask4rmdir(File dir) throws IOException
+    {
         if (!dir.exists())
             return true;
         long modified = dir.lastModified();
@@ -113,7 +115,8 @@ public class Load implements Callable<Integer> {
     }
 
     @Override
-    public Integer call() throws Exception {
+    public Integer call() throws Exception
+    {
         String os = System.getProperty("os.name");
         // no system properties allow to detect a linux running inside windows on
         // windows filesystem
@@ -121,11 +124,9 @@ public class Load implements Callable<Integer> {
         for (final File conf : conflist) {
             String name = conf.getName().replaceFirst("\\..+$", "");
             // in case of glob, avoid some things
-            if (
-                conf.getCanonicalPath().endsWith("WEB-INF/web.xml")
-                || conf.getName().startsWith(".")
-                || conf.getName().startsWith("_")
-                // test here if it's folder ?
+            if (conf.getCanonicalPath().endsWith("WEB-INF/web.xml") || conf.getName().startsWith(".")
+                    || conf.getName().startsWith("_")
+            // test here if it's folder ?
             ) {
                 continue;
             }
@@ -150,7 +151,8 @@ public class Load implements Callable<Integer> {
      * @throws IOException
      * @throws NoSuchFieldException
      */
-    public void parse(File propsFile) throws IOException, NoSuchFieldException {
+    public void parse(File propsFile) throws IOException, NoSuchFieldException
+    {
         if (!propsFile.exists())
             throw new FileNotFoundException(
                     "\n  [" + APP + "] " + propsFile.getAbsolutePath() + "\nProperties file not found");
@@ -256,11 +258,13 @@ public class Load implements Callable<Integer> {
      * @param name
      * @return
      */
-    public static String nameOld(final String name) {
+    public static String nameOld(final String name)
+    {
         return name + "_old";
     }
 
-    public static String nameTmp(final String name) {
+    public static String nameTmp(final String name)
+    {
         return name + "_tmp";
     }
 
@@ -277,7 +281,8 @@ public class Load implements Callable<Integer> {
      * @throws TransformerException
      */
     public void write(String name, Path path)
-            throws IOException, ParserConfigurationException, SAXException, InterruptedException, TransformerException {
+            throws IOException, ParserConfigurationException, SAXException, InterruptedException, TransformerException
+    {
         Alix alix = Alix.instance(name, path, new FrAnalyzer(), null);
         IndexWriter writer = alix.writer();
         XMLIndexer.index(writer, globs.toArray(new File[globs.size()]), threads, xsl);
@@ -315,7 +320,8 @@ public class Load implements Callable<Integer> {
      * @throws TransformerException
      */
     public void writeSafe(final File dstDir, final String name)
-            throws IOException, ParserConfigurationException, SAXException, InterruptedException, TransformerException {
+            throws IOException, ParserConfigurationException, SAXException, InterruptedException, TransformerException
+    {
 
         // Use a tmp dir to not overwrite a working index on server
         File tmpDir = new File(dstdir, nameTmp(name));
@@ -326,7 +332,8 @@ public class Load implements Callable<Integer> {
         /* Register thing to do at the end */
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
-            public void run() {
+            public void run()
+            {
                 if (!tmpDir.exists())
                     return;
                 System.out.println("[" + APP + "] ERROR Something went wrong, old index is kept.");
@@ -358,7 +365,8 @@ public class Load implements Callable<Integer> {
      * @param name
      * @throws IOException
      */
-    public void writeUnsafe(final File dstdir, final String name) throws IOException {
+    public void writeUnsafe(final File dstdir, final String name) throws IOException
+    {
         File theDir = new File(dstdir, name);
         File oldDir = new File(dstdir, nameOld(name));
         File tmpDir = new File(dstdir, nameTmp(name));
@@ -389,7 +397,8 @@ public class Load implements Callable<Integer> {
             Dir.rm(tmpDir);
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception
+    {
         int exitCode = new CommandLine(new Load()).execute(args);
         System.exit(exitCode);
     }

@@ -68,7 +68,7 @@ public enum Tag
     },
     VERBppass(0x18, "Part. passé", "Participe passé (tous emplois : verbal, adjectif, substantif).") {
     },
-    VERBppres(0x19, "Part. prés.", "Participe présent (tous emplois : verbal, adjectif, substantif).") {
+    VERBger(0x19, "Gérondif", "Participe présent (tous emplois : verbal, adjectif, substantif).") {
     },
 
     // 2x, substantifs

@@ -50,41 +50,51 @@ import alix.lucene.search.SimilarityOccs;
 
 public enum OptionSort implements Option
 {
- score(
-    "Score", 
-    null, 
-    null
-  ),
-  occs(
-      "Occurrences", 
-      null, 
-      new SimilarityOccs()
+    score(
+        "Score", 
+        null, 
+        null
     ),
-  year(
-    "Année (+ ancien)",
-    new Sort(new SortField("year", SortField.Type.INT)),
-    null
-  ),
-  year_inv(
-    "Année (+ récent)",
-    new Sort(new SortField("year", SortField.Type.INT, true)), 
-    null
-  ),
-  author(
-    "Auteur (A-Z)", 
-    new Sort(new SortField(Alix.ID, SortField.Type.STRING)),
-    null
-  ),
-  author_inv(
-    "Auteur (Z-A)", 
-    new Sort(new SortField(Alix.ID, SortField.Type.STRING, true)),
-    null
-  ),
-  g(
-      "Score (G-Test)",
-      null,
-      new SimilarityG()
-  ),
+    occs(
+        "Occurrences", 
+        null, 
+        new SimilarityOccs()
+    ),
+    year(
+        "Année (+ ancien)",
+        new Sort(new SortField("year", SortField.Type.INT)),
+        null
+    ),
+    year_inv(
+        "Année (+ récent)",
+        new Sort(new SortField("year", SortField.Type.INT, true)), 
+        null
+    ),
+    author(
+        "Auteur (A-Z)", 
+        new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT)),
+        null
+    ),
+    author_inv(
+        "Auteur (Z-A)", 
+        new Sort(new SortField("author1", SortField.Type.STRING, true), new SortField("year", SortField.Type.INT)),
+        null
+    ),
+    id(
+        "Identifiant (A-Z)", 
+        new Sort(new SortField(Alix.ID, SortField.Type.STRING)),
+        null
+    ),
+    id_inv(
+        "Identifiant (Z-A)", 
+        new Sort(new SortField(Alix.ID, SortField.Type.STRING, true)),
+        null
+    ),
+    g(
+        "Score (G-Test)",
+        null,
+        new SimilarityG()
+    ),
   //freq("Fréquence"),
   // "tf-idf", "bm25", "dfi_chi2", "dfi_std", "dfi_sat", 
   // "lmd", "lmd0.1", "lmd0.7", "dfr", "ib"

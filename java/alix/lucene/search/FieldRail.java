@@ -165,13 +165,18 @@ public class FieldRail
      */
     public long coocs(FormEnum results) throws IOException
     {
-        if (results.search == null || results.search.length == 0)
+        boolean hasTags = (results.tags != null);
+        boolean noStop = (results.tags != null && results.tags.noStop());
+        boolean locs = (results.tags != null && results.tags.locutions());
+        if (results.search == null || results.search.length == 0) {
             throw new IllegalArgumentException("Search term(s) missing, FormEnum.search should be not null");
+        }
         final int left = results.left;
         final int right = results.right;
-        if (left < 0 || right < 0 || (left + right) < 1)
+        if (left < 0 || right < 0 || (left + right) < 1) {
             throw new IllegalArgumentException("FormEnum.left=" + left + " FormEnum.right=" + right
                     + " not enough context to extract cooccurrences.");
+        }
 
         // for future scoring, formOccs is global or relative to filter ? relative seems
         // bad
@@ -183,15 +188,19 @@ public class FieldRail
         final boolean hasFilter = (results.filter != null);
 
         // create or reuse freqs
-        if (results.formOccsFreq == null || results.formOccsFreq.length != maxForm)
+        if (results.formOccsFreq == null || results.formOccsFreq.length != maxForm) {
             results.formOccsFreq = new long[maxForm]; // by term, occurrences counts
-        else
+        }
+        else {
             Arrays.fill(results.formOccsFreq, 0);
+        }
         // create or reuse hits
-        if (results.formDocsHit == null || results.formDocsHit.length != maxForm)
+        if (results.formDocsHit == null || results.formDocsHit.length != maxForm) {
             results.formDocsHit = new int[maxForm]; // by term, document counts
-        else
+        }
+        else {
             Arrays.fill(results.formDocsHit, 0);
+        }
 
         // A vector needed to no recount doc
         boolean[] docSeen = new boolean[maxForm];
@@ -213,15 +222,18 @@ public class FieldRail
             // collect all “postings” for the requested search
             ArrayList<PostingsEnum> termDocs = new ArrayList<PostingsEnum>();
             for (String word : results.search) {
-                if (word == null)
+                if (word == null) {
                     continue;
+                }
                 Term term = new Term(fname, word); // do not try to reuse term, false optimisation
                 PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS | PostingsEnum.POSITIONS);
-                if (postings == null)
+                if (postings == null) {
                     continue;
+                }
                 final int docPost = postings.nextDoc(); // advance cursor to the first doc
-                if (docPost == END)
+                if (docPost == END) {
                     continue;
+                }
                 termDocs.add(postings);
             }
             // loop on all documents for this leaf
@@ -231,10 +243,12 @@ public class FieldRail
             for (int docLeaf = 0; docLeaf < max; docLeaf++) {
                 final int docId = docBase + docLeaf;
                 final int docLen = limInt[docId];
-                if (hasFilter && !results.filter.get(docId))
+                if (hasFilter && !results.filter.get(docId)) {
                     continue; // document not in the document filter
-                if (hasLive && !liveDocs.get(docLeaf))
+                }
+                if (hasLive && !liveDocs.get(docLeaf)) {
                     continue; // deleted doc
+                }
                 // reset the positions of the rail
                 contexts.clear();
                 pivots.clear();
@@ -242,24 +256,29 @@ public class FieldRail
                 // loop on each term iterator to get positions for this doc
                 for (PostingsEnum postings : termDocs) {
                     int docPost = postings.docID(); // get current doc for these term postings
-                    if (docPost == docLeaf)
-                        ;
-                    else if (docPost == END)
+                    if (docPost == docLeaf) {
+                        // OK
+                    }
+                    else if (docPost == END) {
                         continue; // end of postings, try next term
-                    else if (docPost > docLeaf)
+                    }
+                    else if (docPost > docLeaf) {
                         continue; // postings ahead of current doc, try next term
+                    }
                     else if (docPost < docLeaf) {
                         docPost = postings.advance(docLeaf); // try to advance postings to this doc
                         if (docPost > docLeaf)
                             continue; // next doc for this term is ahead current term
                     }
-                    if (docPost != docLeaf)
-                        System.out.println("BUG cooc, docLeaf=" + docLeaf + " docPost=" + docPost); // ? bug ?;
+                    if (docPost != docLeaf) {
+                        // ? bug ?
+                        System.out.println("BUG cooc, docLeaf=" + docLeaf + " docPost=" + docPost); 
+                    }
                     int freq = postings.freq();
-                    if (freq == 0)
-                        System.out.println("BUG cooc, term=" + postings.toString() + " docId=" + docId + " freq=0"); // ?
-                                                                                                                     // bug
-                                                                                                                     // ?
+                    if (freq == 0) {
+                        // bug ?
+                        System.out.println("BUG cooc, term=" + postings.toString() + " docId=" + docId + " freq=0");
+                    }
 
                     hit = true;
                     for (; freq > 0; freq--) {
@@ -272,8 +291,9 @@ public class FieldRail
                     }
                     // postings.advance(docLeaf);
                 }
-                if (!hit)
+                if (!hit) {
                     continue;
+                }
                 // count all freqs with pivot
                 // partOccs += contexts.cardinality(); // no, do not count holes
                 // TODISCUSS substract search from contexts
@@ -285,8 +305,20 @@ public class FieldRail
                 while (pos >= 0) {
                     int formId = bufInt.get(posDoc + pos);
                     pos = contexts.nextSetBit(pos + 1);
-                    if (formId == 0)
+                    // Check words to count
+                    if (formId == 0) { 
                         continue;
+                    }
+                    if (locs && !ftext.formLoc.get(formId)) {
+                        continue;
+                    }
+                    if (noStop && ftext.isStop(formId)) {
+                        continue;
+                    }
+                    // filter coocs by tag
+                    if (hasTags && !results.tags.accept(ftext.formTag[formId])) {
+                        continue;
+                    }
                     results.occsPart++;
                     results.formOccsFreq[formId]++;
                     if (!docSeen[formId]) {

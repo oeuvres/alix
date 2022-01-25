@@ -47,7 +47,7 @@ public enum OptionCat implements Option
     NAME("Noms propres",
             new TagFilter().set(Tag.NAME).set(Tag.NAMEevent).set(Tag.NAMEgod).set(Tag.NAMEorg).set(Tag.NAMEpeople)),
     VERB("Verbes", new TagFilter().set(Tag.VERB)),
-    ADJ("Adjectifs", new TagFilter().set(Tag.ADJ)),
+    ADJ("Adjectifs", new TagFilter().set(Tag.ADJ).set(Tag.VERBger)),
     ADV("Adverbes", new TagFilter().set(Tag.ADV)),
     STOP("Mots grammaticaux",
             new TagFilter().setAll().clearGroup(Tag.SUB).clearGroup(Tag.NAME).clear(Tag.VERB).clear(Tag.ADJ).clear(0)),

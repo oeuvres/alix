@@ -2,7 +2,8 @@
 <!--
 TEI to HTML, handling notes and critical apparatus
 
-LGPL  http://www.gnu.org/licenses/lgpl.html
+Part of Teinte https://github.com/oeuvres/teinte
+BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
 © 2016 Frederic.Glorieux@fictif.org 
 
 
@@ -12,7 +13,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
   extension-element-prefixes="exslt" 
   xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xmlns:exslt="http://exslt.org/common" xmlns:tei="http://www.tei-c.org/ns/1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <!-- Shared templates -->
-  <xsl:import href="common.xsl"/>
+  <xsl:import href="tei_common.xsl"/>
   <xsl:output indent="yes" encoding="UTF-8" method="xml" />
   <!-- key for notes by page, keep the tricky @use expression in this order, when there are other parallel pages number -->
   <xsl:key name="note-pb" match="tei:note[not(parent::tei:sp)][not(starts-with(local-name(..), 'div'))]" use="generate-id(  preceding::*[self::tei:pb[not(@ed)][@n] ][1]  ) "/>
@@ -27,16 +28,16 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
         <xsl:variable name="notes">
           <xsl:apply-templates mode="fn"/>
         </xsl:variable>
-        <xsl:comment> notes ? </xsl:comment>
-        <xsl:if test="$notes/*">
+        <xsl:if test="$notes">
           <section class="footnotes">
-            <xsl:for-each select="exslt:node-set($notes)">
-              <xsl:sort select="@class"/>
+            <xsl:for-each select="exslt:node-set($notes)/*">
+              <xsl:sort select="substring-before(concat(@class, ' '), ' ')"/>
               <xsl:copy-of select="."/>
             </xsl:for-each>
           </section>
         </xsl:if>
         <!--
+        <xsl:variable name="notes" select=".//tei:note"/>
         <xsl:if test="$notes">
           <section class="footnotes">
             <xsl:for-each select="exslt:node-set($notes)">
@@ -57,6 +58,18 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
   <xsl:template match="text()" mode="fn"/>
   <xsl:template match="*" mode="fn">
     <xsl:apply-templates mode="fn"/>
+  </xsl:template>
+
+  <!-- Le template principal affichant des notes hors flux -->
+  <xsl:template match="tei:note" mode="fn" name="fn">
+    <xsl:param name="resp"/>
+    <xsl:choose>
+      <!-- do not output block notes -->
+      <xsl:when test="parent::tei:app or parent::tei:back or parent::tei:div or parent::tei:div1 or parent::tei:div2 or parent::tei:div3 or parent::tei:front or parent::tei:notesStmt or parent::tei:sp"/>
+      <xsl:otherwise>
+        <xsl:call-template name="note"/>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
   
   <xsl:template match="tei:note" mode="fn">
@@ -171,19 +184,9 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
       </xsl:choose>
     </xsl:variable>
     <xsl:if test="$notes != ''">
-      <xsl:variable name="el">
-        <xsl:choose>
-          <xsl:when test="$format=$epub2">div</xsl:when>
-          <xsl:otherwise>section</xsl:otherwise>
-        </xsl:choose>
-      </xsl:variable>
-      <xsl:element name="{$el}" namespace="http://www.w3.org/1999/xhtml">
-        <xsl:if test="$format = $epub3">
-          <xsl:attribute name="epub:type">footnotes</xsl:attribute>
-        </xsl:if>
-        <xsl:attribute name="class">footnotes</xsl:attribute>
+      <section epub:type="footnotes" class="footnotes">
         <xsl:copy-of select="$notes"/>
-      </xsl:element>
+      </section>
     </xsl:if>
   </xsl:template>
   <!-- Inline view for apparatus note -->
@@ -201,10 +204,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
     <xsl:variable name="html">
       <xsl:choose>
         <xsl:when test="$text='' and count(*)=1 and tei:p">
-          <span class="note" id="{$id}">
-            <xsl:if test="$format = $epub3">
-              <xsl:attribute name="epub:type">note</xsl:attribute>
-            </xsl:if>
+          <span class="note" id="{$id}" epub:type="note">
             <xsl:call-template name="noteback">
               <xsl:with-param name="class"/>
               <xsl:with-param name="from" select="$from"/>
@@ -251,24 +251,14 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
       </xsl:choose>
     </xsl:if>
   </xsl:template>
-  <!-- section de notes déjà inscrite dans la source -->
+  <!-- Block of notes  -->
   <xsl:template match="tei:div[@type='notes' or @type='footnotes']">
-    <xsl:variable name="el">
-      <xsl:choose>
-        <xsl:when test="$format=$epub2">div</xsl:when>
-        <xsl:otherwise>section</xsl:otherwise>
-      </xsl:choose>
-    </xsl:variable>
-    <xsl:element name="{$el}" namespace="http://www.w3.org/1999/xhtml">
-      <xsl:attribute name="class">footnotes</xsl:attribute>
+    <section epub:type="footnotes" class="footnotes">
       <xsl:attribute name="id">
         <xsl:call-template name="id"/>
       </xsl:attribute>
-      <xsl:if test="$format = $epub3">
-        <xsl:attribute name="epub:type">footnotes</xsl:attribute>
-      </xsl:if>
       <xsl:apply-templates/>
-    </xsl:element>
+    </section>
   </xsl:template>
   <!-- Note, ref link already in text -->
   <xsl:template match="tei:ref[@type='note']">
@@ -309,10 +299,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
           </xsl:choose>
         </xsl:variable>
         <!-- FBRreader -->
-        <a class="{$class}" href="{$target}" id="{$id}_">
-          <xsl:if test="$format = $epub3">
-            <xsl:attribute name="epub:type">noteref</xsl:attribute>
-          </xsl:if>
+        <a class="{$class}" href="{$target}" id="{$id}_" epub:type="noteref">
           <xsl:value-of select="$n"/>
         </a>
       </xsl:otherwise>
@@ -424,6 +411,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
           <xsl:choose>
             <xsl:when test="@resp='author'">1</xsl:when>
             <xsl:when test="@resp='editor'">a</xsl:when>
+            <xsl:otherwise>_</xsl:otherwise>
           </xsl:choose>
         </xsl:with-param>
       </xsl:call-template>
@@ -433,9 +421,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
       <xsl:attribute name="role">
         <xsl:text>note</xsl:text>
       </xsl:attribute>
-      <xsl:if test="$format = $epub3">
-        <xsl:attribute name="epub:type">note</xsl:attribute>
-      </xsl:if>
+      <xsl:attribute name="epub:type">note</xsl:attribute>
       <xsl:variable name="noteback">
         <xsl:choose>
           <xsl:when test="@place = 'margin'"/>
@@ -552,30 +538,6 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
       </xsl:when>
     </xsl:choose>
   </xsl:template>
-  <!-- Le template principal affichant des notes hors flux -->
-  <xsl:template match="tei:note" mode="fn" name="fn">
-    <xsl:param name="resp"/>
-    <xsl:choose>
-      <!-- not a note, go in  -->
-      <xsl:when test="not(self::tei:note)">
-        <xsl:apply-templates mode="fn" select="*">
-          <xsl:with-param name="resp" select="$resp"/>
-        </xsl:apply-templates>
-      </xsl:when>
-      <!-- do not output block notes -->
-      <xsl:when test="parent::tei:app or parent::tei:back or parent::tei:div or parent::tei:div1 or parent::tei:div2 or parent::tei:div3 or parent::tei:front or parent::tei:notesStmt or parent::tei:sp"/>
-      <xsl:when test="$resp= '' and not(@resp)">
-        <xsl:call-template name="note"/>
-      </xsl:when>
-      <xsl:when test="@resp and @resp=$resp">
-        <xsl:call-template name="note"/>
-      </xsl:when>
-      <!-- note other than author or editor -->
-      <xsl:when test="$resp ='' and @resp and @resp != 'author'  and @resp != 'editor'">
-        <xsl:call-template name="note"/>
-      </xsl:when>
-    </xsl:choose>
-  </xsl:template>
   <!-- Citations numérotées, la référence apparaît en note de bas de page, une animation permet de la mettre en valeur -->
   <xsl:template match="tei:p//tei:cit[@n]">
     <span>
@@ -596,10 +558,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
       </xsl:variable>
       <!-- FBRreader -->
       <sup>
-        <a class="noteref" href="#{$id}" name="_{$id}">
-          <xsl:if test="$format = $epub3">
-            <xsl:attribute name="epub:type">noteref</xsl:attribute>
-          </xsl:if>
+        <a class="noteref" href="#{$id}" name="_{$id}" epub:type="noteref">
           <!-- xsl:attribute name="onclick">if(this.cloc) {this.parentNode.className='cit_n'; this.cloc=null; } else { this.cloc=true;  this.parentNode.className='cit_n_bibl'}; return true;</xsl:attribute -->
           <xsl:attribute name="onmouseover">this.parentNode.className='cit_n_bibl'</xsl:attribute>
           <xsl:attribute name="onmouseout">this.parentNode.className='cit_n'</xsl:attribute>
