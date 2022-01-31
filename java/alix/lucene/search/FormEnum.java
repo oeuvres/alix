@@ -187,6 +187,7 @@ public class FormEnum
      */
     public int docs()
     {
+        if (formDocsAll == null) return 0;
         return formDocsAll[formId];
     }
 
@@ -197,6 +198,7 @@ public class FormEnum
      */
     public int docs(final int formId)
     {
+        if (formDocsAll == null) return 0;
         return formDocsAll[formId];
     }
     
@@ -314,6 +316,7 @@ public class FormEnum
      */
     public long freq()
     {
+        if (formOccsFreq == null) return 0;
         return formOccsFreq[formId];
     }
 
@@ -325,6 +328,7 @@ public class FormEnum
      */
     public long freq(final int formId)
     {
+        if (formOccsFreq == null) return 0;
         return formOccsFreq[formId];
     }
 
@@ -360,6 +364,7 @@ public class FormEnum
      */
     public int hits()
     {
+        if (formDocsHit == null) return 0;
         return formDocsHit[formId];
     }
 
@@ -370,6 +375,7 @@ public class FormEnum
      */
     public int hits(final int formId)
     {
+        if (formDocsHit == null) return 0;
         return formDocsHit[formId];
     }
 
@@ -422,6 +428,7 @@ public class FormEnum
      */
     public long occs()
     {
+        if (formOccsAll == null) return 0;
         return formOccsAll[formId];
     }
     
@@ -432,6 +439,7 @@ public class FormEnum
      */
     public long occs(final int formId)
     {
+        if (formOccsAll == null) return 0;
         return formOccsAll[formId];
     }
 
@@ -463,6 +471,7 @@ public class FormEnum
      */
     public long occsPart()
     {
+        if (formOccsPart == null) return 0;
         return formOccsPart[formId];
     }
 
@@ -473,6 +482,7 @@ public class FormEnum
      */
     public long occsPart(final int formId)
     {
+        if (formOccsPart == null) return 0;
         return formOccsPart[formId];
     }
 
@@ -494,6 +504,7 @@ public class FormEnum
      */
     public double score()
     {
+        if (formScore == null) return 0;
         return formScore[formId];
     }
 
@@ -645,7 +656,7 @@ public class FormEnum
     {
         this.sorter = sorter;
         this.limit = sorter.length;
-        cursor = -1;
+        reset();
     }
 
     /**

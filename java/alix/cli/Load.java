@@ -99,7 +99,7 @@ public class Load implements Callable<Integer>
         Duration duration = Duration.ofMillis(System.currentTimeMillis() - modified);
         System.out
                 .println("[" + APP + "] Folder exists and was modified " + duration.toSeconds() + " s. ago\n  " + dir);
-        System.out.println("If you are there is not another indexation process running, would you like to remove? y/n");
+        System.out.println("A tmp folder is not yet deleted, a process may be indexing, would you like to remove? y/n");
         Scanner in = new Scanner(System.in);
         String yes = in.nextLine();
         in.close();
@@ -144,6 +144,39 @@ public class Load implements Callable<Integer>
         return 0;
     }
 
+    public void globAdd(String glob, File base)
+    {
+        glob = glob.trim();
+        if (glob.equals("")) {
+            return;
+        }
+        if (glob.startsWith("#")) {
+            return;
+        }
+        if (File.separatorChar == '\\') {
+            glob = glob.replaceAll("[/\\\\]", File.separator + File.separator);
+        }
+        else {
+            glob = glob.replaceAll("[/\\\\]", File.separator);
+        }
+        if (!new File(glob).isAbsolute()) {
+            File dir = base.getAbsoluteFile();
+            // glob = new File(glob).toString(); // works for windows on /, but not on linux
+            // for \
+            if (glob.startsWith("." + File.separator))
+                glob = glob.substring(2);
+            while (glob.startsWith(".." + File.separator)) {
+                dir = dir.getParentFile();
+                glob = glob.substring(3);
+            }
+            globs.add(new File(dir, glob));
+        } 
+        else {
+            globs.add(new File(glob));
+        }
+    }
+    
+    
     /**
      * Parse properties to produce an alix lucene index
      * 
@@ -185,14 +218,10 @@ public class Load implements Callable<Integer>
             List<String> lines = Files.readAllLines(file.toPath());
             for (int i = 0; i < lines.size(); i++) {
                 String glob = lines.get(i);
-                if (glob.startsWith("#"))
-                    continue;
-                if (!new File(glob).isAbsolute())
-                    globs.add(new File(base, glob).getCanonicalFile());
-                else
-                    globs.add(new File(glob).getCanonicalFile());
+                globAdd(glob, base);
             }
-        } else {
+        } 
+        else {
             String src = props.getProperty("src");
 
             if (src == null)
@@ -203,25 +232,7 @@ public class Load implements Callable<Integer>
             // resolve globs relative to the folder of the properties field
             final File base = propsFile.getCanonicalFile().getParentFile();
             for (String glob : blurf) {
-                if (glob.trim().equals(""))
-                    continue;
-                if (File.separatorChar == '\\')
-                    glob = glob.replaceAll("[/\\\\]", File.separator + File.separator);
-                else
-                    glob = glob.replaceAll("[/\\\\]", File.separator);
-                if (!new File(glob).isAbsolute()) {
-                    File dir = base.getAbsoluteFile();
-                    // glob = new File(glob).toString(); // works for windows on /, but not on linux
-                    // for \
-                    if (glob.startsWith("." + File.separator))
-                        glob = glob.substring(2);
-                    while (glob.startsWith(".." + File.separator)) {
-                        dir = dir.getParentFile();
-                        glob = glob.substring(3);
-                    }
-                    globs.add(new File(dir, glob));
-                } else
-                    globs.add(new File(glob));
+                globAdd(glob, base);
             }
         }
 

@@ -37,7 +37,7 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
     | tei:group/tei:text
     | tei:TEI/tei:text/tei:*/tei:*[self::tei:div or self::tei:div1 or self::tei:group or self::tei:titlePage  or self::tei:castList][normalize-space(.) != '']"
     use="generate-id(.)"/>
-  <xsl:variable name="idHigh" select="/*/tei:teiHeader/tei:encodingDesc/tei:refsDecl//tei:att[text() = 'xm:id'][@cert='high']"/>
+  <xsl:variable name="idHigh" select="/*/tei:teiHeader/tei:encodingDesc/tei:refsDecl/tei:citeStructure/@use = '@xml:id'"/>
   <!-- Name of file, provided by caller -->
   <xsl:param name="filename"/>
   <!-- Get metas as a global var to insert fields in all chapters -->

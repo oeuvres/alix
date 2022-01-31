@@ -62,12 +62,12 @@ public enum OptionSort implements Option
     ),
     year(
         "Année (+ ancien)",
-        new Sort(new SortField("year", SortField.Type.INT)),
+        new Sort(new SortField("year", SortField.Type.INT), new SortField(Alix.ID, SortField.Type.STRING)),
         null
     ),
     year_inv(
         "Année (+ récent)",
-        new Sort(new SortField("year", SortField.Type.INT, true)), 
+        new Sort(new SortField("year", SortField.Type.INT, true), new SortField(Alix.ID, SortField.Type.STRING, true)), 
         null
     ),
     author(

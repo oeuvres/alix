@@ -316,6 +316,18 @@ public class FieldFacet
     }
 
     /**
+     * Get form from a local formId
+     * 
+     * @return
+     */
+    public String form(final int facetId)
+    {
+        BytesRef bytes = new BytesRef();
+        formDic.get(facetId, bytes);
+        return bytes.utf8ToString();
+    }
+    
+    /**
      * Use a list of search as a navigator for a list of doc ids. The list is
      * supposed to be sorted in a relevant order for this facet ex : (author, title)
      * or (author, date) for an author facet. Get the index of the first relevant
@@ -355,6 +367,30 @@ public class FieldFacet
     }
 
     /**
+     * Number of documents by term
+     * @param filter
+     * @return
+     * @throws IOException
+     */
+    public FormEnum results(final BitSet filter) throws IOException
+    {
+        if (filter == null) results();
+        FormEnum results = new FormEnum(this);
+        results.formDocsHit = new int[maxForm];
+        for (int docId = 0, max = this.docFormOccs.length; docId < max; docId++) {
+            // document not in the filter, go next
+            if (!filter.get(docId)) continue; 
+            // empty document, probably a book cover
+            if (ftext.docOccs[docId] < 1) continue;
+            int[] facets = docFormOccs[docId];
+            if (facets == null) continue;
+            for (int facetId: facets) {
+                results.formDocsHit[facetId]++;
+            }
+        }
+        return results;
+    }
+    /**
      * Crawl the index to find relevant documents according to a filter. Will cry if
      * filter is null. Prefers {#iterator(int, Scorer)} if you want to iterate on
      * all search for this facet;
@@ -381,7 +417,7 @@ public class FieldFacet
             SortedSetDocValues docs4terms = leaf.getSortedSetDocValues(fieldName);
             if (docs4terms == null)
                 continue;
-
+    
             // loop on the docs with a facet
             int docLeaf;
             while ((docLeaf = docs4terms.nextDoc()) != NO_MORE_DOCS) {
@@ -401,30 +437,6 @@ public class FieldFacet
         return results;
     }
 
-    /**
-     * Number of documents by term
-     * @param filter
-     * @return
-     * @throws IOException
-     */
-    public FormEnum results(final BitSet filter) throws IOException
-    {
-        if (filter == null) results();
-        FormEnum results = new FormEnum(this);
-        results.formDocsHit = new int[maxForm];
-        for (int docId = 0, max = this.docFormOccs.length; docId < max; docId++) {
-            // document not in the filter, go next
-            if (!filter.get(docId)) continue; 
-            // empty document, probably a book cover
-            if (ftext.docOccs[docId] < 1) continue;
-            int[] facets = docFormOccs[docId];
-            if (facets == null) continue;
-            for (int facetId: facets) {
-                results.formDocsHit[facetId]++;
-            }
-        }
-        return results;
-    }
     /**
      * Results of a text search according to a facet field search. Query maybe
      * restricted by a doc filter (a corpus). If there are no search in the search,
