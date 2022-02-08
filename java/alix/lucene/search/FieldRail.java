@@ -165,9 +165,11 @@ public class FieldRail
      */
     public long coocs(FormEnum results) throws IOException
     {
-        boolean hasTags = (results.tags != null);
-        boolean noStop = (results.tags != null && results.tags.noStop());
-        boolean locs = (results.tags != null && results.tags.locutions());
+        // for each index leave
+        //   for each term
+        //     for each doc found
+        //        for each term position in doc
+        //          collect co-occurents 
         if (results.search == null || results.search.length == 0) {
             throw new IllegalArgumentException("Search term(s) missing, FormEnum.search should be not null");
         }
@@ -177,17 +179,19 @@ public class FieldRail
             throw new IllegalArgumentException("FormEnum.left=" + left + " FormEnum.right=" + right
                     + " not enough context to extract cooccurrences.");
         }
-
-        // for future scoring, formOccs is global or relative to filter ? relative seems
-        // bad
-        /*
-         * if (results.filter != null) { fieldText.filter(results); results.N =
-         * results.partOccs; }
-         */
-        // results.formOccs = fieldText.formOccsAll;
+        // filter documents
         final boolean hasFilter = (results.filter != null);
+        // filter co-occs by tag
+        boolean hasTags = (results.tags != null);
+        // filter co-occs stops
+        boolean noStop = (results.tags != null && results.tags.noStop());
+        // collect “locutions” (words like “parce que”)
+        boolean locs = (results.tags != null && results.tags.locutions());
+        // collect “edges”   A B C [search term] E A D => AB+2, AC+2, AD++, AE++, BC++, BE++, 
+        boolean hasEdges = (results.edges != null);
 
-        // create or reuse freqs
+        // for future scoring, formOccs is global or relative to filter ? relative seems bad
+        // create or reuse arrays in result, 
         if (results.formOccsFreq == null || results.formOccsFreq.length != maxForm) {
             results.formOccsFreq = new long[maxForm]; // by term, occurrences counts
         }
@@ -202,13 +206,14 @@ public class FieldRail
             Arrays.fill(results.formDocsHit, 0);
         }
 
+        DirectoryReader reader = alix.reader();
         // A vector needed to no recount doc
-        boolean[] docSeen = new boolean[maxForm];
+        boolean[] docSeen = new boolean[reader.maxDoc()];
         long found = 0;
         final int END = DocIdSetIterator.NO_MORE_DOCS;
-        DirectoryReader reader = alix.reader();
         // collector of scores
         // int dicSize = this.hashDic.size();
+        
 
         // for each doc, a bit set is used to record the relevant positions
         // this will avoid counting interferences when search occurrences are close
@@ -330,6 +335,9 @@ public class FieldRail
         }
         return found;
     }
+    
+
+    
 
     /**
      * Loop on the rail to find expression (2 plain words with possible stop words
@@ -766,6 +774,7 @@ public class FieldRail
         return sb.toString();
     }
 
+
     public class Bigram
     {
         public final int a;
@@ -793,5 +802,4 @@ public class FieldRail
             return ++count;
         }
     }
-
 }

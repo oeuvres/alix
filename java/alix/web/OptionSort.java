@@ -50,122 +50,101 @@ import alix.lucene.search.SimilarityOccs;
 
 public enum OptionSort implements Option
 {
-    score(
-        "Score", 
-        null, 
-        null
-    ),
-    occs(
-        "Occurrences", 
-        null, 
-        new SimilarityOccs()
-    ),
-    year(
-        "Année (+ ancien)",
-        new Sort(new SortField("year", SortField.Type.INT), new SortField(Alix.ID, SortField.Type.STRING)),
-        null
-    ),
-    year_inv(
-        "Année (+ récent)",
-        new Sort(new SortField("year", SortField.Type.INT, true), new SortField(Alix.ID, SortField.Type.STRING, true)), 
-        null
-    ),
-    author(
-        "Auteur (A-Z)", 
-        new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT)),
-        null
-    ),
-    author_inv(
-        "Auteur (Z-A)", 
-        new Sort(new SortField("author1", SortField.Type.STRING, true), new SortField("year", SortField.Type.INT)),
-        null
-    ),
-    id(
-        "Identifiant (A-Z)", 
-        new Sort(new SortField(Alix.ID, SortField.Type.STRING)),
-        null
-    ),
-    id_inv(
-        "Identifiant (Z-A)", 
-        new Sort(new SortField(Alix.ID, SortField.Type.STRING, true)),
-        null
-    ),
-    g(
-        "Score (G-Test)",
-        null,
-        new SimilarityG()
-    ),
-  //freq("Fréquence"),
-  // "tf-idf", "bm25", "dfi_chi2", "dfi_std", "dfi_sat", 
-  // "lmd", "lmd0.1", "lmd0.7", "dfr", "ib"
-  // "tf-idf", "BM25", "DFI chi²", "DFI standard", "DFI saturé", 
-  // "LMD", "LMD λ=0.1", "LMD λ=0.7", "DFR", "IB"
-  ;
-  public final Sort sort;
-  public final Similarity sim;
-  public final String label;
-  private OptionSort(final String label, final Sort sort, final Similarity sim)
-  {
-    this.label = label;
-    this.sort = sort;
-    this.sim = sim;
-  }
-  
-  /**
-   * Get a top docs with no limit (for paging)
-   * 
-   * @param searcher
-   * @param query
-   * @return
-   * @throws IOException 
-   */
-  public TopDocs top(IndexSearcher searcher, Query query) throws IOException
-  {
-    final int totalHitsThreshold = Integer.MAX_VALUE;
-    final int numHits = searcher.getIndexReader().maxDoc();
-    TopDocsCollector<?> collector = null;
-    if (sort != null) {
-      collector = TopFieldCollector.create(sort, numHits, totalHitsThreshold);
+    score("Score", null, null),
+    occs("Occurrences", null, new SimilarityOccs()),
+    year("Année (+ ancien)",
+            new Sort(new SortField("year", SortField.Type.INT), new SortField(Alix.ID, SortField.Type.STRING)), null),
+    year_inv("Année (+ récent)",
+            new Sort(new SortField("year", SortField.Type.INT, true),
+                    new SortField(Alix.ID, SortField.Type.STRING, true)),
+            null),
+    author("Auteur (A-Z)",
+            new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT)), null),
+    author_inv("Auteur (Z-A)",
+            new Sort(new SortField("author1", SortField.Type.STRING, true), new SortField("year", SortField.Type.INT)),
+            null),
+    id("Identifiant (A-Z)", new Sort(new SortField(Alix.ID, SortField.Type.STRING)), null),
+    id_inv("Identifiant (Z-A)", new Sort(new SortField(Alix.ID, SortField.Type.STRING, true)), null),
+    g("Score (G-Test)", null, new SimilarityG()),
+    // freq("Fréquence"),
+    // "tf-idf", "bm25", "dfi_chi2", "dfi_std", "dfi_sat",
+    // "lmd", "lmd0.1", "lmd0.7", "dfr", "ib"
+    // "tf-idf", "BM25", "DFI chi²", "DFI standard", "DFI saturé",
+    // "LMD", "LMD λ=0.1", "LMD λ=0.7", "DFR", "IB"
+    ;
+
+    public final Sort sort;
+    public final Similarity sim;
+    public final String label;
+
+    private OptionSort(final String label, final Sort sort, final Similarity sim)
+    {
+        this.label = label;
+        this.sort = sort;
+        this.sim = sim;
     }
-    else {
-      collector = TopScoreDocCollector.create(numHits, totalHitsThreshold);
+
+    /**
+     * Get a top docs with no limit (for paging)
+     * 
+     * @param searcher
+     * @param query
+     * @return
+     * @throws IOException
+     */
+    public TopDocs top(IndexSearcher searcher, Query query) throws IOException
+    {
+        final int totalHitsThreshold = Integer.MAX_VALUE;
+        final int numHits = searcher.getIndexReader().maxDoc();
+        TopDocsCollector<?> collector = null;
+        if (sort != null) {
+            collector = TopFieldCollector.create(sort, numHits, totalHitsThreshold);
+        } else {
+            collector = TopScoreDocCollector.create(numHits, totalHitsThreshold);
+        }
+        if (sim != null) {
+            Similarity oldSim = searcher.getSimilarity();
+            searcher.setSimilarity(sim);
+            searcher.search(query, collector);
+            TopDocs top = collector.topDocs();
+            searcher.setSimilarity(oldSim);
+            return top;
+        }
+        searcher.search(query, collector);
+        return collector.topDocs();
     }
-    if (sim != null) {
-      Similarity oldSim = searcher.getSimilarity();
-      searcher.setSimilarity(sim);
-      searcher.search(query, collector);
-      TopDocs top = collector.topDocs();
-      searcher.setSimilarity(oldSim);
-      return top;
+
+    /**
+     * Get a topd docs with limit
+     * 
+     * @param searcher
+     * @param query
+     * @param limit
+     * @return
+     * @throws IOException
+     */
+    public TopDocs top(IndexSearcher searcher, Query query, int limit) throws IOException
+    {
+        if (sort != null) {
+            return searcher.search(query, limit, sort);
+        } else if (sim != null) {
+            Similarity oldSim = searcher.getSimilarity();
+            searcher.setSimilarity(sim);
+            TopDocs top = searcher.search(query, limit);
+            searcher.setSimilarity(oldSim);
+            return top;
+        } else {
+            return searcher.search(query, limit);
+        }
     }
-    searcher.search(query, collector);
-    return collector.topDocs();
-  }
-  
-  /**
-   * Get a topd docs with limit
-   * @param searcher
-   * @param query
-   * @param limit
-   * @return
-   * @throws IOException
-   */
-  public TopDocs top(IndexSearcher searcher, Query query, int limit) throws IOException
-  {
-    if (sort != null) {
-      return searcher.search(query, limit, sort);
+
+    public String label()
+    {
+        return label;
     }
-    else if (sim != null) {
-      Similarity oldSim = searcher.getSimilarity();
-      searcher.setSimilarity(sim);
-      TopDocs top = searcher.search(query, limit);
-      searcher.setSimilarity(oldSim);
-      return top;
+
+    public String hint()
+    {
+        return "";
     }
-    else {
-      return searcher.search(query, limit);
-    }
-  }
-  public String label() { return label; }
-  public String hint() { return ""; }
 }

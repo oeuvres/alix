@@ -40,250 +40,249 @@ import java.util.ListIterator;
 import java.util.Queue;
 
 /**
- * A fixed size queue, rolling if full.
- * Very efficient but without security.
- * Alway happy, will never send an exception, but sometimes null value.
+ * A fixed size queue, rolling if full. Very efficient but without security.
+ * Always happy, will never send an exception, but sometimes null value.
  */
 public class Roll<E> extends Roller implements Queue<E>, List<E>
 {
-  /** Data of the sliding window */
-  private E[] data;
+    /** Data of the sliding window */
+    private E[] data;
 
-  /**
-   * Constructor, init data
-   */
-  @SuppressWarnings("unchecked")
-  public Roll(final int size) {
-    super(size);
-    data = (E[])new Object[size];
-  }
-
-  @Override
-  public boolean add(E element)
-  {
-    if (size < capacity) {
-      data[pointer(size)] = element;
-      size++;
+    /**
+     * Constructor, init data
+     */
+    @SuppressWarnings("unchecked")
+    public Roll(final int size)
+    {
+        super(size);
+        data = (E[]) new Object[size];
     }
-    else { // do not change the size and roll
-      data[pointer(size)] = element;
-      zero = pointer(1);
+
+    @Override
+    public boolean add(E element)
+    {
+        if (size < capacity) {
+            data[pointer(size)] = element;
+            size++;
+        } else { // do not change the size and roll
+            data[pointer(size)] = element;
+            zero = pointer(1);
+        }
+        return true;
     }
-    return true;
-  }
 
-  @Override
-  public E remove()
-  {
-    if (size < 1) return null;
-    E ret = data[zero];
-    size--;
-    zero = pointer(1);
-    return ret;
-  }
-
-  @Override
-  public E get(final int pos)
-  {
-    return data[pointer(pos)];
-  }
-
-  /**
-   * Set value at position
-   * 
-   * @param pos
-   * @param value
-   * @return the primary value
-   */
-  @Override
-  public E set(final int pos, final E value)
-  {
-    int index = pointer(pos);
-    E ret = data[index];
-    data[index] = value;
-    return ret;
-  }
-
-  @Override
-  public void clear()
-  {
-    size = 0;
-  }
-
-  @Override
-  public boolean isEmpty()
-  {
-    return (size == 0);
-  }
-
-   @Override
-  public E peek()
-  {
-    return (E)data[zero];
-  }
-
-  /**
-   * Fill with a value
-   * 
-   * @return
-   */
-  public Roll<E> fill(final E value)
-  {
-    Arrays.fill(data, value);
-    return this;
-  }
-
-
-
-  @Override
-  public boolean addAll(Collection<? extends E> arg0)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public boolean contains(Object arg0)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public boolean containsAll(Collection<?> arg0)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public Iterator<E> iterator()
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public boolean remove(Object arg0)
-  {
-    throw new UnsupportedOperationException("Not relevant, use LinkedList instead");
-  }
-
-  @Override
-  public boolean removeAll(Collection<?> arg0)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public boolean retainAll(Collection<?> arg0)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public Object[] toArray()
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public <T> T[] toArray(T[] arg0)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public E element()
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public boolean offer(E arg0)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public E poll()
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public void add(int arg0, E arg1)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public boolean addAll(int arg0, Collection<? extends E> arg1)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public int indexOf(Object arg0)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public int lastIndexOf(Object arg0)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public ListIterator<E> listIterator()
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public ListIterator<E> listIterator(int arg0)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public E remove(int arg0)
-  {
-    throw new UnsupportedOperationException("Not relevant, use LinkedList instead");
-  }
-
-  @Override
-  public List<E> subList(int arg0, int arg1)
-  {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Not yet implemented");
-  }
-
-  @Override
-  public String toString()
-  {
-    StringBuilder sb = new StringBuilder();
-    sb.append("[");
-    for (int i = 0; i < size; i++) {
-      if (i > 0) sb.append(", ");
-      sb.append(data[pointer(i)]);
+    @Override
+    public E remove()
+    {
+        if (size < 1)
+            return null;
+        E ret = data[zero];
+        size--;
+        zero = pointer(1);
+        return ret;
     }
-    sb.append("]");
-    return sb.toString();
-  }
+
+    @Override
+    public E get(final int pos)
+    {
+        return data[pointer(pos)];
+    }
+
+    /**
+     * Set value at position
+     * 
+     * @param pos
+     * @param value
+     * @return the primary value
+     */
+    @Override
+    public E set(final int pos, final E value)
+    {
+        int index = pointer(pos);
+        E ret = data[index];
+        data[index] = value;
+        return ret;
+    }
+
+    @Override
+    public void clear()
+    {
+        size = 0;
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+        return (size == 0);
+    }
+
+    @Override
+    public E peek()
+    {
+        return (E) data[zero];
+    }
+
+    /**
+     * Fill with a value
+     * 
+     * @return
+     */
+    public Roll<E> fill(final E value)
+    {
+        Arrays.fill(data, value);
+        return this;
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends E> arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public boolean contains(Object arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public boolean containsAll(Collection<?> arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public Iterator<E> iterator()
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public boolean remove(Object arg0)
+    {
+        throw new UnsupportedOperationException("Not relevant, use LinkedList instead");
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public <T> T[] toArray(T[] arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public E element()
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public boolean offer(E arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public E poll()
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public void add(int arg0, E arg1)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public boolean addAll(int arg0, Collection<? extends E> arg1)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public int indexOf(Object arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public int lastIndexOf(Object arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public ListIterator<E> listIterator()
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public ListIterator<E> listIterator(int arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public E remove(int arg0)
+    {
+        throw new UnsupportedOperationException("Not relevant, use LinkedList instead");
+    }
+
+    @Override
+    public List<E> subList(int arg0, int arg1)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < size; i++) {
+            if (i > 0)
+                sb.append(", ");
+            sb.append(data[pointer(i)]);
+        }
+        sb.append("]");
+        return sb.toString();
+    }
 
 }

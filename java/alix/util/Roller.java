@@ -35,48 +35,46 @@ package alix.util;
 /**
  * Efficient Object to handle a sliding window, on different types, works like a
  * circular array.
- * 
- * @author glorieux-f
- *
  */
 public abstract class Roller
 {
-  /** Size of the widow */
-  protected final int capacity;
-  /** Number of elements set */
-  protected int size;
-  /** Pointer on first cell */
-  protected int zero;
+    /** Size of the widow */
+    protected final int capacity;
+    /** Number of elements set */
+    protected int size;
+    /** Pointer on first cell */
+    protected int zero;
 
-  /**
-   * Constructor
-   */
-  public Roller(final int capacity) {
-    this.capacity = capacity;
-  }
-
-  /**
-   * Return the size of the roller
-   * 
-   * @return
-   */
-  public int size()
-  {
-    return size;
-  }
-
-  /**
-   * Get pointer on the data array from a position. Will roll around array if out
-   * the limits
-   */
-  protected int pointer(final int pos)
-  {
-    /*
-     * if (ord < -left) throw(new ArrayIndexOutOfBoundsException(
-     * ord+" < "+(-left)+", left context size.\n"+this.toString() )); else if (ord >
-     * right) throw(new ArrayIndexOutOfBoundsException(
-     * ord+" > "+(+right)+", right context size.\n"+this.toString() ));
+    /**
+     * Constructor
      */
-    return (((zero + pos) % capacity) + capacity) % capacity;
-  }
+    public Roller(final int capacity)
+    {
+        this.capacity = capacity;
+    }
+
+    /**
+     * Return the size of the roller
+     * 
+     * @return
+     */
+    public int size()
+    {
+        return size;
+    }
+
+    /**
+     * Get pointer on the data array from a position. Will roll around array if out
+     * the limits
+     */
+    protected int pointer(final int pos)
+    {
+        /*
+         * if (ord < -left) throw(new ArrayIndexOutOfBoundsException(
+         * ord+" < "+(-left)+", left context size.\n"+this.toString() )); else if (ord >
+         * right) throw(new ArrayIndexOutOfBoundsException(
+         * ord+" > "+(+right)+", right context size.\n"+this.toString() ));
+         */
+        return (((zero + pos) % capacity) + capacity) % capacity;
+    }
 }

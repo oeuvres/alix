@@ -37,6 +37,7 @@ import java.text.Collator;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.Map;
 
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
@@ -46,6 +47,8 @@ import org.apache.lucene.util.UnicodeUtil;
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
+import alix.util.IntEdges;
+import alix.util.IntPair;
 import alix.util.TopArray;
 import alix.web.OptionDistrib.Scorer;
 import alix.web.OptionMI;
@@ -89,10 +92,7 @@ public class FormEnum
     protected long[] formOccsFreq;
     /** Occurrences found, Σ formOccsFreq */
     protected long occsFreq;
-    /**
-     * By formId, a docId by term used as a cover (example: metas for books or
-     * authors)
-     */
+    /**  By formId, a docId used as a cover (example: metas for books or  authors) */
     final private int[] formCover;
     /** An optional tag for each search (relevant for textField) */
     final private int[] formTag;
@@ -100,6 +100,8 @@ public class FormEnum
     public long occsPart;
     /** By formId, a relevance score calculated */
     protected double[] formScore;
+    /** A record of edges */
+    protected IntEdges edges;
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
     /** Current formId, set by next */
@@ -732,6 +734,35 @@ public class FormEnum
             sb.append("\n");
         }
         return sb.toString();
+    }
+
+    static public class Bigram
+    {
+        public final int a;
+        public final int b;
+        public int count = 0;
+        public double score;
+        final public String label;
+    
+        Bigram(final int a, final int b)
+        {
+            this.a = a;
+            this.b = b;
+            this.label = null;
+        }
+    
+        Bigram(final int a, final int b, final String label)
+        {
+            this.a = a;
+            this.b = b;
+            this.label = label;
+        }
+    
+        public int inc()
+        {
+            return ++count;
+        }
+    
     }
 
 }

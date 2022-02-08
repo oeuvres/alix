@@ -683,15 +683,15 @@ Gobal TEI parameters and variables are divided in different categories
   <xsl:template name="pages">
     <xsl:variable name="pb" select=".//tei:pb"/>
     <xsl:if test="$pb">
+      <xsl:variable name="last" select="$pb[position() != 1][position() = last()]/@n"/>
       <xsl:choose>
         <xsl:when test="count($pb) &gt; 1">pp. </xsl:when>
         <xsl:otherwise>p. </xsl:otherwise>
       </xsl:choose>
-      <xsl:value-of select="$pb[1]/@n"/>
-      <xsl:variable name="last" select="$pb[position() != 1][position() = last()]/@n"/>
-      <xsl:if test="$last &gt; 1">
+      <xsl:value-of select="translate($pb[1]/@n, translate($pb[1]/@n, '0123456789', ''), '')"/>
+      <xsl:if test="count($pb) &gt; 1">
         <xsl:text>-</xsl:text>
-        <xsl:value-of select="$last"/>
+        <xsl:value-of select="translate($last, translate($last, '0123456789', ''), '')"/>
       </xsl:if>
     </xsl:if>
   </xsl:template>

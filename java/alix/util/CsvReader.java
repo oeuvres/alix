@@ -46,188 +46,201 @@ import java.nio.charset.StandardCharsets;
  */
 public class CsvReader
 {
-  private static final int BUFFER_SIZE = 16384; // tested
-  private final char[] buf = new char[BUFFER_SIZE];
-  private int bufPos;
-  private int bufLen;
-  private static final char LF = '\n';
-  private static final char CR = '\r';
-  /** The char source */
-  private Reader reader;
-  /** The cell delimiter char */
-  private char sep;
-  /** The text delimiter char */
-  // private final char quote;
-  /** Row to populate */
-  private Row row;
-  /** line number */
-  private int line = -1;
+    private static final int BUFFER_SIZE = 16384; // tested
+    private final char[] buf = new char[BUFFER_SIZE];
+    private int bufPos;
+    private int bufLen;
+    private static final char LF = '\n';
+    private static final char CR = '\r';
+    /** The char source */
+    private Reader reader;
+    /** The cell delimiter char */
+    private char sep;
+    /** The text delimiter char */
+    // private final char quote;
+    /** Row to populate */
+    private Row row;
+    /** line number */
+    private int line = -1;
 
-  public CsvReader(final File file, final int cols) throws FileNotFoundException
-  {
-    this.reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
-    row = new Row(cols);
-  }
-
-  public CsvReader(Reader reader, final int cols)
-  {
-    this(reader, cols, (char) 0);
-  }
-
-  public CsvReader(Reader reader, final int cols, final char sep)
-  {
-    this.reader = reader;
-    row = new Row(cols);
-    // quote = '"';
-    this.sep = sep;
-  }
-  
-  public void close() throws IOException
-  {
-    reader.close();
-  }
-
-  public Row row()
-  {
-    return this.row;
-  }
-
-  public int line()
-  {
-    return this.line;
-  }
-
-  /**
-   * Read one row (should stop at each 
-   * @return
-   * @throws IOException
-   */
-  public Row readRow() throws IOException 
-  {
-    if (this.bufPos < 0) return null;
-    Row row = this.row.reset();
-    Chain cell = row.next();
-    int bufPos = this.bufPos;
-    int bufMark = bufPos; // from where to start a copy
-    char sep = this.sep; // localize
-    boolean sep1 = (sep != 0);
-    // char quote = this.quote;
-    // boolean inquote;
-    char lastChar = 0;
-    int crlf = 0; // used to not append CR to a CRLF ending line
-    while (true) {
-      // fill buffer
-      if (bufLen == bufPos) {
-        // copy chars before erase them
-        if (cell == null) ;
-        else if (lastChar == CR) cell.append(buf, bufMark, bufLen - bufMark - 1); // do not append CR to cell
-        else cell.append(buf, bufMark, bufLen - bufMark);
-        bufLen = reader.read(buf, 0, buf.length);
-        bufMark = 0;
-        // source is finished
-        if (bufLen < 0) {
-          cell = null;
-          bufPos = -1; // say end of file to next call
-          break;
-        }
-        bufPos = 0;
-      }
-      final char c = buf[bufPos++];
-      // escaping char ? shall we do something ?
-      if (lastChar == CR) {
-        if (c != LF) { // old mac line
-          bufPos--;
-          break;
-        }
-        else if ((bufPos - bufMark) > 1) crlf = 1;
-      }
-      lastChar = c;
-      if (c == LF) break;
-      if (c == CR) continue;
-      // exclude case of cell separator
-      if (sep1) { // one char declared for cell separator
-        if (c != sep) continue;
-      }
-      else { // nice sugar on common separators
-        if (c != '\t' && c != ',' && c != ';') continue;
-      }
-      // here we should change of cell
-      if (cell != null) cell.append(buf, bufMark, bufPos - bufMark - 1);
-      bufMark = bufPos;
-      cell = row.next();
-    }
-    // append pending chars to current cell
-    if (cell != null) cell.append(buf, bufMark, bufPos - bufMark - 1 - crlf);
-    this.bufPos = bufPos;
-    line++;
-    return row;
-  }
-
-  public class Row
-  {
-    /** Predefined number of cells to populate */
-    private final Chain[] cells;
-    /** Number of columns */
-    private final int cols;
-    /** Internal pointer in cells */
-    int pointer;
-
-    /** constructor */
-    public Row(int cols)
+    public CsvReader(final File file, final int cols) throws FileNotFoundException
     {
-      cells = new Chain[cols];
-      for (int i = cols - 1; i >= 0; i--) {
-        cells[i] = new Chain();
-      }
-      this.cols = cols;
+        this.reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
+        row = new Row(cols);
+    }
+
+    public CsvReader(Reader reader, final int cols)
+    {
+        this(reader, cols, (char) 0);
+    }
+
+    public CsvReader(Reader reader, final int cols, final char sep)
+    {
+        this.reader = reader;
+        row = new Row(cols);
+        // quote = '"';
+        this.sep = sep;
+    }
+
+    public void close() throws IOException
+    {
+        reader.close();
+    }
+
+    public Row row()
+    {
+        return this.row;
+    }
+
+    public int line()
+    {
+        return this.line;
     }
 
     /**
-     * Reset all cells
+     * Read one row (should stop at each
      * 
      * @return
+     * @throws IOException
      */
-    public Row reset()
+    public Row readRow() throws IOException
     {
-      this.pointer = 0;
-      for (int i = cols - 1; i >= 0; i--) {
-        cells[i].reset();
-      }
-      return this;
+        if (this.bufPos < 0)
+            return null;
+        Row row = this.row.reset();
+        Chain cell = row.next();
+        int bufPos = this.bufPos;
+        int bufMark = bufPos; // from where to start a copy
+        char sep = this.sep; // localize
+        boolean sep1 = (sep != 0);
+        // char quote = this.quote;
+        // boolean inquote;
+        char lastChar = 0;
+        int crlf = 0; // used to not append CR to a CRLF ending line
+        while (true) {
+            // fill buffer
+            if (bufLen == bufPos) {
+                // copy chars before erase them
+                if (cell == null)
+                    ;
+                else if (lastChar == CR)
+                    cell.append(buf, bufMark, bufLen - bufMark - 1); // do not append CR to cell
+                else
+                    cell.append(buf, bufMark, bufLen - bufMark);
+                bufLen = reader.read(buf, 0, buf.length);
+                bufMark = 0;
+                // source is finished
+                if (bufLen < 0) {
+                    cell = null;
+                    bufPos = -1; // say end of file to next call
+                    break;
+                }
+                bufPos = 0;
+            }
+            final char c = buf[bufPos++];
+            // escaping char ? shall we do something ?
+            if (lastChar == CR) {
+                if (c != LF) { // old mac line
+                    bufPos--;
+                    break;
+                } else if ((bufPos - bufMark) > 1)
+                    crlf = 1;
+            }
+            lastChar = c;
+            if (c == LF)
+                break;
+            if (c == CR)
+                continue;
+            // exclude case of cell separator
+            if (sep1) { // one char declared for cell separator
+                if (c != sep)
+                    continue;
+            } else { // nice sugar on common separators
+                if (c != '\t' && c != ',' && c != ';')
+                    continue;
+            }
+            // here we should change of cell
+            if (cell != null)
+                cell.append(buf, bufMark, bufPos - bufMark - 1);
+            bufMark = bufPos;
+            cell = row.next();
+        }
+        // append pending chars to current cell
+        if (cell != null)
+            cell.append(buf, bufMark, bufPos - bufMark - 1 - crlf);
+        this.bufPos = bufPos;
+        line++;
+        return row;
     }
 
-    /**
-     * Give next cell or null if no more
-     */
-    public Chain get(int col)
+    public class Row
     {
-      return cells[col];
-    }
+        /** Predefined number of cells to populate */
+        private final Chain[] cells;
+        /** Number of columns */
+        private final int cols;
+        /** Internal pointer in cells */
+        int pointer;
 
-    /**
-     * Give next cell or null if no more
-     */
-    public Chain next()
-    {
-      if (pointer >= cols) return null;
-      return cells[pointer++];
-    }
+        /** constructor */
+        public Row(int cols)
+        {
+            cells = new Chain[cols];
+            for (int i = cols - 1; i >= 0; i--) {
+                cells[i] = new Chain();
+            }
+            this.cols = cols;
+        }
 
-    @Override
-    public String toString()
-    {
-      StringBuilder sb = new StringBuilder();
-      boolean first = true;
-      sb.append('|');
-      for (int i = 0; i < cols; i++) {
-        if (first) first = false;
-        else sb.append("|\t|");
-        sb.append(cells[i]);
-      }
-      sb.append('|');
-      return sb.toString();
-    }
+        /**
+         * Reset all cells
+         * 
+         * @return
+         */
+        public Row reset()
+        {
+            this.pointer = 0;
+            for (int i = cols - 1; i >= 0; i--) {
+                cells[i].reset();
+            }
+            return this;
+        }
 
-  }
+        /**
+         * Give next cell or null if no more
+         */
+        public Chain get(int col)
+        {
+            return cells[col];
+        }
+
+        /**
+         * Give next cell or null if no more
+         */
+        public Chain next()
+        {
+            if (pointer >= cols)
+                return null;
+            return cells[pointer++];
+        }
+
+        @Override
+        public String toString()
+        {
+            StringBuilder sb = new StringBuilder();
+            boolean first = true;
+            sb.append('|');
+            for (int i = 0; i < cols; i++) {
+                if (first)
+                    first = false;
+                else
+                    sb.append("|\t|");
+                sb.append(cells[i]);
+            }
+            sb.append('|');
+            return sb.toString();
+        }
+
+    }
 
 }
