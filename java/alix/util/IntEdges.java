@@ -56,13 +56,45 @@ public class IntEdges
     boolean directed;
     /** Binary mask to get upper int from data */
     private static long KEY_MASK = 0xFFFFFFFFL;
-
+    /** Linked Cluster */
+    private IntList cluster = new IntList();
+    
+    
     public IntEdges(final boolean directed)
     {
         this.directed = directed;
     }
     
-    public void add(final int source, final int target)
+    /**
+     * Start a cluster (a set of nodes totally connected)
+     */
+    public void declust()
+    {
+        cluster.reset();
+    }
+
+    /**
+     * Agregate a node to a cluster
+     */
+    public void clust(final int node)
+    {
+        cluster.push(node);
+        int length = cluster.length();
+        if (length < 2) {
+            return;
+        }
+        length--;
+        for (int i = 0; i < length; i++) {
+            push(node, cluster.get(i));
+        }
+    }
+
+    /**
+     * Add an edge
+     * @param source
+     * @param target
+     */
+    public void push(final int source, final int target)
     {
         grow(size);
         if (directed) {
@@ -92,6 +124,14 @@ public class IntEdges
     public List<Edge> top()
     {
         List<Edge> net = new ArrayList<Edge>();
+        if (size < 1) {
+            return net;
+        }
+        if (size == 1) {
+            long edge = data[0];
+            net.add(new Edge(source(edge), target(edge), 1));
+            return net;
+        }
         Arrays.parallelSort(data, 0, size);
         long edge = data[0];
         int count = 0;
@@ -104,15 +144,16 @@ public class IntEdges
             }
             count ++;
         }
+        if (count > 0) net.add(new Edge(source(edge), target(edge), count));
         Collections.sort(net);
         return net;
     }
     
-    static class Edge implements Comparable<Edge>
+    public static class Edge implements Comparable<Edge>
     {
-        final int source;
-        final int target;
-        final int count;
+        public final int source;
+        public final int target;
+        public final int count;
         public Edge(final int source, final int target, final int count) {
             this.source = source;
             this.target = target;

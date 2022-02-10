@@ -166,10 +166,9 @@ public class FieldRail
     public long coocs(FormEnum results) throws IOException
     {
         // for each index leave
-        //   for each term
-        //     for each doc found
-        //        for each term position in doc
-        //          collect co-occurents 
+        //     collect "postings" for each term
+        //     for each doc
+        //         get position of term found
         if (results.search == null || results.search.length == 0) {
             throw new IllegalArgumentException("Search term(s) missing, FormEnum.search should be not null");
         }
@@ -207,8 +206,8 @@ public class FieldRail
         }
 
         DirectoryReader reader = alix.reader();
-        // A vector needed to no recount doc
-        boolean[] docSeen = new boolean[reader.maxDoc()];
+        // this vector has been useful, but meaning has been forgotten
+        boolean[] formSeen = new boolean[maxForm];
         long found = 0;
         final int END = DocIdSetIterator.NO_MORE_DOCS;
         // collector of scores
@@ -286,6 +285,7 @@ public class FieldRail
                     }
 
                     hit = true;
+                    // term found in this doc, search each occurrence
                     for (; freq > 0; freq--) {
                         final int position = postings.nextPosition();
                         final int fromIndex = Math.max(0, position - left);
@@ -294,7 +294,6 @@ public class FieldRail
                         pivots.set(position);
                         found++;
                     }
-                    // postings.advance(docLeaf);
                 }
                 if (!hit) {
                     continue;
@@ -306,10 +305,17 @@ public class FieldRail
                 // load the document rail and loop on the contexts to count co-occurrents
                 final int posDoc = posInt[docId];
                 int pos = contexts.nextSetBit(0);
-                Arrays.fill(docSeen, false);
+                int lastpos = 0;
+                Arrays.fill(formSeen, false);
                 while (pos >= 0) {
                     int formId = bufInt.get(posDoc + pos);
+                    boolean isPivot = pivots.get(pos);
                     pos = contexts.nextSetBit(pos + 1);
+                    // gap, another context, reset coocs cluster
+                    if (hasEdges && pos > lastpos + 1) {
+                        results.edges.declust();
+                    }
+                    lastpos = pos;
                     // Check words to count
                     if (formId == 0) { 
                         continue;
@@ -324,11 +330,17 @@ public class FieldRail
                     if (hasTags && !results.tags.accept(ftext.formTag[formId])) {
                         continue;
                     }
+                    if (hasEdges) {
+                        results.edges.clust(formId);
+                    }
+                    
+                    
                     results.occsPart++;
                     results.formOccsFreq[formId]++;
-                    if (!docSeen[formId]) {
+                    // has been useful for a scoring algorithm
+                    if (!formSeen[formId]) {
                         results.formDocsHit[formId]++;
-                        docSeen[formId] = true;
+                        formSeen[formId] = true;
                     }
                 }
             }

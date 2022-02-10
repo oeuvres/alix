@@ -245,6 +245,17 @@ public class FormEnum
         return formDocsPart[formId];
     }
 
+    /**
+     * Prepare results to collect edges
+     */
+    public IntEdges edges()
+    {
+        if (this.edges == null) {
+            this.edges = new IntEdges(false);
+        }
+        return this.edges;
+    }
+    
     public void first()
     {
         cursor = 0;
@@ -506,6 +517,18 @@ public class FormEnum
      */
     public double score()
     {
+        if (formScore == null) return 0;
+        return formScore[formId];
+    }
+
+    /**
+     * Value used for sorting for current term.
+     * 
+     * @return
+     */
+    public double score(final int formId)
+    {
+        // be nice or be null ?
         if (formScore == null) return 0;
         return formScore[formId];
     }
