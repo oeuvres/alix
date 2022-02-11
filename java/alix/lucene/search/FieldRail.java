@@ -160,7 +160,7 @@ public class FieldRail
 
     /**
      * Build a cooccurrence freqList in formId order, attached to a FormEnum object.
-     * This oculd be sorted after in different manner accordin to Specif. Returns
+     * This oculd be sorted after in different manner according to Specif. Returns
      * the count of occurences found.
      */
     public long coocs(FormEnum results) throws IOException
@@ -625,11 +625,17 @@ public class FieldRail
      * @throws IOException
      * 
      */
-    public void score(FormEnum results, final long Ob) throws IOException
+    public void score(FormEnum results) throws IOException
     {
-        if (this.ftext.formDic != results.formDic)
+        if (this.ftext.formDic != results.formDic) {
             throw new IllegalArgumentException("Not the same fields. Rail for coocs: " + this.ftext.fname
                     + ", freqList build with " + results.fieldName + " field");
+        }
+        long add = 0;
+        for (String form : results.search) {
+            add += ftext.formOccs(form);
+        }
+        final long Ob = add;
         // Do not filter words from a query word in query
         boolean hasInclude = false;
         int[] include = null;
@@ -671,7 +677,7 @@ public class FieldRail
         final long N = ftext.occsAll; // global
         OptionMI mi = results.mi;
         if (mi == null)
-            mi = OptionMI.occs;
+            mi = OptionMI.g;
         for (int formId = 0; formId < length; formId++) {
             if (hasInclude && Arrays.binarySearch(include, formId) >= 0)
                 ; // include word
@@ -682,9 +688,10 @@ public class FieldRail
             else if (results.formOccsFreq[formId] == 0)
                 continue;
             long Oab = results.formOccsFreq[formId];
-            if (Oab > Ob)
-                Oab = Ob; // // a form in a cooccurrence, may be more frequent than the pivot (repetition
-                          // in a large context)
+            // a form in a cooccurrence, may be more frequent than the pivot (repetition in a large context)
+            if (Oab > Ob) {
+                Oab = Ob;
+            }
             results.formScore[formId] = mi.score(Oab, ftext.formOccsAll[formId], Ob, N);
         }
         // results is populated of scores, sort it now

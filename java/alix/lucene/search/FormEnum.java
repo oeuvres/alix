@@ -65,10 +65,7 @@ public class FormEnum
 {
     /** Source field */
     public final String fieldName;
-    /**
-     * An array of formId in the order we want to iterate on, should be set before
-     * iteration
-     */
+    /** An array of formId in the order we want to iterate on, should be set before iteration */
     private int[] sorter;
     /** Field dictionary */
     final BytesRefHash formDic;

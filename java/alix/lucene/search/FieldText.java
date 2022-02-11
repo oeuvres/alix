@@ -44,6 +44,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -425,6 +426,47 @@ public class FieldText
     public int formDocs(int formId)
     {
         return formDocsAll[formId];
+    }
+
+    /**
+     * Check if a form is present in a portion of the corpus
+     * 
+     * @param s
+     * @throws IOException 
+     */
+    public boolean formExists(final String word, final BitSet filter) throws IOException
+    {
+        final BytesRef bytes = new BytesRef(word);
+        final int formId = formDic.find(bytes);
+        if (formId < 0) {
+            return false;
+        }
+        if (filter == null) {
+            return true;
+        }
+        // loop on leaves of the reader
+        for (LeafReaderContext context : reader.leaves()) {
+            final int docBase = context.docBase;
+            LeafReader leaf = context.reader();
+            Term term = new Term(fname, word);
+            PostingsEnum postings = leaf.postings(term, PostingsEnum.NONE);
+            if (postings == null) {
+                continue; // no docs for this term, next leaf
+            }
+            // loop on docs for this term, till on is in the bitset
+            final Bits liveDocs = leaf.getLiveDocs();
+            int docLeaf;
+            if ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                if (liveDocs != null && liveDocs.get(docLeaf)) {
+                  continue;
+                }
+                final int docId = docBase + docLeaf;
+                if (filter.get(docId)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

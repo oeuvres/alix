@@ -154,11 +154,49 @@ public class IntEdges
         public final int source;
         public final int target;
         public final int count;
+        private int hash;
         public Edge(final int source, final int target, final int count) {
             this.source = source;
             this.target = target;
             this.count = count;
         }
+        
+        @Override
+        public boolean equals(Object o) {
+            if (o == null)
+                return false;
+            if (o == this)
+                return true;
+            if (o instanceof Edge) {
+                Edge edge = (Edge) o;
+                return (this.source == edge.source && this.target == edge.target);
+            }
+            if (o instanceof IntPair) {
+                IntPair pair = (IntPair) o;
+                return (this.source == pair.x && this.target == pair.y);
+            }
+            if (o instanceof IntSeries) {
+                IntSeries series = (IntSeries) o;
+                if (series.length() != 2)
+                    return false;
+                if (this.source != series.data[0])
+                    return false;
+                if (this.target != series.data[1])
+                    return false;
+                return true;
+            }
+            return false;
+        }
+        
+        @Override
+        public int hashCode() {
+            if (hash != 0) return hash;
+            // hash = ( y << 16 ) ^ x; // 0% collision, but less dispersion
+            hash = ((this.source + this.target) * (this.source + this.target + 1) / 2) + this.target;
+            // hash = (31 * 17 + x) * 31 + y; // 97% collision
+            return hash;
+        }
+        
         @Override
         public int compareTo(Edge o)
         {
