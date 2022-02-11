@@ -102,20 +102,14 @@ public class FormEnum
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
     /** Current formId, set by next */
-    private int formId = -1; // break if no next
+    private int formId = -1;
     /** used to read in the dic */
     BytesRef bytes = new BytesRef();
     /** Limit for this iterator */
     public int limit;
-    /**
-     * Optional, for a co-occurrence search, count of occurrences to capture on the
-     * left
-     */
+    /** Optional, for a co-occurrence search, count of occurrences to capture on the left */
     public int left;
-    /**
-     * Optional, for a co-occurrence search, count of occurrences to capture on the
-     * right
-     */
+    /** Optional, for a co-occurrence search, count of occurrences to capture on the  right */
     public int right;
     /** Optional, for a co-occurrence search, pivot words */
     public String[] search;
@@ -554,18 +548,19 @@ public class FormEnum
      */
     public void sort(final Order order, final int limit, final boolean reverse)
     {
-        if (formOccsFreq != null && maxForm != formOccsFreq.length)
+        if (formOccsFreq != null && maxForm != formOccsFreq.length) {
             throw new IllegalArgumentException("Corrupted FormEnum name=" + fieldName + " maxForm=" + maxForm
                     + " formOccsFreq.length=" + formOccsFreq.length);
+        }
         switch (order) {
             case occs:
                 if (formOccsAll == null) {
-                    throw new IllegalArgumentException("Impossible to sort by occs (occurrences total), problem, formOccsAll has not been set by producer.");
+                    throw new IllegalArgumentException("Impossible to sort by occs (occurrences total), formOccsAll has not been set by producer.");
                 }
                 break;
             case docs:
                 if (formDocsAll == null) {
-                    throw new IllegalArgumentException("Impossible to sort docs (documents total), problem, formDocsAll has not been set by producer.");
+                    throw new IllegalArgumentException("Impossible to sort docs (documents total), formDocsAll has not been set by producer.");
                 }
                 break;
             case freq:
@@ -588,13 +583,16 @@ public class FormEnum
         // if (maxForm != formOccsFreq.length) throw new
         // IllegalArgumentException("Corrupted FormEnum name="+fieldName+"
         // maxForm="+maxForm+" formOccsFreq.length="+formOccsFreq.length);
-        int flags = TopArray.NO_ZERO; // ?
+        // int flags = TopArray.NO_ZERO; // ?
+        int flags = 0;
         if (reverse) flags |= TopArray.REVERSE;
         TopArray top = null;
         if (limit < 1) top = new TopArray(maxForm, flags);
         else top = new TopArray(limit, flags);
         boolean noZeroScore = false;
-        if (formScore != null && order != Order.score) noZeroScore = true;
+        if (formScore != null && order != Order.score) {
+            noZeroScore = true;
+        }
         // be careful, do not use formOccsAll as a size, the growing array may be bigger
         // than dictionary
         if (order.equals(Order.alpha)) {

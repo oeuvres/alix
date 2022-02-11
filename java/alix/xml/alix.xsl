@@ -131,7 +131,9 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
   </xsl:template>
 
   <!-- Do not output pages -->
-  <xsl:template match="tei:pb"/>
+  <xsl:template match="tei:pb">
+    <xsl:text>&#10;</xsl:text>
+  </xsl:template>
   <!-- no output -->
   <xsl:template match="tei:trailer"/>
   <!-- hide speaker from indexation -->

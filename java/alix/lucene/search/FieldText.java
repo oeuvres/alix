@@ -339,10 +339,23 @@ public class FieldText
      */
     public FormEnum filter(FormEnum results) throws IOException
     {
-        if (results.filter == null) throw new IllegalArgumentException("Doc filter missing, FormEnum.filter should be not null");; // no sense, let cry 
+        if (results.filter == null) {
+            throw new IllegalArgumentException("Doc filter missing, FormEnum.filter should be not null");
+        }
         BitSet filter = results.filter;
+        
         long[] formOccsPart = new long[formDic.size()];
+        long[] formOccsFreq = results.formOccsFreq;
+        if (formOccsFreq == null) {
+            formOccsFreq = new long[formDic.size()];
+            results.formOccsFreq = formOccsFreq;
+        }
         int[] formDocsPart = new int[formDic.size()];
+        int[] formDocsHit = results.formDocsHit;
+        if (formDocsHit == null) {
+            formDocsHit = new int[formDic.size()];
+            results.formDocsHit = formDocsHit;
+        }
         // no doc to filter, give a a safe copy of the stats
         long occsPart = 0;
         BytesRef bytes;
@@ -350,7 +363,7 @@ public class FieldText
         // loop an all index to calculate a score for the forms
         for (LeafReaderContext context : reader.leaves()) {
             LeafReader leaf = context.reader();
-            int docBase = context.docBase;
+            final int docBase = context.docBase;
             Terms terms = leaf.terms(fname);
             if (terms == null) continue;
             TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
@@ -358,19 +371,29 @@ public class FieldText
             while ((bytes = tenum.next()) != null) {
                 final int formId = formDic.find(bytes);
                 // int docLeaf;
-                // Bits live = leaf.getLiveDocs();
-                // boolean hasLive = (live != null);
+                Bits live = leaf.getLiveDocs();
+                boolean hasLive = (live != null);
                 docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
                 // lucene    doc says « Some implementations are considerably more efficient than a loop on all docs »
                 // we should do faster here, navigating by the BitSet
                 
+                int docLeaf = -1;
                 for (int docId = filter.nextSetBit(0); docId != NO_MORE_DOCS; docId = filter.nextSetBit(docId + 1)) {
                     final int target = docId - docBase;
-                    if (docsEnum.advance(target) != target) continue;
+                    if (hasLive && live.get(target)) continue;
+                    // if docsEnum is already at good place, do not advance
+                    if (docLeaf < target) {
+                        docLeaf = docsEnum.advance(target);
+                    }
+                    if (docLeaf != target) {
+                        continue;
+                    }
                     final int freq = docsEnum.freq();
                     if (freq == 0) continue; // strange, is’n it ? Will probably not arrive
                     formOccsPart[formId] += freq;
+                    formOccsFreq[formId] += freq;
                     formDocsPart[formId]++;
+                    formDocsHit[formId]++;
                     occsPart += freq;
                     
                 }
@@ -429,20 +452,21 @@ public class FieldText
     }
 
     /**
-     * Check if a form is present in a portion of the corpus
+     * Check if a form is present in a portion of the corpus.
+     * Returns its formId or -1 if not found.
      * 
      * @param s
      * @throws IOException 
      */
-    public boolean formExists(final String word, final BitSet filter) throws IOException
+    public int formId(final String word, final BitSet filter) throws IOException
     {
         final BytesRef bytes = new BytesRef(word);
         final int formId = formDic.find(bytes);
         if (formId < 0) {
-            return false;
+            return -1;
         }
         if (filter == null) {
-            return true;
+            return formId;
         }
         // loop on leaves of the reader
         for (LeafReaderContext context : reader.leaves()) {
@@ -456,17 +480,42 @@ public class FieldText
             // loop on docs for this term, till on is in the bitset
             final Bits liveDocs = leaf.getLiveDocs();
             int docLeaf;
-            if ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                if (liveDocs != null && liveDocs.get(docLeaf)) {
+            while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                if (liveDocs != null && !liveDocs.get(docLeaf)) {
                   continue;
                 }
                 final int docId = docBase + docLeaf;
                 if (filter.get(docId)) {
-                    return true;
+                    return formId;
                 }
             }
         }
-        return false;
+        return -1;
+    }
+    
+    /**
+     * Returns a sorted array of formId for found words, ready for binarySearch, or null if not found.
+     * @param words
+     * @param filter
+     * @return
+     */
+    public int[] formIds(String[] words, final BitSet filter) throws IOException
+    {
+        // check if words could be found, even with the docId filter, collect their formId
+        IntList list = new IntList();
+        for (String word: words) {
+            int formId = formId(word, filter);
+            if (formId < 0) {
+                continue;
+            }
+            list.push(formId);
+        }
+        if (list.isEmpty()) {
+            return null;
+        }
+        int[] pivots = list.toArray();
+        Arrays.sort(pivots);
+        return pivots;
     }
 
     /**
@@ -550,6 +599,15 @@ public class FieldText
     }
 
     /**
+     * Get a non filtered term enum with count
+     * @return
+     */
+    public FormEnum results()
+    {
+        return new FormEnum(this);
+    }
+
+    /**
      * Global termlist, maybe filtered but not scored. More efficient than a scorer
      * that loop on each term for global.
      * @return
@@ -559,20 +617,19 @@ public class FieldText
         boolean hasTags = (tags != null);
         boolean noStop = (tags != null && tags.noStop());
         boolean locs = (tags != null && tags.locutions());
-        double[] formScore = new double[maxForm];
+        long[] formOccsFreq = new long[maxForm];
         for (int formId=0; formId < maxForm; formId++) {
             if (noStop && isStop(formId)) continue;
             if (locs && !formLoc.get(formId)) continue;
             if (hasTags && !tags.accept(formTag[formId])) continue;
             // specif.idf(formOccs[formId], formDocsAll[formId] );
             // loop on all docs containing the term ?
-            formScore[formId] = formOccsAll[formId];
+            formOccsFreq[formId] = formOccsAll[formId];
         }
         // now we have all we need to build a sorted iterator on entries
         FormEnum results = new FormEnum(this);
-        results.formScore = formScore;
-        results.formDocsHit = formDocsAll;
-        results.formOccsFreq = formOccsAll;
+        results.formOccsFreq = formOccsFreq;
+        // no hits
         return results;
     }
 

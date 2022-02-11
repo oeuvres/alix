@@ -160,8 +160,7 @@ public class FieldRail
 
     /**
      * Build a cooccurrence freqList in formId order, attached to a FormEnum object.
-     * This oculd be sorted after in different manner according to Specif. Returns
-     * the count of occurences found.
+     * Returns the count of occurences found.
      */
     public long coocs(FormEnum results) throws IOException
     {
@@ -178,15 +177,21 @@ public class FieldRail
             throw new IllegalArgumentException("FormEnum.left=" + left + " FormEnum.right=" + right
                     + " not enough context to extract cooccurrences.");
         }
+        // nothing to search
+        int[] formIds = ftext.formIds(results.search, results.filter);
+        if (formIds == null) {
+            return 0;
+        }
         // filter documents
         final boolean hasFilter = (results.filter != null);
+        
         // filter co-occs by tag
         boolean hasTags = (results.tags != null);
         // filter co-occs stops
         boolean noStop = (results.tags != null && results.tags.noStop());
         // collect “locutions” (words like “parce que”)
         boolean locs = (results.tags != null && results.tags.locutions());
-        // collect “edges”   A B C [search term] E A D => AB+2, AC+2, AD++, AE++, BC++, BE++, 
+        // collect “edges”   A B [O] A C => AOx2, ABx2, ACx2, BOx1, COx1, BCx1. 
         boolean hasEdges = (results.edges != null);
 
         // for future scoring, formOccs is global or relative to filter ? relative seems bad
@@ -320,16 +325,21 @@ public class FieldRail
                     if (formId == 0) { 
                         continue;
                     }
-                    if (locs && !ftext.formLoc.get(formId)) {
+                    // keep pivots
+                    else if (isPivot) {
+                        
+                    }
+                    else if (locs && !ftext.formLoc.get(formId)) {
                         continue;
                     }
-                    if (noStop && ftext.isStop(formId)) {
+                    else if (noStop && ftext.isStop(formId)) {
                         continue;
                     }
                     // filter coocs by tag
-                    if (hasTags && !results.tags.accept(ftext.formTag[formId])) {
+                    else if (hasTags && !results.tags.accept(ftext.formTag[formId])) {
                         continue;
                     }
+                    
                     if (hasEdges) {
                         results.edges.clust(formId);
                     }
@@ -631,64 +641,47 @@ public class FieldRail
             throw new IllegalArgumentException("Not the same fields. Rail for coocs: " + this.ftext.fname
                     + ", freqList build with " + results.fieldName + " field");
         }
+        // if (results.limit == 0) throw new IllegalArgumentException("How many sorted
+        // forms do you want? set FormEnum.limit");
+        if (results.occsPart < 1) {
+            throw new IllegalArgumentException(
+                    "Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
+        }
+        if (results.formOccsFreq == null || results.formOccsFreq.length < maxForm) {
+            throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
+        }
+        // A variable for the square scorer
         long add = 0;
         for (String form : results.search) {
             add += ftext.formOccs(form);
         }
+        // Count of pivot occurrences for MI scorer
         final long Ob = add;
-        // Do not filter words from a query word in query
-        boolean hasInclude = false;
-        int[] include = null;
-        if (results.search != null || results.search.length > 0) {
-            include = new int[results.search.length];
-            int i = 0;
-            for (String form : results.search) {
-                int formId = ftext.formId(form);
-                if (formId < 1)
-                    continue;
-                include[i] = formId;
-                i++;
-            }
-            if (i > 0) {
-                if (i != include.length)
-                    include = Arrays.copyOfRange(include, 0, i);
-                Arrays.sort(include);
-                hasInclude = true;
-            }
-        }
-        // if (results.limit == 0) throw new IllegalArgumentException("How many sorted
-        // forms do you want? set FormEnum.limit");
-        if (results.occsPart < 1)
-            throw new IllegalArgumentException(
-                    "Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
-        if (results.formOccsFreq == null || results.formOccsFreq.length < maxForm)
-            throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
         // int[] hits = results.hits; // not significant for a transversal cooc
         TagFilter tags = results.tags;
         boolean hasTags = (tags != null);
         boolean noStop = (tags != null && tags.noStop());
         // a bug here, results do not like
-        int length = ftext.maxForm;
+        int maxForm = ftext.maxForm;
         // reuse score for multiple calculations
-        if (results.formScore == null || results.formScore.length != length)
-            results.formScore = new double[length]; // by term, occurrences counts
+        if (results.formScore == null || results.formScore.length != maxForm)
+            results.formScore = new double[maxForm]; // by term, occurrences counts
         else
             Arrays.fill(results.formScore, 0);
         final long N = ftext.occsAll; // global
         OptionMI mi = results.mi;
-        if (mi == null)
+        if (mi == null) {
             mi = OptionMI.g;
-        for (int formId = 0; formId < length; formId++) {
-            if (hasInclude && Arrays.binarySearch(include, formId) >= 0)
-                ; // include word
-            else if (noStop && ftext.isStop(formId))
-                continue;
-            else if (hasTags && !tags.accept(ftext.formTag[formId]))
-                continue;
-            else if (results.formOccsFreq[formId] == 0)
-                continue;
+        }
+        // 
+        for (int formId = 0; formId < maxForm; formId++) {
+            // No tag filter here, should be done upper
             long Oab = results.formOccsFreq[formId];
-            // a form in a cooccurrence, may be more frequent than the pivot (repetition in a large context)
+            if (Oab == 0) {
+                continue;
+            }
+            // a form in a cooccurrence, may be more frequent than the pivots (repetition in a large context)
+            // this will confuse common algorithms
             if (Oab > Ob) {
                 Oab = Ob;
             }

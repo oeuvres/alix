@@ -160,6 +160,21 @@ public class IntEdges
             this.target = target;
             this.count = count;
         }
+        public Edge(final int source, final int target, final int count, boolean directed) {
+            this.count = count;
+            if (directed) {
+                this.source = source;
+                this.target = target;
+            }
+            else if (source < target) {
+                this.source = source;
+                this.target = target;
+            } 
+            else {
+                this.source = target;
+                this.target = source;
+            }
+        }
         
         @Override
         public boolean equals(Object o) {

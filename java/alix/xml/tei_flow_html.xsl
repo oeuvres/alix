@@ -1185,6 +1185,9 @@ Tables
     </xsl:variable>
     <!-- test if inside mixed content, before adding a space, to keep automatic indent  -->
     <xsl:variable name="mixed" select="../text()[normalize-space(.) != '']"/>
+    <xsl:if test="$mixed != ''">
+      <xsl:value-of select="$lf"/>
+    </xsl:if>
     <xsl:choose>
       <xsl:when test="normalize-space(@n) = ''"/>
       <xsl:when test="$text =''"/>
@@ -1222,9 +1225,6 @@ Tables
           -->
           <xsl:value-of select="$text"/>
         </a>
-        <xsl:if test="$mixed != ''">
-          <xsl:value-of select="$lf"/>
-        </xsl:if>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
