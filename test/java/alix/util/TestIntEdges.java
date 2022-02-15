@@ -4,7 +4,7 @@ public class TestIntEdges
 {
     public static void go()
     {
-        IntEdges edges = new IntEdges(false);
+        EdgeQueue edges = new EdgeQueue(false);
         edges.push(0, 0);
         edges.push(0, 1);
         edges.push(0, 1);
@@ -17,7 +17,7 @@ public class TestIntEdges
     
     public static void cluster()
     {
-        IntEdges edges = new IntEdges(false);
+        EdgeQueue edges = new EdgeQueue(false);
         edges.declust();
         edges.clust(0);
         System.out.println("clust(0) " + edges.top());

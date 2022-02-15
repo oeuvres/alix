@@ -45,6 +45,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.logging.Logger;
@@ -66,6 +67,8 @@ import org.apache.lucene.util.BytesRefHash;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.Alix;
 import alix.util.Chain;
+import alix.util.Edge;
+import alix.util.EdgeRoll;
 import alix.util.IntList;
 import alix.util.IntPair;
 import alix.web.OptionMI;
@@ -157,18 +160,51 @@ public class FieldRail
         }
         return dic;
     }
+    
+    /**
+     * With a set of int formIds, run accross full or part of rails, to collect co-occs
+     * 
+     */
+    public Iterator<Edge> edges(int[] formIds, int distance, final BitSet filter)
+    {
+        // loop on docs
+        //   loop on occs
+        //     push edges
+        if (formIds == null || formIds.length == 0) {
+            throw new IllegalArgumentException("Search term(s) missing, A set of Ids is required");
+        }
+        EdgeRoll span = new EdgeRoll(formIds, distance);
+        // filter documents
+        final boolean hasFilter = (filter != null);
+        IntBuffer bufInt = channelMap.rewind().asIntBuffer();
+        for (int docId = 0; docId < maxDoc; docId++) {
+            if (limInt[docId] == 0) {
+                continue; // deleted or with no value for this field
+            }
+            if (hasFilter && !filter.get(docId)) {
+                continue; // document not in the filter
+            }
+            span.clear();
+            bufInt.position(posInt[docId]);
+            for (int position = 0, max = limInt[docId]; position < max; position++) {
+                int formId = bufInt.get();
+                span.push(position, formId);
+            }
+        }
+        return span.edges();
+    }
 
     /**
      * Build a cooccurrence freqList in formId order, attached to a FormEnum object.
      * Returns the count of occurences found.
      */
-    public long coocs(FormEnum results) throws IOException
+    public long coocs(int[] formIds, FormEnum results) throws IOException
     {
         // for each index leave
         //     collect "postings" for each term
         //     for each doc
         //         get position of term found
-        if (results.search == null || results.search.length == 0) {
+        if (formIds == null || formIds.length == 0) {
             throw new IllegalArgumentException("Search term(s) missing, FormEnum.search should be not null");
         }
         final int left = results.left;
@@ -176,11 +212,6 @@ public class FieldRail
         if (left < 0 || right < 0 || (left + right) < 1) {
             throw new IllegalArgumentException("FormEnum.left=" + left + " FormEnum.right=" + right
                     + " not enough context to extract cooccurrences.");
-        }
-        // nothing to search
-        int[] formIds = ftext.formIds(results.search, results.filter);
-        if (formIds == null) {
-            return 0;
         }
         // filter documents
         final boolean hasFilter = (results.filter != null);
@@ -539,8 +570,9 @@ public class FieldRail
             int freq = postings.freq();
             for (int i = 0; i < freq; i++) {
                 int pos = postings.nextPosition();
-                if (pos > len)
+                if (pos > len) {
                     len = pos;
+                }
             }
         }
         return len + 1;

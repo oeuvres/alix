@@ -47,7 +47,7 @@ import org.apache.lucene.util.UnicodeUtil;
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
-import alix.util.IntEdges;
+import alix.util.EdgeQueue;
 import alix.util.IntPair;
 import alix.util.TopArray;
 import alix.web.OptionDistrib.Scorer;
@@ -98,7 +98,7 @@ public class FormEnum
     /** By formId, a relevance score calculated */
     protected double[] formScore;
     /** A record of edges */
-    protected IntEdges edges;
+    protected EdgeQueue edges;
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
     /** Current formId, set by next */
@@ -239,10 +239,10 @@ public class FormEnum
     /**
      * Prepare results to collect edges
      */
-    public IntEdges edges()
+    public EdgeQueue edges()
     {
         if (this.edges == null) {
-            this.edges = new IntEdges(false);
+            this.edges = new EdgeQueue(false);
         }
         return this.edges;
     }
@@ -410,10 +410,11 @@ public class FormEnum
     /**
      * Advance the cursor to next element
      */
-    public void next()
+    public int next()
     {
         cursor++;
         formId = sorter[cursor];
+        return formId;
     }
 
     /**

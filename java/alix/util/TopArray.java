@@ -41,7 +41,7 @@ import java.util.NoSuchElementException;
  * A queue to select the top elements from a score array where index is a kind
  * of id, and value is a score.
  */
-public class TopArray implements Iterable<TopArray.Entry>
+public class TopArray implements Iterable<IdScore>
 {
     /** Flag, reverse order */
     static final public int REVERSE = 0x01;
@@ -53,10 +53,8 @@ public class TopArray implements Iterable<TopArray.Entry>
     final private boolean noZero;
     /** Max size of the top to extract */
     final private int size;
-    /**
-     * Data stored as a Pair rank+object, easy to sort before exported as an array.
-     */
-    final protected Entry[] data;
+    /** Data stored as a Pair score+int, easy to sort before exported as an array. */
+    final protected IdScore[] data;
     /** Fill data before */
     private boolean full;
     /** Index of fill factor, before data full */
@@ -86,7 +84,7 @@ public class TopArray implements Iterable<TopArray.Entry>
         if (size < 0)
             throw new IndexOutOfBoundsException("Negative size, no sense:" + size);
         this.size = size;
-        data = new Entry[size];
+        data = new IdScore[size];
     }
 
     /**
@@ -108,7 +106,7 @@ public class TopArray implements Iterable<TopArray.Entry>
      */
 
     @Override
-    public Iterator<Entry> iterator()
+    public Iterator<IdScore> iterator()
     {
         sort();
         return new TopIterator();
@@ -122,20 +120,20 @@ public class TopArray implements Iterable<TopArray.Entry>
     {
         int last = 0;
         if (reverse) { // find the bigger score, to be replaced when insertion
-            double max = data[0].score; // localize
+            double max = data[0].score(); // localize
             for (int i = 1; i < size; i++) {
-                if (Double.compare(data[i].score, max) <= 0)
+                if (Double.compare(data[i].score(), max) <= 0)
                     continue;
-                max = data[i].score;
+                max = data[i].score();
                 last = i;
             }
             this.max = max;
         } else { // find the smaller score, to be replaced when insertion
-            double min = data[0].score; // localize
+            double min = data[0].score(); // localize
             for (int i = 1; i < size; i++) {
-                if (Double.compare(data[i].score, min) >= 0)
+                if (Double.compare(data[i].score(), min) >= 0)
                     continue;
-                min = data[i].score;
+                min = data[i].score();
                 last = i;
             }
             this.min = min;
@@ -235,7 +233,7 @@ public class TopArray implements Iterable<TopArray.Entry>
                 max = score;
             if (Double.compare(score, min) < 0)
                 min = score;
-            data[fill] = new Entry(id, score);
+            data[fill] = new IdScore(id, score);
             fill++;
             if (fill < size)
                 return this;
@@ -293,8 +291,9 @@ public class TopArray implements Iterable<TopArray.Entry>
         sort();
         int len = fill;
         int[] ret = new int[len];
-        for (int i = 0; i < len; i++)
-            ret[i] = data[i].id;
+        for (int i = 0; i < len; i++) {
+            ret[i] = data[i].id();
+        }
         return ret;
     }
 
@@ -303,7 +302,7 @@ public class TopArray implements Iterable<TopArray.Entry>
     {
         sort();
         StringBuilder sb = new StringBuilder();
-        for (Entry entry : data) {
+        for (IdScore entry : data) {
             if (entry == null)
                 continue; //
             sb.append(entry.toString()).append("\n");
@@ -311,72 +310,13 @@ public class TopArray implements Iterable<TopArray.Entry>
         return sb.toString();
     }
 
-    /**
-     * A mutable pair (id, score), used in the data array of the top queue.
-     * 
-     * @author glorieux-f
-     */
-    static public class Entry implements Comparable<Entry>
-    {
-        /** Object id */
-        int id;
-        /** Score to compare values */
-        double score;
-
-        /**
-         * Constructor
-         * 
-         * @param score
-         * @param value
-         */
-        Entry(final int id, final double score)
-        {
-            this.id = id;
-            this.score = score;
-        }
-
-        /**
-         * Modify value
-         * 
-         * @param score
-         * @param value
-         */
-        protected void set(final int id, final double score)
-        {
-            this.id = id;
-            this.score = score;
-        }
-
-        public int id()
-        {
-            return id;
-        }
-
-        public double score()
-        {
-            return score;
-        }
-
-        @Override
-        public int compareTo(Entry pair)
-        {
-            return Double.compare(pair.score, score);
-        }
-
-        @Override
-        public String toString()
-        {
-            return score + "[" + id + "]";
-        }
-
-    }
 
     /**
      * A private class that implements iteration over the pairs.
      * 
      * @author glorieux-f
      */
-    class TopIterator implements Iterator<Entry>
+    class TopIterator implements Iterator<IdScore>
     {
         int current = 0; // the current element we are looking at
 
@@ -396,7 +336,7 @@ public class TopArray implements Iterable<TopArray.Entry>
          * Return current element
          */
         @Override
-        public Entry next()
+        public IdScore next()
         {
             if (!hasNext())
                 throw new NoSuchElementException();
