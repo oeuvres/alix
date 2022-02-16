@@ -84,9 +84,9 @@ public class EdgeRoll
      * Returns edges sorted in a good way to loop on for a nice word net
      * @return
      */
-    public Iterator<Edge> edges()
+    public EdgeSquare edges()
     {
-        return matrix.iterator();
+        return matrix;
     }
 
     /**

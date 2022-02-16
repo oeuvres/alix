@@ -33,8 +33,9 @@
 package alix.util;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Iterator;
+
+import alix.web.OptionMI;
 
 /**
  * A matrix to record edges between prdefined nodes
@@ -125,12 +126,28 @@ public class EdgeSquare implements Iterable<Edge>
     }
     
     
+    @Override
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        for (int y=0; y < nodeLen; y++) {
+            for (int x=0; x < nodeLen; x++) {
+                sb.append(data[y*nodeLen+x]+" ");
+            }
+            sb.append("\n");
+        }
+        return sb.toString();
+    }
+
+
     class EdgeIt implements Iterator<Edge> 
     {
         /** Count of row and cols */
         private final int nodeLen;
         /** Copy of the edges data, will be destroy to avoid duplicates edges when looping by nodes */
         private final int[] data;
+        /** Population */
+        private int N = 0;
         /** Count of nodes visited, used for scoring edges */
         private int[] nodesCount;
         /** Sorted edges */
@@ -161,6 +178,7 @@ public class EdgeSquare implements Iterable<Edge>
                 for (int target = 0; target < nodeLen; target++) {
                     final int index = index(source, target);
                     nodesCount[source] += data[index];
+                    N += data[index];
                 }
             }
             // score edges and sort them by node
@@ -173,7 +191,15 @@ public class EdgeSquare implements Iterable<Edge>
                         score = 0;
                     }
                     else {
-                        score = ((double)edgeCount/nodesCount[source] + (double)edgeCount/nodesCount[target]) / 2;
+                        int ab = edgeCount;
+                        int a = nodesCount[source];
+                        int b = nodesCount[target];
+                        score = OptionMI.g.score(ab, a, b, N);
+                        // big center
+                        // score = (double)edgeCount; // centralize
+                        // no sense
+                        // score = ((double)nodesCount[source]/edgeCount + nodesCount[target]/(double)edgeCount) / 2;
+                        
                     }
                     table[source][target] = new IdScore(index, score);
                 }
@@ -250,18 +276,6 @@ public class EdgeSquare implements Iterable<Edge>
         public void remove()
         {
             throw new UnsupportedOperationException();
-        }
-        @Override
-        public String toString()
-        {
-            StringBuilder sb = new StringBuilder();
-            for (int y=0; y < nodeLen; y++) {
-                for (int x=0; x < nodeLen; x++) {
-                    sb.append(data[y*nodeLen+x]+" ");
-                }
-                sb.append("\n");
-            }
-            return sb.toString();
         }
     };
 

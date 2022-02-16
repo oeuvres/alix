@@ -69,6 +69,7 @@ import alix.lucene.Alix;
 import alix.util.Chain;
 import alix.util.Edge;
 import alix.util.EdgeRoll;
+import alix.util.EdgeSquare;
 import alix.util.IntList;
 import alix.util.IntPair;
 import alix.web.OptionMI;
@@ -165,7 +166,7 @@ public class FieldRail
      * With a set of int formIds, run accross full or part of rails, to collect co-occs
      * 
      */
-    public Iterator<Edge> edges(int[] formIds, int distance, final BitSet filter)
+    public EdgeSquare edges(final int[] formIds, final int distance, final BitSet filter)
     {
         // loop on docs
         //   loop on occs
