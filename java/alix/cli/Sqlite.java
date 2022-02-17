@@ -37,7 +37,6 @@ import java.util.concurrent.Callable;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 @Command(name = "Sqlite", version = "Sqlite 0.1", mixinStandardHelpOptions = true)

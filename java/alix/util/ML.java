@@ -137,13 +137,15 @@ public class ML
     public static void detag(final String xml, int begin, int end, Chain dest)
     {
         // silently fails if bad params
-        if (begin < 0 || end < 0)
+        if (begin < 0 || end < 0) {
             return;
-        if (end > xml.length())
+        }
+        if (end > xml.length()) {
             end = xml.length();
-        if (begin > end)
+        }
+        if (begin > end) {
             return;
-
+        }
         boolean start = true; // before first tag (avoid broken tag)
         boolean lt = false; // tag is started
         // boolean closing = false; // closing tag </…>

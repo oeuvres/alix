@@ -40,15 +40,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -155,6 +149,7 @@ public class Balinoms implements Callable<Integer> {
      */
     public void parse(String xml, PrintWriter out) throws IOException {
         TokenStream stream = anaNoms.tokenStream("stats", new StringReader(xml));
+        @SuppressWarnings("unused")
         int toks = 0;
         int begin = 0;
         //

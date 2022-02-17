@@ -107,7 +107,7 @@ public class IntPair implements Comparable<IntPair> {
         }
         if (o instanceof IntSeries) {
             IntSeries series = (IntSeries) o;
-            if (series.length() != 2)
+            if (series.size() != 2)
                 return false;
             if (x != series.data[0])
                 return false;
@@ -120,11 +120,11 @@ public class IntPair implements Comparable<IntPair> {
 
     @Override
     public int hashCode() {
-        if (hash != 0)
-            return hash;
-        // hash = ( y << 16 ) ^ x; // 0% collision, but less dispersion
-        hash = ((x + y) * (x + y + 1) / 2) + y;
-        // hash = (31 * 17 + x) * 31 + y; // 97% collision
+        if (hash == 0) {
+            // hash = (31 * 17 + x) * 31 + y; // 97% collision
+            // hash = ( y << 16 ) ^ x; // 0% collision, but less dispersion
+            hash = ((x + y) * (x + y + 1) / 2) + y;
+        }
         return hash;
     }
 

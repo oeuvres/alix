@@ -37,7 +37,6 @@ import java.text.Collator;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
-import java.util.Map;
 
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
@@ -48,7 +47,6 @@ import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.EdgeQueue;
-import alix.util.IntPair;
 import alix.util.TopArray;
 import alix.web.OptionDistrib.Scorer;
 import alix.web.OptionMI;
@@ -579,6 +577,10 @@ public class FormEnum
                     throw new IllegalArgumentException("Impossible to sort by score, seems not results of a search with a scorer, formScore has not been set by producer.");
                 }
                 break;
+        case alpha:
+            break;
+        default:
+            break;
         }
 
         // if (maxForm != formOccsFreq.length) throw new

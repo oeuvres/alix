@@ -45,7 +45,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.logging.Logger;
@@ -67,7 +66,6 @@ import org.apache.lucene.util.BytesRefHash;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.Alix;
 import alix.util.Chain;
-import alix.util.Edge;
 import alix.util.EdgeRoll;
 import alix.util.EdgeSquare;
 import alix.util.IntList;
@@ -164,7 +162,6 @@ public class FieldRail
     
     /**
      * With a set of int formIds, run accross full or part of rails, to collect co-occs
-     * 
      */
     public EdgeSquare edges(final int[] formIds, final int distance, final BitSet filter)
     {
@@ -194,25 +191,117 @@ public class FieldRail
         }
         return span.edges();
     }
+    
+    /**
+     * Get edges from Coocs
+     * @throws Exception 
+     */
+    public EdgeSquare edges(final int[] pivotIds, final int left, final int right, int[] nodeIds, final BitSet filter) throws Exception
+    {
+        EdgeSquare matrix = new EdgeSquare(nodeIds, false);
+        IntList span = new IntList();
+        Arrays.sort(nodeIds);
+        DirectoryReader reader = alix.reader();
+        IntBuffer bufInt = channelMap.rewind().asIntBuffer(); // the rail
+        final boolean hasFilter = (filter != null); // filter docs ?
+        // loop on leafs, open an index may cost
+        for (LeafReaderContext context : reader.leaves()) {
+            final int docBase = context.docBase;
+            LeafReader leaf = context.reader();
+            // loop on pivots
+            for (int pivotId : pivotIds) {
+                String form = ftext.form(pivotId);
+                if (form == null || "".equals(form)) {
+                    continue;
+                }
+                Term term = new Term(fname, form); // do not try to reuse term, false optimisation
+                PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS | PostingsEnum.POSITIONS);
+                if (postings == null) {
+                    continue;
+                }
+                // loop on docs found
+                final Bits liveDocs = leaf.getLiveDocs();
+                final boolean hasLive = (liveDocs != null);
+                int docLeaf; // advance cursor to the first doc
+                while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                    final int docId = docBase + docLeaf;
+                    if (hasFilter && !filter.get(docId)) {
+                        continue; // document not in the document filter
+                    }
+                    if (hasLive && !liveDocs.get(docLeaf)) {
+                        continue; // deleted doc
+                    }
+                    final int docLen = limInt[docId];
+                    if (docLen < 2) {
+                        continue; // empty doc
+                    }
+                    int freq = postings.freq();
+                    if (freq == 0) {
+                        // bug ?
+                        System.out.println("BUG cooc, term=" + term + " docId=" + docId + " freq=0");
+                        continue;
+                    }
+                    // term found in this doc, search each occurrence
+                    final int posDoc = posInt[docId];
+                    for (int i = 0; i < freq; i++) {
+                        int posPivot = -1;
+                        try {
+                            posPivot = postings.nextPosition();
+                        }
+                        catch (Exception e) {
+                            throw new Exception(""+postings);
+                        }
+                        if (posPivot < 0) {
+                            System.out.println("BUG cooc, term=" + postings.toString() + " docId=" + docId + " pos=0");
+                            continue;
+                        }
+                        span.clear();
+                        final int posFrom = Math.max(0, posPivot - left);
+                        final int posTo = Math.min(docLen, posPivot + right + 1); // be careful of end Doc
+                        // collect waited formIds for edges in this context
+                        for (int pos = posFrom; pos < posTo; pos++) {
+                            final int formId = bufInt.get(posDoc + pos);
+                            final int edgeNode = Arrays.binarySearch(nodeIds, formId);
+                            if (edgeNode < 0) { // not a waited node
+                                continue;
+                            }
+                            span.push(edgeNode);
+                        }
+                        // count edges
+                        final int size = span.size();
+                        if (size < 2) {
+                            continue;
+                        }
+                        for (int x = 0; x < size -1; x++) {
+                            for (int y = x+1; y < size; y++) {
+                                matrix.inc(span.get(x), span.get(y));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return matrix;
+    }
 
     /**
      * Build a cooccurrence freqList in formId order, attached to a FormEnum object.
      * Returns the count of occurences found.
      */
-    public long coocs(int[] formIds, FormEnum results) throws IOException
+    public long coocs(int[] pivotIds, FormEnum results) throws IOException
     {
         // for each index leave
         //     collect "postings" for each term
         //     for each doc
         //         get position of term found
-        if (formIds == null || formIds.length == 0) {
+        if (pivotIds == null || pivotIds.length == 0) {
             throw new IllegalArgumentException("Search term(s) missing, FormEnum.search should be not null");
         }
         final int left = results.left;
         final int right = results.right;
         if (left < 0 || right < 0 || (left + right) < 1) {
             throw new IllegalArgumentException("FormEnum.left=" + left + " FormEnum.right=" + right
-                    + " not enough context to extract cooccurrences.");
+                    + " not enough context to extract co-occurrences.");
         }
         // filter documents
         final boolean hasFilter = (results.filter != null);
@@ -242,7 +331,6 @@ public class FieldRail
             Arrays.fill(results.formDocsHit, 0);
         }
 
-        DirectoryReader reader = alix.reader();
         // this vector has been useful, but meaning has been forgotten
         boolean[] formSeen = new boolean[maxForm];
         long found = 0;
@@ -257,16 +345,18 @@ public class FieldRail
         java.util.BitSet pivots = new java.util.BitSet();
         IntBuffer bufInt = channelMap.rewind().asIntBuffer();
         // loop on leafs
+        DirectoryReader reader = alix.reader();
         for (LeafReaderContext context : reader.leaves()) {
             final int docBase = context.docBase;
             LeafReader leaf = context.reader();
             // collect all “postings” for the requested search
             ArrayList<PostingsEnum> termDocs = new ArrayList<PostingsEnum>();
-            for (String word : results.search) {
-                if (word == null) {
+            for (int pivotId : pivotIds) {
+                String form = ftext.form(pivotId);
+                if (form == null || "".equals(form)) {
                     continue;
                 }
-                Term term = new Term(fname, word); // do not try to reuse term, false optimisation
+                Term term = new Term(fname, form); // do not try to reuse term, false optimisation
                 PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS | PostingsEnum.POSITIONS);
                 if (postings == null) {
                     continue;
@@ -373,6 +463,7 @@ public class FieldRail
                     }
                     
                     if (hasEdges) {
+                        // threshold ?
                         results.edges.clust(formId);
                     }
                     
@@ -437,7 +528,7 @@ public class FieldRail
                 final int formId = bufInt.get();
                 // pun or hole, reset expression
                 if (formId == 0 || Arrays.binarySearch(formPun, formId) >= 0) {
-                    slider.reset();
+                    slider.clear();
                     continue;
                 }
                 if (hasExclude) {
@@ -464,7 +555,7 @@ public class FieldRail
                 Bigram bigram = expressions.get(key);
                 if (bigram == null) { // new expression
                     chain.reset();
-                    for (int jj = 0, len = slider.length(); jj < len; jj++) {
+                    for (int jj = 0, len = slider.size(); jj < len; jj++) {
                         if (jj > 0 && chain.last() != '\'')
                             chain.append(' ');
                         formDic.get(slider.get(jj), bytes);
@@ -475,7 +566,7 @@ public class FieldRail
                 }
                 bigram.inc();
                 // reset candidate compound, and start by current form
-                slider.reset().push(formId);
+                slider.clear().push(formId);
             }
         }
         return expressions;
@@ -629,7 +720,7 @@ public class FieldRail
      */
     public void rail(Terms termVector, IntList buf) throws IOException
     {
-        buf.reset(); // celan all
+        buf.clear(); // celan all
         BytesRefHash hashDic = this.formDic;
         TermsEnum tenum = termVector.iterator();
         PostingsEnum postings = null;
@@ -668,7 +759,7 @@ public class FieldRail
      * @throws IOException
      * 
      */
-    public void score(FormEnum results) throws IOException
+    public void score(final int[] pivotIds, final FormEnum results) throws IOException
     {
         if (this.ftext.formDic != results.formDic) {
             throw new IllegalArgumentException("Not the same fields. Rail for coocs: " + this.ftext.fname
@@ -685,22 +776,31 @@ public class FieldRail
         }
         // A variable for the square scorer
         long add = 0;
-        for (String form : results.search) {
-            add += ftext.formOccs(form);
+        if (pivotIds != null && pivotIds.length > 0) {
+            for (int formId: pivotIds) {
+                add += ftext.formOccs(formId);
+            }
+        }
+        else if (results.search != null && results.search.length > 0) {
+            for (String form : results.search) {
+                add += ftext.formOccs(form);
+            }
         }
         // Count of pivot occurrences for MI scorer
         final long Ob = add;
         // int[] hits = results.hits; // not significant for a transversal cooc
-        TagFilter tags = results.tags;
-        boolean hasTags = (tags != null);
-        boolean noStop = (tags != null && tags.noStop());
+        // TagFilter tags = results.tags;
+        // boolean hasTags = (tags != null);
+        // boolean noStop = (tags != null && tags.noStop());
         // a bug here, results do not like
         int maxForm = ftext.maxForm;
         // reuse score for multiple calculations
-        if (results.formScore == null || results.formScore.length != maxForm)
+        if (results.formScore == null || results.formScore.length != maxForm) {
             results.formScore = new double[maxForm]; // by term, occurrences counts
-        else
+        }
+        else {
             Arrays.fill(results.formScore, 0);
+        }
         final long N = ftext.occsAll; // global
         OptionMI mi = results.mi;
         if (mi == null) {
@@ -769,7 +869,7 @@ public class FieldRail
                 continue;
             }
             rail(termVector, ints);
-            bufint.put(ints.data(), 0, ints.length());
+            bufint.put(ints.data(), 0, ints.size());
             bufint.put(-1);
         }
         buf.force();

@@ -39,12 +39,12 @@ import alix.maths.Calcul;
 /**
  * A mutable list of ints.
  */
-public class IntList implements Comparable<IntList>
+public class IntList
 {
     /** Internal data */
     protected int[] data;
     /** Current size */
-    protected int length;
+    protected int size;
     /** Cache an hash code */
     protected int hash;
 
@@ -89,17 +89,13 @@ public class IntList implements Comparable<IntList>
         return this;
     }
 
-    @Override
-    public int compareTo(final IntList list)
+    /**
+     * Light reset data, with no erase.
+     */
+    public IntList clear()
     {
-        if (length != list.length)
-            return Integer.compare(length, list.length);
-        int lim = length; // avoid a content lookup
-        for (int i = 0; i < lim; i++) {
-            if (data[i] != list.data[i])
-                return Integer.compare(data[i], list.data[i]);
-        }
-        return 0;
+        size = 0;
+        return this;
     }
 
     /**
@@ -121,9 +117,9 @@ public class IntList implements Comparable<IntList>
             return true;
         if (o instanceof IntList) {
             IntList list = (IntList) o;
-            if (list.length != length)
+            if (list.size != size)
                 return false;
-            for (short i = 0; i < length; i++) {
+            for (short i = 0; i < size; i++) {
                 if (list.data[i] != data[i])
                     return false;
             }
@@ -140,8 +136,9 @@ public class IntList implements Comparable<IntList>
      */
     public int first()
     {
-        if (length < 1)
+        if (size < 1) {
             throw new ArrayIndexOutOfBoundsException("The list is empty, no first element");
+        }
         return data[0];
     }
 
@@ -165,8 +162,8 @@ public class IntList implements Comparable<IntList>
 
     protected boolean grow(final int position)
     {
-        if (position >= length)
-            length = (position + 1);
+        if (position >= size)
+            size = (position + 1);
         hash = 0;
         if (position < data.length)
             return false;
@@ -184,7 +181,7 @@ public class IntList implements Comparable<IntList>
         if (hash != 0)
             return hash;
         int res = 17;
-        for (int i = 0; i < length; i++) {
+        for (int i = 0; i < size; i++) {
             res = 31 * res + data[i];
         }
         return res;
@@ -209,7 +206,7 @@ public class IntList implements Comparable<IntList>
      */
     public boolean isEmpty()
     {
-        return (length < 1);
+        return (size < 1);
     }
 
     /**
@@ -220,19 +217,10 @@ public class IntList implements Comparable<IntList>
      */
     public int last()
     {
-        if (length < 1)
+        if (size < 1) {
             throw new ArrayIndexOutOfBoundsException("The list is empty, no first element");
-        return data[length - 1];
-    }
-
-    /**
-     * Size of data.
-     * 
-     * @return
-     */
-    public int length()
-    {
-        return length;
+        }
+        return data[size - 1];
     }
 
     /**
@@ -242,8 +230,8 @@ public class IntList implements Comparable<IntList>
      */
     public IntList push(int value)
     {
-        final int pos = length;
-        length++;
+        final int pos = size;
+        size++;
         grow(pos);
         data[pos] = value;
         return this;
@@ -256,10 +244,10 @@ public class IntList implements Comparable<IntList>
      */
     protected IntList push(int[] data)
     {
-        int newSize = this.length + data.length;
+        int newSize = this.size + data.length;
         grow(newSize);
-        System.arraycopy(data, 0, this.data, length, data.length);
-        length = newSize;
+        System.arraycopy(data, 0, this.data, size, data.length);
+        size = newSize;
         return this;
     }
 
@@ -277,12 +265,13 @@ public class IntList implements Comparable<IntList>
     }
 
     /**
-     * Light reset data, with no erase.
+     * Size of data.
+     * 
+     * @return
      */
-    public IntList reset()
+    public int size()
     {
-        length = 0;
-        return this;
+        return size;
     }
 
     /**
@@ -292,8 +281,8 @@ public class IntList implements Comparable<IntList>
      */
     public int[] toArray()
     {
-        int[] dest = new int[length];
-        System.arraycopy(data, 0, dest, 0, length);
+        int[] dest = new int[size];
+        System.arraycopy(data, 0, dest, 0, size);
         return dest;
     }
 
@@ -302,7 +291,7 @@ public class IntList implements Comparable<IntList>
     {
         StringBuffer sb = new StringBuffer();
         sb.append('(');
-        for (int i = 0; i < length; i++) {
+        for (int i = 0; i < size; i++) {
             if (i > 0)
                 sb.append(", ");
             sb.append(data[i]);
@@ -316,12 +305,12 @@ public class IntList implements Comparable<IntList>
      */
     public int[] uniq()
     {
-        int[] work = new int[length];
-        System.arraycopy(data, 0, work, 0, length);
+        int[] work = new int[size];
+        System.arraycopy(data, 0, work, 0, size);
         Arrays.sort(work);
         int destSize = 1;
         int last = work[0];
-        for (int i = destSize; i < length; i++) {
+        for (int i = destSize; i < size; i++) {
             if (work[i] == last)
                 continue;
             work[destSize] = last = work[i];

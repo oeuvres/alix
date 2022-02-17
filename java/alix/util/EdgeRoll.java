@@ -33,7 +33,6 @@
 package alix.util;
 
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 import alix.maths.Calcul;
@@ -309,13 +308,6 @@ public class EdgeRoll
             return; // ok
         }
         throw new IndexOutOfBoundsException("No more elements available");
-    }
-    /**
-     * For debug, print state of object
-     */
-    private void debug()
-    {
-        System.out.println("capacity=" + capacity + " size=" + size + " start=" + start + " end=" + end + " cursor=" + cursor);
     }
     
 }

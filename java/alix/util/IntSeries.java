@@ -145,7 +145,7 @@ public class IntSeries extends IntList
      */
     public void cache()
     {
-        int size = this.length;
+        final int size = this.size;
         if (size == 0) {
             min = 0;
             max = 0;

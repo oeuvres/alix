@@ -79,7 +79,7 @@ public class IntTuple implements Comparable<IntTuple>
             return true;
         if (o instanceof IntList) {
             IntList list = (IntList) o;
-            if (list.length != size)
+            if (list.size != size)
                 return false;
             for (short i = 0; i < size; i++) {
                 if (list.data[i] != data[i])

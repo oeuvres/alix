@@ -283,7 +283,7 @@ public class FieldFacet
                     docFormOccs[docBase + docLeaf] = new int[] { ordFacetId[ord] };
                 } 
                 else if (type == DocValuesType.SORTED_SET) {
-                    row.reset();
+                    row.clear();
                     SortedSetDocValues it = (SortedSetDocValues) docs4terms;
                     while ((ord = (int) it.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
                         row.push(ordFacetId[ord]);

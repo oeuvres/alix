@@ -43,491 +43,537 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
 import javax.servlet.jsp.PageContext;
 
-
 /**
  * Jsp toolbox.
  */
 public class JspTools
 {
-  /** Jsp page context */
-  final PageContext page;
-  /** Original request */
-  final HttpServletRequest request;
-  /** Original response */
-  final HttpServletResponse response;
-  /** Cookie */
-  HashMap<String, String> cookies;
-  /** for cookies */
-  private final static int MONTH = 60 * 60 * 24 *30;
+    /** Jsp page context */
+    final PageContext page;
+    /** Original request */
+    final HttpServletRequest request;
+    /** Original response */
+    final HttpServletResponse response;
+    /** Cookie */
+    HashMap<String, String> cookies;
+    /** for cookies */
+    private final static int MONTH = 60 * 60 * 24 * 30;
 
-  /** Wrap the global jsp variables */
-  public JspTools(final PageContext page)
-  {
-    this.request = (HttpServletRequest) page.getRequest();
-    this.response = (HttpServletResponse) page.getResponse();
-    this.page = page;
-  }
+    /** Wrap the global jsp variables */
+    public JspTools(final PageContext page)
+    {
+        this.request = (HttpServletRequest) page.getRequest();
+        this.response = (HttpServletResponse) page.getResponse();
+        this.page = page;
+    }
 
-  /** Check if a String is significant */
-  public static boolean check(String s)
-  {
-    if (s == null) return false;
-    s = s.trim();
-    if (s.length() == 0) return false;
-    if ("null".equals(s)) return false;
-    return true;
-  }
+    /** Check if a String is significant */
+    public static boolean check(String s)
+    {
+        if (s == null)
+            return false;
+        s = s.trim();
+        if (s.length() == 0)
+            return false;
+        if ("null".equals(s))
+            return false;
+        return true;
+    }
 
-  /**
-   * Ensure that a String could be included in an html attribute with quotes
-   */
-  public static String escape(final CharSequence cs)
-  {
-    if (cs == null) return "";
-    final StringBuilder out = new StringBuilder(Math.max(16, cs.length()));
-    for (int i = 0; i < cs.length(); i++) {
-      char c = cs.charAt(i);
-      if (c == '"') out.append("&quot;");
-      else if (c == '<') out.append("&lt;");
-      else if (c == '>') out.append("&gt;");
-      else if (c == '&') out.append("&amp;");
-      else out.append(c);
+    /**
+     * Ensure that a String could be included in an html attribute with quotes
+     */
+    public static String escape(final CharSequence cs)
+    {
+        if (cs == null)
+            return "";
+        final StringBuilder out = new StringBuilder(Math.max(16, cs.length()));
+        for (int i = 0; i < cs.length(); i++) {
+            char c = cs.charAt(i);
+            if (c == '"')
+                out.append("&quot;");
+            else if (c == '<')
+                out.append("&lt;");
+            else if (c == '>')
+                out.append("&gt;");
+            else if (c == '&')
+                out.append("&amp;");
+            else
+                out.append(c);
+        }
+        return out.toString();
     }
-    return out.toString();
-  }
 
-  public static void escape(final Writer out, final CharSequence cs) throws IOException
-  {
-    if (cs == null) return;
-    for (int i = 0; i < cs.length(); i++) {
-      char c = cs.charAt(i);
-      if (c == '"') out.append("&quot;");
-      else if (c == '<') out.append("&lt;");
-      else if (c == '>') out.append("&gt;");
-      else if (c == '&') out.append("&amp;");
-      else out.append(c);
+    public static void escape(final Writer out, final CharSequence cs) throws IOException
+    {
+        if (cs == null)
+            return;
+        for (int i = 0; i < cs.length(); i++) {
+            char c = cs.charAt(i);
+            if (c == '"')
+                out.append("&quot;");
+            else if (c == '<')
+                out.append("&lt;");
+            else if (c == '>')
+                out.append("&gt;");
+            else if (c == '&')
+                out.append("&amp;");
+            else
+                out.append(c);
+        }
+        return;
     }
-    return;
-  }
 
-  
-  /**
-   * Ensure that a String could be included in an html attribute with quotes
-   */
-  public static String escUrl(final String s)
-  {
-    if (s == null) return "";
-    final StringBuilder out = new StringBuilder(Math.max(16, s.length()));
-    for (int i = 0; i < s.length(); i++) {
-      char c = s.charAt(i);
-      if (c == '"') out.append("&quot;");
-      else if (c == '<') out.append("&lt;");
-      else if (c == '>') out.append("&gt;");
-      else if (c == '&') out.append("&amp;");
-      else if (c == '+') out.append("%2B");
-      else out.append(c);
+    /**
+     * Ensure that a String could be included in an html attribute with quotes
+     */
+    public static String escUrl(final String s)
+    {
+        if (s == null)
+            return "";
+        final StringBuilder out = new StringBuilder(Math.max(16, s.length()));
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '"')
+                out.append("&quot;");
+            else if (c == '<')
+                out.append("&lt;");
+            else if (c == '>')
+                out.append("&gt;");
+            else if (c == '&')
+                out.append("&amp;");
+            else if (c == '+')
+                out.append("%2B");
+            else
+                out.append(c);
+        }
+        return out.toString();
     }
-    return out.toString();
-  }
 
-  /**
-   * Get a cookie value by name.
-   * @param name
-   * @return null if not set
-   */
-  public String cookie(final String name)
-  {
-    if (cookies == null) {
-      Cookie[] cooks = request.getCookies();
-      if (cooks == null) return null;
-      cookies = new HashMap<String, String>();
-      for (int i=0; i<cooks.length; i++) {
-        Cookie cook = cooks[i];
-        cookies.put(cook.getName(), cook.getValue());
-      }
+    /**
+     * Get a cookie value by name.
+     * 
+     * @param name
+     * @return null if not set
+     */
+    public String cookie(final String name)
+    {
+        if (cookies == null) {
+            Cookie[] cooks = request.getCookies();
+            if (cooks == null)
+                return null;
+            cookies = new HashMap<String, String>();
+            for (int i = 0; i < cooks.length; i++) {
+                Cookie cook = cooks[i];
+                cookies.put(cook.getName(), cook.getValue());
+            }
+        }
+        return cookies.get(name);
     }
-    return cookies.get(name);
-  }
-  
-  /**
-   * Send a cookie to client.
-   * @param name
-   * @param value
-   */
-  public void cookie(String name, String value) 
-  {
-    if (value == null) {
-      if (cookie(name) != null) response.addHeader("Set-Cookie", name +"=" + value + "; HttpOnly; SameSite=strict; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT");
-    } else {
-      response.addHeader("Set-Cookie", name +"=" + value + ";Max-Age=" + MONTH + "; HttpOnly; SameSite=strict");
-    }
-  }
 
-  /**
-   * Get a request parameter as an int with a default value.
-   * @param name
-   * @param fallback
-   * @return
-   */
-  public int getInt(final String name, final int fallback)
-  {
-    String value = request.getParameter(name);
-    if (!check(value)) return fallback;
-    try {
-      int ret = Integer.parseInt(value);
-      return ret;
+    /**
+     * Send a cookie to client.
+     * 
+     * @param name
+     * @param value
+     */
+    public void cookie(String name, String value)
+    {
+        if (value == null) {
+            if (cookie(name) != null)
+                response.addHeader("Set-Cookie", name + "=" + value
+                        + "; HttpOnly; SameSite=strict; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT");
+        } else {
+            response.addHeader("Set-Cookie", name + "=" + value + ";Max-Age=" + MONTH + "; HttpOnly; SameSite=strict");
+        }
     }
-    catch (NumberFormatException e) {
-    }
-    return fallback;
-  }
 
-  /**
-   * Get a request parameter as an int with a default value,
-   * with a cookie persistency.
-   * @param name
-   * @param fallback
-   * @param cookie Name of a cookie is given as an Enum to control cookies proliferation.
-   * @return
-   */
-  public int getInt(final String name, final int fallback, final Enum<?> cookie)
-  {
-    return getInt(name, fallback, cookie.name());
-  }
-  public int getInt(final String name, final int fallback, final String cookie)
-  {
-    String value = request.getParameter(name);
-    // a string submitted
-    if (check(value)) {
-      try {
-        int ret = Integer.parseInt(value);
-        cookie(cookie, ""+ret); // value seems ok, try to store it as cookie
-        return ret;
-      }
-      catch (NumberFormatException e) {
-      }
+    /**
+     * Get a request parameter as an int with a default value.
+     * 
+     * @param name
+     * @param fallback
+     * @return
+     */
+    public int getInt(final String name, final int fallback)
+    {
+        String value = request.getParameter(name);
+        if (!check(value))
+            return fallback;
+        try {
+            int ret = Integer.parseInt(value);
+            return ret;
+        } catch (NumberFormatException e) {
+        }
+        return fallback;
     }
-    // param has an empty value, seems that client wants to reset cookie
-    // do not give back the stored value
-    if (value != null && !check(value)) {
-      cookie(name, null);
-      return fallback;
-    }
-    value = cookie(cookie);
-    if (value == null) return fallback;
-    // verify stored value before send it
-    try {
-      int ret = Integer.parseInt(value);
-      return ret;
-    }
-    catch (NumberFormatException e) {
-      // bad cookie value, reset it
-      cookie(name, null);
-      return fallback;
-    }
-  }
 
-  /**
-   * Get a request parameter as a float with default value.
-   * @param name
-   * @param fallback
-   * @return
-   */
-  public float getFloat(final String name, final float fallback)
-  {
-    String value = request.getParameter(name);
-    if (check(value)) {
-      try {
-        float ret = Float.parseFloat(value);
-        return ret;
-      }
-      catch (NumberFormatException e) {
-      }
+    /**
+     * Get a request parameter as an int with a default value, with a cookie
+     * persistency.
+     * 
+     * @param name
+     * @param fallback
+     * @param cookie   Name of a cookie is given as an Enum to control cookies
+     *                 proliferation.
+     * @return
+     */
+    public int getInt(final String name, final int fallback, final Enum<?> cookie)
+    {
+        return getInt(name, fallback, cookie.name());
     }
-    return fallback;
-  }
 
-  /**
-   * Get a request parameter as a float with a default value,
-   * and a cookie persistence.
-   * @param name Name of http param.
-   * @param fallback Default value.
-   * @param cookie Name of a cookie is given as an Enum to control cookies proliferation.
-   * @return Priority order: request, cookie, fallback.
-   */
-  public float getFloat(final String name, final float fallback, final Enum<?> cookie)
-  {
-    return getFloat(name, fallback, cookie.name());
-  }
-  public float getFloat(final String name, final float fallback, final String cookie)
-  {
-    String value = request.getParameter(name);
-    if (check(value)) {
-      try {
-        float ret = Float.parseFloat(value);;
-        cookie(cookie, ""+ret); // value seems ok, store it as a cookie
-        return ret;
-      }
-      catch (NumberFormatException e) {
-      }
+    public int getInt(final String name, final int fallback, final String cookie)
+    {
+        String value = request.getParameter(name);
+        // a string submitted
+        if (check(value)) {
+            try {
+                int ret = Integer.parseInt(value);
+                cookie(cookie, "" + ret); // value seems ok, try to store it as cookie
+                return ret;
+            } catch (NumberFormatException e) {
+            }
+        }
+        // param has an empty value, seems that client wants to reset cookie
+        // do not give back the stored value
+        if (value != null && !check(value)) {
+            cookie(name, null);
+            return fallback;
+        }
+        value = cookie(cookie);
+        if (value == null)
+            return fallback;
+        // verify stored value before send it
+        try {
+            int ret = Integer.parseInt(value);
+            return ret;
+        } catch (NumberFormatException e) {
+            // bad cookie value, reset it
+            cookie(name, null);
+            return fallback;
+        }
     }
-    // reset cookie
-    if (value != null && !check(value)) {
-      cookie(name, null);
-      return fallback;
-    }
-    value = cookie(cookie);
-    if (value == null) return fallback;
-    // verify stored value before send it
-    try {
-      float ret = Integer.parseInt(value);
-      return ret;
-    }
-    catch (NumberFormatException e) {
-      // bad cookie value, reset it
-      cookie(name, null);
-      return fallback;
-    }
-  }
 
-  /**
-   * Get a requesparameter as a String with a defaul value, or optional
-   * persistency.
-   */
-  public String getString(final String name, final String fallback)
-  {
-    String value = request.getParameter(name);
-    if (check(value)) return value;
-    return fallback;
-  }
+    /**
+     * Get a request parameter as a float with default value.
+     * 
+     * @param name
+     * @param fallback
+     * @return
+     */
+    public float getFloat(final String name, final float fallback)
+    {
+        String value = request.getParameter(name);
+        if (check(value)) {
+            try {
+                float ret = Float.parseFloat(value);
+                return ret;
+            } catch (NumberFormatException e) {
+            }
+        }
+        return fallback;
+    }
 
-  /**
-   * Get a request parameter as a String with a default value, or optional
-   * cookie persistence.
-   * @param name Name of http param.
-   * @param fallback Default value.
-   * @param cookie Name of a cookie is given as an Enum to control cookies proliferation.
-   * @return Priority order: request, cookie, fallback.
-   */
-  public String getString(final String name, final String fallback, final Enum<?> cookie)
-  {
-    return getString(name, fallback, cookie.name());
-  }
-  public String getString(final String name, final String fallback, final String cookie)
-  {
-    String value = request.getParameter(name);
-    if (check(value)) {
-      cookie(cookie, value);
-      return value;
+    /**
+     * Get a request parameter as a float with a default value, and a cookie
+     * persistence.
+     * 
+     * @param name     Name of http param.
+     * @param fallback Default value.
+     * @param cookie   Name of a cookie is given as an Enum to control cookies
+     *                 proliferation.
+     * @return Priority order: request, cookie, fallback.
+     */
+    public float getFloat(final String name, final float fallback, final Enum<?> cookie)
+    {
+        return getFloat(name, fallback, cookie.name());
     }
-    // param is not null, reset cookie
-    if (value != null) {
-      cookie(name, null);
-      return fallback;
-    }
-    // try to deal with cookie
-    value = cookie(cookie);
-    if (check(value)) return value;
-    // cookie seems to have a problem, reset it
-    cookie(name, null);
-    return fallback;
-  }
 
-  /**
-   * Get a request parameter as a boolean with a defaul value.
-   */
-  public boolean getBoolean(final String name, final boolean fallback)
-  {
-    String value = request.getParameter(name);
-    if ("false".equals(value) || "0".equals(value) || "null".equals(value)) return false;
-    if (check(value)) return true;
-    return fallback;
-  }
+    public float getFloat(final String name, final float fallback, final String cookie)
+    {
+        String value = request.getParameter(name);
+        if (check(value)) {
+            try {
+                float ret = Float.parseFloat(value);
+                ;
+                cookie(cookie, "" + ret); // value seems ok, store it as a cookie
+                return ret;
+            } catch (NumberFormatException e) {
+            }
+        }
+        // reset cookie
+        if (value != null && !check(value)) {
+            cookie(name, null);
+            return fallback;
+        }
+        value = cookie(cookie);
+        if (value == null)
+            return fallback;
+        // verify stored value before send it
+        try {
+            float ret = Integer.parseInt(value);
+            return ret;
+        } catch (NumberFormatException e) {
+            // bad cookie value, reset it
+            cookie(name, null);
+            return fallback;
+        }
+    }
 
-  /**
-   * Get a request parameter as a boolean with a default value, and an optional
-   * cookie persistence.
-   * @param name Name of a request parameter.
-   * @param fallback Default value.
-   * @param cookie Name of a cookie is given as an Enum to control cookies proliferation.
-   * @return Priority order: request, cookie, fallback.
-   */
-  public boolean getBoolean(final String name, final boolean fallback, final Enum<?> cookie)
-  {
-    return getBoolean(name, fallback, cookie.name());
-  }
-  public boolean getBoolean(final String name, final boolean fallback, final String cookie)
-  {
-    String value = request.getParameter(name);
-    // value explicitly defined to false, set a cookie
-    if ("false".equals(value) || "0".equals(value) || "null".equals(value)) {
-      cookie(cookie, "0");
-      return false;
+    /**
+     * Get a requesparameter as a String with a defaul value, or optional
+     * persistency.
+     */
+    public String getString(final String name, final String fallback)
+    {
+        String value = request.getParameter(name);
+        if (check(value))
+            return value;
+        return fallback;
     }
-    // some content, we are true
-    if (check(value)) {
-      cookie(cookie, "1");
-      return true;
-    }
-    // param is empty but not null, reset cookie
-    if (value != null) {
-      cookie(name, null);
-      return fallback;
-    }
-    // try to deal with cookie
-    value = cookie(cookie);
-    if ("0".equals(value)) return false;
-    if (check(value)) return true;
-    // cookie seems to have a problem, reset it
-    cookie(name, null);
-    return fallback;
-  }
-  /**
-   * Get a request parameter as an {@link Enum} value
-   * that will ensure a closed list of values,
-   * with a default value if wrong.
-   * @param name
-   * @param fallback
-   * @return
-   * @throws Exception 
-   */
-  // @SuppressWarnings({ "unchecked", "static-access" })
-  public Enum<?> getEnum(final String name, final Enum<?> fallback)
-  {
-    String value = request.getParameter(name);
-    if (!check(value)) return fallback;
-    // try/catch seems a bit heavy, but behind valueOf, there is a lazy static Map optimized for Enum
-    try {
-      Enum<?> ret = Enum.valueOf(fallback.getDeclaringClass(), value);
-      // Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
-      return ret;
-    }
-    catch(Exception e) {
-      return (Enum<?>)fallback;
-    }
-  }
-  /**
-   * Get a request parameter as an {@link Enum} value
-   * that will ensure a closed list of values,
-   * with a default value, and an optional cookie persistence.
-   * 
-   * @param name Name of a request parameter.
-   * @param fallback Default value.
-   * @param cookie Name of a cookie for persistence.
-   * @return Priority order: request, cookie, fallback.
-   */
-  public Enum<?> getEnum(final String name, final Enum<?> fallback, final Enum<?> cookie)
-  {
-    return getEnum(name, fallback, cookie.name());
-  }
 
-  public Enum<?> getEnum(final String name, final Enum<?> fallback, final String cookie)
-  {
-    String value = request.getParameter(name);
-    if (check(value)) {
-      try {
-        @SuppressWarnings("static-access")
-        Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
-        cookie(cookie, ret.name());
-        return ret;
-      }
-      catch(Exception e) {
-      }
+    /**
+     * Get a request parameter as a String with a default value, or optional cookie
+     * persistence.
+     * 
+     * @param name     Name of http param.
+     * @param fallback Default value.
+     * @param cookie   Name of a cookie is given as an Enum to control cookies
+     *                 proliferation.
+     * @return Priority order: request, cookie, fallback.
+     */
+    public String getString(final String name, final String fallback, final Enum<?> cookie)
+    {
+        return getString(name, fallback, cookie.name());
     }
-    // param is empty but not null, reset cookie
-    if (value != null) {
-      cookie(name, null);
-      return fallback;
-    }
-    // try to deal with cookie
-    value = cookie(cookie);
-    try {
-      @SuppressWarnings("static-access")
-      Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
-      return ret;
-    }
-    catch(Exception e) {
-      // cookie seenms to have a problem, reset it
-      cookie(name, null);
-      return (Enum<?>)fallback;
-    }
-  }
-  
-  /**
-   * Get a value from a map (usually static)
-   */
-  public Object getMap(final String name, Map<String,?> map, String fallback)
-  {
-    String value = request.getParameter(name);
-    if (!map.containsKey(value)) return map.get(fallback);
-    return map.get(value);
-  }
 
-  /**
-   * Get a value from a map (usually static), with cookie persistance
-   */
-  public Object getMap(final String name, Map<String,?> map, String fallback, String cookie)
-  {
-    String value = request.getParameter(name);
-    // a value requested, let’s try it
-    if (check(value)) {
-      // it works, store it and send it
-      if (map.containsKey(value)) {
-        cookie(cookie, value);
+    public String getString(final String name, final String fallback, final String cookie)
+    {
+        String value = request.getParameter(name);
+        if (check(value)) {
+            cookie(cookie, value);
+            return value;
+        }
+        // param is not null, reset cookie
+        if (value != null) {
+            cookie(name, null);
+            return fallback;
+        }
+        // try to deal with cookie
+        value = cookie(cookie);
+        if (check(value))
+            return value;
+        // cookie seems to have a problem, reset it
+        cookie(name, null);
+        return fallback;
+    }
+
+    /**
+     * Get a request parameter as a boolean with a defaul value.
+     */
+    public boolean getBoolean(final String name, final boolean fallback)
+    {
+        String value = request.getParameter(name);
+        if ("false".equals(value) || "0".equals(value) || "null".equals(value))
+            return false;
+        if (check(value))
+            return true;
+        return fallback;
+    }
+
+    /**
+     * Get a request parameter as a boolean with a default value, and an optional
+     * cookie persistence.
+     * 
+     * @param name     Name of a request parameter.
+     * @param fallback Default value.
+     * @param cookie   Name of a cookie is given as an Enum to control cookies
+     *                 proliferation.
+     * @return Priority order: request, cookie, fallback.
+     */
+    public boolean getBoolean(final String name, final boolean fallback, final Enum<?> cookie)
+    {
+        return getBoolean(name, fallback, cookie.name());
+    }
+
+    public boolean getBoolean(final String name, final boolean fallback, final String cookie)
+    {
+        String value = request.getParameter(name);
+        // value explicitly defined to false, set a cookie
+        if ("false".equals(value) || "0".equals(value) || "null".equals(value)) {
+            cookie(cookie, "0");
+            return false;
+        }
+        // some content, we are true
+        if (check(value)) {
+            cookie(cookie, "1");
+            return true;
+        }
+        // param is empty but not null, reset cookie
+        if (value != null) {
+            cookie(name, null);
+            return fallback;
+        }
+        // try to deal with cookie
+        value = cookie(cookie);
+        if ("0".equals(value))
+            return false;
+        if (check(value))
+            return true;
+        // cookie seems to have a problem, reset it
+        cookie(name, null);
+        return fallback;
+    }
+
+    /**
+     * Get a request parameter as an {@link Enum} value that will ensure a closed
+     * list of values, with a default value if wrong.
+     * 
+     * @param name
+     * @param fallback
+     * @return
+     * @throws Exception
+     */
+    // @SuppressWarnings({ "unchecked", "static-access" })
+    public Enum<?> getEnum(final String name, final Enum<?> fallback)
+    {
+        String value = request.getParameter(name);
+        if (!check(value))
+            return fallback;
+        // try/catch seems a bit heavy, but behind valueOf, there is a lazy static Map
+        // optimized for Enum
+        try {
+            Enum<?> ret = Enum.valueOf(fallback.getDeclaringClass(), value);
+            // Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
+            return ret;
+        } catch (Exception e) {
+            return (Enum<?>) fallback;
+        }
+    }
+
+    /**
+     * Get a request parameter as an {@link Enum} value that will ensure a closed
+     * list of values, with a default value, and an optional cookie persistence.
+     * 
+     * @param name     Name of a request parameter.
+     * @param fallback Default value.
+     * @param cookie   Name of a cookie for persistence.
+     * @return Priority order: request, cookie, fallback.
+     */
+    public Enum<?> getEnum(final String name, final Enum<?> fallback, final Enum<?> cookie)
+    {
+        return getEnum(name, fallback, cookie.name());
+    }
+
+    public Enum<?> getEnum(final String name, final Enum<?> fallback, final String cookie)
+    {
+        String value = request.getParameter(name);
+        if (check(value)) {
+            try {
+                @SuppressWarnings("static-access")
+                Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
+                cookie(cookie, ret.name());
+                return ret;
+            } catch (Exception e) {
+            }
+        }
+        // param is empty but not null, reset cookie
+        if (value != null) {
+            cookie(name, null);
+            return fallback;
+        }
+        // try to deal with cookie
+        value = cookie(cookie);
+        try {
+            @SuppressWarnings("static-access")
+            Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
+            return ret;
+        } catch (Exception e) {
+            // cookie seenms to have a problem, reset it
+            cookie(name, null);
+            return (Enum<?>) fallback;
+        }
+    }
+
+    /**
+     * Get a value from a map (usually static)
+     */
+    public Object getMap(final String name, Map<String, ?> map, String fallback)
+    {
+        String value = request.getParameter(name);
+        if (!map.containsKey(value))
+            return map.get(fallback);
         return map.get(value);
-      }
     }
-    // value is not null but empty, reset cookie, return default
-    if (value != null && "".equals(value.trim())) {
-      cookie(name, null);
-      return map.get(fallback);
-    }
-    // bad request or null request, try to get cookie
-    value = cookie(cookie);
-    // bad memory, things has changed, reset cookie
-    if (!map.containsKey(value)) {
-      cookie(name, null);
-      value = fallback;
-    }
-    return map.get(value);
-  }
 
-  /**
-   * Useful for servlet 3.0 (and not 3.1)
-   * @param part
-   * @return
-   */
-  static public String getFileName(Part part)
-  {
-    for (String cd : part.getHeader("content-disposition").split(";")) {
-      if (cd.trim().startsWith("filename")) {
-        String fileName = cd.substring(cd.indexOf('=') + 1).trim().replace("\"", "");
-        return fileName.substring(fileName.lastIndexOf('/') + 1).substring(fileName.lastIndexOf('\\') + 1); // MSIE fix.
-      }
+    /**
+     * Get a value from a map (usually static), with cookie persistance
+     */
+    public Object getMap(final String name, Map<String, ?> map, String fallback, String cookie)
+    {
+        String value = request.getParameter(name);
+        // a value requested, let’s try it
+        if (check(value)) {
+            // it works, store it and send it
+            if (map.containsKey(value)) {
+                cookie(cookie, value);
+                return map.get(value);
+            }
+        }
+        // value is not null but empty, reset cookie, return default
+        if (value != null && "".equals(value.trim())) {
+            cookie(name, null);
+            return map.get(fallback);
+        }
+        // bad request or null request, try to get cookie
+        value = cookie(cookie);
+        // bad memory, things has changed, reset cookie
+        if (!map.containsKey(value)) {
+            cookie(name, null);
+            value = fallback;
+        }
+        return map.get(value);
     }
-    return null;
-  }
-  
-  /**
-   * Build url parameters 
-   */
-  public String url(final String[] pars)
-  {
-    StringBuilder href = new StringBuilder();
-    boolean first =  true;
-    for (String par: pars) {
-      String value = request.getParameter(par);
-      if (value == null) continue;
-      if (first) {
-        first = false;
-        // href.append("?");
-      }
-      else {
-        href.append("&amp;");
-      }
-      href.append(par).append("=").append(escape(value));
+
+    /**
+     * Useful for servlet 3.0 (and not 3.1)
+     * 
+     * @param part
+     * @return
+     */
+    static public String getFileName(Part part)
+    {
+        for (String cd : part.getHeader("content-disposition").split(";")) {
+            if (cd.trim().startsWith("filename")) {
+                String fileName = cd.substring(cd.indexOf('=') + 1).trim().replace("\"", "");
+                return fileName.substring(fileName.lastIndexOf('/') + 1).substring(fileName.lastIndexOf('\\') + 1); // MSIE
+                                                                                                                    // fix.
+            }
+        }
+        return null;
     }
-    return href.toString();
-  }
+
+    /**
+     * Build url parameters
+     */
+    public String url(final String[] pars)
+    {
+        StringBuilder href = new StringBuilder();
+        boolean first = true;
+        for (String par : pars) {
+            String value = request.getParameter(par);
+            if (value == null)
+                continue;
+            if (first) {
+                first = false;
+                // href.append("?");
+            } else {
+                href.append("&amp;");
+            }
+            href.append(par).append("=").append(escape(value));
+        }
+        return href.toString();
+    }
 
 }

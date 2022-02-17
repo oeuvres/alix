@@ -156,6 +156,7 @@ public class Dir
      * @param pattern
      * @return
      */
+    @SuppressWarnings("unused")
     private static void collect(File dir, PathMatcher matcher, int depth, final List<File> files)
     {
         File[] ls = dir.listFiles();

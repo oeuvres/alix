@@ -32,35 +32,27 @@
  */
 package alix.util;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 
-import alix.maths.Calcul;
 
 /**
  * An object to record edges events between int nodes.
- * Fast for writing, no lookup, maybe expensive in memory if a lot of events.
- * 
  */
-public class EdgeQueue implements Iterable<Edge>
+public class EdgeHash implements Iterable<Edge>
 {
-    /** Initial capacity */
-    private int capacity = 64;
-    /** Edge counts */
-    long[] data = new long[capacity];
-    /** Cursor */
-    int size = 0;
-    /** Keep direction between node, default no */
-    boolean directed;
-    /** Binary mask to get upper int from data */
-    private static long KEY_MASK = 0xFFFFFFFFL;
+    /** Keep edge direction */
+    final boolean directed;
+    /** Set of edges */
+    final HashMap<IntPair, Edge> edges = new HashMap<IntPair, Edge>();
+    /** Testing edge */
+    final IntPair key = new IntPair();
     /** Linked Cluster */
     private IntList cluster = new IntList();
     
     
-    public EdgeQueue(final boolean directed)
+    public EdgeHash(final boolean directed)
     {
         this.directed = directed;
     }
@@ -96,82 +88,29 @@ public class EdgeQueue implements Iterable<Edge>
      */
     public void push(final int source, final int target)
     {
-        grow(size);
-        if (directed) {
-            data[size] = edge(source, target);
+        if (directed || source < target) {
+            key.set(source, target);
         }
-        else if (source < target) {
-            data[size] = edge(source, target);
-        } 
         else {
-            data[size] = edge(target, source);
+            key.set(target, source);
         }
-        size++;
-    }
-    
-    private void grow(final int size)
-    {
-        if (size < capacity) {
-            return;
+        Edge edge = edges.get(key);
+        if (edge == null) {
+            edge = new Edge(key.x, key.y);
+            edges.put(new IntPair(key), edge);
         }
-        final int oldLength = data.length;
-        final long[] oldData = data;
-        capacity = Calcul.nextSquare(size + 1);
-        data = new long[capacity];
-        System.arraycopy(oldData, 0, data, 0, oldLength);
+        edge.inc();
     }
-    
+
     @Override
     public Iterator<Edge> iterator()
     {
-        List<Edge> net = new ArrayList<Edge>();
-        Arrays.parallelSort(data, 0, size);
-        long edge = data[0];
-        int count = 0;
-        for (int i = 0; i < size; i ++) {
-            // new value
-            if (edge != data[i]) {
-                net.add(new Edge(source(edge), target(edge), count));
-                edge = data[i];
-                count = 0;
-            }
-            count ++;
-        }
-        if (count > 0) net.add(new Edge(source(edge), target(edge), count));
-        Edge[] arredge = new Edge[net.size()];
-        net.toArray(arredge);
+        Edge[] arredge = new Edge[edges.size()];
+        edges.values().toArray(arredge);
         Arrays.sort(arredge);
         return new EdgeTop(arredge);
     }
-
-    /**
-     * Build an entry for the data array
-     * 
-     * @param key
-     * @param value
-     * @return the entry
-     */
-    private static long edge(final int source, final int target)
-    {
-        long edge = ((source & KEY_MASK) | (((long) target) << 32));
-        return edge;
-    }
-
-    /**
-     * Get an int value from a long entry
-     */
-    private static int target(final long edge)
-    {
-        return (int) (edge >> 32);
-    }
-
-    /**
-     * Get the key from a long entry
-     */
-    private static int source(final long edge)
-    {
-        return (int) (edge & KEY_MASK);
-    }
+    
 
 }
  
