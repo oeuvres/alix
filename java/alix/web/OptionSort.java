@@ -44,6 +44,7 @@ import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.search.similarities.Similarity;
 
+import static alix.Names.*;
 import alix.lucene.Alix;
 import alix.lucene.search.SimilarityG;
 import alix.lucene.search.SimilarityOccs;
@@ -53,18 +54,18 @@ public enum OptionSort implements Option
     score("Score", null, null),
     occs("Occurrences", null, new SimilarityOccs()),
     year("Année (+ ancien)",
-            new Sort(new SortField("year", SortField.Type.INT), new SortField(Alix.ID, SortField.Type.STRING)), null),
+            new Sort(new SortField("year", SortField.Type.INT), new SortField(ALIX_ID, SortField.Type.STRING)), null),
     year_inv("Année (+ récent)",
             new Sort(new SortField("year", SortField.Type.INT, true),
-                    new SortField(Alix.ID, SortField.Type.STRING, true)),
+                    new SortField(ALIX_ID, SortField.Type.STRING, true)),
             null),
     author("Auteur (A-Z)",
             new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT)), null),
     author_inv("Auteur (Z-A)",
             new Sort(new SortField("author1", SortField.Type.STRING, true), new SortField("year", SortField.Type.INT)),
             null),
-    id("Identifiant (A-Z)", new Sort(new SortField(Alix.ID, SortField.Type.STRING)), null),
-    id_inv("Identifiant (Z-A)", new Sort(new SortField(Alix.ID, SortField.Type.STRING, true)), null),
+    id("Identifiant (A-Z)", new Sort(new SortField(ALIX_ID, SortField.Type.STRING)), null),
+    id_inv("Identifiant (Z-A)", new Sort(new SortField(ALIX_ID, SortField.Type.STRING, true)), null),
     g("Score (G-Test)", null, new SimilarityG()),
     // freq("Fréquence"),
     // "tf-idf", "bm25", "dfi_chi2", "dfi_std", "dfi_sat",

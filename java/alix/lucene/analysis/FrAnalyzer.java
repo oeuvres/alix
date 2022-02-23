@@ -36,37 +36,48 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 
-import alix.lucene.Alix;
+import static alix.Names.*;
 
 /**
- * Analysis scenario for French in Alix.
- * The linguistic features of Alix are language dependent.
+ * Analysis scenario for French in Alix. The linguistic features of Alix are
+ * language dependent.
  */
 public class FrAnalyzer extends Analyzer
 {
-  /** 
-   * Force creation of a new token stream pipeline, for multi threads 
-   * indexing.
-   */
-  
-  @Override
-  public TokenStreamComponents createComponents(String field)
-  {
-    // kind of fields
-    final boolean orth = field.endsWith("orth"); // do not select lemma but orthographic
-    final boolean search = field.startsWith(Alix.SEARCH); // for seraching
-    int flags = FrTokenizer.XML;
-    if (search) flags = flags | FrTokenizer.SEARCH;
-    final Tokenizer source = new FrTokenizer(flags); // segment words
-    TokenStream result = new FrLemFilter(source); // provide lemma+pos
-    
-    if (!orth) result = new LocutionFilter(result); // compounds: parce que (quite expensive, 20% time)
-    if (!search && !orth) result = new FrPersnameFilter(result); // link unknown names, bad for a search query
-    boolean pun = false;
-    if (search) pun = true; // keep punctuation, ex, to parse search
-    if (orth) result = new FlagOrthFilter(result); // orthographic form (not lemma) as term to index
-    else result = new FlagCloudFilter(result, pun); // select lemmas as term to index
-    return new TokenStreamComponents(source, result);
-  }
+    /**
+     * Force creation of a new token stream pipeline, for multi threads indexing.
+     */
+
+    @Override
+    public TokenStreamComponents createComponents(String field)
+    {
+        // kind of fields
+        final boolean orth = field.endsWith("orth"); // do not select lemma but orthographic
+        final boolean search = field.startsWith(SEARCH); // for seraching
+        int flags = FrTokenizer.XML;
+        if (search)  {
+            flags = flags | FrTokenizer.SEARCH;
+        }
+        final Tokenizer source = new FrTokenizer(flags); // segment words
+        TokenStream result = new FrLemFilter(source); // provide lemma+pos
+
+        if (!orth) {
+            result = new LocutionFilter(result); // compounds: parce que (quite expensive, 20% time)
+        }
+        if (!search && !orth) {
+            result = new FrPersnameFilter(result); // link unknown names, bad for a search query
+        }
+        boolean pun = false;
+        if (search) {
+            pun = true; // keep punctuation, ex, to parse search
+        }
+        if (orth) {
+            result = new FlagOrthFilter(result); // orthographic form (not lemma) as term to index
+        }
+        else {
+            result = new FlagCloudFilter(result, pun); // select lemmas as term to index
+        }
+        return new TokenStreamComponents(source, result);
+    }
 
 }

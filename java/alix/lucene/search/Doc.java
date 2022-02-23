@@ -50,6 +50,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
+import static alix.Names.*;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.Alix;
 import alix.lucene.analysis.FrDics;
@@ -68,7 +69,7 @@ public class Doc
 {
     /** Just the mandatory fields */
     final static HashSet<String> FIELDS_REQUIRED = new HashSet<String>(
-            Arrays.asList(new String[] { Alix.FILENAME, Alix.BOOKID, Alix.ID, Alix.TYPE }));
+            Arrays.asList(new String[] { ALIX_FILENAME, ALIX_BOOKID, ALIX_ID, ALIX_TYPE }));
     /** Format numbers with the dot */
     final static DecimalFormatSymbols ensyms = DecimalFormatSymbols.getInstance(Locale.ENGLISH);
     /** The lucene index to read in */
@@ -159,7 +160,7 @@ public class Doc
         }
         this.alix = alix;
         this.docId = docId;
-        this.id = document.get(Alix.ID);
+        this.id = document.get(ALIX_ID);
         this.fieldsToLoad = fieldsToLoad;
     }
 

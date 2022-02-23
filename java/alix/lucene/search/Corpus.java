@@ -55,6 +55,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import static alix.Names.*;
 import alix.lucene.Alix;
 
 /**
@@ -135,7 +136,7 @@ public class Corpus
     public Corpus(Alix alix, String[] books) throws IOException
     {
         this.alix = alix;
-        this.field = Alix.BOOKID;
+        this.field = ALIX_BOOKID;
         IndexReader reader = alix.reader();
         this.maxDoc = reader.maxDoc();
         this.docs = new FixedBitSet(maxDoc);

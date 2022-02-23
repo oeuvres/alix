@@ -56,6 +56,7 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import static alix.Names.*;
 import alix.lucene.analysis.MetaAnalyzer;
 
 
@@ -79,13 +80,6 @@ public class SAXIndexer extends DefaultHandler
 {
   final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
   final static DecimalFormat df000 = new DecimalFormat("000", frsyms);
-  /** Field type */
-  final static String TEXT = "text";
-  final static String META = "meta";
-  final static String STORE = "store";
-  final static String INT = "int";
-  final static String CATEGORY = "category";
-  final static String FACET = "facet";
   /** Lucene writer */
   private final IndexWriter writer;
   /** Current file processed */
@@ -274,7 +268,7 @@ public class SAXIndexer extends DefaultHandler
   public void setFileName(String fileName) throws IOException
   {
     this.fileName = fileName;
-    writer.deleteDocuments(new Term(Alix.FILENAME, fileName));
+    writer.deleteDocuments(new Term(ALIX_FILENAME, fileName));
   }
 
   @Override
@@ -327,7 +321,7 @@ public class SAXIndexer extends DefaultHandler
       xml.append(">");
     }
     // open an indexation block of chapters
-    else if (localName.equals(DocType.book.name())) {
+    else if (localName.equals(BOOK)) {
       String id = attributes.getValue("http://www.w3.org/XML/1998/namespace", "id");
       if (record)
         throw new SAXException("<alix:book> A pending field is not yet added. A book is forbidden in a field.");
@@ -340,16 +334,16 @@ public class SAXIndexer extends DefaultHandler
       bookid = id;
       // will record the field as an ending doc
       book = new Document();
-      book.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
-      book.add(new StringField(Alix.BOOKID, id, Store.YES));
-      book.add(new SortedDocValuesField(Alix.BOOKID, new BytesRef(bookid))); // keep bookid as a facet
-      book.add(new StringField(Alix.ID, id, Store.YES));
-      book.add(new SortedDocValuesField(Alix.ID, new BytesRef(id)));
-      book.add(new StringField(Alix.TYPE, DocType.book.name(), Store.YES));
+      book.add(new StringField(ALIX_FILENAME, fileName, Store.YES));  // for deletions
+      book.add(new StringField(ALIX_BOOKID, id, Store.YES));
+      book.add(new SortedDocValuesField(ALIX_BOOKID, new BytesRef(bookid))); // keep bookid as a facet
+      book.add(new StringField(ALIX_ID, id, Store.YES));
+      book.add(new SortedDocValuesField(ALIX_ID, new BytesRef(id)));
+      book.add(new StringField(ALIX_TYPE, BOOK, Store.YES));
       chapno = 0;
     }
     // open a chapter as an item in a book series
-    else if (localName.equals(DocType.chapter.name())) {
+    else if (localName.equals(CHAPTER)) {
       if (record)
         throw new SAXException("<alix:chapter> A pending field is not yet added. A book is forbidden in a field.");
       if (book == null)
@@ -358,16 +352,16 @@ public class SAXIndexer extends DefaultHandler
         throw new SAXException("<alix:chapter> A pending document has not yet been added. A chapter must be in a <alix:book> (forbidden in <alix:document> and <alix:chapter>)");
       // will record the field as an ending doc
       document = new Document();
-      document.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
-      document.add(new StringField(Alix.BOOKID, bookid, Store.YES));
-      document.add(new SortedDocValuesField(Alix.BOOKID, new BytesRef(bookid))); // keep bookid as a facet
+      document.add(new StringField(ALIX_FILENAME, fileName, Store.YES));  // for deletions
+      document.add(new StringField(ALIX_BOOKID, bookid, Store.YES));
+      document.add(new SortedDocValuesField(ALIX_BOOKID, new BytesRef(bookid))); // keep bookid as a facet
       chapno++;
       // if an id is provided by user, use it
       String id = attributes.getValue("http://www.w3.org/XML/1998/namespace", "id");
       if (id == null) id = bookid+"_"+df000.format(chapno);
-      document.add(new StringField(Alix.ID, id, Store.YES));
-      document.add(new SortedDocValuesField(Alix.ID, new BytesRef(id)));
-      document.add(new StringField(Alix.TYPE, DocType.chapter.name(), Store.YES));
+      document.add(new StringField(ALIX_ID, id, Store.YES));
+      document.add(new SortedDocValuesField(ALIX_ID, new BytesRef(id)));
+      document.add(new StringField(ALIX_TYPE, CHAPTER, Store.YES));
     }
     // create a new Lucene document
     else if (localName.equals("document")) {
@@ -380,13 +374,13 @@ public class SAXIndexer extends DefaultHandler
       document = new Document();
       // unique id for documents is not required
       String id = attributes.getValue("http://www.w3.org/XML/1998/namespace", "id");
-      document.add(new StringField(Alix.FILENAME, fileName, Store.YES));  // for deletions
+      document.add(new StringField(ALIX_FILENAME, fileName, Store.YES));  // for deletions
       if (id == null || id.trim().equals("")) {
         throw new SAXException("<alix:document xml:id=\"REQUIRED\"> A document needs an id for recall.");
       }
-      document.add(new StringField(Alix.ID, id, Store.YES));
-      document.add(new SortedDocValuesField(Alix.ID, new BytesRef(id)));
-      document.add(new StringField(Alix.TYPE, DocType.article.name(), Store.YES));
+      document.add(new StringField(ALIX_ID, id, Store.YES));
+      document.add(new SortedDocValuesField(ALIX_ID, new BytesRef(id)));
+      document.add(new StringField(ALIX_TYPE, ARTICLE, Store.YES));
     }
     // open a field
     else if (localName.equals("field")) {

@@ -33,55 +33,59 @@
 package org.apache.lucene.analysis;
 
 import org.apache.lucene.analysis.Analyzer.ReuseStrategy;
+
 import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
 import org.apache.lucene.analysis.sinks.TeeSinkTokenFilter;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.IndexWriter;
 
+import static alix.Names.*;
 import alix.lucene.Alix;
 import alix.lucene.SAXIndexer;
 
 /**
  * <p>
- * Reuse strategy of {@link TokenStreamComponents} in Alix: 
- * no cache for indexation, reuse for search parsing.
+ * Reuse strategy of {@link TokenStreamComponents} in Alix: no cache for
+ * indexation, reuse for search parsing.
  * </p>
  * 
  * <p>
  * Alix is designed to index real text documents (articles, book chapters…).
- * Indexing is multi-threaded,
- * and add documents by blocks (books) {@link IndexWriter#addDocuments(Iterable)}.
- * Life cycle of {@link TokenStream} components is hard to predict, the most robust
- * solution is then to not cache {@link TokenStreamComponents},
- * especially because {@link SAXIndexer} needs some advanced indexing features 
- * ({@link CachingTokenFilter} or a {@link TeeSinkTokenFilter}).
+ * Indexing is multi-threaded, and add documents by blocks (books)
+ * {@link IndexWriter#addDocuments(Iterable)}. Life cycle of {@link TokenStream}
+ * components is hard to predict, the most robust solution is then to not cache
+ * {@link TokenStreamComponents}, especially because {@link SAXIndexer} needs
+ * some advanced indexing features ({@link CachingTokenFilter} or a
+ * {@link TeeSinkTokenFilter}).
  * </p>
  * 
  * <p>
  * The default behavior of Analyzer with Strings was successfully tested with
  * {@link Field#Field(String, CharSequence, org.apache.lucene.index.IndexableFieldType)},
- * but problems came with {@link Field#Field(String, TokenStream, IndexableFieldType)}.
- * The default caching of components were confused 
- * (documents disappears, contract violation {@link TokenStream#reset()} 
- * and {{@link TokenStream#close()}).
+ * but problems came with
+ * {@link Field#Field(String, TokenStream, IndexableFieldType)}. The default
+ * caching of components were confused (documents disappears, contract violation
+ * {@link TokenStream#reset()} and {{@link TokenStream#close()}).
  * <p/>
  * 
  * 
  */
 
-public class AlixReuseStrategy extends ReuseStrategy 
+public class AlixReuseStrategy extends ReuseStrategy
 {
-  @Override
-  public TokenStreamComponents getReusableComponents(Analyzer analyzer, String fieldName)
-  {
-    if (Alix.SEARCH.startsWith(fieldName)) return (TokenStreamComponents) getStoredValue(analyzer);
-    return analyzer.createComponents(fieldName);
-  }
+    @Override
+    public TokenStreamComponents getReusableComponents(Analyzer analyzer, String fieldName)
+    {
+        if (SEARCH.startsWith(fieldName)) {
+            return (TokenStreamComponents) getStoredValue(analyzer);
+        }
+        return analyzer.createComponents(fieldName);
+    }
 
-  @Override
-  public void setReusableComponents(Analyzer analyzer, String fieldName, TokenStreamComponents components)
-  {
-    setStoredValue(analyzer, components);
-  }
+    @Override
+    public void setReusableComponents(Analyzer analyzer, String fieldName, TokenStreamComponents components)
+    {
+        setStoredValue(analyzer, components);
+    }
 }

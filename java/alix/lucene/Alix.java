@@ -87,6 +87,7 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
 
+import static alix.Names.*;
 import alix.lucene.search.FieldFacet;
 import alix.lucene.search.Scale;
 import alix.lucene.search.FieldText;
@@ -138,18 +139,8 @@ public class Alix
 {
     /** Name of the application (for messages) */
     public static final String NAME = "Alix";
-    /** Mandatory field, XML source file name, used for update */
-    public static final String FILENAME = "alix.filename";
-    /** Mandatory field, unique id for a book and its chapters */
-    public static final String BOOKID = "alix.bookid";
-    /** Mandatory field, unique id provide by user for all documents */
-    public static final String ID = "alix.id";
-    /** Mandatory field, define the level of a leaf (book/chapter, article) */
-    public static final String TYPE = "alix.type";
-    /** Name of a field to inform Analyzer it is a search query */
-    public static final String SEARCH = "search";
     /** Just the mandatory fields */
-    final static HashSet<String> FIELDS_ID = new HashSet<String>(Arrays.asList(new String[] { Alix.ID }));
+    final static HashSet<String> FIELDS_ID = new HashSet<String>(Arrays.asList(new String[] { ALIX_ID }));
     /** Max books */
     private static final int MAXBOOKS = 10000;
     /** Lucene field type for alix text field */
@@ -267,7 +258,7 @@ public class Alix
     public int[] books(Sort sort) throws IOException
     {
         IndexSearcher searcher = searcher(); // ensure reader or decache
-        Query qBook = new TermQuery(new Term(Alix.TYPE, DocType.book.name()));
+        Query qBook = new TermQuery(new Term(ALIX_TYPE, BOOK));
         TopFieldDocs top = searcher.search(qBook, MAXBOOKS, sort);
         int length = top.scoreDocs.length;
         ScoreDoc[] docs = top.scoreDocs;
@@ -517,7 +508,7 @@ public class Alix
     {
         if (id == null || id.trim().length() == 0)
             return -3;
-        TermQuery qid = new TermQuery(new Term(Alix.ID, id));
+        TermQuery qid = new TermQuery(new Term(ALIX_ID, id));
         TopDocs search = searcher().search(qid, 1);
         ScoreDoc[] hits = search.scoreDocs;
         if (hits.length == 0)
@@ -539,7 +530,7 @@ public class Alix
         Document doc = reader().document(docId, FIELDS_ID);
         if (doc == null)
             return null;
-        return doc.get(Alix.ID);
+        return doc.get(ALIX_ID);
     }
 
     public static boolean hasInstance(String name)
