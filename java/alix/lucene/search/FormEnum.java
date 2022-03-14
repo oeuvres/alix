@@ -453,8 +453,9 @@ public class FormEnum
      */
     public long occsByRank(final int rank)
     {
-        if (rank >= limit)
+        if (rank >= limit) {
             return -1;
+        }
         final int formId = sorter[rank];
         return formOccsAll[formId];
     }

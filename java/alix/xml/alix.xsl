@@ -6,8 +6,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
 © 2019 Frederic.Glorieux@fictif.org & Opteos
 
 
-cdata-section-elements="cdata"
-Attribute @cdata-section-elements is not allowed on element <xsl:transform>
+
 
 -->
 <xsl:transform version="1.0"
@@ -110,7 +109,9 @@ Attribute @cdata-section-elements is not allowed on element <xsl:transform>
           </xsl:attribute>
         </alix:field>
       </xsl:if>
-
+      <xsl:if test="@type">
+        <alix:field name="type" type="category" value="{@type}"/>
+      </xsl:if>
       <alix:field name="bibl" type="meta">
         <xsl:copy-of select="$bibl-book"/>
       </alix:field>

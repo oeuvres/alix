@@ -41,7 +41,6 @@ import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.IndexWriter;
 
 import static alix.Names.*;
-import alix.lucene.Alix;
 import alix.lucene.SAXIndexer;
 
 /**

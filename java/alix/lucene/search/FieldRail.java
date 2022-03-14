@@ -173,24 +173,34 @@ public class FieldRail
         }
         EdgeRoll span = new EdgeRoll(formIds, distance);
         // filter documents
-        final boolean hasFilter = (filter != null);
         IntBuffer bufInt = channelMap.rewind().asIntBuffer();
-        for (int docId = 0; docId < maxDoc; docId++) {
-            if (limInt[docId] == 0) {
-                continue; // deleted or with no value for this field
+        
+        if (filter != null) {
+            for (int docId = filter.nextSetBit(0); docId !=  DocIdSetIterator.NO_MORE_DOCS; docId = filter.nextSetBit(docId + 1)) {
+                span.clear();
+                bufInt.position(posInt[docId]);
+                for (int position = 0, max = limInt[docId]; position < max; position++) {
+                    int formId = bufInt.get();
+                    span.push(position, formId);
+                }
             }
-            if (hasFilter && !filter.get(docId)) {
-                continue; // document not in the filter
-            }
-            span.clear();
-            bufInt.position(posInt[docId]);
-            for (int position = 0, max = limInt[docId]; position < max; position++) {
-                int formId = bufInt.get();
-                span.push(position, formId);
+        }
+        else {
+            for (int docId = 0; docId < maxDoc; docId++) {
+                if (limInt[docId] == 0) {
+                    continue; // deleted or with no value for this field
+                }
+                span.clear();
+                bufInt.position(posInt[docId]);
+                for (int position = 0, max = limInt[docId]; position < max; position++) {
+                    int formId = bufInt.get();
+                    span.push(position, formId);
+                }
             }
         }
         return span.edges();
     }
+    
     
     /**
      * Get edges from Coocs

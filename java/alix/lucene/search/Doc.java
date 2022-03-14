@@ -677,8 +677,9 @@ public class Doc
         // get index term stats
         FieldText fieldText = alix.fieldText(field);
         FormEnum results = new FormEnum(fieldText);
-        if (hasScorer)
+        if (hasScorer) {
             results.formScore = new double[fieldText.maxForm];
+        }
         results.formOccsFreq = new long[fieldText.maxForm]; // freqs by form
         int occsDoc = fieldText.docOccs[docId];
 
@@ -688,20 +689,27 @@ public class Doc
         TermsEnum termit = vector.iterator();
         while (termit.next() != null) {
             BytesRef bytes = termit.term();
+            if (bytes.length < 1) {
+                continue;
+            }
             final int formId = fieldText.formId(bytes);
-            if (hasTags && !tags.accept(fieldText.formTag[formId]))
+            if (hasTags && !tags.accept(fieldText.formTag[formId])) {
                 continue;
-            if (noStop && fieldText.isStop(formId))
+            }
+            if (noStop && fieldText.isStop(formId)) {
                 continue;
-            if (formId < 0)
+            }
+            if (formId < 0) {
                 continue; // should not arrive, let cry
-            if (hasScorer)
+            }
+            if (hasScorer) {
                 scorer.idf(fieldText.occsAll, fieldText.docsAll, fieldText.formOccsAll[formId],
                         fieldText.formDocsAll[formId]);
-
+            }
             // scorer.weight(termOccs, termDocs); // collection level stats
             long freq = termit.totalTermFreq();
             results.formOccsFreq[formId] = freq;
+            results.occsFreq += freq;
             if (hasScorer) {
                 results.formScore[formId] += scorer.tf(freq, occsDoc);
                 // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub

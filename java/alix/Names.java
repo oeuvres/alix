@@ -35,6 +35,8 @@ package alix;
 
 public final class Names
 {
+    /** For a cookie  */
+    public static final String ALIX_BASE = "alix.base";
     /** Mandatory field, unique id for a book and its chapters */
     public static final String ALIX_BOOKID = "alix.bookid";
     /** Mandatory field, XML source file name, used for update */

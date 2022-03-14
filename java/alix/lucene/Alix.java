@@ -38,10 +38,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -167,7 +167,7 @@ public class Alix
         ftypeMeta.freeze();
     }
     /** Pool of instances, unique by path */
-    public static final HashMap<String, Alix> pool = new LinkedHashMap<String, Alix>();
+    public static final Map<String, Alix> pool = new LinkedHashMap<String, Alix>();
     /** Name of the base */
     public final String name;
     /** Normalized path */
@@ -563,7 +563,12 @@ public class Alix
         reader(); // ensure reader or decache
         return fieldInfos.fieldInfo(field);
     }
-
+    
+    /**
+     * Get an alix instance by name from the pool. 
+     * @param name
+     * @return
+     */
     public static Alix instance(String name)
     {
         return pool.get(name);

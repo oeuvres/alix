@@ -658,11 +658,12 @@ Gobal TEI parameters and variables are divided in different categories
       <xsl:call-template name="analytic"/>
     </xsl:variable>
     <xsl:if test="$analytic != ''">
-      <xsl:text> « </xsl:text>
+      <xsl:text> </xsl:text>
       <span class="analytic">
+        <xsl:text>«&#160;</xsl:text>
         <xsl:copy-of select="$analytic"/>
+        <xsl:text>&#160;»</xsl:text>
       </span>
-      <xsl:text> »</xsl:text>
     </xsl:if>
     <xsl:if test="$pages != ''">
       <xsl:text> </xsl:text>
