@@ -35,6 +35,7 @@ package alix.web;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.servlet.http.Cookie;
@@ -512,8 +513,7 @@ public class JspTools
     }
 
     /**
-     * Get a requesparameter as a String with a defaul value, or optional
-     * persistency.
+     * Get a request parameter as a String with a default value.
      */
     public String getString(final String name, final String fallback)
     {
@@ -524,6 +524,22 @@ public class JspTools
         return fallback;
     }
 
+    /**
+     * Get a request parameter as a String form a list of value (first is default)
+     */
+    public String getString(final String name, final List<String> list)
+    {
+        String value = request.getParameter(name);
+        if (list.contains(value)) {
+            return value;
+        }
+        return list.get(0);
+    }
+
+    
+    /**
+     * Get a requesparameter as a String with a default value, and a cookie persistency.
+     */
     public String getString(final String name, final String fallback, final String cookie)
     {
         String value = request.getParameter(name);

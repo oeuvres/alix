@@ -53,8 +53,14 @@ public final class Names
     public final static String CATEGORY = "category";
     /** <alix:chapter> text inside a book  */
     public static final String CHAPTER = "chapter";
+    /** <alix:document> independant document  */
+    public static final String DOCUMENT = "document";
     /** Field type */
     public final static String FACET = "facet";
+    /** <alix:field>  */
+    public static final String FIELD = "field";
+    /** Field type */
+    public final static String HTML = "html";
     /** Field type */
     public final static String INT = "int";
     /** Field type */
@@ -62,9 +68,15 @@ public final class Names
     /** Name of a field to inform Analyzer it is a search query */
     public static final String SEARCH = "search";
     /** Field type */
+    public final static String STRING = "string";
+    /** Field type */
     public final static String STORE = "store";
     /** Field type */
     public final static String TEXT = "text";
+    /** Field type */
+    public final static String TOKEN = "token";
+    /** Field type */
+    public final static String XML = "xml";
 
     private Names() {
         // restrict instantiation
