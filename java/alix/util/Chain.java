@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.nio.CharBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.apache.lucene.util.BytesRef;
 
@@ -64,14 +65,13 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     /** Number of characters used */
     private int size = 0;
     /** Start index of the String in the chars */
-    private int start = 0;
+    private int zero = 0;
     /** Cache the hash code for the string */
-    private int hash = 0; // Default to 0
+    private int hash = 0;
     /** Count of chars taken on the left, reset by {@link #reset()}. */
-    private int left = 0;
+    // private int left = 0;
     /**
-     * Memory of the maximum left size, kept during life of object after a
-     * {@link #reset()}
+     * Memory of the maximum left size, used for reset {@link #reset()}
      */
     private int leftMax = 0;
 
@@ -90,7 +90,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public Chain(final Chain chain)
     {
         this.chars = chain.chars;
-        this.start = chain.start;
+        this.zero = chain.zero;
         this.size = chain.size;
     }
 
@@ -123,7 +123,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         if (start + len >= a.length)
             throw new StringIndexOutOfBoundsException("start+size=" + start + len + ">= length=" + a.length);
         this.chars = a;
-        this.start = start;
+        this.zero = start;
         this.size = len;
     }
 
@@ -162,7 +162,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     {
         int bytesLen = bytes.length;
         ensureRight(bytesLen);
-        final int added = UTF8toUTF16(bytes.bytes, bytes.offset, bytesLen, chars, start + size);
+        final int added = UTF8toUTF16(bytes.bytes, bytes.offset, bytesLen, chars, zero + size);
         size += added;
         return this;
     }
@@ -177,7 +177,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public Chain append(final char c)
     {
         ensureRight(1);
-        chars[start + size] = c;
+        chars[zero + size] = c;
         size++;
         return this;
     }
@@ -206,7 +206,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     {
         final int amount = chain.size;
         ensureRight(amount);
-        System.arraycopy(chain.chars, chain.start, chars, start + size, amount);
+        System.arraycopy(chain.chars, chain.zero, chars, zero + size, amount);
         size += amount;
         return this;
     }
@@ -218,38 +218,57 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     @Override
-    public Chain append(CharSequence cs, int begin, final int end)
+    public Chain append(CharSequence s, final int start, final int end)
     {
-        if (cs == null)
+        if (s == null) {
             return this;
-        int amount = end - begin;
-        if (amount < 0)
-            throw new NegativeArraySizeException("begin=" + begin + " end=" + end + " begin > end, no chars to append");
-        ensureRight(amount);
-        if (amount > 4) { // only use instanceof check series for longer CSQs, else simply iterate
-            if (cs instanceof String) {
-                ((String) cs).getChars(begin, end, chars, start + size);
-            } else if (cs instanceof StringBuilder) {
-                ((StringBuilder) cs).getChars(begin, end, chars, start + size);
-            } else if (cs instanceof StringBuffer) {
-                ((StringBuffer) cs).getChars(begin, end, chars, start + size);
-            } else if (cs instanceof CharBuffer && ((CharBuffer) cs).hasArray()) {
-                final CharBuffer cb = (CharBuffer) cs;
-                System.arraycopy(cb.array(), cb.arrayOffset() + cb.position() + begin, chars, start + size, amount);
-            } else {
-                for (int i = start + size, limit = start + size + amount; i < limit; i++) {
-                    chars[i] = cs.charAt(begin++);
-                }
-            }
-        } else {
-            for (int i = start + size, limit = start + size + amount; i < limit; i++) {
-                chars[i] = cs.charAt(begin++);
-            }
         }
-        size += amount;
+        final int len = end - start;
+        ensureRight(len);
+        write(size, s, start, end);
+        size += len;
         return this;
     }
 
+    /**
+     * Poor a string in data, array should have right size
+     * @param dstOffset
+     * @param s
+     * @param start
+     * @param end
+     */
+    private void write(int dstOffset, CharSequence s, int start, int end) {
+        final int len = end - start;
+        if (len < 0) {
+            throw new NegativeArraySizeException("start=" + start + " end=" + end + " start > end, no chars to append");
+        }
+        if (len > 4) { // only use instanceof check series for longer CSQs, else simply iterate
+            if (s instanceof String) {
+                ((String) s).getChars(start, end, chars, zero + dstOffset);
+            } 
+            else if (s instanceof StringBuilder) {
+                ((StringBuilder) s).getChars(start, end, chars, zero + dstOffset);
+            } 
+            else if (s instanceof StringBuffer) {
+                ((StringBuffer) s).getChars(start, end, chars, zero + dstOffset);
+            } 
+            else if (s instanceof CharBuffer && ((CharBuffer) s).hasArray()) {
+                final CharBuffer cb = (CharBuffer) s;
+                System.arraycopy(cb.array(), cb.arrayOffset() + cb.position() + start, chars, zero + dstOffset, len);
+            } 
+            else {
+                for (int i = zero + dstOffset, limit = zero + dstOffset + len; i < limit; i++) {
+                    chars[i] = s.charAt(start++);
+                }
+            }
+        } 
+        else {
+            for (int i = zero + dstOffset, limit = zero + dstOffset + len; i < limit; i++) {
+                chars[i] = s.charAt(start++);
+            }
+        }
+    }
+    
     /**
      * Return a pointer on the internal char array chars.
      * 
@@ -270,10 +289,10 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     {
         hash = 0;
         char last;
-        char c = chars[start];
+        char c = chars[zero];
         if (Char.isLowerCase(c))
-            chars[start] = Character.toUpperCase(c);
-        for (int i = start + 1; i < size; i++) {
+            chars[zero] = Character.toUpperCase(c);
+        for (int i = zero + 1; i < size; i++) {
             last = c;
             c = chars[i];
             if (last == '-' || last == '.' || last == '\'' || last == '’' || last == ' ') {
@@ -294,7 +313,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
          * no test and no exception if ((index < 0) || (index >= size)) { throw new
          * StringIndexOutOfBoundsException(index); }
          */
-        return this.chars[start + index];
+        return this.chars[zero + index];
     }
 
     /**
@@ -306,8 +325,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     {
         char v1[] = chars;
         char v2[] = t.chars;
-        int k1 = start;
-        int k2 = t.start;
+        int k1 = zero;
+        int k2 = t.zero;
         int lim1 = k1 + Math.min(size, t.size);
         while (k1 < lim1) {
             char c1 = v1[k1];
@@ -324,7 +343,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public int compareTo(final String string)
     {
         char[] chars = this.chars; // localize
-        int ichars = start;
+        int ichars = zero;
         int istring = 0;
         int lim = Math.min(size, string.length());
         while (istring < lim) {
@@ -346,7 +365,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      */
     public boolean contains(final char c)
     {
-        for (int i = start + 1; i < size; i++) {
+        for (int i = zero + 1; i < size; i++) {
             if (c == chars[i])
                 return true;
         }
@@ -368,17 +387,17 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * Replace Chain content by a span of String
      * 
      * @param cs     a char sequence
-     * @param from   index of the string from where to copy chars
+     * @param offset   index of the string from where to copy chars
      * @param amount number of chars to copy
      * @return the Chain object for chaining, or null if the String provided is null
      *         (for testing)
      */
-    public Chain copy(final CharSequence cs, int from, int amount)
+    public Chain copy(final CharSequence cs, int offset, int amount)
     {
         if (cs == null)
             return null;
-        if (from <= 0 && amount < 0) {
-            from = 0;
+        if (offset <= 0 && amount < 0) {
+            offset = 0;
             amount = cs.length();
         }
         if (amount <= 0) {
@@ -387,8 +406,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         }
         if (amount > size)
             ensureRight(amount - size);
-        for (int i = start, limit = start + amount; i < limit; i++) {
-            chars[i] = cs.charAt(from++);
+        for (int i = zero, limit = zero + amount; i < limit; i++) {
+            chars[i] = cs.charAt(offset++);
         }
         this.size = amount;
         // slower value = s.toCharArray(); size = value.length;
@@ -429,9 +448,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         this.hash = 0;
         this.size = amount;
         // copy is keeping the start
-        if (this.start + amount > chars.length)
-            chars = new char[this.start + amount];
-        System.arraycopy(a, begin, chars, this.start, amount);
+        if (this.zero + amount > chars.length)
+            chars = new char[this.zero + amount];
+        System.arraycopy(a, begin, chars, this.zero, amount);
         return this;
     }
 
@@ -449,7 +468,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
             this.chars = new char[dstLength];
         }
         System.arraycopy(chain.chars, 0, chars, 0, dstLength);
-        start = chain.start;
+        zero = chain.zero;
         size = chain.size;
         return this;
     }
@@ -466,7 +485,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         if (lim > size)
             return false;
         for (int i = 0; i < lim; i++) {
-            if (suffix.charAt(lim - 1 - i) != chars[start + size - 1 - i])
+            if (suffix.charAt(lim - 1 - i) != chars[zero + size - 1 - i])
                 return false;
         }
         return true;
@@ -482,15 +501,15 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     private boolean ensureLeft(int amount)
     {
         hash = 0; // reset hashcode on each write operation
-        this.left += amount; // keep memory of the left width
-        if (amount <= start)
+        if (amount <= zero) {
             return false; // enough space, do nothing
+        }
         final int newLength = Calcul.nextSquare(amount + size + 1);
         char[] a = new char[newLength];
         int newStart = amount + (newLength - size - amount) / 2;
-        System.arraycopy(chars, start, a, newStart, size);
+        System.arraycopy(chars, zero, a, newStart, size);
         this.chars = a;
-        this.start = newStart;
+        this.zero = newStart;
         return true;
     }
 
@@ -504,12 +523,16 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     private boolean ensureRight(int amount)
     {
         hash = 0; // reset hashcode on each write operation
-        if ((start + size + amount) <= chars.length)
+        if ((zero + size + amount) <= chars.length) {
             return false; // enough space, do nothing
-        final int newLength = Calcul.nextSquare(start + size + amount);
+        }
+        final int newLength = Calcul.nextSquare(zero + size + amount);
+        /*
         char[] a = new char[newLength];
         System.arraycopy(chars, 0, a, 0, chars.length);
         chars = a;
+        */
+        chars =  Arrays.copyOf(chars, newLength);
         return true;
     }
 
@@ -520,7 +543,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
             return true;
         char[] test;
         // limit content lookup
-        int offset = start;
+        int offset = zero;
         int lim = size;
         if (o instanceof Chain) {
             Chain oChain = (Chain) o;
@@ -530,7 +553,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
             if (hash != 0 && oChain.hash != 0 && hash != oChain.hash)
                 return false;
             test = oChain.chars;
-            int offset2 = oChain.start;
+            int offset2 = oChain.zero;
             for (int i = 0; i < lim; i++) {
                 if (chars[offset + i] != test[offset2 + i])
                     return false;
@@ -572,7 +595,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      */
     public char first()
     {
-        return chars[start];
+        return chars[zero];
     }
 
     /**
@@ -581,7 +604,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public Chain first(char c)
     {
         hash = 0;
-        chars[start] = c;
+        chars[zero] = c;
         return this;
     }
 
@@ -591,7 +614,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public Chain firstDel()
     {
         hash = 0;
-        start++;
+        zero++;
         size--;
         return this;
     }
@@ -605,8 +628,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         if (amount > size)
             throw new StringIndexOutOfBoundsException("amount=" + amount + " > size=" + size);
         size -= amount;
-        left -= amount;
-        start += amount;
+        zero += amount;
         return this;
     }
 
@@ -618,7 +640,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public Chain firstToUpper()
     {
         hash = 0;
-        chars[start] = Character.toUpperCase(chars[start]);
+        chars[zero] = Character.toUpperCase(chars[zero]);
         return this;
     }
 
@@ -628,7 +650,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public void getChars(final char[] dst)
     {
         // let error cry
-        System.arraycopy(this.chars, this.start, dst, 0, this.size);
+        System.arraycopy(this.chars, this.zero, dst, 0, this.size);
     }
 
     /**
@@ -643,7 +665,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     {
         if (srcBegin < 0 || srcEnd > this.size || srcEnd < srcBegin)
             throw new StringIndexOutOfBoundsException();
-        System.arraycopy(this.chars, this.start + srcBegin, dst, dstBegin, srcEnd - srcBegin);
+        System.arraycopy(this.chars, this.zero + srcBegin, dst, dstBegin, srcEnd - srcBegin);
     }
 
     /**
@@ -765,8 +787,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     {
         int h = hash;
         if (h == 0) {
-            int end = start + size;
-            for (int i = start; i < end; i++) {
+            int end = zero + size;
+            for (int i = zero; i < end; i++) {
                 h = 31 * h + chars[i];
             }
             hash = h;
@@ -774,6 +796,33 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         return h;
     }
 
+    public Chain insert(int dstOffset, CharSequence s)
+    {
+        return insert(dstOffset, s, 0, s.length());
+    }
+    
+    public Chain insert(int dstOffset, CharSequence s, int start, final int end)
+    {
+        if (s == null) {
+            return this;
+        }
+        int len = end - start;
+        if (len < 0) {
+            throw new NegativeArraySizeException("begin=" + start + " end=" + end + " begin > end, no chars to append");
+        }
+        int amount = len;
+        if (dstOffset >= size) {
+            amount += dstOffset - size;
+        }
+        ensureRight(amount);
+        shift(dstOffset, len);
+        write(dstOffset, s, start, end);
+        size += amount;
+        return this;
+    }
+
+    
+    
     /**
      * Is Chain with no chars ?
      * 
@@ -791,7 +840,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      */
     public boolean isFirstUpper()
     {
-        return Char.isUpperCase(chars[start]);
+        return Char.isUpperCase(chars[zero]);
     }
 
     /**
@@ -803,7 +852,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     {
         if (size == 0)
             return 0;
-        return chars[start + size - 1];
+        return chars[zero + size - 1];
     }
 
     /**
@@ -812,7 +861,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public Chain last(char c)
     {
         hash = 0;
-        chars[start + size - 1] = c;
+        chars[zero + size - 1] = c;
         return this;
     }
 
@@ -847,8 +896,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public Chain prepend(char c)
     {
         ensureLeft(1);
-        start--;
-        chars[start] = c;
+        zero--;
+        chars[zero] = c;
         size++;
         return this;
     }
@@ -866,7 +915,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         if (amount < 0)
             throw new NegativeArraySizeException("begin=" + begin + " end=" + end + " begin > end, no chars to append");
         ensureLeft(amount);
-        final int newStart = start - amount;
+        final int newStart = zero - amount;
         if (amount > 4) { // only use instanceof check series for longer CSQs, else simply iterate
             if (cs instanceof String) {
                 ((String) cs).getChars(begin, end, chars, newStart);
@@ -879,17 +928,17 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
                  * ((CharBuffer) cs).hasArray()) { final CharBuffer cb = (CharBuffer) cs;
                  */
             } else {
-                for (int i = newStart, limit = start; i < limit; i++) {
+                for (int i = newStart, limit = zero; i < limit; i++) {
                     chars[i] = cs.charAt(begin++);
                 }
             }
         } else {
-            for (int i = newStart, limit = start; i < limit; i++) {
+            for (int i = newStart, limit = zero; i < limit; i++) {
                 chars[i] = cs.charAt(begin++);
             }
         }
         size += amount;
-        start = newStart;
+        zero = newStart;
         return this;
     }
 
@@ -898,13 +947,13 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * 
      * @return the Chain object for chaining
      */
-    public Chain replace(final char from, final char to)
+    public Chain replace(final char oldChar, final char newChar)
     {
         hash = 0;
-        for (int i = start, limit = start + size; i < limit; i++) {
-            if (chars[i] != from)
+        for (int i = zero, limit = zero + size; i < limit; i++) {
+            if (chars[i] != oldChar)
                 continue;
-            chars[i] = to;
+            chars[i] = newChar;
         }
         return this;
     }
@@ -939,13 +988,25 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     {
         this.hash = 0;
         this.size = 0;
-        if (this.left > this.leftMax)
-            this.leftMax = this.left;
-        this.left = 0;
-        this.start = this.leftMax; // keep the left space already opened
-        // System.out.println("leftMax="+leftMax);
+        // keep start where it is, suppose quite correct for prepend
         return this;
     }
+    
+    /**
+     * Make place to insert len chars at offset
+     * @param offset
+     * @param len
+     */
+    private void shift(final int offset, int len) {
+        System.arraycopy(
+            chars, // src array
+            zero + offset, // src pos, offset, relative to start index (in case of prepend) 
+            chars, // copy to itself, size should be ensure before
+            (zero + offset + len), // destPos, copy after len to insert
+            (size - offset) // length,  amount to copy
+        );
+    }
+
 
     /**
      * Wrap the Chain on another char array without copy
@@ -956,7 +1017,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public Chain set(final char[] a, final int start, int len)
     {
         this.chars = a;
-        this.start = start;
+        this.zero = start;
         this.size = len;
         this.hash = 0;
         return this;
@@ -975,7 +1036,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         if ((index < 0) || (index >= size)) {
             throw new StringIndexOutOfBoundsException(index);
         }
-        chars[start + index] = c;
+        chars[zero + index] = c;
         return this;
     }
 
@@ -989,9 +1050,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     {
         // store generated Strings in alist
         ArrayList<String> list = new ArrayList<>();
-        int offset = start;
-        int to = start;
-        int max = start + size;
+        int offset = zero;
+        int to = zero;
+        int max = zero + size;
         char[] dat = chars;
         while (to <= max) {
             // not separator, continue
@@ -1014,7 +1075,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      */
     public int start()
     {
-        return start;
+        return zero;
     }
 
     /**
@@ -1029,7 +1090,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         if (lim > size)
             return false;
         for (int i = 0; i < lim; i++) {
-            if (prefix.charAt(i) != chars[start + i])
+            if (prefix.charAt(i) != chars[zero + i])
                 return false;
         }
         return true;
@@ -1051,7 +1112,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     {
         hash = 0;
         char c;
-        for (int i = start; i < size; i++) {
+        for (int i = zero; i < size; i++) {
             c = chars[i];
             if (!Char.isUpperCase(c))
                 continue;
@@ -1063,7 +1124,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     @Override
     public String toString()
     {
-        return new String(chars, start, size);
+        return new String(chars, zero, size);
     }
 
     /**
@@ -1096,16 +1157,18 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public Chain trim()
     {
         hash = 0;
-        int from = start;
+        int left = zero;
         char[] dat = chars;
-        int to = start + size;
-        while (from < to && dat[from] < ' ')
-            from++;
-        to--;
-        while (to > from && dat[to] < ' ')
-            to--;
-        start = from;
-        size = to - from + 1;
+        int right = zero + size;
+        while (left < right && dat[left] < ' ') {
+            left++;
+        }
+        zero = left;
+        right --;
+        while (right > left && dat[left] < ' ') {
+            right--;
+        }
+        size = right - left + 1;
         return this;
     }
 
@@ -1119,18 +1182,20 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public Chain trim(final String spaces)
     {
         hash = 0;
-        int from = start;
+        int left = zero;
         char[] dat = chars;
-        int to = start + size;
+        int right = zero + size;
         // possible optimisation on indexOf() ?
-        while (from < to && spaces.indexOf(dat[from]) > -1)
-            from++;
-        to--;
+        while (left < right && spaces.indexOf(dat[left]) > -1) {
+            left++;
+        }
+        zero = left;
+        right--;
         // test for escape chars ? "\""
-        while (to > from && spaces.indexOf(dat[to]) > -1)
-            to--;
-        start = from;
-        size = to - from + 1;
+        while (right > left && spaces.indexOf(dat[right]) > -1) {
+            right--;
+        }
+        size = right - left + 1;
         return this;
     }
 
@@ -1182,7 +1247,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
 
     public void write(Writer out) throws IOException
     {
-        for (int i = start, limit = this.size; i < limit; i++) {
+        for (int i = zero, limit = this.size; i < limit; i++) {
             if (chars[i] == '<')
                 out.append("&lt;");
             else if (chars[i] == '>')
@@ -1191,5 +1256,6 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
                 out.append(chars[i]);
         }
     }
+
 
 }

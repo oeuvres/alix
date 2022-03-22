@@ -124,7 +124,35 @@ public class Char
         }
 
     }
-
+    private static final String ASCII_C0 = 
+        "AAAAAAACEEEEIIII" +
+        "DNOOOOO\u00d7\u00d8UUUUYI\u00df" +
+        "aaaaaaaceeeeiiii" +
+        "\u00f0nooooo\u00f7\u00f8uuuuy\u00fey" +
+        "AaAaAaCcCcCcCcDd" +
+        "DdEeEeEeEeEeGgGg" +
+        "GgGgHhHhIiIiIiIi" +
+        "IiJjJjKkkLlLlLlL" +
+        "lLlNnNnNnnNnOoOo" +
+        "OoOoRrRrRrSsSsSs" +
+        "SsTtTtTtUuUuUuUu" +
+        "UuUuWwYyYZzZzZzF"
+    ;
+    private static final String ASCII_LOW_C0 = 
+        "aaaaaaæceeeeiiii" +
+        "ðnooooo×Øuuuuybß" +
+        "aaaaaaæceeeeiiii" +
+        "ðnooooo÷øuuuuyþy" +
+        "aaaaaaccccccccdd" +
+        "ddeeeeeeeeeegggg" +
+        "gggghhhhiiiiiiii" +
+        "iijjjjkkklllllll" +
+        "lllnnnnnnnnnoooo" +
+        "oooorrrrrrssssss" +
+        "ssttttttuuuuuuuu" +
+        "uuuuwwyyyzzzzzzf"
+    ;
+    
     /**
      * No constructor, only static methods.
      */
@@ -134,20 +162,19 @@ public class Char
     }
 
     /**
-     * Get the internal properties for a char.
+     * Is Numeric, like {@link Character#isDigit(char)}.
      */
-    public static short props(final char c)
+    public static boolean isDigit(final char c)
     {
-        return CHARS[c];
+        return (CHARS[c] & DIGIT) != 0;
     }
 
     /**
-     * Is a word character, letter, but also, '’-_ and some other tweaks for lexical
-     * parsing.
+     * Is the first short of a supplemental unicode codepoint.
      */
-    public static boolean isToken(final char c)
+    public static boolean isHighSurrogate(final char c)
     {
-        return (CHARS[c] & TOKEN) != 0;
+        return (CHARS[c] & HIGHSUR) != 0;
     }
 
     /**
@@ -167,22 +194,6 @@ public class Char
     }
 
     /**
-     * Is a Mathematic symbol.
-     */
-    public static boolean isMath(final char c)
-    {
-        return (CHARS[c] & MATH) != 0;
-    }
-
-    /**
-     * Is Numeric, like {@link Character#isDigit(char)}.
-     */
-    public static boolean isDigit(final char c)
-    {
-        return (CHARS[c] & DIGIT) != 0;
-    }
-
-    /**
      * Is a lower case letter, like {@link Character#isLowerCase(char)}.
      */
     public static boolean isLowerCase(final char c)
@@ -191,11 +202,19 @@ public class Char
     }
 
     /**
-     * Is an upper case letter, like {@link Character#isUpperCase(char)}.
+     * Is the second short of a supplemental unicode codepoint.
      */
-    public static boolean isUpperCase(final char c)
+    public static boolean isLowSurrogate(final char c)
     {
-        return (CHARS[c] & UPPERCASE) != 0;
+        return (CHARS[c] & LOWSUR) != 0;
+    }
+
+    /**
+     * Is a Mathematic symbol.
+     */
+    public static boolean isMath(final char c)
+    {
+        return (CHARS[c] & MATH) != 0;
     }
 
     /**
@@ -204,6 +223,14 @@ public class Char
     public static boolean isPunctuation(final char c)
     {
         return (CHARS[c] & PUNCTUATION) != 0;
+    }
+
+    /**
+     * Is punctuation or space (maybe a lexical token)
+     */
+    public static boolean isPunctuationOrSpace(final char c)
+    {
+        return (CHARS[c] & PUNCTUATION_OR_SPACE) != 0;
     }
 
     /**
@@ -233,27 +260,28 @@ public class Char
     }
 
     /**
-     * Is punctuation or space (maybe a lexical token)
+     * Is a word character, letter, but also, '’-_ and some other tweaks for lexical
+     * parsing.
      */
-    public static boolean isPunctuationOrSpace(final char c)
+    public static boolean isToken(final char c)
     {
-        return (CHARS[c] & PUNCTUATION_OR_SPACE) != 0;
+        return (CHARS[c] & TOKEN) != 0;
     }
 
     /**
-     * Is the first short of a supplemental unicode codepoint.
+     * Is an upper case letter, like {@link Character#isUpperCase(char)}.
      */
-    public static boolean isHighSurrogate(final char c)
+    public static boolean isUpperCase(final char c)
     {
-        return (CHARS[c] & HIGHSUR) != 0;
+        return (CHARS[c] & UPPERCASE) != 0;
     }
 
     /**
-     * Is the second short of a supplemental unicode codepoint.
+     * Get the internal properties for a char.
      */
-    public static boolean isLowSurrogate(final char c)
+    public static short props(final char c)
     {
-        return (CHARS[c] & LOWSUR) != 0;
+        return CHARS[c];
     }
 
     /**
@@ -264,16 +292,6 @@ public class Char
         if (!Char.isUpperCase(c))
             return c;
         return Character.toLowerCase(c);
-    }
-
-    /**
-     * Efficient upper casing (test if {@link #isLowerCase(char)} before).
-     */
-    public static char toUpper(char c)
-    {
-        if (!Char.isLowerCase(c))
-            return c;
-        return Character.toUpperCase(c);
     }
 
     /**
@@ -293,6 +311,75 @@ public class Char
         }
         // x6 new StringBuilder( s.toString().toLowerCase() )
         return s;
+    }
+    
+    /**
+     * Return a lower case version of String, keeping exactly same char size
+     * (will keep æ -> æ, Œ -> œ…)
+     * @param source
+     */
+    public static Chain toLowASCII(Chain chain) {
+        char c;
+        for (int i = 0, len = chain.length(); i < len; i++) {
+            c = chain.charAt(i);
+            if (c >= '\u00c0' && c <= '\u017f') {
+                chain.setCharAt(i, ASCII_LOW_C0.charAt((int) c - '\u00c0'));
+            }
+            // caps
+            else if (c >= '\u0041' && c <= '\u005A') {
+                chain.setCharAt(i, (char)(c + 32));
+            }
+        }
+        return chain;
+    }
+
+    /*
+    public static String toLowASCII(String source) {
+        char[] chars = source.toCharArray();
+        toLowASCII(chars, 0, source.length());
+        return new String(chars);
+    }
+    */
+
+    
+    /**
+     * Deligature 
+     * @param source
+     * @return
+     */
+    public static Chain deligat(final Chain source) {
+        for (int i = 0, len = source.length(); i < len; i++) {
+            char c = source.charAt(i);
+            switch(c) {
+                case 'Æ':
+                    source.setCharAt(i, 'A');
+                    source.insert(i+1, "E");
+                    break;
+                case 'æ':
+                    source.setCharAt(i, 'a');
+                    source.insert(i+1, "e");
+                    break;
+                case 'Œ':
+                    source.setCharAt(i, 'O');
+                    source.insert(i+1, "E");
+                    break;
+                case 'œ':
+                    source.setCharAt(i, 'o');
+                    source.insert(i+1, "e");
+                    break;
+            }
+        }
+        return source;
+    }
+
+    /**
+     * Efficient upper casing (test if {@link #isLowerCase(char)} before).
+     */
+    public static char toUpper(char c)
+    {
+        if (!Char.isLowerCase(c))
+            return c;
+        return Character.toUpperCase(c);
     }
 
     /**

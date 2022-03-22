@@ -362,19 +362,20 @@ public class FieldFacet
     public FormEnum results() throws IOException
     {
         FormEnum it = new FormEnum(this);
-        it.sorter(alpha);
         return it;
     }
 
     /**
-     * Number of documents by term
+     * Number of documents by term according to a filter.
      * @param filter
      * @return
      * @throws IOException
      */
     public FormEnum results(final BitSet filter) throws IOException
     {
-        if (filter == null) results();
+        if (filter == null) {
+            return results();
+        }
         FormEnum results = new FormEnum(this);
         results.formDocsHit = new int[maxForm];
         for (int docId = 0, max = this.docFormOccs.length; docId < max; docId++) {
@@ -388,52 +389,6 @@ public class FieldFacet
                 results.formDocsHit[facetId]++;
             }
         }
-        return results;
-    }
-    /**
-     * Crawl the index to find relevant documents according to a filter. Will cry if
-     * filter is null. Prefers {#iterator(int, Scorer)} if you want to iterate on
-     * all search for this facet;
-     * 
-     * @param limit
-     * @param filter
-     * @param scorer
-     * @return
-     * @throws IOException
-     */
-    public FormEnum results(final BitSet filter, final int limit) throws IOException
-    {
-        // build the ordered array of facetId
-        FormEnum results = new FormEnum(this);
-        results.formDocsHit = new int[maxForm];
-        results.formDocsPart = new int[maxForm];
-        final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
-        // loop on the docs of the filter
-        // loop on the reader leaves
-        for (LeafReaderContext ctx : reader.leaves()) { // loop on the reader leaves
-            int docBase = ctx.docBase;
-            LeafReader leaf = ctx.reader();
-            // get a doc iterator for the facet field
-            SortedSetDocValues docs4terms = leaf.getSortedSetDocValues(fieldName);
-            if (docs4terms == null)
-                continue;
-    
-            // loop on the docs with a facet
-            int docLeaf;
-            while ((docLeaf = docs4terms.nextDoc()) != NO_MORE_DOCS) {
-                int docId = docBase + docLeaf;
-                if (!filter.get(docId)) continue;// not in the filter do not count
-                final int docLen = docOccs[docId];
-                int[] facets = docFormOccs[docId]; // get the facets of this doc
-                // if (facets == null) continue; // should not arrive, wait and see
-                for (int i = 0, length = facets.length; i < length; i++) {
-                    int facetId = facets[i];
-                    results.formDocsHit[facetId]++;
-                    results.formOccsPart[facetId] += docLen;
-                }
-            }
-        }
-        results.sorter(alpha);
         return results;
     }
 

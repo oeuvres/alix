@@ -42,6 +42,7 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
+import javax.servlet.jsp.JspWriter;
 import javax.servlet.jsp.PageContext;
 
 /**
@@ -50,11 +51,13 @@ import javax.servlet.jsp.PageContext;
 public class JspTools
 {
     /** Jsp page context */
-    final PageContext page;
+    public final PageContext page;
     /** Original request */
-    final HttpServletRequest request;
+    public final HttpServletRequest request;
     /** Original response */
-    final HttpServletResponse response;
+    public final HttpServletResponse response;
+    /** Where to write */
+    public final JspWriter out;
     /** Cookie */
     HashMap<String, String> cookies;
     /** for cookies */
@@ -65,6 +68,7 @@ public class JspTools
     {
         this.request = (HttpServletRequest) page.getRequest();
         this.response = (HttpServletResponse) page.getResponse();
+        this.out = page.getOut();
         this.page = page;
     }
 
@@ -525,15 +529,15 @@ public class JspTools
     }
 
     /**
-     * Get a request parameter as a String form a list of value (first is default)
+     * Get a request parameter as a String from a list of value (first is default)
      */
-    public String getString(final String name, final List<String> list)
+    public String getStringList(final String name, final List<String> list, final String fallback)
     {
         String value = request.getParameter(name);
         if (list.contains(value)) {
             return value;
         }
-        return list.get(0);
+        return fallback;
     }
 
     

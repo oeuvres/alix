@@ -46,6 +46,7 @@ import org.apache.lucene.util.UnicodeUtil;
 import alix.fr.Tag;
 import alix.fr.Tag.TagFilter;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
+import alix.util.Chain;
 import alix.util.EdgeQueue;
 import alix.util.TopArray;
 import alix.web.OptionDistrib.Scorer;
@@ -309,6 +310,17 @@ public class FormEnum
         final int len = UnicodeUtil.UTF8toUTF16(bytes.bytes, bytes.offset, length, chars);
         term.setLength(len);
         return term;
+    }
+
+    /**
+     * Copy the current term in a reusable char array *
+     * 
+     * @return
+     */
+    public void form(Chain term)
+    {
+        formDic.get(formId, bytes);
+        term.reset().append(bytes);
     }
 
     /**

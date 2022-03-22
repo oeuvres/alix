@@ -43,62 +43,61 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
- * Collect found document as a set of docids in a bitSet.
- * Caching should be ensure by user.
+ * Collect found document as a set of docids in a bitSet. Caching should be
+ * ensure by user.
  * 
  * @author glorieux-f
  */
 public class CollectorBits extends SimpleCollector implements Collector
 {
-  /** The bitset (optimized for sparse or all bits) */
-  private BitSet bits;
-  /** Number of hits */
-  private int hits = 0;
-  /** Current context reader */
-  LeafReaderContext context;
-  /** Current docBase for the context */
-  int docBase;
-  
+    /** The bitset (optimized for sparse or all bits) */
+    private BitSet bits;
+    /** Number of hits */
+    private int hits = 0;
+    /** Current context reader */
+    LeafReaderContext context;
+    /** Current docBase for the context */
+    int docBase;
 
-  public CollectorBits(IndexSearcher searcher) 
-  {
-    bits = new FixedBitSet(searcher.getIndexReader().maxDoc());
-  }
-  
-  /**
-   * Get the document filter.
-   */
-  public BitSet bits()
-  {
-    return bits;
-  }
-  
-  /**
-   * Get current number of hits
-   */
-  public int hits()
-  {
-    return hits;
-  }
+    public CollectorBits(IndexSearcher searcher)
+    {
+        bits = new FixedBitSet(searcher.getIndexReader().maxDoc());
+    }
 
-  @Override
-  protected void doSetNextReader(LeafReaderContext context) throws IOException {
-    this.context = context;
-    this.docBase = context.docBase;
-  }
+    /**
+     * Get the document filter.
+     */
+    public BitSet bits()
+    {
+        return bits;
+    }
 
+    /**
+     * Get current number of hits
+     */
+    public int hits()
+    {
+        return hits;
+    }
 
-  @Override
-  public void collect(int docLeaf) throws IOException
-  {
-    bits.set(docBase + docLeaf);
-    hits++;
-  }
+    @Override
+    protected void doSetNextReader(LeafReaderContext context) throws IOException
+    {
+        this.context = context;
+        this.docBase = context.docBase;
+    }
 
-  @Override
-  public ScoreMode scoreMode()
-  {
-    return ScoreMode.COMPLETE_NO_SCORES;
-  }
-  
+    @Override
+    public void collect(int docLeaf) throws IOException
+    {
+        bits.set(docBase + docLeaf);
+        hits++;
+    }
+
+    @Override
+    public ScoreMode scoreMode()
+    {
+        return ScoreMode.COMPLETE_NO_SCORES;
+    }
+
 }

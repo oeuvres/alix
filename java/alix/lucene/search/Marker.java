@@ -45,101 +45,104 @@ import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 
 /**
- * A light hiliter using a Lucene analyzer and a compiled automaton,
- * designed for short texts (ex: show found words when searching in titles).
- * Supports wildcard search.
+ * A light hiliter using a Lucene analyzer and a compiled automaton, designed
+ * for short texts (ex: show found words when searching in titles). Supports
+ * wildcard search.
  */
 public class Marker
 {
-  /** The search String */
-  final String q;
-  /** The analyzer used for search string and text to parse */
-  final Analyzer analyzer;
-  /** Caching token stream ? */
-  /** Automaton */
-  final Automaton automaton;
-  /** */
-  final CharacterRunAutomaton tester;
-  
-  public Marker(Analyzer analyzer, String q) throws IOException
-  {
-    this.q = q;
-    this.analyzer = analyzer;
-    // loop on words according the Analyzer to build automatoc
-    TokenStream stream = analyzer.tokenStream("hilite", q);
-    CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
-    ArrayList<Automaton> cogs = new ArrayList<Automaton>();
-    stream.reset();
-    while (stream.incrementToken()) {
-      if (termAtt.length() < 1) continue;
-      cogs.add(automaton(termAtt.buffer(), 0, termAtt.length()));
-    }
-    stream.end();
-    stream.close();
-    automaton = Operations.union(cogs);
-    tester = new CharacterRunAutomaton(automaton);
-  }
-  
-  /**
-   * Build a char automaton (not for smileys and other 3 bytes)
-   * @param chars
-   * @param offset
-   * @param length
-   * @return
-   */
-  public static Automaton automaton(char[] chars, int offset, int length) {
-    ArrayList<Automaton> cogs = new ArrayList<Automaton>();
-    for (int i = offset; i < length; i++) {
-      char c = chars[i];
-      switch(c) {
-        case '*': 
-          cogs.add(Automata.makeAnyString());
-          break;
-        case '?':
-          cogs.add(Automata.makeAnyChar());
-          break;
-        case '\\': // escape ?
-          // last char, nothing to escape
-          if (i == (length + 1)) break;
-          i++;
-          c = chars[i];
-        default:
-          cogs.add(Automata.makeChar(c));
-      }
-    }
-    return Operations.concatenate(cogs);
-  }
+    /** The search String */
+    final String q;
+    /** The analyzer used for search string and text to parse */
+    final Analyzer analyzer;
+    /** Caching token stream ? */
+    /** Automaton */
+    final Automaton automaton;
+    /** */
+    final CharacterRunAutomaton tester;
 
-  
-  public String mark(String text) throws IOException
-  {
-    // reusable string reader ?
-    StringBuilder sb = new StringBuilder();
-    TokenStream stream = analyzer.tokenStream("hilite", text);
-    // get the CharTermAttribute from the TokenStream
-    CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
-    OffsetAttribute offsetAtt = stream.addAttribute(OffsetAttribute.class);
-    int off = 0;
-    stream.reset();
-    // print all tokens until stream is exhausted
-    while (stream.incrementToken()) {
-      if(!tester.run(termAtt.buffer(), 0, termAtt.length())) continue;
-      // should be a desired tem
-      final int start = offsetAtt.startOffset();
-      final int end = offsetAtt.endOffset();
-      sb.append(text.substring(off, start));
-      sb.append("<mark>");
-      sb.append(text.substring(start, end));
-      sb.append("</mark>");
-      off = end;
+    public Marker(Analyzer analyzer, String q) throws IOException
+    {
+        this.q = q;
+        this.analyzer = analyzer;
+        // loop on words according the Analyzer to build automatoc
+        TokenStream stream = analyzer.tokenStream("hilite", q);
+        CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
+        ArrayList<Automaton> cogs = new ArrayList<Automaton>();
+        stream.reset();
+        while (stream.incrementToken()) {
+            if (termAtt.length() < 1) {
+                continue;
+            }
+            cogs.add(automaton(termAtt.buffer(), 0, termAtt.length()));
+        }
+        stream.end();
+        stream.close();
+        automaton = Operations.union(cogs);
+        tester = new CharacterRunAutomaton(automaton);
     }
-    sb.append(text.substring(off));
-    stream.end();
-    stream.close();
-    return sb.toString();
-  }
 
-  
+    /**
+     * Build a char automaton (not for smileys and other 3 bytes)
+     * 
+     * @param chars
+     * @param offset
+     * @param length
+     * @return
+     */
+    public static Automaton automaton(char[] chars, int offset, int length)
+    {
+        ArrayList<Automaton> cogs = new ArrayList<Automaton>();
+        for (int i = offset; i < length; i++) {
+            char c = chars[i];
+            switch (c) {
+            case '*':
+                cogs.add(Automata.makeAnyString());
+                break;
+            case '?':
+                cogs.add(Automata.makeAnyChar());
+                break;
+            case '\\': // escape ?
+                // last char, nothing to escape
+                if (i == (length + 1))
+                    break;
+                i++;
+                c = chars[i];
+            default:
+                cogs.add(Automata.makeChar(c));
+            }
+        }
+        return Operations.concatenate(cogs);
+    }
 
+    public String mark(String text) throws IOException
+    {
+        // reusable string reader ?
+        StringBuilder sb = new StringBuilder();
+        TokenStream stream = analyzer.tokenStream("hilite", text);
+        // get the CharTermAttribute from the TokenStream
+        CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
+        OffsetAttribute offsetAtt = stream.addAttribute(OffsetAttribute.class);
+        int off = 0;
+        stream.reset();
+        // print all tokens until stream is exhausted
+        while (stream.incrementToken()) {
+            if (!tester.run(termAtt.buffer(), 0, termAtt.length())) {
+                continue;
+            }
+            // should be a desired tem
+            final int start = offsetAtt.startOffset();
+            final int end = offsetAtt.endOffset();
+            sb.append(text.substring(off, start));
+            sb.append("<mark>");
+            sb.append(text.substring(start, end));
+            sb.append("</mark>");
+            off = end;
+        }
+        sb.append(text.substring(off));
+        stream.end();
+        stream.close();
+        return sb.toString();
+    }
 
 }
