@@ -159,6 +159,7 @@ public class TestChain
         Chain chain = new Chain();
         for (String word : new String[] { "Œuvre", "poésie", "Lémæ" }) {
             chain.reset().append(word);
+            chain.prepend("  Œæ");
             System.out.print(chain);
             System.out.print(" -> " + Char.deligat(chain));
             System.out.println(" -> " + Char.toLowASCII(chain));

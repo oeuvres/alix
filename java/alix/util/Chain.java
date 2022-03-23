@@ -68,12 +68,6 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     private int zero = 0;
     /** Cache the hash code for the string */
     private int hash = 0;
-    /** Count of chars taken on the left, reset by {@link #reset()}. */
-    // private int left = 0;
-    /**
-     * Memory of the maximum left size, used for reset {@link #reset()}
-     */
-    private int leftMax = 0;
 
     /**
      * Empty constructor, value will be set later
@@ -663,8 +657,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      */
     public void getChars(final int srcBegin, final int srcEnd, final char[] dst, final int dstBegin)
     {
-        if (srcBegin < 0 || srcEnd > this.size || srcEnd < srcBegin)
+        if (srcBegin < 0 || srcEnd > this.size || srcEnd < srcBegin) {
             throw new StringIndexOutOfBoundsException();
+        }
         System.arraycopy(this.chars, this.zero + srcBegin, dst, dstBegin, srcEnd - srcBegin);
     }
 
@@ -881,8 +876,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public Chain lastDel(final int amount)
     {
         hash = 0;
-        if (amount > size)
+        if (amount > size) {
             throw new StringIndexOutOfBoundsException("amount=" + amount + " > size=" + size);
+        }
         size -= amount;
         return this;
     }
@@ -1090,8 +1086,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         if (lim > size)
             return false;
         for (int i = 0; i < lim; i++) {
-            if (prefix.charAt(i) != chars[zero + i])
+            if (prefix.charAt(i) != chars[zero + i]) {
                 return false;
+            }
         }
         return true;
     }
@@ -1099,8 +1096,16 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     @Override
     public CharSequence subSequence(int start, int end)
     {
-        System.out.println("Chain.subSequence() TODO Auto-generated method stub");
-        return null;
+        if (end < start) {
+            throw new StringIndexOutOfBoundsException("end=" + end + " < start=" + start);
+        }
+        if (start >= size) {
+            throw new StringIndexOutOfBoundsException("start=" + start + " >= size=" + size);
+        }
+        if (end > size) {
+            throw new StringIndexOutOfBoundsException("end=" + end + " > size=" + size);
+        }
+        return new String(chars, zero + start, zero + end - start);
     }
 
     /**
@@ -1211,7 +1216,6 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * (and can result in an ArrayOutOfBoundsException if invalid UTF-8 is passed).
      * Explicit checks for valid UTF-8 are not performed.
      */
-    // TODO: broken if chars.offset != 0
     public static int UTF8toUTF16(byte[] utf8, int offset, int length, char[] out, final int out_offset)
     {
         int out_pos = out_offset;

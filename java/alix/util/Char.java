@@ -124,6 +124,7 @@ public class Char
         }
 
     }
+    /*
     private static final String ASCII_C0 = 
         "AAAAAAACEEEEIIII" +
         "DNOOOOO\u00d7\u00d8UUUUYI\u00df" +
@@ -137,7 +138,7 @@ public class Char
         "OoOoRrRrRrSsSsSs" +
         "SsTtTtTtUuUuUuUu" +
         "UuUuWwYyYZzZzZzF"
-    ;
+    ; */
     private static final String ASCII_LOW_C0 = 
         "aaaaaaæceeeeiiii" +
         "ðnooooo×Øuuuuybß" +
@@ -348,7 +349,7 @@ public class Char
      * @return
      */
     public static Chain deligat(final Chain source) {
-        for (int i = 0, len = source.length(); i < len; i++) {
+        for (int i = 0; i < source.length(); i++) { // length dynamic
             char c = source.charAt(i);
             switch(c) {
                 case 'Æ':
