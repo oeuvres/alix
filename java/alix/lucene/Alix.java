@@ -632,8 +632,9 @@ public class Alix
     static public Query query(final String field, final String q, final Analyzer analyzer, final Occur occur)
             throws IOException
     {
-        if (q == null || "".equals(q.trim()))
+        if (q == null || "".equals(q.trim())) {
             return null;
+        }
         // float[] boosts = { 2.0f, 1.5f, 1.0f, 0.7f, 0.5f };
         // int boostLength = boosts.length;
         // float boostDefault = boosts[boostLength - 1];

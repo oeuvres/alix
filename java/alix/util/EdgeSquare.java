@@ -44,28 +44,50 @@ public class EdgeSquare implements Iterable<Edge>
 {
     /** The edges */
     protected final int[] data;
-    /** Node counter */
-    protected final int[] nodesCount;
     /** A set of values */
     protected final int[] words;
     /** Size of a side */
     protected final int nodeLen;
     /** Directed or not */
     protected final boolean directed;
+    /** Global population of occurrences for score calculation */
+    protected long N;
+    /** Node counter for score calculation */
+    protected long[] counts;
 
     /**
-     * Build a square matrix of ints.
-     * @param words A set of ints nodeId->nodeValue
+     * Build a square matrix of ints. Words should absolutely be an ordered array of unique ints
+     * @param words An ordered set of ints nodeId->nodeValue
      * @param directed
      */
     public EdgeSquare(final int[] words, final boolean directed)
     {
         this.directed = directed;
-        Arrays.sort(words);
         this.words = words;
         this.nodeLen = words.length;
-        this.nodesCount = new int[nodeLen];
         this.data = new int[nodeLen*nodeLen];
+    }
+
+    /**
+     * Expert, set a global population to calculate score
+     * @param N
+     * @return
+     */
+    protected EdgeSquare N(final long N)
+    {
+        this.N = N;
+        return this;
+    }
+
+    /**
+     * Expert, set counts per word for score calculation
+     * @param counts
+     * @return
+     */
+    protected EdgeSquare counts(final long[] counts)
+    {
+        this.counts = counts;
+        return this;
     }
 
     /**
@@ -83,21 +105,27 @@ public class EdgeSquare implements Iterable<Edge>
             return target * nodeLen + source;
         }
     }
-    
+
+    /**
+     * Get source by index
+     * @param index
+     * @return
+     */
+    @SuppressWarnings("unused")
     private int source(final int index)
     {
-        if (directed) {
-            return index / nodeLen;
-        }
-        return Math.min(index / nodeLen, index % nodeLen);
+        return index / nodeLen;
     }
 
+    /**
+     * Get target by index
+     * @param index
+     * @return
+     */
+    @SuppressWarnings("unused")
     private int target(final int index)
     {
-        if (directed) {
-            return index % nodeLen;
-        }
-        return Math.max(index / nodeLen, index % nodeLen);
+        return index % nodeLen;
     }
 
     /**
@@ -140,104 +168,141 @@ public class EdgeSquare implements Iterable<Edge>
     }
 
 
-    class EdgeIt implements Iterator<Edge> 
+    public class EdgeIt implements Iterator<Edge> 
     {
         /** Count of row and cols */
         private final int nodeLen;
         /** Copy of the edges data, will be destroy to avoid duplicates edges when looping by nodes */
         private final int[] data;
-        /** Population */
-        private int N = 0;
-        /** Count of nodes visited, used for scoring edges */
-        private int[] nodesCount;
         /** Sorted edges */
-        private IdScore[][] table;
+        private Edge[][] table;
         /** rolling row */
         private int line = 0;
-        /** Current column */
+        /** Current column for each line */
         private final int[] cols;
-        /** Total edges to exhaust */
-        private int edgeLen;
+        /** Prepare a next to serve */
+        private Edge next;
 
+        /**
+         * This iterator will produce a very specific order
+         * among edges to limit orphans
+         */
         EdgeIt(final int[] data)
         {
             // take a copy of data
             this.data = Arrays.copyOf(data, data.length);
             nodeLen = (int)Math.sqrt(data.length);
-            this.nodesCount = new int[nodeLen];
             // total edges to exhaust
+            /*
             if (directed) { // directed, square
                 this.edgeLen = nodeLen * nodeLen;
             }
-            else { // not directed, triangle (with selfish)
-                this.edgeLen = nodeLen * (nodeLen + 1) / 2;
+            else { // not directed, triangle (without selfish)
+                this.edgeLen = nodeLen * (nodeLen - 1) / 2;
             }
-            table = new IdScore[nodeLen][nodeLen];
-            // nodes count in edges, will be used for scoring
-            for (int source = 0; source < nodeLen; source++) {
-                for (int target = 0; target < nodeLen; target++) {
-                    final int index = index(source, target);
-                    nodesCount[source] += data[index];
-                    N += data[index];
+            */
+            cols = new int[nodeLen];
+            // loop on data and prepare variables to calculate a score by edge
+            table = new Edge[nodeLen][nodeLen];
+            
+            // context counts has not been set outside, calculate with what we have
+            if (counts == null) {
+                counts = new long[nodeLen];
+                N = 0;
+                for (int index = 0, len = data.length; index < len; index++) {
+                    final int source = source(index);
+                    final int target = target(index);
+                    if (source == target) continue; // do not count selfish
+                    counts[source] += data[index];
+                    counts[target] += data[index];
+                    N += data[index] + data[index]; // 2 events
+                    
                 }
             }
+
             // score edges and sort them by node
+            // remember, edges replicated for non directed
             for (int source = 0; source < nodeLen; source++) {
                 for (int target = 0; target < nodeLen; target++) {
                     final int index = index(source, target);
-                    final int edgeCount = data[index];
+                    int edgeCount = data[index];
+                    if (source == target) {
+                        edgeCount = 0; // do not count selfish, may produce orphans
+                    }
                     double score;
                     if (edgeCount == 0) {
-                        score = 0;
+                        score = -Double.MAX_VALUE;
                     }
                     else {
                         int ab = edgeCount;
-                        int a = nodesCount[source];
-                        int b = nodesCount[target];
+                        long a = counts[source];
+                        long b = counts[target];
                         score = OptionMI.g.score(ab, a, b, N);
+                        // score = edgeCount;
                         // big center
                         // score = (double)edgeCount; // centralize
                         // no sense
                         // score = ((double)nodesCount[source]/edgeCount + nodesCount[target]/(double)edgeCount) / 2;
                         
                     }
-                    table[source][target] = new IdScore(index, score);
+                    table[source][target] = new Edge(
+                        // should restore initial codes
+                        words[source],
+                        words[target],
+                        index
+                    ).count(edgeCount).score(score);
                 }
                 Arrays.sort(table[source]);
             }
-            cols = new int[nodeLen];
+        }
+        
+        /**
+         * Check if a node has relations
+         */
+        public Edge top(final int word)
+        {
+            final int line = Arrays.binarySearch(words, word);
+            if (line < 0) { // uknown word
+                return null;
+            }
+            return table[line][0];
         }
 
         @Override
         public boolean hasNext()
         {
-            return (edgeLen > 0);
+            next = getNext();
+            if (next == null) return false;
+            return true;
         }
 
         @Override
+        public Edge next() {
+            Edge copy = next;
+            // pb in call of hasNext()
+            if (copy == null) copy = getNext();
+            next = null;
+            return copy;
+        }
+        
         /**
-         * Very special order in matrix
+         * Search for next item in a very special order
          */
-        public Edge next()
+        public Edge getNext()
         {
             // send an exception here ?
             if (line < 0) {
                 return null;
             }
             while (true) {
-                final IdScore item = table[line][cols[line]];
-                final int index = item.id();
-                final int count = data[index];
+                final Edge edge = table[line][cols[line]];
                 // if value OK, send it
-                if (count >= 0) {
-                    data[index] = -1; // do not replay this edge
-                    edgeLen--; // 
+                if (data[edge.index] > 0) {
+                    // this should be OK for non directed
+                    data[edge.index] = -1; // do not replay this edge
                     cols[line]++; // prepare next col
                     line = nextLine(line);
-                    final int source = source(index);
-                    final int target = target(index);
-                    // here, send count or score ?
-                    return new Edge(words[source], words[target], item.score());
+                    return edge;
                 }
                 // try next cell in same line
                 cols[line]++;

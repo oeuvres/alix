@@ -8,7 +8,7 @@ public class TestEdgeSquare
 {
     public static void go()
     {
-        final int[] words = new int[]{10, 20, 30, 40, 50};
+        final int[] words = new int[]{10, 20, 30, 40, 50, 60, 70, 80, 90, 11};
         EdgeSquare square = new EdgeSquare(words, false);
         final int nodeLen = words.length;
 
@@ -19,6 +19,7 @@ public class TestEdgeSquare
         }
         for (Edge edge: square) {
             System.out.println(edge);
+            if (edge == null) break;
         }
     }
     

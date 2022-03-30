@@ -161,6 +161,203 @@ public class FieldRail
     }
     
     /**
+     * Build a cooccurrence freqList in formId order, attached to a FormEnum object.
+     * Returns the count of occurences found.
+     */
+    public long coocs(int[] pivotIds, FormEnum results) throws IOException
+    {
+        // for each index leave
+        //     collect "postings" for each term
+        //     for each doc
+        //         get position of term found
+        if (pivotIds == null || pivotIds.length == 0) {
+            throw new IllegalArgumentException("Search term(s) missing, FormEnum.search should be not null");
+        }
+        final int left = results.left;
+        final int right = results.right;
+        if (left < 0 || right < 0 || (left + right) < 1) {
+            throw new IllegalArgumentException("FormEnum.left=" + left + " FormEnum.right=" + right
+                    + " not enough context to extract co-occurrences.");
+        }
+        // filter documents
+        final boolean hasFilter = (results.filter != null);
+        
+        // filter co-occs by tag
+        boolean hasTags = (results.tags != null);
+        // filter co-occs stops
+        boolean noStop = (results.tags != null && results.tags.noStop());
+        // collect “locutions” (words like “parce que”)
+        boolean locs = (results.tags != null && results.tags.locutions());
+        // collect “edges”   A B [O] A C => AOx2, ABx2, ACx2, BOx1, COx1, BCx1. 
+        boolean hasEdges = (results.edges != null);
+    
+        // for future scoring, formOccs is global or relative to filter ? relative seems bad
+        // create or reuse arrays in result, 
+        if (results.formOccsFreq == null || results.formOccsFreq.length != maxForm) {
+            results.formOccsFreq = new long[maxForm]; // by term, occurrences counts
+        }
+        else {
+            Arrays.fill(results.formOccsFreq, 0);
+        }
+        // create or reuse hits
+        if (results.formDocsHit == null || results.formDocsHit.length != maxForm) {
+            results.formDocsHit = new int[maxForm]; // by term, document counts
+        }
+        else {
+            Arrays.fill(results.formDocsHit, 0);
+        }
+    
+        // this vector has been useful, but meaning has been forgotten
+        boolean[] formSeen = new boolean[maxForm];
+        long found = 0;
+        final int END = DocIdSetIterator.NO_MORE_DOCS;
+        // collector of scores
+        // int dicSize = this.hashDic.size();
+        
+    
+        // for each doc, a bit set is used to record the relevant positions
+        // this will avoid counting interferences when search occurrences are close
+        java.util.BitSet contexts = new java.util.BitSet();
+        java.util.BitSet pivots = new java.util.BitSet();
+        IntBuffer bufInt = channelMap.rewind().asIntBuffer();
+        // loop on leafs
+        DirectoryReader reader = alix.reader();
+        for (LeafReaderContext context : reader.leaves()) {
+            final int docBase = context.docBase;
+            LeafReader leaf = context.reader();
+            // collect all “postings” for the requested search
+            ArrayList<PostingsEnum> termDocs = new ArrayList<PostingsEnum>();
+            for (int pivotId : pivotIds) {
+                String form = ftext.form(pivotId);
+                if (form == null || "".equals(form)) {
+                    continue;
+                }
+                Term term = new Term(fname, form); // do not try to reuse term, false optimisation
+                PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS | PostingsEnum.POSITIONS);
+                if (postings == null) {
+                    continue;
+                }
+                final int docPost = postings.nextDoc(); // advance cursor to the first doc
+                if (docPost == END) {
+                    continue;
+                }
+                termDocs.add(postings);
+            }
+            // loop on all documents for this leaf
+            final int max = leaf.maxDoc();
+            final Bits liveDocs = leaf.getLiveDocs();
+            final boolean hasLive = (liveDocs != null);
+            for (int docLeaf = 0; docLeaf < max; docLeaf++) {
+                final int docId = docBase + docLeaf;
+                final int docLen = limInt[docId];
+                if (hasFilter && !results.filter.get(docId)) {
+                    continue; // document not in the document filter
+                }
+                if (hasLive && !liveDocs.get(docLeaf)) {
+                    continue; // deleted doc
+                }
+                // reset the positions of the rail
+                contexts.clear();
+                pivots.clear();
+                boolean hit = false;
+                // loop on each term iterator to get positions for this doc
+                for (PostingsEnum postings : termDocs) {
+                    int docPost = postings.docID(); // get current doc for these term postings
+                    if (docPost == docLeaf) {
+                        // OK
+                    }
+                    else if (docPost == END) {
+                        continue; // end of postings, try next term
+                    }
+                    else if (docPost > docLeaf) {
+                        continue; // postings ahead of current doc, try next term
+                    }
+                    else if (docPost < docLeaf) {
+                        docPost = postings.advance(docLeaf); // try to advance postings to this doc
+                        if (docPost > docLeaf)
+                            continue; // next doc for this term is ahead current term
+                    }
+                    if (docPost != docLeaf) {
+                        // ? bug ?
+                        System.out.println("BUG cooc, docLeaf=" + docLeaf + " docPost=" + docPost); 
+                    }
+                    int freq = postings.freq();
+                    if (freq == 0) {
+                        // bug ?
+                        System.out.println("BUG cooc, term=" + postings.toString() + " docId=" + docId + " freq=0");
+                    }
+    
+                    hit = true;
+                    // term found in this doc, search each occurrence
+                    for (; freq > 0; freq--) {
+                        final int position = postings.nextPosition();
+                        final int fromIndex = Math.max(0, position - left);
+                        final int toIndex = Math.min(docLen, position + right + 1); // be careful of end Doc
+                        contexts.set(fromIndex, toIndex);
+                        pivots.set(position);
+                        found++;
+                    }
+                }
+                if (!hit) {
+                    continue;
+                }
+                // count all freqs with pivot
+                // partOccs += contexts.cardinality(); // no, do not count holes
+                // TODISCUSS substract search from contexts
+                // contexts.andNot(search);
+                // load the document rail and loop on the contexts to count co-occurrents
+                final int posDoc = posInt[docId];
+                int pos = contexts.nextSetBit(0);
+                int lastpos = 0;
+                Arrays.fill(formSeen, false);
+                while (pos >= 0) {
+                    int formId = bufInt.get(posDoc + pos);
+                    boolean isPivot = pivots.get(pos);
+                    pos = contexts.nextSetBit(pos + 1);
+                    // gap, another context, reset coocs cluster
+                    if (hasEdges && pos > lastpos + 1) {
+                        results.edges.declust();
+                    }
+                    lastpos = pos;
+                    // Check words to count
+                    if (formId == 0) { 
+                        continue;
+                    }
+                    // keep pivots
+                    else if (isPivot) {
+                        
+                    }
+                    else if (locs && !ftext.formLoc.get(formId)) {
+                        continue;
+                    }
+                    else if (noStop && ftext.isStop(formId)) {
+                        continue;
+                    }
+                    // filter coocs by tag
+                    else if (hasTags && !results.tags.accept(ftext.formTag[formId])) {
+                        continue;
+                    }
+                    
+                    if (hasEdges) {
+                        // threshold ?
+                        results.edges.clust(formId);
+                    }
+                    
+                    
+                    results.occsPart++;
+                    results.formOccsFreq[formId]++;
+                    // has been useful for a scoring algorithm
+                    if (!formSeen[formId]) {
+                        results.formDocsHit[formId]++;
+                        formSeen[formId] = true;
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
+    /**
      * With a set of int formIds, run accross full or part of rails, to collect co-occs
      */
     public EdgeSquare edges(final int[] formIds, final int distance, final BitSet filter)
@@ -177,6 +374,9 @@ public class FieldRail
         
         if (filter != null) {
             for (int docId = filter.nextSetBit(0); docId !=  DocIdSetIterator.NO_MORE_DOCS; docId = filter.nextSetBit(docId + 1)) {
+                if (limInt[docId] == 0) {
+                    continue; // deleted or with no value for this field
+                }
                 span.clear();
                 bufInt.position(posInt[docId]);
                 for (int position = 0, max = limInt[docId]; position < max; position++) {
@@ -201,13 +401,23 @@ public class FieldRail
         return span.edges();
     }
     
-    
     /**
-     * Get edges from Coocs
-     * @throws Exception 
+     * Get edges between a predefined set of words around pivots words. Its a not so bas idea that 
+     * pivot
+     * @param pivotIds A set of pivots to search around
+     * @param left Left size of context
+     * @param right Right size of context
+     * @param nodeIds A set of ids to search in the contexts
+     * @param filter
+     * @return
+     * @throws Exception
      */
     public EdgeSquare edges(final int[] pivotIds, final int left, final int right, int[] nodeIds, final BitSet filter) throws Exception
     {
+        // normalize node ids (sort, uniq)
+        
+        
+        // first, normalize 
         EdgeSquare matrix = new EdgeSquare(nodeIds, false);
         IntList span = new IntList();
         Arrays.sort(nodeIds);
@@ -293,206 +503,6 @@ public class FieldRail
         }
         return matrix;
     }
-
-    /**
-     * Build a cooccurrence freqList in formId order, attached to a FormEnum object.
-     * Returns the count of occurences found.
-     */
-    public long coocs(int[] pivotIds, FormEnum results) throws IOException
-    {
-        // for each index leave
-        //     collect "postings" for each term
-        //     for each doc
-        //         get position of term found
-        if (pivotIds == null || pivotIds.length == 0) {
-            throw new IllegalArgumentException("Search term(s) missing, FormEnum.search should be not null");
-        }
-        final int left = results.left;
-        final int right = results.right;
-        if (left < 0 || right < 0 || (left + right) < 1) {
-            throw new IllegalArgumentException("FormEnum.left=" + left + " FormEnum.right=" + right
-                    + " not enough context to extract co-occurrences.");
-        }
-        // filter documents
-        final boolean hasFilter = (results.filter != null);
-        
-        // filter co-occs by tag
-        boolean hasTags = (results.tags != null);
-        // filter co-occs stops
-        boolean noStop = (results.tags != null && results.tags.noStop());
-        // collect “locutions” (words like “parce que”)
-        boolean locs = (results.tags != null && results.tags.locutions());
-        // collect “edges”   A B [O] A C => AOx2, ABx2, ACx2, BOx1, COx1, BCx1. 
-        boolean hasEdges = (results.edges != null);
-
-        // for future scoring, formOccs is global or relative to filter ? relative seems bad
-        // create or reuse arrays in result, 
-        if (results.formOccsFreq == null || results.formOccsFreq.length != maxForm) {
-            results.formOccsFreq = new long[maxForm]; // by term, occurrences counts
-        }
-        else {
-            Arrays.fill(results.formOccsFreq, 0);
-        }
-        // create or reuse hits
-        if (results.formDocsHit == null || results.formDocsHit.length != maxForm) {
-            results.formDocsHit = new int[maxForm]; // by term, document counts
-        }
-        else {
-            Arrays.fill(results.formDocsHit, 0);
-        }
-
-        // this vector has been useful, but meaning has been forgotten
-        boolean[] formSeen = new boolean[maxForm];
-        long found = 0;
-        final int END = DocIdSetIterator.NO_MORE_DOCS;
-        // collector of scores
-        // int dicSize = this.hashDic.size();
-        
-
-        // for each doc, a bit set is used to record the relevant positions
-        // this will avoid counting interferences when search occurrences are close
-        java.util.BitSet contexts = new java.util.BitSet();
-        java.util.BitSet pivots = new java.util.BitSet();
-        IntBuffer bufInt = channelMap.rewind().asIntBuffer();
-        // loop on leafs
-        DirectoryReader reader = alix.reader();
-        for (LeafReaderContext context : reader.leaves()) {
-            final int docBase = context.docBase;
-            LeafReader leaf = context.reader();
-            // collect all “postings” for the requested search
-            ArrayList<PostingsEnum> termDocs = new ArrayList<PostingsEnum>();
-            for (int pivotId : pivotIds) {
-                String form = ftext.form(pivotId);
-                if (form == null || "".equals(form)) {
-                    continue;
-                }
-                Term term = new Term(fname, form); // do not try to reuse term, false optimisation
-                PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS | PostingsEnum.POSITIONS);
-                if (postings == null) {
-                    continue;
-                }
-                final int docPost = postings.nextDoc(); // advance cursor to the first doc
-                if (docPost == END) {
-                    continue;
-                }
-                termDocs.add(postings);
-            }
-            // loop on all documents for this leaf
-            final int max = leaf.maxDoc();
-            final Bits liveDocs = leaf.getLiveDocs();
-            final boolean hasLive = (liveDocs != null);
-            for (int docLeaf = 0; docLeaf < max; docLeaf++) {
-                final int docId = docBase + docLeaf;
-                final int docLen = limInt[docId];
-                if (hasFilter && !results.filter.get(docId)) {
-                    continue; // document not in the document filter
-                }
-                if (hasLive && !liveDocs.get(docLeaf)) {
-                    continue; // deleted doc
-                }
-                // reset the positions of the rail
-                contexts.clear();
-                pivots.clear();
-                boolean hit = false;
-                // loop on each term iterator to get positions for this doc
-                for (PostingsEnum postings : termDocs) {
-                    int docPost = postings.docID(); // get current doc for these term postings
-                    if (docPost == docLeaf) {
-                        // OK
-                    }
-                    else if (docPost == END) {
-                        continue; // end of postings, try next term
-                    }
-                    else if (docPost > docLeaf) {
-                        continue; // postings ahead of current doc, try next term
-                    }
-                    else if (docPost < docLeaf) {
-                        docPost = postings.advance(docLeaf); // try to advance postings to this doc
-                        if (docPost > docLeaf)
-                            continue; // next doc for this term is ahead current term
-                    }
-                    if (docPost != docLeaf) {
-                        // ? bug ?
-                        System.out.println("BUG cooc, docLeaf=" + docLeaf + " docPost=" + docPost); 
-                    }
-                    int freq = postings.freq();
-                    if (freq == 0) {
-                        // bug ?
-                        System.out.println("BUG cooc, term=" + postings.toString() + " docId=" + docId + " freq=0");
-                    }
-
-                    hit = true;
-                    // term found in this doc, search each occurrence
-                    for (; freq > 0; freq--) {
-                        final int position = postings.nextPosition();
-                        final int fromIndex = Math.max(0, position - left);
-                        final int toIndex = Math.min(docLen, position + right + 1); // be careful of end Doc
-                        contexts.set(fromIndex, toIndex);
-                        pivots.set(position);
-                        found++;
-                    }
-                }
-                if (!hit) {
-                    continue;
-                }
-                // count all freqs with pivot
-                // partOccs += contexts.cardinality(); // no, do not count holes
-                // TODISCUSS substract search from contexts
-                // contexts.andNot(search);
-                // load the document rail and loop on the contexts to count co-occurrents
-                final int posDoc = posInt[docId];
-                int pos = contexts.nextSetBit(0);
-                int lastpos = 0;
-                Arrays.fill(formSeen, false);
-                while (pos >= 0) {
-                    int formId = bufInt.get(posDoc + pos);
-                    boolean isPivot = pivots.get(pos);
-                    pos = contexts.nextSetBit(pos + 1);
-                    // gap, another context, reset coocs cluster
-                    if (hasEdges && pos > lastpos + 1) {
-                        results.edges.declust();
-                    }
-                    lastpos = pos;
-                    // Check words to count
-                    if (formId == 0) { 
-                        continue;
-                    }
-                    // keep pivots
-                    else if (isPivot) {
-                        
-                    }
-                    else if (locs && !ftext.formLoc.get(formId)) {
-                        continue;
-                    }
-                    else if (noStop && ftext.isStop(formId)) {
-                        continue;
-                    }
-                    // filter coocs by tag
-                    else if (hasTags && !results.tags.accept(ftext.formTag[formId])) {
-                        continue;
-                    }
-                    
-                    if (hasEdges) {
-                        // threshold ?
-                        results.edges.clust(formId);
-                    }
-                    
-                    
-                    results.occsPart++;
-                    results.formOccsFreq[formId]++;
-                    // has been useful for a scoring algorithm
-                    if (!formSeen[formId]) {
-                        results.formDocsHit[formId]++;
-                        formSeen[formId] = true;
-                    }
-                }
-            }
-        }
-        return found;
-    }
-    
-
-    
 
     /**
      * Loop on the rail to find expression (2 plain words with possible stop words

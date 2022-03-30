@@ -301,7 +301,7 @@ public class IntList
     }
 
     /**
-     * Return an int array of unique values from this list
+     * Return a sorted int array of unique values from this list
      */
     public int[] uniq()
     {
@@ -310,6 +310,7 @@ public class IntList
         Arrays.sort(work);
         int destSize = 1;
         int last = work[0];
+        // clever algo, copying forward values next to the last one
         for (int i = destSize; i < size; i++) {
             if (work[i] == last)
                 continue;

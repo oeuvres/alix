@@ -323,6 +323,9 @@ public class FieldFacet
     public String form(final int facetId)
     {
         BytesRef bytes = new BytesRef();
+        if (facetId < 0 || facetId >= maxForm) {
+            return null;
+        }
         formDic.get(facetId, bytes);
         return bytes.utf8ToString();
     }

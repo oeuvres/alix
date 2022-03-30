@@ -74,8 +74,6 @@ public enum Tag
     // 2x, substantifs
     SUB(0x20, "Substantif", "Arbre, bonheur… (“Nom commun“, espèce).") {
     },
-    ADJ(0x21, "Adjectif", "Adjectif, en emploi qualificatif ou attribut.") {
-    },
     /*
      * SUBm(0x21, "Substantif masculin", "(futur)") { }, SUBf(0x22,
      * "Substantif féminin", "(futur)") { },
@@ -85,31 +83,34 @@ public enum Tag
     SUBplace(0x29, "Adressage", "Faubourg, rue, hôtel… (introduit des noms de lieux).") {
     },
 
+    ADJ(0x30, "Adjectif", "Adjectif, en emploi qualificatif ou attribut.") {
+    },
+
     // 3x, entités nommées
-    NAME(0x30, "Nom propre",
+    NAME(0x40, "Nom propre",
             "Kala Matah, Taj Mah de Groüpt… (nom propre inféré de la typographie, inconnu des dictionnaires).") {
     },
-    NAMEpers(0x31, "Personne",
+    NAMEpers(0x41, "Personne",
             "Victor Hugo, monsieur A… (Nom de de personne reconnu par dictionnaire ou inféré d’une titulature).") {
     },
-    NAMEpersm(0x32, "Prénom m.", "Charles, Jean… (prénom masculin non ambigu, dictionnaire).") {
+    NAMEpersm(0x42, "Prénom m.", "Charles, Jean… (prénom masculin non ambigu, dictionnaire).") {
     },
-    NAMEpersf(0x33, "Prénom f.", "Marie, Jeanne… (prénom féminin non ambigu, dictionnaire).") {
+    NAMEpersf(0x43, "Prénom f.", "Marie, Jeanne… (prénom féminin non ambigu, dictionnaire).") {
     },
-    NAMEplace(0x34, "Lieu", "Paris, Allemagne… (nom de lieu, dictionnaire).") {
+    NAMEplace(0x44, "Lieu", "Paris, Allemagne… (nom de lieu, dictionnaire).") {
     },
-    NAMEorg(0x35, "Organisation", "l’Église, l’État, P.S.… (nom d’organisation, dictionnaire).") {
+    NAMEorg(0x45, "Organisation", "l’Église, l’État, P.S.… (nom d’organisation, dictionnaire).") {
     },
-    NAMEpeople(0x36, "Peuple", " (nom de peuple, dictionnaire).") {
+    NAMEpeople(0x46, "Peuple", " (nom de peuple, dictionnaire).") {
     },
-    NAMEevent(0x37, "Événement", "La Révolution, XIIe siècle… (nom d’événement, dictionnaire).") {
+    NAMEevent(0x47, "Événement", "La Révolution, XIIe siècle… (nom d’événement, dictionnaire).") {
     },
-    NAMEauthor(0x38, "Auteur", "Hugo, Racine, La Fontaine… (nom de persone auteur, dictionnaire).") {
+    NAMEauthor(0x48, "Auteur", "Hugo, Racine, La Fontaine… (nom de persone auteur, dictionnaire).") {
     },
-    NAMEfict(0x39, "Personnage", "Rodogune, Chicot… (nom de personnage fictif, dictionnaire).") {
+    NAMEfict(0x49, "Personnage", "Rodogune, Chicot… (nom de personnage fictif, dictionnaire).") {
     },
     // NAMEtitle(0x3A, "Titre", " Titre d’œuvre (dictionnaire)") { },
-    NAMEgod(0x3F, "Divinité", "Dieu, Cupidon… (noms de divinité, dictionnaire).") {
+    NAMEgod(0x4F, "Divinité", "Dieu, Cupidon… (noms de divinité, dictionnaire).") {
     },
 
     // 5x, Adverbes

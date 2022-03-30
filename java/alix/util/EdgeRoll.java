@@ -33,6 +33,7 @@
 package alix.util;
 
 import java.util.Arrays;
+import java.util.stream.*;
 import java.util.NoSuchElementException;
 
 import alix.maths.Calcul;
@@ -47,6 +48,10 @@ public class EdgeRoll
     private final boolean directed = false;
     /** Waited values */
     private final int[] words;
+    /** Word counts, to calculate scores */
+    private final long[] counts;
+    /** Global encoutered occurrences */
+    private long N;
     /** Distance between position to keep */
     private final int distance;
     /** Recorded edges */
@@ -71,22 +76,37 @@ public class EdgeRoll
      * @param values
      * @param distance
      */
-    public EdgeRoll(final int[] words, final int distance)
+    public EdgeRoll(int[] words, final int distance)
     {
+        words = IntStream.of(words).distinct().toArray();
         Arrays.sort(words);
         this.words = words;
+        this.counts = new long[words.length];
         this.distance = distance;
         this.matrix = new EdgeSquare(words, directed);
     }
     
+    
+    /**
+     * clear context
+     */
+    public void clear()
+    {
+        size = start = end = 0;
+        reset();
+    }
+
     /**
      * Returns edges sorted in a good way to loop on for a nice word net
      * @return
      */
     public EdgeSquare edges()
     {
-        return matrix;
+        // update matrix with counts for stats
+        return matrix.N(N).counts(counts);
     }
+    
+    
 
     /**
      * Push a value, maybe outside waited vocabulary, calculate edges.
@@ -95,12 +115,17 @@ public class EdgeRoll
      */
     public void push(final int position, final int word)
     {
+        // do not count null words
+        if (word < 1) return;
         // check if value is waited
-        final int pivot = Arrays.binarySearch(words, word);
-        if (pivot < 0) {
+        final int index = Arrays.binarySearch(words, word);
+        if (index < 0) {
             return;
         }
-       // loop on existant couples, drop the non relevant according to new position
+        // increment counts
+        counts[index]++;
+        N++;
+        // loop on existant couples, drop the non relevant according to new position
         reset();
         while (hasNext()) {
             next();
@@ -112,21 +137,12 @@ public class EdgeRoll
             
             final int cooc = node();
             // push an edge
-            matrix.inc(pivot, cooc);
+            matrix.inc(index, cooc);
         }
         // record node (after counting edges)
-        addLast(position, pivot);
+        addLast(position, index);
     }
     
-    /**
-     * clear context
-     */
-    public void clear()
-    {
-        size = start = end = 0;
-        reset();
-    }
-
     /**
      * Double capacity of data set, and copy in order
      */

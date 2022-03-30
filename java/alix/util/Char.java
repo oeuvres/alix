@@ -319,7 +319,8 @@ public class Char
      * (will keep æ -> æ, Œ -> œ…)
      * @param source
      */
-    public static Chain toLowASCII(Chain chain) {
+    public static Chain toLowASCII(Chain chain)
+    {
         char c;
         for (int i = 0, len = chain.length(); i < len; i++) {
             c = chain.charAt(i);
@@ -332,6 +333,24 @@ public class Char
             }
         }
         return chain;
+    }
+
+    public static String toLowASCII(CharSequence src)
+    {
+        StringBuilder dst = new StringBuilder();
+        char c;
+        for (int i = 0, len = src.length(); i < len; i++) {
+            c = src.charAt(i);
+            if (c >= '\u00c0' && c <= '\u017f') {
+                c = ASCII_LOW_C0.charAt((int) c - '\u00c0');
+            }
+            // caps
+            else if (c >= '\u0041' && c <= '\u005A') {
+                c = (char)(c + 32);
+            }
+            dst.append(c);
+        }
+        return dst.toString();
     }
 
     /*

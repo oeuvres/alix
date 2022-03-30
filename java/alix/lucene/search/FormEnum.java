@@ -507,8 +507,9 @@ public class FormEnum
      */
     public void reset()
     {
-        if (sorter == null)
+        if (sorter == null) {
             throw new NegativeArraySizeException("No order rule to sort on. Use FormEnum.sort() before");
+        }
         cursor = -1;
         formId = -1;
     }
@@ -544,21 +545,21 @@ public class FormEnum
         this.formNos = formNos;
     }
 
-    public void sort(final Order order)
+    public int[] sort(final Order order)
     {
-        sort(order, -1, false);
+        return sort(order, -1, false);
     }
 
-    public void sort(final Order order, final int limit)
+    public int[] sort(final Order order, final int limit)
     {
-        sort(order, limit, false);
+        return sort(order, limit, false);
     }
     
     /**
      * Prepare the order of enumeration with a vector.
      * @throws Exception
      */
-    public void sort(final Order order, final int limit, final boolean reverse)
+    public int[] sort(final Order order, final int limit, final boolean reverse)
     {
         if (formOccsFreq != null && maxForm != formOccsFreq.length) {
             throw new IllegalArgumentException("Corrupted FormEnum name=" + fieldName + " maxForm=" + maxForm
@@ -612,9 +613,10 @@ public class FormEnum
         // be careful, do not use formOccsAll as a size, the growing array may be bigger
         // than dictionary
         if (order.equals(Order.alpha)) {
-            this.sorter(sortAlpha(formDic));
+            int[] sorter = sortAlpha(formDic);
+            this.sorter(sorter);
             reset();
-            return;
+            return sorter;
         }
         // Why exclude first form = 0 ?
         for (int formId = 0, length = maxForm; formId < length; formId++) {
@@ -649,8 +651,10 @@ public class FormEnum
             // to test, do not work yet
             // else top.push(sortAlpha(this.formDic));
         }
-        this.sorter(top.toArray());
+        int[] sorter = top.toArray();
+        this.sorter(sorter);
         reset();
+        return sorter;
     }
 
     /**

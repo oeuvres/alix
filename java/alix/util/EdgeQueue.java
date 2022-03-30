@@ -131,13 +131,13 @@ public class EdgeQueue implements Iterable<Edge>
         for (int i = 0; i < size; i ++) {
             // new value
             if (edge != data[i]) {
-                net.add(new Edge(source(edge), target(edge), count));
+                net.add(new Edge(source(edge), target(edge)).count(count));
                 edge = data[i];
                 count = 0;
             }
             count ++;
         }
-        if (count > 0) net.add(new Edge(source(edge), target(edge), count));
+        if (count > 0) net.add(new Edge(source(edge), target(edge)).count(count));
         Edge[] arredge = new Edge[net.size()];
         net.toArray(arredge);
         Arrays.sort(arredge);

@@ -388,8 +388,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      */
     public Chain copy(final CharSequence cs, int offset, int amount)
     {
-        if (cs == null)
+        if (cs == null) {
             return null;
+        }
         if (offset <= 0 && amount < 0) {
             offset = 0;
             amount = cs.length();
@@ -398,8 +399,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
             this.size = 0;
             return this;
         }
-        if (amount > size)
+        if (amount > size) {
             ensureRight(amount - size);
+        }
         for (int i = zero, limit = zero + amount; i < limit; i++) {
             chars[i] = cs.charAt(offset++);
         }
@@ -1105,7 +1107,10 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         if (end > size) {
             throw new StringIndexOutOfBoundsException("end=" + end + " > size=" + size);
         }
-        return new String(chars, zero + start, zero + end - start);
+        if (start == end) {
+            return "";
+        }
+      return new String(chars, zero + start, zero + end - start);
     }
 
     /**

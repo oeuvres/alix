@@ -84,7 +84,8 @@ public interface Option
             Option opt = null;
             try {
                 opt = (Option) Enum.valueOf(cls, name);
-            } catch (IllegalArgumentException e) {
+            } 
+            catch (IllegalArgumentException e) {
                 sb.append("<!-- " + name + "  " + cls + "  " + e + "-->\n");
                 continue;
             }
@@ -93,7 +94,7 @@ public interface Option
         return sb.toString();
     }
 
-    default void html(StringBuilder sb, Option option)
+    public default void html(StringBuilder sb, Option option)
     {
         sb.append("<option");
         if (this == option)

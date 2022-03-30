@@ -513,8 +513,7 @@ public class FieldText
         if (list.isEmpty()) {
             return null;
         }
-        int[] pivots = list.toArray();
-        Arrays.sort(pivots);
+        int[] pivots = list.uniq();
         return pivots;
     }
 
@@ -596,6 +595,43 @@ public class FieldText
         final int id = formDic.find(bytes);
         if (id < 0) return -1;
         return formOccsAll[id];
+    }
+
+    /**
+     * Return count of occurrences for a set of forms with a doc filter
+     * 
+     * @param bytes
+     * @throws IOException 
+     */
+    public long[] formOccs(final String[] forms, final BitSet filter) throws IOException
+    {
+        long[] counts = new long[forms.length];
+        // loop on leaves of the reader
+        for (LeafReaderContext context : reader.leaves()) {
+            final int docBase = context.docBase;
+            LeafReader leaf = context.reader();
+            for (int i = 0, len = forms.length; i < len; i++) {
+                Term term = new Term(fname, forms[i]);
+                PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS);
+                if (postings == null) {
+                    continue; // no docs for this term, next leaf
+                }
+                // loop on docs for this term, till on is in the bitset
+                final Bits liveDocs = leaf.getLiveDocs();
+                int docLeaf;
+                while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                    if (liveDocs != null && !liveDocs.get(docLeaf)) {
+                      continue;
+                    }
+                    final int docId = docBase + docLeaf;
+                    if (!filter.get(docId)) {
+                        continue;
+                    }
+                    counts[i] += postings.freq();
+                }
+            }
+        }
+        return counts;
     }
 
     /**

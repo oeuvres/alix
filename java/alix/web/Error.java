@@ -5,10 +5,13 @@ import org.json.JSONWriter;
 public enum Error
 {
     BASE_NONE(500,  "Alix, no base available, installation problem", null),
-    BASE_NOTFOUND(404,  "Alix, base not found", "No base with name=“%s”"),
+    BASE_NOTFOUND(404,  "Alix, base not found", "No base found for param ?%s=%s"),
+    DOC_NOTFOUND(404,  "Alix, document not found", "No doc found for param ?%s=%s"),
+    FIELD_NOTFOUND(400, "Alix, field inappropriate for this query", "Field not found for param ?%s=%s"),
     XSS(403, "Alix, Cross-Site Scripting (XSS) Attacks, no", null),
-    DOC_NOTFOUND(404,  "Alix, document not found", "No doc with id=“%s”"),
-    FIELD_NOTFOUND(400, "Alix, field inappropriate for this query", "field=“%s”"),
+    Q_NONE(400, "Alix, no word to search", "Query not found for param ?%s"),
+    Q_NOWORD(400, "Alix, no word found", "No word found for param ?%s=%s"),
+    Q_NOTFOUND(404, "Alix, words not found in partition", "Words not found for param ?%s=%s"),
     ;
     final int status;
     final String title;

@@ -43,38 +43,25 @@ public class Edge implements Comparable<Edge>
     public final int source;
     /** Target node id */
     public final int target;
+    /** An index commodity */
+    public final int index;
+    /** Count */
+    private int count;
     /** Score */
     private double score;
 
     public Edge(final int source, final int target)
     {
-        this.source = source;
-        this.target = target;
+        this(source, target, -1);
     }
 
     
-    public Edge(final int source, final int target, final double score)
+    
+    public Edge(final int source, final int target, final int index)
     {
         this.source = source;
         this.target = target;
-        this.score = score;
-    }
-    
-    public Edge(final int source, final int target, final double score, boolean directed)
-    {
-        this.score = score;
-        if (directed) {
-            this.source = source;
-            this.target = target;
-        }
-        else if (source < target) {
-            this.source = source;
-            this.target = target;
-        } 
-        else {
-            this.source = target;
-            this.target = source;
-        }
+        this.index = index;
     }
     
 
@@ -94,6 +81,19 @@ public class Edge implements Comparable<Edge>
         if (this.target < o.target) return -1;
         return 0;
     }
+
+    public int count()
+    {
+        return this.count;
+    }
+
+
+    public Edge count(final int count)
+    {
+        this.count = count;
+        return this;
+    }
+
 
 
     @Override
@@ -143,16 +143,15 @@ public class Edge implements Comparable<Edge>
      * Set score
      * @return
      */
-    public double score(final double score)
+    public Edge score(final double score)
     {
-        final double ret = score;
         this.score = score;
-        return ret;
+        return this;
     }
-    
+
     @Override
     public String toString()
     {
-        return "" + source + "->" + target + " (" + score + ")";
+        return "" + source + "->" + target + " (" + count + "; " + score + ")";
     }
 }

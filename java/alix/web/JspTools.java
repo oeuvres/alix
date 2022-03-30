@@ -37,6 +37,7 @@ import java.io.Writer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -471,6 +472,30 @@ public class JspTools
     {
         return getInt(name, fallback, cookie.name());
     }
+    
+    /**
+     * Return 
+     * @param name
+     * @return
+     */
+    public TreeSet<Integer> getIntSet(final String name)
+    {
+        TreeSet<Integer> intSet = new TreeSet<Integer>();
+        String[] vals = request.getParameterValues(name);
+        if (vals == null) return intSet;
+        for (String val: vals) {
+            int i = -1;
+            try {
+                i = Integer.parseInt(val);
+            }
+            catch (Exception e) {
+                // output error ?
+                continue;
+            }
+            intSet.add(i);
+        }
+        return intSet;
+    }
 
     /**
      * Get a value from a map (usually static)
@@ -531,7 +556,7 @@ public class JspTools
     /**
      * Get a request parameter as a String from a list of value (first is default)
      */
-    public String getStringList(final String name, final List<String> list, final String fallback)
+    public String getStringInList(final String name, final List<String> list, final String fallback)
     {
         String value = request.getParameter(name);
         if (list.contains(value)) {
@@ -618,5 +643,5 @@ public class JspTools
         }
         return href.toString();
     }
-
+    
 }

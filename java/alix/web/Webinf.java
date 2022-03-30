@@ -33,8 +33,9 @@
 package alix.web;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.StringReader;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Properties;
 import java.util.logging.Level;
@@ -49,77 +50,107 @@ import alix.lucene.analysis.FrDics;
  */
 public class Webinf
 {
-  static Logger LOGGER = Logger.getLogger(Webinf.class.getName());
-  static final String INDEXDIR = "indexdir";
-  static public boolean bases = false;
-  /**
-   * Load possible bases, used as static startup, no exception but logging.
-   * A static call from here will not work.
-   */
-  static public void bases()
-  {
-    // load properties for bases in WEB-INF/*.xml on webapp restart
-    File zejar = new File(FrDics.class.getProtectionDomain().getCodeSource().getLocation().getPath());
-    File webinf = zejar.getParentFile().getParentFile(); // alix.jar is supposed to be in WEB-INF/lib/ 
-    if (!webinf.getName().equals("WEB-INF")) return; // jar is not in a java webapp
-    File[] files = webinf.listFiles();
-    Arrays.sort(files); // keep order 
-    for(File file: files) {
-      String fileName = file.getName();
-      if (fileName.startsWith("_")) continue; // easy way to unplug a base
-      int pos = fileName.lastIndexOf(".");
-      if (pos < 1) continue; // not /.fileName or /fileName
-      String ext = fileName.substring(pos); // (with dot)
-      if (!".xml".equals(ext)) continue;
-      String name = fileName.substring(0, pos);
-      if ("web".equals(name)) continue;
-      Properties props = new Properties();
-      LOGGER.log(Level.CONFIG, "[Alix] load base:" + name + ", properties: " + file);
-      try {
-        props.loadFromXML(new FileInputStream(file));
-      } catch (IOException e) {
-        LOGGER.log(Level.SEVERE, "[Alix] base:" + name + ", bad properties file: " + file + "\n" + e);
-        continue;
-      }
-      String dic = props.getProperty("dicfile");
-      if (dic != null) {
-        File dicFile = new File(dic);
-        if (!dicFile.isAbsolute()) dicFile = new File(file.getParentFile(), dic);
-        if (dicFile.exists()) {
-          try {
-            FrDics.load(dicFile);
-          } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "[Alix] base:" + name + ", dicfile:" + dic + ", bad local dictionary: " + dicFile + "\n" + e);
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-          }
+    static Logger LOGGER = Logger.getLogger(Webinf.class.getName());
+    static final String INDEXDIR = "indexdir";
+    static public boolean bases = false;
+
+    /**
+     * Load possible bases, used as static startup, no exception but logging. A
+     * static call from here will not work.
+     * @throws IOException 
+     */
+    static public void bases()
+    {
+        // load properties for bases in WEB-INF/*.xml on webapp restart
+        File zejar = new File(FrDics.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+        File webinf = zejar.getParentFile().getParentFile(); // alix.jar is supposed to be in WEB-INF/lib/
+        if (!webinf.getName().equals("WEB-INF")) {
+            return; // jar is not in a java webapp
         }
-      }
-      if (!props.containsKey("label")) props.put("label", name);
-      // test if lucene index exists and is OK
-      String dstdir = props.getProperty("dstdir");
-      if (dstdir == null) dstdir = webinf + "/bases/";
-      File basesDir = new File(dstdir);
-      if (!basesDir.isAbsolute()) basesDir = new File(file.getParentFile(), dstdir);
-      if (!basesDir.isDirectory()) {
-        LOGGER.log(Level.SEVERE, "[Alix] base: " + name + ", dstdir:" + dstdir + ", bad directory for lucene bases: " + basesDir);
-        continue;
-      }
-      File indexDir = new File(basesDir, name);
-      if (!indexDir.isDirectory()) {
-        LOGGER.log(Level.SEVERE, "[Alix] base: " + name + ", no lucene base to read in: " + indexDir);
-        continue;
-      }
-      Alix alix;
-      try {
-        alix = Alix.instance(name, indexDir.toPath(), new FrAnalyzer(), null);
-        props.put(INDEXDIR, indexDir.toString());
-        alix.props.putAll(props);
-      } catch (IOException e) {
-        LOGGER.log(Level.SEVERE, "[Alix] base: " + name + ", error opening lucene base: " + e);
-      }
+        File[] files = webinf.listFiles();
+        Arrays.sort(files); // keep order
+        for (File file : files) {
+            String fileName = file.getName();
+            if (fileName.startsWith("_")) {
+                continue; // easy way to unplug a base
+            }
+            int pos = fileName.lastIndexOf(".");
+            if (pos < 1) {
+                continue; // not /.fileName or /fileName
+            }
+            String ext = fileName.substring(pos); // (with dot)
+            if (!".xml".equals(ext)) {
+                continue;
+            }
+            String name = fileName.substring(0, pos);
+            if ("web".equals(name)) {
+                continue;
+            }
+            String xml;
+            try {
+                xml = new String ( Files.readAllBytes(file.toPath()) );
+            }
+            catch (IOException e) {
+                LOGGER.log(Level.WARNING, "[Alix] base:" + name + ", read error for file: " + file + "\n" + e);
+                continue;
+            }
+            if (xml.indexOf("<properties") < 0 || xml.indexOf("</properties>") < 0) {
+                continue;
+            }
+            Properties props = new Properties();
+            LOGGER.log(Level.CONFIG, "[Alix] load base:" + name + ", properties: " + file);
+            try {
+                props.load(new StringReader(xml));
+            }
+            catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "[Alix] base:" + name + ", bad properties file: " + file + "\n" + e);
+                continue;
+            }
+            String dic = props.getProperty("dicfile");
+            if (dic != null) {
+                File dicFile = new File(dic);
+                if (!dicFile.isAbsolute())
+                    dicFile = new File(file.getParentFile(), dic);
+                if (dicFile.exists()) {
+                    try {
+                        FrDics.load(dicFile);
+                    } catch (IOException e) {
+                        LOGGER.log(Level.WARNING, "[Alix] base:" + name + ", dicfile:" + dic
+                                + ", bad local dictionary: " + dicFile + "\n" + e);
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
+            }
+            if (!props.containsKey("label"))
+                props.put("label", name);
+            // test if lucene index exists and is OK
+            String dstdir = props.getProperty("dstdir");
+            if (dstdir == null)
+                dstdir = webinf + "/bases/";
+            File basesDir = new File(dstdir);
+            if (!basesDir.isAbsolute())
+                basesDir = new File(file.getParentFile(), dstdir);
+            if (!basesDir.isDirectory()) {
+                LOGGER.log(Level.SEVERE, "[Alix] base: " + name + ", dstdir:" + dstdir
+                        + ", bad directory for lucene bases: " + basesDir);
+                continue;
+            }
+            File indexDir = new File(basesDir, name);
+            if (!indexDir.isDirectory()) {
+                LOGGER.log(Level.SEVERE, "[Alix] base: " + name + ", no lucene base to read in: " + indexDir);
+                continue;
+            }
+            Alix alix;
+            try {
+                alix = Alix.instance(name, indexDir.toPath(), new FrAnalyzer(), null);
+                props.put(INDEXDIR, indexDir.toString());
+                alix.props.putAll(props);
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "[Alix] base: " + name + ", error opening lucene base: " + e);
+            }
+        }
+        bases = true;
     }
-    bases = true;
-  }
-  
+
 }
