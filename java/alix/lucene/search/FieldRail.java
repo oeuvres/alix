@@ -115,7 +115,7 @@ public class FieldRail
     {
         this.alix = alix;
         this.ftext = alix.fieldText(field); // build and cache the dictionary for the field
-        this.fname = ftext.fname;
+        this.fname = ftext.name;
         this.formDic = ftext.formDic;
         this.maxForm = formDic.size();
         this.path = Paths.get(alix.path.toString(), field + ".rail");
@@ -782,7 +782,7 @@ public class FieldRail
     public void score(final int[] pivotIds, final FormEnum results) throws IOException
     {
         if (this.ftext.formDic != results.formDic) {
-            throw new IllegalArgumentException("Not the same fields. Rail for coocs: " + this.ftext.fname
+            throw new IllegalArgumentException("Not the same fields. Rail for coocs: " + this.ftext.name
                     + ", freqList build with " + results.fieldName + " field");
         }
         // if (results.limit == 0) throw new IllegalArgumentException("How many sorted

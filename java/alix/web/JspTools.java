@@ -35,8 +35,8 @@ package alix.web;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 
 import javax.servlet.http.Cookie;
@@ -556,10 +556,10 @@ public class JspTools
     /**
      * Get a request parameter as a String from a list of value (first is default)
      */
-    public String getStringInList(final String name, final List<String> list, final String fallback)
+    public String getStringOf(final String name, final Set<String> set, final String fallback)
     {
         String value = request.getParameter(name);
-        if (list.contains(value)) {
+        if (set.contains(value)) {
             return value;
         }
         return fallback;
@@ -625,7 +625,7 @@ public class JspTools
     /**
      * Build url parameters
      */
-    public String url(final String[] pars)
+    public String queryString(final String[] pars)
     {
         StringBuilder href = new StringBuilder();
         boolean first = true;

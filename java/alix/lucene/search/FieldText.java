@@ -79,16 +79,8 @@ import alix.web.OptionDistrib.Scorer;
  */
 public class FieldText
 {
-    /** The reader from which to get freqs */
-    final DirectoryReader reader;
-    /** Name of the indexed field */
-    public final String fname;
-    /** Biggest formId+1 (like lucene IndexReader.maxDoc()) */
-    public final int maxForm;
-    /** Global number of occurrences for this field */
-    public long occsAll;
     /** Global number of docs relevant for this field */
-    public int docsAll;
+    public final int docsAll;
     /** By document, count of occurrences for this field (for stats), different from docLenghth (empty positions) */
     protected final int[] docOccs;
     /** Store and populate the search and get the id */
@@ -105,6 +97,14 @@ public class FieldText
     protected BitSet formLoc; 
     /** By formId is Pun */
     protected int[] formPun; 
+    /** Biggest formId+1 (like lucene IndexReader.maxDoc()) */
+    public final int maxForm;
+    /** Name of the indexed field */
+    public final String name;
+    /** Global number of occurrences for this field */
+    public long occsAll;
+    /** The lucene reader from which to get freqs */
+    final DirectoryReader reader;
 
 
     /**
@@ -137,7 +137,7 @@ public class FieldText
         */
         docOccs = new int[reader.maxDoc()];
         final FixedBitSet docs =    new FixedBitSet(reader.maxDoc()); // used to count exactly docs with more than one term
-        this.fname = fieldName;
+        this.name = fieldName;
         
         
         ArrayList<FormRecord> stack = new ArrayList<FormRecord>();
@@ -364,7 +364,7 @@ public class FieldText
         for (LeafReaderContext context : reader.leaves()) {
             LeafReader leaf = context.reader();
             final int docBase = context.docBase;
-            Terms terms = leaf.terms(fname);
+            Terms terms = leaf.terms(name);
             if (terms == null) continue;
             TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
             PostingsEnum docsEnum = null;
@@ -472,7 +472,7 @@ public class FieldText
         for (LeafReaderContext context : reader.leaves()) {
             final int docBase = context.docBase;
             LeafReader leaf = context.reader();
-            Term term = new Term(fname, word);
+            Term term = new Term(name, word);
             PostingsEnum postings = leaf.postings(term, PostingsEnum.NONE);
             if (postings == null) {
                 continue; // no docs for this term, next leaf
@@ -611,7 +611,7 @@ public class FieldText
             final int docBase = context.docBase;
             LeafReader leaf = context.reader();
             for (int i = 0, len = forms.length; i < len; i++) {
-                Term term = new Term(fname, forms[i]);
+                Term term = new Term(name, forms[i]);
                 PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS);
                 if (postings == null) {
                     continue; // no docs for this term, next leaf
@@ -669,6 +669,11 @@ public class FieldText
         return results;
     }
 
+    public FormEnum results(final BitSet filter) throws IOException
+    {
+        return results(null, null, filter);
+    }
+    
     /**
      * Count of occurrences by term for a subset of the index,
      * defined as a BitSet. Returns an iterator sorted according 
@@ -702,7 +707,7 @@ public class FieldText
             LeafReader leaf = context.reader();
             Bits live = leaf.getLiveDocs();
             final boolean hasLive = (live != null);
-            Terms terms = leaf.terms(fname);
+            Terms terms = leaf.terms(name);
             if (terms == null) continue;
             TermsEnum tenum = terms.iterator();
             PostingsEnum docsEnum = null;
@@ -724,7 +729,7 @@ public class FieldText
                     int docId = docBase + docLeaf;
                     if (hasFilter && !filter.get(docId)) continue; // document not in the filter
                     int freq = docsEnum.freq();
-                    if (freq < 1) throw new ArithmeticException("??? field="+fname+" docId=" + docId+" term="+bytes.utf8ToString()+" freq="+freq);
+                    if (freq < 1) throw new ArithmeticException("??? field="+name+" docId=" + docId+" term="+bytes.utf8ToString()+" freq="+freq);
                     // doc not yet encounter, we can count
                     if (!hitsVek.get(docId)) {
                             results.docsHit++;

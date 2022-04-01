@@ -62,22 +62,32 @@ import alix.web.OptionMI;
  */
 public class FormEnum
 {
+    /** used to read in the dic */
+    BytesRef bytes = new BytesRef();
+    /** Cursor, to iterate in the sorter */
+    private int cursor = -1;
+    /** Global number of docs relevant for this facet */
+    public final int docsAll;
+    /** Document found, Σ formDocsHit */
+    protected int docsHit;
+    /** A record of edges */
+    protected EdgeQueue edges;
     /** Source field */
     public final String fieldName;
-    /** An array of formId in the order we want to iterate on, should be set before iteration */
-    private int[] sorter;
+    /** Optional, a set of documents to limit occurrences collect */
+    public BitSet filter;
+    /**  By formId, a docId used as a cover (example: metas for books or  authors) */
+    final private int[] formCover;
     /** Field dictionary */
     final BytesRefHash formDic;
-    /** Biggest formId+1 (like lucene IndexReader.maxDoc()) */
-    public final int maxForm;
     /** By formId, count of docs, for all base */
     protected int[] formDocsAll;
     /** By formId, count of docs, for a partition */
     protected int[] formDocsPart;
     /** By formId, count of docs, matched in a text search */
     protected int[] formDocsHit;
-    /** Document found, Σ formDocsHit */
-    protected int docsHit;
+    /** Current formId, set by next */
+    private int formId = -1;
     /** By formId, a free int with no semantic, see FieldFace.nos() */
     protected int[] formNos;
     /** By formId, count of occurrences, on all base */
@@ -86,46 +96,39 @@ public class FormEnum
     protected long[] formOccsPart;
     /** By formId, count of occurrences, matched in a text search */
     protected long[] formOccsFreq;
-    /** Occurrences found, Σ formOccsFreq */
-    protected long occsFreq;
-    /**  By formId, a docId used as a cover (example: metas for books or  authors) */
-    final private int[] formCover;
-    /** An optional tag for each search (relevant for textField) */
-    final private int[] formTag;
-    /** Count of occurrences for the part explored */
-    public long occsPart;
     /** By formId, a relevance score calculated */
     protected double[] formScore;
-    /** A record of edges */
-    protected EdgeQueue edges;
-    /** Cursor, to iterate in the sorter */
-    private int cursor = -1;
-    /** Current formId, set by next */
-    private int formId = -1;
-    /** used to read in the dic */
-    BytesRef bytes = new BytesRef();
-    /** Limit for this iterator */
-    public int limit;
+    /** An optional tag for each search (relevant for textField) */
+    final private int[] formTag;
     /** Optional, for a co-occurrence search, count of occurrences to capture on the left */
     public int left;
-    /** Optional, for a co-occurrence search, count of occurrences to capture on the  right */
-    public int right;
-    /** Optional, for a co-occurrence search, pivot words */
-    public String[] search;
-    /** Optional, a set of documents to limit occurrences collect */
-    public BitSet filter;
-    /** Optional, a set of tags to filter form to collect */
-    public TagFilter tags;
+    /** Limit for this iterator */
+    public int limit;
+    /** Biggest formId+1 (like lucene IndexReader.maxDoc()) */
+    public final int maxForm;
+    /** Optional, a sort algorithm for coocs */
+    public OptionMI mi;
+    /** All occs from parent field */
+    public final long occsAll;
+    /** Occurrences found, Σ formOccsFreq */
+    protected long occsFreq;
+    /** Count of occurrences for the part explored */
+    public long occsPart;
     /** Reverse order of sorting */
     public boolean reverse;
+    /** Optional, for a co-occurrence search, count of occurrences to capture on the  right */
+    public int right;
     /**
      * Optional, a sort algorithm to select specific words according a norm (ex:
      * compare formOccs / freqs)
      */
     public Scorer scorer;
-    /** Optional, a sort algorithm for coocs */
-    public OptionMI mi;
-
+    /** Optional, for a co-occurrence search, pivot words */
+    public String[] search;
+    /** An array of formId in the order we want to iterate on, should be set before iteration */
+    private int[] sorter;
+    /** Optional, a set of tags to filter form to collect */
+    public TagFilter tags;
     /** sort order */
     public enum Order
     {
@@ -140,25 +143,29 @@ public class FormEnum
     /** Build a form iterator from a text field */
     public FormEnum(final FieldText field)
     {
-        this.maxForm = field.maxForm;
+        this.docsAll = field.docsAll;
+        this.fieldName = field.name;
         this.formDic = field.formDic;
         this.formDocsAll = field.formDocsAll;
         this.formOccsAll = field.formOccsAll;
         this.formCover = null;
         this.formTag = field.formTag;
-        this.fieldName = field.fname;
+        this.maxForm = field.maxForm;
+        this.occsAll = field.occsAll;
     }
 
     /** Build an iterator from a facet field */
     public FormEnum(final FieldFacet field)
     {
-        this.maxForm = field.maxForm;
+        this.docsAll = field.docsAll;
+        this.fieldName = field.name;
         this.formDic = field.formDic;
-        this.formDocsAll = field.formDocsAll;
-        this.formOccsAll = field.formOccsAll;
+        this.formDocsAll = field.formDocs;
+        this.formOccsAll = null; // not relevant, a facet is not repeated by doc
         this.formCover = field.formCover;
         this.formTag = null;
-        this.fieldName = field.fieldName;
+        this.maxForm = field.maxForm;
+        this.occsAll = field.occsAll; // maybe > docsAll for multiple terms
     }
 
     /**
@@ -457,6 +464,8 @@ public class FormEnum
         if (formOccsAll == null) return 0;
         return formOccsAll[formId];
     }
+    
+    
 
     /**
      * Global number of occurrences by rank of a term

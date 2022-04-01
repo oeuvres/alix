@@ -307,7 +307,7 @@ public class Scale
       for(String form: forms) {
         if (form == null) continue; // null search are group separators
         if (col >= cols) break;
-        Term term = new Term(ftext.fname, form);
+        Term term = new Term(ftext.name, form);
         col++; // start col at 1
         // for each term, reset the pointer in the axis
         int ord = ordBase;

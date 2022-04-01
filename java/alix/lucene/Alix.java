@@ -59,6 +59,7 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
@@ -338,9 +339,9 @@ public class Alix
      * @return
      * @throws IOException
      */
-    public FieldFacet fieldFacet(final String facetField, final String textField) throws IOException
+    public FieldFacet fieldFacet(final String facetField) throws IOException
     {
-        return fieldFacet(facetField, textField, null);
+        return fieldFacet(facetField, null);
     }
 
     /**
@@ -357,14 +358,15 @@ public class Alix
      * @return
      * @throws IOException
      */
-    public FieldFacet fieldFacet(final String facetField, final String textField, final Term coverTerm)
+    public FieldFacet fieldFacet(final String facetField, final Term coverTerm)
             throws IOException
     {
-        String key = "AlixFacet" + facetField + textField;
+        String key = "AlixFacet" + facetField;
         FieldFacet facet = (FieldFacet) cache(key);
-        if (facet != null)
+        if (facet != null) {
             return facet;
-        facet = new FieldFacet(this, facetField, textField, coverTerm);
+        }
+        facet = new FieldFacet(this, facetField, coverTerm);
         cache(key, facet);
         return facet;
     }
@@ -422,77 +424,33 @@ public class Alix
         cache(key, fieldText);
         return fieldText;
     }
-
+    
     /**
-     * Analyze a search according to the default analyzer of this base, is
-     * especially needed for multi-words ex: "en effet" return search as an array of
-     * string, supposing that caller knows the field he wants to search.
-     * 
-     * @param q
-     * @param fieldName
-     * @return
-     * @throws IOException
+     * Returns the Alix type of a field name
+     * @throws IOException 
      */
-    public String[] tokenize(final String q, final String fieldName) throws IOException
+    public String ftype(final String fname) throws IOException
     {
-        return tokenize(q, this.analyzer, fieldName);
-    }
-
-    /**
-     * Analyze a search according to the current analyzer of this base ; return
-     * search
-     * 
-     * @param q
-     * @param fieldName
-     * @return
-     * @throws IOException
-     */
-    public static String[] tokenize(final String q, final Analyzer analyzer, String fieldName) throws IOException
-    {
-        // create an arrayList on each search and let gc works
-        ArrayList<String> forms = new ArrayList<String>();
-        // what should mean null here ?
-        if (q == null || "".equals(q.trim()))
-            return null;
-        // if
-        if (fieldName == null)
-            fieldName = SEARCH;
-        TokenStream ts = analyzer.tokenStream(fieldName, q); // keep punctuation to group search
-        CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
-        // not generic for other analyzers but may become interesting for a search
-        // parser
-        // CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
-        // FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
-        ts.reset();
-        try {
-            while (ts.incrementToken()) {
-                // empty token ? bad analyzer
-                if (token.length() == 0)
-                    continue;
-                // a negation term
-                if (token.charAt(0) == '-')
-                    continue;
-                String word;
-                if (token.charAt(0) == '+') {
-                    word = token.subSequence(1, token.length()).toString();
-                } else {
-                    word = token.toString();
-                }
-                /*
-                 * final int tag = flags.getFlags(); if (Tag.isPun(tag)) { // start a new line
-                 * if (token.equals(";") || tag == Tag.PUNsent) { search.add(null); } continue;
-                 * }
-                 */
-                /*
-                 * if (",".equals(word) || ";".equals(word)) { continue; }
-                 */
-                forms.add(word);
-            }
-            ts.end();
-        } finally {
-            ts.close();
+        reader(); // ensure reader or decache
+        FieldInfo info = fieldInfos.fieldInfo(fname);
+        if (info == null) return NOTFOUND;
+        DocValuesType type = info.getDocValuesType();
+        if (type == DocValuesType.SORTED_SET || type == DocValuesType.SORTED) {
+            return FACET;
         }
-        return forms.toArray(new String[forms.size()]);
+        if (info.getDocValuesType() == DocValuesType.NUMERIC || info.getPointDimensionCount() == 1) {
+            return INT;
+        }
+        IndexOptions options = info.getIndexOptions();
+        if (options != IndexOptions.NONE && options != IndexOptions.DOCS) {
+            return TEXT;
+        }
+        if (options == IndexOptions.DOCS) {
+            return FACET;
+        }
+        
+        return NOTALIX;
+
     }
 
     /**
@@ -793,6 +751,78 @@ public class Alix
         searcher = new IndexSearcher(reader);
         searcher.setSimilarity(similarity);
         return searcher;
+    }
+
+    /**
+     * Analyze a search according to the default analyzer of this base, is
+     * especially needed for multi-words ex: "en effet" return search as an array of
+     * string, supposing that caller knows the field he wants to search.
+     * 
+     * @param q
+     * @param fieldName
+     * @return
+     * @throws IOException
+     */
+    public String[] tokenize(final String q, final String fieldName) throws IOException
+    {
+        return tokenize(q, this.analyzer, fieldName);
+    }
+
+    /**
+     * Analyze a search according to the current analyzer of this base ; return
+     * search
+     * 
+     * @param q
+     * @param fieldName
+     * @return
+     * @throws IOException
+     */
+    public static String[] tokenize(final String q, final Analyzer analyzer, String fieldName) throws IOException
+    {
+        // create an arrayList on each search and let gc works
+        ArrayList<String> forms = new ArrayList<String>();
+        // what should mean null here ?
+        if (q == null || "".equals(q.trim()))
+            return null;
+        // if
+        if (fieldName == null)
+            fieldName = SEARCH;
+        TokenStream ts = analyzer.tokenStream(fieldName, q); // keep punctuation to group search
+        CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
+        // not generic for other analyzers but may become interesting for a search
+        // parser
+        // CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
+        // FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
+        ts.reset();
+        try {
+            while (ts.incrementToken()) {
+                // empty token ? bad analyzer
+                if (token.length() == 0)
+                    continue;
+                // a negation term
+                if (token.charAt(0) == '-')
+                    continue;
+                String word;
+                if (token.charAt(0) == '+') {
+                    word = token.subSequence(1, token.length()).toString();
+                } else {
+                    word = token.toString();
+                }
+                /*
+                 * final int tag = flags.getFlags(); if (Tag.isPun(tag)) { // start a new line
+                 * if (token.equals(";") || tag == Tag.PUNsent) { search.add(null); } continue;
+                 * }
+                 */
+                /*
+                 * if (",".equals(word) || ";".equals(word)) { continue; }
+                 */
+                forms.add(word);
+            }
+            ts.end();
+        } finally {
+            ts.close();
+        }
+        return forms.toArray(new String[forms.size()]);
     }
 
     @Override

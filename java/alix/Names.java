@@ -65,6 +65,10 @@ public final class Names
     public final static String INT = "int";
     /** Field type */
     public final static String META = "meta";
+    /** For information */
+    public final static String NOTFOUND = "notfound";
+    /** For information */
+    public final static String NOTALIX = "notalix";
     /** Name of a field to inform Analyzer it is a search query */
     public static final String SEARCH = "search";
     /** Field type */
@@ -75,6 +79,8 @@ public final class Names
     public final static String TEXT = "text";
     /** Field type */
     public final static String TOKEN = "token";
+    /** Field type */
+    public final static String UNKNOWN = "unknown";
     /** Field type */
     public final static String XML = "xml";
 
