@@ -671,7 +671,7 @@ public class Doc
     public FormEnum results(String field, Scorer scorer, TagFilter tags) throws IOException, NoSuchFieldException
     {
         boolean hasTags = (tags != null);
-        boolean noStop = (tags != null && tags.noStop());
+        boolean noStop = (tags != null && tags.nostop());
         boolean hasScorer = (scorer != null);
 
         // get index term stats
@@ -680,7 +680,7 @@ public class Doc
         if (hasScorer) {
             results.formScore = new double[fieldText.maxForm];
         }
-        results.formOccsFreq = new long[fieldText.maxForm]; // freqs by form
+        results.formFreq = new long[fieldText.maxForm]; // freqs by form
         int occsDoc = fieldText.docOccs[docId];
 
         // loop on all forms of the document, get score, keep the top
@@ -708,8 +708,8 @@ public class Doc
             }
             // scorer.weight(termOccs, termDocs); // collection level stats
             long freq = termit.totalTermFreq();
-            results.formOccsFreq[formId] = freq;
-            results.occsFreq += freq;
+            results.formFreq[formId] = freq;
+            results.allFreq += freq;
             if (hasScorer) {
                 results.formScore[formId] += scorer.tf(freq, occsDoc);
                 // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub

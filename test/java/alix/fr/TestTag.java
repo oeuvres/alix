@@ -12,37 +12,50 @@ import alix.lucene.analysis.FrDics;
 
 public class TestTag
 {
-  /**
-   * For testing
-   * 
-   * @throws IOException
-   */
-  public static void main(String[] args)
-  {
-    Level level = Level.FINEST;
-    Logger rootLogger = LogManager.getLogManager().getLogger("");
-    rootLogger.setLevel(level);
-    for (Handler h : rootLogger.getHandlers()) {
-      System.out.println(h);
-      h.setLevel(level);
-    }
+    public static void test()
+    {
+        boolean[] tags = new boolean[256];
+        // test if there are no collisions in code
+        for (Tag tag : Tag.values()) {
+            System.out.println(
+                    tag.name() + "\t" + String.format("%02x", tag.flag) + "\t" + tag.label + "\t\t" + tag.desc);
+            final int flag = tag.flag;
+            if (tags[flag])
+                System.out.println(" ——— DOUBLON !!");
+            tags[flag] = true;
+        }
+        System.out.println("\nChargement dicos");
+        System.out.println(FrDics.isStop("Con"));
 
-    boolean[] tags = new boolean[256];
-    // test if there are no collisions in code
-    for (Tag tag : Tag.values()) {
-      System.out.println(tag.name()+"\t"+String.format("%02x", tag.flag)+"\t"+tag.label+"\t\t"+tag.desc);
-      final int flag = tag.flag;
-      if (tags[flag]) System.out.println(" ——— DOUBLON !!");
-      tags[flag] = true;
+        System.out.println("UNKNOW tag " + Tag.code("TEST"));
+        TagFilter filter = new TagFilter();
+        filter.setGroup(Tag.VERBppass);
+        filter.setGroup(Tag.NAMEauthor);
+        System.out.println(filter);
+
     }
-    System.out.println("\nChargement dicos");
-    System.out.println(FrDics.isStop("Con"));
     
-    System.out.println("UNKNOW tag " + Tag.code("TEST"));
-    TagFilter filter = new TagFilter();
-    filter.setGroup(Tag.VERBppass);
-    filter.setGroup(Tag.NAMEauthor);
-    System.out.println(filter);
-  }
+    public static void filter()
+    {
+        TagFilter filter = new TagFilter().setAll().nostop(true);
+        System.out.println(filter);
+    }
+    
+    /**
+     * For testing
+     * 
+     * @throws IOException
+     */
+    public static void main(String[] args)
+    {
+        Level level = Level.FINEST;
+        Logger rootLogger = LogManager.getLogManager().getLogger("");
+        rootLogger.setLevel(level);
+        for (Handler h : rootLogger.getHandlers()) {
+            System.out.println(h);
+            h.setLevel(level);
+        }
+        filter();
+    }
 
 }

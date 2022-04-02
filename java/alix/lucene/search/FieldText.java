@@ -345,16 +345,16 @@ public class FieldText
         BitSet filter = results.filter;
         
         long[] formOccsPart = new long[formDic.size()];
-        long[] formOccsFreq = results.formOccsFreq;
+        long[] formOccsFreq = results.formFreq;
         if (formOccsFreq == null) {
             formOccsFreq = new long[formDic.size()];
-            results.formOccsFreq = formOccsFreq;
+            results.formFreq = formOccsFreq;
         }
         int[] formDocsPart = new int[formDic.size()];
-        int[] formDocsHit = results.formDocsHit;
+        int[] formDocsHit = results.formHits;
         if (formDocsHit == null) {
             formDocsHit = new int[formDic.size()];
-            results.formDocsHit = formDocsHit;
+            results.formHits = formDocsHit;
         }
         // no doc to filter, give a a safe copy of the stats
         long occsPart = 0;
@@ -546,7 +546,7 @@ public class FieldText
     public BitSet formRule(TagFilter filter)
     {
         BitSet rule = new SparseFixedBitSet(maxForm);
-        final boolean noStop = filter.noStop();
+        final boolean noStop = filter.nostop();
         final int stopLim = formStop.length();
         for (int formId=1; formId < maxForm; formId++) {
             if (!noStop); // no tick for stopword
@@ -651,7 +651,7 @@ public class FieldText
     public FormEnum results(final TagFilter tags)
     {
         boolean hasTags = (tags != null);
-        boolean noStop = (tags != null && tags.noStop());
+        boolean noStop = (tags != null && tags.nostop());
         boolean locs = (tags != null && tags.locutions());
         long[] formOccsFreq = new long[maxForm];
         for (int formId=0; formId < maxForm; formId++) {
@@ -664,7 +664,7 @@ public class FieldText
         }
         // now we have all we need to build a sorted iterator on entries
         FormEnum results = new FormEnum(this);
-        results.formOccsFreq = formOccsFreq;
+        results.formFreq = formOccsFreq;
         // no hits
         return results;
     }
@@ -682,15 +682,15 @@ public class FieldText
     public FormEnum results(final TagFilter tags, Scorer scorer, final BitSet filter) throws IOException
     {
         boolean hasTags = (tags != null);
-        boolean noStop = (tags != null && tags.noStop());
+        boolean noStop = (tags != null && tags.nostop());
         boolean locs = (tags != null && tags.locutions());
         boolean hasScorer = (scorer != null);
         boolean hasFilter = (filter != null && filter.cardinality() > 0);
         
         FormEnum results = new FormEnum(this);
         if (hasScorer) results.formScore = new double[maxForm];
-        results.formOccsFreq = new long[maxForm];
-        results.formDocsHit = new int[maxForm];
+        results.formFreq = new long[maxForm];
+        results.formHits = new int[maxForm];
         results.occsPart = 0;
         if (filter != null) {
             for (int docId = filter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = filter.nextSetBit(docId + 1)) {
@@ -732,21 +732,21 @@ public class FieldText
                     if (freq < 1) throw new ArithmeticException("??? field="+name+" docId=" + docId+" term="+bytes.utf8ToString()+" freq="+freq);
                     // doc not yet encounter, we can count
                     if (!hitsVek.get(docId)) {
-                            results.docsHit++;
+                        results.allHits++;
                     }
                     hitsVek.set(docId);
-                    results.formDocsHit[formId]++;
+                    results.formHits[formId]++;
                     if (hasScorer) {
                         final double score = scorer.tf(freq, docOccs[docId]);
                         if (score < 0) results.formScore[formId] -= score; // all variation is significant
                         results.formScore[formId] += score;
                     }
-                    results.formOccsFreq[formId] += freq;
-                    results.occsFreq += freq;
+                    results.formFreq[formId] += freq;
+                    results.allFreq += freq;
                 }
                 if (hasScorer && filter != null) {
                     // add inverse score
-                    final long restFreq = formOccsAll[formId] - results.formOccsFreq[formId];
+                    final long restFreq = formOccsAll[formId] - results.formFreq[formId];
                     final long restLen = occsAll - results.occsPart;
                     double score = scorer.last(restFreq, restLen);
                     results.formScore[formId] -= score;

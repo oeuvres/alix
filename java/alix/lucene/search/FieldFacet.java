@@ -456,7 +456,7 @@ public class FieldFacet
             return results();
         }
         FormEnum results = new FormEnum(this);
-        results.formDocsHit = new int[maxForm];
+        results.formHits = new int[maxForm];
         for (int docId = 0, max = this.docForms.length; docId < max; docId++) {
             // document not in the filter, go next
             if (!filter.get(docId)) continue; 
@@ -465,7 +465,7 @@ public class FieldFacet
             int[] facets = docForms[docId];
             if (facets == null) continue;
             for (int facetId: facets) {
-                results.formDocsHit[facetId]++;
+                results.formHits[facetId]++;
             }
         }
         return results;
@@ -501,8 +501,8 @@ public class FieldFacet
         // Crawl index to get stats by facet term about the text search
         BitSet docMap = new FixedBitSet(reader.maxDoc()); // keep memory of already counted docs
 
-        results.formDocsHit = new int[maxForm];
-        results.formOccsFreq = new long[maxForm]; // a vector to count matched occurrences by facet
+        results.formHits = new int[maxForm];
+        results.formFreq = new long[maxForm]; // a vector to count matched occurrences by facet
         if (hasScorer) {
             results.formScore = new double[maxForm];
         }
@@ -552,16 +552,16 @@ public class FieldFacet
                     for (int i = 0, length = facets.length; i < length; i++) {
                         int facetId = facets[i];
                         // first match for this facet, increment the counter of matched facets
-                        if (results.formOccsFreq[facetId] == 0) {
+                        if (results.formFreq[facetId] == 0) {
                             facetMatch++;
                         }
                         // if doc not already counted for another, increment hits for this facet
                         if (!docSeen) {
-                            results.formDocsHit[facetId]++; 
-                            results.docsHit++;
+                            results.formHits[facetId]++; 
+                            results.allHits++;
                         }
-                        results.occsFreq += freq; 
-                        results.formOccsFreq[facetId] += freq; // add the matched freqs for this doc to the facet
+                        results.allFreq += freq; 
+                        results.formFreq[facetId] += freq; // add the matched freqs for this doc to the facet
                         // what for ?
                         // formPartOccs[facetId] += freq;
                         // term frequency

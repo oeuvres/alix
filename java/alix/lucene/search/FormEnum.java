@@ -62,14 +62,18 @@ import alix.web.OptionMI;
  */
 public class FormEnum
 {
+    /** Global number of docs relevant for this facet */
+    public final int allDocs;
+    /** Occurrences found, Σ formFreq */
+    protected long allFreq;
+    /** Document found, Σ formHits */
+    protected int allHits;
+    /** All occs from parent field */
+    public final long allOccs;
     /** used to read in the dic */
     BytesRef bytes = new BytesRef();
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
-    /** Global number of docs relevant for this facet */
-    public final int docsAll;
-    /** Document found, Σ formDocsHit */
-    protected int docsHit;
     /** A record of edges */
     protected EdgeQueue edges;
     /** Source field */
@@ -81,21 +85,21 @@ public class FormEnum
     /** Field dictionary */
     final BytesRefHash formDic;
     /** By formId, count of docs, for all base */
-    protected int[] formDocsAll;
+    protected int[] formDocs;
     /** By formId, count of docs, for a partition */
     protected int[] formDocsPart;
     /** By formId, count of docs, matched in a text search */
-    protected int[] formDocsHit;
+    protected int[] formHits;
     /** Current formId, set by next */
     private int formId = -1;
     /** By formId, a free int with no semantic, see FieldFace.nos() */
     protected int[] formNos;
     /** By formId, count of occurrences, on all base */
-    protected long[] formOccsAll;
+    protected long[] formOccs;
     /** By formId, count of occurrences, on a partition */
     protected long[] formOccsPart;
-    /** By formId, count of occurrences, matched in a text search */
-    protected long[] formOccsFreq;
+    /** By formId, count of occurrences, matched or selected */
+    protected long[] formFreq;
     /** By formId, a relevance score calculated */
     protected double[] formScore;
     /** An optional tag for each search (relevant for textField) */
@@ -108,10 +112,6 @@ public class FormEnum
     public final int maxForm;
     /** Optional, a sort algorithm for coocs */
     public OptionMI mi;
-    /** All occs from parent field */
-    public final long occsAll;
-    /** Occurrences found, Σ formOccsFreq */
-    protected long occsFreq;
     /** Count of occurrences for the part explored */
     public long occsPart;
     /** Reverse order of sorting */
@@ -143,29 +143,29 @@ public class FormEnum
     /** Build a form iterator from a text field */
     public FormEnum(final FieldText field)
     {
-        this.docsAll = field.docsAll;
+        this.allDocs = field.docsAll;
         this.fieldName = field.name;
         this.formDic = field.formDic;
-        this.formDocsAll = field.formDocsAll;
-        this.formOccsAll = field.formOccsAll;
+        this.formDocs = field.formDocsAll;
+        this.formOccs = field.formOccsAll;
         this.formCover = null;
         this.formTag = field.formTag;
         this.maxForm = field.maxForm;
-        this.occsAll = field.occsAll;
+        this.allOccs = field.occsAll;
     }
 
     /** Build an iterator from a facet field */
     public FormEnum(final FieldFacet field)
     {
-        this.docsAll = field.docsAll;
+        this.allDocs = field.docsAll;
         this.fieldName = field.name;
         this.formDic = field.formDic;
-        this.formDocsAll = field.formDocs;
-        this.formOccsAll = null; // not relevant, a facet is not repeated by doc
+        this.formDocs = field.formDocs;
+        this.formOccs = null; // not relevant, a facet is not repeated by doc
         this.formCover = field.formCover;
         this.formTag = null;
         this.maxForm = field.maxForm;
-        this.occsAll = field.occsAll; // maybe > docsAll for multiple terms
+        this.allOccs = field.occsAll; // maybe > docsAll for multiple terms
     }
 
     /**
@@ -186,8 +186,8 @@ public class FormEnum
      */
     public int docs()
     {
-        if (formDocsAll == null) return 0;
-        return formDocsAll[formId];
+        if (formDocs == null) return 0;
+        return formDocs[formId];
     }
 
     /**
@@ -197,8 +197,8 @@ public class FormEnum
      */
     public int docs(final int formId)
     {
-        if (formDocsAll == null) return 0;
-        return formDocsAll[formId];
+        if (formDocs == null) return 0;
+        return formDocs[formId];
     }
     
     /**
@@ -206,7 +206,7 @@ public class FormEnum
      */
     public int docsHit()
     {
-        return docsHit;
+        return allHits;
     }
 
     /**
@@ -219,7 +219,7 @@ public class FormEnum
         if (rank >= limit)
             return -1;
         final int formId = sorter[rank];
-        return formDocsAll[formId];
+        return formDocs[formId];
     }
 
     /**
@@ -337,8 +337,8 @@ public class FormEnum
      */
     public long freq()
     {
-        if (formOccsFreq == null) return 0;
-        return formOccsFreq[formId];
+        if (formFreq == null) return 0;
+        return formFreq[formId];
     }
 
     /**
@@ -349,8 +349,8 @@ public class FormEnum
      */
     public long freq(final int formId)
     {
-        if (formOccsFreq == null) return 0;
-        return formOccsFreq[formId];
+        if (formFreq == null) return 0;
+        return formFreq[formId];
     }
 
     /**
@@ -364,7 +364,7 @@ public class FormEnum
         if (rank >= limit)
             return -1;
         final int formId = sorter[rank];
-        return formOccsFreq[formId];
+        return formFreq[formId];
     }
 
     /**
@@ -385,8 +385,8 @@ public class FormEnum
      */
     public int hits()
     {
-        if (formDocsHit == null) return 0;
-        return formDocsHit[formId];
+        if (formHits == null) return 0;
+        return formHits[formId];
     }
 
     /**
@@ -396,8 +396,8 @@ public class FormEnum
      */
     public int hits(final int formId)
     {
-        if (formDocsHit == null) return 0;
-        return formDocsHit[formId];
+        if (formHits == null) return 0;
+        return formHits[formId];
     }
 
     public int hitsByRank(final int rank)
@@ -405,7 +405,7 @@ public class FormEnum
         if (rank >= limit)
             return -1;
         final int formId = sorter[rank];
-        return formDocsHit[formId];
+        return formHits[formId];
     }
 
     public void last()
@@ -450,8 +450,8 @@ public class FormEnum
      */
     public long occs()
     {
-        if (formOccsAll == null) return 0;
-        return formOccsAll[formId];
+        if (formOccs == null) return 0;
+        return formOccs[formId];
     }
     
     /**
@@ -461,8 +461,8 @@ public class FormEnum
      */
     public long occs(final int formId)
     {
-        if (formOccsAll == null) return 0;
-        return formOccsAll[formId];
+        if (formOccs == null) return 0;
+        return formOccs[formId];
     }
     
     
@@ -478,7 +478,7 @@ public class FormEnum
             return -1;
         }
         final int formId = sorter[rank];
-        return formOccsAll[formId];
+        return formOccs[formId];
     }
 
     /**
@@ -486,7 +486,7 @@ public class FormEnum
      */
     public long occsFreq()
     {
-        return occsFreq;
+        return allFreq;
     }
 
     /**
@@ -570,28 +570,28 @@ public class FormEnum
      */
     public int[] sort(final Order order, final int limit, final boolean reverse)
     {
-        if (formOccsFreq != null && maxForm != formOccsFreq.length) {
+        if (formFreq != null && maxForm != formFreq.length) {
             throw new IllegalArgumentException("Corrupted FormEnum name=" + fieldName + " maxForm=" + maxForm
-                    + " formOccsFreq.length=" + formOccsFreq.length);
+                    + " formOccsFreq.length=" + formFreq.length);
         }
         switch (order) {
             case occs:
-                if (formOccsAll == null) {
+                if (formOccs == null) {
                     throw new IllegalArgumentException("Impossible to sort by occs (occurrences total), formOccsAll has not been set by producer.");
                 }
                 break;
             case docs:
-                if (formDocsAll == null) {
+                if (formDocs == null) {
                     throw new IllegalArgumentException("Impossible to sort docs (documents total), formDocsAll has not been set by producer.");
                 }
                 break;
             case freq:
-                if (formOccsFreq == null) {
+                if (formFreq == null) {
                     throw new IllegalArgumentException("Impossible to sort by freq (occurrences found), seems not results of a search, formOccsFreq has not been set by producer.");
                 }
                 break;
             case hits:
-                if (formDocsHit == null) {
+                if (formHits == null) {
                     throw new IllegalArgumentException("Impossible to sort by hits (documents found), seems not results of a search, formDocsHit has not been set by producer.");
                 }
                 break;
@@ -639,22 +639,22 @@ public class FormEnum
                 continue;
             switch (order) {
                 case occs:
-                    top.push(formId, formOccsAll[formId]);
+                    top.push(formId, formOccs[formId]);
                     break;
                 case docs:
-                    top.push(formId, formDocsAll[formId]);
+                    top.push(formId, formDocs[formId]);
                     break;
                 case freq:
-                    top.push(formId, formOccsFreq[formId]);
+                    top.push(formId, formFreq[formId]);
                     break;
                 case hits:
-                    top.push(formId, formDocsHit[formId]);
+                    top.push(formId, formHits[formId]);
                     break;
                 case score:
                     top.push(formId, formScore[formId]);
                     break;
                 default:
-                    top.push(formId, formOccsAll[formId]);
+                    top.push(formId, formOccs[formId]);
                     break;
             }
             // to test, do not work yet
@@ -753,10 +753,10 @@ public class FormEnum
         }
         boolean hasScore = (formScore != null);
         boolean hasTag = (formTag != null);
-        boolean hasHits = (formDocsHit != null);
-        boolean hasDocs = (formDocsAll != null);
-        boolean hasOccs = (formOccsAll != null);
-        boolean hasFreq = (formOccsFreq != null);
+        boolean hasHits = (formHits != null);
+        boolean hasDocs = (formDocs != null);
+        boolean hasOccs = (formOccs != null);
+        boolean hasFreq = (formFreq != null);
         for (int pos = 0; pos < limit; pos++) {
             int formId = sorter[pos];
             formDic.get(formId, bytes);
@@ -767,17 +767,17 @@ public class FormEnum
                 sb.append(" score=" + formScore[formId]);
 
             if (hasOccs && hasFreq) {
-                sb.append(" freq=" + formOccsFreq[formId] + "/" + formOccsAll[formId]);
+                sb.append(" freq=" + formFreq[formId] + "/" + formOccs[formId]);
             }
             else if (hasOccs) {
-                sb.append(" freq=" + formOccsAll[formId]);
+                sb.append(" freq=" + formOccs[formId]);
             }
             if (hasHits && hasDocs)
-                sb.append(" hits=" + formDocsHit[formId] + "/" + formDocsAll[formId]);
+                sb.append(" hits=" + formHits[formId] + "/" + formDocs[formId]);
             else if (hasDocs)
-                sb.append(" docs=" + formDocsAll[formId]);
+                sb.append(" docs=" + formDocs[formId]);
             else if (hasHits)
-                sb.append(" hits=" + formDocsHit[formId]);
+                sb.append(" hits=" + formHits[formId]);
             sb.append("\n");
         }
         return sb.toString();

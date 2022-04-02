@@ -185,7 +185,7 @@ public class FieldRail
         // filter co-occs by tag
         boolean hasTags = (results.tags != null);
         // filter co-occs stops
-        boolean noStop = (results.tags != null && results.tags.noStop());
+        boolean noStop = (results.tags != null && results.tags.nostop());
         // collect “locutions” (words like “parce que”)
         boolean locs = (results.tags != null && results.tags.locutions());
         // collect “edges”   A B [O] A C => AOx2, ABx2, ACx2, BOx1, COx1, BCx1. 
@@ -193,18 +193,18 @@ public class FieldRail
     
         // for future scoring, formOccs is global or relative to filter ? relative seems bad
         // create or reuse arrays in result, 
-        if (results.formOccsFreq == null || results.formOccsFreq.length != maxForm) {
-            results.formOccsFreq = new long[maxForm]; // by term, occurrences counts
+        if (results.formFreq == null || results.formFreq.length != maxForm) {
+            results.formFreq = new long[maxForm]; // by term, occurrences counts
         }
         else {
-            Arrays.fill(results.formOccsFreq, 0);
+            Arrays.fill(results.formFreq, 0);
         }
         // create or reuse hits
-        if (results.formDocsHit == null || results.formDocsHit.length != maxForm) {
-            results.formDocsHit = new int[maxForm]; // by term, document counts
+        if (results.formHits == null || results.formHits.length != maxForm) {
+            results.formHits = new int[maxForm]; // by term, document counts
         }
         else {
-            Arrays.fill(results.formDocsHit, 0);
+            Arrays.fill(results.formHits, 0);
         }
     
         // this vector has been useful, but meaning has been forgotten
@@ -345,10 +345,10 @@ public class FieldRail
                     
                     
                     results.occsPart++;
-                    results.formOccsFreq[formId]++;
+                    results.formFreq[formId]++;
                     // has been useful for a scoring algorithm
                     if (!formSeen[formId]) {
-                        results.formDocsHit[formId]++;
+                        results.formHits[formId]++;
                         formSeen[formId] = true;
                     }
                 }
@@ -791,7 +791,7 @@ public class FieldRail
             throw new IllegalArgumentException(
                     "Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
         }
-        if (results.formOccsFreq == null || results.formOccsFreq.length < maxForm) {
+        if (results.formFreq == null || results.formFreq.length < maxForm) {
             throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
         }
         // A variable for the square scorer
@@ -829,7 +829,7 @@ public class FieldRail
         // 
         for (int formId = 0; formId < maxForm; formId++) {
             // No tag filter here, should be done upper
-            long Oab = results.formOccsFreq[formId];
+            long Oab = results.formFreq[formId];
             if (Oab == 0) {
                 continue;
             }

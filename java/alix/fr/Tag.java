@@ -334,7 +334,7 @@ public enum Tag
          * here.
          */
         boolean[] rule = new boolean[256];
-        boolean noStop;
+        boolean nostop;
         boolean locutions;
 
         public boolean accept(int flag)
@@ -356,7 +356,7 @@ public enum Tag
         public TagFilter clearAll()
         {
             rule = new boolean[256];
-            noStop = false;
+            nostop = false;
             return this;
         }
 
@@ -374,14 +374,14 @@ public enum Tag
             return this;
         }
 
-        public boolean noStop()
+        public boolean nostop()
         {
-            return noStop;
+            return nostop;
         }
 
-        public TagFilter noStop(boolean value)
+        public TagFilter nostop(boolean value)
         {
-            noStop = value;
+            nostop = value;
             return this;
         }
 
@@ -410,7 +410,7 @@ public enum Tag
         public TagFilter setAll()
         {
             Arrays.fill(rule, true);
-            noStop = false;
+            nostop = false;
             return this;
         }
 
@@ -443,6 +443,9 @@ public enum Tag
                 if ((tag % 16) == 15)
                     sb.append("\n");
             }
+            if (nostop) sb.append(" NOSTOP");
+            if (locutions) sb.append(" LOCUTIONS");
+            sb.append("\n");
             return sb.toString();
         }
     }

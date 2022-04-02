@@ -559,6 +559,9 @@ public class JspTools
     public String getStringOf(final String name, final Set<String> set, final String fallback)
     {
         String value = request.getParameter(name);
+        if (value == null) {
+            return fallback;
+        }
         if (set.contains(value)) {
             return value;
         }

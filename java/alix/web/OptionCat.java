@@ -42,7 +42,7 @@ public enum OptionCat implements Option
 {
 
     ALL("Tout", null),
-    NOSTOP("Mots “pleins”", new TagFilter().setAll().noStop(true)),
+    NOSTOP("Mots “pleins”", new TagFilter().setAll().nostop(true)),
     SUB("Substantifs", new TagFilter().set(Tag.SUB)),
     NAME("Noms propres",
             new TagFilter().set(Tag.NAME).set(Tag.NAMEevent).set(Tag.NAMEgod).set(Tag.NAMEorg).set(Tag.NAMEpeople)),
@@ -59,7 +59,7 @@ public enum OptionCat implements Option
     PLACE("Lieux", new TagFilter().set(Tag.NAMEplace)),
     RS("Autres noms propres",
             new TagFilter().set(Tag.NAME).set(Tag.NAMEevent).set(Tag.NAMEgod).set(Tag.NAMEorg).set(Tag.NAMEpeople)),
-    STRONG("Mots “forts”", new TagFilter().set(Tag.SUB).set(Tag.VERB).set(Tag.ADJ).noStop(true)),
+    STRONG("Mots “forts”", new TagFilter().set(Tag.SUB).set(Tag.VERB).set(Tag.ADJ).nostop(true)),
     ;
     final public String label;
     final public TagFilter tags;
