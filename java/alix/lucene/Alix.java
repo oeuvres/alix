@@ -124,7 +124,7 @@ import alix.lucene.search.FieldInt;
  * document ({@link IntPoint}, {@link NumericDocValuesField}).</li>
  * <li>{@link #fieldText(String)} All search indexed in a {@link TextField},
  * with stats, useful for list of search and advanced lexical statistics.</li>
- * <li>{@link #docOccs(String)} Size (in tokens) of indexed documents in a
+ * <li>{@link #occs(String)} Size (in tokens) of indexed documents in a
  * {@link TextField}</li>
  * <li>{@link #fieldFacet(String, String)} All search of a facet field
  * ({@link SortedDocValuesField} or {@link SortedSetDocValuesField}) with

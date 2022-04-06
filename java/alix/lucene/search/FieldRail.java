@@ -821,7 +821,7 @@ public class FieldRail
         else {
             Arrays.fill(results.formScore, 0);
         }
-        final long N = ftext.occsAll; // global
+        final long N = ftext.occs; // global
         OptionMI mi = results.mi;
         if (mi == null) {
             mi = OptionMI.g;
@@ -838,7 +838,7 @@ public class FieldRail
             if (Oab > Ob) {
                 Oab = Ob;
             }
-            results.formScore[formId] = mi.score(Oab, ftext.formOccsAll[formId], Ob, N);
+            results.formScore[formId] = mi.score(Oab, ftext.formOccs[formId], Ob, N);
         }
         // results is populated of scores, sort it now
         results.sort(FormEnum.Order.score, -1);

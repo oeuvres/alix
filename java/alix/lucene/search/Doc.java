@@ -189,8 +189,8 @@ public class Doc
         StringBuilder sb = new StringBuilder();
 
         FieldText ftext = alix.fieldText(field);
-        int len1 = ftext.docOccs(docId);
-        int len2 = ftext.docOccs(docId2);
+        int len1 = ftext.occs(docId);
+        int len2 = ftext.occs(docId2);
 
         Terms vek1 = getTermVector(field);
         Terms vek2 = alix.reader().getTermVector(docId2, field);
@@ -471,8 +471,8 @@ public class Doc
         Terms vek2 = alix.reader().getTermVector(docId2, field);
         Top<String> top = new Top<String>(100);
         FieldText ftext = alix.fieldText(field);
-        int len1 = ftext.docOccs(docId);
-        int len2 = ftext.docOccs(docId2);
+        int len1 = ftext.occs(docId);
+        int len2 = ftext.occs(docId2);
         Terms vek1 = getTermVector(field);
         // double max1 = Double.MIN_VALUE;
         // double max2 = Double.MIN_VALUE;
@@ -603,7 +603,7 @@ public class Doc
      */
     public int length(String field) throws IOException
     {
-        return alix.fieldText(field).docOccs(docId);
+        return alix.fieldText(field).occs(docId);
     }
 
     /**
@@ -703,13 +703,13 @@ public class Doc
                 continue; // should not arrive, let cry
             }
             if (hasScorer) {
-                scorer.idf(fieldText.occsAll, fieldText.docsAll, fieldText.formOccsAll[formId],
-                        fieldText.formDocsAll[formId]);
+                scorer.idf(fieldText.occs, fieldText.docs, fieldText.formOccs[formId],
+                        fieldText.formDocs[formId]);
             }
             // scorer.weight(termOccs, termDocs); // collection level stats
             long freq = termit.totalTermFreq();
             results.formFreq[formId] = freq;
-            results.allFreq += freq;
+            results.freq += freq;
             if (hasScorer) {
                 results.formScore[formId] += scorer.tf(freq, occsDoc);
                 // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub

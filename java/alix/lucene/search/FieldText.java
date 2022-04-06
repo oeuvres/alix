@@ -80,32 +80,56 @@ import alix.web.OptionDistrib.Scorer;
 public class FieldText
 {
     /** Global number of docs relevant for this field */
-    public final int docsAll;
+    public final int docs;
     /** By document, count of occurrences for this field (for stats), different from docLenghth (empty positions) */
     protected final int[] docOccs;
     /** Store and populate the search and get the id */
     public final BytesRefHash formDic;
     /** By formId, count of docs, for all field */
-    public int[] formDocsAll;
+    public int[] formDocs;
+    /** By formId, is a locution    */
+    protected BitSet formLoc;
     /** Count of occurrences by formId */
-    public final long[] formOccsAll;
+    public final long[] formOccs;
+    /** By formId is Pun */
+    protected int[] formPun;
     /** A tag by formId (maybe used for filtering) */
     public int[] formTag;
     /** By formId, is a stop word */
     protected BitSet formStop; 
-    /** By formId, is a locution    */
-    protected BitSet formLoc; 
-    /** By formId is Pun */
-    protected int[] formPun; 
     /** Biggest formId+1 (like lucene IndexReader.maxDoc()) */
     public final int maxForm;
     /** Name of the indexed field */
     public final String name;
     /** Global number of occurrences for this field */
-    public long occsAll;
+    public long occs;
     /** The lucene reader from which to get freqs */
     final DirectoryReader reader;
 
+
+    /**
+     * A temporary record used to sort collected terms from global index.
+     */
+    private class FormRecord implements Comparable<FormRecord>
+    {
+        final int tmpId;
+        int docs;
+        long occs;
+        
+        FormRecord(final int tmpId) {
+            this.tmpId = tmpId;
+        }
+    
+        @Override
+        public int compareTo(FormRecord o)
+        {
+            int cp = Long.compare(o.occs, occs);
+            if (cp != 0) return cp;
+            // not the nicest alpha sort order
+            return Integer.compare(tmpId, o.tmpId);
+        }
+        
+    }
 
     /**
      * Build the dictionaries and stats. Each form indexed for the field will be identified by an int (formid).
@@ -136,16 +160,17 @@ public class FieldText
          https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/apache/lucene/search/similarities/SimilarityBase.java#L185
         */
         docOccs = new int[reader.maxDoc()];
-        final FixedBitSet docs =    new FixedBitSet(reader.maxDoc()); // used to count exactly docs with more than one term
+        final FixedBitSet docSet = new FixedBitSet(reader.maxDoc()); // used to count exactly docs with more than one term
         this.name = fieldName;
         
         
         ArrayList<FormRecord> stack = new ArrayList<FormRecord>();
         BytesRef bytes;
 
-        // read in IndexReader.totalTermFreq(Term term)
+        // Do not use IndexReader.totalTermFreq(Term term)
         // «Note that, like other term measures, this measure does not take deleted documents into account.»
         // So it is more efficient to use a term iterator on all terms
+        
         // a tmp dic used as an id provider, is needed if there are more than on leave to the index
         // is also used to remmeber the UTF8 bytes to reorder
         BytesRefHash tmpDic = new BytesRefHash();
@@ -182,9 +207,9 @@ public class FieldText
                     if (freq == 0) continue; // strange, is’n it ? Will probably not arrive
                     rec.docs++;
                     rec.occs += freq;
-                    occsAll += freq;
+                    occs += freq;
                     docOccs[docId] += freq;
-                    docs.set(docId);
+                    docSet.set(docId);
                 }
             }
         }
@@ -197,8 +222,8 @@ public class FieldText
         formLoc = new SparseFixedBitSet(this.maxForm); // record locutions, size of BitSet will be full
         formDic = new BytesRefHash(); // populate a new hash dic with values
         formDic.add(new BytesRef("")); // add empty string as formId=0 for empty positions
-        formOccsAll = new long[this.maxForm];
-        formDocsAll = new int[this.maxForm];
+        formOccs = new long[this.maxForm];
+        formDocs = new int[this.maxForm];
         formTag = new int[this.maxForm];
         Collections.sort(stack); // should sort by frequences
         CharsAtt chars = new CharsAtt(); // to test against indexation dicos
@@ -210,8 +235,8 @@ public class FieldText
             tmpDic.get(rec.tmpId, bytes); // get the term
             final int formId = formDic.add(bytes); // copy it in the other dic and get its definitive id
             // if (bytes.length == 0) formId = 0; // if empty pos is counted
-            formOccsAll[formId] = rec.occs;
-            formDocsAll[formId] = rec.docs;
+            formOccs[formId] = rec.occs;
+            formDocs[formId] = rec.docs;
             if (FrDics.isStop(bytes)) stopRecord.set(formId);
             chars.copy(bytes); // convert utf-8 bytes to utf-16 chars
             final int indexOfSpace = chars.indexOf(' ');
@@ -281,56 +306,17 @@ public class FieldText
         Arrays.sort(formPun);
         
         // here we should be happy and set class fields
-        docsAll = docs.cardinality();
+        docs = docSet.cardinality();
     }
     
     /**
-     * Total count of occurrences (except empty positions) for doc
+     * Total count of document affected by the field
      * @return
      */
-    public int docOccs(final int docId)
+    public int docs()
     {
-        return docOccs[docId];
+        return docs;
     }
-
-    /*
-     * not very efficient way to get occs for a query
-    public DocStats docStats(String[] forms, final BitSet filter) throws IOException 
-    {
-        if (forms == null || forms.length == 0) return null;
-        int[] freqs = new int[reader.maxDoc()];
-        double[] scores = new double[reader.maxDoc()];
-        final boolean hasFilter = (filter != null && filter.cardinality() > 0);
-        final boolean hasScorer = (scorer != null);
-        final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
-        // loop an all index to calculate a score for the forms
-        for (LeafReaderContext context : reader.leaves()) {
-            int docBase = context.docBase;
-            LeafReader leaf = context.reader();
-            Bits live = leaf.getLiveDocs();
-            final boolean hasLive = (live != null);
-            // loop on forms as lucene term
-            for (String form: forms) {
-                final int formId = formId(form);
-                if (hasScorer) scorer.idf(occsAll, docsAll, formOccsAll[formId], formDocsAll[formId]);
-                Term term = new Term(fname, form);
-                PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS);
-                int docLeaf;
-                while ((docLeaf = postings.nextDoc()) != NO_MORE_DOCS) {
-                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
-                    int docId = docBase + docLeaf;
-                    if (hasFilter && !filter.get(docId)) continue; // document not in the filter
-                    int freq = postings.freq();
-                    if (freq < 1) throw new ArithmeticException("??? field="+fname+" docId=" + docId+" form="+form+" freq="+freq);
-                    freqs[docId] += freq;
-                    if (hasScorer) scores[docId] += scorer.tf(freq, docOccs[docId]);
-                    else scores[docId] += freq;
-                }
-            }
-        }
-        return new DocStats(freqs, scores);
-    }
-    */
 
     /**
      * Populate a dictionary of forms by a bitSet of documents,
@@ -448,7 +434,7 @@ public class FieldText
      */
     public int formDocs(int formId)
     {
-        return formDocsAll[formId];
+        return formDocs[formId];
     }
 
     /**
@@ -569,7 +555,7 @@ public class FieldText
      */
     public long formOccs(int formId)
     {
-        return formOccsAll[formId];
+        return formOccs[formId];
     }
 
     /**
@@ -582,7 +568,7 @@ public class FieldText
         final BytesRef bytes = new BytesRef(s);
         final int id = formDic.find(bytes);
         if (id < 0) return -1;
-        return formOccsAll[id];
+        return formOccs[id];
     }
 
     /**
@@ -594,7 +580,7 @@ public class FieldText
     {
         final int id = formDic.find(bytes);
         if (id < 0) return -1;
-        return formOccsAll[id];
+        return formOccs[id];
     }
 
     /**
@@ -635,6 +621,24 @@ public class FieldText
     }
 
     /**
+     * Count of occurrences (except empty positions) for a docId
+     * @return
+     */
+    public long occs()
+    {
+        return occs;
+    }
+
+    /**
+     * Total count of occurrences (except empty positions) for a docId
+     * @return
+     */
+    public int occs(final int docId)
+    {
+        return docOccs[docId];
+    }
+
+    /**
      * Get a non filtered term enum with count
      * @return
      */
@@ -660,7 +664,7 @@ public class FieldText
             if (hasTags && !tags.accept(formTag[formId])) continue;
             // specif.idf(formOccs[formId], formDocsAll[formId] );
             // loop on all docs containing the term ?
-            formOccsFreq[formId] = formOccsAll[formId];
+            formOccsFreq[formId] = formOccs[formId];
         }
         // now we have all we need to build a sorted iterator on entries
         FormEnum results = new FormEnum(this);
@@ -721,7 +725,7 @@ public class FieldText
                 // if formId is negative, let the error go, problem in reader
                 // for each term, set scorer with global stats
                 // if (hasSpecif) specif.idf(formOccsAll[formId], formDocsAll[formId] );
-                if (hasScorer) scorer.idf(occsAll, docsAll, formOccsAll[formId], formDocsAll[formId]);
+                if (hasScorer) scorer.idf(occs, docs, formOccs[formId], formDocs[formId]);
                 docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
                 int docLeaf;
                 while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
@@ -732,7 +736,7 @@ public class FieldText
                     if (freq < 1) throw new ArithmeticException("??? field="+name+" docId=" + docId+" term="+bytes.utf8ToString()+" freq="+freq);
                     // doc not yet encounter, we can count
                     if (!hitsVek.get(docId)) {
-                        results.allHits++;
+                        results.hits++;
                     }
                     hitsVek.set(docId);
                     results.formHits[formId]++;
@@ -742,12 +746,12 @@ public class FieldText
                         results.formScore[formId] += score;
                     }
                     results.formFreq[formId] += freq;
-                    results.allFreq += freq;
+                    results.freq += freq;
                 }
                 if (hasScorer && filter != null) {
                     // add inverse score
-                    final long restFreq = formOccsAll[formId] - results.formFreq[formId];
-                    final long restLen = occsAll - results.occsPart;
+                    final long restFreq = formOccs[formId] - results.formFreq[formId];
+                    final long restLen = occs - results.occsPart;
                     double score = scorer.last(restFreq, restLen);
                     results.formScore[formId] -= score;
                 }
@@ -808,30 +812,6 @@ public class FieldText
     }
 
 
-    /**
-     * A temporary record used to sort collected terms from global index.
-     */
-    private class FormRecord implements Comparable<FormRecord>
-    {
-        final int tmpId;
-        int docs;
-        long occs;
-        
-        FormRecord(final int tmpId) {
-            this.tmpId = tmpId;
-        }
-    
-        @Override
-        public int compareTo(FormRecord o)
-        {
-            int cp = Long.compare(o.occs, occs);
-            if (cp != 0) return cp;
-            // not the nicest alpha sort order
-            return Integer.compare(tmpId, o.tmpId);
-        }
-        
-    }
-
     @Override
     public String toString()
     {
@@ -840,9 +820,48 @@ public class FieldText
         int len = Math.min(maxForm, 200);
         for (int i = 0; i < len; i++) {
             formDic.get(i, ref);
-            string.append(ref.utf8ToString() + ": " + formOccsAll[i] + "\n");
+            string.append(ref.utf8ToString() + ": " + formOccs[i] + "\n");
         }
         return string.toString();
     }
+
+    /*
+    // not very efficient way to get occs for a query
+    public DocStats docStats(String[] forms, final BitSet filter) throws IOException 
+    {
+        if (forms == null || forms.length == 0) return null;
+        int[] freqs = new int[reader.maxDoc()];
+        double[] scores = new double[reader.maxDoc()];
+        final boolean hasFilter = (filter != null && filter.cardinality() > 0);
+        final boolean hasScorer = (scorer != null);
+        final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
+        // loop an all index to calculate a score for the forms
+        for (LeafReaderContext context : reader.leaves()) {
+            int docBase = context.docBase;
+            LeafReader leaf = context.reader();
+            Bits live = leaf.getLiveDocs();
+            final boolean hasLive = (live != null);
+            // loop on forms as lucene term
+            for (String form: forms) {
+                final int formId = formId(form);
+                if (hasScorer) scorer.idf(occsAll, docsAll, formOccsAll[formId], formDocsAll[formId]);
+                Term term = new Term(fname, form);
+                PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS);
+                int docLeaf;
+                while ((docLeaf = postings.nextDoc()) != NO_MORE_DOCS) {
+                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
+                    int docId = docBase + docLeaf;
+                    if (hasFilter && !filter.get(docId)) continue; // document not in the filter
+                    int freq = postings.freq();
+                    if (freq < 1) throw new ArithmeticException("??? field="+fname+" docId=" + docId+" form="+form+" freq="+freq);
+                    freqs[docId] += freq;
+                    if (hasScorer) scores[docId] += scorer.tf(freq, docOccs[docId]);
+                    else scores[docId] += freq;
+                }
+            }
+        }
+        return new DocStats(freqs, scores);
+    }
+    */
 
 }

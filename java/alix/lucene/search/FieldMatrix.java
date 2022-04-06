@@ -96,10 +96,10 @@ public class FieldMatrix
   {
     double[] scores = new double[formMax];
     int[] docOccs = fieldText.docOccs;
-    long[] formOccs = fieldText.formOccsAll;
-    int[] formDocs = fieldText.formDocsAll;
-    double allOccs = fieldText.occsAll;
-    double allDocs = fieldText.docsAll;
+    long[] formOccs = fieldText.formOccs;
+    int[] formDocs = fieldText.formDocs;
+    double allOccs = fieldText.occs;
+    double allDocs = fieldText.docs;
     final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
     boolean hasFilter = (filter != null);
     BytesRef bytes;

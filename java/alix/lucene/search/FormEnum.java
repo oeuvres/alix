@@ -62,18 +62,12 @@ import alix.web.OptionMI;
  */
 public class FormEnum
 {
-    /** Global number of docs relevant for this facet */
-    public final int allDocs;
-    /** Occurrences found, Σ formFreq */
-    protected long allFreq;
-    /** Document found, Σ formHits */
-    protected int allHits;
-    /** All occs from parent field */
-    public final long allOccs;
     /** used to read in the dic */
     BytesRef bytes = new BytesRef();
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
+    /** Global number of docs relevant for this facet */
+    public final int docs;
     /** A record of edges */
     protected EdgeQueue edges;
     /** Source field */
@@ -104,6 +98,10 @@ public class FormEnum
     protected double[] formScore;
     /** An optional tag for each search (relevant for textField) */
     final private int[] formTag;
+    /** Occurrences found, Σ formFreq */
+    protected long freq;
+    /** Document found, Σ formHits */
+    protected int hits;
     /** Optional, for a co-occurrence search, count of occurrences to capture on the left */
     public int left;
     /** Limit for this iterator */
@@ -112,6 +110,8 @@ public class FormEnum
     public final int maxForm;
     /** Optional, a sort algorithm for coocs */
     public OptionMI mi;
+    /** All occs from parent field */
+    public final long occs;
     /** Count of occurrences for the part explored */
     public long occsPart;
     /** Reverse order of sorting */
@@ -143,21 +143,21 @@ public class FormEnum
     /** Build a form iterator from a text field */
     public FormEnum(final FieldText field)
     {
-        this.allDocs = field.docsAll;
+        this.docs = field.docs;
         this.fieldName = field.name;
         this.formDic = field.formDic;
-        this.formDocs = field.formDocsAll;
-        this.formOccs = field.formOccsAll;
+        this.formDocs = field.formDocs;
+        this.formOccs = field.formOccs;
         this.formCover = null;
         this.formTag = field.formTag;
         this.maxForm = field.maxForm;
-        this.allOccs = field.occsAll;
+        this.occs = field.occs;
     }
 
     /** Build an iterator from a facet field */
     public FormEnum(final FieldFacet field)
     {
-        this.allDocs = field.docsAll;
+        this.docs = field.docs;
         this.fieldName = field.name;
         this.formDic = field.formDic;
         this.formDocs = field.formDocs;
@@ -165,7 +165,7 @@ public class FormEnum
         this.formCover = field.formCover;
         this.formTag = null;
         this.maxForm = field.maxForm;
-        this.allOccs = field.occsAll; // maybe > docsAll for multiple terms
+        this.occs = field.occs; // maybe > docsAll for multiple terms
     }
 
     /**
@@ -202,13 +202,14 @@ public class FormEnum
     }
     
     /**
-     * Total of document found for this freq list 
+     * Global count of docs for field
+     * @return
      */
-    public int docsHit()
+    public int docsAll()
     {
-        return allHits;
+        return docs;
     }
-
+    
     /**
      * By rank in sort order, returns total count of documents in corpus
      * 
@@ -354,6 +355,16 @@ public class FormEnum
     }
 
     /**
+     * Global count of matching occurrences
+     * 
+     * @return
+     */
+    public long freqAll()
+    {
+        return freq;
+    }
+
+    /**
      * By rank in sort order, returns count of matching occurrences
      * 
      * @param rank
@@ -398,6 +409,14 @@ public class FormEnum
     {
         if (formHits == null) return 0;
         return formHits[formId];
+    }
+
+    /**
+     * Total of document found for this freq list 
+     */
+    public int hitsAll()
+    {
+        return hits;
     }
 
     public int hitsByRank(final int rank)
@@ -465,6 +484,15 @@ public class FormEnum
         return formOccs[formId];
     }
     
+    /**
+     * Current global number of occurrences for this term
+     * 
+     * @return
+     */
+    public long occsAll()
+    {
+        return occs;
+    }
     
 
     /**
@@ -486,7 +514,7 @@ public class FormEnum
      */
     public long occsFreq()
     {
-        return allFreq;
+        return freq;
     }
 
     /**

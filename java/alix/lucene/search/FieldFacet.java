@@ -104,10 +104,10 @@ public class FieldFacet
 {
     /** All facetId in alphabetic order */
     protected int[] alpha;
-    /** Global number of docs relevant for this facet */
-    protected int docsAll;
     /** A table docId => facetId+, used to get freqs */
     private int[][] docForms;
+    /** Global number of docs relevant for this facet */
+    protected int docs;
     /** Store and populate the search */
     protected final BytesRefHash formDic;
     /** By facet, Count of docs */
@@ -121,8 +121,7 @@ public class FieldFacet
     /** Cache the state of a reader from which all freqs are counted */
     private IndexReader reader;
     /** Count of facet affected */
-    protected int occsAll;
-
+    protected long occs;
     /** The field type */
     public final DocValuesType type;
 
@@ -283,8 +282,8 @@ public class FieldFacet
                 }
             }
         }
-        this.docsAll = docsAll;
-        this.occsAll = occsAll;
+        this.docs = docsAll;
+        this.occs = occsAll;
         maxForm = formDic.size();
         this.alpha = FormEnum.sortAlpha(formDic);
     }
@@ -300,86 +299,15 @@ public class FieldFacet
     }
     
     /**
-     * Build facet on a SttringField
-     * @throws IOException 
+     * Total count of documents for the field
+     * @return
      */
-    private void stringField(final String name, BitSet covers) throws IOException
+    public int docs()
     {
-        BytesRef bytes;
-        IntList formDocs = new IntList();
-        IntList[] docForms = new IntList[reader.maxDoc()];
-        IntList formCover = null;
-        if (covers != null) {
-            formCover = new IntList();
-        }
-
-        // loop on the index leaves to get all terms and freqs
-        for (LeafReaderContext context : reader.leaves()) {
-            LeafReader leaf = context.reader();
-            int docBase = context.docBase;
-            Terms terms = leaf.terms(name);
-            if (terms == null) continue;
-            TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
-            PostingsEnum docsEnum = null;
-            while ((bytes = tenum.next()) != null) {
-                if (bytes.length == 0) continue; // should not count empty position
-                int formId = formDic.add(bytes);
-                if (formId < 0) formId = -formId - 1; // value already given
-                // termLength[formId] += tenum.totalTermFreq(); // not faster if not yet cached
-                docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
-                int docLeaf;
-                Bits live = leaf.getLiveDocs();
-                boolean hasLive = (live != null);
-                while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
-                    final int docId = docBase + docLeaf;
-                 // doc is a cover, record it and do not add to stats
-                    if (covers != null && covers.get(docId)) {
-                        formCover.put(formId, docId);
-                    }
-                    
-                    if (docForms[docId] == null) {
-                        docsAll++;
-                        docForms[docId] = new IntList();
-                    }
-                    docForms[docId].push(formId);
-                    formDocs.inc(formId);
-                    occsAll++;
-                }
-            }
-        }
-        this.formDocs = formDocs.toArray();
-        for (int i = 0, len = docForms.length; i < len; i++) {
-            if (docForms[i] == null) continue; // empty line
-            this.docForms[i] = docForms[i].toArray();
-        }
-        maxForm = formDic.size();
-        this.alpha = FormEnum.sortAlpha(formDic);
-        if (covers != null) {
-            this.formCover = formCover.toArray();
-        }
+        return docs;
     }
+
     
-    /**
-     * Calculate, by facet, global count of occurrences of a text field
-     */
-    public long[] stats(FieldText ftext)
-    {
-        // try to find it in cache ?
-        long[] formOccsAll = new long[maxForm];
-        // loop on each doc to  
-        for (int docId = 0, len = docForms.length; docId < len; docId++) {
-            int[] forms = docForms[docId];
-            if (forms == null) continue;
-            int occs = ftext.docOccs[docId];
-            for (int formId: forms) {
-                formOccsAll[formId] += occs;
-            }
-        }
-        return formOccsAll;
-    }
-
-
     /**
      * Get first available facetId for this docId or -1 if nothing found
      */
@@ -430,6 +358,15 @@ public class FieldFacet
             }
         }
         return nos;
+    }
+    
+    /**
+     * Total count of occurrences
+     * @return
+     */
+    public long occs()
+    {
+        return occs;
     }
 
     /**
@@ -524,7 +461,7 @@ public class FieldFacet
                 continue;
             }
             if (hasScorer) {
-                scorer.idf(ftext.occsAll, docsAll, ftext.formOccsAll[formId], ftext.formDocsAll[formId]);
+                scorer.idf(ftext.occs, docs, ftext.formOccs[formId], ftext.formDocs[formId]);
             }
             // loop on the reader leaves (opening may have disk cost)
             for (LeafReaderContext context : reader.leaves()) {
@@ -558,9 +495,9 @@ public class FieldFacet
                         // if doc not already counted for another, increment hits for this facet
                         if (!docSeen) {
                             results.formHits[facetId]++; 
-                            results.allHits++;
+                            results.hits++;
                         }
-                        results.allFreq += freq; 
+                        results.freq += freq; 
                         results.formFreq[facetId] += freq; // add the matched freqs for this doc to the facet
                         // what for ?
                         // formPartOccs[facetId] += freq;
@@ -587,6 +524,86 @@ public class FieldFacet
     public int size()
     {
         return formDic.size();
+    }
+
+    /**
+     * Calculate, by facet, global count of occurrences of a text field
+     */
+    public long[] stats(FieldText ftext)
+    {
+        // try to find it in cache ?
+        long[] formOccsAll = new long[maxForm];
+        // loop on each doc to  
+        for (int docId = 0, len = docForms.length; docId < len; docId++) {
+            int[] forms = docForms[docId];
+            if (forms == null) continue;
+            int occs = ftext.docOccs[docId];
+            for (int formId: forms) {
+                formOccsAll[formId] += occs;
+            }
+        }
+        return formOccsAll;
+    }
+
+    /**
+     * Build facet on a SttringField
+     * @throws IOException 
+     */
+    private void stringField(final String name, BitSet covers) throws IOException
+    {
+        BytesRef bytes;
+        IntList formDocs = new IntList();
+        IntList[] docForms = new IntList[reader.maxDoc()];
+        IntList formCover = null;
+        if (covers != null) {
+            formCover = new IntList();
+        }
+    
+        // loop on the index leaves to get all terms and freqs
+        for (LeafReaderContext context : reader.leaves()) {
+            LeafReader leaf = context.reader();
+            int docBase = context.docBase;
+            Terms terms = leaf.terms(name);
+            if (terms == null) continue;
+            TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
+            PostingsEnum docsEnum = null;
+            while ((bytes = tenum.next()) != null) {
+                if (bytes.length == 0) continue; // should not count empty position
+                int formId = formDic.add(bytes);
+                if (formId < 0) formId = -formId - 1; // value already given
+                // termLength[formId] += tenum.totalTermFreq(); // not faster if not yet cached
+                docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
+                int docLeaf;
+                Bits live = leaf.getLiveDocs();
+                boolean hasLive = (live != null);
+                while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
+                    final int docId = docBase + docLeaf;
+                 // doc is a cover, record it and do not add to stats
+                    if (covers != null && covers.get(docId)) {
+                        formCover.put(formId, docId);
+                    }
+                    
+                    if (docForms[docId] == null) {
+                        docs++;
+                        docForms[docId] = new IntList();
+                    }
+                    docForms[docId].push(formId);
+                    formDocs.inc(formId);
+                    occs++;
+                }
+            }
+        }
+        this.formDocs = formDocs.toArray();
+        for (int i = 0, len = docForms.length; i < len; i++) {
+            if (docForms[i] == null) continue; // empty line
+            this.docForms[i] = docForms[i].toArray();
+        }
+        maxForm = formDic.size();
+        this.alpha = FormEnum.sortAlpha(formDic);
+        if (covers != null) {
+            this.formCover = formCover.toArray();
+        }
     }
 
     @Override
