@@ -335,50 +335,23 @@ public class FieldFacet
     }
     
     /**
-     * Use a list of search as a navigator for a list of doc ids. The list is
-     * supposed to be sorted in a relevant order for this facet ex : (author, title)
-     * or (author, date) for an author facet. Get the index of the first relevant
-     * document for each faceted term.
-     */
-    public int[] nos(final TopDocs topDocs)
-    {
-        int[] nos = new int[maxForm];
-        Arrays.fill(nos, Integer.MIN_VALUE);
-        ScoreDoc[] scoreDocs = topDocs.scoreDocs;
-        // loop on doc in order
-        for (int n = 0, docs = scoreDocs.length; n < docs; n++) {
-            final int docId = scoreDocs[n].doc;
-            int[] facets = docForms[docId]; // get the facets of this doc
-            if (facets == null) continue; // could be null if doc not faceted
-            for (int i = 0, length = facets.length; i < length; i++) {
-                final int facetId = facets[i];
-                // already set, let it, keep the first one
-                if (nos[facetId] > -0) continue; 
-                nos[facetId] = n;
-            }
-        }
-        return nos;
-    }
-    
-    /**
-     * Total count of occurrences
-     * @return
-     */
-    public long occs()
-    {
-        return occs;
-    }
-
-    /**
      * Returns a new enumerator on all search for this facet in orthographic order
      * 
      * @return
      * @throws IOException
      */
-    public FormEnum results() throws IOException
+    public FormEnum forms() throws IOException
     {
-        FormEnum it = new FormEnum(this);
-        return it;
+        FormEnum forms = new FormEnum(name);
+        forms.docs = docs;
+        forms.formDic = formDic;
+        forms.formDocs = formDocs;
+        forms.formOccs = null; // not relevant, a facet is not repeated by doc
+        forms.formCover = formCover;
+        forms.formTag = null;
+        forms.maxForm = maxForm;
+        forms.occs = occs; // maybe > docsAll for multiple terms
+        return forms;
     }
 
     /**
@@ -387,13 +360,13 @@ public class FieldFacet
      * @return
      * @throws IOException
      */
-    public FormEnum results(final BitSet filter) throws IOException
+    public FormEnum forms(final BitSet filter) throws IOException
     {
+        FormEnum forms = forms();
         if (filter == null) {
-            return results();
+            return forms();
         }
-        FormEnum results = new FormEnum(this);
-        results.formHits = new int[maxForm];
+        forms.formHits = new int[maxForm];
         for (int docId = 0, max = this.docForms.length; docId < max; docId++) {
             // document not in the filter, go next
             if (!filter.get(docId)) continue; 
@@ -402,10 +375,45 @@ public class FieldFacet
             int[] facets = docForms[docId];
             if (facets == null) continue;
             for (int facetId: facets) {
-                results.formHits[facetId]++;
+                forms.formHits[facetId]++;
             }
         }
-        return results;
+        return forms;
+    }
+
+    /**
+     * By form 
+     * @param ftext
+     * @param filter
+     * @return
+     * @throws IOException
+     */
+    public FormEnum forms(final FieldText ftext, final BitSet filter) throws IOException
+    {
+        if (ftext == null) {
+            throw new IllegalArgumentException("A TextField (with indexed tokens) is required here");
+        }
+        boolean hasFilter = (filter != null);
+        FormEnum forms = forms();
+        forms.formOccs = new long[maxForm];
+        if (hasFilter) {
+            forms.formFreq = new long[maxForm];
+            forms.formHits = new int[maxForm];
+        }
+        for (int docId = 0, len = ftext.docOccs.length; docId < len; docId++) {
+            final int[] formIds = docForms[docId];
+            if (formIds == null) continue;
+            for (final int formId: formIds) {
+                forms.formOccs[formId] += ftext.formOccs[docId];
+                if (hasFilter && filter.get(docId)) {
+                    forms.formFreq[formId] += ftext.formOccs[docId];
+                    forms.freq += ftext.formOccs[docId];
+                    forms.formHits[formId]++;
+                    forms.hits++;
+                }
+            }
+        }
+        return forms;
     }
 
     /**
@@ -418,8 +426,9 @@ public class FieldFacet
      * @return
      * @throws IOException
      */
-    public FormEnum results(final FieldText ftext, final String[] search, final BitSet filter, Scorer scorer) throws IOException
+    public FormEnum forms(final FieldText ftext, final BitSet filter, final String[] search, Scorer scorer) throws IOException
     {
+        FormEnum forms = forms(ftext, filter);
         ArrayList<Term> terms = new ArrayList<Term>();
         if (search != null && search.length != 0) {
             for (String f : search) {
@@ -428,20 +437,20 @@ public class FieldFacet
                 terms.add(new Term(ftext.name, f));
             }
         }
-        if (terms.size() > 0); // stay here
-        else if (filter != null && filter.cardinality() > 0) return results(filter);
-        else return results();
-        FormEnum results = new FormEnum(this);
+        // no terms found
+        if (terms.size() < 1) {
+            return forms;
+        }
         boolean hasScorer = (scorer != null);
         boolean hasFilter = (filter != null);
-
+    
         // Crawl index to get stats by facet term about the text search
         BitSet docMap = new FixedBitSet(reader.maxDoc()); // keep memory of already counted docs
-
-        results.formHits = new int[maxForm];
-        results.formFreq = new long[maxForm]; // a vector to count matched occurrences by facet
+    
+        forms.formHits = new int[maxForm];
+        forms.formFreq = new long[maxForm]; // a vector to count matched occurrences by facet
         if (hasScorer) {
-            results.formScore = new double[maxForm];
+            forms.formScore = new double[maxForm];
         }
         // loop on each term of the search to update the score vector
         @SuppressWarnings("unused")
@@ -489,21 +498,21 @@ public class FieldFacet
                     for (int i = 0, length = facets.length; i < length; i++) {
                         int facetId = facets[i];
                         // first match for this facet, increment the counter of matched facets
-                        if (results.formFreq[facetId] == 0) {
+                        if (forms.formFreq[facetId] == 0) {
                             facetMatch++;
                         }
                         // if doc not already counted for another, increment hits for this facet
                         if (!docSeen) {
-                            results.formHits[facetId]++; 
-                            results.hits++;
+                            forms.formHits[facetId]++; 
+                            forms.hits++;
                         }
-                        results.freq += freq; 
-                        results.formFreq[facetId] += freq; // add the matched freqs for this doc to the facet
+                        forms.freq += freq; 
+                        forms.formFreq[facetId] += freq; // add the matched freqs for this doc to the facet
                         // what for ?
                         // formPartOccs[facetId] += freq;
                         // term frequency
                         if (hasScorer) {
-                            results.formScore[facetId] += scorer.tf(freq, ftext.docOccs[docId]);
+                            forms.formScore[facetId] += scorer.tf(freq, ftext.docOccs[docId]);
                         }
                     }
                     if (!docSeen) {
@@ -511,9 +520,44 @@ public class FieldFacet
                     }
                 }
             }
-
+    
         }
-        return results;
+        return forms;
+    }
+
+    /**
+     * Use a list of search as a navigator for a list of doc ids. The list is
+     * supposed to be sorted in a relevant order for this facet ex : (author, title)
+     * or (author, date) for an author facet. Get the index of the first relevant
+     * document for each faceted term.
+     */
+    public int[] nos(final TopDocs topDocs)
+    {
+        int[] nos = new int[maxForm];
+        Arrays.fill(nos, Integer.MIN_VALUE);
+        ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+        // loop on doc in order
+        for (int n = 0, docs = scoreDocs.length; n < docs; n++) {
+            final int docId = scoreDocs[n].doc;
+            int[] facets = docForms[docId]; // get the facets of this doc
+            if (facets == null) continue; // could be null if doc not faceted
+            for (int i = 0, length = facets.length; i < length; i++) {
+                final int facetId = facets[i];
+                // already set, let it, keep the first one
+                if (nos[facetId] > -0) continue; 
+                nos[facetId] = n;
+            }
+        }
+        return nos;
+    }
+    
+    /**
+     * Total count of occurrences
+     * @return
+     */
+    public long occs()
+    {
+        return occs;
     }
 
     /**

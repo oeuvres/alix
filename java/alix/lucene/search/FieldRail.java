@@ -783,7 +783,7 @@ public class FieldRail
     {
         if (this.ftext.formDic != results.formDic) {
             throw new IllegalArgumentException("Not the same fields. Rail for coocs: " + this.ftext.name
-                    + ", freqList build with " + results.fieldName + " field");
+                    + ", freqList build with " + results.name + " field");
         }
         // if (results.limit == 0) throw new IllegalArgumentException("How many sorted
         // forms do you want? set FormEnum.limit");

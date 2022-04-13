@@ -67,17 +67,17 @@ public class FormEnum
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
     /** Global number of docs relevant for this facet */
-    public final int docs;
+    public int docs;
     /** A record of edges */
     protected EdgeQueue edges;
     /** Source field */
-    public final String fieldName;
+    public final String name;
     /** Optional, a set of documents to limit occurrences collect */
     public BitSet filter;
     /**  By formId, a docId used as a cover (example: metas for books or  authors) */
-    final private int[] formCover;
+    protected int[] formCover;
     /** Field dictionary */
-    final BytesRefHash formDic;
+    BytesRefHash formDic;
     /** By formId, count of docs, for all base */
     protected int[] formDocs;
     /** By formId, count of docs, for a partition */
@@ -97,7 +97,7 @@ public class FormEnum
     /** By formId, a relevance score calculated */
     protected double[] formScore;
     /** An optional tag for each search (relevant for textField) */
-    final private int[] formTag;
+    protected int[] formTag;
     /** Occurrences found, Σ formFreq */
     protected long freq;
     /** Document found, Σ formHits */
@@ -107,11 +107,11 @@ public class FormEnum
     /** Limit for this iterator */
     public int limit;
     /** Biggest formId+1 (like lucene IndexReader.maxDoc()) */
-    public final int maxForm;
+    public int maxForm;
     /** Optional, a sort algorithm for coocs */
     public OptionMI mi;
     /** All occs from parent field */
-    public final long occs;
+    public long occs;
     /** Count of occurrences for the part explored */
     public long occsPart;
     /** Reverse order of sorting */
@@ -140,33 +140,12 @@ public class FormEnum
         docs,
     }
 
-    /** Build a form iterator from a text field */
-    public FormEnum(final FieldText field)
+    protected FormEnum(final String fname)
     {
-        this.docs = field.docs;
-        this.fieldName = field.name;
-        this.formDic = field.formDic;
-        this.formDocs = field.formDocs;
-        this.formOccs = field.formOccs;
-        this.formCover = null;
-        this.formTag = field.formTag;
-        this.maxForm = field.maxForm;
-        this.occs = field.occs;
+        this.name = fname;
     }
+    
 
-    /** Build an iterator from a facet field */
-    public FormEnum(final FieldFacet field)
-    {
-        this.docs = field.docs;
-        this.fieldName = field.name;
-        this.formDic = field.formDic;
-        this.formDocs = field.formDocs;
-        this.formOccs = null; // not relevant, a facet is not repeated by doc
-        this.formCover = field.formCover;
-        this.formTag = null;
-        this.maxForm = field.maxForm;
-        this.occs = field.occs; // maybe > docsAll for multiple terms
-    }
 
     /**
      * Cover docid for current term
@@ -599,28 +578,28 @@ public class FormEnum
     public int[] sort(final Order order, final int limit, final boolean reverse)
     {
         if (formFreq != null && maxForm != formFreq.length) {
-            throw new IllegalArgumentException("Corrupted FormEnum name=" + fieldName + " maxForm=" + maxForm
+            throw new IllegalArgumentException("Corrupted FormEnum name=" + name + " maxForm=" + maxForm
                     + " formOccsFreq.length=" + formFreq.length);
         }
         switch (order) {
             case occs:
                 if (formOccs == null) {
-                    throw new IllegalArgumentException("Impossible to sort by occs (occurrences total), formOccsAll has not been set by producer.");
+                    throw new IllegalArgumentException("Impossible to sort by occs (occurrences total), formOccs has not been set by producer.");
                 }
                 break;
             case docs:
                 if (formDocs == null) {
-                    throw new IllegalArgumentException("Impossible to sort docs (documents total), formDocsAll has not been set by producer.");
+                    throw new IllegalArgumentException("Impossible to sort docs (documents total), formDocs has not been set by producer.");
                 }
                 break;
             case freq:
                 if (formFreq == null) {
-                    throw new IllegalArgumentException("Impossible to sort by freq (occurrences found), seems not results of a search, formOccsFreq has not been set by producer.");
+                    throw new IllegalArgumentException("Impossible to sort by freq (occurrences found), seems not results of a search, formFreq has not been set by producer.");
                 }
                 break;
             case hits:
                 if (formHits == null) {
-                    throw new IllegalArgumentException("Impossible to sort by hits (documents found), seems not results of a search, formDocsHit has not been set by producer.");
+                    throw new IllegalArgumentException("Impossible to sort by hits (documents found), seems not results of a search, formHits has not been set by producer.");
                 }
                 break;
             case score:

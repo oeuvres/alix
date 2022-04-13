@@ -34,7 +34,7 @@ public class TestFieldText
         TestAlix.write(alix, new String[] { "C C C A", "A C C B", "B A A", "C B B F", "A C C A C E ", "B B B", });
         String fieldName = TestAlix.fieldName;
         FieldText ftext = alix.fieldText(fieldName);
-        FormEnum terms = ftext.results();
+        FormEnum terms = ftext.forms();
         System.out.println("forms, in formId order");
         System.out.println(terms);
         FixedBitSet bits = new FixedBitSet(alix.maxDoc());

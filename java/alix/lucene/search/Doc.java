@@ -657,7 +657,7 @@ public class Doc
     /**
      * Count of occurrences by term for the document. Returns an iterator sorted
      * according to a scorer. If scorer is null, default is count of occurences.
-     * {@link FieldText#results(int, org.apache.lucene.util.BitSet, Specif, TagFilter)}
+     * {@link FieldText#forms(int, org.apache.lucene.util.BitSet, Specif, TagFilter)}
      * 
      * @param field
      * @param limit
@@ -668,7 +668,7 @@ public class Doc
      * @throws IOException
      * @throws NoSuchFieldException
      */
-    public FormEnum results(String field, Scorer scorer, TagFilter tags) throws IOException, NoSuchFieldException
+    public FormEnum forms(String field, Scorer scorer, TagFilter tags) throws IOException, NoSuchFieldException
     {
         boolean hasTags = (tags != null);
         boolean noStop = (tags != null && tags.nostop());
@@ -676,11 +676,11 @@ public class Doc
 
         // get index term stats
         FieldText fieldText = alix.fieldText(field);
-        FormEnum results = new FormEnum(fieldText);
+        FormEnum forms = fieldText.forms();
         if (hasScorer) {
-            results.formScore = new double[fieldText.maxForm];
+            forms.formScore = new double[fieldText.maxForm];
         }
-        results.formFreq = new long[fieldText.maxForm]; // freqs by form
+        forms.formFreq = new long[fieldText.maxForm]; // freqs by form
         int occsDoc = fieldText.docOccs[docId];
 
         // loop on all forms of the document, get score, keep the top
@@ -708,16 +708,16 @@ public class Doc
             }
             // scorer.weight(termOccs, termDocs); // collection level stats
             long freq = termit.totalTermFreq();
-            results.formFreq[formId] = freq;
-            results.freq += freq;
+            forms.formFreq[formId] = freq;
+            forms.freq += freq;
             if (hasScorer) {
-                results.formScore[formId] += scorer.tf(freq, occsDoc);
+                forms.formScore[formId] += scorer.tf(freq, occsDoc);
                 // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub
                 // complement ?
             }
         }
         // add some more stats on this iterator
-        return results;
+        return forms;
     }
 
 }

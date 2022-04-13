@@ -480,30 +480,6 @@ public class FieldText
     }
     
     /**
-     * Returns a sorted array of formId for found words, ready for binarySearch, or null if not found.
-     * @param words
-     * @param filter
-     * @return
-     */
-    public int[] formIds(String[] words, final BitSet filter) throws IOException
-    {
-        // check if words could be found, even with the docId filter, collect their formId
-        IntList list = new IntList();
-        for (String word: words) {
-            int formId = formId(word, filter);
-            if (formId < 0) {
-                continue;
-            }
-            list.push(formId);
-        }
-        if (list.isEmpty()) {
-            return null;
-        }
-        int[] pivots = list.uniq();
-        return pivots;
-    }
-
-    /**
      * Returns formId &gt;= 0 if exists, or &lt; 0 if not.
      * @param bytes
      * @return 
@@ -522,6 +498,33 @@ public class FieldText
     {
         BytesRef bytes = new BytesRef(term);
         return formDic.find(bytes);
+    }
+
+    /**
+     * Returns a sorted array of formId for found words, ready for binarySearch, or null if not found.
+     * @param words
+     * @param filter
+     * @return
+     */
+    public int[] formIds(String[] words, final BitSet filter) throws IOException
+    {
+        if (words == null) {
+            return null;
+        }
+        // check if words could be found, even with the docId filter, collect their formId
+        IntList list = new IntList();
+        for (String word: words) {
+            int formId = formId(word, filter);
+            if (formId < 0) {
+                continue;
+            }
+            list.push(formId);
+        }
+        if (list.isEmpty()) {
+            return null;
+        }
+        int[] pivots = list.uniq();
+        return pivots;
     }
 
     /**
@@ -642,9 +645,18 @@ public class FieldText
      * Get a non filtered term enum with count
      * @return
      */
-    public FormEnum results()
+    public FormEnum forms()
     {
-        return new FormEnum(this);
+        FormEnum forms = new FormEnum(name);
+        forms.docs = docs;
+        forms.formDic = formDic;
+        forms.formDocs = formDocs;
+        forms.formOccs = formOccs;
+        forms.formCover = null;
+        forms.formTag = formTag;
+        forms.maxForm = maxForm;
+        forms.occs = occs;
+        return forms;
     }
 
     /**
@@ -652,30 +664,30 @@ public class FieldText
      * that loop on each term for global.
      * @return
      */
-    public FormEnum results(final TagFilter tags)
+    public FormEnum forms(final TagFilter tags)
     {
         boolean hasTags = (tags != null);
         boolean noStop = (tags != null && tags.nostop());
         boolean locs = (tags != null && tags.locutions());
-        long[] formOccsFreq = new long[maxForm];
+        long[] formFreq = new long[maxForm];
         for (int formId=0; formId < maxForm; formId++) {
             if (noStop && isStop(formId)) continue;
             if (locs && !formLoc.get(formId)) continue;
             if (hasTags && !tags.accept(formTag[formId])) continue;
             // specif.idf(formOccs[formId], formDocsAll[formId] );
             // loop on all docs containing the term ?
-            formOccsFreq[formId] = formOccs[formId];
+            formFreq[formId] = formOccs[formId];
         }
         // now we have all we need to build a sorted iterator on entries
-        FormEnum results = new FormEnum(this);
-        results.formFreq = formOccsFreq;
+        FormEnum forms = forms();
+        forms.formFreq = formFreq;
         // no hits
-        return results;
+        return forms;
     }
 
-    public FormEnum results(final BitSet filter) throws IOException
+    public FormEnum forms(final BitSet filter) throws IOException
     {
-        return results(null, null, filter);
+        return forms(filter, null, null);
     }
     
     /**
@@ -683,7 +695,7 @@ public class FieldText
      * defined as a BitSet. Returns an iterator sorted according 
      * to a scorer. If scorer is null, default is count of occurences.
      */
-    public FormEnum results(final TagFilter tags, Scorer scorer, final BitSet filter) throws IOException
+    public FormEnum forms(final BitSet filter, final TagFilter tags, Scorer scorer) throws IOException
     {
         boolean hasTags = (tags != null);
         boolean noStop = (tags != null && tags.nostop());
@@ -691,14 +703,14 @@ public class FieldText
         boolean hasScorer = (scorer != null);
         boolean hasFilter = (filter != null && filter.cardinality() > 0);
         
-        FormEnum results = new FormEnum(this);
-        if (hasScorer) results.formScore = new double[maxForm];
-        results.formFreq = new long[maxForm];
-        results.formHits = new int[maxForm];
-        results.occsPart = 0;
+        FormEnum forms = forms();
+        if (hasScorer) forms.formScore = new double[maxForm];
+        forms.formFreq = new long[maxForm];
+        forms.formHits = new int[maxForm];
+        forms.occsPart = 0;
         if (filter != null) {
             for (int docId = filter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = filter.nextSetBit(docId + 1)) {
-                results.occsPart += docOccs[docId];
+                forms.occsPart += docOccs[docId];
             }
         }
         // if (hasSpecif) specif.all(occsAll, docsAll);
@@ -736,24 +748,24 @@ public class FieldText
                     if (freq < 1) throw new ArithmeticException("??? field="+name+" docId=" + docId+" term="+bytes.utf8ToString()+" freq="+freq);
                     // doc not yet encounter, we can count
                     if (!hitsVek.get(docId)) {
-                        results.hits++;
+                        forms.hits++;
                     }
                     hitsVek.set(docId);
-                    results.formHits[formId]++;
+                    forms.formHits[formId]++;
                     if (hasScorer) {
                         final double score = scorer.tf(freq, docOccs[docId]);
-                        if (score < 0) results.formScore[formId] -= score; // all variation is significant
-                        results.formScore[formId] += score;
+                        if (score < 0) forms.formScore[formId] -= score; // all variation is significant
+                        forms.formScore[formId] += score;
                     }
-                    results.formFreq[formId] += freq;
-                    results.freq += freq;
+                    forms.formFreq[formId] += freq;
+                    forms.freq += freq;
                 }
                 if (hasScorer && filter != null) {
                     // add inverse score
-                    final long restFreq = formOccs[formId] - results.formFreq[formId];
-                    final long restLen = occs - results.occsPart;
+                    final long restFreq = formOccs[formId] - forms.formFreq[formId];
+                    final long restLen = occs - forms.occsPart;
                     double score = scorer.last(restFreq, restLen);
-                    results.formScore[formId] -= score;
+                    forms.formScore[formId] -= score;
                 }
             }
         }
@@ -772,7 +784,7 @@ public class FieldText
             }
         }
         */
-        return results;
+        return forms;
     }
     
 
