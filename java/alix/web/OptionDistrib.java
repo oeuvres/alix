@@ -39,67 +39,35 @@ package alix.web;
  */
 public enum OptionDistrib implements Option
 {
-    occs("Occurrences", "", new ScorerOccs()), 
-    g("G-test (vraisemblance log)", "G = 2 Σ(Oi.ln(Oi/Ei))", new ScorerG()),
-    bm25("BM25 (genre de tf-idf)", "", new ScorerBm25()),
-    chi2("Chi2 (vraisemblance carrée)", "Chi2 = Σ(Oi - Ei)²/Ei", new ScorerChi2()),
-    tfidf("tf-idf", "Pondération entre “term frequency” et “inverse document frequency”", new ScorerTfidf()),
-    /*
-     * fisher("Fisher (hypergéométrique)",
-     * "p = (AB + A¬B)!(¬AB + ¬A¬B)!(AB + ¬AB)!(A¬B + ¬A¬B) / (AB!A¬B!¬AB!¬A¬B!)") {
-     * public double score(final double Oab, final double Oa, final double Ob, final
-     * double N) { double[] res = Fisher.test((int)Oab, (int)(Oa - Oab), (int)(Ob -
-     * Oab), (int)(N - Oa - Ob + Oab)); return - res[0]; } },
-     */
-    ;
-
-    abstract static public class Scorer
-    {
-        protected double frq; // used to calculate expected
-
-        public double idf(final double allOccs, final double allDocs, final double formOccs, final double formDocs)
-        {
-            this.frq = formOccs / allOccs;
-            return 1;
-        }
-
-        abstract public double tf(final double freq, final double docLen);
-
-        public double last(final double freq, final double docLen)
-        {
-            return 0;
-        }
-    }
-
-    public static class ScorerOccs extends Scorer
-    {
+    OCCS("Occurrences", "") {
         @Override
         public double tf(final double freq, final double docLen)
         {
             return freq;
         }
-    }
-
-    public static class ScorerG extends Scorer
-    {
+    },
+    G("G-test", "Vraisemblance log, G = 2 Σ(Oi.ln(Oi/Ei))") {
+        // don’t try to get variation 
         @Override
         public double tf(final double freq, final double docLen)
         {
             if (freq < 1 || docLen < 1)
                 return 0;
             final double Ei = frq * docLen;
+            
             // maybe negative
             return 2.0D * freq * Math.log(freq / Ei);
         }
-
+        /**
+         * Because ΣOi = ΣEi = N, G-test need a last addition (not tf-idf like)
+         */
         public double last(final double freq, final double docLen)
         {
             return tf(freq, docLen);
         }
-    }
 
-    public static class ScorerBm25 extends Scorer
-    {
+    },
+    BM25("BM25", "Genre de tf-idf") {
         /** Average of document length */
         protected double docAvg;
         /** Classical BM25 param */
@@ -122,10 +90,9 @@ public enum OptionDistrib implements Option
         {
             return idf * (freq * (k1 + 1)) / (freq + k1 * (1 - b + b * docLen / docAvg));
         }
-    }
 
-    public static class ScorerTfidf extends Scorer
-    {
+    },
+    TFIDF("tf-idf", "Pondération entre “term frequency” et “inverse document frequency”") {
         /** A traditional coefficient */
         final double k = 0.2F;
         /** Cache idf for a term */
@@ -145,10 +112,9 @@ public enum OptionDistrib implements Option
         {
             return idf * (k + (1 - k) * (double) freq / (double) docLen);
         }
-    }
 
-    public static class ScorerChi2 extends Scorer
-    {
+    },
+    CHI2("Chi2", "Vraisemblance carrée, Chi2 = Σ(Oi - Ei)²/Ei") {
         @Override
         public double tf(final double freq, final double docLen)
         {
@@ -164,27 +130,33 @@ public enum OptionDistrib implements Option
         {
             return tf(freq, docLen);
         }
-    }
 
-    public static class ScorerLafon extends Scorer
+    },
+    /*
+     * fisher("Fisher (hypergéométrique)",
+     * "p = (AB + A¬B)!(¬AB + ¬A¬B)!(AB + ¬AB)!(A¬B + ¬A¬B) / (AB!A¬B!¬AB!¬A¬B!)") {
+     * public double score(final double Oab, final double Oa, final double Ob, final
+     * double N) { double[] res = Fisher.test((int)Oab, (int)(Oa - Oab), (int)(Ob -
+     * Oab), (int)(N - Oa - Ob + Oab)); return - res[0]; } },
+     */
+    ;
+
+    protected double frq; // used to calculate expected
+
+    public double idf(final double allOccs, final double allDocs, final double formOccs, final double formDocs)
     {
-
-        @Override
-        public double tf(double freq, double docLen)
-        {
-            /*
-             * fisher("Fisher (hypergéométrique)",
-             * "p = (AB + A¬B)!(¬AB + ¬A¬B)!(AB + ¬AB)!(A¬B + ¬A¬B) / (AB!A¬B!¬AB!¬A¬B!)") {
-             * public double score(final double Oab, final double Oa, final double Ob, final
-             * double N) { double[] res = Fisher.test((int)Oab, (int)(Oa - Oab), (int)(Ob -
-             * Oab), (int)(N - Oa - Ob + Oab)); return - res[0]; } }
-             */
-            return 0;
-        }
-
+        this.frq = formOccs / allOccs;
+        return 1;
     }
 
-    final public Scorer scorer;
+    abstract public double tf(final double freq, final double docLen);
+
+    public double last(final double freq, final double docLen)
+    {
+        return 0;
+    }
+
+
     final public String label;
 
     public String label()
@@ -199,16 +171,11 @@ public enum OptionDistrib implements Option
         return hint;
     }
 
-    private OptionDistrib(final String label, final String hint, final Scorer scorer)
+    private OptionDistrib(final String label, final String hint)
     {
         this.label = label;
         this.hint = hint;
-        this.scorer = scorer;
     }
 
-    public Scorer scorer()
-    {
-        return scorer;
-    }
 
 }

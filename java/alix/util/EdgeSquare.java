@@ -237,7 +237,7 @@ public class EdgeSquare implements Iterable<Edge>
                         int ab = edgeCount;
                         long a = counts[source];
                         long b = counts[target];
-                        score = OptionMI.g.score(ab, a, b, N);
+                        score = OptionMI.G.score(ab, a, b, N);
                         // score = edgeCount;
                         // big center
                         // score = (double)edgeCount; // centralize

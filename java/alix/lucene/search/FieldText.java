@@ -62,7 +62,7 @@ import alix.lucene.analysis.FrDics.LexEntry;
 import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.Char;
 import alix.util.IntList;
-import alix.web.OptionDistrib.Scorer;
+import alix.web.OptionDistrib;
 
 /**
  * <p>
@@ -695,16 +695,16 @@ public class FieldText
      * defined as a BitSet. Returns an iterator sorted according 
      * to a scorer. If scorer is null, default is count of occurences.
      */
-    public FormEnum forms(final BitSet filter, final TagFilter tags, Scorer scorer) throws IOException
+    public FormEnum forms(final BitSet filter, final TagFilter tags, OptionDistrib distrib) throws IOException
     {
         boolean hasTags = (tags != null);
         boolean noStop = (tags != null && tags.nostop());
         boolean locs = (tags != null && tags.locutions());
-        boolean hasScorer = (scorer != null);
+        boolean hasDistrib = (distrib != null);
         boolean hasFilter = (filter != null && filter.cardinality() > 0);
         
         FormEnum forms = forms();
-        if (hasScorer) forms.formScore = new double[maxForm];
+        if (hasDistrib) forms.formScore = new double[maxForm];
         forms.formFreq = new long[maxForm];
         forms.formHits = new int[maxForm];
         forms.occsPart = 0;
@@ -737,7 +737,7 @@ public class FieldText
                 // if formId is negative, let the error go, problem in reader
                 // for each term, set scorer with global stats
                 // if (hasSpecif) specif.idf(formOccsAll[formId], formDocsAll[formId] );
-                if (hasScorer) scorer.idf(occs, docs, formOccs[formId], formDocs[formId]);
+                if (hasDistrib) distrib.idf(occs, docs, formOccs[formId], formDocs[formId]);
                 docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
                 int docLeaf;
                 while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
@@ -752,19 +752,19 @@ public class FieldText
                     }
                     hitsVek.set(docId);
                     forms.formHits[formId]++;
-                    if (hasScorer) {
-                        final double score = scorer.tf(freq, docOccs[docId]);
+                    if (hasDistrib) {
+                        final double score = distrib.tf(freq, docOccs[docId]);
                         if (score < 0) forms.formScore[formId] -= score; // all variation is significant
                         forms.formScore[formId] += score;
                     }
                     forms.formFreq[formId] += freq;
                     forms.freq += freq;
                 }
-                if (hasScorer && filter != null) {
+                if (hasDistrib && filter != null) {
                     // add inverse score
                     final long restFreq = formOccs[formId] - forms.formFreq[formId];
                     final long restLen = occs - forms.occsPart;
-                    double score = scorer.last(restFreq, restLen);
+                    double score = distrib.last(restFreq, restLen);
                     forms.formScore[formId] -= score;
                 }
             }

@@ -60,7 +60,7 @@ import alix.lucene.util.WordsAutomatonBuilder;
 import alix.util.Chain;
 import alix.util.ML;
 import alix.util.Top;
-import alix.web.OptionDistrib.Scorer;
+import alix.web.OptionDistrib;
 
 /**
  * Tools to display a document
@@ -668,11 +668,11 @@ public class Doc
      * @throws IOException
      * @throws NoSuchFieldException
      */
-    public FormEnum forms(String field, Scorer scorer, TagFilter tags) throws IOException, NoSuchFieldException
+    public FormEnum forms(String field, OptionDistrib distrib, TagFilter tags) throws IOException, NoSuchFieldException
     {
         boolean hasTags = (tags != null);
         boolean noStop = (tags != null && tags.nostop());
-        boolean hasScorer = (scorer != null);
+        boolean hasScorer = (distrib != null);
 
         // get index term stats
         FieldText fieldText = alix.fieldText(field);
@@ -703,7 +703,7 @@ public class Doc
                 continue; // should not arrive, let cry
             }
             if (hasScorer) {
-                scorer.idf(fieldText.occs, fieldText.docs, fieldText.formOccs[formId],
+                distrib.idf(fieldText.occs, fieldText.docs, fieldText.formOccs[formId],
                         fieldText.formDocs[formId]);
             }
             // scorer.weight(termOccs, termDocs); // collection level stats
@@ -711,7 +711,7 @@ public class Doc
             forms.formFreq[formId] = freq;
             forms.freq += freq;
             if (hasScorer) {
-                forms.formScore[formId] += scorer.tf(freq, occsDoc);
+                forms.formScore[formId] += distrib.tf(freq, occsDoc);
                 // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub
                 // complement ?
             }

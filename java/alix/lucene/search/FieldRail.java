@@ -162,9 +162,11 @@ public class FieldRail
     
     /**
      * Build a cooccurrence freqList in formId order, attached to a FormEnum object.
-     * Returns the count of occurences found.
+     * Returns the count of occurences found. This method may need a lot of optional params, 
+     * set on the FormEnum object.
+     * 
      */
-    public long coocs(int[] pivotIds, FormEnum results) throws IOException
+    public long coocs(final FormEnum results, final int[] pivotIds, final int left, final int right, OptionMI mi) throws IOException
     {
         // for each index leave
         //     collect "postings" for each term
@@ -173,8 +175,6 @@ public class FieldRail
         if (pivotIds == null || pivotIds.length == 0) {
             throw new IllegalArgumentException("Search term(s) missing, FormEnum.search should be not null");
         }
-        final int left = results.left;
-        final int right = results.right;
         if (left < 0 || right < 0 || (left + right) < 1) {
             throw new IllegalArgumentException("FormEnum.left=" + left + " FormEnum.right=" + right
                     + " not enough context to extract co-occurrences.");
@@ -353,6 +353,9 @@ public class FieldRail
                     }
                 }
             }
+        }
+        if (mi != null) {
+            score(results, pivotIds, mi);
         }
         return found;
     }
@@ -774,17 +777,19 @@ public class FieldRail
      * <li>Oa: count of a form in full corpus, or in a section (filter)
      * <li>Ob: count of occs of the co-occurrency context
      * <li>N: global count of occs from which is extracted the context (full corpus
-     * or filterd section)
+     * or filtered section)
      * 
      * @throws IOException
      * 
      */
-    public void score(final int[] pivotIds, final FormEnum results) throws IOException
+    private void score(final FormEnum results, final int[] pivotIds, final OptionMI mi) throws IOException
     {
+        /* Strange, can’t understand why it doesn’t work
         if (this.ftext.formDic != results.formDic) {
             throw new IllegalArgumentException("Not the same fields. Rail for coocs: " + this.ftext.name
                     + ", freqList build with " + results.name + " field");
         }
+        */
         // if (results.limit == 0) throw new IllegalArgumentException("How many sorted
         // forms do you want? set FormEnum.limit");
         if (results.occsPart < 1) {
@@ -794,25 +799,13 @@ public class FieldRail
         if (results.formFreq == null || results.formFreq.length < maxForm) {
             throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
         }
-        // A variable for the square scorer
-        long add = 0;
-        if (pivotIds != null && pivotIds.length > 0) {
-            for (int formId: pivotIds) {
-                add += ftext.formOccs(formId);
-            }
-        }
-        else if (results.search != null && results.search.length > 0) {
-            for (String form : results.search) {
-                add += ftext.formOccs(form);
-            }
-        }
+        final long N = ftext.occs; // global
         // Count of pivot occurrences for MI scorer
+        long add = 0;
+        for (int formId: pivotIds) {
+            add += ftext.formOccs(formId);
+        }
         final long Ob = add;
-        // int[] hits = results.hits; // not significant for a transversal cooc
-        // TagFilter tags = results.tags;
-        // boolean hasTags = (tags != null);
-        // boolean noStop = (tags != null && tags.noStop());
-        // a bug here, results do not like
         int maxForm = ftext.maxForm;
         // reuse score for multiple calculations
         if (results.formScore == null || results.formScore.length != maxForm) {
@@ -820,11 +813,6 @@ public class FieldRail
         }
         else {
             Arrays.fill(results.formScore, 0);
-        }
-        final long N = ftext.occs; // global
-        OptionMI mi = results.mi;
-        if (mi == null) {
-            mi = OptionMI.g;
         }
         // 
         for (int formId = 0; formId < maxForm; formId++) {
@@ -840,8 +828,7 @@ public class FieldRail
             }
             results.formScore[formId] = mi.score(Oab, ftext.formOccs[formId], Ob, N);
         }
-        // results is populated of scores, sort it now
-        results.sort(FormEnum.Order.score, -1);
+        // results is populated of scores, do not sort here, let consumer choose
     }
 
     /**

@@ -49,7 +49,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
 import alix.lucene.Alix;
-import alix.web.OptionDistrib.Scorer;
+import alix.web.OptionDistrib;
 
 
 /**
@@ -92,7 +92,7 @@ public class FieldMatrix
    * @throws IOException 
    * 
    */
-  public double[] test(Scorer scorer, BitSet filter) throws IOException
+  public double[] test(OptionDistrib distrib, BitSet filter) throws IOException
   {
     double[] scores = new double[formMax];
     int[] docOccs = fieldText.docOccs;
@@ -123,7 +123,7 @@ public class FieldMatrix
         Bits live = leaf.getLiveDocs();
         boolean hasLive = (live != null);
         // occsAll, , 
-        scorer.idf(allOccs, allDocs, formOccs[formId], formDocs[formId]);
+        distrib.idf(allOccs, allDocs, formOccs[formId], formDocs[formId]);
         while ((docLeaf = docsEnum.nextDoc()) != NO_MORE_DOCS) {
           if (hasLive && !live.get(docLeaf)) continue; // deleted doc
           final int docId = docBase + docLeaf;
@@ -131,7 +131,7 @@ public class FieldMatrix
           final int docLen = docOccs[docId];
           if (docLen < 1) continue; // empty doc, continue
           final int freq = docsEnum.freq();
-          scores[formId] += scorer.tf(freq, docLen);
+          scores[formId] += distrib.tf(freq, docLen);
         }
       }
     }

@@ -6,7 +6,7 @@ public class TestMI
 {
   static void scores()
   {
-    System.out.println(OptionMI.g.score(1, 0, 7400, 2436579));
+    System.out.println(OptionMI.G.score(1, 0, 7400, 2436579));
   }
   
   public static void main(String[] args)

@@ -63,7 +63,7 @@ import org.apache.lucene.util.FixedBitSet;
 
 import alix.lucene.Alix;
 import alix.util.IntList;
-import alix.web.OptionDistrib.Scorer;
+import alix.web.OptionDistrib;
 
 /**
  * A dedicated dictionary for facets, to allow similarity scores.
@@ -426,7 +426,7 @@ public class FieldFacet
      * @return
      * @throws IOException
      */
-    public FormEnum forms(final FieldText ftext, final BitSet filter, final String[] search, Scorer scorer) throws IOException
+    public FormEnum forms(final FieldText ftext, final BitSet filter, final String[] search, OptionDistrib distrib) throws IOException
     {
         FormEnum forms = forms(ftext, filter);
         ArrayList<Term> terms = new ArrayList<Term>();
@@ -441,7 +441,7 @@ public class FieldFacet
         if (terms.size() < 1) {
             return forms;
         }
-        boolean hasScorer = (scorer != null);
+        boolean hasScorer = (distrib != null);
         boolean hasFilter = (filter != null);
     
         // Crawl index to get stats by facet term about the text search
@@ -470,7 +470,7 @@ public class FieldFacet
                 continue;
             }
             if (hasScorer) {
-                scorer.idf(ftext.occs, docs, ftext.formOccs[formId], ftext.formDocs[formId]);
+                distrib.idf(ftext.occs, docs, ftext.formOccs[formId], ftext.formDocs[formId]);
             }
             // loop on the reader leaves (opening may have disk cost)
             for (LeafReaderContext context : reader.leaves()) {
@@ -512,7 +512,7 @@ public class FieldFacet
                         // formPartOccs[facetId] += freq;
                         // term frequency
                         if (hasScorer) {
-                            forms.formScore[facetId] += scorer.tf(freq, ftext.docOccs[docId]);
+                            forms.formScore[facetId] += distrib.tf(freq, ftext.docOccs[docId]);
                         }
                     }
                     if (!docSeen) {

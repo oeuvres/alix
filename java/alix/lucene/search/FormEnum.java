@@ -49,7 +49,7 @@ import alix.lucene.analysis.tokenattributes.CharsAtt;
 import alix.util.Chain;
 import alix.util.EdgeQueue;
 import alix.util.TopArray;
-import alix.web.OptionDistrib.Scorer;
+import alix.web.OptionDistrib;
 import alix.web.OptionMI;
 
 /**
@@ -122,7 +122,7 @@ public class FormEnum
      * Optional, a sort algorithm to select specific words according a norm (ex:
      * compare formOccs / freqs)
      */
-    public Scorer scorer;
+    public OptionDistrib distrib;
     /** Optional, for a co-occurrence search, pivot words */
     public String[] search;
     /** An array of formId in the order we want to iterate on, should be set before iteration */

@@ -39,51 +39,36 @@ package alix.web;
  */
 public enum OptionMI implements Option
 {
-    occs("Occurrences", "Oab") {
+    OCCS("Occurrences", "Oab") {
         @Override
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
             return Oab;
         }
     },
-    g("G-test (log-likelihood)", "G = 2 Σ(Oi.ln(Oi/Ei))") {
-        public double score(final double Oab, final double Oa, final double Ob, final double N)
-        {
-            double[] E = E(Oab, Oa, Ob, N);
-            double[] O = O(Oab, Oa, Ob, N);
-            int n = 4;
-            double sum = 0d;
-            for (int i = 0; i < n; i++) {
-                if (O[i] == 0)
-                    continue; // is it gut ?
-                sum += O[i] * Math.log(O[i] / E[i]);
-            }
-            if (Oab < E[0])
-                return sum * -2;
-            return sum * 2;
-        }
-    },
-    jaccard("Jaccard", "m11 / (m10 + m01 + m11)") {
+    JACCARD("Jaccard", "m11 / (m10 + m01 + m11)") {
         @Override
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
-            double m10 = N - Oa - Oab;
-            double m01 = N - Ob - Oab;
-            return 100000 * Oab / (m10 + m01 + Oab);
+            double m10 = Oa - Oab;
+            double m01 = Ob - Oab;
+            return Oab / (m10 + m01 + Oab);
         }
     },
-    dice("Dice", "2*m11 / (m10² + m01²)") {
+    DICE("Dice", "2*m11 / (m10² + m01²)") {
         @Override
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
-            double m10 = N - Oa - Oab;
-            double m01 = N - Ob - Oab;
-            return 100000 * 2 * Oab / (m10 * m10 + m01 * m01);
+            double m10 = Oa - Oab;
+            double m01 = Ob - Oab;
+            return 2 * Oab / (m10 * m10 + m01 * m01);
         }
     },
-    chi2("Chi2", "Chi2 = Σ(Oi - Ei)²/Ei") {
+    CHI2("Chi2", "Chi2 = Σ(Oi - Ei)²/Ei") {
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
+            // events : m11, m10, m01, m00 ; expected 
+            
             double[] E = E(Oab, Oa, Ob, N);
             double[] O = O(Oab, Oa, Ob, N);
             int n = 4;
@@ -99,6 +84,22 @@ public enum OptionMI implements Option
             return sum;
         }
     },
+    G("G-test", "G = 2 Σ(Oi.ln(Oi/Ei))") {
+        public double score(final double Oab, final double Oa, final double Ob, final double N)
+        {
+            double[] E = E(Oab, Oa, Ob, N);
+            double[] O = O(Oab, Oa, Ob, N);
+            double sum = 0d;
+            for (int i = 0; i < 4; i++) {
+                if (O[i] == 0)
+                    continue; // is it gut ?
+                sum += O[i] * Math.log(O[i] / E[i]);
+            }
+            if (Oab < E[0])
+                return sum * -2;
+            return sum * 2;
+        }
+    },
     /*
      * fisher("Fisher (hypergéométrique)",
      * "p = (AB + A¬B)!(¬AB + ¬A¬B)!(AB + ¬AB)!(A¬B + ¬A¬B) / (AB!A¬B!¬AB!¬A¬B!)") {
@@ -112,12 +113,16 @@ public enum OptionMI implements Option
 
     protected double[] E(final double Oab, final double Oa, final double Ob, final double N)
     {
+        //   (Oa.Ob + (N-Oa) Ob + Oa (N-Ob) + (N-Oa).(N-Ob)) /N 
+        // = (Oa.Ob + N.Ob - Oa.Ob + N.Oa - Oa.Ob + N^2 - N.Oa - N.Ob + Oa.Ob) / N
+        // = N^2 / N = N
         double[] E = { Oa * Ob / N, (N - Oa) * Ob / N, Oa * (N - Ob) / N, (N - Oa) * (N - Ob) / N };
         return E;
     }
 
     protected double[] O(final double Oab, final double Oa, final double Ob, final double N)
     {
+        // Oab + Ob - Oab + Oa - Oab + N - Oa - Ob + Oab = N
         double[] O = { Oab, Ob - Oab, Oa - Oab, N - Oa - Ob + Oab };
         return O;
     }
