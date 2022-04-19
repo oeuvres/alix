@@ -687,6 +687,12 @@ public class FieldText
 
     public FormEnum forms(final BitSet filter) throws IOException
     {
+        if (filter == null) {
+            throw new IllegalArgumentException("BitSet doc filter is null, what kind of results are expected?");
+        }
+        if (filter.cardinality() < 1) {
+            throw new IllegalArgumentException("No docId set in this filter, what kind of results are expected?");
+        }
         return forms(filter, null, null);
     }
     

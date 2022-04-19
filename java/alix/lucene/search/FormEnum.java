@@ -132,12 +132,12 @@ public class FormEnum
     /** sort order */
     public enum Order
     {
-        score,
-        freq,
-        hits,
-        alpha,
-        occs,
-        docs,
+        ALPHA,
+        DOCS,
+        FREQ,
+        HITS,
+        OCCS,
+        SCORE,
     }
 
     protected FormEnum(final String fname)
@@ -582,32 +582,32 @@ public class FormEnum
                     + " formOccsFreq.length=" + formFreq.length);
         }
         switch (order) {
-            case occs:
+            case OCCS:
                 if (formOccs == null) {
                     throw new IllegalArgumentException("Impossible to sort by occs (occurrences total), formOccs has not been set by producer.");
                 }
                 break;
-            case docs:
+            case DOCS:
                 if (formDocs == null) {
                     throw new IllegalArgumentException("Impossible to sort docs (documents total), formDocs has not been set by producer.");
                 }
                 break;
-            case freq:
+            case FREQ:
                 if (formFreq == null) {
                     throw new IllegalArgumentException("Impossible to sort by freq (occurrences found), seems not results of a search, formFreq has not been set by producer.");
                 }
                 break;
-            case hits:
+            case HITS:
                 if (formHits == null) {
                     throw new IllegalArgumentException("Impossible to sort by hits (documents found), seems not results of a search, formHits has not been set by producer.");
                 }
                 break;
-            case score:
+            case SCORE:
                 if (formScore == null) {
                     throw new IllegalArgumentException("Impossible to sort by score, seems not results of a search with a scorer, formScore has not been set by producer.");
                 }
                 break;
-        case alpha:
+        case ALPHA:
             break;
         default:
             break;
@@ -623,12 +623,12 @@ public class FormEnum
         if (limit < 1) top = new TopArray(maxForm, flags);
         else top = new TopArray(limit, flags);
         boolean noZeroScore = false;
-        if (formScore != null && order != Order.score) {
-            noZeroScore = true;
+        if (formScore != null && order != Order.SCORE) {
+            // noZeroScore = true;
         }
         // be careful, do not use formOccsAll as a size, the growing array may be bigger
         // than dictionary
-        if (order.equals(Order.alpha)) {
+        if (order.equals(Order.ALPHA)) {
             int[] sorter = sortAlpha(formDic);
             this.sorter(sorter);
             reset();
@@ -641,23 +641,23 @@ public class FormEnum
             if (formOccsFreq != null && formOccsFreq[formId] < 1)
                 continue;
             */
-            // do not output null score
-            if (noZeroScore && formScore[formId] == 0)
-                continue;
+            // do not output null score ?
             switch (order) {
-                case occs:
+                case OCCS:
                     top.push(formId, formOccs[formId]);
                     break;
-                case docs:
+                case DOCS:
                     top.push(formId, formDocs[formId]);
                     break;
-                case freq:
+                case FREQ:
                     top.push(formId, formFreq[formId]);
                     break;
-                case hits:
+                case HITS:
                     top.push(formId, formHits[formId]);
                     break;
-                case score:
+                case SCORE: // in case of negative scores ?
+                    if (formFreq[formId] == 0)
+                        top.push(formId, Double.MIN_VALUE);
                     top.push(formId, formScore[formId]);
                     break;
                 default:

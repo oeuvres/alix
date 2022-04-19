@@ -4,12 +4,12 @@ import alix.lucene.search.FormEnum.Order;
 
 public enum OptionOrder implements Option 
 {
-    score("pertinence", null, Order.score),
-    freq("occurrences", null, Order.freq),
-    hits("nb de textes", null, Order.hits),
-    occs("Total occurrences", null, Order.occs),
-    docs("Total textes", null, Order.docs),
-    alpha("alphabétique", null, Order.alpha),
+    SCORE("pertinence", null, Order.SCORE),
+    FREQ("occurrences", null, Order.FREQ),
+    HITS("nb de textes", null, Order.HITS),
+    OCCS("Total occurrences", null, Order.OCCS),
+    DOCS("Total textes", null, Order.DOCS),
+    ALPHA("alphabétique", null, Order.ALPHA),
     ;
     private OptionOrder(final String label, final String hint, Order order) {    
         this.label = label;

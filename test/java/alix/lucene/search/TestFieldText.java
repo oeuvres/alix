@@ -62,7 +62,7 @@ public class TestFieldText
         results.filter = bits;
         ftext.filter(results);
         System.out.println("ftext.filter(results)");
-        results.sort(OptionOrder.freq.order());
+        results.sort(OptionOrder.FREQ.order());
         System.out.println(results);
         /*
         System.out.println("Filtered forms, occurrences");
