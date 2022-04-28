@@ -378,14 +378,15 @@ public class Alix
      * @return
      * @throws IOException
      */
-    public FieldInt fieldInt(final String fintName, final String ftextName) throws IOException
+    public FieldInt fieldInt(final String name) throws IOException
     {
         reader(); // ensure reader, or decache
-        String key = "AlixFiedInt" + fintName + "_" + ftextName;
+        String key = "AlixFiedInt" + name;
         FieldInt ints = (FieldInt) cache(key);
-        if (ints != null)
+        if (ints != null) {
             return ints;
-        ints = new FieldInt(this, fintName, ftextName);
+        }
+        ints = new FieldInt(this, name);
         cache(key, ints);
         return ints;
     }

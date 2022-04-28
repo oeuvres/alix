@@ -263,14 +263,17 @@ public class JspTools
     // @SuppressWarnings({ "unchecked", "static-access" })
     public Enum<?> getEnum(final String name, final Enum<?> fallback)
     {
+        if (fallback == null) {
+            throw new IllegalArgumentException("fallback can’t be null, a value is needed to get the exact class name of Enum");
+        }
         String value = request.getParameter(name);
-        if (!check(value))
+        if (!check(value)) {
             return fallback;
+        }
         // try/catch seems a bit heavy, but behind valueOf, there is a lazy static Map
         // optimized for Enum
         try {
             Enum<?> ret = Enum.valueOf(fallback.getDeclaringClass(), value);
-            // Enum<?> ret = fallback.valueOf(fallback.getDeclaringClass(), value);
             return ret;
         } catch (Exception e) {
             return (Enum<?>) fallback;
@@ -279,6 +282,9 @@ public class JspTools
 
     public Enum<?> getEnum(final String name, final Enum<?> fallback, final String cookie)
     {
+        if (fallback == null) {
+            throw new IllegalArgumentException("fallback can’t be null, a value is needed to get the exact class name of Enum");
+        }
         String value = request.getParameter(name);
         if (check(value)) {
             try {

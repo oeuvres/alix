@@ -54,33 +54,33 @@ import alix.util.ML;
 
 /**
  * <p>
- * A Lucene tokenizer for XML/html (and French).
- * Has been tested with thousands of documents in html or XML/TEI.
- * Goal is to keep all tags to store the document, 
- * and get exact offsets of text tokens,
- * allowing hiliting of words, without perturbation of tags.
+ * A Lucene tokenizer for XML/html (and French). Has been tested with thousands
+ * of documents in html or XML/TEI. Goal is to keep all tags to store the
+ * document, and get exact offsets of text tokens, allowing hiliting of words,
+ * without perturbation of tags.
  * </p>
  * The content inside “skip tags” is not indexed.
  * <ul>
- *  <li>&lt;style&gt;</li>
- *  <li>&lt;script&gt;</li>
- *  <li>&lt;teiHeader&gt;</li>
+ * <li>&lt;style&gt;</li>
+ * <li>&lt;script&gt;</li>
+ * <li>&lt;teiHeader&gt;</li>
  * </ul>
- * The tokenizer also recognize commands sent as processing instructions
- * (for section of documents wanted for display but not for index).
+ * The tokenizer also recognize commands sent as processing instructions (for
+ * section of documents wanted for display but not for index).
  * <ul>
- *  <li>&lt;?index_off?&gt;: stop to send tokens from this point</li>
- *  <li>&lt;?index_on?&gt; restart token stream.</li>
+ * <li>&lt;?index_off?&gt;: stop to send tokens from this point</li>
+ * <li>&lt;?index_on?&gt; restart token stream.</li>
  * </ul>
- * Some tags are interpreted as structural events.
- * This is useful for sentence separation (a title may not finish with a dot)
+ * Some tags are interpreted as structural events. This is useful for sentence
+ * separation (a title may not finish with a dot)
  * <ul>
- *  <li>&lt;p&gt;</li>
- *  <li>&lt;h1&gt;, &lt;h2&gt;, &lt;h3&gt;, &lt;h4&gt;, &lt;h5&gt;, &lt;h6&gt;</li>
+ * <li>&lt;p&gt;</li>
+ * <li>&lt;h1&gt;, &lt;h2&gt;, &lt;h3&gt;, &lt;h4&gt;, &lt;h5&gt;,
+ * &lt;h6&gt;</li>
  * </ul>
  * <p>
- * The token separation follow Latin punctuation and should be compatible 
- * with most European languages (but is not extensively tested).
+ * The token separation follow Latin punctuation and should be compatible with
+ * most European languages (but is not extensively tested).
  * </p>
  * <p>
  * The resolution of elision (') and hyphen (-) is language specific (French).
@@ -90,449 +90,467 @@ import alix.util.ML;
  */
 public class FrTokenizer extends Tokenizer
 {
-  /** local flag for constructor */
-  static final public int XML = 0x01;
-  /** Parse as XML */
-  final boolean xml;
-  /** local flag for constructor */
-  static final public int SEARCH = 0x02;
-  /** Parse for a search search with some special characters like + or - */
-  final boolean query;
-  /** Current char offset */
-  private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-  /** Current Flags */
-  private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-  /** Current term, as an array of chars */
-  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-  /** For string testings */
-  CharsAtt test = new CharsAtt();
-  /** For string storing */
-  CharsAtt copy = new CharsAtt();
-  /** Store state */
-  private State save;
-  /** Source buffer of chars, delegate to Lucene experts */
-  private final CharacterBuffer bufSrc = CharacterUtils.newCharacterBuffer(4096);
-  /** Pointer in buffer */
-  private int bufIndex = 0;
-  /** Length of the buffer */
-  private int bufLen = 0;
-  /** Max length for a token */
-  int maxTokenLen = 256;
-  /** Input offset */
-  private int offset = 0;
-  /** Final input offset */
-  private int finalOffset = 0;
-  /**
-   * French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel
-   */
-  public static final HashSet<CharsAtt> HYPHEN_POST = new HashSet<CharsAtt>();
-  static {
-    for (String w : new String[] { "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "la", "là", "le", "les",
-        "leur", "lui", "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y" }){
-      HYPHEN_POST.add(new CharsAtt(w));
+    /** local flag for constructor */
+    static final public int XML = 0x01;
+    /** Parse as XML */
+    final boolean xml;
+    /** local flag for constructor */
+    static final public int SEARCH = 0x02;
+    /** Parse for a search search with some special characters like + or - */
+    final boolean query;
+    /** Current char offset */
+    private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
+    /** Current Flags */
+    private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    /** Current term, as an array of chars */
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    /** For string testings */
+    CharsAtt test = new CharsAtt();
+    /** For string storing */
+    CharsAtt copy = new CharsAtt();
+    /** Store state */
+    private State save;
+    /** Source buffer of chars, delegate to Lucene experts */
+    private final CharacterBuffer bufSrc = CharacterUtils.newCharacterBuffer(4096);
+    /** Pointer in buffer */
+    private int bufIndex = 0;
+    /** Length of the buffer */
+    private int bufLen = 0;
+    /** Max length for a token */
+    int maxTokenLen = 256;
+    /** Input offset */
+    private int offset = 0;
+    /** Final input offset */
+    private int finalOffset = 0;
+    /**
+     * French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel
+     */
+    public static final HashSet<CharsAtt> HYPHEN_POST = new HashSet<CharsAtt>();
+    static {
+        for (String w : new String[] { "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "la", "là", "le",
+                "les", "leur", "lui", "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y" }) {
+            HYPHEN_POST.add(new CharsAtt(w));
+        }
     }
-  }
-  public static final HashSet<CharsAtt> HYPHEN_ANTE = new HashSet<CharsAtt>();
-  static {
-    for (String w : new String[] { "très", "Très"})
-      HYPHEN_ANTE.add(new CharsAtt(w));
-  }
-  /** tags to send as token events and translate */
-  public static final HashMap<CharsAtt, CharsAtt> TAGS = new HashMap<CharsAtt, CharsAtt>();
-  static {
-      TAGS.put(new CharsAtt("l"), new CharsAtt("<p>"));
-      TAGS.put(new CharsAtt("p"), new CharsAtt("<p>"));
-    TAGS.put(new CharsAtt("h1"), new CharsAtt("<p>"));
-    TAGS.put(new CharsAtt("h2"), new CharsAtt("<p>"));
-    TAGS.put(new CharsAtt("h3"), new CharsAtt("<p>"));
-    TAGS.put(new CharsAtt("h4"), new CharsAtt("<p>"));
-    TAGS.put(new CharsAtt("h5"), new CharsAtt("<p>"));
-    TAGS.put(new CharsAtt("h6"), new CharsAtt("<p>"));
-    TAGS.put(new CharsAtt("lb"), new CharsAtt("<p>"));
-    TAGS.put(new CharsAtt("section"), new CharsAtt("<section>"));
-    TAGS.put(new CharsAtt("/section"), new CharsAtt("</section>"));
-    TAGS.put(new CharsAtt("article"), new CharsAtt("<section>"));
-    TAGS.put(new CharsAtt("/article"), new CharsAtt("</section>"));
-    TAGS.put(new CharsAtt("name"), new CharsAtt("<name>"));
-    TAGS.put(new CharsAtt("/name"), new CharsAtt("</name>"));
-    TAGS.put(new CharsAtt("persName"), new CharsAtt("<persName>"));
-    TAGS.put(new CharsAtt("/persName"), new CharsAtt("</persName>"));
-  }
-  /** tag content to skip */
-  public static final HashMap<CharsAtt, CharsAtt> SKIP = new HashMap<CharsAtt, CharsAtt>();
-  static {
-    SKIP.put(new CharsAtt("note"), new CharsAtt("/note"));
-    SKIP.put(new CharsAtt("bibl"), new CharsAtt("/bibl"));
-    SKIP.put(new CharsAtt("head"), new CharsAtt("/head"));
-    SKIP.put(new CharsAtt("?index_off?"), new CharsAtt("?index_on?"));
-    SKIP.put(new CharsAtt("script"), new CharsAtt("/script"));
-    SKIP.put(new CharsAtt("style"), new CharsAtt("/style"));
-    SKIP.put(new CharsAtt("teiHeader"), new CharsAtt("/teiHeader"));
-  }
-  /** Store closing tag to skip */
-  private CharsAtt skip = null;
-
-  public FrTokenizer()
-  {
-    this(XML);
-  }
-
-  /**
-   * Handle xml tags ?
-   * 
-   * @param xml
-   */
-  public FrTokenizer(int flags)
-  {
-    super(new AlixAttributeFactory(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
-    if ((flags & XML) > 0) this.xml = true;
-    else this.xml = false;
-    if ((flags & SEARCH) > 0) this.query = true;
-    else this.query = false;
-  }
-
-  @Override
-  public final boolean incrementToken() throws IOException
-  {
-    // The
-    clearAttributes();
-    // send term event
-    if (save != null) {
-      restoreState(save);
-      save = null;
-      return true;
+    public static final HashSet<CharsAtt> HYPHEN_ANTE = new HashSet<CharsAtt>();
+    static {
+        for (String w : new String[] { "très", "Très" })
+            HYPHEN_ANTE.add(new CharsAtt(w));
     }
-
-    int startOffset = -1; // this variable is always initialized
-    int ltOffset = -1;
-    int hyphOffset = -1; // keep offset of last hyphen
-    CharsAtt term = (CharsAtt) this.termAtt;
-    CharsAtt test = this.test;
-    FlagsAttribute flags = flagsAtt;
-    char[] buffer = bufSrc.getBuffer();
-    boolean intag = false;
-    boolean tagname = false;
-    boolean xmlent = false;
-    char lastChar = 0;
-    int offLast = 0; // convenient flag for offset in some cases
-    char c = 0; // current char
-    while (true) {
-      final int length = term.length();
-      // grab more chars
-      if (bufIndex >= bufLen) {
-        offset += bufLen;
-        // use default lucene code to read chars from source
-        CharacterUtils.fill(bufSrc, input); // read supplementary char aware with CharacterUtils
-        bufLen = bufSrc.getLength();
-        bufIndex = 0;
-        // end of buffer
-        if (bufLen != 0) ;
-        else if (length > 0) { // a term to send
-          break;
-        }
-        else { // finish !
-          finalOffset = correctOffset(offset);
-          return false;
-        }
-      }
-
-      // got a char, let's work
-      c = buffer[bufIndex];
-      bufIndex++;
-
-      // a very light XML parser
-      if (!xml) ;
-      else if (c == '<') { // start tag
-        // a word was started, send it, ex Word<note>2</note>, Dumas</name>
-        if (length != 0) {
-          bufIndex--;
-          // will exclude the <
-          // offLast = offset - ltOffset;
-          break;
-        }
-        // keep memory of start index of this tag
-        ltOffset = offset + bufIndex - 1;
-        intag = true;
-        tagname = true;
-        test.setEmpty();
-        continue;
-      }
-      else if (intag) { // inside tag
-        if (tagname) { // start to record tagname
-          if (!test.isEmpty() && (c == ' ' || c == '>' || (c == '/'))) tagname = false;
-          else test.append(c);
-        }
-        if (c == '>') {
-          intag = false;
-          // end of skip element
-          if (skip != null && skip.equals(test)) {
-            skip = null;
-            continue;
-          }
-          // inside skip element
-          else if (skip != null) {
-            continue;
-          }
-          // start of a skip element
-          else if (SKIP.containsKey(test)) {
-            skip = SKIP.get(test);
-            continue;
-          }
-          CharsAtt el = TAGS.get(test); // test the tagname
-          test.setEmpty();
-          if (el == null) { // unknown tag
-            continue; 
-          }
-          // Known tag to send
-          if (length != 0) { // A word has been started
-            // save state with the word
-            State state = captureState();
-            // save state with xml tag for next
-            offsetAtt.setOffset(correctOffset(ltOffset), correctOffset(offset + bufIndex));
-            termAtt.setEmpty().append(el);
-            flags.setFlags(Tag.PUNdiv.flag);
-            save = captureState();
-            // send the word
-            restoreState(state);
-            break;
-          }
-          // A tag has to be sent
-          startOffset = ltOffset;
-          term.append(el);
-          flags.setFlags(Tag.PUNdiv.flag);
-          break;
-        }
-        continue;
-      }
-      // inside a tag to skip, go throw
-      else if (skip != null) {
-        continue;
-      }
-      else if (c == '&') {
-        if (length == 0) startOffset = offset + bufIndex - 1;
-        xmlent = true;
-        test.setEmpty();
-        test.append(c);
-        continue;
-      }
-      else if (xmlent == true) {
-        test.append(c);
-        if (c != ';') continue;
-        // end of entity
-        xmlent = false;
-        c = ML.forChar(test); // will not work well on supplentary chars
-        if (c != 0) term.append(c);
-        else term.append(test);
-        test.setEmpty();
-        continue;
-      }
-
-      // decimals
-      if (Char.isDigit(lastChar) && (c == '.' || c == ',')) {
-        term.append(c);
-        lastChar = c; // for 6. 7.
-        continue;
-      }
-      
-      // Clause punctuation, send a punctuation event to separate tokens
-      if (Char.isPUNcl(c)) {
-        // send term before
-        if (length != 0) {
-          bufIndex--;
-          break;
-        }
-        term.append(c);
-        flags.setFlags(Tag.PUNcl.flag);
-        startOffset = offset + bufIndex - 1;
-        break;
-      }
-
-      // Possible sentence delimiters
-      if (c == '.' || c == '…' || c == '?' || c == '!' || c == '«' || c == '—' || c == ':') {
-        
-        // token starting by a sentence punctuation
-        if (length == 0) {
-          flags.setFlags(Tag.PUNsent.flag);
-          startOffset = offset + bufIndex - 1;
-          term.append(c);
-          lastChar = c; // give for ... ???
-          continue;
-        }
-        // for ... ???
-        if (flags.getFlags() == Tag.PUNsent.flag) {
-          continue;
-        }
-        // O.N…
-        if (c == '…' && flags.getFlags() == Tag.ABBR.flag) {
-          term.append('.');
-        }
-        // test if it's an abreviation with a dot
-        if (c == '.') {
-          // int roman;
-          term.append('.');
-          final int len = term.length();
-          // M., etc.
-          if (FrDics.brevidot(term)) {
-            flags.setFlags(Tag.ABBR.flag);
-            continue; // keep dot
-          }
-          // End on sentence.
-          else if (Char.isLowerCase(lastChar)) {
-            term.setLength(len - 1);
-          }
-          // J.-P. ?
-          else if ( Char.isUpperCase(lastChar) && len >= 3 && term.charAt(len - 3) == '-') {
-            continue;
-          }
-          // XVIII.
-          else if ((Calcul.roman2int(term.buffer(), 0, len-1)) > 0) {
-            term.setLength(len - 1);
-            flagsAtt.setFlags(Tag.NUM.flag);
-          }
-          // RODOGUNE. dot is a punctuation
-          else if (term.length() > 2 && Char.isUpperCase(term.charAt(0)) && Char.isUpperCase(term.charAt(1))) {
-            term.setLength(term.length() - 1);
-          }
-          // U.{S.A.} 
-          else if (term.length() < 3) {
-            continue;
-          }
-          // U.S.{A.} 
-          else if (term.charAt(term.length() - 3) == '.') {
-            continue;
-          }
-          // default, is punctuation
-          else {
-            term.setLength(term.length() - 1);
-          }
-        }
-        // seems a punctuation
-        bufIndex--;
-        break;
-      }
-      
-      if (c == '-') {
-        // hypen inside word, do what is needed to check things like ceux-là
-        if (length != 0) {
-          hyphOffset = offset + bufIndex;
-          test.setEmpty();
-        }
-        // token starting by '-', probably a problem of OCR on —, bad for numbers
-        else if (!query) {
-          continue;
-        }
-      }
-      
-      // it's a token char, + is for queries
-      if (Char.isToken(c) || (query && c == '+')) {
-        // start of token, record startOffset
-        if (length == 0) {
-          if (Char.isDigit(c)) flagsAtt.setFlags(Tag.NUM.flag);
-          startOffset = offset + bufIndex - 1;
-        }
-
-        
-        if (c == (char) 0xAD) continue; // soft hyphen, do not append to term
-        if (c == '’') c = '\''; // normalize apos
-        term.append(c);
-        
-        // Is hyphen breakable?
-        if (hyphOffset > 0 && c != '-') test.append(c);
-        // Is apos breakable?
-        if (c == '\'') {
-          CharsAtt val = FrDics.ELISION.get(term);
-          if (val != null) {
-            val.copyTo(term);
-            break;
-          }
-        }
-        // something get wrong in loops or it is not a text with space, for example 
-        if (length >= maxTokenLen) break; // a too big token stop
-      }
-      // a non token char, a word to send
-      else if (length > 0) {
-        offLast = 1; // do not take this char in offset delimitation
-        break;
-      }
-      lastChar = c;
+    /** tags to send as token events and translate */
+    public static final HashMap<CharsAtt, CharsAtt> TAGS = new HashMap<CharsAtt, CharsAtt>();
+    static {
+        TAGS.put(new CharsAtt("l"), new CharsAtt("<p>"));
+        TAGS.put(new CharsAtt("p"), new CharsAtt("<p>"));
+        TAGS.put(new CharsAtt("h1"), new CharsAtt("<p>"));
+        TAGS.put(new CharsAtt("h2"), new CharsAtt("<p>"));
+        TAGS.put(new CharsAtt("h3"), new CharsAtt("<p>"));
+        TAGS.put(new CharsAtt("h4"), new CharsAtt("<p>"));
+        TAGS.put(new CharsAtt("h5"), new CharsAtt("<p>"));
+        TAGS.put(new CharsAtt("h6"), new CharsAtt("<p>"));
+        TAGS.put(new CharsAtt("lb"), new CharsAtt("<p>"));
+        TAGS.put(new CharsAtt("section"), new CharsAtt("<section>"));
+        TAGS.put(new CharsAtt("/section"), new CharsAtt("</section>"));
+        TAGS.put(new CharsAtt("article"), new CharsAtt("<section>"));
+        TAGS.put(new CharsAtt("/article"), new CharsAtt("</section>"));
+        TAGS.put(new CharsAtt("name"), new CharsAtt("<name>"));
+        TAGS.put(new CharsAtt("/name"), new CharsAtt("</name>"));
+        TAGS.put(new CharsAtt("persName"), new CharsAtt("<persName>"));
+        TAGS.put(new CharsAtt("/persName"), new CharsAtt("</persName>"));
     }
-    // send term event
-    int endOffset = offset + bufIndex - offLast;
-    
-    /* Buggy when ends like 15 juin 1938. (ending dot)
-    // something like 1. 2.
-    if ((c == '.' || c == ')' || c == '°') && flags.getFlags() == Tag.NUM) {
-      term.setEmpty().append('#');
-      endOffset++;
-      bufIndex++; // bad fix, big problem with last char
-      flags.setFlags(Tag.PUNsent);
+    /** tag content to skip */
+    public static final HashMap<CharsAtt, CharsAtt> SKIP = new HashMap<CharsAtt, CharsAtt>();
+    static {
+        SKIP.put(new CharsAtt("note"), new CharsAtt("/note"));
+        SKIP.put(new CharsAtt("bibl"), new CharsAtt("/bibl"));
+        SKIP.put(new CharsAtt("head"), new CharsAtt("/head"));
+        SKIP.put(new CharsAtt("?index_off?"), new CharsAtt("?index_on?"));
+        SKIP.put(new CharsAtt("script"), new CharsAtt("/script"));
+        SKIP.put(new CharsAtt("style"), new CharsAtt("/style"));
+        SKIP.put(new CharsAtt("teiHeader"), new CharsAtt("/teiHeader"));
     }
-    */
-    // splitable hyphen ? split on souviens-toi, murmura-t-elle, but not
-    // Joinville-le-Pont,
-    // Do not work on Allez-vous-en
-    if (hyphOffset > 0 && HYPHEN_POST.contains(test)) {
-      // swap search to store state of word after hyphen
-      // Laisse-moi ! Réveille-le. eploi-t-il ?
-      int len = term.length() - test.length() - 1;
-      term.setLength(len); 
-      if (term.endsWith("-t")) term.setLength(len-2); // french specific, euphonic t
-      copy.copy(term);
-      term.copy(test);
-      offsetAtt.setOffset(correctOffset(hyphOffset), correctOffset(endOffset));
-      save = captureState();
-      // send the word before hyphen
-      term.copy(copy);
-      endOffset = hyphOffset - 1;
-    }
-    assert startOffset != -1;
-    startOffset = correctOffset(startOffset);
-    finalOffset = correctOffset(endOffset);
-    offsetAtt.setOffset(startOffset, finalOffset);
-    return true;
+    /** tag to ignore but keep content */
+    public static final HashMap<CharsAtt, CharsAtt> IGNORE = new HashMap<CharsAtt, CharsAtt>();
+    /** Store closing tag to skip */
+    private CharsAtt skip = null;
 
-  }
-
-  @Override
-  public final void end() throws IOException
-  {
-    super.end();
-    // set final offset
-    offsetAtt.setOffset(finalOffset, finalOffset);
-  }
-
-  @Override
-  public void reset() throws IOException
-  {
-    super.reset();
-    bufIndex = 0;
-    offset = 0;
-    bufLen = 0;
-    finalOffset = 0;
-    bufSrc.reset(); // make sure to reset the IO buffer!!
-  }
-
-  /**
-   * An attribute factory
-   * 
-   * @author fred
-   *
-   */
-  private static final class AlixAttributeFactory extends AttributeFactory
-  {
-    private final AttributeFactory delegate;
-
-    public AlixAttributeFactory(AttributeFactory delegate)
+    public FrTokenizer()
     {
-      this.delegate = delegate;
+        this(XML);
+    }
+
+    /**
+     * Handle xml tags ?
+     * 
+     * @param xml
+     */
+    public FrTokenizer(int flags)
+    {
+        super(new AlixAttributeFactory(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
+        if ((flags & XML) > 0)
+            this.xml = true;
+        else
+            this.xml = false;
+        if ((flags & SEARCH) > 0)
+            this.query = true;
+        else
+            this.query = false;
     }
 
     @Override
-    public AttributeImpl createAttributeInstance(Class<? extends Attribute> attClass)
+    public final boolean incrementToken() throws IOException
     {
-      if (attClass == CharTermAttribute.class) return new CharsAtt();
-      return delegate.createAttributeInstance(attClass);
+        // The
+        clearAttributes();
+        // send term event
+        if (save != null) {
+            restoreState(save);
+            save = null;
+            return true;
+        }
+
+        int startOffset = -1; // this variable is always initialized
+        int ltOffset = -1;
+        int hyphOffset = -1; // keep offset of last hyphen
+        CharsAtt term = (CharsAtt) this.termAtt;
+        CharsAtt test = this.test;
+        FlagsAttribute flags = flagsAtt;
+        char[] buffer = bufSrc.getBuffer();
+        boolean intag = false;
+        boolean tagname = false;
+        boolean xmlent = false;
+        char lastChar = 0;
+        int offLast = 0; // convenient flag for offset in some cases
+        char c = 0; // current char
+        while (true) {
+            final int length = term.length();
+            // grab more chars
+            if (bufIndex >= bufLen) {
+                offset += bufLen;
+                // use default lucene code to read chars from source
+                CharacterUtils.fill(bufSrc, input); // read supplementary char aware with CharacterUtils
+                bufLen = bufSrc.getLength();
+                bufIndex = 0;
+                // end of buffer
+                if (bufLen != 0)
+                    ;
+                else if (length > 0) { // a term to send
+                    break;
+                } else { // finish !
+                    finalOffset = correctOffset(offset);
+                    return false;
+                }
+            }
+
+            // got a char, let's work
+            c = buffer[bufIndex];
+            bufIndex++;
+
+            // a very light XML parser
+            if (!xml)
+                ;
+            else if (c == '<') { // start tag
+                // if a word was started, send it ? ex Word<note>2</note>, Dumas</name>
+                // but what about M<sup>r</sup> ?
+                /* will see
+                if (length != 0) {
+                    bufIndex--;
+                    // will exclude the <
+                    // offLast = offset - ltOffset;
+                    break;
+                }
+                */
+                // keep memory of start index of this tag
+                ltOffset = offset + bufIndex - 1;
+                intag = true;
+                tagname = true;
+                test.setEmpty();
+                continue;
+            } 
+            else if (intag) { // inside tag
+                if (tagname) { // start to record tagname
+                    if (!test.isEmpty() && (c == ' ' || c == '>' || (c == '/')))
+                        tagname = false;
+                    else
+                        test.append(c);
+                }
+                if (c == '>') {
+                    intag = false;
+                    // end of skip element
+                    if (skip != null && skip.equals(test)) {
+                        skip = null;
+                        continue;
+                    }
+                    // inside skip element
+                    else if (skip != null) {
+                        continue;
+                    }
+                    // start of a skip element
+                    else if (SKIP.containsKey(test)) {
+                        skip = SKIP.get(test);
+                        continue;
+                    }
+                    CharsAtt el = TAGS.get(test); // test the tagname
+                    test.setEmpty();
+                    if (el == null) { // unknown tag
+                        continue;
+                    }
+                    // Known tag to send
+                    if (length != 0) { // A word has been started
+                        // save state with the word
+                        State state = captureState();
+                        // save state with xml tag for next
+                        offsetAtt.setOffset(correctOffset(ltOffset), correctOffset(offset + bufIndex));
+                        termAtt.setEmpty().append(el);
+                        flags.setFlags(Tag.PUNdiv.flag);
+                        save = captureState();
+                        // send the word
+                        restoreState(state);
+                        break;
+                    }
+                    // A tag has to be sent
+                    startOffset = ltOffset;
+                    term.append(el);
+                    flags.setFlags(Tag.PUNdiv.flag);
+                    break;
+                }
+                continue;
+            }
+            // inside a tag to skip, go throw
+            else if (skip != null) {
+                continue;
+            } else if (c == '&') {
+                if (length == 0)
+                    startOffset = offset + bufIndex - 1;
+                xmlent = true;
+                test.setEmpty();
+                test.append(c);
+                continue;
+            } else if (xmlent == true) {
+                test.append(c);
+                if (c != ';')
+                    continue;
+                // end of entity
+                xmlent = false;
+                c = ML.forChar(test); // will not work well on supplentary chars
+                if (c != 0)
+                    term.append(c);
+                else
+                    term.append(test);
+                test.setEmpty();
+                continue;
+            }
+
+            // decimals
+            if (Char.isDigit(lastChar) && (c == '.' || c == ',')) {
+                term.append(c);
+                lastChar = c; // for 6. 7.
+                continue;
+            }
+
+            // Clause punctuation, send a punctuation event to separate tokens
+            if (Char.isPUNcl(c)) {
+                // send term before
+                if (length != 0) {
+                    bufIndex--;
+                    break;
+                }
+                term.append(c);
+                flags.setFlags(Tag.PUNcl.flag);
+                startOffset = offset + bufIndex - 1;
+                break;
+            }
+
+            // Possible sentence delimiters
+            if (c == '.' || c == '…' || c == '?' || c == '!' || c == '«' || c == '—' || c == ':') {
+
+                // token starting by a sentence punctuation
+                if (length == 0) {
+                    flags.setFlags(Tag.PUNsent.flag);
+                    startOffset = offset + bufIndex - 1;
+                    term.append(c);
+                    lastChar = c; // give for ... ???
+                    continue;
+                }
+                // for ... ???
+                if (flags.getFlags() == Tag.PUNsent.flag) {
+                    continue;
+                }
+                // O.N…
+                if (c == '…' && flags.getFlags() == Tag.ABBR.flag) {
+                    term.append('.');
+                }
+                // test if it's an abreviation with a dot
+                if (c == '.') {
+                    // int roman;
+                    term.append('.');
+                    final int len = term.length();
+                    // M., etc.
+                    if (FrDics.brevidot(term)) {
+                        flags.setFlags(Tag.ABBR.flag);
+                        continue; // keep dot
+                    }
+                    // End on sentence.
+                    else if (Char.isLowerCase(lastChar)) {
+                        term.setLength(len - 1);
+                    }
+                    // J.-P. ?
+                    else if (Char.isUpperCase(lastChar) && len >= 3 && term.charAt(len - 3) == '-') {
+                        continue;
+                    }
+                    // XVIII.
+                    else if ((Calcul.roman2int(term.buffer(), 0, len - 1)) > 0) {
+                        term.setLength(len - 1);
+                        flagsAtt.setFlags(Tag.NUM.flag);
+                    }
+                    // RODOGUNE. dot is a punctuation
+                    else if (term.length() > 2 && Char.isUpperCase(term.charAt(0))
+                            && Char.isUpperCase(term.charAt(1))) {
+                        term.setLength(term.length() - 1);
+                    }
+                    // U.{S.A.}
+                    else if (term.length() < 3) {
+                        continue;
+                    }
+                    // U.S.{A.}
+                    else if (term.charAt(term.length() - 3) == '.') {
+                        continue;
+                    }
+                    // default, is punctuation
+                    else {
+                        term.setLength(term.length() - 1);
+                    }
+                }
+                // seems a punctuation
+                bufIndex--;
+                break;
+            }
+
+            if (c == '-') {
+                // hypen inside word, do what is needed to check things like ceux-là
+                if (length != 0) {
+                    hyphOffset = offset + bufIndex;
+                    test.setEmpty();
+                }
+                // token starting by '-', probably a problem of OCR on —, bad for numbers
+                else if (!query) {
+                    continue;
+                }
+            }
+
+            // it's a token char, + is for queries
+            if (Char.isToken(c) || (query && c == '+')) {
+                // start of token, record startOffset
+                if (length == 0) {
+                    if (Char.isDigit(c))
+                        flagsAtt.setFlags(Tag.NUM.flag);
+                    startOffset = offset + bufIndex - 1;
+                }
+
+                if (c == (char) 0xAD)
+                    continue; // soft hyphen, do not append to term
+                if (c == '’')
+                    c = '\''; // normalize apos
+                term.append(c);
+
+                // Is hyphen breakable?
+                if (hyphOffset > 0 && c != '-')
+                    test.append(c);
+                // Is apos breakable?
+                if (c == '\'') {
+                    CharsAtt val = FrDics.ELISION.get(term);
+                    if (val != null) {
+                        val.copyTo(term);
+                        break;
+                    }
+                }
+                // something get wrong in loops or it is not a text with space, for example
+                if (length >= maxTokenLen)
+                    break; // a too big token stop
+            }
+            // a non token char, a word to send
+            else if (length > 0) {
+                offLast = 1; // do not take this char in offset delimitation
+                break;
+            }
+            lastChar = c;
+        }
+        // send term event
+        int endOffset = offset + bufIndex - offLast;
+
+        /*
+         * Buggy when ends like 15 juin 1938. (ending dot) // something like 1. 2. if
+         * ((c == '.' || c == ')' || c == '°') && flags.getFlags() == Tag.NUM) {
+         * term.setEmpty().append('#'); endOffset++; bufIndex++; // bad fix, big problem
+         * with last char flags.setFlags(Tag.PUNsent); }
+         */
+        // splitable hyphen ? split on souviens-toi, murmura-t-elle, but not
+        // Joinville-le-Pont,
+        // Do not work on Allez-vous-en
+        if (hyphOffset > 0 && HYPHEN_POST.contains(test)) {
+            // swap search to store state of word after hyphen
+            // Laisse-moi ! Réveille-le. eploi-t-il ?
+            int len = term.length() - test.length() - 1;
+            term.setLength(len);
+            if (term.endsWith("-t"))
+                term.setLength(len - 2); // french specific, euphonic t
+            copy.copy(term);
+            term.copy(test);
+            offsetAtt.setOffset(correctOffset(hyphOffset), correctOffset(endOffset));
+            save = captureState();
+            // send the word before hyphen
+            term.copy(copy);
+            endOffset = hyphOffset - 1;
+        }
+        assert startOffset != -1;
+        startOffset = correctOffset(startOffset);
+        finalOffset = correctOffset(endOffset);
+        offsetAtt.setOffset(startOffset, finalOffset);
+        return true;
+
     }
-  }
+
+    @Override
+    public final void end() throws IOException
+    {
+        super.end();
+        // set final offset
+        offsetAtt.setOffset(finalOffset, finalOffset);
+    }
+
+    @Override
+    public void reset() throws IOException
+    {
+        super.reset();
+        bufIndex = 0;
+        offset = 0;
+        bufLen = 0;
+        finalOffset = 0;
+        bufSrc.reset(); // make sure to reset the IO buffer!!
+    }
+
+    /**
+     * An attribute factory
+     * 
+     * @author fred
+     *
+     */
+    private static final class AlixAttributeFactory extends AttributeFactory
+    {
+        private final AttributeFactory delegate;
+
+        public AlixAttributeFactory(AttributeFactory delegate)
+        {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public AttributeImpl createAttributeInstance(Class<? extends Attribute> attClass)
+        {
+            if (attClass == CharTermAttribute.class)
+                return new CharsAtt();
+            return delegate.createAttributeInstance(attClass);
+        }
+    }
 
 }

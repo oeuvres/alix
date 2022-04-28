@@ -742,7 +742,6 @@ public class FieldText
                 if (hasTags && !tags.accept(formTag[formId])) continue;
                 // if formId is negative, let the error go, problem in reader
                 // for each term, set scorer with global stats
-                // if (hasSpecif) specif.idf(formOccsAll[formId], formDocsAll[formId] );
                 if (hasDistrib) distrib.idf(occs, docs, formOccs[formId], formDocs[formId]);
                 docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
                 int docLeaf;
@@ -755,8 +754,8 @@ public class FieldText
                     // doc not yet encounter, we can count
                     if (!hitsVek.get(docId)) {
                         forms.hits++;
+                        hitsVek.set(docId);
                     }
-                    hitsVek.set(docId);
                     forms.formHits[formId]++;
                     if (hasDistrib) {
                         final double score = distrib.tf(freq, docOccs[docId]);
@@ -775,21 +774,6 @@ public class FieldText
                 }
             }
         }
-        
-        // We have counts, calculate scores
-        // loop on the bitSet to have the part Size
-        /*
-        if (hasSpecif) {
-            specif.part(partOccs, hitsVek.cardinality());
-            // loop on all form to calculate scores
-            for (int formId = 0; formId < formMax; formId++) {
-                long formPartOccs = freqs[formId];
-                if (formPartOccs < 1) continue;
-                double p = specif.prob(scores[formId], formPartOccs, formOccsAll[formId]);
-                scores[formId] = p;
-            }
-        }
-        */
         return forms;
     }
     

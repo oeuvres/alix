@@ -34,7 +34,6 @@ package alix.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -47,10 +46,9 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
 import alix.lucene.Alix;
@@ -62,20 +60,14 @@ import alix.lucene.Alix;
 public class FieldInt
 {
     /** The lucene index on wich stats are build */
+    @SuppressWarnings("unused")
     private final IndexReader reader;
     /** Name of the int field name */
-    private final String fieldName;
-    /** Name of text field to get some occs stats */
-    private final String ftextName;
-    /**
-     * A copy of values, sorted, position in this array is an internal id for the
-     * value
-     */
+    public final String name;
+    /** A copy of values, sorted, position in this array is an internal id for the  value */
     private final int[] sorted;
     /** For each docId, the id of the int value in the sorted vector */
     private final int[] docValue;
-    /** Size in occs for each int value, in the order of the sorted cursor */
-    private final long[] valueOccs;
     /** Count of docs by int value int the order of the sorted cursor */
     private final int[] valueDocs;
     /** Maximum value */
@@ -98,26 +90,25 @@ public class FieldInt
      * @param field
      * @throws IOException
      */
-    public FieldInt(final Alix alix, final String fintName, final String ftextName) throws IOException
+    public FieldInt(final Alix alix, final String name) throws IOException
     {
 
         IndexReader reader = alix.reader();
         this.reader = reader;
         FieldInfos fieldInfos = FieldInfos.getMergedFieldInfos(reader);
-        FieldInfo info = fieldInfos.fieldInfo(fintName);
+        FieldInfo info = fieldInfos.fieldInfo(name);
         // check infos
         if (info.getDocValuesType() == DocValuesType.NUMERIC)
             ; // OK
         else if (info.getPointDimensionCount() > 1) { // multiple dimension IntPoint, cry
-            throw new IllegalArgumentException("Field \"" + fintName + "\" " + info.getPointDimensionCount()
+            throw new IllegalArgumentException("Field \"" + name + "\" " + info.getPointDimensionCount()
                     + " dimensions, too much for an int tag by doc.");
         } else if (info.getPointDimensionCount() <= 0) { // not an IntPoint, cry
-            throw new IllegalArgumentException("Field \"" + fintName
+            throw new IllegalArgumentException("Field \"" + name
                     + "\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
         }
         // should be NumericDocValues or IntPoint with one dimension here
-        this.fieldName = fintName;
-        this.ftextName = ftextName;
+        this.name = name;
 
         int maxDoc = reader.maxDoc();
         final int[] docInt = new int[maxDoc];
@@ -128,11 +119,6 @@ public class FieldInt
 
         // stats by int value (ex : year)
         Map<Integer, long[]> counter = new TreeMap<Integer, long[]>();
-        // text stats
-        int[] docOccs = null;
-        if (ftextName != null) {
-            docOccs = alix.fieldText(ftextName).docOccs;
-        }
 
         if (info.getDocValuesType() == DocValuesType.NUMERIC) {
             int min = Integer.MAX_VALUE; // min
@@ -142,7 +128,7 @@ public class FieldInt
             long sum = 0; // sum
             for (LeafReaderContext context : reader.leaves()) {
                 LeafReader leaf = context.reader();
-                NumericDocValues docs4num = leaf.getNumericDocValues(fintName);
+                NumericDocValues docs4num = leaf.getNumericDocValues(name);
                 // no values for this leaf, go next
                 if (docs4num == null)
                     continue;
@@ -169,10 +155,6 @@ public class FieldInt
                         counter.put(value, count);
                     }
                     count[0]++;
-                    if (docOccs != null) {
-                        count[1] += docOccs[docId];
-                    }
-
                 }
             }
             this.minimum = min;
@@ -181,18 +163,18 @@ public class FieldInt
         }
         // IntPoint
         else if (info.getPointDimensionCount() > 0) {
-            IntPointVisitor visitor = new IntPointVisitor(docInt, counter, docOccs);
+            IntPointVisitor visitor = new IntPointVisitor(docInt, counter);
             for (LeafReaderContext context : reader.leaves()) {
                 visitor.setContext(context); // for liveDocs and docBase
                 LeafReader leaf = context.reader();
-                PointValues points = leaf.getPointValues(fintName);
+                PointValues points = leaf.getPointValues(name);
                 points.intersect(visitor);
             }
             this.minimum = visitor.min;
             this.maximum = visitor.max;
             this.docs = visitor.docs;
         } else {
-            throw new IllegalArgumentException("Field \"" + fintName
+            throw new IllegalArgumentException("Field \"" + name
                     + "\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
         }
         // get values of treeMap, should be ordered
@@ -220,15 +202,98 @@ public class FieldInt
 
         this.docValue = docInt;
         this.sorted = sorted;
-        this.valueOccs = valOccs;
         this.valueDocs = valDocs;
     }
 
+    public int card()
+    {
+        return this.cardinality;
+    }
+
+    public int cardinality()
+    {
+        return this.cardinality;
+    }
+
     /**
-     * Add stats about one form to an iterator over the int values
-     * 
-     * @throws IOException
+     * 1753 -> 17530000
+     * 1753-03-01 -> 17530301
      */
+    public static int date2int(String date) {
+        int value = Integer.MIN_VALUE;
+        if (date == null) return value;
+        date = date.trim();
+        if (!date.matches("-?\\d{1,4}(-\\d\\d)?(-\\d\\d)?")) return value;
+        boolean negative = false;
+        if (date.charAt(0) == '-') {
+            negative = true;
+            date = date.substring(1);
+        }
+        // get year, maybe negative
+        String[] parts = date.split("-");
+        try {
+            int v = Integer.parseInt(parts[0]);
+            value = v * 10000;
+        }
+        catch (Exception e) {
+            return value;
+        }
+        if (parts.length > 1) {
+           try {
+                 int v = Integer.parseInt(parts[1]);
+                 value += v * 100;
+             }
+             catch (Exception e) {
+                 return value;
+             }
+        }
+        if (parts.length > 2) {
+            try {
+                 int v = Integer.parseInt(parts[2]);
+                 value += v;
+            }
+            catch (Exception e) {
+               return value;
+            }
+        }
+        if (negative) return -value;
+        return value;
+    }
+
+    /**
+     * 17531023 -> 1753
+     */
+    public static int year(double date)
+    {
+        return (int) Math.ceil(date / 10000);
+    }
+
+    
+    
+    /**
+     * 17530000 -> 17539999
+     */
+    public static int yearCeil(int date)
+    {
+        if (date % 10000 == 0) return date + 9999;
+        if (date % 100 == 0) return date + 99;
+        return date;
+    }
+    
+    /**
+     * 17530301 -> 1753-03-01
+     * 17530000 -> 1753
+     */
+    public static String int2date(int value) {
+        String date = "" + value;
+        date = date.substring(0, 4) + "-" + date.substring(4, 6) + "-" + date.substring(6, 8);
+        date = date.replaceFirst("\\-00.*$", "");
+        return date;
+    }
+
+
+
+    /* Obsolete ? Wait till someone cry
     public void form(IntEnum iterator, String form) throws IOException
     {
         Term term = new Term(ftextName, form);
@@ -251,7 +316,7 @@ public class FieldInt
                 int freq = postings.freq();
                 if (freq < 1)
                     throw new ArithmeticException(
-                            "??? field=" + fieldName + " docId=" + docId + " form=" + form + " freq=" + freq);
+                            "??? field=" + name + " docId=" + docId + " form=" + form + " freq=" + freq);
                 final int valueInt = docValue[docId]; // get the value id of this doc
                 if (valueInt == Integer.MIN_VALUE)
                     continue; // no value for this doc
@@ -262,6 +327,7 @@ public class FieldInt
             iterator.dicOccs = new HashMap<String, long[]>();
         iterator.dicOccs.put(form, freqs);
     }
+    */
 
     /**
      * Enumerator on all values of the int field with different stats
@@ -273,13 +339,40 @@ public class FieldInt
         return new IntEnum();
     }
 
+    public int max()
+    {
+        return this.maximum;
+    }
+
+    public int min()
+    {
+        return this.minimum;
+    }
+
+    /**
+     * Return min-max value for a set of docs
+     * @param filter
+     * @return
+     */
+    public int[] minmax(final BitSet filter)
+    {
+        int min = Integer.MAX_VALUE;
+        int max = Integer.MIN_VALUE;
+        for (int docId = filter.nextSetBit(0); docId !=  DocIdSetIterator.NO_MORE_DOCS; docId = filter.nextSetBit(docId + 1)) {
+            final int val = sorted[docValue[docId]];
+            if (val < min) min = val;
+            if (val > max) max = val;
+        }
+        return new int[]{min, max};
+    }
+
     public class IntEnum
     {
         /** Internal cursor */
         private int cursor = -1;
         /** List of forms with stats by years in order of the sorted vector */
-        private Map<String, long[]> dicOccs;
-
+        // private Map<String, long[]> dicOccs;
+    
         /**
          * There are search left
          * 
@@ -289,7 +382,7 @@ public class FieldInt
         {
             return (cursor < (cardinality - 1));
         }
-
+    
         /**
          * Advance the cursor to next element
          */
@@ -297,28 +390,14 @@ public class FieldInt
         {
             cursor++;
         }
-
-        /**
-         * Count of occs for this position
-         */
+    
+        /*
         public long occs()
         {
-            return valueOccs[cursor];
+            throw new java.lang.UnsupportedOperationException("Not supported yet.");
         }
-
-        /**
-         * Count of occs for a form, -1 if form not in the dictionary
-         */
-        public long occs(String form)
-        {
-            if (dicOccs == null)
-                return -1;
-            long[] stats = dicOccs.get(form);
-            if (stats == null)
-                return -1;
-            return stats[cursor];
-        }
-
+        */
+    
         /**
          * Count of documents for this position
          */
@@ -326,7 +405,7 @@ public class FieldInt
         {
             return valueDocs[cursor];
         }
-
+    
         /**
          * The int value in sortes order
          */
@@ -336,43 +415,20 @@ public class FieldInt
         }
     }
 
-    public int min()
-    {
-        return this.minimum;
-    }
-
-    public int max()
-    {
-        return this.maximum;
-    }
-
-    public int card()
-    {
-        return this.cardinality;
-    }
-
-    public int cardinality()
-    {
-        return this.cardinality;
-    }
-
     private class IntPointVisitor implements PointValues.IntersectVisitor
     {
         public final int[] docInt;
         public Map<Integer, long[]> counter;
-        private final int[] docOccs;
         private Bits liveDocs;
         private int docBase;
         public int min = Integer.MAX_VALUE;
         public int max = Integer.MIN_VALUE;
         public int docs = 0;
 
-        public IntPointVisitor(final int[] docInt, final Map<Integer, long[]> counter, final int[] docOccs)
+        public IntPointVisitor(final int[] docInt, final Map<Integer, long[]> counter)
         {
             this.docInt = docInt;
             this.counter = counter;
-            this.docOccs = docOccs;
-
         }
 
         public void setContext(LeafReaderContext context)
@@ -411,9 +467,6 @@ public class FieldInt
                 counter.put(value, count);
             }
             count[0]++;
-            if (docOccs != null) {
-                count[1] += docOccs[docId];
-            }
         }
 
         @Override

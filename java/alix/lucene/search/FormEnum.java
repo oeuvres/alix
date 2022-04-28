@@ -66,12 +66,15 @@ public class FormEnum
     BytesRef bytes = new BytesRef();
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
+    /**
+     * Optional, a sort algorithm to select specific words according a norm (ex:
+     * compare formOccs / freqs)
+     */
+    public OptionDistrib distrib;
     /** Global number of docs relevant for this facet */
     public int docs;
     /** A record of edges */
     protected EdgeQueue edges;
-    /** Source field */
-    public final String name;
     /** Optional, a set of documents to limit occurrences collect */
     public BitSet filter;
     /**  By formId, a docId used as a cover (example: metas for books or  authors) */
@@ -110,6 +113,8 @@ public class FormEnum
     public int maxForm;
     /** Optional, a sort algorithm for coocs */
     public OptionMI mi;
+    /** Source field */
+    public final String name;
     /** All occs from parent field */
     public long occs;
     /** Count of occurrences for the part explored */
@@ -118,11 +123,6 @@ public class FormEnum
     public boolean reverse;
     /** Optional, for a co-occurrence search, count of occurrences to capture on the  right */
     public int right;
-    /**
-     * Optional, a sort algorithm to select specific words according a norm (ex:
-     * compare formOccs / freqs)
-     */
-    public OptionDistrib distrib;
     /** Optional, for a co-occurrence search, pivot words */
     public String[] search;
     /** An array of formId in the order we want to iterate on, should be set before iteration */
@@ -552,6 +552,7 @@ public class FormEnum
         if (formScore == null) return 0;
         return formScore[formId];
     }
+    
 
     /**
      * Set the sorted vector of ids
@@ -622,7 +623,7 @@ public class FormEnum
         TopArray top = null;
         if (limit < 1) top = new TopArray(maxForm, flags);
         else top = new TopArray(limit, flags);
-        boolean noZeroScore = false;
+        // boolean noZeroScore = false;
         if (formScore != null && order != Order.SCORE) {
             // noZeroScore = true;
         }
@@ -656,8 +657,10 @@ public class FormEnum
                     top.push(formId, formHits[formId]);
                     break;
                 case SCORE: // in case of negative scores ?
-                    if (formFreq[formId] == 0)
+                    if (formFreq[formId] == 0) {
                         top.push(formId, Double.MIN_VALUE);
+                        break;
+                    }
                     top.push(formId, formScore[formId]);
                     break;
                 default:

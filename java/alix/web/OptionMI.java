@@ -64,13 +64,13 @@ public enum OptionMI implements Option
             return 2 * Oab / (m10 * m10 + m01 * m01);
         }
     },
-    /*
-    NPMI("PPMI", "Normalized Mutual Information") {
-        double log2 = Math.log(2);
+    PPMI("PPMI", "Normalized Mutual Information") {
+        // double log2 = Math.log(2);
         double k = 4;
         @Override
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
+        /*
             // read in litterature but not very efficient
             double N11 = Oab;
             double N10 = Ob - Oab;
@@ -82,6 +82,7 @@ public enum OptionMI implements Option
             S += N01 / N * Math.log(N01 * N / ((N01 + N00) * (N01 + N00)));
             S += N00 / N * Math.log(N00 * N / ((N00 + N01) * (N00 + N10)));
             // return S;
+             */
             // strip rare cases
             if (Oa <= k || Ob <= k || Oab <= k) {
                 return 0;
@@ -91,7 +92,6 @@ public enum OptionMI implements Option
             return pmi / -Math.log(Oab/N);
         }
     },
-    */
     CHI2("Chi2", "Chi2 = Σ(Oi - Ei)²/Ei") {
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
