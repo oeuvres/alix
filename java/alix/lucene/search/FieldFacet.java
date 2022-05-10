@@ -311,12 +311,20 @@ public class FieldFacet
     /**
      * Get first available facetId for this docId or -1 if nothing found
      */
-    public int facetId(final int docId)
+    public int formId(final int docId)
     {
         int[] results = docForms[docId];
         if (results == null || results.length < 1)
             return -1;
         return results[0];
+    }
+
+    /**
+     * Get facetIds for a docId
+     */
+    public int[] formIds(final int docId)
+    {
+        return docForms[docId];
     }
 
     /**

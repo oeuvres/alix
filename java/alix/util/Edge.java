@@ -46,7 +46,7 @@ public class Edge implements Comparable<Edge>
     /** An index commodity */
     public final int index;
     /** Count */
-    private int count;
+    private long count;
     /** Score */
     private double score;
 
@@ -75,6 +75,10 @@ public class Edge implements Comparable<Edge>
         if (cp != 0) {
             return cp;
         }
+        cp = Long.compare(o.count, count);
+        if (cp != 0) {
+            return cp;
+        }
         if (this.source > o.source) return 1;
         if (this.source < o.source) return -1;
         if (this.target > o.target) return 1;
@@ -82,7 +86,7 @@ public class Edge implements Comparable<Edge>
         return 0;
     }
 
-    public int count()
+    public long count()
     {
         return this.count;
     }

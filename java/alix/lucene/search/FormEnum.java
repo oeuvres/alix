@@ -64,6 +64,8 @@ public class FormEnum
 {
     /** used to read in the dic */
     BytesRef bytes = new BytesRef();
+    /** Count of forms with  */
+    private int cardinality = -1;
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
     /**
@@ -140,11 +142,39 @@ public class FormEnum
         SCORE,
     }
 
-    protected FormEnum(final String fname)
+    /**
+     * Constructor
+     * @param fname
+     */
+    protected FormEnum(final String name)
     {
-        this.name = fname;
+        this.name = name;
     }
     
+    /**
+     * Count of forms with freq > 0
+     * @return
+     */
+    public int cardinality()
+    {
+        if (formFreq == null && formHits == null) {
+            return cardinality;
+            // throw new RuntimeException("This dictionary has all terms of the field " + name +", without formFreq nore formHits, cardinality() is not relevant, = size().");
+        }
+        if (cardinality >= 0) return cardinality;
+        cardinality = 0;
+        if (formFreq != null) {
+            for (long freq: formFreq) {
+                if (freq > 0) cardinality++;
+            }
+        }
+        else if (formHits != null) {
+            for (int hits: formHits) {
+                if (hits > 0) cardinality++;
+            }
+        }
+        return cardinality;
+    }
 
 
     /**
@@ -555,6 +585,14 @@ public class FormEnum
     
 
     /**
+     * Size of the dictionary (count of different termes)
+     * @return
+     */
+    public int size()
+    {
+        return formDic.size();
+    }
+    /**
      * Set the sorted vector of ids
      */
     public void setNos(final int[] formNos)
@@ -635,12 +673,17 @@ public class FormEnum
             reset();
             return sorter;
         }
-        // Why exclude first form = 0 ?
+        // cardinality = 0;
         for (int formId = 0, length = maxForm; formId < length; formId++) {
-            // do not output global stats if form have been filtered (ex : by cat)
-            /* What that for ?
-            if (formOccsFreq != null && formOccsFreq[formId] < 1)
-                continue;
+            // 2022-05 ??? do not output global stats if form have been filtered (ex : by cat)
+            // check values > 0
+            /*
+            if (formHits != null && formHits[formId] > 0) {
+                cardinality++;
+            }
+            else if (formFreq != null && formFreq[formId] > 0) {
+                cardinality++;
+            }
             */
             // do not output null score ?
             switch (order) {

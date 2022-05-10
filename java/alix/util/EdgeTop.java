@@ -13,6 +13,11 @@ public class EdgeTop implements Iterator<Edge>
     EdgeTop(final Edge[] edges) {
         this.edges = edges;
     }
+    
+    public int length()
+    {
+        return edges.length;
+    }
 
     @Override
     public boolean hasNext()

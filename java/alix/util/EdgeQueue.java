@@ -66,14 +66,6 @@ public class EdgeQueue implements Iterable<Edge>
     }
     
     /**
-     * Start a cluster (a set of nodes totally connected)
-     */
-    public void declust()
-    {
-        cluster.clear();
-    }
-
-    /**
      * Agregate a node to a cluster
      */
     public void clust(final int node)
@@ -90,25 +82,26 @@ public class EdgeQueue implements Iterable<Edge>
     }
 
     /**
-     * Add an edge
-     * @param source
-     * @param target
+     * Start a cluster (a set of nodes totally connected)
      */
-    public void push(final int source, final int target)
+    public void declust()
     {
-        grow(size);
-        if (directed) {
-            data[size] = edge(source, target);
-        }
-        else if (source < target) {
-            data[size] = edge(source, target);
-        } 
-        else {
-            data[size] = edge(target, source);
-        }
-        size++;
+        cluster.clear();
     }
-    
+
+    /**
+     * Build an entry for the data array
+     * 
+     * @param key
+     * @param value
+     * @return the entry
+     */
+    private static long edge(final int source, final int target)
+    {
+        long edge = ((source & KEY_MASK) | (((long) target) << 32));
+        return edge;
+    }
+
     private void grow(final int size)
     {
         if (size < capacity) {
@@ -145,16 +138,40 @@ public class EdgeQueue implements Iterable<Edge>
     }
 
     /**
-     * Build an entry for the data array
-     * 
-     * @param key
-     * @param value
-     * @return the entry
+     * Add an edge
+     * @param source
+     * @param target
      */
-    private static long edge(final int source, final int target)
+    public void push(final int source, final int target)
     {
-        long edge = ((source & KEY_MASK) | (((long) target) << 32));
-        return edge;
+        grow(size);
+        if (directed) {
+            data[size] = edge(source, target);
+        }
+        else if (source < target) {
+            data[size] = edge(source, target);
+        } 
+        else {
+            data[size] = edge(target, source);
+        }
+        size++;
+    }
+
+    /**
+     * Count of push events
+     * @return
+     */
+    public int size()
+    {
+        return size;
+    }
+    
+    /**
+     * Get the key from a long entry
+     */
+    private static int source(final long edge)
+    {
+        return (int) (edge & KEY_MASK);
     }
 
     /**
@@ -163,14 +180,6 @@ public class EdgeQueue implements Iterable<Edge>
     private static int target(final long edge)
     {
         return (int) (edge >> 32);
-    }
-
-    /**
-     * Get the key from a long entry
-     */
-    private static int source(final long edge)
-    {
-        return (int) (edge & KEY_MASK);
     }
 
 }
