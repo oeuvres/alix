@@ -547,6 +547,9 @@ public class FormEnum
         if (formOccsPart == null) return 0;
         return formOccsPart[formId];
     }
+    
+    
+
 
     /**
      * Reset the internal cursor if we want to replay the list.
@@ -582,6 +585,20 @@ public class FormEnum
         if (formScore == null) return 0;
         return formScore[formId];
     }
+
+    /**
+     * 
+     * @param rank
+     * @return
+     */
+    public double scoreByRank(final int rank)
+    {
+        if (rank >= limit)
+            return -1;
+        final int formId = sorter[rank];
+        return formScore[formId];
+    }
+
     
 
     /**

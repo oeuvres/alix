@@ -40,11 +40,25 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
- * Collect found document as a set of docids in a bitSet. Caching should be
+ * Collect found documents as a set of docids in a bitSet. Caching should be
  * ensure by user.
+ * 
+ * <pre>
+ * CollectorBits colBits = new CollectorBits(searcher);
+ * searcher.search(myQuery, colBits);
+ * final BitSet bits = colBits.bits();
+ * for (
+ *     int docId = bits.nextSetBit(0), max = bits.length();
+ *     docId < max;
+ *     docId = bits.nextSetBit(docId + 1)
+ * ) {
+ *     out.print(", " + docId);
+ * }
+ * </pre>
+ *
  * 
  * @author glorieux-f
  */
@@ -59,9 +73,13 @@ public class CollectorBits extends SimpleCollector implements Collector
     /** Current docBase for the context */
     int docBase;
 
+    /**
+     * Build Collector with the destination searcher to have maximum docId, IndexReader
+     * @param searcher
+     */
     public CollectorBits(IndexSearcher searcher)
     {
-        bits = new FixedBitSet(searcher.getIndexReader().maxDoc());
+        bits = new SparseFixedBitSet(searcher.getIndexReader().maxDoc());
     }
 
     /**
