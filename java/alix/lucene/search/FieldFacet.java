@@ -309,6 +309,42 @@ public class FieldFacet
 
     
     /**
+     * Get form from a local formId
+     * 
+     * @return
+     */
+    public String form(final int facetId)
+    {
+        BytesRef bytes = new BytesRef();
+        if (facetId < 0 || facetId >= maxForm) {
+            return null;
+        }
+        formDic.get(facetId, bytes);
+        return bytes.utf8ToString();
+    }
+    
+    /**
+     * Returns formId &gt;= 0 if exists, or &lt; 0 if not.
+     * @param bytes
+     * @return 
+     */
+    public int formId(final BytesRef bytes)
+    {
+        return formDic.find(bytes);
+    }
+
+    /**
+     * Returns formId &gt;= 0 if exists, or &lt; 0 if not.
+     * @param bytes
+     * @return 
+     */
+    public int formId(final String term)
+    {
+        BytesRef bytes = new BytesRef(term);
+        return formDic.find(bytes);
+    }
+
+    /**
      * Get first available facetId for this docId or -1 if nothing found
      */
     public int formId(final int docId)
@@ -327,21 +363,6 @@ public class FieldFacet
         return docForms[docId];
     }
 
-    /**
-     * Get form from a local formId
-     * 
-     * @return
-     */
-    public String form(final int facetId)
-    {
-        BytesRef bytes = new BytesRef();
-        if (facetId < 0 || facetId >= maxForm) {
-            return null;
-        }
-        formDic.get(facetId, bytes);
-        return bytes.utf8ToString();
-    }
-    
     /**
      * Returns a new enumerator on all search for this facet in orthographic order
      * 

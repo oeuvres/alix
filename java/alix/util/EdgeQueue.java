@@ -42,7 +42,7 @@ import alix.maths.Calcul;
 /**
  * An object to record edges events between int nodes.
  * Fast for writing, no lookup, maybe expensive in memory if a lot of events.
- * 
+ * Iterator by count.
  */
 public class EdgeQueue implements Iterable<Edge>
 {

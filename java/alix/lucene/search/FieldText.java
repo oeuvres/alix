@@ -528,30 +528,6 @@ public class FieldText
     }
 
     /**
-     * Build a BitSet rule for efficient filtering of forms by formId.
-     * @param filter
-     * @return
-     */
-    public BitSet formRule(TagFilter filter)
-    {
-        BitSet rule = new SparseFixedBitSet(maxForm);
-        final boolean noStop = filter.nostop();
-        final int stopLim = formStop.length();
-        for (int formId=1; formId < maxForm; formId++) {
-            if (!noStop); // no tick for stopword
-            else if (formId >= stopLim); // formId out of scope of stop words
-            else if (!formStop.get(formId)); // not a stop word, let other rules play
-            else { // stop word requested and is a stop word, tick and continue
-                rule.set(formId);
-                continue;
-            }
-            // set formId by tag
-            if (filter.accept(formTag[formId])) rule.set(formId);
-        }
-        return rule;
-    }
-    
-    /**
      * How many occs for this term ?
      * @param formId
      * @return
@@ -624,21 +600,27 @@ public class FieldText
     }
 
     /**
-     * Count of occurrences (except empty positions) for a docId
+     * Build a BitSet rule for efficient filtering of forms by formId.
+     * @param filter
      * @return
      */
-    public long occs()
+    public BitSet formRule(TagFilter filter)
     {
-        return occs;
-    }
-
-    /**
-     * Total count of occurrences (except empty positions) for a docId
-     * @return
-     */
-    public int occs(final int docId)
-    {
-        return docOccs[docId];
+        BitSet rule = new SparseFixedBitSet(maxForm);
+        final boolean noStop = filter.nostop();
+        final int stopLim = formStop.length();
+        for (int formId=1; formId < maxForm; formId++) {
+            if (!noStop); // no tick for stopword
+            else if (formId >= stopLim); // formId out of scope of stop words
+            else if (!formStop.get(formId)); // not a stop word, let other rules play
+            else { // stop word requested and is a stop word, tick and continue
+                rule.set(formId);
+                continue;
+            }
+            // set formId by tag
+            if (filter.accept(formTag[formId])) rule.set(formId);
+        }
+        return rule;
     }
 
     /**
@@ -690,8 +672,8 @@ public class FieldText
         if (filter == null) {
             throw new IllegalArgumentException("BitSet doc filter is null, what kind of results are expected?");
         }
-        if (filter.cardinality() < 1) {
-            throw new IllegalArgumentException("No docId set in this filter, what kind of results are expected?");
+        if (filter.cardinality() < 1) { // all is filtered, after sort, iterator should not loop
+            return forms();
         }
         return forms(filter, null, null);
     }
@@ -703,13 +685,14 @@ public class FieldText
      */
     public FormEnum forms(final BitSet filter, final TagFilter tags, OptionDistrib distrib) throws IOException
     {
+        FormEnum forms = forms();
+        
         boolean hasTags = (tags != null);
         boolean noStop = (tags != null && tags.nostop());
         boolean locs = (tags != null && tags.locutions());
         boolean hasDistrib = (distrib != null);
         boolean hasFilter = (filter != null && filter.cardinality() > 0);
         
-        FormEnum forms = forms();
         if (hasDistrib) forms.formScore = new double[maxForm];
         forms.formFreq = new long[maxForm];
         forms.formHits = new int[maxForm];
@@ -777,6 +760,24 @@ public class FieldText
         return forms;
     }
     
+
+    /**
+     * Count of occurrences (except empty positions) for a docId
+     * @return
+     */
+    public long occs()
+    {
+        return occs;
+    }
+
+    /**
+     * Total count of occurrences (except empty positions) for a docId
+     * @return
+     */
+    public int occs(final int docId)
+    {
+        return docOccs[docId];
+    }
 
     /**
      * Return tag attached to form according to FrDics.
