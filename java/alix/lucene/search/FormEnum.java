@@ -68,10 +68,7 @@ public class FormEnum
     private int cardinality = -1;
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
-    /**
-     * Optional, a sort algorithm to select specific words according a norm (ex:
-     * compare formOccs / freqs)
-     */
+    /** Optional, a sort algorithm to select specific words according a norm (ex: compare formOccs / freqs) */
     public OptionDistrib distrib;
     /** Global number of docs relevant for this facet */
     public int docs;
@@ -107,6 +104,8 @@ public class FormEnum
     protected long freq;
     /** Document found, Σ formHits */
     protected int hits;
+    /** Vector of documents hits */
+    protected BitSet hitsVek;
     /** Optional, for a co-occurrence search, count of occurrences to capture on the left */
     public int left;
     /** Limit for this iterator */
@@ -584,6 +583,27 @@ public class FormEnum
         // be nice or be null ?
         if (formScore == null) return 0;
         return formScore[formId];
+    }
+
+    /**
+     * Score 
+     * 
+     * @return
+     */
+    public void score(OptionDistrib distrib)
+    {
+        if (formFreq == null) {
+            throw new IllegalArgumentException("No freqs for this dictionary to calculate score on.");
+        }
+        formScore = new double[maxForm];
+        for (int formId = 0; formId < maxForm; formId++) {
+            if (formFreq[formId] < 1) continue;
+            distrib.idf(formDocs[formId], docs, occs);
+            distrib.expectation(formOccs[formId], occs);
+            formScore[formId] = distrib.score(formFreq[formId], freq); // freq = docLen, all found occs supposed as one doc
+            // ?
+            // formScore[formId] = distrib.last(formOccs[formId] - formFreq[formId], freq);
+        }
     }
 
     /**

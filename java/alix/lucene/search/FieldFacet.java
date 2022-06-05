@@ -499,7 +499,8 @@ public class FieldFacet
                 continue;
             }
             if (hasScorer) {
-                distrib.idf(ftext.occs, docs, ftext.formOccs[formId], ftext.formDocs[formId]);
+                distrib.expectation(ftext.formOccs[formId], ftext.occs);
+                distrib.idf(ftext.formDocs[formId], ftext.docs, ftext.occs);
             }
             // loop on the reader leaves (opening may have disk cost)
             for (LeafReaderContext context : reader.leaves()) {
@@ -541,7 +542,7 @@ public class FieldFacet
                         // formPartOccs[facetId] += freq;
                         // term frequency
                         if (hasScorer) {
-                            forms.formScore[facetId] += distrib.tf(freq, ftext.docOccs[docId]);
+                            forms.formScore[facetId] += distrib.score(freq, ftext.docOccs[docId]);
                         }
                     }
                     if (!docSeen) {

@@ -41,19 +41,26 @@ public enum OptionDistrib implements Option
 {
     OCCS("Occurrences", "") {
         @Override
-        public double tf(final double freq, final double docLen)
+        public double score(final double freq, final double docLen)
         {
             return freq;
+        }
+    },
+    FREQ("Fréquence", "occurrences trouvée / occurrences document") {
+        @Override
+        public double score(final double freq, final double docLen)
+        {
+            return freq / docLen;
         }
     },
     G("G-test", "Vraisemblance log, G = 2 Σ(Oi.ln(Oi/Ei))") {
         // don’t try to get variation 
         @Override
-        public double tf(final double freq, final double docLen)
+        public double score(final double freq, final double docLen)
         {
             if (freq < 1 || docLen < 1)
                 return 0;
-            final double Ei = frq * docLen;
+            final double Ei = expectation * docLen;
             
             // maybe negative
             return 2.0D * freq * Math.log(freq / Ei);
@@ -63,7 +70,7 @@ public enum OptionDistrib implements Option
          */
         public double last(final double freq, final double docLen)
         {
-            return tf(freq, docLen);
+            return score(freq, docLen);
         }
 
     },
@@ -78,15 +85,14 @@ public enum OptionDistrib implements Option
         private double idf;
 
         @Override
-        public double idf(final double allOccs, final double allDocs, final double formOccs, final double formDocs)
+        public void idf(final double hits, final double docs, final double occs)
         {
-            this.docAvg = allOccs / allDocs;
-            this.idf = Math.log(1.0 + (allDocs - formDocs + 0.5D) / (formDocs + 0.5D));
-            return idf;
+            this.docAvg = occs / docs;
+            this.idf = Math.log(1.0 + (docs - hits + 0.5D) / (hits + 0.5D));
         }
 
         @Override
-        public double tf(final double freq, final double docLen)
+        public double score(final double freq, final double docLen)
         {
             return idf * (freq * (k1 + 1)) / (freq + k1 * (1 - b + b * docLen / docAvg));
         }
@@ -99,36 +105,36 @@ public enum OptionDistrib implements Option
         private double idf;
 
         @Override
-        public double idf(final double allOccs, final double allDocs, final double formOccs, final double formDocs)
+        public void idf(final double hits, final double docs, final double occs)
         {
             final double l = 1d; //
-            final double toPow = 1d + Math.log((allDocs + l) / (formDocs + l));
+            final double toPow = 1d + Math.log((docs + l) / (hits + l));
             this.idf = toPow * toPow;
-            return idf;
         }
 
         @Override
-        public double tf(final double freq, final double docLen)
+        public double score(final double freq, final double docLen)
         {
             return idf * (k + (1 - k) * (double) freq / (double) docLen);
         }
 
     },
     CHI2("Chi2", "Vraisemblance carrée, Chi2 = Σ(Oi - Ei)²/Ei") {
+
         @Override
-        public double tf(final double freq, final double docLen)
+        public double score(final double freq, final double docLen)
         {
             // negative is not interesting here
             if (freq < 1 || docLen < 1)
                 return 0;
-            final double Ei = frq * docLen;
+            final double Ei = expectation * docLen;
             double O_E = freq - Ei;
             return O_E * O_E / Ei;
         }
 
         public double last(final double freq, final double docLen)
         {
-            return tf(freq, docLen);
+            return score(freq, docLen);
         }
 
     },
@@ -141,15 +147,22 @@ public enum OptionDistrib implements Option
      */
     ;
 
-    protected double frq; // used to calculate expected
+    protected double idf; // a theoretical idf
+    protected double expectation; // global freq expected for a term
 
-    public double idf(final double allOccs, final double allDocs, final double formOccs, final double formDocs)
+    
+    public void expectation(final double formOccs, final double occs)
     {
-        this.frq = formOccs / allOccs;
-        return 1;
+        if (occs == 0) return;
+        this.expectation = formOccs / occs;
+    }
+    
+    public void idf(final double hits, final double docs, final double occs)
+    {
+        return;
     }
 
-    abstract public double tf(final double freq, final double docLen);
+    abstract public double score(final double freq, final double docLen);
 
     public double last(final double freq, final double docLen)
     {

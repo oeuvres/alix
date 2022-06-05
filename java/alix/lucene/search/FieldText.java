@@ -679,6 +679,99 @@ public class FieldText
     }
     
     /**
+     * Score a partition
+     */
+    public FormEnum[] forms(final int parts, final int[] classifier, final TagFilter tags, OptionDistrib distrib) throws IOException
+    {
+        if (parts < 1) {
+            throw new IllegalArgumentException("A partition with " + parts +" parts ?");
+        }
+        if (classifier == null) {
+            throw new IllegalArgumentException("A partition needs a “classifier”, a vector of ints where classifier[docId]=part; ");
+        }
+        if (classifier.length != reader.maxDoc()) {
+            throw new IllegalArgumentException("Is your classifer for this index ? classifier.length=" + classifier.length + " IndexReader.maxDoc()=" +reader.maxDoc());
+        }
+        boolean hasTags = (tags != null);
+        boolean hasDistrib = (distrib != null);
+        boolean noStop = (tags != null && tags.nostop());
+        FormEnum[] dics = new FormEnum[parts];
+        for (int i = 0; i < parts; i++) {
+            FormEnum forms = forms();
+            dics[i] = forms;
+            if (hasDistrib) forms.formScore = new double[maxForm];
+            forms.formFreq = new long[maxForm];
+            forms.formHits = new int[maxForm];
+            forms.hitsVek = new FixedBitSet(reader.maxDoc());
+        }
+        // loop on index
+        BytesRef bytes;
+        // loop an all index to calculate a score for each term
+        for (LeafReaderContext context : reader.leaves()) {
+            int docBase = context.docBase;
+            LeafReader leaf = context.reader();
+            Bits live = leaf.getLiveDocs();
+            final boolean hasLive = (live != null);
+            Terms terms = leaf.terms(name);
+            if (terms == null) continue;
+            TermsEnum tenum = terms.iterator();
+            PostingsEnum docsEnum = null;
+            while ((bytes = tenum.next()) != null) {
+                if (bytes.length == 0) continue; // do not count empty positions
+                int formId = formDic.find(bytes);
+                if (noStop && isStop(formId)) continue;
+                if (hasTags && !tags.accept(formTag[formId])) continue;
+                // if formId is negative, let the error go, problem in reader
+                // for each term, set scorer with global stats
+                if (hasDistrib) {
+                    distrib.idf(formDocs[formId], docs, occs);
+                    distrib.expectation(formOccs[formId], occs);
+                }
+                docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
+                int docLeaf;
+                while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
+                    int docId = docBase + docLeaf;
+                    // choose a part
+                    final int part = classifier[docId];
+                    if (part < 0) continue;
+                    if (part >= parts) {
+                        throw new IllegalArgumentException("Non expected part found in your classifier part=" + part + " >= parts=" + parts);
+                    }
+                    FormEnum forms = dics[part];
+                    int freq = docsEnum.freq();
+                    if (freq < 1) throw new ArithmeticException("??? field="+name+" docId=" + docId+" term="+bytes.utf8ToString()+" freq="+freq);
+                    // doc not yet encounter, we can count
+                    if (!forms.hitsVek.get(docId)) {
+                        forms.hits++;
+                        forms.hitsVek.set(docId);
+                    }
+                    forms.formHits[formId]++;
+                    if (hasDistrib) {
+                        final double score = distrib.score(freq, docOccs[docId]);
+                        // if (score < 0) forms.formScore[formId] -= score; // all variation is significant
+                        forms.formScore[formId] += score;
+                    }
+                    forms.formFreq[formId] += freq;
+                    forms.freq += freq;
+                }
+                /* chi2, g: bof
+                if (hasDistrib) {
+                    // add inverse score
+                    final long restFreq = formOccs[formId] - forms.formFreq[formId];
+                    final long restLen = occs - forms.occsPart;
+                    double score = distrib.last(restFreq, restLen);
+                    forms.formScore[formId] += score;
+                }
+                */
+            }
+        }
+        return dics;
+    }
+
+    
+    
+    /**
      * Count of occurrences by term for a subset of the index,
      * defined as a BitSet. Returns an iterator sorted according 
      * to a scorer. If scorer is null, default is count of occurences.
@@ -725,7 +818,10 @@ public class FieldText
                 if (hasTags && !tags.accept(formTag[formId])) continue;
                 // if formId is negative, let the error go, problem in reader
                 // for each term, set scorer with global stats
-                if (hasDistrib) distrib.idf(occs, docs, formOccs[formId], formDocs[formId]);
+                if (hasDistrib) {
+                    distrib.idf(formDocs[formId], docs, occs);
+                    distrib.expectation(formOccs[formId], occs);
+                }
                 docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
                 int docLeaf;
                 while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
@@ -741,8 +837,8 @@ public class FieldText
                     }
                     forms.formHits[formId]++;
                     if (hasDistrib) {
-                        final double score = distrib.tf(freq, docOccs[docId]);
-                        if (score < 0) forms.formScore[formId] -= score; // all variation is significant
+                        final double score = distrib.score(freq, docOccs[docId]);
+                        // if (score < 0) forms.formScore[formId] -= score; // all variation is significant
                         forms.formScore[formId] += score;
                     }
                     forms.formFreq[formId] += freq;
@@ -753,7 +849,7 @@ public class FieldText
                     final long restFreq = formOccs[formId] - forms.formFreq[formId];
                     final long restLen = occs - forms.occsPart;
                     double score = distrib.last(restFreq, restLen);
-                    forms.formScore[formId] -= score;
+                    forms.formScore[formId] += score;
                 }
             }
         }

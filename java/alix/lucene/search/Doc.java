@@ -681,7 +681,7 @@ public class Doc
             forms.formScore = new double[fieldText.maxForm];
         }
         forms.formFreq = new long[fieldText.maxForm]; // freqs by form
-        int occsDoc = fieldText.docOccs[docId];
+        int docLen = fieldText.docOccs[docId];
 
         // loop on all forms of the document, get score, keep the top
         // final long restLen = fieldText.occsAll - occsDoc;
@@ -703,15 +703,15 @@ public class Doc
                 continue; // should not arrive, let cry
             }
             if (hasScorer) {
-                distrib.idf(fieldText.occs, fieldText.docs, fieldText.formOccs[formId],
-                        fieldText.formDocs[formId]);
+                distrib.expectation(fieldText.formOccs[formId], fieldText.occs);
+                distrib.idf(fieldText.formDocs[formId], fieldText.docs, fieldText.occs);
             }
             // scorer.weight(termOccs, termDocs); // collection level stats
             long freq = termit.totalTermFreq();
             forms.formFreq[formId] = freq;
             forms.freq += freq;
             if (hasScorer) {
-                forms.formScore[formId] += distrib.tf(freq, occsDoc);
+                forms.formScore[formId] += distrib.score(freq, docLen);
                 // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub
                 // complement ?
             }

@@ -94,6 +94,7 @@ public class JspTools
      */
     public String cookie(final String name)
     {
+        if (!check(name)) return null;
         if (cookies == null) {
             Cookie[] cooks = request.getCookies();
             if (cooks == null)
@@ -115,6 +116,7 @@ public class JspTools
      */
     public void cookie(String name, String value)
     {
+        if (!check(name)) return;
         if (value == null) {
             if (cookie(name) != null)
                 response.addHeader("Set-Cookie", name + "=" + value
@@ -411,6 +413,43 @@ public class JspTools
         }
     }
 
+    public int getInt(final String name, final int min, final int max, final int fallback, final String cookie)
+    {
+        String par = request.getParameter(name);
+        // param has an empty value, seems that client wants to reset cookie
+        // do not give back the stored value
+        if (cookie != null && par != null && !check(par)) {
+            cookie(cookie, null);
+            return fallback;
+        }
+        if (check(par)) { // a value, work after
+        }
+        else if (cookie != null) { // no par, try cookie
+            par = cookie(cookie);
+            if (!check(par)) return fallback;
+        }
+        else { // no par, no cookie, good bye
+            return fallback;
+        }
+        int value = 0;
+        boolean found = false;
+        // try to parse
+        try {
+            value = Integer.parseInt(par);
+            found = true;
+        } catch (NumberFormatException e) {
+        }
+        if (value < min || value > max) found = false;
+        if (!found) {
+            // perhaps an old cookie with a bad value, delete it
+            if (cookie != null) cookie(cookie, null);
+            return fallback;
+        }
+        if (cookie != null) cookie(cookie, ""+value);
+        return value;
+    }
+
+    
     /**
      * Get a request parameter as an int with a default value.
      * 
@@ -420,64 +459,19 @@ public class JspTools
      */
     public int getInt(final String name, final int fallback)
     {
-        String value = request.getParameter(name);
-        if (!check(value)) {
-            return fallback;
-        }
-        try {
-            int ret = Integer.parseInt(value);
-            return ret;
-        } catch (NumberFormatException e) {
-        }
-        return fallback;
+        return getInt(name, Integer.MIN_VALUE, Integer.MAX_VALUE, fallback, null);
     }
 
     public int getInt(final String name, final int fallback, final String cookie)
     {
-        String value = request.getParameter(name);
-        // a string submitted
-        if (check(value)) {
-            try {
-                int ret = Integer.parseInt(value);
-                cookie(cookie, "" + ret); // value seems ok, try to store it as cookie
-                return ret;
-            } catch (NumberFormatException e) {
-            }
-        }
-        // param has an empty value, seems that client wants to reset cookie
-        // do not give back the stored value
-        if (value != null && !check(value)) {
-            cookie(name, null);
-            return fallback;
-        }
-        value = cookie(cookie);
-        if (value == null)
-            return fallback;
-        // verify stored value before send it
-        try {
-            int ret = Integer.parseInt(value);
-            return ret;
-        } catch (NumberFormatException e) {
-            // bad cookie value, reset it
-            cookie(name, null);
-            return fallback;
-        }
+        return getInt(name, Integer.MIN_VALUE, Integer.MAX_VALUE, fallback, cookie);
+    }
+    
+    public int getInt(final String name, final int min, final int max, final int fallback)
+    {
+        return getInt(name, min, max, fallback, null);
     }
 
-    /**
-     * Get a request parameter as an int with a default value, with a cookie
-     * persistency.
-     * 
-     * @param name
-     * @param fallback
-     * @param cookie   Name of a cookie is given as an Enum to control cookies
-     *                 proliferation.
-     * @return
-     */
-    public int getInt(final String name, final int fallback, final Enum<?> cookie)
-    {
-        return getInt(name, fallback, cookie.name());
-    }
     
     /**
      * Return 
