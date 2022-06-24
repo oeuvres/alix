@@ -37,6 +37,7 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.logging.Logger;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -77,6 +78,8 @@ import alix.lucene.analysis.MetaAnalyzer;
  */
 public class SAXIndexer extends DefaultHandler
 {
+    /** logger */
+    private static final Logger LOGGER = Logger.getLogger(SAXIndexer.class.getName());
     final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
     final static DecimalFormat df000 = new DecimalFormat("000", frsyms);
     /** Lucene writer */
@@ -460,14 +463,17 @@ public class SAXIndexer extends DefaultHandler
                 break;
             case INT:
                 int val = 0;
-                if (value == null)
-                    throw new SAXException("<alix:field name=\"" + name + "\"> A field of @type=\"" + type
+                if (value == null) {
+                    LOGGER.warning("<alix:field name=\"" + name + "\"> A field of @type=\"" + type
                             + "\" must have an attribute @value=\"number\"");
+                    break;
+                }
                 try {
                     val = Integer.parseInt(value);
                 } catch (Exception e) {
-                    throw new SAXException("<alix:field name=\"" + name + "\" type=\"" + type + "\"> @value=\"" + value
+                    LOGGER.warning("<alix:field name=\"" + name + "\" type=\"" + type + "\"> @value=\"" + value
                             + "\" is not a number.");
+                    break;
                 }
                 // doc.add(new NumericDocValuesField(name, val)); why ?
                 doc.add(new IntPoint(name, val)); // to search
@@ -475,29 +481,34 @@ public class SAXIndexer extends DefaultHandler
                 doc.add(new NumericDocValuesField(name, val)); // to sort
                 break;
             case CATEGORY:
-                if (value == null)
-                    throw new SAXException("<alix:field name=\"" + name + "\"> A field of type=\"" + type
+                if (value == null) {
+                    LOGGER.warning("<alix:field name=\"" + name + "\"> A field of type=\"" + type
                             + "\" must have an attribute value=\"A category\"");
+                    break;
+                }
                 doc.add(new SortedDocValuesField(name, new BytesRef(value)));
                 doc.add(new StringField(name, value, Field.Store.YES));
                 break;
             case FACET:
-                if (value == null)
-                    throw new SAXException("<alix:field name=\"" + name + "\"> A field of type=\"" + type
+                if (value == null) {
+                    LOGGER.warning("<alix:field name=\"" + name + "\"> A field of type=\"" + type
                             + "\" must have an attribute value=\"A facet\"");
+                    break;
+                }
                 doc.add(new SortedSetDocValuesField(name, new BytesRef(value)));
                 doc.add(new StringField(name, value, Field.Store.YES));
                 break;
             case STRING:
             case TOKEN:
-                if (value == null)
-                    throw new SAXException("<alix:field name=\"" + name + "\"> A field of type=\"" + type
+                if (value == null) {
+                    LOGGER.warning("<alix:field name=\"" + name + "\"> A field of type=\"" + type
                             + "\" must have an attribute value=\"token\"");
+                    break;
+                }
                 doc.add(new StringField(name, value, Field.Store.YES));
                 break;
             default:
-                throw new SAXException(
-                        "<alix:field name=\"" + name + "\"> The type=\"" + type + "\" is not yet implemented");
+                LOGGER.warning("<alix:field name=\"" + name + "\"> The type=\"" + type + "\" is not yet implemented");
             }
         } else if (localName.equals("corpus")) {
             // nothing for now

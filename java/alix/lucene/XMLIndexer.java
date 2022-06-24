@@ -50,6 +50,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -74,6 +76,8 @@ import alix.xml.JarResolver;
  */
 public class XMLIndexer implements Runnable
 {
+    /** logger */
+    private static final Logger LOGGER = Logger.getLogger(XMLIndexer.class.getName());
     /** XSLT processor (saxon) */
     static final TransformerFactory XSLFactory;
     static {
@@ -167,23 +171,29 @@ public class XMLIndexer implements Runnable
             if (transformer != null) {
                 // XML/TEI source documents, transform to ALix xml for indexation
                 StreamSource docSource = new StreamSource(new ByteArrayInputStream(docBytes));
+                
                 transformer.setParameter("filename", filename);
                 transformer.setParameter("index", true); // will strip bad things for indexation
                 // Michael Kay dixit, if we want indentation, we have to serialize
                 // [2021-11] OK, but can´t remember why
                 ByteArrayOutputStream alixBaos = new ByteArrayOutputStream();
                 StreamResult alixRes = new StreamResult(alixBaos);
-                transformer.transform(docSource, alixRes);
-                /*
-                 * has been useful for debug try(OutputStream outputStream = new
-                 * FileOutputStream("work/"+filename+".alix")) { alixBaos.writeTo(outputStream);
-                 * }
-                 */
+                try {
+                    transformer.transform(docSource, alixRes);
+                } catch (Exception e) {
+                    LOGGER.log(Level.SEVERE, e.toString());
+                    continue;
+                }
                 SAXParser = SAXFactory.newSAXParser();
                 SAXParser.parse(new ByteArrayInputStream(alixBaos.toByteArray()), alixSaxer);
             } else {
                 // Alix xml ready to index <document>…
-                SAXParser.parse(new ByteArrayInputStream(docBytes), alixSaxer);
+                try {
+                    SAXParser.parse(new ByteArrayInputStream(docBytes), alixSaxer);
+                } catch (Exception e) {
+                    LOGGER.log(Level.SEVERE, e.toString());
+                    continue;
+                }
             }
         }
 
@@ -271,11 +281,11 @@ public class XMLIndexer implements Runnable
     static public void index(final IndexWriter writer, final File[] globs, int threads, String xsl)
             throws ParserConfigurationException, SAXException, InterruptedException, IOException, TransformerException
     {
-
         // compile XSLT, maybe it could be done before?
         Templates templates = null;
-        if (xsl == "alix")
-            ;
+        if (xsl == "alix") {
+            
+        }
         else if (xsl == "tei" || xsl == null) {
             JarResolver resloader = new JarResolver();
             XSLFactory.setURIResolver(resloader);
@@ -283,6 +293,7 @@ public class XMLIndexer implements Runnable
             templates = XSLFactory.newTemplates(xsltSrc);
         } else if (xsl != null) {
             if (!new File(xsl).exists()) {
+                System.out.println("globs" + Arrays.toString(globs) + " xsl=" + xsl + " exist ?" + new File(xsl).exists());
                 throw new FileNotFoundException("\n[" + Alix.NAME + "] XSL file not found: " + xsl);
             }
             StreamSource xsltSrc = new StreamSource(xsl);

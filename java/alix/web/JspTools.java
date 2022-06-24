@@ -150,6 +150,12 @@ public class JspTools
         return out.toString();
     }
 
+    /**
+     * Escape HTML for input
+     * @param out
+     * @param cs
+     * @throws IOException
+     */
     public static void escape(final Writer out, final CharSequence cs) throws IOException
     {
         if (cs == null)

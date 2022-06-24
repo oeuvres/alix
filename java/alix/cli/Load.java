@@ -70,6 +70,11 @@ import picocli.CommandLine.Parameters;
 public class Load implements Callable<Integer>
 {
     public static String APP = "Alix";
+    
+    static {
+        // System.setProperty("java.util.logging.SimpleFormatter.format", "[%1$tF %1$tT] [%4$-7s] %5$s %n");
+        System.setProperty("java.util.logging.SimpleFormatter.format", "[%4$-7s] %5$s %n");
+    }
 
     @Parameters(arity = "1..*", paramLabel = "base.xml", description = "1 or more Java/XML/properties describing a document base (label, src…)")
     File[] conflist;
@@ -124,9 +129,11 @@ public class Load implements Callable<Integer>
         for (final File conf : conflist) {
             String name = conf.getName().replaceFirst("\\..+$", "");
             // in case of glob, avoid some things
-            if (conf.getCanonicalPath().endsWith("WEB-INF/web.xml") || conf.getName().startsWith(".")
-                    || conf.getName().startsWith("_")
             // test here if it's folder ?
+            if (
+                conf.getCanonicalPath().endsWith("WEB-INF/web.xml") 
+                || conf.getName().startsWith(".")
+                || conf.getName().startsWith("_")
             ) {
                 continue;
             }
@@ -218,6 +225,7 @@ public class Load implements Callable<Integer>
             List<String> lines = Files.readAllLines(file.toPath());
             for (int i = 0; i < lines.size(); i++) {
                 String glob = lines.get(i);
+                System.out.println("[" + APP + "] process " + glob );
                 globAdd(glob, base);
             }
         } 
@@ -232,6 +240,7 @@ public class Load implements Callable<Integer>
             // resolve globs relative to the folder of the properties field
             final File base = propsFile.getCanonicalFile().getParentFile();
             for (String glob : blurf) {
+                System.out.println("[" + APP + "] process " + glob );
                 globAdd(glob, base);
             }
         }
@@ -243,15 +252,27 @@ public class Load implements Callable<Integer>
             if (!dicfile.isAbsolute())
                 dicfile = new File(propsFile.getParentFile(), prop);
             if (!dicfile.exists()) {
-                throw new FileNotFoundException("Local dictionary <entry key=\"" + key + "\">" + prop
+                throw new FileNotFoundException("Local dictionary file not found <entry key=\"" + key + "\">" + prop
                         + "</entry>, resolved as " + dicfile.getAbsolutePath());
             }
             FrDics.load(dicfile);
         }
 
         // set a local xsl to generate alix:document
-        xsl = props.getProperty("xsl");
-
+        key = "xsl";
+        prop = props.getProperty(key);
+        if (prop != null) {
+            File file = new File(prop);
+            if (!file.isAbsolute())
+                file = new File(propsFile.getParentFile(), prop);
+            if (!file.exists()) {
+                throw new FileNotFoundException("XSLT file not found <entry key=\"" + key + "\">" + prop
+                        + "</entry>, resolved as " + file.getAbsolutePath());
+            }
+            xsl = file.toString();
+        }
+        
+        
         prop = props.getProperty("dstdir");
         if (prop != null) {
             dstdir = new File(prop);
@@ -374,9 +395,9 @@ public class Load implements Callable<Integer>
      * the same safe indexation like for unix.
      * 
      * @param name
-     * @throws IOException
+     * @throws Exception 
      */
-    public void writeUnsafe(final File dstdir, final String name) throws IOException
+    public void writeUnsafe(final File dstdir, final String name) throws Exception
     {
         File theDir = new File(dstdir, name);
         File oldDir = new File(dstdir, nameOld(name));
@@ -395,13 +416,16 @@ public class Load implements Callable<Integer>
             // only one thread
             threads = 1;
             write(name, theDir.toPath());
-        } catch (Exception e) {
+        } 
+        catch (Exception e) {
             // try to restore old index
             Dir.rm(theDir);
-            if (theDir.exists())
-                throw new IOException("\n[" + APP + "] Impossible to restore old index (filesystem pb)");
+            if (theDir.exists()) {
+                System.out.println("\n[" + APP + "] Impossible to restore old index (filesystem pb)");
+            }
             oldDir.renameTo(theDir);
             tmpDir.renameTo(oldDir);
+            throw e;
         }
         // we are OK
         if (tmpDir.exists())

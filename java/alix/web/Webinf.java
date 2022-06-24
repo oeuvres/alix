@@ -33,8 +33,8 @@
 package alix.web;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.StringReader;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Properties;
@@ -83,7 +83,7 @@ public class Webinf
                 continue;
             }
             String name = fileName.substring(0, pos);
-            if ("web".equals(name)) {
+            if ("web".equals(name) || "urlrewrite".equals(name)) {
                 continue;
             }
             String xml;
@@ -91,16 +91,17 @@ public class Webinf
                 xml = new String ( Files.readAllBytes(file.toPath()) );
             }
             catch (IOException e) {
-                LOGGER.log(Level.WARNING, "[Alix] base:" + name + ", read error for file: " + file + "\n" + e);
+                LOGGER.log(Level.WARNING, "[Alix] read error for file: " + file + ", a configuration file?\n" + e);
                 continue;
             }
-            if (xml.indexOf("<properties") < 0 || xml.indexOf("</properties>") < 0) {
+            if (!xml.contains("http://java.sun.com/dtd/properties.dtd")) {
                 continue;
             }
+            // check if it’s a property file and not another kind of XML file
             Properties props = new Properties();
             LOGGER.log(Level.CONFIG, "[Alix] load base:" + name + ", properties: " + file);
             try {
-                props.load(new StringReader(xml));
+                props.loadFromXML(new FileInputStream(file));
             }
             catch (IOException e) {
                 LOGGER.log(Level.SEVERE, "[Alix] base:" + name + ", bad properties file: " + file + "\n" + e);
@@ -122,8 +123,9 @@ public class Webinf
                     }
                 }
             }
-            if (!props.containsKey("label"))
+            if (!props.containsKey("label")) {
                 props.put("label", name);
+            }
             // test if lucene index exists and is OK
             String dstdir = props.getProperty("dstdir");
             if (dstdir == null)
