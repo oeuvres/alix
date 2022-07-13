@@ -979,14 +979,13 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
 
     /**
      * Reset chain (keep all memory already allocated).
-     * 
+     * Keep start where it is, efficient for prepend.
      * @return the Chain
      */
     public Chain reset()
     {
         this.hash = 0;
         this.size = 0;
-        // keep start where it is, suppose quite correct for prepend
         return this;
     }
     

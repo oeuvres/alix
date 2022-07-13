@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 
 import org.apache.lucene.document.Document;
@@ -524,7 +525,7 @@ public class Doc
      * @throws NoSuchFieldException
      * @throws IOException
      */
-    public String[] kwic(final String field, ByteRunAutomaton include, final String href, int limit, int left,
+    public List<String[]> kwic(final String field, ByteRunAutomaton include, int limit, int left,
             int right, final int gap, final boolean expressions, final boolean repetitions)
             throws NoSuchFieldException, IOException
     {
@@ -546,34 +547,34 @@ public class Doc
         // no token or expression found
         if (toks == null || toks.length < 1)
             return null;
-        Chain line = new Chain();
         int length = toks.length;
         if (limit < 0)
             limit = length;
         else
             limit = Math.min(limit, length);
         // store lines to get the ones with more occurrences
-        Top<String> lines = new Top<String>(limit);
+        List<String[]> lines = new ArrayList<>();
+        Chain chain = new Chain();
         // loop on all freqs to get the best
         for (int i = 0; i < length; i++) {
             Token tok = toks[i];
-            // prepend left context, because search of full text is progressing from right
-            // to left
-            ML.prependChars(xml, tok.start - 1, line, left);
-            line.prepend("<span class=\"left\">");
-            line.append("</span><span class=\"right\"><a href=\"");
-            line.append(href); // caller kows where to send
-            line.append("#pos" + tok.pos); // here knows the ids in the hilited doc
-            line.append("\">");
-            ML.detag(xml, tok.start, tok.end, line); // multi word can contain tags
-            line.append("</a>");
-            ML.appendChars(xml, tok.end, line, right);
-            line.append("</span>");
-            lines.push(tok.span, line.toString());
-            line.reset();
+            String[] chunks = new String[4];
+            chunks[0] = "pos" + tok.pos;
+            // go left from token position
+            chain.reset();
+            ML.prependChars(xml, tok.start - 1, chain, left);
+            chunks[1] = chain.toString();
+            chain.reset();
+            ML.detag(xml, tok.start, tok.end, chain); // multi word can contain tags
+            chunks[2] = chain.toString();
+            chain.reset();
+            ML.appendChars(xml, tok.end, chain, right);
+            chunks[3] = chain.toString();
+            lines.add(chunks);
         }
-        return lines.toArray();
+        return lines;
     }
+
 
     /*
      * String text = document.get(TEXT); BinaryUbytes tags = new BinaryUbytes();
