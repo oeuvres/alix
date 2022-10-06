@@ -417,6 +417,7 @@ public class FieldInt
 
     private class IntPointVisitor implements PointValues.IntersectVisitor
     {
+        /** Foreach docid, its int value */
         public final int[] docInt;
         public Map<Integer, long[]> counter;
         private Bits liveDocs;
