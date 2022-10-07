@@ -126,6 +126,7 @@ public class JspTools
         }
     }
 
+    
     /**
      * Ensure that a String could be included in an html attribute with quotes
      */
@@ -547,17 +548,6 @@ public class JspTools
         return map.get(value);
     }
 
-    /**
-     * Get a request parameter as a String with a default value.
-     */
-    public String getString(final String name, final String fallback)
-    {
-        String value = request.getParameter(name);
-        if (check(value)) {
-            return value;
-        }
-        return fallback;
-    }
 
     /**
      * Get a request parameter as a String from a list of value (first is default)
@@ -576,17 +566,27 @@ public class JspTools
 
     
     /**
-     * Get a requesparameter as a String with a default value, and a cookie persistency.
+     * Get a request parameter as a String with a default value, and a cookie persistency.
      */
     public String getString(final String name, final String fallback, final String cookie)
     {
         String value = request.getParameter(name);
         if (check(value)) {
+            // we want a string, not html
+            value = value.replaceAll("<[^>]*>", "");
+        }
+        // no cookie, answer fast
+        if (!check(cookie)) {
+            if (check(value)) return value;
+            else return fallback;
+        }
+        
+        if (check(cookie) && check(value)) {
             cookie(cookie, value);
             return value;
         }
         // param is not null, for example empty string, reset cookie
-        if (value != null) {
+        if (check(cookie) && value != null) {
             cookie(name, null);
             return fallback;
         }
@@ -598,6 +598,14 @@ public class JspTools
         // cookie seems to have a problem, reset it
         cookie(name, null);
         return fallback;
+    }
+
+    /**
+     * Get a request parameter as a String with a default value.
+     */
+    public String getString(final String name, final String fallback)
+    {
+        return getString(name, fallback, ""); // cookie=null produce ambig
     }
 
     /**
