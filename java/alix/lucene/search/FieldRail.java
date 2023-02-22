@@ -173,7 +173,7 @@ public class FieldRail
         //     for each doc
         //         get position of term found
         if (pivotIds == null || pivotIds.length == 0) {
-            throw new IllegalArgumentException("Search term(s) missing, FormEnum.search should be not null");
+            throw new IllegalArgumentException("Search term(s) missing, pivotIds should be not null");
         }
         if (left < 0 || right < 0 || (left + right) < 1) {
             throw new IllegalArgumentException("FormEnum.left=" + left + " FormEnum.right=" + right

@@ -20,7 +20,6 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
   exclude-result-prefixes="tei" 
   >
   <xsl:import href="tei_common.xsl"/>
-  <xsl:strip-space elements="tei:TEI tei:TEI.2 tei:body tei:castList  tei:div tei:div1 tei:div2  tei:docDate tei:docImprint tei:docTitle tei:fileDesc tei:front tei:group tei:index tei:listWit tei:publicationStmp tei:publicationStmt tei:sourceDesc tei:SourceDesc tei:sources tei:text tei:teiHeader tei:text tei:titleStmt"/>
   
   <!-- Generate a relative tree, for example in a section -->
   <xsl:template name="tocrel">
@@ -198,7 +197,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
   <xsl:template name="a">
     <xsl:param name="title"/>
     <xsl:choose>
-      <xsl:when test="$title ">
+      <xsl:when test="$title != ''">
         <xsl:apply-templates select="." mode="a">
           <xsl:with-param name="title" select="$title"/>
         </xsl:apply-templates>
@@ -400,8 +399,8 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
     <xsl:param name="less" select="0"/>
     <!-- limit depth -->
     <xsl:param name="depth"/>
-    <!-- enfants ? -->
-    <xsl:variable name="children" select="tei:group | tei:text | tei:div[tei:head] 
+    <!-- enfants ? Should head requested for a toc ? -->
+    <xsl:variable name="children" select="tei:group | tei:text | tei:div 
       | tei:div0[tei:head] | tei:div1[tei:head] | tei:div2[tei:head] | tei:div3[tei:head] | tei:div4[tei:head] | tei:div5[tei:head] | tei:div6[tei:head] | tei:div7[tei:head] "/>
     <li>
       <xsl:choose>
@@ -428,7 +427,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
             <xsl:for-each select="tei:back | tei:body | tei:castList | tei:div | tei:div0 | tei:div1 | tei:div2 | tei:div3 | tei:div4 | tei:div5 | tei:div6 | tei:div7 | tei:front | tei:group | tei:text">
               <xsl:choose>
                 <!-- ??? first section with no title, no forged title -->
-                <xsl:when test="not(tei:head)"/>
+                <xsl:when test="false()"/>
                 <xsl:otherwise>
                   <xsl:apply-templates select="." mode="li">
                     <xsl:with-param name="less" select="number($less) - 1"/>
@@ -467,9 +466,10 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
       <xsl:when test="tei:p | tei:l | tei:list | tei:argument | tei:table | tei:docTitle | tei:docAuthor">
         <xsl:call-template name="a"/>
       </xsl:when>
-      <xsl:when test="tei:div[normalize-space(.) != '']|tei:div1[normalize-space(.) != '']">
+      <!-- if empty <div>, let it be -->
+      <xsl:when test="tei:div|tei:div1">
         <ol class="tree">
-          <xsl:apply-templates select="*[self::tei:div|self::tei:div1][normalize-space(.) != '']" mode="li"/>
+          <xsl:apply-templates select="self::tei:div|self::tei:div1" mode="li"/>
         </ol>
       </xsl:when>
     </xsl:choose>

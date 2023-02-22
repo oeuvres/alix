@@ -9,12 +9,16 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
 
 -->
 <xsl:transform version="1.0"
-  exclude-result-prefixes="tei epub" 
-  extension-element-prefixes="exslt" 
-  xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xmlns:exslt="http://exslt.org/common" xmlns:tei="http://www.tei-c.org/ns/1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+  exclude-result-prefixes="tei"
+  extension-element-prefixes="exslt"
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:epub="http://www.idpf.org/2007/ops"
+  xmlns:exslt="http://exslt.org/common"
+  xmlns:tei="http://www.tei-c.org/ns/1.0"
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <!-- Shared templates -->
   <xsl:import href="tei_common.xsl"/>
-  <xsl:output indent="yes" encoding="UTF-8" method="xml" />
+  
   <!-- key for notes by page, keep the tricky @use expression in this order, when there are other parallel pages number -->
   <xsl:key name="note-pb" match="tei:note[not(parent::tei:sp)][not(starts-with(local-name(..), 'div'))]" use="generate-id(  preceding::*[self::tei:pb[not(@ed)][@n] ][1]  ) "/>
   <xsl:key name="note-before" match="tei:note[not(parent::tei:sp)][not(starts-with(local-name(..), 'div'))]" use="generate-id(following::*[self::tei:pb[not(@ed)][@n] ][1]  ) "/>
@@ -28,7 +32,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
         <xsl:variable name="notes">
           <xsl:apply-templates mode="fn"/>
         </xsl:variable>
-        <xsl:if test="$notes">
+        <xsl:if test="$notes != ''">
           <section class="footnotes">
             <xsl:for-each select="exslt:node-set($notes)/*">
               <xsl:sort select="substring-before(concat(@class, ' '), ' ')"/>
@@ -49,7 +53,14 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
         -->
       </xsl:when>
       <xsl:otherwise>
-        <xsl:apply-templates mode="fn"/>
+        <xsl:variable name="fns">
+          <xsl:apply-templates mode="fn"/>
+        </xsl:variable>
+        <xsl:if test="$fns != ''">
+          <section class="footnotes">
+            <xsl:copy-of select="$fns"/>
+          </section>
+        </xsl:if>
       </xsl:otherwise>
     </xsl:choose>
     

@@ -525,9 +525,16 @@ public class Doc
      * @throws NoSuchFieldException
      * @throws IOException
      */
-    public List<String[]> kwic(final String field, ByteRunAutomaton include, int limit, int left,
-            int right, final int gap, final boolean expressions, final boolean repetitions)
-            throws NoSuchFieldException, IOException
+    public List<String[]> kwic(
+        final String field, 
+        ByteRunAutomaton include,
+        int limit,
+        int left,
+        int right,
+        final int gap,
+        final boolean expressions,
+        final boolean repetitions
+    ) throws NoSuchFieldException, IOException
     {
         if (left < 0 || left > 500)
             left = 50;

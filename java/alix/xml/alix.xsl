@@ -1,28 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-To index TEI files in lucene with Alix
-
-LGPL  http://www.gnu.org/licenses/lgpl.html
-© 2019 Frederic.Glorieux@fictif.org & Opteos
-
-
-
-
--->
-<xsl:transform version="1.0"
-  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-  xmlns="http://www.w3.org/1999/xhtml"
+<!-- To index TEI files in lucene with Alix LGPL http://www.gnu.org/licenses/lgpl.html 
+  © 2019 Frederic.Glorieux@fictif.org & Opteos -->
+<xsl:transform version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  xmlns="http://www.w3.org/1999/xhtml" 
+  xmlns:alix="http://alix.casa" 
+  xmlns:epub="http://www.idpf.org/2007/ops"
   xmlns:tei="http://www.tei-c.org/ns/1.0"
-  xmlns:alix="http://alix.casa"
+  
+  extension-element-prefixes="saxon"
   xmlns:saxon="http://saxon.sf.net/"
-
-
-  exclude-result-prefixes="tei"
->
+  
+  exclude-result-prefixes="tei">
   <xsl:import href="tei_flow_html.xsl"/>
   <xsl:import href="tei_notes_html.xsl"/>
   <xsl:import href="tei_toc_html.xsl"/>
-  <xsl:output indent="yes" encoding="UTF-8" method="xml"/>
+  <xsl:output indent="yes" encoding="UTF-8" method="xml" omit-xml-declaration="yes"/>
   <!-- chapter split policy -->
   <xsl:key name="split" match="
     tei:*[self::tei:div or self::tei:div1 or self::tei:div2][normalize-space(.) != ''][@type][
@@ -34,9 +26,9 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
     or contains(@type, 'letter')
     ]
     | tei:group/tei:text
-    | tei:TEI/tei:text/tei:*/tei:*[self::tei:div or self::tei:div1 or self::tei:group or self::tei:titlePage  or self::tei:castList][normalize-space(.) != '']"
-    use="generate-id(.)"/>
-  <xsl:variable name="idHigh" select="/*/tei:teiHeader/tei:encodingDesc/tei:refsDecl/tei:citeStructure/@use = '@xml:id'"/>
+    " use="generate-id(.)"/>
+  <xsl:variable name="idHigh"
+    select="/*/tei:teiHeader/tei:encodingDesc/tei:refsDecl/tei:citeStructure/@use = '@xml:id'"/>
   <!-- Name of file, provided by caller -->
   <xsl:param name="filename"/>
   <!-- Get metas as a global var to insert fields in all chapters -->
@@ -83,44 +75,86 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
     </xsl:if>
   </xsl:variable>
 
+  <!-- Racine -->
   <xsl:template match="/*">
-    <!-- XML book is handled as nested lucene documents (chapters) -->
-    <alix:book>
-      <xsl:attribute name="xml:id">
-        <xsl:choose>
-          <xsl:when test="/*/@xml:id and /*/@xml:id != ''">
-            <xsl:value-of select="@xml:id"/>
-          </xsl:when>
-          <xsl:when test="$filename != ''">
-            <xsl:value-of select="$filename"/>
-          </xsl:when>
-          <xsl:otherwise>
-            <xsl:message terminate="no">NO id for this book, will be hard to retrieve. Set xsl:param $filename on call or in your sourcefile /tei:TEI/@xml:id</xsl:message>
-          </xsl:otherwise>
-        </xsl:choose>
-      </xsl:attribute>
-      <xsl:copy-of select="$info"/>
-      <!-- Date of global book -->
-      <xsl:variable name="year" select="substring($docdate, 1, 4)"/>
-      <xsl:if test="string(number($year)) != 'NaN'">
-        <alix:field name="year" type="int">
-          <xsl:attribute name="value">
-            <xsl:value-of select="$year"/>
-          </xsl:attribute>
+    <xsl:choose>
+      <!-- let it like that for obvie -->
+      <xsl:when test="true()">
+        <alix:book xmlns:epub="http://www.idpf.org/2007/ops">
+          <xsl:call-template name="alix:root"/>
+        </alix:book>
+      </xsl:when>
+      <!--No chapters ? Not OK in alix -->
+      <xsl:when test=".//tei:div[key('split', generate-id())]">
+        <alix:book xmlns:epub="http://www.idpf.org/2007/ops">
+          <xsl:call-template name="alix:root"/>
+        </alix:book>
+      </xsl:when>
+      <xsl:otherwise>
+        <alix:document xmlns:epub="http://www.idpf.org/2007/ops">
+          <xsl:call-template name="alix:root">
+            <xsl:with-param name="doctype">document</xsl:with-param>
+          </xsl:call-template>
+        </alix:document>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
+  <xsl:template name="alix:root">
+    <xsl:param name="doctype"/>
+    <xsl:attribute name="xml:id">
+      <xsl:choose>
+        <xsl:when test="/*/@xml:id and /*/@xml:id != ''">
+          <xsl:value-of select="@xml:id"/>
+        </xsl:when>
+        <xsl:when test="$filename != ''">
+          <xsl:value-of select="$filename"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:message terminate="no">NO id for this book, will be hard to retrieve. Set xsl:param $filename on call or in your sourcefile /tei:TEI/@xml:id</xsl:message>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:attribute>
+    <xsl:copy-of select="$info"/>
+    <!-- Date of global book -->
+    <xsl:variable name="year" select="substring($docdate, 1, 4)"/>
+    <xsl:if test="string(number($year)) != 'NaN'">
+      <alix:field name="year" type="int">
+        <xsl:attribute name="value">
+          <xsl:value-of select="$year"/>
+        </xsl:attribute>
+      </alix:field>
+    </xsl:if>
+    <xsl:if test="@type">
+      <alix:field name="type" type="category" value="{@type}"/>
+    </xsl:if>
+    <alix:field name="bibl" type="meta" xmlns="http://www.w3.org/1999/xhtml">
+      <xsl:copy-of select="$bibl-book"/>
+    </alix:field>
+    <alix:field name="toc" type="store" xmlns="http://www.w3.org/1999/xhtml">
+      <xsl:call-template name="toc"/>
+    </alix:field>
+    <xsl:choose>
+      <xsl:when test="$doctype = 'document'">
+        <alix:field name="text" type="text">
+          <article>
+            <xsl:apply-templates>
+              <xsl:with-param name="level" select="1"/>
+            </xsl:apply-templates>
+            <xsl:variable name="notes">
+              <xsl:call-template name="footnotes"/>
+            </xsl:variable>
+            <xsl:if test="$notes != ''">
+              <xsl:copy-of select="$notes"/>
+            </xsl:if>
+          </article>
         </alix:field>
-      </xsl:if>
-      <xsl:if test="@type">
-        <alix:field name="type" type="category" value="{@type}"/>
-      </xsl:if>
-      <alix:field name="bibl" type="meta">
-        <xsl:copy-of select="$bibl-book"/>
-      </alix:field>
-      <alix:field name="toc" type="store">
-        <xsl:call-template name="toc"/>
-      </alix:field>
-      <!-- process chapters -->
-      <xsl:apply-templates mode="alix" select="*"/>
-    </alix:book>
+      </xsl:when>
+      <xsl:otherwise>
+        <!-- process chapters -->
+        <xsl:apply-templates mode="alix" select="*"/>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
 
   <!-- Default mode alix -->
@@ -147,12 +181,11 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
     <xsl:value-of select="$lf"/>
     <xsl:processing-instruction name="index_on"/>
   </xsl:template>
-  
+
   <xsl:template mode="alix" match="
-    tei:group/tei:text | tei:group | tei:body |
+    tei:text | tei:group | tei:body |
     tei:div | tei:div0 | tei:div1 | tei:div2 | tei:div3 | tei:div4 | tei:div5 | tei:div6 | tei:div7
-    "
-    >
+    ">
     <xsl:choose>
       <!-- declared section -->
       <xsl:when test="
@@ -184,10 +217,12 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
       <xsl:when test="self::tei:body">
         <xsl:apply-templates select="*" mode="alix"/>
       </xsl:when>
+      <!-- Don’t be intelligent
       <xsl:when test="./*//tei:head[contains(., 'Chapitre') or contains(., 'chapitre')]">
         <xsl:apply-templates select="*" mode="alix"/>
       </xsl:when>
-      <!-- maybe not best grain, but not too small -->
+      -->
+      <!-- maybe not best grain -->
       <xsl:otherwise>
         <xsl:call-template name="chapter"/>
       </xsl:otherwise>
@@ -200,7 +235,8 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
         <xsl:apply-templates select="following-sibling::*[1]" mode="analytic"/>
       </xsl:when>
       <xsl:when test="following::*[1]">
-        <xsl:variable name="next" select="following::*[1]/descendant::*[contains(' article chapter act poem letter ', @type) or @subtype = 'split'][1]"/>
+        <xsl:variable name="next"
+          select="following::*[1]/descendant::*[contains(' article chapter act poem letter ', @type) or @subtype = 'split'][1]"/>
         <xsl:choose>
           <xsl:when test="$next">
             <xsl:apply-templates select="$next" mode="analytic"/>
@@ -225,7 +261,8 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
   </xsl:template>
 
   <xsl:template match="*" mode="analytic">
-    <xsl:for-each select="ancestor-or-self::*[not(self::tei:TEI)][not(self::tei:text)][not(self::tei:body)]">
+    <xsl:for-each
+      select="ancestor-or-self::*[not(self::tei:TEI)][not(self::tei:text)][not(self::tei:body)]">
       <xsl:if test="position() != 1"> — </xsl:if>
       <xsl:apply-templates select="." mode="title"/>
     </xsl:for-each>
@@ -283,15 +320,17 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
         </alix:field>
       </xsl:if>
       <alix:field name="text" type="text">
-        <xsl:apply-templates/>
-        <xsl:variable name="notes">
-          <xsl:call-template name="footnotes"/>
-        </xsl:variable>
-        <xsl:if test="$notes != ''">
-          <xsl:processing-instruction name="index_off"/>
-          <xsl:copy-of select="$notes"/>
-          <xsl:processing-instruction name="index_on"/>
-        </xsl:if>
+        <article>
+          <xsl:apply-templates>
+            <xsl:with-param name="level" select="1"/>
+          </xsl:apply-templates>
+          <xsl:variable name="notes">
+            <xsl:call-template name="footnotes"/>
+          </xsl:variable>
+          <xsl:if test="$notes != ''">
+            <xsl:copy-of select="$notes"/>
+          </xsl:if>
+        </article>
       </alix:field>
     </alix:chapter>
   </xsl:template>
@@ -305,9 +344,7 @@ LGPL  http://www.gnu.org/licenses/lgpl.html
   </xsl:template>
   <xsl:template name="parents">
     <xsl:for-each select="ancestor-or-self::*">
-      <!--
-      <xsl:sort order="descending" select="position()"/>
-      -->
+      <!-- <xsl:sort order="descending" select="position()"/> -->
       <xsl:choose>
         <xsl:when test="self::tei:TEI"/>
         <xsl:when test="self::tei:text"/>
