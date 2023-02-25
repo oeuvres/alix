@@ -68,6 +68,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.MultiBits;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
@@ -319,12 +320,13 @@ public class Alix
         }
         Set<String> fields = new HashSet<String>();
         fields.add(field);
+        StoredFields docRead = reader().storedFields();
         for (int i = 0; i < maxDoc; i++) {
             if (hasDeletions && !liveDocs.get(i)) {
                 load[i] = Integer.MIN_VALUE;
                 continue;
             }
-            Document doc = reader.document(i, fields);
+            Document doc = docRead.document(i, fields);
             int v = doc.getField(field).numericValue().intValue();
             load[i] = v;
         }
@@ -486,7 +488,8 @@ public class Alix
      */
     public String getId(final int docId) throws IOException
     {
-        Document doc = reader().document(docId, FIELDS_ID);
+        // new lucene API, not teted
+        Document doc = reader().storedFields().document(docId, FIELDS_ID);
         if (doc == null)
             return null;
         return doc.get(ALIX_ID);

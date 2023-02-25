@@ -45,6 +45,7 @@ import java.util.Locale;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
@@ -113,11 +114,12 @@ public class Doc
         if (docId < 0) {
             throw new IllegalArgumentException("No document found with id: " + id);
         }
+        StoredFields fread = alix.reader().storedFields();
         if (fieldsToLoad == null) {
-            document = alix.reader().document(docId);
+            document = fread.document(docId);
         } else {
             fieldsToLoad.addAll(FIELDS_REQUIRED);
-            document = alix.reader().document(docId, fieldsToLoad);
+            document = fread.document(docId, fieldsToLoad);
         }
         this.alix = alix;
         this.docId = docId;
@@ -150,11 +152,12 @@ public class Doc
      */
     public Doc(final Alix alix, final int docId, final HashSet<String> fieldsToLoad) throws IOException
     {
+        StoredFields fread = alix.reader().storedFields();
         if (fieldsToLoad == null) {
-            document = alix.reader().document(docId);
+            document = fread.document(docId);
         } else {
             fieldsToLoad.addAll(FIELDS_REQUIRED);
-            document = alix.reader().document(docId, fieldsToLoad);
+            document = fread.document(docId, fieldsToLoad);
         }
         if (document == null) {
             throw new IllegalArgumentException("No stored fields found for docId: " + docId);
@@ -194,7 +197,7 @@ public class Doc
         int len2 = ftext.occs(docId2);
 
         Terms vek1 = getTermVector(field);
-        Terms vek2 = alix.reader().getTermVector(docId2, field);
+        Terms vek2 = alix.reader().termVectors().get(docId2, field);
         TermsEnum termit1 = vek1.iterator();
         BytesRef term1;
         TermsEnum termit2 = vek2.iterator();
@@ -384,7 +387,8 @@ public class Doc
          * Shall we cache ? Terms tvek = vectors.get(field); if (tvek != null) return
          * tvek; // cache OK
          */
-        Terms tvek = alix.reader().getTermVector(docId, field);
+        // new lucene API, not tested
+        Terms tvek = alix.reader().termVectors().get(docId, field);
         if (tvek == null)
             throw new NoSuchFieldException("Missig search Vector for field=" + field + " docId=" + docId);
         return tvek;
@@ -469,7 +473,8 @@ public class Doc
      */
     public Top<String> intersect(final String field, final int docId2) throws IOException, NoSuchFieldException
     {
-        Terms vek2 = alix.reader().getTermVector(docId2, field);
+        // new lucene API, not tested
+        Terms vek2 = alix.reader().termVectors().get(docId2, field);
         Top<String> top = new Top<String>(100);
         FieldText ftext = alix.fieldText(field);
         int len1 = ftext.occs(docId);

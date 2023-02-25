@@ -169,7 +169,7 @@ public class FieldFacet
         }
 
         
-        // TODO growable array to IntList
+        // ??? growable array to IntList ?
         formDocs = new int[32];
         formCover = new int[32];
         
@@ -223,7 +223,9 @@ public class FieldFacet
                 } 
                 else if (type == DocValuesType.SORTED_SET) {
                     SortedSetDocValues it = (SortedSetDocValues) docs4terms;
-                    while ((ord = (int) it.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+                    for (int i = 0, count = it.docValueCount(); i < count; i++) {
+                        // possible bug ? maybe long
+                        ord = (int)it.nextOrd();
                         // doc is a cover, record it and do not add to stats
                         if (covers != null && covers.get(docId)) {
                             leafCover[ord] = docId;
@@ -275,7 +277,9 @@ public class FieldFacet
                 else if (type == DocValuesType.SORTED_SET) {
                     row.clear();
                     SortedSetDocValues it = (SortedSetDocValues) docs4terms;
-                    while ((ord = (int) it.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+                    for (int i = 0, count = it.docValueCount(); i < count; i++) {
+                        // possible bug ? maybe long
+                        ord = (int)it.nextOrd();
                         row.push(ordFacetId[ord]);
                     }
                     docForms[docBase + docLeaf] = row.toArray();
@@ -411,7 +415,7 @@ public class FieldFacet
     }
 
     /**
-     * By form 
+     * Get stats from a text field by facet
      * @param ftext
      * @param filter
      * @return
@@ -429,16 +433,21 @@ public class FieldFacet
             forms.formFreq = new long[maxForm];
             forms.formHits = new int[maxForm];
         }
-        for (int docId = 0, len = ftext.docOccs.length; docId < len; docId++) {
+        // loop on all docs by docId,   
+        for (int docId = 0, len = reader.maxDoc(); docId < len; docId++) {
+            // get occs count by doc
+            long occs = ftext.docOccs[docId];
+            if (hasFilter && filter.get(docId)) {
+                forms.hits++;
+                forms.occs += occs;
+            }
             final int[] formIds = docForms[docId];
             if (formIds == null) continue;
             for (final int formId: formIds) {
-                forms.formOccs[formId] += ftext.formOccs[docId];
+                forms.formOccs[formId] += occs;
                 if (hasFilter && filter.get(docId)) {
-                    forms.formFreq[formId] += ftext.formOccs[docId];
-                    forms.freq += ftext.formOccs[docId];
+                    forms.formFreq[formId] += occs;
                     forms.formHits[formId]++;
-                    forms.hits++;
                 }
             }
         }

@@ -55,6 +55,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -850,8 +851,10 @@ public class FieldRail
         // get document sizes
         // fieldText.docOccs is not correct because of holes
         int[] docLen = new int[maxDoc];
+        // new API, not tested
+        TermVectors tread = reader.termVectors();
         for (int docId = 0; docId < maxDoc; docId++) {
-            Terms termVector = reader.getTermVector(docId, fname);
+            Terms termVector = tread.get(docId, fname);
             docLen[docId] = length(termVector);
         }
 
@@ -869,8 +872,10 @@ public class FieldRail
         bufint.put(docLen);
         IntList ints = new IntList();
 
+        // new API, not tested
+        tread = reader.termVectors();
         for (int docId = 0; docId < maxDoc; docId++) {
-            Terms termVector = reader.getTermVector(docId, fname);
+            Terms termVector = tread.get(docId, fname);
             if (termVector == null) {
                 bufint.put(-1);
                 continue;
