@@ -18,7 +18,6 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <!-- Shared templates -->
   <xsl:import href="tei_common.xsl"/>
-  
   <!-- key for notes by page, keep the tricky @use expression in this order, when there are other parallel pages number -->
   <xsl:key name="note-pb" match="tei:note[not(parent::tei:sp)][not(starts-with(local-name(..), 'div'))]" use="generate-id(  preceding::*[self::tei:pb[not(@ed)][@n] ][1]  ) "/>
   <xsl:key name="note-before" match="tei:note[not(parent::tei:sp)][not(starts-with(local-name(..), 'div'))]" use="generate-id(following::*[self::tei:pb[not(@ed)][@n] ][1]  ) "/>
@@ -36,9 +35,12 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
           <section class="footnotes">
             <xsl:for-each select="exslt:node-set($notes)/*">
               <xsl:sort select="substring-before(concat(@class, ' '), ' ')"/>
+              <xsl:text>&#10;&#10;</xsl:text>
               <xsl:copy-of select="."/>
             </xsl:for-each>
+            <xsl:text>&#10;&#10;</xsl:text>
           </section>
+          <xsl:text>&#10;</xsl:text>
         </xsl:if>
         <!--
         <xsl:variable name="notes" select=".//tei:note"/>

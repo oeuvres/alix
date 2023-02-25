@@ -208,7 +208,7 @@ Sections
         or self::tei:salute
         or self::tei:signed
         ]">
-        <xsl:text> </xsl:text>
+        <xsl:text>&#10;</xsl:text>
         <header>
           <xsl:apply-templates select="$first/preceding-sibling::node()">
             <xsl:with-param name="level" select="$level"/>
