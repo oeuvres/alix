@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.index.IndexWriter;
@@ -18,6 +19,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 
+import alix.Names;
 import alix.lucene.Alix;
 import alix.lucene.TestIndex;
 import alix.lucene.analysis.FrAnalyzer;
@@ -26,47 +28,54 @@ import alix.util.Dir;
 
 public class TestFieldFacet
 {
-  static Logger LOGGER = Logger.getLogger(TestFieldFacet.class.getName());
-  static HashSet<String> FIELDS = new HashSet<String>();
-  static {
-    for (String w : new String[] {Alix.BOOKID, "byline", "year", "title"}) {
-      FIELDS.add(w);
+    static Logger LOGGER = Logger.getLogger(TestFieldFacet.class.getName());
+    static HashSet<String> FIELDS = new HashSet<String>();
+    static {
+        for (String w : new String[] { Names.ALIX_BOOKID, "byline", "year", "title" }) {
+            FIELDS.add(w);
+        }
     }
-  }
-  public static void test() throws IOException
-  {
-    String field = "boo";
-    // test base
-    Path path = Paths.get("work/test");
-    Dir.rm(path);
-    Alix alix = Alix.instance("test", path, new FrAnalyzer(), null);
-    IndexWriter writer = alix.writer();
-    for (String w : new String[] {"A", "B", "C"}) {
-      Document doc = new Document();
-      doc.add(new SortedDocValuesField(field, new BytesRef(w)));
-      writer.addDocument(doc);
-    }
-    writer.commit();
-    writer.close();
-    IndexSearcher searcher = alix.searcher();
-    // A SortedDocValuesField is not visible as a normal search
-    Query query = new TermQuery(new Term(field, "A"));
-    TopDocs top = searcher.search(query, 100);
-    System.out.println(top.totalHits);
-    for (ScoreDoc hit: top.scoreDocs) {
-      System.out.println(hit.doc);
-    }
-  }
-  
+    static Alix alix;
 
-  public static void main(String[] args) throws IOException, InterruptedException 
-  {
-    long time = System.nanoTime(); 
-    Alix alix = TestIndex.index();
-    LOGGER.log(Level.INFO, "time: " + (System.nanoTime() - time) / 1000000.0 + "ms");
-    time = System.nanoTime(); 
-    FieldFacet facet= new FieldFacet(alix, TestIndex.FACET, TestIndex.TEXT);
-    LOGGER.log(Level.INFO, "FieldFacet duration: " + (System.nanoTime() - time) / 1000000.0 + "ms");
-    System.out.println(facet);
-  }
+    public static void test() throws IOException
+    {
+        String field = "boo";
+        // test base
+        Path path = Paths.get("work/test");
+        Dir.rm(path);
+        Alix alix = Alix.instance("test", path, new FrAnalyzer(), null);
+        IndexWriter writer = alix.writer();
+        for (String w : new String[] { "A", "B", "C" }) {
+            Document doc = new Document();
+            doc.add(new SortedDocValuesField(field, new BytesRef(w)));
+            writer.addDocument(doc);
+        }
+        writer.commit();
+        writer.close();
+        IndexSearcher searcher = alix.searcher();
+        // A SortedDocValuesField is not visible as a normal search
+        Query query = new TermQuery(new Term(field, "A"));
+        TopDocs top = searcher.search(query, 100);
+        System.out.println(top.totalHits);
+        for (ScoreDoc hit : top.scoreDocs) {
+            System.out.println(hit.doc);
+        }
+    }
+    
+    public static void statsBug() throws IOException
+    {
+        FieldFacet facet = alix.fieldFacet(Names.ALIX_BOOKID);
+        FieldText ftext = alix.fieldText("text");
+        FormEnum results = facet.forms(ftext, null);
+
+    }
+
+    public static void main(String[] args) throws IOException, InterruptedException
+    {
+        long time = System.nanoTime();
+        // test an existing index
+        Path path = Paths.get("work/rougemont");
+        alix = Alix.instance("test", path, new FrAnalyzer(), null);
+        statsBug();
+    }
 }

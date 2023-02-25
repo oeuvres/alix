@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -95,7 +96,7 @@ public class XMLIndexer implements Runnable
         SAXFactory.setNamespaceAware(true);
     }
     /** Iterator in a list of files, synchronized */
-    private final Iterator<File> it;
+    private final Iterator<Path> it;
     /** The XSL transformer to parse XML files */
     private Transformer transformer;
     /** A SAX processor */
@@ -116,7 +117,7 @@ public class XMLIndexer implements Runnable
      * @throws SAXException
      * @throws ParserConfigurationException
      */
-    public XMLIndexer(IndexWriter writer, Iterator<File> it, Templates templates)
+    public XMLIndexer(IndexWriter writer, Iterator<Path> it, Templates templates)
             throws TransformerConfigurationException, ParserConfigurationException, SAXException
     {
         this.it = it;
@@ -140,7 +141,7 @@ public class XMLIndexer implements Runnable
      * @throws IOException
      * @throws TransformerException
      */
-    static private void write(IndexWriter writer, Iterator<File> it, Templates templates)
+    static private void write(IndexWriter writer, Iterator<Path> it, Templates templates)
             throws ParserConfigurationException, SAXException, IOException, TransformerException
     {
         SAXIndexer alixSaxer = new SAXIndexer(writer);
@@ -155,18 +156,18 @@ public class XMLIndexer implements Runnable
             SAXParser = SAXFactory.newSAXParser();
         }
         while (it.hasNext()) {
-            File file = it.next();
-            if (file == null)
+            Path path = it.next();
+            if (path == null)
                 continue; // duplicates may have been nulled
-            String filename = file.getName();
+            String filename = path.getFileName().toString();
             filename = filename.substring(0, filename.lastIndexOf('.'));
             byte[] docBytes = null;
             // read file as fast as possible to release disk resource for other threads
-            docBytes = Files.readAllBytes(file.toPath());
+            docBytes = Files.readAllBytes(path);
             // info("bytes="+bytes.length);
             // info(filename + " ".substring(Math.min(25, filename.length() + 2)) +
             // file.getParent());
-            info(file.getParent() + File.separator + "\t" + filename);
+            info(path.getParent() + File.separator + "\t" + filename);
             alixSaxer.setFileName(filename);
             if (transformer != null) {
                 // XML/TEI source documents, transform to ALix xml for indexation
@@ -203,16 +204,16 @@ public class XMLIndexer implements Runnable
     public void run()
     {
         while (true) {
-            File file = next();
-            if (file == null)
+            Path path = next();
+            if (path == null)
                 return; // should be the last
-            String filename = file.getName();
+            String filename = path.getFileName().toString();
             filename = filename.substring(0, filename.lastIndexOf('.'));
-            info(file.getParent() + File.separator + "\t" + filename);
+            info(path.getParent() + File.separator + "\t" + filename);
             byte[] bytes = null;
             try {
                 // read file as fast as possible to release disk resource for other threads
-                bytes = Files.readAllBytes(file.toPath());
+                bytes = Files.readAllBytes(path);
                 handler.setFileName(filename);
                 if (transformer != null) {
                     StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
@@ -222,7 +223,7 @@ public class XMLIndexer implements Runnable
                     SAXParser.parse(new ByteArrayInputStream(bytes), handler);
                 }
             } catch (Exception e) {
-                Exception ee = new Exception("ERROR in file " + file, e);
+                Exception ee = new Exception("ERROR in file " + path, e);
                 error(ee);
             }
         }
@@ -233,12 +234,12 @@ public class XMLIndexer implements Runnable
      * 
      * @return
      */
-    synchronized public File next()
+    synchronized public Path next()
     {
-        File f;
+        Path path;
         // some duplicated files may be null
-        while (it.hasNext() && (f = it.next()) != null) {
-            return f;
+        while (it.hasNext() && (path = it.next()) != null) {
+            return path;
         }
         return null;
     }
@@ -303,7 +304,7 @@ public class XMLIndexer implements Runnable
         info("[" + Alix.NAME + "]" + " format=\"" + xsl + "\"" + " threads=" + threads + " globs=\"" + searchPaths
                 + "\"" + " lucene=\"" + writer.getDirectory() + "\"");
         // preload dictionaries
-        List<File> files = new ArrayList<File>();
+        List<Path> files = new ArrayList<Path>();
         for (File glob : globs) {
             files = Dir.ls(glob.toString(), files); // CopyOnWriteArrayList produce some duplicates
         }
@@ -311,8 +312,8 @@ public class XMLIndexer implements Runnable
         Map<String, Integer> hash = new HashMap<String, Integer>();
         int diff = 0;
         for (int i = 0, size = files.size(); i < size; i++) {
-            File f = files.get(i);
-            String filename = f.getName();
+            Path path = files.get(i);
+            String filename = path.getFileName().toString();
             filename = filename.substring(0, filename.lastIndexOf('.'));
             if (hash.containsKey(filename)) {
                 info("Duplicated filename " + filename + ", new replace old");
@@ -320,7 +321,7 @@ public class XMLIndexer implements Runnable
                 info(files.get(oldi));
                 files.set(oldi, null);
                 // do not remove now, it shift the series
-                info(f);
+                info(path);
                 hash.replace(filename, i);
             } else {
                 hash.put(filename, i);
@@ -337,7 +338,7 @@ public class XMLIndexer implements Runnable
         if (threads < 1)
             threads = 1;
 
-        Iterator<File> it = files.iterator();
+        Iterator<Path> it = files.iterator();
 
         // one thread, try it as static to start
         if (threads == 1) {

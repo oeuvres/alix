@@ -50,6 +50,9 @@ import java.util.List;
  */
 public class Dir
 {
+    static { // maybe useful to decode file names, but has been not efficient 
+        System.setProperty("file.encoding", "UTF-8");
+    }
 
     /**
      * Delete a folder by path (use java.nio stream, should be faster then
@@ -93,9 +96,9 @@ public class Dir
      * @return
      * @throws IOException
      */
-    public static List<File> ls(final String glob) throws IOException
+    public static List<Path> ls(final String glob) throws IOException
     {
-        return ls(glob, new ArrayList<File>());
+        return ls(glob, new ArrayList<Path>());
     }
 
     /**
@@ -106,8 +109,9 @@ public class Dir
      * @return
      * @throws IOException
      */
-    public static List<File> ls(final String glob, final List<File> files) throws IOException
+    public static List<Path> ls(final String glob, final List<Path> files) throws IOException
     {
+        // name encoding problem in linux WSL, with File or Path
         Path basedir = new File(glob.replaceFirst("[\\[\\*\\?\\{].*", "") + "DUMMY").getParentFile().toPath();
         String pattern = glob;
         if (File.separator.equals("\\")) { // for Windows
@@ -135,7 +139,7 @@ public class Dir
                     return FileVisitResult.CONTINUE;
                 }
                 if (pathMatcher.matches(path)) {
-                    files.add(path.toFile());
+                    files.add(path);
                 }
                 return FileVisitResult.CONTINUE;
             }
