@@ -738,7 +738,8 @@ public class FormEnum
                     break;
                 case SCORE: // in case of negative scores ?
                     if (formFreq[formId] == 0) {
-                        top.push(formId, Double.MIN_VALUE);
+                        top.push(formId, Double.NEGATIVE_INFINITY);
+                        formScore[formId] = Double.NEGATIVE_INFINITY;
                         break;
                     }
                     top.push(formId, formScore[formId]);
