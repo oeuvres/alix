@@ -110,25 +110,24 @@ public class Scale
             final Bits liveDocs = leaf.getLiveDocs();
             final int docBase = context.docBase;
             int docLeaf;
+            // all doc given on this iterao will have a value
             while ((docLeaf = docs4num.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                // doc deleted, go next
+                if (liveDocs != null && !liveDocs.get(docLeaf)) {
+                    continue;
+                }
                 int docId = docBase + docLeaf;
                 // doc not in corpus, go next
-                if (filter != null && !filter.get(docId))
+                if (filter != null && !filter.get(docId)) {
                     continue;
-                Tick tick;
-                // doc is deleted, should not be in a corpus, but sometimes...
-                if (liveDocs != null && !liveDocs.get(docLeaf)) {
-                    // doc deleted, no tick
-                    continue;
-                    // tick = new Tick(docId, last, 0); // insert an empty slice for deleted docs
-                } else {
-                    int v = (int) docs4num.longValue(); // force label to int;
-                    if (min > v)
-                        min = v;
-                    if (max < v)
-                        max = v;
-                    tick = new Tick(docId, v, docLength[docId]);
                 }
+                Tick tick;
+                int v = (int) docs4num.longValue(); // force label to int;
+                if (min > v)
+                    min = v;
+                if (max < v)
+                    max = v;
+                tick = new Tick(docId, v, docLength[docId]);
                 // put same Tick for different 
                 tickByOrder[docId] = tick;
                 tickByDocid[docId] = tick;
