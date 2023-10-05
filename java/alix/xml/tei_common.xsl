@@ -226,6 +226,9 @@ Gobal TEI parameters and variables are divided in different categories
       <xsl:when test="/*/tei:teiHeader/tei:profileDesc/tei:creation/tei:date[concat(.,@when,@notBefore,@notAfter,@from,@to)!='']">
         <xsl:apply-templates mode="year" select="/*/tei:teiHeader/tei:profileDesc/tei:creation[1]/tei:date[1]"/>
       </xsl:when>
+      <xsl:when test="/*/tei:teiHeader/tei:profileDesc/tei:correspDesc/tei:correspAction/tei:date">
+        <xsl:apply-templates mode="year" select="(/*/tei:teiHeader/tei:profileDesc/tei:correspDesc/tei:correspAction/tei:date)[1]"/>
+      </xsl:when>
       <xsl:when test="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:biblFull/tei:publicationStmt/tei:date">
         <xsl:apply-templates mode="year" select="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:biblFull[1]/tei:publicationStmt[1]/tei:date[1]"/>
       </xsl:when>

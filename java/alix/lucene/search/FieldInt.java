@@ -97,6 +97,9 @@ public class FieldInt
         this.reader = reader;
         FieldInfos fieldInfos = FieldInfos.getMergedFieldInfos(reader);
         FieldInfo info = fieldInfos.fieldInfo(name);
+        if (info == null) {
+            throw new IllegalArgumentException("Field \"" + name + "\" not found in this lucene base.");
+        }
         // check infos
         if (info.getDocValuesType() == DocValuesType.NUMERIC)
             ; // OK
