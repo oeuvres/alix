@@ -55,7 +55,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import static alix.Names.*;
+import static com.github.oeuvres.alix.Names.*;
 import com.github.oeuvres.alix.lucene.Alix;
 
 /**

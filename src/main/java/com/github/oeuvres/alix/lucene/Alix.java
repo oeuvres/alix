@@ -46,9 +46,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.lucene.analysis.AlixReuseStrategy;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.AnalyzerReuseControl;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.document.Document;
@@ -89,7 +87,7 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
 
-import static alix.Names.*;
+import static com.github.oeuvres.alix.Names.*;
 import com.github.oeuvres.alix.lucene.search.FieldFacet;
 import com.github.oeuvres.alix.lucene.search.Scale;
 import com.github.oeuvres.alix.lucene.search.FieldText;
@@ -237,7 +235,8 @@ public class Alix
             dir = FSDirectory.open(path);
             break;
         }
-        this.analyzer = new AnalyzerReuseControl(analyzer, new AlixReuseStrategy());
+        // What about reuse strategy ?
+        this.analyzer = analyzer;
         this.props = new Properties();
     }
 
@@ -871,7 +870,7 @@ public class Alix
         conf.setUseCompoundFile(false); // show separate file by segment
         // may needed, increase the max heap size to the JVM (eg add -Xmx512m or
         // -Xmx1g):
-        conf.setRAMBufferSizeMB(48);
+        conf.setRAMBufferSizeMB(2048.0);
         conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
         //
         if (similarity != null)

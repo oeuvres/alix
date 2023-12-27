@@ -82,8 +82,7 @@ public class XMLIndexer implements Runnable
     /** XSLT processor (saxon) */
     static final TransformerFactory XSLFactory;
     static {
-        // use JAXP standard API with Saxon B (not saxon HE 9, because exslt support has
-        // been removed)
+        // use JAXP standard API with Saxon
         System.setProperty("javax.xml.transform.TransformerFactory", "net.sf.saxon.TransformerFactoryImpl");
         XSLFactory = TransformerFactory.newInstance();
         XSLFactory.setAttribute("http://saxon.sf.net/feature/version-warning", Boolean.FALSE);

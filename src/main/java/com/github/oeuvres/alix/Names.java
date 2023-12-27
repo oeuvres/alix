@@ -1,4 +1,5 @@
 /*
+
  * Alix, A Lucene Indexer for XML documents.
  * 
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>

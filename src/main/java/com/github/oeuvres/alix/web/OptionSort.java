@@ -44,7 +44,7 @@ import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.search.similarities.Similarity;
 
-import static alix.Names.*;
+import static com.github.oeuvres.alix.Names.*;
 import com.github.oeuvres.alix.lucene.search.SimilarityG;
 import com.github.oeuvres.alix.lucene.search.SimilarityOccs;
 

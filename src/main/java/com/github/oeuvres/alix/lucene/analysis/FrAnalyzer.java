@@ -36,7 +36,8 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 
-import static alix.Names.*;
+import static com.github.oeuvres.alix.Names.*;
+
 
 /**
  * Analysis scenario for French in Alix. The linguistic features of Alix are

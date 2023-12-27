@@ -57,7 +57,7 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
-import static alix.Names.*;
+import static com.github.oeuvres.alix.Names.*;
 import com.github.oeuvres.alix.lucene.analysis.MetaAnalyzer;
 
 /**
@@ -107,7 +107,7 @@ public class SAXIndexer extends DefaultHandler
     /** Flag to verify that an element is not empty (for XML serialization) */
     private boolean empty;
     /** Keep an hand on the text analyzer */
-    private final Analyzer analyzer;
+    // private final Analyzer analyzer;
 
     @Override
     public void characters(char[] ch, int start, int length)
@@ -196,11 +196,9 @@ public class SAXIndexer extends DefaultHandler
                     // add document(s). Caching tokens is a bad idea for big books, forget, do not
                     // retry.
                     doc.add(new StoredField(name, text)); // text has to be stored for snippets and conc
-                    TokenStream source1 = analyzer.tokenStream(name, text);
-                    doc.add(new Field(name, source1, Alix.ftypeText));
+                    doc.add(new Field(name, text, Alix.ftypeText));
                     String name_orth = name + "_orth";
-                    TokenStream source2 = analyzer.tokenStream(name_orth, text);
-                    doc.add(new Field(name_orth, source2, Alix.ftypeText)); // indexation of the chosen tokens
+                    doc.add(new Field(name_orth, text, Alix.ftypeText)); // indexation of the chosen tokens
                     break;
                 default:
                     throw new SAXException("</" + qName + "> @name=\"" + name + "\" unkown type: " + type);
@@ -527,6 +525,5 @@ public class SAXIndexer extends DefaultHandler
     public SAXIndexer(final IndexWriter writer)
     {
         this.writer = writer;
-        this.analyzer = writer.getAnalyzer();
     }
 }

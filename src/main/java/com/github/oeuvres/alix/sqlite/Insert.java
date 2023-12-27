@@ -39,6 +39,7 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -154,8 +155,9 @@ public class Insert {
        logger.info(dir.getAbsolutePath());
        con.setAutoCommit(false);
        // file structure book/chapter.html
-       List<File> files = Dir.ls(dir + "/*/*.html");
-       for (File f: files) {
+       List<Path> paths = Dir.ls(dir + "/*/*.html");
+       for (Path p: paths) {
+           File f = p.toFile();
            String code = f.getParentFile().getName() +"/" + f.getName().substring(0, f.getName().lastIndexOf('.'));
            qDoc.setString(DOC_CODE, code);
            qDoc.setLong(DOC_FILEMTIME, f.lastModified());

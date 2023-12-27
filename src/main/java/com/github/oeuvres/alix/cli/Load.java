@@ -50,6 +50,7 @@ import java.util.concurrent.Callable;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
@@ -66,7 +67,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
-@Command(name = "alix.cli.Load", description = "Load an XML/TEI corpus in a custom Lucene index for Alix.")
+@Command(name = "com.github.oeuvres.alix.cli.Load", description = "Load an XML/TEI corpus in a custom Lucene index for Alix.")
 public class Load implements Callable<Integer>
 {
     public static String APP = "Alix";
@@ -316,6 +317,7 @@ public class Load implements Callable<Integer>
             throws IOException, ParserConfigurationException, SAXException, InterruptedException, TransformerException
     {
         Alix alix = Alix.instance(name, path, new FrAnalyzer(), null);
+        // Alix alix = Alix.instance(name, path, new StandardAnalyzer(), null);
         IndexWriter writer = alix.writer();
         XMLIndexer.index(writer, globs.toArray(new File[globs.size()]), threads, xsl);
         System.out.println("[" + APP + "] " + name + " Merging");

@@ -58,7 +58,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 
-import static alix.Names.*;
+import static com.github.oeuvres.alix.Names.*;
 import com.github.oeuvres.alix.lucene.analysis.MetaAnalyzer;
 import com.github.oeuvres.alix.util.Dir;
 
