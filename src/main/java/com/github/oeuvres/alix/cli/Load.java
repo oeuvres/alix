@@ -81,7 +81,7 @@ public class Load implements Callable<Integer>
     File[] conflist;
     @Option(names = { "-u", "--unsafe" }, description = "For windows filesystem, no temp lucene index")
     boolean unsafe;
-
+    @Option(names = {"-t", "--threads"}, description = "Number of threads fo indexation")
     int threads;
     /** File globs to index, populated by parsing base properties */
     ArrayList<File> globs = new ArrayList<>();
@@ -416,7 +416,7 @@ public class Load implements Callable<Integer>
         }
         try {
             // only one thread
-            threads = 1;
+            // threads = 1;
             write(name, theDir.toPath());
         } 
         catch (Exception e) {

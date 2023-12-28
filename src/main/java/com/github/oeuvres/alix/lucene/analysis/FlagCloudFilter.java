@@ -71,6 +71,12 @@ public class FlagCloudFilter extends TokenFilter
   /** keep right position order */
   private int skippedPositions;
 
+  public FlagCloudFilter(TokenStream in)
+  {
+    super(in);
+    this.pun = false;
+  }
+
 
   public FlagCloudFilter(TokenStream in, boolean pun)
   {

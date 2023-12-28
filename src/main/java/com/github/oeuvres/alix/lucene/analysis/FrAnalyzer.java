@@ -61,24 +61,29 @@ public class FrAnalyzer extends Analyzer
         }
         final Tokenizer source = new FrTokenizer(flags); // segment words
         TokenStream result = new FrLemFilter(source); // provide lemma+pos
-
-        if (!orth) {
-            result = new LocutionFilter(result); // compounds: parce que (quite expensive, 20% time)
-        }
-        if (!search && !orth) {
-            result = new FrPersnameFilter(result); // link unknown names, bad for a search query
-        }
-        boolean pun = false;
+        
+        // searching with lemma
         if (search) {
-            pun = true; // keep punctuation, ex, to parse search
+            // merge compounds for search
+            result = new LocutionFilter(result);
+            // keep punctuation for searching (operators)
+            result = new FlagCloudFilter(result, true);
+            return new TokenStreamComponents(source, result);
         }
-        if (orth) {
+        // do not select lemma but orthographic forms
+        else if (field.endsWith("orth")) {
             result = new FlagOrthFilter(result); // orthographic form (not lemma) as term to index
+            return new TokenStreamComponents(source, result);
         }
+        // default is lemma
         else {
-            result = new FlagCloudFilter(result, pun); // select lemmas as term to index
+            // compounds: parce que (quite expensive, 20% time)
+            result = new LocutionFilter(result);
+            // link unknown names, bad for a search query
+            result = new FrPersnameFilter(result);
+            result = new FlagCloudFilter(result);
+            return new TokenStreamComponents(source, result);
         }
-        return new TokenStreamComponents(source, result);
     }
 
 }

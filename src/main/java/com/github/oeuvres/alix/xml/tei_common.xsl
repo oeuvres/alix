@@ -226,9 +226,6 @@ Gobal TEI parameters and variables are divided in different categories
       <xsl:when test="/*/tei:teiHeader/tei:profileDesc/tei:creation/tei:date[concat(.,@when,@notBefore,@notAfter,@from,@to)!='']">
         <xsl:apply-templates mode="year" select="/*/tei:teiHeader/tei:profileDesc/tei:creation[1]/tei:date[1]"/>
       </xsl:when>
-      <xsl:when test="/*/tei:teiHeader/tei:profileDesc/tei:correspDesc/tei:correspAction/tei:date">
-        <xsl:apply-templates mode="year" select="(/*/tei:teiHeader/tei:profileDesc/tei:correspDesc/tei:correspAction/tei:date)[1]"/>
-      </xsl:when>
       <xsl:when test="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:biblFull/tei:publicationStmt/tei:date">
         <xsl:apply-templates mode="year" select="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:biblFull[1]/tei:publicationStmt[1]/tei:date[1]"/>
       </xsl:when>
@@ -320,8 +317,6 @@ Gobal TEI parameters and variables are divided in different categories
   </xsl:variable>
   <xsl:variable name="apos">"</xsl:variable> 
   <!-- Some constants -->
-  <xsl:variable name="epub2">epub2</xsl:variable>
-  <xsl:variable name="epub3">epub3</xsl:variable>
   <xsl:variable name="html5">html5</xsl:variable>
   <xsl:variable name="notblock"> anchor cb figure graphic index lb milestone pb </xsl:variable> 
   <!-- What kind of root element to output ? html, nav… -->
@@ -510,12 +505,14 @@ Gobal TEI parameters and variables are divided in different categories
       <xsl:otherwise>
         <xsl:for-each select="$element">
           <xsl:choose>
+            <!-- mixed content -->
+            <xsl:when test="../text()[normalize-space(.) != '']">true</xsl:when>
             <!-- Children of <div>, block -->
             <xsl:when test="parent::tei:div"/>
             <!-- Brother of a block, block -->
             <xsl:when test="../tei:p|../tei:l|../tei:lg|../tei:list|../tei:table"/>
             <xsl:when test="parent::tei:cell and self::tei:quote"/>
-            <xsl:when test="not(self::tei:note) and (ancestor::tei:p | ancestor::tei:l)">true</xsl:when>
+            <xsl:when test="not(self::tei:note) and (ancestor::tei:p | ancestor::tei:l | ancestor::tei:bibl)">true</xsl:when>
             <xsl:when test="parent::tei:titlePage"/>
             <xsl:when test="parent::tei:body"/>
             <xsl:when test="parent::tei:front"/>
@@ -661,12 +658,11 @@ Gobal TEI parameters and variables are divided in different categories
       <xsl:call-template name="analytic"/>
     </xsl:variable>
     <xsl:if test="$analytic != ''">
-      <xsl:text> </xsl:text>
+      <xsl:text> « </xsl:text>
       <span class="analytic">
-        <xsl:text>«&#160;</xsl:text>
         <xsl:copy-of select="$analytic"/>
-        <xsl:text>&#160;»</xsl:text>
       </span>
+      <xsl:text> »</xsl:text>
     </xsl:if>
     <xsl:if test="$pages != ''">
       <xsl:text> </xsl:text>
@@ -687,15 +683,15 @@ Gobal TEI parameters and variables are divided in different categories
   <xsl:template name="pages">
     <xsl:variable name="pb" select=".//tei:pb"/>
     <xsl:if test="$pb">
-      <xsl:variable name="last" select="$pb[position() != 1][position() = last()]/@n"/>
       <xsl:choose>
         <xsl:when test="count($pb) &gt; 1">pp. </xsl:when>
         <xsl:otherwise>p. </xsl:otherwise>
       </xsl:choose>
-      <xsl:value-of select="translate($pb[1]/@n, translate($pb[1]/@n, '0123456789', ''), '')"/>
-      <xsl:if test="count($pb) &gt; 1">
+      <xsl:value-of select="$pb[1]/@n"/>
+      <xsl:variable name="last" select="$pb[position() != 1][position() = last()]/@n"/>
+      <xsl:if test="$last &gt; 1">
         <xsl:text>-</xsl:text>
-        <xsl:value-of select="translate($last, translate($last, '0123456789', ''), '')"/>
+        <xsl:value-of select="$last"/>
       </xsl:if>
     </xsl:if>
   </xsl:template>
@@ -980,24 +976,28 @@ Could be correct for a text only version in <xsl:value-of select=""/>
           </xsl:choose>
         </xsl:variable>
         <xsl:variable name="title">
-          <xsl:if test="@n and not(tei:head)">
-            <xsl:value-of select="@n"/>
-            <xsl:text> </xsl:text>
-          </xsl:if>
-          <xsl:for-each select="tei:head[not(@type='sub')][not(@type='subtitle')][not(@type='kicker')]">
-            <xsl:apply-templates mode="title" select="."/>
-            <xsl:if test="position() != last()">
-              <!-- test if title end by ponctuation -->
-              <xsl:variable name="norm" select="normalize-space(.)"/>
-              <xsl:variable name="last" select="substring($norm, string-length($norm))"/>
-              <xsl:choose>
-                <xsl:when test="translate($last, '.;:?!»', '')!=''">. </xsl:when>
-                <xsl:otherwise>
-                  <xsl:text> </xsl:text>
-                </xsl:otherwise>
-              </xsl:choose>
-            </xsl:if>
-          </xsl:for-each>
+          <xsl:choose>
+            <xsl:when test="tei:head">
+              <!-- allow @type='kicker' for toc -->
+              <xsl:for-each select="tei:head[not(@type='sub')][not(@type='subtitle')]">
+                <xsl:apply-templates mode="title" select="."/>
+                <xsl:if test="position() != last()">
+                  <!-- test if title end by ponctuation -->
+                  <xsl:variable name="norm" select="normalize-space(.)"/>
+                  <xsl:variable name="last" select="substring($norm, string-length($norm))"/>
+                  <xsl:choose>
+                    <xsl:when test="translate($last, '.;:?!»', '')!=''">. </xsl:when>
+                    <xsl:otherwise>
+                      <xsl:text> </xsl:text>
+                    </xsl:otherwise>
+                  </xsl:choose>
+                </xsl:if>
+              </xsl:for-each>
+            </xsl:when>
+            <xsl:when test="@n != ''">
+              <xsl:value-of select="normalize-space(@n)"/>
+            </xsl:when>
+          </xsl:choose>
         </xsl:variable>
         <xsl:copy-of select="$title"/>
         <!-- Afficher un Byline en TOC ?
@@ -1078,6 +1078,7 @@ Could be correct for a text only version in <xsl:value-of select=""/>
             </i>
           </xsl:when>
           -->
+          
           <xsl:when test="$title">
             <xsl:copy-of select="$title"/>
           </xsl:when>
@@ -1111,11 +1112,27 @@ Could be correct for a text only version in <xsl:value-of select=""/>
       <xsl:when test="@n">
         <xsl:value-of select="@n"/>
       </xsl:when>
-      <xsl:when test="@type">
-        <xsl:call-template name="message">
-          <xsl:with-param name="id" select="@type"/>
-        </xsl:call-template>
+      <!-- -->
+      <!-- bad TEI generated -->
+      <xsl:when test="false()">
+        <!-- Let’s bet on first non empty block ? be careful of epigraphs, notes or page break… -->
+        <xsl:variable name="first" select="*[self::tei:p or self::tei:dateline or self::tei:byline or self::tei:label][1]"/>
+        <xsl:variable name="norm" select="normalize-space($first)"/>
+        <xsl:variable name="max" select="50"/>
+        <xsl:choose>
+          <!-- Avoid to big title -->
+          <xsl:when test="string-length($norm) &gt; $max">
+            <xsl:value-of select="substring($norm, 1, $max)"/>
+            <xsl:variable name="depunct" select="translate(substring($norm, $max + 1), ',.: ?!', '             ')"/>
+            <xsl:value-of select="substring-before($depunct, ' ')"/>
+            <xsl:text>…</xsl:text>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:apply-templates select="$first/node()" mode="title"/>
+          </xsl:otherwise>
+        </xsl:choose>
       </xsl:when>
+      <!--
       <xsl:when test="self::tei:div and parent::tei:body">
         <xsl:text>[</xsl:text>
         <xsl:call-template name="message">
@@ -1129,6 +1146,13 @@ Could be correct for a text only version in <xsl:value-of select=""/>
         <xsl:text>[</xsl:text>
         <xsl:call-template name="n"/>
         <xsl:text>]</xsl:text>
+      </xsl:otherwise>
+      -->
+      <xsl:otherwise>
+        <!--
+        <xsl:number count="tei:div | tei:div0 | tei:div1 | tei:div2 | tei:div3 | tei:div4 | tei:div5" level="multiple" format="I.1.a."/>
+        -->
+        <xsl:number format="I."/>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
@@ -1160,7 +1184,7 @@ Could be correct for a text only version in <xsl:value-of select=""/>
     <xsl:text> </xsl:text>
   </xsl:template>
   <xsl:template match="text()" mode="title">
-    <xsl:variable name="text" select="translate(., ' ', '')"/>
+    <xsl:variable name="text" select="translate(., '', '')"/>
     <xsl:if test="translate(substring($text, 1,1), concat(' ', $lf, $cr, $tab), '') = ''">
       <xsl:text> </xsl:text>
     </xsl:if>
@@ -1526,7 +1550,7 @@ Le mode label génère un intitulé court obtenu par une liste de valeurs locali
   
   <!-- In case of direct XSLT transformation in browser, get the folder -->
   <xsl:template name="xslbase">
-    <xsl:param name="path" select="/processing-instruction('xml-stylesheet')[contains(., 'xsl')]"/>
+    <xsl:param name="path" select="/processing-instruction('xml-stylesheet')[contains(., '.xsl')]"/>
     <xsl:choose>
       <xsl:when test="contains($path, 'href=&quot;')">
         <xsl:call-template name="xslbase">

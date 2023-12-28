@@ -867,10 +867,11 @@ public class Alix
         if (writer != null && writer.isOpen())
             return writer;
         IndexWriterConfig conf = new IndexWriterConfig(analyzer);
-        conf.setUseCompoundFile(false); // show separate file by segment
+        // Use false for batch indexing with very large ram buffer settings.
+        conf.setUseCompoundFile(false);
         // may needed, increase the max heap size to the JVM (eg add -Xmx512m or
         // -Xmx1g):
-        conf.setRAMBufferSizeMB(2048.0);
+        conf.setRAMBufferSizeMB(1024.0);
         conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
         //
         if (similarity != null)

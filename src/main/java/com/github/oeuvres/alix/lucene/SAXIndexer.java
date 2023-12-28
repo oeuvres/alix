@@ -40,7 +40,9 @@ import java.util.Locale;
 import java.util.logging.Logger;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.sinks.TeeSinkTokenFilter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -192,9 +194,9 @@ public class SAXIndexer extends DefaultHandler
                     break;
                 case TEXT:
                     // at this point, impossible to get document stats, tokens will be played when
-                    // writer will
-                    // add document(s). Caching tokens is a bad idea for big books, forget, do not
-                    // retry.
+                    // writer will add document(s). 
+                    // cachingTokenFilter used to be memory expensive
+                    // TeeSinkTokenFilter will need to define analysis strategy here
                     doc.add(new StoredField(name, text)); // text has to be stored for snippets and conc
                     doc.add(new Field(name, text, Alix.ftypeText));
                     String name_orth = name + "_orth";

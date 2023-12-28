@@ -23,7 +23,6 @@ XSLT 1.0 is compatible browser, PHP, Python, Java…
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <!-- Import shared templates -->
   <xsl:import href="tei_common.xsl"/>
-
   <!-- What kind of root element to output ? html, div, article -->
   <xsl:param name="root" select="$html"/>
   <xsl:key match="/" name="split" use="'root'"/>
@@ -208,7 +207,7 @@ Sections
         or self::tei:salute
         or self::tei:signed
         ]">
-        <xsl:text>&#10;</xsl:text>
+        <xsl:text> </xsl:text>
         <header>
           <xsl:apply-templates select="$first/preceding-sibling::node()">
             <xsl:with-param name="level" select="$level"/>
@@ -269,25 +268,7 @@ Sections
 <h3>Titres</h3>
 
   -->
-  <!-- Titre en entête -->
-  <xsl:template match="tei:titleStmt/tei:title">
-    <xsl:param name="from"/>
-    <h1>
-      <xsl:choose>
-        <xsl:when test="@type">
-          <xsl:attribute name="class">
-            <xsl:value-of select="@type"/>
-          </xsl:attribute>
-        </xsl:when>
-        <xsl:when test="../tei:title[@type='main']">
-          <xsl:attribute name="class">notmain</xsl:attribute>
-        </xsl:when>
-      </xsl:choose>
-      <xsl:apply-templates>
-        <xsl:with-param name="from" select="$from"/>
-      </xsl:apply-templates>
-    </h1>
-  </xsl:template>
+
   <!-- Page de titre -->
   <xsl:template match="tei:titlePage">
     <xsl:param name="from"/>
@@ -757,8 +738,18 @@ Sections
       </xsl:choose>
     </li>
   </xsl:template>
+  <!-- label in list, let CSS work for numbering -->
+  <xsl:template match="tei:list/tei:label">
+    <xsl:param name="from"/>
+    <li>
+      <xsl:call-template name="atts"/>
+      <xsl:apply-templates>
+        <xsl:with-param name="from" select="$from"/>
+      </xsl:apply-templates>
+    </li>
+  </xsl:template>
   <!-- term list -->
-  <xsl:template match="tei:list[@type='gloss' or tei:label]">
+  <xsl:template match="tei:list[@type='gloss']">
     <xsl:param name="from"/>
     <xsl:choose>
       <!-- liste titrée à mettre dans un conteneur-->
@@ -787,7 +778,7 @@ Sections
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
-  <xsl:template match="tei:list[@type='gloss' or tei:label]/tei:label">
+  <xsl:template match="tei:list[@type='gloss']/tei:label">
     <xsl:param name="from"/>
     <dt>
       <xsl:call-template name="atts"/>
@@ -796,7 +787,7 @@ Sections
       </xsl:apply-templates>
     </dt>
   </xsl:template>
-  <xsl:template match="tei:list[@type='gloss' or tei:label]/tei:item">
+  <xsl:template match="tei:list[@type='gloss']/tei:item">
     <xsl:param name="from"/>
     <dd>
       <xsl:call-template name="atts"/>
@@ -1100,12 +1091,12 @@ Tables
         </span>
       </xsl:when>
       <xsl:when test="$rend = ''">
-        <em>
+        <i>
           <xsl:call-template name="atts"/>
           <xsl:apply-templates>
             <xsl:with-param name="from" select="$from"/>
           </xsl:apply-templates>
-        </em>
+        </i>
       </xsl:when>
       <xsl:when test="starts-with($rend, 'it')">
         <i>
@@ -1131,6 +1122,14 @@ Tables
           </xsl:apply-templates>
         </sub>
       </xsl:when>
+      <xsl:when test="starts-with($rend, 'sc')">
+        <span rend="sc">
+          <xsl:call-template name="atts"/>
+          <xsl:apply-templates>
+            <xsl:with-param name="from" select="$from"/>
+          </xsl:apply-templates>
+        </span>
+      </xsl:when>
       <xsl:when test="starts-with($rend, 'exp')">
         <sup>
           <xsl:call-template name="atts"/>
@@ -1139,17 +1138,14 @@ Tables
           </xsl:apply-templates>
         </sup>
       </xsl:when>
-      <!-- surlignages venus de la transformation ODT -->
-      <xsl:when test="$rend='bg' or $rend='mark'">
-        <span class="bg" style="background-color:#{@n};">
-          <xsl:call-template name="atts"/>
-          <xsl:apply-templates>
-            <xsl:with-param name="from" select="$from"/>
-          </xsl:apply-templates>
-        </span>
-      </xsl:when>
-      <xsl:when test="$rend='col' or $rend='color'">
-        <span class="col" style="color:#{@n};">
+      <!-- generated from docx, keep it ? -->
+      <xsl:when test="contains($rend, 'bg_')">
+        <xsl:variable name="after" select="substring-before(concat(substring-after($rend, 'bg_'), ' '), ' ')"/>
+        <xsl:variable name="color">
+          <xsl:if test="string-length($after) = 6 and translate(substring($after, 1, 1), '0123456789abcdefABCDEF', '') = ''">#</xsl:if>
+          <xsl:value-of select="$after"/>
+        </xsl:variable>
+        <span style="background-color:{$color};">
           <xsl:call-template name="atts"/>
           <xsl:apply-templates>
             <xsl:with-param name="from" select="$from"/>
@@ -1319,19 +1315,11 @@ Tables
           <br/>
         </span>
       </xsl:when>
-      <xsl:when test="@n and ancestor::tei:p">
-        <xsl:text> </xsl:text>
-        <small class="l">[l. <xsl:value-of select="@n"/>]</small>
-        <xsl:text> </xsl:text>
-      </xsl:when>
       <xsl:when test="@n">
-        <small class="lb">
-          <xsl:text>
-  </xsl:text>
+        <xsl:text>&#10;</xsl:text>
+        <small class="l">
           <br/>
-          <xsl:value-of select="@n"/>
-          <xsl:text> </xsl:text>
-        </small>
+          [l. <xsl:value-of select="@n"/>]  </small>
       </xsl:when>
       <xsl:otherwise>
         <br>
@@ -1378,9 +1366,6 @@ Tables
       <xsl:call-template name="tei:isInline"/>
     </xsl:variable>
     <xsl:choose>
-      <xsl:when test="$inline = ''">
-        <br class="space {@unit}{@quantity}"/>
-      </xsl:when>
       <xsl:when test="text() != ''">
         <samp>
           <xsl:call-template name="atts"/>
@@ -1395,6 +1380,9 @@ Tables
           <xsl:call-template name="atts"/>
           <xsl:value-of select="substring($nbsp, 1, @quantity)"/>
         </samp>
+      </xsl:when>
+      <xsl:when test="$inline = ''">
+        <br class="space {@unit}{@quantity}"/>
       </xsl:when>
       <xsl:otherwise>
         <samp class="space" style="width:2em;">    </samp>
@@ -1533,8 +1521,13 @@ Tables
       <!-- bad link pb, seen in notes -->
       <xsl:when test="normalize-space($html) = ''"/>
       <xsl:otherwise>
+        <xsl:variable name="class">
+          <xsl:if test="starts-with(@target, 'http')">external</xsl:if>
+        </xsl:variable>
         <a>
-          <xsl:call-template name="atts"/>
+          <xsl:call-template name="atts">
+            <xsl:with-param name="class" select="$class"/>
+          </xsl:call-template>
           <xsl:copy-of select="$html"/>
         </a>
       </xsl:otherwise>
@@ -2139,7 +2132,6 @@ Elements block or inline level
         <xsl:element name="{$el}" namespace="http://www.w3.org/1999/xhtml">
           <xsl:call-template name="atts">
             <xsl:with-param name="class">
-              <xsl:value-of select="local-name()"/>
               <xsl:if test="@corresp"> corresp</xsl:if>
             </xsl:with-param>
           </xsl:call-template>
