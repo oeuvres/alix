@@ -155,7 +155,7 @@ public class JspTools
      * Escape HTML for input
      * @param out
      * @param cs
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public static void escape(final Writer out, final CharSequence cs) throws IOException
     {
@@ -264,10 +264,9 @@ public class JspTools
      * Get a request parameter as an {@link Enum} value that will ensure a closed
      * list of values, with a default value if wrong.
      * 
-     * @param name
-     * @param fallback
-     * @return
-     * @throws Exception
+     * @param name     Name of a request parameter.
+     * @param fallback Default value.
+     * @return The value from Enum.
      */
     // @SuppressWarnings({ "unchecked", "static-access" })
     public Enum<?> getEnum(final String name, final Enum<?> fallback)
@@ -289,6 +288,15 @@ public class JspTools
         }
     }
 
+    /**
+     * Get a request parameter as an {@link Enum} value that will ensure a closed
+     * list of values, with a default value if wrong.
+     * 
+     * @param name     Name of a request parameter.
+     * @param fallback Default value.
+     * @param cookie Cookie persistency.
+     * @return The value from Enum.
+     */
     public Enum<?> getEnum(final String name, final Enum<?> fallback, final String cookie)
     {
         if (fallback == null) {

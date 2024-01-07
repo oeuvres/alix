@@ -35,8 +35,6 @@ package com.github.oeuvres.alix.util;
 
 /**
  * A mutable pair (id, score), sortable on score only, used as cells in arrays.
- * 
- * @author glorieux-f
  */
 public class IdScore implements Comparable<IdScore>
 {
@@ -60,8 +58,8 @@ public class IdScore implements Comparable<IdScore>
     /**
      * Modify value
      * 
+     * @param id
      * @param score
-     * @param value
      */
     protected void set(final int id, final double score)
     {

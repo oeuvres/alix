@@ -94,7 +94,7 @@ public class Dir
      * 
      * @param glob
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public static List<Path> ls(final String glob) throws IOException
     {
@@ -107,7 +107,7 @@ public class Dir
      * @param glob
      * @param files
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public static List<Path> ls(final String glob, final List<Path> files) throws IOException
     {

@@ -386,7 +386,7 @@ public class ML
      * 
      * @param path
      * @throws UnsupportedEncodingException
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     static void load(final String path) throws UnsupportedEncodingException, IOException
     {

@@ -1,0 +1,13 @@
+com.github.oeuvres.alix
+com.github.oeuvres.alix.cli
+com.github.oeuvres.alix.fr
+com.github.oeuvres.alix.lucene
+com.github.oeuvres.alix.lucene.analysis
+com.github.oeuvres.alix.lucene.analysis.tokenattributes
+com.github.oeuvres.alix.lucene.search
+com.github.oeuvres.alix.lucene.util
+com.github.oeuvres.alix.maths
+com.github.oeuvres.alix.sqlite
+com.github.oeuvres.alix.util
+com.github.oeuvres.alix.web
+com.github.oeuvres.alix.xml

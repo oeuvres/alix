@@ -53,9 +53,8 @@ import com.github.oeuvres.alix.maths.Calcul;
  * </p>
  * <p>
  * The same internal char array could be shared by multiple Chain instances
- * (with different offset and size). Some convenient methods are provided for
- * lexical search ex {@link #normCase()}, or searching by prefix and/or suffix
- * {@link #glob(CharSequence)}.
+ * (with different offset and size). Some efficient methods are provided,
+ * for example, searching by prefix and/or suffix {@link #glob(CharSequence)}.
  * </p>
  */
 public class Chain implements CharSequence, Appendable, Comparable<Chain>
@@ -149,8 +148,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     /**
      * Append lucene utf-8 bytes
      * 
-     * @param chain
-     * @return the Chain object for chaining
+     * @param bytes Lucene bytes.
+     * @return This Chain object for chaining.
      */
     public Chain append(final BytesRef bytes)
     {

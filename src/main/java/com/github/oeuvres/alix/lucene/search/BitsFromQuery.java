@@ -47,9 +47,6 @@ import org.apache.lucene.util.BitSet;
  * A search giving results as bits. Code from QueryBitSetProducer.java
  * https://github.com/apache/lucene/blob/main/lucene/join/src/java/org/apache/lucene/search/join/QueryBitSetProducer.java
  * Rely on the default LRU lucene cache, instead of an hard cache.
- * 
- * @author glorieux-f
- *
  */
 public class BitsFromQuery
 {
@@ -59,8 +56,7 @@ public class BitsFromQuery
   /**
    * Wraps another search's to get bits by LeafReaderContext
    * 
-   * @param search
-   *          Query to cache results of
+   * @param query Query to cache results of
    */
   public BitsFromQuery(Query query)
   {
@@ -77,6 +73,12 @@ public class BitsFromQuery
     return query;
   }
 
+  /**
+   * 
+   * @param context
+   * @return
+   * @throws IOException Lucene errors.
+   */
   public BitSet bits(LeafReaderContext context) throws IOException
   {
     final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(context);

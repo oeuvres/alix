@@ -8,7 +8,7 @@ package com.github.oeuvres.alix.maths;
 public class Constants
 {
   /** Machine epsilon.  Smallest double floating point number
-   *  such that (1 + MACHEPS) > 1 .
+   *  such that (1 + MACHEPS) &gt; 1 .
    */
 
   public static final double MACHEPS    = determineMachineEpsilon();

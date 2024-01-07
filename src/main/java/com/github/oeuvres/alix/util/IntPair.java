@@ -36,9 +36,6 @@ package com.github.oeuvres.alix.util;
  * A mutable pair of ints. Works well as a key for a HashMap (hascode()
  * implemented), comparable is good for perfs in buckets. After test, it is more
  * efficient than concating ints in longs in an HashMap.
- * 
- *
- * @author glorieux-f
  */
 public class IntPair implements Comparable<IntPair> {
     /** Internal data */

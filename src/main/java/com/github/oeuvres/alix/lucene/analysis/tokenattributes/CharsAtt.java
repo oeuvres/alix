@@ -72,13 +72,19 @@ public class CharsAtt extends AttributeImpl
      */
     protected BytesRefBuilder builder;
 
-    /** Initialize this attribute with empty term text */
+    /**
+     * Initialize this attribute with empty term text.
+     */
     public CharsAtt() {
         chars = new char[ArrayUtil.oversize(MIN_BUFFER_SIZE, Character.BYTES)];
         builder = new BytesRefBuilder();
     }
 
-    /** Initialize the chars with a String */
+    /**
+     * Initialize the chars with a String
+     * 
+     * @param s
+     */
     public CharsAtt(String s) {
         len = s.length();
         this.chars = new char[len];
@@ -89,6 +95,7 @@ public class CharsAtt extends AttributeImpl
      * Copy chars from a mutable String {@link Chain}. Use it to build an optimized
      * key in an HashMap. Do not used in a token stream, getBytesRef() will not be
      * available.
+     * @param chain
      */
     public CharsAtt(Chain chain) {
         len = chain.length();
@@ -98,6 +105,8 @@ public class CharsAtt extends AttributeImpl
 
     /**
      * Copy a token attribute, used as a key in a map.
+     * 
+     * @param token
      */
     public CharsAtt(CharsAtt token) {
         len = token.len;
@@ -107,7 +116,9 @@ public class CharsAtt extends AttributeImpl
 
     /**
      * 
-     * @param token
+     * @param buffer
+     * @param offset
+     * @param length
      */
     public CharsAtt(char[] buffer, int offset, int length) {
         len = length;
@@ -207,6 +218,10 @@ public class CharsAtt extends AttributeImpl
         return this;
     }
 
+    /**
+     * 
+     * @return
+     */
     private CharsAtt appendNull() {
         hash = 0;
         resizeBuffer(len + 4);
@@ -226,7 +241,7 @@ public class CharsAtt extends AttributeImpl
      * Try to capitalize (initial capital only) decently, according to some rules
      * available in latin language. ex: états-unis -&gt; États-Unis.
      * 
-     * @return
+     * @return This, for chaining.
      */
     public CharsAtt capitalize() {
         hash = 0;
@@ -294,6 +309,11 @@ public class CharsAtt extends AttributeImpl
         return len - string.length();
     }
 
+    /**
+     * 
+     * @param o
+     * @return
+     */
     public int compareTo(CharsAtt o) {
         char[] chars1 = chars;
         char[] chars2 = o.chars;
@@ -313,7 +333,6 @@ public class CharsAtt extends AttributeImpl
      * 
      * @param ta
      * @return
-     * @throws Exception
      */
     public final CharsAtt copy(CharTermAttribute ta) {
         hash = 0;
@@ -326,7 +345,7 @@ public class CharsAtt extends AttributeImpl
      * Copy UTF-8 bytes {@link BytesRef} in the char[] buffer. Used by Alix to test
      * UTF-8 bytes against chars[] stores in HashMap {@link FrDics}
      * 
-     * @param ta
+     * @param bytes
      * @return
      */
     public final CharsAtt copy(BytesRef bytes) {
@@ -447,6 +466,10 @@ public class CharsAtt extends AttributeImpl
         return builder.get();
     }
 
+    /**
+     * 
+     * @param newSize
+     */
     private void growTermBuffer(int newSize) {
         hash = 0;
         if (chars.length < newSize) {
@@ -509,7 +532,7 @@ public class CharsAtt extends AttributeImpl
     /**
      * Get last char
      * 
-     * @return
+     * @return last char
      */
     public char lastChar() {
         return chars[len - 1];
@@ -538,6 +561,8 @@ public class CharsAtt extends AttributeImpl
     /**
      * Record actual size of string to go back to this state with @see #rewind(),
      * like @see java.io.Reader#mark(int).
+     * 
+     * @return This, for chaining.
      */
     public final CharsAtt mark() {
         mark = len;
@@ -567,6 +592,8 @@ public class CharsAtt extends AttributeImpl
      * has been set, nothing is done. Used mark is deleted, explicit @see #mark() is
      * needed to record this state. Works a bit like @see java.io.Reader#reset()
      * with a less confusing name.
+     * 
+     * @return This, for chaining.
      */
     public final CharsAtt rewind() {
         if (this.mark > -1)
@@ -618,7 +645,7 @@ public class CharsAtt extends AttributeImpl
      * Convert all chars from the buffer to lower case. To avoid default JDK
      * conversion, some efficiency come from tests with the {@link Char}.
      * 
-     * @return
+     * @return This, for chaining.
      */
     public CharsAtt toLower() {
         hash = 0;
@@ -644,7 +671,7 @@ public class CharsAtt extends AttributeImpl
     /**
      * If we can’t remember if @see #mark() has been set, ensure, reset it.
      * 
-     * @return
+     * @return This, for chaining.
      */
     public final CharsAtt unmark() {
         mark = -1;

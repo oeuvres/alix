@@ -80,7 +80,7 @@ import com.github.oeuvres.alix.web.OptionDistrib;
  * Different variables could be used in such formulas. Some are only relative to
  * all index, some are cacheable for each facet value, other are search
  * dependent.
- * <p>
+ * </p>
  * 
  * <ul>
  * <li>index, total document count</li>
@@ -97,7 +97,7 @@ import com.github.oeuvres.alix.web.OptionDistrib;
  * different growing arrays. On creation, object is populated with data non
  * dependent of a search. Those internal vectors are stored as arrays with
  * facetId index.
- * <p>
+ * </p>
  *
  */
 public class FieldFacet
@@ -135,9 +135,9 @@ public class FieldFacet
      * to allow cache on an IndexReader state.
      * 
      * @param alix
-     * @param facet
-     * @param text
-     * @throws IOException
+     * @param name
+     * @param coverTerm
+     * @throws IOException Lucene errors.
      */
     public FieldFacet(final Alix alix, final String name, final Term coverTerm) throws IOException
     {
@@ -339,8 +339,9 @@ public class FieldFacet
 
     /**
      * Returns formId &gt;= 0 if exists, or &lt; 0 if not.
-     * @param bytes
-     * @return 
+     * 
+     * @param term
+     * @return
      */
     public int formId(final String term)
     {
@@ -371,7 +372,7 @@ public class FieldFacet
      * Returns a new enumerator on all search for this facet in orthographic order
      * 
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public FormEnum forms() throws IOException
     {
@@ -391,7 +392,7 @@ public class FieldFacet
      * Number of documents by term according to a filter.
      * @param filter
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public FormEnum forms(final BitSet filter) throws IOException
     {
@@ -419,7 +420,7 @@ public class FieldFacet
      * @param ftext
      * @param filter
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public FormEnum forms(final FieldText ftext, final BitSet filter) throws IOException
     {
@@ -462,7 +463,7 @@ public class FieldFacet
      * stats.
      * 
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public FormEnum forms(final FieldText ftext, final BitSet filter, final String[] search, OptionDistrib distrib) throws IOException
     {
@@ -630,7 +631,7 @@ public class FieldFacet
 
     /**
      * Build facet on a SttringField
-     * @throws IOException 
+     * @throws IOException Lucene errors.
      */
     private void stringField(final String name, BitSet covers) throws IOException
     {

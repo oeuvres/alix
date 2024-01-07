@@ -34,8 +34,6 @@ package com.github.oeuvres.alix.web;
 
 /**
  * Some algorithms to score co-occurrency.
- * 
- * @author glorieux-f
  */
 public enum OptionMI implements Option
 {

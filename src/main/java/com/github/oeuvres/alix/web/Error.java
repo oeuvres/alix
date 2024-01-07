@@ -78,19 +78,39 @@ public enum Error
         this.argLen = argLen;
     }
     
+    /**
+     * 
+     * @return Error status number.
+     */
     public int status()
     {
         return status;
     }
+    
+    /**
+     * 
+     * @return Error title.
+     */
     public String title()
     {
         return title;
     }
-    public String detail(Object... pars)
+    
+    /**
+     * 
+     * @param args {@link String#format(String, Object...)}.
+     * @return Error detailed with arguments.
+     */
+    public String detail(Object... args)
     {
-        return String.format(detail, pars);
+        return String.format(detail, args);
     }
     
+    /**
+     * 
+     * @param args
+     * @return
+     */
     public Object[] norm(final Object[] args)
     {
         if (args == null) return args;
@@ -109,8 +129,8 @@ public enum Error
     
     /**
      * Output a json view for this error
-     * @param pars
-     * @return
+     * @param args {@link String#format(String, Object...)}.
+     * @return JSON String.
      */
     public String json(Object... args)
     {
@@ -127,9 +147,10 @@ public enum Error
         return sb.toString();
     }
     /**
-     * Output an html view for this error
-     * @param pars
-     * @return
+     * Output an html view for this error with possible arguments.
+     * 
+     * @param args {@link String#format(String, Object...)}.
+     * @return Displayable HTML for an error.
      */
     public String html(Object... args)
     {

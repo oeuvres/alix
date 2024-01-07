@@ -794,9 +794,7 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * A data row to sort the important values in a cosine
-     * 
-     * @author glorieux-f
+     * A data row to sort the important values in a cosine.
      */
     public class SpecRow implements Comparable<SpecRow>
     {

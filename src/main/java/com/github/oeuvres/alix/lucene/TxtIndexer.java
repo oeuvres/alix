@@ -156,7 +156,7 @@ public class TxtIndexer
      * entire index. All documents from this filename will deleted before
      * indexation.
      * 
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
 
     @SuppressWarnings("resource")

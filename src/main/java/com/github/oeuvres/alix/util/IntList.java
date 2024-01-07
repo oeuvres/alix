@@ -131,7 +131,6 @@ public class IntList
     /**
      * Get first value or cry if list is empty
      * 
-     * @param pos
      * @return
      */
     public int first()
@@ -211,8 +210,7 @@ public class IntList
 
     /**
      * Get last value or cry if list is empty
-     * 
-     * @param pos
+     *
      * @return
      */
     public int last()

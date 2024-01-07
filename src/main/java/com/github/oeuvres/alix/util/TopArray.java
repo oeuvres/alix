@@ -220,8 +220,9 @@ public class TopArray implements Iterable<IdScore>
     /**
      * Push a new Pair, keep it in the top if score is bigger than the smallest.
      * 
+     * @param id
      * @param score
-     * @param value
+     * @return
      */
     public TopArray push(final int id, final double score)
     {
@@ -261,11 +262,13 @@ public class TopArray implements Iterable<IdScore>
     }
 
     /**
-     * Test if score is insertable, true if
-     * <li>top is not full
-     * <li>score is bigger than {@link #min()} in natural order
-     * <li>score is lower than {@link #max()} in reverse order
+     * Test if score is insertable, true if:
      * 
+     * <ul>
+     * <li>top is not full</li>
+     * <li>score is bigger than {@link #min()} in natural order</li>
+     * <li>score is lower than {@link #max()} in reverse order</li>
+     * </ul>
      * 
      * @param score
      */
@@ -313,8 +316,6 @@ public class TopArray implements Iterable<IdScore>
 
     /**
      * A private class that implements iteration over the pairs.
-     * 
-     * @author glorieux-f
      */
     class TopIterator implements Iterator<IdScore>
     {

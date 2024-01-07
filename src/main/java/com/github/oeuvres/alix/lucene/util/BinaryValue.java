@@ -101,9 +101,9 @@ abstract class BinaryValue
   }
 
   /**
-   * Grow the bytes buffer
+   * Grow the bytes buffer.
    * 
-   * @param minCapacity
+   * @param cap
    */
   protected void grow(final int cap)
   {

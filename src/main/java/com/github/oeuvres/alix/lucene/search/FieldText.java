@@ -74,8 +74,6 @@ import com.github.oeuvres.alix.web.OptionDistrib;
  * <p>
  * Provide slices of stats for Terms as s sorted Iterator
  * </p>
- * @author fred
- *
  */
 public class FieldText
 {
@@ -139,7 +137,7 @@ public class FieldText
      * 
      * @param reader
      * @param fieldName
-     * @throws Exception 
+     * @throws IOException Lucene errors.
      */
     public FieldText(final DirectoryReader reader, final String fieldName) throws IOException
     {
@@ -321,7 +319,7 @@ public class FieldText
     /**
      * Populate a dictionary of forms by a bitSet of documents,
      * the filter is found in FormEnum.filter
-     * @throws IOException 
+     * @throws IOException Lucene errors.
      */
     public FormEnum filter(FormEnum results) throws IOException
     {
@@ -441,8 +439,10 @@ public class FieldText
      * Check if a form is present in a portion of the corpus.
      * Returns its formId or -1 if not found.
      * 
-     * @param s
-     * @throws IOException 
+     * @param word
+     * @param filter
+     * @return
+     * @throws IOException Lucene errors.
      */
     public int formId(final String word, final BitSet filter) throws IOException
     {
@@ -481,6 +481,7 @@ public class FieldText
     
     /**
      * Returns formId &gt;= 0 if exists, or &lt; 0 if not.
+     * 
      * @param bytes
      * @return 
      */
@@ -491,8 +492,9 @@ public class FieldText
 
     /**
      * Returns formId &gt;= 0 if exists, or &lt; 0 if not.
-     * @param bytes
-     * @return 
+     * 
+     * @param term
+     * @return
      */
     public int formId(final String term)
     {
@@ -563,10 +565,11 @@ public class FieldText
     }
 
     /**
-     * Return count of occurrences for a set of forms with a doc filter
-     * 
-     * @param bytes
-     * @throws IOException 
+     * Return count of occurrences for a set of forms with a doc filter.
+     * @param forms
+     * @param filter
+     * @return
+     * @throws IOException Lucene errors.
      */
     public long[] formOccs(final String[] forms, final BitSet filter) throws IOException
     {
@@ -890,7 +893,7 @@ public class FieldText
      * @param reader
      * @param field
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     static public BytesRefHash terms(DirectoryReader reader, String field) throws IOException
     {

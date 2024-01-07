@@ -188,14 +188,16 @@ public class FrDics
   }
 
   
-  /** 
-   * Insert a local csv (comma separated values) dictionary of 4 cols
-   * <li>0. GRAPH. Required, graphical form used as a key (could be a lemma for verbs in locutions like “avoir l’air”).
-   * <li>1. TAG. Required, morpho-syntaxic code
-   * <li>2. ORTH. Optional, form normalization
-   * <li>3. LEM. Optional, lemmatization
-   * @throws IOException 
-   * @throws ParseException 
+  /**
+   * Insert a local csv (comma separated values) dictionary of 4 cols:
+   * <ul>
+   * <li>0. GRAPH. Required, graphical form used as a key (could be a lemma for verbs in locutions like “avoir l’air”).</li>
+   * <li>1. TAG. Required, morpho-syntaxic code.</li>
+   * <li>2. ORTH. Optional, form normalization.</li>
+   * <li>3. LEM. Optional, lemmatization.</li>
+   * </ul>
+   * 
+   * @param reader
    */
   static public void load(final Reader reader)
   {
@@ -412,7 +414,7 @@ public class FrDics
 
     public LexEntry(final Chain tag)
     {
-      this.tag = Tag.code(tag);
+      this.tag = Tag.flag(tag);
       orth = null;
       lem = null;
     }
@@ -422,7 +424,7 @@ public class FrDics
       if (graph.isEmpty() || tag.isEmpty()) {
         LOGGER.log(Level.FINEST, res+" graph="+graph+" tag="+tag);
       }
-      this.tag = Tag.code(tag);
+      this.tag = Tag.flag(tag);
       if (orth == null || orth.isEmpty()) this.orth = null;
       else this.orth = new CharsAtt(orth);
       if (lem == null || lem.isEmpty()) this.lem = null;

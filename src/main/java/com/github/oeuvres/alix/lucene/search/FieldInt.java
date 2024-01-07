@@ -86,9 +86,9 @@ public class FieldInt
     /**
      * Build lexical stats around an int field
      * 
-     * @param reader
-     * @param field
-     * @throws IOException
+     * @param alix
+     * @param name
+     * @throws IOException Lucene errors.
      */
     public FieldInt(final Alix alix, final String name) throws IOException
     {
@@ -208,19 +208,27 @@ public class FieldInt
         this.valueDocs = valDocs;
     }
 
+    /**
+     * 
+     * @return
+     */
     public int card()
     {
         return this.cardinality;
     }
 
+    /**
+     * 
+     * @return
+     */
     public int cardinality()
     {
         return this.cardinality;
     }
 
     /**
-     * 1753 -> 17530000
-     * 1753-03-01 -> 17530301
+     * 1753 → 17530000
+     * 1753-03-01 → 17530301
      */
     public static int date2int(String date) {
         int value = Integer.MIN_VALUE;
@@ -264,7 +272,10 @@ public class FieldInt
     }
 
     /**
-     * 17531023 -> 1753
+     * 17531023 → 1753
+     * 
+     * @param date
+     * @return
      */
     public static int year(double date)
     {
@@ -274,7 +285,10 @@ public class FieldInt
     
     
     /**
-     * 17530000 -> 17539999
+     * 17530000 → 17539999
+     * 
+     * @param date
+     * @return
      */
     public static int yearCeil(int date)
     {
@@ -284,8 +298,11 @@ public class FieldInt
     }
     
     /**
-     * 17530301 -> 1753-03-01
-     * 17530000 -> 1753
+     * 17530301 → 1753-03-01
+     * 17530000 → 1753
+     * 
+     * @param value Date as a positional number
+     * @return Date in XML format
      */
     public static String int2date(int value) {
         String date = "" + value;

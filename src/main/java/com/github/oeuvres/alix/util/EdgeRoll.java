@@ -73,7 +73,7 @@ public class EdgeRoll
     
     /**
      * Waited values and distance
-     * @param values
+     * @param words
      * @param distance
      */
     public EdgeRoll(int[] words, final int distance)

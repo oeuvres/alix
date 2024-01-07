@@ -63,15 +63,11 @@ public interface Option
     }
 
     /**
-     * Output options as html &lt;option> in order of a space separated list of
+     * Output options as html &lt;option&gt; in order of a space separated list of
      * tokens.
      * 
-     * @param list
-     * @return
-     * @throws SecurityException
-     * @throws NoSuchFieldException
-     * @throws IllegalAccessException
-     * @throws IllegalArgumentException
+     * @param list Oredered options.
+     * @return HTML.
      */
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public default String options(String list)

@@ -51,9 +51,6 @@ import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder; // doc
  * <li>
  * <li>sortByString (keep row order, sort term alphabetically)</li>
  * </ul>
- * 
- * @author fred
- *
  */
 public class TermList implements Iterable<Term>
 {
@@ -237,7 +234,7 @@ public class TermList implements Iterable<Term>
   
   /**
    * Output list of search as a collection of bytes reference 
-   * suited for automaton in Lucene {@link DaciukMihovAutomatonBuilder#build(Collection)}.
+   * suited for Lucene automaton.
    * @return
    */
   public Collection<BytesRef> refList()
@@ -272,9 +269,6 @@ public class TermList implements Iterable<Term>
 
   /**
    * An iterator on the data, keep a copy of the actual order.
-   * 
-   * @author fred
-   *
    */
   private class Cursor implements Iterator<Term>
   {

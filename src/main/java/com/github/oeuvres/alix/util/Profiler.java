@@ -57,7 +57,7 @@ public class Profiler
      * 
      * @param o
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public static long serSize(Object o) throws IOException
     {

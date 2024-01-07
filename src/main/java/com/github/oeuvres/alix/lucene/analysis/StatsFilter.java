@@ -45,76 +45,70 @@ import com.github.oeuvres.alix.lucene.util.BinaryUbytes;
 import com.github.oeuvres.alix.lucene.util.Offsets;
 
 /**
- * A token filter counting tokens. 
- * Before a CachingTokenFilter, it allows to get some 
- * counts if the token stream has been exhausted.
+ * A token filter counting tokens. Before a CachingTokenFilter, it allows to get
+ * some counts if the token stream has been exhausted.
  */
 
-public class StatsFilter extends TokenFilter
-{
-  /** Current char offset */
-  private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-  /** The term provided by the Tokenizer */
-  PositionIncrementAttribute posAtt = addAttribute(PositionIncrementAttribute.class);
-  /** A linguistic category as a short number see {@link Tag} */
-  private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-  /** Last position */
-  int pos;
-  /** Record tags by position */
-  private BinaryUbytes tags =  new BinaryUbytes(1024);
-  /** Record offsets by position */
-  private Offsets offsets =  new Offsets(1024);
+public class StatsFilter extends TokenFilter {
+    /** Current char offset */
+    private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
+    /** The term provided by the Tokenizer */
+    PositionIncrementAttribute posAtt = addAttribute(PositionIncrementAttribute.class);
+    /** A linguistic category as a short number see {@link Tag} */
+    private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    /** Last position */
+    int pos;
+    /** Record tags by position */
+    private BinaryUbytes tags = new BinaryUbytes(1024);
+    /** Record offsets by position */
+    private Offsets offsets = new Offsets(1024);
 
+    public StatsFilter(TokenStream in) {
+        super(in);
+    }
 
-  public StatsFilter(TokenStream in)
-  {
-    super(in);
-  }
+    @Override
+    public boolean incrementToken() throws IOException {
+        if (!input.incrementToken())
+            return false; // end of stream
+        offsets.put(pos, offsetAtt.startOffset(), offsetAtt.endOffset());
+        tags.put(pos, flagsAtt.getFlags());
+        pos += posAtt.getPositionIncrement();
+        return true;
+    }
 
-  @Override
-  public boolean incrementToken() throws IOException
-  {
-    if (!input.incrementToken()) return false; // end of stream
-    offsets.put(pos, offsetAtt.startOffset(), offsetAtt.endOffset());
-    tags.put(pos, flagsAtt.getFlags());
-    pos += posAtt.getPositionIncrement();
-    return true;
-  }
+    /**
+     * Returns the cuurent position (or length when stream is consumed).
+     * @return
+     */
+    public int pos() {
+        return pos;
+    }
 
-  /**
-   * Returns the cuurent position (or length when stream is consumed).
-   * @return
-   */
-  public int pos() {
-    return pos;
-  }
+    /**
+     * Return the offsets index for a document, ready to be indexed.
+     * 
+     * @return
+     */
+    public Offsets offsets() {
+        return offsets;
+    }
 
-  /**
-   * Return the offsets index for a document, ready to be indexed.
-   * @return
-   */
-  public Offsets offsets()
-  {
-    return offsets;
-  }
+    /**
+     * Return the tags in position order.
+     * 
+     * @return
+     */
+    public BinaryUbytes tags() {
+        return tags;
+    }
 
-  /**
-   * Return the tags in position order.
-   * @return
-   */
-  public BinaryUbytes tags()
-  {
-    return tags;
-  }
-
-  @Override
-  public void reset() throws IOException
-  {
-    super.reset();
-    pos = 0;
-    tags.reset();
-    offsets.reset();
-  }
-
+    @Override
+    public void reset() throws IOException {
+        super.reset();
+        pos = 0;
+        tags.reset();
+        offsets.reset();
+    }
 
 }

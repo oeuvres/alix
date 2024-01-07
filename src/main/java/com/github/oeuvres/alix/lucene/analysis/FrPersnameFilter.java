@@ -52,10 +52,7 @@ import com.github.oeuvres.alix.util.Roll;
  * Plug behind a linguistic tagger, will concat unknown names from dictionaries like 
  * Victor Hugo, V. Hugo, Jean de La Salle…
  * A dictionary of proper names allow to provide canonical versions for
- * known strings (J.-J. Rousseau => Rousseau, Jean-Jacques)
- * 
- * @author fred
- *
+ * known strings (J.-J. Rousseau → Rousseau, Jean-Jacques)
  */
 public class FrPersnameFilter extends TokenFilter
 {
@@ -149,7 +146,6 @@ public class FrPersnameFilter extends TokenFilter
     // test compound names : NAME (particle|NAME)* NAME
     // TODO: Louis XIV
 
-    boolean lastIsParticle = false;
     while ((exit = input.incrementToken())) {
       // always capture the go ahead token, stack will be empty if a name found
       stack.add(captureState());
@@ -160,10 +156,8 @@ public class FrPersnameFilter extends TokenFilter
         concOrth.append(" " + termAtt);
         if (concLem.isEmpty()) concLem.append(termAtt); // Madame de Maintenon => "de Maintenon"
         else concLem.append(" " + termAtt);
-        lastIsParticle = true;
         continue;
       }
-      lastIsParticle = false;
       // a part of name, append it
       // char.isUpperCase(termAtt.charAt(0)) // unsafe ex : verses L’amour de ma mère // Je dirais au grand César
       // Louis le Grand ?

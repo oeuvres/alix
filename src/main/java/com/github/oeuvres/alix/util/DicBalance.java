@@ -42,8 +42,6 @@ import com.github.oeuvres.alix.util.DicFreq.Entry;
 
 /**
  * Merge two dictionaries entries and keep counts
- * 
- * @author frederic.glorieux@fictif.org
  */
 public class DicBalance
 {
@@ -148,9 +146,7 @@ public class DicBalance
     }
 
     /**
-     * A chain, with a balance of counts and frequencies
-     * 
-     * @author frederic.glorieux@fictif.org
+     * A chain, with a balance of counts and frequencies.
      */
     public class Balance implements Comparable<Balance>
     {

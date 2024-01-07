@@ -39,10 +39,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 import java.util.logging.Logger;
 
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.sinks.TeeSinkTokenFilter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -68,8 +65,7 @@ import com.github.oeuvres.alix.lucene.analysis.MetaAnalyzer;
  * 
  * Index an xml file of lucene documents. React to the namespace uri
  * xmlns:alix="http://alix.casa". The element {@code <alix:document>} contains a
- * document. The element {@code <alix:field>} contains a field. See
- * {@link alix.xml} for a full XML documentation.
+ * document. The element {@code <alix:field>} contains a field.
  * 
  * <p>
  * <b>NOTE:</b> This indexer do not reuse fields and document object, because
@@ -270,7 +266,7 @@ public class SAXIndexer extends DefaultHandler
      * entire index. All documents from this filename will deleted before
      * indexation.
      * 
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public void setFileName(String fileName) throws IOException
     {
@@ -475,7 +471,6 @@ public class SAXIndexer extends DefaultHandler
                             + "\" is not a number.");
                     break;
                 }
-                // doc.add(new NumericDocValuesField(name, val)); why ?
                 doc.add(new IntPoint(name, val)); // to search
                 doc.add(new StoredField(name, val)); // to show
                 doc.add(new NumericDocValuesField(name, val)); // to sort

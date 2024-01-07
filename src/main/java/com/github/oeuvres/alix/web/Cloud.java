@@ -72,9 +72,6 @@ import javax.xml.stream.XMLStreamWriter;
  * https://github.com/lindenb/jsandbox/blob/master/src/sandbox/MyWordle.java
  * Rewrited with no deps.
  * Works, but is not nice.
- * 
- * @author glorieux-f
- *
  */
 
 public class Cloud
@@ -115,10 +112,7 @@ public class Cloud
   }
 
   /**
-   * A word in the cloud, with all its fields
-   * 
-   * @author glorieux-f
-   *
+   * A word in the cloud, with all its fields.
    */
   static public class Word
   {
@@ -155,10 +149,7 @@ public class Cloud
   }
 
   /**
-   * A class for a word with colors font etc
-   * 
-   * @author user
-   *
+   * A class for a word with colors font etc.
    */
   static public class Wordclass
   {
@@ -190,8 +181,7 @@ public class Cloud
 
   /**
    * Here is the heart
-   * 
-   * @throws Exception
+   * @throws InvalidParameterException If no words.
    */
   public void doLayout() throws InvalidParameterException
   {
@@ -399,7 +389,7 @@ public class Cloud
    * Output a PNG file
    * 
    * @param file
-   * @throws IOException
+   * @throws IOException Lucene errors.
    */
   public void png(File file) throws IOException
   {
@@ -478,7 +468,7 @@ public class Cloud
    * 
    * @param writer
    * @param href
-   * @throws IOException
+   * @throws IOException Lucene errors.
    * @throws XMLStreamException
    */
   public void html(Writer writer, final String href) throws IOException, XMLStreamException

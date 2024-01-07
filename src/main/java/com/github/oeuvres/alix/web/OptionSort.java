@@ -94,7 +94,7 @@ public enum OptionSort implements Option
      * @param searcher
      * @param query
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public TopDocs top(IndexSearcher searcher, Query query) throws IOException
     {
@@ -125,7 +125,7 @@ public enum OptionSort implements Option
      * @param query
      * @param limit
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public TopDocs top(IndexSearcher searcher, Query query, int limit) throws IOException
     {

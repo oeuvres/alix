@@ -36,9 +36,6 @@ import java.util.Arrays;
 
 /**
  * A fixed list of longs, useful in arrays to be sorted.
- * 
- * @author glorieux-f
- *
  */
 public class LongTuple implements Comparable<LongTuple>
 {

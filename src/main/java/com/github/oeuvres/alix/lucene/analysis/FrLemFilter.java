@@ -61,7 +61,7 @@ import com.github.oeuvres.alix.util.Char;
  * <p>
  * The original {@link CharTermAttribute} provide by the step before is not
  * modified, allowing further filters to choose which token to index,
- * see {@link FlagCloudFilter} or {@link FlagFilter}. 
+ * see for example {@link FlagCloudFilter}. 
  * </p>
  * <p>
  * The found lemma+pos is dictionary based. No disambiguation is tried,

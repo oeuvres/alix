@@ -100,7 +100,7 @@ import com.github.oeuvres.alix.lucene.search.FieldInt;
  * shared across a complex application (ex: web servlet). Instantiation is not
  * public to ensure uniqueness of threadsafe Lucene objects ({@link Directory},
  * {@link IndexReader}, {@link IndexSearcher}, {@link IndexWriter} and
- * {@link Analyzer}). Use {@link #instance(Path, Analyzer)} to get an Alix
+ * {@link Analyzer}). Use {@link #instance(String)} to get an Alix
  * instance, and get from it what you need for your classical Lucene bizness.
  * </p>
  * 
@@ -123,17 +123,13 @@ import com.github.oeuvres.alix.lucene.search.FieldInt;
  * document ({@link IntPoint}, {@link NumericDocValuesField}).</li>
  * <li>{@link #fieldText(String)} All search indexed in a {@link TextField},
  * with stats, useful for list of search and advanced lexical statistics.</li>
- * <li>{@link #occs(String)} Size (in tokens) of indexed documents in a
- * {@link TextField}</li>
- * <li>{@link #fieldFacet(String, String)} All search of a facet field
+ * <li>{@link #fieldFacet(String)} All search of a facet field
  * ({@link SortedDocValuesField} or {@link SortedSetDocValuesField}) with
  * lexical statistics from a {@link TextField} (ex: count of words for an author
  * facet)</li>
  * <li>{@link #scale(String, String)} Data to build chronologies or other
  * charts.</li>
  * </ul>
- * 
- * @author Pierre Dittgen (2009, original idea, creation)
  */
 public class Alix
 {
@@ -210,7 +206,7 @@ public class Alix
      * 
      * @param path
      * @param analyzerClass
-     * @throws IOException
+     * @throws IOException Lucene errors.
      * @throws ClassNotFoundException
      */
     private Alix(final String name, final Path path, final Analyzer analyzer, FSDirectoryType dirType)
@@ -243,7 +239,7 @@ public class Alix
     /**
      * Returns the analyzer shared with this base.
      * 
-     * @return
+     * @return The analyzer for this Lucene index.
      */
     public Analyzer analyzer()
     {
@@ -252,12 +248,15 @@ public class Alix
 
     /**
      * Get docId parent documents (books) of nested documents (chapters), sorted by
-     * a sort specification. Calculation is not really expensive, do not cache.
+     * a sort specification.
      * 
-     * @throws IOException
+     * @param sort Sort specification to get a list of books.
+     * @return An ordered linst of docid.
+     * @throws IOException Lucene exceptions.
      */
     public int[] books(Sort sort) throws IOException
-    {
+    { 
+        // Calculation is not really expensive, do not cache.
         IndexSearcher searcher = searcher(); // ensure reader or decache
         Query qBook = new TermQuery(new Term(ALIX_TYPE, BOOK));
         TopFieldDocs top = searcher.search(qBook, MAXBOOKS, sort);
@@ -271,10 +270,10 @@ public class Alix
     }
 
     /**
-     * Get a cached object
+     * Get an Object from a local static cache.
      * 
-     * @param key
-     * @return
+     * @param key The key of a cached Object.
+     * @return A cached Object.
      */
     public Object cache(String key)
     {
@@ -289,8 +288,8 @@ public class Alix
      * as a value, so that Garbage Collector will silently delete object references
      * in case of Out of memory.
      * 
-     * @param key
-     * @param o
+     * @param key Name to get back the Object.
+     * @param o Cached Object.
      */
     public void cache(String key, Object o)
     {
@@ -298,20 +297,20 @@ public class Alix
     }
 
     /**
-     * Get value by docId of a unique store field, desired type is given by the
-     * array to load. Very slow, ~1.5 s. / 1000 books
+     * Get stored values in docId order. Be careful, not efifcient.
      * 
-     * @param field
-     * @param load
-     * @return
-     * @throws IOException
+     * @param field Field name.
+     * @param load Optional array to populate.
+     * @return An array in docid order with the int value retrieved.
+     * @throws IOException Lucene errors.
      */
-    public int[] docStore(String field, int[] load) throws IOException
+    public String[] docStore(String field, String[] load) throws IOException
     {
+        // 
         IndexReader reader = reader(); // ensure reader, or decache
         int maxDoc = reader.maxDoc();
         if (load == null || load.length < maxDoc)
-            load = new int[maxDoc];
+            load = new String[maxDoc];
         Bits liveDocs = null;
         boolean hasDeletions = reader.hasDeletions();
         if (hasDeletions) {
@@ -322,27 +321,25 @@ public class Alix
         StoredFields docRead = reader().storedFields();
         for (int i = 0; i < maxDoc; i++) {
             if (hasDeletions && !liveDocs.get(i)) {
-                load[i] = Integer.MIN_VALUE;
                 continue;
             }
             Document doc = docRead.document(i, fields);
-            int v = doc.getField(field).numericValue().intValue();
-            load[i] = v;
+            // int v = doc.getField(field).numericValue().intValue();
+            load[i] = doc.getField(field).stringValue();
         }
         return load;
     }
 
     /**
-     * See {@link #fieldFacet(String, String, Term)}
+     * See {@link #fieldFacet(String, Term)}
      * 
-     * @param facetField
-     * @param textField
-     * @return
-     * @throws IOException
+     * @param fieldName Name of a field.
+     * @return The FieldFacet for this name, or null.
+     * @throws IOException Lucene errors.
      */
-    public FieldFacet fieldFacet(final String facetField) throws IOException
+    public FieldFacet fieldFacet(final String fieldName) throws IOException
     {
-        return fieldFacet(facetField, null);
+        return fieldFacet(fieldName, null);
     }
 
     /**
@@ -352,42 +349,41 @@ public class Alix
      * to catch a “cover” document (ex: a document carrying metada about a title or
      * an author).
      *
-     * @param facetField A SortedDocValuesField or a SortedSetDocValuesField
+     * @param fieldName A SortedDocValuesField or a SortedSetDocValuesField
      *                   fieldName.
-     * @param textField  A indexed TextField.
      * @param coverTerm  A couple field:value to catch one document by facet term.
-     * @return
-     * @throws IOException
+     * @return The facet.
+     * @throws IOException Lucene errors.
      */
-    public FieldFacet fieldFacet(final String facetField, final Term coverTerm)
+    public FieldFacet fieldFacet(final String fieldName, final Term coverTerm)
             throws IOException
     {
-        String key = "AlixFacet" + facetField;
+        String key = "AlixFacet" + fieldName;
         FieldFacet facet = (FieldFacet) cache(key);
         if (facet != null) {
             return facet;
         }
-        facet = new FieldFacet(this, facetField, coverTerm);
+        facet = new FieldFacet(this, fieldName, coverTerm);
         cache(key, facet);
         return facet;
     }
 
     /**
-     * Returns an array in docId order with the value of an intPoint field (ex:
-     * year).
+     * Get a list of intPoint (ex: year) in docid order.
      * 
-     * @return
-     * @throws IOException
+     * @param fieldName An intPoint field name.
+     * @return An array in docId order with the value of an intPoint field
+     * @throws IOException Lucene errors.
      */
-    public FieldInt fieldInt(final String name) throws IOException
+    public FieldInt fieldInt(final String fieldName) throws IOException
     {
         reader(); // ensure reader, or decache
-        String key = "AlixFiedInt" + name;
+        String key = "AlixFiedInt" + fieldName;
         FieldInt ints = (FieldInt) cache(key);
         if (ints != null) {
             return ints;
         }
-        ints = new FieldInt(this, name);
+        ints = new FieldInt(this, fieldName);
         cache(key, ints);
         return ints;
     }
@@ -395,16 +391,17 @@ public class Alix
     /**
      * Get a co-occurrences reader.
      * 
-     * @param field
-     * @return u * @throws IOException
+     * @param fieldName Name of a text field.
+     * @return A “rail” Object to read co-occurrences.
+     * @throws IOException Lucene errors.
      */
-    public FieldRail fieldRail(final String field) throws IOException
+    public FieldRail fieldRail(final String fieldName) throws IOException
     {
-        String key = "AlixRail" + field;
+        String key = "AlixRail" + fieldName;
         FieldRail fieldRail = (FieldRail) cache(key);
         if (fieldRail != null)
             return fieldRail;
-        fieldRail = new FieldRail(this, field);
+        fieldRail = new FieldRail(this, fieldName);
         cache(key, fieldRail);
         return fieldRail;
     }
@@ -412,29 +409,31 @@ public class Alix
     /**
      * Get a frequence object.
      * 
-     * @param field
-     * @return
-     * @throws IOException
+     * @param fieldName Name of a text field.
+     * @return An Object with lexical frequencies.
+     * @throws IOException Lucene errors.
      */
-    public FieldText fieldText(final String field) throws IOException
+    public FieldText fieldText(final String fieldName) throws IOException
     {
-        String key = "AlixFreqs" + field;
+        String key = "AlixFreqs" + fieldName;
         FieldText fieldText = (FieldText) cache(key);
         if (fieldText != null)
             return fieldText;
-        fieldText = new FieldText(reader(), field);
+        fieldText = new FieldText(reader(), fieldName);
         cache(key, fieldText);
         return fieldText;
     }
     
     /**
      * Returns the Alix type of a field name
-     * @throws IOException 
+     * @param fieldName Name of a field.
+     * @return Type name.
+     * @throws IOException Lucene errors.
      */
-    public String ftype(final String fname) throws IOException
+    public String ftype(final String fieldName) throws IOException
     {
         reader(); // ensure reader or decache
-        FieldInfo info = fieldInfos.fieldInfo(fname);
+        FieldInfo info = fieldInfos.fieldInfo(fieldName);
         if (info == null) return NOTFOUND;
         DocValuesType type = info.getDocValuesType();
         if (type == DocValuesType.SORTED_SET || type == DocValuesType.SORTED) {
@@ -459,10 +458,10 @@ public class Alix
      * Get the internal lucene docid of a document by Alix String id (a reserved
      * field name)
      * 
-     * @param id
-     * @return the docId, or -1 if not found, or -2 if too much found, or -3 if id
+     * @param id A document id provided at indexation.
+     * @return The Lucene docId, or -1 if not found, or -2 if too much found, or -3 if id
      *         was null or empty.
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public int getDocId(final String id) throws IOException
     {
@@ -479,11 +478,11 @@ public class Alix
     }
 
     /**
-     * Get the the Alix String id of a document by the lucene internal docid.
+     * Get the the id of a document by the lucene internal docid.
      * 
-     * @param docId
-     * @return
-     * @throws IOException
+     * @param docId Lucene internal number.
+     * @return Document id provided at index time.
+     * @throws IOException Lucene errors.
      */
     public String getId(final int docId) throws IOException
     {
@@ -494,17 +493,23 @@ public class Alix
         return doc.get(ALIX_ID);
     }
 
-    public static boolean hasInstance(String name)
+    /**
+     * Is an Alix index already cached for this key?
+     * 
+     * @param key Key for cache.
+     * @return True if an index is cached for this key.
+     */
+    public static boolean hasInstance(String key)
     {
-        return pool.containsKey(name);
+        return pool.containsKey(key);
     }
 
     /**
      * Get infos for a field.
      * 
-     * @param field
-     * @return
-     * @throws IOException
+     * @param field A field.
+     * @return Info for the field or null.
+     * @throws IOException Lucene errors.
      */
     public FieldInfo info(Enum<?> field) throws IOException
     {
@@ -515,48 +520,53 @@ public class Alix
     /**
      * Get infos for a field.
      * 
-     * @param field
-     * @return
-     * @throws IOException
+     * @param fieldName Name of a field.
+     * @return Info for the field or null.
+     * @throws IOException Lucene errors.
      */
-    public FieldInfo info(String field) throws IOException
+    public FieldInfo info(String fieldName) throws IOException
     {
         reader(); // ensure reader or decache
-        return fieldInfos.fieldInfo(field);
+        return fieldInfos.fieldInfo(fieldName);
     }
     
     /**
-     * Get an alix instance by name from the pool. 
-     * @param name
-     * @return
+     * Retrieve by key an alix instance from the pool. 
+     * 
+     * @param key Name for cache.
+     * @return An Alix instance.
      */
-    public static Alix instance(String name)
+    public static Alix instance(String key)
     {
-        return pool.get(name);
+        return pool.get(key);
     }
 
     /**
      * Get a a lucene directory index by file path, from cache, or created.
      * 
-     * @param path
-     * @param analyzer
-     * @return
-     * @throws IOException
+     * @param key Name for cache.
+     * @param path File directory of lucene index.
+     * @param analyzer A lucene Analyzer.
+     * @param dirType Lucene directory type.
+     * @return An Alix instance.
+     * @throws IOException Lucene errors.
      */
-    public static Alix instance(final String name, final Path path, final Analyzer analyzer, FSDirectoryType dirType)
+    public static Alix instance(final String key, final Path path, final Analyzer analyzer, FSDirectoryType dirType)
             throws IOException
     {
-        Alix alix = pool.get(name);
+        Alix alix = pool.get(key);
         if (alix == null) {
-            alix = new Alix(name, path, analyzer, dirType);
-            pool.put(name, alix);
+            alix = new Alix(key, path, analyzer, dirType);
+            pool.put(key, alix);
         }
         return alix;
     }
 
     /**
-     * @return @see IndexReader#maxDoc()
-     * @throws IOException
+     * @see IndexReader#maxDoc()
+     * 
+     * @return Max number fo a docId in this index.
+     * @throws IOException Lucene errors.
      */
     public int maxDoc() throws IOException
     {
@@ -567,15 +577,23 @@ public class Alix
 
     /**
      * 
+     * @return Name of this Alix index.
      */
     public String name()
     {
         return name;
     }
 
-    public Query query(final String field, final String q) throws IOException
+    /**
+     * 
+     * @param fieldName Name of a text field.
+     * @param q User query String.
+     * @return A lucene Query.
+     * @throws IOException Lucene errors.
+     */
+    public Query query(final String fieldName, final String q) throws IOException
     {
-        return query(field, q, this.analyzer);
+        return query(fieldName, q, this.analyzer);
     }
 
     static public Query query(final String field, final String q, final Analyzer analyzer) throws IOException
@@ -585,12 +603,14 @@ public class Alix
 
     /**
      * 
-     * @param q
-     * @param field
-     * @return
-     * @throws IOException
+     * @param fieldName Name of a text field.
+     * @param q User query String.
+     * @param analyzer A Lucene analyzer.
+     * @param occur Boolean operator between terms.
+     * @return A lucene Query.
+     * @throws IOException Lucene errors.
      */
-    static public Query query(final String field, final String q, final Analyzer analyzer, final Occur occur)
+    static public Query query(final String fieldName, final String q, final Analyzer analyzer, final Occur occur)
             throws IOException
     {
         if (q == null || "".equals(q.trim())) {
@@ -640,9 +660,9 @@ public class Alix
                 while (--len >= 0 && word.charAt(len) != '*')
                     ;
                 if (len > 0)
-                    qTerm = new WildcardQuery(new Term(field, word));
+                    qTerm = new WildcardQuery(new Term(fieldName, word));
                 else
-                    qTerm = new TermQuery(new Term(field, word));
+                    qTerm = new TermQuery(new Term(fieldName, word));
 
                 if (bq != null) { // more than one term
                     bq.add(qTerm, op);
@@ -670,8 +690,8 @@ public class Alix
     /**
      * See {@link #reader(boolean)}
      * 
-     * @return
-     * @throws IOException
+     * @return A Lucene reader.
+     * @throws IOException Lucene errors.
      */
     public DirectoryReader reader() throws IOException
     {
@@ -682,9 +702,9 @@ public class Alix
      * Get a reader for this lucene index, cached or new. Allow to force renew if
      * force is true.
      * 
-     * @param force
-     * @return
-     * @throws IOException
+     * @param force Renew cache if true.
+     * @return A Lucene reader.
+     * @throws IOException Lucene errors.
      */
     public DirectoryReader reader(final boolean force) throws IOException
     {
@@ -700,8 +720,9 @@ public class Alix
     /**
      * A real time reader only used for some updates.
      * 
-     * @return
-     * @throws IOException
+     * @param writer A Lucene writer.
+     * @return A reader for writing.
+     * @throws IOException Lucene errors.
      */
     public IndexReader reader(IndexWriter writer) throws IOException
     {
@@ -713,8 +734,8 @@ public class Alix
      * 
      * @param fieldInt  A NumericDocValuesField used as a sorted value.
      * @param fieldText A Texfield to count occurences, used as a size for docs.
-     * @return
-     * @throws IOException
+     * @return A Scale object.
+     * @throws IOException Lucene errors.
      */
     public Scale scale(final String fieldInt, final String fieldText) throws IOException
     {
@@ -730,8 +751,8 @@ public class Alix
     /**
      * See {@link #searcher(boolean)}
      * 
-     * @return
-     * @throws IOException
+     * @return Cached Lucene searcher.
+     * @throws IOException Lucene errors.
      */
     public IndexSearcher searcher() throws IOException
     {
@@ -742,9 +763,9 @@ public class Alix
      * Get the searcher for this lucene index, allow to force renew if force is
      * true.
      * 
-     * @param force
-     * @return
-     * @throws IOException
+     * @param force Renew cache if true.
+     * @return A lucene searcher.
+     * @throws IOException Lucene errors.
      */
     public IndexSearcher searcher(final boolean force) throws IOException
     {
@@ -761,10 +782,10 @@ public class Alix
      * especially needed for multi-words ex: "en effet" return search as an array of
      * string, supposing that caller knows the field he wants to search.
      * 
-     * @param q
-     * @param fieldName
-     * @return
-     * @throws IOException
+     * @param q A search query.
+     * @param fieldName Name of text field.
+     * @return Analyzed terms to search in index.
+     * @throws IOException Lucene errors.
      */
     public String[] tokenize(final String q, final String fieldName) throws IOException
     {
@@ -775,10 +796,11 @@ public class Alix
      * Analyze a search according to the current analyzer of this base ; return
      * search
      * 
-     * @param q
-     * @param fieldName
-     * @return
-     * @throws IOException
+     * @param q A search query.
+     * @param analyzer An analyzer.
+     * @param fieldName Name of text field.
+     * @return Analyzed terms to search in index.
+     * @throws IOException Lucene errors.
      */
     public static String[] tokenize(final String q, final Analyzer analyzer, String fieldName) throws IOException
     {
@@ -849,8 +871,8 @@ public class Alix
     /**
      * See {@link #writer(Similarity)}
      * 
-     * @return
-     * @throws IOException
+     * @return A lucene writer
+     * @throws IOException Lucene errors.
      */
     public IndexWriter writer() throws IOException
     {
@@ -858,9 +880,11 @@ public class Alix
     }
 
     /**
-     * Get a lucene writer
+     * Get a lucene writer with the best options in Alix context.
      * 
-     * @throws IOException
+     * @param similarity Optional
+     * @return A lucene writer
+     * @throws IOException Lucene errors.
      */
     public IndexWriter writer(final Similarity similarity) throws IOException
     {

@@ -51,7 +51,6 @@ import com.github.oeuvres.alix.util.Roll;
 
 /**
  * Plug behind TokenLem, take a Trie dictionary, and try to compound locutions.
- * @author fred
  */
 public class LocutionFilter extends TokenFilter
 {

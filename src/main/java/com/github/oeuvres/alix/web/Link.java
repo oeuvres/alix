@@ -61,10 +61,12 @@ public interface Link
     public String[] pars();
     
     /**
-     * Display a tab as an html link <a>
-     * @param tab
-     * @param sb
-     * @param request
+     * Display a tab as an html link &lt;a&gt;.
+     * 
+     * @param tab A Link object.
+     * @param sb A String build to append to.
+     * @param request The http request to keep params.
+     * @param hrefHome The base url.
      */
     public static void a(final Link tab, final StringBuilder sb, final HttpServletRequest request, final String hrefHome)
     {

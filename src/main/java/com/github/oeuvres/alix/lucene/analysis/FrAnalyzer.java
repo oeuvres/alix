@@ -71,7 +71,7 @@ public class FrAnalyzer extends Analyzer
             return new TokenStreamComponents(source, result);
         }
         // do not select lemma but orthographic forms
-        else if (field.endsWith("orth")) {
+        else if (orth) {
             result = new FlagOrthFilter(result); // orthographic form (not lemma) as term to index
             return new TokenStreamComponents(source, result);
         }

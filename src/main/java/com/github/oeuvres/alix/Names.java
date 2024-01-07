@@ -46,19 +46,19 @@ public final class Names
     public static final String ALIX_ID = "alix.id";
     /** Mandatory field, define the level of a leaf (book/chapter, article) */
     public static final String ALIX_TYPE = "alix.type";
-    /** <alix:article> atomic text indexed as a document */
+    /** &lt;alix:article&gt; atomic text indexed as a document */
     public static final String ARTICLE = "article";
-    /** <alix:book> (contains <alix:chapter>)  */
+    /** &lt;alix:book&gt; (contains &lt;alix:chapter&gt;)  */
     public static final String BOOK = "book";
     /** Field type */
     public final static String CATEGORY = "category";
-    /** <alix:chapter> text inside a book  */
+    /** &lt;alix:chapter&gt; text inside a book  */
     public static final String CHAPTER = "chapter";
-    /** <alix:document> independant document  */
+    /** &lt;alix:document&gt; independant document  */
     public static final String DOCUMENT = "document";
     /** Field type */
     public final static String FACET = "facet";
-    /** <alix:field>  */
+    /** &lt;alix:field&gt;  */
     public static final String FIELD = "field";
     /** Field type */
     public final static String HTML = "html";

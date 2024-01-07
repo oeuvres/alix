@@ -34,8 +34,6 @@ package com.github.oeuvres.alix.web;
 
 /**
  * Distribution laws, to be used in sum
- * 
- * @author glorieux-f
  */
 public enum OptionDistrib implements Option
 {

@@ -79,8 +79,6 @@ public class Top<E> implements Iterable<Top.Entry<E>>
 
     /**
      * A private class that implements iteration over the pairs.
-     * 
-     * @author glorieux-f
      */
     class TopIterator implements Iterator<Entry<E>>
     {
@@ -250,8 +248,6 @@ public class Top<E> implements Iterable<Top.Entry<E>>
 
     /**
      * A mutable pair (rank, Object), used in the data array of the top queue.
-     * 
-     * @author glorieux-f
      */
     @SuppressWarnings("rawtypes")
     static public class Entry<E> implements Comparable<Entry>

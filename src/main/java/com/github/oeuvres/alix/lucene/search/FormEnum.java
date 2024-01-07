@@ -57,8 +57,6 @@ import com.github.oeuvres.alix.web.OptionMI;
  * interpretations and score calculations. This class is a wrapper around
  * different pre-calculated arrays, and is also used to record search specific
  * counts like freqs and hits.
- * 
- * @author glorieux-f
  */
 public class FormEnum
 {
@@ -143,7 +141,7 @@ public class FormEnum
 
     /**
      * Constructor
-     * @param fname
+     * @param name
      */
     protected FormEnum(final String name)
     {
@@ -151,7 +149,7 @@ public class FormEnum
     }
     
     /**
-     * Count of forms with freq > 0
+     * Count of forms with freq &gt; 0
      * @return
      */
     public int cardinality()
@@ -305,7 +303,7 @@ public class FormEnum
     /**
      * Populate reusable bytes with current term
      * 
-     * @param ref
+     * @param bytes
      */
     public void form(BytesRef bytes)
     {
@@ -313,8 +311,8 @@ public class FormEnum
     }
 
     /**
-     * Copy the current term in a reusable char array *
-     * 
+     * Copy the current term in a reusable char array.
+     * @param term
      * @return
      */
     public CharsAtt form(CharsAtt term)
@@ -329,9 +327,8 @@ public class FormEnum
     }
 
     /**
-     * Copy the current term in a reusable char array *
-     * 
-     * @return
+     * Copy the current term in a reusable char array.
+     * @param term
      */
     public void form(Chain term)
     {
@@ -575,7 +572,7 @@ public class FormEnum
 
     /**
      * Value used for sorting for current term.
-     * 
+     * @param formId
      * @return
      */
     public double score(final int formId)
@@ -586,9 +583,8 @@ public class FormEnum
     }
 
     /**
-     * Score 
      * 
-     * @return
+     * @param distrib
      */
     public void score(OptionDistrib distrib)
     {
@@ -631,17 +627,29 @@ public class FormEnum
     }
     /**
      * Set the sorted vector of ids
+     * @param formNos
      */
     public void setNos(final int[] formNos)
     {
         this.formNos = formNos;
     }
 
+    /**
+     * 
+     * @param order
+     * @return
+     */
     public int[] sort(final Order order)
     {
         return sort(order, -1, false);
     }
 
+    /**
+     * 
+     * @param order
+     * @param limit
+     * @return
+     */
     public int[] sort(final Order order, final int limit)
     {
         return sort(order, limit, false);
@@ -649,7 +657,10 @@ public class FormEnum
     
     /**
      * Prepare the order of enumeration with a vector.
-     * @throws Exception
+     * @param order
+     * @param limit
+     * @param reverse
+     * @return
      */
     public int[] sort(final Order order, final int limit, final boolean reverse)
     {

@@ -113,7 +113,7 @@ public class Insert {
     
     /**
     * Connect to an sqlite database. Everything is broken if it can’t work, let it cry
-     * @throws IOException 
+     * @throws IOException Lucene errors.
      * @throws SQLException 
     */
    public static void connect(final File sqlite) throws IOException, SQLException {
@@ -148,7 +148,7 @@ public class Insert {
     * 
     * @param dir
     * @throws SQLException
- * @throws IOException 
+ * @throws IOException Lucene errors.
     */
    public static void crawl (File dir) throws SQLException, IOException
    {

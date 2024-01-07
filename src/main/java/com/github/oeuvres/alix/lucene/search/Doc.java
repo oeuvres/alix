@@ -91,7 +91,7 @@ public class Doc
      * 
      * @param alix
      * @param id
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public Doc(final Alix alix, final String id) throws IOException
     {
@@ -106,7 +106,7 @@ public class Doc
      * @param alix
      * @param id
      * @param fieldsToLoad
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public Doc(final Alix alix, final String id, final HashSet<String> fieldsToLoad) throws IOException
     {
@@ -133,7 +133,7 @@ public class Doc
      * 
      * @param alix
      * @param docId
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public Doc(final Alix alix, final int docId) throws IOException
     {
@@ -148,7 +148,7 @@ public class Doc
      * @param alix
      * @param docId
      * @param fieldsToLoad
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public Doc(final Alix alix, final int docId, final HashSet<String> fieldsToLoad) throws IOException
     {
@@ -183,7 +183,7 @@ public class Doc
      * @param docId2
      * @param right
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      * @throws NoSuchFieldException
      */
     public String contrast(final String field, final int docId2, final boolean right)
@@ -378,7 +378,7 @@ public class Doc
     /**
      * Get and cache a term vector for a field of this document.
      * 
-     * @throws IOException
+     * @throws IOException Lucene errors.
      * @throws NoSuchFieldException
      */
     public Terms getTermVector(String field) throws IOException, NoSuchFieldException
@@ -408,7 +408,7 @@ public class Doc
      * Hilite search in a stored document as html.
      * 
      * @param field
-     * @throws IOException
+     * @throws IOException Lucene errors.
      * @throws NoSuchFieldException
      */
     public String hilite(final String field, final ByteRunAutomaton include) throws NoSuchFieldException, IOException
@@ -468,7 +468,7 @@ public class Doc
      * @param field
      * @param docId2
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      * @throws NoSuchFieldException
      */
     public Top<String> intersect(final String field, final int docId2) throws IOException, NoSuchFieldException
@@ -528,7 +528,7 @@ public class Doc
      * @param limit
      * @return
      * @throws NoSuchFieldException
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public List<String[]> kwic(
         final String field, 
@@ -612,7 +612,7 @@ public class Doc
      * 
      * @param field
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public int length(String field) throws IOException
     {
@@ -623,7 +623,7 @@ public class Doc
      * 
      * @param field
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      * @throws NoSuchFieldException
      */
     public String paint(final String field) throws NoSuchFieldException, IOException
@@ -670,15 +670,13 @@ public class Doc
     /**
      * Count of occurrences by term for the document. Returns an iterator sorted
      * according to a scorer. If scorer is null, default is count of occurences.
-     * {@link FieldText#forms(int, org.apache.lucene.util.BitSet, Specif, TagFilter)}
+     * {@link FieldText#forms(org.apache.lucene.util.BitSet, TagFilter, OptionDistrib)}
      * 
      * @param field
-     * @param limit
-     * @param specif
+     * @param distrib
      * @param tags
-     * @param reverse
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      * @throws NoSuchFieldException
      */
     public FormEnum forms(String field, OptionDistrib distrib, TagFilter tags) throws IOException, NoSuchFieldException

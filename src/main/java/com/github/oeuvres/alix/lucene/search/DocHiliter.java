@@ -58,7 +58,7 @@ public class DocHiliter
    * Flatten a term vector as a list of tokens in document order.
    * @param tvek
    * @throws NoSuchFieldException
-   * @throws IOException
+   * @throws IOException Lucene errors.
    */
   public DocHiliter(Terms tvek, ByteRunAutomaton include, ByteRunAutomaton exclude) throws NoSuchFieldException, IOException
   {

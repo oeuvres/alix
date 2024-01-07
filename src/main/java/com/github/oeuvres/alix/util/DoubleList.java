@@ -93,8 +93,8 @@ public class DoubleList
     /**
      * Call it before write
      * 
-     * @param position
-     * @return true if resized (? good ?)
+     * @param pos
+     * @return True if resized.
      */
     protected boolean onWrite(final int pos)
     {

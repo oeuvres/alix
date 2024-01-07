@@ -86,8 +86,9 @@ public class Corpus
      * 
      * @param alix  Link to a lucene index.
      * @param field Field name storing the bookid.
-     * @param name  Name of the corpus
-     * @throws IOException
+     * @param name  Name of the corpus.
+     * @param desc  Optional description of the corpus.
+     * @throws IOException Lucene errors.
      */
     public Corpus(final Alix alix, final String field, final String name, final String desc) throws IOException
     {
@@ -103,7 +104,7 @@ public class Corpus
      * 
      * @param alix Link to a lucene index.
      * @param json Data to rebuild the corpus
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public Corpus(Alix alix, String field, String json) throws IOException
     {
@@ -129,9 +130,10 @@ public class Corpus
     }
 
     /**
+     * 
      * @param alix Link to a lucene index.
-     * @param json Data to rebuild the corpus
-     * @throws IOException
+     * @param books Data to rebuild the corpus
+     * @throws IOException Lucene errors.
      */
     public Corpus(Alix alix, String[] books) throws IOException
     {
@@ -189,7 +191,7 @@ public class Corpus
     /**
      * Return a json String, storing enough info to rebuild object.
      * 
-     * @throws IOException
+     * @throws IOException Lucene errors.
      * @throws JSONException
      */
     public String json() throws JSONException, IOException

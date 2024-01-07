@@ -43,10 +43,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A sparse matrix to record vectors
- * 
- * @author fred
- *
+ * A sparse matrix to record vectors.
  */
 public class SparseMat
 {

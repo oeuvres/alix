@@ -51,10 +51,6 @@ import com.github.oeuvres.alix.lucene.Alix;
 /**
  * Handle data to display results as a chronology, according to subset of an
  * index, given as a bitset.
- * 
- * 
- * @author fred
- *
  */
 public class Scale
 {
@@ -282,13 +278,13 @@ public class Scale
      * by legend().
      * 
      * #) col[0] global count of occurrences for each requested point
-     * #) populate an array docId -> pointIndex
+     * #) populate an array docId → pointIndex
      * #) loop on index reader to get count 
      * 
      * @param forms A list of terms to search
      * @param dots   Number of dots by curve.
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public long[][] curves(String[] forms, int dots) throws IOException
     {

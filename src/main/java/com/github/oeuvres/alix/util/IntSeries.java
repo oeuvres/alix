@@ -36,8 +36,6 @@ package com.github.oeuvres.alix.util;
  * A mutable list of ints with useful metadata, for example to calculate
  * average. This object is not protected, for fast access to fields, be careful
  * to enjoy speed. Not suitable as a key for a hash (mutable).
- *
- * @author glorieux-f
  */
 public class IntSeries extends IntList
 {

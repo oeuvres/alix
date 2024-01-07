@@ -315,9 +315,11 @@ public class Char
     }
     
     /**
-     * Return a lower case version of String, keeping exactly same char size
-     * (will keep æ -> æ, Œ -> œ…)
-     * @param source
+     * Return a lower case version of a String, keeping exactly same char size
+     * (will keep æ → æ, Œ → œ…)
+     * 
+     * @param chain A mutable String.
+     * @return The same object, modified.
      */
     public static Chain toLowASCII(Chain chain)
     {

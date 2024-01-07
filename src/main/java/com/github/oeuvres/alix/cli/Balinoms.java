@@ -141,11 +141,11 @@ public class Balinoms implements Callable<Integer> {
     }
 
     /**
-     * Traverser le texte, ramasser les infos, cracher à la fin
+     * Tag name in an XML string.
      * 
-     * @param code
-     * @param text
-     * @throws IOException
+     * @param xml The source XML content.
+     * @param out A writer for different destinations.
+     * @throws IOException Lucene errors.
      */
     public void parse(String xml, PrintWriter out) throws IOException {
         TokenStream stream = anaNoms.tokenStream("stats", new StringReader(xml));
@@ -216,7 +216,9 @@ public class Balinoms implements Callable<Integer> {
     }
 
     /**
-     * Increment dics. This way should limit object creation
+     * Increment dics. This way should limit object creation.
+     * @param chars Increment a term entry.
+     * @param flag Flag of the term.
      */
     private void inc(final CharsAtt chars, final int flag) {
         @SuppressWarnings("unlikely-arg-type")
@@ -229,6 +231,13 @@ public class Balinoms implements Callable<Integer> {
         }
     }
 
+    /**
+     * Get the top list.
+     * 
+     * @param limit Count of terms selected.
+     * @param filter Filter of grammar tags.
+     * @return A TSV formatted String.
+     */
     public String top(final int limit, TagFilter filter) {
         StringBuffer sb = new StringBuffer();
         Entry[] lexiq = dic.values().toArray(new Entry[0]);
@@ -236,7 +245,7 @@ public class Balinoms implements Callable<Integer> {
         sb.append("forme\ttype\teffectif\n");
         int n = 1;
         for (Entry entry : lexiq) {
-            sb.append(entry.form + "\t" + Tag.name(entry.flag) + "\t" + entry.count + "\n");
+            sb.append(entry.form + "\t" + Tag.label(entry.flag) + "\t" + entry.count + "\n");
             if (n == limit)
                 break;
             n++;
@@ -246,10 +255,10 @@ public class Balinoms implements Callable<Integer> {
 
 
     /**
-     * Test the Class
+     * Run the Class.
      * 
-     * @param args
-     * @throws IOException
+     * @param args Command line arguments.
+     * @throws IOException File problems.
      */
     public static void main(String args[]) throws IOException {
         int exitCode = new CommandLine(new Balinoms()).execute(args);

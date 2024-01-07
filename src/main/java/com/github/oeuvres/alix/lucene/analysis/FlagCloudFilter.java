@@ -109,7 +109,7 @@ public class FlagCloudFilter extends TokenFilter
   /**
    * Most of the tokens are not rejected but rewrited
    * @return
-   * @throws IOException
+   * @throws IOException Lucene errors.
    */
   protected boolean accept() throws IOException
   {

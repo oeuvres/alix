@@ -78,10 +78,6 @@ import com.github.oeuvres.alix.web.OptionMI;
  * for co-occurrences stats. Data structure of the file
  * <p>
  * int:maxDoc, maxDoc*[int:docLength], maxDoc*[docLength*[int:formId], int:-1]
- * 
- * 
- * @author fred
- *
  */
 // ChronicleMap has been tested, but it is not more than x2 compared to lucene BinaryField, so stay in Lucene
 public class FieldRail
@@ -125,9 +121,9 @@ public class FieldRail
 
     /**
      * Loop on the rail to get bigrams without any intelligence.
-     * 
+     * @param filter
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public Map<IntPair, Bigram> bigrams(final BitSet filter) throws IOException
     {
@@ -513,7 +509,7 @@ public class FieldRail
      * between but not holes or punctuation)
      * 
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public Map<IntPair, Bigram> expressions(final BitSet docFilter, final TagFilter formFilter) throws IOException
     {
@@ -601,7 +597,7 @@ public class FieldRail
      * vector, where index is the formId for the field, the value is count of
      * occurrences of the term. Counts are extracted from stored <i>rails</i>.
      * 
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public long[] freqs(final BitSet filter) throws IOException
     {
@@ -638,7 +634,7 @@ public class FieldRail
      * 
      * @param filter
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     protected AtomicIntegerArray freqsParallel(final BitSet filter) throws IOException
     {
@@ -697,7 +693,7 @@ public class FieldRail
     /**
      * Load and calculate index for the rail file
      * 
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     private void load() throws IOException
     {
@@ -740,7 +736,7 @@ public class FieldRail
      * 
      * @param termVector A term vector of a document with positions.
      * @param buf        A reusable binary buffer to index.
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public void rail(Terms termVector, IntList buf) throws IOException
     {
@@ -780,7 +776,7 @@ public class FieldRail
      * <li>N: global count of occs from which is extracted the context (full corpus
      * or filtered section)
      * 
-     * @throws IOException
+     * @throws IOException Lucene errors.
      * 
      */
     private void score(final FormEnum results, final int[] pivotIds, final OptionMI mi) throws IOException
@@ -837,7 +833,7 @@ public class FieldRail
      * their positions {@link org.apache.lucene.document.BinaryDocValuesField}. Byte
      * ordering is the java default.
      * 
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     private void store() throws IOException
     {
@@ -893,11 +889,9 @@ public class FieldRail
     /**
      * Tokens of a doc as strings from a byte array
      * 
-     * @param rail   Binary version an int array
-     * @param offset Start index in the array
-     * @param length Length of bytes to consider from offset
+     * @param rail
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public String[] strings(int[] rail) throws IOException
     {

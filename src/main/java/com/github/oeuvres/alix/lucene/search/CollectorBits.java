@@ -52,15 +52,12 @@ import org.apache.lucene.util.SparseFixedBitSet;
  * final BitSet bits = colBits.bits();
  * for (
  *     int docId = bits.nextSetBit(0), max = bits.length();
- *     docId < max;
+ *     docId &lt; max;
  *     docId = bits.nextSetBit(docId + 1)
  * ) {
  *     out.print(", " + docId);
  * }
  * </pre>
- *
- * 
- * @author glorieux-f
  */
 public class CollectorBits extends SimpleCollector implements Collector
 {
@@ -84,6 +81,7 @@ public class CollectorBits extends SimpleCollector implements Collector
 
     /**
      * Get the document filter.
+     * @return
      */
     public BitSet bits()
     {
@@ -92,6 +90,7 @@ public class CollectorBits extends SimpleCollector implements Collector
 
     /**
      * Get current number of hits
+     * @return
      */
     public int hits()
     {

@@ -85,8 +85,6 @@ import com.github.oeuvres.alix.util.ML;
  * <p>
  * The resolution of elision (') and hyphen (-) is language specific (French).
  * </p>
- * <p>
- * </p>
  */
 public class FrTokenizer extends Tokenizer
 {
@@ -180,9 +178,8 @@ public class FrTokenizer extends Tokenizer
     }
 
     /**
-     * Handle xml tags ?
-     * 
-     * @param xml
+     * Build a Tokenizer for French with possible flags
+     * @param flags {@link #XML} | {@link #SEARCH}
      */
     public FrTokenizer(int flags)
     {
@@ -531,9 +528,6 @@ public class FrTokenizer extends Tokenizer
 
     /**
      * An attribute factory
-     * 
-     * @author fred
-     *
      */
     private static final class AlixAttributeFactory extends AttributeFactory
     {

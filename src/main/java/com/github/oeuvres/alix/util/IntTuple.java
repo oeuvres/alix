@@ -34,9 +34,6 @@ package com.github.oeuvres.alix.util;
 
 /**
  * A non mutable list of ints, designed to be a good key in an Hashmap.
- * 
- * @author glorieux-f
- *
  */
 public class IntTuple implements Comparable<IntTuple>
 {

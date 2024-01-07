@@ -57,7 +57,7 @@ public class EdgeSquare implements Iterable<Edge>
 
     /**
      * Build a square matrix of ints. Words should absolutely be an ordered array of unique ints
-     * @param words An ordered set of ints nodeId->nodeValue
+     * @param words An ordered set of ints nodeId → nodeValue
      * @param directed
      */
     public EdgeSquare(final int[] words, final boolean directed)
@@ -130,8 +130,10 @@ public class EdgeSquare implements Iterable<Edge>
 
     /**
      * Increment a cell
-     * @param x
-     * @param y
+     * 
+     * @param source
+     * @param target
+     * @return
      */
     public int inc(final int source, final int target)
     {

@@ -101,7 +101,7 @@ public class CsvReader
      * Read one row (should stop at each
      * 
      * @return
-     * @throws IOException
+     * @throws IOException Lucene errors.
      */
     public Row readRow() throws IOException
     {

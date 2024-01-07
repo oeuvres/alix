@@ -137,7 +137,7 @@ public class XMLIndexer implements Runnable
      * @param templates
      * @throws SAXException
      * @throws ParserConfigurationException
-     * @throws IOException
+     * @throws IOException Lucene errors.
      * @throws TransformerException
      */
     static private void write(IndexWriter writer, Iterator<Path> it, Templates templates)
@@ -266,6 +266,7 @@ public class XMLIndexer implements Runnable
 
     /**
      * Log fatal error.
+     * @param o
      */
     public static void fatal(Object o)
     {
@@ -276,10 +277,14 @@ public class XMLIndexer implements Runnable
     /**
      * Recursive indexation of an XML folder, multi-threadeded.
      * 
-     * @throws TransformerException
+     * @param writer
+     * @param globs
+     * @param threads
+     * @param xsl
+     * @throws Exception
      */
     static public void index(final IndexWriter writer, final File[] globs, int threads, String xsl)
-            throws ParserConfigurationException, SAXException, InterruptedException, IOException, TransformerException
+            throws Exception
     {
         // compile XSLT, maybe it could be done before?
         Templates templates = null;

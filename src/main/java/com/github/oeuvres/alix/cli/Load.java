@@ -50,7 +50,6 @@ import java.util.concurrent.Callable;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
@@ -92,12 +91,12 @@ public class Load implements Callable<Integer>
 
     /**
      * Return true if a directory does not exist or if it has been removed.
-     * 
-     * @param dir
-     * @return
-     * @throws IOException
+     *
+     * @param dir A directory of files.
+     * @return true if directory has been nicely deleted or do not exists.
+     * @throws IOException I/O file system errors.
      */
-    public boolean ask4rmdir(File dir) throws IOException
+    private boolean ask4rmdir(File dir) throws IOException
     {
         if (!dir.exists())
             return true;
@@ -188,9 +187,9 @@ public class Load implements Callable<Integer>
     /**
      * Parse properties to produce an alix lucene index
      * 
-     * @param propsFile
-     * @throws IOException
-     * @throws NoSuchFieldException
+     * @param propsFile A properties file in XML format {@link Properties#loadFromXML(java.io.InputStream)}.
+     * @throws IOException I/O file system error, or required files not found.
+     * @throws NoSuchFieldException Properties errors.
      */
     public void parse(File propsFile) throws IOException, NoSuchFieldException
     {
@@ -286,35 +285,35 @@ public class Load implements Callable<Integer>
     }
 
     /**
-     * Name of an old index to save
+     * Factor construction of old index name.
      * 
-     * @param name
-     * @return
+     * @param name An index name.
+     * @return Name of an old index.
      */
     public static String nameOld(final String name)
     {
         return name + "_old";
     }
 
+    /**
+     * Factor construction of temp index name.
+     * 
+     * @param name An index name.
+     * @return Name of temp index.
+     */
     public static String nameTmp(final String name)
     {
         return name + "_tmp";
     }
 
     /**
-     * Write index for the globs given by the props file.
      * 
-     * @param name Name of the base
-     * @param name Path where to write the path index
-     * @param path
-     * @throws IOException
-     * @throws ParserConfigurationException
-     * @throws SAXException
-     * @throws InterruptedException
-     * @throws TransformerException
+     * @param name Name of the base.
+     * @param path Path where to write the path index.
+     * @throws Exception Errors in the XML parsing.
      */
     public void write(String name, Path path)
-            throws IOException, ParserConfigurationException, SAXException, InterruptedException, TransformerException
+            throws Exception
     {
         Alix alix = Alix.instance(name, path, new FrAnalyzer(), null);
         // Alix alix = Alix.instance(name, path, new StandardAnalyzer(), null);
@@ -346,15 +345,11 @@ public class Load implements Callable<Integer>
      * A logic to write safely an index in a temp directory before affecting a
      * running index.
      * 
-     * @param name
-     * @throws IOException
-     * @throws ParserConfigurationException
-     * @throws SAXException
-     * @throws InterruptedException
-     * @throws TransformerException
+     * @param dstDir Destination parent file directory.
+     * @param name Name of the index to write.
+     * @throws Exception Errors during XML process and Lucene indexation.
      */
-    public void writeSafe(final File dstDir, final String name)
-            throws IOException, ParserConfigurationException, SAXException, InterruptedException, TransformerException
+    public void writeSafe(final File dstDir, final String name) throws Exception
     {
 
         // Use a tmp dir to not overwrite a working index on server
@@ -395,9 +390,10 @@ public class Load implements Callable<Integer>
     /**
      * Because a bug in Microsoft.Windows filesystem with Java, impossible to have
      * the same safe indexation like for unix.
-     * 
-     * @param name
-     * @throws Exception 
+     *
+     * @param dstdir Parent destination file system directory.
+     * @param name Name of a lucene index.
+     * @throws Exception XML or Lucene erros.
      */
     public void writeUnsafe(final File dstdir, final String name) throws Exception
     {
@@ -434,6 +430,12 @@ public class Load implements Callable<Integer>
             Dir.rm(tmpDir);
     }
 
+    /**
+     * Send index loading.
+     * 
+     * @param args Command line arguments.
+     * @throws Exception XML or Lucene errors.
+     */
     public static void main(String[] args) throws Exception
     {
         int exitCode = new CommandLine(new Load()).execute(args);

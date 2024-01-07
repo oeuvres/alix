@@ -227,7 +227,9 @@ public enum Tag
         this.parent = flag & 0xF0;
     }
 
+    /** Array to get a tag by number */
     private static final Tag[] byFlag = new Tag[256];
+    /** Dictionary to get number of a tag by name */
     private static final Map<String, Integer> byName = new HashMap<String, Integer>();
     static {
         for (Tag tag : Tag.values()) {
@@ -236,11 +238,21 @@ public enum Tag
         }
     }
 
+    /**
+     * Check if Tag share same parent, by number.
+     * @param flag Number of a Tag.
+     * @return True if tags have same class.
+     */
     public boolean sameParent(final int flag)
     {
         return ((flag & 0xF0) == parent);
     }
 
+    /**
+     * Return parent Tag by number
+     * @param flag Number of a Tag.
+     * @return The parent Tag.
+     */
     static public Tag parent(final int flag)
     {
         Tag ret = byFlag[flag & 0xF0];
@@ -252,7 +264,7 @@ public enum Tag
     /**
      * Return the String value of the tag.
      * 
-     * @return
+     * @return Label.
      */
     public String label()
     {
@@ -262,7 +274,7 @@ public enum Tag
     /**
      * Return the String description of the tag.
      * 
-     * @return
+     * @return Description.
      */
     public String desc()
     {
@@ -270,16 +282,20 @@ public enum Tag
     }
 
     /**
-     * Return the String description of the tag.
      * 
-     * @return
+     * @return The identifier number.
      */
     public int flag()
     {
         return flag;
     }
 
-    public static int code(final Chain label)
+    /**
+     * 
+     * @param label A Tag label.
+     * @return The Identifier number of a Tag.
+     */
+    public static int flag(final Chain label)
     {
         @SuppressWarnings("unlikely-arg-type")
         Integer ret = byName.get(label);
@@ -290,7 +306,12 @@ public enum Tag
         return ret;
     }
 
-    public static int code(final String label)
+    /**
+     * 
+     * @param label A tag label.
+     * @return The identifier number of a Tag.
+     */
+    public static int flag(final String label)
     {
         Integer ret = byName.get(label);
         if (ret == null)
@@ -298,6 +319,12 @@ public enum Tag
         return ret;
     }
 
+    /**
+     * Get Tag by number.
+     * 
+     * @param flag A Tag identifier number.
+     * @return A Tag.
+     */
     public static Tag tag(int flag)
     {
         // the int may be used as a more complex bit flag
@@ -305,16 +332,12 @@ public enum Tag
         return byFlag[flag];
     }
 
-    public static String name(int flag)
-    {
-        // the int may be used as a more complex bit flag
-        flag = flag & 0xFF;
-        Tag tag = byFlag[flag];
-        if (tag == null)
-            return null;
-        return tag.toString();
-    }
 
+    /**
+     * Get Tag label by number identifier.
+     * @param flag Tag identifier number.
+     * @return A human understandable label.
+     */
     public static String label(int flag)
     {
         flag = flag & 0xFF;
