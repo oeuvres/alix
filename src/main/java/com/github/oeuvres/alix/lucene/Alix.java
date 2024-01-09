@@ -38,6 +38,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -88,6 +89,8 @@ import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
 
 import static com.github.oeuvres.alix.Names.*;
+
+import com.github.oeuvres.alix.lucene.analysis.FrAnalyzer;
 import com.github.oeuvres.alix.lucene.search.FieldFacet;
 import com.github.oeuvres.alix.lucene.search.Scale;
 import com.github.oeuvres.alix.lucene.search.FieldText;
@@ -388,6 +391,7 @@ public class Alix
         return ints;
     }
 
+    
     /**
      * Get a co-occurrences reader.
      * 
@@ -914,5 +918,37 @@ public class Alix
         // conf.setIndexSort(new Sort(new SortField(YEAR, SortField.Type.INT)));
         writer = new IndexWriter(dir, conf);
         return writer;
+    }
+
+    /**
+     * Give a new writer to create a lucene index, could be closed.
+     * @param path
+     * @param analyzer
+     * @return
+     * @throws IOException
+     */
+    public static IndexWriter writer(Path path, Analyzer analyzer) throws IOException
+    {
+        IndexWriterConfig conf = new IndexWriterConfig(analyzer);
+        // Use false for batch indexing with very large ram buffer settings.
+        conf.setUseCompoundFile(false);
+        // may needed, increase the max heap size to the JVM (eg add -Xmx512m or
+        // -Xmx1g):
+        conf.setRAMBufferSizeMB(1024.0);
+        conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
+        // default similarity
+        Similarity similarity = new BM25Similarity();
+        conf.setSimilarity(similarity);
+        // no effect found with modification ConcurrentMergeScheduler
+        /*
+         * int threads = Runtime.getRuntime().availableProcessors() - 1;
+         * ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
+         * cms.setMaxMergesAndThreads(threads, threads); cms.disableAutoIOThrottle();
+         * conf.setMergeScheduler(cms);
+         */
+        // order docId by a field after merge ? No functionality should rely on such
+        // order
+        // conf.setIndexSort(new Sort(new SortField(YEAR, SortField.Type.INT)));
+        return new IndexWriter(FSDirectory.open(path), conf);
     }
 }
