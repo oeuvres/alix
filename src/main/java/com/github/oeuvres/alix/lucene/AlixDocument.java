@@ -26,7 +26,7 @@ import com.github.oeuvres.alix.util.ML;
 public class AlixDocument 
 {
     /** Lucene document to populate */
-    Document doc = new Document();
+    Document doc;
     /** Non repeatable fields */
     HashSet<String> uniks  = new HashSet<>();
     /** Required fields for this collection */
@@ -50,7 +50,8 @@ public class AlixDocument
         if (bad(id)) {
             throw new InvalidParameterException("An id is required for recall of documents, caller should ensure unicity.");
         }
-        doc.clear();
+        // reuse document has sense with same fields
+        this.doc = new Document();
         uniks.clear();
         catField(ALIX_ID, id);
         catField(ALIX_TYPE, ARTICLE);
@@ -122,8 +123,8 @@ public class AlixDocument
         doc.add(new StoredField(name, html));
         String txt = ML.detag(html);
         BytesRef bytes = new BytesRef(txt);
-        doc.add(new SortedDocValuesField(name, bytes));
-        doc.add(new SortedSetDocValuesField(name, bytes));
+        // doc.add(new SortedDocValuesField(name, bytes));
+        // doc.add(new SortedSetDocValuesField(name, bytes));
         doc.add(new StringField(name, bytes, Field.Store.NO));
         return this;
     }

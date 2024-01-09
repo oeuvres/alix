@@ -37,6 +37,7 @@ import java.io.Writer;
 import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 
 import org.apache.lucene.util.BytesRef;
 
@@ -890,6 +891,54 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         return size;
     }
 
+    /**
+     * Like xpath normalize-space(), normalize a char used as a separator,
+     * maybe useful for url paths.
+     * @return
+     */
+    static public String normalize(final CharSequence cs, final char sep)
+    {
+        return normalize(cs, new String(new char[]{sep}), sep);
+    }
+
+    /**
+     * Suppress repetition of a char used as a separator.
+     * maybe useful for url paths.
+     * @return
+     */
+    static public String normalize(final CharSequence cs, final String search, final char replace)
+    {
+        // create a new char array, not bigger than actual size
+        final int len = cs.length();
+        char[] newChars = new char[len];
+        int length = 0;
+        boolean sepToAppend = false;
+        boolean lastIsFullChar = false;
+        for (int i = 0; i < len; i++) {
+            final char c = cs.charAt(i);
+            // full char, append
+            if (search.indexOf(c) == -1) {
+                lastIsFullChar = true;
+                // append a separator only before a token to append
+                if (sepToAppend) {
+                    newChars[length++] = replace;
+                    sepToAppend = false;
+                }
+                newChars[length++] = c;
+                continue;
+            }
+            // separator
+            if (!lastIsFullChar) {
+                // previous was start or separator, append nothing
+                continue;
+            }
+            // append separator
+            lastIsFullChar = false;
+            sepToAppend = true;
+        }
+        return new String(newChars, 0, length);
+    }
+
     public Chain prepend(char c)
     {
         ensureLeft(1);
@@ -1045,22 +1094,60 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     public String[] split(final char separator)
     {
         // store generated Strings in alist
-        ArrayList<String> list = new ArrayList<>();
+        LinkedList<String> list = new LinkedList<>();
         int offset = zero;
         int to = zero;
         int max = zero + size;
         char[] dat = chars;
-        while (to <= max) {
+        while (to < max) {
             // not separator, continue
             if (dat[to] != separator) {
                 to++;
                 continue;
             }
-            // separator, add a String
-            list.add(new String(dat, offset, to - offset));
+            // separator, add a String, if not empty
+            if (to - offset > 0) {
+                list.add(new String(dat, offset, to - offset));
+            }
             offset = ++to;
         }
-        list.add(new String(dat, offset, to - offset));
+        // separator, add a String, if not empty
+        if (to - offset > 0) {
+            list.add(new String(dat, offset, to - offset));
+        }
+        return list.toArray(new String[0]);
+    }
+
+    /**
+     * Split on one or more char
+     * 
+     * @param separator
+     * @return
+     */
+    public String[] split(final String seps)
+    {
+        // store generated Strings in alist
+        LinkedList<String> list = new LinkedList<>();
+        int offset = zero;
+        int to = zero;
+        int max = zero + size;
+        char[] dat = chars;
+        while (to < max) {
+            // not separator, continue
+            if (seps.indexOf(dat[to]) == -1) {
+                to++;
+                continue;
+            }
+            // separator, add a String, if not empty
+            if (to - offset > 0) {
+                list.add(new String(dat, offset, to - offset));
+            }
+            offset = ++to;
+        }
+        // separator, add a String, if not empty
+        if (to - offset > 0) {
+            list.add(new String(dat, offset, to - offset));
+        }
         return list.toArray(new String[0]);
     }
 
