@@ -316,22 +316,45 @@ public class Doc
         return docId;
     }
 
-    /**
-     * Count occurences of terms in the doc
-     */
     public int freq(final String field, final String[] forms) throws NoSuchFieldException, IOException
+    {
+        return freq(
+            alix.reader(),
+            this.docId,
+            field,
+            forms
+        );
+    }
+    /**
+     * Count occurences of terms in a doc.
+     *
+     * @param reader  A Lucene reader to get stats from.
+     * @param doc     Internal id of doc.
+     * @param field   Field name.
+     * @param forms   Array of forms.
+     * @return        Occurrences count for founded forms.
+     * @throws NoSuchFieldException
+     * @throws IOException
+     */
+    static public int freq(
+            final IndexReader reader, 
+            final int doc, 
+            final String field, 
+            final String[] forms
+    ) throws NoSuchFieldException, IOException
     {
         if (forms == null || forms.length < 1)
             return 0;
         Arrays.sort(forms); // may optimize term seekink, useful for uniq
-        Terms tvek = getTermVector(field);
+        Terms tvek = reader.termVectors().get(doc, field);
+
         if (!tvek.hasFreqs()) {
-            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " docId=" + docId);
+            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " doc=" + doc);
         }
         int freq = 0;
         TermsEnum tenum = tvek.iterator();
         if (tenum == null) {
-            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " docId=" + docId);
+            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " doc=" + doc);
         }
         PostingsEnum postings = null;
         String last = null;
@@ -383,10 +406,6 @@ public class Doc
      */
     public Terms getTermVector(String field) throws IOException, NoSuchFieldException
     {
-        /*
-         * Shall we cache ? Terms tvek = vectors.get(field); if (tvek != null) return
-         * tvek; // cache OK
-         */
         // new lucene API, not tested
         Terms tvek = alix.reader().termVectors().get(docId, field);
         if (tvek == null)

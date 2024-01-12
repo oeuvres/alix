@@ -38,7 +38,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -90,7 +89,6 @@ import org.apache.lucene.util.Bits;
 
 import static com.github.oeuvres.alix.Names.*;
 
-import com.github.oeuvres.alix.lucene.analysis.FrAnalyzer;
 import com.github.oeuvres.alix.lucene.search.FieldFacet;
 import com.github.oeuvres.alix.lucene.search.Scale;
 import com.github.oeuvres.alix.lucene.search.FieldText;

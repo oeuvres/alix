@@ -4,7 +4,11 @@ import static com.github.oeuvres.alix.Names.*;
 
 import java.security.InvalidParameterException;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -15,6 +19,7 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.util.BytesRef;
 
+import com.github.oeuvres.alix.lucene.analysis.MetaAnalyzer;
 import com.github.oeuvres.alix.util.ML;
 
 /**
@@ -31,6 +36,8 @@ public class AlixDocument
     HashSet<String> uniks  = new HashSet<>();
     /** Required fields for this collection */
     String[] required;
+    /** Simple analyzer for recall */
+    Analyzer metaAnalyzer = new MetaAnalyzer();
     /**
      * Create document indexer with a list of required fields, tested when lucene document is requested.
      * @param required Array of field names.
@@ -105,7 +112,20 @@ public class AlixDocument
         facetField("author", html);
         return this;
     }
-    
+
+    /**
+     * Set a searchable bibliographic line for a document.
+     * Not for grouping, sorting, or hiliting.
+     * 
+     * @param html Value, html tags allowed.
+     * @return This for chaining.
+     */
+    public AlixDocument bibl(String html)
+    {
+        facetField("bibl", html);
+        return this;
+    }
+
     /**
      * A field type unique for a document, usually mandatory, like a title or byline ; 
      * maybe a covering class among a corpus. Could be used for sorting.
@@ -123,14 +143,16 @@ public class AlixDocument
         doc.add(new StoredField(name, html));
         String txt = ML.detag(html);
         BytesRef bytes = new BytesRef(txt);
-        // doc.add(new SortedDocValuesField(name, bytes));
+        doc.add(new SortedDocValuesField(name, bytes));
+        // NO, or lucene 
         // doc.add(new SortedSetDocValuesField(name, bytes));
         doc.add(new StringField(name, bytes, Field.Store.NO));
         return this;
     }
     
     /**
-     * A field type repeatable for a document.
+     * A field repeatable for a document, like authors, or tags.
+     * Not searchable by word.
      * 
      * @param name Field name.
      * @param html Field value, tags allowed.
@@ -149,6 +171,23 @@ public class AlixDocument
         BytesRef bytes = new BytesRef(txt);
         doc.add(new StringField(name, bytes, Field.Store.NO));
         doc.add(new SortedSetDocValuesField(name, bytes));
+        return this;
+    }
+
+    /**
+     * A searchable field allowing hiliting and frequency stats.
+     * 
+     * @param name Field name.
+     * @param html Field value, tags allowed.
+     * @return This for chaining.
+     */
+    public AlixDocument metaField(String name, String html)
+    {
+        if (bad(html)) return this;
+        doc.add(new StoredField(name, html)); // (TokenStream fields cannot be stored)
+        String txt = ML.detag(html);
+        TokenStream ts = metaAnalyzer.tokenStream("meta", txt); // renew token stream
+        doc.add(new Field(name, ts, Alix.ftypeMeta)); // indexation of the chosen tokens
         return this;
     }
 
@@ -174,10 +213,10 @@ public class AlixDocument
     /**
      * Set the body, caller should have strip un-necessary contents
      * 
-     * @param html Field value.
+     * @param html Value, html tags allowed.
      * @return This for chaining.
      */
-    public AlixDocument text(final String html)
+    public AlixDocument textField(final String html)
     {
         final String name = TEXT;
         if (bad(html)) {
@@ -194,24 +233,32 @@ public class AlixDocument
     }
     
     /**
+     * Check which required field has not been set.
+     * 
+     * @return An array of missing fields.
+     */
+    public String[] missing()
+    {
+        List<String> missing = new LinkedList<>();
+        if (required == null || required.length ==  0) {
+            return null;
+        }
+        for (String name: required) {
+            if (name == null || "".equals(name.trim())) {
+                continue;
+            }
+            if (!uniks.contains(name)) {
+                missing.add(name);
+            }
+        }
+        return missing.toArray(new String[0]);
+    }
+    
+    /**
      * Returns the builded document
      */
     public Document document()
     {
-        boolean first =true;
-        String error = "";
-        for (String name: required) {
-            if (!uniks.contains(name)) {
-                if (first) {
-                    error += ", ";
-                }
-                else {
-                    first = false;
-                }
-                error += name;
-            }
-        }
-        // throw error or log ?
         return doc;
     }
 

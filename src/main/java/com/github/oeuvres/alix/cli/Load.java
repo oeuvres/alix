@@ -47,14 +47,10 @@ import java.util.Properties;
 import java.util.Scanner;
 import java.util.concurrent.Callable;
 
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.TransformerException;
-
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
-import org.xml.sax.SAXException;
 
 import com.github.oeuvres.alix.lucene.Alix;
 import com.github.oeuvres.alix.lucene.XMLIndexer;

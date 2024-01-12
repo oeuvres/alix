@@ -213,6 +213,8 @@ public enum Tag
     final public int flag;
     /** The first hexa digit, used as a type grouping */
     final public int parent;
+    /** A name without spaces */
+    final public String name;
     /** A french label for humans */
     final public String label;
     /** A line of explanation */
@@ -225,16 +227,17 @@ public enum Tag
         this.label = label;
         this.desc = desc;
         this.parent = flag & 0xF0;
+        this.name = this.toString();
     }
 
     /** Array to get a tag by number */
-    private static final Tag[] byFlag = new Tag[256];
+    private static final Tag[] Flag4name = new Tag[256];
     /** Dictionary to get number of a tag by name */
-    private static final Map<String, Integer> byName = new HashMap<String, Integer>();
+    private static final Map<String, Integer> Name4flag = new HashMap<String, Integer>();
     static {
         for (Tag tag : Tag.values()) {
-            byFlag[tag.flag] = tag;
-            byName.put(tag.toString(), tag.flag);
+            Flag4name[tag.flag] = tag;
+            Name4flag.put(tag.toString(), tag.flag);
         }
     }
 
@@ -255,7 +258,7 @@ public enum Tag
      */
     static public Tag parent(final int flag)
     {
-        Tag ret = byFlag[flag & 0xF0];
+        Tag ret = Flag4name[flag & 0xF0];
         if (ret == null)
             return UNKNOWN;
         return ret;
@@ -292,28 +295,29 @@ public enum Tag
 
     /**
      * 
-     * @param label A Tag label.
+     * @param name A Tag name.
      * @return The Identifier number of a Tag.
      */
-    public static int flag(final Chain label)
+    public static int flag(final Chain name)
     {
         @SuppressWarnings("unlikely-arg-type")
-        Integer ret = byName.get(label);
+        Integer ret = Name4flag.get(name);
         if (ret == null) {
-            LOGGER.log(Level.FINEST, "[Alix] unknown tag:" + label);
+            LOGGER.log(Level.FINEST, "[Alix] unknown tag:" + name);
             return UNKNOWN.flag;
         }
         return ret;
     }
 
     /**
+     * Get Tag number by name.
      * 
-     * @param label A tag label.
+     * @param name A tag name.
      * @return The identifier number of a Tag.
      */
-    public static int flag(final String label)
+    public static int flag(final String name)
     {
-        Integer ret = byName.get(label);
+        Integer ret = Name4flag.get(name);
         if (ret == null)
             return UNKNOWN.flag;
         return ret;
@@ -329,22 +333,22 @@ public enum Tag
     {
         // the int may be used as a more complex bit flag
         flag = flag & 0xFF;
-        return byFlag[flag];
+        return Flag4name[flag];
     }
 
 
     /**
-     * Get Tag label by number identifier.
+     * Get Tag name by number identifier.
      * @param flag Tag identifier number.
-     * @return A human understandable label.
+     * @return Name of a Tag.
      */
-    public static String label(int flag)
+    public static String name(int flag)
     {
         flag = flag & 0xFF;
-        Tag tag = byFlag[flag];
+        Tag tag = Flag4name[flag];
         if (tag == null)
             return null;
-        return tag.label;
+        return tag.name;
     }
 
     /**
@@ -458,7 +462,7 @@ public enum Tag
             StringBuilder sb = new StringBuilder();
             for (int tag = 0; tag < 256; tag++) {
                 if ((tag % 16) == 0)
-                    sb.append(Tag.label(tag)).append("\t");
+                    sb.append(Tag.name(tag)).append("\t");
                 if (rule[tag])
                     sb.append(1);
                 else
