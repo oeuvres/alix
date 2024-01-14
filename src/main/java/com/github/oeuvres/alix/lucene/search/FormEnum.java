@@ -864,7 +864,7 @@ public class FormEnum
             formDic.get(formId, bytes);
             sb.append((pos + 1) + ". [" + formId + "] " + bytes.utf8ToString());
             if (hasTag)
-                sb.append(" " + Tag.label(formTag[formId]));
+                sb.append(" " + Tag.name(formTag[formId]));
             if (hasScore)
                 sb.append(" score=" + formScore[formId]);
 

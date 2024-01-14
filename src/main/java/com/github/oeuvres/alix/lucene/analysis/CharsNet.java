@@ -202,7 +202,7 @@ public class CharsNet
             StringBuilder sb = new StringBuilder();
             sb.append(label);
             if (tag > 0)
-                sb.append(" ").append(Tag.label(tag)).append(" ");
+                sb.append(" ").append(Tag.name(tag)).append(" ");
             sb.append(" (").append(count).append(")");
             return sb.toString();
         }

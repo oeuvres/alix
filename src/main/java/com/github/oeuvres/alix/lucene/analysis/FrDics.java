@@ -435,7 +435,7 @@ public class FrDics
     public String toString()
     {
       StringBuilder sb = new StringBuilder();
-      sb.append(Tag.label(this.tag));
+      sb.append(Tag.name(this.tag));
       if (orth != null) sb.append(" orth=").append(orth);
       if (lem != null) sb.append(" lem=").append(lem);
       // if (branch) sb.append(" BRANCH");
