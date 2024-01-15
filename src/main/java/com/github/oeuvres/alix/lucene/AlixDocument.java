@@ -122,7 +122,7 @@ public class AlixDocument
      */
     public AlixDocument bibl(String html)
     {
-        facetField("bibl", html);
+        metaField("bibl", html);
         return this;
     }
 
