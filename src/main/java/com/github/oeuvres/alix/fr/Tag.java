@@ -231,12 +231,12 @@ public enum Tag
     }
 
     /** Array to get a tag by number */
-    private static final Tag[] Flag4name = new Tag[256];
+    private static final Tag[] Flag4tag = new Tag[256];
     /** Dictionary to get number of a tag by name */
     private static final Map<String, Integer> Name4flag = new HashMap<String, Integer>();
     static {
         for (Tag tag : Tag.values()) {
-            Flag4name[tag.flag] = tag;
+            Flag4tag[tag.flag] = tag;
             Name4flag.put(tag.toString(), tag.flag);
         }
     }
@@ -258,7 +258,7 @@ public enum Tag
      */
     static public Tag parent(final int flag)
     {
-        Tag ret = Flag4name[flag & 0xF0];
+        Tag ret = Flag4tag[flag & 0xF0];
         if (ret == null)
             return UNKNOWN;
         return ret;
@@ -333,7 +333,7 @@ public enum Tag
     {
         // the int may be used as a more complex bit flag
         flag = flag & 0xFF;
-        return Flag4name[flag];
+        return Flag4tag[flag];
     }
 
 
@@ -344,11 +344,23 @@ public enum Tag
      */
     public static String name(int flag)
     {
-        flag = flag & 0xFF;
-        Tag tag = Flag4name[flag];
+        Tag tag = tag(flag);
         if (tag == null)
             return null;
         return tag.name;
+    }
+
+    /**
+     * Get Tag label by number identifier.
+     * @param flag Tag identifier number.
+     * @return Label of a Tag.
+     */
+    public static String label(int flag)
+    {
+        Tag tag = tag(flag);
+        if (tag == null)
+            return null;
+        return tag.label;
     }
 
     /**
