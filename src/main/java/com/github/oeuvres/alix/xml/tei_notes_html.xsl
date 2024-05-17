@@ -71,7 +71,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
     <xsl:apply-templates mode="fn"/>
   </xsl:template>
 
-  <!-- Le template principal affichant des notes hors flux -->
+  <!-- note mode foot, only for inline notes, not block notes -->
   <xsl:template match="tei:note" mode="fn" name="fn">
     <xsl:param name="resp"/>
     <xsl:choose>

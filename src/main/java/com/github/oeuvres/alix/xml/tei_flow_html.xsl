@@ -2306,7 +2306,7 @@ Centralize some html attribute policy, especially for id, and class
     <!-- @rend may be used as a free text attribute, be careful -->
     <xsl:variable name="value">
       <!-- Name of the element (except from a list where TEI info will be redundant with HTML name) -->
-      <xsl:if test="not(contains( ' abbr add cell code del eg emph hi item list q ref row seg table ' , concat(' ', local-name(), ' ')))">
+      <xsl:if test="not(contains( ' abbr add code del emph hi q ref row seg  ' , concat(' ', local-name(), ' ')))">
         <xsl:value-of select="local-name()"/>
       </xsl:if>
       <xsl:text> </xsl:text>
