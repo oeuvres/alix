@@ -79,7 +79,7 @@ public class Load implements Callable<Integer>
     @Option(names = {"-t", "--threads"}, description = "Number of threads fo indexation")
     int threads;
     /** File globs to index, populated by parsing base properties */
-    ArrayList<File> globs = new ArrayList<>();
+    ArrayList<Path> paths = new ArrayList<>();
     /** Destination directory of index of a base */
     File dstdir;
     /** Possible local transformation for pre-indexation */
@@ -147,7 +147,7 @@ public class Load implements Callable<Integer>
         return 0;
     }
 
-    public void globAdd(String glob, File base)
+    public void globAdd(String glob, File base) throws IOException
     {
         glob = glob.trim();
         if (glob.equals("")) {
@@ -156,6 +156,7 @@ public class Load implements Callable<Integer>
         if (glob.startsWith("#")) {
             return;
         }
+        // File.separator regularisation needed
         if (File.separatorChar == '\\') {
             glob = glob.replaceAll("[/\\\\]", File.separator + File.separator);
         }
@@ -164,18 +165,18 @@ public class Load implements Callable<Integer>
         }
         if (!new File(glob).isAbsolute()) {
             File dir = base.getAbsoluteFile();
-            // glob = new File(glob).toString(); // works for windows on /, but not on linux
-            // for \
-            if (glob.startsWith("." + File.separator))
+            if (glob.startsWith("." + File.separator)) {
                 glob = glob.substring(2);
+            }
             while (glob.startsWith(".." + File.separator)) {
                 dir = dir.getParentFile();
                 glob = glob.substring(3);
             }
-            globs.add(new File(dir, glob));
+            File f = new File(dir, glob);
+            Dir.ls(f.getAbsolutePath(), paths);
         } 
         else {
-            globs.add(new File(glob));
+            Dir.ls(glob, paths);
         }
     }
     
@@ -221,7 +222,6 @@ public class Load implements Callable<Integer>
             List<String> lines = Files.readAllLines(file.toPath());
             for (int i = 0; i < lines.size(); i++) {
                 String glob = lines.get(i);
-                System.out.println("[" + APP + "] process " + glob );
                 globAdd(glob, base);
             }
         } 
@@ -236,7 +236,7 @@ public class Load implements Callable<Integer>
             // resolve globs relative to the folder of the properties field
             final File base = propsFile.getCanonicalFile().getParentFile();
             for (String glob : blurf) {
-                System.out.println("[" + APP + "] process " + glob );
+                // System.out.println("[" + APP + "] process " + glob );
                 globAdd(glob, base);
             }
         }
@@ -314,7 +314,7 @@ public class Load implements Callable<Integer>
         Alix alix = Alix.instance(name, path, new FrAnalyzer(), null);
         // Alix alix = Alix.instance(name, path, new StandardAnalyzer(), null);
         IndexWriter writer = alix.writer();
-        XMLIndexer.index(writer, globs.toArray(new File[globs.size()]), threads, xsl);
+        XMLIndexer.index(writer, paths, threads, xsl);
         System.out.println("[" + APP + "] " + name + " Merging");
         writer.commit();
         writer.close(); // close lucene index before indexing rail (for coocs)

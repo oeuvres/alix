@@ -278,12 +278,12 @@ public class XMLIndexer implements Runnable
      * Recursive indexation of an XML folder, multi-threadeded.
      * 
      * @param writer
-     * @param globs
+     * @param files
      * @param threads
      * @param xsl
      * @throws Exception
      */
-    static public void index(final IndexWriter writer, final File[] globs, int threads, String xsl)
+    static public void index(final IndexWriter writer, final List<Path> files, int threads, String xsl)
             throws Exception
     {
         // compile XSLT, maybe it could be done before?
@@ -298,30 +298,28 @@ public class XMLIndexer implements Runnable
             templates = XSLFactory.newTemplates(xsltSrc);
         } else if (xsl != null) {
             if (!new File(xsl).exists()) {
-                System.out.println("globs" + Arrays.toString(globs) + " xsl=" + xsl + " exist ?" + new File(xsl).exists());
+                System.out.println("Files:" + files.toString() + " xsl=" + xsl + " exist ?" + new File(xsl).exists());
                 throw new FileNotFoundException("\n[" + Alix.NAME + "] XSL file not found: " + xsl);
             }
             StreamSource xsltSrc = new StreamSource(xsl);
             templates = XSLFactory.newTemplates(xsltSrc);
         }
-        String searchPaths = Arrays.toString(globs);
-        info("[" + Alix.NAME + "]" + " format=\"" + xsl + "\"" + " threads=" + threads + " globs=\"" + searchPaths
-                + "\"" + " lucene=\"" + writer.getDirectory() + "\"");
-        // preload dictionaries
-        List<Path> files = new ArrayList<Path>();
-        for (File glob : globs) {
-            files = Dir.ls(glob.toString(), files); // CopyOnWriteArrayList produce some duplicates
-        }
+        info("[" + Alix.NAME + "]" + " format=\"" + xsl + "\"" + " threads=" + threads + " lucene=\"" + writer.getDirectory() + "\"");
+
         // check if repeated filename
         Map<String, Integer> hash = new HashMap<String, Integer>();
-        int diff = 0;
         for (int i = 0, size = files.size(); i < size; i++) {
             Path path = files.get(i);
             String filename = path.getFileName().toString();
             filename = filename.substring(0, filename.lastIndexOf('.'));
+            if (!Files.exists(path)) {
+                info("404 file not found " + path);
+                files.set(i, null);
+                continue;
+            }
             if (hash.containsKey(filename)) {
                 info("Duplicated filename " + filename + ", new replace old");
-                int oldi = hash.get(filename) - diff;
+                int oldi = hash.get(filename);
                 info(files.get(oldi));
                 files.set(oldi, null);
                 // do not remove now, it shift the series
@@ -331,13 +329,14 @@ public class XMLIndexer implements Runnable
                 hash.put(filename, i);
             }
         }
+        // 
         // nicer list, remove null
         while (files.remove(null))
             ;
-        Collections.sort(files);
+        // No sort, 
         if (files.size() < 1) {
             throw new FileNotFoundException(
-                    "\n[" + Alix.NAME + "] No file found to index globs=\"" + searchPaths + "\"");
+                    "\n[" + Alix.NAME + "] No file found to index files=\"" + files.toString() + "\"");
         }
         if (threads < 1)
             threads = 1;

@@ -109,14 +109,26 @@ public class Dir
      * @return
      * @throws IOException Lucene errors.
      */
-    public static List<Path> ls(final String glob, final List<Path> files) throws IOException
+    public static List<Path> ls(final String glob, List<Path> paths) throws IOException
     {
+        if (paths == null) {
+            throw new IOException("List<Path> paths is null, a list is needed to add Path");
+        }
         // name encoding problem in linux WSL, with File or Path
         Path basedir = new File(glob.replaceFirst("[\\[\\*\\?\\{].*", "") + "DUMMY").getParentFile().toPath();
-        String pattern = glob;
-        if (File.separator.equals("\\")) { // for Windows
-            pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes \*8
+        File globFile = new File(glob);
+        if (globFile.exists()) {
+            paths.add(globFile.toPath());
+            return paths;
         }
+        
+        String pattern = glob;
+        
+        
+        if (File.separator.equals("\\")) { // for Windows
+            pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes all those '\' needed
+        }
+        
 
         final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern); // new File(glob)
 
@@ -139,7 +151,7 @@ public class Dir
                     return FileVisitResult.CONTINUE;
                 }
                 if (pathMatcher.matches(path)) {
-                    files.add(path);
+                    paths.add(path);
                 }
                 return FileVisitResult.CONTINUE;
             }
@@ -150,7 +162,7 @@ public class Dir
                 return FileVisitResult.CONTINUE;
             }
         });
-        return files;
+        return paths;
     }
 
     /**

@@ -1,0 +1,165 @@
+LEFT;CENTER;RIGHT;TAG
+;le;VERB;PRO
+;la;VERB;PRO
+;les;VERB;PRO
+;leur;VERB;PRO
+;le;leur;PRO
+;la;leur;PRO
+;les;leur;PRO
+;en:PREP;VERB;PRO
+;si;ADJ;ADV
+DET;VERBppass;;ADJ; #TODO, chercher le lemme dans un dico d’équivoques
+SUB;VERBppass;;ADJ
+;VERBppass;SUB;ADJ
+;DET;même;ADJ
+
+#
+# Abbé;NAME;;NAMEpers
+# abbé;NAME;;NAMEpers
+# baron;NAME;;NAMEpers
+# baron de;NAME;;NAMEpers
+# baronne NAME;NAMEpers
+# baronne de NAME;NAMEpers
+# capitaine NAME;NAMEpers
+# capitaine de NAME;NAMEpers
+# capitaine du NAME;NAMEpers
+# chevalier NAME;NAMEpers
+# colonel NAME;NAMEpers
+# colonel de NAME;NAMEpers
+# colonel du NAME;NAMEpers
+# commandant NAME;NAMEpers
+# commandant de NAME;NAMEpers
+# commandant du NAME;NAMEpers
+# comte NAME;NAMEpers
+# comte de NAME;NAMEpers
+# comtesse NAME;NAMEpers
+# comtesse de NAME;NAMEpers
+# don NAME;NAMEpers
+# don NAME de NAME;NAMEpers
+# duc de NAME;NAMEpers
+# duc NAME de NAME;NAMEpers
+# duchesse de NAME;NAMEpers
+# duchesse NAME de NAME;NAMEpers
+# évêque de NAME;NAMEpers
+# général NAME;NAMEpers
+# général de NAME;NAMEpers
+# la NAME de NAME;NAMEtitle
+# la duchesse de NAME;NAMEpers
+# lord NAME;NAMEpers
+# madame de NAME;NAMEpers
+# madame La NAME;NAMEpers
+# madame Le NAME;NAMEpers
+# madame NAME;NAMEpers
+# madame NAME de NAME;NAMEpers
+# madame NAME du NAME;NAMEpers
+# madame NAME NAME;NAMEpers
+# mademoiselle de NAME;NAMEpers
+# mademoiselle NAME;NAMEpers
+# mademoiselle NAME de NAME;NAMEpers
+# mademoiselle NAME du NAME;NAMEpers
+# mademoiselle NAME NAME;NAMEpers
+# monsieur d'NAME;NAMEpers
+# monsieur de NAME;NAMEpers
+# monsieur La NAME;NAMEpers
+# monsieur Le NAME;NAMEpers
+# monsieur NAME;NAMEpers
+# monsieur NAME de NAME;NAMEpers
+# monsieur NAME du NAME;NAMEpers
+# monsieur NAME NAME;NAMEpers
+# Monseigneur NAME;NAMEpers
+# Monseigneur de NAME;NAMEpers
+# NAME NAME;NAMEpers
+# NAME NUM;NAMEpers
+# NAME NAME de NAME;NAMEpers
+# NAME de NAME;NAMEpers
+# NAME de La NAME;NAMEpers
+# NAME du NAME;NAMEpers
+# NAME Le NAME;NAMEpers
+# NAME en NAME;NAMEplace
+# NAME NUM;NAMEpers
+# père NAME;NAMEpers
+# prince de NAME;NAMEpers
+# princesse de NAME;NAMEpers
+# saint NAME;NAMEpers
+# sainte NAME;NAMEpers
+# sir NAME;NAMEpers
+# vicomte de NAME;NAMEpers
+# vicomtesse de NAME;NAMEpers
+# vidame de NAME;NAMEpers
+#
+# LIEUX
+#
+# avenue NAME;NAMEplace
+# avenue de NAME;NAMEplace
+# boulevard	NAME;NAMEplace
+# boulevard de	NAME;NAMEplace
+# bourg de NAME;NAMEplace
+# bois NAME;NAMEplace
+# bois de NAME;NAMEplace
+# bois des SUB;NAMEplace
+# bois du SUB;NAMEplace
+# buttes NAME;NAMEplace
+# buttes de NAME;NAMEplace
+# buttes des SUB;NAMEplace
+# buttes du SUB;NAMEplace
+# caserne NAME;NAMEplace
+# chapelle NAME;NAMEplace
+# château de NAME;NAMEplace
+# faubourg NAME;NAMEplace
+# faubourg de NAME;NAMEplace
+# faubourg du NAME;NAMEplace
+# forêt de NAME;NAMEplace
+# île d’NAME;NAMEplace
+# île de NAME;NAMEplace
+# l’île NAME;NAMEplace
+# l’île d’NAME;NAMEplace
+# l’île de NAME;NAMEplace
+# la forêt de NAME;NAMEplace
+# mer NAME;PLACEname
+# mer de NAME;PLACEname
+# place NAME;PLACEname
+# place de NAME;PLACEname
+# place des NAME;PLACEname
+# place du NAME;PLACEname
+# place le NAME;PLACEname
+# place la NAME;PLACEname
+# pont NAME;PLACEname
+# pont d’NAME;PLACEname
+# pont de NAME;PLACEname
+# port NAME;PLACEname
+# port de NAME;PLACEname
+# port des NAME;PLACEname
+# port du NAME;PLACEname
+# port le NAME;PLACEname
+# port la NAME;PLACEname
+# porte NAME;PLACEname
+# porte de NAME;PLACEname
+# porte des NAME;PLACEname
+# porte du NAME;PLACEname
+# porte le NAME;PLACEname
+# porte la NAME;PLACEname
+# quartier NAME;PLACEname
+# quartier de NAME;PLACEname
+# quartier des NAME;PLACEname
+# quartier du NAME;PLACEname
+# quartier le NAME;PLACEname
+# quartier la NAME;PLACEname
+# palais de NAME;NAMEplace
+# passage NAME;NAMEplace
+# rue NAME;NAMEplace
+# rue d' NAME;NAMEplace
+# rue de NAME;NAMEplace
+# rue d' SUB;NAMEplace
+# rue de SUB;NAMEplace
+# rue des NAME;NAMEplace
+# rue des SUB;NAMEplace
+# tour NAME;PLACEname
+# tour le NAME;PLACEname
+# tour la NAME;PLACEname
+# quartier la NAME;PLACEname
+# ville NAME;NAMEplace
+# ville de NAME;NAMEplace
+# NAME du Nord;NAMEplace
+# NAME du nord;NAMEplace
+# NAME du Sud;NAMEplace
+# NAME du sud;NAMEplace

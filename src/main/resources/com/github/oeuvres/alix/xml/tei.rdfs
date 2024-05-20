@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+LGPL  http://www.gnu.org/licenses/lgpl.html
+© 2005 ajlsm.com (Cybertheses)
+© 2007 Frederic.Glorieux@fictif.org
+© 2010 Frederic.Glorieux@fictif.org et École nationale des chartes
+© 2012 Frederic.Glorieux@fictif.org 
+© 2013 Frederic.Glorieux@fictif.org et LABEX OBVIL
+-->
+<rdf:RDF
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+  xmlns:xf="http://www.w3.org/2002/xforms"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns="http://www.w3.org/1999/xhtml"
+>
+  <rdf:Description>
+    <rdfs:label xml:lang="fr">Titre court en français</rdfs:label>
+    <rdfs:label xml:lang="en">english label</rdfs:label>
+    <dc:title>Titre développé</dc:title>
+    <dc:description>Description avec <abbr>HTML</abbr> autorisé.</dc:description>
+  </rdf:Description>
+  <rdf:Property xml:id="abbr">
+    <rdfs:label xml:lang="fr">Abréviation</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="abbrexpan">
+    <rdfs:label xml:lang="fr">Abréviation de</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="add">
+    <rdfs:label xml:lang="fr">Ajouté</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="availability"/>
+  <rdf:Property xml:id="and">
+    <rdfs:label xml:lang="fr">et</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="back">
+    <rdfs:label xml:lang="fr">Annexes</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="binding">
+    <rdfs:label xml:lang="fr">reliure</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="box">
+    <rdfs:label xml:lang="fr">boite</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="chars">
+    <rdfs:label xml:lang="fr">caractères</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="chapter">
+    <rdfs:label xml:lang="fr">Chapitre</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="cancelled">
+    <rdfs:label xml:lang="fr">cancellé</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="castList">
+    <rdfs:label xml:lang="fr">Distribution</rdfs:label>
+    <rdfs:label xml:lang="en">Cast list</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="classes">
+    <rdfs:label xml:lang="fr">Classes</rdfs:label>
+    <rdfs:label xml:lang="en">Member of</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="columns">
+    <rdfs:label xml:lang="fr">colonnes</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="content">
+    <rdfs:label xml:lang="fr">Contenu</rdfs:label>
+    <rdfs:label xml:lang="en">May contain</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="corr">
+    <rdfs:label xml:lang="fr">Correction</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="corrsic">
+    <rdfs:label xml:lang="fr">Correction de</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="cover">
+    <rdfs:label xml:lang="fr">Couverture</rdfs:label>
+    <rdfs:label xml:lang="en">Cover</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="dedication">
+    <rdfs:label xml:lang="fr">Dédicace</rdfs:label>
+    <rdfs:label xml:lang="en">Dedication</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="editionStmt">
+    <rdfs:label xml:lang="fr">Ont participé à cette édition électronique : </rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="editor">
+    <rdfs:label xml:lang="fr">Édition de </rdfs:label>
+    <rdfs:label xml:lang="fr">Edition: </rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="editorialDecl">
+    <rdfs:label xml:lang="fr">L'édition électronique</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="email">
+    <rdfs:label xml:lang="fr">courriel</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="encodingDesc">
+  <!--
+    <rdfs:label xml:lang="fr">Procédure d'encodage</rdfs:label>
+  -->
+  </rdf:Property>
+  <rdf:Property xml:id="ex">
+    <rdfs:label xml:lang="fr">mq.</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="expan">
+    <rdfs:label xml:lang="fr">Extension</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="expanabbr">
+    <rdfs:label xml:lang="fr">Abrégé en</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="extent">
+    <!-- rdfs:label xml:lang="fr">Source électronique</rdfs:label -->
+  </rdf:Property>
+  <rdf:Property xml:id="front">
+    <rdfs:label xml:lang="fr">Présentation</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="funder">
+    <rdfs:label xml:lang="fr">Financement</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="gap">
+    <rdfs:label xml:lang="fr">omission</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="illegible">
+    <rdfs:label xml:lang="fr">illisible</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="leaves">
+    <rdfs:label xml:lang="fr">feuille</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="lines">
+    <rdfs:label xml:lang="fr">lignes</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="listEvent">
+    <rdfs:label xml:lang="fr">Événements</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="listOrg">
+    <rdfs:label xml:lang="fr">Organisations</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="listPlace">
+    <rdfs:label xml:lang="fr">Lieux</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="listPerson">
+    <rdfs:label xml:lang="fr">Personnes</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="listTerm">
+    <rdfs:label xml:lang="fr">Sujets</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="manque">
+    <rdfs:label xml:lang="fr">mq.</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="miniatures">
+    <rdfs:label xml:lang="fr">miniature</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="navigation">
+    <rdfs:label xml:lang="fr">navigation</rdfs:label>
+    <rdfs:label xml:lang="en">navigation</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="notes">
+    <rdfs:label xml:lang="fr">Notes</rdfs:label>
+    <rdfs:label xml:lang="en">Notes</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="notitle">
+    <rdfs:label xml:lang="fr">[Sans titre]</rdfs:label>
+    <rdfs:label xml:lang="en">[No title]</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="omit">
+    <rdfs:label xml:lang="fr">Omis</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="omitted">
+    <rdfs:label xml:lang="fr">Omission</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="reg">
+    <rdfs:label xml:lang="fr">Régularisation</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="regsic">
+    <rdfs:label xml:lang="fr">Régularisation de</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="revisionDesc">
+    <rdfs:label xml:lang="fr">Historique</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="licence">
+    <rdfs:label xml:lang="fr">License</rdfs:label>
+    <rdfs:label xml:lang="en">Licence</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="pricked">
+    <rdfs:label xml:lang="fr">piqûre</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="principal">
+    <rdfs:label xml:lang="fr">sous la direction de </rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="projectDesc">
+    <!-- rdfs:label xml:lang="fr">Le projet</rdfs:label -->
+  </rdf:Property>
+  <rdf:Property xml:id="publicationStmt"/>
+  <rdf:Property xml:id="respStmt">
+    <rdfs:label xml:lang="fr">Autres contributions</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="ruled">
+    <rdfs:label xml:lang="fr">réglure</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="samplingDecl">
+    <rdfs:label xml:lang="fr">Textes sélectionnés</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="seealso">
+    <rdfs:label xml:lang="fr">Voir aussi</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="seriesStmt">
+    <rdfs:label xml:lang="fr">Collection</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="sicreg">
+    <rdfs:label xml:lang="fr">Régularisé en</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="siccorr">
+    <rdfs:label xml:lang="fr">Corrigé en</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="sponsor">
+    <rdfs:label xml:lang="fr">Sponsor : </rdfs:label>
+    <rdfs:label xml:lang="en">Sponsor : </rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="supplied">
+    <rdfs:label xml:lang="fr">Restitué</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="sourceDesc">
+    <rdfs:label xml:lang="fr">Source</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="titlePage">
+    <rdfs:label xml:lang="fr">Page de titre</rdfs:label>
+    <rdfs:label xml:lang="en">Title page</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="titleStmt">
+    <rdfs:label xml:lang="fr">Crédits</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="toc">
+    <rdfs:label xml:lang="fr">Table des matières</rdfs:label>
+    <rdfs:label xml:lang="en">Contents</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="translator">
+    <rdfs:label xml:lang="fr">Traducteur</rdfs:label>
+    <rdfs:label xml:lang="en">Translator</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="vol">
+    <rdfs:label xml:lang="fr">volume</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="with">
+    <rdfs:label xml:lang="fr">avec</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="what">
+    <rdfs:label xml:lang="fr">Quoi</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="when">
+    <rdfs:label xml:lang="fr">Quand</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="who">
+    <rdfs:label xml:lang="fr">Qui</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="written">
+    <rdfs:label xml:lang="fr">écritures</rdfs:label>
+  </rdf:Property>
+  <rdf:Property xml:id="writtenLines">
+    <rdfs:label xml:lang="fr">lignes d’écriture</rdfs:label>
+  </rdf:Property>  
+</rdf:RDF>
