@@ -107,15 +107,17 @@ public class ML
      */
     public static boolean isInEnt(char c)
     {
-        if (c > 128)
+        if (c > 128) {
             return false;
+        }
         return Char.isLetterOrDigit(c);
     }
 
     public static String detag(final String xml)
     {
-        if (xml == null || xml.isEmpty())
+        if (xml == null || xml.isEmpty()) {
             return "";
+        }
         return detag(xml, 0, xml.length());
     }
 

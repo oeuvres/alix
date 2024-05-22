@@ -89,6 +89,7 @@ import org.apache.lucene.util.Bits;
 
 import static com.github.oeuvres.alix.Names.*;
 
+import com.github.oeuvres.alix.lucene.analysis.FrAnalyzer;
 import com.github.oeuvres.alix.lucene.search.FieldFacet;
 import com.github.oeuvres.alix.lucene.search.Scale;
 import com.github.oeuvres.alix.lucene.search.FieldText;
@@ -233,7 +234,12 @@ public class Alix
             break;
         }
         // What about reuse strategy ?
-        this.analyzer = analyzer;
+        if (analyzer == null) {
+            this.analyzer = new FrAnalyzer();
+        }
+        else {
+            this.analyzer = analyzer;
+        }
         this.props = new Properties();
     }
 
@@ -541,6 +547,25 @@ public class Alix
     public static Alix instance(String key)
     {
         return pool.get(key);
+    }
+
+    /**
+     * Get a a lucene directory index by file path, from cache, or created.
+     * 
+     * @param key Name for cache.
+     * @param path File directory of lucene index.
+     * @return An Alix instance.
+     * @throws IOException Lucene errors.
+     */
+    public static Alix instance(final String key, final Path path)
+            throws IOException
+    {
+        Alix alix = pool.get(key);
+        if (alix == null) {
+            alix = new Alix(key, path, null, null);
+            pool.put(key, alix);
+        }
+        return alix;
     }
 
     /**
