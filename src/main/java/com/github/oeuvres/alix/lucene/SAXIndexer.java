@@ -64,7 +64,7 @@ import com.github.oeuvres.alix.lucene.analysis.MetaAnalyzer;
  * 
  * 
  * Index an xml file of lucene documents. React to the namespace uri
- * xmlns:alix="http://alix.casa". The element {@code <alix:document>} contains a
+ * xmlns:alix="https://oeuvres.github.io/alix". The element {@code <alix:document>} contains a
  * document. The element {@code <alix:field>} contains a field.
  * 
  * <p>
@@ -228,7 +228,7 @@ public class SAXIndexer extends DefaultHandler
                 chapters.clear();
                 chapno = 0;
             }
-        } else if (DOCUMENT.equals(localName)) {
+        } else if (DOCUMENT.equals(localName) || ARTICLE.equals(localName)) {
             if (document == null)
                 throw new SAXException("</" + qName + "> empty document, nothing to add.");
             try {
@@ -382,7 +382,7 @@ public class SAXIndexer extends DefaultHandler
             document.add(new StringField(ALIX_TYPE, CHAPTER, Store.YES));
         }
         // create a new Lucene document
-        else if (DOCUMENT.equals(localName)) {
+        else if (DOCUMENT.equals(localName) || ARTICLE.equals(localName)) {
             if (record) {
                 throw new SAXException(
                         "<alix:document> A pending field is not yet added. A document is forbidden in a field.");

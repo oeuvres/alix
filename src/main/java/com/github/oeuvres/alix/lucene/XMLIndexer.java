@@ -41,9 +41,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -69,7 +66,6 @@ import javax.xml.transform.stream.StreamSource;
 import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.SAXException;
 
-import com.github.oeuvres.alix.util.Dir;
 import com.github.oeuvres.alix.xml.JarResolver;
 
 /**

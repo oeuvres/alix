@@ -112,6 +112,7 @@ According to Lucene model, there are 3 levels of objects inside Alix.
       <a:documentation>A set of <a:el>book</a:el>s or <a:el>document</a:el>s.</a:documentation>
       <oneOrMore>
         <choice>
+          <ref name="article"/>
           <ref name="book"/>
           <ref name="document"/>
         </choice>
@@ -139,6 +140,14 @@ According to Lucene model, there are 3 levels of objects inside Alix.
   <define name="chapter">
     <element name="chapter">
       <a:documentation>A set of <a:el>field</a:el>s, like a <a:el>document</a:el>, except it has to be inside a <a:el>book</a:el>.</a:documentation>
+      <oneOrMore>
+        <ref name="field"/>
+      </oneOrMore>
+    </element>
+  </define>
+  <define name="article">
+    <element name="article">
+      <a:documentation>A set of <a:el>field</a:el>s, alias for <a:el>document</a:el>.</a:documentation>
       <oneOrMore>
         <ref name="field"/>
       </oneOrMore>

@@ -3,7 +3,7 @@
   © 2019 Frederic.Glorieux@fictif.org & Opteos -->
 <xsl:transform version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns="http://www.w3.org/1999/xhtml" 
-  xmlns:alix="http://alix.casa" 
+  xmlns:alix="https://oeuvres.github.io/alix" 
   xmlns:epub="http://www.idpf.org/2007/ops"
   xmlns:tei="http://www.tei-c.org/ns/1.0"
   
@@ -79,16 +79,41 @@
   <!-- Racine -->
   <xsl:template match="/*">
     <xsl:choose>
+      <xsl:when test="@type='article'">
+        <alix:article xmlns:epub="http://www.idpf.org/2007/ops">
+          <xsl:call-template name="alix:root">
+            <xsl:with-param name="doctype">article</xsl:with-param>
+          </xsl:call-template>
+        </alix:article>
+      </xsl:when>
+      <xsl:when test="@type='book'">
+        <alix:book>
+          <xsl:call-template name="alix:root">
+            <xsl:with-param name="doctype">book</xsl:with-param>
+          </xsl:call-template>
+        </alix:book>
+      </xsl:when>
+      <xsl:when test="@type='document'">
+        <alix:document xmlns:epub="http://www.idpf.org/2007/ops">
+          <xsl:call-template name="alix:root">
+            <xsl:with-param name="doctype">document</xsl:with-param>
+          </xsl:call-template>
+        </alix:document>
+      </xsl:when>
       <!-- let it like that for obvie -->
       <xsl:when test="true()">
         <alix:book xmlns:epub="http://www.idpf.org/2007/ops">
-          <xsl:call-template name="alix:root"/>
+          <xsl:call-template name="alix:root">
+            <xsl:with-param name="doctype">book</xsl:with-param>
+          </xsl:call-template>
         </alix:book>
       </xsl:when>
-      <!--No chapters ? Not OK in alix -->
+      <!--There are chapters -->
       <xsl:when test=".//tei:div[key('split', generate-id())]">
         <alix:book xmlns:epub="http://www.idpf.org/2007/ops">
-          <xsl:call-template name="alix:root"/>
+          <xsl:call-template name="alix:root">
+            <xsl:with-param name="doctype">book</xsl:with-param>
+          </xsl:call-template>
         </alix:book>
       </xsl:when>
       <xsl:otherwise>
@@ -136,7 +161,11 @@
       <xsl:call-template name="toc"/>
     </alix:field>
     <xsl:choose>
-      <xsl:when test="$doctype = 'document'">
+      <xsl:when test="$doctype = 'book'">
+        <!-- process chapters -->
+        <xsl:apply-templates mode="alix" select="*"/>
+      </xsl:when>
+      <xsl:otherwise>
         <alix:field name="text" type="text">
           <article>
             <xsl:apply-templates>
@@ -150,10 +179,6 @@
             </xsl:if>
           </article>
         </alix:field>
-      </xsl:when>
-      <xsl:otherwise>
-        <!-- process chapters -->
-        <xsl:apply-templates mode="alix" select="*"/>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>

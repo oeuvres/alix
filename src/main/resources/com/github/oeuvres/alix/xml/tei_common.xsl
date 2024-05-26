@@ -684,7 +684,7 @@ Gobal TEI parameters and variables are divided in different categories
     <xsl:variable name="pb" select=".//tei:pb"/>
     <xsl:if test="$pb">
       <xsl:choose>
-        <xsl:when test="count($pb) &gt; 1">pp. </xsl:when>
+        <xsl:when test="count($pb) &gt; 1">p. </xsl:when>
         <xsl:otherwise>p. </xsl:otherwise>
       </xsl:choose>
       <xsl:value-of select="$pb[1]/@n"/>

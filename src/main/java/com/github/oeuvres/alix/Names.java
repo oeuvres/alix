@@ -44,6 +44,8 @@ public final class Names
     public static final String ALIX_FILENAME = "alix.filename";
     /** Mandatory field, unique id provide by user for all documents */
     public static final String ALIX_ID = "alix.id";
+    /**  Alix XML namespace */
+    public static final String ALIX_NS = "https://oeuvres.github.io/alix";
     /** Mandatory field, define the level of a leaf (book/chapter, article) */
     public static final String ALIX_TYPE = "alix.type";
     /** &lt;alix:article&gt; atomic text indexed as a document */
