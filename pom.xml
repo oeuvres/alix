@@ -11,8 +11,7 @@
     <packaging>jar</packaging>
 
     <name>alix</name>
-    <!-- FIXME change it to the project's website -->
-    <url>http://www.example.com</url>
+    <url>http://oeuvres.github.io/alix</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -127,6 +126,45 @@
             <plugin>
                 <artifactId>maven-project-info-reports-plugin</artifactId>
                 <version>3.0.0</version>
+            </plugin>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.7.1</version>
+                <configuration>
+                    <outputDirectory>${project.basedir}</outputDirectory>
+                    <finalName>${project.artifactId}</finalName>
+                    <inlineDescriptors>
+                        <inlineDescriptor>
+                            <id>cli</id>
+                            <formats>
+                                <format>dir</format>
+                            </formats>
+                            <includeBaseDirectory>false</includeBaseDirectory>
+                            <dependencySets>
+                                <dependencySet>
+                                    <outputDirectory>lib</outputDirectory>
+                                    <includes>
+                                          <include>org.apache.lucene:lucene-core</include>
+                                          <include>org.apache.lucene:lucene-analysis-common</include>
+                                          <include>info.picocli:picocli</include>
+                                          <include>net.sf.saxon:Saxon-HE</include>
+                                          <include>org.xmlresolver:xmlresolver</include>
+                                          <include>com.github.oeuvres:alix</include>
+                                    </includes>
+                                </dependencySet>
+                            </dependencySets>
+                        </inlineDescriptor>
+                    </inlineDescriptors>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                        <phase>package</phase> <!-- bind to the packaging phase -->
+                        <goals>
+                          <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
