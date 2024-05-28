@@ -82,6 +82,8 @@ public class Load implements Callable<Integer>
     ArrayList<Path> paths = new ArrayList<>();
     /** Destination directory of index of a base */
     File dstdir;
+    /** Destination name of base */
+    String dstname;
     /** Possible local transformation for pre-indexation */
     String xsl;
 
@@ -123,7 +125,7 @@ public class Load implements Callable<Integer>
         // windows filesystem
         unsafe = os.startsWith("Windows");
         for (final File conf : conflist) {
-            String name = conf.getName().replaceFirst("\\..+$", "");
+            dstname = conf.getName().replaceFirst("\\..+$", "");
             // in case of glob, avoid some things
             // test here if it's folder ?
             if (
@@ -137,11 +139,11 @@ public class Load implements Callable<Integer>
             parse(conf); // populate variables
             // write index with collected base properties
             if (unsafe)
-                writeUnsafe(dstdir, name);
+                writeUnsafe(dstdir, dstname);
             else
-                writeSafe(dstdir, name);
+                writeSafe(dstdir, dstname);
             System.out.println(
-                    "[" + APP + "] " + name + " indexed in " + ((System.nanoTime() - time) / 1000000) + " ms.");
+                    "[" + APP + "] " + dstname + " indexed in " + ((System.nanoTime() - time) / 1000000) + " ms.");
         }
         System.out.println("Thats all folks.");
         return 0;
@@ -207,7 +209,12 @@ public class Load implements Callable<Integer>
 
         String prop;
         String key;
-
+        
+        key = "name";
+        prop = props.getProperty(key);
+        if (prop != null) {
+            dstname = prop;
+        }
         key = "srclist";
         prop = props.getProperty(key);
         if (prop != null) {
