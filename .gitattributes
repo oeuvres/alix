@@ -1,17 +1,55 @@
-* text eol=lf
-*.* text eol=lf
+# Java sources
+*.java          text diff=java
+*.kt            text diff=kotlin
+*.groovy        text diff=java
+*.scala         text diff=java
+*.gradle        text diff=java
+*.gradle.kts    text diff=kotlin
+
+# These files are text and should be normalized (Convert crlf => lf)
+*.css           text diff=css
+*.scss          text diff=css
+*.sass          text
+*.df            text
+*.htm           text diff=html
+*.html          text diff=html
+*.js            text
+*.mjs           text
+*.cjs           text
+*.jsp           text
+*.jspf          text
+*.jspx          text
+*.properties    text
+*.rng           text
+*.tld           text
+*.tag           text
+*.tagx          text
+*.xml           text
+
+# These files are binary and should be left untouched
+# (binary is a macro for -text -diff)
+*.db            binary
+*.class         binary
+*.dll           binary
+*.docx          binary
+*.ear           binary
+*.jar           binary
+*.jks           binary
+*.jpg           binary
+*.odt           binary
+*.odg           binary
+*.pdf           binary
+*.png           binary
+*.so            binary
+*.war           binary
+*.zip           binary
+
+# Common build-tool wrapper scripts ('.cmd' versions are handled by 'Common.gitattributes')
+mvnw            text eol=lf
+gradlew         text eol=lf
 
 # Specific Windows
 *.bat text eol=crlf
 
 # truly binary and should not be modified.
-*.db binary
-*.docx binary
-*.jar binary
-*.jpg binary
-*.odt binary
-*.odg binary
-*.pdf binary
-*.png binary
-*.zip binary
 
