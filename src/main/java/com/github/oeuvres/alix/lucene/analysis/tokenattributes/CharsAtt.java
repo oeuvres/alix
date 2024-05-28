@@ -254,9 +254,12 @@ public class CharsAtt extends AttributeImpl
         for (int i = 1; i < len; i++) {
             c = chars[i];
             if (last == '-') {
-                if (Char.isLowerCase(c))
+                if (Char.isLowerCase(c)) {
                     chars[i] = Character.toUpperCase(c);
-            } else if (Char.isUpperCase(c)) {
+                }
+            }
+            // In case of wor all in upper case
+            else if (Char.isUpperCase(c)) {
                 chars[i] = Character.toLowerCase(c);
             }
             last = c;

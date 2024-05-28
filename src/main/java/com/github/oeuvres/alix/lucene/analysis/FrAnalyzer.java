@@ -53,7 +53,7 @@ public class FrAnalyzer extends Analyzer
     public TokenStreamComponents createComponents(String field)
     {
         // kind of fields
-        final boolean orth = field.endsWith("orth"); // do not select lemma but orthographic
+        final boolean cloud = field.endsWith("cloud"); // do not select lemma but orthographic
         final boolean search = field.startsWith(SEARCH); // for seraching
         int flags = FrTokenizer.XML;
         if (search)  {
@@ -70,18 +70,18 @@ public class FrAnalyzer extends Analyzer
             result = new FlagCloudFilter(result, true);
             return new TokenStreamComponents(source, result);
         }
-        // do not select lemma but orthographic forms
-        else if (orth) {
-            result = new FlagOrthFilter(result); // orthographic form (not lemma) as term to index
-            return new TokenStreamComponents(source, result);
-        }
-        // default is lemma
-        else {
+        // index for word clouds
+        else if (cloud) {
             // compounds: parce que (quite expensive, 20% time)
             result = new LocutionFilter(result);
             // link unknown names, bad for a search query
             result = new FrPersnameFilter(result);
             result = new FlagCloudFilter(result);
+            return new TokenStreamComponents(source, result);
+        }
+        // index for search
+        else {
+            result = new FlagFindFilter(result); // orthographic form (not lemma) as term to index
             return new TokenStreamComponents(source, result);
         }
     }

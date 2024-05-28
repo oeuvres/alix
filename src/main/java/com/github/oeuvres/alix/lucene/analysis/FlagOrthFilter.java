@@ -101,6 +101,10 @@ public class FlagOrthFilter extends TokenFilter
     else if (Tag.NUM.sameParent(tag)) {
       termAtt.setEmpty().append("NUM");
     }
+    // unify numbers
+    else if (Tag.NAME.sameParent(tag)) {
+      termAtt.setEmpty().append("NUM");
+    }
     // replace term by normalized form if available
     else if (orthAtt.length() != 0) {
       termAtt.setEmpty().append(orthAtt);
