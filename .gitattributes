@@ -1,0 +1,17 @@
+* text eol=lf
+*.* text eol=lf
+
+# Specific Windows
+*.bat text eol=crlf
+
+# truly binary and should not be modified.
+*.db binary
+*.docx binary
+*.jar binary
+*.jpg binary
+*.odt binary
+*.odg binary
+*.pdf binary
+*.png binary
+*.zip binary
+
