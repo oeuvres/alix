@@ -27,17 +27,12 @@
         </dependency>
         <dependency>
             <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-highlighter</artifactId>
-            <version>9.10.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-analysis-common</artifactId>
             <version>9.10.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-backward-codecs</artifactId>
+            <artifactId>lucene-highlighter</artifactId>
             <version>9.10.0</version>
         </dependency>
         <dependency>
