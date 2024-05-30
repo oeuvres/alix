@@ -61,6 +61,12 @@ public class Marker
     /** */
     final CharacterRunAutomaton tester;
 
+    /**
+     * Build an hiliter with an analyzer, and a query
+     * @param analyzer
+     * @param q
+     * @throws IOException
+     */
     public Marker(Analyzer analyzer, String q) throws IOException
     {
         this.q = q;

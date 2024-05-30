@@ -35,6 +35,7 @@ package com.github.oeuvres.alix.lucene.analysis;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
 import static com.github.oeuvres.alix.Names.*;
 
@@ -59,8 +60,8 @@ public class FrAnalyzer extends Analyzer
         if (search)  {
             flags = flags | FrTokenizer.SEARCH;
         }
-        final Tokenizer source = new FrTokenizer(flags); // segment words
-        TokenStream result = new FrLemFilter(source); // provide lemma+pos
+        final Tokenizer tokenizer = new FrTokenizer(flags); // segment words
+        TokenStream result = new FrLemFilter(tokenizer); // provide lemma+pos
         
         // searching with lemma
         if (search) {
@@ -68,7 +69,7 @@ public class FrAnalyzer extends Analyzer
             result = new LocutionFilter(result);
             // keep punctuation for searching (operators)
             result = new FlagCloudFilter(result, true);
-            return new TokenStreamComponents(source, result);
+            return new TokenStreamComponents(tokenizer, result);
         }
         // index for word clouds
         else if (cloud) {
@@ -77,12 +78,13 @@ public class FrAnalyzer extends Analyzer
             // link unknown names, bad for a search query
             result = new FrPersnameFilter(result);
             result = new FlagCloudFilter(result);
-            return new TokenStreamComponents(source, result);
+            return new TokenStreamComponents(tokenizer, result);
         }
         // index for search
         else {
             result = new FlagFindFilter(result); // orthographic form (not lemma) as term to index
-            return new TokenStreamComponents(source, result);
+            result = new ASCIIFoldingFilter(result); // no accents
+            return new TokenStreamComponents(tokenizer, result);
         }
     }
 

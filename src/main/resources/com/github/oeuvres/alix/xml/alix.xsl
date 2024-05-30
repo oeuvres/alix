@@ -54,26 +54,33 @@
   </xsl:variable>
   <!-- an html bibliographic line -->
   <xsl:variable name="bibl-book">
-    <xsl:if test="$byline != ''">
-      <span class="byline">
-        <xsl:copy-of select="$byline"/>
-      </span>
-    </xsl:if>
-    <xsl:if test="$doctitle != ''">
-      <xsl:text> </xsl:text>
-      <em class="title">
-        <xsl:copy-of select="$doctitle"/>
-      </em>
-    </xsl:if>
-    <xsl:variable name="year" select="substring($docdate, 1, 4)"/>
-    <xsl:if test="string(number($year)) != 'NaN'">
-      <xsl:text> </xsl:text>
-      <span class="year">
-        <xsl:text>(</xsl:text>
-        <xsl:value-of select="$year"/>
-        <xsl:text>)</xsl:text>
-      </span>
-    </xsl:if>
+    <xsl:choose>
+      <xsl:when test="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'html:title']">
+        <xsl:apply-templates select="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'html:title']/node()"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:if test="$byline != ''">
+          <span class="byline">
+            <xsl:copy-of select="$byline"/>
+          </span>
+        </xsl:if>
+        <xsl:if test="$doctitle != ''">
+          <xsl:text> </xsl:text>
+          <em class="title">
+            <xsl:copy-of select="$doctitle"/>
+          </em>
+        </xsl:if>
+        <xsl:variable name="year" select="substring($docdate, 1, 4)"/>
+        <xsl:if test="string(number($year)) != 'NaN'">
+          <xsl:text> </xsl:text>
+          <span class="year">
+            <xsl:text>(</xsl:text>
+            <xsl:value-of select="$year"/>
+            <xsl:text>)</xsl:text>
+          </span>
+        </xsl:if>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:variable>
 
   <!-- Racine -->
@@ -157,6 +164,11 @@
     <alix:field name="bibl" type="meta" xmlns="http://www.w3.org/1999/xhtml">
       <xsl:copy-of select="$bibl-book"/>
     </alix:field>
+    <xsl:if test="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'ref']">
+      <alix:field name="ref" type="meta" xmlns="http://www.w3.org/1999/xhtml">
+        <xsl:apply-templates select="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'ref']"/>
+      </alix:field>
+    </xsl:if>
     <alix:field name="toc" type="store" xmlns="http://www.w3.org/1999/xhtml">
       <xsl:call-template name="toc"/>
     </alix:field>
@@ -168,11 +180,18 @@
       <xsl:otherwise>
         <alix:field name="text" type="text">
           <article>
-            <xsl:apply-templates>
-              <xsl:with-param name="level" select="1"/>
-            </xsl:apply-templates>
+            <xsl:choose>
+              <xsl:when test="/*/tei:text/tei:front | /*/tei:text/tei:back">
+                <xsl:apply-templates select="/*/tei:text/tei:front | /*/tei:text/tei:body | /*/tei:text/tei:back"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:apply-templates select="/*/tei:text/tei:body/node()"/>
+              </xsl:otherwise>
+            </xsl:choose>
             <xsl:variable name="notes">
-              <xsl:call-template name="footnotes"/>
+              <xsl:for-each select="/*/tei:text">
+                <xsl:call-template name="footnotes"/>
+              </xsl:for-each>
             </xsl:variable>
             <xsl:if test="$notes != ''">
               <xsl:copy-of select="$notes"/>
@@ -315,8 +334,18 @@
         </xsl:when>
       </xsl:choose>
       <alix:field name="type" type="category" value="{@type}"/>
-      <alix:field name="bibl" type="meta">
-        <xsl:call-template name="bibl"/>
+      <alix:field name="bibl" type="meta" xmlns="http://www.w3.org/1999/xhtml">
+        <xsl:copy-of select="$bibl-book"/>
+        <xsl:variable name="analytic">
+          <xsl:call-template name="analytic"/>
+        </xsl:variable>
+        <xsl:if test="$analytic != ''">
+          <xsl:text> « </xsl:text>
+          <span class="analytic">
+            <xsl:copy-of select="$analytic"/>
+          </span>
+          <xsl:text> »</xsl:text>
+        </xsl:if>
       </alix:field>
       <alix:field name="analytic" type="meta">
         <xsl:call-template name="analytic"/>

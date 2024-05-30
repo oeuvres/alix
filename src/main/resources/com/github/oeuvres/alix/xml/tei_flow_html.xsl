@@ -1123,7 +1123,7 @@ Tables
         </sub>
       </xsl:when>
       <xsl:when test="starts-with($rend, 'sc')">
-        <span rend="sc">
+        <span>
           <xsl:call-template name="atts"/>
           <xsl:apply-templates>
             <xsl:with-param name="from" select="$from"/>

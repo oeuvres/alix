@@ -134,10 +134,11 @@ public class ML
     }
 
     /**
-     * Return a normalize-space() text version of an xml excerpt (possibly broken).
+     * Return a normalize-space() text version of an xml excerpt (possibly with broken tags).
      */
     public static void detag(final String xml, int begin, int end, Chain dest)
     {
+        // TODO, keeep tags
         // silently fails if bad params
         if (begin < 0 || end < 0) {
             return;
@@ -148,6 +149,7 @@ public class ML
         if (begin > end) {
             return;
         }
+        // Chain tag = new Chain();
         boolean start = true; // before first tag (avoid broken tag)
         boolean lt = false; // tag is started
         // boolean closing = false; // closing tag </…>

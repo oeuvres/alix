@@ -44,135 +44,140 @@ import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.ML;
 
-public class MetaTokenizer extends Tokenizer 
-{
-  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-  private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-  private int offset = 0, bufferIndex = 0, dataLen = 0;
-  private static final int IO_BUFFER_SIZE = 4096;
-  private final CharacterBuffer ioBuffer = CharacterUtils.newCharacterBuffer(IO_BUFFER_SIZE);
-  private final boolean xml = true;
-  /** A mutable String with hashCode() and compare() like String, used for testing values in Maps */
-  private final Chain test = new Chain();
-  @Override
-  public boolean incrementToken() throws IOException
-  {
-    clearAttributes();
-    int length = 0;
-    int start = -1; // this variable is always initialized
-    int end = -1;
-    int endAdjust = -1;
-    boolean intag = false;
-    boolean inent = false;
-    // char[] buffer = termAtt.buffer();
-    while (true) {
-      if (bufferIndex >= dataLen) {
-        offset += dataLen;
-        CharacterUtils.fill(ioBuffer, input); // read supplementary char aware with CharacterUtils
-        if (ioBuffer.getLength() == 0) {
-          dataLen = 0; // so next offset += dataLen won't decrement offset
-          if (length > 0) {
-            break;
-          } else {
-            correctOffset(offset);
-            return false;
-          }
+public class MetaTokenizer extends Tokenizer {
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
+    private int offset = 0, bufferIndex = 0, dataLen = 0;
+    private static final int IO_BUFFER_SIZE = 4096;
+    private final CharacterBuffer ioBuffer = CharacterUtils.newCharacterBuffer(IO_BUFFER_SIZE);
+    private final boolean xml = true;
+    /**
+     * A mutable String with hashCode() and compare() like String, used for testing
+     * values in Maps
+     */
+    private final Chain test = new Chain();
+
+    @Override
+    public boolean incrementToken() throws IOException {
+        clearAttributes();
+        int length = 0;
+        int start = -1; // this variable is always initialized
+        int end = -1;
+        int endAdjust = -1;
+        boolean intag = false;
+        boolean inent = false;
+        // char[] buffer = termAtt.buffer();
+        while (true) {
+            if (bufferIndex >= dataLen) {
+                offset += dataLen;
+                CharacterUtils.fill(ioBuffer, input); // read supplementary char aware with CharacterUtils
+                if (ioBuffer.getLength() == 0) {
+                    dataLen = 0; // so next offset += dataLen won't decrement offset
+                    if (length > 0) {
+                        break;
+                    } else {
+                        correctOffset(offset);
+                        return false;
+                    }
+                }
+                dataLen = ioBuffer.getLength();
+                bufferIndex = 0;
+            }
+            char c = ioBuffer.getBuffer()[bufferIndex];
+            bufferIndex++;
+
+            Chain test = this.test; // localize variable for efficiency
+
+            // skip xml tags
+            if (!xml)
+                ; // do nothing
+            else if (c == '<') { // start of tag
+                // a token has been started, send it
+                if (length > 0) {
+                    bufferIndex--; // replay start of tag at next call to skip it
+                    endAdjust = 0;
+                    break;
+                }
+                intag = true;
+                continue;
+            } else if (intag) { // inside tag
+                if (c == '>')
+                    intag = false;
+                continue;
+            }
+
+            // resolve html entities
+            if (!xml)
+                ; // do nothing
+            else if (c == '&') {
+                if (length == 0)
+                    start = offset + bufferIndex - 1;
+                inent = true;
+                test.reset();
+                test.append(c);
+                continue;
+            } else if (inent == true) {
+                // end of entity
+                if (c == ';') {
+                    test.append(c);
+                    inent = false;
+                    final char c1 = ML.forChar(test); // will not work well on supplentary chars
+                    // entity is not recognize, append it as is to the term
+                    // update length and get next char
+                    if (c1 == 0) {
+                        termAtt.append(test);
+                        length += test.length();
+                        continue;
+                    }
+                    length++;
+                    c = c1; // char known give it further
+                }
+                // not an ASCII letter or digit, false entity, maybe just &
+                else if (!ML.isInEnt(c)) {
+                    termAtt.append(test);
+                    length += test.length();
+                    break;
+                } else { // append a new char to entity
+                    test.append(c);
+                    continue;
+                }
+            }
+
+            // soft hyphen, do not append to term
+            if (c == 0xAD)
+                continue;
+
+            // for a search parser, keep wildcard
+            if (c == '*')
+                ;
+            // not a token char
+            else if (!Char.isToken(c) || c == '-' || c == '\'' || c == '’') {
+                if (length > 0)
+                    break; // end of token, send it
+                else
+                    continue; // go next space
+            }
+
+            // start of a token, record start offset
+            if (length == 0) {
+                start = offset + bufferIndex - 1;
+            }
+            // append char as lower case
+            termAtt.append(Char.toLower(c));
+            length++;
         }
-        dataLen = ioBuffer.getLength();
-        bufferIndex = 0;
-      }
-      char c = ioBuffer.getBuffer()[bufferIndex];
-      bufferIndex++;
-
-      Chain test = this.test; // localize variable for efficiency
-
-
-      // skip xml tags
-      if(!xml); // do nothing 
-      else if (c == '<') { // start of tag
-        // a token has been started, send it
-        if (length > 0) {
-          bufferIndex--; // replay start of tag at next call to skip it
-          endAdjust = 0;
-          break;
-        }
-        intag = true;
-        continue;
-      }
-      else if (intag) { // inside tag
-        if (c == '>') intag = false;
-        continue;
-      }
-
-
-      // resolve html entities
-      if(!xml); // do nothing 
-      else if (c == '&') {
-        if (length == 0)  start = offset + bufferIndex - 1;
-        inent = true;
-        test.reset();
-        test.append(c);
-        continue;
-      }
-      else if (inent == true) {
-        // end of entity
-        if (c == ';') {
-          test.append(c);
-          inent = false;
-          final char c1 = ML.forChar(test); // will not work well on supplentary chars
-          // entity is not recognize, append it as is to the term
-          // update length and get next char
-          if (c1 == 0) {
-            termAtt.append(test);
-            length += test.length();
-            continue;
-          }
-          length++;
-          c = c1; // char known give it further
-        }
-        // not an ASCII letter or digit, false entity, maybe just &
-        else if (!ML.isInEnt(c)) {
-          termAtt.append(test);
-          length += test.length();
-          break;
-        }
-        else { // append a new char to entity
-          test.append(c);
-          continue;
-        }
-      }
-
-      // soft hyphen, do not append to term
-      if (c == 0xAD) continue;
-
-      // for a search parser, keep wildcard
-      if (c == '*');
-      // not a token char
-      else if (!Char.isToken(c) || c == '-' || c == '\'' || c == '’') {
-        if (length > 0) break; // end of token, send it
-        else continue; // go next space
-      }
-            
-      // start of a token, record start offset
-      if (length == 0) {
-        start = offset + bufferIndex - 1;
-      }
-      // append char as lower case
-      termAtt.append(Char.toLower(c));
-      length++;
+        end = offset + bufferIndex + endAdjust;
+        offsetAtt.setOffset(correctOffset(start), correctOffset(end));
+        return true;
     }
-    end = offset + bufferIndex + endAdjust;
-    offsetAtt.setOffset(correctOffset(start), correctOffset(end));
-    return true;
-  }
-  
-  @Override
-  public void reset() throws IOException {
-    super.reset();
-    bufferIndex = 0;
-    offset = 0;
-    dataLen = 0;
-    ioBuffer.reset(); // make sure to reset the IO buffer!!
-  }
+
+    @Override
+    public void reset() throws IOException {
+        super.reset();
+        bufferIndex = 0;
+        offset = 0;
+        dataLen = 0;
+        ioBuffer.reset(); // make sure to reset the IO buffer!!
+    }
 
 }
