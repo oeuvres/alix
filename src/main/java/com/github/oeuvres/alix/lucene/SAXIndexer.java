@@ -194,9 +194,9 @@ public class SAXIndexer extends DefaultHandler
                     // cachingTokenFilter used to be memory expensive
                     // TeeSinkTokenFilter will need to define analysis strategy here
                     doc.add(new StoredField(name, text)); // text has to be stored for snippets and conc
-                    doc.add(new Field(name, text, Alix.ftypeText));
                     String name_cloud = name + "_cloud";
                     doc.add(new Field(name_cloud, text, Alix.ftypeText)); // indexation of the chosen tokens
+                    doc.add(new Field(name, text, Alix.ftypeText));
                     break;
                 default:
                     throw new SAXException("</" + qName + "> @name=\"" + name + "\" unkown type: " + type);

@@ -54,7 +54,7 @@ public class FrAnalyzer extends Analyzer
     public TokenStreamComponents createComponents(String field)
     {
         // kind of fields
-        final boolean cloud = field.endsWith("cloud"); // do not select lemma but orthographic
+        final boolean cloud = field.endsWith("cloud");
         final boolean search = field.startsWith(SEARCH); // for seraching
         int flags = FrTokenizer.XML;
         if (search)  {
