@@ -380,6 +380,7 @@ public class SAXIndexer extends DefaultHandler
             document.add(new StringField(ALIX_ID, id, Store.YES));
             document.add(new SortedDocValuesField(ALIX_ID, new BytesRef(id)));
             document.add(new StringField(ALIX_TYPE, CHAPTER, Store.YES));
+            document.add(new StringField(ALIX_TYPE, TEXT, Store.YES));
         }
         // create a new Lucene document
         else if (DOCUMENT.equals(localName) || ARTICLE.equals(localName)) {
@@ -406,6 +407,7 @@ public class SAXIndexer extends DefaultHandler
             document.add(new SortedDocValuesField(ALIX_ID, new BytesRef(id)));
             document.add(new StringField(ALIX_TYPE, ARTICLE, Store.YES));
             document.add(new StringField(ALIX_TYPE, DOCUMENT, Store.YES));
+            document.add(new StringField(ALIX_TYPE, TEXT, Store.YES));
         }
         // open a field
         else if (FIELD.equals(localName)) {
