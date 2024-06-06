@@ -34,11 +34,6 @@ package com.github.oeuvres.alix.lucene.analysis;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
-
-import static com.github.oeuvres.alix.Names.*;
 
 
 /**
