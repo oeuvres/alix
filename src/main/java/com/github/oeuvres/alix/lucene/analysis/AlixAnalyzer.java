@@ -33,6 +33,7 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
@@ -44,47 +45,23 @@ import static com.github.oeuvres.alix.Names.*;
  * Analysis scenario for French in Alix. The linguistic features of Alix are
  * language dependent.
  */
-public class FrAnalyzer extends Analyzer
+public class AlixAnalyzer extends  DelegatingAnalyzerWrapper
 {
-    /**
-     * Force creation of a new token stream pipeline, for multi threads indexing.
-     */
+    Analyzer cloudAnalyzer = new CloudAnalyzer();
+    Analyzer findAnalyzer = new FindAnalyzer();
+    
+
+    public AlixAnalyzer() {
+        super(PER_FIELD_REUSE_STRATEGY);
+    }
 
     @Override
-    public TokenStreamComponents createComponents(String field)
-    {
-        // kind of fields
-        final boolean cloud = field.endsWith("cloud");
-        final boolean search = field.startsWith(SEARCH); // for seraching
-        int flags = FrTokenizer.XML;
-        if (search)  {
-            flags = flags | FrTokenizer.SEARCH;
+    protected Analyzer getWrappedAnalyzer(String fieldName) {
+        if (fieldName.endsWith("_cloud")) {
+            return cloudAnalyzer;
         }
-        final Tokenizer tokenizer = new FrTokenizer(flags); // segment words
-        TokenStream result = new FrLemFilter(tokenizer); // provide lemma+pos
-        
-        // searching with lemma
-        if (search) {
-            // merge compounds for search
-            result = new LocutionFilter(result);
-            // keep punctuation for searching (operators)
-            result = new FlagCloudFilter(result, true);
-            return new TokenStreamComponents(tokenizer, result);
-        }
-        // index for word clouds
-        else if (cloud) {
-            // compounds: parce que (quite expensive, 20% time)
-            result = new LocutionFilter(result);
-            // link unknown names, bad for a search query
-            result = new FrPersnameFilter(result);
-            result = new FlagCloudFilter(result);
-            return new TokenStreamComponents(tokenizer, result);
-        }
-        // index for search
         else {
-            result = new FlagFindFilter(result); // orthographic form (not lemma) as term to index
-            result = new ASCIIFoldingFilter(result); // no accents
-            return new TokenStreamComponents(tokenizer, result);
+            return findAnalyzer;
         }
     }
 

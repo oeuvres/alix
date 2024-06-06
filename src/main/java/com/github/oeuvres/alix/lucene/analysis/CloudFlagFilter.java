@@ -51,7 +51,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
  * tokens are deleted. This allows simple computation of a token context (ex:
  * span queries, co-occurrences).
  */
-public class FlagCloudFilter extends TokenFilter {
+public class CloudFlagFilter extends TokenFilter {
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */
@@ -67,12 +67,12 @@ public class FlagCloudFilter extends TokenFilter {
     /** keep right position order */
     private int skippedPositions;
 
-    public FlagCloudFilter(TokenStream in) {
+    public CloudFlagFilter(TokenStream in) {
         super(in);
         this.pun = false;
     }
 
-    public FlagCloudFilter(TokenStream in, boolean pun) {
+    public CloudFlagFilter(TokenStream in, boolean pun) {
         super(in);
         this.pun = pun;
     }

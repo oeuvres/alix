@@ -61,7 +61,7 @@ import com.github.oeuvres.alix.util.Char;
  * <p>
  * The original {@link CharTermAttribute} provide by the step before is not
  * modified, allowing further filters to choose which token to index,
- * see for example {@link FlagCloudFilter}. 
+ * see for example {@link CloudFlagFilter}. 
  * </p>
  * <p>
  * The found lemma+pos is dictionary based. No disambiguation is tried,
@@ -104,7 +104,7 @@ public final class FrLemFilter extends TokenFilter
   }
 
   @Override
-  public boolean incrementToken() throws IOException
+  public final boolean incrementToken() throws IOException
   {
     // was last token a sentence punctuation ?
     boolean waspun = this.waspun;

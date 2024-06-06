@@ -90,7 +90,7 @@ public class FrPersnameFilter extends TokenFilter
   }
 
   @Override
-  public boolean incrementToken() throws IOException
+  public final boolean incrementToken() throws IOException
   {
     // go ahead as record tokens to replay
     if (!stack.isEmpty()) {

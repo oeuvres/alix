@@ -58,7 +58,7 @@ public class MetaTokenizer extends Tokenizer {
     private final Chain test = new Chain();
 
     @Override
-    public boolean incrementToken() throws IOException {
+    public final boolean incrementToken() throws IOException {
         clearAttributes();
         int length = 0;
         int start = -1; // this variable is always initialized

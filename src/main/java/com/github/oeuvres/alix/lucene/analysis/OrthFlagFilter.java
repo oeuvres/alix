@@ -50,7 +50,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
  * keep orthographic normalize form 
  * (names with capital, common words with 
  */
-public class FlagOrthFilter extends TokenFilter
+public class OrthFlagFilter extends TokenFilter
 {
   /** The term provided by the Tokenizer */
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -64,7 +64,7 @@ public class FlagOrthFilter extends TokenFilter
   private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
 
 
-  public FlagOrthFilter(TokenStream in)
+  public OrthFlagFilter(TokenStream in)
   {
     super(in);
   }

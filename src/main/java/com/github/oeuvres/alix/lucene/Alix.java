@@ -89,7 +89,7 @@ import org.apache.lucene.util.Bits;
 
 import static com.github.oeuvres.alix.Names.*;
 
-import com.github.oeuvres.alix.lucene.analysis.FrAnalyzer;
+import com.github.oeuvres.alix.lucene.analysis.AlixAnalyzer;
 import com.github.oeuvres.alix.lucene.search.FieldFacet;
 import com.github.oeuvres.alix.lucene.search.Scale;
 import com.github.oeuvres.alix.lucene.search.FieldText;
@@ -235,7 +235,7 @@ public class Alix
         }
         // What about reuse strategy ?
         if (analyzer == null) {
-            this.analyzer = new FrAnalyzer();
+            this.analyzer = new AlixAnalyzer();
         }
         else {
             this.analyzer = analyzer;

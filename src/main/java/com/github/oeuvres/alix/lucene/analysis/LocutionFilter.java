@@ -52,184 +52,198 @@ import com.github.oeuvres.alix.util.Roll;
 /**
  * Plug behind TokenLem, take a Trie dictionary, and try to compound locutions.
  */
-public class LocutionFilter extends TokenFilter
-{
-  /** Current char offset */
-  private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-  /** Current Flags */
-  private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-  /** Current original term, do not cast here, or effects could be inpredictable */
-  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-  /** A normalized orthographic form (ex : capitalization) */
-  private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
-  /** A lemma when possible */
-  private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
-  /** A stack of states  */
-  private Roll<State> stack = new Roll<State>(10);
-  /** A term used to concat a compound */
-  private CharsAtt compound = new CharsAtt();
-  /** past paticiples to not take as infinitives */
-  public static final HashSet<CharsAtt> ORTH = new HashSet<CharsAtt>();
-  static {
-    for (String w : new String[] { "pris", "prise'", "prises" })
-      ORTH.add(new CharsAtt(w));
-  }
-
-
-  public LocutionFilter(TokenStream input)
-  {
-    super(input);
-  }
-
-  public String toString(LinkedList<State> stack) {
-    String out = "";
-    State restore = captureState();
-    boolean first = true;
-    for(State s: stack) {
-      if (first) first = false;
-      else out += ", ";
-      restoreState(s);
-      out += termAtt;
+public class LocutionFilter extends TokenFilter {
+    /** Current char offset */
+    private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
+    /** Current Flags */
+    private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    /**
+     * Current original term, do not cast here, or effects could be inpredictable
+     */
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    /** A normalized orthographic form (ex : capitalization) */
+    private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
+    /** A lemma when possible */
+    private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
+    /** A stack of states */
+    private Roll<State> stack = new Roll<State>(10);
+    /** A term used to concat a compound */
+    private CharsAtt compound = new CharsAtt();
+    /** past paticiples to not take as infinitives */
+    public static final HashSet<CharsAtt> ORTH = new HashSet<CharsAtt>();
+    static {
+        for (String w : new String[] { "pris", "prise'", "prises" })
+            ORTH.add(new CharsAtt(w));
     }
-    restoreState(restore);
-    return out;
-  }
-  
-  @SuppressWarnings("unlikely-arg-type")
-  @Override
-  public boolean incrementToken() throws IOException
-  {
-    CharsAtt orth = (CharsAtt) orthAtt;
-    boolean token = false;
-    compound.setEmpty();
-    Integer treeState;
-    final int BRANCH = FrDics.BRANCH; // localize
-    final int LEAF = FrDics.LEAF; // localize
-    int loop = -1;
-    int startOffset = offsetAtt.startOffset();
-    boolean maybeVerb = false;
-    do {
-      loop++;
-      // something in stack, 2 cases
-      // 1. good to output
-      // 2. restart a loop
-      if (stack.size() > loop) {
-        restoreState(stack.get(loop));
-        if (Tag.PUN.sameParent(flagsAtt.getFlags()) || termAtt.length() == 0) {
-          if (stack.isEmpty()) return true;
-        }
-      }
-      else {
-        boolean more = input.incrementToken();
-        if (!more) { // stream is exhausted, exhaust the stack, 
-          if (stack.isEmpty()) return false; // nothing more to find
-          restoreState(stack.remove());
-          return true;
-        }
-        // is a branch stop, exhaust stack
-        if (Tag.PUN.sameParent(flagsAtt.getFlags()) || termAtt.length() == 0) {
-          // if nothing in stack, go out with current state
-          if (stack.isEmpty()) return true;
-          // if stack is not empty, restore first, add this state to the stack
-          if (!stack.isEmpty()) stack.add(captureState());
-          restoreState(stack.remove());
-          return true;
-        }
-       token = true; // ???
-      }
-      // first token of a compound candidate, remember start offset
-      if (loop == 0) startOffset = offsetAtt.startOffset();
-      // not the first tokem prepare compounding
-      if (loop > 0 && !compound.endsWith('\'')) compound.append(' '); 
-      
-      int tag = flagsAtt.getFlags();
-      if (Tag.NUM.sameParent(tag)) {
-        compound.append("NUM");
-      }
-      // for adjectives to no confuse with verbs
-      else if (orthAtt.length() != 0 && ORTH.contains(orthAtt)) {
-        compound.append(orthAtt);
-      }
-      // for verbs, the compound key is the lemma, for others takes an orthographic form
-      else if (Tag.VERB.sameParent(tag) && lemAtt.length() != 0) {
-        maybeVerb = true;
-        compound.append(lemAtt);
-      }
-      //  "ne fait pas l’affaire"
-      else if (maybeVerb && orth.equals("pas")) {
-        compound.setLength(compound.length() - 1); // suppres last ' '
-      }
-      // for names, test the original forms
-      else if (Tag.NAME.sameParent(tag)) {
-        compound.append(termAtt);
-      }
-      // for other words, orth may have correct initial capital of sentence
-      else if (!Tag.SUB.sameParent(tag) && orth.length() != 0) {
-        compound.append(orth);
-      }
-      // Nations Unies ?
-      else {
-        compound.append(termAtt);
-      }
-      
-      treeState = FrDics.TREELOC.get(compound);
-      
-      if (treeState == null) {
-        // here, we could try to fix "parti pris" ("pris" seen as verb "prendre") ?
-        // if nothing in stack, and new token, go out with current state
-        if (stack.isEmpty() && loop == 0) return true;
-        // if stack is not empty and a new token, add it to the stack
-        if (token) stack.add(captureState());
-        restoreState(stack.remove());
-        return true;
-      }
-      
-      
-      // it’s a compound
-      if ((treeState & LEAF) > 0) {
-        stack.clear();
-        // get its entry 
-        LexEntry entry = FrDics.WORDS.get(compound);
-        if (entry == null) entry = FrDics.NAMES.get(compound);
-        if (entry != null) {
-          flagsAtt.setFlags(entry.tag);
-          termAtt.setEmpty().append(compound);
-          if (entry.orth != null) orth.setEmpty().append(entry.orth);
-          else orth.setEmpty();
-          if (entry.lem != null) lemAtt.setEmpty().append(entry.lem);
-          else lemAtt.setEmpty();
-        }
-        else {
-          termAtt.setEmpty().append(compound);
-          orth.setEmpty().append(compound);
-          lemAtt.setEmpty();
-        }
-        
-        offsetAtt.setOffset(startOffset, offsetAtt.endOffset());
-        // no more compound with this prefix, we are happy
-        if ((treeState & BRANCH) == 0) return true;
-        // compound may continue, lookahead should continue, store this step
-        stack.add(captureState());
-      }
-      // should be a part of a compound, store state if it’s a new token
-      else {
-        if (token) stack.add(captureState());
-      }
 
-    } while(loop < 10); // a compound bigger than 10, there’s a problem, should not arrive
-    if (!stack.isEmpty()) {
-      restoreState(stack.remove());
-      return true;
+    public LocutionFilter(TokenStream input) {
+        super(input);
     }
-    return true; // ?? pb à la fin
-  }
-  @Override
-  public void reset() throws IOException {
-    super.reset();
-  }
 
-  @Override
-  public void end() throws IOException {
-    super.end();
-  }
+    public String toString(LinkedList<State> stack) {
+        String out = "";
+        State restore = captureState();
+        boolean first = true;
+        for (State s : stack) {
+            if (first)
+                first = false;
+            else
+                out += ", ";
+            restoreState(s);
+            out += termAtt;
+        }
+        restoreState(restore);
+        return out;
+    }
+
+    @SuppressWarnings("unlikely-arg-type")
+    @Override
+    public final boolean incrementToken() throws IOException {
+        CharsAtt orth = (CharsAtt) orthAtt;
+        boolean token = false;
+        compound.setEmpty();
+        Integer treeState;
+        final int BRANCH = FrDics.BRANCH; // localize
+        final int LEAF = FrDics.LEAF; // localize
+        int loop = -1;
+        int startOffset = offsetAtt.startOffset();
+        boolean maybeVerb = false;
+        do {
+            loop++;
+            // something in stack, 2 cases
+            // 1. good to output
+            // 2. restart a loop
+            if (stack.size() > loop) {
+                restoreState(stack.get(loop));
+                if (Tag.PUN.sameParent(flagsAtt.getFlags()) || termAtt.length() == 0) {
+                    if (stack.isEmpty())
+                        return true;
+                }
+            } else {
+                boolean more = input.incrementToken();
+                if (!more) { // stream is exhausted, exhaust the stack,
+                    if (stack.isEmpty())
+                        return false; // nothing more to find
+                    restoreState(stack.remove());
+                    return true;
+                }
+                // is a branch stop, exhaust stack
+                if (Tag.PUN.sameParent(flagsAtt.getFlags()) || termAtt.length() == 0) {
+                    // if nothing in stack, go out with current state
+                    if (stack.isEmpty())
+                        return true;
+                    // if stack is not empty, restore first, add this state to the stack
+                    if (!stack.isEmpty())
+                        stack.add(captureState());
+                    restoreState(stack.remove());
+                    return true;
+                }
+                token = true; // ???
+            }
+            // first token of a compound candidate, remember start offset
+            if (loop == 0)
+                startOffset = offsetAtt.startOffset();
+            // not the first tokem prepare compounding
+            if (loop > 0 && !compound.endsWith('\''))
+                compound.append(' ');
+
+            int tag = flagsAtt.getFlags();
+            if (Tag.NUM.sameParent(tag)) {
+                compound.append("NUM");
+            }
+            // for adjectives to no confuse with verbs
+            else if (orthAtt.length() != 0 && ORTH.contains(orthAtt)) {
+                compound.append(orthAtt);
+            }
+            // for verbs, the compound key is the lemma, for others takes an orthographic
+            // form
+            else if (Tag.VERB.sameParent(tag) && lemAtt.length() != 0) {
+                maybeVerb = true;
+                compound.append(lemAtt);
+            }
+            // "ne fait pas l’affaire"
+            else if (maybeVerb && orth.equals("pas")) {
+                compound.setLength(compound.length() - 1); // suppres last ' '
+            }
+            // for names, test the original forms
+            else if (Tag.NAME.sameParent(tag)) {
+                compound.append(termAtt);
+            }
+            // for other words, orth may have correct initial capital of sentence
+            else if (!Tag.SUB.sameParent(tag) && orth.length() != 0) {
+                compound.append(orth);
+            }
+            // Nations Unies ?
+            else {
+                compound.append(termAtt);
+            }
+
+            treeState = FrDics.TREELOC.get(compound);
+
+            if (treeState == null) {
+                // here, we could try to fix "parti pris" ("pris" seen as verb "prendre") ?
+                // if nothing in stack, and new token, go out with current state
+                if (stack.isEmpty() && loop == 0)
+                    return true;
+                // if stack is not empty and a new token, add it to the stack
+                if (token)
+                    stack.add(captureState());
+                restoreState(stack.remove());
+                return true;
+            }
+
+            // it’s a compound
+            if ((treeState & LEAF) > 0) {
+                stack.clear();
+                // get its entry
+                LexEntry entry = FrDics.WORDS.get(compound);
+                if (entry == null)
+                    entry = FrDics.NAMES.get(compound);
+                if (entry != null) {
+                    flagsAtt.setFlags(entry.tag);
+                    termAtt.setEmpty().append(compound);
+                    if (entry.orth != null)
+                        orth.setEmpty().append(entry.orth);
+                    else
+                        orth.setEmpty();
+                    if (entry.lem != null)
+                        lemAtt.setEmpty().append(entry.lem);
+                    else
+                        lemAtt.setEmpty();
+                } else {
+                    termAtt.setEmpty().append(compound);
+                    orth.setEmpty().append(compound);
+                    lemAtt.setEmpty();
+                }
+
+                offsetAtt.setOffset(startOffset, offsetAtt.endOffset());
+                // no more compound with this prefix, we are happy
+                if ((treeState & BRANCH) == 0)
+                    return true;
+                // compound may continue, lookahead should continue, store this step
+                stack.add(captureState());
+            }
+            // should be a part of a compound, store state if it’s a new token
+            else {
+                if (token)
+                    stack.add(captureState());
+            }
+
+        } while (loop < 10); // a compound bigger than 10, there’s a problem, should not arrive
+        if (!stack.isEmpty()) {
+            restoreState(stack.remove());
+            return true;
+        }
+        return true; // ?? pb à la fin
+    }
+
+    @Override
+    public void reset() throws IOException {
+        super.reset();
+    }
+
+    @Override
+    public void end() throws IOException {
+        super.end();
+    }
 }

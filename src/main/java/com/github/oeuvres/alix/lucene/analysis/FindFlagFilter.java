@@ -49,7 +49,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
  * A token Filter to plug after a Lemmatizer. Add lemma to forms on same
  * position, good for find, bad for stats.
  */
-public class FlagFindFilter extends TokenFilter {
+public class FindFlagFilter extends TokenFilter {
     /** The term provided by the Tokenizer */
     private final CharsAtt termAtt = (CharsAtt) addAttribute(CharTermAttribute.class);
     /** A linguistic category as a short number, from Tag */
@@ -60,8 +60,6 @@ public class FlagFindFilter extends TokenFilter {
     private final CharsAtt orthAtt = (CharsAtt) addAttribute(CharsOrthAtt.class);
     /** A lemma when possible */
     private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
-    /** Flag to say a tag has to be send */
-    int tag;
     /** Flag to say */
     boolean lem;
 
@@ -69,12 +67,12 @@ public class FlagFindFilter extends TokenFilter {
      * 
      * @param in
      */
-    public FlagFindFilter(TokenStream in) {
+    public FindFlagFilter(TokenStream in) {
         super(in);
     }
 
     @Override
-    public boolean incrementToken() throws IOException {
+    public final boolean incrementToken() throws IOException {
         CharTermAttribute term = this.termAtt;
         // append lemma on same position
         if (lem) {
@@ -93,10 +91,17 @@ public class FlagFindFilter extends TokenFilter {
         // end of stream
         if (!input.incrementToken())
             return false;
+        
+        final int tag = flagsAtt.getFlags();
+        // record an empty token at puctuation position
+        if (Tag.PUN.sameParent(tag)) {
+            termAtt.setEmpty().append("");
+            return true;
+        }
+
         // standard position, index orthographic form, to lower for names
         term.setEmpty().append(orthAtt.toLower());
 
-        tag = flagsAtt.getFlags();
         // if an interesting lemma, inform next call to index it at same pos
         if (this.lemAtt.length() != 0) {
             lem = true;

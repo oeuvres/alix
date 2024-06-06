@@ -68,7 +68,7 @@ public class StatsFilter extends TokenFilter {
     }
 
     @Override
-    public boolean incrementToken() throws IOException {
+    public final boolean incrementToken() throws IOException {
         if (!input.incrementToken())
             return false; // end of stream
         offsets.put(pos, offsetAtt.startOffset(), offsetAtt.endOffset());
