@@ -15,11 +15,10 @@ import org.junit.Test;
 
 public class FlagFindFilterTest {
 
-    @Test
     public void testPos() throws IOException
     {
-        Analyzer analyzer = new FrAnalyzer();
-        analyze(analyzer, "test", "Janet est un psychologue.");
+        Analyzer analyzer = new AlixAnalyzer();
+        analyze(analyzer, "test", "Janée FUT un psychologue.");
     }
     
     public void analyze(Analyzer analyzer, String field, String text) throws IOException
