@@ -402,8 +402,7 @@ public class FieldRail
     }
     
     /**
-     * Get edges between a predefined set of words around pivots words. Its a not so bas idea that 
-     * pivot
+     * Get edges between a predefined set of words.
      * @param pivotIds A set of pivots to search around
      * @param left Left size of context
      * @param right Right size of context

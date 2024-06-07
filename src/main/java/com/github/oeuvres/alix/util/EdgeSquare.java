@@ -54,6 +54,8 @@ public class EdgeSquare implements Iterable<Edge>
     protected long N;
     /** Node counter for score calculation */
     protected long[] counts;
+    /** A mutual information algorithm to score relations */
+    OptionMI MI = OptionMI.JACCARD;
 
     /**
      * Build a square matrix of ints. Words should absolutely be an ordered array of unique ints
@@ -169,6 +171,10 @@ public class EdgeSquare implements Iterable<Edge>
         return sb.toString();
     }
 
+    public void setMI(final OptionMI MI)
+    {
+        this.MI = MI;
+    }
 
     public class EdgeIt implements Iterator<Edge> 
     {
@@ -236,10 +242,12 @@ public class EdgeSquare implements Iterable<Edge>
                         score = -Double.MAX_VALUE;
                     }
                     else {
-                        int ab = edgeCount;
-                        long a = counts[source];
-                        long b = counts[target];
-                        score = OptionMI.G.score(ab, a, b, N);
+                        final long a = counts[source];
+                        final long b = counts[target];
+                        // avoid NaN, edge count may have errors
+                        final long ab = Math.min(edgeCount, Math.min(a, b));
+                        // PPMI is not discriminant
+                        score = MI.score(ab, a, b, N);
                         // score = edgeCount;
                         // big center
                         // score = (double)edgeCount; // centralize

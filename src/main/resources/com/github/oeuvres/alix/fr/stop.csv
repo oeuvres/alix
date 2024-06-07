@@ -97,6 +97,9 @@ a
 a.
 à
 â
+α
+α'
+α’
 ad
 afin
 ah
@@ -195,11 +198,11 @@ c.
 c'
 c’
 c_est
-c'est
-c’est
+# c'est
+# c’est
 ca
-ça
-car
+# ça
+# car
 cc
 ccc
 cccc
@@ -248,7 +251,7 @@ cm
 com
 combien
 comme
-comment
+# comment
 contre
 D
 D.
@@ -654,8 +657,8 @@ P.
 par
 par-dessus
 parce
-parce que
-parfois
+# parce que
+# parfois
 parmi
 part
 pas
@@ -676,8 +679,8 @@ plutôt
 plutost
 point
 pour
-pourquoi
-pourquoy
+# pourquoi
+# pourquoy
 pourtant
 pouvait
 pouvoir
@@ -826,10 +829,10 @@ tels
 tes
 the
 The
-tien
-toi
-toi-même
-ton
+# tien
+# toi
+# toi-même
+# ton
 toujours
 tous
 tous deux
@@ -843,7 +846,7 @@ trente
 très
 trois
 trop
-tu
+# tu
 U
 U.
 u

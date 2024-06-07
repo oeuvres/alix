@@ -34,6 +34,7 @@ package com.github.oeuvres.alix.util;
 
 import java.util.Arrays;
 import java.util.stream.*;
+
 import java.util.NoSuchElementException;
 
 import com.github.oeuvres.alix.maths.Calcul;
@@ -46,10 +47,12 @@ public class EdgeRoll
 {
     /** For now, not parametrable */
     private final boolean directed = false;
-    /** Waited values */
+    /** An efficent ordered index->wordId */
     private final int[] words;
     /** Word counts, to calculate scores */
     private final long[] counts;
+    /** A set to check unicity */
+    private final boolean[] uniqs;
     /** Global encoutered occurrences */
     private long N;
     /** Distance between position to keep */
@@ -70,6 +73,7 @@ public class EdgeRoll
     private int[] nodes = new int[capacity];
     /** Cursor for an iterator, out of scope by default */
     private int cursor = -1;
+
     
     /**
      * Waited values and distance
@@ -82,6 +86,7 @@ public class EdgeRoll
         Arrays.sort(words);
         this.words = words;
         this.counts = new long[words.length];
+        this.uniqs = new boolean[words.length];
         this.distance = distance;
         this.matrix = new EdgeSquare(words, directed);
     }
@@ -111,22 +116,31 @@ public class EdgeRoll
     /**
      * Push a value, maybe outside waited vocabulary, calculate edges.
      * @param position
-     * @param word
+     * @param wordId
      */
-    public void push(final int position, final int word)
+    public void push(final int position, final int pivotId)
     {
         // do not count null words
-        if (word < 1) return;
+        if (pivotId < 1) return;
         // check if value is waited
-        final int index = Arrays.binarySearch(words, word);
-        if (index < 0) {
+        final int pivotIndex = Arrays.binarySearch(words, pivotId);
+        if (pivotIndex < 0) {
             return;
         }
-        // increment counts
-        counts[index]++;
-        N++;
+        // increment word counts
+        counts[pivotIndex]++;
+        
+        // Bug [le chat et le enfant]
+        // (le, enfant) = 1, not 2
+        
+        
+        
+        
+        // think it better
         // loop on existant couples, drop the non relevant according to new position
         reset();
+        // clean the encounterings
+        Arrays.fill(uniqs, false);
         while (hasNext()) {
             next();
             final int dist = position - position();
@@ -134,13 +148,33 @@ public class EdgeRoll
                 removeFirst(); // remove current
                 continue;
             }
-            
-            final int cooc = node();
-            // push an edge
-            matrix.inc(index, cooc);
+            final int coocIndex = node();
+            // pivot word coming one more time, previous encounterings already counted
+            if (coocIndex == pivotIndex) {
+                Arrays.fill(uniqs, false);
+                continue;
+            }
+            // if cooc is a repetition do not recount
+            if (uniqs[coocIndex]) {
+                // le le enfant
+                continue;
+            }
+            uniqs[coocIndex] = true;
+            // one event more
+            N++;
         }
-        // record node (after counting edges)
-        addLast(position, index);
+        // rewind encounterings to record coocs in matrix
+        for(int coocIndex = 0, max = uniqs.length; coocIndex < max; coocIndex++) {
+            if (!uniqs[coocIndex]) continue;
+            matrix.inc(pivotIndex, coocIndex);
+        }
+        /*
+         *  may record some bad edges in some combinations
+         *  ex (1, 2, 1, 2, 1)
+         *  width=1: (2,1), (1,2), (2,1)
+         */
+        // record node in the roller
+        addLast(position, pivotIndex);
     }
     
     /**

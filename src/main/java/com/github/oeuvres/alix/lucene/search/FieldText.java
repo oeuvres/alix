@@ -670,6 +670,12 @@ public class FieldText
         return forms;
     }
 
+    /**
+     * Get forms for this field, whit a doc filter
+     * @param filter
+     * @return
+     * @throws IOException
+     */
     public FormEnum forms(final BitSet filter) throws IOException
     {
         if (filter == null) {
@@ -928,7 +934,7 @@ public class FieldText
     }
 
     /*
-    // not very efficient way to get occs for a query
+    // not very efficient way to get occs for a query, kept as a memory of false good idea
     public DocStats docStats(String[] forms, final BitSet filter) throws IOException 
     {
         if (forms == null || forms.length == 0) return null;
