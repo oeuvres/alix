@@ -1,6 +1,6 @@
 package com.github.oeuvres.alix.web;
 
-import com.github.oeuvres.alix.lucene.search.FormEnum.Order;
+import com.github.oeuvres.alix.lucene.search.FormIterator.Order;
 
 public enum OptionOrder implements Option 
 {

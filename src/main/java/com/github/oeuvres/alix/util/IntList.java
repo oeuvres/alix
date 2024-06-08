@@ -284,6 +284,18 @@ public class IntList
         return dest;
     }
 
+    /**
+     * Get data as an int array.
+     * 
+     * @return
+     */
+    public int[] toArray(final int size)
+    {
+        int[] dest = new int[size];
+        System.arraycopy(data, 0, dest, 0, size);
+        return dest;
+    }
+
     @Override
     public String toString()
     {

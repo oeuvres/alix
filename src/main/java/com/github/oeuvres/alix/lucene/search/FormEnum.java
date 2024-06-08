@@ -37,6 +37,7 @@ import java.text.Collator;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.NoSuchElementException;
 
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
@@ -58,14 +59,12 @@ import com.github.oeuvres.alix.web.OptionMI;
  * different pre-calculated arrays, and is also used to record search specific
  * counts like freqs and hits.
  */
-public class FormEnum
+public class FormEnum implements FormIterator
 {
     /** used to read in the dic */
     BytesRef bytes = new BytesRef();
     /** Count of forms with  */
     private int cardinality = -1;
-    /** Cursor, to iterate in the sorter */
-    private int cursor = -1;
     /** Optional, a sort algorithm to select specific words according a norm (ex: compare formOccs / freqs) */
     public OptionDistrib distrib;
     /** Global number of docs relevant for this facet */
@@ -84,8 +83,6 @@ public class FormEnum
     protected int[] formDocsPart;
     /** By formId, count of docs, matched in a text search */
     protected int[] formHits;
-    /** Current formId, set by next */
-    private int formId = -1;
     /** By formId, a free int with no semantic, see FieldFace.nos() */
     protected int[] formNos;
     /** By formId, count of occurrences, on all base */
@@ -106,8 +103,6 @@ public class FormEnum
     protected BitSet hitsVek;
     /** Optional, for a co-occurrence search, count of occurrences to capture on the left */
     public int left;
-    /** Limit for this iterator */
-    public int limit;
     /** Biggest formId+1 (like lucene IndexReader.maxDoc()) */
     public int maxForm;
     /** Optional, a sort algorithm for coocs */
@@ -126,18 +121,15 @@ public class FormEnum
     public String[] search;
     /** An array of formId in the order we want to iterate on, should be set before iteration */
     private int[] sorter;
+    /** Cursor, to iterate in the sorter */
+    private int cursor = -1;
+    /** Limit for this iterator */
+    public int limit;
+    /** Current formId, set by next */
+    private int formId = -1;
     /** Optional, a set of tags to filter form to collect */
     public TagFilter tags;
-    /** sort order */
-    public enum Order
-    {
-        ALPHA,
-        DOCS,
-        FREQ,
-        HITS,
-        OCCS,
-        SCORE,
-    }
+
 
     /**
      * Constructor
@@ -383,14 +375,9 @@ public class FormEnum
         return formFreq[formId];
     }
 
-    /**
-     * There are search left
-     * 
-     * @return
-     */
+    @Override
     public boolean hasNext()
     {
-
         return (cursor < limit - 1);
     }
 
@@ -448,10 +435,8 @@ public class FormEnum
         return limit;
     }
 
-    /**
-     * Advance the cursor to next element
-     */
-    public int next()
+    @Override
+    public int next() throws NoSuchElementException
     {
         cursor++;
         formId = sorter[cursor];
@@ -544,12 +529,7 @@ public class FormEnum
         return formOccsPart[formId];
     }
     
-    
-
-
-    /**
-     * Reset the internal cursor if we want to replay the list.
-     */
+    @Override
     public void reset()
     {
         if (sorter == null) {
@@ -634,25 +614,16 @@ public class FormEnum
         this.formNos = formNos;
     }
 
-    /**
-     * 
-     * @param order
-     * @return
-     */
-    public int[] sort(final Order order)
+    @Override
+    public void sort(final Order order)
     {
-        return sort(order, -1, false);
+        sort(order, -1, false);
     }
 
-    /**
-     * 
-     * @param order
-     * @param limit
-     * @return
-     */
-    public int[] sort(final Order order, final int limit)
+    @Override
+    public void sort(final Order order, final int limit)
     {
-        return sort(order, limit, false);
+        sort(order, limit, false);
     }
     
     /**
@@ -662,7 +633,7 @@ public class FormEnum
      * @param reverse
      * @return
      */
-    public int[] sort(final Order order, final int limit, final boolean reverse)
+    public void sort(final Order order, final int limit, final boolean reverse)
     {
         if (formFreq != null && maxForm != formFreq.length) {
             throw new IllegalArgumentException("Corrupted FormEnum name=" + name + " maxForm=" + maxForm
@@ -719,7 +690,6 @@ public class FormEnum
             int[] sorter = sortAlpha(formDic);
             this.sorter(sorter);
             reset();
-            return sorter;
         }
         // cardinality = 0;
         for (int formId = 0, length = maxForm; formId < length; formId++) {
@@ -765,7 +735,6 @@ public class FormEnum
         int[] sorter = top.toArray();
         this.sorter(sorter);
         reset();
-        return sorter;
     }
 
     /**
@@ -800,6 +769,13 @@ public class FormEnum
         return terms;
     }
 
+    @Override
+    public int[] sorter()
+    {
+        if (sorter == null) return null;
+        return sorter.clone();
+    }
+    
     /**
      * Set the sorted vector of ids
      */

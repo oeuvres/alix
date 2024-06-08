@@ -358,7 +358,8 @@ public class FieldRail
     }
 
     /**
-     * With a set of int formIds, run accross full or part of rails, to collect co-occs
+     * With a set of int formIds, run accross full or part of rails, to collect co-occs between those 
+     * selected words.
      */
     public EdgeSquare edges(final int[] formIds, final int distance, final BitSet filter)
     {

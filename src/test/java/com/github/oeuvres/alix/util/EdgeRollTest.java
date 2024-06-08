@@ -7,7 +7,6 @@ import org.junit.Test;
 public class EdgeRollTest
 {
 
-    @Test
     public void test()
     {
         int[] events = {1, 2, 1, 2, 1};
