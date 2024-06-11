@@ -42,6 +42,10 @@
 *.png           binary
 *.so            binary
 *.war           binary
+*.xslx          binary
+*.xlsx          binary
+*.woff          binary
+*.woff2         binary
 *.zip           binary
 
 # Common build-tool wrapper scripts ('.cmd' versions are handled by 'Common.gitattributes')
