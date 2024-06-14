@@ -1462,15 +1462,7 @@ Could be correct for a text only version in <xsl:value-of select=""/>
         <xsl:value-of select="$_html"/>
       </xsl:when>
       -->
-      <!-- ???? -->
-      <xsl:when test="ancestor::tei:*[local-name(../..)='TEI']">
-        <xsl:for-each select="ancestor::tei:*[local-name(../..)='TEI'][1]">
-          <xsl:call-template name="id"/>
-          <xsl:value-of select="$_ext"/>
-        </xsl:for-each>
-        <xsl:text>#</xsl:text>
-        <xsl:value-of select="$id"/>
-      </xsl:when>
+
       <!-- No split, just anchor -->
       <xsl:otherwise>
         <xsl:text>#</xsl:text>

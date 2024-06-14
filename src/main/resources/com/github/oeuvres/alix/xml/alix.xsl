@@ -55,6 +55,10 @@
         <xsl:copy-of select="$byline"/>
       </alix:field>
     </xsl:if>
+  </xsl:variable>
+  
+  <!-- tags to add at text level (not the book cover) for better stats -->
+  <xsl:variable name="tags">
     <xsl:for-each select="/*/tei:teiHeader/tei:profileDesc/tei:textClass/tei:keywords//tei:term">
       <xsl:variable name="value">
         <xsl:apply-templates select="." mode="key"/>
@@ -65,6 +69,7 @@
       </xsl:if>
     </xsl:for-each>
   </xsl:variable>
+  
   <!-- an html bibliographic line -->
   <xsl:variable name="bibl-book">
     <xsl:choose>
@@ -191,6 +196,7 @@
         <xsl:apply-templates mode="alix" select="*"/>
       </xsl:when>
       <xsl:otherwise>
+        <xsl:copy-of select="$tags"/>
         <alix:field name="text" type="text">
           <article>
             <xsl:choose>
@@ -329,11 +335,30 @@
   <xsl:template name="chapter">
     <alix:chapter>
       <!-- id is here supposed to be unique ; maybe dangerous… -->
-      <xsl:if test="@xml:id and $idHigh">
+      <xsl:if test="@xml:id">
         <xsl:attribute name="xml:id">
           <xsl:value-of select="@xml:id"/>
         </xsl:attribute>
       </xsl:if>
+      <alix:field name="toc" type="store">
+        <xsl:call-template name="toclocal"/>
+      </alix:field>
+      <alix:field name="text" type="text">
+        <article>
+          <xsl:apply-templates>
+            <xsl:with-param name="level" select="1"/>
+          </xsl:apply-templates>
+          <xsl:variable name="notes">
+            <xsl:call-template name="footnotes"/>
+          </xsl:variable>
+          <xsl:if test="$notes != ''">
+            <xsl:copy-of select="$notes"/>
+          </xsl:if>
+        </article>
+      </alix:field>
+      <!-- replication of tags -->
+      <xsl:copy-of select="$tags"/>
+      <!-- Todo, chapter authors -->
       <xsl:copy-of select="$info"/>
       <!-- local date or replicate book date ? -->
       <xsl:variable name="chapyear" select="substring(@when, 1, 4)"/>
@@ -387,19 +412,6 @@
           <xsl:value-of select="$next"/>
         </alix:field>
       </xsl:if>
-      <alix:field name="text" type="text">
-        <article>
-          <xsl:apply-templates>
-            <xsl:with-param name="level" select="1"/>
-          </xsl:apply-templates>
-          <xsl:variable name="notes">
-            <xsl:call-template name="footnotes"/>
-          </xsl:variable>
-          <xsl:if test="$notes != ''">
-            <xsl:copy-of select="$notes"/>
-          </xsl:if>
-        </article>
-      </alix:field>
     </alix:chapter>
   </xsl:template>
   <!-- Terms in subtitle could be boosted ? -->

@@ -77,7 +77,7 @@ public class Doc
     /** The lucene index to read in */
     final private Alix alix;
     /** Id of a document in this reader {@link IndexReader#document(int)} */
-    final int docId;
+    final int lucId;
     /** Permanent id for the document */
     final String id;
     /** Set of fields loaded */
@@ -122,7 +122,7 @@ public class Doc
             document = fread.document(docId, fieldsToLoad);
         }
         this.alix = alix;
-        this.docId = docId;
+        this.lucId = docId;
         this.id = id;
         this.fieldsToLoad = fieldsToLoad;
     }
@@ -163,7 +163,7 @@ public class Doc
             throw new IllegalArgumentException("No stored fields found for docId: " + docId);
         }
         this.alix = alix;
-        this.docId = docId;
+        this.lucId = docId;
         this.id = document.get(ALIX_ID);
         this.fieldsToLoad = fieldsToLoad;
     }
@@ -193,7 +193,7 @@ public class Doc
         StringBuilder sb = new StringBuilder();
 
         FieldText ftext = alix.fieldText(field);
-        int len1 = ftext.occs(docId);
+        int len1 = ftext.occs(lucId);
         int len2 = ftext.occs(docId2);
 
         Terms vek1 = getTermVector(field);
@@ -313,14 +313,81 @@ public class Doc
      */
     public int docId()
     {
-        return docId;
+        return lucId;
+    }
+
+    /**
+     * Count of occurrences by term for the document. Returns an iterator sorted
+     * according to a scorer. If scorer is null, default is count of occurences.
+     * {@link FieldText#forms(org.apache.lucene.util.BitSet, TagFilter, OptionDistrib)}
+     * 
+     * @param field
+     * @param distrib
+     * @param tags
+     * @return
+     * @throws IOException Lucene errors.
+     * @throws NoSuchFieldException
+     */
+    static public FormEnum forms(Alix alix, int lucId, String field, OptionDistrib distrib, TagFilter tags) throws IOException, NoSuchFieldException
+    {
+        boolean hasTags = (tags != null);
+        boolean noStop = (tags != null && tags.nostop());
+        boolean hasScorer = (distrib != null);
+    
+        // get index term stats
+        FieldText fieldText = alix.fieldText(field);
+        FormEnum forms = fieldText.forms();
+        if (hasScorer) {
+            forms.formScore = new double[fieldText.maxForm];
+        }
+        forms.formFreq = new long[fieldText.maxForm]; // freqs by form
+        int docLen = fieldText.docOccs[lucId];
+    
+        // loop on all forms of the document, get score, keep the top
+        // final long restLen = fieldText.occsAll - occsDoc;
+        Terms tvek = alix.reader().termVectors().get(lucId, field);
+        if (tvek == null) {
+            throw new NoSuchFieldException("Missig search Vector for field=" + field + " lucId=" + lucId);
+        }
+        TermsEnum termit = tvek.iterator();
+        while (termit.next() != null) {
+            BytesRef bytes = termit.term();
+            if (bytes.length < 1) {
+                continue;
+            }
+            final int formId = fieldText.formId(bytes);
+            if (hasTags && !tags.accept(fieldText.formTag[formId])) {
+                continue;
+            }
+            if (noStop && fieldText.isStop(formId)) {
+                continue;
+            }
+            if (formId < 0) {
+                continue; // should not arrive, let cry
+            }
+            if (hasScorer) {
+                distrib.expectation(fieldText.formOccs[formId], fieldText.occs);
+                distrib.idf(fieldText.formDocs[formId], fieldText.docs, fieldText.occs);
+            }
+            // scorer.weight(termOccs, termDocs); // collection level stats
+            long freq = termit.totalTermFreq();
+            forms.formFreq[formId] = freq;
+            forms.freq += freq;
+            if (hasScorer) {
+                forms.formScore[formId] += distrib.score(freq, docLen);
+                // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub
+                // complement ?
+            }
+        }
+        // add some more stats on this iterator
+        return forms;
     }
 
     public int freq(final String field, final String[] forms) throws NoSuchFieldException, IOException
     {
         return freq(
             alix.reader(),
-            this.docId,
+            this.lucId,
             field,
             forms
         );
@@ -329,7 +396,7 @@ public class Doc
      * Count occurences of terms in a doc.
      *
      * @param reader  A Lucene reader to get stats from.
-     * @param doc     Internal id of doc.
+     * @param lucId   Lucene internal id of a doc.
      * @param field   Field name.
      * @param forms   Array of forms.
      * @return        Occurrences count for founded forms.
@@ -338,7 +405,7 @@ public class Doc
      */
     static public int freq(
             final IndexReader reader, 
-            final int doc, 
+            final int lucId, 
             final String field, 
             final String[] forms
     ) throws NoSuchFieldException, IOException
@@ -346,15 +413,15 @@ public class Doc
         if (forms == null || forms.length < 1)
             return 0;
         Arrays.sort(forms); // may optimize term seekink, useful for uniq
-        Terms tvek = reader.termVectors().get(doc, field);
+        Terms tvek = reader.termVectors().get(lucId, field);
 
         if (!tvek.hasFreqs()) {
-            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " doc=" + doc);
+            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " lucId=" + lucId);
         }
         int freq = 0;
         TermsEnum tenum = tvek.iterator();
         if (tenum == null) {
-            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " doc=" + doc);
+            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " lucId=" + lucId);
         }
         PostingsEnum postings = null;
         String last = null;
@@ -407,9 +474,9 @@ public class Doc
     public Terms getTermVector(String field) throws IOException, NoSuchFieldException
     {
         // new lucene API, not tested
-        Terms tvek = alix.reader().termVectors().get(docId, field);
+        Terms tvek = alix.reader().termVectors().get(lucId, field);
         if (tvek == null)
-            throw new NoSuchFieldException("Missig search Vector for field=" + field + " docId=" + docId);
+            throw new NoSuchFieldException("Missig search Vector for field=" + field + " docId=" + lucId);
         return tvek;
     }
 
@@ -496,7 +563,7 @@ public class Doc
         Terms vek2 = alix.reader().termVectors().get(docId2, field);
         Top<String> top = new Top<String>(100);
         FieldText ftext = alix.fieldText(field);
-        int len1 = ftext.occs(docId);
+        int len1 = ftext.occs(lucId);
         int len2 = ftext.occs(docId2);
         Terms vek1 = getTermVector(field);
         // double max1 = Double.MIN_VALUE;
@@ -635,7 +702,7 @@ public class Doc
      */
     public int length(String field) throws IOException
     {
-        return alix.fieldText(field).occs(docId);
+        return alix.fieldText(field).occs(lucId);
     }
 
     /**
@@ -684,70 +751,6 @@ public class Doc
         }
         sb.append(text.substring(off)); // do not forget end
         return sb.toString();
-    }
-
-    /**
-     * Count of occurrences by term for the document. Returns an iterator sorted
-     * according to a scorer. If scorer is null, default is count of occurences.
-     * {@link FieldText#forms(org.apache.lucene.util.BitSet, TagFilter, OptionDistrib)}
-     * 
-     * @param field
-     * @param distrib
-     * @param tags
-     * @return
-     * @throws IOException Lucene errors.
-     * @throws NoSuchFieldException
-     */
-    public FormEnum forms(String field, OptionDistrib distrib, TagFilter tags) throws IOException, NoSuchFieldException
-    {
-        boolean hasTags = (tags != null);
-        boolean noStop = (tags != null && tags.nostop());
-        boolean hasScorer = (distrib != null);
-
-        // get index term stats
-        FieldText fieldText = alix.fieldText(field);
-        FormEnum forms = fieldText.forms();
-        if (hasScorer) {
-            forms.formScore = new double[fieldText.maxForm];
-        }
-        forms.formFreq = new long[fieldText.maxForm]; // freqs by form
-        int docLen = fieldText.docOccs[docId];
-
-        // loop on all forms of the document, get score, keep the top
-        // final long restLen = fieldText.occsAll - occsDoc;
-        Terms vector = getTermVector(field); // get the term vector to loop on
-        TermsEnum termit = vector.iterator();
-        while (termit.next() != null) {
-            BytesRef bytes = termit.term();
-            if (bytes.length < 1) {
-                continue;
-            }
-            final int formId = fieldText.formId(bytes);
-            if (hasTags && !tags.accept(fieldText.formTag[formId])) {
-                continue;
-            }
-            if (noStop && fieldText.isStop(formId)) {
-                continue;
-            }
-            if (formId < 0) {
-                continue; // should not arrive, let cry
-            }
-            if (hasScorer) {
-                distrib.expectation(fieldText.formOccs[formId], fieldText.occs);
-                distrib.idf(fieldText.formDocs[formId], fieldText.docs, fieldText.occs);
-            }
-            // scorer.weight(termOccs, termDocs); // collection level stats
-            long freq = termit.totalTermFreq();
-            forms.formFreq[formId] = freq;
-            forms.freq += freq;
-            if (hasScorer) {
-                forms.formScore[formId] += distrib.score(freq, docLen);
-                // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub
-                // complement ?
-            }
-        }
-        // add some more stats on this iterator
-        return forms;
     }
 
 }

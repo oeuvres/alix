@@ -27,7 +27,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
       <xsl:apply-templates select="*" mode="li"/>
     </xsl:variable>
     <xsl:if test="$html != ''">
-      <ol class="tree">
+      <ol>
         <xsl:copy-of select="$html"/>
       </ol>
     </xsl:if>
@@ -50,7 +50,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
       </xsl:apply-templates>   
     </xsl:variable>
     <xsl:if test="$html != ''">
-      <ol class="tree">
+      <ol>
         <xsl:copy-of select="$html"/>
       </ol>
     </xsl:if>
@@ -248,7 +248,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
       <xsl:attribute name="href">
         <xsl:call-template name="href"/>
       </xsl:attribute>
-      <xsl:if test="$class">
+      <xsl:if test="$class != ''">
         <xsl:attribute name="class">
           <xsl:value-of select="$class"/>
         </xsl:attribute>
@@ -311,7 +311,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
   </xsl:template>
 
   <xsl:template match="tei:back | tei:body | tei:front" mode="li">
-    <xsl:param name="class">tree</xsl:param>
+    <xsl:param name="class"/>
     <!-- un truc pour pouvoir maintenir ouvert des niveaux de table des matières -->
     <xsl:param name="less" select="0"/>
     <!-- limit depth -->
@@ -350,7 +350,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
         </li>
       </xsl:when>
       <xsl:when test="self::tei:front or self::tei:back">
-        <li class="more {local-name()}">
+        <li class="{local-name()}">
           <span>
             <xsl:call-template name="title"/>
           </span>
@@ -377,7 +377,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
     </xsl:choose>
   </xsl:template>
   <xsl:template match="tei:group/tei:text" mode="li">
-    <li class="more">
+    <li>
       <xsl:call-template name="a"/>
       <xsl:choose>
         <!-- simple content -->
@@ -394,7 +394,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
   </xsl:template>
   <!-- sectionnement, traverser -->
   <xsl:template match=" tei:div | tei:div0 | tei:div1 | tei:div2 | tei:div3 | tei:div4 | tei:div5 | tei:div6 | tei:div7 | tei:group " mode="li">
-    <xsl:param name="class">tree</xsl:param>
+    <xsl:param name="class"/>
     <!-- un truc pour pouvoir maintenir ouvert des niveaux de table des matières -->
     <xsl:param name="less" select="0"/>
     <!-- limit depth -->
@@ -409,17 +409,15 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
         <!-- let open -->
         <xsl:when test="number($depth) &lt; 2"/>
         <xsl:when test="number($less) &gt; 0">
-          <xsl:attribute name="class">less</xsl:attribute>
         </xsl:when>
         <xsl:otherwise>
-          <xsl:attribute name="class">more</xsl:attribute>
         </xsl:otherwise>
       </xsl:choose>
       <xsl:choose>
         <xsl:when test="count($children) &gt; 0">
           <xsl:call-template name="a"/>
           <ol>
-            <xsl:if test="$class">
+            <xsl:if test="$class != ''">
               <xsl:attribute name="class">
                 <xsl:value-of select="$class"/>
               </xsl:attribute>
@@ -468,7 +466,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
       </xsl:when>
       <!-- if empty <div>, let it be -->
       <xsl:when test="tei:div|tei:div1">
-        <ol class="tree">
+        <ol>
           <xsl:apply-templates select="self::tei:div|self::tei:div1" mode="li"/>
         </ol>
       </xsl:when>

@@ -100,7 +100,7 @@ import com.github.oeuvres.alix.web.OptionDistrib;
  * </p>
  *
  */
-public class FieldFacet
+public class FieldAuthor
 {
     /** All facetId in alphabetic order */
     protected int[] alpha;
@@ -112,6 +112,8 @@ public class FieldFacet
     protected final BytesRefHash formDic;
     /** By facet, Count of docs */
     protected int[] formDocs;
+    /** A docId by facet uses as a “cover“ doc (not counted */
+    protected int[] formCover;
     /** Global number of values for this facet */
     protected int maxForm;
     /** Name of the field for facets, source key for this dictionary */
@@ -123,7 +125,7 @@ public class FieldFacet
     /** The field type */
     public final DocValuesType type;
 
-    public FieldFacet(final Alix alix, final String name) throws IOException
+    public FieldAuthor(final Alix alix, final String name) throws IOException
     {
         this(alix, name, null);
     }
@@ -137,7 +139,7 @@ public class FieldFacet
      * @param coverTerm
      * @throws IOException Lucene errors.
      */
-    public FieldFacet(final Alix alix, final String name, final Term coverTerm) throws IOException
+    public FieldAuthor(final Alix alix, final String name, final Term coverTerm) throws IOException
     {
         this.reader = alix.reader();
         // final int[] docOccs = new int[reader.maxDoc()];
@@ -167,7 +169,9 @@ public class FieldFacet
         }
 
         
+        // ??? growable array to IntList ?
         formDocs = new int[32];
+        formCover = new int[32];
         
         
         int docsAll = 0;
@@ -246,7 +250,9 @@ public class FieldFacet
                     bytes = ((SortedSetDocValues) docs4terms).lookupOrd(ord);
                 int facetId = formDic.add(bytes);
                 if (facetId < 0) facetId = -facetId - 1; // value already given
+                formCover = ArrayUtil.grow(formCover, facetId + 1);
                 // if more than one cover by facet, last will replace previous
+                formCover[facetId] = leafCover[ord];
                 formDocs = ArrayUtil.grow(formDocs, facetId + 1);
                 formDocs[facetId] += leafDocs[ord];
                 ordFacetId[ord] = facetId;
@@ -375,6 +381,7 @@ public class FieldFacet
         forms.formDic = formDic;
         forms.formDocs = formDocs;
         forms.formOccs = null; // not relevant, a facet is not repeated by doc
+        forms.formCover = formCover;
         forms.formTag = null;
         forms.maxForm = maxForm;
         forms.occs = occs; // maybe > docsAll for multiple terms
@@ -678,6 +685,9 @@ public class FieldFacet
         }
         maxForm = formDic.size();
         this.alpha = FormEnum.sortAlpha(formDic);
+        if (covers != null) {
+            this.formCover = formCover.toArray();
+        }
     }
 
     @Override
