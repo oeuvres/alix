@@ -32,6 +32,10 @@
     select="/*/tei:teiHeader/tei:encodingDesc/tei:refsDecl/tei:citeStructure/@use = '@xml:id'"/>
   <!-- Name of file, provided by caller -->
   <xsl:param name="filename"/>
+  <!-- For links in TOC -->
+  <xsl:variable name="split" select="true()"/>
+  <!--  clean url -->
+  <xsl:variable name="_ext"/>
   <!-- Get metas as a global var to insert fields in all chapters -->
   <xsl:variable name="info">
     <alix:field name="title" type="category" value="{normalize-space($doctitle)}"/>
@@ -51,6 +55,15 @@
         <xsl:copy-of select="$byline"/>
       </alix:field>
     </xsl:if>
+    <xsl:for-each select="/*/tei:teiHeader/tei:profileDesc/tei:textClass/tei:keywords//tei:term">
+      <xsl:variable name="value">
+        <xsl:apply-templates select="." mode="key"/>
+      </xsl:variable>
+      <alix:field name="term" type="facet" value="{normalize-space($value)}"/>
+      <xsl:if test="@type">
+        <alix:field name="{@type}" type="facet" value="{normalize-space($value)}"/>
+      </xsl:if>
+    </xsl:for-each>
   </xsl:variable>
   <!-- an html bibliographic line -->
   <xsl:variable name="bibl-book">
