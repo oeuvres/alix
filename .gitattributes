@@ -1,3 +1,5 @@
+* text eol=lf
+
 # Java sources
 *.java          text diff=java
 *.kt            text diff=kotlin
