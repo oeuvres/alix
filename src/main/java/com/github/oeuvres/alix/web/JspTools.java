@@ -558,21 +558,13 @@ public class JspTools
 
 
     /**
-     * Get a request parameter as a String from a list of value (first is default)
+     * Get a request parameter as a String with a default value.
      */
-    public String getStringOf(final String name, final Set<String> set, final String fallback)
+    public String getString(final String name, final String fallback)
     {
-        String value = request.getParameter(name);
-        if (value == null) {
-            return fallback;
-        }
-        if (set.contains(value)) {
-            return value;
-        }
-        return fallback;
+        return getString(name, fallback, ""); // cookie=null produce ambig
     }
 
-    
     /**
      * Get a request parameter as a String with a default value, and a cookie persistency.
      */
@@ -609,14 +601,6 @@ public class JspTools
     }
 
     /**
-     * Get a request parameter as a String with a default value.
-     */
-    public String getString(final String name, final String fallback)
-    {
-        return getString(name, fallback, ""); // cookie=null produce ambig
-    }
-
-    /**
      * Get a request parameter as a String with a default value, or optional cookie
      * persistence.
      * 
@@ -630,6 +614,22 @@ public class JspTools
     {
         return getString(name, fallback, cookie.name());
     }
+
+    /**
+     * Get a request parameter as a String from a list of value (first is default)
+     */
+    public String getStringOf(final String name, final Set<String> set, final String fallback)
+    {
+        String value = request.getParameter(name);
+        if (value == null) {
+            return fallback;
+        }
+        if (set.contains(value)) {
+            return value;
+        }
+        return fallback;
+    }
+
 
     /**
      * Return request object, maybe useful in context of a method
