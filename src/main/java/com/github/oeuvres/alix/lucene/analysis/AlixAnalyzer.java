@@ -44,6 +44,7 @@ public class AlixAnalyzer extends  DelegatingAnalyzerWrapper
 {
     Analyzer cloudAnalyzer = new CloudAnalyzer();
     Analyzer findAnalyzer = new FindAnalyzer();
+    Analyzer queryAnalyzer = new QueryAnalyzer();
     
 
     public AlixAnalyzer() {
@@ -52,7 +53,10 @@ public class AlixAnalyzer extends  DelegatingAnalyzerWrapper
 
     @Override
     protected Analyzer getWrappedAnalyzer(String fieldName) {
-        if (fieldName.endsWith("_cloud")) {
+        if (fieldName.equals("query") || fieldName.equals("search")) {
+            return queryAnalyzer;
+        }
+        else if (fieldName.endsWith("_cloud")) {
             return cloudAnalyzer;
         }
         else {

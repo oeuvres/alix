@@ -436,7 +436,7 @@ public class FrTokenizer extends Tokenizer
             }
 
             // it's a token char, + is for queries
-            if (Char.isToken(c) || (query && c == '+')) {
+            if (Char.isToken(c) || (query && (c == '+' || c == '*'))) {
                 // start of token, record startOffset
                 if (length == 0) {
                     if (Char.isDigit(c))

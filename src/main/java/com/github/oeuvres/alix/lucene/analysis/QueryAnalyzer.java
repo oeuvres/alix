@@ -43,13 +43,13 @@ import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
  * Analysis scenario for French in Alix. The linguistic features of Alix are
  * language dependent.
  */
-public class FindAnalyzer extends  Analyzer
+public class QueryAnalyzer extends  Analyzer
 {
     @SuppressWarnings("resource")
     @Override
     public TokenStreamComponents createComponents(String field)
     {
-        final Tokenizer tokenizer = new FrTokenizer(FrTokenizer.XML); // segment words
+        final Tokenizer tokenizer = new FrTokenizer(FrTokenizer.XML | FrTokenizer.SEARCH); // segment words, keep '*'
         TokenStream result = new FrLemFilter(tokenizer); // provide lemma+pos
         result = new FindFlagFilter(result); // orthographic form (not lemma) as term to index
         result = new ASCIIFoldingFilter(result); // no accents

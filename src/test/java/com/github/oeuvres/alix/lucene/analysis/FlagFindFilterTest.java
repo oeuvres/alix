@@ -9,8 +9,8 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
-import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
+// import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
+// import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.junit.Test;
 
 public class FlagFindFilterTest {
@@ -18,7 +18,7 @@ public class FlagFindFilterTest {
     public void testPos() throws IOException
     {
         Analyzer analyzer = new AlixAnalyzer();
-        analyze(analyzer, "test", "Janée FUT un psychologue.");
+        analyze(analyzer, "query", "pour* *pour* Situer* *situer* exactement* *Exactement* les* *les* representations* *representations* du* monde* *monde* de* ENfant* *l'enfant* la* p* pour");
     }
     
     public void analyze(Analyzer analyzer, String field, String text) throws IOException
@@ -28,11 +28,9 @@ public class FlagFindFilterTest {
 
         final CharTermAttribute termAttribute = tokenStream.addAttribute(CharTermAttribute.class);
         final OffsetAttribute offsetAttribute = tokenStream.addAttribute(OffsetAttribute.class);
-        final TypeAttribute typeAttribute = tokenStream.addAttribute(TypeAttribute.class);
-        final PositionIncrementAttribute posIncAttribute =
-            tokenStream.addAttribute(PositionIncrementAttribute.class);
-        final PositionLengthAttribute posLenAttribute =
-            tokenStream.addAttribute(PositionLengthAttribute.class);
+        // final TypeAttribute typeAttribute = tokenStream.addAttribute(TypeAttribute.class);
+        final PositionIncrementAttribute posIncAttribute = tokenStream.addAttribute(PositionIncrementAttribute.class);
+        // final PositionLengthAttribute posLenAttribute = tokenStream.addAttribute(PositionLengthAttribute.class);
         
         tokenStream.reset();
         while(tokenStream.incrementToken()) {
