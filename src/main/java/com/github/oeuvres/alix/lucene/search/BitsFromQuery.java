@@ -51,67 +51,67 @@ import org.apache.lucene.util.BitSet;
 public class BitsFromQuery
 {
 
-  private final Query query;
+    private final Query query;
 
-  /**
-   * Wraps another search's to get bits by LeafReaderContext
-   * 
-   * @param query Query to cache results of
-   */
-  public BitsFromQuery(Query query)
-  {
-    this.query = query;
-  }
-
-  /**
-   * Returns the contained search.
-   * 
-   * @return the contained search.
-   */
-  public Query getQuery()
-  {
-    return query;
-  }
-
-  /**
-   * 
-   * @param context
-   * @return
-   * @throws IOException Lucene errors.
-   */
-  public BitSet bits(LeafReaderContext context) throws IOException
-  {
-    final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(context);
-    final IndexSearcher searcher = new IndexSearcher(topLevelContext);
-    final Query rewritten = searcher.rewrite(query);
-    // Delegate caching to the LRU indexSearcher for these weights,
-    // searcher.setQueryCache(null);
-    final Weight weight = searcher.createWeight(rewritten, org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES, 1);
-    // here should be the fixed cost of bits calculation
-    final Scorer s = weight.scorer(context);
-    if (s == null) return null;
-    return BitSet.of(s.iterator(), context.reader().maxDoc());
-  }
-
-  @Override
-  public String toString()
-  {
-    return getClass().getSimpleName() + "(" + query.toString() + ")";
-  }
-
-  @Override
-  public boolean equals(Object o)
-  {
-    if (o == null || getClass() != o.getClass()) {
-      return false;
+    /**
+     * Wraps another search's to get bits by LeafReaderContext
+     * 
+     * @param query Query to cache results of
+     */
+    public BitsFromQuery(Query query) {
+        this.query = query;
     }
-    final BitsFromQuery other = (BitsFromQuery) o;
-    return this.query.equals(other.query);
-  }
 
-  @Override
-  public int hashCode()
-  {
-    return 31 * getClass().hashCode() + query.hashCode();
-  }
+    /**
+     * Returns the contained search.
+     * 
+     * @return the contained search.
+     */
+    public Query getQuery()
+    {
+        return query;
+    }
+
+    /**
+     * 
+     * @param context
+     * @return
+     * @throws IOException Lucene errors.
+     */
+    public BitSet bits(LeafReaderContext context) throws IOException
+    {
+        final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(context);
+        final IndexSearcher searcher = new IndexSearcher(topLevelContext);
+        final Query rewritten = searcher.rewrite(query);
+        // Delegate caching to the LRU indexSearcher for these weights,
+        // searcher.setQueryCache(null);
+        final Weight weight = searcher.createWeight(rewritten, org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES, 1);
+        // here should be the fixed cost of bits calculation
+        final Scorer s = weight.scorer(context);
+        if (s == null)
+            return null;
+        return BitSet.of(s.iterator(), context.reader().maxDoc());
+    }
+
+    @Override
+    public String toString()
+    {
+        return getClass().getSimpleName() + "(" + query.toString() + ")";
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final BitsFromQuery other = (BitsFromQuery) o;
+        return this.query.equals(other.query);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return 31 * getClass().hashCode() + query.hashCode();
+    }
 }
