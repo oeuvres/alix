@@ -34,15 +34,19 @@ package com.github.oeuvres.alix.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.apache.lucene.util.automaton.Operations;
+import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 
 /**
  * A light hiliter using a Lucene analyzer and a compiled automaton, designed
@@ -75,12 +79,21 @@ public class Marker
         TokenStream stream = analyzer.tokenStream("hilite", q);
         CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
         ArrayList<Automaton> cogs = new ArrayList<Automaton>();
+        // ensure unicity of terms 
+        Set<String> dic = new HashSet<>();
         stream.reset();
         while (stream.incrementToken()) {
             if (termAtt.length() < 1) {
                 continue;
             }
-            cogs.add(automaton(termAtt.buffer(), 0, termAtt.length()));
+            final String term = termAtt.toString();
+            if (dic.contains(term)) {
+                continue;
+            }
+            dic.add(term);
+            Automaton cog;
+            cog = automaton(termAtt.buffer(), 0, termAtt.length());
+            cogs.add(cog);
         }
         stream.end();
         stream.close();
