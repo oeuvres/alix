@@ -297,7 +297,7 @@ public class FieldAuthor
         if (coverTerm == null) return null;
         IndexSearcher searcher = alix.searcher();
         Query coverQuery = new TermQuery(coverTerm);
-        CollectorBits coverCollector = new CollectorBits(searcher);
+        BitsCollector coverCollector = new BitsCollector(searcher);
         searcher.search(coverQuery, coverCollector);
         return coverCollector.bits();
     }

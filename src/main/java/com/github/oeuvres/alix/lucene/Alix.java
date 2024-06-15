@@ -160,7 +160,9 @@ public class Alix
         ftypeMeta.setTokenized(true); // token
         ftypeMeta.setIndexOptions(IndexOptions.DOCS_AND_FREQS); // no position needed
         ftypeMeta.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
-        ftypeMeta.setStoreTermVectors(false); // no vectors, hilite done by anlalyzer
+        ftypeMeta.setStoreTermVectors(true); // store term vectors, hilite by automat not robust enough
+        ftypeMeta.setStoreTermVectorPositions(true);
+        ftypeMeta.setStoreTermVectorOffsets(true);
         ftypeMeta.setStored(false); // TokenStream fields cannot be stored
         ftypeMeta.freeze();
     }
@@ -337,17 +339,6 @@ public class Alix
         return load;
     }
 
-    /**
-     * See {@link #fieldFacet(String, Term)}
-     * 
-     * @param fieldName Name of a field.
-     * @return The FieldFacet for this name, or null.
-     * @throws IOException Lucene errors.
-     */
-    public FieldFacet fieldFacet(final String fieldName) throws IOException
-    {
-        return fieldFacet(fieldName, null);
-    }
 
     /**
      * Get a “facet” object, a cached list of search from a field of type
@@ -362,7 +353,7 @@ public class Alix
      * @return The facet.
      * @throws IOException Lucene errors.
      */
-    public FieldFacet fieldFacet(final String fieldName, final Term coverTerm)
+    public FieldFacet fieldFacet(final String fieldName)
             throws IOException
     {
         String key = "AlixFacet" + fieldName;
@@ -370,7 +361,7 @@ public class Alix
         if (facet != null) {
             return facet;
         }
-        facet = new FieldFacet(this, fieldName, coverTerm);
+        facet = new FieldFacet(this, fieldName);
         cache(key, facet);
         return facet;
     }

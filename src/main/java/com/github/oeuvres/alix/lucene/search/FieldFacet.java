@@ -66,8 +66,11 @@ import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.web.OptionDistrib;
 
 /**
- * A dedicated dictionary for facets, to allow similarity scores.
- * 
+ * A dedicated dictionary for stats on facets.
+ * This class is lighter than the lucene facet package,
+ * {@link org.apache.lucene.demo.facet}, backed to memory only,
+ * and allow more complex scoring.
+ *
  * <p>
  * Example scenario: search "science God" among lots of books. Which author
  * should be the more relevant result? The one with the more occurrences could
@@ -92,8 +95,8 @@ import com.github.oeuvres.alix.web.OptionDistrib;
  * </ul>
  * 
  * <p>
- * This facet dic is backed on a lucene hash of search. This handy object
- * provide a sequential int id for each term. This is used as a pointer in
+ * This facet dic is backed on an efficient {@link org.apache.lucene.util.BytesRefHash}. 
+ * This handy data structure provide a sequential int id for each term. This is used as a pointer in
  * different growing arrays. On creation, object is populated with data non
  * dependent of a search. Those internal vectors are stored as arrays with
  * facetId index.
@@ -123,21 +126,15 @@ public class FieldFacet
     /** The field type */
     public final DocValuesType type;
 
-    public FieldFacet(final Alix alix, final String name) throws IOException
-    {
-        this(alix, name, null);
-    }
-
     /**
      * Build data to have frequencies on a facet field. Access by an Alix instance,
      * to allow cache on an IndexReader state.
      * 
      * @param alix
      * @param name
-     * @param coverTerm
      * @throws IOException Lucene errors.
      */
-    public FieldFacet(final Alix alix, final String name, final Term coverTerm) throws IOException
+    public FieldFacet(final Alix alix, final String name) throws IOException
     {
         this.reader = alix.reader();
         // final int[] docOccs = new int[reader.maxDoc()];
@@ -157,19 +154,23 @@ public class FieldFacet
         // common to all formats
         formDic = new BytesRefHash();
         this.name = name;
-        BitSet covers = coverBits(alix, coverTerm);
         docForms = new int[reader.maxDoc()][];
         
         // StringField
         if (options == IndexOptions.DOCS) {
-            stringField(name, covers);
-            return;
+            buildStringField(name);
+        }
+        // SortedField
+        else {
+            buildSortedField(name);
         }
 
         
+    }
+    
+    private void buildSortedField(final String name) throws IOException
+    {
         formDocs = new int[32];
-        
-        
         int docsAll = 0;
         int occsAll = 0;
         // this.docLength = docLength;
@@ -193,8 +194,6 @@ public class FieldFacet
             }
             // record doc counts for each term by a temp ord index
             int[] leafDocs = new int[ordMax];
-            // record cover docId for each term by a temp ord index
-            int[] leafCover = new int[ordMax];
             // loop on docs
             int docLeaf;
             Bits live = leaf.getLiveDocs();
@@ -207,30 +206,16 @@ public class FieldFacet
                 int ord;
                 if (type == DocValuesType.SORTED) {
                     ord = ((SortedDocValues) docs4terms).ordValue();
-                    // doc is a cover
-                    if (covers != null && covers.get(docId)) {
-                        leafCover[ord] = docId;
-                    }
-                    // Don’t count cover
-                    else {
-                        occsAll++;
-                        leafDocs[ord]++;
-                    }
+                    occsAll++;
+                    leafDocs[ord]++;
                 } 
                 else if (type == DocValuesType.SORTED_SET) {
                     SortedSetDocValues it = (SortedSetDocValues) docs4terms;
                     for (int i = 0, count = it.docValueCount(); i < count; i++) {
                         // possible bug ? maybe long
                         ord = (int)it.nextOrd();
-                        // doc is a cover, record it and do not add to stats
-                        if (covers != null && covers.get(docId)) {
-                            leafCover[ord] = docId;
-                        }
-                        // Don’t count cover
-                        else {
-                            occsAll++;
-                            leafDocs[ord]++;
-                        }
+                        occsAll++;
+                        leafDocs[ord]++;
                     }
                 }
                 docsAll++; // one more doc for this facet
@@ -286,16 +271,57 @@ public class FieldFacet
         this.alpha = FormEnum.sortAlpha(formDic);
     }
     
-    private BitSet coverBits(Alix alix, Term coverTerm) throws IOException
+    /**
+     * Build facet on a SttringField
+     * @throws IOException Lucene errors.
+     */
+    private void buildStringField(final String name) throws IOException
     {
-        if (coverTerm == null) return null;
-        IndexSearcher searcher = alix.searcher();
-        Query coverQuery = new TermQuery(coverTerm);
-        CollectorBits coverCollector = new CollectorBits(searcher);
-        searcher.search(coverQuery, coverCollector);
-        return coverCollector.bits();
-    }
+        BytesRef bytes;
+        IntList formDocs = new IntList();
+        IntList[] docForms = new IntList[reader.maxDoc()];
     
+        // loop on the index leaves to get all terms and freqs
+        for (LeafReaderContext context : reader.leaves()) {
+            LeafReader leaf = context.reader();
+            int docBase = context.docBase;
+            Terms terms = leaf.terms(name);
+            if (terms == null) continue;
+            TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
+            PostingsEnum docsEnum = null;
+            while ((bytes = tenum.next()) != null) {
+                if (bytes.length == 0) continue; // should not count empty position
+                int formId = formDic.add(bytes);
+                if (formId < 0) formId = -formId - 1; // value already given
+                // termLength[formId] += tenum.totalTermFreq(); // not faster if not yet cached
+                docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
+                int docLeaf;
+                Bits live = leaf.getLiveDocs();
+                boolean hasLive = (live != null);
+                while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
+                    final int docId = docBase + docLeaf;
+                    if (docForms[docId] == null) {
+                        docs++;
+                        docForms[docId] = new IntList();
+                    }
+                    docForms[docId].push(formId);
+                    formDocs.inc(formId);
+                    occs++;
+                }
+            }
+        }
+        this.formDocs = formDocs.toArray();
+        for (int i = 0, len = docForms.length; i < len; i++) {
+            if (docForms[i] == null) continue; // empty line
+            this.docForms[i] = docForms[i].toArray();
+        }
+        maxForm = formDic.size();
+        this.alpha = FormEnum.sortAlpha(formDic);
+    }
+
+
+
     /**
      * Total count of documents for the field
      * @return
@@ -620,64 +646,6 @@ public class FieldFacet
             }
         }
         return formOccsAll;
-    }
-
-    /**
-     * Build facet on a SttringField
-     * @throws IOException Lucene errors.
-     */
-    private void stringField(final String name, BitSet covers) throws IOException
-    {
-        BytesRef bytes;
-        IntList formDocs = new IntList();
-        IntList[] docForms = new IntList[reader.maxDoc()];
-        IntList formCover = null;
-        if (covers != null) {
-            formCover = new IntList();
-        }
-    
-        // loop on the index leaves to get all terms and freqs
-        for (LeafReaderContext context : reader.leaves()) {
-            LeafReader leaf = context.reader();
-            int docBase = context.docBase;
-            Terms terms = leaf.terms(name);
-            if (terms == null) continue;
-            TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
-            PostingsEnum docsEnum = null;
-            while ((bytes = tenum.next()) != null) {
-                if (bytes.length == 0) continue; // should not count empty position
-                int formId = formDic.add(bytes);
-                if (formId < 0) formId = -formId - 1; // value already given
-                // termLength[formId] += tenum.totalTermFreq(); // not faster if not yet cached
-                docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
-                int docLeaf;
-                Bits live = leaf.getLiveDocs();
-                boolean hasLive = (live != null);
-                while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
-                    final int docId = docBase + docLeaf;
-                 // doc is a cover, record it and do not add to stats
-                    if (covers != null && covers.get(docId)) {
-                        formCover.put(formId, docId);
-                    }
-                    
-                    if (docForms[docId] == null) {
-                        docs++;
-                        docForms[docId] = new IntList();
-                    }
-                    docForms[docId].push(formId);
-                    formDocs.inc(formId);
-                    occs++;
-                }
-            }
-        }
-        this.formDocs = formDocs.toArray();
-        for (int i = 0, len = docForms.length; i < len; i++) {
-            if (docForms[i] == null) continue; // empty line
-            this.docForms[i] = docForms[i].toArray();
-        }
-        maxForm = formDic.size();
-        this.alpha = FormEnum.sortAlpha(formDic);
     }
 
     @Override
