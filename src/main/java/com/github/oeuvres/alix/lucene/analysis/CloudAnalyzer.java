@@ -56,7 +56,7 @@ public class CloudAnalyzer extends  Analyzer
         result = new LocutionFilter(result);
         // link unknown names, bad for a search query
         result = new FrPersnameFilter(result);
-        result = new CloudFlagFilter(result);
+        result = new CloudFilter(result);
         return new TokenStreamComponents(tokenizer, result);
     }
 

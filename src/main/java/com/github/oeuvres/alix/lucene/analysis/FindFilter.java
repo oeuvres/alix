@@ -49,7 +49,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
  * A token Filter to plug after a Lemmatizer. Add lemma to forms on same
  * position, good for find, bad for stats.
  */
-public class FindFlagFilter extends TokenFilter {
+public class FindFilter extends TokenFilter {
     /** The term provided by the Tokenizer */
     private final CharsAtt termAtt = (CharsAtt) addAttribute(CharTermAttribute.class);
     /** A linguistic category as a short number, from Tag */
@@ -67,7 +67,7 @@ public class FindFlagFilter extends TokenFilter {
      * 
      * @param in
      */
-    public FindFlagFilter(TokenStream in) {
+    public FindFilter(TokenStream in) {
         super(in);
     }
 

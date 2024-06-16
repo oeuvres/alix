@@ -690,6 +690,7 @@ public class FormEnum implements FormIterator
             int[] sorter = sortAlpha(formDic);
             this.sorter(sorter);
             reset();
+            return;
         }
         // cardinality = 0;
         for (int formId = 0, length = maxForm; formId < length; formId++) {

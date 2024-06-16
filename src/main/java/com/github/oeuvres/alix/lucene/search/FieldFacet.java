@@ -105,8 +105,6 @@ import com.github.oeuvres.alix.web.OptionDistrib;
  */
 public class FieldFacet
 {
-    /** All facetId in alphabetic order */
-    protected int[] alpha;
     /** A table docId => facetId+, used to get freqs */
     private int[][] docForms;
     /** Global number of docs relevant for this facet */
@@ -167,6 +165,13 @@ public class FieldFacet
 
         
     }
+    
+    /* TODO, get BitSet of doc by value ?
+    public void hits(String tag, BitSet hits)
+    {
+        if (hits == null) 
+    }
+    */
     
     private void buildSortedField(final String name) throws IOException
     {
@@ -268,7 +273,6 @@ public class FieldFacet
         this.docs = docsAll;
         this.occs = occsAll;
         maxForm = formDic.size();
-        this.alpha = FormEnum.sortAlpha(formDic);
     }
     
     /**
@@ -317,7 +321,6 @@ public class FieldFacet
             this.docForms[i] = docForms[i].toArray();
         }
         maxForm = formDic.size();
-        this.alpha = FormEnum.sortAlpha(formDic);
     }
 
 

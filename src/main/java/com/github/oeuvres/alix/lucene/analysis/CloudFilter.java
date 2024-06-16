@@ -41,6 +41,7 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
@@ -51,9 +52,9 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
  * tokens are deleted. This allows simple computation of a token context (ex:
  * span queries, co-occurrences).
  */
-public class CloudFlagFilter extends TokenFilter {
+public class CloudFilter extends TokenFilter {
     /** The term provided by the Tokenizer */
-    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    private final CharsAtt termAtt = (CharsAtt) addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
     /** A linguistic category as a short number, see {@link Tag} */
@@ -67,12 +68,12 @@ public class CloudFlagFilter extends TokenFilter {
     /** keep right position order */
     private int skippedPositions;
 
-    public CloudFlagFilter(TokenStream in) {
+    public CloudFilter(TokenStream in) {
         super(in);
         this.pun = false;
     }
 
-    public CloudFlagFilter(TokenStream in, boolean pun) {
+    public CloudFilter(TokenStream in, boolean pun) {
         super(in);
         this.pun = pun;
     }
@@ -114,7 +115,7 @@ public class CloudFlagFilter extends TokenFilter {
         }
         // unify numbers
         else if (Tag.NUM.sameParent(tag)) {
-            termAtt.setEmpty().append("NUM");
+            termAtt.setEmpty().append("n°");
         }
         // replace term by lemma when available
         else if (lemAtt.length() != 0) {
@@ -126,6 +127,10 @@ public class CloudFlagFilter extends TokenFilter {
         }
         // filter some names
         if (Tag.NAME.sameParent(tag)) {
+            // A. J.-J.
+            if (termAtt.endsWith('.') && termAtt.length() <= 5) {
+                return false;
+            }
             // A., B.…
             // if (termAtt.length() == 2 && Char.isUpperCase(termAtt.charAt(0)) &&
             // termAtt.charAt(1) == '.') return false;

@@ -51,7 +51,7 @@ public class FindAnalyzer extends  Analyzer
     {
         final Tokenizer tokenizer = new FrTokenizer(FrTokenizer.XML); // segment words
         TokenStream result = new FrLemFilter(tokenizer); // provide lemma+pos
-        result = new FindFlagFilter(result); // orthographic form (not lemma) as term to index
+        result = new FindFilter(result); // orthographic form (not lemma) as term to index
         result = new ASCIIFoldingFilter(result); // no accents
         return new TokenStreamComponents(tokenizer, result);
     }
