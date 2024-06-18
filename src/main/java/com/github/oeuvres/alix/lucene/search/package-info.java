@@ -32,6 +32,7 @@
  */
 
 /**
- * Objects to search and calculate lexical statistics from an index (ex: found occurrences by facet)
+ * Objects to search and calculate lexical statistics from an index (ex: found
+ * occurrences by facet)
  */
 package com.github.oeuvres.alix.lucene.search;

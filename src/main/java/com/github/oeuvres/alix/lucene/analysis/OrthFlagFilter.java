@@ -45,83 +45,86 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
 /**
- * A final token filter before indexation,
- * to plug after a lemmatizer filter,
- * keep orthographic normalize form 
- * (names with capital, common words with 
+ * A final token filter before indexation, to plug after a lemmatizer filter,
+ * keep orthographic normalize form (names with capital, common words with
  */
 public class OrthFlagFilter extends TokenFilter
 {
-  /** The term provided by the Tokenizer */
-  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-  /** The position increment (inform it if positions are stripped) */
-  // private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
-  /** A linguistic category as a short number, see {@link Tag} */
-  private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-  /** A normalized orthographic form */
-  private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
-  /** A lemma when possible */
-  private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
+    /** The term provided by the Tokenizer */
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    /** The position increment (inform it if positions are stripped) */
+    // private final PositionIncrementAttribute posIncrAtt =
+    // addAttribute(PositionIncrementAttribute.class);
+    /** A linguistic category as a short number, see {@link Tag} */
+    private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    /** A normalized orthographic form */
+    private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
+    /** A lemma when possible */
+    private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
 
+    public OrthFlagFilter(TokenStream in) {
+        super(in);
+    }
 
-  public OrthFlagFilter(TokenStream in)
-  {
-    super(in);
-  }
+    @Override
+    public final boolean incrementToken() throws IOException
+    {
+        // squeeze deleted positions, do not record holes
+        while (input.incrementToken()) {
+            if (accept())
+                return true;
+        }
+        return false;
+    }
 
-  @Override
-  public final boolean incrementToken() throws IOException
-  {
-    // squeeze deleted positions, do not record holes
-    while (input.incrementToken()) {
-      if (accept()) return true;
+    /**
+     * Most of the tokens are not rejected but rewrited
+     * 
+     * @return
+     * @throws IOException Lucene errors.
+     */
+    protected boolean accept() throws IOException
+    {
+        int tag = flagsAtt.getFlags();
+        if (tag == Tag.TEST.flag) {
+            System.out.println(termAtt + " orth=" + orthAtt + " lem=" + lemAtt);
+        }
+        // record an empty token at punctuation position for collocations
+        if (Tag.PUN.sameParent(tag)) {
+            if (tag == Tag.PUNcl.flag)
+                termAtt.setEmpty().append(",");
+            else if (tag == Tag.PUNsent.flag)
+                termAtt.setEmpty().append(".");
+            else if (tag == Tag.PUNdiv.flag)
+                termAtt.setEmpty().append("§");
+            else
+                termAtt.setEmpty().append("");
+        }
+        // unify numbers
+        else if (Tag.NUM.sameParent(tag)) {
+            termAtt.setEmpty().append("NUM");
+        }
+        // unify numbers
+        else if (Tag.NAME.sameParent(tag)) {
+            termAtt.setEmpty().append("NUM");
+        }
+        // replace term by normalized form if available
+        else if (orthAtt.length() != 0) {
+            termAtt.setEmpty().append(orthAtt);
+        }
+        return true;
     }
-    return false;
-  }
 
-  /**
-   * Most of the tokens are not rejected but rewrited
-   * @return
-   * @throws IOException Lucene errors.
-   */
-  protected boolean accept() throws IOException
-  {
-    int tag = flagsAtt.getFlags();
-    if (tag == Tag.TEST.flag) {
-      System.out.println(termAtt+" orth="+orthAtt+" lem="+lemAtt);
+    @Override
+    public void reset() throws IOException
+    {
+        super.reset();
     }
-    // record an empty token at punctuation position for collocations
-    if (Tag.PUN.sameParent(tag)) {
-      if (tag == Tag.PUNcl.flag) termAtt.setEmpty().append(",");
-      else if (tag == Tag.PUNsent.flag) termAtt.setEmpty().append(".");
-      else if (tag == Tag.PUNdiv.flag) termAtt.setEmpty().append("§");
-      else termAtt.setEmpty().append("");
-    }
-    // unify numbers
-    else if (Tag.NUM.sameParent(tag)) {
-      termAtt.setEmpty().append("NUM");
-    }
-    // unify numbers
-    else if (Tag.NAME.sameParent(tag)) {
-      termAtt.setEmpty().append("NUM");
-    }
-    // replace term by normalized form if available
-    else if (orthAtt.length() != 0) {
-      termAtt.setEmpty().append(orthAtt);
-    }
-    return true;
-  }
 
-  @Override
-  public void reset() throws IOException
-  {
-    super.reset();
-  }
-
-  @Override
-  public void end() throws IOException
-  {
-    super.end();
-  }
+    @Override
+    public void end() throws IOException
+    {
+        super.end();
+    }
 
 }

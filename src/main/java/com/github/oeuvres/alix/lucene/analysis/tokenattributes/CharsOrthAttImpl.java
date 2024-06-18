@@ -31,9 +31,12 @@
  * limitations under the License.
  */
 package com.github.oeuvres.alix.lucene.analysis.tokenattributes;
+
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+
 /**
- * Custom {@link CharTermAttribute} used to normalize an orthographic form of a token.
+ * Custom {@link CharTermAttribute} used to normalize an orthographic form of a
+ * token.
  */
 public final class CharsOrthAttImpl extends CharsAtt implements CharsOrthAtt
 {

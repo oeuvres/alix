@@ -49,8 +49,7 @@ public class LongTuple implements Comparable<LongTuple>
     /**
      * Constructor setting the size.
      */
-    public LongTuple(final int size)
-    {
+    public LongTuple(final int size) {
         this.size = size;
         data = new long[size];
     }
@@ -61,8 +60,7 @@ public class LongTuple implements Comparable<LongTuple>
      * @param a
      * @param b
      */
-    public LongTuple(final long a, long b)
-    {
+    public LongTuple(final long a, long b) {
         size = 2;
         data = new long[size];
         data[0] = a;
@@ -76,8 +74,7 @@ public class LongTuple implements Comparable<LongTuple>
      * @param b
      * @param c
      */
-    public LongTuple(final long a, final long b, final long c)
-    {
+    public LongTuple(final long a, final long b, final long c) {
         size = 3;
         data = new long[size];
         data[0] = a;

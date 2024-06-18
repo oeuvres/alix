@@ -32,11 +32,9 @@
  */
 package com.github.oeuvres.alix.util;
 
-
 import java.util.Arrays;
 
 import com.github.oeuvres.alix.maths.Calcul;
-
 
 /**
  * An efficient int-Object Map implementation. source:
@@ -75,6 +73,7 @@ public class IntOMap<E>
     public IntOMap() {
         this(32, (float) 0.75);
     }
+
     /**
      * Constructor with default fillFactor
      * 
@@ -146,8 +145,7 @@ public class IntOMap<E>
             ++size;
             if (size >= threshold)
                 rehash(keys.length * 2);
-        }
-        else { // it means used cell with our key
+        } else { // it means used cell with our key
             assert keys[idx] == key;
             values[idx] = value;
         }
@@ -324,8 +322,7 @@ public class IntOMap<E>
     /**
      * Find key position in the map.
      * 
-     * @param key
-     *          Key to look for
+     * @param key Key to look for
      * @return Key position or -1 if not found
      */
     private int getReadIndex(final int key)
@@ -349,8 +346,7 @@ public class IntOMap<E>
      * Find an index of a cell which should be updated by 'put' operation. It can
      * be: 1) a cell with a given key 2) first free cell in the chain
      * 
-     * @param key
-     *          Key to look for
+     * @param key Key to look for
      * @return Index of a cell to be updated by a 'put' operation
      */
     private int getPutIndex(final int key)
@@ -385,19 +381,18 @@ public class IntOMap<E>
      * Returns the least power of two smaller than or equal to 2<sup>30</sup> and
      * larger than or equal to <code>Math.ceil( expected / f )</code>.
      *
-     * @param expected
-     *          the expected number of elements in a hash table.
-     * @param f
-     *          the load factor.
+     * @param expected the expected number of elements in a hash table.
+     * @param f        the load factor.
      * @return the minimum possible size for a backing array.
-     * @throws IllegalArgumentException
-     *           if the necessary size is larger than 2<sup>30</sup>.
+     * @throws IllegalArgumentException if the necessary size is larger than
+     *                                  2<sup>30</sup>.
      */
     private static int arraySize(final int expected, final float f)
     {
         final long s = Math.max(2, Calcul.nextSquare((long) Math.ceil(expected / f)));
         if (s > (1 << 30))
-            throw new IllegalArgumentException("Too large (" + expected + " expected elements with load factor " + f + ")");
+            throw new IllegalArgumentException(
+                    "Too large (" + expected + " expected elements with load factor " + f + ")");
         return (int) s;
     }
 

@@ -38,34 +38,29 @@ import com.github.oeuvres.alix.fr.Tag.TagFilter;
 /**
  * Options for filters by grammatical types
  */
-public enum OptionCat implements Option
-{
+public enum OptionCat implements Option {
 
-    ALL("Tout", null),
-    NOSTOP("Mots “pleins”", new TagFilter().setAll().nostop(true)),
+    ALL("Tout", null), NOSTOP("Mots “pleins”", new TagFilter().setAll().nostop(true)),
     SUB("Substantifs", new TagFilter().set(Tag.SUB)),
     NAME("Noms propres",
             new TagFilter().set(Tag.NAME).set(Tag.NAMEevent).set(Tag.NAMEgod).set(Tag.NAMEorg).set(Tag.NAMEpeople)),
-    VERB("Verbes", new TagFilter().set(Tag.VERB)),
-    ADJ("Adjectifs", new TagFilter().set(Tag.ADJ).set(Tag.VERBger)),
+    VERB("Verbes", new TagFilter().set(Tag.VERB)), ADJ("Adjectifs", new TagFilter().set(Tag.ADJ).set(Tag.VERBger)),
     ADV("Adverbes", new TagFilter().set(Tag.ADV)),
     STOP("Mots grammaticaux",
             new TagFilter().setAll().clearGroup(Tag.SUB).clearGroup(Tag.NAME).clear(Tag.VERB).clear(Tag.ADJ).clear(0)),
-    UKNOWN("Mots inconnus", new TagFilter().set(0)),
-    LOC("Locutions", new TagFilter().setAll().locutions(true)),
+    UKNOWN("Mots inconnus", new TagFilter().set(0)), LOC("Locutions", new TagFilter().setAll().locutions(true)),
     PERS("Personnes",
             new TagFilter().set(Tag.NAME).set(Tag.NAMEpers).set(Tag.NAMEpersf).set(Tag.NAMEpersm).set(Tag.NAMEauthor)
                     .set(Tag.NAMEfict)),
     PLACE("Lieux", new TagFilter().set(Tag.NAMEplace)),
     RS("Autres noms propres",
             new TagFilter().set(Tag.NAME).set(Tag.NAMEevent).set(Tag.NAMEgod).set(Tag.NAMEorg).set(Tag.NAMEpeople)),
-    STRONG("Mots “forts”", new TagFilter().set(Tag.SUB).set(Tag.VERB).set(Tag.ADJ).nostop(true)),
-    ;
+    STRONG("Mots “forts”", new TagFilter().set(Tag.SUB).set(Tag.VERB).set(Tag.ADJ).nostop(true)),;
+
     final public String label;
     final public TagFilter tags;
 
-    private OptionCat(final String label, final TagFilter tags)
-    {
+    private OptionCat(final String label, final TagFilter tags) {
         this.label = label;
         this.tags = tags;
     }

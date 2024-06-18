@@ -40,8 +40,9 @@ import java.util.NoSuchElementException;
 import com.github.oeuvres.alix.maths.Calcul;
 
 /**
- * Record co-occurrences between a fixed set of words (as int values) along texts (sequence of ints) inside a limited distance.
- * The data structure is optimized to reduce creation of objects with rolling arrays.
+ * Record co-occurrences between a fixed set of words (as int values) along
+ * texts (sequence of ints) inside a limited distance. The data structure is
+ * optimized to reduce creation of objects with rolling arrays.
  */
 public class EdgeRoll
 {
@@ -74,14 +75,13 @@ public class EdgeRoll
     /** Cursor for an iterator, out of scope by default */
     private int cursor = -1;
 
-    
     /**
      * Waited values and distance
+     * 
      * @param words
      * @param distance
      */
-    public EdgeRoll(int[] words, final int distance)
-    {
+    public EdgeRoll(int[] words, final int distance) {
         words = IntStream.of(words).distinct().toArray();
         Arrays.sort(words);
         this.words = words;
@@ -90,8 +90,7 @@ public class EdgeRoll
         this.distance = distance;
         this.matrix = new EdgeSquare(words, directed);
     }
-    
-    
+
     /**
      * clear context
      */
@@ -103,6 +102,7 @@ public class EdgeRoll
 
     /**
      * Returns edges sorted in a good way to loop on for a nice word net
+     * 
      * @return
      */
     public EdgeSquare edges()
@@ -110,18 +110,18 @@ public class EdgeRoll
         // update matrix with counts for stats
         return matrix.N(N).counts(counts);
     }
-    
-    
 
     /**
      * Push a value, maybe outside waited vocabulary, calculate edges.
+     * 
      * @param position
      * @param wordId
      */
     public void push(final int position, final int pivotId)
     {
         // do not count null words
-        if (pivotId < 1) return;
+        if (pivotId < 1)
+            return;
         // check if value is waited
         final int pivotIndex = Arrays.binarySearch(words, pivotId);
         if (pivotIndex < 0) {
@@ -129,13 +129,10 @@ public class EdgeRoll
         }
         // increment word counts
         counts[pivotIndex]++;
-        
+
         // Bug [le chat et le enfant]
         // (le, enfant) = 1, not 2
-        
-        
-        
-        
+
         // think it better
         // loop on existant couples, drop the non relevant according to new position
         reset();
@@ -164,19 +161,19 @@ public class EdgeRoll
             N++;
         }
         // rewind encounterings to record coocs in matrix
-        for(int coocIndex = 0, max = uniqs.length; coocIndex < max; coocIndex++) {
-            if (!uniqs[coocIndex]) continue;
+        for (int coocIndex = 0, max = uniqs.length; coocIndex < max; coocIndex++) {
+            if (!uniqs[coocIndex])
+                continue;
             matrix.inc(pivotIndex, coocIndex);
         }
         /*
-         *  may record some bad edges in some combinations
-         *  ex (1, 2, 1, 2, 1)
-         *  width=1: (2,1), (1,2), (2,1)
+         * may record some bad edges in some combinations ex (1, 2, 1, 2, 1) width=1:
+         * (2,1), (1,2), (2,1)
          */
         // record node in the roller
         addLast(position, pivotIndex);
     }
-    
+
     /**
      * Double capacity of data set, and copy in order
      */
@@ -209,7 +206,7 @@ public class EdgeRoll
         // cursor out of scope, will be set by next
         cursor = -1;
     }
-    
+
     /**
      * Remove first element
      */
@@ -237,28 +234,31 @@ public class EdgeRoll
 
     /**
      * The current position in loop
+     * 
      * @return
      */
     private int position()
     {
         return positions[cursor];
     }
+
     /**
      * The current value in loop
+     * 
      * @return
      */
     private int node()
     {
         return nodes[cursor];
     }
-    
+
     /**
      * Add an element at the end of the queue
      */
     private void addLast(final int position, final int node)
     {
         // sure in all cases
-        size++; 
+        size++;
         // end should be at the right position after last addLast()
         positions[end] = position;
         nodes[end] = node;
@@ -269,18 +269,19 @@ public class EdgeRoll
             grow(); // will update start, end, capacity
             return;
         }
-        // .]..[++++   (end > start)
+        // .]..[++++ (end > start)
         if (end >= capacity) {
             end = 0;
             return;
         }
         // .[+++]..
-        // ++]..[+++    (end < start)
+        // ++]..[+++ (end < start)
         // should be OK
     }
 
     /**
      * Check
+     * 
      * @return
      */
     private boolean hasNext()
@@ -289,7 +290,7 @@ public class EdgeRoll
         if (size == 0) { // is empty
             return false;
         }
-        // check if add() and remove() works well 
+        // check if add() and remove() works well
         assert start >= 0;
         assert end >= 0; // end=0 when turning
         assert start < capacity;
@@ -300,7 +301,7 @@ public class EdgeRoll
         // ..[+++|++]..
         if (start < end) {
             // cursor may be < start if an element has just been removed
-            assert start <= cursor + 1 : "cursor=" + cursor + " < start=" + start; 
+            assert start <= cursor + 1 : "cursor=" + cursor + " < start=" + start;
             if (cursor + 1 < end) {
                 return true;
             }
@@ -315,14 +316,14 @@ public class EdgeRoll
             return true;
         }
         // ++]..[++|++
-        if (start < cursor + 1 ) {
+        if (start < cursor + 1) {
             return true;
         }
         // +|+]..[++++
-        if (cursor + 1 < end ) {
+        if (cursor + 1 < end) {
             return true;
         }
-        
+
         return false;
     }
 
@@ -347,7 +348,7 @@ public class EdgeRoll
                 throw new IndexOutOfBoundsException("No more elements available");
             }
         }
-        // |++]..[++++ 
+        // |++]..[++++
         if (cursor >= capacity) {
             cursor = 0; // go to start
         }
@@ -359,5 +360,5 @@ public class EdgeRoll
         }
         throw new IndexOutOfBoundsException("No more elements available");
     }
-    
+
 }

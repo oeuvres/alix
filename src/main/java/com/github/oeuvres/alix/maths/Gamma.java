@@ -6,7 +6,8 @@ package com.github.oeuvres.alix.maths;
  * Gamma distribution functions.
  */
 
-public class Gamma {
+public class Gamma
+{
     /** Maximum value for which gamma which can be computed. */
 
     public static final double MAXGAM = 171.624376956302725D;
@@ -17,27 +18,28 @@ public class Gamma {
      * @param x Value for which Gamma is to be computed.
      *
      * @return Value of gamma function if computable. The value
-     * Double.POSITIVE_INFINITY is returned for bad values of x or when
-     * overflow would occur.
+     *         Double.POSITIVE_INFINITY is returned for bad values of x or when
+     *         overflow would occur.
      *
-     * <p>
-     * The method used is presented in "An Overview of Software Development
-     * for Special Functions" by W. J. Cody in <strong>Lecture Notes in
-     * Mathematics</strong>, 506, Numerical Analysis Dundee, 1975, G. A.
-     * Watson (ed.), Springer Verlag, Berlin, 1976.
-     * </p>
+     *         <p>
+     *         The method used is presented in "An Overview of Software Development
+     *         for Special Functions" by W. J. Cody in <strong>Lecture Notes in
+     *         Mathematics</strong>, 506, Numerical Analysis Dundee, 1975, G. A.
+     *         Watson (ed.), Springer Verlag, Berlin, 1976.
+     *         </p>
      *
-     * <p>
-     * Also see Hart et al, "Computer Approximations", Wiley(1968), p. 130F.
-     * </p>
+     *         <p>
+     *         Also see Hart et al, "Computer Approximations", Wiley(1968), p. 130F.
+     *         </p>
      *
-     * <p>
-     * This java code is a fairly straightforward translation of the freely
-     * available Fortran function GAMMA by Cody and Stolz.
-     * </p>
+     *         <p>
+     *         This java code is a fairly straightforward translation of the freely
+     *         available Fortran function GAMMA by Cody and Stolz.
+     *         </p>
      */
 
-    public static double gamma(double x) {
+    public static double gamma(double x)
+    {
         final double[] p = { -1.71618513886549492533811D, 24.7656508055759199108314D, -379.804256470945635097577D,
                 629.331155312818442661052D, 866.966202790413211295064D, -31451.2729688483675254357D,
                 -36144.4134186911729807069D, 66456.1438202405440627855D };
@@ -183,30 +185,31 @@ public class Gamma {
      * @param y Gamma distribution parameter.
      *
      * @return Log gamma for specified parameter. The value Double.POSITIVE_INFINITY
-     * is returned for y &lt;= 0.0 or when overflow would occur.
+     *         is returned for y &lt;= 0.0 or when overflow would occur.
      *
-     * <p>
-     * Minimax polynomial approximations are used over the intervals
-     * [-inf,0], [0,.5], [.5,1.5], [1.5,4.0], [4.0,12.0], [12.0,+inf].
-     * </p>
+     *         <p>
+     *         Minimax polynomial approximations are used over the intervals
+     *         [-inf,0], [0,.5], [.5,1.5], [1.5,4.0], [4.0,12.0], [12.0,+inf].
+     *         </p>
      *
-     * <p>
-     * See Hart et al, "Computer Approximations", Wiley(1968), p. 130F, and
-     * also Cody and Hillstrom, "Chebyshev approximations for the natural
-     * logarithm of the Gamma function", Mathematics of Computation, 21,
-     * April, 1967, P. 198F.
-     * </p>
+     *         <p>
+     *         See Hart et al, "Computer Approximations", Wiley(1968), p. 130F, and
+     *         also Cody and Hillstrom, "Chebyshev approximations for the natural
+     *         logarithm of the Gamma function", Mathematics of Computation, 21,
+     *         April, 1967, P. 198F.
+     *         </p>
      *
-     * <p>
-     * The minimax coefficients for y &gt; 12 come from Hart et al. The other
-     * coefficients come from unpublished work by W. J. Cody and L. Stoltz
-     * at Argonne National Laboratory. This java code is a fairly
-     * straightforward translation of the freely available Fortran function
-     * ALGAMA by Cody and Stolz.
-     * </p>
+     *         <p>
+     *         The minimax coefficients for y &gt; 12 come from Hart et al. The
+     *         other coefficients come from unpublished work by W. J. Cody and L.
+     *         Stoltz at Argonne National Laboratory. This java code is a fairly
+     *         straightforward translation of the freely available Fortran function
+     *         ALGAMA by Cody and Stolz.
+     *         </p>
      */
 
-    public static double logGamma(double y) {
+    public static double logGamma(double y)
+    {
         final double PNT68 = 0.6796875D;
 
         /*
@@ -386,26 +389,27 @@ public class Gamma {
      *
      * @param x       Gamma distribution value
      * @param alpha   Shape parameter
-     * @param dPrec   Digits of precision desired (1 &lt; dPrec &lt; Constants.MAXPREC)
+     * @param dPrec   Digits of precision desired (1 &lt; dPrec &lt;
+     *                Constants.MAXPREC)
      * @param maxIter Maximum number of iterations allowed
      *
      * @return Cumulative probability density function value
      *
      * @throws IllegalArgumentException if x &lt; 0 or alpha &lt;= 0
      *
-     * <p>
-     * Either an infinite series summation or a
-     * continued fraction approximation is used,
-     * depending upon the argument range. See
-     * Bhattacharjee GP (1970) The incomplete gamma
-     * integral. Applied Statistics, 19: 285-287
-     * (AS32) . The result is accurate to about 14
-     * decimal digits.
-     * </p>
+     *                                  <p>
+     *                                  Either an infinite series summation or a
+     *                                  continued fraction approximation is used,
+     *                                  depending upon the argument range. See
+     *                                  Bhattacharjee GP (1970) The incomplete gamma
+     *                                  integral. Applied Statistics, 19: 285-287
+     *                                  (AS32) . The result is accurate to about 14
+     *                                  decimal digits.
+     *                                  </p>
      */
 
-    public static double incompleteGamma(double x, double alpha, int dPrec, int maxIter)
-            throws IllegalArgumentException {
+    public static double incompleteGamma(double x, double alpha, int dPrec, int maxIter) throws IllegalArgumentException
+    {
         final double overflow = 1.0E+37;
         // final double minExp = -87.0D;
 
@@ -526,18 +530,19 @@ public class Gamma {
      *
      * @throws IllegalArgumentException if x &lt; 0 or alpha &lt;= 0
      *
-     * <p>
-     * Either an infinite series summation or a
-     * continued fraction approximation is used,
-     * depending upon the argument range. See
-     * Bhattacharjee GP (1970) The incomplete gamma
-     * integral. Applied Statistics, 19: 285-287
-     * (AS32) . The result is accurate to about 14
-     * decimal digits.
-     * </p>
+     *                                  <p>
+     *                                  Either an infinite series summation or a
+     *                                  continued fraction approximation is used,
+     *                                  depending upon the argument range. See
+     *                                  Bhattacharjee GP (1970) The incomplete gamma
+     *                                  integral. Applied Statistics, 19: 285-287
+     *                                  (AS32) . The result is accurate to about 14
+     *                                  decimal digits.
+     *                                  </p>
      */
 
-    public static double incompleteGamma(double x, double alpha) throws IllegalArgumentException {
+    public static double incompleteGamma(double x, double alpha) throws IllegalArgumentException
+    {
         return incompleteGamma(x, alpha, Constants.MAXPREC, 1000);
     }
 

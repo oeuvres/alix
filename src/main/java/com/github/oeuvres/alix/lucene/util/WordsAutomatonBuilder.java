@@ -48,7 +48,8 @@ import org.apache.lucene.util.automaton.Automaton;
  * linear with the input size).
  * 
  */
-public final class WordsAutomatonBuilder {
+public final class WordsAutomatonBuilder
+{
 
     /**
      * This builder rejects search that are more than 1k chars long since it then
@@ -67,7 +68,8 @@ public final class WordsAutomatonBuilder {
     /**
      * DFSA state with <code>char</code> labels on transitions.
      */
-    private final static class State {
+    private final static class State
+    {
 
         /** An empty set of labels. */
         private final static int[] NO_LABELS = new int[0];
@@ -97,7 +99,8 @@ public final class WordsAutomatonBuilder {
          * Returns the target state of a transition leaving this state and labeled with
          * <code>label</code>. If no such transition exists, returns <code>null</code>.
          */
-        State getState(int label) {
+        State getState(int label)
+        {
             final int index = Arrays.binarySearch(labels, label);
             return index >= 0 ? states[index] : null;
         }
@@ -112,7 +115,8 @@ public final class WordsAutomatonBuilder {
          * </ul>
          */
         @Override
-        public boolean equals(Object obj) {
+        public boolean equals(Object obj)
+        {
             final State other = (State) obj;
             return is_final == other.is_final && Arrays.equals(this.labels, other.labels)
                     && referenceEquals(this.states, other.states);
@@ -122,7 +126,8 @@ public final class WordsAutomatonBuilder {
          * Compute the hash code of the <i>current</i> status of this state.
          */
         @Override
-        public int hashCode() {
+        public int hashCode()
+        {
             int hash = is_final ? 1 : 0;
 
             hash ^= hash * 31 + this.labels.length;
@@ -145,7 +150,8 @@ public final class WordsAutomatonBuilder {
          * Return <code>true</code> if this state has any children (outgoing
          * transitions).
          */
-        boolean hasChildren() {
+        boolean hasChildren()
+        {
             return labels.length > 0;
         }
 
@@ -153,7 +159,8 @@ public final class WordsAutomatonBuilder {
          * Create a new outgoing transition labeled <code>label</code> and return the
          * newly created target state for this transition.
          */
-        State newState(int label) {
+        State newState(int label)
+        {
             assert Arrays.binarySearch(labels, label) < 0 : "State already has transition labeled: " + label;
 
             labels = ArrayUtil.growExact(labels, labels.length + 1);
@@ -166,7 +173,8 @@ public final class WordsAutomatonBuilder {
         /**
          * Return the most recent transitions's target state.
          */
-        State lastChild() {
+        State lastChild()
+        {
             assert hasChildren() : "No outgoing transitions.";
             return states[states.length - 1];
         }
@@ -175,7 +183,8 @@ public final class WordsAutomatonBuilder {
          * Return the associated state if the most recent transition is labeled with
          * <code>label</code>.
          */
-        State lastChild(int label) {
+        State lastChild(int label)
+        {
             final int index = labels.length - 1;
             State s = null;
             if (index >= 0 && labels[index] == label) {
@@ -189,7 +198,8 @@ public final class WordsAutomatonBuilder {
          * Replace the last added outgoing transition's target state with the given
          * state.
          */
-        void replaceLastChild(State state) {
+        void replaceLastChild(State state)
+        {
             assert hasChildren() : "No outgoing transitions.";
             states[states.length - 1] = state;
         }
@@ -197,7 +207,8 @@ public final class WordsAutomatonBuilder {
         /**
          * Compare two lists of objects for reference-equality.
          */
-        private static boolean referenceEquals(Object[] a1, Object[] a2) {
+        private static boolean referenceEquals(Object[] a1, Object[] a2)
+        {
             if (a1.length != a2.length) {
                 return false;
             }
@@ -233,7 +244,8 @@ public final class WordsAutomatonBuilder {
     @SuppressWarnings("deprecation")
     private static final Comparator<CharsRef> comparator = CharsRef.getUTF16SortedAsUTF8Comparator();
 
-    public void add(String current) {
+    public void add(String current)
+    {
         int pos = 0, max = current.length();
 
         if (max > MAX_TERM_LENGTH) {
@@ -257,7 +269,8 @@ public final class WordsAutomatonBuilder {
      * lexicographically larger or equal compared to any previous sequences added to
      * this automaton (the input must be sorted).
      */
-    public void add(CharsRef current) {
+    public void add(CharsRef current)
+    {
         if (current.length > MAX_TERM_LENGTH) {
             throw new IllegalArgumentException(
                     "This builder doesn't allow terms that are larger than 1,000 characters, got " + current);
@@ -288,7 +301,8 @@ public final class WordsAutomatonBuilder {
      * 
      * @return Root automaton state.
      */
-    public State complete() {
+    public State complete()
+    {
         if (this.stateRegistry == null)
             throw new IllegalStateException();
 
@@ -302,7 +316,8 @@ public final class WordsAutomatonBuilder {
     /**
      * Internal recursive traversal for conversion.
      */
-    private static int convert(Automaton.Builder a, State s, IdentityHashMap<State, Integer> visited) {
+    private static int convert(Automaton.Builder a, State s, IdentityHashMap<State, Integer> visited)
+    {
 
         Integer converted = visited.get(s);
         if (converted != null) {
@@ -327,7 +342,8 @@ public final class WordsAutomatonBuilder {
      * {@link BytesRef} representing strings in UTF-8. These strings must be
      * binary-sorted.
      */
-    public static Automaton build(Collection<BytesRef> input) {
+    public static Automaton build(Collection<BytesRef> input)
+    {
         final WordsAutomatonBuilder builder = new WordsAutomatonBuilder();
 
         char[] chars = new char[0];
@@ -352,7 +368,8 @@ public final class WordsAutomatonBuilder {
      * @param words
      * @return
      */
-    public static Automaton buildFronStrings(List<String> words) {
+    public static Automaton buildFronStrings(List<String> words)
+    {
         // take a copy of the list to sort it
         String[] input = words.toArray(new String[0]);
         return buildFronStrings(input);
@@ -364,7 +381,8 @@ public final class WordsAutomatonBuilder {
      * @param words
      * @return
      */
-    public static Automaton buildFronStrings(String[] words) {
+    public static Automaton buildFronStrings(String[] words)
+    {
         Arrays.sort(words);
         final WordsAutomatonBuilder builder = new WordsAutomatonBuilder();
         int count = 0;
@@ -389,7 +407,8 @@ public final class WordsAutomatonBuilder {
     /**
      * Copy <code>current</code> into an internal buffer.
      */
-    private boolean setPrevious(CharsRef current) {
+    private boolean setPrevious(CharsRef current)
+    {
         // don't need to copy, once we fix
         // https://issues.apache.org/jira/browse/LUCENE-3277
         // still, called only from assert
@@ -401,7 +420,8 @@ public final class WordsAutomatonBuilder {
      * Replace last child of <code>state</code> with an already registered state or
      * stateRegistry the last child state.
      */
-    private void replaceOrRegister(State state) {
+    private void replaceOrRegister(State state)
+    {
         final State child = state.lastChild();
 
         if (child.hasChildren())
@@ -419,7 +439,8 @@ public final class WordsAutomatonBuilder {
      * Add a suffix of <code>current</code> starting at <code>fromIndex</code>
      * (inclusive) to state <code>state</code>.
      */
-    private void addSuffix(State state, CharSequence current, int fromIndex) {
+    private void addSuffix(State state, CharSequence current, int fromIndex)
+    {
         final int len = current.length();
         while (fromIndex < len) {
             int cp = Character.codePointAt(current, fromIndex);

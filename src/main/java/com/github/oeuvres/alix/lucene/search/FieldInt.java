@@ -64,7 +64,10 @@ public class FieldInt
     private final IndexReader reader;
     /** Name of the int field name */
     public final String name;
-    /** A copy of values, sorted, position in this array is an internal id for the  value */
+    /**
+     * A copy of values, sorted, position in this array is an internal id for the
+     * value
+     */
     private final int[] sorted;
     /** For each docId, the id of the int value in the sorted vector */
     private final int[] docValue;
@@ -90,8 +93,7 @@ public class FieldInt
      * @param name
      * @throws IOException Lucene errors.
      */
-    public FieldInt(final Alix alix, final String name) throws IOException
-    {
+    public FieldInt(final Alix alix, final String name) throws IOException {
 
         IndexReader reader = alix.reader();
         this.reader = reader;
@@ -227,14 +229,16 @@ public class FieldInt
     }
 
     /**
-     * 1753 → 17530000
-     * 1753-03-01 → 17530301
+     * 1753 → 17530000 1753-03-01 → 17530301
      */
-    public static int date2int(String date) {
+    public static int date2int(String date)
+    {
         int value = Integer.MIN_VALUE;
-        if (date == null) return value;
+        if (date == null)
+            return value;
         date = date.trim();
-        if (!date.matches("-?\\d{1,4}(-\\d\\d)?(-\\d\\d)?")) return value;
+        if (!date.matches("-?\\d{1,4}(-\\d\\d)?(-\\d\\d)?"))
+            return value;
         boolean negative = false;
         if (date.charAt(0) == '-') {
             negative = true;
@@ -245,29 +249,27 @@ public class FieldInt
         try {
             int v = Integer.parseInt(parts[0]);
             value = v * 10000;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return value;
         }
         if (parts.length > 1) {
-           try {
-                 int v = Integer.parseInt(parts[1]);
-                 value += v * 100;
-             }
-             catch (Exception e) {
-                 return value;
-             }
+            try {
+                int v = Integer.parseInt(parts[1]);
+                value += v * 100;
+            } catch (Exception e) {
+                return value;
+            }
         }
         if (parts.length > 2) {
             try {
-                 int v = Integer.parseInt(parts[2]);
-                 value += v;
-            }
-            catch (Exception e) {
-               return value;
+                int v = Integer.parseInt(parts[2]);
+                value += v;
+            } catch (Exception e) {
+                return value;
             }
         }
-        if (negative) return -value;
+        if (negative)
+            return -value;
         return value;
     }
 
@@ -282,8 +284,6 @@ public class FieldInt
         return (int) Math.ceil(date / 10000);
     }
 
-    
-    
     /**
      * 17530000 → 17539999
      * 
@@ -292,62 +292,47 @@ public class FieldInt
      */
     public static int yearCeil(int date)
     {
-        if (date % 10000 == 0) return date + 9999;
-        if (date % 100 == 0) return date + 99;
+        if (date % 10000 == 0)
+            return date + 9999;
+        if (date % 100 == 0)
+            return date + 99;
         return date;
     }
-    
+
     /**
-     * 17530301 → 1753-03-01
-     * 17530000 → 1753
+     * 17530301 → 1753-03-01 17530000 → 1753
      * 
      * @param value Date as a positional number
      * @return Date in XML format
      */
-    public static String int2date(int value) {
+    public static String int2date(int value)
+    {
         String date = "" + value;
         date = date.substring(0, 4) + "-" + date.substring(4, 6) + "-" + date.substring(6, 8);
         date = date.replaceFirst("\\-00.*$", "");
         return date;
     }
 
-
-
-    /* Obsolete ? Wait till someone cry
-    public void form(IntEnum iterator, String form) throws IOException
-    {
-        Term term = new Term(ftextName, form);
-        if (reader.docFreq(term) < 1)
-            return; // nothing added to iterator, shall we say it ?
-        final long[] freqs = new long[cardinality]; // array to populate
-        final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
-        // loop an all index to get occs for the term for each valueId
-        for (LeafReaderContext context : reader.leaves()) {
-            int docBase = context.docBase;
-            LeafReader leaf = context.reader();
-            Bits live = leaf.getLiveDocs();
-            final boolean hasLive = (live != null);
-            PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS);
-            int docLeaf;
-            while ((docLeaf = postings.nextDoc()) != NO_MORE_DOCS) {
-                if (hasLive && !live.get(docLeaf))
-                    continue; // deleted doc
-                int docId = docBase + docLeaf;
-                int freq = postings.freq();
-                if (freq < 1)
-                    throw new ArithmeticException(
-                            "??? field=" + name + " docId=" + docId + " form=" + form + " freq=" + freq);
-                final int valueInt = docValue[docId]; // get the value id of this doc
-                if (valueInt == Integer.MIN_VALUE)
-                    continue; // no value for this doc
-                freqs[valueInt] += freq; // add freq
-            }
-        }
-        if (iterator.dicOccs == null)
-            iterator.dicOccs = new HashMap<String, long[]>();
-        iterator.dicOccs.put(form, freqs);
-    }
-    */
+    /*
+     * Obsolete ? Wait till someone cry public void form(IntEnum iterator, String
+     * form) throws IOException { Term term = new Term(ftextName, form); if
+     * (reader.docFreq(term) < 1) return; // nothing added to iterator, shall we say
+     * it ? final long[] freqs = new long[cardinality]; // array to populate final
+     * int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS; // loop an all index to get
+     * occs for the term for each valueId for (LeafReaderContext context :
+     * reader.leaves()) { int docBase = context.docBase; LeafReader leaf =
+     * context.reader(); Bits live = leaf.getLiveDocs(); final boolean hasLive =
+     * (live != null); PostingsEnum postings = leaf.postings(term,
+     * PostingsEnum.FREQS); int docLeaf; while ((docLeaf = postings.nextDoc()) !=
+     * NO_MORE_DOCS) { if (hasLive && !live.get(docLeaf)) continue; // deleted doc
+     * int docId = docBase + docLeaf; int freq = postings.freq(); if (freq < 1)
+     * throw new ArithmeticException( "??? field=" + name + " docId=" + docId +
+     * " form=" + form + " freq=" + freq); final int valueInt = docValue[docId]; //
+     * get the value id of this doc if (valueInt == Integer.MIN_VALUE) continue; //
+     * no value for this doc freqs[valueInt] += freq; // add freq } } if
+     * (iterator.dicOccs == null) iterator.dicOccs = new HashMap<String, long[]>();
+     * iterator.dicOccs.put(form, freqs); }
+     */
 
     /**
      * Enumerator on all values of the int field with different stats
@@ -371,6 +356,7 @@ public class FieldInt
 
     /**
      * Return min-max value for a set of docs
+     * 
      * @param filter
      * @return
      */
@@ -378,12 +364,15 @@ public class FieldInt
     {
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
-        for (int docId = filter.nextSetBit(0); docId !=  DocIdSetIterator.NO_MORE_DOCS; docId = filter.nextSetBit(docId + 1)) {
+        for (int docId = filter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = filter
+                .nextSetBit(docId + 1)) {
             final int val = sorted[docValue[docId]];
-            if (val < min) min = val;
-            if (val > max) max = val;
+            if (val < min)
+                min = val;
+            if (val > max)
+                max = val;
         }
-        return new int[]{min, max};
+        return new int[] { min, max };
     }
 
     public class IntEnum
@@ -392,7 +381,7 @@ public class FieldInt
         private int cursor = -1;
         /** List of forms with stats by years in order of the sorted vector */
         // private Map<String, long[]> dicOccs;
-    
+
         /**
          * There are search left
          * 
@@ -402,7 +391,7 @@ public class FieldInt
         {
             return (cursor < (cardinality - 1));
         }
-    
+
         /**
          * Advance the cursor to next element
          */
@@ -410,14 +399,12 @@ public class FieldInt
         {
             cursor++;
         }
-    
+
         /*
-        public long occs()
-        {
-            throw new java.lang.UnsupportedOperationException("Not supported yet.");
-        }
-        */
-    
+         * public long occs() { throw new
+         * java.lang.UnsupportedOperationException("Not supported yet."); }
+         */
+
         /**
          * Count of documents for this position
          */
@@ -425,7 +412,7 @@ public class FieldInt
         {
             return valueDocs[cursor];
         }
-    
+
         /**
          * The int value in sortes order
          */
@@ -446,8 +433,7 @@ public class FieldInt
         public int max = Integer.MIN_VALUE;
         public int docs = 0;
 
-        public IntPointVisitor(final int[] docInt, final Map<Integer, long[]> counter)
-        {
+        public IntPointVisitor(final int[] docInt, final Map<Integer, long[]> counter) {
             this.docInt = docInt;
             this.counter = counter;
         }

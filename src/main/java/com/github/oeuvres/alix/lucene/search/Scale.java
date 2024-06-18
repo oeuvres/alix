@@ -75,13 +75,12 @@ public class Scale
     /** Maximum int label of the int field for the corpus */
     private final int max;
 
-    public Scale(final Alix alix, final String fieldInt, final String fieldText) throws IOException
-    {
+    public Scale(final Alix alix, final String fieldInt, final String fieldText) throws IOException {
         this(alix, null, fieldInt, fieldText);
     }
 
-    public Scale(final Alix alix, final BitSet filter, final String fieldInt, final String fieldText) throws IOException
-    {
+    public Scale(final Alix alix, final BitSet filter, final String fieldInt, final String fieldText)
+            throws IOException {
         this.alix = alix;
         this.filter = filter;
         this.fint = alix.fieldInt(fieldInt);
@@ -124,7 +123,7 @@ public class Scale
                 if (max < v)
                     max = v;
                 tick = new Tick(docId, v, docLength[docId]);
-                // put same Tick for different 
+                // put same Tick for different
                 tickByOrder[docId] = tick;
                 tickByDocid[docId] = tick;
             }
@@ -158,7 +157,8 @@ public class Scale
         for (int i = 0; i < card; i++) {
             Tick tick = tickByOrder[i];
             // should break here, no ?
-            if (tick == null) continue;
+            if (tick == null)
+                continue;
             tick.cumul = cumul; // cumul of previous length
             long length = tick.length;
             // length should never been less 0, quick fix
@@ -176,8 +176,7 @@ public class Scale
         public final long length;
         public long cumul;
 
-        public Tick(final int docid, final int value, final long length)
-        {
+        public Tick(final int docid, final int value, final long length) {
             this.docId = docid;
             this.value = value;
             this.length = length;
@@ -223,9 +222,10 @@ public class Scale
     {
         return tickByOrder;
     }
-    
+
     /**
      * Share the step calculation between data and legend
+     * 
      * @param dots
      * @return
      */
@@ -233,13 +233,15 @@ public class Scale
     {
         return (double) length / dots;
     }
-    
+
     /**
      * Share the index calculation by dot between data and legend
+     * 
      * @param dots
      * @return
      */
-    private long index(double step, int dot) {
+    private long index(double step, int dot)
+    {
         return (long) (dot * step);
     }
 
@@ -259,7 +261,8 @@ public class Scale
         for (int order = 0, length = tickByOrder.length; order < length; order++) {
             Tick tick = tickByOrder[order];
             // should stop ?
-            if (tick == null) continue;
+            if (tick == null)
+                continue;
             while (tick.cumul >= index) {
                 scaleIndex[dot] = index;
                 scaleValue[dot] = tick.value;
@@ -272,17 +275,15 @@ public class Scale
     }
 
     /**
-     * Ask for a count of forms, according to a number of dot (ex: 100).
-     * Repartition is equal by occurrences (may be more or less than one year)
-     * so as an x value, it is a number of occurrences, not a year, label is given
-     * by legend().
+     * Ask for a count of forms, according to a number of dot (ex: 100). Repartition
+     * is equal by occurrences (may be more or less than one year) so as an x value,
+     * it is a number of occurrences, not a year, label is given by legend().
      * 
-     * #) col[0] global count of occurrences for each requested point
-     * #) populate an array docId → pointIndex
-     * #) loop on index reader to get count 
+     * #) col[0] global count of occurrences for each requested point #) populate an
+     * array docId → pointIndex #) loop on index reader to get count
      * 
      * @param forms A list of terms to search
-     * @param dots   Number of dots by curve.
+     * @param dots  Number of dots by curve.
      * @return
      * @throws IOException Lucene errors.
      */
@@ -296,7 +297,8 @@ public class Scale
         // limit count of forms
         if (cols > 10)
             cols = 10;
-        // if there are only a few books, hundred of dots doesn't make sense, but let the caller do
+        // if there are only a few books, hundred of dots doesn't make sense, but let
+        // the caller do
         if (dots > 1000)
             dots = 1000;
 
@@ -311,23 +313,24 @@ public class Scale
         }
         // a fast index, to affect the right point to a docId
         short[] dotByDocId = new short[maxDoc];
-        Arrays.fill(dotByDocId, (short)-1);
+        Arrays.fill(dotByDocId, (short) -1);
         int firstNull = -1;
         for (int i = 0; i < maxDoc; i++) {
             Tick tick = tickByOrder[i];
             if (tickByOrder[i] == null) {
                 // should break ?
-                if (firstNull < 0) firstNull = 1;
+                if (firstNull < 0)
+                    firstNull = 1;
                 continue;
             }
             // a tick after null ? something went wrong in sort.
             if (firstNull > 0) {
                 throw new IOException("tickByOrder[" + firstNull + "] == null, tickByOrder[" + i + "] != null");
             }
-            byte dot = (byte) Math.floor((double)tick.cumul / step);
+            byte dot = (byte) Math.floor((double) tick.cumul / step);
             dotByDocId[tick.docId] = dot;
         }
-        
+
         // loop on contexts, because open a context is heavy, do not open too much
         for (LeafReaderContext ctx : reader.leaves()) {
             LeafReader leaf = ctx.reader();
@@ -358,7 +361,8 @@ public class Scale
                         continue;
                     }
                     short dot = dotByDocId[docId];
-                    if (dot < 0) continue;
+                    if (dot < 0)
+                        continue;
                     column[dot] += freq;
                 }
             }

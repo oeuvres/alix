@@ -139,8 +139,7 @@ public class Char
     /**
      * No constructor, only static methods.
      */
-    private Char()
-    {
+    private Char() {
         // Don't
     }
 
@@ -300,7 +299,7 @@ public class Char
     {
         return toASCII(src, false);
     }
-    
+
     /**
      * ASCII version of a latin script string, same as lucene
      * ASCIIFoldingFilterFactory
@@ -316,11 +315,9 @@ public class Char
             c = src.charAt(i);
             if (nopun && isPunctuationOrSpace(c)) {
                 dst.append(' ');
-            }
-            else if (c < '\u0080') {
+            } else if (c < '\u0080') {
                 dst.append(c);
-            } 
-            else {
+            } else {
                 switch (c) {
                 case '\u00C0': // À [LATIN CAPITAL LETTER A WITH GRAVE]
                 case '\u00C1': // Á [LATIN CAPITAL LETTER A WITH ACUTE]

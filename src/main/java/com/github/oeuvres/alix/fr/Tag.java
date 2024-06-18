@@ -44,8 +44,7 @@ import java.util.logging.Logger;
 /**
  * Jeu d’étiquettes morphosyntaxique pour le français.
  */
-public enum Tag
-{
+public enum Tag {
     // 0x, messages internes
     NULL(0, "—", "Défaut, aucune information.") {
     },
@@ -221,8 +220,7 @@ public enum Tag
     final public String desc;
 
     /** Constructor */
-    Tag(final int flag, final String label, final String desc)
-    {
+    Tag(final int flag, final String label, final String desc) {
         this.flag = flag;
         this.label = label;
         this.desc = desc;
@@ -243,6 +241,7 @@ public enum Tag
 
     /**
      * Check if Tag share same parent, by number.
+     * 
      * @param flag Number of a Tag.
      * @return True if tags have same class.
      */
@@ -253,6 +252,7 @@ public enum Tag
 
     /**
      * Return parent Tag by number
+     * 
      * @param flag Number of a Tag.
      * @return The parent Tag.
      */
@@ -336,9 +336,9 @@ public enum Tag
         return Flag4tag[flag];
     }
 
-
     /**
      * Get Tag name by number identifier.
+     * 
      * @param flag Tag identifier number.
      * @return Name of a Tag.
      */
@@ -352,6 +352,7 @@ public enum Tag
 
     /**
      * Get Tag label by number identifier.
+     * 
      * @param flag Tag identifier number.
      * @return Label of a Tag.
      */
@@ -482,8 +483,10 @@ public enum Tag
                 if ((tag % 16) == 15)
                     sb.append("\n");
             }
-            if (nostop) sb.append(" NOSTOP");
-            if (locutions) sb.append(" LOCUTIONS");
+            if (nostop)
+                sb.append(" NOSTOP");
+            if (locutions)
+                sb.append(" LOCUTIONS");
             sb.append("\n");
             return sb.toString();
         }

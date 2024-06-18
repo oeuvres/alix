@@ -35,7 +35,8 @@ package com.github.oeuvres.alix.lucene.analysis.tokenattributes;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.Attribute;
 
-public interface CharsLemAtt extends Attribute, CharSequence, Appendable {
+public interface CharsLemAtt extends Attribute, CharSequence, Appendable
+{
 
-  CharTermAttribute setEmpty();
+    CharTermAttribute setEmpty();
 }

@@ -49,8 +49,7 @@ public class IntTuple implements Comparable<IntTuple>
      * 
      * @param size
      */
-    public IntTuple(final int size)
-    {
+    public IntTuple(final int size) {
         this.size = size;
         data = new int[size];
     }

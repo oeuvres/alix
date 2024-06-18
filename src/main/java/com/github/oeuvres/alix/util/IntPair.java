@@ -37,7 +37,8 @@ package com.github.oeuvres.alix.util;
  * implemented), comparable is good for perfs in buckets. After test, it is more
  * efficient than concating ints in longs in an HashMap.
  */
-public class IntPair implements Comparable<IntPair> {
+public class IntPair implements Comparable<IntPair>
+{
     /** Internal data */
     protected int x;
     /** Internal data */
@@ -58,42 +59,50 @@ public class IntPair implements Comparable<IntPair> {
         this.y = y;
     }
 
-    public void set(final int x, final int y) {
+    public void set(final int x, final int y)
+    {
         this.x = x;
         this.y = y;
         hash = 0;
     }
 
-    public void set(IntPair pair) {
+    public void set(IntPair pair)
+    {
         this.x = pair.x;
         this.y = pair.y;
         hash = 0;
     }
 
-    public int[] toArray() {
+    public int[] toArray()
+    {
         return new int[] { x, y };
     }
 
-    public int x() {
+    public int x()
+    {
         return x;
     }
 
-    public int y() {
+    public int y()
+    {
         return y;
     }
 
-    public void x(final int x) {
+    public void x(final int x)
+    {
         this.x = x;
         hash = 0;
     }
 
-    public void y(final int y) {
+    public void y(final int y)
+    {
         this.y = y;
         hash = 0;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(Object o)
+    {
         if (o == null)
             return false;
         if (o == this)
@@ -116,7 +125,8 @@ public class IntPair implements Comparable<IntPair> {
     }
 
     @Override
-    public int hashCode() {
+    public int hashCode()
+    {
         if (hash == 0) {
             // hash = (31 * 17 + x) * 31 + y; // 97% collision
             // hash = ( y << 16 ) ^ x; // 0% collision, but less dispersion
@@ -126,7 +136,8 @@ public class IntPair implements Comparable<IntPair> {
     }
 
     @Override
-    public int compareTo(IntPair o) {
+    public int compareTo(IntPair o)
+    {
         int val = x;
         int oval = o.x;
         if (val < oval)
@@ -139,7 +150,8 @@ public class IntPair implements Comparable<IntPair> {
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
         StringBuffer sb = new StringBuffer();
         sb.append("(").append(x).append(", ").append(y).append(")");
         return sb.toString();

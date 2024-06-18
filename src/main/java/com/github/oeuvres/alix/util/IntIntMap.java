@@ -102,13 +102,11 @@ public class IntIntMap implements Cloneable
     /** {key, sort order} view of data, used for textcat distance */
     private IntIntMap catprint;
 
-    public IntIntMap()
-    {
+    public IntIntMap() {
         this(-1, null, 10);
     }
 
-    public IntIntMap(final int code, final String label)
-    {
+    public IntIntMap(final int code, final String label) {
         this(code, label, 10);
     }
 
@@ -117,8 +115,7 @@ public class IntIntMap implements Cloneable
      * 
      * @param size
      */
-    public IntIntMap(final int code, final String label, final int size)
-    {
+    public IntIntMap(final int code, final String label, final int size) {
         this.code = code;
         this.label = label;
         /*
@@ -559,8 +556,7 @@ public class IntIntMap implements Cloneable
         public final int key;
         public final int value;
 
-        public Pair(final int key, final int value)
-        {
+        public Pair(final int key, final int value) {
             this.key = key;
             this.value = value;
         }
@@ -804,8 +800,7 @@ public class IntIntMap implements Cloneable
         public final int tval;
         public final double spec;
 
-        public SpecRow(final int key, final int source, final int sval, final int target, final int tval, double spec)
-        {
+        public SpecRow(final int key, final int source, final int sval, final int target, final int tval, double spec) {
             this.key = key;
             this.source = source;
             this.sval = sval;

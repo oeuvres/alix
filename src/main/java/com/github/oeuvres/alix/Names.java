@@ -33,10 +33,9 @@
  */
 package com.github.oeuvres.alix;
 
-
 public final class Names
 {
-    /** For a cookie  */
+    /** For a cookie */
     public static final String ALIX_BASE = "alix.base";
     /** Mandatory field, unique id for a book and its chapters */
     public static final String ALIX_BOOKID = "alix.bookid";
@@ -44,23 +43,23 @@ public final class Names
     public static final String ALIX_FILENAME = "alix.filename";
     /** Mandatory field, unique id provide by user for all documents */
     public static final String ALIX_ID = "alix.id";
-    /**  Alix XML namespace */
+    /** Alix XML namespace */
     public static final String ALIX_NS = "https://oeuvres.github.io/alix";
     /** Mandatory field, define the level of a leaf (book/chapter, article) */
     public static final String ALIX_TYPE = "alix.type";
     /** &lt;alix:article&gt; atomic text indexed as a document */
     public static final String ARTICLE = "article";
-    /** &lt;alix:book&gt; (contains &lt;alix:chapter&gt;)  */
+    /** &lt;alix:book&gt; (contains &lt;alix:chapter&gt;) */
     public static final String BOOK = "book";
     /** Field type */
     public final static String CATEGORY = "category";
-    /** &lt;alix:chapter&gt; text inside a book  */
+    /** &lt;alix:chapter&gt; text inside a book */
     public static final String CHAPTER = "chapter";
-    /** &lt;alix:document&gt; independant document  */
+    /** &lt;alix:document&gt; independant document */
     public static final String DOCUMENT = "document";
     /** Field type */
     public final static String FACET = "facet";
-    /** &lt;alix:field&gt;  */
+    /** &lt;alix:field&gt; */
     public static final String FIELD = "field";
     /** Field type */
     public final static String HTML = "html";

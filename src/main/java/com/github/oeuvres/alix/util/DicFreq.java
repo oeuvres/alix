@@ -124,8 +124,7 @@ public class DicFreq
         /** A secondary counter (for comparisons) */
         private AtomicInteger count2 = new AtomicInteger();
 
-        private Entry(final int code, final String label, final int tag)
-        {
+        private Entry(final int code, final String label, final int tag) {
             this.code = code;
             this.label = label;
             this.tag = tag;
@@ -181,8 +180,7 @@ public class DicFreq
     /**
      * Constructor
      */
-    public DicFreq()
-    {
+    public DicFreq() {
     }
 
     /**
@@ -190,8 +188,7 @@ public class DicFreq
      * 
      * @param terms
      */
-    public DicFreq(final String[] terms)
-    {
+    public DicFreq(final String[] terms) {
         for (String term : terms)
             add(term, 0, 1, 0);
     }
@@ -712,7 +709,7 @@ public class DicFreq
      * 
      * @param path
      * @throws NumberFormatException
-     * @throws IOException Lucene errors.
+     * @throws IOException           Lucene errors.
      */
     public void csv(Path path) throws IOException
     {
@@ -733,7 +730,7 @@ public class DicFreq
     /**
      * Send a CSV version of the dictionary
      * 
-     * @param limit 
+     * @param limit
      * @return
      */
     public String csv(int limit)
@@ -835,7 +832,7 @@ public class DicFreq
      * Load a freqlist from csv TODO test it
      * 
      * @param path
-     * @throws IOException Lucene errors.
+     * @throws IOException           Lucene errors.
      * @throws NumberFormatException
      */
     public void load(Path path) throws IOException

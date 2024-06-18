@@ -90,8 +90,7 @@ public class Corpus
      * @param desc  Optional description of the corpus.
      * @throws IOException Lucene errors.
      */
-    public Corpus(final Alix alix, final String field, final String name, final String desc) throws IOException
-    {
+    public Corpus(final Alix alix, final String field, final String name, final String desc) throws IOException {
         this.alix = alix;
         this.field = field;
         IndexReader reader = alix.reader();
@@ -106,8 +105,7 @@ public class Corpus
      * @param json Data to rebuild the corpus
      * @throws IOException Lucene errors.
      */
-    public Corpus(Alix alix, String field, String json) throws IOException
-    {
+    public Corpus(Alix alix, String field, String json) throws IOException {
         this.alix = alix;
         this.field = field;
         IndexReader reader = alix.reader();
@@ -124,19 +122,17 @@ public class Corpus
         add(books);
     }
 
-    public Corpus(Alix alix, String bookid) throws IOException
-    {
+    public Corpus(Alix alix, String bookid) throws IOException {
         this(alix, new String[] { bookid });
     }
 
     /**
      * 
-     * @param alix Link to a lucene index.
+     * @param alix  Link to a lucene index.
      * @param books Data to rebuild the corpus
      * @throws IOException Lucene errors.
      */
-    public Corpus(Alix alix, String[] books) throws IOException
-    {
+    public Corpus(Alix alix, String[] books) throws IOException {
         this.alix = alix;
         this.field = ALIX_BOOKID;
         IndexReader reader = alix.reader();
@@ -191,7 +187,7 @@ public class Corpus
     /**
      * Return a json String, storing enough info to rebuild object.
      * 
-     * @throws IOException Lucene errors.
+     * @throws IOException   Lucene errors.
      * @throws JSONException
      */
     public String json() throws JSONException, IOException
@@ -305,8 +301,7 @@ public class Corpus
      */
     static class AddBits extends CollectorBits
     {
-        public AddBits(BitSet bits)
-        {
+        public AddBits(BitSet bits) {
             super(bits);
         }
 
@@ -322,8 +317,7 @@ public class Corpus
      */
     static class RemoveBits extends CollectorBits
     {
-        public RemoveBits(BitSet bits)
-        {
+        public RemoveBits(BitSet bits) {
             super(bits);
         }
 
@@ -346,8 +340,7 @@ public class Corpus
         /** Docs matched */
         private int hits = 0;
 
-        public CollectorBits(final BitSet bits)
-        {
+        public CollectorBits(final BitSet bits) {
             this.bits = bits;
         }
 

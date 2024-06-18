@@ -86,8 +86,7 @@ public class TxtIndexer
      * 
      * @param writer
      */
-    public TxtIndexer(final IndexWriter writer)
-    {
+    public TxtIndexer(final IndexWriter writer) {
         this.writer = writer;
         this.analyzer = writer.getAnalyzer();
     }

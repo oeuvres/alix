@@ -37,10 +37,12 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
-public class MetaAnalyzer extends Analyzer {
+public class MetaAnalyzer extends Analyzer
+{
 
     @Override
-    protected TokenStreamComponents createComponents(String fieldName) {
+    protected TokenStreamComponents createComponents(String fieldName)
+    {
         final Tokenizer source = new MetaTokenizer();
         TokenStream result = new ASCIIFoldingFilter(source); // no accents
         return new TokenStreamComponents(source, result);

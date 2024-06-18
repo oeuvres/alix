@@ -108,8 +108,7 @@ public class FieldRail
     /** Index of sizes for each doc */
     private int[] limInt;
 
-    public FieldRail(Alix alix, String field) throws IOException
-    {
+    public FieldRail(Alix alix, String field) throws IOException {
         this.alix = alix;
         this.ftext = alix.fieldText(field); // build and cache the dictionary for the field
         this.fname = ftext.name;
@@ -121,6 +120,7 @@ public class FieldRail
 
     /**
      * Loop on the rail to get bigrams without any intelligence.
+     * 
      * @param filter
      * @return
      * @throws IOException Lucene errors.
@@ -156,19 +156,20 @@ public class FieldRail
         }
         return dic;
     }
-    
+
     /**
      * Build a cooccurrence freqList in formId order, attached to a FormEnum object.
-     * Returns the count of occurences found. This method may need a lot of optional params, 
-     * set on the FormEnum object.
+     * Returns the count of occurences found. This method may need a lot of optional
+     * params, set on the FormEnum object.
      * 
      */
-    public long coocs(final FormEnum results, final int[] pivotIds, final int left, final int right, OptionMI mi) throws IOException
+    public long coocs(final FormEnum results, final int[] pivotIds, final int left, final int right, OptionMI mi)
+            throws IOException
     {
         // for each index leave
-        //     collect "postings" for each term
-        //     for each doc
-        //         get position of term found
+        // collect "postings" for each term
+        // for each doc
+        // get position of term found
         if (pivotIds == null || pivotIds.length == 0) {
             throw new IllegalArgumentException("Search term(s) missing, pivotIds should be not null");
         }
@@ -178,40 +179,38 @@ public class FieldRail
         }
         // filter documents
         final boolean hasFilter = (results.filter != null);
-        
+
         // filter co-occs by tag
         boolean hasTags = (results.tags != null);
         // filter co-occs stops
         boolean noStop = (results.tags != null && results.tags.nostop());
         // collect “locutions” (words like “parce que”)
         boolean locs = (results.tags != null && results.tags.locutions());
-        // collect “edges”   A B [O] A C => AOx2, ABx2, ACx2, BOx1, COx1, BCx1. 
+        // collect “edges” A B [O] A C => AOx2, ABx2, ACx2, BOx1, COx1, BCx1.
         boolean hasEdges = (results.edges != null);
-    
-        // for future scoring, formOccs is global or relative to filter ? relative seems bad
-        // create or reuse arrays in result, 
+
+        // for future scoring, formOccs is global or relative to filter ? relative seems
+        // bad
+        // create or reuse arrays in result,
         if (results.formFreq == null || results.formFreq.length != maxForm) {
             results.formFreq = new long[maxForm]; // by term, occurrences counts
-        }
-        else {
+        } else {
             Arrays.fill(results.formFreq, 0);
         }
         // create or reuse hits
         if (results.formHits == null || results.formHits.length != maxForm) {
             results.formHits = new int[maxForm]; // by term, document counts
-        }
-        else {
+        } else {
             Arrays.fill(results.formHits, 0);
         }
-    
+
         // this vector has been useful, but meaning has been forgotten
         boolean[] formSeen = new boolean[maxForm];
         long found = 0;
         final int END = DocIdSetIterator.NO_MORE_DOCS;
         // collector of scores
         // int dicSize = this.hashDic.size();
-        
-    
+
         // for each doc, a bit set is used to record the relevant positions
         // this will avoid counting interferences when search occurrences are close
         java.util.BitSet contexts = new java.util.BitSet();
@@ -262,28 +261,25 @@ public class FieldRail
                     int docPost = postings.docID(); // get current doc for these term postings
                     if (docPost == docLeaf) {
                         // OK
-                    }
-                    else if (docPost == END) {
+                    } else if (docPost == END) {
                         continue; // end of postings, try next term
-                    }
-                    else if (docPost > docLeaf) {
+                    } else if (docPost > docLeaf) {
                         continue; // postings ahead of current doc, try next term
-                    }
-                    else if (docPost < docLeaf) {
+                    } else if (docPost < docLeaf) {
                         docPost = postings.advance(docLeaf); // try to advance postings to this doc
                         if (docPost > docLeaf)
                             continue; // next doc for this term is ahead current term
                     }
                     if (docPost != docLeaf) {
                         // ? bug ?
-                        System.out.println("BUG cooc, docLeaf=" + docLeaf + " docPost=" + docPost); 
+                        System.out.println("BUG cooc, docLeaf=" + docLeaf + " docPost=" + docPost);
                     }
                     int freq = postings.freq();
                     if (freq == 0) {
                         // bug ?
                         System.out.println("BUG cooc, term=" + postings.toString() + " docId=" + docId + " freq=0");
                     }
-    
+
                     hit = true;
                     // term found in this doc, search each occurrence
                     for (; freq > 0; freq--) {
@@ -317,30 +313,27 @@ public class FieldRail
                     }
                     lastpos = pos;
                     // Check words to count
-                    if (formId == 0) { 
+                    if (formId == 0) {
                         continue;
                     }
                     // keep pivots
                     else if (isPivot) {
-                        
-                    }
-                    else if (locs && !ftext.formLoc.get(formId)) {
+
+                    } else if (locs && !ftext.formLoc.get(formId)) {
                         continue;
-                    }
-                    else if (noStop && ftext.isStop(formId)) {
+                    } else if (noStop && ftext.isStop(formId)) {
                         continue;
                     }
                     // filter coocs by tag
                     else if (hasTags && !results.tags.accept(ftext.formTag[formId])) {
                         continue;
                     }
-                    
+
                     if (hasEdges) {
                         // threshold ?
                         results.edges.clust(formId);
                     }
-                    
-                    
+
                     results.occsPart++;
                     results.formFreq[formId]++;
                     // has been useful for a scoring algorithm
@@ -358,23 +351,24 @@ public class FieldRail
     }
 
     /**
-     * With a set of int formIds, run accross full or part of rails, to collect co-occs between those 
-     * selected words.
+     * With a set of int formIds, run accross full or part of rails, to collect
+     * co-occs between those selected words.
      */
     public EdgeSquare edges(final int[] formIds, final int distance, final BitSet filter)
     {
         // loop on docs
-        //   loop on occs
-        //     push edges
+        // loop on occs
+        // push edges
         if (formIds == null || formIds.length == 0) {
             throw new IllegalArgumentException("Search term(s) missing, A set of Ids is required");
         }
         EdgeRoll span = new EdgeRoll(formIds, distance);
         // filter documents
         IntBuffer bufInt = channelMap.rewind().asIntBuffer();
-        
+
         if (filter != null) {
-            for (int docId = filter.nextSetBit(0); docId !=  DocIdSetIterator.NO_MORE_DOCS; docId = filter.nextSetBit(docId + 1)) {
+            for (int docId = filter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = filter
+                    .nextSetBit(docId + 1)) {
                 if (limInt[docId] == 0) {
                     continue; // deleted or with no value for this field
                 }
@@ -385,8 +379,7 @@ public class FieldRail
                     span.push(position, formId);
                 }
             }
-        }
-        else {
+        } else {
             for (int docId = 0; docId < maxDoc; docId++) {
                 if (limInt[docId] == 0) {
                     continue; // deleted or with no value for this field
@@ -401,23 +394,24 @@ public class FieldRail
         }
         return span.edges();
     }
-    
+
     /**
      * Get edges between a predefined set of words.
+     * 
      * @param pivotIds A set of pivots to search around
-     * @param left Left size of context
-     * @param right Right size of context
-     * @param nodeIds A set of ids to search in the contexts
+     * @param left     Left size of context
+     * @param right    Right size of context
+     * @param nodeIds  A set of ids to search in the contexts
      * @param filter
      * @return
      * @throws Exception
      */
-    public EdgeSquare edges(final int[] pivotIds, final int left, final int right, int[] nodeIds, final BitSet filter) throws Exception
+    public EdgeSquare edges(final int[] pivotIds, final int left, final int right, int[] nodeIds, final BitSet filter)
+            throws Exception
     {
         // normalize node ids (sort, uniq)
-        
-        
-        // first, normalize 
+
+        // first, normalize
         EdgeSquare matrix = new EdgeSquare(nodeIds, false);
         IntList span = new IntList();
         Arrays.sort(nodeIds);
@@ -467,9 +461,8 @@ public class FieldRail
                         int posPivot = -1;
                         try {
                             posPivot = postings.nextPosition();
-                        }
-                        catch (Exception e) {
-                            throw new Exception(""+postings);
+                        } catch (Exception e) {
+                            throw new Exception("" + postings);
                         }
                         if (posPivot < 0) {
                             System.out.println("BUG cooc, term=" + postings.toString() + " docId=" + docId + " pos=0");
@@ -492,8 +485,8 @@ public class FieldRail
                         if (size < 2) {
                             continue;
                         }
-                        for (int x = 0; x < size -1; x++) {
-                            for (int y = x+1; y < size; y++) {
+                        for (int x = 0; x < size - 1; x++) {
+                            for (int y = x + 1; y < size; y++) {
                                 matrix.inc(span.get(x), span.get(y));
                             }
                         }
@@ -781,12 +774,12 @@ public class FieldRail
      */
     private void score(final FormEnum results, final int[] pivotIds, final OptionMI mi) throws IOException
     {
-        /* Strange, can’t understand why it doesn’t work
-        if (this.ftext.formDic != results.formDic) {
-            throw new IllegalArgumentException("Not the same fields. Rail for coocs: " + this.ftext.name
-                    + ", freqList build with " + results.name + " field");
-        }
-        */
+        /*
+         * Strange, can’t understand why it doesn’t work if (this.ftext.formDic !=
+         * results.formDic) { throw new
+         * IllegalArgumentException("Not the same fields. Rail for coocs: " +
+         * this.ftext.name + ", freqList build with " + results.name + " field"); }
+         */
         // if (results.limit == 0) throw new IllegalArgumentException("How many sorted
         // forms do you want? set FormEnum.limit");
         if (results.occsPart < 1) {
@@ -799,7 +792,7 @@ public class FieldRail
         final long N = ftext.occs; // global
         // Count of pivot occurrences for MI scorer
         long add = 0;
-        for (int formId: pivotIds) {
+        for (int formId : pivotIds) {
             add += ftext.formOccs(formId);
         }
         final long Ob = add;
@@ -807,18 +800,18 @@ public class FieldRail
         // reuse score for multiple calculations
         if (results.formScore == null || results.formScore.length != maxForm) {
             results.formScore = new double[maxForm]; // by term, occurrences counts
-        }
-        else {
+        } else {
             Arrays.fill(results.formScore, 0);
         }
-        // 
+        //
         for (int formId = 0; formId < maxForm; formId++) {
             // No tag filter here, should be done upper
             long Oab = results.formFreq[formId];
             if (Oab == 0) {
                 continue;
             }
-            // a form in a cooccurrence, may be more frequent than the pivots (repetition in a large context)
+            // a form in a cooccurrence, may be more frequent than the pivots (repetition in
+            // a large context)
             // this will confuse common algorithms
             if (Oab > Ob) {
                 Oab = Ob;
@@ -925,7 +918,6 @@ public class FieldRail
         return sb.toString();
     }
 
-
     public class Bigram
     {
         public final int a;
@@ -934,15 +926,13 @@ public class FieldRail
         public double score;
         final public String label;
 
-        Bigram(final int a, final int b)
-        {
+        Bigram(final int a, final int b) {
             this.a = a;
             this.b = b;
             this.label = null;
         }
 
-        Bigram(final int a, final int b, final String label)
-        {
+        Bigram(final int a, final int b, final String label) {
             this.a = a;
             this.b = b;
             this.label = label;

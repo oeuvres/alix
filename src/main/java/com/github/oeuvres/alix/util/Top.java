@@ -70,8 +70,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
      * @param size
      */
     @SuppressWarnings("unchecked")
-    public Top(final int size)
-    {
+    public Top(final int size) {
         this.size = size;
         // hack, OK ?
         data = new Entry[size];
@@ -263,8 +262,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
          * @param score
          * @param value
          */
-        Entry(final double score, final E value)
-        {
+        Entry(final double score, final E value) {
             this.score = score;
             this.value = value;
         }

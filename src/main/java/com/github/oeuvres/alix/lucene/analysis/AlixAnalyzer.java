@@ -35,31 +35,28 @@ package com.github.oeuvres.alix.lucene.analysis;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
 
-
 /**
  * Analysis scenario for French in Alix. The linguistic features of Alix are
  * language dependent.
  */
-public class AlixAnalyzer extends  DelegatingAnalyzerWrapper
+public class AlixAnalyzer extends DelegatingAnalyzerWrapper
 {
     Analyzer cloudAnalyzer = new CloudAnalyzer();
     Analyzer findAnalyzer = new FindAnalyzer();
     Analyzer queryAnalyzer = new QueryAnalyzer();
-    
 
     public AlixAnalyzer() {
         super(PER_FIELD_REUSE_STRATEGY);
     }
 
     @Override
-    protected Analyzer getWrappedAnalyzer(String fieldName) {
+    protected Analyzer getWrappedAnalyzer(String fieldName)
+    {
         if (fieldName.equals("query") || fieldName.equals("search")) {
             return queryAnalyzer;
-        }
-        else if (fieldName.endsWith("_cloud")) {
+        } else if (fieldName.endsWith("_cloud")) {
             return cloudAnalyzer;
-        }
-        else {
+        } else {
             return findAnalyzer;
         }
     }

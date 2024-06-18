@@ -36,38 +36,37 @@ import org.apache.lucene.search.similarities.BasicStats;
 import org.apache.lucene.search.similarities.SimilarityBase;
 
 /**
- * Implementation of a G-test Scoring with negative scores to get the 
- * most repulsed doc from a search. Code structure taken form {@link org.apache.lucene.search.similarities.DFISimilarity}
+ * Implementation of a G-test Scoring with negative scores to get the most
+ * repulsed doc from a search. Code structure taken form
+ * {@link org.apache.lucene.search.similarities.DFISimilarity}
  */
-public class SimilarityG extends SimilarityBase {
+public class SimilarityG extends SimilarityBase
+{
 
-  @Override
-  protected double score(BasicStats stats, double freq, double docLen) {
-    /*
-    double O0 = k;
-    double E0 = n * K / N;
-    double O1 = N - k;
-    double E1 = N - E0;
-    // bad results  O0 * Math.log(O0 / E0);
-    double sum = 0d;
-    sum += O0 * Math.log(O0 / E0);
-    sum += O1 * Math.log(O1 / E1);
-    return sum * 2.0;
-    */
-    // if (stats.getNumberOfFieldTokens() == 0) return 0; // ??
-    final double N = stats.getNumberOfFieldTokens();
-    final double E0 = stats.getTotalTermFreq() * docLen / N;
-    double sum = freq * Math.log(freq / E0);
-    final double O1 = N - freq;
-    sum += O1 * Math.log(O1 / (N - E0));
-    // if the observed frequency is less than expected, is negative a good idea ? (think to multi term search)
-    if (freq < E0) return -sum;
-    return sum;
-  }
+    @Override
+    protected double score(BasicStats stats, double freq, double docLen)
+    {
+        /*
+         * double O0 = k; double E0 = n * K / N; double O1 = N - k; double E1 = N - E0;
+         * // bad results O0 * Math.log(O0 / E0); double sum = 0d; sum += O0 *
+         * Math.log(O0 / E0); sum += O1 * Math.log(O1 / E1); return sum * 2.0;
+         */
+        // if (stats.getNumberOfFieldTokens() == 0) return 0; // ??
+        final double N = stats.getNumberOfFieldTokens();
+        final double E0 = stats.getTotalTermFreq() * docLen / N;
+        double sum = freq * Math.log(freq / E0);
+        final double O1 = N - freq;
+        sum += O1 * Math.log(O1 / (N - E0));
+        // if the observed frequency is less than expected, is negative a good idea ?
+        // (think to multi term search)
+        if (freq < E0)
+            return -sum;
+        return sum;
+    }
 
-
-  @Override
-  public String toString() {
-    return "G-test";
-  }
+    @Override
+    public String toString()
+    {
+        return "G-test";
+    }
 }

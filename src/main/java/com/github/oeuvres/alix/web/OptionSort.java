@@ -48,10 +48,8 @@ import static com.github.oeuvres.alix.Names.*;
 import com.github.oeuvres.alix.lucene.search.SimilarityG;
 import com.github.oeuvres.alix.lucene.search.SimilarityOccs;
 
-public enum OptionSort implements Option
-{
-    score("Score", null, null),
-    occs("Occurrences", null, new SimilarityOccs()),
+public enum OptionSort implements Option {
+    score("Score", null, null), occs("Occurrences", null, new SimilarityOccs()),
     year("Année (+ ancien)",
             new Sort(new SortField("year", SortField.Type.INT), new SortField(ALIX_ID, SortField.Type.STRING)), null),
     year_inv("Année (+ récent)",
@@ -61,7 +59,8 @@ public enum OptionSort implements Option
     date("Date (+ ancien)",
             new Sort(new SortField("date", SortField.Type.INT), new SortField(ALIX_ID, SortField.Type.STRING)), null),
     date_inv("Date (+ récent)",
-            new Sort(new SortField("date", SortField.Type.INT, true), new SortField(ALIX_ID, SortField.Type.STRING)), null),
+            new Sort(new SortField("date", SortField.Type.INT, true), new SortField(ALIX_ID, SortField.Type.STRING)),
+            null),
     author("Auteur (A-Z)",
             new Sort(new SortField("author1", SortField.Type.STRING), new SortField("year", SortField.Type.INT)), null),
     author_inv("Auteur (Z-A)",
@@ -81,8 +80,7 @@ public enum OptionSort implements Option
     public final Similarity sim;
     public final String label;
 
-    private OptionSort(final String label, final Sort sort, final Similarity sim)
-    {
+    private OptionSort(final String label, final Sort sort, final Similarity sim) {
         this.label = label;
         this.sort = sort;
         this.sim = sim;

@@ -93,8 +93,7 @@ public class Doc
      * @param id
      * @throws IOException Lucene errors.
      */
-    public Doc(final Alix alix, final String id) throws IOException
-    {
+    public Doc(final Alix alix, final String id) throws IOException {
         this(alix, id, null);
     }
 
@@ -108,8 +107,7 @@ public class Doc
      * @param fieldsToLoad
      * @throws IOException Lucene errors.
      */
-    public Doc(final Alix alix, final String id, final HashSet<String> fieldsToLoad) throws IOException
-    {
+    public Doc(final Alix alix, final String id, final HashSet<String> fieldsToLoad) throws IOException {
         int docId = alix.getDocId(id);
         if (docId < 0) {
             throw new IllegalArgumentException("No document found with id: " + id);
@@ -135,8 +133,7 @@ public class Doc
      * @param docId
      * @throws IOException Lucene errors.
      */
-    public Doc(final Alix alix, final int docId) throws IOException
-    {
+    public Doc(final Alix alix, final int docId) throws IOException {
         this(alix, docId, null);
     }
 
@@ -150,8 +147,7 @@ public class Doc
      * @param fieldsToLoad
      * @throws IOException Lucene errors.
      */
-    public Doc(final Alix alix, final int docId, final HashSet<String> fieldsToLoad) throws IOException
-    {
+    public Doc(final Alix alix, final int docId, final HashSet<String> fieldsToLoad) throws IOException {
         StoredFields fread = alix.reader().storedFields();
         if (fieldsToLoad == null) {
             document = fread.document(docId);
@@ -183,7 +179,7 @@ public class Doc
      * @param docId2
      * @param right
      * @return
-     * @throws IOException Lucene errors.
+     * @throws IOException          Lucene errors.
      * @throws NoSuchFieldException
      */
     public String contrast(final String field, final int docId2, final boolean right)
@@ -325,15 +321,16 @@ public class Doc
      * @param distrib
      * @param tags
      * @return
-     * @throws IOException Lucene errors.
+     * @throws IOException          Lucene errors.
      * @throws NoSuchFieldException
      */
-    static public FormEnum forms(Alix alix, int lucId, String field, OptionDistrib distrib, TagFilter tags) throws IOException, NoSuchFieldException
+    static public FormEnum forms(Alix alix, int lucId, String field, OptionDistrib distrib, TagFilter tags)
+            throws IOException, NoSuchFieldException
     {
         boolean hasTags = (tags != null);
         boolean noStop = (tags != null && tags.nostop());
         boolean hasScorer = (distrib != null);
-    
+
         // get index term stats
         FieldText fieldText = alix.fieldText(field);
         FormEnum forms = fieldText.forms();
@@ -342,7 +339,7 @@ public class Doc
         }
         forms.formFreq = new long[fieldText.maxForm]; // freqs by form
         int docLen = fieldText.docOccs[lucId];
-    
+
         // loop on all forms of the document, get score, keep the top
         // final long restLen = fieldText.occsAll - occsDoc;
         Terms tvek = alix.reader().termVectors().get(lucId, field);
@@ -385,30 +382,22 @@ public class Doc
 
     public int freq(final String field, final String[] forms) throws NoSuchFieldException, IOException
     {
-        return freq(
-            alix.reader(),
-            this.lucId,
-            field,
-            forms
-        );
+        return freq(alix.reader(), this.lucId, field, forms);
     }
+
     /**
      * Count occurences of terms in a doc.
      *
-     * @param reader  A Lucene reader to get stats from.
-     * @param lucId   Lucene internal id of a doc.
-     * @param field   Field name.
-     * @param forms   Array of forms.
-     * @return        Occurrences count for founded forms.
+     * @param reader A Lucene reader to get stats from.
+     * @param lucId  Lucene internal id of a doc.
+     * @param field  Field name.
+     * @param forms  Array of forms.
+     * @return Occurrences count for founded forms.
      * @throws NoSuchFieldException
      * @throws IOException
      */
-    static public int freq(
-            final IndexReader reader, 
-            final int lucId, 
-            final String field, 
-            final String[] forms
-    ) throws NoSuchFieldException, IOException
+    static public int freq(final IndexReader reader, final int lucId, final String field, final String[] forms)
+            throws NoSuchFieldException, IOException
     {
         if (forms == null || forms.length < 1)
             return 0;
@@ -468,7 +457,7 @@ public class Doc
     /**
      * Get and cache a term vector for a field of this document.
      * 
-     * @throws IOException Lucene errors.
+     * @throws IOException          Lucene errors.
      * @throws NoSuchFieldException
      */
     public Terms getTermVector(String field) throws IOException, NoSuchFieldException
@@ -494,7 +483,7 @@ public class Doc
      * Hilite search in a stored document as html.
      * 
      * @param field
-     * @throws IOException Lucene errors.
+     * @throws IOException          Lucene errors.
      * @throws NoSuchFieldException
      */
     public String hilite(final String field, final ByteRunAutomaton include) throws NoSuchFieldException, IOException
@@ -554,7 +543,7 @@ public class Doc
      * @param field
      * @param docId2
      * @return
-     * @throws IOException Lucene errors.
+     * @throws IOException          Lucene errors.
      * @throws NoSuchFieldException
      */
     public Top<String> intersect(final String field, final int docId2) throws IOException, NoSuchFieldException
@@ -614,18 +603,11 @@ public class Doc
      * @param limit
      * @return
      * @throws NoSuchFieldException
-     * @throws IOException Lucene errors.
+     * @throws IOException          Lucene errors.
      */
-    public List<String[]> kwic(
-        final String field, 
-        ByteRunAutomaton include,
-        int limit,
-        int left,
-        int right,
-        final int gap,
-        final boolean expressions,
-        final boolean repetitions
-    ) throws NoSuchFieldException, IOException
+    public List<String[]> kwic(final String field, ByteRunAutomaton include, int limit, int left, int right,
+            final int gap, final boolean expressions, final boolean repetitions)
+            throws NoSuchFieldException, IOException
     {
         if (left < 0 || left > 500)
             left = 50;
@@ -673,7 +655,6 @@ public class Doc
         return lines;
     }
 
-
     /*
      * String text = document.get(TEXT); BinaryUbytes tags = new BinaryUbytes();
      * tags.open(document.getBinaryValue(TEXT+Alix._TAGS)); Offsets offsets = new
@@ -709,7 +690,7 @@ public class Doc
      * 
      * @param field
      * @return
-     * @throws IOException Lucene errors.
+     * @throws IOException          Lucene errors.
      * @throws NoSuchFieldException
      */
     public String paint(final String field) throws NoSuchFieldException, IOException

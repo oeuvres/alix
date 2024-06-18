@@ -40,21 +40,23 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
 @Command(name = "Sqlite", version = "Sqlite 0.1", mixinStandardHelpOptions = true)
-public class Sqlite implements Callable<Integer> {
+public class Sqlite implements Callable<Integer>
+{
 
     @Parameters(arity = "1", paramLabel = "base.sqlite", description = "Sqlite file where to store indexation")
     File sqlite;
 
     @Override
-    public Integer call() throws Exception {
+    public Integer call() throws Exception
+    {
         // TODO Auto-generated method stub
         return 0;
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         int exitCode = new CommandLine(new Sqlite()).execute(args);
         System.exit(exitCode);
-      }
-
+    }
 
 }

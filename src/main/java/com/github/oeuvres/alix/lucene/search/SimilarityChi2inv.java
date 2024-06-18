@@ -36,27 +36,31 @@ import org.apache.lucene.search.similarities.BasicStats;
 import org.apache.lucene.search.similarities.SimilarityBase;
 
 /**
- * Implementation of a Chi2 Scoring with negative scores to get the 
- * most repulsed doc from a search. Code structure taken form {@link org.apache.lucene.search.similarities.DFISimilarity}
+ * Implementation of a Chi2 Scoring with negative scores to get the most
+ * repulsed doc from a search. Code structure taken form
+ * {@link org.apache.lucene.search.similarities.DFISimilarity}
  */
-public class SimilarityChi2inv extends SimilarityBase {
+public class SimilarityChi2inv extends SimilarityBase
+{
 
-  @Override
-  protected double score(BasicStats stats, double freq, double docLen) {
-    // if (stats.getNumberOfFieldTokens() == 0) return 0; // ??
-    final double expected = stats.getTotalTermFreq() * docLen / stats.getNumberOfFieldTokens();
-    final double measure = (freq - expected) * (freq - expected) / expected;
-    // DFISimilarity returns log, with a 
-    // return stats.getBoost() * log2(measure + 1);
-    // if the observed frequency is less than expected, return negative (should be nice in multi term search)
-    if (freq > expected) return 0;
-    return measure;
-  }
+    @Override
+    protected double score(BasicStats stats, double freq, double docLen)
+    {
+        // if (stats.getNumberOfFieldTokens() == 0) return 0; // ??
+        final double expected = stats.getTotalTermFreq() * docLen / stats.getNumberOfFieldTokens();
+        final double measure = (freq - expected) * (freq - expected) / expected;
+        // DFISimilarity returns log, with a
+        // return stats.getBoost() * log2(measure + 1);
+        // if the observed frequency is less than expected, return negative (should be
+        // nice in multi term search)
+        if (freq > expected)
+            return 0;
+        return measure;
+    }
 
-
-
-  @Override
-  public String toString() {
-    return "Chi2 Inverse";
-  }
+    @Override
+    public String toString()
+    {
+        return "Chi2 Inverse";
+    }
 }

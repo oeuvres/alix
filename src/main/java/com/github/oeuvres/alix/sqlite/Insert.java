@@ -72,14 +72,18 @@ import com.github.oeuvres.alix.util.Dir;
 /**
  * Index words and lemma a set of html files in an SQLite base
  */
-public class Insert {
+public class Insert
+{
     private static Logger logger = Logger.getLogger("alix.sqlite.insert");
+
     /**
      * A lucene analyzer to get lems
      */
-    static class AnalyzerSite extends Analyzer {
+    static class AnalyzerSite extends Analyzer
+    {
         @Override
-        protected TokenStreamComponents createComponents(String fieldName) {
+        protected TokenStreamComponents createComponents(String fieldName)
+        {
             final Tokenizer source = new FrTokenizer();
             TokenStream result = new FrLemFilter(source);
             result = new LocutionFilter(result);
@@ -88,9 +92,10 @@ public class Insert {
         }
 
     }
+
     /** Instantiation of lem */
     static Analyzer ana = new AnalyzerSite();
-    
+
     private static HashMap<CharsAtt, Integer> lemDic = new HashMap<>();
     private static HashMap<CharsAtt, Integer> orthDic = new HashMap<>();
 
@@ -110,171 +115,183 @@ public class Insert {
     /** Prepared query, insert a token */
     private static PreparedStatement qTok;
     private static final int TOK_DOC = 1;
-    
-    /**
-    * Connect to an sqlite database. Everything is broken if it can’t work, let it cry
-     * @throws IOException Lucene errors.
-     * @throws SQLException 
-    */
-   public static void connect(final File sqlite) throws IOException, SQLException {
-       if (sqlite.exists()) {
-           logger.info("\"" + sqlite + "\" has been deleted. Incremental indexing is not yet supported.");
-       }
-       InputStream source = Insert.class.getResourceAsStream("alix.db");
-       Files.createDirectories(sqlite.toPath().getParent());
-       Files.copy(source, sqlite.toPath(), StandardCopyOption.REPLACE_EXISTING);
-       String dburl = "jdbc:sqlite:" + sqlite.getCanonicalFile().toString().replace('\\', '/');
-       con = DriverManager.getConnection(dburl);
-       Statement stmt = con.createStatement();
-       stmt.execute("PRAGMA foreign_keys = 0;");
-       stmt.execute("PRAGMA journal_mode = OFF;");
-       stmt.execute("PRAGMA synchronous = OFF;");
-       qDoc = con.prepareStatement( "INSERT INTO doc"
-            + " (code, filemtime, filesize, title, html)"
-            + " VALUES"
-            + " (?, ?, ?, ?, ?)"
-            , PreparedStatement.RETURN_GENERATED_KEYS
-       );
-       // For incremental indexation
-       // qOrthSel = con.prepareStatement("SELECT * FROM orth WHERE form = ?");
-       // qLemSel = con.prepareStatement("SELECT * FROM lem WHERE form = ?");
-       qLem = con.prepareStatement("INSERT INTO lem (form, cat) VALUES (?, ?)", PreparedStatement.RETURN_GENERATED_KEYS);
-       qOrth = con.prepareStatement("INSERT INTO orth (form, cat, lem) VALUES (?, ?, ?)", PreparedStatement.RETURN_GENERATED_KEYS);
-       qTok = con.prepareStatement("INSERT INTO tok (doc, orth, offset, length, cat, lem) VALUES (?, ?, ?, ?, ?, ?)");
-       
-   }
 
-   /**
-    * 
-    * @param dir
-    * @throws SQLException
- * @throws IOException Lucene errors.
-    */
-   public static void crawl (File dir) throws SQLException, IOException
-   {
-       logger.info(dir.getAbsolutePath());
-       con.setAutoCommit(false);
-       // file structure book/chapter.html
-       List<Path> paths = Dir.ls(dir + "/*/*.html");
-       for (Path p: paths) {
-           File f = p.toFile();
-           String code = f.getParentFile().getName() +"/" + f.getName().substring(0, f.getName().lastIndexOf('.'));
-           qDoc.setString(DOC_CODE, code);
-           qDoc.setLong(DOC_FILEMTIME, f.lastModified());
-           qDoc.setLong(DOC_FILESIZE, f.length());
-           qDoc.setString(DOC_TITLE, code);
-           String html = Files.readString(f.toPath());
-           qDoc.setString(DOC_HTML, html);
-           qDoc.execute();
-           ResultSet keys = qDoc.getGeneratedKeys();
-           keys.next(); // should be true or let it cry
-           final int docId = keys.getInt(1);
-           qTok.setInt(TOK_DOC, docId); // same docid
-           logger.fine(docId + " " + f.toString());
-           parse(html);
-       }
-       con.commit();
-   }
-   
-   public static void unzip (File file) throws SQLException, IOException
-   {
-       con.setAutoCommit(false);
-       ZipInputStream zis = new ZipInputStream(new FileInputStream(file), StandardCharsets.UTF_8);
-       ZipEntry entry;
-       while ((entry = zis.getNextEntry()) != null) {
-           if (entry.isDirectory()) continue;
-           final String path = entry.getName();
-           // test if extension html
-           qDoc.setString(DOC_CODE, path);
-           qDoc.setLong(DOC_FILEMTIME, entry.getTime());
-           qDoc.setLong(DOC_FILESIZE, entry.getSize());
-           qDoc.setString(DOC_TITLE, path);
-           final byte[] bytes = zis.readAllBytes();
-           final String html = new String(bytes, StandardCharsets.UTF_8);
-           // qDoc.setBytes(DOC_HTML, bytes); // correct but String maybe more robust
-           qDoc.setString(DOC_HTML, html);
-           qDoc.execute();
-           ResultSet keys = qDoc.getGeneratedKeys();
-           keys.next(); // should be true or let it cry
-           final int docId = keys.getInt(1);
-           qTok.setInt(TOK_DOC, docId); // same docid
-           logger.fine(entry.toString());
-           parse(html);
-       }
-       con.commit();
-   }
-   
-   public static void parse(final String xml) throws IOException, SQLException
-   {
-       final int ORTH = 2;
-       final int OFFSET = 3;
-       final int LENGTH = 4;
-       final int CAT = 5;
-       final int LEM = 6;
-       TokenStream stream = ana.tokenStream("stats", new StringReader(xml));
-       final CharsAtt termAtt = (CharsAtt) stream.addAttribute(CharTermAttribute.class);
-       final CharsAtt orthAtt = (CharsAtt) stream.addAttribute(CharsOrthAtt.class);
-       final CharsAtt lemAtt = (CharsAtt) stream.addAttribute(CharsLemAtt.class);
-       final OffsetAttribute attOff = stream.addAttribute(OffsetAttribute.class);
-       final FlagsAttribute attFlags = stream.addAttribute(FlagsAttribute.class);
-       stream.reset();
-       // print all tokens until stream is exhausted
-       while (stream.incrementToken()) {
-           final int flag = attFlags.getFlags();
-           qTok.setInt(OFFSET, attOff.startOffset());
-           qTok.setInt(LENGTH, attOff.endOffset() - attOff.startOffset());
-           qTok.setInt(CAT, flag);
-           // empty position, record as a stop for locutions
-           if (termAtt.isEmpty()) {
-               qTok.setInt(ORTH, 0);
-               qTok.setInt(LEM, 0);
-               qTok.execute();
-               continue;
-           }
-           // filter punctuation ?
-           
-           // get a lemma
-           CharsAtt lem = null;
-           if (!lemAtt.isEmpty()) lem = lemAtt;
-           else if(!orthAtt.isEmpty()) lem = orthAtt;
-           else if(!orthAtt.isEmpty()) lem = termAtt;
-           int lemId = 0;
-           if (lem == null); // no lem, strange
-           else if ((lemId = lemDic.getOrDefault(lem, 0)) != 0); // lem already seen
-           else { // a lem to insert
-               // if incremental, should check if lemId not already recorded
-               qLem.setString(1, lem.toString());
-               qLem.setInt(2, flag);
-               qLem.execute();
-               ResultSet keys = qLem.getGeneratedKeys();
-               keys.next(); // should be true or let it cry
-               lemId = keys.getInt(1);
-               lemDic.put(new CharsAtt(lem), lemId);
-           }
-           qTok.setInt(LEM, lemId);
-           
-           // get an orthographic form
-           CharsAtt orth = null;
-           if(!orthAtt.isEmpty()) orth = orthAtt;
-           else if(!termAtt.isEmpty()) orth = termAtt;
-           int orthId = 0;
-           if (orth == null); // strange
-           else if ((orthId = orthDic.getOrDefault(orth, 0)) != 0); // orth already seen
-           else { // a form to insert
-               // if incremental, should check if lemId not already recorded
-               qOrth.setString(1, orth.toString());
-               qOrth.setInt(2, flag);
-               qOrth.setInt(3, lemId);
-               qOrth.execute();
-               ResultSet keys = qOrth.getGeneratedKeys();
-               keys.next(); // should be true or let it cry
-               orthId = keys.getInt(1);
-               orthDic.put(new CharsAtt(orth), orthId);
-           }
-           qTok.setInt(ORTH, orthId);
-           qTok.execute();
-       }
-       stream.close();
-   }
+    /**
+     * Connect to an sqlite database. Everything is broken if it can’t work, let it
+     * cry
+     * 
+     * @throws IOException  Lucene errors.
+     * @throws SQLException
+     */
+    public static void connect(final File sqlite) throws IOException, SQLException
+    {
+        if (sqlite.exists()) {
+            logger.info("\"" + sqlite + "\" has been deleted. Incremental indexing is not yet supported.");
+        }
+        InputStream source = Insert.class.getResourceAsStream("alix.db");
+        Files.createDirectories(sqlite.toPath().getParent());
+        Files.copy(source, sqlite.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        String dburl = "jdbc:sqlite:" + sqlite.getCanonicalFile().toString().replace('\\', '/');
+        con = DriverManager.getConnection(dburl);
+        Statement stmt = con.createStatement();
+        stmt.execute("PRAGMA foreign_keys = 0;");
+        stmt.execute("PRAGMA journal_mode = OFF;");
+        stmt.execute("PRAGMA synchronous = OFF;");
+        qDoc = con.prepareStatement(
+                "INSERT INTO doc" + " (code, filemtime, filesize, title, html)" + " VALUES" + " (?, ?, ?, ?, ?)",
+                PreparedStatement.RETURN_GENERATED_KEYS);
+        // For incremental indexation
+        // qOrthSel = con.prepareStatement("SELECT * FROM orth WHERE form = ?");
+        // qLemSel = con.prepareStatement("SELECT * FROM lem WHERE form = ?");
+        qLem = con.prepareStatement("INSERT INTO lem (form, cat) VALUES (?, ?)",
+                PreparedStatement.RETURN_GENERATED_KEYS);
+        qOrth = con.prepareStatement("INSERT INTO orth (form, cat, lem) VALUES (?, ?, ?)",
+                PreparedStatement.RETURN_GENERATED_KEYS);
+        qTok = con.prepareStatement("INSERT INTO tok (doc, orth, offset, length, cat, lem) VALUES (?, ?, ?, ?, ?, ?)");
+
+    }
+
+    /**
+     * 
+     * @param dir
+     * @throws SQLException
+     * @throws IOException  Lucene errors.
+     */
+    public static void crawl(File dir) throws SQLException, IOException
+    {
+        logger.info(dir.getAbsolutePath());
+        con.setAutoCommit(false);
+        // file structure book/chapter.html
+        List<Path> paths = Dir.ls(dir + "/*/*.html");
+        for (Path p : paths) {
+            File f = p.toFile();
+            String code = f.getParentFile().getName() + "/" + f.getName().substring(0, f.getName().lastIndexOf('.'));
+            qDoc.setString(DOC_CODE, code);
+            qDoc.setLong(DOC_FILEMTIME, f.lastModified());
+            qDoc.setLong(DOC_FILESIZE, f.length());
+            qDoc.setString(DOC_TITLE, code);
+            String html = Files.readString(f.toPath());
+            qDoc.setString(DOC_HTML, html);
+            qDoc.execute();
+            ResultSet keys = qDoc.getGeneratedKeys();
+            keys.next(); // should be true or let it cry
+            final int docId = keys.getInt(1);
+            qTok.setInt(TOK_DOC, docId); // same docid
+            logger.fine(docId + " " + f.toString());
+            parse(html);
+        }
+        con.commit();
+    }
+
+    public static void unzip(File file) throws SQLException, IOException
+    {
+        con.setAutoCommit(false);
+        ZipInputStream zis = new ZipInputStream(new FileInputStream(file), StandardCharsets.UTF_8);
+        ZipEntry entry;
+        while ((entry = zis.getNextEntry()) != null) {
+            if (entry.isDirectory())
+                continue;
+            final String path = entry.getName();
+            // test if extension html
+            qDoc.setString(DOC_CODE, path);
+            qDoc.setLong(DOC_FILEMTIME, entry.getTime());
+            qDoc.setLong(DOC_FILESIZE, entry.getSize());
+            qDoc.setString(DOC_TITLE, path);
+            final byte[] bytes = zis.readAllBytes();
+            final String html = new String(bytes, StandardCharsets.UTF_8);
+            // qDoc.setBytes(DOC_HTML, bytes); // correct but String maybe more robust
+            qDoc.setString(DOC_HTML, html);
+            qDoc.execute();
+            ResultSet keys = qDoc.getGeneratedKeys();
+            keys.next(); // should be true or let it cry
+            final int docId = keys.getInt(1);
+            qTok.setInt(TOK_DOC, docId); // same docid
+            logger.fine(entry.toString());
+            parse(html);
+        }
+        con.commit();
+    }
+
+    public static void parse(final String xml) throws IOException, SQLException
+    {
+        final int ORTH = 2;
+        final int OFFSET = 3;
+        final int LENGTH = 4;
+        final int CAT = 5;
+        final int LEM = 6;
+        TokenStream stream = ana.tokenStream("stats", new StringReader(xml));
+        final CharsAtt termAtt = (CharsAtt) stream.addAttribute(CharTermAttribute.class);
+        final CharsAtt orthAtt = (CharsAtt) stream.addAttribute(CharsOrthAtt.class);
+        final CharsAtt lemAtt = (CharsAtt) stream.addAttribute(CharsLemAtt.class);
+        final OffsetAttribute attOff = stream.addAttribute(OffsetAttribute.class);
+        final FlagsAttribute attFlags = stream.addAttribute(FlagsAttribute.class);
+        stream.reset();
+        // print all tokens until stream is exhausted
+        while (stream.incrementToken()) {
+            final int flag = attFlags.getFlags();
+            qTok.setInt(OFFSET, attOff.startOffset());
+            qTok.setInt(LENGTH, attOff.endOffset() - attOff.startOffset());
+            qTok.setInt(CAT, flag);
+            // empty position, record as a stop for locutions
+            if (termAtt.isEmpty()) {
+                qTok.setInt(ORTH, 0);
+                qTok.setInt(LEM, 0);
+                qTok.execute();
+                continue;
+            }
+            // filter punctuation ?
+
+            // get a lemma
+            CharsAtt lem = null;
+            if (!lemAtt.isEmpty())
+                lem = lemAtt;
+            else if (!orthAtt.isEmpty())
+                lem = orthAtt;
+            else if (!orthAtt.isEmpty())
+                lem = termAtt;
+            int lemId = 0;
+            if (lem == null)
+                ; // no lem, strange
+            else if ((lemId = lemDic.getOrDefault(lem, 0)) != 0)
+                ; // lem already seen
+            else { // a lem to insert
+                   // if incremental, should check if lemId not already recorded
+                qLem.setString(1, lem.toString());
+                qLem.setInt(2, flag);
+                qLem.execute();
+                ResultSet keys = qLem.getGeneratedKeys();
+                keys.next(); // should be true or let it cry
+                lemId = keys.getInt(1);
+                lemDic.put(new CharsAtt(lem), lemId);
+            }
+            qTok.setInt(LEM, lemId);
+
+            // get an orthographic form
+            CharsAtt orth = null;
+            if (!orthAtt.isEmpty())
+                orth = orthAtt;
+            else if (!termAtt.isEmpty())
+                orth = termAtt;
+            int orthId = 0;
+            if (orth == null)
+                ; // strange
+            else if ((orthId = orthDic.getOrDefault(orth, 0)) != 0)
+                ; // orth already seen
+            else { // a form to insert
+                   // if incremental, should check if lemId not already recorded
+                qOrth.setString(1, orth.toString());
+                qOrth.setInt(2, flag);
+                qOrth.setInt(3, lemId);
+                qOrth.execute();
+                ResultSet keys = qOrth.getGeneratedKeys();
+                keys.next(); // should be true or let it cry
+                orthId = keys.getInt(1);
+                orthDic.put(new CharsAtt(orth), orthId);
+            }
+            qTok.setInt(ORTH, orthId);
+            qTok.execute();
+        }
+        stream.close();
+    }
 
 }

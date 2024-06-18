@@ -67,19 +67,19 @@ public class Marker
 
     /**
      * Build an hiliter with an analyzer, and a query
+     * 
      * @param analyzer
      * @param q
      * @throws IOException
      */
-    public Marker(Analyzer analyzer, String q) throws IOException
-    {
+    public Marker(Analyzer analyzer, String q) throws IOException {
         this.q = q;
         this.analyzer = analyzer;
         // loop on words according the Analyzer to build automatoc
         TokenStream stream = analyzer.tokenStream("hilite", q);
         CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
         ArrayList<Automaton> cogs = new ArrayList<Automaton>();
-        // ensure unicity of terms 
+        // ensure unicity of terms
         Set<String> dic = new HashSet<>();
         stream.reset();
         while (stream.incrementToken()) {

@@ -148,8 +148,7 @@ public class Calcul
         final char[] chars;
         final int value;
 
-        public Num(String s, int value)
-        {
+        public Num(String s, int value) {
             this.chars = s.toCharArray();
             this.value = value;
         }

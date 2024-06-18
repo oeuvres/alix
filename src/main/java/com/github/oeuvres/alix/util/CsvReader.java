@@ -63,19 +63,16 @@ public class CsvReader
     /** line number */
     private int line = -1;
 
-    public CsvReader(final File file, final int cols) throws FileNotFoundException
-    {
+    public CsvReader(final File file, final int cols) throws FileNotFoundException {
         this.reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
         row = new Row(cols);
     }
 
-    public CsvReader(Reader reader, final int cols)
-    {
+    public CsvReader(Reader reader, final int cols) {
         this(reader, cols, (char) 0);
     }
 
-    public CsvReader(Reader reader, final int cols, final char sep)
-    {
+    public CsvReader(Reader reader, final int cols, final char sep) {
         this.reader = reader;
         row = new Row(cols);
         // quote = '"';
@@ -183,8 +180,7 @@ public class CsvReader
         int pointer;
 
         /** constructor */
-        public Row(int cols)
-        {
+        public Row(int cols) {
             cells = new Chain[cols];
             for (int i = cols - 1; i >= 0; i--) {
                 cells[i] = new Chain();

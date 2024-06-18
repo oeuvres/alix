@@ -36,7 +36,8 @@ package com.github.oeuvres.alix.lucene.analysis.tokenattributes;
  * Used in a Lucene Analyzer, a LIFO stack of search to keep trace of tokens for
  * compounds.
  */
-public class CharsAttWin {
+public class CharsAttWin
+{
     private final CharsAtt[] data;
     /** Size of left wing */
     protected final int left;
@@ -74,7 +75,8 @@ public class CharsAttWin {
      * @param pos
      * @return the primary value
      */
-    public CharsAtt get(final int pos) {
+    public CharsAtt get(final int pos)
+    {
         return data[pointer(pos)];
     }
 
@@ -82,7 +84,8 @@ public class CharsAttWin {
      * Get pointer on the data array from a position. Will roll around array if out
      * the limits
      */
-    protected int pointer(final int pos) {
+    protected int pointer(final int pos)
+    {
         /*
          * if (ord < -left) throw(new ArrayIndexOutOfBoundsException(
          * ord+" < "+(-left)+", left context size.\n"+this.toString() )); else if (ord >
@@ -95,14 +98,16 @@ public class CharsAttWin {
     /**
      * Push a term value at front
      */
-    public CharsAttWin push(final CharsAtt term) {
+    public CharsAttWin push(final CharsAtt term)
+    {
         center = pointer(+1);
         data[pointer(right)].copy(term);
         return this;
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
         StringBuilder sb = new StringBuilder();
         for (int i = left; i <= right; i++) {
             if (i == 0)

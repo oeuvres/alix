@@ -65,8 +65,7 @@ public class IntSeries extends IntList
     /**
      * Constructor with no metadata.
      */
-    public IntSeries()
-    {
+    public IntSeries() {
         super();
         label = null;
         code = -1;
@@ -78,8 +77,7 @@ public class IntSeries extends IntList
      * 
      * @param label
      */
-    public IntSeries(final String label)
-    {
+    public IntSeries(final String label) {
         super();
         this.label = label;
         code = -1;
@@ -91,8 +89,7 @@ public class IntSeries extends IntList
      * 
      * @param code
      */
-    public IntSeries(final int code)
-    {
+    public IntSeries(final int code) {
         this.label = null;
         this.code = code;
         cat = -1;
@@ -104,8 +101,7 @@ public class IntSeries extends IntList
      * @param code
      * @param cat
      */
-    public IntSeries(final int code, final int cat)
-    {
+    public IntSeries(final int code, final int cat) {
         this.label = null;
         this.code = code;
         this.cat = cat;
@@ -117,8 +113,7 @@ public class IntSeries extends IntList
      * @param label
      * @param cat
      */
-    public IntSeries(final String label, final int cat)
-    {
+    public IntSeries(final String label, final int cat) {
         this.label = label;
         this.code = -1;
         this.cat = cat;
@@ -131,8 +126,7 @@ public class IntSeries extends IntList
      * @param code
      * @param cat
      */
-    public IntSeries(final String label, final int code, final int cat)
-    {
+    public IntSeries(final String label, final int code, final int cat) {
         this.label = label;
         this.code = code;
         this.cat = cat;

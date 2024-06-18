@@ -52,8 +52,7 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
      * Constructor, init data
      */
     @SuppressWarnings("unchecked")
-    public Roll(final int size)
-    {
+    public Roll(final int size) {
         super(size);
         data = (E[]) new Object[size];
     }

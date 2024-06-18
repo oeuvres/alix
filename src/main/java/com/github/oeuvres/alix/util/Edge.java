@@ -33,9 +33,11 @@
 package com.github.oeuvres.alix.util;
 
 /**
- * An edge between 2 int nodes with a score, optimized to be sorted by score in an Array, or to be a value in HashMap.
- * Is not good as a key in an HashMap, because natural order is not good for sorting buckets in HashMap.
- * Nodes are not mutable, but score is mutable, especially to be incremented as value in a Map.
+ * An edge between 2 int nodes with a score, optimized to be sorted by score in
+ * an Array, or to be a value in HashMap. Is not good as a key in an HashMap,
+ * because natural order is not good for sorting buckets in HashMap. Nodes are
+ * not mutable, but score is mutable, especially to be incremented as value in a
+ * Map.
  */
 public class Edge implements Comparable<Edge>
 {
@@ -50,20 +52,15 @@ public class Edge implements Comparable<Edge>
     /** Score */
     private double score;
 
-    public Edge(final int source, final int target)
-    {
+    public Edge(final int source, final int target) {
         this(source, target, -1);
     }
 
-    
-    
-    public Edge(final int source, final int target, final int index)
-    {
+    public Edge(final int source, final int target, final int index) {
         this.source = source;
         this.target = target;
         this.index = index;
     }
-    
 
     /**
      * Comparison on score
@@ -79,10 +76,14 @@ public class Edge implements Comparable<Edge>
         if (cp != 0) {
             return cp;
         }
-        if (this.source > o.source) return 1;
-        if (this.source < o.source) return -1;
-        if (this.target > o.target) return 1;
-        if (this.target < o.target) return -1;
+        if (this.source > o.source)
+            return 1;
+        if (this.source < o.source)
+            return -1;
+        if (this.target > o.target)
+            return 1;
+        if (this.target < o.target)
+            return -1;
         return 0;
     }
 
@@ -91,17 +92,15 @@ public class Edge implements Comparable<Edge>
         return this.count;
     }
 
-
     public Edge count(final int count)
     {
         this.count = count;
         return this;
     }
 
-
-
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(Object o)
+    {
         if (o == null)
             return false;
         if (o == this)
@@ -126,25 +125,30 @@ public class Edge implements Comparable<Edge>
         }
         return false;
     }
-    
+
     /**
      * Increment score
+     * 
      * @return
      */
     public double inc()
     {
         return ++score;
     }
+
     /**
      * Get score
+     * 
      * @return
      */
     public double score()
     {
         return score;
     }
+
     /**
      * Set score
+     * 
      * @return
      */
     public Edge score(final double score)

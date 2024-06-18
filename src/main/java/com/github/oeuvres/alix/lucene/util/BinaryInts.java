@@ -41,86 +41,89 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Data structure to write and read ints 
- * in a binary form suited for lucene stored field 
- * {@link StoredField#StoredField(String, BytesRef)},
- * {@link Document#getBinaryValue(String)}
- * or binary fields {@link BinaryDocValuesField},
- * {@link BinaryDocValues}.
- * The values are backed in a reusable and growing {@link ByteBuffer}.
+ * Data structure to write and read ints in a binary form suited for lucene
+ * stored field {@link StoredField#StoredField(String, BytesRef)},
+ * {@link Document#getBinaryValue(String)} or binary fields
+ * {@link BinaryDocValuesField}, {@link BinaryDocValues}. The values are backed
+ * in a reusable and growing {@link ByteBuffer}.
  */
 public class BinaryInts extends BinaryValue
 {
-  /**
-   * Create buffer for read {@link BinaryValue#open(BytesRef)}
-   * (write is also possible, but after {@link BinaryValue#reset()}).
-   */
-  public BinaryInts()
-  {
-    
-  }
+    /**
+     * Create buffer for read {@link BinaryValue#open(BytesRef)} (write is also
+     * possible, but after {@link BinaryValue#reset()}).
+     */
+    public BinaryInts() {
 
-  /**
-   * Create buffer for write with initial size.
-   * @param size
-   */
-  public BinaryInts(int size)
-  {
-    capacity = size << 2;
-    buf =  ByteBuffer.allocate(capacity);
-  }
-  
-  /**
-   * Number of positions in this vector.
-   * @return
-   */
-  public int size()
-  {
-    return length >> 2;
-  }
-  
-  /**
-   * Put a value at a posiion.
-   * 
-   * @param pos
-   * @param value
-   */
-  public void put(final int pos, final int value)
-  {
-    final int index = pos << 2; // 4 bytes
-    final int cap = index + 4;
-    if (cap > length) length = cap; // keep max size
-    if (cap > capacity) grow(cap); // ensure size buffer
-    buf.putInt(index, value);
-  }
-
-  /**
-   * Get value at a position.
-   * 
-   * @param pos
-   * @return
-   */
-  public int get(final int pos)
-  {
-    final int index = pos << 2;
-    return buf.getInt(index);
-  }
-
-  @Override
-  public String toString()
-  {
-    StringBuilder sb = new StringBuilder();
-    boolean first = true;
-    int limit = Math.min(this.size(), 100);
-    sb.append("(");
-    int i = 0;
-    for(; i < limit; i++) {
-      if (first) first = false;
-      else sb.append(", ");
-      sb.append(get(i));
     }
-    if (i > this.size()) sb.append(", …");
-    sb.append("):"+this.size());
-    return sb.toString();
-  }
+
+    /**
+     * Create buffer for write with initial size.
+     * 
+     * @param size
+     */
+    public BinaryInts(int size) {
+        capacity = size << 2;
+        buf = ByteBuffer.allocate(capacity);
+    }
+
+    /**
+     * Number of positions in this vector.
+     * 
+     * @return
+     */
+    public int size()
+    {
+        return length >> 2;
+    }
+
+    /**
+     * Put a value at a posiion.
+     * 
+     * @param pos
+     * @param value
+     */
+    public void put(final int pos, final int value)
+    {
+        final int index = pos << 2; // 4 bytes
+        final int cap = index + 4;
+        if (cap > length)
+            length = cap; // keep max size
+        if (cap > capacity)
+            grow(cap); // ensure size buffer
+        buf.putInt(index, value);
+    }
+
+    /**
+     * Get value at a position.
+     * 
+     * @param pos
+     * @return
+     */
+    public int get(final int pos)
+    {
+        final int index = pos << 2;
+        return buf.getInt(index);
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        int limit = Math.min(this.size(), 100);
+        sb.append("(");
+        int i = 0;
+        for (; i < limit; i++) {
+            if (first)
+                first = false;
+            else
+                sb.append(", ");
+            sb.append(get(i));
+        }
+        if (i > this.size())
+            sb.append(", …");
+        sb.append("):" + this.size());
+        return sb.toString();
+    }
 }

@@ -12,17 +12,18 @@ import org.apache.lucene.util.FixedBitSet;
 /**
  * Not yet tested
  */
-public class BitsCollectorManager implements CollectorManager<BitsCollector, FixedBitSet> {
+public class BitsCollectorManager implements CollectorManager<BitsCollector, FixedBitSet>
+{
     final int maxDoc;
-    
-    public BitsCollectorManager(final IndexSearcher searcher)
-    {
+
+    public BitsCollectorManager(final IndexSearcher searcher) {
         maxDoc = searcher.getIndexReader().maxDoc();
     }
-    public BitsCollectorManager(final int maxDoc)
-    {
+
+    public BitsCollectorManager(final int maxDoc) {
         this.maxDoc = maxDoc;
     }
+
     @Override
     public BitsCollector newCollector() throws IOException
     {

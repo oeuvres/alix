@@ -85,7 +85,8 @@ public class BitsFromQuery
         final Query rewritten = searcher.rewrite(query);
         // Delegate caching to the LRU indexSearcher for these weights,
         // searcher.setQueryCache(null);
-        final Weight weight = searcher.createWeight(rewritten, org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES, 1);
+        final Weight weight = searcher.createWeight(rewritten, org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES,
+                1);
         // here should be the fixed cost of bits calculation
         final Scorer s = weight.scorer(context);
         if (s == null)

@@ -44,7 +44,8 @@ import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.ML;
 
-public class MetaTokenizer extends Tokenizer {
+public class MetaTokenizer extends Tokenizer
+{
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     private int offset = 0, bufferIndex = 0, dataLen = 0;
@@ -58,7 +59,8 @@ public class MetaTokenizer extends Tokenizer {
     private final Chain test = new Chain();
 
     @Override
-    public final boolean incrementToken() throws IOException {
+    public final boolean incrementToken() throws IOException
+    {
         clearAttributes();
         int length = 0;
         int start = -1; // this variable is always initialized
@@ -172,7 +174,8 @@ public class MetaTokenizer extends Tokenizer {
     }
 
     @Override
-    public void reset() throws IOException {
+    public void reset() throws IOException
+    {
         super.reset();
         bufferIndex = 0;
         offset = 0;

@@ -50,11 +50,7 @@ import org.apache.lucene.util.FixedBitSet;
  * CollectorBits colBits = new CollectorBits(searcher);
  * searcher.search(myQuery, colBits);
  * final BitSet bits = colBits.bits();
- * for (
- *     int docId = bits.nextSetBit(0), max = bits.length();
- *     docId &lt; max;
- *     docId = bits.nextSetBit(docId + 1)
- * ) {
+ * for (int docId = bits.nextSetBit(0), max = bits.length(); docId &lt; max; docId = bits.nextSetBit(docId + 1)) {
  *     out.print(", " + docId);
  * }
  * </pre>
@@ -72,24 +68,25 @@ public class BitsCollector extends SimpleCollector implements Collector
 
     /**
      * Build Collector with the destination searcher to have maximum docId
+     * 
      * @param searcher
      */
-    public BitsCollector(IndexSearcher searcher)
-    {
+    public BitsCollector(IndexSearcher searcher) {
         bits = new FixedBitSet(searcher.getIndexReader().maxDoc());
     }
 
     /**
      * Build Collector with the maximum docId
+     * 
      * @param searcher
      */
-    public BitsCollector(int maxDoc)
-    {
+    public BitsCollector(int maxDoc) {
         bits = new FixedBitSet(maxDoc);
     }
 
     /**
      * Get the document filter.
+     * 
      * @return
      */
     public FixedBitSet bits()
@@ -99,6 +96,7 @@ public class BitsCollector extends SimpleCollector implements Collector
 
     /**
      * Get current number of hits
+     * 
      * @return
      */
     public int hits()

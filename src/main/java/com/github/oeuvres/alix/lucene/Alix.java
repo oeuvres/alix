@@ -102,8 +102,8 @@ import com.github.oeuvres.alix.lucene.search.FieldInt;
  * shared across a complex application (ex: web servlet). Instantiation is not
  * public to ensure uniqueness of threadsafe Lucene objects ({@link Directory},
  * {@link IndexReader}, {@link IndexSearcher}, {@link IndexWriter} and
- * {@link Analyzer}). Use {@link #instance(String)} to get an Alix
- * instance, and get from it what you need for your classical Lucene bizness.
+ * {@link Analyzer}). Use {@link #instance(String)} to get an Alix instance, and
+ * get from it what you need for your classical Lucene bizness.
  * </p>
  * 
  * <ul>
@@ -195,13 +195,11 @@ public class Alix
     /** Analyzer for indexation and search */
     final private Analyzer analyzer;
 
-    public enum FSDirectoryType
-    {
+    public enum FSDirectoryType {
         MMapDirectory, NIOFSDirectory, FSDirectory
     }
 
-    private Alix(final String name, final Path path, final Analyzer analyzer) throws IOException
-    {
+    private Alix(final String name, final Path path, final Analyzer analyzer) throws IOException {
         this(name, path, analyzer, null);
     }
 
@@ -210,12 +208,11 @@ public class Alix
      * 
      * @param path
      * @param analyzerClass
-     * @throws IOException Lucene errors.
+     * @throws IOException            Lucene errors.
      * @throws ClassNotFoundException
      */
     private Alix(final String name, final Path path, final Analyzer analyzer, FSDirectoryType dirType)
-            throws IOException
-    {
+            throws IOException {
         this.name = name;
         // this default locale will work for English
         this.locale = Locale.FRANCE;
@@ -238,8 +235,7 @@ public class Alix
         // What about reuse strategy ?
         if (analyzer == null) {
             this.analyzer = new AlixAnalyzer();
-        }
-        else {
+        } else {
             this.analyzer = analyzer;
         }
         this.props = new Properties();
@@ -264,7 +260,7 @@ public class Alix
      * @throws IOException Lucene exceptions.
      */
     public int[] books(Sort sort) throws IOException
-    { 
+    {
         // Calculation is not really expensive, do not cache.
         IndexSearcher searcher = searcher(); // ensure reader or decache
         Query qBook = new TermQuery(new Term(ALIX_TYPE, BOOK));
@@ -298,7 +294,7 @@ public class Alix
      * in case of Out of memory.
      * 
      * @param key Name to get back the Object.
-     * @param o Cached Object.
+     * @param o   Cached Object.
      */
     public void cache(String key, Object o)
     {
@@ -309,13 +305,13 @@ public class Alix
      * Get stored values in docId order. Be careful, not efifcient.
      * 
      * @param field Field name.
-     * @param load Optional array to populate.
+     * @param load  Optional array to populate.
      * @return An array in docid order with the int value retrieved.
      * @throws IOException Lucene errors.
      */
     public String[] docStore(String field, String[] load) throws IOException
     {
-        // 
+        //
         IndexReader reader = reader(); // ensure reader, or decache
         int maxDoc = reader.maxDoc();
         if (load == null || load.length < maxDoc)
@@ -339,7 +335,6 @@ public class Alix
         return load;
     }
 
-
     /**
      * Get a “facet” object, a cached list of search from a field of type
      * {@link SortedDocValuesField} or {@link SortedSetDocValuesField} ; to get
@@ -348,13 +343,12 @@ public class Alix
      * an author).
      *
      * @param fieldName A SortedDocValuesField or a SortedSetDocValuesField
-     *                   fieldName.
-     * @param coverTerm  A couple field:value to catch one document by facet term.
+     *                  fieldName.
+     * @param coverTerm A couple field:value to catch one document by facet term.
      * @return The facet.
      * @throws IOException Lucene errors.
      */
-    public FieldFacet fieldFacet(final String fieldName)
-            throws IOException
+    public FieldFacet fieldFacet(final String fieldName) throws IOException
     {
         String key = "AlixFacet" + fieldName;
         FieldFacet facet = (FieldFacet) cache(key);
@@ -386,7 +380,6 @@ public class Alix
         return ints;
     }
 
-    
     /**
      * Get a co-occurrences reader.
      * 
@@ -422,9 +415,10 @@ public class Alix
         cache(key, fieldText);
         return fieldText;
     }
-    
+
     /**
      * Returns the Alix type of a field name
+     * 
      * @param fieldName Name of a field.
      * @return Type name.
      * @throws IOException Lucene errors.
@@ -433,7 +427,8 @@ public class Alix
     {
         reader(); // ensure reader or decache
         FieldInfo info = fieldInfos.fieldInfo(fieldName);
-        if (info == null) return NOTFOUND;
+        if (info == null)
+            return NOTFOUND;
         DocValuesType type = info.getDocValuesType();
         if (type == DocValuesType.SORTED_SET || type == DocValuesType.SORTED) {
             return FACET;
@@ -448,7 +443,7 @@ public class Alix
         if (options == IndexOptions.DOCS) {
             return FACET;
         }
-        
+
         return NOTALIX;
 
     }
@@ -458,8 +453,8 @@ public class Alix
      * field name)
      * 
      * @param id A document id provided at indexation.
-     * @return The Lucene docId, or -1 if not found, or -2 if too much found, or -3 if id
-     *         was null or empty.
+     * @return The Lucene docId, or -1 if not found, or -2 if too much found, or -3
+     *         if id was null or empty.
      * @throws IOException Lucene errors.
      */
     public int getDocId(final String id) throws IOException
@@ -528,9 +523,9 @@ public class Alix
         reader(); // ensure reader or decache
         return fieldInfos.fieldInfo(fieldName);
     }
-    
+
     /**
-     * Retrieve by key an alix instance from the pool. 
+     * Retrieve by key an alix instance from the pool.
      * 
      * @param key Name for cache.
      * @return An Alix instance.
@@ -543,13 +538,12 @@ public class Alix
     /**
      * Get a a lucene directory index by file path, from cache, or created.
      * 
-     * @param key Name for cache.
+     * @param key  Name for cache.
      * @param path File directory of lucene index.
      * @return An Alix instance.
      * @throws IOException Lucene errors.
      */
-    public static Alix instance(final String key, final Path path)
-            throws IOException
+    public static Alix instance(final String key, final Path path) throws IOException
     {
         Alix alix = pool.get(key);
         if (alix == null) {
@@ -562,10 +556,10 @@ public class Alix
     /**
      * Get a a lucene directory index by file path, from cache, or created.
      * 
-     * @param key Name for cache.
-     * @param path File directory of lucene index.
+     * @param key      Name for cache.
+     * @param path     File directory of lucene index.
      * @param analyzer A lucene Analyzer.
-     * @param dirType Lucene directory type.
+     * @param dirType  Lucene directory type.
      * @return An Alix instance.
      * @throws IOException Lucene errors.
      */
@@ -605,7 +599,7 @@ public class Alix
     /**
      * 
      * @param fieldName Name of a text field.
-     * @param q User query String.
+     * @param q         User query String.
      * @return A lucene Query.
      * @throws IOException Lucene errors.
      */
@@ -622,9 +616,9 @@ public class Alix
     /**
      * 
      * @param fieldName Name of a text field.
-     * @param q User query String.
-     * @param analyzer A Lucene analyzer.
-     * @param occur Boolean operator between terms.
+     * @param q         User query String.
+     * @param analyzer  A Lucene analyzer.
+     * @param occur     Boolean operator between terms.
      * @return A lucene Query.
      * @throws IOException Lucene errors.
      */
@@ -800,7 +794,7 @@ public class Alix
      * especially needed for multi-words ex: "en effet" return search as an array of
      * string, supposing that caller knows the field he wants to search.
      * 
-     * @param q A search query.
+     * @param q         A search query.
      * @param fieldName Name of text field.
      * @return Analyzed terms to search in index.
      * @throws IOException Lucene errors.
@@ -814,8 +808,8 @@ public class Alix
      * Analyze a search according to the current analyzer of this base ; return
      * search
      * 
-     * @param q A search query.
-     * @param analyzer An analyzer.
+     * @param q         A search query.
+     * @param analyzer  An analyzer.
      * @param fieldName Name of text field.
      * @return Analyzed terms to search in index.
      * @throws IOException Lucene errors.
@@ -936,6 +930,7 @@ public class Alix
 
     /**
      * Give a new writer to create a lucene index, could be closed.
+     * 
      * @param path
      * @param analyzer
      * @return

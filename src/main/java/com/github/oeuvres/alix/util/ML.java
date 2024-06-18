@@ -134,7 +134,8 @@ public class ML
     }
 
     /**
-     * Return a normalize-space() text version of an xml excerpt (possibly with broken tags).
+     * Return a normalize-space() text version of an xml excerpt (possibly with
+     * broken tags).
      */
     public static void detag(final String xml, int begin, int end, Chain dest)
     {
@@ -390,7 +391,7 @@ public class ML
      * 
      * @param path
      * @throws UnsupportedEncodingException
-     * @throws IOException Lucene errors.
+     * @throws IOException                  Lucene errors.
      */
     static void load(final String path) throws UnsupportedEncodingException, IOException
     {

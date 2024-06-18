@@ -32,8 +32,7 @@ import java.util.regex.PatternSyntaxException;
  */
 public class Globs
 {
-    private Globs()
-    {
+    private Globs() {
     }
 
     private static final String regexMetaChars = ".^$+{[]|()";

@@ -74,8 +74,7 @@ public class SparseMat
         final int col;
         final double count;
 
-        Entry(final int row, final int col, final double count)
-        {
+        Entry(final int row, final int col, final double count) {
             this.row = row;
             this.col = col;
             this.count = count;
@@ -376,8 +375,7 @@ public class SparseMat
     {
         private double count = 0;
 
-        public Counter(double count)
-        {
+        public Counter(double count) {
             this.count = count;
         }
 

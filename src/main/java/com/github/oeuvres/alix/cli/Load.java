@@ -66,9 +66,10 @@ import picocli.CommandLine.Parameters;
 public class Load implements Callable<Integer>
 {
     public static String APP = "Alix";
-    
+
     static {
-        // System.setProperty("java.util.logging.SimpleFormatter.format", "[%1$tF %1$tT] [%4$-7s] %5$s %n");
+        // System.setProperty("java.util.logging.SimpleFormatter.format", "[%1$tF %1$tT]
+        // [%4$-7s] %5$s %n");
         System.setProperty("java.util.logging.SimpleFormatter.format", "[%4$-7s] %5$s %n");
     }
 
@@ -76,7 +77,7 @@ public class Load implements Callable<Integer>
     File[] conflist;
     @Option(names = { "-u", "--unsafe" }, description = "For windows filesystem, no temp lucene index")
     boolean unsafe;
-    @Option(names = {"-t", "--threads"}, description = "Number of threads fo indexation")
+    @Option(names = { "-t", "--threads" }, description = "Number of threads fo indexation")
     int threads;
     /** File globs to index, populated by parsing base properties */
     ArrayList<Path> paths = new ArrayList<>();
@@ -128,11 +129,8 @@ public class Load implements Callable<Integer>
             dstname = conf.getName().replaceFirst("\\..+$", "");
             // in case of glob, avoid some things
             // test here if it's folder ?
-            if (
-                conf.getCanonicalPath().endsWith("WEB-INF/web.xml") 
-                || conf.getName().startsWith(".")
-                || conf.getName().startsWith("_")
-            ) {
+            if (conf.getCanonicalPath().endsWith("WEB-INF/web.xml") || conf.getName().startsWith(".")
+                    || conf.getName().startsWith("_")) {
                 continue;
             }
             long time = System.nanoTime();
@@ -161,8 +159,7 @@ public class Load implements Callable<Integer>
         // File.separator regularisation needed
         if (File.separatorChar == '\\') {
             glob = glob.replaceAll("[/\\\\]", File.separator + File.separator);
-        }
-        else {
+        } else {
             glob = glob.replaceAll("[/\\\\]", File.separator);
         }
         if (!new File(glob).isAbsolute()) {
@@ -176,18 +173,18 @@ public class Load implements Callable<Integer>
             }
             File f = new File(dir, glob);
             Dir.ls(f.getAbsolutePath(), paths);
-        } 
-        else {
+        } else {
             Dir.ls(glob, paths);
         }
     }
-    
-    
+
     /**
      * Parse properties to produce an alix lucene index
      * 
-     * @param propsFile A properties file in XML format {@link Properties#loadFromXML(java.io.InputStream)}.
-     * @throws IOException I/O file system error, or required files not found.
+     * @param propsFile A properties file in XML format
+     *                  {@link Properties#loadFromXML(java.io.InputStream)}.
+     * @throws IOException          I/O file system error, or required files not
+     *                              found.
      * @throws NoSuchFieldException Properties errors.
      */
     public void parse(File propsFile) throws IOException, NoSuchFieldException
@@ -209,7 +206,7 @@ public class Load implements Callable<Integer>
 
         String prop;
         String key;
-        
+
         key = "name";
         prop = props.getProperty(key);
         if (prop != null) {
@@ -231,8 +228,7 @@ public class Load implements Callable<Integer>
                 String glob = lines.get(i);
                 globAdd(glob, base);
             }
-        } 
-        else {
+        } else {
             String src = props.getProperty("src");
 
             if (src == null)
@@ -274,8 +270,7 @@ public class Load implements Callable<Integer>
             }
             xsl = file.toString();
         }
-        
-        
+
         prop = props.getProperty("dstdir");
         if (prop != null) {
             dstdir = new File(prop);
@@ -315,8 +310,7 @@ public class Load implements Callable<Integer>
      * @param path Path where to write the path index.
      * @throws Exception Errors in the XML parsing.
      */
-    public void write(String name, Path path)
-            throws Exception
+    public void write(String name, Path path) throws Exception
     {
         Alix alix = Alix.instance(name, path, new AlixAnalyzer(), null);
         // Alix alix = Alix.instance(name, path, new StandardAnalyzer(), null);
@@ -349,7 +343,7 @@ public class Load implements Callable<Integer>
      * running index.
      * 
      * @param dstDir Destination parent file directory.
-     * @param name Name of the index to write.
+     * @param name   Name of the index to write.
      * @throws Exception Errors during XML process and Lucene indexation.
      */
     public void writeSafe(final File dstDir, final String name) throws Exception
@@ -395,7 +389,7 @@ public class Load implements Callable<Integer>
      * the same safe indexation like for unix.
      *
      * @param dstdir Parent destination file system directory.
-     * @param name Name of a lucene index.
+     * @param name   Name of a lucene index.
      * @throws Exception XML or Lucene erros.
      */
     public void writeUnsafe(final File dstdir, final String name) throws Exception
@@ -417,8 +411,7 @@ public class Load implements Callable<Integer>
             // only one thread
             // threads = 1;
             write(name, theDir.toPath());
-        } 
-        catch (Exception e) {
+        } catch (Exception e) {
             // try to restore old index
             Dir.rm(theDir);
             if (theDir.exists()) {

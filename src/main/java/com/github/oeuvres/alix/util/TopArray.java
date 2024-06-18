@@ -53,7 +53,9 @@ public class TopArray implements Iterable<IdScore>
     final private boolean noZero;
     /** Max size of the top to extract */
     final private int size;
-    /** Data stored as a Pair score+int, easy to sort before exported as an array. */
+    /**
+     * Data stored as a Pair score+int, easy to sort before exported as an array.
+     */
     final protected IdScore[] data;
     /** Fill data before */
     private boolean full;
@@ -71,8 +73,7 @@ public class TopArray implements Iterable<IdScore>
      * 
      * @param size
      */
-    public TopArray(final int size, final int flags)
-    {
+    public TopArray(final int size, final int flags) {
         if ((flags & REVERSE) > 0)
             this.reverse = true;
         else
@@ -92,8 +93,7 @@ public class TopArray implements Iterable<IdScore>
      * 
      * @param size
      */
-    public TopArray(final int size)
-    {
+    public TopArray(final int size) {
         this(size, NO_ZERO);
     }
 
@@ -312,7 +312,6 @@ public class TopArray implements Iterable<IdScore>
         }
         return sb.toString();
     }
-
 
     /**
      * A private class that implements iteration over the pairs.

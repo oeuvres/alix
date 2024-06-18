@@ -172,17 +172,16 @@ public class FrTokenizer extends Tokenizer
     /** Store closing tag to skip */
     private CharsAtt skip = null;
 
-    public FrTokenizer()
-    {
+    public FrTokenizer() {
         this(XML);
     }
 
     /**
      * Build a Tokenizer for French with possible flags
+     * 
      * @param flags {@link #XML} | {@link #SEARCH}
      */
-    public FrTokenizer(int flags)
-    {
+    public FrTokenizer(int flags) {
         super(new AlixAttributeFactory(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
         if ((flags & XML) > 0)
             this.xml = true;
@@ -249,22 +248,17 @@ public class FrTokenizer extends Tokenizer
             else if (c == '<') { // start tag
                 // if a word was started, send it ? ex Word<note>2</note>, Dumas</name>
                 // but what about M<sup>r</sup> ?
-                /* will see
-                if (length != 0) {
-                    bufIndex--;
-                    // will exclude the <
-                    // offLast = offset - ltOffset;
-                    break;
-                }
-                */
+                /*
+                 * will see if (length != 0) { bufIndex--; // will exclude the < // offLast =
+                 * offset - ltOffset; break; }
+                 */
                 // keep memory of start index of this tag
                 ltOffset = offset + bufIndex - 1;
                 intag = true;
                 tagname = true;
                 test.setEmpty();
                 continue;
-            } 
-            else if (intag) { // inside tag
+            } else if (intag) { // inside tag
                 if (tagname) { // start to record tagname
                     if (!test.isEmpty() && (c == ' ' || c == '>' || (c == '/')))
                         tagname = false;
@@ -533,8 +527,7 @@ public class FrTokenizer extends Tokenizer
     {
         private final AttributeFactory delegate;
 
-        public AlixAttributeFactory(AttributeFactory delegate)
-        {
+        public AlixAttributeFactory(AttributeFactory delegate) {
             this.delegate = delegate;
         }
 

@@ -32,6 +32,6 @@
  */
 
 /**
- * Components for lexical analysis, especially for French. 
+ * Components for lexical analysis, especially for French.
  */
 package com.github.oeuvres.alix.lucene.analysis;

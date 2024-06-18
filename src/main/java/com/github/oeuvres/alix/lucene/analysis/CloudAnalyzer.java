@@ -36,12 +36,11 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 
-
 /**
  * Analysis scenario for French in Alix. The linguistic features of Alix are
  * language dependent.
  */
-public class CloudAnalyzer extends  Analyzer
+public class CloudAnalyzer extends Analyzer
 {
     /**
      * Force creation of a new token stream pipeline, for multi threads indexing.

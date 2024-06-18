@@ -41,67 +41,79 @@ public interface Link
 
     /**
      * The link to page relative to root
+     * 
      * @return
      */
     public String href();
+
     /**
      * A text label for a link
+     * 
      * @return
      */
     public String label();
+
     /**
      * The link to page relative to root
+     * 
      * @return
      */
     public String hint();
+
     /**
      * Http parameters to keep on links
+     * 
      * @return
      */
     public String[] pars();
-    
+
     /**
      * Display a tab as an html link &lt;a&gt;.
      * 
-     * @param tab A Link object.
-     * @param sb A String build to append to.
-     * @param request The http request to keep params.
+     * @param tab      A Link object.
+     * @param sb       A String build to append to.
+     * @param request  The http request to keep params.
      * @param hrefHome The base url.
      */
-    public static void a(final Link tab, final StringBuilder sb, final HttpServletRequest request, final String hrefHome)
+    public static void a(final Link tab, final StringBuilder sb, final HttpServletRequest request,
+            final String hrefHome)
     {
         String here = request.getRequestURI();
-        here = here.substring(here.lastIndexOf('/')+1);
-        
+        here = here.substring(here.lastIndexOf('/') + 1);
+
         sb.append("<a");
         sb.append(" href=\"").append(hrefHome).append(tab.href());
         boolean first = true;
-        for (String par: tab.pars()) {
+        for (String par : tab.pars()) {
             String value = request.getParameter(par);
-            if (value == null) continue;
+            if (value == null)
+                continue;
             value = JspTools.escape(value);
             if (first) {
                 first = false;
                 sb.append("?");
-            }
-            else {
+            } else {
                 sb.append("&amp;");
             }
             sb.append(par).append("=").append(value);
         }
         sb.append("\"");
-        if (tab.hint() != null) sb.append(" title=\"").append(tab.hint()).append("\"");
+        if (tab.hint() != null)
+            sb.append(" title=\"").append(tab.hint()).append("\"");
         sb.append(" class=\"tab");
-        if (tab.href().equals(here)) sb.append(" selected");
-        else if (here.equals("") && tab.href().startsWith("index"))  sb.append(" selected");
+        if (tab.href().equals(here))
+            sb.append(" selected");
+        else if (here.equals("") && tab.href().startsWith("index"))
+            sb.append(" selected");
         sb.append("\"");
         sb.append(">");
         sb.append(tab.label());
         sb.append("</a>");
     }
-    
+
     /**
      * Loop on tabs to build a nav bar
+     * 
      * @param request
      * @return
      */
@@ -121,13 +133,11 @@ public interface Link
                     continue;
                 }
                 a(tab, sb, request, hrefHome);
-            } 
-            catch (IllegalArgumentException | IllegalAccessException e) {
+            } catch (IllegalArgumentException | IllegalAccessException e) {
                 continue;
             }
         }
         return sb.toString();
     }
-
 
 }

@@ -49,7 +49,8 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
  * A token Filter to plug after a Lemmatizer. Add lemma to forms on same
  * position, good for find, bad for stats.
  */
-public class FindFilter extends TokenFilter {
+public class FindFilter extends TokenFilter
+{
     /** The term provided by the Tokenizer */
     private final CharsAtt termAtt = (CharsAtt) addAttribute(CharTermAttribute.class);
     /** A linguistic category as a short number, from Tag */
@@ -72,7 +73,8 @@ public class FindFilter extends TokenFilter {
     }
 
     @Override
-    public final boolean incrementToken() throws IOException {
+    public final boolean incrementToken() throws IOException
+    {
         CharTermAttribute term = this.termAtt;
         // append lemma on same position
         if (lem) {
@@ -91,7 +93,7 @@ public class FindFilter extends TokenFilter {
         // end of stream
         if (!input.incrementToken())
             return false;
-        
+
         final int tag = flagsAtt.getFlags();
         // record an empty token at puctuation position
         if (Tag.PUN.sameParent(tag)) {

@@ -113,8 +113,7 @@ public class XMLIndexer implements Runnable
      * @throws ParserConfigurationException
      */
     public XMLIndexer(IndexWriter writer, Iterator<Path> it, Templates templates)
-            throws TransformerConfigurationException, ParserConfigurationException, SAXException
-    {
+            throws TransformerConfigurationException, ParserConfigurationException, SAXException {
         this.it = it;
         handler = new SAXIndexer(writer);
         if (templates != null) {
@@ -133,7 +132,7 @@ public class XMLIndexer implements Runnable
      * @param templates
      * @throws SAXException
      * @throws ParserConfigurationException
-     * @throws IOException Lucene errors.
+     * @throws IOException                  Lucene errors.
      * @throws TransformerException
      */
     static private void write(IndexWriter writer, Iterator<Path> it, Templates templates)
@@ -167,7 +166,7 @@ public class XMLIndexer implements Runnable
             if (transformer != null) {
                 // XML/TEI source documents, transform to ALix xml for indexation
                 StreamSource docSource = new StreamSource(new ByteArrayInputStream(docBytes));
-                
+
                 transformer.setParameter("filename", filename);
                 transformer.setParameter("index", true); // will strip bad things for indexation
                 // Michael Kay dixit, if we want indentation, we have to serialize
@@ -262,6 +261,7 @@ public class XMLIndexer implements Runnable
 
     /**
      * Log fatal error.
+     * 
      * @param o
      */
     public static void fatal(Object o)
@@ -279,15 +279,13 @@ public class XMLIndexer implements Runnable
      * @param xsl
      * @throws Exception
      */
-    static public void index(final IndexWriter writer, final List<Path> files, int threads, String xsl)
-            throws Exception
+    static public void index(final IndexWriter writer, final List<Path> files, int threads, String xsl) throws Exception
     {
         // compile XSLT, maybe it could be done before?
         Templates templates = null;
         if (xsl == "alix") {
-            
-        }
-        else if (xsl == "tei" || xsl == null) {
+
+        } else if (xsl == "tei" || xsl == null) {
             JarResolver resloader = new JarResolver();
             XSLFactory.setURIResolver(resloader);
             StreamSource xsltSrc = new StreamSource(resloader.resolve("alix.xsl"));
@@ -300,7 +298,8 @@ public class XMLIndexer implements Runnable
             StreamSource xsltSrc = new StreamSource(xsl);
             templates = XSLFactory.newTemplates(xsltSrc);
         }
-        info("[" + Alix.NAME + "]" + " format=\"" + xsl + "\"" + " threads=" + threads + " lucene=\"" + writer.getDirectory() + "\"");
+        info("[" + Alix.NAME + "]" + " format=\"" + xsl + "\"" + " threads=" + threads + " lucene=\""
+                + writer.getDirectory() + "\"");
 
         // check if repeated filename
         Map<String, Integer> hash = new HashMap<String, Integer>();
@@ -325,11 +324,11 @@ public class XMLIndexer implements Runnable
                 hash.put(filename, i);
             }
         }
-        // 
+        //
         // nicer list, remove null
         while (files.remove(null))
             ;
-        // No sort, 
+        // No sort,
         if (files.size() < 1) {
             throw new FileNotFoundException(
                     "\n[" + Alix.NAME + "] No file found to index files=\"" + files.toString() + "\"");

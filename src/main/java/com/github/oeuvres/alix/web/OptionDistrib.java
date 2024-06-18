@@ -35,8 +35,7 @@ package com.github.oeuvres.alix.web;
 /**
  * Distribution laws, to be used in sum
  */
-public enum OptionDistrib implements Option
-{
+public enum OptionDistrib implements Option {
     OCCS("Occurrences", "") {
         @Override
         public double score(final double freq, final double docLen)
@@ -52,17 +51,18 @@ public enum OptionDistrib implements Option
         }
     },
     G("G-test", "Vraisemblance log, G = 2 Σ(Oi.ln(Oi/Ei))") {
-        // don’t try to get variation 
+        // don’t try to get variation
         @Override
         public double score(final double freq, final double docLen)
         {
             if (freq < 1 || docLen < 1)
                 return 0;
             final double Ei = expectation * docLen;
-            
+
             // maybe negative
             return 2.0D * freq * Math.log(freq / Ei);
         }
+
         /**
          * Because ΣOi = ΣEi = N, G-test need a last addition (not tf-idf like)
          */
@@ -148,13 +148,13 @@ public enum OptionDistrib implements Option
     protected double idf; // a theoretical idf
     protected double expectation; // global freq expected for a term
 
-    
     public void expectation(final double formOccs, final double occs)
     {
-        if (occs == 0) return;
+        if (occs == 0)
+            return;
         this.expectation = formOccs / occs;
     }
-    
+
     public void idf(final double hits, final double docs, final double occs)
     {
         return;
@@ -166,7 +166,6 @@ public enum OptionDistrib implements Option
     {
         return 0;
     }
-
 
     final public String label;
 
@@ -182,11 +181,9 @@ public enum OptionDistrib implements Option
         return hint;
     }
 
-    private OptionDistrib(final String label, final String hint)
-    {
+    private OptionDistrib(final String label, final String hint) {
         this.label = label;
         this.hint = hint;
     }
-
 
 }

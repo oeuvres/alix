@@ -36,7 +36,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 
-
 /**
  * An object to record edges events between int nodes.
  */
@@ -50,13 +49,11 @@ public class EdgeHash implements Iterable<Edge>
     final IntPair key = new IntPair();
     /** Linked Cluster */
     private IntList cluster = new IntList();
-    
-    
-    public EdgeHash(final boolean directed)
-    {
+
+    public EdgeHash(final boolean directed) {
         this.directed = directed;
     }
-    
+
     /**
      * Start a cluster (a set of nodes totally connected)
      */
@@ -83,6 +80,7 @@ public class EdgeHash implements Iterable<Edge>
 
     /**
      * Add an edge
+     * 
      * @param source
      * @param target
      */
@@ -90,8 +88,7 @@ public class EdgeHash implements Iterable<Edge>
     {
         if (directed || source < target) {
             key.set(source, target);
-        }
-        else {
+        } else {
             key.set(target, source);
         }
         Edge edge = edges.get(key);
@@ -110,7 +107,5 @@ public class EdgeHash implements Iterable<Edge>
         Arrays.sort(arredge);
         return new EdgeTop(arredge);
     }
-    
 
 }
- 

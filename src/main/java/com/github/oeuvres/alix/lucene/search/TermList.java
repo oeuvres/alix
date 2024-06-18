@@ -52,7 +52,8 @@ import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder; // doc
  * <li>sortByString (keep row order, sort term alphabetically)</li>
  * </ul>
  */
-public class TermList implements Iterable<Term> {
+public class TermList implements Iterable<Term>
+{
     /** Keep memory of last input term, to avoid too much null separators */
     private Term termLast = null;
     /** The search with fields to sort on */
@@ -76,7 +77,8 @@ public class TermList implements Iterable<Term> {
         this.dic = dic;
     }
 
-    private class Entry {
+    private class Entry
+    {
         final Term term;
         final int ord;
         final int row;
@@ -93,7 +95,8 @@ public class TermList implements Iterable<Term> {
         }
 
         @Override
-        public String toString() {
+        public String toString()
+        {
             return "" + ord + ". [" + row + ", " + col + "] " + term + ":" + freq + " (" + rowFreq + ")";
         }
     }
@@ -103,7 +106,8 @@ public class TermList implements Iterable<Term> {
      * 
      * @return
      */
-    public int size() {
+    public int size()
+    {
         return ord;
     }
 
@@ -112,7 +116,8 @@ public class TermList implements Iterable<Term> {
      * 
      * @return
      */
-    public int sizeNotNull() {
+    public int sizeNotNull()
+    {
         return notNull;
     }
 
@@ -121,7 +126,8 @@ public class TermList implements Iterable<Term> {
      * 
      * @return
      */
-    public int groups() {
+    public int groups()
+    {
         if (termLast != null)
             return row + 1;
         else
@@ -134,7 +140,8 @@ public class TermList implements Iterable<Term> {
      * 
      * @param term
      */
-    public void add(Term term) {
+    public void add(Term term)
+    {
         if (term == null) {
             if (termLast != null)
                 addNull();
@@ -153,7 +160,8 @@ public class TermList implements Iterable<Term> {
         termLast = term;
     }
 
-    private void addNull() {
+    private void addNull()
+    {
         termLast = null;
         data.add(new Entry(null, ord, row, col, 0));
         updateRowFreq();
@@ -163,7 +171,8 @@ public class TermList implements Iterable<Term> {
     }
 
     /** Loop on all entries with current row number, sum the freqs, update entry */
-    private void updateRowFreq() {
+    private void updateRowFreq()
+    {
         long rowFreq = 0;
         for (Entry entry : data) {
             if (entry.row != row)
@@ -184,14 +193,16 @@ public class TermList implements Iterable<Term> {
     /**
      * Sort search rows
      */
-    public void sortByRowFreq() {
+    public void sortByRowFreq()
+    {
         // ensure that last entry is a null to keep rows in order
         if (termLast != null)
             addNull();
         // updateRowFreq(); // not needed
         Collections.sort(data, new Comparator<Entry>() {
             @Override
-            public int compare(Entry entry1, Entry entry2) {
+            public int compare(Entry entry1, Entry entry2)
+            {
                 if (entry1.rowFreq > entry2.rowFreq)
                     return -1;
                 if (entry1.rowFreq < entry2.rowFreq)
@@ -205,10 +216,12 @@ public class TermList implements Iterable<Term> {
         });
     }
 
-    public void sortByOrd() {
+    public void sortByOrd()
+    {
         Collections.sort(data, new Comparator<Entry>() {
             @Override
-            public int compare(Entry entry1, Entry entry2) {
+            public int compare(Entry entry1, Entry entry2)
+            {
                 if (entry1.rowFreq > entry2.rowFreq)
                     return -1;
                 if (entry1.rowFreq < entry2.rowFreq)
@@ -222,10 +235,12 @@ public class TermList implements Iterable<Term> {
         });
     }
 
-    public void sortByBytes() {
+    public void sortByBytes()
+    {
         Collections.sort(data, new Comparator<Entry>() {
             @Override
-            public int compare(Entry entry1, Entry entry2) {
+            public int compare(Entry entry1, Entry entry2)
+            {
                 if (entry1.term == null)
                     return +1;
                 if (entry2.term == null)
@@ -241,7 +256,8 @@ public class TermList implements Iterable<Term> {
      * 
      * @return
      */
-    public Collection<BytesRef> refList() {
+    public Collection<BytesRef> refList()
+    {
         sortByBytes();
         ArrayList<BytesRef> list = new ArrayList<>();
         for (Entry entry : data) {
@@ -252,7 +268,8 @@ public class TermList implements Iterable<Term> {
         return list;
     }
 
-    public String[] toArray() {
+    public String[] toArray()
+    {
         String[] a = new String[this.sizeNotNull()];
         int i = 0;
         for (Entry entry : data) {
@@ -265,14 +282,16 @@ public class TermList implements Iterable<Term> {
     }
 
     @Override
-    public Iterator<Term> iterator() {
+    public Iterator<Term> iterator()
+    {
         return new Cursor();
     }
 
     /**
      * An iterator on the data, keep a copy of the actual order.
      */
-    private class Cursor implements Iterator<Term> {
+    private class Cursor implements Iterator<Term>
+    {
         private final int size;
         private final Term[] copy;
         private int pos;
@@ -288,14 +307,16 @@ public class TermList implements Iterable<Term> {
         }
 
         @Override
-        public boolean hasNext() {
+        public boolean hasNext()
+        {
             if (pos < size)
                 return true;
             return false;
         }
 
         @Override
-        public Term next() {
+        public Term next()
+        {
             if (pos >= size)
                 return null;
             pos++;
@@ -305,7 +326,8 @@ public class TermList implements Iterable<Term> {
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
         StringBuilder sb = new StringBuilder();
         for (Entry entry : data) {
             sb.append(entry);

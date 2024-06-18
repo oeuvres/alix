@@ -2,14 +2,12 @@ package com.github.oeuvres.alix.util;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-public class RandomName {
+public class RandomName
+{
     /** Allowed chars for name */
-    private static final String chars = "abcdefghijklmnopqrstuvwxyz"
-                        + "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                        + "1234567890_";
+    private static final String chars = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "1234567890_";
     private static final int len = chars.length();
-    
-    
+
     /**
      * Get a random name of a size
      */

@@ -49,7 +49,8 @@ import com.github.oeuvres.alix.lucene.util.Offsets;
  * some counts if the token stream has been exhausted.
  */
 
-public class StatsFilter extends TokenFilter {
+public class StatsFilter extends TokenFilter
+{
     /** Current char offset */
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** The term provided by the Tokenizer */
@@ -68,7 +69,8 @@ public class StatsFilter extends TokenFilter {
     }
 
     @Override
-    public final boolean incrementToken() throws IOException {
+    public final boolean incrementToken() throws IOException
+    {
         if (!input.incrementToken())
             return false; // end of stream
         offsets.put(pos, offsetAtt.startOffset(), offsetAtt.endOffset());
@@ -79,9 +81,11 @@ public class StatsFilter extends TokenFilter {
 
     /**
      * Returns the cuurent position (or length when stream is consumed).
+     * 
      * @return
      */
-    public int pos() {
+    public int pos()
+    {
         return pos;
     }
 
@@ -90,7 +94,8 @@ public class StatsFilter extends TokenFilter {
      * 
      * @return
      */
-    public Offsets offsets() {
+    public Offsets offsets()
+    {
         return offsets;
     }
 
@@ -99,12 +104,14 @@ public class StatsFilter extends TokenFilter {
      * 
      * @return
      */
-    public BinaryUbytes tags() {
+    public BinaryUbytes tags()
+    {
         return tags;
     }
 
     @Override
-    public void reset() throws IOException {
+    public void reset() throws IOException
+    {
         super.reset();
         pos = 0;
         tags.reset();

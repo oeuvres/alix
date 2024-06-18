@@ -64,7 +64,8 @@ import com.github.oeuvres.alix.util.CsvReader.Row;
  * comparison {@link CharsAtt#compareTo(CharsAtt)}.
  */
 @SuppressWarnings("unlikely-arg-type")
-public class FrDics {
+public class FrDics
+{
     /** Logger */
     static Logger LOGGER = Logger.getLogger(FrDics.class.getName());
     /** Flag for compound, end of term */
@@ -160,8 +161,7 @@ public class FrDics {
         catch (Exception e) {
             if (csv == null) {
                 System.out.println("Dictionary parse error in file " + res);
-            }
-            else {
+            } else {
                 System.out.println("Dictionary parse error in file " + res + " line " + csv.line());
             }
             e.printStackTrace();
@@ -173,8 +173,7 @@ public class FrDics {
             load("brevidot.csv", BREVIDOT);
             locutions("locutions.csv");
             load("num.csv");
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         /*
@@ -185,13 +184,15 @@ public class FrDics {
          */
     }
 
-    private static void load(final String res) {
+    private static void load(final String res)
+    {
         FrDics.res = res;
         Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
         load(reader);
     }
 
-    public static void load(final File file) throws IOException {
+    public static void load(final File file) throws IOException
+    {
         FrDics.res = file.getAbsolutePath();
         Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
         load(reader);
@@ -209,7 +210,8 @@ public class FrDics {
      * 
      * @param reader
      */
-    static public void load(final Reader reader) {
+    static public void load(final Reader reader)
+    {
         CsvReader csv = null;
         try {
             csv = new CsvReader(reader, 4);
@@ -249,7 +251,8 @@ public class FrDics {
         }
     }
 
-    private static void load(final String res, final HashMap<CharsAtt, CharsAtt> map) throws FileNotFoundException {
+    private static void load(final String res, final HashMap<CharsAtt, CharsAtt> map) throws FileNotFoundException
+    {
         InputStream stream = Tag.class.getResourceAsStream(res);
         if (stream == null) {
             throw new FileNotFoundException("Resource not found: " + Tag.class.getPackageName() + "/" + res);
@@ -264,7 +267,8 @@ public class FrDics {
      * @param reader
      * @param map
      */
-    private static void load(final Reader reader, final HashMap<CharsAtt, CharsAtt> map) {
+    private static void load(final Reader reader, final HashMap<CharsAtt, CharsAtt> map)
+    {
         CsvReader csv = null;
         try {
             csv = new CsvReader(reader, 2);
@@ -289,7 +293,8 @@ public class FrDics {
         }
     }
 
-    private static void locutions(final String res) {
+    private static void locutions(final String res)
+    {
         Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
         locutions(reader);
     }
@@ -304,7 +309,8 @@ public class FrDics {
      * @param reader
      * @param map
      */
-    private static void locutions(final Reader reader) {
+    private static void locutions(final Reader reader)
+    {
         CsvReader csv = null;
         try {
             csv = new CsvReader(reader, 4);
@@ -348,7 +354,8 @@ public class FrDics {
      * 
      * @param graph
      */
-    protected static void compound(Chain graph, HashMap<CharsAtt, Integer> tree) {
+    protected static void compound(Chain graph, HashMap<CharsAtt, Integer> tree)
+    {
         int len = graph.length();
         for (int i = 0; i < len; i++) {
             char c = graph.charAt(i);
@@ -378,7 +385,8 @@ public class FrDics {
             tree.put(key, entry | LEAF);
     }
 
-    public static LexEntry word(CharsAtt att) {
+    public static LexEntry word(CharsAtt att)
+    {
         return WORDS.get(att);
     }
 
@@ -388,11 +396,13 @@ public class FrDics {
      * @param form
      * @return
      */
-    public static LexEntry word(String form) {
+    public static LexEntry word(String form)
+    {
         return WORDS.get(new CharsAtt(form));
     }
 
-    public static LexEntry name(CharsAtt att) {
+    public static LexEntry name(CharsAtt att)
+    {
         return NAMES.get(att);
     }
 
@@ -402,23 +412,28 @@ public class FrDics {
      * @param form
      * @return
      */
-    public static LexEntry name(String form) {
+    public static LexEntry name(String form)
+    {
         return NAMES.get(new CharsAtt(form));
     }
 
-    public static boolean isStop(BytesRef ref) {
+    public static boolean isStop(BytesRef ref)
+    {
         return STOP_BYTES.run(ref.bytes, ref.offset, ref.length);
     }
 
-    public static boolean isStop(CharsAtt att) {
+    public static boolean isStop(CharsAtt att)
+    {
         return STOP.contains(att);
     }
 
-    public static boolean isStop(String form) {
+    public static boolean isStop(String form)
+    {
         return STOP.contains(new CharsAtt(form));
     }
 
-    public static boolean brevidot(CharsAtt att) {
+    public static boolean brevidot(CharsAtt att)
+    {
         CharsAtt val = BREVIDOT.get(att);
         if (val == null)
             return false;
@@ -427,7 +442,8 @@ public class FrDics {
         return true;
     }
 
-    public static boolean norm(CharsAtt att) {
+    public static boolean norm(CharsAtt att)
+    {
         CharsAtt val = NORM.get(att);
         if (val == null)
             return false;
@@ -435,7 +451,8 @@ public class FrDics {
         return true;
     }
 
-    public static class LexEntry {
+    public static class LexEntry
+    {
         final public int tag;
         final public CharsAtt orth;
         final public CharsAtt lem;
@@ -462,7 +479,8 @@ public class FrDics {
         }
 
         @Override
-        public String toString() {
+        public String toString()
+        {
             StringBuilder sb = new StringBuilder();
             sb.append(Tag.name(this.tag));
             if (orth != null)

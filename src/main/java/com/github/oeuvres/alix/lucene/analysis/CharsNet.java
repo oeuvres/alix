@@ -69,8 +69,7 @@ public class CharsNet
     /** Node tester */
     private CharsAtt nodeKey = new CharsAtt();
 
-    public CharsNet(final int width, final boolean directed)
-    {
+    public CharsNet(final int width, final boolean directed) {
         this.directed = directed;
         if (width < 2)
             throw new IndexOutOfBoundsException("Width of nodes window should have 2 or more nodes to link between.");
@@ -139,8 +138,7 @@ public class CharsNet
         /** a counter locally used */
         private float score;
 
-        public Node(final CharsAtt label, final int tag)
-        {
+        public Node(final CharsAtt label, final int tag) {
             this.label = new CharsAtt(label);
             this.tag = tag;
             this.id = nodecount++; // start at 0
@@ -262,8 +260,7 @@ public class CharsNet
         private int count;
         private float score;
 
-        public Edge(final Node source, final Node target)
-        {
+        public Edge(final Node source, final Node target) {
             this.id = edgecount++; // start at 0
             this.source = source;
             this.target = target;

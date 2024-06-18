@@ -52,7 +52,8 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
  * tokens are deleted. This allows simple computation of a token context (ex:
  * span queries, co-occurrences).
  */
-public class CloudFilter extends TokenFilter {
+public class CloudFilter extends TokenFilter
+{
     /** The term provided by the Tokenizer */
     private final CharsAtt termAtt = (CharsAtt) addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */
@@ -79,7 +80,8 @@ public class CloudFilter extends TokenFilter {
     }
 
     @Override
-    public final boolean incrementToken() throws IOException {
+    public final boolean incrementToken() throws IOException
+    {
         // skipping positions will create holes, the count of tokens will be different
         // from the count of positions
         skippedPositions = 0;
@@ -104,7 +106,8 @@ public class CloudFilter extends TokenFilter {
      * @return
      * @throws IOException Lucene errors.
      */
-    protected boolean accept() throws IOException {
+    protected boolean accept() throws IOException
+    {
         int tag = flagsAtt.getFlags();
         if (tag == Tag.TEST.flag) {
             System.out.println(termAtt + " — " + orthAtt);
@@ -131,6 +134,10 @@ public class CloudFilter extends TokenFilter {
             if (termAtt.endsWith('.') && termAtt.length() <= 5) {
                 return false;
             }
+            // J.-Cl
+            if (termAtt.length() > 2 && termAtt.charAt(1) == '.' && termAtt.charAt(2) == '-') {
+                return false;
+            }
             // A., B.…
             // if (termAtt.length() == 2 && Char.isUpperCase(termAtt.charAt(0)) &&
             // termAtt.charAt(1) == '.') return false;
@@ -145,12 +152,14 @@ public class CloudFilter extends TokenFilter {
     }
 
     @Override
-    public void reset() throws IOException {
+    public void reset() throws IOException
+    {
         super.reset();
     }
 
     @Override
-    public void end() throws IOException {
+    public void end() throws IOException
+    {
         super.end();
     }
 

@@ -51,8 +51,7 @@ public class IntList
     /**
      * Simple constructor.
      */
-    public IntList()
-    {
+    public IntList() {
         data = new int[4];
     }
 
@@ -61,8 +60,7 @@ public class IntList
      * 
      * @param capacity
      */
-    public IntList(int capacity)
-    {
+    public IntList(int capacity) {
         data = new int[capacity];
     }
 
@@ -71,8 +69,7 @@ public class IntList
      * 
      * @param data
      */
-    public IntList(int[] data)
-    {
+    public IntList(int[] data) {
         this.data = data;
     }
 

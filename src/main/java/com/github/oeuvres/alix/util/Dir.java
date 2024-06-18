@@ -50,7 +50,7 @@ import java.util.List;
  */
 public class Dir
 {
-    static { // maybe useful to decode file names, but has been not efficient 
+    static { // maybe useful to decode file names, but has been not efficient
         System.setProperty("file.encoding", "UTF-8");
     }
 
@@ -121,14 +121,12 @@ public class Dir
             paths.add(globFile.toPath());
             return paths;
         }
-        
+
         String pattern = glob;
-        
-        
+
         if (File.separator.equals("\\")) { // for Windows
             pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes all those '\' needed
         }
-        
 
         final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern); // new File(glob)
 

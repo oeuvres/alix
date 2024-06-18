@@ -48,8 +48,7 @@ public abstract class Roller
     /**
      * Constructor
      */
-    public Roller(final int capacity)
-    {
+    public Roller(final int capacity) {
         this.capacity = capacity;
     }
 

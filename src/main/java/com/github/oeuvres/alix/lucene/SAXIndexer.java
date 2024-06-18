@@ -64,8 +64,9 @@ import com.github.oeuvres.alix.lucene.analysis.MetaAnalyzer;
  * 
  * 
  * Index an xml file of lucene documents. React to the namespace uri
- * xmlns:alix="https://oeuvres.github.io/alix". The element {@code <alix:document>} contains a
- * document. The element {@code <alix:field>} contains a field.
+ * xmlns:alix="https://oeuvres.github.io/alix". The element
+ * {@code <alix:document>} contains a document. The element {@code <alix:field>}
+ * contains a field.
  * 
  * <p>
  * <b>NOTE:</b> This indexer do not reuse fields and document object, because
@@ -104,6 +105,7 @@ public class SAXIndexer extends DefaultHandler
     private StringBuilder xml = new StringBuilder();
     /** Flag to verify that an element is not empty (for XML serialization) */
     private boolean empty;
+
     /** Keep an hand on the text analyzer */
     // private final Analyzer analyzer;
 
@@ -190,7 +192,7 @@ public class SAXIndexer extends DefaultHandler
                     break;
                 case TEXT:
                     // at this point, impossible to get document stats, tokens will be played when
-                    // writer will add document(s). 
+                    // writer will add document(s).
                     // cachingTokenFilter used to be memory expensive
                     // TeeSinkTokenFilter will need to define analysis strategy here
                     doc.add(new StoredField(name, text)); // text has to be stored for snippets and conc
@@ -521,8 +523,7 @@ public class SAXIndexer extends DefaultHandler
      * 
      * @param writer
      */
-    public SAXIndexer(final IndexWriter writer)
-    {
+    public SAXIndexer(final IndexWriter writer) {
         this.writer = writer;
     }
 }

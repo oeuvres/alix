@@ -52,7 +52,8 @@ import com.github.oeuvres.alix.util.Roll;
 /**
  * Plug behind TokenLem, take a Trie dictionary, and try to compound locutions.
  */
-public class LocutionFilter extends TokenFilter {
+public class LocutionFilter extends TokenFilter
+{
     /** Current char offset */
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** Current Flags */
@@ -80,7 +81,8 @@ public class LocutionFilter extends TokenFilter {
         super(input);
     }
 
-    public String toString(LinkedList<State> stack) {
+    public String toString(LinkedList<State> stack)
+    {
         String out = "";
         State restore = captureState();
         boolean first = true;
@@ -98,7 +100,8 @@ public class LocutionFilter extends TokenFilter {
 
     @SuppressWarnings("unlikely-arg-type")
     @Override
-    public final boolean incrementToken() throws IOException {
+    public final boolean incrementToken() throws IOException
+    {
         CharsAtt orth = (CharsAtt) orthAtt;
         boolean token = false;
         compound.setEmpty();
@@ -238,12 +241,14 @@ public class LocutionFilter extends TokenFilter {
     }
 
     @Override
-    public void reset() throws IOException {
+    public void reset() throws IOException
+    {
         super.reset();
     }
 
     @Override
-    public void end() throws IOException {
+    public void end() throws IOException
+    {
         super.end();
     }
 }

@@ -40,88 +40,90 @@ import org.apache.lucene.index.BinaryDocValues; // for doc
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Data structure to write and read unsigned bytes (0-255)
- * in a binary form suited for lucene stored field 
+ * Data structure to write and read unsigned bytes (0-255) in a binary form
+ * suited for lucene stored field
  * {@link StoredField#StoredField(String, BytesRef)},
- * {@link Document#getBinaryValue(String)}
- * or binary fields {@link BinaryDocValuesField},
- * {@link BinaryDocValues}.
- * Values to put and get are int, converted as the 
- * default java signed byte.
- * The values are backed in a reusable and growing {@link ByteBuffer}.
+ * {@link Document#getBinaryValue(String)} or binary fields
+ * {@link BinaryDocValuesField}, {@link BinaryDocValues}. Values to put and get
+ * are int, converted as the default java signed byte. The values are backed in
+ * a reusable and growing {@link ByteBuffer}.
  */
 public class BinaryUbytes extends BinaryValue
 {
-  /**
-   * Create buffer for read {@link BinaryValue#open(BytesRef)}
-   * (write is possible after {@link BinaryValue#reset()}).
-   */
-  public BinaryUbytes()
-  {
-    
-  }
+    /**
+     * Create buffer for read {@link BinaryValue#open(BytesRef)} (write is possible
+     * after {@link BinaryValue#reset()}).
+     */
+    public BinaryUbytes() {
 
-  /**
-   * Create buffer for write with initial size.
-   * @param size
-   */
-  public BinaryUbytes(int size)
-  {
-    capacity = size;
-    buf =  ByteBuffer.allocate(capacity);
-  }
-  
-  /**
-   * Number of positions in this vector.
-   * @return
-   */
-  public int size()
-  {
-    return length;
-  }
-  
-  /**
-   * Put a value at a posiion.
-   * 
-   * @param pos
-   * @param value
-   */
-  public void put(final int pos, final int value)
-  {
-    final int cap = pos + 1;
-    if (cap > length) length = cap; // keep max size
-    if (cap > capacity) grow(cap); // ensure size buffer
-    buf.put(pos, (byte) value);
-  }
-
-  /**
-   * Get value at a position. Value is stored as
-   * a common java byte (signed),it is returned as an int
-   * to allow unsigne values.
-   * 
-   * @param pos
-   * @return
-   */
-  public int get(final int pos)
-  {
-    return buf.get(pos) & (0xff) ;
-  }
-
-  @Override
-  public String toString()
-  {
-    StringBuilder sb = new StringBuilder();
-    boolean first = true;
-    int limit = Math.min(this.size(), 100);
-    sb.append("(");
-    int i = 0;
-    for(; i < limit; i++) {
-      if (first) first = false;
-      else sb.append(", ");
-      sb.append(get(i));
     }
-    if (i > this.size()) sb.append(", …");
-    sb.append("):"+this.size());
-    return sb.toString();
-  }
+
+    /**
+     * Create buffer for write with initial size.
+     * 
+     * @param size
+     */
+    public BinaryUbytes(int size) {
+        capacity = size;
+        buf = ByteBuffer.allocate(capacity);
+    }
+
+    /**
+     * Number of positions in this vector.
+     * 
+     * @return
+     */
+    public int size()
+    {
+        return length;
+    }
+
+    /**
+     * Put a value at a posiion.
+     * 
+     * @param pos
+     * @param value
+     */
+    public void put(final int pos, final int value)
+    {
+        final int cap = pos + 1;
+        if (cap > length)
+            length = cap; // keep max size
+        if (cap > capacity)
+            grow(cap); // ensure size buffer
+        buf.put(pos, (byte) value);
+    }
+
+    /**
+     * Get value at a position. Value is stored as a common java byte (signed),it is
+     * returned as an int to allow unsigne values.
+     * 
+     * @param pos
+     * @return
+     */
+    public int get(final int pos)
+    {
+        return buf.get(pos) & (0xff);
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        int limit = Math.min(this.size(), 100);
+        sb.append("(");
+        int i = 0;
+        for (; i < limit; i++) {
+            if (first)
+                first = false;
+            else
+                sb.append(", ");
+            sb.append(get(i));
+        }
+        if (i > this.size())
+            sb.append(", …");
+        sb.append("):" + this.size());
+        return sb.toString();
+    }
 }

@@ -34,7 +34,10 @@ package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -428,7 +431,30 @@ public class JspTools
         }
     }
 
-    public int getInt(final String name, final int min, final int max, final int fallback, final String cookie)
+    /**
+     * Get a request parameter as an int with a default value.
+     * 
+     * @param name
+     * @param fallback
+     * @return
+     */
+    public int getInt(final String name, final int fallback)
+    {
+        return getInt(name, null, fallback, null);
+    }
+
+    public int getInt(final String name, final int fallback, final String cookie)
+    {
+        return getInt(name, null, fallback, cookie);
+    }
+    
+    public int getInt(final String name, final int[] span, final int fallback)
+    {
+        return getInt(name, span, fallback, null);
+    }
+
+    
+    public int getInt(final String name, final int[] span, final int fallback, final String cookie)
     {
         String par = request.getParameter(name);
         // param has an empty value, seems that client wants to reset cookie
@@ -453,8 +479,19 @@ public class JspTools
             value = Integer.parseInt(par);
             found = true;
         } catch (NumberFormatException e) {
+            return fallback;
         }
-        if (value < min || value > max) found = false;
+        if (span != null && span.length > 0) {
+            if (value < span[0]) {
+                value = span[0];
+                found = false;
+            }
+            else if (span.length > 1 && value > span[1]) {
+                value = span[0];
+                found = false;
+            }
+        }
+        
         if (!found) {
             // perhaps an old cookie with a bad value, delete it
             if (cookie != null) cookie(cookie, null);
@@ -464,30 +501,6 @@ public class JspTools
         return value;
     }
 
-    
-    /**
-     * Get a request parameter as an int with a default value.
-     * 
-     * @param name
-     * @param fallback
-     * @return
-     */
-    public int getInt(final String name, final int fallback)
-    {
-        return getInt(name, Integer.MIN_VALUE, Integer.MAX_VALUE, fallback, null);
-    }
-
-    public int getInt(final String name, final int fallback, final String cookie)
-    {
-        return getInt(name, Integer.MIN_VALUE, Integer.MAX_VALUE, fallback, cookie);
-    }
-    
-    public int getInt(final String name, final int min, final int max, final int fallback)
-    {
-        return getInt(name, min, max, fallback, null);
-    }
-
-    
     /**
      * Return 
      * @param name
@@ -628,6 +641,30 @@ public class JspTools
             return value;
         }
         return fallback;
+    }
+
+    /**
+     * Get a repeated parameter as an array of String, filtered of empty strings
+     * and repeated values. Original order is kept, first seen, 
+     * 
+     * @param name Name of request parameter
+     * @return Null if no plain values
+     */
+    public String[] getStringSet(final String name)
+    {
+        String[] values = request.getParameterValues(name);
+        if (values == null) return null;
+        List<String> list = new ArrayList<>();
+        Set<String> dic = new HashSet<>();
+        for (String v: values) {
+            if (v == null) continue;
+            if ("".equals(v.trim())) continue;
+            if (dic.contains(v)) continue;
+            dic.add(v);
+            list.add(v);
+        }
+        if (list.size() < 1) return null;
+        return list.toArray(new String[0]);
     }
 
 

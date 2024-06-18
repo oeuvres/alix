@@ -41,104 +41,107 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Data structure to write and read the “offsets” of a document
- * Offsets are start and end index of tokens in the source CharSequence (the text).
- * Data are encoded in a binary form suited for stored field 
+ * Data structure to write and read the “offsets” of a document Offsets are
+ * start and end index of tokens in the source CharSequence (the text). Data are
+ * encoded in a binary form suited for stored field
  * {@link StoredField#StoredField(String, BytesRef)},
- * {@link Document#getBinaryValue(String)}
- * or binary fields {@link BinaryDocValuesField},
- * {@link BinaryDocValues}.
- * The values are backed in a reusable and growing {@link ByteBuffer}.
+ * {@link Document#getBinaryValue(String)} or binary fields
+ * {@link BinaryDocValuesField}, {@link BinaryDocValues}. The values are backed
+ * in a reusable and growing {@link ByteBuffer}.
  */
 public class Offsets extends BinaryValue
 {
-  
-  /**
-   * Create buffer for read {@link BinaryValue#open(BytesRef)}
-   * (write is possible after {@link BinaryValue#reset()}).
-   */
-  public Offsets()
-  {
-    
-  }
 
-  /**
-   * Create buffer for write with initial size (growing is possible).
-   * @param size
-   */
-  public Offsets(int size)
-  {
-    capacity = size << 3;
-    buf =  ByteBuffer.allocate(capacity);
-  }
+    /**
+     * Create buffer for read {@link BinaryValue#open(BytesRef)} (write is possible
+     * after {@link BinaryValue#reset()}).
+     */
+    public Offsets() {
 
-  
-  /**
-   * Number of positions in this vector.
-   * @return
-   */
-  public int size()
-  {
-    return length >> 3;
-  }
-  
-  /**
-   * Put a couple of int.
-   * 
-   * @param pos
-   * @param start
-   * @param end
-   */
-  public void put(final int pos, final int start, final int end)
-  {
-    final int index = pos << 3; // 8 bytes
-    final int cap = index + 8;
-    if (cap > length) length = cap; // keep max size
-    if (cap > capacity) grow(cap); // ensure size buffer
-    buf.putInt(index, start);
-    buf.putInt(index + 4, end);
-  }
-
-  /**
-   * Get start offset at a position.
-   * 
-   * @param pos
-   * @return
-   */
-  public int getStart(final int pos)
-  {
-    final int index = pos << 3;
-    return buf.getInt(index);
-  }
-
-  /**
-   * Get start offset at a position.
-   * 
-   * @param pos
-   * @return
-   */
-  public int getEnd(final int pos)
-  {
-    final int index = pos << 3;
-    return buf.getInt(index + 4);
-  }
-
-  @Override
-  public String toString()
-  {
-    StringBuilder sb = new StringBuilder();
-    boolean first = true;
-    int limit = Math.min(this.size(), 100);
-    sb.append("(");
-    int i = 0;
-    for(; i < limit; i++) {
-      if (first) first = false;
-      else sb.append(", ");
-      sb.append(getStart(i)+":"+getEnd(i));
     }
-    if (i > this.size()) sb.append(", …");
-    sb.append("):"+this.size());
-    return sb.toString();
-  }
+
+    /**
+     * Create buffer for write with initial size (growing is possible).
+     * 
+     * @param size
+     */
+    public Offsets(int size) {
+        capacity = size << 3;
+        buf = ByteBuffer.allocate(capacity);
+    }
+
+    /**
+     * Number of positions in this vector.
+     * 
+     * @return
+     */
+    public int size()
+    {
+        return length >> 3;
+    }
+
+    /**
+     * Put a couple of int.
+     * 
+     * @param pos
+     * @param start
+     * @param end
+     */
+    public void put(final int pos, final int start, final int end)
+    {
+        final int index = pos << 3; // 8 bytes
+        final int cap = index + 8;
+        if (cap > length)
+            length = cap; // keep max size
+        if (cap > capacity)
+            grow(cap); // ensure size buffer
+        buf.putInt(index, start);
+        buf.putInt(index + 4, end);
+    }
+
+    /**
+     * Get start offset at a position.
+     * 
+     * @param pos
+     * @return
+     */
+    public int getStart(final int pos)
+    {
+        final int index = pos << 3;
+        return buf.getInt(index);
+    }
+
+    /**
+     * Get start offset at a position.
+     * 
+     * @param pos
+     * @return
+     */
+    public int getEnd(final int pos)
+    {
+        final int index = pos << 3;
+        return buf.getInt(index + 4);
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        int limit = Math.min(this.size(), 100);
+        sb.append("(");
+        int i = 0;
+        for (; i < limit; i++) {
+            if (first)
+                first = false;
+            else
+                sb.append(", ");
+            sb.append(getStart(i) + ":" + getEnd(i));
+        }
+        if (i > this.size())
+            sb.append(", …");
+        sb.append("):" + this.size());
+        return sb.toString();
+    }
 
 }

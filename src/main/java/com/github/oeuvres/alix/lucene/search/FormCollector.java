@@ -39,13 +39,10 @@ import java.util.NoSuchElementException;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.TopArray;
 
-
-
 /**
- * This implementation of the FormIterator contract allow to build custom
- * lists of forms with freq (occurrences count) and score (a double)
- * calculated else where. For example, merge stats about coocs around
- * different pivot words.
+ * This implementation of the FormIterator contract allow to build custom lists
+ * of forms with freq (occurrences count) and score (a double) calculated else
+ * where. For example, merge stats about coocs around different pivot words.
  */
 public class FormCollector implements FormIterator
 {
@@ -54,18 +51,21 @@ public class FormCollector implements FormIterator
         public final int formId;
         public long freq;
         public double score;
-        FormStats(final int formId, final long freq, final double score)
-        {
+
+        FormStats(final int formId, final long freq, final double score) {
             this.formId = formId;
             this.freq = freq;
             this.score = score;
         }
     }
-    /** Keep  */
+
+    /** Keep */
     Map<Integer, FormStats> dic = new HashMap<>();
     /** Keep order of insertion */
     private IntList insertOrder = new IntList();
-    /** An array of formId in the order we want to iterate on, default is input order */
+    /**
+     * An array of formId in the order we want to iterate on, default is input order
+     */
     private int[] sorter;
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
@@ -77,7 +77,7 @@ public class FormCollector implements FormIterator
     private long freq;
     /** Current score, set by next() */
     private double score;
-    
+
     /**
      * Clear object
      */
@@ -86,9 +86,10 @@ public class FormCollector implements FormIterator
         dic.clear();
         insertOrder.clear();
     }
-    
+
     /**
      * Is this id already recorded ?
+     * 
      * @param formId
      * @return
      */
@@ -96,7 +97,7 @@ public class FormCollector implements FormIterator
     {
         return dic.containsKey(formId);
     }
-    
+
     @Override
     public long freq()
     {
@@ -111,6 +112,7 @@ public class FormCollector implements FormIterator
 
     /**
      * Get stats by formId
+     * 
      * @param formId
      * @return
      */
@@ -128,7 +130,8 @@ public class FormCollector implements FormIterator
     @Override
     public int limit()
     {
-        if (limit > 0) return limit;
+        if (limit > 0)
+            return limit;
         limit = dic.size();
         return limit;
     }
@@ -155,8 +158,7 @@ public class FormCollector implements FormIterator
             node = new FormStats(formId, freq, score);
             dic.put(formId, node);
             insertOrder.push(formId);
-        }
-        else {
+        } else {
             node.freq = freq;
             node.score = score;
         }
@@ -165,7 +167,7 @@ public class FormCollector implements FormIterator
     @Override
     public void reset()
     {
-        // no sort yet, set 
+        // no sort yet, set
         if (sorter == null) {
             sorter = insertOrder.toArray();
             limit = dic.size();
@@ -179,7 +181,6 @@ public class FormCollector implements FormIterator
     {
         return score;
     }
-    
 
     @Override
     public void sort(final Order order)
@@ -192,8 +193,7 @@ public class FormCollector implements FormIterator
     {
         if (aLimit < 1 || aLimit > dic.size()) {
             limit = dic.size();
-        }
-        else {
+        } else {
             limit = aLimit;
         }
         if (order == Order.INSERTION) {
@@ -203,15 +203,15 @@ public class FormCollector implements FormIterator
         TopArray top = null;
         int flags = 0;
         top = new TopArray(limit, flags);
-        // populate the top 
+        // populate the top
         for (FormStats entry : dic.values()) {
             switch (order) {
-                case FREQ:
-                    top.push(entry.formId, entry.score);
-                    break;
-                default:
-                    top.push(entry.formId, entry.score);
-                    break;
+            case FREQ:
+                top.push(entry.formId, entry.score);
+                break;
+            default:
+                top.push(entry.formId, entry.score);
+                break;
             }
         }
         // get the sorter and set it
@@ -223,7 +223,8 @@ public class FormCollector implements FormIterator
     @Override
     public int[] sorter()
     {
-        if (sorter == null) return null;
+        if (sorter == null)
+            return null;
         return sorter.clone();
     }
 
@@ -241,7 +242,8 @@ public class FormCollector implements FormIterator
             sb.append(" freq=" + freq());
             sb.append(" score=" + score());
             sb.append("\n");
-            if (pos++ >= limit) break;
+            if (pos++ >= limit)
+                break;
         }
         return sb.toString();
     }

@@ -5,15 +5,15 @@ import java.util.Iterator;
 /**
  * Iterator of edges backed on a sorted array.
  */
-public class EdgeTop implements Iterator<Edge> 
+public class EdgeTop implements Iterator<Edge>
 {
     private final Edge[] edges;
     private int cursor = 0;
-    
+
     EdgeTop(final Edge[] edges) {
         this.edges = edges;
     }
-    
+
     public int length()
     {
         return edges.length;
@@ -32,8 +32,8 @@ public class EdgeTop implements Iterator<Edge>
     public Edge next()
     {
         Edge edge = edges[cursor];
-        cursor ++;
+        cursor++;
         return edge;
     }
-    
+
 }

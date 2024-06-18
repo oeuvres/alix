@@ -54,7 +54,8 @@ import org.apache.lucene.util.Bits;
  * Query with a document iterator backed on a BitSet (the corpus). Used as a
  * filter in a boolean Query.
  */
-public class CorpusQuery extends Query {
+public class CorpusQuery extends Query
+{
     /** Unordered set of docids as a BitSet */
     final BitSet corpus;
     /** Name of the corpus, unique for a user */
@@ -79,7 +80,8 @@ public class CorpusQuery extends Query {
      * An iterator on a global index reader bitSet returning doc ids local to a leaf
      * context.
      */
-    public class LeafBitsIterator extends DocIdSetIterator {
+    public class LeafBitsIterator extends DocIdSetIterator
+    {
         /** The global Index reader BitSet for the corpus */
         final BitSet corpus;
         /** Start docId in the global index BitSet */
@@ -99,22 +101,26 @@ public class CorpusQuery extends Query {
         }
 
         @Override
-        public int docID() {
+        public int docID()
+        {
             return docLeaf;
         }
 
         @Override
-        public long cost() {
+        public long cost()
+        {
             return cost;
         }
 
         @Override
-        public int nextDoc() throws IOException {
+        public int nextDoc() throws IOException
+        {
             return advance(docLeaf + 1);
         }
 
         @Override
-        public int advance(int target) throws IOException {
+        public int advance(int target) throws IOException
+        {
             if (target >= docMax) {
                 return docLeaf = NO_MORE_DOCS;
             }
@@ -127,33 +133,39 @@ public class CorpusQuery extends Query {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, final ScoreMode scoreMode, float boost) {
+    public Weight createWeight(IndexSearcher searcher, final ScoreMode scoreMode, float boost)
+    {
 
         return new ConstantScoreWeight(this, boost) {
             @Override
-            public String toString() {
+            public String toString()
+            {
                 return "weight(" + CorpusQuery.this + ")";
             }
 
             @Override
-            public Scorer scorer(LeafReaderContext context) throws IOException {
+            public Scorer scorer(LeafReaderContext context) throws IOException
+            {
                 DocIdSetIterator docIt = new LeafBitsIterator(context, corpus);
                 return new ConstantScoreScorer(this, score(), scoreMode, docIt);
             }
 
             @Override
-            public boolean isCacheable(LeafReaderContext ctx) {
+            public boolean isCacheable(LeafReaderContext ctx)
+            {
                 return true;
             }
 
             @Override
-            public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
+            public BulkScorer bulkScorer(LeafReaderContext context) throws IOException
+            {
                 final int docBase = context.docBase;
                 final float score = score();
                 final int maxDoc = context.reader().maxDoc();
                 return new BulkScorer() {
                     @Override
-                    public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
+                    public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException
+                    {
                         max = Math.min(max, maxDoc); // odd, copied from MatchAllDocs
                         DummyScorer scorer = new DummyScorer();
                         scorer.score = score;
@@ -171,7 +183,8 @@ public class CorpusQuery extends Query {
                     }
 
                     @Override
-                    public long cost() {
+                    public long cost()
+                    {
                         return maxDoc;
                     }
                 };
@@ -180,38 +193,45 @@ public class CorpusQuery extends Query {
     }
 
     @Override
-    public void visit(QueryVisitor visitor) {
+    public void visit(QueryVisitor visitor)
+    {
         // nothing is probably relevant
     }
 
     @Override
-    public String toString(String field) {
+    public String toString(String field)
+    {
         return "{" + name + "}";
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(Object o)
+    {
         if (!sameClassAs(o))
             return false;
         return corpus.equals(((CorpusQuery) o).corpus);
     }
 
     @Override
-    public int hashCode() {
+    public int hashCode()
+    {
         return classHash() ^ name.hashCode();
     }
 
-    public class DummyScorer extends Scorable {
+    public class DummyScorer extends Scorable
+    {
         float score;
         int doc = -1;
 
         @Override
-        public int docID() {
+        public int docID()
+        {
             return doc;
         }
 
         @Override
-        public float score() {
+        public float score()
+        {
             return score;
         }
     }

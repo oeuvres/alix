@@ -65,8 +65,10 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 
 @Command(name = "Balinoms", description = "Tag names in an XML/TEI file", mixinStandardHelpOptions = true)
-public class Balinoms implements Callable<Integer> {
-    static class Name implements Comparable<Name> {
+public class Balinoms implements Callable<Integer>
+{
+    static class Name implements Comparable<Name>
+    {
         int count = 1;
         int tag = Tag.NAME.flag;
         String form;
@@ -75,20 +77,24 @@ public class Balinoms implements Callable<Integer> {
             this.form = form;
         }
 
-        public void inc() {
+        public void inc()
+        {
             count++;
         }
 
         @Override
-        public int compareTo(Name o) {
+        public int compareTo(Name o)
+        {
             return o.count - count;
         }
     }
 
-    static class AnalyzerNames extends Analyzer {
+    static class AnalyzerNames extends Analyzer
+    {
 
         @Override
-        protected TokenStreamComponents createComponents(String fieldName) {
+        protected TokenStreamComponents createComponents(String fieldName)
+        {
             final Tokenizer source = new FrTokenizer();
             TokenStream result = new FrLemFilter(source);
             result = new FrPersnameFilter(result);
@@ -99,30 +105,36 @@ public class Balinoms implements Callable<Integer> {
 
     static Analyzer anaNoms = new AnalyzerNames();
 
-    static class Entry implements Comparable<Entry> {
+    static class Entry implements Comparable<Entry>
+    {
         int count;
         final int flag;
         final String form;
-        Entry (final String form, final int flag) {
+
+        Entry(final String form, final int flag) {
             this.form = form;
             this.flag = flag;
             this.count = 1;
         }
+
         @Override
-        public int compareTo(Entry e) {
+        public int compareTo(Entry e)
+        {
             int dif = e.count - this.count;
-            if (dif == 0) return this.form.compareTo(e.form);
+            if (dif == 0)
+                return this.form.compareTo(e.form);
             return dif;
         }
     }
-    Map<String, Entry> dic = new HashMap<>();
 
+    Map<String, Entry> dic = new HashMap<>();
 
     @Parameters(arity = "1..*", description = "au moins un fichier XML/TEI à baliser")
     File[] files;
 
     @Override
-    public Integer call() throws Exception {
+    public Integer call() throws Exception
+    {
         for (final File src : files) {
             String name = src.getName().substring(0, src.getName().lastIndexOf('.'));
             String ext = src.getName().substring(src.getName().lastIndexOf('.'));
@@ -147,7 +159,8 @@ public class Balinoms implements Callable<Integer> {
      * @param out A writer for different destinations.
      * @throws IOException Lucene errors.
      */
-    public void parse(String xml, PrintWriter out) throws IOException {
+    public void parse(String xml, PrintWriter out) throws IOException
+    {
         TokenStream stream = anaNoms.tokenStream("stats", new StringReader(xml));
         @SuppressWarnings("unused")
         int toks = 0;
@@ -169,9 +182,12 @@ public class Balinoms implements Callable<Integer> {
                     continue;
                 // Should not arrive, but it arrives
                 if (lemAtt.isEmpty()) {
-                    // System.out.println("term=" + termAtt + " orth=" + orthAtt + " lem=" + lemAtt);
-                    if (!orthAtt.isEmpty()) lemAtt.append(orthAtt);
-                    else lemAtt.append(termAtt);
+                    // System.out.println("term=" + termAtt + " orth=" + orthAtt + " lem=" +
+                    // lemAtt);
+                    if (!orthAtt.isEmpty())
+                        lemAtt.append(orthAtt);
+                    else
+                        lemAtt.append(termAtt);
                 }
 
                 out.print(xml.substring(begin, attOff.startOffset()));
@@ -217,10 +233,12 @@ public class Balinoms implements Callable<Integer> {
 
     /**
      * Increment dics. This way should limit object creation.
+     * 
      * @param chars Increment a term entry.
-     * @param flag Flag of the term.
+     * @param flag  Flag of the term.
      */
-    private void inc(final CharsAtt chars, final int flag) {
+    private void inc(final CharsAtt chars, final int flag)
+    {
         @SuppressWarnings("unlikely-arg-type")
         Entry entry = dic.get(chars);
         if (entry == null) {
@@ -234,11 +252,12 @@ public class Balinoms implements Callable<Integer> {
     /**
      * Get the top list.
      * 
-     * @param limit Count of terms selected.
+     * @param limit  Count of terms selected.
      * @param filter Filter of grammar tags.
      * @return A TSV formatted String.
      */
-    public String top(final int limit, TagFilter filter) {
+    public String top(final int limit, TagFilter filter)
+    {
         StringBuffer sb = new StringBuffer();
         Entry[] lexiq = dic.values().toArray(new Entry[0]);
         Arrays.sort(lexiq);
@@ -253,14 +272,14 @@ public class Balinoms implements Callable<Integer> {
         return sb.toString();
     }
 
-
     /**
      * Run the Class.
      * 
      * @param args Command line arguments.
      * @throws IOException File problems.
      */
-    public static void main(String args[]) throws IOException {
+    public static void main(String args[]) throws IOException
+    {
         int exitCode = new CommandLine(new Balinoms()).execute(args);
         System.exit(exitCode);
     }

@@ -166,8 +166,7 @@ public class DicBalance
         /**
          * Create a chain balance
          */
-        public Balance(final String term)
-        {
+        public Balance(final String term) {
             this.term = term;
             this.tag = 0;
         }
@@ -175,8 +174,7 @@ public class DicBalance
         /**
          * Create a chain balance with a filtering tag
          */
-        public Balance(final String term, int tag)
-        {
+        public Balance(final String term, int tag) {
             this.term = term;
             this.tag = tag;
         }

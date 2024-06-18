@@ -40,9 +40,8 @@ import java.util.List;
 import com.github.oeuvres.alix.maths.Calcul;
 
 /**
- * An object to record edges events between int nodes.
- * Fast for writing, no lookup, maybe expensive in memory if a lot of events.
- * Iterator by count.
+ * An object to record edges events between int nodes. Fast for writing, no
+ * lookup, maybe expensive in memory if a lot of events. Iterator by count.
  */
 public class EdgeQueue implements Iterable<Edge>
 {
@@ -58,13 +57,11 @@ public class EdgeQueue implements Iterable<Edge>
     private static long KEY_MASK = 0xFFFFFFFFL;
     /** Linked Cluster */
     private IntList cluster = new IntList();
-    
-    
-    public EdgeQueue(final boolean directed)
-    {
+
+    public EdgeQueue(final boolean directed) {
         this.directed = directed;
     }
-    
+
     /**
      * Agregate a node to a cluster
      */
@@ -113,7 +110,7 @@ public class EdgeQueue implements Iterable<Edge>
         data = new long[capacity];
         System.arraycopy(oldData, 0, data, 0, oldLength);
     }
-    
+
     @Override
     public Iterator<Edge> iterator()
     {
@@ -121,16 +118,17 @@ public class EdgeQueue implements Iterable<Edge>
         Arrays.parallelSort(data, 0, size);
         long edge = data[0];
         int count = 0;
-        for (int i = 0; i < size; i ++) {
+        for (int i = 0; i < size; i++) {
             // new value
             if (edge != data[i]) {
                 net.add(new Edge(source(edge), target(edge)).count(count));
                 edge = data[i];
                 count = 0;
             }
-            count ++;
+            count++;
         }
-        if (count > 0) net.add(new Edge(source(edge), target(edge)).count(count));
+        if (count > 0)
+            net.add(new Edge(source(edge), target(edge)).count(count));
         Edge[] arredge = new Edge[net.size()];
         net.toArray(arredge);
         Arrays.sort(arredge);
@@ -139,6 +137,7 @@ public class EdgeQueue implements Iterable<Edge>
 
     /**
      * Add an edge
+     * 
      * @param source
      * @param target
      */
@@ -147,11 +146,9 @@ public class EdgeQueue implements Iterable<Edge>
         grow(size);
         if (directed) {
             data[size] = edge(source, target);
-        }
-        else if (source < target) {
+        } else if (source < target) {
             data[size] = edge(source, target);
-        } 
-        else {
+        } else {
             data[size] = edge(target, source);
         }
         size++;
@@ -159,13 +156,14 @@ public class EdgeQueue implements Iterable<Edge>
 
     /**
      * Count of push events
+     * 
      * @return
      */
     public int size()
     {
         return size;
     }
-    
+
     /**
      * Get the key from a long entry
      */
@@ -183,4 +181,3 @@ public class EdgeQueue implements Iterable<Edge>
     }
 
 }
- 

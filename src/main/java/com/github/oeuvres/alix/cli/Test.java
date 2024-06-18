@@ -44,7 +44,8 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 
 @Command(name = "Test", version = "Test 0.0", mixinStandardHelpOptions = true)
-public class Test implements Runnable {
+public class Test implements Runnable
+{
 
     @Option(names = { "-s", "--font-size" }, description = "Font size")
     int fontSize = 10;
@@ -53,7 +54,8 @@ public class Test implements Runnable {
     private String[] words = { "Alix", ", et là ?" };
 
     @Override
-    public void run() {
+    public void run()
+    {
         // https://stackoverflow.com/questions/7098972/ascii-art-java
         BufferedImage image = new BufferedImage(144, 32, BufferedImage.TYPE_INT_RGB);
         Graphics graphics = image.getGraphics();
@@ -72,7 +74,8 @@ public class Test implements Runnable {
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         int exitCode = new CommandLine(new Test()).execute(args);
         System.exit(exitCode);
     }

@@ -37,13 +37,11 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
-
-
 /**
  * Analysis scenario for French in Alix. The linguistic features of Alix are
  * language dependent.
  */
-public class QueryAnalyzer extends  Analyzer
+public class QueryAnalyzer extends Analyzer
 {
     @SuppressWarnings("resource")
     @Override
