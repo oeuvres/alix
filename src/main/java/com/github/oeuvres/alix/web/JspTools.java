@@ -49,6 +49,8 @@ import javax.servlet.http.Part;
 import javax.servlet.jsp.JspWriter;
 import javax.servlet.jsp.PageContext;
 
+import com.github.oeuvres.alix.util.IntList;
+
 /**
  * Jsp toolbox.
  */
@@ -68,8 +70,7 @@ public class JspTools
     private final static int MONTH = 60 * 60 * 24 * 30;
 
     /** Wrap the global jsp variables */
-    public JspTools(final PageContext page)
-    {
+    public JspTools(final PageContext page) {
         this.request = (HttpServletRequest) page.getRequest();
         this.response = (HttpServletResponse) page.getResponse();
         this.out = page.getOut();
@@ -97,7 +98,8 @@ public class JspTools
      */
     public String cookie(final String name)
     {
-        if (!check(name)) return null;
+        if (!check(name))
+            return null;
         if (cookies == null) {
             Cookie[] cooks = request.getCookies();
             if (cooks == null)
@@ -119,7 +121,8 @@ public class JspTools
      */
     public void cookie(String name, String value)
     {
-        if (!check(name)) return;
+        if (!check(name))
+            return;
         if (value == null) {
             if (cookie(name) != null)
                 response.addHeader("Set-Cookie", name + "=" + value
@@ -129,7 +132,6 @@ public class JspTools
         }
     }
 
-    
     /**
      * Ensure that a String could be included in an html attribute with quotes
      */
@@ -156,6 +158,7 @@ public class JspTools
 
     /**
      * Escape HTML for input
+     * 
      * @param out
      * @param cs
      * @throws IOException Lucene errors.
@@ -275,7 +278,8 @@ public class JspTools
     public Enum<?> getEnum(final String name, final Enum<?> fallback)
     {
         if (fallback == null) {
-            throw new IllegalArgumentException("fallback can’t be null, a value is needed to get the exact class name of Enum");
+            throw new IllegalArgumentException(
+                    "fallback can’t be null, a value is needed to get the exact class name of Enum");
         }
         String value = request.getParameter(name);
         if (!check(value)) {
@@ -297,13 +301,14 @@ public class JspTools
      * 
      * @param name     Name of a request parameter.
      * @param fallback Default value.
-     * @param cookie Cookie persistency.
+     * @param cookie   Cookie persistency.
      * @return The value from Enum.
      */
     public Enum<?> getEnum(final String name, final Enum<?> fallback, final String cookie)
     {
         if (fallback == null) {
-            throw new IllegalArgumentException("fallback can’t be null, a value is needed to get the exact class name of Enum");
+            throw new IllegalArgumentException(
+                    "fallback can’t be null, a value is needed to get the exact class name of Enum");
         }
         String value = request.getParameter(name);
         if (check(value)) {
@@ -447,13 +452,12 @@ public class JspTools
     {
         return getInt(name, null, fallback, cookie);
     }
-    
+
     public int getInt(final String name, final int[] span, final int fallback)
     {
         return getInt(name, span, fallback, null);
     }
 
-    
     public int getInt(final String name, final int[] span, final int fallback, final String cookie)
     {
         String par = request.getParameter(name);
@@ -464,12 +468,11 @@ public class JspTools
             return fallback;
         }
         if (check(par)) { // a value, work after
-        }
-        else if (cookie != null) { // no par, try cookie
+        } else if (cookie != null) { // no par, try cookie
             par = cookie(cookie);
-            if (!check(par)) return fallback;
-        }
-        else { // no par, no cookie, good bye
+            if (!check(par))
+                return fallback;
+        } else { // no par, no cookie, good bye
             return fallback;
         }
         int value = 0;
@@ -485,44 +488,98 @@ public class JspTools
             if (value < span[0]) {
                 value = span[0];
                 found = false;
-            }
-            else if (span.length > 1 && value > span[1]) {
+            } else if (span.length > 1 && value > span[1]) {
                 value = span[0];
                 found = false;
             }
         }
-        
+
         if (!found) {
             // perhaps an old cookie with a bad value, delete it
-            if (cookie != null) cookie(cookie, null);
+            if (cookie != null)
+                cookie(cookie, null);
             return fallback;
         }
-        if (cookie != null) cookie(cookie, ""+value);
+        if (cookie != null)
+            cookie(cookie, "" + value);
         return value;
     }
 
     /**
-     * Return 
+     * Get an int Range between a min and a max (included).
+     * @param name Name of an http param
+     * @param range range[0] = min value, range[1] = max
+     * @return
+     */
+    public int[] getIntRange(final String name, final int[] range)
+    {
+        int min = Integer.MIN_VALUE;
+        int max = Integer.MAX_VALUE;
+        if (range == null);
+        else if (range.length < 2);
+        else {
+            min = Math.min(range[0], range[1]);
+            max = Math.max(range[0], range[1]);
+        }
+        String[] values = request.getParameterValues(name);
+        if (values == null || values.length < 1) {
+            return null;
+        }
+        final int[] data = new int[2];
+        int pos = 0;
+        for (String v : values) {
+            int value;
+            try {
+                value = Integer.parseInt(v);
+            } 
+            catch (Exception e) {
+                continue;
+            }
+            data[pos++] = value;
+            if (pos == 2) break;
+        }
+        if (pos == 0) {
+            return null;
+        }
+        else if (pos == 1) {
+            if (data[0] < min || data[0] > max) return null;
+            return new int[] {data[0]};
+        }
+        else {
+            final int lower = Math.max(Math.min(data[0], data[1]), min);
+            final int upper = Math.min(Math.max(data[0], data[1]), max);
+            if (lower == upper) {
+                return new int[] {lower};
+            }
+            if (lower == min && upper == max) return null;
+            return new int[] {lower, upper};
+        }
+    }
+
+    /**
+     * Return
+     * 
      * @param name
      * @return
      */
-    public TreeSet<Integer> getIntSet(final String name)
+    public int[] getIntSet(final String name)
     {
-        TreeSet<Integer> intSet = new TreeSet<Integer>();
         String[] vals = request.getParameterValues(name);
-        if (vals == null) return intSet;
-        for (String val: vals) {
+        if (vals == null || vals.length < 1) {
+            return new int[0];
+        }
+        IntList list = new IntList(vals.length);
+        for (String val : vals) {
             int i = -1;
             try {
                 i = Integer.parseInt(val);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 // output error ?
                 continue;
             }
-            intSet.add(i);
+            list.put(i, 1);
         }
-        return intSet;
+        return list.toSet();
     }
 
     /**
@@ -569,7 +626,6 @@ public class JspTools
         return map.get(value);
     }
 
-
     /**
      * Get a request parameter as a String with a default value.
      */
@@ -579,7 +635,8 @@ public class JspTools
     }
 
     /**
-     * Get a request parameter as a String with a default value, and a cookie persistency.
+     * Get a request parameter as a String with a default value, and a cookie
+     * persistency.
      */
     public String getString(final String name, final String fallback, final String cookie)
     {
@@ -590,10 +647,12 @@ public class JspTools
         }
         // no cookie, answer fast
         if (!check(cookie)) {
-            if (check(value)) return value;
-            else return fallback;
+            if (check(value))
+                return value;
+            else
+                return fallback;
         }
-        
+
         if (check(cookie) && check(value)) {
             cookie(cookie, value);
             return value;
@@ -644,8 +703,8 @@ public class JspTools
     }
 
     /**
-     * Get a repeated parameter as an array of String, filtered of empty strings
-     * and repeated values. Original order is kept, first seen, 
+     * Get a repeated parameter as an array of String, filtered of empty strings and
+     * repeated values. Original order is kept, first seen,
      * 
      * @param name Name of request parameter
      * @return Null if no plain values
@@ -653,20 +712,24 @@ public class JspTools
     public String[] getStringSet(final String name)
     {
         String[] values = request.getParameterValues(name);
-        if (values == null) return null;
+        if (values == null)
+            return null;
         List<String> list = new ArrayList<>();
         Set<String> dic = new HashSet<>();
-        for (String v: values) {
-            if (v == null) continue;
-            if ("".equals(v.trim())) continue;
-            if (dic.contains(v)) continue;
+        for (String v : values) {
+            if (v == null)
+                continue;
+            if ("".equals(v.trim()))
+                continue;
+            if (dic.contains(v))
+                continue;
             dic.add(v);
             list.add(v);
         }
-        if (list.size() < 1) return null;
+        if (list.size() < 1)
+            return null;
         return list.toArray(new String[0]);
     }
-
 
     /**
      * Return request object, maybe useful in context of a method
@@ -675,7 +738,7 @@ public class JspTools
     {
         return request;
     }
-    
+
     /**
      * Return response object, maybe useful in context of a method
      */
@@ -683,7 +746,7 @@ public class JspTools
     {
         return response;
     }
-    
+
     /**
      * Build url parameters
      */
@@ -705,5 +768,5 @@ public class JspTools
         }
         return href.toString();
     }
-    
+
 }
