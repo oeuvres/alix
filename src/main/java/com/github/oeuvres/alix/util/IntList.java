@@ -293,6 +293,25 @@ public class IntList
         return dest;
     }
 
+    /**
+     * Get data as an int array, without the duplicates, keeping initial order for uniq value.
+     * 
+     * @return
+     */
+    public int[] toSet()
+    {
+        final int[] dst = new int[size];
+        int dstPos = 0;
+        IntIntMap map = new IntIntMap(size);
+        for (int srcPos = 0; srcPos < size; srcPos++) {
+            final int value = data[srcPos];
+            if (map.contains(value)) continue;
+            map.put(value, 1);
+            dst[dstPos++] = value;
+        }
+        return Arrays.copyOf(dst, dstPos);
+    }
+
     @Override
     public String toString()
     {
