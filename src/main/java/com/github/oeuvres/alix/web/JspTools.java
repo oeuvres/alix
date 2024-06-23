@@ -509,7 +509,7 @@ public class JspTools
      * Get an int Range between a min and a max (included).
      * @param name Name of an http param
      * @param range range[0] = min value, range[1] = max
-     * @return
+     * @return null if no value, [point] if one value, [lower, upper] if 2 value
      */
     public int[] getIntRange(final String name, final int[] range)
     {

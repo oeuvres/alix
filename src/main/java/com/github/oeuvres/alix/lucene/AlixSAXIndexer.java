@@ -75,10 +75,10 @@ import com.github.oeuvres.alix.lucene.analysis.MetaAnalyzer;
  * </p>
  *
  */
-public class SAXIndexer extends DefaultHandler
+public class AlixSAXIndexer extends DefaultHandler
 {
     /** logger */
-    private static final Logger LOGGER = Logger.getLogger(SAXIndexer.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(AlixSAXIndexer.class.getName());
     final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
     final static DecimalFormat df000 = new DecimalFormat("000", frsyms);
     /** Lucene writer */
@@ -523,7 +523,7 @@ public class SAXIndexer extends DefaultHandler
      * 
      * @param writer
      */
-    public SAXIndexer(final IndexWriter writer) {
+    public AlixSAXIndexer(final IndexWriter writer) {
         this.writer = writer;
     }
 }
