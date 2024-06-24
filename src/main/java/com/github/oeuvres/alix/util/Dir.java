@@ -43,6 +43,7 @@ import java.nio.file.PathMatcher;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -64,8 +65,10 @@ public class Dir
             return false;
         if (Files.isDirectory(path)) {
             DirectoryStream<Path> stream = Files.newDirectoryStream(path);
-            for (Path entry : stream)
+            for (Path entry : stream) {
                 rm(entry);
+            }
+            stream.close();
         }
         Files.delete(path);
         return true;
@@ -98,21 +101,46 @@ public class Dir
      */
     public static List<Path> ls(final String glob) throws IOException
     {
-        return ls(glob, new ArrayList<Path>());
+        return include(new ArrayList<Path>(), glob);
+    }
+    
+
+    static public  List<Path> exclude(final List<Path> paths, final String glob) throws IOException
+    {
+        if (glob == null) {
+            return paths;
+        }
+        String pattern = glob;
+        if (File.separator.equals("\\")) { // for Windows
+            pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes all those '\' needed
+        }
+        final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
+        
+        Iterator<Path> it = paths.iterator();
+        while (it.hasNext()) {
+            Path path = it.next();
+            if (pathMatcher.matches(path)) {
+                it.remove();
+            }
+        }
+        return paths;
     }
 
     /**
-     * List files with glob
+     * Add files with glob
      * 
      * @param glob
      * @param files
      * @return
-     * @throws IOException Lucene errors.
+     * @throws IOException
      */
-    public static List<Path> ls(final String glob, List<Path> paths) throws IOException
+    public static List<Path> include(List<Path> paths, final String glob) throws IOException
     {
         if (paths == null) {
             throw new IOException("List<Path> paths is null, a list is needed to add Path");
+        }
+        if (glob == null) {
+            return paths;
         }
         // name encoding problem in linux WSL, with File or Path
         Path basedir = new File(glob.replaceFirst("[\\[\\*\\?\\{].*", "") + "DUMMY").getParentFile().toPath();
@@ -123,11 +151,9 @@ public class Dir
         }
 
         String pattern = glob;
-
         if (File.separator.equals("\\")) { // for Windows
             pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes all those '\' needed
         }
-
         final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern); // new File(glob)
 
         Files.walkFileTree(basedir, new SimpleFileVisitor<Path>() {

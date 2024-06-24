@@ -97,8 +97,7 @@ public class Load implements Callable<Integer>
      */
     private boolean ask4rmdir(File dir) throws IOException
     {
-        if (!dir.exists())
-            return true;
+        if (!dir.exists()) return true;
         long modified = dir.lastModified();
         Duration duration = Duration.ofMillis(System.currentTimeMillis() - modified);
         System.out
@@ -136,10 +135,8 @@ public class Load implements Callable<Integer>
             long time = System.nanoTime();
             parse(conf); // populate variables
             // write index with collected base properties
-            if (unsafe)
-                writeUnsafe(dstdir, dstname);
-            else
-                writeSafe(dstdir, dstname);
+            if (unsafe) writeUnsafe(dstdir, dstname);
+            else writeSafe(dstdir, dstname);
             System.out.println(
                     "[" + APP + "] " + dstname + " indexed in " + ((System.nanoTime() - time) / 1000000) + " ms.");
         }
@@ -147,19 +144,20 @@ public class Load implements Callable<Integer>
         return 0;
     }
 
-    public void globAdd(String glob, File base) throws IOException
+    public String globNorm(String glob, File base) throws IOException
     {
         glob = glob.trim();
         if (glob.equals("")) {
-            return;
+            return null;
         }
         if (glob.startsWith("#")) {
-            return;
+            return null;
         }
         // File.separator regularisation needed
         if (File.separatorChar == '\\') {
             glob = glob.replaceAll("[/\\\\]", File.separator + File.separator);
-        } else {
+        }
+        else {
             glob = glob.replaceAll("[/\\\\]", File.separator);
         }
         if (!new File(glob).isAbsolute()) {
@@ -172,9 +170,10 @@ public class Load implements Callable<Integer>
                 glob = glob.substring(3);
             }
             File f = new File(dir, glob);
-            Dir.ls(f.getAbsolutePath(), paths);
-        } else {
-            Dir.ls(glob, paths);
+            return f.getAbsolutePath();
+        }
+        else {
+            return glob;
         }
     }
 
@@ -189,17 +188,18 @@ public class Load implements Callable<Integer>
      */
     public void parse(File propsFile) throws IOException, NoSuchFieldException
     {
-        if (!propsFile.exists())
-            throw new FileNotFoundException(
-                    "\n  [" + APP + "] " + propsFile.getAbsolutePath() + "\nProperties file not found");
+        if (!propsFile.exists()) throw new FileNotFoundException(
+                "\n  [" + APP + "] " + propsFile.getAbsolutePath() + "\nProperties file not found");
         Properties props = new Properties();
         try {
             props.loadFromXML(new FileInputStream(propsFile));
-        } catch (InvalidPropertiesFormatException e) {
+        }
+        catch (InvalidPropertiesFormatException e) {
             throw new InvalidPropertiesFormatException(
                     "\n  [" + APP + "] " + propsFile + "\nXML error in properties file\n"
                             + "cf. https://docs.oracle.com/javase/8/docs/api/java/util/Properties.html");
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new IOException(
                     "\n  [" + APP + "] " + propsFile.getAbsolutePath() + "\nProperties file not readable");
         }
@@ -212,12 +212,13 @@ public class Load implements Callable<Integer>
         if (prop != null) {
             dstname = prop;
         }
-        key = "srclist";
+
+        // link to a separate file list
+        key = "srcfile";
         prop = props.getProperty(key);
         if (prop != null) {
             File file = new File(prop);
-            if (!file.isAbsolute())
-                file = new File(propsFile.getParentFile(), prop);
+            if (!file.isAbsolute()) file = new File(propsFile.getParentFile(), prop);
             if (!file.exists()) {
                 throw new FileNotFoundException("File list <entry key=\"" + key + "\">" + prop
                         + "</entry>, resolved as " + file.getAbsolutePath());
@@ -226,30 +227,44 @@ public class Load implements Callable<Integer>
             List<String> lines = Files.readAllLines(file.toPath());
             for (int i = 0; i < lines.size(); i++) {
                 String glob = lines.get(i);
-                globAdd(glob, base);
+                glob = globNorm(glob, base);
+                Dir.include(paths, glob);
             }
-        } else {
+        }
+        // direct list
+        else {
             String src = props.getProperty("src");
 
-            if (src == null)
-                throw new NoSuchFieldException(
-                        "\n  [" + APP + "] " + propsFile + "\nan src entry is needed, to have path to index"
-                                + "\n<entry key=\"src\">../corpus1/*.xml;../corpus2/*.xml</entry>");
+            if (src == null) throw new NoSuchFieldException(
+                    "\n  [" + APP + "] " + propsFile + "\nan src entry is needed, to have path to index"
+                            + "\n<entry key=\"src\">../corpus1/*.xml;../corpus2/*.xml</entry>");
             String[] blurf = src.split(" *[;] *|[\t ]*[\n\r]+[\t ]*");
             // resolve globs relative to the folder of the properties field
             final File base = propsFile.getCanonicalFile().getParentFile();
             for (String glob : blurf) {
                 // System.out.println("[" + APP + "] process " + glob );
-                globAdd(glob, base);
+                glob = globNorm(glob, base);
+                Dir.include(paths, glob);
             }
         }
 
+        key = "exclude";
+        prop = props.getProperty(key);
+        if (prop != null) {
+            // resolve globs relative to the folder of the properties field
+            final File base = propsFile.getCanonicalFile().getParentFile();
+            String[] globs = prop.split(" *[;] *|[\t ]*[\n\r]+[\t ]*");
+            for (String glob : globs) {
+                glob = globNorm(glob, base);
+                Dir.exclude(paths, glob);
+            }
+        }
+        
         key = "dicfile";
         prop = props.getProperty(key);
         if (prop != null) {
             File dicfile = new File(prop);
-            if (!dicfile.isAbsolute())
-                dicfile = new File(propsFile.getParentFile(), prop);
+            if (!dicfile.isAbsolute()) dicfile = new File(propsFile.getParentFile(), prop);
             if (!dicfile.exists()) {
                 throw new FileNotFoundException("Local dictionary file not found <entry key=\"" + key + "\">" + prop
                         + "</entry>, resolved as " + dicfile.getAbsolutePath());
@@ -262,8 +277,7 @@ public class Load implements Callable<Integer>
         prop = props.getProperty(key);
         if (prop != null) {
             File file = new File(prop);
-            if (!file.isAbsolute())
-                file = new File(propsFile.getParentFile(), prop);
+            if (!file.isAbsolute()) file = new File(propsFile.getParentFile(), prop);
             if (!file.exists()) {
                 throw new FileNotFoundException("XSLT file not found <entry key=\"" + key + "\">" + prop
                         + "</entry>, resolved as " + file.getAbsolutePath());
@@ -274,9 +288,9 @@ public class Load implements Callable<Integer>
         prop = props.getProperty("dstdir");
         if (prop != null) {
             dstdir = new File(prop);
-            if (!dstdir.isAbsolute())
-                dstdir = new File(propsFile.getParentFile(), prop);
-        } else {
+            if (!dstdir.isAbsolute()) dstdir = new File(propsFile.getParentFile(), prop);
+        }
+        else {
             dstdir = propsFile.getParentFile();
         }
 
@@ -351,8 +365,7 @@ public class Load implements Callable<Integer>
 
         // Use a tmp dir to not overwrite a working index on server
         final File tmpDir = new File(dstdir, nameTmp(name));
-        if (!ask4rmdir(tmpDir))
-            return;
+        if (!ask4rmdir(tmpDir)) return;
         File oldDir = new File(dstdir, nameOld(name));
         File theDir = new File(dstdir, name);
         /* Register thing to do at the end */
@@ -360,8 +373,7 @@ public class Load implements Callable<Integer>
             @Override
             public void run()
             {
-                if (!tmpDir.exists())
-                    return;
+                if (!tmpDir.exists()) return;
                 System.out.println("[" + APP + "] ERROR Something went wrong, old index is kept.");
             }
         });
@@ -376,8 +388,7 @@ public class Load implements Callable<Integer>
             throw new IOException("\n[" + APP + "] Impossible to rename tmp index.");
         }
         if (theDir.exists()) {
-            if (oldDir.exists())
-                Dir.rm(oldDir);
+            if (oldDir.exists()) Dir.rm(oldDir);
             theDir.renameTo(oldDir);
             System.out.println("[" + APP + "] For safety, you old index is preserved in folder :\n" + oldDir);
         }
@@ -397,8 +408,7 @@ public class Load implements Callable<Integer>
         File theDir = new File(dstdir, name);
         File oldDir = new File(dstdir, nameOld(name));
         File tmpDir = new File(dstdir, nameTmp(name));
-        if (!ask4rmdir(tmpDir))
-            return;
+        if (!ask4rmdir(tmpDir)) return;
         if (oldDir.exists()) {
             if (!oldDir.renameTo(tmpDir))
                 throw new IOException("\n[" + APP + "] Impossible to rename old index to\n  " + tmpDir);
@@ -411,7 +421,8 @@ public class Load implements Callable<Integer>
             // only one thread
             // threads = 1;
             write(name, theDir.toPath());
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             // try to restore old index
             Dir.rm(theDir);
             if (theDir.exists()) {
@@ -422,8 +433,7 @@ public class Load implements Callable<Integer>
             throw e;
         }
         // we are OK
-        if (tmpDir.exists())
-            Dir.rm(tmpDir);
+        if (tmpDir.exists()) Dir.rm(tmpDir);
     }
 
     /**

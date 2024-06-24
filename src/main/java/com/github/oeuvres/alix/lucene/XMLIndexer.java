@@ -64,7 +64,6 @@ import javax.xml.transform.stream.StreamSource;
 import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
-import org.xml.sax.XMLFilter;
 
 import com.github.oeuvres.alix.xml.JarResolver;
 
