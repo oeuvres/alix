@@ -64,6 +64,7 @@ import javax.xml.transform.stream.StreamSource;
 import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
+import org.xml.sax.XMLFilter;
 
 import com.github.oeuvres.alix.xml.JarResolver;
 
@@ -156,31 +157,16 @@ public class XMLIndexer implements Runnable
         StreamSource tei2alixSource = new StreamSource(resloader.resolve("alix.xsl"));
         Templates tei2alixTemplates = XSLFactory.newTemplates(tei2alixSource); // keep XSLFactory to resolve jar imports
         TransformerHandler tei2alixHandler = stf.newTransformerHandler(tei2alixTemplates);
+        // no effect
         // tei2alixHandler.getTransformer().setOutputProperty(OutputKeys.INDENT, "yes");
         
         TransformerHandler preHandler = null;
         if (preXsl != null) {
-            
-            /*
-            TransformerHandler th2 = stf.newTransformerHandler(templates2);
-
-            th2.setResult(new StreamResult(System.out));
-
-            // Note that indent, etc should be applied to the last transformer in chain:
-            th2.getTransformer().setOutputProperty(OutputKeys.INDENT, "yes");
-
-            th1.getTransformer().transform(new StreamSource(System.in), new SAXResult(th2));
-            */
-            
             if (!new File(preXsl).exists()) {
                 throw new FileNotFoundException("\n[" + Alix.NAME + "] pre transformation XSLfile not found: " + preXsl);
             }
-            Templates preTemplates = stf.newTemplates(new StreamSource(preXsl));
+            Templates preTemplates = XSLFactory.newTemplates(new StreamSource(preXsl));
             preHandler = stf.newTransformerHandler(preTemplates);
-            // preHandler.getTransformer().setOutputProperty(OutputKeys.INDENT, "yes");
-        }
-        else {
-            
         }
         // loop on files
         while (it.hasNext()) {
@@ -199,17 +185,22 @@ public class XMLIndexer implements Runnable
 
             // load source file 
             StreamSource docSource = new StreamSource(new ByteArrayInputStream(docBytes));
-            tei2alixHandler.getTransformer().setParameter("filename", filename);
-            tei2alixHandler.getTransformer().setParameter("index", true);
             alix2luceneHandler.setFileName(filename); // set fileName meta
             
             try {
                 if (preXsl != null) {
                     preHandler.getTransformer().setParameter("filename", filename);
                     preHandler.getTransformer().setParameter("index", true);
-                    
+                    // The TransformerHandler is not serially reusable
+                    tei2alixHandler = stf.newTransformerHandler(tei2alixTemplates);
+                    tei2alixHandler.getTransformer().setParameter("filename", filename);
+                    tei2alixHandler.getTransformer().setParameter("index", true);
+                    tei2alixHandler.setResult(alix2luceneResult); // tei2alixHandler will be used as a SAX result
+                    preHandler.getTransformer().transform(docSource, new SAXResult(tei2alixHandler));
                 }
                 else {
+                    tei2alixHandler.getTransformer().setParameter("filename", filename);
+                    tei2alixHandler.getTransformer().setParameter("index", true);
                     tei2alixHandler.getTransformer().transform(docSource, alix2luceneResult);
                 }
             }
