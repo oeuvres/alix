@@ -77,7 +77,7 @@ public class Doc
     /** The lucene index to read in */
     final private Alix alix;
     /** Id of a document in this reader {@link IndexReader#document(int)} */
-    final int lucId;
+    final int docId;
     /** Permanent id for the document */
     final String id;
     /** Set of fields loaded */
@@ -120,7 +120,7 @@ public class Doc
             document = fread.document(docId, fieldsToLoad);
         }
         this.alix = alix;
-        this.lucId = docId;
+        this.docId = docId;
         this.id = id;
         this.fieldsToLoad = fieldsToLoad;
     }
@@ -159,7 +159,7 @@ public class Doc
             throw new IllegalArgumentException("No stored fields found for docId: " + docId);
         }
         this.alix = alix;
-        this.lucId = docId;
+        this.docId = docId;
         this.id = document.get(ALIX_ID);
         this.fieldsToLoad = fieldsToLoad;
     }
@@ -189,7 +189,7 @@ public class Doc
         StringBuilder sb = new StringBuilder();
 
         FieldText ftext = alix.fieldText(field);
-        int len1 = ftext.occs(lucId);
+        int len1 = ftext.occs(docId);
         int len2 = ftext.occs(docId2);
 
         Terms vek1 = getTermVector(field);
@@ -309,7 +309,7 @@ public class Doc
      */
     public int docId()
     {
-        return lucId;
+        return docId;
     }
 
     /**
@@ -382,7 +382,7 @@ public class Doc
 
     public int freq(final String field, final String[] forms) throws NoSuchFieldException, IOException
     {
-        return freq(alix.reader(), this.lucId, field, forms);
+        return freq(alix.reader(), this.docId, field, forms);
     }
 
     /**
@@ -463,9 +463,9 @@ public class Doc
     public Terms getTermVector(String field) throws IOException, NoSuchFieldException
     {
         // new lucene API, not tested
-        Terms tvek = alix.reader().termVectors().get(lucId, field);
+        Terms tvek = alix.reader().termVectors().get(docId, field);
         if (tvek == null)
-            throw new NoSuchFieldException("Missig search Vector for field=" + field + " docId=" + lucId);
+            throw new NoSuchFieldException("Missig search Vector for field=" + field + " docId=" + docId);
         return tvek;
     }
 
@@ -552,7 +552,7 @@ public class Doc
         Terms vek2 = alix.reader().termVectors().get(docId2, field);
         Top<String> top = new Top<String>(100);
         FieldText ftext = alix.fieldText(field);
-        int len1 = ftext.occs(lucId);
+        int len1 = ftext.occs(docId);
         int len2 = ftext.occs(docId2);
         Terms vek1 = getTermVector(field);
         // double max1 = Double.MIN_VALUE;
@@ -683,7 +683,7 @@ public class Doc
      */
     public int length(String field) throws IOException
     {
-        return alix.fieldText(field).occs(lucId);
+        return alix.fieldText(field).occs(docId);
     }
 
     /**

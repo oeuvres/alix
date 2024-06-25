@@ -60,7 +60,7 @@ import static com.github.oeuvres.alix.Names.*;
 import com.github.oeuvres.alix.lucene.analysis.MetaAnalyzer;
 
 /**
- * An XML parser allowing to ndex XML or HTMTL.
+ * An XML parser allowing to index XML or HTMTL.
  * 
  * 
  * Index an xml file of lucene documents. React to the namespace uri
@@ -189,6 +189,7 @@ public class AlixSAXIndexer extends DefaultHandler
                     doc.add(new StoredField(name, text)); // (TokenStream fields cannot be stored)
                     TokenStream ts = new MetaAnalyzer().tokenStream("meta", text); // renew token stream
                     doc.add(new Field(name, ts, Alix.ftypeMeta)); // indexation of the chosen tokens
+                    ts.close();
                     break;
                 case TEXT:
                     // at this point, impossible to get document stats, tokens will be played when
