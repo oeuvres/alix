@@ -52,10 +52,7 @@ public class MetaTokenizer extends Tokenizer
     private static final int IO_BUFFER_SIZE = 4096;
     private final CharacterBuffer ioBuffer = CharacterUtils.newCharacterBuffer(IO_BUFFER_SIZE);
     private final boolean xml = true;
-    /**
-     * A mutable String with hashCode() and compare() like String, used for testing
-     * values in Maps
-     */
+    /** A mutable String, with same hashCode() and compare(), used for tests in Maps */
     private final Chain test = new Chain();
 
     @Override

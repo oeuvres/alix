@@ -509,7 +509,7 @@ public class JspTools
      * Get an int Range between a min and a max (included).
      * @param name Name of an http param
      * @param range range[0] = min value, range[1] = max
-     * @return null if no value, [point] if one value, [lower, upper] if 2 value
+     * @return [] if no value, [point] if one value, [lower, upper] if 2 value
      */
     public int[] getIntRange(final String name, final int[] range)
     {
@@ -523,7 +523,7 @@ public class JspTools
         }
         String[] values = request.getParameterValues(name);
         if (values == null || values.length < 1) {
-            return null;
+            return new int[0];
         }
         final int[] data = new int[2];
         int pos = 0;
@@ -539,7 +539,7 @@ public class JspTools
             if (pos == 2) break;
         }
         if (pos == 0) {
-            return null;
+            return new int[0];
         }
         else if (pos == 1) {
             if (data[0] < min || data[0] > max) return null;
@@ -711,9 +711,10 @@ public class JspTools
      */
     public String[] getStringSet(final String name)
     {
+        final String[] empty = new String[0];
         String[] values = request.getParameterValues(name);
         if (values == null)
-            return null;
+            return empty;
         List<String> list = new ArrayList<>();
         Set<String> dic = new HashSet<>();
         for (String v : values) {
@@ -727,8 +728,8 @@ public class JspTools
             list.add(v);
         }
         if (list.size() < 1)
-            return null;
-        return list.toArray(new String[0]);
+            return empty;
+        return list.toArray(empty);
     }
 
     /**

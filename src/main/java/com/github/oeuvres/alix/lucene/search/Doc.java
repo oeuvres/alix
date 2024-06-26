@@ -389,28 +389,28 @@ public class Doc
      * Count occurences of terms in a doc.
      *
      * @param reader A Lucene reader to get stats from.
-     * @param lucId  Lucene internal id of a doc.
+     * @param docId  Lucene internal id of a doc.
      * @param field  Field name.
      * @param forms  Array of forms.
      * @return Occurrences count for founded forms.
      * @throws NoSuchFieldException
      * @throws IOException
      */
-    static public int freq(final IndexReader reader, final int lucId, final String field, final String[] forms)
+    static public int freq(final IndexReader reader, final int docId, final String field, final String[] forms)
             throws NoSuchFieldException, IOException
     {
         if (forms == null || forms.length < 1)
             return 0;
         Arrays.sort(forms); // may optimize term seekink, useful for uniq
-        Terms tvek = reader.termVectors().get(lucId, field);
+        Terms tvek = reader.termVectors().get(docId, field);
 
         if (!tvek.hasFreqs()) {
-            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " lucId=" + lucId);
+            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " lucId=" + docId);
         }
         int freq = 0;
         TermsEnum tenum = tvek.iterator();
         if (tenum == null) {
-            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " lucId=" + lucId);
+            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " lucId=" + docId);
         }
         PostingsEnum postings = null;
         String last = null;

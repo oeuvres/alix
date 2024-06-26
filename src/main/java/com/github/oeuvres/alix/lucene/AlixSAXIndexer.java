@@ -39,12 +39,12 @@ import java.util.ArrayList;
 import java.util.Locale;
 import java.util.logging.Logger;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
-import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredField;
@@ -106,8 +106,6 @@ public class AlixSAXIndexer extends DefaultHandler
     /** Flag to verify that an element is not empty (for XML serialization) */
     private boolean empty;
 
-    /** Keep an hand on the text analyzer */
-    // private final Analyzer analyzer;
 
     @Override
     public void characters(char[] ch, int start, int length)
@@ -187,9 +185,10 @@ public class AlixSAXIndexer extends DefaultHandler
                     break;
                 case META:
                     doc.add(new StoredField(name, text)); // (TokenStream fields cannot be stored)
-                    TokenStream ts = new MetaAnalyzer().tokenStream("meta", text); // renew token stream
+                    // renew token stream, do not reset nor close, can’t know how much analyzer needed
+                    MetaAnalyzer metaAnalyzer = new MetaAnalyzer();
+                    TokenStream ts = metaAnalyzer.tokenStream("meta", text);
                     doc.add(new Field(name, ts, Alix.ftypeMeta)); // indexation of the chosen tokens
-                    ts.close();
                     break;
                 case TEXT:
                     // at this point, impossible to get document stats, tokens will be played when
@@ -476,9 +475,8 @@ public class AlixSAXIndexer extends DefaultHandler
                             + "\" is not a number.");
                     break;
                 }
-                doc.add(new IntPoint(name, val)); // to search
-                doc.add(new StoredField(name, val)); // to show
-                doc.add(new NumericDocValuesField(name, val)); // to sort
+                // for search, store and sort
+                doc.add(new IntField(name, val, Field.Store.YES));
                 break;
             case CATEGORY:
                 if (value == null) {
