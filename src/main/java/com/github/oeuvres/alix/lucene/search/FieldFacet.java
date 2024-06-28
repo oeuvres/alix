@@ -428,6 +428,7 @@ public class FieldFacet
             // document not in the filter, go next
             if (!filter.get(docId))
                 continue;
+            forms.hits++; // document hit
             // empty document, probably a book cover, but we don’t want a dependance here on
             // a FieldText
             // if (ftext.docOccs[docId] < 1) continue;

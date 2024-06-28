@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.NoSuchElementException;
+import java.util.stream.IntStream;
 
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
@@ -104,10 +105,7 @@ public class FormEnum implements FormIterator
     protected int hits;
     /** Vector of documents hits */
     protected BitSet hitsVek;
-    /**
-     * Optional, for a co-occurrence search, count of occurrences to capture on the
-     * left
-     */
+    /** Optional, co-occurrence search, count of occs to capture on the left */
     public int left;
     /** Biggest formId+1 (like lucene IndexReader.maxDoc()) */
     public int maxForm;
@@ -121,17 +119,11 @@ public class FormEnum implements FormIterator
     public long occsPart;
     /** Reverse order of sorting */
     public boolean reverse;
-    /**
-     * Optional, for a co-occurrence search, count of occurrences to capture on the
-     * right
-     */
+    /** Optional, co-occurrence search, count of occs to capture on the right */
     public int right;
     /** Optional, for a co-occurrence search, pivot words */
     public String[] search;
-    /**
-     * An array of formId in the order we want to iterate on, should be set before
-     * iteration
-     */
+    /** Array of formId in order to iterate on, to set before iteration */
     private int[] sorter;
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
@@ -561,7 +553,9 @@ public class FormEnum implements FormIterator
     public void reset()
     {
         if (sorter == null) {
-            throw new NegativeArraySizeException("No order rule to sort on. Use FormEnum.sort() before");
+            // natural order, let’s see
+            this.sorter(IntStream.range(0, maxForm).toArray());
+            // throw new NegativeArraySizeException("No order rule to sort on. Use FormEnum.sort() before");
         }
         cursor = -1;
         formId = -1;
@@ -673,6 +667,10 @@ public class FormEnum implements FormIterator
         if (formFreq != null && maxForm != formFreq.length) {
             throw new IllegalArgumentException("Corrupted FormEnum name=" + name + " maxForm=" + maxForm
                     + " formOccsFreq.length=" + formFreq.length);
+        }
+        if (order == null) {
+            reset();
+            return;
         }
         switch (order) {
         case OCCS:
