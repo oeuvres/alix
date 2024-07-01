@@ -32,6 +32,10 @@
  */
 package com.github.oeuvres.alix.util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Build an efficient suggestion of words in a relevancy order.
  * 
@@ -47,18 +51,63 @@ public class WordSuggest
     final String[] words;
     final String search;
     final int[] starts;
+    final int wc;
     
     public WordSuggest(final String[] words)
     {
         this.words = words;
         StringBuilder sb = new StringBuilder().append("_");
-        IntList ints = new IntList(words.length);
+        final int len = words.length;
+        starts = new int[len];
         int start = 0;
-        for (String w: words) {
-            final String ascii = Char.toASCII(w);
+        for (int i =0; i < len; i++) {
+            final String ascii = Char.toASCII(words[i]).toLowerCase();
             sb.append(ascii).append("_");
+            starts[i] = start;
+            start += ascii.length() + 1; 
         }
+        wc = words.length;
         search = sb.toString();
-        starts = ints.toArray();
+    }
+    
+    public String[][] search(String q, int count) {
+        q = Char.toASCII(q).toLowerCase();
+        List<String[]> list = new ArrayList<>(count);
+        int fromIndex = 0;
+        do {
+            if (--count < 0) break;
+            final int index = search.indexOf(q, fromIndex);
+            if (index < 0) break;
+            int found = Arrays.binarySearch(starts, index);
+            if (found < 0) found = Math.abs(found) - 2;
+            final String[] row = new String[2];
+            String word = words[found];
+            row[0] = word;
+            final int asciiLen = ((found == wc - 1)?search.length():starts[found + 1]) - starts[found] - 1;
+            final String jok = "£";
+            boolean ligature = asciiLen != word.length();
+            if (ligature) {
+                // add an empty char after double ligatures
+                word = word.replaceAll("([æÆᴁﬀﬁﬂĳĲœᴔŒɶﬆ])", "$1" + jok);
+            }
+            final int markStart = index - starts[found] - ((q.charAt(0)== '_')?0:1);
+            final int qLen = q.replaceAll("_", "").length();
+            String marked = 
+                word.substring(0, markStart)
+                + "<mark>"
+                + word.substring(markStart, markStart + qLen)
+                + "</mark>"
+                + word.substring(markStart + qLen)
+            ;
+            if (ligature) {
+                marked = marked.replaceAll(jok, "");
+            }
+            row[1] = marked;
+            list.add(row);
+            if (found == wc - 1) break;
+            // search starting next word
+            fromIndex = starts[found + 1];
+        } while(true);
+        return list.toArray(new String[0][0]);
     }
 }
