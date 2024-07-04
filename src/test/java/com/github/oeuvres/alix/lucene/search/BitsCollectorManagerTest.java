@@ -4,8 +4,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
@@ -13,9 +11,8 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
-import org.junit.Test;
 
-public class TestBitsCollectorManager extends LuceneTestCase
+public class BitsCollectorManagerTest extends LuceneTestCase
 {
 
     public void print(BitSet bits)

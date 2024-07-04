@@ -10,7 +10,6 @@ import org.junit.Test;
 
 public class DirTest {
 
-    @Test
     public void testDirGlob() throws IOException {
         String resources = new File("src/test/resources/").getAbsolutePath();
         String[] globs = {

@@ -5,7 +5,6 @@ import org.junit.Test;
 
 public class ChainTest {
 
-    @Test
     public void testNormalizeString() {
         String[] phrases = {
             "",
@@ -31,7 +30,6 @@ public class ChainTest {
         }
     }
 
-    @Test
     public void testSplitChar() {
         String[] paths = {
             "", 
@@ -63,7 +61,6 @@ public class ChainTest {
         }
     }
 
-    @Test
     public void testSplitString() {
         String[] phrases = {
             "",

@@ -41,6 +41,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -105,7 +106,7 @@ public class FieldText
     /** Global number of occurrences for this field */
     public long occs;
     /** The lucene reader from which to get freqs */
-    final DirectoryReader reader;
+    final IndexReader reader;
 
     /**
      * A temporary record used to sort collected terms from global index.
@@ -142,7 +143,7 @@ public class FieldText
      * @param fieldName
      * @throws IOException Lucene errors.
      */
-    public FieldText(final DirectoryReader reader, final String fieldName) throws IOException {
+    public FieldText(final IndexReader reader, final String fieldName) throws IOException {
         FieldInfos fieldInfos = FieldInfos.getMergedFieldInfos(reader);
         FieldInfo info = fieldInfos.fieldInfo(fieldName);
         if (info == null) {
@@ -913,6 +914,8 @@ public class FieldText
     {
         return formTag[formId];
     }
+    
+
 
     /**
      * Get a dictionary of search, without statistics.
