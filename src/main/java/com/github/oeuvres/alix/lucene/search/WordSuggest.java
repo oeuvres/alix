@@ -32,15 +32,26 @@
  */
 package com.github.oeuvres.alix.lucene.search;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
+import com.github.oeuvres.alix.fr.Tag.TagFilter;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.IntList;
+import com.github.oeuvres.alix.util.TopArray;
 
 /**
  * Build an efficient suggestion of words.
@@ -54,24 +65,33 @@ import com.github.oeuvres.alix.util.IntList;
  */
 public class WordSuggest
 {
+    /** Source Alix field wrapper */
+    private final FieldText fieldText;
+    /** The lucene index to search in */
+    private final IndexReader reader;
+    /** The field name */
+    private final String fieldName;
     /** Forms of a field, by reference */
-    final BytesRefHash formDic;
+    private final BytesRefHash formDic;
     /** Concatenation of all words, in ascii, in Term enumeration order, */
-    final String ascii;
+    private final String ascii;
     /** Starting indexes of words in the ascii String */
-    final int[] starts;
+    private final int[] starts;
     /** formId known by formDic in the ascii String order */
-    final int[] formIds;
-    
-    final int wc;
+    private final int[] formIds;
+    /** “word count” () dictionary size */
+    private final int wc;
     
     /**
      * Build an index of words optimized for wildcard searching
      * @return
      */
-    public WordSuggest (final BytesRefHash formDic)
+    public WordSuggest (final FieldText fieldText)
     {
-        this.formDic = formDic;
+        this.fieldText = fieldText;
+        this.fieldName = fieldText.name;
+        this.reader = fieldText.reader;
+        this.formDic = fieldText.formDic;
         final int size = formDic.size();
         // get the terms in their index order for faster loop
         // Term enumerations are always ordered by BytesRef.compareTo
@@ -97,12 +117,16 @@ public class WordSuggest
     }
 
     /**
-     * Find list of formId in the dictionary
+     * Find list of formId in the dictionary of a field.
      * @param q
      * @param count
      * @return
      */
-    public int[] search(String q) {
+    public int[] list(String q, final TagFilter wordFilter) {
+        boolean hasTags = (wordFilter != null && wordFilter.cardinality() > 0);
+        boolean noStop = (wordFilter != null && wordFilter.nostop());
+        boolean locs = (wordFilter != null && wordFilter.locutions());
+
         IntList formIdList = new IntList();
         q = Char.toASCII(q).toLowerCase();
         int fromIndex = 0;
@@ -111,42 +135,62 @@ public class WordSuggest
             if (index < 0) break;
             int found = Arrays.binarySearch(starts, index);
             if (found < 0) found = Math.abs(found) - 2;
-            formIdList.push(formIds[found]);
+            // next search will start with next word
+            fromIndex = starts[found + 1];
+            
+            final int formId = formIds[found];
+            // filter forms
+            if (noStop) {
+                if (fieldText.isStop(formId)) continue;
+            }
+            else if (locs) {
+                if (!fieldText.formLoc.get(formId)) continue;
+            }
+            else if (hasTags) {
+                if (!wordFilter.accept(fieldText.formTag[formId])) continue;
+            }
+            // formId selected
+            formIdList.push(formId);
             // end of list
             if (found == wc - 1) break;
-            // search starting next word
-            fromIndex = starts[found + 1];
         } while(true);
         return formIdList.toArray();
     }
     
-    /*
-    static public void mark(final String ascii, final String q, final String word) {
+    /**
+     * With a found word and an ASCII search, propose an highlighted version.
+     * @param word ex: "Lœs"
+     * @param q ex "_OE"
+     * @return "L<mark>œ</mark>s"
+     */
+    static public String mark(final String word, final String q)
+    {
+        final String qNorm = Char.toASCII(q, true).toLowerCase();
+        final int qLen = qNorm.length();
+        final String ascii = Char.toASCII(word);
         final int asciiLen = ascii.length();
         final String jok = "£";
-        boolean ligature = asciiLen != word.length();
-        if (ligature) {
-            // add an empty char after double ligatures
-            word = word.replaceAll("([æÆᴁﬀﬁﬂĳĲœᴔŒɶﬆ])", "$1" + jok);
-        }
-        final int markStart = index - starts[found] - ((q.charAt(0)== '_')?0:1);
-        final int qLen = q.replaceAll("_", "").length();
+        boolean ligature = (asciiLen != word.length());
+        final String s = (ligature)?word.replaceAll("([æÆᴁﬀﬁﬂĳĲœᴔŒɶﬆ])", "$1" + jok):word;
+        final int markStart = ascii.indexOf(qNorm);
         String marked = 
-            word.substring(0, markStart)
+            s.substring(0, markStart)
             + "<mark>"
-            + word.substring(markStart, markStart + qLen)
+            + s.substring(markStart, markStart + qLen)
             + "</mark>"
-            + word.substring(markStart + qLen)
+            + s.substring(markStart + qLen)
         ;
         if (ligature) {
             marked = marked.replaceAll(jok, "");
         }
-        row[1] = marked;
-        list.add(row);
+        return marked;
     }
-    */
     
-    private class BytesId implements Comparable<BytesId> {
+    /**
+     * A data row used to sort terms by bytes
+     */
+    private class BytesId implements Comparable<BytesId>
+    {
         final BytesRef bytes;
         final int formId;
         BytesId(int formId) {
@@ -159,6 +203,99 @@ public class WordSuggest
             return bytes.compareTo(other.bytes);
         }
     }
+    
+    /**
+     * 
+     * @param q
+     * @param count
+     * @throws IOException
+     */
+    public Suggestion[] search(
+        final String q, 
+        final int count, 
+        final TagFilter wordFilter, 
+        final BitSet docFilter
+    ) throws IOException
+    {
+        final int[] formIds = list(q, wordFilter);
+        final int formLen = formIds.length;
+        int[] formHits = new int[formLen];
+        // formId in TermsEnum are faster than shuffled
+        BytesRef bytes = new BytesRef();
+        PostingsEnum docsEnum = null;
+        for (LeafReaderContext context : reader.leaves()) {
+            LeafReader leaf = context.reader();
+            final int docBase = context.docBase;
+            Terms terms = leaf.terms(fieldName);
+            if (terms == null) continue;
+            TermsEnum tenum = terms.iterator();
+            Bits live = leaf.getLiveDocs();
+            for (int i = 0; i < formLen; i++) {
+                final int formId = formIds[i];
+                formDic.get(formId, bytes);
+                if (!tenum.seekExact(bytes)) {
+                    continue;
+                }
+                docsEnum = tenum.postings(docsEnum, PostingsEnum.NONE);
+                int docLeaf;
+                while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                    if (live != null && !live.get(docLeaf)) continue; // deleted doc
+                    int docId = docBase + docLeaf;
+                    if (docFilter != null && !docFilter.get(docId)) continue; // document not in the filter
+                    // freq always > 0
+                    formHits[i]++;
+                }
+            }
+        }
+        // Select the top best terms
+        TopArray top = new TopArray(count);
+        for (int i = 0; i < formLen; i++) {
+            final int hits = formHits[i];
+            if (hits == 0) continue;
+            top.push(formIds[i], hits);
+        }
+        // unroll the top to build the result array
+        ArrayList<Suggestion> list = new ArrayList<>();
+        for (TopArray.IdScore pair: top) {
+            final int formId = pair.id();
+            final int hits = (int)pair.score();
+            formDic.get(formId, bytes);
+            final String word = bytes.utf8ToString();
+            final String marked = mark(word, q);
+            list.add(new Suggestion(word, hits, marked));
+        }
+        return list.toArray(new Suggestion[0]);
+    }
+
+    /**
+     * Content of a suggested word.
+     */
+    class Suggestion
+    {
+        private final String word;
+        private final int hits;
+        private final String marked;
+        public Suggestion(final String word, final int hits, final String marked) {
+            this.word = word;
+            this.hits = hits;
+            this.marked = marked;
+        }
+        public String word() {
+            return word;
+        }
+        public int hits() {
+            return hits;
+        }
+        public String marked() {
+            return marked;
+        }
+        @Override
+        public String toString()
+        {
+            return word + " (" + hits + ") " + marked;
+        }
+    }
+
     
     @Override
     public String toString()

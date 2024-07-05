@@ -1,67 +1,100 @@
 package com.github.oeuvres.alix.lucene.search;
 
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.Random;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.TermState;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.junit.Test;
 
+import com.github.oeuvres.alix.fr.Tag.TagFilter;
 import com.github.oeuvres.alix.lucene.search.WordSuggest;
+import com.github.oeuvres.alix.lucene.search.WordSuggest.Suggestion;
+import com.github.oeuvres.alix.util.Char;
 
+public class WordSuggestTest
+{
+    private static String FIELD = "text_cloud";
 
-public class WordSuggestTest extends LuceneTestCase {
-    WordSuggest sugg;
-    
-    @Test
-    public void testBasics() throws Exception
+    public void createIndex() throws IOException
     {
+        /*
         Directory indexStore = newDirectory();
         RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
         Document doc = new Document();
-        doc.add(new TextField("text", "Maison maison maisonnée MAÎSTRE cabane cœlène", Field.Store.NO));
+        doc.add(new TextField(FIELD, "Maison maison maisonnée MAÎSTRE cabane cœlène", Field.Store.NO));
         writer.addDocument(doc);
         doc.clear();
-        doc.add(new TextField("text", "Maïs maisonnette maison", Field.Store.NO));
+        doc.add(new TextField(FIELD, "Maïs maisonnette maison", Field.Store.NO));
         writer.addDocument(doc);
+        writer.commit();
         writer.close(); // close after get the reader ?
+        */
+    }
 
-        IndexReader reader = DirectoryReader.open(indexStore);
-        FieldText ftext = new FieldText(reader, "text");
-        sugg = new WordSuggest(ftext.formDic);
-        System.out.println(sugg.ascii);
-        for (int i = 0; i < sugg.ascii.length(); i += 10) {
-            System.out.print(" 123456789");
-        }
-        System.out.println("");
-        for (String q: new String[] {
-            "_m",
+    public static void main(String[] args) throws IOException
+    {
+        long startTime = System.nanoTime();
+        Directory dir = FSDirectory.open(Paths.get("../piaget_labo/lucene/piaget_leaves"));
+        IndexReader reader = DirectoryReader.open(dir);
+        System.out.println("Open Directory " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
+        startTime = System.nanoTime();
+        FieldText ftext = new FieldText(reader, FIELD);
+        System.out.println("Build FieldText " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
+        startTime = System.nanoTime();
+        WordSuggest sugg = new WordSuggest(ftext);
+        System.out.println("Buid wordSuggest " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
+        TagFilter wordFilter = new TagFilter().nostop(true);
+        for (final String q : new String[] {
+            "paï", 
+            // "_m",
             "_c",
-            "ne_",
-            "t",
-            "aïs",
-            "_a",
+            // "ne_",
+            // "t",
+            // "païs",
+            "_a", 
+            "paï", 
         }) {
-            search(q);
+            startTime = System.nanoTime();
+            Suggestion[] top = sugg.search(q, 10, wordFilter, null);
+            System.out.println(q + "  " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
+            for (Suggestion word: top) {
+                System.out.println(word);
+            }
         }
         reader.close();
-        indexStore.close();
+        dir.close();
     }
-    
-    void search(final String q) {
-        int[] formIds = sugg.search(q);
-        System.out.print(q + " — ");
-        BytesRef bytes = new BytesRef();
-        for (int formId: formIds) {
-            sugg.formDic.get(formId, bytes);
-            System.out.print(" " + bytes.utf8ToString());
+
+    // Implementing Fisher–Yates shuffle
+    static void shuffle(int[] ar)
+    {
+        Random rnd = new Random();
+        for (int i = ar.length - 1; i > 0; i--) {
+            int index = rnd.nextInt(i + 1);
+            // Simple swap
+            int a = ar[index];
+            ar[index] = ar[i];
+            ar[i] = a;
         }
-        System.out.println();
     }
 
 

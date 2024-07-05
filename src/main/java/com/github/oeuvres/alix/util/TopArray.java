@@ -41,7 +41,7 @@ import java.util.NoSuchElementException;
  * A queue to select the top elements from a score array where index is a kind
  * of id, and value is a score.
  */
-public class TopArray implements Iterable<IdScore>
+public class TopArray implements Iterable<TopArray.IdScore>
 {
     /** Flag, reverse order */
     static final public int REVERSE = 0x01;
@@ -94,7 +94,7 @@ public class TopArray implements Iterable<IdScore>
      * @param size
      */
     public TopArray(final int size) {
-        this(size, NO_ZERO);
+        this(size, 0);
     }
 
     /*
@@ -196,6 +196,11 @@ public class TopArray implements Iterable<IdScore>
         return this;
     }
 
+    /**
+     * 
+     * @param data
+     * @return
+     */
     public TopArray push(final double[] data)
     {
         for (int id = 0, length = data.length; id < length; id++)
@@ -203,6 +208,11 @@ public class TopArray implements Iterable<IdScore>
         return this;
     }
 
+    /**
+     * 
+     * @param data
+     * @return
+     */
     public TopArray push(final int[] data)
     {
         for (int id = 0, length = data.length; id < length; id++)
@@ -210,6 +220,11 @@ public class TopArray implements Iterable<IdScore>
         return this;
     }
 
+    /**
+     * 
+     * @param data
+     * @return
+     */
     public TopArray push(final long[] data)
     {
         for (int id = 0, length = data.length; id < length; id++)
@@ -313,6 +328,63 @@ public class TopArray implements Iterable<IdScore>
         return sb.toString();
     }
 
+    /**
+     * A mutable pair (id, score), sortable on score only, used as cells in arrays.
+     */
+    static public class IdScore implements Comparable<IdScore>
+    {
+        /** Object id */
+        private int id;
+        /** Score to compare values */
+        private double score;
+
+        /**
+         * Constructor
+         * 
+         * @param score
+         * @param value
+         */
+        IdScore(final int id, final double score) {
+            this.id = id;
+            this.score = score;
+        }
+
+        /**
+         * Modify value
+         * 
+         * @param id
+         * @param score
+         */
+        protected void set(final int id, final double score)
+        {
+            this.id = id;
+            this.score = score;
+        }
+
+        public int id()
+        {
+            return id;
+        }
+
+        public double score()
+        {
+            return score;
+        }
+
+        @Override
+        public int compareTo(IdScore item)
+        {
+            return Double.compare(item.score, score);
+        }
+
+        @Override
+        public String toString()
+        {
+            return score + "[" + id + "]";
+        }
+
+    }
+    
     /**
      * A private class that implements iteration over the pairs.
      */

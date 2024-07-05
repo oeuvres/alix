@@ -374,8 +374,21 @@ public enum Tag {
          * here.
          */
         boolean[] rule = new boolean[256];
+        int cardinality = -1;
         boolean nostop;
         boolean locutions;
+        
+        public int cardinality()
+        {
+            if (cardinality >= 0) {
+                return cardinality;
+            }
+            cardinality = 0;
+            for (boolean tag: rule) {
+                cardinality++;
+            }
+            return cardinality;
+        }
 
         public boolean accept(int flag)
         {
@@ -384,17 +397,20 @@ public enum Tag {
 
         public TagFilter clear(final Tag tag)
         {
+            cardinality = -1;
             return clear(tag.flag);
         }
 
         public TagFilter clear(final int flag)
         {
+            cardinality = -1;
             rule[flag] = false;
             return this;
         }
 
         public TagFilter clearAll()
         {
+            cardinality = -1;
             rule = new boolean[256];
             nostop = false;
             return this;
@@ -407,6 +423,7 @@ public enum Tag {
 
         public TagFilter clearGroup(int flag)
         {
+            cardinality = -1;
             flag = flag & 0xF0;
             int lim = flag + 16;
             for (; flag < lim; flag++)
@@ -443,12 +460,14 @@ public enum Tag {
 
         public TagFilter set(final int flag)
         {
+            cardinality = -1;
             rule[flag] = true;
             return this;
         }
 
         public TagFilter setAll()
         {
+            cardinality = -1;
             Arrays.fill(rule, true);
             nostop = false;
             return this;
@@ -461,6 +480,7 @@ public enum Tag {
 
         public TagFilter setGroup(int flag)
         {
+            cardinality = -1;
             flag = flag & 0xF0;
             int lim = flag + 16;
             // System.out.println(String.format("0x%02X", tag));

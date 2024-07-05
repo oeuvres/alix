@@ -307,14 +307,14 @@ public class Char
      * @param src
      * @return
      */
-    public static String toASCII(CharSequence src, boolean nopun)
+    public static String toASCII(CharSequence src, boolean punStrip)
     {
         StringBuilder dst = new StringBuilder();
         char c;
         for (int i = 0, len = src.length(); i < len; i++) {
             c = src.charAt(i);
-            if (nopun && isPunctuationOrSpace(c)) {
-                dst.append(' ');
+            if (punStrip && isPunctuationOrSpace(c)) {
+                // strip non char
             } else if (c < '\u0080') {
                 dst.append(c);
             } else {
