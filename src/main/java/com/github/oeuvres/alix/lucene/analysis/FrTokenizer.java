@@ -167,8 +167,7 @@ public class FrTokenizer extends Tokenizer
         SKIP.put(new CharsAtt("style"), new CharsAtt("/style"));
         SKIP.put(new CharsAtt("teiHeader"), new CharsAtt("/teiHeader"));
     }
-    /** tag to ignore but keep content */
-    public static final HashMap<CharsAtt, CharsAtt> IGNORE = new HashMap<CharsAtt, CharsAtt>();
+
     /** Store closing tag to skip */
     private CharsAtt skip = null;
 
@@ -183,14 +182,10 @@ public class FrTokenizer extends Tokenizer
      */
     public FrTokenizer(int flags) {
         super(new AlixAttributeFactory(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
-        if ((flags & XML) > 0)
-            this.xml = true;
-        else
-            this.xml = false;
-        if ((flags & SEARCH) > 0)
-            this.query = true;
-        else
-            this.query = false;
+        if ((flags & XML) > 0) this.xml = true;
+        else this.xml = false;
+        if ((flags & SEARCH) > 0) this.query = true;
+        else this.query = false;
     }
 
     @Override
@@ -228,11 +223,11 @@ public class FrTokenizer extends Tokenizer
                 bufLen = bufSrc.getLength();
                 bufIndex = 0;
                 // end of buffer
-                if (bufLen != 0)
-                    ;
+                if (bufLen != 0);
                 else if (length > 0) { // a term to send
                     break;
-                } else { // finish !
+                }
+                else { // finish !
                     finalOffset = correctOffset(offset);
                     return false;
                 }
@@ -243,27 +238,26 @@ public class FrTokenizer extends Tokenizer
             bufIndex++;
 
             // a very light XML parser
-            if (!xml)
-                ;
+            if (!xml);
             else if (c == '<') { // start tag
-                // if a word was started, send it ? ex Word<note>2</note>, Dumas</name>
-                // but what about M<sup>r</sup> ?
-                /*
-                 * will see if (length != 0) { bufIndex--; // will exclude the < // offLast =
-                 * offset - ltOffset; break; }
-                 */
                 // keep memory of start index of this tag
                 ltOffset = offset + bufIndex - 1;
                 intag = true;
                 tagname = true;
                 test.setEmpty();
+                // if a word was started, send it, ex Word<a href="#note2">2</a>, Dumas</name>
+                // will bug on M<sup>r</sup>
+                if (length != 0) {
+                    bufIndex--; // will exclude the < 
+                    offLast = offset - ltOffset; 
+                    break;
+                }
                 continue;
-            } else if (intag) { // inside tag
+            }
+            else if (intag) { // inside tag
                 if (tagname) { // start to record tagname
-                    if (!test.isEmpty() && (c == ' ' || c == '>' || (c == '/')))
-                        tagname = false;
-                    else
-                        test.append(c);
+                    if (!test.isEmpty() && (c == ' ' || c == '>' || (c == '/'))) tagname = false;
+                    else test.append(c);
                 }
                 if (c == '>') {
                     intag = false;
@@ -310,24 +304,22 @@ public class FrTokenizer extends Tokenizer
             // inside a tag to skip, go throw
             else if (skip != null) {
                 continue;
-            } else if (c == '&') {
-                if (length == 0)
-                    startOffset = offset + bufIndex - 1;
+            }
+            else if (c == '&') {
+                if (length == 0) startOffset = offset + bufIndex - 1;
                 xmlent = true;
                 test.setEmpty();
                 test.append(c);
                 continue;
-            } else if (xmlent == true) {
+            }
+            else if (xmlent == true) {
                 test.append(c);
-                if (c != ';')
-                    continue;
+                if (c != ';') continue;
                 // end of entity
                 xmlent = false;
                 c = ML.forChar(test); // will not work well on supplentary chars
-                if (c != 0)
-                    term.append(c);
-                else
-                    term.append(test);
+                if (c != 0) term.append(c);
+                else term.append(test);
                 test.setEmpty();
                 continue;
             }
@@ -397,8 +389,8 @@ public class FrTokenizer extends Tokenizer
                     // RODOGUNE. dot is a punctuation
                     else if (term.length() > 2 && Char.isUpperCase(term.charAt(0))
                             && Char.isUpperCase(term.charAt(1))) {
-                        term.setLength(term.length() - 1);
-                    }
+                                term.setLength(term.length() - 1);
+                            }
                     // U.{S.A.}
                     else if (term.length() < 3) {
                         continue;
@@ -433,20 +425,16 @@ public class FrTokenizer extends Tokenizer
             if (Char.isToken(c) || (query && (c == '+' || c == '*'))) {
                 // start of token, record startOffset
                 if (length == 0) {
-                    if (Char.isDigit(c))
-                        flagsAtt.setFlags(Tag.NUM.flag);
+                    if (Char.isDigit(c)) flagsAtt.setFlags(Tag.NUM.flag);
                     startOffset = offset + bufIndex - 1;
                 }
 
-                if (c == (char) 0xAD)
-                    continue; // soft hyphen, do not append to term
-                if (c == '’')
-                    c = '\''; // normalize apos
+                if (c == (char) 0xAD) continue; // soft hyphen, do not append to term
+                if (c == '’') c = '\''; // normalize apos
                 term.append(c);
 
                 // Is hyphen breakable?
-                if (hyphOffset > 0 && c != '-')
-                    test.append(c);
+                if (hyphOffset > 0 && c != '-') test.append(c);
                 // Is apos breakable?
                 if (c == '\'') {
                     CharsAtt val = FrDics.ELISION.get(term);
@@ -456,8 +444,7 @@ public class FrTokenizer extends Tokenizer
                     }
                 }
                 // something get wrong in loops or it is not a text with space, for example
-                if (length >= maxTokenLen)
-                    break; // a too big token stop
+                if (length >= maxTokenLen) break; // a too big token stop
             }
             // a non token char, a word to send
             else if (length > 0) {
@@ -483,8 +470,7 @@ public class FrTokenizer extends Tokenizer
             // Laisse-moi ! Réveille-le. eploi-t-il ?
             int len = term.length() - test.length() - 1;
             term.setLength(len);
-            if (term.endsWith("-t"))
-                term.setLength(len - 2); // french specific, euphonic t
+            if (term.endsWith("-t")) term.setLength(len - 2); // french specific, euphonic t
             copy.copy(term);
             term.copy(test);
             offsetAtt.setOffset(correctOffset(hyphOffset), correctOffset(endOffset));
@@ -534,8 +520,7 @@ public class FrTokenizer extends Tokenizer
         @Override
         public AttributeImpl createAttributeInstance(Class<? extends Attribute> attClass)
         {
-            if (attClass == CharTermAttribute.class)
-                return new CharsAtt();
+            if (attClass == CharTermAttribute.class) return new CharsAtt();
             return delegate.createAttributeInstance(attClass);
         }
     }
