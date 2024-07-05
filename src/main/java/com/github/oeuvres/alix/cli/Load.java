@@ -77,7 +77,7 @@ public class Load implements Callable<Integer>
     File[] conflist;
     @Option(names = { "-u", "--unsafe" }, description = "For windows filesystem, no temp lucene index")
     boolean unsafe;
-    @Option(names = { "-t", "--threads" }, description = "Number of threads fo indexation")
+    @Option(names = { "-t", "--threads" }, description = "Number of threads for indexation")
     int threads;
     /** File globs to index, populated by parsing base properties */
     ArrayList<Path> paths = new ArrayList<>();
@@ -418,8 +418,6 @@ public class Load implements Callable<Integer>
                 throw new IOException("\n[" + APP + "] Impossible to rename old index to\n  " + oldDir);
         }
         try {
-            // only one thread
-            // threads = 1;
             write(name, theDir.toPath());
         }
         catch (Exception e) {

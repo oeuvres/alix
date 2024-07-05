@@ -44,6 +44,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -53,9 +56,9 @@ import javax.xml.parsers.SAXParserFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Templates;
 import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.URIResolver;
 import javax.xml.transform.sax.SAXResult;
 import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
@@ -74,33 +77,44 @@ public class XMLIndexer implements Runnable
 {
     /** logger */
     private static final Logger LOGGER = Logger.getLogger(XMLIndexer.class.getName());
-    /** XSLT processor (saxon) */
-    static final TransformerFactory XSLFactory;
-    static {
-        // use JAXP standard API with Saxon
-        System.setProperty("javax.xml.transform.TransformerFactory", "net.sf.saxon.TransformerFactoryImpl");
-        XSLFactory = TransformerFactory.newInstance();
-        XSLFactory.setAttribute("http://saxon.sf.net/feature/version-warning", Boolean.FALSE);
-        XSLFactory.setAttribute("http://saxon.sf.net/feature/recoveryPolicy", Integer.valueOf(0));
-        XSLFactory.setAttribute("http://saxon.sf.net/feature/linenumbering", Boolean.TRUE);
-    }
     /** SAX factory */
     static final SAXParserFactory SAXFactory = SAXParserFactory.newInstance();
     static {
         SAXFactory.setNamespaceAware(true);
     }
+    private static boolean running;
     /** Iterator in a list of files, synchronized */
-    private final Iterator<Path> it;
-    /** An XSL transformer to prepare src before alix transformation */
-    private Transformer preAlix;
-    /** The XSL transformer to parse src XML files to alix format */
-    private Transformer transAlix;
-    /** A SAX processor */
-    private SAXParser SAXParser;
-    /** SAX handler for indexation */
-    private AlixSAXIndexer handler;
-    /** SAX output for XSL */
-    private SAXResult result;
+    private static Iterator<Path> it;
+    /** */
+    SAXTransformerFactory stf = (SAXTransformerFactory)TransformerFactory.newInstance();
+    /** Optional XSL transformation to prepare TEI docs for indexing */
+    private final TransformerHandler preHandler;
+    /** Needed with prexsl because of «The TransformerHandler is not serially reusable" */
+    private final Templates tei2alixTemplates;
+    /** Requested handler to transform TEI in alix:field + html */
+    private final TransformerHandler tei2alixHandler;
+    /** SAX handler for indexation in lucene */
+    private final SAXResult alix2luceneResult;
+    
+    /**
+     * Get an XSL Factory with nice options
+     */
+    static TransformerFactory getXSLFactory()
+    {
+        System.setProperty("javax.xml.transform.TransformerFactory", "net.sf.saxon.TransformerFactoryImpl");
+        TransformerFactory proc = TransformerFactory.newInstance();
+        proc.setAttribute("http://saxon.sf.net/feature/version-warning", Boolean.FALSE);
+        proc.setAttribute("http://saxon.sf.net/feature/recoveryPolicy", Integer.valueOf(0));
+        proc.setAttribute("http://saxon.sf.net/feature/linenumbering", Boolean.TRUE);
+        return proc;
+    }
+    
+    static public void setIterator(final Iterator<Path> iterator) {
+        if (running) {
+            throw new RuntimeException("List of paths to index is not yet exhausted");
+        }
+        it = iterator;
+    }
 
     /**
      * Create a thread reading a shared file list to index. Provide an indexWriter,
@@ -109,27 +123,41 @@ public class XMLIndexer implements Runnable
      * @param writer
      * @param it
      * @param templates
-     * @throws TransformerConfigurationException
+     * @throws TransformerException 
      * @throws SAXException
      * @throws ParserConfigurationException
      */
-    public XMLIndexer(IndexWriter writer, Iterator<Path> it, Templates alix, Templates preAlix)
-            throws TransformerConfigurationException, ParserConfigurationException, SAXException {
-        this.it = it;
-        /* temporarily broken
-        handler = new AlixSAXIndexer(writer);
-        if (templates != null) {
-            transformer = templates.newTransformer();
-            result = new SAXResult(handler);
-        } else {
-            SAXParser = SAXFactory.newSAXParser();
+    public XMLIndexer(IndexWriter writer, String preXsl) 
+            throws FileNotFoundException, TransformerException {
+        
+        // lucene indexation
+        alix2luceneResult = new SAXResult((ContentHandler) new AlixSAXIndexer(writer));
+
+        // to get XSL as a SAX handler for piping
+        // final SAXTransformerFactory stf = (SAXTransformerFactory)TransformerFactory.newInstance();
+        if (preXsl != null) {
+            if (!new File(preXsl).exists()) {
+                throw new FileNotFoundException("\n[" + Alix.NAME + "] pre transformation XSLfile not found: " + preXsl);
+            }
+            Templates preTemplates = getXSLFactory().newTemplates(new StreamSource(preXsl));
+            preHandler = stf.newTransformerHandler(preTemplates);
         }
-        */
+        else {
+            preHandler = null;
+        }
+        // alix.xsl transformer
+        JarResolver resloader = new JarResolver();
+        StreamSource tei2alixSource = new StreamSource(resloader.resolve("alix.xsl"));
+        // need a specific proc with the jar uri resolver
+        TransformerFactory proc = getXSLFactory();
+        proc.setURIResolver(resloader);
+        tei2alixTemplates = proc.newTemplates(tei2alixSource); // keep XSLFactory to resolve jar imports
+        tei2alixHandler = stf.newTransformerHandler(tei2alixTemplates);
     }
     
     
     /**
-     * A debug indexer as one thread, will stop on first error
+     * A debug indexer as one thread.
      * 
      * @param writer
      * @param it
@@ -145,17 +173,21 @@ public class XMLIndexer implements Runnable
         String preXsl
     ) throws ParserConfigurationException, SAXException, IOException, TransformerException
     {
-        SAXTransformerFactory stf = (SAXTransformerFactory)TransformerFactory.newInstance();
         // alix indexation
         AlixSAXIndexer alix2luceneHandler = new AlixSAXIndexer(writer);
         SAXResult alix2luceneResult = new SAXResult((ContentHandler) alix2luceneHandler);
 
+        // to get XSL as a SAX handler for piping
+        SAXTransformerFactory stf = (SAXTransformerFactory)TransformerFactory.newInstance();
         // alix.xsl transformer
+        final TransformerHandler tei2alixHandler;
         JarResolver resloader = new JarResolver();
-        XSLFactory.setURIResolver(resloader);
         StreamSource tei2alixSource = new StreamSource(resloader.resolve("alix.xsl"));
-        Templates tei2alixTemplates = XSLFactory.newTemplates(tei2alixSource); // keep XSLFactory to resolve jar imports
-        TransformerHandler tei2alixHandler = stf.newTransformerHandler(tei2alixTemplates);
+        TransformerFactory proc = getXSLFactory();
+        proc.setURIResolver(resloader);
+        final Templates tei2alixTemplates = proc.newTemplates(tei2alixSource); // keep XSLFactory to resolve jar imports
+        tei2alixHandler = stf.newTransformerHandler(tei2alixTemplates);
+
         // no effect
         // tei2alixHandler.getTransformer().setOutputProperty(OutputKeys.INDENT, "yes");
         
@@ -164,7 +196,7 @@ public class XMLIndexer implements Runnable
             if (!new File(preXsl).exists()) {
                 throw new FileNotFoundException("\n[" + Alix.NAME + "] pre transformation XSLfile not found: " + preXsl);
             }
-            Templates preTemplates = XSLFactory.newTemplates(new StreamSource(preXsl));
+            final Templates preTemplates = getXSLFactory().newTemplates(new StreamSource(preXsl));
             preHandler = stf.newTransformerHandler(preTemplates);
         }
         // loop on files
@@ -184,18 +216,19 @@ public class XMLIndexer implements Runnable
 
             // load source file 
             StreamSource docSource = new StreamSource(new ByteArrayInputStream(docBytes));
-            alix2luceneHandler.setFileName(filename); // set fileName meta
+            // alix2luceneHandler.setFileName(filename); // set fileName meta
+            ((AlixSAXIndexer)alix2luceneResult.getHandler()).setFileName(filename); // set fileName meta
             
             try {
                 if (preXsl != null) {
                     preHandler.getTransformer().setParameter("filename", filename);
                     preHandler.getTransformer().setParameter("index", true);
                     // The TransformerHandler is not serially reusable
-                    tei2alixHandler = stf.newTransformerHandler(tei2alixTemplates);
-                    tei2alixHandler.getTransformer().setParameter("filename", filename);
-                    tei2alixHandler.getTransformer().setParameter("index", true);
-                    tei2alixHandler.setResult(alix2luceneResult); // tei2alixHandler will be used as a SAX result
-                    preHandler.getTransformer().transform(docSource, new SAXResult(tei2alixHandler));
+                    final TransformerHandler tei2alixHandler2 = stf.newTransformerHandler(tei2alixTemplates);
+                    tei2alixHandler2.getTransformer().setParameter("filename", filename);
+                    tei2alixHandler2.getTransformer().setParameter("index", true);
+                    tei2alixHandler2.setResult(alix2luceneResult); // tei2alixHandler will be used as a SAX result
+                    preHandler.getTransformer().transform(docSource, new SAXResult(tei2alixHandler2));
                 }
                 else {
                     tei2alixHandler.getTransformer().setParameter("filename", filename);
@@ -226,34 +259,43 @@ public class XMLIndexer implements Runnable
     {
         while (true) {
             Path path = next();
-            if (path == null)
-                return; // should be the last
+            if (path == null) return; // should be the last
             String filename = path.getFileName().toString();
             filename = filename.substring(0, filename.lastIndexOf('.'));
-            info(path.getParent() + File.separator + "\t" + filename);
-            byte[] bytes = null;
             try {
                 // read file as fast as possible to release disk resource for other threads
-                bytes = Files.readAllBytes(path);
-                handler.setFileName(filename);
-                if (preAlix != null && transAlix != null) {
-                    StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
-                    preAlix.setParameter("filename", filename);
-                    
+                byte[] docBytes = Files.readAllBytes(path);
+                // info("bytes="+bytes.length);
+                // info(filename + " ".substring(Math.min(25, filename.length() + 2)) +
+                // file.getParent());
+                info(path.getParent() + File.separator + "\t" + filename);
+    
+                // load source file 
+                StreamSource docSource = new StreamSource(new ByteArrayInputStream(docBytes));
+                ((AlixSAXIndexer)alix2luceneResult.getHandler()).setFileName(filename); // set fileName meta
+            
+                if (preHandler != null) {
+                    preHandler.getTransformer().setParameter("filename", filename);
+                    preHandler.getTransformer().setParameter("index", true);
+                    // The TransformerHandler is not serially reusable in this context
+                    final TransformerHandler tei2alixHandler2 = stf.newTransformerHandler(tei2alixTemplates);
+                    tei2alixHandler2.getTransformer().setParameter("filename", filename);
+                    tei2alixHandler2.getTransformer().setParameter("index", true);
+                    tei2alixHandler2.setResult(alix2luceneResult); // tei2alixHandler will be used as a SAX result
+                    preHandler.getTransformer().transform(docSource, new SAXResult(tei2alixHandler2));
                 }
-                /*
-                if (transformer != null) {
-                    StreamSource source = new StreamSource(new ByteArrayInputStream(bytes));
-                    transformer.setParameter("filename", filename);
-                    transformer.transform(source, result);
-                } else {
-                    SAXParser.parse(new ByteArrayInputStream(bytes), handler);
+                else {
+                    tei2alixHandler.getTransformer().setParameter("filename", filename);
+                    tei2alixHandler.getTransformer().setParameter("index", true);
+                    tei2alixHandler.getTransformer().transform(docSource, alix2luceneResult);
                 }
-                */
-            } catch (Exception e) {
-                Exception ee = new Exception("ERROR in file " + path, e);
-                error(ee);
             }
+            catch (Exception e) {
+                e.printStackTrace();
+                LOGGER.log(Level.SEVERE, e.toString());
+                continue;
+            }
+
         }
     }
 
@@ -262,13 +304,15 @@ public class XMLIndexer implements Runnable
      * 
      * @return
      */
-    synchronized public Path next()
+    synchronized static public Path next()
     {
         Path path;
         // some duplicated files may be null
         while (it.hasNext() && (path = it.next()) != null) {
+            running = true;
             return path;
         }
+        running = false;
         return null;
     }
 
@@ -361,22 +405,21 @@ public class XMLIndexer implements Runnable
 
         Iterator<Path> it = files.iterator();
 
-        // one thread, try it as static to start
-        if (threads == 1 || true) {
-            XMLIndexer.write(writer, it, prexsl);
-        }
-        /*
-        // multithread is broken for a while
-        else {
+        // multithread 
+        if (threads > 1) {
+            XMLIndexer.setIterator(it);
             ExecutorService pool = Executors.newFixedThreadPool(threads);
             for (int i = 0; i < threads; i++) {
-                // pool.submit(new XMLIndexer(writer, it, templates));
+                pool.submit(new XMLIndexer(writer, prexsl));
             }
             pool.shutdown();
             // ? verify what should be done here if it hangs
             pool.awaitTermination(30, TimeUnit.MINUTES);
         }
-        */
+        // one thread, try it as static to start
+        else {
+            XMLIndexer.write(writer, it, prexsl);
+        }
         writer.commit();
         writer.forceMerge(1);
     }
