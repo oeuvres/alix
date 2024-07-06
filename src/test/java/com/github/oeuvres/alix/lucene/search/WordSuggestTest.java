@@ -49,8 +49,24 @@ public class WordSuggestTest
         writer.close(); // close after get the reader ?
         */
     }
+    
+    public static void main(String[] args) throws Exception {
+        mark();
+    }
+    
+    public static void mark()
+    {
+        markPrint("Mammounia", "m");
+        markPrint("ammassement", "m");
+        markPrint("moplimomotumort", "mo");
+    }
 
-    public static void main(String[] args) throws IOException
+    public static void markPrint(String word, String q)
+    {
+        System.out.println(word + " " + q + " " + WordSuggest.mark(word, q));
+    }
+
+    public static void search() throws IOException
     {
         long startTime = System.nanoTime();
         Directory dir = FSDirectory.open(Paths.get("../piaget_labo/lucene/piaget_leaves"));
@@ -66,7 +82,7 @@ public class WordSuggestTest
         for (final String q : new String[] {
             "paï", 
             // "_m",
-            "_c",
+            "_lo",
             // "ne_",
             // "t",
             // "païs",

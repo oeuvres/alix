@@ -169,19 +169,42 @@ public class WordSuggest
     {
         final String qNorm = Char.toASCII(q, true).toLowerCase();
         final int qLen = qNorm.length();
-        final String ascii = Char.toASCII(word);
+        final String ascii = Char.toASCII(word).toLowerCase();
         final int asciiLen = ascii.length();
         final String jok = "£";
         boolean ligature = (asciiLen != word.length());
-        final String s = (ligature)?word.replaceAll("([æÆᴁﬀﬁﬂĳĲœᴔŒɶﬆ])", "$1" + jok):word;
-        final int markStart = ascii.indexOf(qNorm);
-        String marked = 
-            s.substring(0, markStart)
-            + "<mark>"
-            + s.substring(markStart, markStart + qLen)
-            + "</mark>"
-            + s.substring(markStart + qLen)
-        ;
+        final String work = (ligature)?word.replaceAll("([æÆᴁﬀﬁﬂĳĲœᴔŒɶﬆ])", "$1" + jok):word;
+        final StringBuilder sb = new StringBuilder();
+        int fromIndex = 0;
+        do {
+            final int index = ascii.indexOf(q, fromIndex);
+            if (index < 0) break;
+
+            // found at start
+            if (index == 0) {
+                sb.append("<mark>");
+            }
+            // if letters between 2 tags
+            else if (index - fromIndex > 0) {
+                // close last tag
+                if (fromIndex > 0) { // at least one word found
+                    sb.append("</mark>");
+                }
+                // append chars before tag
+                sb.append(work.substring(fromIndex, index));
+                // open new tag
+                sb.append("<mark>");
+            }
+            
+            // append found content
+            sb.append(work.substring(index, index + qLen));
+            fromIndex = index + qLen;
+        } while(true);
+        if (fromIndex > 0) { // at least one word found
+            sb.append("</mark>");
+        }
+        sb.append(work.substring(fromIndex));
+        String marked = sb.toString();
         if (ligature) {
             marked = marked.replaceAll(jok, "");
         }
