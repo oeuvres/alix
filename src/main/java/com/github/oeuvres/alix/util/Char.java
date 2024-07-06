@@ -315,9 +315,11 @@ public class Char
             c = src.charAt(i);
             if (punStrip && isPunctuationOrSpace(c)) {
                 // strip non char
-            } else if (c < '\u0080') {
+            } 
+            else if (c < '\u0080') {
                 dst.append(c);
-            } else {
+            }
+            else {
                 switch (c) {
                 case '\u00C0': // À [LATIN CAPITAL LETTER A WITH GRAVE]
                 case '\u00C1': // Á [LATIN CAPITAL LETTER A WITH ACUTE]

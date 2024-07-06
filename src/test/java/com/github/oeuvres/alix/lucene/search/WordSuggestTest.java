@@ -56,6 +56,9 @@ public class WordSuggestTest
     
     public static void mark()
     {
+        System.out.println(Char.isPunctuationOrSpace('_'));
+        System.out.println(Char.toASCII("_op", true));
+        markPrint("opération", "_op");
         markPrint("Mammounia", "m");
         markPrint("ammassement", "m");
         markPrint("moplimomotumort", "mo");

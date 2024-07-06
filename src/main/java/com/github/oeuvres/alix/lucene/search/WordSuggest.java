@@ -167,6 +167,8 @@ public class WordSuggest
      */
     static public String mark(final String word, final String q)
     {
+        final String TAG_OPEN = "<b>";
+        final String TAG_CLOSE = "</b>";
         final String qNorm = Char.toASCII(q, true).toLowerCase();
         final int qLen = qNorm.length();
         final String ascii = Char.toASCII(word).toLowerCase();
@@ -177,23 +179,23 @@ public class WordSuggest
         final StringBuilder sb = new StringBuilder();
         int fromIndex = 0;
         do {
-            final int index = ascii.indexOf(q, fromIndex);
+            final int index = ascii.indexOf(qNorm, fromIndex);
             if (index < 0) break;
 
             // found at start
             if (index == 0) {
-                sb.append("<mark>");
+                sb.append(TAG_OPEN);
             }
             // if letters between 2 tags
             else if (index - fromIndex > 0) {
                 // close last tag
                 if (fromIndex > 0) { // at least one word found
-                    sb.append("</mark>");
+                    sb.append(TAG_CLOSE);
                 }
                 // append chars before tag
                 sb.append(work.substring(fromIndex, index));
                 // open new tag
-                sb.append("<mark>");
+                sb.append(TAG_OPEN);
             }
             
             // append found content
@@ -201,7 +203,7 @@ public class WordSuggest
             fromIndex = index + qLen;
         } while(true);
         if (fromIndex > 0) { // at least one word found
-            sb.append("</mark>");
+            sb.append(TAG_CLOSE);
         }
         sb.append(work.substring(fromIndex));
         String marked = sb.toString();
