@@ -50,7 +50,9 @@ public enum Tag {
     },
     UNKNOWN(0x01, "Inconnu", "Connu comme inconnu des dictionnaires.") {
     },
-    TEST(0x02, "Test", "Message envoyé par une étape de traitement.") {
+    XML(0x01, "XML", "<tag att=\"value\">, </tag>…") {
+    },
+    TEST(0x0F, "Test", "Message envoyé par une étape de traitement.") {
     },
 
     // 1x, verbes
