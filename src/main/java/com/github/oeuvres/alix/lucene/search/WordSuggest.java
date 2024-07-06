@@ -122,9 +122,8 @@ public class WordSuggest
      * @param count
      * @return
      */
-    public int[] list(String q, final TagFilter wordFilter, boolean midOnly) {
+    public int[] list(String q, final TagFilter wordFilter) {
         if (q == null || q.isEmpty()) return new int[0];
-        boolean isPrefix = (q.charAt(0) == '_');
         boolean hasTags = (wordFilter != null && wordFilter.cardinality() > 0);
         boolean noStop = (wordFilter != null && wordFilter.nostop());
         boolean locs = (wordFilter != null && wordFilter.locutions());
@@ -137,13 +136,6 @@ public class WordSuggest
             if (index < 0) break;
             int found = Arrays.binarySearch(starts, index);
             if (found < 0) found = Math.abs(found) - 2;
-            // middle word only, no prefix
-            if (!isPrefix && midOnly) {
-                if (ascii.charAt(index - 1) == '_') {
-                    fromIndex = index + 1;
-                    continue;
-                }
-            }
             // next search will start with next word
             fromIndex = starts[found + 1];
             
@@ -224,13 +216,12 @@ public class WordSuggest
         final String q, 
         final int count, 
         final TagFilter wordFilter, 
-        final BitSet docFilter,
-        final boolean midOnly
+        final BitSet docFilter
     ) throws IOException
     {
         final Suggestion[] empty = new Suggestion[0];
         if (q == null || q.isBlank()) return empty;
-        final int[] formIds = list(q, wordFilter, midOnly);
+        final int[] formIds = list(q, wordFilter);
         final int formLen = formIds.length;
         int[] formHits = new int[formLen];
         // formId in TermsEnum are faster than shuffled
