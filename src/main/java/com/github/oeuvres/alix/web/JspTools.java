@@ -458,51 +458,78 @@ public class JspTools
         return getInt(name, span, fallback, null);
     }
 
-    public int getInt(final String name, final int[] span, final int fallback, final String cookie)
+    private Integer getIntegerAtt(final String name)
     {
-        String par = request.getParameter(name);
-        // param has an empty value, seems that client wants to reset cookie
-        // do not give back the stored value
-        if (cookie != null && par != null && !check(par)) {
-            cookie(cookie, null);
-            return fallback;
-        }
-        if (check(par)) { // a value, work after
-        } else if (cookie != null) { // no par, try cookie
-            par = cookie(cookie);
-            if (!check(par))
-                return fallback;
-        } else { // no par, no cookie, good bye
-            return fallback;
-        }
-        int value = 0;
-        boolean found = false;
-        // try to parse
+        Object att = request.getAttribute(name);
+        if (att == null) return null;
+        if (att  instanceof Integer) return (Integer)att;
+        return null;
+    }
+
+    private Integer parseInt(final String value)
+    {
+        if (value == null) return null;
+        if (!check(value)) return null;
+        int no;
         try {
-            value = Integer.parseInt(par);
-            found = true;
+            no = Integer.parseInt(value);
         } catch (NumberFormatException e) {
-            return fallback;
+            return null;
         }
-        if (span != null && span.length > 0) {
-            if (value < span[0]) {
-                value = span[0];
-                found = false;
-            } else if (span.length > 1 && value > span[1]) {
-                value = span[0];
-                found = false;
+        Integer ret = no;
+        return ret;
+    }
+    
+    public int getInt(final String name, final int[] range, final int fallback, final String cookie)
+    {
+        int min = Integer.MIN_VALUE;
+        int max = Integer.MAX_VALUE;
+        if (range == null);
+        else if (range.length < 2);
+        else {
+            min = Math.min(range[0], range[1]);
+            max = Math.max(range[0], range[1]);
+        }
+        final String parString = request.getParameter(name);
+        Integer value = parseInt(parString);
+        
+        // handle cookie logic
+        if (check(cookie)) {
+            // param has an empty value, seems that client wants to reset cookie
+            // do not give back the stored value
+            if (parString != null && !check(parString)) {
+                cookie(cookie, null);
+            }
+            // check if value is valid to set a cookie
+            else if (value != null && value >= min && value <= max) {
+                cookie(cookie, "" + value);
+            }
+            else if (value == null) {
+                value = parseInt(cookie(cookie));
+                // if cookie not valid in range, unset
+                if (value != null && (value < min || value > max)) {
+                    value = null;
+                    cookie(cookie, null);
+                }
             }
         }
-
-        if (!found) {
-            // perhaps an old cookie with a bad value, delete it
-            if (cookie != null)
-                cookie(cookie, null);
+        // try to send a value
+        if (value == null) { // try attribute fallback
+            value = getIntegerAtt(name);
+        }
+        if (value == null) {
             return fallback;
         }
-        if (cookie != null)
-            cookie(cookie, "" + value);
-        return value;
+        else if (value < min) { // lower than floor, send floor
+            return min;
+        }
+        else if (value > max) { // upper than ceil, send ceil
+            return max;
+        }
+        else {
+            return value;
+        }
+
     }
 
     /**
@@ -645,36 +672,32 @@ public class JspTools
      */
     public String getString(final String name, final String fallback, final String cookie)
     {
-        String value = request.getParameter(name);
-        if (check(value)) {
-            // we want a string, not html
-            value = value.replaceAll("<[^>]*>", "");
-        }
-        // no cookie, answer fast
+        final String par = request.getParameter(name);
+        // fallBack on request attribute
+        final String att = request.getAttribute(name).toString();
+        // no cookie name, answer fast
         if (!check(cookie)) {
-            if (check(value))
-                return value;
+            if (check(par))
+                return par;
+            else if (check(att))
+                return att;
             else
                 return fallback;
         }
-
-        if (check(cookie) && check(value)) {
-            cookie(cookie, value);
-            return value;
+        // now deal with cookie name
+        final String cookieValue = cookie(cookie);
+        // set cookie with a desired param
+        if (check(par)) {
+            cookie(cookie, par);
+            return par;
         }
-        // param is not null, for example empty string, reset cookie
-        if (check(cookie) && value != null) {
+        // param is empty (but not null), reset cookie ?
+        if (par != null) {
             cookie(name, null);
-            return fallback;
         }
-        // try to deal with cookie
-        value = cookie(cookie);
-        if (check(value)) {
-            return value;
-        }
-        // cookie seems to have a problem, reset it
-        cookie(name, null);
-        return fallback;
+        if (check(cookieValue)) return cookieValue;
+        else if (check(att)) return att;
+        else return fallback;
     }
 
     /**
