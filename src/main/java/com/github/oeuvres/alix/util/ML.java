@@ -195,12 +195,12 @@ public class ML
                     start = false;
                     break;
                 }
+                dest.append(c);
                 // no tag tag include, erase recorded tag
                 if (include == null || !include.contains(tagName)) {
                     dest.setLength(tagLength);
-                    break;
                 }
-                dest.append(c);
+                tagLength = -1; // reset, nothing more <tag> to strip
                 break;
             case ' ':
             case '\n':
@@ -229,6 +229,8 @@ public class ML
             }
             lastChar = c;
         }
+        // last unclose tag, strip
+        if (tagLength >= 0) dest.setLength(tagLength);
     }
 
     public static void appendWords(final String xml, int offset, final Chain chain, final int words)

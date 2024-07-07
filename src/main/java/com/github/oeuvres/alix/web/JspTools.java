@@ -673,16 +673,24 @@ public class JspTools
     public String getString(final String name, final String fallback, final String cookie)
     {
         final String par = request.getParameter(name);
-        // fallBack on request attribute
-        final String att = request.getAttribute(name).toString();
+        String att = null;
+        if (par == null) {
+            Object o = request.getAttribute(name);
+            if (o != null && o instanceof String && check((String)o)) {
+                att = (String) o;
+            }
+        }
         // no cookie name, answer fast
         if (!check(cookie)) {
-            if (check(par))
+            if (check(par)) {
                 return par;
-            else if (check(att))
+            }
+            if (check(att)) {
                 return att;
-            else
+            }
+            else {
                 return fallback;
+            }
         }
         // now deal with cookie name
         final String cookieValue = cookie(cookie);
@@ -696,7 +704,6 @@ public class JspTools
             cookie(name, null);
         }
         if (check(cookieValue)) return cookieValue;
-        else if (check(att)) return att;
         else return fallback;
     }
 
