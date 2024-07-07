@@ -46,6 +46,7 @@ public class CloudAnalyzer extends Analyzer
      * Force creation of a new token stream pipeline, for multi threads indexing.
      */
 
+    @SuppressWarnings("resource")
     @Override
     public TokenStreamComponents createComponents(String field)
     {

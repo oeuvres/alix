@@ -187,7 +187,7 @@ public class XMLTokenizer  extends Tokenizer
                 if (Char.isLetter(lastChar)) {
                     bufferIndex--;
                     offset--;
-                    endOffset = offset; // position of ','
+                    endOffset = offset;
                     break;
                 }
                 // append punctuation and wait for space to send (???, !!!)
@@ -196,7 +196,7 @@ public class XMLTokenizer  extends Tokenizer
                     startOffset = offset - 1;
                 }
                 termAtt.append(c);
-                continue;
+                continue; // !!!, ..., ???
             }
             
             // no word to append, go next char

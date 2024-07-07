@@ -35,7 +35,6 @@ package com.github.oeuvres.alix.util;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.CharBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 
@@ -1025,6 +1024,22 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     {
         this.hash = 0;
         this.size = 0;
+        return this;
+    }
+    
+    /**
+     * 
+     */
+    public Chain setLength(int newLength)
+    {
+        if (newLength < 0) {
+            throw new StringIndexOutOfBoundsException(newLength);
+        }
+        if (newLength > size) {
+            ensureRight(newLength - size);
+        }
+        this.size = newLength;
+        this.hash = 0;
         return this;
     }
 

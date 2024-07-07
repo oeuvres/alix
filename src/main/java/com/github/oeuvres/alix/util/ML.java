@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.json.JSONArray;
@@ -113,33 +114,41 @@ public class ML
         return Char.isLetterOrDigit(c);
     }
 
+    /**
+     * Return a normalize-space() text version of an xml excerpt (possibly broken).
+     */
     public static String detag(final String xml)
     {
         if (xml == null || xml.isEmpty()) {
             return "";
         }
-        return detag(xml, 0, xml.length());
-    }
-
-    /**
-     * Return a normalize-space() text version of an xml excerpt (possibly broken).
-     */
-    public static String detag(final String xml, final int begin, final int end)
-    {
-        if (xml == null || xml.isEmpty())
-            return "";
         Chain dest = new Chain();
-        detag(xml, begin, end, dest);
+        detag(xml, 0, xml.length(), dest, null);
         return dest.toString();
     }
 
     /**
-     * Return a normalize-space() text version of an xml excerpt (possibly with
-     * broken tags).
+     * Return a normalize-space() text version of an xml excerpt (possibly broken),
+     * with selected tags allowed
      */
-    public static void detag(final String xml, int begin, int end, Chain dest)
+    public static String detag(final String xml, Set<String> include)
     {
-        // TODO, keeep tags
+        if (xml == null || xml.isEmpty()) {
+            return "";
+        }
+        Chain dest = new Chain();
+        detag(xml, 0, xml.length(), dest, include);
+        return dest.toString();
+    }
+
+
+    /**
+     * Return a normalize-space() text version of an xml excerpt (possibly with
+     * broken tags). Chain could be reused here for performances.
+     */
+    @SuppressWarnings("unlikely-arg-type")
+    public static void detag(final String xml, int begin, int end, Chain dest, Set<String> include)
+    {
         // silently fails if bad params
         if (begin < 0 || end < 0) {
             return;
@@ -150,10 +159,12 @@ public class ML
         if (begin > end) {
             return;
         }
-        // Chain tag = new Chain();
         boolean start = true; // before first tag (avoid broken tag)
-        boolean lt = false; // tag is started
-        // boolean closing = false; // closing tag </…>
+        // boolean lt = false; // tag is started
+        // tag name to test
+        Chain tagName = new Chain();
+        boolean tagRecord = false;
+        int tagLength = -1; // if we need to erase tag
         boolean space = false; // a space have been sent
 
         char lastPrint = ' ';
@@ -163,39 +174,55 @@ public class ML
             switch (c) {
             case '<':
                 space = false; // renew space flag
-                start = false; // no broken tag at start
-                lt = true;
+                start = false; // no more broken tag at start
                 // pb with bad indent html
                 // tique.</p><p class="p">Ains
                 if (lastChar == '>' && Char.isPUNsent(lastPrint)) {
                     lastPrint = ' ';
                     dest.append(' ');
+                    space = true;
                 }
+                tagLength = dest.length(); // record position if we want to go back
+                tagName.reset(); // prepare the testing tag
+                tagRecord = true;
+                dest.append(c);
                 break;
             case '>':
-                lt = false;
+                tagRecord = false;
                 // a broken tag at start, erase what was appended
                 if (start) {
                     dest.reset();
                     start = false;
                     break;
                 }
+                // no tag tag include, erase recorded tag
+                if (include == null || !include.contains(tagName)) {
+                    dest.setLength(tagLength);
+                    break;
+                }
+                dest.append(c);
                 break;
             case ' ':
             case '\n':
             case '\r':
             case '\t':
-                if (lt)
-                    break; // space inside tag, skip
+                // always end of tagName
+                tagRecord = false;
+                // record space in tag
                 if (space)
                     break; // second or more space, skip
                 space = true; // stop record space
                 dest.append(' ');
                 lastPrint = ' ';
                 break;
+            case '/':
+                // closing tag ?
+                dest.append(c);
+                break;
             default:
-                if (lt)
-                    break; // char in tag, skip
+                if (tagRecord) { // record tagName
+                    tagName.append(c);
+                }
                 space = false; // renew space flag
                 dest.append(c);
                 lastPrint = c;

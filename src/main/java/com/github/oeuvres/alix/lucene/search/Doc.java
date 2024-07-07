@@ -645,7 +645,7 @@ public class Doc
             ML.prependChars(xml, tok.start - 1, chain, left);
             chunks[1] = chain.toString();
             chain.reset();
-            ML.detag(xml, tok.start, tok.end, chain); // multi word can contain tags
+            ML.detag(xml, tok.start, tok.end, chain, null); // multi word can contain tags
             chunks[2] = chain.toString();
             chain.reset();
             ML.appendChars(xml, tok.end, chain, right);
