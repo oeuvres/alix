@@ -49,7 +49,7 @@ public class CloudAnalyzer extends Analyzer
     @Override
     public TokenStreamComponents createComponents(String field)
     {
-        final Tokenizer tokenizer = new FrTokenizer(FrTokenizer.XML); // segment words
+        final Tokenizer tokenizer = new XMLTokenizer(); // segment words
         TokenStream result = new FrLemFilter(tokenizer); // provide lemma+pos
         // compounds: parce que (quite expensive, 20% time)
         result = new LocutionFilter(result);

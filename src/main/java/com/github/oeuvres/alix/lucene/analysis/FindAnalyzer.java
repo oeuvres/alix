@@ -47,7 +47,7 @@ public class FindAnalyzer extends Analyzer
     @Override
     public TokenStreamComponents createComponents(String field)
     {
-        final Tokenizer tokenizer = new FrTokenizer(FrTokenizer.XML); // segment words
+        final Tokenizer tokenizer = new XMLTokenizer(); // segment words
         TokenStream result = new FrLemFilter(tokenizer); // provide lemma+pos
         result = new FindFilter(result); // orthographic form (not lemma) as term to index
         result = new ASCIIFoldingFilter(result); // no accents

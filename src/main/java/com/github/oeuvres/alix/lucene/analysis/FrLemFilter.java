@@ -115,9 +115,14 @@ public final class FrLemFilter extends TokenFilter
             save = null;
             return true;
         }
-        // end of stream
-        if (!input.incrementToken())
-            return false;
+        // if XML token strip
+        while (true) {
+            if (!input.incrementToken())
+                return false;
+            if (flagsAtt.getFlags() != Tag.XML.flag)
+                break;
+        }
+        
         orthAtt.copy(termAtt); // start with original term
         int flags = flagsAtt.getFlags();
         // pass through zero-length search
