@@ -91,7 +91,7 @@ public final class FrLemFilter extends TokenFilter
      */
     private final CharsAtt orthAtt = (CharsAtt) addAttribute(CharsOrthAtt.class);
     /** Last token was Punctuation */
-    private boolean waspun = true; // first word considered as if it follows a dot
+    private boolean pun = true;
     /** Store state */
     private State save;
     /** Reusable char sequence for some tests and transformations */
@@ -107,31 +107,37 @@ public final class FrLemFilter extends TokenFilter
     @Override
     public final boolean incrementToken() throws IOException
     {
-        // was last token a sentence punctuation ?
-        boolean waspun = this.waspun;
-        this.waspun = false;
         if (save != null) {
             restoreState(save);
             save = null;
             return true;
         }
-        // if XML token strip
+        int flags;
+        // skip XML token
         while (true) {
             if (!input.incrementToken())
                 return false;
-            if (flagsAtt.getFlags() != Tag.XML.flag)
+            flags = flagsAtt.getFlags();
+            if (flags != Tag.XML.flag)
                 break;
         }
-        
-        orthAtt.copy(termAtt); // start with original term
-        int flags = flagsAtt.getFlags();
-        // pass through zero-length search
-        if (orthAtt.length() == 0)
-            return true;
+        // store pun event, skiping XML
+        // was last token a sentence punctuation ?
         if (flags == Tag.PUNdiv.flag || flags == Tag.PUNsent.flag) {
-            this.waspun = true;
+            // record a pun event
+            this.pun = true;
             return true;
         }
+        final boolean puncopy = pun;
+        this.pun = false; // chnge it now
+        // 0 length event ?
+        if (termAtt.length() == 0)
+            return true;
+        
+        
+        
+        orthAtt.copy(termAtt); // start with original term
+        // pass through zero-length search
         // Get first char
         char c1 = orthAtt.charAt(0);
         // Not a word
@@ -189,7 +195,7 @@ public final class FrLemFilter extends TokenFilter
                 // if not after a pun, maybe a capitalized concept État, or a name La Fontaine,
                 // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc.
                 // restore initial cap
-                if (!waspun)
+                if (!puncopy)
                     termAtt.buffer()[0] = c1;
                 flagsAtt.setFlags(entry.tag);
                 if (entry.lem != null)
@@ -224,6 +230,6 @@ public final class FrLemFilter extends TokenFilter
     {
         super.reset();
         save = null;
-        waspun = true;
+        pun = true;
     }
 }

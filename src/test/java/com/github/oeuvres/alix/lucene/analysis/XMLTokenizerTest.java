@@ -17,17 +17,21 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 // import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.junit.Test;
 
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+
 public class XMLTokenizerTest {
 
     public static void main(String[] args) throws IOException
     {
         XMLTokenizer tokenizer = new XMLTokenizer();
-        String text = "le moindre fossé sont peuplés de <i>stagnalis</i> typiques ou très <mark id=\"pos22862\">allongées<a class=\"noteref\" href=\"#note24\" id=\"note24_\" epub:type=\"noteref\">22</a>.</mark> Bien plus, la forme de Noville";
+        String text = "Le moindre fossé ??? Ils sont peuplés de <i>Stagnalis</i>, typiques, ou très <mark id=\"pos22862\">allongées<a class=\"noteref\" href=\"#note24\" id=\"note24_\" epub:type=\"noteref\">22</a>.</mark> Bien plus, la forme de Noville";
         tokenizer.setReader(new StringReader(text));
         analyze(tokenizer, text);
         System.out.println("-------------");
         Analyzer ana = new TestAnalyzer();
         analyze(ana.tokenStream("field", text), text);
+        ana.close();
     }
     
     static void analyze(TokenStream tokenStream, String text) throws IOException
@@ -39,12 +43,13 @@ public class XMLTokenizerTest {
         // final TypeAttribute typeAttribute = tokenStream.addAttribute(TypeAttribute.class);
         final PositionIncrementAttribute posIncAttribute = tokenStream.addAttribute(PositionIncrementAttribute.class);
         // final PositionLengthAttribute posLenAttribute = tokenStream.addAttribute(PositionLengthAttribute.class);
-        
+        final CharsAtt orthAtt = (CharsAtt) tokenStream.addAttribute(CharsOrthAtt.class);
         tokenStream.reset();
         while(tokenStream.incrementToken()) {
             System.out.print(
                 "|"
               + termAttribute.toString() + "|\t|" 
+              + orthAtt.toString() + "|\t|" 
               + text.substring(offsetAttribute.startOffset(),  offsetAttribute.endOffset()) + "|\t" 
               + offsetAttribute.startOffset() + "\t"
               + offsetAttribute.endOffset() + "\t" 

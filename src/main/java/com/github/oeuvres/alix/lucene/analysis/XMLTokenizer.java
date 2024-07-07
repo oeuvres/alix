@@ -56,6 +56,9 @@ public class XMLTokenizer  extends Tokenizer
         int startOffset = offset;
         // Optional end of term if offset is wrong
         int endOffset = -1;
+        char lastChar = 0;
+        char c = 0;
+        CharsAtt test = new CharsAtt();
         while (true) {
             // needs more chars ?
             if (bufferIndex >= bufferLen) {
@@ -73,9 +76,8 @@ public class XMLTokenizer  extends Tokenizer
                     return false;
                 }
             }
-            char[] chars = buffer.getBuffer();
-            // got a char, let's work
-            char c = chars[bufferIndex];
+            lastChar = c;
+            c = buffer.getBuffer()[bufferIndex];
             // default, go next
             bufferIndex++;
             offset++;
@@ -135,6 +137,68 @@ public class XMLTokenizer  extends Tokenizer
                 // default, go next char
                 continue;
             }
+            
+            // decimal number
+            if (Char.isDigit(lastChar) && (c == '.' || c == ',')) {
+                termAtt.append(c);
+                continue;
+            }
+            
+            // abbreviation ?
+            if (c == '.' && Char.isLetter(lastChar)) {
+                // M. probably abbr
+                if (Char.isUpperCase(lastChar)) {
+                    termAtt.append(c);
+                    continue;
+                }
+                test.copy(termAtt).append(c);
+                // dictionary of abbr
+                if (FrDics.brevidot(test)) {
+                    flagsAtt.setFlags(Tag.ABBR.flag);
+                    break; // keep dot
+                }
+                // probably end of sentence, useful to interpret capitalization
+                // send pending term, come back next call
+                bufferIndex--;
+                offset--;
+                endOffset = offset; // position of '.'
+                break;
+            }
+            
+            // Clause punctuation, send a punctuation event to separate tokens
+            if (Char.isPUNcl(c)) {
+                // send pending term, come back next call
+                if (!termAtt.isEmpty()) {
+                    bufferIndex--;
+                    offset--;
+                    endOffset = offset; // position of ','
+                    break;
+                }
+                startOffset = offset - 1;
+                endOffset = offset; // position of ','
+                termAtt.append(c);
+                flagsAtt.setFlags(Tag.PUNcl.flag);
+                break;
+            }
+            
+            // Possible sentence delimiters
+            if (c == '.' || c == '…' || c == '?' || c == '!' || c == '«' || c == '—' || c == ':') {
+                // if pending word, send, and come back later
+                if (Char.isLetter(lastChar)) {
+                    bufferIndex--;
+                    offset--;
+                    endOffset = offset; // position of ','
+                    break;
+                }
+                // append punctuation and wait for space to send (???, !!!)
+                if (termAtt.isEmpty()) {
+                    flagsAtt.setFlags(Tag.PUNsent.flag);
+                    startOffset = offset - 1;
+                }
+                termAtt.append(c);
+                continue;
+            }
+            
             // no word to append, go next char
             if (termAtt.isEmpty()) {
                 continue;
