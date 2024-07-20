@@ -72,7 +72,6 @@ public interface FormIterator
      * 
      * @param order An order as a possible keyword
      * @param limit
-     * @return List of sorted id
      */
     public void sort(final Order order, final int limit);
 

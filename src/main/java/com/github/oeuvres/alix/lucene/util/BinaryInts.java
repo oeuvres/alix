@@ -60,7 +60,7 @@ public class BinaryInts extends BinaryValue
     /**
      * Create buffer for write with initial size.
      * 
-     * @param size
+     * @param size Buffer size.
      */
     public BinaryInts(int size) {
         capacity = size << 2;
@@ -70,7 +70,7 @@ public class BinaryInts extends BinaryValue
     /**
      * Number of positions in this vector.
      * 
-     * @return
+     * @return Size in positions of ints.
      */
     public int size()
     {
@@ -80,8 +80,8 @@ public class BinaryInts extends BinaryValue
     /**
      * Put a value at a posiion.
      * 
-     * @param pos
-     * @param value
+     * @param pos Position of an int.
+     * @param value Value of an int.
      */
     public void put(final int pos, final int value)
     {
@@ -97,8 +97,8 @@ public class BinaryInts extends BinaryValue
     /**
      * Get value at a position.
      * 
-     * @param pos
-     * @return
+     * @param pos Position of an int.
+     * @return Value of an int.
      */
     public int get(final int pos)
     {

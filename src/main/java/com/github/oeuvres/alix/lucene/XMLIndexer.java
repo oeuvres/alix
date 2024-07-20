@@ -51,14 +51,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
-import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Templates;
-import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.URIResolver;
 import javax.xml.transform.sax.SAXResult;
 import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
@@ -120,12 +116,10 @@ public class XMLIndexer implements Runnable
      * Create a thread reading a shared file list to index. Provide an indexWriter,
      * a file list iterator, and an optional compiled xsl.
      * 
-     * @param writer
-     * @param it
-     * @param templates
-     * @throws TransformerException 
-     * @throws SAXException
-     * @throws ParserConfigurationException
+     * @param writer  lucene index writer.
+     * @param preXsl  optional XSL file to transfom XML source before indexation.
+     * @throws FileNotFoundException pre transformation XSLfile not found.
+     * @throws TransformerException XSLT error.
      */
     public XMLIndexer(IndexWriter writer, String preXsl) 
             throws FileNotFoundException, TransformerException {
@@ -349,25 +343,22 @@ public class XMLIndexer implements Runnable
     }
 
     /**
-     * Recursive indexation of an XML folder, multi-threadeded.
+     * Indexation of a list of XML file in a lucene index.
      * 
-     * @param writer
-     * @param files
-     * @param threads
-     * @param xsl
-     * @throws Exception
+     * @param writer destination lucene writer.
+     * @param files list of files to index.
+     * @param prexsl  optional file path of an xsl transformation to apply before indexation.
+     * @throws TransformerException xsl errors.
+     * @throws InterruptedException multi-threading error.
+     * @throws IOException lucene write error.
+     * @throws SAXException alix namespace error.
+     * @throws ParserConfigurationException XML error.
      */
-    static public void index(final IndexWriter writer, final List<Path> files, int threads, String format, String prexsl) throws Exception
+    static public void index(final IndexWriter writer, final List<Path> files, String prexsl) 
+            throws TransformerException, InterruptedException, ParserConfigurationException, SAXException, IOException 
     {
         // compile XSLT, maybe it could be done before?
-        Templates templates = null;
-        if (format == "alix") {
-            // nothing to configure
-            throw new UnsupportedOperationException("The Alix format is not yet implemented");
-        } 
-        info("[" + Alix.NAME + "]" + " format=\"" + format + "\"" + " threads=" + threads + " lucene=\""
-                + writer.getDirectory() + "\"");
-
+        info("[" + Alix.NAME + "]" + " lucene=\"" + writer.getDirectory() + "\"");
         // check if repeated filename
         Map<String, Integer> hash = new HashMap<String, Integer>();
         for (int i = 0, size = files.size(); i < size; i++) {
@@ -399,9 +390,7 @@ public class XMLIndexer implements Runnable
             throw new FileNotFoundException(
                     "\n[" + Alix.NAME + "] No file found to index files=\"" + files.toString() + "\"");
         }
-        if (threads < 1) {
-            threads = 1;
-        }
+        int threads = 1;
 
         Iterator<Path> it = files.iterator();
 

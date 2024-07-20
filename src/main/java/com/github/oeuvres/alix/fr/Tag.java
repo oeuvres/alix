@@ -191,9 +191,7 @@ public enum Tag {
     },
     PUNsent(0xC2, "Phrase", ". ? ! (ponctuation de phrase).") {
     },
-    PUNcl(0xC3, "Clause", ", ; (Séparateur de syntagme).") {
-    },
-    PUNxml(0xCF, "Balise", "<nom attribut=\"valeur\">, balise XML.") {
+    PUNclause(0xC3, "Clause", ", ; (Séparateur de syntagme).") {
     },
 
     // Fx, divers

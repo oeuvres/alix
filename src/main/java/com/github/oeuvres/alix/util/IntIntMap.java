@@ -99,8 +99,6 @@ public class IntIntMap implements Cloneable
     
     /**
      * Constructor with a default fillFactor
-     * 
-     * @param size
      */
     public IntIntMap() {
         this(10);

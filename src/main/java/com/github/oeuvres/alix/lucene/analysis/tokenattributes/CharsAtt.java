@@ -54,7 +54,7 @@ import com.github.oeuvres.alix.lucene.analysis.FrDics;
  * capitalize).
  */
 public class CharsAtt extends AttributeImpl
-        implements CharTermAttribute, TermToBytesRefAttribute, Appendable, Cloneable, Comparable<String>
+        implements CharTermAttribute, TermToBytesRefAttribute, Appendable, Cloneable, CharSequence, Comparable<CharSequence>
 {
     /** The data */
     private char[] chars;
@@ -84,7 +84,7 @@ public class CharsAtt extends AttributeImpl
     /**
      * Initialize the chars with a String
      * 
-     * @param s
+     * @param s value.
      */
     public CharsAtt(String s) {
         len = s.length();
@@ -97,7 +97,7 @@ public class CharsAtt extends AttributeImpl
      * key in an HashMap. Do not used in a token stream, getBytesRef() will not be
      * available.
      * 
-     * @param chain
+     * @param chain value.
      */
     public CharsAtt(Chain chain) {
         len = chain.length();
@@ -106,9 +106,11 @@ public class CharsAtt extends AttributeImpl
     }
 
     /**
-     * Copy a token attribute, used as a key in a map.
+     * Copy chars from another attribute. Use it to build an optimized
+     * key in an HashMap. Do not used in a token stream, getBytesRef() will not be
+     * available.
      * 
-     * @param token
+     * @param token another char attribute.
      */
     public CharsAtt(CharsAtt token) {
         len = token.len;
@@ -117,10 +119,13 @@ public class CharsAtt extends AttributeImpl
     }
 
     /**
+     * Copy chars from a char array. Use it to build an optimized
+     * key in an HashMap. Do not used in a token stream, getBytesRef() will not be
+     * available.
      * 
-     * @param buffer
-     * @param offset
-     * @param length
+     * @param buffer source char array.
+     * @param offset position in buffer wher to start copy.
+     * @param length amount of chars to copy.
      */
     public CharsAtt(char[] buffer, int offset, int length) {
         len = length;
@@ -227,8 +232,8 @@ public class CharsAtt extends AttributeImpl
     }
 
     /**
-     * 
-     * @return
+     * See {CharTermAttributeImpl#appendNull()}.
+     * @return this.
      */
     private CharsAtt appendNull()
     {
@@ -251,7 +256,7 @@ public class CharsAtt extends AttributeImpl
      * Try to capitalize (initial capital only) decently, according to some rules
      * available in latin language. ex: états-unis -&gt; États-Unis.
      * 
-     * @return This, for chaining.
+     * @return this, for chaining.
      */
     public CharsAtt capitalize()
     {
@@ -305,53 +310,27 @@ public class CharsAtt extends AttributeImpl
         return t;
     }
 
-    /**
-     * String comparison, add efficiency in a HashMap in case of hash code
-     * collisions.
-     * 
-     * @param string
-     * @return
-     */
+
     @Override
-    public int compareTo(String string)
+    public int compareTo(CharSequence other)
     {
         char[] chars = this.chars;
-        int lim = Math.min(len, string.length());
+        int lim = Math.min(len, other.length());
         for (int offset = 0; offset < lim; offset++) {
             char c1 = chars[offset];
-            char c2 = string.charAt(offset);
+            char c2 = other.charAt(offset);
             if (c1 != c2) {
                 return c1 - c2;
             }
         }
-        return len - string.length();
-    }
-
-    /**
-     * 
-     * @param o
-     * @return
-     */
-    public int compareTo(CharsAtt o)
-    {
-        char[] chars1 = chars;
-        char[] chars2 = o.chars;
-        int lim = Math.min(len, o.len);
-        for (int offset = 0; offset < lim; offset++) {
-            char c1 = chars1[offset];
-            char c2 = chars2[offset];
-            if (c1 != c2) {
-                return c1 - c2;
-            }
-        }
-        return 0;
+        return len - other.length();
     }
 
     /**
      * Copy a {@link CharTermAttribute} in the buffer.
      * 
-     * @param ta
-     * @return
+     * @param ta attribute.
+     * @return this.
      */
     public final CharsAtt copy(CharTermAttribute ta)
     {
@@ -365,8 +344,8 @@ public class CharsAtt extends AttributeImpl
      * Copy UTF-8 bytes {@link BytesRef} in the char[] buffer. Used by Alix to test
      * UTF-8 bytes against chars[] stores in HashMap {@link FrDics}
      * 
-     * @param bytes
-     * @return
+     * @param bytes UTF8 as bytes.
+     * @return this.
      */
     public final CharsAtt copy(BytesRef bytes)
     {
@@ -397,8 +376,8 @@ public class CharsAtt extends AttributeImpl
     /**
      * Test a suffix, char by char.
      * 
-     * @param suffix
-     * @return
+     * @param suffix to test.
+     * @return true if attribute ends by suffix, false otherwise.
      */
     public boolean endsWith(final String suffix)
     {
@@ -415,10 +394,10 @@ public class CharsAtt extends AttributeImpl
     }
 
     /**
-     * Test an ending char
+     * Test an ending char.
      * 
-     * @param c
-     * @return
+     * @param c char to test.
+     * @return true if last char == c, false otherwise.
      */
     public boolean endsWith(final char c)
     {
@@ -494,8 +473,9 @@ public class CharsAtt extends AttributeImpl
     }
 
     /**
+     * Grow internal char array if needed.
      * 
-     * @param newSize
+     * @param newSize for internal array.
      */
     private void growTermBuffer(int newSize)
     {
@@ -537,8 +517,9 @@ public class CharsAtt extends AttributeImpl
     }
 
     /**
+     * First position of a char.
      * 
-     * @param c
+     * @param c char to search.
      * @return -1 if not found or positive index if found
      */
     public int indexOf(final char c)
@@ -553,7 +534,7 @@ public class CharsAtt extends AttributeImpl
     /**
      * Test if there is no chars registred.
      * 
-     * @return
+     * @return true if empty, false otherwise.
      */
     public final boolean isEmpty()
     {
@@ -563,7 +544,7 @@ public class CharsAtt extends AttributeImpl
     /**
      * Get last char
      * 
-     * @return last char
+     * @return last char.
      */
     public char lastChar()
     {
@@ -571,9 +552,9 @@ public class CharsAtt extends AttributeImpl
     }
 
     /**
-     * Find index of last occurrence of char
+     * Find index of last occurrence of a char.
      * 
-     * @param c
+     * @param c char to search.
      * @return -1 if not found or positive index if found
      */
     public int lastIndexOf(final char c)
@@ -596,7 +577,7 @@ public class CharsAtt extends AttributeImpl
      * Record actual size of string to go back to this state with @see #rewind(),
      * like @see java.io.Reader#mark(int).
      * 
-     * @return This, for chaining.
+     * @return this, for chaining.
      */
     public final CharsAtt mark()
     {
@@ -630,7 +611,7 @@ public class CharsAtt extends AttributeImpl
      * needed to record this state. Works a bit like @see java.io.Reader#reset()
      * with a less confusing name.
      * 
-     * @return This, for chaining.
+     * @return this, for chaining.
      */
     public final CharsAtt rewind()
     {
@@ -643,8 +624,8 @@ public class CharsAtt extends AttributeImpl
     /**
      * Change a char at a specific position.
      * 
-     * @param pos
-     * @param c
+     * @param pos position to change.
+     * @param c new char value.
      */
     public void setCharAt(int pos, char c)
     {
@@ -687,7 +668,7 @@ public class CharsAtt extends AttributeImpl
      * Convert all chars from the buffer to lower case. To avoid default JDK
      * conversion, some efficiency come from tests with the {@link Char}.
      * 
-     * @return This, for chaining.
+     * @return this, for chaining.
      */
     public CharsAtt toLower()
     {
@@ -715,7 +696,7 @@ public class CharsAtt extends AttributeImpl
     /**
      * If we can’t remember if @see #mark() has been set, ensure, reset it.
      * 
-     * @return This, for chaining.
+     * @return this, for chaining.
      */
     public final CharsAtt unmark()
     {

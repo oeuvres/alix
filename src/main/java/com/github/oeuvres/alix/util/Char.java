@@ -45,21 +45,37 @@ public class Char
     static final int SIZE = 65536;
     /** Properties of chars by index */
     static final short[] CHARS = new short[SIZE];
+    /** Binary flag, a letter */
     public static final short LETTER = 0b000000000000001;
+    /** Binary flag, a token char */
     public static final short TOKEN = 0b000000000000010;
+    /** Binary flag, a space */
     public static final short SPACE = 0b000000000000100;
+    /** Binary flag, punctuation char */
     public static final short PUNCTUATION = 0b000000000001000;
+    /** Binary flag, lower case letter. */
     public static final short LOWERCASE = 0b000000000010000;
+    /** Binary flag, upper case letter. */
     public static final short UPPERCASE = 0b000000000100000;
+    /** Binary flag, not used. */
     public static final short VOWEL = 0b000000001000000;
+    /** Binary flag, not used. */
     public static final short CONSONNANT = 0b000000010000000;
+    /** Binary flag, a digit. */
     public static final short DIGIT = 0b000000100000000;
+    /** Binary flag, punctuation char for sentence. */
     public static final short PUNsent = 0b000001000000000;
-    public static final short PUNcl = 0b000010000000000;
+    /** Binary flag, punctuation char for clause in a sentence. */
+    public static final short PUNclause = 0b000010000000000;
+    /** Binary flag, math operator. */
     public static final short MATH = 0b000100000000000;
+    /** Binary flag, isLowSurrogate. */
     public static final short LOWSUR = 0b010000000000000;
+    /** Binary flag, isHighSurrogate. */
     public static final short HIGHSUR = 0b100000000000000;
+    /** Binary flag, composite shortcut, word separator. */
     public static final short PUNCTUATION_OR_SPACE = SPACE | PUNCTUATION;
+    /** Binary flag, composite shortcut, word char. */
     public static final short LETTER_OR_DIGIT = LETTER | DIGIT;
     static {
         int type;
@@ -118,7 +134,7 @@ public class Char
                     properties |= PUNsent;
                 else if (',' == c || ';' == c || ':' == c || '(' == c || ')' == c || '—' == c || '–' == c || '⁂' == c
                         || '»' == c || '«' == c)
-                    properties |= PUNcl;
+                    properties |= PUNclause;
             }
             CHARS[c] = properties;
         }
@@ -145,6 +161,8 @@ public class Char
 
     /**
      * Is Numeric, like {@link Character#isDigit(char)}.
+     * @param c char to test.
+     * @return true if c is digit.
      */
     public static boolean isDigit(final char c)
     {
@@ -152,7 +170,9 @@ public class Char
     }
 
     /**
-     * Is the first short of a supplemental unicode codepoint.
+     * Is the first short of a supplemental unicode codepoint, like {@link Character#isHighSurrogate(char)}.
+     * @param c char to test.
+     * @return true if c is not a full char but a part.
      */
     public static boolean isHighSurrogate(final char c)
     {
@@ -161,6 +181,8 @@ public class Char
 
     /**
      * Is a letter {@link Character#isLetter(char)}.
+     * @param c char to test.
+     * @return true if c is a letter, false otherwise.
      */
     public static boolean isLetter(final char c)
     {
@@ -169,6 +191,8 @@ public class Char
 
     /**
      * Is a letter or a digit, like {@link Character#isLetterOrDigit(char)}.
+     * @param c char to test.
+     * @return true if c is a letter or a digit, false otherwise.
      */
     public static boolean isLetterOrDigit(final char c)
     {
@@ -177,6 +201,8 @@ public class Char
 
     /**
      * Is a lower case letter, like {@link Character#isLowerCase(char)}.
+     * @param c char to test.
+     * @return true if c is a letter lower case, false otherwise.
      */
     public static boolean isLowerCase(final char c)
     {
@@ -184,7 +210,10 @@ public class Char
     }
 
     /**
-     * Is the second short of a supplemental unicode codepoint.
+     * Is the second short of a supplemental unicode codepoint,
+     * like {@link Character#isLowSurrogate(char)}.
+     * @param c char to test.
+     * @return true if c is not a full char but a part, false otherwise.
      */
     public static boolean isLowSurrogate(final char c)
     {
@@ -192,7 +221,10 @@ public class Char
     }
 
     /**
-     * Is a Mathematic symbol.
+     * Is a Mathematic symbol, see {@link Character#MATH_SYMBOL}.
+     * 
+     * @param c char to test.
+     * @return true if c is a math symbol, false otherwise.
      */
     public static boolean isMath(final char c)
     {
@@ -201,6 +233,9 @@ public class Char
 
     /**
      * Is a punctuation mark between words.
+     * 
+     * @param c char to test.
+     * @return true if c is punctuation, false otherwise.
      */
     public static boolean isPunctuation(final char c)
     {
@@ -208,7 +243,10 @@ public class Char
     }
 
     /**
-     * Is punctuation or space (maybe a lexical token)
+     * Is punctuation or space.
+     * 
+     * @param c char to test.
+     * @return true if c is a word separator, false otherwise.
      */
     public static boolean isPunctuationOrSpace(final char c)
     {
@@ -217,6 +255,9 @@ public class Char
 
     /**
      * Is a punctuation mark of sentence break level (!?. etc.)
+     * 
+     * @param c char to test.
+     * @return true if c is a math symbol, false otherwise.
      */
     public static boolean isPUNsent(final char c)
     {
@@ -225,16 +266,22 @@ public class Char
 
     /**
      * Is a punctuation mark of clause level (insisde a sentence) (,;: etc.)
+     * 
+     * @param c char to test.
+     * @return true if c is ending a sentence, false otherwise.
      */
     public static boolean isPUNcl(final char c)
     {
-        return (CHARS[c] & PUNcl) != 0;
+        return (CHARS[c] & PUNclause) != 0;
     }
 
     /**
      * Is a "whitespace" according to ISO (space, tabs, new lines) and also for
      * Unicode (non breakable spoaces), {@link Character#isSpaceChar(char)},
      * {@link Character#isWhitespace(char)}.
+     * 
+     * @param c char to test.
+     * @return true if c is a space, false otherwise.
      */
     public static boolean isSpace(final char c)
     {
@@ -244,6 +291,9 @@ public class Char
     /**
      * Is a word character, letter, but also, '’-_ and some other tweaks for lexical
      * parsing.
+     * 
+     * @param c char to test.
+     * @return true if c is a token char, false otherwise.
      */
     public static boolean isToken(final char c)
     {
@@ -252,6 +302,9 @@ public class Char
 
     /**
      * Is an upper case letter, like {@link Character#isUpperCase(char)}.
+     * 
+     * @param c char to test.
+     * @return true if c is an upper case letter, false otherwise.
      */
     public static boolean isUpperCase(final char c)
     {
@@ -259,7 +312,10 @@ public class Char
     }
 
     /**
-     * Get the internal properties for a char.
+     * Get the internal properties for a char as flags.
+     * 
+     * @param c char to test.
+     * @return raw flags as a short.
      */
     public static short props(final char c)
     {
@@ -268,6 +324,9 @@ public class Char
 
     /**
      * Efficient lower casing (test if {@link #isUpperCase(char)} before).
+     * 
+     * @param c char to transform.
+     * @return char to lower case.
      */
     public static char toLower(char c)
     {
@@ -277,7 +336,10 @@ public class Char
     }
 
     /**
-     * Lower casing a string builder.
+     * Lower casing a mutable string.
+     * 
+     * @param s the char sequence.
+     * @return the modified char sequence.
      */
     public static StringBuilder toLower(StringBuilder s)
     {
@@ -295,6 +357,13 @@ public class Char
         return s;
     }
 
+    /**
+     * ASCII version of a latin script string, same as lucene
+     * {@link org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilterFactory}.
+     * 
+     * @param src unicode char sequence.
+     * @return ASCII version of src.
+     */
     public static String toASCII(CharSequence src)
     {
         return toASCII(src, false);
@@ -302,10 +371,12 @@ public class Char
 
     /**
      * ASCII version of a latin script string, same as lucene
-     * ASCIIFoldingFilterFactory
+     * {@link org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilterFactory},
+     * allowing to strip all non word chars.
      * 
-     * @param src
-     * @return
+     * @param src unicode char sequence.
+     * @param punStrip strip word separator.
+     * @return ASCII version of src.
      */
     public static String toASCII(CharSequence src, boolean punStrip)
     {
@@ -2244,10 +2315,10 @@ public class Char
      */
 
     /**
-     * Deligature
+     * Deligature, Æ → AE, œ → oe…
      * 
-     * @param source
-     * @return
+     * @param source mutable char sequence.
+     * @return modified source.
      */
     public static Chain deligat(final Chain source)
     {
@@ -2277,6 +2348,9 @@ public class Char
 
     /**
      * Efficient upper casing (test if {@link #isLowerCase(char)} before).
+     * 
+     * @param c char to convert.
+     * @return converted char.
      */
     public static char toUpper(char c)
     {
@@ -2286,7 +2360,10 @@ public class Char
     }
 
     /**
-     * Give human informations about a char.
+     * Human readable information about a char.
+     * 
+     * @param c char to test.
+     * @return human readable information.
      */
     static public String toString(char c)
     {
@@ -2303,7 +2380,7 @@ public class Char
             sb.append("PUNCTUATION ");
         if ((props & PUNsent) != 0)
             sb.append("PUNsent ");
-        if ((props & PUNcl) != 0)
+        if ((props & PUNclause) != 0)
             sb.append("PUNcl ");
         if ((props & DIGIT) != 0)
             sb.append("DIGIT ");

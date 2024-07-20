@@ -19,7 +19,7 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.util.BytesRef;
 
-import com.github.oeuvres.alix.lucene.analysis.MetaAnalyzer;
+import com.github.oeuvres.alix.lucene.analysis.AnalyzerMeta;
 import com.github.oeuvres.alix.util.ML;
 
 /**
@@ -37,7 +37,7 @@ public class AlixDocument
     /** Required fields for this collection */
     String[] required;
     /** Simple analyzer for recall */
-    Analyzer metaAnalyzer = new MetaAnalyzer();
+    Analyzer metaAnalyzer = new AnalyzerMeta();
 
     /**
      * Create document indexer with a list of required fields, tested when lucene
@@ -72,7 +72,7 @@ public class AlixDocument
     /**
      * Set a title for a document.
      * 
-     * @param html
+     * @param html HTML content
      * @return This for chaining.
      */
     public AlixDocument title(String html)
@@ -84,7 +84,7 @@ public class AlixDocument
     /**
      * Set a byline for a document.
      * 
-     * @param html
+     * @param html HTML content
      * @return This for chaining.
      */
     public AlixDocument byline(String html)
@@ -96,7 +96,7 @@ public class AlixDocument
     /**
      * Set only one year by document.
      * 
-     * @param year
+     * @param year An int, for a year
      * @return This for chaining.
      */
     public AlixDocument year(int year)
@@ -203,7 +203,7 @@ public class AlixDocument
      * An int field, unique for a document, for sorting and grouping, ex: year.
      * 
      * @param name Field name.
-     * @param html Field value.
+     * @param value Field value.
      * @return This for chaining.
      */
     public AlixDocument intField(final String name, final int value)
@@ -264,6 +264,7 @@ public class AlixDocument
 
     /**
      * Returns the builded document
+     * @return Lucene {@link Document}
      */
     public Document document()
     {

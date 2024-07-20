@@ -5,7 +5,24 @@ import org.junit.Test;
 
 public class ChainTest {
 
-    public void testNormalizeString() {
+    @Test
+    public void glob()
+    {
+        Chain glob = new Chain();
+        glob.copy("maz*");
+        assertTrue(glob.glob("maz"));
+        assertTrue(glob.glob("maze"));
+        assertTrue(glob.glob("mazurka"));
+        assertFalse(glob.glob("amaze"));
+        glob.copy("maz?");
+        assertFalse(glob.glob("maz"));
+        assertTrue(glob.glob("maze"));
+        assertFalse(glob.glob("mazurka"));
+        assertFalse(glob.glob("amaze"));
+    }
+    
+    public void normalizeString()
+    {
         String[] phrases = {
             "",
             " \t \n",
@@ -30,7 +47,8 @@ public class ChainTest {
         }
     }
 
-    public void testSplitChar() {
+    public void splitChar()
+    {
         String[] paths = {
             "", 
             "/", 
@@ -61,7 +79,8 @@ public class ChainTest {
         }
     }
 
-    public void testSplitString() {
+    public void splitString()
+    {
         String[] phrases = {
             "",
             " \t \n",

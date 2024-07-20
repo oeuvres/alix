@@ -32,8 +32,6 @@
  */
 package com.github.oeuvres.alix.util;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.nio.CharBuffer;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -57,7 +55,7 @@ import com.github.oeuvres.alix.maths.Calcul;
  * example, searching by prefix and/or suffix {@link #glob(CharSequence)}.
  * </p>
  */
-public class Chain implements CharSequence, Appendable, Comparable<Chain>
+public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
 {
     /** The characters */
     private char[] chars;
@@ -78,6 +76,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     /**
      * Wrap the char array of another chain. Any change in this chain will affect
      * the other chain.
+     * @param chain Wrapped chain of chars.
      */
     public Chain(final Chain chain) {
         this.chars = chain.chars;
@@ -89,29 +88,29 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * Back the chain to an external char array (no copy). The char sequence is
      * considered empty (start = size = 0)
      * 
-     * @param a a char array
+     * @param src Source char array.
      */
-    public Chain(final char[] a) {
-        this.chars = a;
+    public Chain(final char[] src) {
+        this.chars = src;
     }
 
     /**
      * Back the chain to an external char array (no copy).
      * 
-     * @param a     a char array
-     * @param start offset index where a string start
-     * @param len   length of the string
+     * @param src      Source char array.
+     * @param start  Offset index where a string start.
+     * @param len    Length of the string.
      */
-    public Chain(final char[] a, final int start, final int len) {
+    public Chain(final char[] src, final int start, final int len) {
         if (start < 0)
             throw new StringIndexOutOfBoundsException("start=" + start + "< 0");
         if (len < 0)
             throw new StringIndexOutOfBoundsException("size=" + len + "< 0");
-        if (start >= a.length)
-            throw new StringIndexOutOfBoundsException("start=" + start + ">= length=" + a.length);
-        if (start + len >= a.length)
-            throw new StringIndexOutOfBoundsException("start+size=" + start + len + ">= length=" + a.length);
-        this.chars = a;
+        if (start >= src.length)
+            throw new StringIndexOutOfBoundsException("start=" + start + ">= length=" + src.length);
+        if (start + len >= src.length)
+            throw new StringIndexOutOfBoundsException("start+size=" + start + len + ">= length=" + src.length);
+        this.chars = src;
         this.zero = start;
         this.size = len;
     }
@@ -119,7 +118,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     /**
      * Construct a chain by copy of a char sequence.
      * 
-     * @param cs a char sequence (String, but also String buffers or builders)
+     * @param cs Char sequence (String, but also String buffers or builders).
      */
     public Chain(final CharSequence cs) {
         this.chars = new char[cs.length()];
@@ -140,7 +139,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     /**
-     * Append lucene utf-8 bytes
+     * Append lucene utf-8 bytes.
      * 
      * @param bytes Lucene bytes.
      * @return This Chain object for chaining.
@@ -155,9 +154,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     /**
-     * Append a character
+     * Append a character.
      * 
-     * @param c
+     * @param c Char to append.
      * @return the Chain object for chaining
      */
     @Override
@@ -170,23 +169,25 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     /**
-     * Append a copy of a span of a char array
+     * Append a copy of a span of a char array.
      * 
-     * @param src
-     * @return the Chain object for chaining
+     * @param  src     Source char array.
+     * @param  srcPos  Start index of chars to append.
+     * @param  length  Amount of chars to append from.
+     * @return This Chain object to chain methods.
      */
-    public Chain append(final char[] src, final int begin, final int amount)
+    public Chain append(final char[] src, final int srcPos, final int length)
     {
-        ensureRight(amount);
-        System.arraycopy(src, begin, this.chars, size, amount);
-        size += amount;
+        ensureRight(length);
+        System.arraycopy(src, srcPos, this.chars, size, length);
+        size += length;
         return this;
     }
 
     /**
-     * Append a chain
+     * Append a chain.
      * 
-     * @param chain
+     * @param chain Source chain to append.
      * @return the Chain object for chaining
      */
     public Chain append(final Chain chain)
@@ -220,35 +221,35 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     /**
      * Poor a string in data, array should have right size
      * 
-     * @param dstOffset
-     * @param s
-     * @param start
-     * @param end
+     * @param dstOffset  Position in this Chain from where to write chars.
+     * @param src        Source char sequence to get char from.
+     * @param srcStart   Start index of chars to copy from source char sequence.
+     * @param srcEnd     End index of chars to copy from source char array.
      */
-    private void write(int dstOffset, CharSequence s, int start, int end)
+    private void write(final int dstOffset, final CharSequence src, int srcStart, final int srcEnd)
     {
-        final int len = end - start;
+        final int len = srcEnd - srcStart;
         if (len < 0) {
-            throw new NegativeArraySizeException("start=" + start + " end=" + end + " start > end, no chars to append");
+            throw new NegativeArraySizeException("start=" + srcStart + " end=" + srcEnd + " start > end, no chars to append");
         }
         if (len > 4) { // only use instanceof check series for longer CSQs, else simply iterate
-            if (s instanceof String) {
-                ((String) s).getChars(start, end, chars, zero + dstOffset);
-            } else if (s instanceof StringBuilder) {
-                ((StringBuilder) s).getChars(start, end, chars, zero + dstOffset);
-            } else if (s instanceof StringBuffer) {
-                ((StringBuffer) s).getChars(start, end, chars, zero + dstOffset);
-            } else if (s instanceof CharBuffer && ((CharBuffer) s).hasArray()) {
-                final CharBuffer cb = (CharBuffer) s;
-                System.arraycopy(cb.array(), cb.arrayOffset() + cb.position() + start, chars, zero + dstOffset, len);
+            if (src instanceof String) {
+                ((String) src).getChars(srcStart, srcEnd, chars, zero + dstOffset);
+            } else if (src instanceof StringBuilder) {
+                ((StringBuilder) src).getChars(srcStart, srcEnd, chars, zero + dstOffset);
+            } else if (src instanceof StringBuffer) {
+                ((StringBuffer) src).getChars(srcStart, srcEnd, chars, zero + dstOffset);
+            } else if (src instanceof CharBuffer && ((CharBuffer) src).hasArray()) {
+                final CharBuffer cb = (CharBuffer) src;
+                System.arraycopy(cb.array(), cb.arrayOffset() + cb.position() + srcStart, chars, zero + dstOffset, len);
             } else {
                 for (int i = zero + dstOffset, limit = zero + dstOffset + len; i < limit; i++) {
-                    chars[i] = s.charAt(start++);
+                    chars[i] = src.charAt(srcStart++);
                 }
             }
         } else {
             for (int i = zero + dstOffset, limit = zero + dstOffset + len; i < limit; i++) {
-                chars[i] = s.charAt(start++);
+                chars[i] = src.charAt(srcStart++);
             }
         }
     }
@@ -256,7 +257,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     /**
      * Return a pointer on the internal char array chars.
      * 
-     * @return
+     * @return The internal char array.
      */
     public char[] array()
     {
@@ -267,7 +268,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * Try to capitalize (initial capital only) decently, according to some rules
      * available in latin language. ex: ÉTATS-UNIS -&gt; États-Unis.
      * 
-     * @return the Chain object for chaining
+     * @return This Chain object for chaining
      */
     public Chain capitalize()
     {
@@ -301,51 +302,51 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     /**
-     * HashMaps maybe optimized by ordered lists in buckets Do not use as a nice
-     * orthographic ordering
+     * HashMaps maybe optimized by ordered lists in buckets. Do not use as a nice
+     * orthographic ordering.
      */
     @Override
-    public int compareTo(final Chain t)
+    public int compareTo(final CharSequence cs)
     {
-        char v1[] = chars;
-        char v2[] = t.chars;
-        int k1 = zero;
-        int k2 = t.zero;
-        int lim1 = k1 + Math.min(size, t.size);
-        while (k1 < lim1) {
-            char c1 = v1[k1];
-            char c2 = v2[k2];
-            if (c1 != c2) {
-                return c1 - c2;
+        if (cs instanceof Chain) {
+            Chain oChain = ((Chain)cs);
+            char v1[] = chars;
+            char v2[] = oChain.chars;
+            int k1 = zero;
+            int k2 = oChain.zero;
+            int lim1 = k1 + Math.min(size, oChain.size);
+            while (k1 < lim1) {
+                char c1 = v1[k1];
+                char c2 = v2[k2];
+                if (c1 != c2) {
+                    return c1 - c2;
+                }
+                k1++;
+                k2++;
             }
-            k1++;
-            k2++;
+            return size - oChain.size;
         }
-        return size - t.size;
-    }
-
-    public int compareTo(final String string)
-    {
+        
         char[] chars = this.chars; // localize
         int ichars = zero;
         int istring = 0;
-        int lim = Math.min(size, string.length());
+        int lim = Math.min(size, cs.length());
         while (istring < lim) {
             char c1 = chars[ichars];
-            char c2 = string.charAt(istring);
+            char c2 = cs.charAt(istring);
             if (c1 != c2) {
                 return c1 - c2;
             }
             ichars++;
             istring++;
         }
-        return size - string.length();
+        return size - cs.length();
     }
 
     /**
-     * 
-     * @param c
-     * @return
+     * Is a char present in char sequence ?
+     * @param c Char to search.
+     * @return True if char found at least one time, false if not found.
      */
     public boolean contains(final char c)
     {
@@ -360,7 +361,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * Replace Chain content by a copy af a String.
      * 
      * @param cs a char sequence
-     * @return the Chain object for chaining
+     * @return This Chain object to chain methods.
      */
     public Chain copy(final CharSequence cs)
     {
@@ -444,8 +445,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * Replace this chain content by a copy of a chain (keep allocated memory if
      * enough).
      * 
-     * @param chain
-     * @return
+     * @param chain The chain to copy.
+     * @return This Chain object to chain methods.
      */
     public Chain copy(Chain chain)
     {
@@ -460,10 +461,10 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     /**
-     * Test suffix
+     * Test suffix (substring at end).
      * 
-     * @param suffix
-     * @return true if the Chain ends by suffix
+     * @param suffix a char sequence to test at end of Chain.
+     * @return true if the Chain ends by suffix.
      */
     public boolean endsWith(final CharSequence suffix)
     {
@@ -481,8 +482,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * Ensure capacity of underlying char array for appending to start. Progression
      * is next power of 2.
      * 
-     * @param amount
-     * @return
+     * @param amount Amount of chars to ensure.
+     * @return True if char array has grown, false otherwise.
      */
     private boolean ensureLeft(int amount)
     {
@@ -503,8 +504,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * Ensure capacity of underlying char array for appending to end. Progression is
      * next power of 2.
      * 
-     * @param amount
-     * @return
+     * @param amount Amount of chars to ensure.
+     * @return True if char array has grown, false otherwise.
      */
     private boolean ensureRight(int amount)
     {
@@ -577,6 +578,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
 
     /**
      * Peek first char (left).
+     * 
+     * @return The char at zero position.
      */
     public char first()
     {
@@ -584,7 +587,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     /**
-     * Set first char (left)
+     * Set first char (left).
+     * @param c Set first char.
+     * @return This Chain object to chain methods.
      */
     public Chain first(char c)
     {
@@ -595,6 +600,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
 
     /**
      * Delete first char, by modification of pointers.
+     * @return This Chain object to chain methods.
      */
     public Chain firstDel()
     {
@@ -606,6 +612,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
 
     /**
      * Remove an amount of chars from start (left).
+     * 
+     * @param amount Amount of chars to delete.
+     * @return This Chain object to chain methods.
      */
     public Chain firstDel(final int amount)
     {
@@ -620,7 +629,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     /**
      * Put first char upperCase
      * 
-     * @return the Chain for chaining
+     * @return This Chain object to chain methods.
      */
     public Chain firstToUpper()
     {
@@ -631,6 +640,10 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
 
     /**
      * Fill a char array with the chars of this Chain.
+     * For efficiency, no tests are done, user should ensure the size of destination array to contain
+     * this Chain.
+     * 
+     * @param dst Destination char array to fill 
      */
     public void getChars(final char[] dst)
     {
@@ -639,12 +652,12 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     /**
-     * Same as StringBuffer.getChars
+     * Same as {StringBuffer#getChars()}.
      * 
-     * @param srcBegin
-     * @param srcEnd
-     * @param dst
-     * @param dstBegin
+     * @param srcBegin  start copying at this offset.
+     * @param srcEnd    stop copying at this offset.
+     * @param dst       the array to copy the data into.
+     * @param dstBegin   offset into dst.
      */
     public void getChars(final int srcBegin, final int srcEnd, final char[] dst, final int dstBegin)
     {
@@ -655,102 +668,117 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     /**
-     * @param text
-     * @return
+     * Use this Chain as a glob pattern to match with a charSequence. For example, "maz*" will match
+     * with "maze", "mazurka", but not "amaze". "maz?" will match with "maze" but not "mazurka" and "amaze".
+     * 
+     * @param text  the chars to test.
+     * @return true if pattern matches, false otherwise.
      */
     public boolean glob(final CharSequence text)
     {
-        return globsearch(this, 0, size - 1, text, 0, text.length() - 1);
+        return glob(this, 0, size, text, 0, text.length());
     }
 
     /**
+     * Check if a glob pattern match with a charSequence. For example, "maz*" will match
+     * with "maze", "mazurka", but not "amaze". "maz?" will match with "maze" but not "mazurka" and "amaze".
      * 
+     * @param glob  The pattern to match.
+     * @param text  The chars to test.
+     * @return true if pattern matches, false otherwise.
+     */
+    static boolean glob(
+        final CharSequence glob, 
+        final CharSequence text
+    )
+    {
+        return glob(glob, 0, glob.length(), text, 0, text.length());
+    }
+
+    /**
+     * Check if a glob pattern match with a charSequence.
+     * Positions are freely available to work with big char sequences.
+     * For example, "maz*" will match
+     * with "maze", "mazurka", but not "amaze". "maz?" will match with "maze" but not "mazurka" and "amaze".
+     * 
+     * @param glob       The pattern to match.
+     * @param globstart  [globstart, globend[
+     * @param globend    [globstart, globend[
+     * @param text       The chars to test.
+     * @param textstart  [textstart, textend[
+     * @param textend    [textstart, textend[
+     * @return true if pattern matches, false otherwise.
      * @return
      */
-    private static boolean globsearch(CharSequence glob, int globstart, int globend, CharSequence text, int textstart,
-            int textend)
+    static boolean glob(
+        final CharSequence glob, 
+        final int globstart, 
+        final int globend, 
+        final CharSequence text, 
+        final int textstart,
+        final int textend
+    )
     {
         // empty pattern will never found things
-        if (glob.length() < 1)
+        if (glob.length() < 1 || globend - globstart < 1) {
             return false;
+        }
         // empty text will never match
-        if (text.length() < 1)
+        if (text.length() < 1 || textend - textstart < 1) {
             return false;
-        /*
-         * for ( int i=globstart; i <= globend; i++ ) System.out.print( globdata[i] );
-         * System.out.print( ' ' ); for ( int i=textstart; i <= textend; i++ )
-         * System.out.print( textdata[i] ); System.out.println();
-         */
-        char globc;
-        char textc;
-        // test if finish
-        // prefix search
-        final int inc;
-        // pat*, prefix search, go forward from start
-        if ((globc = glob.charAt(globstart)) != '*') {
-            textc = text.charAt(textstart);
-            inc = 1;
         }
-        // *pat, suffix search, go backward from end
-        else if ((globc = glob.charAt(globend)) != '*') {
-            textc = text.charAt(textend);
-            inc = -1;
+        // possible optimization for suffix search *suff
+        if (glob.charAt(globend) == '*') {
+            // TODO
         }
-        // *, just one star, we are OK
-        else if (globend == globstart) {
-            return true;
-        }
-        // *pat*, more than one star, progress by start
-        else {
-            int globi = globstart + 1;
-            for (;;) {
-                globc = glob.charAt(globi);
-                if (globc == '*')
-                    return globsearch(glob, globi, globend, text, textstart, textend);
-                // '?' not handled
-                // find the first
-                while (text.charAt(textstart) != globc) {
-                    if (textstart == textend)
-                        return false;
-                    textstart++;
-                }
-                //
-                for (;;) {
-                    globi++;
-                    textstart++;
-                    if (textstart >= textend && globi + 1 == globend)
-                        return true;
-                    if (textstart >= textend || globi + 1 == globend || text.charAt(textstart) != glob.charAt(globi))
-                        // not found, forward inside text, restart from the joker
-                        return globsearch(glob, globi, globend, text, textstart, textend);
-                }
+        int globi = globstart;
+        boolean skip = false;
+        int texti = textstart;
+        for (; texti < textend; texti++) {
+            final char textc = text.charAt(texti);
+            // end of glob
+            if (globi >= globend) {
+                break;
             }
-
-        }
-        // not enough chars in text to find glob
-        if ((globend - globstart) > (textend - textstart) + 1)
-            return false;
-        // *pat or pat*
-        for (;;) {
-            if (globc == '*')
-                return globsearch(glob, globstart, globend, text, textstart, textend);
-            else if (globc == '?')
-                ;
-            // char class ? [éju…]
-            else if (globc != textc)
+            final char globc = glob.charAt(globi);
+            System.out.println(glob + " " + globc + " " + text +" " + textc + " " + globi + " " + globend);
+            // test equals before the wildcard skip
+            if (textc == globc) {
+                globi++;
+                skip = false;
+                continue;
+            }
+            else if (skip) {
+                continue;
+            }
+            else if (globc == '?') {
+                globi++;
+                continue;
+            }
+            else if (globc == '*') {
+                // last char is a joker, always true at this step
+                if (globi + 1 == globend) {
+                    return true;
+                }
+                skip = true;
+                globi++;
+            }
+            else if (textc != globc) {
+                // bad char
                 return false;
-            if (globstart == globend && textstart == textend)
-                return true;
-            // ??? unuseful ?
-            // if ( globstart >= globend || textstart >= textend ) return false;
-            if (inc > 0) {
-                globc = glob.charAt(++globstart);
-                textc = text.charAt(++textstart);
-            } else {
-                globc = glob.charAt(--globend);
-                textc = text.charAt(--textend);
             }
         }
+        // tested string is not exhausted, not match
+        if (texti != textend) {
+            return false;
+        }
+        // pattern is not exhausted, tested string is not match, except if last char is a joker
+        if (globi != globend) {
+            if (glob.charAt(globend - 1) == '*') return true;
+            return false;
+        }
+        // should be OK here
+        return true;
     }
 
     /**
@@ -782,19 +810,35 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         return h;
     }
 
-    public Chain insert(int dstOffset, CharSequence s)
+    /**
+     * Insert chars at a position, moving possible chars after the inserted ones.
+     * 
+     * @param dstOffset  destination position where to insert cs.
+     * @param src        source chars to insert.
+     * @return this Chain object to chain methods.
+     */
+    public Chain insert(int dstOffset, CharSequence src)
     {
-        return insert(dstOffset, s, 0, s.length());
+        return insert(dstOffset, src, 0, src.length());
     }
 
-    public Chain insert(int dstOffset, CharSequence s, int start, final int end)
+    /**
+     * Insert chars at a position, moving possible chars after the inserted ones.
+     * 
+     * @param dstOffset  destination position where to insert cs.
+     * @param src        source chars to insert.
+     * @param srcStart   [srcStart, srcEnd[
+     * @param srcEnd     [srcStart, srcEnd[
+     * @return this Chain object to chain methods.
+     */
+    public Chain insert(int dstOffset, CharSequence src, int srcStart, final int srcEnd)
     {
-        if (s == null) {
+        if (src == null) {
             return this;
         }
-        int len = end - start;
+        int len = srcEnd - srcStart;
         if (len < 0) {
-            throw new NegativeArraySizeException("begin=" + start + " end=" + end + " begin > end, no chars to append");
+            throw new NegativeArraySizeException("begin=" + srcStart + " end=" + srcEnd + " begin > end, no chars to append");
         }
         int amount = len;
         if (dstOffset >= size) {
@@ -802,7 +846,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         }
         ensureRight(amount);
         shift(dstOffset, len);
-        write(dstOffset, s, start, end);
+        write(dstOffset, src, srcStart, srcEnd);
         size += amount;
         return this;
     }
@@ -810,7 +854,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     /**
      * Is Chain with no chars ?
      * 
-     * @return true if size == 0, or false
+     * @return true if size == 0, false otherwise.
      */
     public boolean isEmpty()
     {
@@ -841,6 +885,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
 
     /**
      * Set last char (right)
+     * @param c the char to set.
+     * @return This Chain object to chain methods.
      */
     public Chain last(char c)
     {
@@ -851,6 +897,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
 
     /**
      * Remove last char (right), by modification of pointers.
+     * @return this Chain object to chain methods.
      */
     public Chain lastDel()
     {
@@ -861,6 +908,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
 
     /**
      * Remove an amount of chars from end (right).
+     * 
+     * @param amount of chars to delete.
+     * @return this Chain object to chain methods.
      */
     public Chain lastDel(final int amount)
     {
@@ -882,7 +932,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * Like xpath normalize-space(), normalize a char used as a separator, maybe
      * useful for url paths.
      * 
-     * @return
+     * @param cs    the char sequence to normalize.
+     * @param sep   the char used as a separator,
+     * @return a normalized String.
      */
     static public String normalize(final CharSequence cs, final char sep)
     {
@@ -890,10 +942,14 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     /**
-     * Suppress repetition of a char used as a separator. maybe useful for url
-     * paths.
+     * Like xpath normalize-space(), replace a set of chars, maybe repeated,
+     * for example space chars "\t\n  ",
+     * by only one char, for example space ' '. 
      * 
-     * @return
+     * @param cs       a char sequence to normalize.
+     * @param search   a set of chars to normalize ex: "\t\n  ".
+     * @param replace  a normalized char ex: ' '.
+     * @return a new normalized String.
      */
     static public String normalize(final CharSequence cs, final String search, final char replace)
     {
@@ -928,6 +984,12 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         return new String(newChars, 0, length);
     }
 
+    /**
+     * Append a char at start (left).
+     * 
+     * @param c the char to append.
+     * @return this Chain object to chain methods.
+     */
     public Chain prepend(char c)
     {
         ensureLeft(1);
@@ -937,39 +999,53 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         return this;
     }
 
-    public Chain prepend(final CharSequence cs)
+    /**
+     * Append a char sequence at start (left).
+     * 
+     * @param src the source char sequence to append.
+     * @return this Chain object to chain methods.
+     */
+    public Chain prepend(final CharSequence src)
     {
-        return prepend(cs, 0, cs.length());
+        return prepend(src, 0, src.length());
     }
 
-    public Chain prepend(final CharSequence cs, int begin, final int end)
+    /**
+     * Append a char sequence at start (left).
+     * 
+     * @param src       char sequence to prepend.
+     * @param srcStart  [srcStart, srcEnd[
+     * @param srcEnd    [srcStart, srcEnd[
+     * @return this Chain object to chain methods.
+     */
+    public Chain prepend(final CharSequence src, int srcStart, final int srcEnd)
     {
-        if (cs == null)
+        if (src == null)
             return this;
-        int amount = end - begin;
+        int amount = srcEnd - srcStart;
         if (amount < 0)
-            throw new NegativeArraySizeException("begin=" + begin + " end=" + end + " begin > end, no chars to append");
+            throw new NegativeArraySizeException("srcStart=" + srcStart + " srcEnd=" + srcEnd + " srcStart > srcEnd, no chars to append");
         ensureLeft(amount);
         final int newStart = zero - amount;
         if (amount > 4) { // only use instanceof check series for longer CSQs, else simply iterate
-            if (cs instanceof String) {
-                ((String) cs).getChars(begin, end, chars, newStart);
-            } else if (cs instanceof StringBuilder) {
-                ((StringBuilder) cs).getChars(begin, end, chars, newStart);
-            } else if (cs instanceof StringBuffer) {
-                ((StringBuffer) cs).getChars(begin, end, chars, newStart);
+            if (src instanceof String) {
+                ((String) src).getChars(srcStart, srcEnd, chars, newStart);
+            } else if (src instanceof StringBuilder) {
+                ((StringBuilder) src).getChars(srcStart, srcEnd, chars, newStart);
+            } else if (src instanceof StringBuffer) {
+                ((StringBuffer) src).getChars(srcStart, srcEnd, chars, newStart);
                 /*
                  * possible optimisation here ? } else if (cs instanceof CharBuffer &&
                  * ((CharBuffer) cs).hasArray()) { final CharBuffer cb = (CharBuffer) cs;
                  */
             } else {
                 for (int i = newStart, limit = zero; i < limit; i++) {
-                    chars[i] = cs.charAt(begin++);
+                    chars[i] = src.charAt(srcStart++);
                 }
             }
         } else {
             for (int i = newStart, limit = zero; i < limit; i++) {
-                chars[i] = cs.charAt(begin++);
+                chars[i] = src.charAt(srcStart++);
             }
         }
         size += amount;
@@ -980,7 +1056,9 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     /**
      * Replace a char by another
      * 
-     * @return the Chain object for chaining
+     * @param oldChar char to replace.
+     * @param newChar replacement char.
+     * @return this Chain object to chain methods.
      */
     public Chain replace(final char oldChar, final char newChar)
     {
@@ -1018,7 +1096,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * Reset chain (keep all memory already allocated). Keep start where it is,
      * efficient for prepend.
      * 
-     * @return the Chain
+     * @return this Chain object to chain methods.
      */
     public Chain reset()
     {
@@ -1028,7 +1106,10 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
     
     /**
-     * 
+     *Same as {@link StringBuffer#setLength(int)}, sets the length of the character sequence.
+     *
+     * @param newLength the new length.
+     * @return this Chain object to chain methods.
      */
     public Chain setLength(int newLength)
     {
@@ -1044,30 +1125,16 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     /**
-     * Make place to insert len chars at offset
-     * 
-     * @param offset
-     * @param len
-     */
-    private void shift(final int offset, int len)
-    {
-        System.arraycopy(chars, // src array
-                zero + offset, // src pos, offset, relative to start index (in case of prepend)
-                chars, // copy to itself, size should be ensure before
-                (zero + offset + len), // destPos, copy after len to insert
-                (size - offset) // length, amount to copy
-        );
-    }
-
-    /**
      * Wrap the Chain on another char array without copy
      * 
-     * @param a text as char array
-     * @return the Chain object for chaining
+     * @param chars text as char array.
+     * @param start start offset to bind.
+     * @param len amount of chars to bind.
+     * @return this Chain object to chain methods.
      */
-    public Chain set(final char[] a, final int start, int len)
+    public Chain set(final char[] chars, final int start, int len)
     {
-        this.chars = a;
+        this.chars = chars;
         this.zero = start;
         this.size = len;
         this.hash = 0;
@@ -1079,7 +1146,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * 
      * @param index position of the char to change
      * @param c     new char value
-     * @return the Chain object for chaining
+     * @return this Chain object to chain methods.
      */
     public Chain setCharAt(final int index, final char c)
     {
@@ -1092,10 +1159,28 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     /**
-     * An split on one char
+     * Make place to insert len chars at offset
      * 
-     * @param separator
-     * @return
+     * @param offset
+     * @param len
+     * @return this Chain object to chain methods.
+     */
+    private Chain shift(final int offset, int len)
+    {
+        System.arraycopy(chars, // src array
+            zero + offset, // src pos, offset, relative to start index (in case of prepend)
+            chars, // copy to itself, size should be ensure before
+            (zero + offset + len), // destPos, copy after len to insert
+            (size - offset) // length, amount to copy
+        );
+        return this;
+    }
+
+    /**
+     * Split on one char.
+     * 
+     * @param separator a char, ex: ',', ' ', ';'…
+     * @return array of segments separated.
      */
     public String[] split(final char separator)
     {
@@ -1125,12 +1210,12 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     }
 
     /**
-     * Split on one or more char
+     * Split on one or more char.
      * 
-     * @param separator
-     * @return
+     * @param separators, ex: ",; ".
+     * @return array of segments separated.
      */
-    public String[] split(final String seps)
+    public String[] split(final String separators)
     {
         // store generated Strings in alist
         LinkedList<String> list = new LinkedList<>();
@@ -1140,7 +1225,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
         char[] dat = chars;
         while (to < max) {
             // not separator, continue
-            if (seps.indexOf(dat[to]) == -1) {
+            if (separators.indexOf(dat[to]) == -1) {
                 to++;
                 continue;
             }
@@ -1160,7 +1245,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     /**
      * Return the start index in the chars char array.
      * 
-     * @return
+     * @return internal start index of first char.
      */
     public int start()
     {
@@ -1170,8 +1255,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     /**
      * Test prefix
      * 
-     * @param prefix
-     * @return true if the Chain starts by prefix
+     * @param prefix char sequence to test.
+     * @return true if the Chain starts by prefix.
      */
     public boolean startsWith(final CharSequence prefix)
     {
@@ -1207,7 +1292,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
     /**
      * Change case of the chars in scope of the chain.
      * 
-     * @return the Chain object for chaining
+     * @return this Chain object to chain methods.
      */
     public Chain toLower()
     {
@@ -1253,7 +1338,7 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * Suppress spaces at start and end of string. Do not affect the internal char
      * array chars but modify only its limits. Should be very efficient.
      * 
-     * @return the modified Chain object
+     * @return this Chain object (modified).
      */
     public Chain trim()
     {
@@ -1277,8 +1362,8 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * Suppress specific chars at start and end of String. Do not affect the
      * internal char array chars but modify only its limits.
      * 
-     * @param spaces
-     * @return the modified Chain object
+     * @param spaces ex: "\n\t ".
+     * @return this Chain object (modified).
      */
     public Chain trim(final String spaces)
     {
@@ -1311,6 +1396,13 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
      * NOTE: Full characters are read, even if this reads past the length passed
      * (and can result in an ArrayOutOfBoundsException if invalid UTF-8 is passed).
      * Explicit checks for valid UTF-8 are not performed.
+
+     * @param utf8 source bytes.
+     * @param offset start position in source bytes.
+     * @param length amount of bytes to parse.
+     * @param out  destination char array to fill.
+     * @param out_offset start position in destination array.
+     * @return the amout of chars appended.
      */
     public static int UTF8toUTF16(byte[] utf8, int offset, int length, char[] out, final int out_offset)
     {
@@ -1343,18 +1435,6 @@ public class Chain implements CharSequence, Appendable, Comparable<Chain>
             }
         }
         return out_pos - out_offset;
-    }
-
-    public void write(Writer out) throws IOException
-    {
-        for (int i = zero, limit = this.size; i < limit; i++) {
-            if (chars[i] == '<')
-                out.append("&lt;");
-            else if (chars[i] == '>')
-                out.append("&gt;");
-            else
-                out.append(chars[i]);
-        }
     }
 
 }

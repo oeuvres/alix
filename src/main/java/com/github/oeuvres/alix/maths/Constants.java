@@ -12,56 +12,43 @@ public class Constants
      * Machine epsilon. Smallest double floating point number such that (1 +
      * MACHEPS) &gt; 1 .
      */
-
     public static final double MACHEPS = determineMachineEpsilon();
 
-    /* Machine precision in decimal digits . */
-
+    /** Machine precision in decimal digits . */
     public static final int MAXPREC = determineMaximumPrecision();
 
     /** Maximum logarithm value. */
-
     public static final double MAXLOG = 7.09782712893383996732E2;
 
     /** Minimum logarithm value. */
-
     public static final double MINLOG = -7.451332191019412076235E2;
 
     /** Square root of 2. */
-
     public static final double SQRT2 = Math.sqrt(2.0D);
 
     /** ( Square root of 2 ) / 2 . */
-
     public static final double SQRT2DIV2 = SQRT2 / 2.0D;
 
     /** Square root of PI. */
-
     public static final double SQRTPI = Math.sqrt(Math.PI);
 
     /** Natural log of PI. */
-
     public static final double LNPI = Math.log(Math.PI);
 
-    /* LN(10) . */
-
+    /** LN(10) . */
     public static final double LN10 = Math.log(10.0D);
 
-    /* 1 / LN(10) */
-
+    /** 1 / LN(10) */
 //  public static final double  LN10INV    = 1.0D / LN10;
     public static final double LN10INV = 0.43429448190325182765D;
 
-    /* LN(2) */
-
+    /** LN(2) */
     public static final double LN2 = Math.log(2.0D);
 
-    /* 1 / LN(2) */
-
+    /** 1 / LN(2) */
     public static final double LN2INV = 1.0D / LN2;
 
-    /* LN( Sqrt( 2 * PI ) ) */
-
+    /** LN( Sqrt( 2 * PI ) ) */
     public static final double LNSQRT2PI = Math.log(Math.sqrt(2.0D * Math.PI));
 
     /**
@@ -70,7 +57,6 @@ public class Constants
      * @return The machine epsilon as a double. The machine epsilon MACHEPS is the
      *         smallest number such that (1 + MACHEPS) == 1 .
      */
-
     public static double determineMachineEpsilon()
     {
         double d1 = 1.3333333333333333D;
@@ -91,7 +77,6 @@ public class Constants
      * @return Maximum number of digits of precision for double precision floating
      *         point.
      */
-
     public static int determineMaximumPrecision()
     {
         // Get machine epsilon.
@@ -110,7 +95,6 @@ public class Constants
     /**
      * This class is non-instantiable but inheritable.
      */
-
     protected Constants() {
     }
 }

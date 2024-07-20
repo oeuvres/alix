@@ -17,7 +17,7 @@ public class FrTokenizerTest {
 
     public static void main(String[] args) throws IOException
     {
-        Analyzer analyzer = new AlixAnalyzer();
+        Analyzer analyzer = new AnalyzerAlix();
         analyze(analyzer, "text_cloud", "le moindre fossé sont peuplés de <i>stagnalis</i> typiques ou très <mark id=\"pos22862\">allongées<a class=\"noteref\" href=\"#note24\" id=\"note24_\" epub:type=\"noteref\">22</a>.</mark> Bien plus, la forme de Noville");
     }
     

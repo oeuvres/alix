@@ -57,13 +57,15 @@ import picocli.CommandLine.Parameters;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.fr.Tag.TagFilter;
-import com.github.oeuvres.alix.lucene.analysis.FrLemFilter;
-import com.github.oeuvres.alix.lucene.analysis.FrPersnameFilter;
-import com.github.oeuvres.alix.lucene.analysis.FrTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
+import com.github.oeuvres.alix.lucene.analysis.FilterFrPersname;
+import com.github.oeuvres.alix.lucene.analysis.TokenizerFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
-
+/**
+ * Adhoc tool to extract Names.
+ */
 @Command(name = "Balinoms", description = "Tag names in an XML/TEI file", mixinStandardHelpOptions = true)
 public class Balinoms implements Callable<Integer>
 {
@@ -95,9 +97,9 @@ public class Balinoms implements Callable<Integer>
         @Override
         protected TokenStreamComponents createComponents(String fieldName)
         {
-            final Tokenizer source = new FrTokenizer();
-            TokenStream result = new FrLemFilter(source);
-            result = new FrPersnameFilter(result);
+            final Tokenizer source = new TokenizerFr();
+            TokenStream result = new FilterLemmatize(source);
+            result = new FilterFrPersname(result);
             return new TokenStreamComponents(source, result);
         }
 

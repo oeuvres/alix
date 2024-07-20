@@ -54,9 +54,9 @@ public class BitsFromQuery
     private final Query query;
 
     /**
-     * Wraps another search's to get bits by LeafReaderContext
+     * Wraps another search's to get bits by LeafReaderContext.
      * 
-     * @param query Query to cache results of
+     * @param query Query to cache results of.
      */
     public BitsFromQuery(Query query) {
         this.query = query;
@@ -73,9 +73,10 @@ public class BitsFromQuery
     }
 
     /**
+     * Method called on a leaf of a lucene reader to collect docId hits as a {@link BitSet}.
      * 
-     * @param context
-     * @return
+     * @param context A leaf of a lucene index.
+     * @return BitSet of docId found.
      * @throws IOException Lucene errors.
      */
     public BitSet bits(LeafReaderContext context) throws IOException

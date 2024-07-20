@@ -114,8 +114,8 @@ public class EdgeRoll
     /**
      * Push a value, maybe outside waited vocabulary, calculate edges.
      * 
-     * @param position
-     * @param wordId
+     * @param position index of encountered word.
+     * @param pivotId id of word encoutered.
      */
     public void push(final int position, final int pivotId)
     {

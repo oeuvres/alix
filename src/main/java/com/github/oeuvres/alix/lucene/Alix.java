@@ -89,7 +89,7 @@ import org.apache.lucene.util.Bits;
 
 import static com.github.oeuvres.alix.Names.*;
 
-import com.github.oeuvres.alix.lucene.analysis.AlixAnalyzer;
+import com.github.oeuvres.alix.lucene.analysis.AnalyzerAlix;
 import com.github.oeuvres.alix.lucene.search.FieldFacet;
 import com.github.oeuvres.alix.lucene.search.Scale;
 import com.github.oeuvres.alix.lucene.search.FieldText;
@@ -194,9 +194,14 @@ public class Alix
     private IndexWriter writer;
     /** Analyzer for indexation and search */
     final private Analyzer analyzer;
-
+    /** Ways to open a lucene index */
     public enum FSDirectoryType {
-        MMapDirectory, NIOFSDirectory, FSDirectory
+        /** Memory Map */
+        MMapDirectory, 
+        /** File channel */
+        NIOFSDirectory,
+        /** Smart default, do its best */
+        FSDirectory
     }
 
     private Alix(final String name, final Path path, final Analyzer analyzer) throws IOException {
@@ -234,7 +239,7 @@ public class Alix
         }
         // What about reuse strategy ?
         if (analyzer == null) {
-            this.analyzer = new AlixAnalyzer();
+            this.analyzer = new AnalyzerAlix();
         } else {
             this.analyzer = analyzer;
         }
@@ -344,7 +349,6 @@ public class Alix
      *
      * @param fieldName A SortedDocValuesField or a SortedSetDocValuesField
      *                  fieldName.
-     * @param coverTerm A couple field:value to catch one document by facet term.
      * @return The facet.
      * @throws IOException Lucene errors.
      */
@@ -597,6 +601,7 @@ public class Alix
     }
 
     /**
+     * Build a lucene {@link Query} from a query {@link String}.
      * 
      * @param fieldName Name of a text field.
      * @param q         User query String.
@@ -608,12 +613,22 @@ public class Alix
         return query(fieldName, q, this.analyzer);
     }
 
-    static public Query query(final String field, final String q, final Analyzer analyzer) throws IOException
+    /**
+     * Build a lucene {@link Query} from a query {@link String}.
+     * 
+     * @param fieldName Name of a text field.
+     * @param q         User query String.
+     * @param analyzer  A Lucene analyzer.
+     * @return A lucene Query.
+     * @throws IOException Lucene errors.
+     */
+    static public Query query(final String fieldName, final String q, final Analyzer analyzer) throws IOException
     {
-        return query(field, q, analyzer, Occur.SHOULD);
+        return query(fieldName, q, analyzer, Occur.SHOULD);
     }
 
     /**
+     * Build a lucene {@link Query} from a query {@link String}.
      * 
      * @param fieldName Name of a text field.
      * @param q         User query String.
@@ -931,10 +946,10 @@ public class Alix
     /**
      * Give a new writer to create a lucene index, could be closed.
      * 
-     * @param path
-     * @param analyzer
-     * @return
-     * @throws IOException
+     * @param path The file path of a lucene index
+     * @param analyzer Default analyzer for the index
+     * @return A lucene index writer
+     * @throws IOException Lucene errors
      */
     public static IndexWriter writer(Path path, Analyzer analyzer) throws IOException
     {

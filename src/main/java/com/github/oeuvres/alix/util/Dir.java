@@ -127,12 +127,12 @@ public class Dir
     }
 
     /**
-     * Add files with glob
-     * 
-     * @param glob
-     * @param files
-     * @return
-     * @throws IOException
+     * Add files to a list with a glob.
+     *
+     * @param paths list of paths to populate.
+     * @param glob pattern of file to append.
+     * @return the list of paths completed.
+     * @throws IOException file errors.
      */
     public static List<Path> include(List<Path> paths, final String glob) throws IOException
     {

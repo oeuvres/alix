@@ -44,6 +44,14 @@ public class Calcul
     private static final BigDecimal SQRT_DIG = new BigDecimal(15);
     private static final BigDecimal SQRT_PRE = new BigDecimal(10).pow(SQRT_DIG.intValue());
 
+    /**
+     * Square root from a {@link BigDecimal}.
+     * http://www.codeproject.com/Tips/257031/Implementing-SqrtRoot-in-BigDecimal
+     * 
+     * @param c Value.
+     * @return Square root.
+     * @author Luciano Culacciatti
+     */
     public static BigDecimal sqrt(BigDecimal c)
     {
         return sqrtNewtonRaphson(c, new BigDecimal(1), new BigDecimal(1).divide(SQRT_PRE));
@@ -96,7 +104,7 @@ public class Calcul
      * Get the power of 2 equals or next to an Integer, useful for some efficient
      * data structures.
      * 
-     * @param n
+     * @param n A position.
      * @return the next power of 2
      */
     public static int nextSquare(int n)
@@ -115,8 +123,10 @@ public class Calcul
     /**
      * From
      * http://nadeausoftware.com/articles/2009/08/java_tip_how_parse_integers_quickly
-     *
      * Parse an integer very quickly, without sanity checks.
+     * 
+     * @param s A String with possible int.
+     * @return A parsed int value.
      */
     public static long parseInt(final String s)
     {
@@ -143,17 +153,7 @@ public class Calcul
         return sign * num;
     }
 
-    static class Num
-    {
-        final char[] chars;
-        final int value;
-
-        public Num(String s, int value) {
-            this.chars = s.toCharArray();
-            this.value = value;
-        }
-    }
-
+    
     private static int dec(char c)
     {
         switch (c) {
@@ -176,11 +176,24 @@ public class Calcul
         }
     }
 
+    /**
+     * Parse a roman number from an array of chars.
+     * @param chars CharSequence.
+     * @return Value parsed or 0 if nothing found.
+     */
     public static int roman2int(char[] chars)
     {
         return roman2int(chars, 0, chars.length);
     }
 
+    /**
+     * Parse a roman number from an array of chars.
+     * 
+     * @param chars CharSequence.
+     * @param start Start index char to search from.
+     * @param len Count of chars to parse.
+     * @return Value parsed or 0 if nothing found.
+     */
     public static int roman2int(char[] chars, int start, int len)
     {
         int value = 0;

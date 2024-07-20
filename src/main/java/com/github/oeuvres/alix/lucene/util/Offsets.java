@@ -41,7 +41,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Data structure to write and read the “offsets” of a document Offsets are
+ * Data structure to write and read the “offsets” of a document. Offsets are
  * start and end index of tokens in the source CharSequence (the text). Data are
  * encoded in a binary form suited for stored field
  * {@link StoredField#StoredField(String, BytesRef)},
@@ -63,7 +63,7 @@ public class Offsets extends BinaryValue
     /**
      * Create buffer for write with initial size (growing is possible).
      * 
-     * @param size
+     * @param size Number of Offset objects (= 2 ints = 2 x 4 bytes)
      */
     public Offsets(int size) {
         capacity = size << 3;
@@ -73,7 +73,7 @@ public class Offsets extends BinaryValue
     /**
      * Number of positions in this vector.
      * 
-     * @return
+     * @return Number of Offset objects
      */
     public int size()
     {
@@ -83,9 +83,9 @@ public class Offsets extends BinaryValue
     /**
      * Put a couple of int.
      * 
-     * @param pos
-     * @param start
-     * @param end
+     * @param pos The position to fill in.
+     * @param start A start position.
+     * @param end An end position.
      */
     public void put(final int pos, final int start, final int end)
     {
@@ -102,8 +102,8 @@ public class Offsets extends BinaryValue
     /**
      * Get start offset at a position.
      * 
-     * @param pos
-     * @return
+     * @param pos A position.
+     * @return A start index.
      */
     public int getStart(final int pos)
     {
@@ -112,10 +112,10 @@ public class Offsets extends BinaryValue
     }
 
     /**
-     * Get start offset at a position.
+     * Get end offset at a position.
      * 
-     * @param pos
-     * @return
+     * @param pos A position.
+     * @return An end index.
      */
     public int getEnd(final int pos)
     {

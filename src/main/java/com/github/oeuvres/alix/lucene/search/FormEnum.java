@@ -657,10 +657,9 @@ public class FormEnum implements FormIterator
     /**
      * Prepare the order of enumeration with a vector.
      * 
-     * @param order
-     * @param limit
-     * @param reverse
-     * @return
+     * @param order sort order accepted.
+     * @param limit limit the number of forms returned.
+     * @param reverse reverse order according to order.
      */
     public void sort(final Order order, final int limit, final boolean reverse)
     {

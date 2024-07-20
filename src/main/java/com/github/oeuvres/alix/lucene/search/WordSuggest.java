@@ -57,9 +57,11 @@ import com.github.oeuvres.alix.util.TopArray;
  * Build an efficient suggestion of words.
  * 
  * Data structure
+ * <ul>
  * <li>Input, words from a lucene field: BytesRefHash formDic = {"Loïc", "Chloé", "Éric"…}</li>
  * <li>ASCII search: String ascii = "_loic_chloe_eric_…"</li>
  * <li>Word indexs: int[] starts = [0, 5, 11, 16…]</li>
+ * </ul>
  * 
  * Ask for "LÔ", answer {"<mark>Lo</mark>ïc", "Ch<mark>lo</mark>é"} in original order.
  */
@@ -83,8 +85,9 @@ public class WordSuggest
     private final int wc;
     
     /**
-     * Build an index of words optimized for wildcard searching
-     * @return
+     * Build an index of words optimized for wildcard searching.
+     * 
+     * @param fieldText name of a lucene indexed field (text).
      */
     public WordSuggest (final FieldText fieldText)
     {
@@ -118,9 +121,10 @@ public class WordSuggest
 
     /**
      * Find list of formId in the dictionary of a field.
-     * @param q
-     * @param count
-     * @return
+     * 
+     * @param q a query string to find words.
+     * @param wordFilter a wordfilter by tags.
+     * @return a list of formId.
      */
     public int[] list(String q, final TagFilter wordFilter) {
         if (q == null || q.isEmpty()) return new int[0];

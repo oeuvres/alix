@@ -34,12 +34,12 @@ package com.github.oeuvres.alix.lucene.search;
 
 import java.io.IOException;
 
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -67,18 +67,19 @@ public class BitsCollector extends SimpleCollector implements Collector
     int docBase;
 
     /**
-     * Build Collector with the destination searcher to have maximum docId
+     * Build Collector with the destination searcher to have maximum docId {@link IndexReader#maxDoc()}.
      * 
-     * @param searcher
+     * @param searcher A lucene searcher.
      */
     public BitsCollector(IndexSearcher searcher) {
         bits = new FixedBitSet(searcher.getIndexReader().maxDoc());
     }
 
     /**
-     * Build Collector with the maximum docId
+     * Build collector from the maximum docId of the lucene reader {@link IndexReader#maxDoc()}.
+     * If maxDoc is too small for the index, errors may be thrown if docId &gt; maxDoc are found.
      * 
-     * @param searcher
+     * @param maxDoc Biggest docId + 1 for this lucene index.
      */
     public BitsCollector(int maxDoc) {
         bits = new FixedBitSet(maxDoc);
@@ -87,7 +88,7 @@ public class BitsCollector extends SimpleCollector implements Collector
     /**
      * Get the document filter.
      * 
-     * @return
+     * @return A bitSet of docId.
      */
     public FixedBitSet bits()
     {
@@ -95,9 +96,9 @@ public class BitsCollector extends SimpleCollector implements Collector
     }
 
     /**
-     * Get current number of hits
+     * Get current number of hits (doc found).
      * 
-     * @return
+     * @return Count of documents found.
      */
     public int hits()
     {

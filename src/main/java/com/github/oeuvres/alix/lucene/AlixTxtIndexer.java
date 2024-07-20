@@ -59,7 +59,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 
 import static com.github.oeuvres.alix.Names.*;
-import com.github.oeuvres.alix.lucene.analysis.MetaAnalyzer;
+import com.github.oeuvres.alix.lucene.analysis.AnalyzerMeta;
 import com.github.oeuvres.alix.util.Dir;
 
 /**
@@ -82,15 +82,21 @@ public class AlixTxtIndexer
     private final Analyzer analyzer;
 
     /**
-     * Keep same writer for
-     * 
-     * @param writer
+     * Constructor.
+     * @param writer A lucene index to write in.
      */
     public AlixTxtIndexer(final IndexWriter writer) {
         this.writer = writer;
         this.analyzer = writer.getAnalyzer();
     }
 
+    /**
+     * Transform txt to TEI
+     * 
+     * @param file A text file to transform.
+     * @return TEI.
+     * @throws IOException File errors.
+     */
     static public String tei(File file) throws IOException
     {
         BufferedReader br = new BufferedReader(new FileReader(file));
@@ -155,6 +161,7 @@ public class AlixTxtIndexer
      * entire index. All documents from this filename will deleted before
      * indexation.
      * 
+     * @param file Txt file to load.
      * @throws IOException Lucene errors.
      */
 
@@ -223,10 +230,10 @@ public class AlixTxtIndexer
         book.add(new NumericDocValuesField(name, val)); // to sort
 
         book.add(new StoredField("bibl", bibl)); // (TokenStream fields cannot be stored)
-        TokenStream ts = new MetaAnalyzer().tokenStream("meta", bibl); // renew token stream
+        TokenStream ts = new AnalyzerMeta().tokenStream("meta", bibl); // renew token stream
         book.add(new Field("bibl", ts, Alix.ftypeMeta)); // indexation of the chosen tokens
         chapter.add(new StoredField("bibl", bibl)); // (TokenStream fields cannot be stored)
-        ts = new MetaAnalyzer().tokenStream("meta", bibl); // renew token stream
+        ts = new AnalyzerMeta().tokenStream("meta", bibl); // renew token stream
         chapter.add(new Field("bibl", ts, Alix.ftypeMeta)); // indexation of the chosen tokens
 
         chapter.add(new IntPoint(name, val)); // to search
@@ -255,6 +262,12 @@ public class AlixTxtIndexer
         ts.close();
     }
 
+    /**
+     * Direct indexation.
+     * 
+     * @param args Arguments.
+     * @throws Exception All errors.
+     */
     public static void main(String[] args) throws Exception
     {
 

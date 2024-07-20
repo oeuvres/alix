@@ -67,7 +67,7 @@ import com.github.oeuvres.alix.web.OptionDistrib;
 
 /**
  * A dedicated dictionary for stats on facets. This class is lighter than the
- * lucene facet package, {@link org.apache.lucene.demo.facet}, backed to memory
+ * lucene <a href="https://lucene.apache.org/core/9_11_1/facet/index.html">facet package</a>, backed to memory
  * only, and allow more complex scoring.
  *
  * <p>

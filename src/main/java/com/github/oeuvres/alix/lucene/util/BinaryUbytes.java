@@ -59,9 +59,9 @@ public class BinaryUbytes extends BinaryValue
     }
 
     /**
-     * Create buffer for write with initial size.
+     * Create buffer for write with initial size. Growing is possible.
      * 
-     * @param size
+     * @param size Initial count of positions.
      */
     public BinaryUbytes(int size) {
         capacity = size;
@@ -71,7 +71,7 @@ public class BinaryUbytes extends BinaryValue
     /**
      * Number of positions in this vector.
      * 
-     * @return
+     * @return Size of vector.
      */
     public int size()
     {
@@ -81,8 +81,8 @@ public class BinaryUbytes extends BinaryValue
     /**
      * Put a value at a posiion.
      * 
-     * @param pos
-     * @param value
+     * @param pos A position in vector.
+     * @param value An int value cast to byte.
      */
     public void put(final int pos, final int value)
     {
@@ -96,10 +96,10 @@ public class BinaryUbytes extends BinaryValue
 
     /**
      * Get value at a position. Value is stored as a common java byte (signed),it is
-     * returned as an int to allow unsigne values.
+     * returned as an int to allow unsigned values.
      * 
-     * @param pos
-     * @return
+     * @param pos Position of value.
+     * @return Unsigned byte value [0, 255].
      */
     public int get(final int pos)
     {

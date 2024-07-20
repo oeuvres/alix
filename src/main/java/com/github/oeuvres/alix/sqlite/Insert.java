@@ -60,10 +60,10 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
-import com.github.oeuvres.alix.lucene.analysis.FrLemFilter;
-import com.github.oeuvres.alix.lucene.analysis.FrPersnameFilter;
-import com.github.oeuvres.alix.lucene.analysis.FrTokenizer;
-import com.github.oeuvres.alix.lucene.analysis.LocutionFilter;
+import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
+import com.github.oeuvres.alix.lucene.analysis.FilterFrPersname;
+import com.github.oeuvres.alix.lucene.analysis.TokenizerFr;
+import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
@@ -84,10 +84,10 @@ public class Insert
         @Override
         protected TokenStreamComponents createComponents(String fieldName)
         {
-            final Tokenizer source = new FrTokenizer();
-            TokenStream result = new FrLemFilter(source);
-            result = new LocutionFilter(result);
-            result = new FrPersnameFilter(result);
+            final Tokenizer source = new TokenizerFr();
+            TokenStream result = new FilterLemmatize(source);
+            result = new FilterLocution(result);
+            result = new FilterFrPersname(result);
             return new TokenStreamComponents(source, result);
         }
 

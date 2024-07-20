@@ -80,7 +80,7 @@ abstract class BinaryValue
     /**
      * Open offsets in a stored field.
      * 
-     * @param ref
+     * @param ref A bytes object.
      */
     public void open(final BytesRef ref)
     {
@@ -90,9 +90,9 @@ abstract class BinaryValue
     }
 
     /**
-     * Return data as a BytesRef that can be indexed.
+     * Return data as a new BytesRef that can be indexed.
      * 
-     * @return
+     * @return A bytes object.
      */
     public BytesRef getBytesRef()
     {
@@ -102,7 +102,7 @@ abstract class BinaryValue
     /**
      * Grow the bytes buffer.
      * 
-     * @param cap
+     * @param cap Capacity in bytes.
      */
     protected void grow(final int cap)
     {

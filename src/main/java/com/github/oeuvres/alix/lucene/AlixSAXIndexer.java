@@ -57,7 +57,7 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import static com.github.oeuvres.alix.Names.*;
-import com.github.oeuvres.alix.lucene.analysis.MetaAnalyzer;
+import com.github.oeuvres.alix.lucene.analysis.AnalyzerMeta;
 
 /**
  * An XML parser allowing to index XML or HTMTL.
@@ -106,6 +106,15 @@ public class AlixSAXIndexer extends DefaultHandler
     /** Flag to verify that an element is not empty (for XML serialization) */
     private boolean empty;
 
+
+    /**
+     * Keep same writer for
+     * 
+     * @param writer A Lucene index to write in.
+     */
+    public AlixSAXIndexer(final IndexWriter writer) {
+        this.writer = writer;
+    }
 
     @Override
     public void characters(char[] ch, int start, int length)
@@ -186,7 +195,7 @@ public class AlixSAXIndexer extends DefaultHandler
                 case META:
                     doc.add(new StoredField(name, text)); // (TokenStream fields cannot be stored)
                     // renew token stream, do not reset nor close, can’t know how much analyzer needed
-                    MetaAnalyzer metaAnalyzer = new MetaAnalyzer();
+                    AnalyzerMeta metaAnalyzer = new AnalyzerMeta();
                     TokenStream ts = metaAnalyzer.tokenStream("meta", text);
                     doc.add(new Field(name, ts, Alix.ftypeMeta)); // indexation of the chosen tokens
                     break;
@@ -268,6 +277,7 @@ public class AlixSAXIndexer extends DefaultHandler
      * entire index. All documents from this filename will deleted before
      * indexation.
      * 
+     * @param fileName The source fileName of the documents.
      * @throws IOException Lucene errors.
      */
     public void setFileName(String fileName) throws IOException
@@ -515,14 +525,5 @@ public class AlixSAXIndexer extends DefaultHandler
         else {
             throw new SAXException("<alix:" + localName + "> is not implemented in namespace " + uri);
         }
-    }
-
-    /**
-     * Keep same writer for
-     * 
-     * @param writer
-     */
-    public AlixSAXIndexer(final IndexWriter writer) {
-        this.writer = writer;
     }
 }

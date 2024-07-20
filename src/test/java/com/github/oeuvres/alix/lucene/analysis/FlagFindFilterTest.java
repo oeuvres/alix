@@ -17,7 +17,7 @@ public class FlagFindFilterTest {
 
     public void testPos() throws IOException
     {
-        Analyzer analyzer = new AlixAnalyzer();
+        Analyzer analyzer = new AnalyzerAlix();
         analyze(analyzer, "query", "pour* *pour* Situer* *situer* exactement* *Exactement* les* *les* representations* *representations* du* monde* *monde* de* ENfant* *l'enfant* la* p* pour");
     }
     

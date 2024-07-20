@@ -54,7 +54,7 @@ import org.apache.lucene.index.IndexWriter;
 
 import com.github.oeuvres.alix.lucene.Alix;
 import com.github.oeuvres.alix.lucene.XMLIndexer;
-import com.github.oeuvres.alix.lucene.analysis.AlixAnalyzer;
+import com.github.oeuvres.alix.lucene.analysis.AnalyzerAlix;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.util.Dir;
 import picocli.CommandLine;
@@ -326,7 +326,7 @@ public class Load implements Callable<Integer>
      */
     public void write(String name, Path path) throws Exception
     {
-        Alix alix = Alix.instance(name, path, new AlixAnalyzer(), null);
+        Alix alix = Alix.instance(name, path, new AnalyzerAlix(), null);
         // Alix alix = Alix.instance(name, path, new StandardAnalyzer(), null);
         IndexWriter writer = alix.writer();
         XMLIndexer.index(writer, paths, threads, "tei", xsl);
