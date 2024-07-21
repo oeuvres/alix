@@ -60,9 +60,9 @@ import com.github.oeuvres.alix.fr.Tag.TagFilter;
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterFrPersname;
 import com.github.oeuvres.alix.lucene.analysis.TokenizerFr;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 /**
  * Adhoc tool to extract Names.
  */
@@ -168,9 +168,9 @@ public class Balinoms implements Callable<Integer>
         int toks = 0;
         int begin = 0;
         //
-        final CharsAtt termAtt = (CharsAtt) stream.addAttribute(CharTermAttribute.class);
-        final CharsAtt orthAtt = (CharsAtt) stream.addAttribute(CharsOrthAtt.class);
-        final CharsAtt lemAtt = (CharsAtt) stream.addAttribute(CharsLemAtt.class);
+        final CharsAttImpl termAtt = (CharsAttImpl) stream.addAttribute(CharTermAttribute.class);
+        final CharsAttImpl orthAtt = (CharsAttImpl) stream.addAttribute(OrthAtt.class);
+        final CharsAttImpl lemAtt = (CharsAttImpl) stream.addAttribute(LemAtt.class);
         final OffsetAttribute attOff = stream.addAttribute(OffsetAttribute.class);
         final FlagsAttribute attFlags = stream.addAttribute(FlagsAttribute.class);
         try {
@@ -239,7 +239,7 @@ public class Balinoms implements Callable<Integer>
      * @param chars Increment a term entry.
      * @param flag  Flag of the term.
      */
-    private void inc(final CharsAtt chars, final int flag)
+    private void inc(final CharsAttImpl chars, final int flag)
     {
         @SuppressWarnings("unlikely-arg-type")
         Entry entry = dic.get(chars);

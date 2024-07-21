@@ -41,23 +41,23 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 import com.github.oeuvres.alix.maths.Calcul;
 import com.github.oeuvres.alix.util.Char;
 
 /**
  * A lucene token filter adding other channels to the token stream
  * <ul>
- * <li>an orthographic form (normalized) in a {@link CharsOrthAtt}</li>
- * <li>a lemma in a {@link CharsLemAtt}</li>
+ * <li>an orthographic form (normalized) in a {@link OrthAtt}</li>
+ * <li>a lemma in a {@link LemAtt}</li>
  * <li>a pos as a lucene int flag {@link FlagsAttribute} (according to the
  * semantic of {@link Tag}</li>
  * </ul>
  * <p>
  * The efficiency of the dictionaries lookup and chars manipulation rely on a
- * custom implementation of a lucene term attribute {@link CharsOrthAtt}.
+ * custom implementation of a lucene term attribute {@link OrthAtt}.
  * </p>
  * <p>
  * The original {@link CharTermAttribute} provide by the step before is not
@@ -80,22 +80,19 @@ import com.github.oeuvres.alix.util.Char;
 public final class FilterLemmatize extends TokenFilter
 {
     /** The term provided by the Tokenizer */
-    private final CharsAtt termAtt = (CharsAtt) addAttribute(CharTermAttribute.class);
+    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** A linguistic category as an int, from Tag */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** A lemma when possible */
-    private final CharsAtt lemAtt = (CharsAtt) addAttribute(CharsLemAtt.class);
-    /**
-     * A normalized orthographic form, so that original term is not modified at this
-     * step
-     */
-    private final CharsAtt orthAtt = (CharsAtt) addAttribute(CharsOrthAtt.class);
+    private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(LemAtt.class);
+    /** A normalized orthographic form, original term is kept */
+    private final CharsAttImpl orthAtt = (CharsAttImpl) addAttribute(OrthAtt.class);
     /** Last token was Punctuation */
     private boolean pun = true;
     /** Store state */
     private State save;
     /** Reusable char sequence for some tests and transformations */
-    private final CharsAtt copy = new CharsAtt();
+    private final CharsAttImpl copy = new CharsAttImpl();
 
     /**
      * Default constructor

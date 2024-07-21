@@ -19,8 +19,8 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.junit.Test;
 
 import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 public class TokenizerXMLTest {
 
@@ -47,7 +47,7 @@ public class TokenizerXMLTest {
         // final TypeAttribute typeAttribute = tokenStream.addAttribute(TypeAttribute.class);
         final PositionIncrementAttribute posIncAttribute = tokenStream.addAttribute(PositionIncrementAttribute.class);
         // final PositionLengthAttribute posLenAttribute = tokenStream.addAttribute(PositionLengthAttribute.class);
-        final CharsAtt orthAtt = (CharsAtt) tokenStream.addAttribute(CharsOrthAtt.class);
+        final CharsAttImpl orthAtt = (CharsAttImpl) tokenStream.addAttribute(OrthAtt.class);
         tokenStream.reset();
         while(tokenStream.incrementToken()) {
             System.out.print(""

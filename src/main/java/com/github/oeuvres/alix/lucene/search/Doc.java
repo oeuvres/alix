@@ -56,7 +56,7 @@ import static com.github.oeuvres.alix.Names.*;
 import com.github.oeuvres.alix.fr.Tag.TagFilter;
 import com.github.oeuvres.alix.lucene.Alix;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.search.DocHiliter.Token;
 import com.github.oeuvres.alix.lucene.util.WordsAutomatonBuilder;
 import com.github.oeuvres.alix.util.Chain;
@@ -89,8 +89,8 @@ public class Doc
      * Get a document by String id (persists as long as the source XML doc is not
      * modified) with all fields loaded (even the big ones).
      * 
-     * @param alix
-     * @param id
+     * @param alix wrapper on a lucene index.
+     * @param id persistant external id of document.
      * @throws IOException Lucene errors.
      */
     public Doc(final Alix alix, final String id) throws IOException {
@@ -99,12 +99,12 @@ public class Doc
 
     /**
      * Get a document by String id (persists as long as the source XML doc is not
-     * modified), with the set of fields provided (or all fields fieldsToLoad is
+     * modified), with the set of fields provided (or all fields if fieldsToLoad is
      * null).
      * 
-     * @param alix
-     * @param id
-     * @param fieldsToLoad
+     * @param alix wrapper on a lucene index.
+     * @param id persistant external id of document.
+     * @param fieldsToLoad list of stored fields to load.
      * @throws IOException Lucene errors.
      */
     public Doc(final Alix alix, final String id, final HashSet<String> fieldsToLoad) throws IOException {
@@ -129,8 +129,8 @@ public class Doc
      * Get a document by lucene docId (persists as long as the Lucene index is not
      * modified) with all fields loaded (even the big ones).
      * 
-     * @param alix
-     * @param docId
+     * @param alix wrapper on a lucene index.
+     * @param docId internal lucene docId.
      * @throws IOException Lucene errors.
      */
     public Doc(final Alix alix, final int docId) throws IOException {
@@ -142,9 +142,9 @@ public class Doc
      * modified) with the set of fields provided (or all fields fieldsToLoad is
      * null).
      * 
-     * @param alix
-     * @param docId
-     * @param fieldsToLoad
+     * @param alix wrapper on a lucene index.
+     * @param docId internal lucene docId.
+     * @param fieldsToLoad list of stored fields to load.
      * @throws IOException Lucene errors.
      */
     public Doc(final Alix alix, final int docId, final HashSet<String> fieldsToLoad) throws IOException {
@@ -203,7 +203,7 @@ public class Doc
         // loop on search source, compare with dest
         double max1 = Double.MIN_VALUE;
         double max2 = Double.MIN_VALUE;
-        CharsAtt att = new CharsAtt();
+        CharsAttImpl att = new CharsAttImpl();
         while (termit1.next() != null) {
             // termit1.ord(); UnsupportedOperationException
             final int count1 = (int) termit1.totalTermFreq();

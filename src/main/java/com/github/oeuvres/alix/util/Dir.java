@@ -58,6 +58,10 @@ public class Dir
     /**
      * Delete a folder by path (use java.nio stream, should be faster then
      * {@link #rm(File)})
+     * 
+     * @param path file to delete.
+     * @return true if exists and deleted, false otherwise.
+     * @throws IOException file error.
      */
     public static boolean rm(Path path) throws IOException
     {
@@ -75,7 +79,10 @@ public class Dir
     }
 
     /**
-     * Delete a folder by File object (maybe a bit slow for lots of big folders)
+     * Delete a folder by File object (maybe a bit slow for lots of big folders).
+     * 
+     * @param file folder to delete.
+     * @return true if exists and deleted, false otherwise.
      */
     public static boolean rm(File file)
     {
@@ -93,11 +100,11 @@ public class Dir
     }
 
     /**
-     * List files by glob
+     * List files by glob.
      * 
-     * @param glob
-     * @return
-     * @throws IOException Lucene errors.
+     * @param glob pattern to select files.
+     * @return list of selected paths.
+     * @throws IOException file errors.
      */
     public static List<Path> ls(final String glob) throws IOException
     {
@@ -105,6 +112,14 @@ public class Dir
     }
     
 
+    /**
+     * Delete files from a list by glob.
+     * 
+     * @param paths list of files.
+     * @param glob pattern to select files.
+     * @return list of selected paths.
+     * @throws IOException file errors.
+     */
     static public  List<Path> exclude(final List<Path> paths, final String glob) throws IOException
     {
         if (glob == null) {

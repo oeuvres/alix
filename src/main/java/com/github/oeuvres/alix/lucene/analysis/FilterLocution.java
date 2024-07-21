@@ -44,9 +44,9 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 import com.github.oeuvres.alix.util.Roll;
 
 /**
@@ -58,23 +58,21 @@ public class FilterLocution extends TokenFilter
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** Current Flags */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-    /**
-     * Current original term, do not cast here, or effects could be inpredictable
-     */
+    /** Current original term, do not cast here */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** A normalized orthographic form (ex : capitalization) */
-    private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
+    private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
     /** A lemma when possible */
-    private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
+    private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** A stack of states */
     private Roll<State> stack = new Roll<State>(10);
     /** A term used to concat a compound */
-    private CharsAtt compound = new CharsAtt();
+    private CharsAttImpl compound = new CharsAttImpl();
     /** past paticiples to not take as infinitives */
-    public static final HashSet<CharsAtt> ORTH = new HashSet<CharsAtt>();
+    public static final HashSet<CharsAttImpl> ORTH = new HashSet<CharsAttImpl>();
     static {
         for (String w : new String[] { "pris", "prise'", "prises" })
-            ORTH.add(new CharsAtt(w));
+            ORTH.add(new CharsAttImpl(w));
     }
 
     public FilterLocution(TokenStream input) {
@@ -102,7 +100,7 @@ public class FilterLocution extends TokenFilter
     @Override
     public final boolean incrementToken() throws IOException
     {
-        CharsAtt orth = (CharsAtt) orthAtt;
+        CharsAttImpl orth = (CharsAttImpl) orthAtt;
         boolean token = false;
         compound.setEmpty();
         Integer treeState;

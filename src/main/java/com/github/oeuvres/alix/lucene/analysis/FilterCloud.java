@@ -41,9 +41,9 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 /**
  * A final token filter before indexation, to plug after a lemmatizer filter,
@@ -55,15 +55,15 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 public class FilterCloud extends TokenFilter
 {
     /** The term provided by the Tokenizer */
-    private final CharsAtt termAtt = (CharsAtt) addAttribute(CharTermAttribute.class);
+    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
     /** A linguistic category as a short number, see {@link Tag} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** A normalized orthographic form */
-    private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
+    private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
     /** A lemma when possible */
-    private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
+    private final LemAtt lemAtt = addAttribute(LemAtt.class);
     /** output pun or not ? */
     boolean pun;
     /** keep right position order */

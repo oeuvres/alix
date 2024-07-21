@@ -47,7 +47,7 @@ import org.apache.lucene.util.UnicodeUtil;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.fr.Tag.TagFilter;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.EdgeQueue;
 import com.github.oeuvres.alix.util.TopArray;
@@ -318,7 +318,7 @@ public class FormEnum implements FormIterator
      * @param term
      * @return
      */
-    public CharsAtt form(CharsAtt term)
+    public CharsAttImpl form(CharsAttImpl term)
     {
         formDic.get(formId, bytes);
         // ensure limit of the char array

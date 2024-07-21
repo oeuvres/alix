@@ -63,15 +63,33 @@ public class CsvReader
     /** line number */
     private int line = -1;
 
+    /**
+     * Build a CSV scanner on a text file with predefined number of columns.
+     * @param file text to parse.
+     * @param cols number of colums.
+     * @throws FileNotFoundException file 404.
+     */
     public CsvReader(final File file, final int cols) throws FileNotFoundException {
         this.reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
         row = new Row(cols);
     }
 
+    /**
+     * Build a CSV scanner on a reader with predefined number of columns.
+     * @param reader text to parse.
+     * @param cols number of colums.
+     */
     public CsvReader(Reader reader, final int cols) {
         this(reader, cols, (char) 0);
     }
 
+    /**
+     * Build a CSV scanner on a reader with predefined number of columns and a separator char.
+     * 
+     * @param reader text to parse.
+     * @param cols number of colums.
+     * @param sep char between cells.
+     */
     public CsvReader(Reader reader, final int cols, final char sep) {
         this.reader = reader;
         row = new Row(cols);
@@ -79,25 +97,37 @@ public class CsvReader
         this.sep = sep;
     }
 
+    /**
+     * Close uderlying reader.
+     * @throws IOException file error.
+     */
     public void close() throws IOException
     {
         reader.close();
     }
 
+    /**
+     * Current row, popualted by last {@link #readRow()}.
+     * @return pointer to row.
+     */
     public Row row()
     {
         return this.row;
     }
 
+    /**
+     * Last line number.
+     * @return line number.
+     */
     public int line()
     {
         return this.line;
     }
 
     /**
-     * Read one row (should stop at each
+     * Read one row.
      * 
-     * @return
+     * @return pointer on the row, populated.
      * @throws IOException Lucene errors.
      */
     public Row readRow() throws IOException
@@ -170,6 +200,9 @@ public class CsvReader
         return row;
     }
 
+    /**
+     * Mutable object to record cells as {@link CharSequence}.
+     */
     public class Row
     {
         /** Predefined number of cells to populate */
@@ -179,7 +212,11 @@ public class CsvReader
         /** Internal pointer in cells */
         int pointer;
 
-        /** constructor */
+        /** 
+         * Build a row receiver with predefined cout of cells.
+         * 
+         * @param cols fixed number of colums.
+         */
         public Row(int cols) {
             cells = new Chain[cols];
             for (int i = cols - 1; i >= 0; i--) {
@@ -189,9 +226,9 @@ public class CsvReader
         }
 
         /**
-         * Reset all cells
+         * Reset all cells.
          * 
-         * @return
+         * @return this.
          */
         public Row reset()
         {
@@ -203,7 +240,10 @@ public class CsvReader
         }
 
         /**
-         * Give next cell or null if no more
+         * Give cell by column number.
+         * 
+         * @param col column number.
+         * @return cell as char sequence.
          */
         public Chain get(int col)
         {
@@ -212,6 +252,8 @@ public class CsvReader
 
         /**
          * Give next cell or null if no more
+         * 
+         * @return cell as char sequence.
          */
         public Chain next()
         {

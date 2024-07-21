@@ -41,9 +41,9 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 /**
  * A token Filter to plug after a Lemmatizer. Add lemma to forms on same
@@ -52,13 +52,13 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
 public class FilterFind extends TokenFilter
 {
     /** The term provided by the Tokenizer */
-    private final CharsAtt termAtt = (CharsAtt) addAttribute(CharTermAttribute.class);
+    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** A linguistic category as a short number, from Tag */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** A lemma when possible */
-    private final CharsAtt lemAtt = (CharsAtt) addAttribute(CharsLemAtt.class);
+    private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(LemAtt.class);
     /** A normalized orthographic form */
-    private final CharsAtt orthAtt = (CharsAtt) addAttribute(CharsOrthAtt.class);
+    private final CharsAttImpl orthAtt = (CharsAttImpl) addAttribute(OrthAtt.class);
     /** A lemma when possible */
     private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
     /** Flag to say */

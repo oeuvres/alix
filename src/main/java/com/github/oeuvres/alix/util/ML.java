@@ -17,7 +17,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 
 /**
  * Some useful tools to deal with “Markup Languages” (xml, but also html tag
@@ -91,7 +91,7 @@ public class ML
      * @param ent
      * @return
      */
-    public static char forChar(final CharsAtt ent)
+    public static char forChar(final CharsAttImpl ent)
     {
         @SuppressWarnings("unlikely-arg-type")
         Character c = HTMLENT.get(ent);

@@ -42,9 +42,9 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.Roll;
 
@@ -57,30 +57,30 @@ import com.github.oeuvres.alix.util.Roll;
 public class FilterFrPersname extends TokenFilter
 {
     /** Particles in names */
-    public static final HashSet<CharsAtt> PARTICLES = new HashSet<CharsAtt>();
+    public static final HashSet<CharsAttImpl> PARTICLES = new HashSet<CharsAttImpl>();
     static {
         for (String w : new String[] { "d'", "D'", "de", "De", "du", "Du", "l'", "L'", "le", "Le", "la", "La", "von",
                 "Von" })
-            PARTICLES.add(new CharsAtt(w));
+            PARTICLES.add(new CharsAttImpl(w));
     }
     /** Current char offset */
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** Current Flags */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** Current term */
-    private final CharsAtt termAtt = (CharsAtt) addAttribute(CharTermAttribute.class);
+    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** A normalized orthographic form */
-    private final CharsAtt orthAtt = (CharsAtt) addAttribute(CharsOrthAtt.class);
+    private final CharsAttImpl orthAtt = (CharsAttImpl) addAttribute(OrthAtt.class);
     /** A lemma, needed to restore states */
-    private final CharsAtt lemAtt = (CharsAtt) addAttribute(CharsLemAtt.class);
+    private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(LemAtt.class);
     /** An efficient stack of states */
     private Roll<State> stack = new Roll<State>(8);
     /** Chars used to concat names like in text */
-    private CharsAtt concTerm = new CharsAtt();
+    private CharsAttImpl concTerm = new CharsAttImpl();
     /** Chars used to concat names with some normalization, like M. > monsieur */
-    private CharsAtt concOrth = new CharsAtt();
+    private CharsAttImpl concOrth = new CharsAttImpl();
     /** Chars used to concat a candidate lemma for person: Mr A. Nom > Nom */
-    private CharsAtt concLem = new CharsAtt();
+    private CharsAttImpl concLem = new CharsAttImpl();
     /** Exit value */
     private boolean exit = false;
 

@@ -329,7 +329,7 @@ public class Load implements Callable<Integer>
         Alix alix = Alix.instance(name, path, new AnalyzerAlix(), null);
         // Alix alix = Alix.instance(name, path, new StandardAnalyzer(), null);
         IndexWriter writer = alix.writer();
-        XMLIndexer.index(writer, paths, threads, "tei", xsl);
+        XMLIndexer.index(writer, paths, xsl);
         System.out.println("[" + APP + "] " + name + " Merging");
         writer.commit();
         writer.close(); // close lucene index before indexing rail (for coocs)

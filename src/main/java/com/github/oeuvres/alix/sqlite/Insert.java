@@ -64,9 +64,9 @@ import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterFrPersname;
 import com.github.oeuvres.alix.lucene.analysis.TokenizerFr;
 import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 import com.github.oeuvres.alix.util.Dir;
 
 /**
@@ -96,8 +96,8 @@ public class Insert
     /** Instantiation of lem */
     static Analyzer ana = new AnalyzerSite();
 
-    private static HashMap<CharsAtt, Integer> lemDic = new HashMap<>();
-    private static HashMap<CharsAtt, Integer> orthDic = new HashMap<>();
+    private static HashMap<CharsAttImpl, Integer> lemDic = new HashMap<>();
+    private static HashMap<CharsAttImpl, Integer> orthDic = new HashMap<>();
 
     /** Sqlite Connection */
     private static Connection con;
@@ -220,9 +220,9 @@ public class Insert
         final int CAT = 5;
         final int LEM = 6;
         TokenStream stream = ana.tokenStream("stats", new StringReader(xml));
-        final CharsAtt termAtt = (CharsAtt) stream.addAttribute(CharTermAttribute.class);
-        final CharsAtt orthAtt = (CharsAtt) stream.addAttribute(CharsOrthAtt.class);
-        final CharsAtt lemAtt = (CharsAtt) stream.addAttribute(CharsLemAtt.class);
+        final CharsAttImpl termAtt = (CharsAttImpl) stream.addAttribute(CharTermAttribute.class);
+        final CharsAttImpl orthAtt = (CharsAttImpl) stream.addAttribute(OrthAtt.class);
+        final CharsAttImpl lemAtt = (CharsAttImpl) stream.addAttribute(LemAtt.class);
         final OffsetAttribute attOff = stream.addAttribute(OffsetAttribute.class);
         final FlagsAttribute attFlags = stream.addAttribute(FlagsAttribute.class);
         stream.reset();
@@ -242,7 +242,7 @@ public class Insert
             // filter punctuation ?
 
             // get a lemma
-            CharsAtt lem = null;
+            CharsAttImpl lem = null;
             if (!lemAtt.isEmpty())
                 lem = lemAtt;
             else if (!orthAtt.isEmpty())
@@ -262,12 +262,12 @@ public class Insert
                 ResultSet keys = qLem.getGeneratedKeys();
                 keys.next(); // should be true or let it cry
                 lemId = keys.getInt(1);
-                lemDic.put(new CharsAtt(lem), lemId);
+                lemDic.put(new CharsAttImpl(lem), lemId);
             }
             qTok.setInt(LEM, lemId);
 
             // get an orthographic form
-            CharsAtt orth = null;
+            CharsAttImpl orth = null;
             if (!orthAtt.isEmpty())
                 orth = orthAtt;
             else if (!termAtt.isEmpty())
@@ -286,7 +286,7 @@ public class Insert
                 ResultSet keys = qOrth.getGeneratedKeys();
                 keys.next(); // should be true or let it cry
                 orthId = keys.getInt(1);
-                orthDic.put(new CharsAtt(orth), orthId);
+                orthDic.put(new CharsAttImpl(orth), orthId);
             }
             qTok.setInt(ORTH, orthId);
             qTok.execute();

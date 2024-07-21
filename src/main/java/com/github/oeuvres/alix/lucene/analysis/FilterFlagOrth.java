@@ -41,8 +41,8 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 // import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsLemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsOrthAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 /**
  * A final token filter before indexation, to plug after a lemmatizer filter,
@@ -58,9 +58,9 @@ public class FilterFlagOrth extends TokenFilter
     /** A linguistic category as a short number, see {@link Tag} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** A normalized orthographic form */
-    private final CharsOrthAtt orthAtt = addAttribute(CharsOrthAtt.class);
+    private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
     /** A lemma when possible */
-    private final CharsLemAtt lemAtt = addAttribute(CharsLemAtt.class);
+    private final LemAtt lemAtt = addAttribute(LemAtt.class);
 
     public FilterFlagOrth(TokenStream in) {
         super(in);

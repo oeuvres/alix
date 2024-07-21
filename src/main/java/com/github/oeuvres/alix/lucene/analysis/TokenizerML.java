@@ -10,12 +10,11 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
-import org.apache.lucene.util.Attribute;
 import org.apache.lucene.util.AttributeFactory;
-import org.apache.lucene.util.AttributeImpl;
 
 import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.AttributeFactoryAlix;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Char;
 
 /**
@@ -81,7 +80,7 @@ public class TokenizerML  extends Tokenizer
     /** Max size of a word */
     private final int TOKEN_MAX_SIZE = 256;
     /** The term provided by the Tokenizer */
-    private final CharsAtt termAtt = (CharsAtt) addAttribute(CharTermAttribute.class);
+    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
     private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
@@ -100,7 +99,7 @@ public class TokenizerML  extends Tokenizer
      * Build a Tokenizer for Markup tagged text.
      */
     public TokenizerML() {
-        super(new AlixAttributeFactory(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
+        super(new AttributeFactoryAlix(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
     }
     
     @Override
@@ -114,7 +113,7 @@ public class TokenizerML  extends Tokenizer
         int endOffset = -1;
         char lastChar = 0;
         char c = 0;
-        CharsAtt test = new CharsAtt();
+        CharsAttImpl test = new CharsAttImpl();
         while (true) {
             // needs more chars ?
             if (bufferIndex >= bufferLen) {
@@ -181,7 +180,7 @@ public class TokenizerML  extends Tokenizer
                 
                 // Is apos breakable?
                 if (c == '\'') {
-                    CharsAtt val = FrDics.ELISION.get(termAtt);
+                    CharsAttImpl val = FrDics.ELISION.get(termAtt);
                     if (val != null) {
                         val.copyTo(termAtt);
                         break;
@@ -289,23 +288,5 @@ public class TokenizerML  extends Tokenizer
         buffer.reset(); // make sure to reset the IO buffer!!
     }
     
-    /**
-     * An attribute factory
-     */
-    private static final class AlixAttributeFactory extends AttributeFactory
-    {
-        private final AttributeFactory delegate;
 
-        public AlixAttributeFactory(AttributeFactory delegate) {
-            this.delegate = delegate;
-        }
-
-        @Override
-        public AttributeImpl createAttributeInstance(Class<? extends Attribute> attClass)
-        {
-            if (attClass == CharTermAttribute.class)
-                return new CharsAtt();
-            return delegate.createAttributeInstance(attClass);
-        }
-    }
 }

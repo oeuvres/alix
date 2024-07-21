@@ -741,7 +741,6 @@ public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
                 break;
             }
             final char globc = glob.charAt(globi);
-            System.out.println(glob + " " + globc + " " + text +" " + textc + " " + globi + " " + globend);
             // test equals before the wildcard skip
             if (textc == globc) {
                 globi++;

@@ -60,7 +60,7 @@ import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.fr.Tag.TagFilter;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.web.OptionDistrib;
@@ -139,8 +139,8 @@ public class FieldText
      * string). This order allows optimizations for co-occurrences matrix,
      * 
      * 
-     * @param reader
-     * @param fieldName
+     * @param reader a lucene index reader.
+     * @param fieldName name of a lucene text field.
      * @throws IOException Lucene errors.
      */
     public FieldText(final IndexReader reader, final String fieldName) throws IOException {
@@ -231,7 +231,7 @@ public class FieldText
         formDocs = new int[this.maxForm];
         formTag = new int[this.maxForm];
         Collections.sort(stack); // should sort by frequences
-        CharsAtt chars = new CharsAtt(); // to test against indexation dicos
+        CharsAttImpl chars = new CharsAttImpl(); // to test against indexation dicos
         bytes = new BytesRef();
 
         for (FormRecord rec : stack) {
@@ -308,7 +308,7 @@ public class FieldText
     /**
      * Total count of document affected by the field
      * 
-     * @return
+     * @return doc count.
      */
     public int docs()
     {
@@ -321,6 +321,7 @@ public class FieldText
      * Populate a dictionary of forms by a bitSet of documents, the filter is found
      * in FormEnum.filter
      * 
+     * @param results
      * @throws IOException Lucene errors.
      */
     public FormEnum filter(FormEnum results) throws IOException
@@ -395,8 +396,8 @@ public class FieldText
     /**
      * Is this formId a StopWord ?
      * 
-     * @param formId
-     * @return
+     * @param formId form id for the field.
+     * @return true if stop word, false otherwise.
      */
     public boolean isStop(int formId)
     {
@@ -407,8 +408,8 @@ public class FieldText
     /**
      * Get String value for a formId.
      * 
-     * @param formId
-     * @return
+     * @param formId a form id.
+     * @return the chars as a string.
      */
     public String form(final int formId)
     {
@@ -420,9 +421,9 @@ public class FieldText
     /**
      * Get a String value for a formId, using a mutable array of bytes.
      * 
-     * @param formId
-     * @param bytes
-     * @return
+     * @param formId a form id.
+     * @param bytes reusable bytes.
+     * @return the populated bytes.
      */
     public BytesRef form(int formId, BytesRef bytes)
     {
@@ -430,10 +431,10 @@ public class FieldText
     }
 
     /**
-     * How many docs for this formId ?
+     * How many docs in all index for this formId ?
      * 
-     * @param formId
-     * @return
+     * @param formId id of a form.
+     * @return doc count.
      */
     public int formDocs(int formId)
     {
@@ -441,54 +442,10 @@ public class FieldText
     }
 
     /**
-     * Check if a form is present in a portion of the corpus. Returns its formId or
-     * -1 if not found.
+     * Returns formId &gt;= 0 if exists, or -1 if not, like {@link BytesRefHash#find(BytesRef)}
      * 
-     * @param word
-     * @param filter
-     * @return
-     * @throws IOException Lucene errors.
-     */
-    public int formId(final String word, final BitSet filter) throws IOException
-    {
-        final BytesRef bytes = new BytesRef(word);
-        final int formId = formDic.find(bytes);
-        if (formId < 0) {
-            return -1;
-        }
-        if (filter == null) {
-            return formId;
-        }
-        // loop on leaves of the reader
-        for (LeafReaderContext context : reader.leaves()) {
-            final int docBase = context.docBase;
-            LeafReader leaf = context.reader();
-            Term term = new Term(name, word);
-            PostingsEnum postings = leaf.postings(term, PostingsEnum.NONE);
-            if (postings == null) {
-                continue; // no docs for this term, next leaf
-            }
-            // loop on docs for this term, till on is in the bitset
-            final Bits liveDocs = leaf.getLiveDocs();
-            int docLeaf;
-            while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                if (liveDocs != null && !liveDocs.get(docLeaf)) {
-                    continue;
-                }
-                final int docId = docBase + docLeaf;
-                if (filter.get(docId)) {
-                    return formId;
-                }
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * Returns formId &gt;= 0 if exists, or &lt; 0 if not.
-     * 
-     * @param bytes
-     * @return
+     * @param bytes reusable utf8 bytes to look for.
+     * @return formId &gt;= 0 if found, -1 otherwise.
      */
     public int formId(final BytesRef bytes)
     {
@@ -496,39 +453,152 @@ public class FieldText
     }
 
     /**
-     * Returns formId &gt;= 0 if exists, or &lt; 0 if not.
+     * Returns formId &gt;= 0 if exists, or -1 if not, like {@link BytesRefHash#find(BytesRef)}
      * 
-     * @param term
-     * @return
+     * @param form char version of a form.
+     * @return formId &gt;= 0 if found, -1 otherwise.
      */
-    public int formId(final String term)
+    public int formId(final CharSequence form)
     {
-        BytesRef bytes = new BytesRef(term);
+        BytesRef bytes = new BytesRef(form);
         return formDic.find(bytes);
+    }
+
+    /**
+     * Check if a form is present in a partition of the index. Returns its formId or
+     * -1 if not found.
+     * 
+     * @param form a word form.
+     * @param docFilter set of docIds.
+     * @return formId if found, or -1 if not found in partition.
+     * @throws IOException Lucene errors.
+     */
+    public int formId(final BytesRef bytes, final BitSet docFilter) throws IOException
+    {
+        BytesRef[] forms = new BytesRef[] {bytes};
+        int[] ret = formIds(forms, docFilter);
+        if (ret == null) return -1;
+        if (ret.length < 1) {// ?
+            return -1;
+        }
+        return ret[0];
     }
 
     /**
      * Returns a sorted array of formId for found words, ready for binarySearch, or
      * null if not found.
      * 
-     * @param words
-     * @param filter
-     * @return
+     * @param forms array of form as bytes.
+     * @return a sorted array of formId found, or null if no form found for this fiels.
+     * @throws IOException lucene errors.
      */
-    public int[] formIds(String[] words, final BitSet filter) throws IOException
+    public int[] formIds(BytesRef[] forms) throws IOException
     {
-        if (words == null) {
+        if (forms == null) {
             return null;
         }
-        // check if words could be found, even with the docId filter, collect their
-        // formId
+        final int formsLen = forms.length;
+        if (formsLen < 1) {
+            return null;
+        }
         IntList list = new IntList();
-        for (String word : words) {
-            int formId = formId(word, filter);
-            if (formId < 0) {
-                continue;
-            }
+        for (int i = 0; i < formsLen; i++) {
+            final BytesRef bytes = forms[i];
+            if (bytes == null) continue;
+            final int formId = formDic.find(bytes);
+            // form not known, OK
+            if (formId < 0) continue;
             list.push(formId);
+        }
+        if (list.isEmpty()) {
+            return null;
+        }
+        int[] pivots = list.uniq();
+        return pivots;
+    }
+    
+    /**
+     * Returns a sorted array of formId ready for binarySearch, or
+     * null if no words found.
+     * 
+     * @param forms set of forms as {@link CharSequence}
+     * @param docFilter set of DocId to include.
+     * @return sorted set of formId.
+     * @throws IOException lucene errors.
+     */
+    public int[] formIds(CharSequence[] forms, final BitSet docFilter) throws IOException
+    {
+        if (forms == null) return null;
+        final int formsLen = forms.length;
+        if (formsLen < 0) return null;
+        final BytesRef[] formsBytes = new BytesRef[formsLen];
+        for (int i = 0; i < formsLen; i++) {
+            formsBytes[i] = new BytesRef(forms[i]);
+        }
+        return formIds(formsBytes, docFilter);
+    }
+
+    /**
+     * Returns a sorted array of formId ready for binarySearch, or
+     * null if no words found.
+     * 
+     * @param forms set of forms as bytes.
+     * @param docFilter set of DocId to include.
+     * @return sorted set of formId.
+     * @throws IOException lucene errors.
+     */
+    public int[] formIds(BytesRef[] forms, final BitSet docFilter) throws IOException
+    {
+        if (forms == null) {
+            return null;
+        }
+        final int formsLen = forms.length;
+        if (formsLen < 1) {
+            return null;
+        }
+        if (docFilter == null) {
+            return formIds(forms);
+        }
+        for (int i = 0; i < formsLen; i++) {
+            final BytesRef bytes = forms[i];
+            if (bytes == null) continue;
+            final int formId = formDic.find(bytes);
+            // form known, OK
+            if (formId > 0) continue;
+            // unknown form, nullify position
+            forms[i] = null;
+        }
+        // sorts forms for more efficient seekExact
+        Arrays.sort(forms);
+        // loop on leaves of the reader, has some cost
+        IntList list = new IntList();
+        PostingsEnum docsEnum = null; // reuse
+        for (LeafReaderContext context : reader.leaves()) {
+            LeafReader leaf = context.reader();
+            final int docBase = context.docBase;
+            Terms terms = leaf.terms(name);
+            if (terms == null) continue;
+            TermsEnum tenum = terms.iterator();
+            Bits live = leaf.getLiveDocs();
+            for (int i = 0; i < formsLen; i++) {
+                final BytesRef bytes = forms[i];
+                if (bytes == null) continue;
+                if (!tenum.seekExact(bytes)) {
+                    continue;
+                }
+                docsEnum = tenum.postings(docsEnum, PostingsEnum.NONE);
+                int docLeaf;
+                while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                    if (live != null && !live.get(docLeaf)) continue; // deleted doc
+                    final int docId = docBase + docLeaf;
+                    if (docFilter != null && !docFilter.get(docId)) continue; // document not in the filter
+                    // a doc should be found
+                    list.push(formDic.find(bytes));
+                    // nullify that term
+                    forms[i] = null;
+                    break;
+                }
+            }
         }
         if (list.isEmpty()) {
             return null;
@@ -538,10 +608,10 @@ public class FieldText
     }
 
     /**
-     * How many occs for this term ?
+     * How many occs for this term in all index ?
      * 
-     * @param formId
-     * @return
+     * @param formId id of a form.
+     * @return occurrences for this form.
      */
     public long formOccs(int formId)
     {
@@ -549,22 +619,26 @@ public class FieldText
     }
 
     /**
-     * Get global length (occurrences) for a term
+     * Get global length (occurrences) for a form. Returns -1 if unknown.
+     * Should never be 0.
      * 
-     * @param s
+     * @param form a form to search.
+     * @return count of occurrences for this form, or -1 if form absent of index.
      */
-    public long formOccs(final String s)
+    public long formOccs(final String form)
     {
-        final BytesRef bytes = new BytesRef(s);
+        final BytesRef bytes = new BytesRef(form);
         final int id = formDic.find(bytes);
         if (id < 0) return -1;
         return formOccs[id];
     }
 
     /**
-     * Get global length (occurrences) for a term
+     * Get global length (occurrences) for a form. Returns -1 if unknown.
+     * Should never be 0.
      * 
-     * @param bytes
+     * @param bytes form as native lucene bytes.
+     * @return count of occurrences for this form, or -1 if form absent of index.
      */
     public long formOccs(final BytesRef bytes)
     {
@@ -576,12 +650,12 @@ public class FieldText
     /**
      * Return count of occurrences for a set of forms with a doc filter.
      * 
-     * @param forms
-     * @param filter
+     * @param forms set of forms.
+     * @param docFilter
      * @return
      * @throws IOException Lucene errors.
      */
-    public long[] formOccs(final String[] forms, final BitSet filter) throws IOException
+    public long[] formOccs(final String[] forms, final BitSet docFilter) throws IOException
     {
         long[] counts = new long[forms.length];
         // loop on leaves of the reader
@@ -589,6 +663,7 @@ public class FieldText
             final int docBase = context.docBase;
             LeafReader leaf = context.reader();
             for (int i = 0, len = forms.length; i < len; i++) {
+                // TODO more efficient 
                 Term term = new Term(name, forms[i]);
                 PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS);
                 if (postings == null) {
@@ -602,7 +677,7 @@ public class FieldText
                         continue;
                     }
                     final int docId = docBase + docLeaf;
-                    if (!filter.get(docId)) {
+                    if (!docFilter.get(docId)) {
                         continue;
                     }
                     counts[i] += postings.freq();
@@ -638,7 +713,7 @@ public class FieldText
     }
 
     /**
-     * Get a non filtered term enum with count
+     * Get a non filtered term enum for this field with global stats.
      * 
      * @return
      */

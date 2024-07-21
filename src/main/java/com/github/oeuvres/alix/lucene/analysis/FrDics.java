@@ -51,7 +51,7 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.util.WordsAutomatonBuilder;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.CsvReader;
@@ -60,8 +60,8 @@ import com.github.oeuvres.alix.util.CsvReader.Row;
 /**
  * Preloaded word List for lucene indexation in {@link HashMap}. Efficiency
  * strongly rely on a custom implementation of chars token attribute
- * {@link CharsAtt}, with a cached hash code {@link CharsAtt#hashCode()} and
- * comparison {@link CharsAtt#compareTo(CharsAtt)}.
+ * {@link CharsAttImpl}, with a cached hash code {@link CharsAttImpl#hashCode()} and
+ * comparison {@link CharsAttImpl#compareTo(CharsAttImpl)}.
  */
 @SuppressWarnings("unlikely-arg-type")
 public class FrDics
@@ -73,21 +73,21 @@ public class FrDics
     /** Flag for compound, to be continued */
     static final public int BRANCH = 0x200;
     /** French stopwords as hash to filter attributes */
-    static final public HashSet<CharsAtt> STOP = new HashSet<CharsAtt>((int) (1000 / 0.75));
+    static final public HashSet<CharsAttImpl> STOP = new HashSet<CharsAttImpl>((int) (1000 / 0.75));
     /** French stopwords as binary automaton */
     public static ByteRunAutomaton STOP_BYTES;
     /** 130 000 types French lexicon seems not too bad for memory */
-    static final public HashMap<CharsAtt, LexEntry> WORDS = new HashMap<CharsAtt, LexEntry>((int) (150000 / 0.75));
+    static final public HashMap<CharsAttImpl, LexEntry> WORDS = new HashMap<CharsAttImpl, LexEntry>((int) (150000 / 0.75));
     /** French names on which keep Capitalization */
-    static final public HashMap<CharsAtt, LexEntry> NAMES = new HashMap<CharsAtt, LexEntry>((int) (50000 / 0.75));
+    static final public HashMap<CharsAttImpl, LexEntry> NAMES = new HashMap<CharsAttImpl, LexEntry>((int) (50000 / 0.75));
     /** A tree to resolve compounds */
-    static final public HashMap<CharsAtt, Integer> TREELOC = new HashMap<CharsAtt, Integer>((int) (1500 / 0.75));
+    static final public HashMap<CharsAttImpl, Integer> TREELOC = new HashMap<CharsAttImpl, Integer>((int) (1500 / 0.75));
     /** Graphic normalization (replacement) */
-    static final public HashMap<CharsAtt, CharsAtt> NORM = new HashMap<CharsAtt, CharsAtt>((int) (100 / 0.75));
+    static final public HashMap<CharsAttImpl, CharsAttImpl> NORM = new HashMap<CharsAttImpl, CharsAttImpl>((int) (100 / 0.75));
     /** Elisions, for tokenization and normalization */
-    static final public HashMap<CharsAtt, CharsAtt> ELISION = new HashMap<CharsAtt, CharsAtt>((int) (30 / 0.75));
+    static final public HashMap<CharsAttImpl, CharsAttImpl> ELISION = new HashMap<CharsAttImpl, CharsAttImpl>((int) (30 / 0.75));
     /** Abbreviations with a final dot */
-    static final public HashMap<CharsAtt, CharsAtt> BREVIDOT = new HashMap<CharsAtt, CharsAtt>((int) (100 / 0.75));
+    static final public HashMap<CharsAttImpl, CharsAttImpl> BREVIDOT = new HashMap<CharsAttImpl, CharsAttImpl>((int) (100 / 0.75));
     /** current dictionnary loaded, for logging */
     static String res;
     /** Load dictionaries */
@@ -98,11 +98,11 @@ public class FrDics
             ArrayList<String> list = new ArrayList<String>();
             // unmodifiable map with jdk10 Map.copyOf is not faster
             // add common col separator, the csv parser is not very robust
-            STOP.add(new CharsAtt(";"));
+            STOP.add(new CharsAttImpl(";"));
             list.add(";");
-            STOP.add(new CharsAtt(","));
+            STOP.add(new CharsAttImpl(","));
             list.add(",");
-            STOP.add(new CharsAtt("\t"));
+            STOP.add(new CharsAttImpl("\t"));
             list.add("\t");
             res = "stop.csv";
             reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
@@ -113,7 +113,7 @@ public class FrDics
                 Chain cell0 = row.get(0);
                 if (cell0.isEmpty() || cell0.charAt(0) == '#')
                     continue;
-                STOP.add(new CharsAtt(cell0));
+                STOP.add(new CharsAttImpl(cell0));
                 list.add(cell0.toString());
             }
             Automaton automaton = WordsAutomatonBuilder.buildFronStrings(list);
@@ -130,7 +130,7 @@ public class FrDics
                 // keep first key
                 if (WORDS.containsKey(orth))
                     continue;
-                CharsAtt key = new CharsAtt(orth);
+                CharsAttImpl key = new CharsAttImpl(orth);
                 WORDS.put(key, new LexEntry(row.get(0), row.get(1), null, row.get(2)));
             }
             // nouns, put persons after places (Molière is also a village, but not very
@@ -149,7 +149,7 @@ public class FrDics
                     if (graph.isEmpty() || graph.charAt(0) == '#')
                         continue;
                     LexEntry entry = new LexEntry(row.get(0), row.get(1), row.get(2), null);
-                    NAMES.put(new CharsAtt(graph), entry);
+                    NAMES.put(new CharsAttImpl(graph), entry);
                     if (graph.contains(' ')) {
                         compound(graph, TREELOC);
                     }
@@ -231,7 +231,7 @@ public class FrDics
                 // remove other versions (ex : Russes => Russie)
                 WORDS.remove(graph);
                 NAMES.remove(graph);
-                CharsAtt key = new CharsAtt(graph);
+                CharsAttImpl key = new CharsAttImpl(graph);
                 LexEntry entry = new LexEntry(row.get(0), row.get(1), row.get(2), row.get(3));
                 if (graph.isFirstUpper())
                     NAMES.put(key, entry);
@@ -251,7 +251,7 @@ public class FrDics
         }
     }
 
-    private static void load(final String res, final HashMap<CharsAtt, CharsAtt> map) throws FileNotFoundException
+    private static void load(final String res, final HashMap<CharsAttImpl, CharsAttImpl> map) throws FileNotFoundException
     {
         InputStream stream = Tag.class.getResourceAsStream(res);
         if (stream == null) {
@@ -267,7 +267,7 @@ public class FrDics
      * @param reader
      * @param map
      */
-    private static void load(final Reader reader, final HashMap<CharsAtt, CharsAtt> map)
+    private static void load(final Reader reader, final HashMap<CharsAttImpl, CharsAttImpl> map)
     {
         CsvReader csv = null;
         try {
@@ -280,7 +280,7 @@ public class FrDics
                     continue;
                 Chain value = row.get(1);
                 // if (value.isEmpty()) continue; // a value maybe empty
-                map.put(new CharsAtt(key), new CharsAtt(value));
+                map.put(new CharsAttImpl(key), new CharsAttImpl(value));
             }
             reader.close();
         } catch (Exception e) {
@@ -324,18 +324,18 @@ public class FrDics
                 if (graph.contains(' ') || graph.contains('’') || graph.contains('\''))
                     compound(graph, TREELOC);
                 // load the word in the global dic (last win)
-                CharsAtt key = new CharsAtt(graph);
+                CharsAttImpl key = new CharsAttImpl(graph);
                 Chain orth = row.get(2);
                 LexEntry entry = new LexEntry(row.get(0), row.get(1), orth, row.get(3));
                 // entry may be known by normalized key only
                 if (Tag.NAME.sameParent(entry.tag)) {
                     NAMES.put(key, entry);
                     if (orth != null && !NAMES.containsKey(orth))
-                        NAMES.put(new CharsAtt(orth), entry);
+                        NAMES.put(new CharsAttImpl(orth), entry);
                 } else {
                     WORDS.put(key, entry);
                     if (orth != null && !WORDS.containsKey(orth))
-                        WORDS.put(new CharsAtt(orth), entry);
+                        WORDS.put(new CharsAttImpl(orth), entry);
                 }
             }
             reader.close();
@@ -354,7 +354,7 @@ public class FrDics
      * 
      * @param graph
      */
-    protected static void compound(Chain graph, HashMap<CharsAtt, Integer> tree)
+    protected static void compound(Chain graph, HashMap<CharsAttImpl, Integer> tree)
     {
         int len = graph.length();
         for (int i = 0; i < len; i++) {
@@ -363,11 +363,11 @@ public class FrDics
                 continue;
             if (c == '’')
                 graph.setCharAt(i, '\'');
-            CharsAtt key;
+            CharsAttImpl key;
             if (c == '\'' || c == '’')
-                key = new CharsAtt(graph.array(), 0, i + 1);
+                key = new CharsAttImpl(graph.array(), 0, i + 1);
             else if (c == ' ')
-                key = new CharsAtt(graph.array(), 0, i);
+                key = new CharsAttImpl(graph.array(), 0, i);
             else
                 continue;
             Integer entry = tree.get(key);
@@ -377,7 +377,7 @@ public class FrDics
                 tree.put(key, entry | BRANCH);
         }
         // end of word
-        CharsAtt key = new CharsAtt(graph.array(), 0, len);
+        CharsAttImpl key = new CharsAttImpl(graph.array(), 0, len);
         Integer entry = tree.get(key);
         if (entry == null)
             tree.put(key, LEAF);
@@ -385,7 +385,7 @@ public class FrDics
             tree.put(key, entry | LEAF);
     }
 
-    public static LexEntry word(CharsAtt att)
+    public static LexEntry word(CharsAttImpl att)
     {
         return WORDS.get(att);
     }
@@ -398,10 +398,10 @@ public class FrDics
      */
     public static LexEntry word(String form)
     {
-        return WORDS.get(new CharsAtt(form));
+        return WORDS.get(new CharsAttImpl(form));
     }
 
-    public static LexEntry name(CharsAtt att)
+    public static LexEntry name(CharsAttImpl att)
     {
         return NAMES.get(att);
     }
@@ -414,7 +414,7 @@ public class FrDics
      */
     public static LexEntry name(String form)
     {
-        return NAMES.get(new CharsAtt(form));
+        return NAMES.get(new CharsAttImpl(form));
     }
 
     public static boolean isStop(BytesRef ref)
@@ -422,19 +422,19 @@ public class FrDics
         return STOP_BYTES.run(ref.bytes, ref.offset, ref.length);
     }
 
-    public static boolean isStop(CharsAtt att)
+    public static boolean isStop(CharsAttImpl att)
     {
         return STOP.contains(att);
     }
 
     public static boolean isStop(String form)
     {
-        return STOP.contains(new CharsAtt(form));
+        return STOP.contains(new CharsAttImpl(form));
     }
 
-    public static boolean brevidot(CharsAtt att)
+    public static boolean brevidot(CharsAttImpl att)
     {
-        CharsAtt val = BREVIDOT.get(att);
+        CharsAttImpl val = BREVIDOT.get(att);
         if (val == null)
             return false;
         if (!val.isEmpty())
@@ -442,9 +442,9 @@ public class FrDics
         return true;
     }
 
-    public static boolean norm(CharsAtt att)
+    public static boolean norm(CharsAttImpl att)
     {
-        CharsAtt val = NORM.get(att);
+        CharsAttImpl val = NORM.get(att);
         if (val == null)
             return false;
         att.setEmpty().append(val);
@@ -454,8 +454,8 @@ public class FrDics
     public static class LexEntry
     {
         final public int tag;
-        final public CharsAtt orth;
-        final public CharsAtt lem;
+        final public CharsAttImpl orth;
+        final public CharsAttImpl lem;
 
         public LexEntry(final Chain tag) {
             this.tag = Tag.flag(tag);
@@ -471,11 +471,11 @@ public class FrDics
             if (orth == null || orth.isEmpty())
                 this.orth = null;
             else
-                this.orth = new CharsAtt(orth);
+                this.orth = new CharsAttImpl(orth);
             if (lem == null || lem.isEmpty())
                 this.lem = null;
             else
-                this.lem = new CharsAtt(lem);
+                this.lem = new CharsAttImpl(lem);
         }
 
         @Override

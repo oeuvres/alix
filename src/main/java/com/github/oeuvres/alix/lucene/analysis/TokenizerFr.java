@@ -47,7 +47,7 @@ import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.AttributeImpl;
 
 import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.maths.Calcul;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.ML;
@@ -103,9 +103,9 @@ public class TokenizerFr extends Tokenizer
     /** Current term, as an array of chars */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** For string testings */
-    CharsAtt test = new CharsAtt();
+    CharsAttImpl test = new CharsAttImpl();
     /** For string storing */
-    CharsAtt copy = new CharsAtt();
+    CharsAttImpl copy = new CharsAttImpl();
     /** Store state */
     private State save;
     /** Source buffer of chars, delegate to Lucene experts */
@@ -123,54 +123,54 @@ public class TokenizerFr extends Tokenizer
     /**
      * French, « vois-tu » hyphen is breakable before these words, exc: arc-en-ciel
      */
-    public static final HashSet<CharsAtt> HYPHEN_POST = new HashSet<CharsAtt>();
+    public static final HashSet<CharsAttImpl> HYPHEN_POST = new HashSet<CharsAttImpl>();
     static {
         for (String w : new String[] { "ce", "ci", "elle", "elles", "en", "eux", "il", "ils", "je", "la", "là", "le",
                 "les", "leur", "lui", "me", "moi", "nous", "on", "t", "te", "toi", "tu", "vous", "y" }) {
-            HYPHEN_POST.add(new CharsAtt(w));
+            HYPHEN_POST.add(new CharsAttImpl(w));
         }
     }
-    public static final HashSet<CharsAtt> HYPHEN_ANTE = new HashSet<CharsAtt>();
+    public static final HashSet<CharsAttImpl> HYPHEN_ANTE = new HashSet<CharsAttImpl>();
     static {
         for (String w : new String[] { "très", "Très" })
-            HYPHEN_ANTE.add(new CharsAtt(w));
+            HYPHEN_ANTE.add(new CharsAttImpl(w));
     }
     /** tags to send as token events and translate */
-    public static final HashMap<CharsAtt, CharsAtt> TAGS = new HashMap<CharsAtt, CharsAtt>();
+    public static final HashMap<CharsAttImpl, CharsAttImpl> TAGS = new HashMap<CharsAttImpl, CharsAttImpl>();
     static {
-        TAGS.put(new CharsAtt("l"), new CharsAtt("<p>"));
-        TAGS.put(new CharsAtt("p"), new CharsAtt("<p>"));
-        TAGS.put(new CharsAtt("h1"), new CharsAtt("<p>"));
-        TAGS.put(new CharsAtt("h2"), new CharsAtt("<p>"));
-        TAGS.put(new CharsAtt("h3"), new CharsAtt("<p>"));
-        TAGS.put(new CharsAtt("h4"), new CharsAtt("<p>"));
-        TAGS.put(new CharsAtt("h5"), new CharsAtt("<p>"));
-        TAGS.put(new CharsAtt("h6"), new CharsAtt("<p>"));
-        TAGS.put(new CharsAtt("lb"), new CharsAtt("<p>"));
-        TAGS.put(new CharsAtt("section"), new CharsAtt("<section>"));
-        TAGS.put(new CharsAtt("/section"), new CharsAtt("</section>"));
-        TAGS.put(new CharsAtt("article"), new CharsAtt("<section>"));
-        TAGS.put(new CharsAtt("/article"), new CharsAtt("</section>"));
-        TAGS.put(new CharsAtt("name"), new CharsAtt("<name>"));
-        TAGS.put(new CharsAtt("/name"), new CharsAtt("</name>"));
-        TAGS.put(new CharsAtt("persName"), new CharsAtt("<persName>"));
-        TAGS.put(new CharsAtt("/persName"), new CharsAtt("</persName>"));
+        TAGS.put(new CharsAttImpl("l"), new CharsAttImpl("<p>"));
+        TAGS.put(new CharsAttImpl("p"), new CharsAttImpl("<p>"));
+        TAGS.put(new CharsAttImpl("h1"), new CharsAttImpl("<p>"));
+        TAGS.put(new CharsAttImpl("h2"), new CharsAttImpl("<p>"));
+        TAGS.put(new CharsAttImpl("h3"), new CharsAttImpl("<p>"));
+        TAGS.put(new CharsAttImpl("h4"), new CharsAttImpl("<p>"));
+        TAGS.put(new CharsAttImpl("h5"), new CharsAttImpl("<p>"));
+        TAGS.put(new CharsAttImpl("h6"), new CharsAttImpl("<p>"));
+        TAGS.put(new CharsAttImpl("lb"), new CharsAttImpl("<p>"));
+        TAGS.put(new CharsAttImpl("section"), new CharsAttImpl("<section>"));
+        TAGS.put(new CharsAttImpl("/section"), new CharsAttImpl("</section>"));
+        TAGS.put(new CharsAttImpl("article"), new CharsAttImpl("<section>"));
+        TAGS.put(new CharsAttImpl("/article"), new CharsAttImpl("</section>"));
+        TAGS.put(new CharsAttImpl("name"), new CharsAttImpl("<name>"));
+        TAGS.put(new CharsAttImpl("/name"), new CharsAttImpl("</name>"));
+        TAGS.put(new CharsAttImpl("persName"), new CharsAttImpl("<persName>"));
+        TAGS.put(new CharsAttImpl("/persName"), new CharsAttImpl("</persName>"));
     }
     /** tag content to skip */
-    public static final HashMap<CharsAtt, CharsAtt> SKIP = new HashMap<CharsAtt, CharsAtt>();
+    public static final HashMap<CharsAttImpl, CharsAttImpl> SKIP = new HashMap<CharsAttImpl, CharsAttImpl>();
     static {
-        SKIP.put(new CharsAtt("note"), new CharsAtt("/note"));
-        SKIP.put(new CharsAtt("bibl"), new CharsAtt("/bibl"));
-        SKIP.put(new CharsAtt("head"), new CharsAtt("/head"));
-        SKIP.put(new CharsAtt("?index_off?"), new CharsAtt("?index_on?"));
-        SKIP.put(new CharsAtt("script"), new CharsAtt("/script"));
-        SKIP.put(new CharsAtt("style"), new CharsAtt("/style"));
-        SKIP.put(new CharsAtt("teiHeader"), new CharsAtt("/teiHeader"));
+        SKIP.put(new CharsAttImpl("note"), new CharsAttImpl("/note"));
+        SKIP.put(new CharsAttImpl("bibl"), new CharsAttImpl("/bibl"));
+        SKIP.put(new CharsAttImpl("head"), new CharsAttImpl("/head"));
+        SKIP.put(new CharsAttImpl("?index_off?"), new CharsAttImpl("?index_on?"));
+        SKIP.put(new CharsAttImpl("script"), new CharsAttImpl("/script"));
+        SKIP.put(new CharsAttImpl("style"), new CharsAttImpl("/style"));
+        SKIP.put(new CharsAttImpl("teiHeader"), new CharsAttImpl("/teiHeader"));
     }
     /** tag to ignore but keep content */
-    public static final HashMap<CharsAtt, CharsAtt> IGNORE = new HashMap<CharsAtt, CharsAtt>();
+    public static final HashMap<CharsAttImpl, CharsAttImpl> IGNORE = new HashMap<CharsAttImpl, CharsAttImpl>();
     /** Store closing tag to skip */
-    private CharsAtt skip = null;
+    private CharsAttImpl skip = null;
 
     public TokenizerFr() {
         this(XML);
@@ -208,8 +208,8 @@ public class TokenizerFr extends Tokenizer
         int startOffset = -1; // this variable is always initialized
         int ltOffset = -1;
         int hyphOffset = -1; // keep offset of last hyphen
-        CharsAtt term = (CharsAtt) this.termAtt;
-        CharsAtt test = this.test;
+        CharsAttImpl term = (CharsAttImpl) this.termAtt;
+        CharsAttImpl test = this.test;
         FlagsAttribute flags = flagsAtt;
         char[] buffer = bufSrc.getBuffer();
         boolean intag = false;
@@ -281,7 +281,7 @@ public class TokenizerFr extends Tokenizer
                         skip = SKIP.get(test);
                         continue;
                     }
-                    CharsAtt el = TAGS.get(test); // test the tagname
+                    CharsAttImpl el = TAGS.get(test); // test the tagname
                     test.setEmpty();
                     if (el == null) { // unknown tag
                         continue;
@@ -449,7 +449,7 @@ public class TokenizerFr extends Tokenizer
                     test.append(c);
                 // Is apos breakable?
                 if (c == '\'') {
-                    CharsAtt val = FrDics.ELISION.get(term);
+                    CharsAttImpl val = FrDics.ELISION.get(term);
                     if (val != null) {
                         val.copyTo(term);
                         break;
@@ -535,7 +535,7 @@ public class TokenizerFr extends Tokenizer
         public AttributeImpl createAttributeInstance(Class<? extends Attribute> attClass)
         {
             if (attClass == CharTermAttribute.class)
-                return new CharsAtt();
+                return new CharsAttImpl();
             return delegate.createAttributeInstance(attClass);
         }
     }
