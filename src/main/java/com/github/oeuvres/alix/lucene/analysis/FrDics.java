@@ -84,8 +84,6 @@ public class FrDics
     static final public HashMap<CharsAttImpl, Integer> TREELOC = new HashMap<CharsAttImpl, Integer>((int) (1500 / 0.75));
     /** Graphic normalization (replacement) */
     static final public HashMap<CharsAttImpl, CharsAttImpl> NORM = new HashMap<CharsAttImpl, CharsAttImpl>((int) (100 / 0.75));
-    /** Elisions, for tokenization and normalization */
-    static final public HashMap<CharsAttImpl, CharsAttImpl> ELISION = new HashMap<CharsAttImpl, CharsAttImpl>((int) (30 / 0.75));
     /** Abbreviations with a final dot */
     static final public HashMap<CharsAttImpl, CharsAttImpl> BREVIDOT = new HashMap<CharsAttImpl, CharsAttImpl>((int) (100 / 0.75));
     /** current dictionnary loaded, for logging */
@@ -169,7 +167,6 @@ public class FrDics
         try {
             load("caps.csv", NORM);
             load("orth.csv", NORM);
-            load("ellision.csv", ELISION);
             load("brevidot.csv", BREVIDOT);
             locutions("locutions.csv");
             load("num.csv");

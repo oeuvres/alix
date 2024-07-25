@@ -165,9 +165,13 @@ public class Doc
     }
 
     /**
-     * Get count
+     * 
+     * @param field
+     * @param docId2
+     * @return
+     * @throws IOException
+     * @throws NoSuchFieldException
      */
-
     public String contrast(final String field, final int docId2) throws IOException, NoSuchFieldException
     {
         return contrast(field, docId2, false);
@@ -288,7 +292,6 @@ public class Doc
     /**
      * Get count
      */
-
     static public String csstok(String form)
     {
         return form.replaceAll("[ \\.<>&\"']", "_");

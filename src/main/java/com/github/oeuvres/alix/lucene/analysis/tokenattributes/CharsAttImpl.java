@@ -341,6 +341,20 @@ public class CharsAttImpl extends AttributeImpl
     }
 
     /**
+     * Copy a substring of a {@link CharTermAttribute} in the buffer.
+     * 
+     * @param ta attribute.
+     * @return this.
+     */
+    public final CharsAttImpl copy(CharTermAttribute ta, final int start, final int len)
+    {
+        this.hash = 0;
+        this.len = len;
+        System.arraycopy(ta.buffer(), start, resizeBuffer(len), 0, len);
+        return this;
+    }
+
+    /**
      * Copy UTF-8 bytes {@link BytesRef} in the char[] buffer. Used by Alix to test
      * UTF-8 bytes against chars[] stores in HashMap {@link FrDics}
      * 
@@ -361,8 +375,16 @@ public class CharsAttImpl extends AttributeImpl
     @Override
     public void copyTo(AttributeImpl target)
     {
-        CharTermAttribute t = (CharTermAttribute) target;
-        t.copyBuffer(chars, 0, len);
+        copyTo(target);
+    }
+
+    /**
+     * 
+     * @param target
+     */
+    public void copyTo(CharTermAttribute target)
+    {
+        target.copyBuffer(chars, 0, len);
     }
 
     @Override
@@ -703,4 +725,5 @@ public class CharsAttImpl extends AttributeImpl
         mark = -1;
         return this;
     }
+    
 }

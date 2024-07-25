@@ -56,6 +56,8 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
         super(size);
         data = (E[]) new Object[size];
     }
+    
+    
 
     @Override
     public boolean add(E element)

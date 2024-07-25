@@ -171,22 +171,7 @@ public class TokenizerML  extends Tokenizer
                 if (c == (char) 0xAD) continue; // soft hyphen, do not append to term
                 if (c == '’') c = '\''; // normalize apos
                 termAtt.append(c);
-
-                /* TODO
-                // Is hyphen breakable?
-                if (hyphOffset > 0 && c != '-')
-                    test.append(c);
-                */
-                
-                // Is apos breakable?
-                if (c == '\'') {
-                    CharsAttImpl val = FrDics.ELISION.get(termAtt);
-                    if (val != null) {
-                        val.copyTo(termAtt);
-                        break;
-                    }
-                }
-                // something went wrong in loops or it is not a text with space, for example
+                // something went wrong in loops or it is not a text with space like 
                 if (termAtt.length() >= TOKEN_MAX_SIZE)
                     break; // a too big token stop
                 // default, go next char
