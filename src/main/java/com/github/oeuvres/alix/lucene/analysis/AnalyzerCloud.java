@@ -50,14 +50,16 @@ public class AnalyzerCloud extends Analyzer
     @Override
     public TokenStreamComponents createComponents(String field)
     {
-        final Tokenizer tokenizer = new TokenizerML(); // segment words
-        TokenStream result = new FilterLemmatize(tokenizer); // provide lemma+pos
+        final Tokenizer tokenizer = new TokenizerML();
+        TokenStream ts = tokenizer; // segment words
+        ts = new FilterAposHyphenFr(ts);
+        ts = new FilterLemmatize(ts); // provide lemma+pos
         // compounds: parce que (quite expensive, 20% time)
-        result = new FilterLocution(result);
+        // ts = new FilterLocution(ts); StackOverflowError
         // link unknown names is bad
         // result = new FilterFrPersname(result);
-        result = new FilterCloud(result);
-        return new TokenStreamComponents(tokenizer, result);
+        ts = new FilterCloud(ts);
+        return new TokenStreamComponents(tokenizer, ts);
     }
 
 }

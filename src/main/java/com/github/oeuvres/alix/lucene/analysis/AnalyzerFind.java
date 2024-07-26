@@ -48,10 +48,12 @@ public class AnalyzerFind extends Analyzer
     public TokenStreamComponents createComponents(String field)
     {
         final Tokenizer tokenizer = new TokenizerML(); // segment words
-        TokenStream result = new FilterLemmatize(tokenizer); // provide lemma+pos
-        result = new FilterFind(result); // orthographic form (not lemma) as term to index
-        result = new ASCIIFoldingFilter(result); // no accents
-        return new TokenStreamComponents(tokenizer, result);
+        TokenStream ts = tokenizer; // segment words
+        ts = new FilterAposHyphenFr(ts);
+        ts = new FilterLemmatize(ts); // provide lemma+pos
+        ts = new FilterFind(ts); // orthographic form and lemma as term to index
+        ts = new ASCIIFoldingFilter(ts); // no accents
+        return new TokenStreamComponents(tokenizer, ts);
     }
 
 }

@@ -22,22 +22,27 @@ import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
-public class TokenizerXMLTest {
+public class TokenStreamsTest {
 
-    public static void main(String[] args) throws IOException
+    public void points() throws IOException
+    {
+        TokenizerML tokenizer = new TokenizerML();
+        String text = "Voir PIAGET, p. 10. À 10,5% en 1985, 1987 et 1988. U.S.S.R. ";
+        tokenizer.setReader(new StringReader(text));
+        analyze(tokenizer, text);
+    }
+    
+    @Test
+    public void html() throws IOException
     {
         TokenizerML tokenizer = new TokenizerML();
         String text = "<p><b>Lexical tokenization</b> is conversion of a text into (semantically or syntactically) meaningful <i>lexical tokens</i> belonging to categories defined by a \"lexer\" program. In case of a <a href=\"/wiki/Natural_language\" title=\"Natural language\">natural language</a>, those categories include nouns, verbs, adjectives, punctuations etc.";
         
         tokenizer.setReader(new StringReader(text));
         analyze(tokenizer, text);
-        System.out.println("-------------");
-        Analyzer ana = new TestAnalyzer();
-        analyze(ana.tokenStream("field", text), text);
-        ana.close();
     }
     
-    static void analyze(TokenStream tokenStream, String text) throws IOException
+    private void analyze(TokenStream tokenStream, String text) throws IOException
     {
         
 
@@ -54,16 +59,36 @@ public class TokenizerXMLTest {
               + termAttribute.toString() + "\t" 
               + Tag.name(flagsAttribute.getFlags()) + "\t" 
               // + orthAtt.toString() + "|\t|" 
-              // + text.substring(offsetAttribute.startOffset(),  offsetAttribute.endOffset()) + "|\t" 
+              + "|" + text.substring(offsetAttribute.startOffset(),  offsetAttribute.endOffset()) + "|\t" 
               // + offsetAttribute.startOffset() + "\t"
               // + offsetAttribute.endOffset() + "\t" 
-              // + posIncAttribute.getPositionIncrement()
+              + posIncAttribute.getPositionIncrement() + "\t"
               + "\n"
             );
         }
     }
+    
+    public void aposHyph() throws IOException
+    {
+        Analyzer ana = new AposHyphAnalyzer();
+        String text = "Connais-toi toi-même ?L’aujourd’hui d’hier. Parlons-en. Qu’est-ce que c’est ?";
+        analyze(ana.tokenStream("field", text), text);
+        ana.close();
+    }
 
-    static public class TestAnalyzer extends Analyzer
+    static public class AposHyphAnalyzer extends Analyzer
+    {
+        @Override
+        public TokenStreamComponents createComponents(String field)
+        {
+            final Tokenizer tokenizer = new TokenizerML(); // segment words
+            TokenStream result = new FilterAposHyphenFr(tokenizer); // provide lemma+pos
+            return new TokenStreamComponents(tokenizer, result);
+        }
+
+    }
+    
+    static public class LemAnalyzer extends Analyzer
     {
         @Override
         public TokenStreamComponents createComponents(String field)

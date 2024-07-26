@@ -46,7 +46,7 @@ public class AnalyzerMeta extends Analyzer
     @Override
     protected TokenStreamComponents createComponents(String fieldName)
     {
-        final Tokenizer source = new TokenizerMeta();
+        final Tokenizer source = new TokenizerML();
         TokenStream result = new ASCIIFoldingFilter(source); // no accents
         return new TokenStreamComponents(source, result);
     }
