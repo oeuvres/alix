@@ -343,7 +343,9 @@ public class CharsAttImpl extends AttributeImpl
     /**
      * Copy a substring of a {@link CharTermAttribute} in the buffer.
      * 
-     * @param ta attribute.
+     * @param ta a term {@link AttributeImpl}.
+     * @param start offset in char[] of the term.
+     * @param len  amount of char to copy.
      * @return this.
      */
     public final CharsAttImpl copy(CharTermAttribute ta, final int start, final int len)
@@ -379,8 +381,9 @@ public class CharsAttImpl extends AttributeImpl
     }
 
     /**
+     * Copy chars from this attribute to an other.
      * 
-     * @param target
+     * @param target destination attribute.
      */
     public void copyTo(CharTermAttribute target)
     {

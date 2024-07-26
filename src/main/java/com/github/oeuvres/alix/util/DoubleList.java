@@ -32,8 +32,13 @@
  */
 package com.github.oeuvres.alix.util;
 
+import java.util.List;
+
 import com.github.oeuvres.alix.maths.Calcul;
 
+/**
+ * List of native double numbers.
+ */
 public class DoubleList
 {
     /** Actual size */
@@ -42,9 +47,9 @@ public class DoubleList
     protected double[] data = new double[64];
 
     /**
-     * Size of data.
+     * Like {@link List#size()}, returns the number of values in this list.
      * 
-     * @return
+     * @return amount of values.
      */
     public int size()
     {
@@ -52,57 +57,57 @@ public class DoubleList
     }
 
     /**
-     * Get value at a position.
+     * Like {@link List#get(int)}, returns the element at the specified position in this list.
      * 
-     * @param pos
-     * @return
+     * @param index position of the value to return.
+     * @return value at the specified position in this list.
      */
-    public double get(int pos)
+    public double get(final int index)
     {
         // send an error if index out of bound ?
-        return data[pos];
+        return data[index];
     }
 
     /**
-     * Change value at a position
+     * Set the value at this position.
      * 
-     * @param pos
-     * @param value
-     * @return
+     * @param index position where to set a value.
+     * @param value value to set.
+     * @return this.
      */
-    public DoubleList put(int pos, double value)
+    public DoubleList set(int index, double value)
     {
-        onWrite(pos);
-        data[pos] = value;
-        if (pos >= size)
-            size = pos + 1;
+        onWrite(index);
+        data[index] = value;
+        if (index >= size)
+            size = index + 1;
         return this;
     }
 
     /**
      * Increment value at a position
      * 
-     * @param pos
+     * @param index position where to modify the value.
      */
-    public void inc(int pos)
+    public void inc(int index)
     {
-        onWrite(pos);
-        data[pos]++;
+        onWrite(index);
+        data[index]++;
     }
 
     /**
      * Call it before write
      * 
-     * @param pos
+     * @param index position to ensure.
      * @return True if resized.
      */
-    protected boolean onWrite(final int pos)
+    protected boolean onWrite(final int index)
     {
-        if (pos < data.length)
+        if (index < data.length)
             return false;
         final int oldLength = data.length;
         final double[] oldData = data;
-        int capacity = Calcul.nextSquare(pos + 1);
+        int capacity = Calcul.nextSquare(index + 1);
         data = new double[capacity];
         System.arraycopy(oldData, 0, data, 0, oldLength);
         return true;

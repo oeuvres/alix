@@ -6,12 +6,17 @@ import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.AttributeImpl;
 
 /**
- * An attribute factory
+ * An attribute factory to use a {@link CharsAttImpl} for a {@link CharTermAttribute}.
+ * Other attributes will have a default class name, AttributeName → AttributeNameImpl.
  */
 final public class AttributeFactoryAlix extends AttributeFactory
 {
     private final AttributeFactory delegate;
 
+    /**
+     * Constructor with the default {@link AttributeFactory}.
+     * @param delegate default implementations.
+     */
     public AttributeFactoryAlix(AttributeFactory delegate) {
         this.delegate = delegate;
     }

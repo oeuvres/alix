@@ -511,7 +511,7 @@ public class FieldRail
         BitSet exclude = null;
         if (formFilter != null) {
             hasExclude = true;
-            exclude = ftext.formRule(formFilter);
+            exclude = ftext.formFilter(formFilter);
         } else {
             hasExclude = false;
         }

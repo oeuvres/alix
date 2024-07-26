@@ -59,7 +59,7 @@ import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.fr.Tag.TagFilter;
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterFrPersname;
-import com.github.oeuvres.alix.lucene.analysis.TokenizerFr;
+import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
@@ -97,7 +97,7 @@ public class Balinoms implements Callable<Integer>
         @Override
         protected TokenStreamComponents createComponents(String fieldName)
         {
-            final Tokenizer source = new TokenizerFr();
+            final Tokenizer source = new TokenizerML();
             TokenStream result = new FilterLemmatize(source);
             result = new FilterFrPersname(result);
             return new TokenStreamComponents(source, result);

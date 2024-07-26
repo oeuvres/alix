@@ -689,15 +689,15 @@ public class FieldText
     }
     
     /**
-     * Build a BitSet rule for efficient filtering of forms by tag.
+     * Build a BitSet of formId for efficient filtering of forms by tags.
      * 
-     * @param filter
-     * @return
+     * @param wordFilter filter 
+     * @return a formId filter.
      */
-    public BitSet formRule(TagFilter filter)
+    public BitSet formFilter(TagFilter wordFilter)
     {
         BitSet rule = new SparseFixedBitSet(maxForm);
-        final boolean noStop = filter.nostop();
+        final boolean noStop = wordFilter.nostop();
         final int stopLim = formStop.length();
         for (int formId = 1; formId < maxForm; formId++) {
             if (!noStop); // no tick for stopword
@@ -708,7 +708,7 @@ public class FieldText
                 continue;
             }
             // set formId by tag
-            if (filter.accept(formTag[formId])) rule.set(formId);
+            if (wordFilter.accept(formTag[formId])) rule.set(formId);
         }
         return rule;
     }
@@ -873,16 +873,19 @@ public class FieldText
     }
 
     /**
-     * Score a partition.
+     * Get scored words for a partition of the full index. A part is a sequential int
+     * between [0, parts[. Parts are given as a vector of ints where classifier[docId]=part.
+     * If part &lt; 0, the docId is not counted. Results are returned like an array of {@link FormEnum},
+     * where FormEnum[part] is the scored list of term for the partition.
      * 
-     * @param parts
-     * @param classifier
-     * @param tags
-     * @param distrib
-     * @return
-     * @throws IOException
+     * @param parts count of parts.
+     * @param classifier vector of ints where classifier[docId]=part.
+     * @param wordFilter filter words by tag.
+     * @param distrib scorer.
+     * @return a set of dictionaries, one for each part.
+     * @throws IOException lucene errors.
      */
-    public FormEnum[] forms(final int parts, final int[] classifier, final TagFilter tags, OptionDistrib distrib)
+    public FormEnum[] forms(final int parts, final int[] classifier, final TagFilter wordFilter, OptionDistrib distrib)
             throws IOException
     {
         if (parts < 1) {
@@ -896,9 +899,9 @@ public class FieldText
             throw new IllegalArgumentException("Is your classifer for this index ? classifier.length="
                     + classifier.length + " IndexReader.maxDoc()=" + reader.maxDoc());
         }
-        boolean hasTags = (tags != null);
+        boolean hasTags = (wordFilter != null);
         boolean hasDistrib = (distrib != null);
-        boolean noStop = (tags != null && tags.nostop());
+        boolean noStop = (wordFilter != null && wordFilter.nostop());
         FormEnum[] dics = new FormEnum[parts];
         for (int i = 0; i < parts; i++) {
             FormEnum forms = forms();
@@ -924,7 +927,7 @@ public class FieldText
                 if (bytes.length == 0) continue; // do not count empty positions
                 int formId = formDic.find(bytes);
                 if (noStop && isStop(formId)) continue;
-                if (hasTags && !tags.accept(formTag[formId])) continue;
+                if (hasTags && !wordFilter.accept(formTag[formId])) continue;
                 // if formId is negative, let the error go, problem in reader
                 // for each term, set scorer with global stats
                 if (hasDistrib) {
@@ -935,10 +938,10 @@ public class FieldText
                 int docLeaf;
                 while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
                     if (hasLive && !live.get(docLeaf)) continue; // deleted doc
-                    int docId = docBase + docLeaf;
+                    final int docId = docBase + docLeaf;
                     // choose a part
                     final int part = classifier[docId];
-                    if (part < 0) continue;
+                    if (part < 0) continue; // doc not counted
                     if (part >= parts) {
                         throw new IllegalArgumentException(
                                 "Non expected part found in your classifier part=" + part + " >= parts=" + parts);
@@ -986,6 +989,7 @@ public class FieldText
     /**
      * Total count of occurrences (except empty positions) for a docId.
      * 
+     * @param docId lucene internal doc id.
      * @return occurrences count for this doc.
      */
     public int occs(final int docId)

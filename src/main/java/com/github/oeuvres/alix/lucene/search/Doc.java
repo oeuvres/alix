@@ -33,23 +33,22 @@
 package com.github.oeuvres.alix.lucene.search;
 
 import java.io.IOException;
-import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 import static com.github.oeuvres.alix.Names.*;
@@ -57,10 +56,6 @@ import com.github.oeuvres.alix.fr.Tag.TagFilter;
 import com.github.oeuvres.alix.lucene.Alix;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
-import com.github.oeuvres.alix.lucene.search.DocHiliter.Token;
-import com.github.oeuvres.alix.lucene.util.WordsAutomatonBuilder;
-import com.github.oeuvres.alix.util.Chain;
-import com.github.oeuvres.alix.util.ML;
 import com.github.oeuvres.alix.util.Top;
 import com.github.oeuvres.alix.web.OptionDistrib;
 
@@ -165,12 +160,14 @@ public class Doc
     }
 
     /**
+     * With this docId and another docId, with a field name, get stored text, get offsets for indexed term, 
+     * hilite specific terms of this doc, absent of the other.
      * 
-     * @param field
-     * @param docId2
-     * @return
-     * @throws IOException
-     * @throws NoSuchFieldException
+     * @param field field name with a stored text and terms indexed with offsets.
+     * @param docId2 id of another docuent to compare with.
+     * @return stored text hilited.
+     * @throws IOException          Lucene errors.
+     * @throws NoSuchFieldException Field doesn’t exists.
      */
     public String contrast(final String field, final int docId2) throws IOException, NoSuchFieldException
     {
@@ -178,13 +175,15 @@ public class Doc
     }
 
     /**
+     * With this docId and another docId, with a field name, get stored text, get offsets for indexed term, 
+     * hilite specific terms of this doc, absent of the other.
      * 
-     * @param field
-     * @param docId2
-     * @param right
-     * @return
+     * @param field field name with a stored text and terms indexed with offsets.
+     * @param docId2 id of another docuent to compare with.
+     * @param right if contrasted doc is displayed on a right side.
+     * @return stored text hilited.
      * @throws IOException          Lucene errors.
-     * @throws NoSuchFieldException
+     * @throws NoSuchFieldException Field doesn’t exists.
      */
     public String contrast(final String field, final int docId2, final boolean right)
             throws IOException, NoSuchFieldException
@@ -278,7 +277,7 @@ public class Doc
                 title += (int) tok.count2 + " | " + (int) tok.count;
             else
                 title += (int) tok.count + " | " + (int) tok.count2;
-            title += " occurremces";
+            title += " occurrences";
             sb.append("<a id=\"tok" + tok.pos + "\" class=\"" + type + " " + form + " " + level + "\" title=\"" + title
                     + "\">");
             sb.append(text.substring(tok.start, tok.end));
@@ -290,7 +289,10 @@ public class Doc
     }
 
     /**
-     * Get count
+     * Build a token compatible with a css className with any kind of lexical word.
+     * 
+     * @param form a word.
+     * @return a css token for a class name.
      */
     static public String csstok(String form)
     {
@@ -298,7 +300,9 @@ public class Doc
     }
 
     /**
-     * Returns the loaded document.
+     * Returns the loaded lucene document.
+     *
+     * @return set of {@link Field}s.
      */
     public Document doc()
     {
@@ -308,7 +312,7 @@ public class Doc
     /**
      * Returns the local Lucene int docId of the document.
      * 
-     * @return
+     * @return docId.
      */
     public int docId()
     {
@@ -320,18 +324,20 @@ public class Doc
      * according to a scorer. If scorer is null, default is count of occurences.
      * {@link FieldText#forms(org.apache.lucene.util.BitSet, TagFilter, OptionDistrib)}
      * 
-     * @param field
-     * @param distrib
-     * @param tags
-     * @return
-     * @throws IOException          Lucene errors.
-     * @throws NoSuchFieldException
+     * @param alix wrapper around an {@link IndexReader} with cached stats.
+     * @param docId a document id in t
+     * @param field text field name for a {@link FieldText}.
+     * @param distrib score for the terms.
+     * @param wordFilter filter words by tags.
+     * @return forms for this document.
+     * @throws NoSuchFieldException  not a text field.
+     * @throws IOException           Lucene errors.
      */
-    static public FormEnum forms(Alix alix, int lucId, String field, OptionDistrib distrib, TagFilter tags)
-            throws IOException, NoSuchFieldException
+    static public FormEnum forms(Alix alix, int docId, String field, OptionDistrib distrib, TagFilter wordFilter)
+            throws NoSuchFieldException, IOException
     {
-        boolean hasTags = (tags != null);
-        boolean noStop = (tags != null && tags.nostop());
+        boolean hasTags = (wordFilter != null);
+        boolean noStop = (wordFilter != null && wordFilter.nostop());
         boolean hasScorer = (distrib != null);
 
         // get index term stats
@@ -341,13 +347,13 @@ public class Doc
             forms.formScore = new double[fieldText.maxForm];
         }
         forms.formFreq = new long[fieldText.maxForm]; // freqs by form
-        int docLen = fieldText.docOccs[lucId];
+        int docLen = fieldText.docOccs[docId];
 
         // loop on all forms of the document, get score, keep the top
         // final long restLen = fieldText.occsAll - occsDoc;
-        Terms tvek = alix.reader().termVectors().get(lucId, field);
+        Terms tvek = alix.reader().termVectors().get(docId, field);
         if (tvek == null) {
-            throw new NoSuchFieldException("Missig search Vector for field=" + field + " lucId=" + lucId);
+            throw new NoSuchFieldException("Missig search Vector for field=" + field + " docId=" + docId);
         }
         TermsEnum termit = tvek.iterator();
         while (termit.next() != null) {
@@ -356,7 +362,7 @@ public class Doc
                 continue;
             }
             final int formId = fieldText.formId(bytes);
-            if (hasTags && !tags.accept(fieldText.formTag[formId])) {
+            if (hasTags && !wordFilter.accept(fieldText.formTag[formId])) {
                 continue;
             }
             if (noStop && fieldText.isStop(formId)) {
@@ -383,6 +389,15 @@ public class Doc
         return forms;
     }
 
+    /**
+     * Count occurences of terms in a doc.
+     *
+     * @param field  name of a field with indexed term.
+     * @param forms  Array of forms.
+     * @return Occurrences count for founded forms.
+     * @throws NoSuchFieldException  not a text field.
+     * @throws IOException           Lucene errors.
+     */
     public int freq(final String field, final String[] forms) throws NoSuchFieldException, IOException
     {
         return freq(alix.reader(), this.docId, field, forms);
@@ -392,12 +407,12 @@ public class Doc
      * Count occurences of terms in a doc.
      *
      * @param reader A Lucene reader to get stats from.
-     * @param docId  Lucene internal id of a doc.
-     * @param field  Field name.
+     * @param docId  Lucene internal id of a doc {@link StoredFields#document(int)}.
+     * @param field  name of a field with indexed term.
      * @param forms  Array of forms.
      * @return Occurrences count for founded forms.
-     * @throws NoSuchFieldException
-     * @throws IOException
+     * @throws NoSuchFieldException  not a text field.
+     * @throws IOException           Lucene errors.
      */
     static public int freq(final IndexReader reader, final int docId, final String field, final String[] forms)
             throws NoSuchFieldException, IOException
@@ -408,12 +423,12 @@ public class Doc
         Terms tvek = reader.termVectors().get(docId, field);
 
         if (!tvek.hasFreqs()) {
-            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " lucId=" + docId);
+            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " docId=" + docId);
         }
         int freq = 0;
         TermsEnum tenum = tvek.iterator();
         if (tenum == null) {
-            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " lucId=" + docId);
+            throw new NoSuchFieldException("Missing freqs in TermVector for field=" + field + " docId=" + docId);
         }
         PostingsEnum postings = null;
         String last = null;
@@ -436,11 +451,11 @@ public class Doc
     }
 
     /**
-     * Get contents of a field as String.
+     * Get contents of a field as a {@link String}.
      * 
-     * @param field
-     * @return
-     * @throws NoSuchFieldException
+     * @param field name of aa field with stored contents.
+     * @return stored contents.
+     * @throws NoSuchFieldException  not a text field.
      */
     public String get(String field) throws NoSuchFieldException
     {
@@ -458,10 +473,12 @@ public class Doc
     }
 
     /**
-     * Get and cache a term vector for a field of this document.
+     * Get a term vector for a field of this document.
      * 
+     * @param field name of a field with term vectors {@link IndexableFieldType#storeTermVectors()}.
+     * @return term vector.
+     * @throws NoSuchFieldException  not a text field.
      * @throws IOException          Lucene errors.
-     * @throws NoSuchFieldException
      */
     public Terms getTermVector(String field) throws IOException, NoSuchFieldException
     {
@@ -472,68 +489,10 @@ public class Doc
         return tvek;
     }
 
-    public String hilite(final String field, final String[] terms) throws NoSuchFieldException, IOException
-    {
-        if (terms == null || terms.length < 1) {
-            return get(field);
-        }
-        Automaton automaton = WordsAutomatonBuilder.buildFronStrings(terms);
-        ByteRunAutomaton include = new ByteRunAutomaton(automaton);
-        return hilite(field, include);
-    }
-
-    /**
-     * Hilite search in a stored document as html.
-     * 
-     * @param field
-     * @throws IOException          Lucene errors.
-     * @throws NoSuchFieldException
-     */
-    public String hilite(final String field, final ByteRunAutomaton include) throws NoSuchFieldException, IOException
-    {
-        Terms tvek = getTermVector(field);
-        String text = get(field);
-        DocHiliter rail = new DocHiliter(tvek, include, null);
-        final Token[] toks = rail.toks;
-        StringBuilder sb = new StringBuilder();
-
-        int offset = 0;
-        final int lim = toks.length;
-        for (int i = 0; i < lim; i++) {
-            Token tok = toks[i];
-            sb.append(text.substring(offset, tok.start));
-            sb.append("<mark class=\"mark\" id=\"pos" + (tok.pos) + "\">");
-            if (i > 0)
-                sb.append("<a href=\"#pos" + (toks[i - 1].pos)
-                        + "\" onclick=\"location.replace(this.href); return false;\" class=\"prev\">◀</a>");
-            sb.append("<b>");
-            sb.append(text.substring(tok.start, tok.end));
-            sb.append("</b>");
-            if (i < lim - 1)
-                sb.append("<a href=\"#pos" + (toks[i + 1].pos)
-                        + "\" onclick=\"location.replace(this.href); return false;\" class=\"next\">▶</a>");
-            sb.append("</mark>");
-            offset = tok.end;
-        }
-        sb.append(text.substring(offset));
-
-        int length = text.length();
-        sb.append("<nav id=\"ruloccs\"><div>\n");
-        final DecimalFormat dfdec1 = new DecimalFormat("0.#", ensyms);
-        for (int i = 0; i < lim; i++) {
-            Token tok = toks[i];
-            offset = tok.start;
-            sb.append("<a href=\"#pos" + (tok.pos) + "\" style=\"top: " + dfdec1.format(100.0 * offset / length)
-                    + "%\"> </a>\n");
-        }
-        sb.append("</div></nav>\n");
-        return sb.toString();
-    }
-
     /**
      * Returns the persistent String id of the document.
      * 
-     * @return
+     * @return Alix id.
      */
     public String id()
     {
@@ -541,13 +500,13 @@ public class Doc
     }
 
     /**
-     * Get the search shared between 2 documents
+     * Get the search shared between 2 documents.
      * 
-     * @param field
-     * @param docId2
-     * @return
+     * @param field name of a stored field.
+     * @param docId2 other doc.
+     * @return most frequent words in common.
+     * @throws NoSuchFieldException  not a text field.
      * @throws IOException          Lucene errors.
-     * @throws NoSuchFieldException
      */
     public Top<String> intersect(final String field, final int docId2) throws IOException, NoSuchFieldException
     {
@@ -596,18 +555,7 @@ public class Doc
         return top;
     }
 
-    /**
-     * Extract a kwic (Key Word In Context) for a search.
-     * 
-     * @param field
-     * @param include
-     * @param left
-     * @param right
-     * @param limit
-     * @return
-     * @throws NoSuchFieldException
-     * @throws IOException          Lucene errors.
-     */
+    /*
     public List<String[]> kwic(final String field, ByteRunAutomaton include, int limit, int left, int right,
             final int gap, final boolean expressions, final boolean repetitions)
             throws NoSuchFieldException, IOException
@@ -657,31 +605,13 @@ public class Doc
         }
         return lines;
     }
-
-    /*
-     * String text = document.get(TEXT); BinaryUbytes tags = new BinaryUbytes();
-     * tags.open(document.getBinaryValue(TEXT+Alix._TAGS)); Offsets offsets = new
-     * Offsets(); offsets.open(document.getBinaryValue(TEXT+Alix._OFFSETS));
-     * 
-     * 
-     * TagFilter tagFilter = new TagFilter(); tagFilter.setName();
-     * tagFilter.setAdj(); tagFilter.set(Tag.ADV);
-     * 
-     * // hilite int off = 0; for (int pos = 0, size = offsets.size(); pos < size;
-     * pos++) { int tag = tags.get(pos); if (!tagFilter.accept(tag)) continue; int
-     * offStart = offsets.getStart(pos); int offEnd = offsets.getEnd(pos);
-     * out.print(text.substring(off, offStart));
-     * out.print("<mark class=\""+Tag.label(Tag.group(tag))+"\">");
-     * out.print(text.substring(offStart, offEnd)); out.print("</mark>"); off =
-     * offEnd; } out.print(text.substring(off));
-     */
-    //
+    */
 
     /**
      * Return the count of tokens of this doc for field.
      * 
-     * @param field
-     * @return
+     * @param field name of a stored field.
+     * @return {@link FieldText#occs(int)}.
      * @throws IOException Lucene errors.
      */
     public int length(String field) throws IOException
@@ -690,51 +620,65 @@ public class Doc
     }
 
     /**
-     * 
-     * @param field
-     * @return
-     * @throws IOException          Lucene errors.
-     * @throws NoSuchFieldException
+     * A record to sort term vectors occurrences with offsets for hilite
      */
-    public String paint(final String field) throws NoSuchFieldException, IOException
+    static class Token implements Comparable<Token>
     {
-        Terms tvek = getTermVector(field);
-        String text = get(field);
-        final DocHiliter rail = new DocHiliter(tvek, null, FrDics.STOP_BYTES);
-        final int countMax = rail.countMax;
-        final Token[] toks = rail.toks;
-        final StringBuilder sb = new StringBuilder();
-        // loop on all token of text
-        int off = 0;
-        for (int i = 0, len = toks.length; i < len; i++) {
-            final Token tok = toks[i];
-            final int count = tok.count;
+        /** Token first position */
+        final int pos;
+        /** Start offset in chars */
+        final int start;
+        /** End offset in chars */
+        int end;
+        /** Indexed form (ex: lemma) */
+        String form;
+        /** A local id (scope: a document) for the term, used for fast equals */
+        final int termId;
+        /** Freq of term in document (repeated for each occurrences), used for info */
+        final int count;
+        /** Width in positions, used for concatenantion of search */
+        int span;
+        /** A second possible freq, for info */
+        final int count2;
+        /** A flag if different words */
+        boolean phrase;
+        /** for more than on positions */
+        int posLast;
 
-            final String form = tok.form;
-            sb.append(text.substring(off, tok.start)); // append text before token
-            // change boldness
-            String level;
-            if (count == 1)
-                level = "em1";
-            else if (count < 4)
-                level = "em2";
-            else if (count >= 0.6 * countMax)
-                level = "em9";
-            else if (count >= 0.3 * countMax)
-                level = "em5";
-            else
-                level = "em3";
-
-            String title = "";
-            title += count + " occurremces";
-            sb.append("<a id=\"tok" + tok.pos + "\" class=\"" + csstok(form) + " " + level + "\" title=\"" + title
-                    + "\">");
-            sb.append(text.substring(tok.start, tok.end));
-            sb.append("</a>");
-            off = tok.end;
+        public Token(final int pos, final int start, final int end) {
+            this(pos, start, end, null, -1, 1, 0, 0);
         }
-        sb.append(text.substring(off)); // do not forget end
-        return sb.toString();
+
+        public Token(final int pos, final int start, final int end, final String form, final int termId) {
+            this(pos, start, end, form, termId, 0, 1, 0);
+        }
+
+        public Token(final int pos, final int start, final int end, final String form, final int termId,
+                final int count) {
+            this(pos, start, end, form, termId, count, 1, 0);
+        }
+
+        public Token(final int pos, final int start, final int end, final String form, final int termId,
+                final int count, final int span, final int count2) {
+            this.pos = this.posLast = pos;
+            this.start = start;
+            this.end = end;
+            this.form = form;
+            this.termId = termId;
+            this.span = span;
+            this.count = count;
+            this.count2 = count2;
+        }
+
+        @Override
+        public int compareTo(Token tok2)
+        {
+            // sort by position, and biggest token first for same position
+            final int cp = Integer.compare(this.pos, tok2.pos);
+            if (cp != 0)
+                return cp;
+            return Integer.compare(this.end, tok2.end);
+        }
     }
 
 }

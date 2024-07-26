@@ -62,7 +62,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterFrPersname;
-import com.github.oeuvres.alix.lucene.analysis.TokenizerFr;
+import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
 import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
@@ -84,7 +84,7 @@ public class Insert
         @Override
         protected TokenStreamComponents createComponents(String fieldName)
         {
-            final Tokenizer source = new TokenizerFr();
+            final Tokenizer source = new TokenizerML();
             TokenStream result = new FilterLemmatize(source);
             result = new FilterLocution(result);
             result = new FilterFrPersname(result);
