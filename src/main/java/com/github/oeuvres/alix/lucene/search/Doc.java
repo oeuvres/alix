@@ -344,9 +344,9 @@ public class Doc
         FieldText fieldText = alix.fieldText(field);
         FormEnum forms = fieldText.forms();
         if (hasScorer) {
-            forms.formScore = new double[fieldText.maxForm];
+            forms.formScore = new double[fieldText.maxValue];
         }
-        forms.formFreq = new long[fieldText.maxForm]; // freqs by form
+        forms.formFreq = new long[fieldText.maxValue]; // freqs by form
         int docLen = fieldText.docOccs[docId];
 
         // loop on all forms of the document, get score, keep the top
@@ -361,7 +361,7 @@ public class Doc
             if (bytes.length < 1) {
                 continue;
             }
-            final int formId = fieldText.formId(bytes);
+            final int formId = fieldText.valueId(bytes);
             if (hasTags && !wordFilter.accept(fieldText.formTag[formId])) {
                 continue;
             }

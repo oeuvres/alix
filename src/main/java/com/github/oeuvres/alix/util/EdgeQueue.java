@@ -40,7 +40,7 @@ import java.util.List;
 import com.github.oeuvres.alix.maths.Calcul;
 
 /**
- * An object to record edges events between int nodes. Fast for writing, no
+ * An object to record edges events (a pair of int), recorder as list of long. Fast for writing, no
  * lookup, maybe expensive in memory if a lot of events. Iterator by count.
  */
 public class EdgeQueue implements Iterable<Edge>
@@ -57,13 +57,20 @@ public class EdgeQueue implements Iterable<Edge>
     private static long KEY_MASK = 0xFFFFFFFFL;
     /** Linked Cluster */
     private IntList cluster = new IntList();
-
+    
+    /** 
+     * Directed (1,2) ≠ (2,1). Not directed (1,2) = (2,1).
+     * 
+     * @param directed true if direction should be kept, false otherwise.
+     */
     public EdgeQueue(final boolean directed) {
         this.directed = directed;
     }
 
     /**
-     * Agregate a node to a cluster
+     * Agregate a node to a cluster.
+     * 
+     * @param node a node id.
      */
     public void clust(final int node)
     {
@@ -79,7 +86,7 @@ public class EdgeQueue implements Iterable<Edge>
     }
 
     /**
-     * Start a cluster (a set of nodes totally connected)
+     * Start a cluster (a set of nodes totally connected).
      */
     public void declust()
     {
@@ -87,18 +94,22 @@ public class EdgeQueue implements Iterable<Edge>
     }
 
     /**
-     * Build an entry for the data array
+     * Build an entry for the data array.
      * 
-     * @param key
-     * @param value
-     * @return the entry
+     * @param sourceId a node id.
+     * @param targetId a node id.
+     * @return a long [targetId, sourceId].
      */
-    private static long edge(final int source, final int target)
+    private static long edge(final int sourceId, final int targetId)
     {
-        long edge = ((source & KEY_MASK) | (((long) target) << 32));
+        long edge = ((sourceId & KEY_MASK) | (((long) targetId) << 32));
         return edge;
     }
 
+    /**
+     * Ensure size of data array.
+     * @param size index needed in array.
+     */
     private void grow(final int size)
     {
         if (size < capacity) {
@@ -132,32 +143,33 @@ public class EdgeQueue implements Iterable<Edge>
         Edge[] arredge = new Edge[net.size()];
         net.toArray(arredge);
         Arrays.sort(arredge);
-        return new EdgeTop(arredge);
+        return new EdgeIterator(arredge);
     }
 
     /**
-     * Add an edge
+     * Add an edge. If not directed, the edge will be recorded with
+     * smallest node id first.
      * 
-     * @param source
-     * @param target
+     * @param sourceId a node id.
+     * @param targetId a node id.
      */
-    public void push(final int source, final int target)
+    public void push(final int sourceId, final int targetId)
     {
         grow(size);
         if (directed) {
-            data[size] = edge(source, target);
-        } else if (source < target) {
-            data[size] = edge(source, target);
+            data[size] = edge(sourceId, targetId);
+        } else if (sourceId < targetId) {
+            data[size] = edge(sourceId, targetId);
         } else {
-            data[size] = edge(target, source);
+            data[size] = edge(targetId, sourceId);
         }
         size++;
     }
 
     /**
-     * Count of push events
+     * Count of push events.
      * 
-     * @return
+     * @return this.size.
      */
     public int size()
     {
@@ -165,7 +177,10 @@ public class EdgeQueue implements Iterable<Edge>
     }
 
     /**
-     * Get the key from a long entry
+     * Get the source id from an edge recorded as a long.
+     * 
+     * @param edge 2 x 32 bits [target, source].
+     * @return source node id = edge & [0, FFFFFFFF].
      */
     private static int source(final long edge)
     {
@@ -173,7 +188,10 @@ public class EdgeQueue implements Iterable<Edge>
     }
 
     /**
-     * Get an int value from a long entry
+     * Get the taget id from an edge recorde asd a long.
+     * 
+     * @param edge 2 x 32 bits [target, source].
+     * @return target node id = edge >> 32 bits.
      */
     private static int target(final long edge)
     {

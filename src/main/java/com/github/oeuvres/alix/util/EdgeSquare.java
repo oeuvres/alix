@@ -62,7 +62,7 @@ public class EdgeSquare implements Iterable<Edge>
      * unique ints
      * 
      * @param words    An ordered set of ints nodeId → nodeValue
-     * @param directed
+     * @param directed true if direction should be kept in pairs.
      */
     public EdgeSquare(final int[] words, final boolean directed) {
         this.directed = directed;
@@ -72,10 +72,10 @@ public class EdgeSquare implements Iterable<Edge>
     }
 
     /**
-     * Expert, set a global population to calculate score
+     * Expert, set a global population to calculate a score.
      * 
-     * @param N
-     * @return
+     * @param N a global population to calculate stats.
+     * @return this.
      */
     protected EdgeSquare N(final long N)
     {
@@ -84,9 +84,10 @@ public class EdgeSquare implements Iterable<Edge>
     }
 
     /**
-     * Expert, set counts per word for score calculation
+     * Expert, set counts per word  to calculate a score.
+     * counts[index] = count for the word in nodes[nodeId]
      * 
-     * @param counts
+     * @param counts 
      * @return
      */
     protected EdgeSquare counts(final long[] counts)
@@ -117,7 +118,6 @@ public class EdgeSquare implements Iterable<Edge>
      * @param index
      * @return
      */
-    @SuppressWarnings("unused")
     private int source(final int index)
     {
         return index / nodeLen;
@@ -129,7 +129,6 @@ public class EdgeSquare implements Iterable<Edge>
      * @param index
      * @return
      */
-    @SuppressWarnings("unused")
     private int target(final int index)
     {
         return index % nodeLen;
@@ -199,7 +198,8 @@ public class EdgeSquare implements Iterable<Edge>
         private Edge next;
 
         /**
-         * This iterator will produce a very specific order among edges to limit orphans
+         * This iterator will produce a very specific order among edges to limit orphans.
+         * @param data
          */
         EdgeIt(final int[] data) {
             // take a copy of data
@@ -258,9 +258,7 @@ public class EdgeSquare implements Iterable<Edge>
                         // nodesCount[target]/(double)edgeCount) / 2;
 
                     }
-                    table[source][target] = new Edge(
-                            // should restore initial codes
-                            words[source], words[target], index).count(edgeCount).score(score);
+                    table[source][target] = new Edge(words[source], words[target], directed, index).count(edgeCount).score(score);
                 }
                 Arrays.sort(table[source]);
             }
@@ -310,9 +308,9 @@ public class EdgeSquare implements Iterable<Edge>
             while (true) {
                 final Edge edge = table[line][cols[line]];
                 // if value OK, send it
-                if (data[edge.index] > 0) {
+                if (data[edge.edgeId] > 0) {
                     // this should be OK for non directed
-                    data[edge.index] = -1; // do not replay this edge
+                    data[edge.edgeId] = -1; // do not replay this edge
                     cols[line]++; // prepare next col
                     line = nextLine(line);
                     return edge;

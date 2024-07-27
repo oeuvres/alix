@@ -125,6 +125,13 @@ public class FieldAuthor
     /** The field type */
     public final DocValuesType type;
 
+    /**
+     * Cache stats for the field.
+     * 
+     * @param alix lucene {@link IndexReader} wrapper.
+     * @param name field name.
+     * @throws IOException lucene errors
+     */
     public FieldAuthor(final Alix alix, final String name) throws IOException {
         this(alix, name, null);
     }
@@ -133,9 +140,9 @@ public class FieldAuthor
      * Build data to have frequencies on a facet field. Access by an Alix instance,
      * to allow cache on an IndexReader state.
      * 
-     * @param alix
-     * @param name
-     * @param coverTerm
+     * @param alix lucene {@link IndexReader} wrapper.
+     * @param name field name.
+     * @param coverTerm deprecated
      * @throws IOException Lucene errors.
      */
     public FieldAuthor(final Alix alix, final String name, final Term coverTerm) throws IOException {
@@ -287,6 +294,14 @@ public class FieldAuthor
         this.alpha = FormEnum.sortAlpha(formDic);
     }
 
+    /**
+     * @deprecated
+     * 
+     * @param alix lucene {@link IndexReader} wrapper.
+     * @param coverTerm field:value to get book covers.
+     * @return a set of docId.
+     * @throws IOException lucene errors
+     */
     private BitSet coverBits(Alix alix, Term coverTerm) throws IOException
     {
         if (coverTerm == null)
@@ -301,7 +316,7 @@ public class FieldAuthor
     /**
      * Total count of documents for the field
      * 
-     * @return
+     * @return all docs.
      */
     public int docs()
     {
@@ -311,7 +326,7 @@ public class FieldAuthor
     /**
      * Get form from a local formId
      * 
-     * @return
+     * @return form.
      */
     public String form(final int facetId)
     {
@@ -324,10 +339,10 @@ public class FieldAuthor
     }
 
     /**
-     * Returns formId &gt;= 0 if exists, or &lt; 0 if not.
+     * Returns formId &gt;= 0 if exists, or -1 if not, like {@link BytesRefHash#find(BytesRef)}
      * 
-     * @param bytes
-     * @return
+     * @param bytes reusable utf8 bytes to look for.
+     * @return formId &gt;= 0 if found, -1 otherwise.
      */
     public int formId(final BytesRef bytes)
     {
@@ -335,19 +350,22 @@ public class FieldAuthor
     }
 
     /**
-     * Returns formId &gt;= 0 if exists, or &lt; 0 if not.
+     * Returns formId &gt;= 0 if exists, or -1 if not, like {@link BytesRefHash#find(BytesRef)}
      * 
-     * @param term
-     * @return
+     * @param form char version of a form.
+     * @return formId &gt;= 0 if found, -1 otherwise.
      */
-    public int formId(final String term)
+    public int formId(final CharSequence form)
     {
-        BytesRef bytes = new BytesRef(term);
+        BytesRef bytes = new BytesRef(form);
         return formDic.find(bytes);
     }
 
     /**
-     * Get first available facetId for this docId or -1 if nothing found
+     * Get first available facetId for this docId or -1 if nothing found.
+     * 
+     * @param docId lucene internal document id.
+     * @return
      */
     public int formId(final int docId)
     {
@@ -358,7 +376,10 @@ public class FieldAuthor
     }
 
     /**
-     * Get facetIds for a docId
+     * Get facetIds for a docId.
+     * 
+     * @param docId lucene internal document id.
+     * @return
      */
     public int[] formIds(final int docId)
     {
@@ -368,7 +389,7 @@ public class FieldAuthor
     /**
      * Returns a new enumerator on all search for this facet in orthographic order
      * 
-     * @return
+     * @return a form enumerator.
      * @throws IOException Lucene errors.
      */
     public FormEnum forms() throws IOException
@@ -380,28 +401,28 @@ public class FieldAuthor
         forms.formOccs = null; // not relevant, a facet is not repeated by doc
         forms.formCover = formCover;
         forms.formTag = null;
-        forms.maxForm = maxForm;
+        forms.maxValue = maxForm;
         forms.occs = occs; // maybe > docsAll for multiple terms
         return forms;
     }
 
     /**
-     * Number of documents by term according to a filter.
+     * Number of documents by term according to a doc filter.
      * 
-     * @param filter
-     * @return
+     * @param docFilter set of doc id.
+     * @return a form enumerator.
      * @throws IOException Lucene errors.
      */
-    public FormEnum forms(final BitSet filter) throws IOException
+    public FormEnum forms(final BitSet docFilter) throws IOException
     {
         FormEnum forms = forms();
-        if (filter == null) {
+        if (docFilter == null) {
             return forms();
         }
         forms.formHits = new int[maxForm];
         for (int docId = 0, max = this.docForms.length; docId < max; docId++) {
             // document not in the filter, go next
-            if (!filter.get(docId))
+            if (!docFilter.get(docId))
                 continue;
             // empty document, probably a book cover, but we don’t want a dependance here on
             // a FieldText
@@ -417,19 +438,19 @@ public class FieldAuthor
     }
 
     /**
-     * Get stats from a text field by facet
+     * Get stats from a text field by facet.
      * 
      * @param ftext
-     * @param filter
-     * @return
+     * @param docFilter
+     * @return a form enumerator.
      * @throws IOException Lucene errors.
      */
-    public FormEnum forms(final FieldText ftext, final BitSet filter) throws IOException
+    public FormEnum forms(final FieldText ftext, final BitSet docFilter) throws IOException
     {
         if (ftext == null) {
             throw new IllegalArgumentException("A TextField (with indexed tokens) is required here");
         }
-        boolean hasFilter = (filter != null);
+        boolean hasFilter = (docFilter != null);
         FormEnum forms = forms();
         forms.formOccs = new long[maxForm];
         if (hasFilter) {
@@ -440,7 +461,7 @@ public class FieldAuthor
         for (int docId = 0, len = reader.maxDoc(); docId < len; docId++) {
             // get occs count by doc
             long occs = ftext.docOccs[docId];
-            if (hasFilter && filter.get(docId)) {
+            if (hasFilter && docFilter.get(docId)) {
                 forms.hits++;
                 forms.occs += occs;
             }
@@ -449,7 +470,7 @@ public class FieldAuthor
                 continue;
             for (final int formId : formIds) {
                 forms.formOccs[formId] += occs;
-                if (hasFilter && filter.get(docId)) {
+                if (hasFilter && docFilter.get(docId)) {
                     forms.formFreq[formId] += occs;
                     forms.formHits[formId]++;
                 }
@@ -464,6 +485,10 @@ public class FieldAuthor
      * corpus). If there are no search in the search, will cry. Returns an iterator
      * on search of this facet, with scores and other stats.
      * 
+     * @param ftext
+     * @param filter
+     * @param search
+     * @param distrib
      * @return
      * @throws IOException Lucene errors.
      */
@@ -478,7 +503,7 @@ public class FieldAuthor
                     continue;
                 if (f.isEmpty())
                     continue;
-                terms.add(new Term(ftext.name, f));
+                terms.add(new Term(ftext.fieldName, f));
             }
         }
         // no terms found
@@ -508,7 +533,7 @@ public class FieldAuthor
         for (Term term : terms) {
             // long[] formPartOccs = new long[size]; // a vector to count matched
             // occurrences for this term, by facet
-            final int formId = ftext.formId(term.bytes());
+            final int formId = ftext.valueId(term.bytes());
             // shall we do something here if word not known ?
             if (formId < 1) {
                 continue;
@@ -576,6 +601,9 @@ public class FieldAuthor
      * supposed to be sorted in a relevant order for this facet ex : (author, title)
      * or (author, date) for an author facet. Get the index of the first relevant
      * document for each faceted term.
+     * 
+     * @param topDocs
+     * @return
      */
     public int[] nos(final TopDocs topDocs)
     {
@@ -620,7 +648,7 @@ public class FieldAuthor
     }
 
     /**
-     * Calculate, by facet, global count of occurrences of a text field
+     * Calculate, by facet, global count of occurrences from a text field.
      */
     public long[] stats(FieldText ftext)
     {

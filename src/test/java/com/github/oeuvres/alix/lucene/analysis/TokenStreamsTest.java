@@ -32,7 +32,6 @@ public class TokenStreamsTest {
         analyze(tokenizer, text);
     }
     
-    @Test
     public void html() throws IOException
     {
         TokenizerML tokenizer = new TokenizerML();
@@ -76,6 +75,22 @@ public class TokenStreamsTest {
         ana.close();
     }
 
+    static public class ShingleAnalyzer extends Analyzer
+    {
+        @SuppressWarnings("resource")
+        @Override
+        public TokenStreamComponents createComponents(String field)
+        {
+            final Tokenizer tokenizer = new TokenizerML(); // segment words
+            TokenStream ts = new FilterAposHyphenFr(tokenizer);
+            ts = new FilterLemmatize(ts); // provide lemma+pos
+            // ts = new FilterFind(ts); // orthographic form and lemma as term to index
+            // ts = new ASCIIFoldingFilter(ts); // no accents
+            return new TokenStreamComponents(tokenizer, ts);
+        }
+
+    }
+    
     static public class AposHyphAnalyzer extends Analyzer
     {
         @Override

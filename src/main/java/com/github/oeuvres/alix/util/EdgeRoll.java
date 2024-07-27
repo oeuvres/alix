@@ -41,7 +41,7 @@ import com.github.oeuvres.alix.maths.Calcul;
 
 /**
  * Record co-occurrences between a fixed set of words (as int values) along
- * texts (sequence of ints) inside a limited distance. The data structure is
+ * texts (sequence of ints) inside a limited span. The data structure is
  * optimized to reduce creation of objects with rolling arrays.
  */
 public class EdgeRoll
@@ -78,8 +78,8 @@ public class EdgeRoll
     /**
      * Waited values and distance
      * 
-     * @param words
-     * @param distance
+     * @param words set of word id.
+     * @param distance a distance.
      */
     public EdgeRoll(int[] words, final int distance) {
         words = IntStream.of(words).distinct().toArray();
@@ -101,9 +101,9 @@ public class EdgeRoll
     }
 
     /**
-     * Returns edges sorted in a good way to loop on for a nice word net
+     * Returns edges sorted in a good way to loop on for a nice word net.
      * 
-     * @return
+     * @return sortable array of edges.
      */
     public EdgeSquare edges()
     {
@@ -175,85 +175,9 @@ public class EdgeRoll
     }
 
     /**
-     * Double capacity of data set, and copy in order
-     */
-    private void grow()
-    {
-        final int newCap = Calcul.nextSquare(this.capacity * 2 - 1);
-        final int[] newPos = new int[newCap];
-        final int[] newNods = new int[newCap];
-        int i = 0;
-        reset();
-        while (hasNext()) {
-            next();
-            newPos[i] = position();
-            newNods[i] = node();
-            i++;
-        }
-        this.capacity = newCap;
-        this.positions = newPos;
-        this.nodes = newNods;
-        this.start = 0;
-        this.end = i;
-        reset();
-    }
-
-    /**
-     * reset recording of context
-     */
-    private void reset()
-    {
-        // cursor out of scope, will be set by next
-        cursor = -1;
-    }
-
-    /**
-     * Remove first element
-     */
-    private void removeFirst()
-    {
-        if (size <= 0) {
-            throw new IndexOutOfBoundsException("Empty list, no element available");
-        }
-        // this is sure in all cases
-        size--;
-        // []...... restore simple
-        if (size == 0) {
-            start = end = 0;
-            return;
-        }
-        start++;
-        // +++]...[
-        if (start >= capacity) {
-            start = 0;
-            return;
-        }
-        // should be OK here
-        return;
-    }
-
-    /**
-     * The current position in loop
-     * 
-     * @return
-     */
-    private int position()
-    {
-        return positions[cursor];
-    }
-
-    /**
-     * The current value in loop
-     * 
-     * @return
-     */
-    private int node()
-    {
-        return nodes[cursor];
-    }
-
-    /**
-     * Add an element at the end of the queue
+     * Add an element at the end of the queue.
+     * @param position a sequential index of word in text.
+     * @param node a word id.
      */
     private void addLast(final int position, final int node)
     {
@@ -277,6 +201,30 @@ public class EdgeRoll
         // .[+++]..
         // ++]..[+++ (end < start)
         // should be OK
+    }
+
+    /**
+     * Double capacity of data set, and copy in order.
+     */
+    private void grow()
+    {
+        final int newCap = Calcul.nextSquare(this.capacity * 2 - 1);
+        final int[] newPos = new int[newCap];
+        final int[] newNods = new int[newCap];
+        int i = 0;
+        reset();
+        while (hasNext()) {
+            next();
+            newPos[i] = position();
+            newNods[i] = node();
+            i++;
+        }
+        this.capacity = newCap;
+        this.positions = newPos;
+        this.nodes = newNods;
+        this.start = 0;
+        this.end = i;
+        reset();
     }
 
     /**
@@ -323,7 +271,7 @@ public class EdgeRoll
         if (cursor + 1 < end) {
             return true;
         }
-
+    
         return false;
     }
 
@@ -359,6 +307,60 @@ public class EdgeRoll
             return; // ok
         }
         throw new IndexOutOfBoundsException("No more elements available");
+    }
+
+    /**
+     * The current value in loop
+     * 
+     * @return
+     */
+    private int node()
+    {
+        return nodes[cursor];
+    }
+
+    /**
+     * The current position in loop
+     *
+     * @return current position.
+     */
+    private int position()
+    {
+        return positions[cursor];
+    }
+
+    /**
+     * Remove first element.
+     */
+    private void removeFirst()
+    {
+        if (size <= 0) {
+            throw new IndexOutOfBoundsException("Empty list, no element available");
+        }
+        // this is sure in all cases
+        size--;
+        // []...... restore simple
+        if (size == 0) {
+            start = end = 0;
+            return;
+        }
+        start++;
+        // +++]...[
+        if (start >= capacity) {
+            start = 0;
+            return;
+        }
+        // should be OK here
+        return;
+    }
+
+    /**
+     * reset recording of context
+     */
+    private void reset()
+    {
+        // cursor out of scope, will be set by next
+        cursor = -1;
     }
 
 }

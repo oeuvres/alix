@@ -344,7 +344,7 @@ public class Scale
                     continue; // null search are group separators
                 if (col >= cols)
                     break;
-                Term term = new Term(ftext.name, form);
+                Term term = new Term(ftext.fieldName, form);
                 col++; // start col at 1
                 // for each term, reset the pointer in the axis
                 PostingsEnum postings = leaf.postings(term);

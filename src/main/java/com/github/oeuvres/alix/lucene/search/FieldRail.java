@@ -71,6 +71,7 @@ import com.github.oeuvres.alix.util.EdgeRoll;
 import com.github.oeuvres.alix.util.EdgeSquare;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.IntPair;
+import com.github.oeuvres.alix.util.IntPairMutable;
 import com.github.oeuvres.alix.web.OptionMI;
 
 /**
@@ -86,7 +87,7 @@ public class FieldRail
     /** State of the index */
     private final Alix alix;
     /** Name of the reference text field */
-    public final String fname;
+    public final String fieldName;
     /** Keep the freqs for the field */
     private final FieldText ftext;
     /** Dictionary of search for this field */
@@ -108,13 +109,13 @@ public class FieldRail
     /** Index of sizes for each doc */
     private int[] limInt;
 
-    public FieldRail(Alix alix, String field) throws IOException {
+    public FieldRail(Alix alix, String fieldName) throws IOException {
         this.alix = alix;
-        this.ftext = alix.fieldText(field); // build and cache the dictionary for the field
-        this.fname = ftext.name;
-        this.formDic = ftext.formDic;
+        this.ftext = alix.fieldText(fieldName); // build and cache the dictionary for the field
+        this.fieldName = ftext.fieldName;
+        this.formDic = ftext.dic;
         this.maxForm = formDic.size();
-        this.path = Paths.get(alix.path.toString(), field + ".rail");
+        this.path = Paths.get(alix.path.toString(), fieldName + ".rail");
         load();
     }
 
@@ -129,7 +130,7 @@ public class FieldRail
     {
         final boolean hasFilter = (filter != null);
         Map<IntPair, Bigram> dic = new HashMap<IntPair, Bigram>();
-        IntPair key = new IntPair();
+        IntPairMutable key = new IntPairMutable();
         int maxDoc = this.maxDoc;
         int[] posInt = this.posInt;
         int[] limInt = this.limInt;
@@ -228,7 +229,7 @@ public class FieldRail
                 if (form == null || "".equals(form)) {
                     continue;
                 }
-                Term term = new Term(fname, form); // do not try to reuse term, false optimisation
+                Term term = new Term(fieldName, form); // do not try to reuse term, false optimisation
                 PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS | PostingsEnum.POSITIONS);
                 if (postings == null) {
                     continue;
@@ -428,7 +429,7 @@ public class FieldRail
                 if (form == null || "".equals(form)) {
                     continue;
                 }
-                Term term = new Term(fname, form); // do not try to reuse term, false optimisation
+                Term term = new Term(fieldName, form); // do not try to reuse term, false optimisation
                 PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS | PostingsEnum.POSITIONS);
                 if (postings == null) {
                     continue;
@@ -523,7 +524,7 @@ public class FieldRail
         int maxDoc = this.maxDoc;
         int[] posInt = this.posInt;
         int[] limInt = this.limInt;
-        BytesRefHash formDic = ftext.formDic;
+        BytesRefHash formDic = ftext.dic;
         // no cost in time and memory to take one int view, seems faster to loop
         IntBuffer bufInt = channelMap.rewind().asIntBuffer();
         // a vector to record formId events
@@ -536,7 +537,7 @@ public class FieldRail
             if (hasFilter && !docFilter.get(docId))
                 continue; // document not in the filter
             bufInt.position(posInt[docId]); // position cursor in the rail
-            IntPair key = new IntPair();
+            IntPairMutable key = new IntPairMutable();
             for (int i = 0, max = limInt[docId]; i < max; i++) {
                 final int formId = bufInt.get();
                 // pun or hole, reset expression
@@ -796,7 +797,7 @@ public class FieldRail
             add += ftext.formOccs(formId);
         }
         final long Ob = add;
-        int maxForm = ftext.maxForm;
+        int maxForm = ftext.maxValue;
         // reuse score for multiple calculations
         if (results.formScore == null || results.formScore.length != maxForm) {
             results.formScore = new double[maxForm]; // by term, occurrences counts
@@ -843,7 +844,7 @@ public class FieldRail
         // new API, not tested
         TermVectors tread = reader.termVectors();
         for (int docId = 0; docId < maxDoc; docId++) {
-            Terms termVector = tread.get(docId, fname);
+            Terms termVector = tread.get(docId, fieldName);
             docLen[docId] = length(termVector);
         }
 
@@ -864,7 +865,7 @@ public class FieldRail
         // new API, not tested
         tread = reader.termVectors();
         for (int docId = 0; docId < maxDoc; docId++) {
-            Terms termVector = tread.get(docId, fname);
+            Terms termVector = tread.get(docId, fieldName);
             if (termVector == null) {
                 bufint.put(-1);
                 continue;

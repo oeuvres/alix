@@ -359,7 +359,7 @@ public class Alix
         if (facet != null) {
             return facet;
         }
-        facet = new FieldFacet(this, fieldName);
+        facet = new FieldFacet(reader(), fieldName);
         cache(key, facet);
         return facet;
     }
@@ -379,7 +379,7 @@ public class Alix
         if (ints != null) {
             return ints;
         }
-        ints = new FieldInt(this, fieldName);
+        ints = new FieldInt(reader(), fieldName);
         cache(key, ints);
         return ints;
     }

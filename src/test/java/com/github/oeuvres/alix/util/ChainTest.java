@@ -21,6 +21,7 @@ public class ChainTest {
         assertFalse(glob.glob("amaze"));
     }
     
+    @Test
     public void normalizeString()
     {
         String[] phrases = {
@@ -47,6 +48,7 @@ public class ChainTest {
         }
     }
 
+    @Test
     public void splitChar()
     {
         String[] paths = {
@@ -79,6 +81,7 @@ public class ChainTest {
         }
     }
 
+    @Test
     public void splitString()
     {
         String[] phrases = {

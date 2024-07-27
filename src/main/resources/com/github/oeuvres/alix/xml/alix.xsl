@@ -230,7 +230,7 @@
   </xsl:template>
 
   <!-- Do not output pages -->
-  <xsl:template match="tei:pb">
+  <xsl:template match="tei:pb" priority="2">
     <xsl:text>&#10;</xsl:text>
   </xsl:template>
   <!-- no output -->

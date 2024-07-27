@@ -92,9 +92,9 @@ public class WordSuggest
     public WordSuggest (final FieldText fieldText)
     {
         this.fieldText = fieldText;
-        this.fieldName = fieldText.name;
+        this.fieldName = fieldText.fieldName;
         this.reader = fieldText.reader;
-        this.formDic = fieldText.formDic;
+        this.formDic = fieldText.dic;
         final int size = formDic.size();
         // get the terms in their index order for faster loop
         // Term enumerations are always ordered by BytesRef.compareTo

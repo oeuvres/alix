@@ -64,7 +64,7 @@ public class FormEnum implements FormIterator
 {
     /** used to read in the dic */
     BytesRef bytes = new BytesRef();
-    /** Count of forms with */
+    /** Count of forms with freq &gt; 0 */
     private int cardinality = -1;
     /**
      * Optional, a sort algorithm to select specific words according a norm (ex:
@@ -107,8 +107,8 @@ public class FormEnum implements FormIterator
     protected BitSet hitsVek;
     /** Optional, co-occurrence search, count of occs to capture on the left */
     public int left;
-    /** Biggest formId+1 (like lucene IndexReader.maxDoc()) */
-    public int maxForm;
+    /** Number of different values found, is also biggest valueId+1 (like lucene IndexReader.maxDoc()) */
+    protected int maxValue = -1;
     /** Optional, a sort algorithm for coocs */
     public OptionMI mi;
     /** Source field */
@@ -554,7 +554,7 @@ public class FormEnum implements FormIterator
     {
         if (sorter == null) {
             // natural order, let’s see
-            this.sorter(IntStream.range(0, maxForm).toArray());
+            this.sorter(IntStream.range(0, maxValue).toArray());
             // throw new NegativeArraySizeException("No order rule to sort on. Use FormEnum.sort() before");
         }
         cursor = -1;
@@ -596,8 +596,8 @@ public class FormEnum implements FormIterator
         if (formFreq == null) {
             throw new IllegalArgumentException("No freqs for this dictionary to calculate score on.");
         }
-        formScore = new double[maxForm];
-        for (int formId = 0; formId < maxForm; formId++) {
+        formScore = new double[maxValue];
+        for (int formId = 0; formId < maxValue; formId++) {
             if (formFreq[formId] < 1)
                 continue;
             distrib.idf(formDocs[formId], docs, occs);
@@ -663,8 +663,8 @@ public class FormEnum implements FormIterator
      */
     public void sort(final Order order, final int limit, final boolean reverse)
     {
-        if (formFreq != null && maxForm != formFreq.length) {
-            throw new IllegalArgumentException("Corrupted FormEnum name=" + name + " maxForm=" + maxForm
+        if (formFreq != null && maxValue != formFreq.length) {
+            throw new IllegalArgumentException("Corrupted FormEnum name=" + name + " maxForm=" + maxValue
                     + " formOccsFreq.length=" + formFreq.length);
         }
         if (order == null) {
@@ -717,7 +717,7 @@ public class FormEnum implements FormIterator
             flags |= TopArray.REVERSE;
         TopArray top = null;
         if (limit < 1)
-            top = new TopArray(maxForm, flags);
+            top = new TopArray(maxValue, flags);
         else
             top = new TopArray(limit, flags);
         // boolean noZeroScore = false;
@@ -733,7 +733,7 @@ public class FormEnum implements FormIterator
             return;
         }
         // cardinality = 0;
-        for (int formId = 0, length = maxForm; formId < length; formId++) {
+        for (int formId = 0, length = maxValue; formId < length; formId++) {
             // 2022-05 ??? do not output global stats if form have been filtered (ex : by
             // cat)
             // check values > 0

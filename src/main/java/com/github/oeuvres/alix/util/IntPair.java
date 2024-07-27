@@ -34,8 +34,7 @@ package com.github.oeuvres.alix.util;
 
 /**
  * A mutable pair of ints. Works well as a key for a HashMap (hascode()
- * implemented), comparable is good for perfs in buckets. After test, it is more
- * efficient than concating ints in longs in an HashMap.
+ * implemented), comparable is good for perfs in buckets.
  */
 public class IntPair implements Comparable<IntPair>
 {
@@ -43,61 +42,55 @@ public class IntPair implements Comparable<IntPair>
     protected int x;
     /** Internal data */
     protected int y;
-    /** Precalculate hash */
-    private int hash;
+    /** Precalculate hash code */
+    protected int hash;
 
-    public IntPair() {
-    }
-
+    /**
+     * Cloning.
+     * @param pair source pair to clone.
+     */
     public IntPair(IntPair pair) {
         this.x = pair.x;
         this.y = pair.y;
+        this.hash = hashCalc();
     }
 
+    /**
+     * Building from non mutable value.
+     * @param x first int value.
+     * @param y second int value.
+     */
     public IntPair(final int x, int y) {
         this.x = x;
         this.y = y;
+        this.hash = hashCalc();
     }
 
-    public void set(final int x, final int y)
-    {
-        this.x = x;
-        this.y = y;
-        hash = 0;
-    }
-
-    public void set(IntPair pair)
-    {
-        this.x = pair.x;
-        this.y = pair.y;
-        hash = 0;
-    }
-
+    /**
+     * Return a copy of the pair as an int[] array.
+     * @return [x, y].
+     */
     public int[] toArray()
     {
         return new int[] { x, y };
     }
 
+    /**
+     * Get first value.
+     * @return first int value.
+     */
     public int x()
     {
         return x;
     }
 
+    /**
+     * Get second alue.
+     * @return second int value.
+     */
     public int y()
     {
         return y;
-    }
-
-    public void x(final int x)
-    {
-        this.x = x;
-        hash = 0;
-    }
-
-    public void y(final int y)
-    {
-        this.y = y;
-        hash = 0;
     }
 
     @Override
@@ -127,12 +120,14 @@ public class IntPair implements Comparable<IntPair>
     @Override
     public int hashCode()
     {
-        if (hash == 0) {
-            // hash = (31 * 17 + x) * 31 + y; // 97% collision
-            // hash = ( y << 16 ) ^ x; // 0% collision, but less dispersion
-            hash = ((x + y) * (x + y + 1) / 2) + y;
-        }
         return hash;
+    }
+
+    protected int hashCalc()
+    {
+        // hash = (31 * 17 + x) * 31 + y; // 97% collision
+        // hash = ( y << 16 ) ^ x; // 0% collision, but less dispersion
+        return ((x + y) * (x + y + 1) / 2) + y;
     }
 
     @Override

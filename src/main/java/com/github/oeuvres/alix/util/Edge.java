@@ -42,33 +42,70 @@ package com.github.oeuvres.alix.util;
 public class Edge implements Comparable<Edge>
 {
     /** Source node id */
-    public final int source;
+    public final int sourceId;
     /** Target node id */
-    public final int target;
+    public final int targetId;
+    /** For information */
+    public final boolean directed;
     /** An index commodity */
-    public final int index;
+    public final int edgeId;
     /** Count */
     private long count;
+    /** A score has been set */
+    private boolean hasScore;
     /** Score */
     private double score;
 
-    public Edge(final int source, final int target) {
-        this(source, target, -1);
-    }
-
-    public Edge(final int source, final int target, final int index) {
-        this.source = source;
-        this.target = target;
-        this.index = index;
+    /**
+     * Build an edge between 2 nodes identified by an int (not mutables).
+     * 
+     * @param sourceId a node id.
+     * @param targetId a node id.
+     */
+    public Edge(final int sourceId, final int targetId) {
+        this(sourceId, targetId, true, -1);
     }
 
     /**
-     * Comparison on score
+     * Build an edge between 2 nodes identified by an int, with a direction (not mutables).
+     * 
+     * @param sourceId a node id.
+     * @param targetId a node id.
+     * @param directed optional, true if direction imports, false otherwise.
+     */
+    public Edge(final int sourceId, final int targetId, final boolean directed) {
+        this(sourceId, targetId, directed, -1);
+    }
+
+    /**
+     * Build an edge between 2 nodes identified by an int, with an optional direction, and an optional edgeId (not mutables).
+     * 
+     * @param sourceId a node id.
+     * @param targetId a node id.
+     * @param directed optional, true if direction imports, false otherwise.
+     * @param edgeId optional, an id for this edge, set by a collector.
+     */
+    public Edge(final int sourceId, final int targetId, final boolean directed, final int edgeId) {
+        this.sourceId = sourceId;
+        this.targetId = targetId;
+        this.directed = directed;
+        this.edgeId = edgeId;
+    }
+
+    /**
+     * Comparison in this order
+     * <ul>
+     *   <li>{@link #score()}</li>
+     *   <li>{@link #count()}</li>
+     *   <li>{@link #sourceId()}</li>
+     *   <li>{@link #targetId()}</li>
+     * </ul>
      */
     @Override
     public int compareTo(Edge o)
     {
-        int cp = Double.compare(o.score, score);
+        int cp;
+        cp = Double.compare(o.score, score);
         if (cp != 0) {
             return cp;
         }
@@ -76,28 +113,54 @@ public class Edge implements Comparable<Edge>
         if (cp != 0) {
             return cp;
         }
-        if (this.source > o.source)
+        if (this.sourceId > o.sourceId)
             return 1;
-        if (this.source < o.source)
+        if (this.sourceId < o.sourceId)
             return -1;
-        if (this.target > o.target)
+        if (this.targetId > o.targetId)
             return 1;
-        if (this.target < o.target)
+        if (this.targetId < o.targetId)
             return -1;
         return 0;
     }
 
+    /**
+     * Get count.
+     * 
+     * @return a count incremented or set outside.
+     */
     public long count()
     {
         return this.count;
     }
 
+    /**
+     * Set count.
+     * 
+     * @param count an integer count.
+     * @return this.
+     */
     public Edge count(final int count)
     {
         this.count = count;
         return this;
     }
 
+    /**
+     * Get edge id.
+     * 
+     * @return an int id.
+     */
+    public double edgeId()
+    {
+        return edgeId;
+    }
+
+    /**
+     * An Edge is said equals if it has same source id and target id.
+     * Equality is also available for {@link IntPair}, {@link IntSeries}, and int[] array with 2 values.
+     * (Direction is nt handled here).
+     */
     @Override
     public boolean equals(Object o)
     {
@@ -107,19 +170,24 @@ public class Edge implements Comparable<Edge>
             return true;
         if (o instanceof Edge) {
             Edge edge = (Edge) o;
-            return (this.source == edge.source && this.target == edge.target);
+            return (this.sourceId == edge.sourceId && this.targetId == edge.targetId);
+        }
+        if (o instanceof int[]) {
+            int[] a = (int[]) o;
+            if (a.length < 2) return false;
+            return (this.sourceId == a[0] && this.targetId == a[1]);
         }
         if (o instanceof IntPair) {
             IntPair pair = (IntPair) o;
-            return (this.source == pair.x && this.target == pair.y);
+            return (this.sourceId == pair.x && this.targetId == pair.y);
         }
         if (o instanceof IntSeries) {
             IntSeries series = (IntSeries) o;
             if (series.size() != 2)
                 return false;
-            if (this.source != series.data[0])
+            if (this.sourceId != series.data[0])
                 return false;
-            if (this.target != series.data[1])
+            if (this.targetId != series.data[1])
                 return false;
             return true;
         }
@@ -127,19 +195,19 @@ public class Edge implements Comparable<Edge>
     }
 
     /**
-     * Increment score
+     * Increment count.
      * 
-     * @return
+     * @return result count value.
      */
     public double inc()
     {
-        return ++score;
+        return ++count;
     }
 
     /**
      * Get score
      * 
-     * @return
+     * @return score if has been set.
      */
     public double score()
     {
@@ -149,17 +217,41 @@ public class Edge implements Comparable<Edge>
     /**
      * Set score
      * 
-     * @return
+     * @param score a decimal calculated with scorer.
+     * @return this.
      */
     public Edge score(final double score)
     {
+        this.hasScore = true;
         this.score = score;
         return this;
+    }
+
+    /**
+     * Get source id.
+     * 
+     * @return a node id.
+     */
+    public double sourceId()
+    {
+        return sourceId;
+    }
+
+    /**
+     * Get target id.
+     * 
+     * @return a node id.
+     */
+    public double targetId()
+    {
+        return targetId;
     }
 
     @Override
     public String toString()
     {
-        return "" + source + "->" + target + " (" + count + "; " + score + ")";
+        return ((edgeId != -1)?edgeId + ". ":"") 
+            + sourceId + (directed?" → ":" ↔ ") + targetId 
+            + " (" + count + (hasScore?"; " + score: "")+ ")";
     }
 }
