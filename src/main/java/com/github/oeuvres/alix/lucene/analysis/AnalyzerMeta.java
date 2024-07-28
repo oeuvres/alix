@@ -43,12 +43,16 @@ import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 public class AnalyzerMeta extends Analyzer
 {
 
+    @SuppressWarnings("resource")
     @Override
     protected TokenStreamComponents createComponents(String fieldName)
     {
-        final Tokenizer source = new TokenizerML();
-        TokenStream result = new ASCIIFoldingFilter(source); // no accents
-        return new TokenStreamComponents(source, result);
+        final Tokenizer tokenizer = new TokenizerML(); // segment words
+        TokenStream ts = tokenizer;
+        ts = new FilterXML(ts); // strip tags
+        ts = new FilterAposHyphenFr(ts); // fr split on ’ and -
+        ts = new ASCIIFoldingFilter(ts); // no accents
+        return new TokenStreamComponents(tokenizer, ts);
     }
 
 }

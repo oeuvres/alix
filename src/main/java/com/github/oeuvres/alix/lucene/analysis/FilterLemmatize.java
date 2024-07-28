@@ -109,15 +109,7 @@ public final class FilterLemmatize extends TokenFilter
             save = null;
             return true;
         }
-        int flags;
-        // skip XML token
-        while (true) {
-            if (!input.incrementToken())
-                return false;
-            flags = flagsAtt.getFlags();
-            if (flags != Tag.XML.flag)
-                break;
-        }
+        int flags = flagsAtt.getFlags();
         // store pun event, skiping XML
         // was last token a sentence punctuation ?
         if (flags == Tag.PUNdiv.flag || flags == Tag.PUNsent.flag) {

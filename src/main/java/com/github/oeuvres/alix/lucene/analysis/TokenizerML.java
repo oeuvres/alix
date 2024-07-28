@@ -116,12 +116,14 @@ public class TokenizerML  extends Tokenizer
         char lastChar = 0;
         char c = 0;
         while (true) {
+            bufferIndex++;
+            offset++;
             // needs more chars ? start (-1, -1). End (0, 0).
             if (bufferIndex >= bufferLen) {
                 // use default lucene code to read chars from source
                 CharacterUtils.fill(buffer, input); // read supplementary char aware with CharacterUtils
                 bufferLen = buffer.getLength();
-                bufferIndex = -1;
+                bufferIndex = 0;
                 // end of stream
                 if (bufferLen == 0) {
                     // last term to send, 
@@ -132,11 +134,9 @@ public class TokenizerML  extends Tokenizer
                     return false;
                 }
             }
-            lastChar = c;
-            bufferIndex++;
-            offset++;
             // if no luck, a try to go back in buffer can fall in negative
-            if (bufferIndex < 0) bufferIndex = 0;
+            // if (bufferIndex < 0) bufferIndex = 0;
+            lastChar = c;
             c = buffer.getBuffer()[bufferIndex];
             // default, go next
             
