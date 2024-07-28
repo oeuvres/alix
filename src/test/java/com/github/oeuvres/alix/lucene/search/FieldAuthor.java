@@ -708,7 +708,7 @@ public class FieldAuthor
                     final int docId = docBase + docLeaf;
                     // doc is a cover, record it and do not add to stats
                     if (covers != null && covers.get(docId)) {
-                        formCover.put(formId, docId);
+                        formCover.set(formId, docId);
                     }
 
                     if (docForms[docId] == null) {

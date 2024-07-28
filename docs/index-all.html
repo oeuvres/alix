@@ -79,7 +79,7 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/IntList.html#add(int,int)" class="member-name-link">add(int, int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
 <dd>
-<div class="block">Add value at a position</div>
+<div class="block">Add value to a position</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/Roll.html#add(int,E)" class="member-name-link">add(int, E)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/Roll.html" title="class in com.github.oeuvres.alix.util">Roll</a></dt>
 <dd>&nbsp;</dd>
@@ -914,7 +914,7 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/EdgeSquare.html#counts(long%5B%5D)" class="member-name-link">counts(long[])</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></dt>
 <dd>
-<div class="block">Expert, set counts per word  to calculate a score.</div>
+<div class="block">Expert, set counts per node to calculate a score.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/SparseMat.html#COUNTS" class="member-name-link">COUNTS</a> - Static variable in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/SparseMat.html" title="class in com.github.oeuvres.alix.util">SparseMat</a></dt>
 <dd>&nbsp;</dd>
@@ -976,10 +976,6 @@ loadScripts(document, 'script');</script>
 <dt><a href="com/github/oeuvres/alix/util/DoubleList.html#data" class="member-name-link">data</a> - Variable in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/DoubleList.html" title="class in com.github.oeuvres.alix.util">DoubleList</a></dt>
 <dd>
 <div class="block">Internal data</div>
-</dd>
-<dt><a href="com/github/oeuvres/alix/util/EdgeSquare.html#data" class="member-name-link">data</a> - Variable in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></dt>
-<dd>
-<div class="block">The edges</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/IntList.html#data" class="member-name-link">data</a> - Variable in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
 <dd>
@@ -1310,6 +1306,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">A record of edges</div>
 </dd>
+<dt><a href="com/github/oeuvres/alix/util/EdgeSquare.html#edges" class="member-name-link">edges</a> - Variable in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></dt>
+<dd>
+<div class="block">The edges</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html#edges()" class="member-name-link">edges()</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></dt>
 <dd>
 <div class="block">Prepare results to collect edges</div>
@@ -1329,14 +1329,17 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/EdgeSquare.html" class="type-name-link" title="class in com.github.oeuvres.alix.util">EdgeSquare</a> - Class in <a href="com/github/oeuvres/alix/util/package-summary.html">com.github.oeuvres.alix.util</a></dt>
 <dd>
-<div class="block">A matrix to record edges between prdefined nodes</div>
+<div class="block">A matrix to record edges between predefined node Ids.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/EdgeSquare.html#%3Cinit%3E(int%5B%5D,boolean)" class="member-name-link">EdgeSquare(int[], boolean)</a> - Constructor for class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></dt>
 <dd>
-<div class="block">Build a square matrix of ints.</div>
+<div class="block">Words should absolutely be an ordered array of
+ unique ints.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/EdgeSquare.EdgeIt.html" class="type-name-link" title="class in com.github.oeuvres.alix.util">EdgeSquare.EdgeIt</a> - Class in <a href="com/github/oeuvres/alix/util/package-summary.html">com.github.oeuvres.alix.util</a></dt>
-<dd>&nbsp;</dd>
+<dd>
+<div class="block">An iterator of edges.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/util/Roll.html#element()" class="member-name-link">element()</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/Roll.html" title="class in com.github.oeuvres.alix.util">Roll</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/HiliteFormatter.html#ellipsis" class="member-name-link">ellipsis</a> - Variable in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/HiliteFormatter.html" title="class in com.github.oeuvres.alix.lucene.search">HiliteFormatter</a></dt>
@@ -2004,7 +2007,7 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/IntList.html#get(int)" class="member-name-link">get(int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
 <dd>
-<div class="block">Get int at a position.</div>
+<div class="block">Get value at a position.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/IntOMap.html#get(int)" class="member-name-link">get(int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntOMap.html" title="class in com.github.oeuvres.alix.util">IntOMap</a></dt>
 <dd>&nbsp;</dd>
@@ -2378,7 +2381,7 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/IntList.html#inc(int)" class="member-name-link">inc(int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
 <dd>
-<div class="block">Increment value at a position</div>
+<div class="block">Increment value at a position.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/EdgeMap.html#inc(int,int)" class="member-name-link">inc(int, int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/EdgeMap.html" title="class in com.github.oeuvres.alix.util">EdgeMap</a></dt>
 <dd>
@@ -2834,7 +2837,7 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/IntList.html#last()" class="member-name-link">last()</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
 <dd>
-<div class="block">Get last value or cry if list is empty</div>
+<div class="block">Get last value or cry if list is empty.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/Chain.html#last(char)" class="member-name-link">last(char)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a></dt>
 <dd>
@@ -3387,6 +3390,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Size of a side</div>
 </dd>
+<dt><a href="com/github/oeuvres/alix/util/EdgeSquare.html#nodes" class="member-name-link">nodes</a> - Variable in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></dt>
+<dd>
+<div class="block">A set of values</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/analysis/FrDics.html#norm(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)" class="member-name-link">norm(CharsAttImpl)</a> - Static method in class com.github.oeuvres.alix.lucene.analysis.<a href="com/github/oeuvres/alix/lucene/analysis/FrDics.html" title="class in com.github.oeuvres.alix.lucene.analysis">FrDics</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html#norm(org.apache.lucene.util.BytesRefHash,java.lang.CharSequence%5B%5D)" class="member-name-link">norm(BytesRefHash, CharSequence[])</a> - Static method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search">FieldFacet</a></dt>
@@ -3747,11 +3754,11 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/IntList.html#push(int)" class="member-name-link">push(int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
 <dd>
-<div class="block">Push on more value at the end</div>
+<div class="block">Push one value at the end</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/IntList.html#push(int%5B%5D)" class="member-name-link">push(int[])</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
 <dd>
-<div class="block">Push a copy of an int array.</div>
+<div class="block">Push a copy of an int array at the end.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/TopArray.html#push(int%5B%5D)" class="member-name-link">push(int[])</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></dt>
 <dd>&nbsp;</dd>
@@ -3788,10 +3795,6 @@ loadScripts(document, 'script');</script>
 <dt><a href="com/github/oeuvres/alix/util/IntIntMap.html#put(int,int)" class="member-name-link">put(int, int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a></dt>
 <dd>
 <div class="block">Put a value by key</div>
-</dd>
-<dt><a href="com/github/oeuvres/alix/util/IntList.html#put(int,int)" class="member-name-link">put(int, int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
-<dd>
-<div class="block">Change value at a position</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/lucene/util/Offsets.html#put(int,int,int)" class="member-name-link">put(int, int, int)</a> - Method in class com.github.oeuvres.alix.lucene.util.<a href="com/github/oeuvres/alix/lucene/util/Offsets.html" title="class in com.github.oeuvres.alix.lucene.util">Offsets</a></dt>
 <dd>
@@ -4167,12 +4170,18 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Modify value</div>
 </dd>
+<dt><a href="com/github/oeuvres/alix/util/IntList.html#set(int,int)" class="member-name-link">set(int, int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
+<dd>
+<div class="block">Change value at a position.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/util/IntPairMutable.html#set(int,int)" class="member-name-link">set(int, int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntPairMutable.html" title="class in com.github.oeuvres.alix.util">IntPairMutable</a></dt>
 <dd>
 <div class="block">Modify pair.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/EdgeSquare.html#set(int,int,int)" class="member-name-link">set(int, int, int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></dt>
-<dd>&nbsp;</dd>
+<dd>
+<div class="block">Expert.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/util/Roll.html#set(int,E)" class="member-name-link">set(int, E)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/Roll.html" title="class in com.github.oeuvres.alix.util">Roll</a></dt>
 <dd>
 <div class="block">Set value at position</div>
@@ -4208,7 +4217,9 @@ loadScripts(document, 'script');</script>
 <div class="block">Same as <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/StringBuffer.html#setLength(int)" title="class or interface in java.lang" class="external-link"><code>StringBuffer.setLength(int)</code></a>, sets the length of the character sequence.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/EdgeSquare.html#setMI(com.github.oeuvres.alix.web.OptionMI)" class="member-name-link">setMI(OptionMI)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></dt>
-<dd>&nbsp;</dd>
+<dd>
+<div class="block">Set a mutual information algorithm.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html#setNos(int%5B%5D)" class="member-name-link">setNos(int[])</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></dt>
 <dd>
 <div class="block">Set the sorted vector of ids</div>
@@ -4582,7 +4593,7 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/IntList.html#toArray()" class="member-name-link">toArray()</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
 <dd>
-<div class="block">Get data as an int array.</div>
+<div class="block">Get a copy of data trim to <a href="com/github/oeuvres/alix/util/IntList.html#size"><code>IntList.size</code></a>.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/IntPair.html#toArray()" class="member-name-link">toArray()</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntPair.html" title="class in com.github.oeuvres.alix.util">IntPair</a></dt>
 <dd>
@@ -4603,7 +4614,7 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/IntList.html#toArray(int)" class="member-name-link">toArray(int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
 <dd>
-<div class="block">Get data as an int array.</div>
+<div class="block">Get a subset of data.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/LongTuple.html#toArray(long%5B%5D)" class="member-name-link">toArray(long[])</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/LongTuple.html" title="class in com.github.oeuvres.alix.util">LongTuple</a></dt>
 <dd>
@@ -4848,7 +4859,11 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/util/IntList.html#uniq()" class="member-name-link">uniq()</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
 <dd>
-<div class="block">Return a sorted int array of unique values from this list</div>
+<div class="block">Return a sorted int array of unique values from this list.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/util/IntList.html#uniq(int%5B%5D)" class="member-name-link">uniq(int[])</a> - Static method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
+<dd>
+<div class="block">Return a sorted array without duplicates.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/fr/Tag.html#UNKNOWN" class="member-name-link">UNKNOWN</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
 <dd>&nbsp;</dd>
@@ -5047,10 +5062,6 @@ the order they are declared.</div>
 <dt><a href="com/github/oeuvres/alix/lucene/analysis/FrDics.html#word(java.lang.String)" class="member-name-link">word(String)</a> - Static method in class com.github.oeuvres.alix.lucene.analysis.<a href="com/github/oeuvres/alix/lucene/analysis/FrDics.html" title="class in com.github.oeuvres.alix.lucene.analysis">FrDics</a></dt>
 <dd>
 <div class="block">Not efficient for a lot of queries.</div>
-</dd>
-<dt><a href="com/github/oeuvres/alix/util/EdgeSquare.html#words" class="member-name-link">words</a> - Variable in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></dt>
-<dd>
-<div class="block">A set of values</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/lucene/analysis/FrDics.html#WORDS" class="member-name-link">WORDS</a> - Static variable in class com.github.oeuvres.alix.lucene.analysis.<a href="com/github/oeuvres/alix/lucene/analysis/FrDics.html" title="class in com.github.oeuvres.alix.lucene.analysis">FrDics</a></dt>
 <dd>

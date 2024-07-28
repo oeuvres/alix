@@ -609,7 +609,7 @@ public class JspTools
                 // output error ?
                 continue;
             }
-            list.put(i, 1);
+            list.set(i, 1);
         }
         return list.toSet();
     }

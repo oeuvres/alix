@@ -33,7 +33,6 @@
 package com.github.oeuvres.alix.util;
 
 import java.util.Arrays;
-import java.util.stream.*;
 
 import java.util.NoSuchElementException;
 
@@ -82,8 +81,7 @@ public class EdgeRoll
      * @param distance a distance.
      */
     public EdgeRoll(int[] words, final int distance) {
-        words = IntStream.of(words).distinct().toArray();
-        Arrays.sort(words);
+        words = IntList.uniq(words);
         this.words = words;
         this.counts = new long[words.length];
         this.uniqs = new boolean[words.length];
@@ -228,9 +226,9 @@ public class EdgeRoll
     }
 
     /**
-     * Check
+     * Check.
      * 
-     * @return
+     * @return true if next() could be called, false otherwise.
      */
     private boolean hasNext()
     {
@@ -276,7 +274,7 @@ public class EdgeRoll
     }
 
     /**
-     * Advance cursor to next place
+     * Advance cursor to next place.
      */
     private void next()
     {
@@ -312,7 +310,7 @@ public class EdgeRoll
     /**
      * The current value in loop
      * 
-     * @return
+     * @return a node id.
      */
     private int node()
     {

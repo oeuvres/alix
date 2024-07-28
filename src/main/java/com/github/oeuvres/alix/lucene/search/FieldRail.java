@@ -404,9 +404,9 @@ public class FieldRail
         // normalize node ids (sort, uniq)
 
         // first, normalize
+        nodeIds = IntList.uniq(nodeIds);
         EdgeSquare matrix = new EdgeSquare(nodeIds, false);
         IntList span = new IntList();
-        Arrays.sort(nodeIds);
         DirectoryReader reader = alix.reader();
         IntBuffer bufInt = channelMap.rewind().asIntBuffer(); // the rail
         final boolean hasFilter = (docFilter != null); // filter docs ?
@@ -714,7 +714,7 @@ public class FieldRail
                     maxpos = pos;
                 if (pos < minpos)
                     minpos = pos;
-                buf.put(pos, formId);
+                buf.set(pos, formId);
             }
         }
     }

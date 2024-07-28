@@ -38,14 +38,17 @@ import java.util.Iterator;
 import com.github.oeuvres.alix.web.OptionMI;
 
 /**
- * A matrix to record edges between prdefined nodes
+ * A matrix to record edges between predefined node Ids.
+ * Ex: nodes = {3,6,10}. Record events like (3,6)++, (6,3)++, (-1,6)++.
+ * If this recorder is not directed, (3,6) == (6,3), so that (3,6) == 2.
+ * -1 is not a value in the node list, (-1,6) will not be recorded.
  */
 public class EdgeSquare implements Iterable<Edge>
 {
-    /** The edges */
-    protected final int[] data;
     /** A set of values */
-    protected final int[] words;
+    protected final int[] nodes;
+    /** The edges */
+    protected final int[] edges;
     /** Size of a side */
     protected final int nodeLen;
     /** Directed or not */
@@ -58,17 +61,24 @@ public class EdgeSquare implements Iterable<Edge>
     OptionMI MI = OptionMI.JACCARD;
 
     /**
-     * Build a square matrix of ints. Words should absolutely be an ordered array of
-     * unique ints
+     * Words should absolutely be an ordered array of
+     * unique ints. Use {@link IntList#uniq(int[])} to ensure that results.
+     * If this recorder is not directed, (3,6) == (6,3).
      * 
-     * @param words    An ordered set of ints nodeId → nodeValue
+     * @param nodes    An ordered set of ints nodes[index] = nodeId.
      * @param directed true if direction should be kept in pairs.
      */
-    public EdgeSquare(final int[] words, final boolean directed) {
+    public EdgeSquare(final int[] nodes, final boolean directed) {
+        this.nodes = IntList.uniq(nodes);
+        if (this.nodes.length != nodes.length) {
+            throw new IllegalArgumentException("Nodes id are not uniques, use IntList.uniq(nodes) before.");
+        }
+        if (!Arrays.equals(nodes, this.nodes)) {
+            throw new IllegalArgumentException("Nodes id are not sorted, use IntList.uniq(nodes) before.");
+        }
         this.directed = directed;
-        this.words = words;
-        this.nodeLen = words.length;
-        this.data = new int[nodeLen * nodeLen];
+        this.nodeLen = this.nodes.length;
+        this.edges = new int[nodeLen * nodeLen];
     }
 
     /**
@@ -84,11 +94,11 @@ public class EdgeSquare implements Iterable<Edge>
     }
 
     /**
-     * Expert, set counts per word  to calculate a score.
-     * counts[index] = count for the word in nodes[nodeId]
+     * Expert, set counts per node to calculate a score.
+     * counts[index] = count for nodes[index].
      * 
-     * @param counts 
-     * @return
+     * @param counts global count per node.
+     * @return this.
      */
     protected EdgeSquare counts(final long[] counts)
     {
@@ -97,11 +107,10 @@ public class EdgeSquare implements Iterable<Edge>
     }
 
     /**
-     * Calculate data index by coordinates
-     * 
-     * @param x
-     * @param y
-     * @return
+     * Calculate index in {@link #edges} by coordinates.
+     * @param source node index in {@link #nodes}.
+     * @param target node index in {@link #nodes}.
+     * @return index in {@link #edges}.
      */
     private int index(final int source, final int target)
     {
@@ -113,10 +122,10 @@ public class EdgeSquare implements Iterable<Edge>
     }
 
     /**
-     * Get source by index
-     * 
-     * @param index
-     * @return
+     * Get source node index in {@link #nodes} by edge index in {@link #edges}.
+     *  
+     * @param index a position in {@link #edges}.
+     * @return source node index in {@link #nodes}.
      */
     private int source(final int index)
     {
@@ -124,10 +133,10 @@ public class EdgeSquare implements Iterable<Edge>
     }
 
     /**
-     * Get target by index
-     * 
-     * @param index
-     * @return
+     * Get target node index in {@link #nodes} by edge index in {@link #edges}.
+     *  
+     * @param index a position in {@link #edges}.
+     * @return target node index in {@link #nodes}.
      */
     private int target(final int index)
     {
@@ -137,19 +146,27 @@ public class EdgeSquare implements Iterable<Edge>
     /**
      * Increment a cell
      * 
-     * @param source
-     * @param target
-     * @return
+     * @param sourceIndex source node index in {@link #nodes}.
+     * @param targetIndex target node index in {@link #nodes}.
+     * @return new value
      */
-    public int inc(final int source, final int target)
+    public int inc(final int sourceIndex, final int targetIndex)
     {
-        return ++data[index(source, target)];
+        return ++edges[index(sourceIndex, targetIndex)];
     }
 
-    public int set(final int source, final int target, final int count)
+    /**
+     * Expert. Set a cell.
+     * 
+     * @param sourceIndex source node index in {@link #nodes}.
+     * @param targetIndex target node index in {@link #nodes}.
+     * @param count value to set for pair.
+     * @return old value.
+     */
+    public int set(final int sourceIndex, final int targetIndex, final int count)
     {
-        final int ret = data[index(source, target)];
-        data[index(source, target)] = count;
+        final int ret = edges[index(sourceIndex, targetIndex)];
+        edges[index(sourceIndex, targetIndex)] = count;
         return ret;
     }
 
@@ -158,7 +175,7 @@ public class EdgeSquare implements Iterable<Edge>
      */
     public Iterator<Edge> iterator()
     {
-        return new EdgeIt(data);
+        return new EdgeIt(edges);
     }
 
     @Override
@@ -167,18 +184,25 @@ public class EdgeSquare implements Iterable<Edge>
         StringBuilder sb = new StringBuilder();
         for (int y = 0; y < nodeLen; y++) {
             for (int x = 0; x < nodeLen; x++) {
-                sb.append(data[y * nodeLen + x] + " ");
+                sb.append(edges[y * nodeLen + x] + " ");
             }
             sb.append("\n");
         }
         return sb.toString();
     }
 
+    /**
+     * Set a mutual information algorithm.
+     * @param MI mutual information algo.
+     */
     public void setMI(final OptionMI MI)
     {
         this.MI = MI;
     }
 
+    /**
+     * An iterator of edges.
+     */
     public class EdgeIt implements Iterator<Edge>
     {
         /** Count of row and cols */
@@ -187,7 +211,7 @@ public class EdgeSquare implements Iterable<Edge>
          * Copy of the edges data, will be destroy to avoid duplicates edges when
          * looping by nodes
          */
-        private final int[] data;
+        private final int[] edges;
         /** Sorted edges */
         private Edge[][] table;
         /** rolling row */
@@ -199,12 +223,12 @@ public class EdgeSquare implements Iterable<Edge>
 
         /**
          * This iterator will produce a very specific order among edges to limit orphans.
-         * @param data
+         * @param edges
          */
-        EdgeIt(final int[] data) {
+        EdgeIt(final int[] edges) {
             // take a copy of data
-            this.data = Arrays.copyOf(data, data.length);
-            nodeLen = (int) Math.sqrt(data.length);
+            this.edges = Arrays.copyOf(edges, edges.length);
+            nodeLen = (int) Math.sqrt(edges.length);
             // total edges to exhaust
             /*
              * if (directed) { // directed, square this.edgeLen = nodeLen * nodeLen; } else
@@ -219,14 +243,14 @@ public class EdgeSquare implements Iterable<Edge>
             if (counts == null) {
                 counts = new long[nodeLen];
                 N = 0;
-                for (int index = 0, len = data.length; index < len; index++) {
+                for (int index = 0, len = edges.length; index < len; index++) {
                     final int source = source(index);
                     final int target = target(index);
                     if (source == target)
                         continue; // do not count selfish
-                    counts[source] += data[index];
-                    counts[target] += data[index];
-                    N += data[index] + data[index]; // 2 events
+                    counts[source] += edges[index];
+                    counts[target] += edges[index];
+                    N += edges[index] + edges[index]; // 2 events
 
                 }
             }
@@ -236,7 +260,7 @@ public class EdgeSquare implements Iterable<Edge>
             for (int source = 0; source < nodeLen; source++) {
                 for (int target = 0; target < nodeLen; target++) {
                     final int index = index(source, target);
-                    int edgeCount = data[index];
+                    int edgeCount = edges[index];
                     if (source == target) {
                         edgeCount = 0; // do not count selfish, may produce orphans
                     }
@@ -258,7 +282,7 @@ public class EdgeSquare implements Iterable<Edge>
                         // nodesCount[target]/(double)edgeCount) / 2;
 
                     }
-                    table[source][target] = new Edge(words[source], words[target], directed, index, null).count(edgeCount).score(score);
+                    table[source][target] = new Edge(nodes[source], nodes[target], directed, index, null).count(edgeCount).score(score);
                 }
                 Arrays.sort(table[source]);
             }
@@ -266,10 +290,12 @@ public class EdgeSquare implements Iterable<Edge>
 
         /**
          * Check if a node has relations
+         * @param nodeId a nodeId.
+         * @return null if nodeId not in {@link #nodes} or edges 
          */
-        public Edge top(final int word)
+        public Edge top(final int nodeId)
         {
-            final int line = Arrays.binarySearch(words, word);
+            final int line = Arrays.binarySearch(nodes, nodeId);
             if (line < 0) { // uknown word
                 return null;
             }
@@ -298,6 +324,7 @@ public class EdgeSquare implements Iterable<Edge>
 
         /**
          * Search for next item in a very special order
+         * @return an edge.
          */
         public Edge getNext()
         {
@@ -308,9 +335,9 @@ public class EdgeSquare implements Iterable<Edge>
             while (true) {
                 final Edge edge = table[line][cols[line]];
                 // if value OK, send it
-                if (data[edge.edgeId] > 0) {
+                if (edges[edge.edgeId] > 0) {
                     // this should be OK for non directed
-                    data[edge.edgeId] = -1; // do not replay this edge
+                    edges[edge.edgeId] = -1; // do not replay this edge
                     cols[line]++; // prepare next col
                     line = nextLine(line);
                     return edge;
@@ -329,10 +356,10 @@ public class EdgeSquare implements Iterable<Edge>
         }
 
         /**
-         * Find the first non exhausted line
+         * Expert. Find the first non exhausted line
          * 
-         * @param line
-         * @return
+         * @param line a line index.
+         * @return next line index.
          */
         private int nextLine(int line)
         {

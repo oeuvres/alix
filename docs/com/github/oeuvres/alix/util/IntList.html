@@ -141,17 +141,17 @@ loadScripts(document, 'script');</script>
 <section class="method-summary" id="method-summary">
 <h2>Method Summary</h2>
 <div id="method-summary-table">
-<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab4" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab4', 3)" class="table-tab">Concrete Methods</button></div>
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab1" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab1', 3)" class="table-tab">Static Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab4" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab4', 3)" class="table-tab">Concrete Methods</button></div>
 <div id="method-summary-table.tabpanel" role="tabpanel">
 <div class="summary-table three-column-summary" aria-labelledby="method-summary-table-tab0">
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#add(int,int)" class="member-name-link">add</a><wbr>(int&nbsp;pos,
- int&nbsp;value)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#add(int,int)" class="member-name-link">add</a><wbr>(int&nbsp;position,
+ int&nbsp;amount)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Add value at a position</div>
+<div class="block">Add value to a position</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#clear()" class="member-name-link">clear</a>()</code></div>
@@ -172,9 +172,9 @@ loadScripts(document, 'script');</script>
 <div class="block">Get first value or cry if list is empty</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#get(int)" class="member-name-link">get</a><wbr>(int&nbsp;pos)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#get(int)" class="member-name-link">get</a><wbr>(int&nbsp;position)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get int at a position.</div>
+<div class="block">Get value at a position.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#grow(int)" class="member-name-link">grow</a><wbr>(int&nbsp;position)</code></div>
@@ -185,9 +185,9 @@ loadScripts(document, 'script');</script>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hashCode()" class="member-name-link">hashCode</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#inc(int)" class="member-name-link">inc</a><wbr>(int&nbsp;pos)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#inc(int)" class="member-name-link">inc</a><wbr>(int&nbsp;position)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Increment value at a position</div>
+<div class="block">Increment value at a position.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isEmpty()" class="member-name-link">isEmpty</a>()</code></div>
@@ -197,23 +197,23 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#last()" class="member-name-link">last</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get last value or cry if list is empty</div>
+<div class="block">Get last value or cry if list is empty.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#push(int)" class="member-name-link">push</a><wbr>(int&nbsp;value)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Push on more value at the end</div>
+<div class="block">Push one value at the end</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected <a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#push(int%5B%5D)" class="member-name-link">push</a><wbr>(int[]&nbsp;data)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Push a copy of an int array.</div>
+<div class="block">Push a copy of an int array at the end.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#put(int,int)" class="member-name-link">put</a><wbr>(int&nbsp;pos,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#set(int,int)" class="member-name-link">set</a><wbr>(int&nbsp;position,
  int&nbsp;value)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Change value at a position</div>
+<div class="block">Change value at a position.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#size()" class="member-name-link">size</a>()</code></div>
@@ -223,12 +223,12 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toArray()" class="member-name-link">toArray</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get data as an int array.</div>
+<div class="block">Get a copy of data trim to <a href="#size"><code>size</code></a>.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toArray(int)" class="member-name-link">toArray</a><wbr>(int&nbsp;size)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get data as an int array.</div>
+<div class="block">Get a subset of data.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toSet()" class="member-name-link">toSet</a>()</code></div>
@@ -241,7 +241,12 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#uniq()" class="member-name-link">uniq</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Return a sorted int array of unique values from this list</div>
+<div class="block">Return a sorted int array of unique values from this list.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#uniq(int%5B%5D)" class="member-name-link">uniq</a><wbr>(int[]&nbsp;duplicates)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Return a sorted array without duplicates.</div>
 </div>
 </div>
 </div>
@@ -303,7 +308,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Constructor with an estimated size.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>capacity</code> - </dd>
+<dd><code>capacity</code> - initial size.</dd>
 </dl>
 </section>
 </li>
@@ -314,7 +319,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Wrap an existing int array.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>data</code> - </dd>
+<dd><code>data</code> - source array.</dd>
 </dl>
 </section>
 </li>
@@ -329,13 +334,15 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="add(int,int)">
 <h3>add</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></span>&nbsp;<span class="element-name">add</span><wbr><span class="parameters">(int&nbsp;pos,
- int&nbsp;value)</span></div>
-<div class="block">Add value at a position</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></span>&nbsp;<span class="element-name">add</span><wbr><span class="parameters">(int&nbsp;position,
+ int&nbsp;amount)</span></div>
+<div class="block">Add value to a position</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>pos</code> - </dd>
-<dd><code>value</code> - </dd>
+<dd><code>position</code> - index in list.</dd>
+<dd><code>amount</code> - value to add.</dd>
+<dt>Returns:</dt>
+<dd>this</dd>
 </dl>
 </section>
 </li>
@@ -344,6 +351,10 @@ loadScripts(document, 'script');</script>
 <h3>clear</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></span>&nbsp;<span class="element-name">clear</span>()</div>
 <div class="block">Light reset data, with no erase.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>this</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -353,6 +364,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Get a pointer on underlaying array (unsafe).</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>the source data.</dd>
 </dl>
 </section>
 </li>
@@ -373,18 +385,20 @@ loadScripts(document, 'script');</script>
 <div class="block">Get first value or cry if list is empty</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>first value.</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="get(int)">
 <h3>get</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">get</span><wbr><span class="parameters">(int&nbsp;pos)</span></div>
-<div class="block">Get int at a position.</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">get</span><wbr><span class="parameters">(int&nbsp;position)</span></div>
+<div class="block">Get value at a position.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>pos</code> - </dd>
+<dd><code>position</code> - index in list.</dd>
 <dt>Returns:</dt>
+<dd>value requested.</dd>
 </dl>
 </section>
 </li>
@@ -395,9 +409,9 @@ loadScripts(document, 'script');</script>
 <div class="block">Call it before write</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>position</code> - </dd>
+<dd><code>position</code> - index to ensure in unederlying array.</dd>
 <dt>Returns:</dt>
-<dd>true if resized (? good ?)</dd>
+<dd>true if resized.</dd>
 </dl>
 </section>
 </li>
@@ -414,11 +428,13 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="inc(int)">
 <h3>inc</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></span>&nbsp;<span class="element-name">inc</span><wbr><span class="parameters">(int&nbsp;pos)</span></div>
-<div class="block">Increment value at a position</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></span>&nbsp;<span class="element-name">inc</span><wbr><span class="parameters">(int&nbsp;position)</span></div>
+<div class="block">Increment value at a position.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>pos</code> - </dd>
+<dd><code>position</code> - index in list.</dd>
+<dt>Returns:</dt>
+<dd>this</dd>
 </dl>
 </section>
 </li>
@@ -429,6 +445,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Test if vector is empty</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>true if <a href="#size()"><code>size()</code></a> == 0, false otherwise.</dd>
 </dl>
 </section>
 </li>
@@ -436,9 +453,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="last()">
 <h3>last</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">last</span>()</div>
-<div class="block">Get last value or cry if list is empty</div>
+<div class="block">Get last value or cry if list is empty.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>last value.</dd>
 </dl>
 </section>
 </li>
@@ -446,10 +464,12 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="push(int)">
 <h3>push</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(int&nbsp;value)</span></div>
-<div class="block">Push on more value at the end</div>
+<div class="block">Push one value at the end</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>value</code> - </dd>
+<dd><code>value</code> - to push.</dd>
+<dt>Returns:</dt>
+<dd>this.</dd>
 </dl>
 </section>
 </li>
@@ -457,23 +477,27 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="push(int[])">
 <h3>push</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type"><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(int[]&nbsp;data)</span></div>
-<div class="block">Push a copy of an int array.</div>
+<div class="block">Push a copy of an int array at the end.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>data</code> - </dd>
+<dd><code>data</code> - array to push.</dd>
+<dt>Returns:</dt>
+<dd>this.</dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="put(int,int)">
-<h3>put</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></span>&nbsp;<span class="element-name">put</span><wbr><span class="parameters">(int&nbsp;pos,
+<section class="detail" id="set(int,int)">
+<h3>set</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></span>&nbsp;<span class="element-name">set</span><wbr><span class="parameters">(int&nbsp;position,
  int&nbsp;value)</span></div>
-<div class="block">Change value at a position</div>
+<div class="block">Change value at a position.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>pos</code> - </dd>
-<dd><code>value</code> - </dd>
+<dd><code>position</code> - index in list.</dd>
+<dd><code>value</code> - value to set.</dd>
+<dt>Returns:</dt>
+<dd>this.</dd>
 </dl>
 </section>
 </li>
@@ -484,6 +508,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Size of data.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd><a href="#size"><code>size</code></a>.</dd>
 </dl>
 </section>
 </li>
@@ -491,9 +516,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="toArray()">
 <h3>toArray</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">toArray</span>()</div>
-<div class="block">Get data as an int array.</div>
+<div class="block">Get a copy of data trim to <a href="#size"><code>size</code></a>.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>data.</dd>
 </dl>
 </section>
 </li>
@@ -501,9 +527,12 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="toArray(int)">
 <h3>toArray</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">toArray</span><wbr><span class="parameters">(int&nbsp;size)</span></div>
-<div class="block">Get data as an int array.</div>
+<div class="block">Get a subset of data.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>size</code> - limit</dd>
 <dt>Returns:</dt>
+<dd>data[0, size].</dd>
 </dl>
 </section>
 </li>
@@ -514,6 +543,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Get data as an int array, without the duplicates, keeping initial order for uniq value.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>order kept with no duplicates.</dd>
 </dl>
 </section>
 </li>
@@ -528,10 +558,27 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
+<section class="detail" id="uniq(int[])">
+<h3>uniq</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">uniq</span><wbr><span class="parameters">(int[]&nbsp;duplicates)</span></div>
+<div class="block">Return a sorted array without duplicates.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>duplicates</code> - random values.</dd>
+<dt>Returns:</dt>
+<dd>sorted with no duplicates.</dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="uniq()">
 <h3>uniq</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">uniq</span>()</div>
-<div class="block">Return a sorted int array of unique values from this list</div>
+<div class="block">Return a sorted int array of unique values from this list.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>sorted with no duplicates.</dd>
+</dl>
 </section>
 </li>
 </ul>

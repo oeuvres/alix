@@ -83,7 +83,10 @@ loadScripts(document, 'script');</script>
 <div class="type-signature"><span class="modifiers">public class </span><span class="element-name type-name-label">EdgeSquare</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>
 implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Iterable.html" title="class or interface in java.lang" class="external-link">Iterable</a>&lt;<a href="Edge.html" title="class in com.github.oeuvres.alix.util">Edge</a>&gt;</span></div>
-<div class="block">A matrix to record edges between prdefined nodes</div>
+<div class="block">A matrix to record edges between predefined node Ids.
+ Ex: nodes = {3,6,10}. Record events like (3,6)++, (6,3)++, (-1,6)++.
+ If this recorder is not directed, (3,6) == (6,3), so that (3,6) == 2.
+ -1 is not a value in the node list, (-1,6) will not be recorded.</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -98,7 +101,9 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>class&nbsp;</code></div>
 <div class="col-second even-row-color"><code><a href="EdgeSquare.EdgeIt.html" class="type-name-link" title="class in com.github.oeuvres.alix.util">EdgeSquare.EdgeIt</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">An iterator of edges.</div>
+</div>
 </div>
 </section>
 </li>
@@ -116,15 +121,15 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-last even-row-color">
 <div class="block">Node counter for score calculation</div>
 </div>
-<div class="col-first odd-row-color"><code>protected final int[]</code></div>
-<div class="col-second odd-row-color"><code><a href="#data" class="member-name-link">data</a></code></div>
+<div class="col-first odd-row-color"><code>protected final boolean</code></div>
+<div class="col-second odd-row-color"><code><a href="#directed" class="member-name-link">directed</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">The edges</div>
-</div>
-<div class="col-first even-row-color"><code>protected final boolean</code></div>
-<div class="col-second even-row-color"><code><a href="#directed" class="member-name-link">directed</a></code></div>
-<div class="col-last even-row-color">
 <div class="block">Directed or not</div>
+</div>
+<div class="col-first even-row-color"><code>protected final int[]</code></div>
+<div class="col-second even-row-color"><code><a href="#edges" class="member-name-link">edges</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">The edges</div>
 </div>
 <div class="col-first odd-row-color"><code>protected long</code></div>
 <div class="col-second odd-row-color"><code><a href="#N" class="member-name-link">N</a></code></div>
@@ -137,7 +142,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Size of a side</div>
 </div>
 <div class="col-first odd-row-color"><code>protected final int[]</code></div>
-<div class="col-second odd-row-color"><code><a href="#words" class="member-name-link">words</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#nodes" class="member-name-link">nodes</a></code></div>
 <div class="col-last odd-row-color">
 <div class="block">A set of values</div>
 </div>
@@ -152,10 +157,11 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(int%5B%5D,boolean)" class="member-name-link">EdgeSquare</a><wbr>(int[]&nbsp;words,
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(int%5B%5D,boolean)" class="member-name-link">EdgeSquare</a><wbr>(int[]&nbsp;nodes,
  boolean&nbsp;directed)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Build a square matrix of ints.</div>
+<div class="block">Words should absolutely be an ordered array of
+ unique ints.</div>
 </div>
 </div>
 </section>
@@ -174,11 +180,11 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected <a href="EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#counts(long%5B%5D)" class="member-name-link">counts</a><wbr>(long[]&nbsp;counts)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Expert, set counts per word  to calculate a score.</div>
+<div class="block">Expert, set counts per node to calculate a score.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#inc(int,int)" class="member-name-link">inc</a><wbr>(int&nbsp;source,
- int&nbsp;target)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#inc(int,int)" class="member-name-link">inc</a><wbr>(int&nbsp;sourceIndex,
+ int&nbsp;targetIndex)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Increment a cell</div>
 </div>
@@ -193,13 +199,17 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Expert, set a global population to calculate a score.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#set(int,int,int)" class="member-name-link">set</a><wbr>(int&nbsp;source,
- int&nbsp;target,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#set(int,int,int)" class="member-name-link">set</a><wbr>(int&nbsp;sourceIndex,
+ int&nbsp;targetIndex,
  int&nbsp;count)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Expert.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setMI(com.github.oeuvres.alix.web.OptionMI)" class="member-name-link">setMI</a><wbr>(<a href="../web/OptionMI.html" title="enum in com.github.oeuvres.alix.web">OptionMI</a>&nbsp;MI)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Set a mutual information algorithm.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
@@ -224,17 +234,17 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h2>Field Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="data">
-<h3>data</h3>
-<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">data</span></div>
-<div class="block">The edges</div>
+<section class="detail" id="nodes">
+<h3>nodes</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">nodes</span></div>
+<div class="block">A set of values</div>
 </section>
 </li>
 <li>
-<section class="detail" id="words">
-<h3>words</h3>
-<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">words</span></div>
-<div class="block">A set of values</div>
+<section class="detail" id="edges">
+<h3>edges</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">edges</span></div>
+<div class="block">The edges</div>
 </section>
 </li>
 <li>
@@ -276,13 +286,14 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <li>
 <section class="detail" id="&lt;init&gt;(int[],boolean)">
 <h3>EdgeSquare</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">EdgeSquare</span><wbr><span class="parameters">(int[]&nbsp;words,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">EdgeSquare</span><wbr><span class="parameters">(int[]&nbsp;nodes,
  boolean&nbsp;directed)</span></div>
-<div class="block">Build a square matrix of ints. Words should absolutely be an ordered array of
- unique ints</div>
+<div class="block">Words should absolutely be an ordered array of
+ unique ints. Use <a href="IntList.html#uniq(int%5B%5D)"><code>IntList.uniq(int[])</code></a> to ensure that results.
+ If this recorder is not directed, (3,6) == (6,3).</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>words</code> - An ordered set of ints nodeId → nodeValue</dd>
+<dd><code>nodes</code> - An ordered set of ints nodes[index] = nodeId.</dd>
 <dd><code>directed</code> - true if direction should be kept in pairs.</dd>
 </dl>
 </section>
@@ -312,35 +323,46 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="counts(long[])">
 <h3>counts</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type"><a href="EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></span>&nbsp;<span class="element-name">counts</span><wbr><span class="parameters">(long[]&nbsp;counts)</span></div>
-<div class="block">Expert, set counts per word  to calculate a score.
- counts[index] = count for the word in nodes[nodeId]</div>
+<div class="block">Expert, set counts per node to calculate a score.
+ counts[index] = count for nodes[index].</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>counts</code> - </dd>
+<dd><code>counts</code> - global count per node.</dd>
 <dt>Returns:</dt>
+<dd>this.</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="inc(int,int)">
 <h3>inc</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">inc</span><wbr><span class="parameters">(int&nbsp;source,
- int&nbsp;target)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">inc</span><wbr><span class="parameters">(int&nbsp;sourceIndex,
+ int&nbsp;targetIndex)</span></div>
 <div class="block">Increment a cell</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>source</code> - </dd>
-<dd><code>target</code> - </dd>
+<dd><code>sourceIndex</code> - source node index in <a href="#nodes"><code>nodes</code></a>.</dd>
+<dd><code>targetIndex</code> - target node index in <a href="#nodes"><code>nodes</code></a>.</dd>
 <dt>Returns:</dt>
+<dd>new value</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="set(int,int,int)">
 <h3>set</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">set</span><wbr><span class="parameters">(int&nbsp;source,
- int&nbsp;target,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">set</span><wbr><span class="parameters">(int&nbsp;sourceIndex,
+ int&nbsp;targetIndex,
  int&nbsp;count)</span></div>
+<div class="block">Expert. Set a cell.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>sourceIndex</code> - source node index in <a href="#nodes"><code>nodes</code></a>.</dd>
+<dd><code>targetIndex</code> - target node index in <a href="#nodes"><code>nodes</code></a>.</dd>
+<dd><code>count</code> - value to set for pair.</dd>
+<dt>Returns:</dt>
+<dd>old value.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -368,6 +390,11 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="setMI(com.github.oeuvres.alix.web.OptionMI)">
 <h3>setMI</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">setMI</span><wbr><span class="parameters">(<a href="../web/OptionMI.html" title="enum in com.github.oeuvres.alix.web">OptionMI</a>&nbsp;MI)</span></div>
+<div class="block">Set a mutual information algorithm.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>MI</code> - mutual information algo.</dd>
+</dl>
 </section>
 </li>
 </ul>

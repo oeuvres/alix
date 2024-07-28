@@ -58,7 +58,7 @@ public class IntList
     /**
      * Constructor with an estimated size.
      * 
-     * @param capacity
+     * @param capacity initial size.
      */
     public IntList(int capacity) {
         data = new int[capacity];
@@ -67,27 +67,30 @@ public class IntList
     /**
      * Wrap an existing int array.
      * 
-     * @param data
+     * @param data source array.
      */
     public IntList(int[] data) {
         this.data = data;
     }
 
     /**
-     * Add value at a position
+     * Add value to a position
      * 
-     * @param pos
-     * @param value
+     * @param position index in list.
+     * @param amount value to add.
+     * @return this
      */
-    public IntList add(int pos, int value)
+    public IntList add(int position, int amount)
     {
-        grow(pos);
-        data[pos] += value;
+        grow(position);
+        data[position] += amount;
         return this;
     }
 
     /**
      * Light reset data, with no erase.
+     * 
+     * @return this
      */
     public IntList clear()
     {
@@ -98,7 +101,7 @@ public class IntList
     /**
      * Get a pointer on underlaying array (unsafe).
      * 
-     * @return
+     * @return the source data.
      */
     public int[] data()
     {
@@ -128,7 +131,7 @@ public class IntList
     /**
      * Get first value or cry if list is empty
      * 
-     * @return
+     * @return first value.
      */
     public int first()
     {
@@ -139,21 +142,21 @@ public class IntList
     }
 
     /**
-     * Get int at a position.
+     * Get value at a position.
      * 
-     * @param pos
-     * @return
+     * @param position index in list.
+     * @return value requested.
      */
-    public int get(int pos)
+    public int get(int position)
     {
-        return data[pos];
+        return data[position];
     }
 
     /**
      * Call it before write
      * 
-     * @param position
-     * @return true if resized (? good ?)
+     * @param position index to ensure in unederlying array.
+     * @return true if resized.
      */
 
     protected boolean grow(final int position)
@@ -184,21 +187,22 @@ public class IntList
     }
 
     /**
-     * Increment value at a position
+     * Increment value at a position.
      * 
-     * @param pos
+     * @param position index in list.
+     * @return this
      */
-    public IntList inc(int pos)
+    public IntList inc(int position)
     {
-        grow(pos);
-        data[pos]++;
+        grow(position);
+        data[position]++;
         return this;
     }
 
     /**
      * Test if vector is empty
      * 
-     * @return
+     * @return true if {@link #size()} == 0, false otherwise.
      */
     public boolean isEmpty()
     {
@@ -206,9 +210,9 @@ public class IntList
     }
 
     /**
-     * Get last value or cry if list is empty
+     * Get last value or cry if list is empty.
      *
-     * @return
+     * @return last value.
      */
     public int last()
     {
@@ -219,9 +223,10 @@ public class IntList
     }
 
     /**
-     * Push on more value at the end
+     * Push one value at the end
      * 
-     * @param value
+     * @param value to push.
+     * @return this.
      */
     public IntList push(int value)
     {
@@ -233,9 +238,10 @@ public class IntList
     }
 
     /**
-     * Push a copy of an int array.
+     * Push a copy of an int array at the end.
      * 
-     * @param data
+     * @param data array to push.
+     * @return this.
      */
     protected IntList push(int[] data)
     {
@@ -247,22 +253,23 @@ public class IntList
     }
 
     /**
-     * Change value at a position
+     * Change value at a position.
      * 
-     * @param pos
-     * @param value
+     * @param position index in list.
+     * @param value value to set.
+     * @return this.
      */
-    public IntList put(int pos, int value)
+    public IntList set(int position, int value)
     {
-        grow(pos);
-        data[pos] = value;
+        grow(position);
+        data[position] = value;
         return this;
     }
 
     /**
      * Size of data.
      * 
-     * @return
+     * @return {@link #size}.
      */
     public int size()
     {
@@ -270,9 +277,9 @@ public class IntList
     }
 
     /**
-     * Get data as an int array.
+     * Get a copy of data trim to {@link #size}.
      * 
-     * @return
+     * @return data.
      */
     public int[] toArray()
     {
@@ -282,9 +289,10 @@ public class IntList
     }
 
     /**
-     * Get data as an int array.
+     * Get a subset of data.
      * 
-     * @return
+     * @param size limit 
+     * @return data[0, size].
      */
     public int[] toArray(final int size)
     {
@@ -296,7 +304,7 @@ public class IntList
     /**
      * Get data as an int array, without the duplicates, keeping initial order for uniq value.
      * 
-     * @return
+     * @return order kept with no duplicates.
      */
     public int[] toSet()
     {
@@ -327,7 +335,32 @@ public class IntList
     }
 
     /**
-     * Return a sorted int array of unique values from this list
+     * Return a sorted array without duplicates.
+     * 
+     * @param duplicates random values.
+     * @return sorted with no duplicates.
+     */
+    static public int[] uniq(int[] duplicates)
+    {
+        if (duplicates == null) {
+            return null;
+        }
+        final int len = duplicates.length;
+        if (len < 2) return duplicates;
+        Arrays.sort(duplicates);
+        int previous = duplicates[0];
+        int destI = 1;
+        for (int i = 1; i < len; i++) {
+            if (duplicates[i] == previous) continue;
+            duplicates[destI++] = previous = duplicates[i];
+        }
+        return Arrays.copyOf(duplicates, destI);
+    }
+    
+    
+    /**
+     * Return a sorted int array of unique values from this list.
+     * @return sorted with no duplicates.
      */
     public int[] uniq()
     {
@@ -336,7 +369,7 @@ public class IntList
         Arrays.sort(work);
         int destSize = 1;
         int last = work[0];
-        // clever algo, copying forward values next to the last one
+        // copying in same array
         for (int i = destSize; i < size; i++) {
             if (work[i] == last)
                 continue;
