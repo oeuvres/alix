@@ -47,8 +47,10 @@ public class Edge implements Comparable<Edge>
     public final int targetId;
     /** For information */
     public final boolean directed;
-    /** An index commodity */
+    /** For information, an index commodity */
     public final int edgeId;
+    /** For information, an optional label */
+    public final String form;
     /** Count */
     private long count;
     /** A score has been set */
@@ -63,7 +65,18 @@ public class Edge implements Comparable<Edge>
      * @param targetId a node id.
      */
     public Edge(final int sourceId, final int targetId) {
-        this(sourceId, targetId, true, -1);
+        this(sourceId, targetId, true, -1, null);
+    }
+
+    /**
+     * Build an edge between 2 nodes identified by an int (not mutables).
+     * 
+     * @param sourceId a node id.
+     * @param targetId a node id.
+     * @param form optional, a label, ex: a collected expression ().
+     */
+    public Edge(final int sourceId, final int targetId, final String form) {
+        this(sourceId, targetId, true, -1, form);
     }
 
     /**
@@ -74,7 +87,7 @@ public class Edge implements Comparable<Edge>
      * @param directed optional, true if direction imports, false otherwise.
      */
     public Edge(final int sourceId, final int targetId, final boolean directed) {
-        this(sourceId, targetId, directed, -1);
+        this(sourceId, targetId, directed, -1, null);
     }
 
     /**
@@ -84,12 +97,14 @@ public class Edge implements Comparable<Edge>
      * @param targetId a node id.
      * @param directed optional, true if direction imports, false otherwise.
      * @param edgeId optional, an id for this edge, set by a collector.
+     * @param form optional, a label, ex: a collected expression ().
      */
-    public Edge(final int sourceId, final int targetId, final boolean directed, final int edgeId) {
+    public Edge(final int sourceId, final int targetId, final boolean directed, final int edgeId, final String form) {
         this.sourceId = sourceId;
         this.targetId = targetId;
         this.directed = directed;
         this.edgeId = edgeId;
+        this.form = form;
     }
 
     /**
@@ -251,6 +266,7 @@ public class Edge implements Comparable<Edge>
     public String toString()
     {
         return ((edgeId != -1)?edgeId + ". ":"") 
+            + ((form != null)?form + " ":"")
             + sourceId + (directed?" → ":" ↔ ") + targetId 
             + " (" + count + (hasScore?"; " + score: "")+ ")";
     }

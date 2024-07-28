@@ -45,8 +45,9 @@ import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.search.similarities.Similarity;
 
 import static com.github.oeuvres.alix.Names.*;
-import com.github.oeuvres.alix.lucene.search.SimilarityG;
-import com.github.oeuvres.alix.lucene.search.SimilarityOccs;
+
+import com.github.oeuvres.alix.lucene.search.similarities.SimilarityG;
+import com.github.oeuvres.alix.lucene.search.similarities.SimilarityOccs;
 
 public enum OptionSort implements Option {
     score("Score", null, null), occs("Occurrences", null, new SimilarityOccs()),

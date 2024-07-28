@@ -36,11 +36,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 /**
  * An object to record {@link Edge}s events between int id nodes.
  */
-public class EdgeHash implements Iterable<Edge>
+public class EdgeMap implements Iterable<Edge>
 {
     /** For {@link Collection#toArray()} */
     final static Edge[] EDGE0 = new Edge[0];
@@ -48,8 +49,6 @@ public class EdgeHash implements Iterable<Edge>
     final boolean directed;
     /** Set of edges */
     final HashMap<IntPair, Edge> edges = new HashMap<IntPair, Edge>();
-    /** Testing edge */
-    final IntPairMutable key = new IntPairMutable();
     /** Linked Cluster */
     private IntList cluster = new IntList();
 
@@ -59,7 +58,7 @@ public class EdgeHash implements Iterable<Edge>
      * 
      * @param directed true if couple of nodes should keep order, false otherwise.
      */
-    public EdgeHash(final boolean directed) {
+    public EdgeMap(final boolean directed) {
         this.directed = directed;
     }
 
@@ -93,18 +92,18 @@ public class EdgeHash implements Iterable<Edge>
      * 2 ↔ 4 (1)
      * </pre>
      * 
-     * @param node node id to aggregate.
+     * @param nodeId node id to aggregate.
      */
-    public void clust(final int node)
+    public void clust(final int nodeId)
     {
-        cluster.push(node);
+        cluster.push(nodeId);
         int length = cluster.size();
         if (length < 2) {
             return;
         }
         length--;
         for (int i = 0; i < length; i++) {
-            inc(node, cluster.get(i));
+            inc(nodeId, cluster.get(i));
         }
     }
 
@@ -123,19 +122,45 @@ public class EdgeHash implements Iterable<Edge>
         Arrays.sort(edgeArr);
         return new EdgeIterator(edgeArr);
     }
+    
+    /**
+     * Get an edge by key. If the map is created as not directed,
+     * user should ensure order of the pair (small, big).
+     * 
+     * @param key a pair of nodeId.
+     * @return edge object with count.
+     */
+    public Edge get(IntPair key)
+    {
+        return edges.get(key);
+    }
+    
+    /**
+     * Store an edge, key to retrieve is build on the pair ({@link Edge#sourceId}, {@link Edge#targetId}).
+     * If the map is created as not directed,
+     * user should ensure order of the pair (small, big).
+     * 
+     * @param edge edge with count and other metas.
+     * @return old value if already exists for the key, or null; like {@link Map#put(Object, Object)}
+     */
+    public Edge put(final Edge edge)
+    {
+        return edges.put(new IntPair(edge.sourceId, edge.targetId), edge);
+    }
 
     /**
      * Increment an edge.
      * 
-     * @param source node id.
-     * @param target node id.
+     * @param sourceId node id.
+     * @param targetId node id.
      */
-    public void inc(final int source, final int target)
+    public void inc(final int sourceId, final int targetId)
     {
-        if (directed || source < target) {
-            key.set(source, target);
+        final IntPairMutable key = new IntPairMutable();
+        if (directed || sourceId < targetId) {
+            key.set(sourceId, targetId);
         } else {
-            key.set(target, source);
+            key.set(targetId, sourceId);
         }
         Edge edge = edges.get(key);
         if (edge == null) {

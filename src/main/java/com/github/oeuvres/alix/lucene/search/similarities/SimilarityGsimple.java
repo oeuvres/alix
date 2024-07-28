@@ -30,24 +30,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene.search;
+package com.github.oeuvres.alix.lucene.search.similarities;
 
 import org.apache.lucene.search.similarities.BasicStats;
 import org.apache.lucene.search.similarities.SimilarityBase;
 
-public class SimilarityOccs extends SimilarityBase
+/**
+ * Implementation of a G-test Scoring with negative scores to get the most
+ * repulsed doc from a search. Code structure taken form
+ * {@link org.apache.lucene.search.similarities.DFISimilarity}
+ */
+public class SimilarityGsimple extends SimilarityBase
 {
 
     @Override
     protected double score(BasicStats stats, double freq, double docLen)
     {
-        return freq;
+        /*
+         * double O0 = k; double E0 = n * K / N; double O1 = N - k; double E1 = N - E0;
+         * // bad results O0 * Math.log(O0 / E0); double sum = 0d; sum += O0 *
+         * Math.log(O0 / E0); sum += O1 * Math.log(O1 / E1); return sum * 2.0;
+         */
+        // if (stats.getNumberOfFieldTokens() == 0) return 0; // ??
+        final long N = stats.getNumberOfFieldTokens();
+        final double E0 = stats.getTotalTermFreq() * docLen / N;
+        final double measure = freq * Math.log(freq / E0);
+        // DFISimilarity returns log, with a
+        // return stats.getBoost() * log2(measure + 1);
+        // if the observed frequency is less than expected, return negative (should be
+        // nice in multi term search)
+        if (freq < E0)
+            return -measure;
+        return measure;
     }
 
     @Override
     public String toString()
     {
-        return "freqs";
+        return "G-test";
     }
-
 }

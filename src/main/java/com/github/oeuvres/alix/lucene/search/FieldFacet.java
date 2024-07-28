@@ -40,8 +40,6 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
@@ -63,7 +61,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 
-import com.github.oeuvres.alix.lucene.Alix;
 import com.github.oeuvres.alix.lucene.search.FormIterator.Order;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.web.OptionDistrib;

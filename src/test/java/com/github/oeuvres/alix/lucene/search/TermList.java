@@ -40,7 +40,6 @@ import java.util.Iterator;
 
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder; // doc
 
 /**
  * An object to store lucene search with a frequency indice. A hack allow to

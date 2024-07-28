@@ -39,6 +39,7 @@ import java.util.HashMap;
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.IntPair;
+import com.github.oeuvres.alix.util.IntPairMutable;
 import com.github.oeuvres.alix.util.Roll;
 
 /**
@@ -65,7 +66,7 @@ public class CharsNet
     /** Dictionary of edges */
     private HashMap<IntPair, Edge> edgeHash = new HashMap<IntPair, Edge>();
     /** Edge tester */
-    private IntPair edgeKey = new IntPair();
+    private IntPairMutable edgeKey = new IntPairMutable();
     /** Node tester */
     private CharsAttImpl nodeKey = new CharsAttImpl();
 

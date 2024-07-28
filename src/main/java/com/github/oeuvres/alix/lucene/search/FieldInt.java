@@ -74,6 +74,13 @@ public class FieldInt extends AbstractField
     @SuppressWarnings("unused")
     private double median;
 
+    /**
+     * Constructor, 
+     * 
+     * @param reader a lucene index reader.
+     * @param fieldName name of a lucene text field.
+     * @throws IOException Lucene errors.
+     */
     public FieldInt(final IndexReader reader, final String fieldName) throws IOException {
         super(reader, fieldName);
         // check infos
@@ -186,22 +193,25 @@ public class FieldInt extends AbstractField
 
     /**
      * 1753 → 17530000 1753-03-01 → 17530301
+     *
+     * @param dateIso ISO date.
+     * @return a date number, sortable.
      */
-    public static int date2int(String date)
+    public static int date2int(String dateIso)
     {
         int value = Integer.MIN_VALUE;
-        if (date == null)
+        if (dateIso == null)
             return value;
-        date = date.trim();
-        if (!date.matches("-?\\d{1,4}(-\\d\\d)?(-\\d\\d)?"))
+        dateIso = dateIso.trim();
+        if (!dateIso.matches("-?\\d{1,4}(-\\d\\d)?(-\\d\\d)?"))
             return value;
         boolean negative = false;
-        if (date.charAt(0) == '-') {
+        if (dateIso.charAt(0) == '-') {
             negative = true;
-            date = date.substring(1);
+            dateIso = dateIso.substring(1);
         }
         // get year, maybe negative
-        String[] parts = date.split("-");
+        String[] parts = dateIso.split("-");
         try {
             int v = Integer.parseInt(parts[0]);
             value = v * 10000;
@@ -232,38 +242,38 @@ public class FieldInt extends AbstractField
     /**
      * 17531023 → 1753
      * 
-     * @param date
-     * @return
+     * @param dateNum a YYYYMMDD date as a number.
+     * @return a YYYY year.
      */
-    public static int year(double date)
+    public static int year(final double dateNum)
     {
-        return (int) Math.ceil(date / 10000);
+        return (int) Math.ceil(dateNum / 10000);
     }
 
     /**
      * 17530000 → 17539999
      * 
-     * @param date
-     * @return
+     * @param dateNum a YYYYMMDD date as a number.
+     * @return max dateNum for this year.
      */
-    public static int yearCeil(int date)
+    public static int yearCeil(int dateNum)
     {
-        if (date % 10000 == 0)
-            return date + 9999;
-        if (date % 100 == 0)
-            return date + 99;
-        return date;
+        if (dateNum % 10000 == 0)
+            return dateNum + 9999;
+        if (dateNum % 100 == 0)
+            return dateNum + 99;
+        return dateNum;
     }
 
     /**
-     * 17530301 → 1753-03-01 17530000 → 1753
+     * 17530301 → 1753-03-01, 17530000 → 1753
      * 
-     * @param value Date as a positional number
-     * @return Date in XML format
+     * @param dateNum date as a positional number YYYYMMDD.
+     * @return date String in ISO format.
      */
-    public static String int2date(int value)
+    public static String int2date(int dateNum)
     {
-        String date = "" + value;
+        String date = "" + dateNum;
         date = date.substring(0, 4) + "-" + date.substring(4, 6) + "-" + date.substring(6, 8);
         date = date.replaceFirst("\\-00.*$", "");
         return date;
@@ -291,9 +301,9 @@ public class FieldInt extends AbstractField
      */
 
     /**
-     * Enumerator on all values of the int field with different stats
+     * Enumerator on all values of the int field with different stats.
      * 
-     * @return
+     * @return an kind of {@link Iterator} for primitive types.
      */
     public IntEnum iterator()
     {
@@ -301,7 +311,7 @@ public class FieldInt extends AbstractField
     }
 
     /**
-     * get the maximum value.
+     * Get the maximum value.
      * @return max value.
      */
     public int max()
@@ -340,7 +350,7 @@ public class FieldInt extends AbstractField
     }
 
     /**
-     * A kind of {@link Iterator} for int native type.
+     * A kind of {@link Iterator} for primitive types.
      */
     public class IntEnum
     {

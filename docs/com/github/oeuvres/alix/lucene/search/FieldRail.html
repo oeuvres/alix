@@ -44,7 +44,7 @@ loadScripts(document, 'script');</script>
 <div>
 <ul class="sub-nav-list">
 <li>Summary:&nbsp;</li>
-<li><a href="#nested-class-summary">Nested</a>&nbsp;|&nbsp;</li>
+<li>Nested&nbsp;|&nbsp;</li>
 <li><a href="#field-summary">Field</a>&nbsp;|&nbsp;</li>
 <li><a href="#constructor-summary">Constr</a>&nbsp;|&nbsp;</li>
 <li><a href="#method-summary">Method</a></li>
@@ -85,21 +85,6 @@ loadScripts(document, 'script');</script>
 </section>
 <section class="summary">
 <ul class="summary-list">
-<!-- ======== NESTED CLASS SUMMARY ======== -->
-<li>
-<section class="nested-class-summary" id="nested-class-summary">
-<h2>Nested Class Summary</h2>
-<div class="caption"><span>Nested Classes</span></div>
-<div class="summary-table three-column-summary">
-<div class="table-header col-first">Modifier and Type</div>
-<div class="table-header col-second">Class</div>
-<div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="FieldRail.Bigram.html" class="type-name-link" title="class in com.github.oeuvres.alix.lucene.search">FieldRail.Bigram</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
-</div>
-</section>
-</li>
 <!-- =========== FIELD SUMMARY =========== -->
 <li>
 <section class="field-summary" id="field-summary">
@@ -109,10 +94,40 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Field</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>final <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color"><code><a href="#fieldName" class="member-name-link">fieldName</a></code></div>
+<div class="col-first even-row-color"><code>protected <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/channels/FileChannel.html" title="class or interface in java.nio.channels" class="external-link">FileChannel</a></code></div>
+<div class="col-second even-row-color"><code><a href="#channel" class="member-name-link">channel</a></code></div>
 <div class="col-last even-row-color">
+<div class="block">Cache a fileChannel for read</div>
+</div>
+<div class="col-first odd-row-color"><code>protected <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/MappedByteBuffer.html" title="class or interface in java.nio" class="external-link">MappedByteBuffer</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#channelMap" class="member-name-link">channelMap</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">A buffer on file</div>
+</div>
+<div class="col-first even-row-color"><code>protected final org.apache.lucene.util.BytesRefHash</code></div>
+<div class="col-second even-row-color"><code><a href="#dic" class="member-name-link">dic</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">Dictionary of search for this field</div>
+</div>
+<div class="col-first odd-row-color"><code>final <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#fieldName" class="member-name-link">fieldName</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Name of the reference text field</div>
+</div>
+<div class="col-first even-row-color"><code>protected int[]</code></div>
+<div class="col-second even-row-color"><code><a href="#limInt" class="member-name-link">limInt</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">Index of sizes for each doc</div>
+</div>
+<div class="col-first odd-row-color"><code>protected int</code></div>
+<div class="col-second odd-row-color"><code><a href="#maxDoc" class="member-name-link">maxDoc</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">Max for docId</div>
+</div>
+<div class="col-first even-row-color"><code>protected int[]</code></div>
+<div class="col-second even-row-color"><code><a href="#posInt" class="member-name-link">posInt</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">Index of positions for each doc im channel</div>
 </div>
 </div>
 </section>
@@ -127,7 +142,9 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(com.github.oeuvres.alix.lucene.Alix,java.lang.String)" class="member-name-link">FieldRail</a><wbr>(<a href="../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Load rail of words as int, build it as file if necessary.</div>
+</div>
 </div>
 </section>
 </li>
@@ -142,77 +159,63 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="../../util/IntPair.html" title="class in com.github.oeuvres.alix.util">IntPair</a>,<wbr><a href="FieldRail.Bigram.html" title="class in com.github.oeuvres.alix.lucene.search">FieldRail.Bigram</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#bigrams(org.apache.lucene.util.BitSet)" class="member-name-link">bigrams</a><wbr>(org.apache.lucene.util.BitSet&nbsp;filter)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Loop on the rail to get bigrams without any intelligence.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#coocs(com.github.oeuvres.alix.lucene.search.FormEnum,int%5B%5D,int,int,com.github.oeuvres.alix.web.OptionMI)" class="member-name-link">coocs</a><wbr>(<a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>&nbsp;results,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#coocs(com.github.oeuvres.alix.lucene.search.FormEnum,int%5B%5D,int,int,com.github.oeuvres.alix.web.OptionMI)" class="member-name-link">coocs</a><wbr>(<a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>&nbsp;forms,
  int[]&nbsp;pivotIds,
  int&nbsp;left,
  int&nbsp;right,
  <a href="../../web/OptionMI.html" title="enum in com.github.oeuvres.alix.web">OptionMI</a>&nbsp;mi)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Build a cooccurrence freqList in formId order, attached to a FormEnum object.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#edges(int%5B%5D,int,int,int%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">edges</a><wbr>(int[]&nbsp;pivotIds,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#edges(int%5B%5D,int,int,int%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">edges</a><wbr>(int[]&nbsp;pivotIds,
  int&nbsp;left,
  int&nbsp;right,
  int[]&nbsp;nodeIds,
- org.apache.lucene.util.BitSet&nbsp;filter)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get edges between a predefined set of words.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#edges(int%5B%5D,int,org.apache.lucene.util.BitSet)" class="member-name-link">edges</a><wbr>(int[]&nbsp;formIds,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#edges(int%5B%5D,int,org.apache.lucene.util.BitSet)" class="member-name-link">edges</a><wbr>(int[]&nbsp;formIds,
  int&nbsp;distance,
- org.apache.lucene.util.BitSet&nbsp;filter)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">With a set of int formIds, run accross full or part of rails, to collect
  co-occs between those selected words.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="../../util/IntPair.html" title="class in com.github.oeuvres.alix.util">IntPair</a>,<wbr><a href="FieldRail.Bigram.html" title="class in com.github.oeuvres.alix.lucene.search">FieldRail.Bigram</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#expressions(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">expressions</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../util/EdgeMap.html" title="class in com.github.oeuvres.alix.util">EdgeMap</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#expressions(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">expressions</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter,
  <a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;formFilter)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Loop on the rail to find expression (2 plain words with possible stop words
- between but not holes or punctuation)</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freqs(org.apache.lucene.util.BitSet)" class="member-name-link">freqs</a><wbr>(org.apache.lucene.util.BitSet&nbsp;filter)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Loop on the rail to find expression (2 plain words with possible stop words
+ between but not holes or punctuation).</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freqs(org.apache.lucene.util.BitSet)" class="member-name-link">freqs</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">From a set of documents provided as a BitSet, return a freqlist as an int
  vector, where index is the formId for the field, the value is count of
  occurrences of the term.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/concurrent/atomic/AtomicIntegerArray.html" title="class or interface in java.util.concurrent.atomic" class="external-link">AtomicIntegerArray</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freqsParallel(org.apache.lucene.util.BitSet)" class="member-name-link">freqsParallel</a><wbr>(org.apache.lucene.util.BitSet&nbsp;filter)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Parallel freqs calculation, it works but is more expensive than serial,
- because of concurrency cost.</div>
-</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#length(org.apache.lucene.index.Terms)" class="member-name-link">length</a><wbr>(org.apache.lucene.index.Terms&nbsp;termVector)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Count document size by the positions in the term vector</div>
+<div class="block">Count document size by the positions in the term vector.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#rail(org.apache.lucene.index.Terms,com.github.oeuvres.alix.util.IntList)" class="member-name-link">rail</a><wbr>(org.apache.lucene.index.Terms&nbsp;termVector,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#rail(org.apache.lucene.index.Terms,com.github.oeuvres.alix.util.IntList)" class="member-name-link">rail</a><wbr>(org.apache.lucene.index.Terms&nbsp;terms,
  <a href="../../util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a>&nbsp;buf)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Flatten search of a document in a position order, according to the dictionary
  of search.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#strings(int%5B%5D)" class="member-name-link">strings</a><wbr>(int[]&nbsp;rail)</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString(int)" class="member-name-link">toString</a><wbr>(int&nbsp;docId)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Tokens of a doc as strings from a byte array</div>
+<div class="block">A document as a sequence of tokens.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString(int)" class="member-name-link">toString</a><wbr>(int&nbsp;docId)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 </div>
 </div>
 </div>
@@ -237,6 +240,48 @@ loadScripts(document, 'script');</script>
 <div class="block">Name of the reference text field</div>
 </section>
 </li>
+<li>
+<section class="detail" id="dic">
+<h3>dic</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRefHash</span>&nbsp;<span class="element-name">dic</span></div>
+<div class="block">Dictionary of search for this field</div>
+</section>
+</li>
+<li>
+<section class="detail" id="channel">
+<h3>channel</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/channels/FileChannel.html" title="class or interface in java.nio.channels" class="external-link">FileChannel</a></span>&nbsp;<span class="element-name">channel</span></div>
+<div class="block">Cache a fileChannel for read</div>
+</section>
+</li>
+<li>
+<section class="detail" id="channelMap">
+<h3>channelMap</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/MappedByteBuffer.html" title="class or interface in java.nio" class="external-link">MappedByteBuffer</a></span>&nbsp;<span class="element-name">channelMap</span></div>
+<div class="block">A buffer on file</div>
+</section>
+</li>
+<li>
+<section class="detail" id="maxDoc">
+<h3>maxDoc</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">maxDoc</span></div>
+<div class="block">Max for docId</div>
+</section>
+</li>
+<li>
+<section class="detail" id="posInt">
+<h3>posInt</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">posInt</span></div>
+<div class="block">Index of positions for each doc im channel</div>
+</section>
+</li>
+<li>
+<section class="detail" id="limInt">
+<h3>limInt</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">limInt</span></div>
+<div class="block">Index of sizes for each doc</div>
+</section>
+</li>
 </ul>
 </section>
 </li>
@@ -251,9 +296,13 @@ loadScripts(document, 'script');</script>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FieldRail</span><wbr><span class="parameters">(<a href="../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</span>
           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Load rail of words as int, build it as file if necessary.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>alix</code> - a wrapper around a lucene <code>IndexReader</code>.</dd>
+<dd><code>fieldName</code> - name of a field.</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene erros.</dd>
 </dl>
 </section>
 </li>
@@ -266,24 +315,9 @@ loadScripts(document, 'script');</script>
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="bigrams(org.apache.lucene.util.BitSet)">
-<h3>bigrams</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="../../util/IntPair.html" title="class in com.github.oeuvres.alix.util">IntPair</a>,<wbr><a href="FieldRail.Bigram.html" title="class in com.github.oeuvres.alix.lucene.search">FieldRail.Bigram</a>&gt;</span>&nbsp;<span class="element-name">bigrams</span><wbr><span class="parameters">(org.apache.lucene.util.BitSet&nbsp;filter)</span>
-                                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Loop on the rail to get bigrams without any intelligence.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>filter</code> - </dd>
-<dt>Returns:</dt>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
-</dl>
-</section>
-</li>
-<li>
 <section class="detail" id="coocs(com.github.oeuvres.alix.lucene.search.FormEnum,int[],int,int,com.github.oeuvres.alix.web.OptionMI)">
 <h3>coocs</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">coocs</span><wbr><span class="parameters">(<a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>&nbsp;results,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">coocs</span><wbr><span class="parameters">(<a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>&nbsp;forms,
  int[]&nbsp;pivotIds,
  int&nbsp;left,
  int&nbsp;right,
@@ -291,10 +325,19 @@ loadScripts(document, 'script');</script>
            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Build a cooccurrence freqList in formId order, attached to a FormEnum object.
  Returns the count of occurences found. This method may need a lot of optional
- params, set on the FormEnum object.</div>
+ params, set on the FormEnum object.
+ TODO better documentation of options.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>forms</code> - words to score in context of the pivots.</dd>
+<dd><code>pivotIds</code> - form ids of pivots words.</dd>
+<dd><code>left</code> - width of context before a pivot.</dd>
+<dd><code>right</code> - width of context after a pivot.</dd>
+<dd><code>mi</code> - mutual information algorithm to calculate score.</dd>
+<dt>Returns:</dt>
+<dd>count of occurrences found.</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
 </dl>
 </section>
 </li>
@@ -303,9 +346,17 @@ loadScripts(document, 'script');</script>
 <h3>edges</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../../util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></span>&nbsp;<span class="element-name">edges</span><wbr><span class="parameters">(int[]&nbsp;formIds,
  int&nbsp;distance,
- org.apache.lucene.util.BitSet&nbsp;filter)</span></div>
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</span></div>
 <div class="block">With a set of int formIds, run accross full or part of rails, to collect
  co-occs between those selected words.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>formIds</code> - set of words as formId from a <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>.</dd>
+<dd><code>distance</code> - maximal distance in tokens between collected pairs.</dd>
+<dd><code>docFilter</code> - optional, set of lucene internal docId to restrict collect.</dd>
+<dt>Returns:</dt>
+<dd>a formIds x formIds matrix with count for each pair.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -315,62 +366,52 @@ loadScripts(document, 'script');</script>
  int&nbsp;left,
  int&nbsp;right,
  int[]&nbsp;nodeIds,
- org.apache.lucene.util.BitSet&nbsp;filter)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></span></div>
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Get edges between a predefined set of words.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>pivotIds</code> - A set of pivots to search around</dd>
-<dd><code>left</code> - Left size of context</dd>
-<dd><code>right</code> - Right size of context</dd>
-<dd><code>nodeIds</code> - A set of ids to search in the contexts</dd>
-<dd><code>filter</code> - </dd>
+<dd><code>pivotIds</code> - set of formId from a <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, word pivots to search around.</dd>
+<dd><code>left</code> - left size of context in tokens.</dd>
+<dd><code>right</code> - right size of context in tokens.</dd>
+<dd><code>nodeIds</code> - set of formId from a <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, words to search in the contexts</dd>
+<dd><code>docFilter</code> - optional, set of lucene internal docId to restrict collect.</dd>
 <dt>Returns:</dt>
+<dd>a matrix of formId pairs with count for each pair.</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Exception.html" title="class or interface in java.lang" class="external-link">Exception</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="expressions(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.Tag.TagFilter)">
 <h3>expressions</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="../../util/IntPair.html" title="class in com.github.oeuvres.alix.util">IntPair</a>,<wbr><a href="FieldRail.Bigram.html" title="class in com.github.oeuvres.alix.lucene.search">FieldRail.Bigram</a>&gt;</span>&nbsp;<span class="element-name">expressions</span><wbr><span class="parameters">(org.apache.lucene.util.BitSet&nbsp;docFilter,
- <a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;formFilter)</span>
-                                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../../util/EdgeMap.html" title="class in com.github.oeuvres.alix.util">EdgeMap</a></span>&nbsp;<span class="element-name">expressions</span><wbr><span class="parameters">(org.apache.lucene.util.BitSet&nbsp;docFilter,
+ <a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;formFilter)</span></div>
 <div class="block">Loop on the rail to find expression (2 plain words with possible stop words
- between but not holes or punctuation)</div>
+ between but not holes or punctuation).</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>docFilter</code> - optional, a set of lucene internal doc id for a partition.</dd>
+<dd><code>formFilter</code> - optional, type of words to exclude from expressions like verbs, etc…</dd>
 <dt>Returns:</dt>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
+<dd>expressions as an <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Iterable.html" title="class or interface in java.lang" class="external-link"><code>Iterable</code></a> of edges</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="freqs(org.apache.lucene.util.BitSet)">
 <h3>freqs</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">freqs</span><wbr><span class="parameters">(org.apache.lucene.util.BitSet&nbsp;filter)</span>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">freqs</span><wbr><span class="parameters">(org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">From a set of documents provided as a BitSet, return a freqlist as an int
  vector, where index is the formId for the field, the value is count of
  occurrences of the term. Counts are extracted from stored <i>rails</i>.</div>
 <dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="freqsParallel(org.apache.lucene.util.BitSet)">
-<h3>freqsParallel</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/concurrent/atomic/AtomicIntegerArray.html" title="class or interface in java.util.concurrent.atomic" class="external-link">AtomicIntegerArray</a></span>&nbsp;<span class="element-name">freqsParallel</span><wbr><span class="parameters">(org.apache.lucene.util.BitSet&nbsp;filter)</span>
-                                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Parallel freqs calculation, it works but is more expensive than serial,
- because of concurrency cost.</div>
-<dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>filter</code> - </dd>
+<dd><code>docFilter</code> - set of lucene internal docId to restrict collect.</dd>
 <dt>Returns:</dt>
+<dd>array[formId] = freq.</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
 </dl>
@@ -381,17 +422,21 @@ loadScripts(document, 'script');</script>
 <h3>length</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">length</span><wbr><span class="parameters">(org.apache.lucene.index.Terms&nbsp;termVector)</span>
            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Count document size by the positions in the term vector</div>
+<div class="block">Count document size by the positions in the term vector.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>termVector</code> - <code>TermVectors.get(int, String)</code>.</dd>
+<dt>Returns:</dt>
+<dd>count of indexed tokens for this document.</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="rail(org.apache.lucene.index.Terms,com.github.oeuvres.alix.util.IntList)">
 <h3>rail</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">rail</span><wbr><span class="parameters">(org.apache.lucene.index.Terms&nbsp;termVector,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">rail</span><wbr><span class="parameters">(org.apache.lucene.index.Terms&nbsp;terms,
  <a href="../../util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a>&nbsp;buf)</span>
           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Flatten search of a document in a position order, according to the dictionary
@@ -400,23 +445,8 @@ loadScripts(document, 'script');</script>
  buffer could be modified if resizing was needed.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>termVector</code> - A term vector of a document with positions.</dd>
+<dd><code>terms</code> - A term vector of a document with positions.</dd>
 <dd><code>buf</code> - A reusable binary buffer to index.</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="strings(int[])">
-<h3>strings</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]</span>&nbsp;<span class="element-name">strings</span><wbr><span class="parameters">(int[]&nbsp;rail)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Tokens of a doc as strings from a byte array</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>rail</code> - </dd>
-<dt>Returns:</dt>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
 </dl>
@@ -425,11 +455,13 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="toString(int)">
 <h3>toString</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">toString</span><wbr><span class="parameters">(int&nbsp;docId)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">toString</span><wbr><span class="parameters">(int&nbsp;docId)</span></div>
+<div class="block">A document as a sequence of tokens.</div>
 <dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dt>Parameters:</dt>
+<dd><code>docId</code> - an internal lucene document id.</dd>
+<dt>Returns:</dt>
+<dd>sequence of tokens.</dd>
 </dl>
 </section>
 </li>

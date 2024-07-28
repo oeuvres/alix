@@ -5,6 +5,7 @@ com.github.oeuvres.alix.lucene
 com.github.oeuvres.alix.lucene.analysis
 com.github.oeuvres.alix.lucene.analysis.tokenattributes
 com.github.oeuvres.alix.lucene.search
+com.github.oeuvres.alix.lucene.search.similarities
 com.github.oeuvres.alix.lucene.util
 com.github.oeuvres.alix.maths
 com.github.oeuvres.alix.sqlite

@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
@@ -77,12 +78,31 @@ abstract class AbstractFieldString extends AbstractField
     }
 
     /**
-     * Normalize a list of forms to search in an {@link IndexReader}.
-     * Filter null and forms absent from the dictionary. Initial
-     * order is kept (except for duplicates).
+     * Get forms in order from a vector of valueId.
      * 
-     * @param values  colection of form to test against dictionary.
-     * @return set of unique values.
+     * @param rail sequence of words as valueId.
+     * @return sequence of words as String.
+     */
+    public String[] forms(int[] rail)
+    {
+        int len = rail.length;
+        String[] words = new String[len];
+        BytesRef ref = new BytesRef();
+        for (int i = 0; i < len; i++) {
+            int formId = rail[i];
+            this.dic.get(formId, ref);
+            words[i] = ref.utf8ToString();
+        }
+        return words;
+    }
+    
+    /**
+     * Normalize a list of forms to search in an {@link IndexReader}.
+     * Filter null and forms absent from the dictionary.
+     * 
+     * @param dic a dictionary of terms extracted from a field.
+     * @param values  collection of form to test against dictionary.
+     * @return set of unique values, sorted for efficient search with {@link TermsEnum#seekExact(BytesRef)}.
      */
     public static BytesRef[] norm(final BytesRefHash dic, CharSequence[] values)
     {
@@ -172,7 +192,7 @@ abstract class AbstractFieldString extends AbstractField
      * null if not found.
      * 
      * @param forms array of form as bytes.
-     * @return a sorted array of valueId found, or null if no form found for this fiels.
+     * @return a sorted array of valueId found, or null if no form found for this fields.
      * @throws IOException lucene errors.
      */
     public int[] valueIds(BytesRef[] forms) throws IOException

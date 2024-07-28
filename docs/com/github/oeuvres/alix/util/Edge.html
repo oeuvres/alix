@@ -108,16 +108,21 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-first odd-row-color"><code>final int</code></div>
 <div class="col-second odd-row-color"><code><a href="#edgeId" class="member-name-link">edgeId</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">An index commodity</div>
+<div class="block">For information, an index commodity</div>
 </div>
-<div class="col-first even-row-color"><code>final int</code></div>
-<div class="col-second even-row-color"><code><a href="#sourceId" class="member-name-link">sourceId</a></code></div>
+<div class="col-first even-row-color"><code>final <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color"><code><a href="#form" class="member-name-link">form</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Source node id</div>
+<div class="block">For information, an optional label</div>
 </div>
 <div class="col-first odd-row-color"><code>final int</code></div>
-<div class="col-second odd-row-color"><code><a href="#targetId" class="member-name-link">targetId</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#sourceId" class="member-name-link">sourceId</a></code></div>
 <div class="col-last odd-row-color">
+<div class="block">Source node id</div>
+</div>
+<div class="col-first even-row-color"><code>final int</code></div>
+<div class="col-second even-row-color"><code><a href="#targetId" class="member-name-link">targetId</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Target node id</div>
 </div>
 </div>
@@ -142,12 +147,19 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-last odd-row-color">
 <div class="block">Build an edge between 2 nodes identified by an int, with a direction (not mutables).</div>
 </div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(int,int,boolean,int)" class="member-name-link">Edge</a><wbr>(int&nbsp;sourceId,
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(int,int,boolean,int,java.lang.String)" class="member-name-link">Edge</a><wbr>(int&nbsp;sourceId,
  int&nbsp;targetId,
  boolean&nbsp;directed,
- int&nbsp;edgeId)</code></div>
+ int&nbsp;edgeId,
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;form)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Build an edge between 2 nodes identified by an int, with an optional direction, and an optional edgeId (not mutables).</div>
+</div>
+<div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(int,int,java.lang.String)" class="member-name-link">Edge</a><wbr>(int&nbsp;sourceId,
+ int&nbsp;targetId,
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;form)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Build an edge between 2 nodes identified by an int (not mutables).</div>
 </div>
 </div>
 </section>
@@ -264,7 +276,14 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="edgeId">
 <h3>edgeId</h3>
 <div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">edgeId</span></div>
-<div class="block">An index commodity</div>
+<div class="block">For information, an index commodity</div>
+</section>
+</li>
+<li>
+<section class="detail" id="form">
+<h3>form</h3>
+<div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">form</span></div>
+<div class="block">For information, an optional label</div>
 </section>
 </li>
 </ul>
@@ -289,6 +308,21 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 </section>
 </li>
 <li>
+<section class="detail" id="&lt;init&gt;(int,int,java.lang.String)">
+<h3>Edge</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">Edge</span><wbr><span class="parameters">(int&nbsp;sourceId,
+ int&nbsp;targetId,
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;form)</span></div>
+<div class="block">Build an edge between 2 nodes identified by an int (not mutables).</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>sourceId</code> - a node id.</dd>
+<dd><code>targetId</code> - a node id.</dd>
+<dd><code>form</code> - optional, a label, ex: a collected expression ().</dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="&lt;init&gt;(int,int,boolean)">
 <h3>Edge</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">Edge</span><wbr><span class="parameters">(int&nbsp;sourceId,
@@ -304,12 +338,13 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 </section>
 </li>
 <li>
-<section class="detail" id="&lt;init&gt;(int,int,boolean,int)">
+<section class="detail" id="&lt;init&gt;(int,int,boolean,int,java.lang.String)">
 <h3>Edge</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">Edge</span><wbr><span class="parameters">(int&nbsp;sourceId,
  int&nbsp;targetId,
  boolean&nbsp;directed,
- int&nbsp;edgeId)</span></div>
+ int&nbsp;edgeId,
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;form)</span></div>
 <div class="block">Build an edge between 2 nodes identified by an int, with an optional direction, and an optional edgeId (not mutables).</div>
 <dl class="notes">
 <dt>Parameters:</dt>
@@ -317,6 +352,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <dd><code>targetId</code> - a node id.</dd>
 <dd><code>directed</code> - optional, true if direction imports, false otherwise.</dd>
 <dd><code>edgeId</code> - optional, an id for this edge, set by a collector.</dd>
+<dd><code>form</code> - optional, a label, ex: a collected expression ().</dd>
 </dl>
 </section>
 </li>

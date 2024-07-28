@@ -30,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene.search;
+package com.github.oeuvres.alix.lucene.search.similarities;
 
 import org.apache.lucene.search.similarities.BasicStats;
 import org.apache.lucene.search.similarities.SimilarityBase;
@@ -40,7 +40,7 @@ import org.apache.lucene.search.similarities.SimilarityBase;
  * repulsed doc from a search. Code structure taken form
  * {@link org.apache.lucene.search.similarities.DFISimilarity}
  */
-public class SimilarityGsimple extends SimilarityBase
+public class SimilarityG extends SimilarityBase
 {
 
     @Override
@@ -52,16 +52,16 @@ public class SimilarityGsimple extends SimilarityBase
          * Math.log(O0 / E0); sum += O1 * Math.log(O1 / E1); return sum * 2.0;
          */
         // if (stats.getNumberOfFieldTokens() == 0) return 0; // ??
-        final long N = stats.getNumberOfFieldTokens();
+        final double N = stats.getNumberOfFieldTokens();
         final double E0 = stats.getTotalTermFreq() * docLen / N;
-        final double measure = freq * Math.log(freq / E0);
-        // DFISimilarity returns log, with a
-        // return stats.getBoost() * log2(measure + 1);
-        // if the observed frequency is less than expected, return negative (should be
-        // nice in multi term search)
+        double sum = freq * Math.log(freq / E0);
+        final double O1 = N - freq;
+        sum += O1 * Math.log(O1 / (N - E0));
+        // if the observed frequency is less than expected, is negative a good idea ?
+        // (think to multi term search)
         if (freq < E0)
-            return -measure;
-        return measure;
+            return -sum;
+        return sum;
     }
 
     @Override

@@ -95,7 +95,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color"><code>class&nbsp;</code></div>
 <div class="col-second even-row-color"><code><a href="FieldInt.IntEnum.html" class="type-name-link" title="class in com.github.oeuvres.alix.lucene.search">FieldInt.IntEnum</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">A kind of <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Iterator.html" title="class or interface in java.util" class="external-link"><code>Iterator</code></a> for int native type.</div>
+<div class="block">A kind of <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Iterator.html" title="class or interface in java.util" class="external-link"><code>Iterator</code></a> for primitive types.</div>
 </div>
 </div>
 </section>
@@ -142,7 +142,9 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(org.apache.lucene.index.IndexReader,java.lang.String)" class="member-name-link">FieldInt</a><wbr>(org.apache.lucene.index.IndexReader&nbsp;reader,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Constructor,</div>
+</div>
 </div>
 </section>
 </li>
@@ -158,24 +160,24 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#date2int(java.lang.String)" class="member-name-link">date2int</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;date)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#date2int(java.lang.String)" class="member-name-link">date2int</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dateIso)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">1753 → 17530000 1753-03-01 → 17530301</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#int2date(int)" class="member-name-link">int2date</a><wbr>(int&nbsp;value)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#int2date(int)" class="member-name-link">int2date</a><wbr>(int&nbsp;dateNum)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
-<div class="block">17530301 → 1753-03-01 17530000 → 1753</div>
+<div class="block">17530301 → 1753-03-01, 17530000 → 1753</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FieldInt.IntEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FieldInt.IntEnum</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#iterator()" class="member-name-link">iterator</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Enumerator on all values of the int field with different stats</div>
+<div class="block">Enumerator on all values of the int field with different stats.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#max()" class="member-name-link">max</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">get the maximum value.</div>
+<div class="block">Get the maximum value.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxValue()" class="member-name-link">maxValue</a>()</code></div>
@@ -193,12 +195,12 @@ loadScripts(document, 'script');</script>
 <div class="block">Return min-max value for a set of docs.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#year(double)" class="member-name-link">year</a><wbr>(double&nbsp;date)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#year(double)" class="member-name-link">year</a><wbr>(double&nbsp;dateNum)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">17531023 → 1753</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#yearCeil(int)" class="member-name-link">yearCeil</a><wbr>(int&nbsp;date)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#yearCeil(int)" class="member-name-link">yearCeil</a><wbr>(int&nbsp;dateNum)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">17530000 → 17539999</div>
 </div>
@@ -261,9 +263,13 @@ loadScripts(document, 'script');</script>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FieldInt</span><wbr><span class="parameters">(org.apache.lucene.index.IndexReader&nbsp;reader,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</span>
          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Constructor,</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>reader</code> - a lucene index reader.</dd>
+<dd><code>fieldName</code> - name of a lucene text field.</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
 </dl>
 </section>
 </li>
@@ -278,44 +284,52 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="date2int(java.lang.String)">
 <h3>date2int</h3>
-<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">date2int</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;date)</span></div>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">date2int</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dateIso)</span></div>
 <div class="block">1753 → 17530000 1753-03-01 → 17530301</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>dateIso</code> - ISO date.</dd>
+<dt>Returns:</dt>
+<dd>a date number, sortable.</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="year(double)">
 <h3>year</h3>
-<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">year</span><wbr><span class="parameters">(double&nbsp;date)</span></div>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">year</span><wbr><span class="parameters">(double&nbsp;dateNum)</span></div>
 <div class="block">17531023 → 1753</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>date</code> - </dd>
+<dd><code>dateNum</code> - a YYYYMMDD date as a number.</dd>
 <dt>Returns:</dt>
+<dd>a YYYY year.</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="yearCeil(int)">
 <h3>yearCeil</h3>
-<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">yearCeil</span><wbr><span class="parameters">(int&nbsp;date)</span></div>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">yearCeil</span><wbr><span class="parameters">(int&nbsp;dateNum)</span></div>
 <div class="block">17530000 → 17539999</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>date</code> - </dd>
+<dd><code>dateNum</code> - a YYYYMMDD date as a number.</dd>
 <dt>Returns:</dt>
+<dd>max dateNum for this year.</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="int2date(int)">
 <h3>int2date</h3>
-<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">int2date</span><wbr><span class="parameters">(int&nbsp;value)</span></div>
-<div class="block">17530301 → 1753-03-01 17530000 → 1753</div>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">int2date</span><wbr><span class="parameters">(int&nbsp;dateNum)</span></div>
+<div class="block">17530301 → 1753-03-01, 17530000 → 1753</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>value</code> - Date as a positional number</dd>
+<dd><code>dateNum</code> - date as a positional number YYYYMMDD.</dd>
 <dt>Returns:</dt>
-<dd>Date in XML format</dd>
+<dd>date String in ISO format.</dd>
 </dl>
 </section>
 </li>
@@ -323,9 +337,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="iterator()">
 <h3>iterator</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FieldInt.IntEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FieldInt.IntEnum</a></span>&nbsp;<span class="element-name">iterator</span>()</div>
-<div class="block">Enumerator on all values of the int field with different stats</div>
+<div class="block">Enumerator on all values of the int field with different stats.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>an kind of <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Iterator.html" title="class or interface in java.util" class="external-link"><code>Iterator</code></a> for primitive types.</dd>
 </dl>
 </section>
 </li>
@@ -333,7 +348,7 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="max()">
 <h3>max</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">max</span>()</div>
-<div class="block">get the maximum value.</div>
+<div class="block">Get the maximum value.</div>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>max value.</dd>

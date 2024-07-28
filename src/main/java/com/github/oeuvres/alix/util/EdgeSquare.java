@@ -258,7 +258,7 @@ public class EdgeSquare implements Iterable<Edge>
                         // nodesCount[target]/(double)edgeCount) / 2;
 
                     }
-                    table[source][target] = new Edge(words[source], words[target], directed, index).count(edgeCount).score(score);
+                    table[source][target] = new Edge(words[source], words[target], directed, index, null).count(edgeCount).score(score);
                 }
                 Arrays.sort(table[source]);
             }

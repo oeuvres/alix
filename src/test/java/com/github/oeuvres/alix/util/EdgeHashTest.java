@@ -11,7 +11,7 @@ public class EdgeHashTest {
     @Test
     public void cluster()
     {
-        EdgeHash net = new EdgeHash(false);
+        EdgeMap net = new EdgeMap(false);
         net.declust();
         net.clust(0);
         net.clust(1);

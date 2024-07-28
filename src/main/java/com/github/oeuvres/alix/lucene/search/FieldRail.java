@@ -44,13 +44,13 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.logging.Logger;
-import java.util.stream.IntStream;
 
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -67,10 +67,11 @@ import org.apache.lucene.util.BytesRefHash;
 import com.github.oeuvres.alix.fr.Tag.TagFilter;
 import com.github.oeuvres.alix.lucene.Alix;
 import com.github.oeuvres.alix.util.Chain;
+import com.github.oeuvres.alix.util.Edge;
+import com.github.oeuvres.alix.util.EdgeMap;
 import com.github.oeuvres.alix.util.EdgeRoll;
 import com.github.oeuvres.alix.util.EdgeSquare;
 import com.github.oeuvres.alix.util.IntList;
-import com.github.oeuvres.alix.util.IntPair;
 import com.github.oeuvres.alix.util.IntPairMutable;
 import com.github.oeuvres.alix.web.OptionMI;
 
@@ -91,80 +92,65 @@ public class FieldRail
     /** Keep the freqs for the field */
     private final FieldText ftext;
     /** Dictionary of search for this field */
-    private final BytesRefHash formDic;
+    protected final BytesRefHash dic;
     /** The path of underlaying file store */
     private final Path path;
     /** Cache a fileChannel for read */
-    private FileChannel channel;
+    protected FileChannel channel;
     /** A buffer on file */
-    private MappedByteBuffer channelMap;
+    protected MappedByteBuffer channelMap;
     /** Max for docId */
-    private int maxDoc;
+    protected int maxDoc;
     /** Max for formId */
     private final int maxForm;
     /** Size of file header */
     static final int headerInt = 3;
     /** Index of positions for each doc im channel */
-    private int[] posInt;
+    protected int[] posInt;
     /** Index of sizes for each doc */
-    private int[] limInt;
+    protected int[] limInt;
 
+    /**
+     * Load rail of words as int, build it as file if necessary.
+     * 
+     * @param alix a wrapper around a lucene {@link IndexReader}.
+     * @param fieldName name of a field.
+     * @throws IOException lucene erros.
+     */
     public FieldRail(Alix alix, String fieldName) throws IOException {
+        FieldInfo info = FieldInfos.getMergedFieldInfos(alix.reader()).fieldInfo(fieldName);
+        if (info == null) {
+            throw new IllegalArgumentException("Field \"" + fieldName + "\" is not known in this index");
+        }
+        IndexOptions options = info.getIndexOptions();
+        if (options != IndexOptions.DOCS_AND_FREQS_AND_POSITIONS && options != IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) {
+            throw new IllegalArgumentException(
+                    "Field \"" + fieldName + "\" of type " + options + " has no POSITIONS (see IndexOptions)");
+        }
         this.alix = alix;
         this.ftext = alix.fieldText(fieldName); // build and cache the dictionary for the field
         this.fieldName = ftext.fieldName;
-        this.formDic = ftext.dic;
-        this.maxForm = formDic.size();
+        this.dic = ftext.dic;
+        this.maxForm = dic.size();
         this.path = Paths.get(alix.path.toString(), fieldName + ".rail");
         load();
-    }
-
-    /**
-     * Loop on the rail to get bigrams without any intelligence.
-     * 
-     * @param filter
-     * @return
-     * @throws IOException Lucene errors.
-     */
-    public Map<IntPair, Bigram> bigrams(final BitSet filter) throws IOException
-    {
-        final boolean hasFilter = (filter != null);
-        Map<IntPair, Bigram> dic = new HashMap<IntPair, Bigram>();
-        IntPairMutable key = new IntPairMutable();
-        int maxDoc = this.maxDoc;
-        int[] posInt = this.posInt;
-        int[] limInt = this.limInt;
-        IntBuffer bufInt = channelMap.rewind().asIntBuffer();
-        int lastId = 0;
-        for (int docId = 0; docId < maxDoc; docId++) {
-            if (hasFilter && !filter.get(docId))
-                continue;
-            if (limInt[docId] == 0)
-                continue; // deleted or with no value for this field
-            bufInt.position(posInt[docId]);
-            for (int i = 0, max = limInt[docId]; i < max; i++) {
-                int formId = bufInt.get();
-                // here we can skip holes, pun, or stop words
-                // if (formStop.get(formId)) continue;
-                key.set(lastId, formId);
-                Bigram count = dic.get(key);
-                if (count != null)
-                    count.inc();
-                else
-                    dic.put(new IntPair(key), new Bigram(key.x(), key.y()));
-                lastId = formId;
-            }
-        }
-        return dic;
     }
 
     /**
      * Build a cooccurrence freqList in formId order, attached to a FormEnum object.
      * Returns the count of occurences found. This method may need a lot of optional
      * params, set on the FormEnum object.
+     * TODO better documentation of options.
      * 
+     * @param forms words to score in context of the pivots.
+     * @param pivotIds form ids of pivots words.
+     * @param left width of context before a pivot.
+     * @param right width of context after a pivot.
+     * @param mi mutual information algorithm to calculate score.
+     * @return count of occurrences found.
+     * @throws IOException lucene errors.
      */
-    public long coocs(final FormEnum results, final int[] pivotIds, final int left, final int right, OptionMI mi)
+    public long coocs(final FormEnum forms, final int[] pivotIds, final int left, final int right, OptionMI mi)
             throws IOException
     {
         // for each index leave
@@ -179,30 +165,30 @@ public class FieldRail
                     + " not enough context to extract co-occurrences.");
         }
         // filter documents
-        final boolean hasFilter = (results.filter != null);
+        final boolean hasFilter = (forms.filter != null);
 
         // filter co-occs by tag
-        boolean hasTags = (results.tags != null);
+        boolean hasTags = (forms.tags != null);
         // filter co-occs stops
-        boolean noStop = (results.tags != null && results.tags.nostop());
+        boolean noStop = (forms.tags != null && forms.tags.nostop());
         // collect “locutions” (words like “parce que”)
-        boolean locs = (results.tags != null && results.tags.locutions());
+        boolean locs = (forms.tags != null && forms.tags.locutions());
         // collect “edges” A B [O] A C => AOx2, ABx2, ACx2, BOx1, COx1, BCx1.
-        boolean hasEdges = (results.edges != null);
+        boolean hasEdges = (forms.edges != null);
 
         // for future scoring, formOccs is global or relative to filter ? relative seems
         // bad
         // create or reuse arrays in result,
-        if (results.formFreq == null || results.formFreq.length != maxForm) {
-            results.formFreq = new long[maxForm]; // by term, occurrences counts
+        if (forms.formFreq == null || forms.formFreq.length != maxForm) {
+            forms.formFreq = new long[maxForm]; // by term, occurrences counts
         } else {
-            Arrays.fill(results.formFreq, 0);
+            Arrays.fill(forms.formFreq, 0);
         }
         // create or reuse hits
-        if (results.formHits == null || results.formHits.length != maxForm) {
-            results.formHits = new int[maxForm]; // by term, document counts
+        if (forms.formHits == null || forms.formHits.length != maxForm) {
+            forms.formHits = new int[maxForm]; // by term, document counts
         } else {
-            Arrays.fill(results.formHits, 0);
+            Arrays.fill(forms.formHits, 0);
         }
 
         // this vector has been useful, but meaning has been forgotten
@@ -247,7 +233,7 @@ public class FieldRail
             for (int docLeaf = 0; docLeaf < max; docLeaf++) {
                 final int docId = docBase + docLeaf;
                 final int docLen = limInt[docId];
-                if (hasFilter && !results.filter.get(docId)) {
+                if (hasFilter && !forms.filter.get(docId)) {
                     continue; // document not in the document filter
                 }
                 if (hasLive && !liveDocs.get(docLeaf)) {
@@ -310,7 +296,7 @@ public class FieldRail
                     pos = contexts.nextSetBit(pos + 1);
                     // gap, another context, reset coocs cluster
                     if (hasEdges && pos > lastpos + 1) {
-                        results.edges.declust();
+                        forms.edges.declust();
                     }
                     lastpos = pos;
                     // Check words to count
@@ -326,27 +312,27 @@ public class FieldRail
                         continue;
                     }
                     // filter coocs by tag
-                    else if (hasTags && !results.tags.accept(ftext.formTag[formId])) {
+                    else if (hasTags && !forms.tags.accept(ftext.formTag[formId])) {
                         continue;
                     }
 
                     if (hasEdges) {
                         // threshold ?
-                        results.edges.clust(formId);
+                        forms.edges.clust(formId);
                     }
 
-                    results.occsPart++;
-                    results.formFreq[formId]++;
+                    forms.occsPart++;
+                    forms.formFreq[formId]++;
                     // has been useful for a scoring algorithm
                     if (!formSeen[formId]) {
-                        results.formHits[formId]++;
+                        forms.formHits[formId]++;
                         formSeen[formId] = true;
                     }
                 }
             }
         }
         if (mi != null) {
-            score(results, pivotIds, mi);
+            score(forms, pivotIds, mi);
         }
         return found;
     }
@@ -354,8 +340,13 @@ public class FieldRail
     /**
      * With a set of int formIds, run accross full or part of rails, to collect
      * co-occs between those selected words.
+     * 
+     * @param formIds set of words as formId from a {@link FieldText}.
+     * @param distance maximal distance in tokens between collected pairs.
+     * @param docFilter optional, set of lucene internal docId to restrict collect.
+     * @return a formIds x formIds matrix with count for each pair.
      */
-    public EdgeSquare edges(final int[] formIds, final int distance, final BitSet filter)
+    public EdgeSquare edges(final int[] formIds, final int distance, final BitSet docFilter)
     {
         // loop on docs
         // loop on occs
@@ -367,8 +358,8 @@ public class FieldRail
         // filter documents
         IntBuffer bufInt = channelMap.rewind().asIntBuffer();
 
-        if (filter != null) {
-            for (int docId = filter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = filter
+        if (docFilter != null) {
+            for (int docId = docFilter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = docFilter
                     .nextSetBit(docId + 1)) {
                 if (limInt[docId] == 0) {
                     continue; // deleted or with no value for this field
@@ -380,7 +371,8 @@ public class FieldRail
                     span.push(position, formId);
                 }
             }
-        } else {
+        } 
+        else {
             for (int docId = 0; docId < maxDoc; docId++) {
                 if (limInt[docId] == 0) {
                     continue; // deleted or with no value for this field
@@ -399,16 +391,15 @@ public class FieldRail
     /**
      * Get edges between a predefined set of words.
      * 
-     * @param pivotIds A set of pivots to search around
-     * @param left     Left size of context
-     * @param right    Right size of context
-     * @param nodeIds  A set of ids to search in the contexts
-     * @param filter
-     * @return
-     * @throws Exception
+     * @param pivotIds set of formId from a {@link FieldText}, word pivots to search around.
+     * @param left     left size of context in tokens.
+     * @param right    right size of context in tokens.
+     * @param nodeIds  set of formId from a {@link FieldText}, words to search in the contexts
+     * @param docFilter optional, set of lucene internal docId to restrict collect.
+     * @return a matrix of formId pairs with count for each pair.
+     * @throws IOException lucene errors.
      */
-    public EdgeSquare edges(final int[] pivotIds, final int left, final int right, int[] nodeIds, final BitSet filter)
-            throws Exception
+    public EdgeSquare edges(final int[] pivotIds, final int left, final int right, int[] nodeIds, final BitSet docFilter) throws IOException
     {
         // normalize node ids (sort, uniq)
 
@@ -418,7 +409,7 @@ public class FieldRail
         Arrays.sort(nodeIds);
         DirectoryReader reader = alix.reader();
         IntBuffer bufInt = channelMap.rewind().asIntBuffer(); // the rail
-        final boolean hasFilter = (filter != null); // filter docs ?
+        final boolean hasFilter = (docFilter != null); // filter docs ?
         // loop on leafs, open an index may cost
         for (LeafReaderContext context : reader.leaves()) {
             final int docBase = context.docBase;
@@ -440,7 +431,7 @@ public class FieldRail
                 int docLeaf; // advance cursor to the first doc
                 while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
                     final int docId = docBase + docLeaf;
-                    if (hasFilter && !filter.get(docId)) {
+                    if (hasFilter && !docFilter.get(docId)) {
                         continue; // document not in the document filter
                     }
                     if (hasLive && !liveDocs.get(docLeaf)) {
@@ -463,7 +454,7 @@ public class FieldRail
                         try {
                             posPivot = postings.nextPosition();
                         } catch (Exception e) {
-                            throw new Exception("" + postings);
+                            throw new IOException("" + postings);
                         }
                         if (posPivot < 0) {
                             System.out.println("BUG cooc, term=" + postings.toString() + " docId=" + docId + " pos=0");
@@ -500,12 +491,13 @@ public class FieldRail
 
     /**
      * Loop on the rail to find expression (2 plain words with possible stop words
-     * between but not holes or punctuation)
+     * between but not holes or punctuation).
      * 
-     * @return
-     * @throws IOException Lucene errors.
+     * @param docFilter optional, a set of lucene internal doc id for a partition.
+     * @param formFilter optional, type of words to exclude from expressions like verbs, etc…
+     * @return expressions as an {@link Iterable} of edges
      */
-    public Map<IntPair, Bigram> expressions(final BitSet docFilter, final TagFilter formFilter) throws IOException
+    public EdgeMap expressions(final BitSet docFilter, final TagFilter formFilter)
     {
 
         final boolean hasExclude;
@@ -516,10 +508,9 @@ public class FieldRail
         } else {
             hasExclude = false;
         }
-        // prepare a rule of the words to exclude as pivots
+        final boolean hasPartition = (docFilter != null);
 
-        final boolean hasFilter = (docFilter != null);
-        Map<IntPair, Bigram> expressions = new HashMap<IntPair, Bigram>();
+        EdgeMap expressions = new EdgeMap(true);
         int[] formPun = ftext.formPun;
         int maxDoc = this.maxDoc;
         int[] posInt = this.posInt;
@@ -534,7 +525,7 @@ public class FieldRail
         for (int docId = 0; docId < maxDoc; docId++) {
             if (limInt[docId] == 0)
                 continue; // deleted or with no value for this field
-            if (hasFilter && !docFilter.get(docId))
+            if (hasPartition && !docFilter.get(docId))
                 continue; // document not in the filter
             bufInt.position(posInt[docId]); // position cursor in the rail
             IntPairMutable key = new IntPairMutable();
@@ -554,9 +545,7 @@ public class FieldRail
                         continue;
                     }
                     // reset on verb ? to check
-                    /*
-                     * if (Tag.VERB.sameParent(tag)) { slider.reset(); continue; }
-                     */
+                    // if (Tag.VERB.sameParent(tag)) { slider.reset(); continue; }
                 }
                 // should be a plain word here
                 if (slider.isEmpty()) { // start of an expression
@@ -566,8 +555,8 @@ public class FieldRail
                 // here we have something to test or to store
                 slider.push(formId); // don’t forget the current formId
                 key.set(slider.first(), formId);
-                Bigram bigram = expressions.get(key);
-                if (bigram == null) { // new expression
+                Edge edge = expressions.get(key);
+                if (edge == null) { // new expression
                     chain.reset();
                     for (int jj = 0, len = slider.size(); jj < len; jj++) {
                         if (jj > 0 && chain.last() != '\'')
@@ -575,10 +564,10 @@ public class FieldRail
                         formDic.get(slider.get(jj), bytes);
                         chain.append(bytes);
                     }
-                    bigram = new Bigram(key.x(), key.y(), chain.toString());
-                    expressions.put(new IntPair(key), bigram);
+                    edge = new Edge(key.x(), key.y(), chain.toString());
+                    expressions.put(edge);
                 }
-                bigram.inc();
+                edge.inc();
                 // reset candidate compound, and start by current form
                 slider.clear().push(formId);
             }
@@ -591,12 +580,14 @@ public class FieldRail
      * vector, where index is the formId for the field, the value is count of
      * occurrences of the term. Counts are extracted from stored <i>rails</i>.
      * 
+     * @param docFilter set of lucene internal docId to restrict collect.
+     * @return array[formId] = freq.
      * @throws IOException Lucene errors.
      */
-    public long[] freqs(final BitSet filter) throws IOException
+    public long[] freqs(final BitSet docFilter) throws IOException
     {
-        long[] freqs = new long[formDic.size()];
-        final boolean hasFilter = (filter != null);
+        long[] freqs = new long[dic.size()];
+        final boolean hasFilter = (docFilter != null);
         int maxDoc = this.maxDoc;
         int[] posInt = this.posInt;
         int[] limInt = this.limInt;
@@ -611,7 +602,7 @@ public class FieldRail
         for (int docId = 0; docId < maxDoc; docId++) {
             if (limInt[docId] == 0)
                 continue; // deleted or with no value for this field
-            if (hasFilter && !filter.get(docId))
+            if (hasFilter && !docFilter.get(docId))
                 continue; // document not in the filter
             bufInt.position(posInt[docId]);
             for (int i = 0, max = limInt[docId]; i < max; i++) {
@@ -623,45 +614,11 @@ public class FieldRail
     }
 
     /**
-     * Parallel freqs calculation, it works but is more expensive than serial,
-     * because of concurrency cost.
+     * Count document size by the positions in the term vector.
      * 
-     * @param filter
-     * @return
-     * @throws IOException Lucene errors.
-     */
-    protected AtomicIntegerArray freqsParallel(final BitSet filter) throws IOException
-    {
-        // may take big place in mem
-        int[] rail = new int[(int) (channel.size() / 4)];
-        channelMap.asIntBuffer().get(rail);
-        AtomicIntegerArray freqs = new AtomicIntegerArray(formDic.size());
-        boolean hasFilter = (filter != null);
-        int maxDoc = this.maxDoc;
-        int[] posInt = this.posInt;
-        int[] limInt = this.limInt;
-
-        IntStream loop = IntStream.range(0, maxDoc).filter(docId -> {
-            if (limInt[docId] == 0)
-                return false;
-            if (hasFilter && !filter.get(docId))
-                return false;
-            return true;
-        }).parallel().map(docId -> {
-            // to use a channelMap in parallel, we need a new IntBuffer for each doc, too
-            // expensive
-            for (int i = posInt[docId], max = posInt[docId] + limInt[docId]; i < max; i++) {
-                int formId = rail[i];
-                freqs.getAndIncrement(formId);
-            }
-            return docId;
-        });
-        loop.count(); // go
-        return freqs;
-    }
-
-    /**
-     * Count document size by the positions in the term vector
+     * @param termVector {@link TermVectors#get(int, String)}.
+     * @return count of indexed tokens for this document.
+     * @throws IOException lucene errors.
      */
     public int length(Terms termVector) throws IOException
     {
@@ -685,7 +642,7 @@ public class FieldRail
     }
 
     /**
-     * Load and calculate index for the rail file
+     * Load in memory the rail file.
      * 
      * @throws IOException Lucene errors.
      */
@@ -728,15 +685,18 @@ public class FieldRail
      * BinaryField. {@link org.apache.lucene.document.BinaryDocValuesField} The
      * buffer could be modified if resizing was needed.
      * 
-     * @param termVector A term vector of a document with positions.
+     * @param terms A term vector of a document with positions.
      * @param buf        A reusable binary buffer to index.
      * @throws IOException Lucene errors.
      */
-    public void rail(Terms termVector, IntList buf) throws IOException
+    public void rail(Terms terms, IntList buf) throws IOException
     {
-        buf.clear(); // celan all
-        BytesRefHash hashDic = this.formDic;
-        TermsEnum tenum = termVector.iterator();
+        if (!terms.hasPositions()) {
+            throw new IOException("No positions to extract.");
+        }
+        buf.clear(); 
+        BytesRefHash hashDic = this.dic;
+        TermsEnum tenum = terms.iterator();
         PostingsEnum postings = null;
         BytesRef bytes = null;
         int maxpos = -1;
@@ -761,19 +721,25 @@ public class FieldRail
 
     /**
      * Scores a {@link FormEnum} with freqs extracted from co-occurrences extraction
-     * in a {@link #coocs(FormEnum)}. Scoring uses a “mutual information”
+     * in a {@link #coocs(FormEnum, int[], int, int, OptionMI)}. Scoring uses a “mutual information”
      * {@link OptionMI} algorithm (probability like, not tf-idf like). Parameters
      * are
-     * <li>Oab: count of a form (a) observed in a co-occurrency context (b)
-     * <li>Oa: count of a form in full corpus, or in a section (filter)
-     * <li>Ob: count of occs of the co-occurrency context
+     * 
+     * <ul>
+     * <li>Oab: count of a form (a) observed in a co-occurrency context (b)</li>
+     * <li>Oa: count of a form in full corpus, or in a section (filter)</li>
+     * <li>Ob: count of occs of the co-occurrency context</li>
      * <li>N: global count of occs from which is extracted the context (full corpus
-     * or filtered section)
+     * or filtered section)</li>
+     * </ul>
      * 
+     * 
+     * @param forms form enumeration from {@link #coocs(FormEnum, int[], int, int, OptionMI)}
+     * @param pivotIds form ids of pivots words.
+     * @param mi mutual information algorithm to calculate score.
      * @throws IOException Lucene errors.
-     * 
      */
-    private void score(final FormEnum results, final int[] pivotIds, final OptionMI mi) throws IOException
+    private void score(final FormEnum forms, final int[] pivotIds, final OptionMI mi) throws IOException
     {
         /*
          * Strange, can’t understand why it doesn’t work if (this.ftext.formDic !=
@@ -783,11 +749,11 @@ public class FieldRail
          */
         // if (results.limit == 0) throw new IllegalArgumentException("How many sorted
         // forms do you want? set FormEnum.limit");
-        if (results.occsPart < 1) {
+        if (forms.occsPart < 1) {
             throw new IllegalArgumentException(
                     "Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
         }
-        if (results.formFreq == null || results.formFreq.length < maxForm) {
+        if (forms.formFreq == null || forms.formFreq.length < maxForm) {
             throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
         }
         final long N = ftext.occs; // global
@@ -799,15 +765,15 @@ public class FieldRail
         final long Ob = add;
         int maxForm = ftext.maxValue;
         // reuse score for multiple calculations
-        if (results.formScore == null || results.formScore.length != maxForm) {
-            results.formScore = new double[maxForm]; // by term, occurrences counts
+        if (forms.formScore == null || forms.formScore.length != maxForm) {
+            forms.formScore = new double[maxForm]; // by term, occurrences counts
         } else {
-            Arrays.fill(results.formScore, 0);
+            Arrays.fill(forms.formScore, 0);
         }
         //
-        for (int formId = 0; formId < maxForm; formId++) {
+        for (int valueId = 0; valueId < maxForm; valueId++) {
             // No tag filter here, should be done upper
-            long Oab = results.formFreq[formId];
+            long Oab = forms.formFreq[valueId];
             if (Oab == 0) {
                 continue;
             }
@@ -817,7 +783,7 @@ public class FieldRail
             if (Oab > Ob) {
                 Oab = Ob;
             }
-            results.formScore[formId] = mi.score(Oab, ftext.formOccs[formId], Ob, N);
+            forms.formScore[valueId] = mi.score(Oab, ftext.formOccs[valueId], Ob, N);
         }
         // results is populated of scores, do not sort here, let consumer choose
     }
@@ -881,26 +847,12 @@ public class FieldRail
     }
 
     /**
-     * Tokens of a doc as strings from a byte array
+     * A document as a sequence of tokens.
      * 
-     * @param rail
-     * @return
-     * @throws IOException Lucene errors.
+     * @param docId an internal lucene document id.
+     * @return sequence of tokens.
      */
-    public String[] strings(int[] rail) throws IOException
-    {
-        int len = rail.length;
-        String[] words = new String[len];
-        BytesRef ref = new BytesRef();
-        for (int i = 0; i < len; i++) {
-            int formId = rail[i];
-            this.formDic.get(formId, ref);
-            words[i] = ref.utf8ToString();
-        }
-        return words;
-    }
-
-    public String toString(int docId) throws IOException
+    public String toString(int docId)
     {
         int limit = 100;
         StringBuilder sb = new StringBuilder();
@@ -909,7 +861,7 @@ public class FieldRail
         BytesRef ref = new BytesRef();
         while (bufInt.hasRemaining()) {
             int formId = bufInt.get();
-            this.formDic.get(formId, ref);
+            this.dic.get(formId, ref);
             sb.append(ref.utf8ToString());
             sb.append(" ");
             if (limit-- <= 0) {
@@ -919,29 +871,4 @@ public class FieldRail
         return sb.toString();
     }
 
-    public class Bigram
-    {
-        public final int a;
-        public final int b;
-        public int count = 0;
-        public double score;
-        final public String label;
-
-        Bigram(final int a, final int b) {
-            this.a = a;
-            this.b = b;
-            this.label = null;
-        }
-
-        Bigram(final int a, final int b, final String label) {
-            this.a = a;
-            this.b = b;
-            this.label = label;
-        }
-
-        public int inc()
-        {
-            return ++count;
-        }
-    }
 }
