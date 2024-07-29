@@ -51,6 +51,8 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
  */
 public class FilterFind extends TokenFilter
 {
+    /** XML flag */
+    final static int XML = Tag.XML.flag;
     /** The term provided by the Tokenizer */
     private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** A linguistic category as a short number, from Tag */
@@ -61,8 +63,10 @@ public class FilterFind extends TokenFilter
     private final CharsAttImpl orthAtt = (CharsAttImpl) addAttribute(OrthAtt.class);
     /** A lemma when possible */
     private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
-    /** Flag to say */
+    /** Flag to record lemma */
     boolean lem;
+    /** keep right position order */
+    private int skippedPositions;
 
     /**
      * 
@@ -76,7 +80,7 @@ public class FilterFind extends TokenFilter
     public final boolean incrementToken() throws IOException
     {
         CharTermAttribute term = this.termAtt;
-        // append lemma on same position
+        // append lemma on same position and offset
         if (lem) {
             posIncAtt.setPositionIncrement(0);
             // lower casing names
@@ -84,31 +88,45 @@ public class FilterFind extends TokenFilter
             lem = false;
             return true;
         }
-        // append tag ?
-        /*
-         * if (tag != Tag.NULL.flag) { posIncAtt.setPositionIncrement(0);
-         * term.setEmpty().append(Tag.name(tag)); tag = Tag.NULL.flag; return true; }
-         */
-
-        // end of stream
-        if (!input.incrementToken())
-            return false;
-
-        final int tag = flagsAtt.getFlags();
-        // record an empty token at puctuation position
-        if (Tag.PUN.sameParent(tag)) {
-            termAtt.setEmpty().append("");
-            return true;
+        skippedPositions = 0;
+        while (input.incrementToken()) {
+            // no position for XML between words
+            if (flagsAtt.getFlags() == XML) {
+                continue;
+            }
+            if (accept()) {
+                // if an interesting lemma, inform next call to index it at same pos
+                if (this.lemAtt.length() != 0) {
+                    lem = true;
+                }
+                if (skippedPositions != 0) {
+                    posIncAtt.setPositionIncrement(posIncAtt.getPositionIncrement() + skippedPositions);
+                }
+                return true;
+            }
+            skippedPositions += posIncAtt.getPositionIncrement();
         }
-
-        // standard position, index orthographic form, to lower for names
-        term.setEmpty().append(orthAtt.toLower());
-
-        // if an interesting lemma, inform next call to index it at same pos
-        if (this.lemAtt.length() != 0) {
-            lem = true;
-        }
-        return true;
+        return false;
     }
 
+    /**
+     * Most of the tokens are not rejected but rewrited, except punctuation.
+     * 
+     * @return true if accepted
+     */
+    protected boolean accept()
+    {
+        final int tag = flagsAtt.getFlags();
+        // jump punctuation position
+        if (Tag.PUN.sameParent(tag)) {
+            return false;
+        }
+        // append normalize form if exists
+        if (!orthAtt.isEmpty()) {
+            termAtt.setEmpty().append(orthAtt);
+            return true;
+        }
+        // other cases ?
+        return true;
+    }
 }

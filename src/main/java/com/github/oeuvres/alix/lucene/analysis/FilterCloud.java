@@ -54,6 +54,8 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
  */
 public class FilterCloud extends TokenFilter
 {
+    /** XML flag */
+    final static int XML = Tag.XML.flag;
     /** The term provided by the Tokenizer */
     private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */
@@ -86,6 +88,10 @@ public class FilterCloud extends TokenFilter
         // from the count of positions
         skippedPositions = 0;
         while (input.incrementToken()) {
+            // no position for XML between words
+            if (flagsAtt.getFlags() == XML) {
+                continue;
+            }
             if (accept()) {
                 if (skippedPositions != 0) {
                     posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
@@ -94,27 +100,34 @@ public class FilterCloud extends TokenFilter
             }
             skippedPositions += posIncrAtt.getPositionIncrement();
         }
-        /*
-         * while (input.incrementToken()) { if (accept()) return true; }
-         */
         return false;
     }
 
     /**
-     * Most of the tokens are not rejected but rewrited
+     * Most of the tokens are not rejected but rewrited, except punctuation.
      * 
-     * @return
-     * @throws IOException Lucene errors.
+     * @return true if accepted
      */
-    protected boolean accept() throws IOException
+    protected boolean accept()
     {
-        int tag = flagsAtt.getFlags();
+        final int tag = flagsAtt.getFlags();
         if (tag == Tag.TEST.flag) {
             System.out.println(termAtt + " — " + orthAtt);
         }
-        // record an empty token at puctuation position
-        if (Tag.PUN.sameParent(tag) && !pun) {
-            termAtt.setEmpty().append("");
+        // record an empty token at puctuation position for the rails
+        if (Tag.PUN.sameParent(tag)) {
+            if (tag == Tag.PUNclause.flag) {
+                termAtt.setEmpty().append(",");
+            }
+            else if (tag == Tag.PUNsent.flag) {
+                termAtt.setEmpty().append(".");
+            }
+            else if (tag == Tag.PUNpara.flag || tag == Tag.PUNsection.flag) {
+                // let it
+            }
+            else {
+                termAtt.setEmpty().append("");
+            }
         }
         // unify numbers
         else if (Tag.NUM.sameParent(tag)) {

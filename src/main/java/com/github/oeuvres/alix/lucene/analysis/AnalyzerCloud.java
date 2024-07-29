@@ -52,7 +52,7 @@ public class AnalyzerCloud extends Analyzer
     {
         final Tokenizer tokenizer = new TokenizerML();
         TokenStream ts = tokenizer; // segment words
-        ts = new FilterXML(ts); // strip tags
+        // ts = new FilterXML(ts); // strip tags
         ts = new FilterAposHyphenFr(ts); // fr split on ’ and -
         ts = new FilterLemmatize(ts); // provide lemma+pos
         // compounds: parce que (quite expensive, 20% time)

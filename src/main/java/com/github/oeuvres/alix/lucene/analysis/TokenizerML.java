@@ -144,6 +144,9 @@ public class TokenizerML  extends Tokenizer
             if (c == '<') {
                 // send pending term, come back next call
                 if (!termAtt.isEmpty()) {
+                    bufferIndex--;
+                    endOffset = offset;
+                    offset--;
                     break;
                 }
                 intag = true;

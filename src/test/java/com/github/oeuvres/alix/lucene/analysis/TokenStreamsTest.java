@@ -23,6 +23,22 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 public class TokenStreamsTest {
+    
+    @Test
+    public void cloud() throws IOException
+    {
+        String text = "note<a class=\"noteref\" href=\"#note2\" id=\"note2_\" epub:type=\"noteref\">1</a>";
+        
+        TokenizerML tokenizer = new TokenizerML();
+        tokenizer.setReader(new StringReader(text));
+        analyze(tokenizer, text);
+        /*
+        // Analyzer ana = new AnalyzerCloud();
+        Analyzer ana = new AnalyzerLem();
+        analyze(ana.tokenStream("_cloud", text), text);
+        ana.close();
+        */
+    }
 
     public void points() throws IOException
     {
@@ -34,9 +50,9 @@ public class TokenStreamsTest {
     
     public void html() throws IOException
     {
-        TokenizerML tokenizer = new TokenizerML();
-        String text = "<p><b>Lexical tokenization</b> is conversion of a text into (semantically or syntactically) meaningful <i>lexical tokens</i> belonging to categories defined by a \"lexer\" program. In case of a <a href=\"/wiki/Natural_language\" title=\"Natural language\">natural language</a>, those categories include nouns, verbs, adjectives, punctuations etc.";
+        String text = "<p class=\"p\"><b>Lexical tokenization</b> is conversion of a text into (semantically or syntactically) meaningful <i>lexical tokens</i> belonging to categories defined by a \"lexer\" program. In case of a <a href=\"/wiki/Natural_language\" title=\"Natural language\">natural language</a>, those categories include nouns, verbs, adjectives, punctuations etc.";
         
+        TokenizerML tokenizer = new TokenizerML();
         tokenizer.setReader(new StringReader(text));
         analyze(tokenizer, text);
     }
@@ -69,7 +85,7 @@ public class TokenStreamsTest {
     
     public void aposHyph() throws IOException
     {
-        Analyzer ana = new AposHyphAnalyzer();
+        Analyzer ana = new AnalyzerAposHyph();
         String text = "Connais-toi toi-même ?L’aujourd’hui d’hier. Parlons-en. Qu’est-ce que c’est ?";
         analyze(ana.tokenStream("field", text), text);
         ana.close();
@@ -91,7 +107,7 @@ public class TokenStreamsTest {
 
     }
     
-    static public class AposHyphAnalyzer extends Analyzer
+    static public class AnalyzerAposHyph extends Analyzer
     {
         @Override
         public TokenStreamComponents createComponents(String field)
@@ -103,7 +119,7 @@ public class TokenStreamsTest {
 
     }
     
-    static public class LemAnalyzer extends Analyzer
+    static public class AnalyzerLem extends Analyzer
     {
         @Override
         public TokenStreamComponents createComponents(String field)

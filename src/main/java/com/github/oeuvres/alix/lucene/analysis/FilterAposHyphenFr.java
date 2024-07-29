@@ -6,8 +6,10 @@ import java.util.HashMap;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
+import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 
 /**
@@ -20,10 +22,14 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
  */
 public class FilterAposHyphenFr extends TokenFilter
 {
+    /** XML flag */
+    final static int XML = Tag.XML.flag;
     /** Term from tokenizer. */
     private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** Char index in source text. */
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
+    /** A linguistic category as a short number, see {@link Tag} */
+    private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** Stack of stored states */
     private final AttDeque deque = new AttDeque();
     
@@ -115,6 +121,10 @@ public class FilterAposHyphenFr extends TokenFilter
                 // end of stream
                 return false;
             }
+        }
+        // do not try to split in XML tags
+        if (flagsAtt.getFlags() == XML) {
+            return true;
         }
         int loop = 0;
         while (true) {

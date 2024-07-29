@@ -2,7 +2,6 @@ package com.github.oeuvres.alix.util;
 
 import static org.junit.Assert.*;
 
-import java.util.HashSet;
 
 import org.junit.Test;
 

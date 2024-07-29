@@ -56,6 +56,8 @@ public class FilterXML extends TokenFilter
 {
     /** XML flag */
     final static int XML = Tag.XML.flag;
+    final static int PARA = Tag.PUNpara.flag;
+    final static int SECTION = Tag.PUNsection.flag;
     /** The term provided by the Tokenizer */
     private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */
@@ -76,7 +78,13 @@ public class FilterXML extends TokenFilter
                 return true;
             }
             // most positions of XML tags will be skipped without information
-            if (termAtt.equals("</p>")) {
+            if (termAtt.equals("</p>") || termAtt.equals("</li>") || termAtt.equals("</td>")) {
+                flagsAtt.setFlags(PARA);
+                termAtt.setEmpty().append("¶");
+                return true;
+            }
+            if (termAtt.equals("</section>") || termAtt.equals("</article>")) {
+                flagsAtt.setFlags(SECTION);
                 termAtt.setEmpty().append("§");
                 return true;
             }

@@ -187,11 +187,13 @@ public enum Tag {
     // Cx, punctuations
     PUN(0xC0, "Ponctuation", "Ponctuations divers hors catégories spéciales.") {
     },
-    PUNdiv(0xC1, "Structure", "§ = section, ¶ = paragraphe (structure interprétée d’un balisage).") {
+    PUNclause(0xC1, "Clause", ", ; (Séparateur de syntagme).") {
     },
     PUNsent(0xC2, "Phrase", ". ? ! (ponctuation de phrase).") {
     },
-    PUNclause(0xC3, "Clause", ", ; (Séparateur de syntagme).") {
+    PUNpara(0xC3, "Paragraphe", "¶ = paragraphe (structure interprétée d’un balisage).") {
+    },
+    PUNsection(0xC4, "Section", "§ = section (structure interprétée d’un balisage).") {
     },
 
     // Fx, divers

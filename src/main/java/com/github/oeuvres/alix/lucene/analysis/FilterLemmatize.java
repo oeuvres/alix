@@ -79,9 +79,11 @@ import com.github.oeuvres.alix.util.Char;
  */
 public final class FilterLemmatize extends TokenFilter
 {
+    /** XML flag */
+    final static int XML = Tag.XML.flag;
     /** The term provided by the Tokenizer */
     private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
-    /** A linguistic category as an int, from Tag */
+    /** A linguistic category as an int, from {@link Tag} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** A lemma when possible */
     private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(LemAtt.class);
@@ -109,10 +111,16 @@ public final class FilterLemmatize extends TokenFilter
             save = null;
             return true;
         }
+        if (!input.incrementToken()) {
+            return false;
+        }
         int flags = flagsAtt.getFlags();
+        if (flags == XML) { // tags maybe used upper
+            return true;
+        }
         // store pun event, skiping XML
         // was last token a sentence punctuation ?
-        if (flags == Tag.PUNdiv.flag || flags == Tag.PUNsent.flag) {
+        if (flags == Tag.PUNsection.flag ||flags == Tag.PUNpara.flag || flags == Tag.PUNsent.flag) {
             // record a pun event
             this.pun = true;
             return true;
