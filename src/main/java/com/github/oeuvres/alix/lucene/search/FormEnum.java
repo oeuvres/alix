@@ -40,19 +40,16 @@ import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.stream.IntStream;
 
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.UnicodeUtil;
 
-import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.fr.Tag.TagFilter;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Chain;
-import com.github.oeuvres.alix.util.EdgeQueue;
 import com.github.oeuvres.alix.util.TopArray;
 import com.github.oeuvres.alix.web.OptionDistrib;
-import com.github.oeuvres.alix.web.OptionMI;
 
 /**
  * This object is build to collect list of forms with useful stats for semantic
@@ -62,67 +59,30 @@ import com.github.oeuvres.alix.web.OptionMI;
  */
 public class FormEnum implements FormIterator
 {
-    /** used to read in the dic */
-    BytesRef bytes = new BytesRef();
-    /** Count of forms with freq &gt; 0 */
-    private int cardinality = -1;
-    /**
-     * Optional, a sort algorithm to select specific words according a norm (ex:
-     * compare formOccs / freqs)
-     */
-    public OptionDistrib distrib;
-    /** Global number of docs relevant for this facet */
-    public int docs;
-    /** A record of edges */
-    protected EdgeQueue edges;
-    /** Optional, a set of documents to limit occurrences collect */
-    public BitSet filter;
-    /** By formId, a docId used as a cover (example: metas for books or authors) */
-    protected int[] formCover;
-    /** Field dictionary */
-    BytesRefHash formDic;
-    /** By formId, count of docs, for all base */
-    protected int[] formDocs;
-    /** By formId, count of docs, for a partition */
-    protected int[] formDocsPart;
-    /** By formId, count of docs, matched in a text search */
-    protected int[] formHits;
-    /** By formId, a free int with no semantic, see FieldFace.nos() */
-    protected int[] formNos;
-    /** By formId, count of occurrences, on all base */
-    protected long[] formOccs;
-    /** By formId, count of occurrences, on a partition */
-    protected long[] formOccsPart;
-    /** By formId, count of occurrences, matched or selected */
-    protected long[] formFreq;
-    /** By formId, a relevance score calculated */
-    protected double[] formScore;
-    /** An optional tag for each search (relevant for textField) */
-    protected int[] formTag;
-    /** Occurrences found, Σ formFreq */
-    protected long freq;
+    /** Field dictionary. */
+    protected final BytesRefHash dic;
+    /** Number of different values found, is also biggest valueId+1 see {@link IndexReader#maxDoc()}. */
+    protected final int maxValue;
+    /** Global number of docs of a field. */
+    protected final int docsAll;
+    /** By formId, count of docs, for all index. */
+    protected final int[] docs4form;
+    /** Global number of occurrences for this field. */
+    protected long occsAll;
+    /** By formId, count of occurrences */
+    protected long[] occs4form;
+    
     /** Document found, Σ formHits */
-    protected int hits;
-    /** Vector of documents hits */
-    protected BitSet hitsVek;
-    /** Optional, co-occurrence search, count of occs to capture on the left */
-    public int left;
-    /** Number of different values found, is also biggest valueId+1 (like lucene IndexReader.maxDoc()) */
-    protected int maxValue = -1;
-    /** Optional, a sort algorithm for coocs */
-    public OptionMI mi;
-    /** Source field */
-    public final String name;
-    /** All occs from parent field */
-    public long occs;
-    /** Count of occurrences for the part explored */
-    public long occsPart;
-    /** Reverse order of sorting */
-    public boolean reverse;
-    /** Optional, co-occurrence search, count of occs to capture on the right */
-    public int right;
-    /** Optional, for a co-occurrence search, pivot words */
-    public String[] search;
+    protected int hitsAll;
+    /** By formId, count of docs, matched in a text search */
+    protected int[] hits4form;
+    /** Occurrences found, Σ freq4form */
+    protected long freqAll;
+    /** By formId, count of occurrences, matched or selected */
+    protected long[] freq4form;
+    /** By formId, a relevance score calculated */
+    protected double[] score4form;
+    
     /** Array of formId in order to iterate on, to set before iteration */
     private int[] sorter;
     /** Cursor, to iterate in the sorter */
@@ -131,26 +91,53 @@ public class FormEnum implements FormIterator
     private int limit = -1;
     /** Current formId, set by next */
     private int formId = -1;
-    /** Optional, a set of tags to filter form to collect */
-    public TagFilter tags;
+
+    /** Count of forms with freq &gt; 0 */
+    private int cardinality = -1;
+    /** By formId, count of docs, for a partition */
+    protected int[] formDocsPart;
+    /** By formId, count of occurrences, on a partition */
+    protected long[] formOccsPart;
+    
+    /** Vector of documents hits */
+    protected BitSet hitsVek;
+    /** Count of occurrences for the part explored */
+    public long occsPart;
+    /** Optional, for a co-occurrence search, pivot words */
+    public String[] search;
 
     /**
-     * Constructor
+     * Build a form enumerator with required field.
      * 
-     * @param name
+     * @param dic dictionary of forms {@link AbstractFieldChars#dic}
+     * @param docs  {@link AbstractFieldChars#docsAll}
+     * @param docsByForm {@link AbstractFieldChars#docsByform}
+     * @param occs {@link AbstractFieldChars#occsAll}
+     * @param occsByForm long[formId] = occs.
      */
-    protected FormEnum(final String name) {
-        this.name = name;
+    public FormEnum(
+        final BytesRefHash dic,
+        final int docs,
+        final int[] docsByForm,
+        final long occs,
+        final long[] occsByForm
+    ) {
+        this.dic = dic;
+        this.docsAll = docs;
+        this.docs4form = docsByForm;
+        this.occsAll = occs;
+        this.occs4form = occsByForm;
+        this.maxValue = dic.size();
     }
-
+    
     /**
-     * Count of forms with freq &gt; 0
+     * Count of forms with freq &gt; 0, imited from {@link java.util.BitSet#cardinality()}.
      * 
-     * @return
+     * @return forms with 1 ore more occurrence.
      */
     public int cardinality()
     {
-        if (formFreq == null && formHits == null) {
+        if (freq4form == null && hits4form == null) {
             return cardinality;
             // throw new RuntimeException("This dictionary has all terms of the field " +
             // name +", without formFreq nore formHits, cardinality() is not relevant, =
@@ -159,13 +146,13 @@ public class FormEnum implements FormIterator
         if (cardinality >= 0)
             return cardinality;
         cardinality = 0;
-        if (formFreq != null) {
-            for (long freq : formFreq) {
+        if (freq4form != null) {
+            for (long freq : freq4form) {
                 if (freq > 0)
                     cardinality++;
             }
-        } else if (formHits != null) {
-            for (int hits : formHits) {
+        } else if (hits4form != null) {
+            for (int hits : hits4form) {
                 if (hits > 0)
                     cardinality++;
             }
@@ -174,38 +161,30 @@ public class FormEnum implements FormIterator
     }
 
     /**
-     * Cover docid for current term
+     * For the current formId in iterator, returns the total count of documents in
+     * corpus containing this form.
      * 
-     * @return
-     */
-    public int cover()
-    {
-        return formCover[formId];
-    }
-
-    /**
-     * For the current term in iterator, returns the total count of documents in
-     * corpus
-     * 
-     * @return
+     * @return docs for current form.
      */
     public int docs()
     {
-        if (formDocs == null)
+        if (docs4form == null)
             return 0;
-        return formDocs[formId];
+        return docs4form[formId];
     }
 
     /**
-     * By formId, return total count
+     * For the provided formId, returns the total count of documents in
+     * corpus containing this form.
      * 
-     * @return
+     * @param formId a form Id.
+     * @return docs for this form.
      */
     public int docs(final int formId)
     {
-        if (formDocs == null)
+        if (docs4form == null)
             return 0;
-        return formDocs[formId];
+        return docs4form[formId];
     }
 
     /**
@@ -215,7 +194,7 @@ public class FormEnum implements FormIterator
      */
     public int docsAll()
     {
-        return docs;
+        return docsAll;
     }
 
     /**
@@ -228,7 +207,7 @@ public class FormEnum implements FormIterator
         if (rank >= limit)
             return -1;
         final int formId = sorter[rank];
-        return formDocs[formId];
+        return docs4form[formId];
     }
 
     /**
@@ -252,30 +231,14 @@ public class FormEnum implements FormIterator
     }
 
     /**
-     * Prepare results to collect edges
-     */
-    public EdgeQueue edges()
-    {
-        if (this.edges == null) {
-            this.edges = new EdgeQueue(false);
-        }
-        return this.edges;
-    }
-
-    public void first()
-    {
-        cursor = 0;
-        formId = sorter[cursor];
-    }
-
-    /**
      * Get the current term as a String
      * 
      * @return
      */
     public String form()
     {
-        formDic.get(formId, bytes);
+        final BytesRef bytes = new BytesRef();
+        dic.get(formId, bytes);
         return bytes.utf8ToString();
     }
 
@@ -287,10 +250,11 @@ public class FormEnum implements FormIterator
      */
     public String formByRank(final int rank)
     {
+        final BytesRef bytes = new BytesRef();
         if (rank >= limit)
             return null;
         final int formId = sorter[rank];
-        formDic.get(formId, bytes);
+        dic.get(formId, bytes);
         return bytes.utf8ToString();
     }
 
@@ -309,7 +273,7 @@ public class FormEnum implements FormIterator
      */
     public void form(BytesRef bytes)
     {
-        formDic.get(formId, bytes);
+        dic.get(formId, bytes);
     }
 
     /**
@@ -320,7 +284,8 @@ public class FormEnum implements FormIterator
      */
     public CharsAttImpl form(CharsAttImpl term)
     {
-        formDic.get(formId, bytes);
+        final BytesRef bytes = new BytesRef();
+        dic.get(formId, bytes);
         // ensure limit of the char array
         int length = bytes.length;
         char[] chars = term.resizeBuffer(length);
@@ -332,24 +297,25 @@ public class FormEnum implements FormIterator
     /**
      * Copy the current term in a reusable char array.
      * 
-     * @param term
+     * @param term reusable mutable CharSequence.
      */
     public void form(Chain term)
     {
-        formDic.get(formId, bytes);
+        final BytesRef bytes = new BytesRef();
+        dic.get(formId, bytes);
         term.reset().append(bytes);
     }
 
     /**
-     * Get the count of matching occurrences
+     * Get the count of matching occurrences.
      * 
      * @return
      */
     public long freq()
     {
-        if (formFreq == null)
+        if (freq4form == null)
             return 0;
-        return formFreq[formId];
+        return freq4form[formId];
     }
 
     /**
@@ -360,9 +326,9 @@ public class FormEnum implements FormIterator
      */
     public long freq(final int formId)
     {
-        if (formFreq == null)
+        if (freq4form == null)
             return 0;
-        return formFreq[formId];
+        return freq4form[formId];
     }
 
     /**
@@ -372,7 +338,7 @@ public class FormEnum implements FormIterator
      */
     public long freqAll()
     {
-        return freq;
+        return freqAll;
     }
 
     /**
@@ -386,7 +352,7 @@ public class FormEnum implements FormIterator
         if (rank >= limit)
             return -1;
         final int formId = sorter[rank];
-        return formFreq[formId];
+        return freq4form[formId];
     }
 
     @Override
@@ -402,9 +368,9 @@ public class FormEnum implements FormIterator
      */
     public int hits()
     {
-        if (formHits == null)
+        if (hits4form == null)
             return 0;
-        return formHits[formId];
+        return hits4form[formId];
     }
 
     /**
@@ -414,9 +380,9 @@ public class FormEnum implements FormIterator
      */
     public int hits(final int formId)
     {
-        if (formHits == null)
+        if (hits4form == null)
             return 0;
-        return formHits[formId];
+        return hits4form[formId];
     }
 
     /**
@@ -424,7 +390,7 @@ public class FormEnum implements FormIterator
      */
     public int hitsAll()
     {
-        return hits;
+        return hitsAll;
     }
 
     public int hitsByRank(final int rank)
@@ -432,7 +398,7 @@ public class FormEnum implements FormIterator
         if (rank >= limit)
             return -1;
         final int formId = sorter[rank];
-        return formHits[formId];
+        return hits4form[formId];
     }
 
     public void last()
@@ -466,25 +432,15 @@ public class FormEnum implements FormIterator
     }
 
     /**
-     * Current specific number
-     * 
-     * @return
-     */
-    public int no()
-    {
-        return formNos[formId];
-    }
-
-    /**
      * Current global number of occurrences for this term
      * 
      * @return
      */
     public long occs()
     {
-        if (formOccs == null)
+        if (occs4form == null)
             return 0;
-        return formOccs[formId];
+        return occs4form[formId];
     }
 
     /**
@@ -494,9 +450,9 @@ public class FormEnum implements FormIterator
      */
     public long occs(final int formId)
     {
-        if (formOccs == null)
+        if (occs4form == null)
             return 0;
-        return formOccs[formId];
+        return occs4form[formId];
     }
 
     /**
@@ -506,7 +462,7 @@ public class FormEnum implements FormIterator
      */
     public long occsAll()
     {
-        return occs;
+        return occsAll;
     }
 
     /**
@@ -520,15 +476,7 @@ public class FormEnum implements FormIterator
             return -1;
         }
         final int formId = sorter[rank];
-        return formOccs[formId];
-    }
-
-    /**
-     * Total of occurrences found for this freq list
-     */
-    public long occsFreq()
-    {
-        return freq;
+        return occs4form[formId];
     }
 
     /**
@@ -574,9 +522,9 @@ public class FormEnum implements FormIterator
      */
     public double score()
     {
-        if (formScore == null)
+        if (score4form == null)
             return 0;
-        return formScore[formId];
+        return score4form[formId];
     }
 
     /**
@@ -588,9 +536,9 @@ public class FormEnum implements FormIterator
     public double score(final int formId)
     {
         // be nice or be null ?
-        if (formScore == null)
+        if (score4form == null)
             return 0;
-        return formScore[formId];
+        return score4form[formId];
     }
 
     /**
@@ -599,16 +547,16 @@ public class FormEnum implements FormIterator
      */
     public void score(OptionDistrib distrib)
     {
-        if (formFreq == null) {
+        if (freq4form == null) {
             throw new IllegalArgumentException("No freqs for this dictionary to calculate score on.");
         }
-        formScore = new double[maxValue];
+        score4form = new double[maxValue];
         for (int formId = 0; formId < maxValue; formId++) {
-            if (formFreq[formId] < 1)
+            if (freq4form[formId] < 1)
                 continue;
-            distrib.idf(formDocs[formId], docs, occs);
-            distrib.expectation(formOccs[formId], occs);
-            formScore[formId] = distrib.score(formFreq[formId], freq); // freq = docLen, all found occs supposed as one
+            distrib.idf(docs4form[formId], docsAll, occsAll);
+            distrib.expectation(occs4form[formId], occsAll);
+            score4form[formId] = distrib.score(freq4form[formId], freqAll); // freq = docLen, all found occs supposed as one
                                                                        // doc
             // ?
             // formScore[formId] = distrib.last(formOccs[formId] - formFreq[formId], freq);
@@ -625,23 +573,13 @@ public class FormEnum implements FormIterator
         if (rank >= limit)
             return -1;
         final int formId = sorter[rank];
-        return formScore[formId];
+        return score4form[formId];
     }
 
     @Override
     public int size()
     {
-        return formDic.size();
-    }
-
-    /**
-     * Set the sorted vector of ids
-     * 
-     * @param formNos
-     */
-    public void setNos(final int[] formNos)
-    {
-        this.formNos = formNos;
+        return dic.size();
     }
 
     @Override
@@ -666,9 +604,9 @@ public class FormEnum implements FormIterator
     public void sort(final Order order, final int limit, final boolean reverse)
     {
         this.limit = limit;
-        if (formFreq != null && maxValue != formFreq.length) {
-            throw new IllegalArgumentException("Corrupted FormEnum name=" + name + " maxForm=" + maxValue
-                    + " formOccsFreq.length=" + formFreq.length);
+        if (freq4form != null && maxValue != freq4form.length) {
+            throw new IllegalArgumentException("Corrupted FormEnum maxForm=" + maxValue
+                    + " formOccsFreq.length=" + freq4form.length);
         }
         if (order == null) {
             reset();
@@ -676,35 +614,35 @@ public class FormEnum implements FormIterator
         }
         switch (order) {
         case OCCS:
-            if (formOccs == null) {
+            if (occs4form == null) {
                 throw new IllegalArgumentException(
                     "Impossible to sort by occs (occurrences total), formOccs has not been set by producer."
                 );
             }
             break;
         case DOCS:
-            if (formDocs == null) {
+            if (docs4form == null) {
                 throw new IllegalArgumentException(
                     "Impossible to sort docs (documents total), formDocs has not been set by producer."
                 );
             }
             break;
         case FREQ:
-            if (formFreq == null) {
+            if (freq4form == null) {
                 throw new IllegalArgumentException(
                     "Impossible to sort by freq (occurrences found), seems not results of a search, formFreq has not been set by producer."
                 );
             }
             break;
         case HITS:
-            if (formHits == null) {
+            if (hits4form == null) {
                 throw new IllegalArgumentException(
                     "Impossible to sort by hits (documents found), seems not results of a search, formHits has not been set by producer."
                 );
             }
             break;
         case SCORE:
-            if (formScore == null) {
+            if (score4form == null) {
                 throw new IllegalArgumentException(
                     "Impossible to sort by score, seems not results of a search with a scorer, formScore has not been set by producer."
                 );
@@ -729,13 +667,13 @@ public class FormEnum implements FormIterator
         else
             top = new TopArray(limit, flags);
         // boolean noZeroScore = false;
-        if (formScore != null && order != Order.SCORE) {
+        if (score4form != null && order != Order.SCORE) {
             // noZeroScore = true;
         }
         // be careful, do not use formOccsAll as a size, the growing array may be bigger
         // than dictionary
         if (order.equals(Order.ALPHA)) {
-            int[] sorter = sortAlpha(formDic);
+            int[] sorter = sortAlpha(dic);
             this.sorter(sorter);
             reset();
             return;
@@ -752,27 +690,27 @@ public class FormEnum implements FormIterator
             // do not output null score ?
             switch (order) {
             case OCCS:
-                top.push(formId, formOccs[formId]);
+                top.push(formId, occs4form[formId]);
                 break;
             case DOCS:
-                top.push(formId, formDocs[formId]);
+                top.push(formId, docs4form[formId]);
                 break;
             case FREQ:
-                top.push(formId, formFreq[formId]);
+                top.push(formId, freq4form[formId]);
                 break;
             case HITS:
-                top.push(formId, formHits[formId]);
+                top.push(formId, hits4form[formId]);
                 break;
             case SCORE: // in case of negative scores ?
-                if (formFreq[formId] == 0) {
+                if (freq4form[formId] == 0) {
                     top.push(formId, Double.NEGATIVE_INFINITY);
-                    formScore[formId] = Double.NEGATIVE_INFINITY;
+                    score4form[formId] = Double.NEGATIVE_INFINITY;
                     break;
                 }
-                top.push(formId, formScore[formId]);
+                top.push(formId, score4form[formId]);
                 break;
             default:
-                top.push(formId, formOccs[formId]);
+                top.push(formId, occs4form[formId]);
                 break;
             }
             // to test, do not work yet
@@ -784,21 +722,31 @@ public class FormEnum implements FormIterator
     }
 
     /**
-     * Returns an array of formId in alphabetic order for all search of dictionary.
+     * Returns an array of formId in alphabetic order for the tearm of the dictionary.
      *
-     * @param hashDic
-     * @return
+     * @param dic a dictionary of bytes.
+     * @return vector of valueId in syntaxic alphabetic order.
      */
-    static public int[] sortAlpha(BytesRefHash hashDic)
+    static public int[] sortAlpha(BytesRefHash dic)
     {
         Collator collator = Collator.getInstance(Locale.FRANCE);
         collator.setStrength(Collator.TERTIARY);
         collator.setDecomposition(Collator.CANONICAL_DECOMPOSITION);
-        int size = hashDic.size();
+        int size = dic.size();
         BytesRef bytes = new BytesRef();
+        class Entry
+        {
+            final CollationKey key;
+            final int formId;
+
+            Entry(final int formId, final CollationKey key) {
+                this.key = key;
+                this.formId = formId;
+            }
+        }
         Entry[] sorter = new Entry[size];
         for (int formId = 0; formId < size; formId++) {
-            hashDic.get(formId, bytes);
+            dic.get(formId, bytes);
             sorter[formId] = new Entry(formId, collator.getCollationKey(bytes.utf8ToString()));
         }
         Arrays.sort(sorter, new Comparator<Entry>() {
@@ -826,111 +774,52 @@ public class FormEnum implements FormIterator
     /**
      * Set the sorted vector of ids
      */
-    public void sorter(final int[] sorter)
+    private void sorter(final int[] sorter)
     {
         this.sorter = sorter;
         this.limit = sorter.length;
         reset();
     }
 
-    /**
-     * An int tag for term if it’s coming from a text field.
-     * 
-     * @return
-     */
-    public int tag()
-    {
-        return formTag[formId];
-    }
-
-    static private class Entry
-    {
-        final CollationKey key;
-        final int formId;
-
-        Entry(final int formId, final CollationKey key) {
-            this.key = key;
-            this.formId = formId;
-        }
-    }
-
-    /**
-     * For the current term, get a number set by {@link #setNos(int[])}.
-     * 
-     * @return
-     */
-    /*
-     * Very specific to some fields type public int n() { return nos[formId]; }
-     */
-
     @Override
     public String toString()
     {
-        int limit = Math.min(formDic.size(), 100);
+        final BytesRef bytes = new BytesRef();
+        int limit = Math.min(dic.size(), 100);
         StringBuilder sb = new StringBuilder();
-        sb.append("size=" + formDic.size() + "\n");
+        sb.append("size=" + dic.size() + "\n");
         if (sorter == null) {
             sb.append("No sorter, limit=" + limit + "\n");
             sorter = new int[limit];
             for (int i = 0; i < limit; i++)
                 sorter[i] = i;
         }
-        boolean hasScore = (formScore != null);
-        boolean hasTag = (formTag != null);
-        boolean hasHits = (formHits != null);
-        boolean hasDocs = (formDocs != null);
-        boolean hasOccs = (formOccs != null);
-        boolean hasFreq = (formFreq != null);
+        boolean hasScore = (score4form != null);
+        boolean hasHits = (hits4form != null);
+        boolean hasDocs = (docs4form != null);
+        boolean hasOccs = (occs4form != null);
+        boolean hasFreq = (freq4form != null);
         for (int pos = 0; pos < limit; pos++) {
             int formId = sorter[pos];
-            formDic.get(formId, bytes);
+            dic.get(formId, bytes);
             sb.append((pos + 1) + ". [" + formId + "] " + bytes.utf8ToString());
-            if (hasTag)
-                sb.append(" " + Tag.name(formTag[formId]));
             if (hasScore)
-                sb.append(" score=" + formScore[formId]);
+                sb.append(" score=" + score4form[formId]);
 
             if (hasOccs && hasFreq) {
-                sb.append(" freq=" + formFreq[formId] + "/" + formOccs[formId]);
+                sb.append(" freq=" + freq4form[formId] + "/" + occs4form[formId]);
             } else if (hasOccs) {
-                sb.append(" freq=" + formOccs[formId]);
+                sb.append(" freq=" + occs4form[formId]);
             }
             if (hasHits && hasDocs)
-                sb.append(" hits=" + formHits[formId] + "/" + formDocs[formId]);
+                sb.append(" hits=" + hits4form[formId] + "/" + docs4form[formId]);
             else if (hasDocs)
-                sb.append(" docs=" + formDocs[formId]);
+                sb.append(" docs=" + docs4form[formId]);
             else if (hasHits)
-                sb.append(" hits=" + formHits[formId]);
+                sb.append(" hits=" + hits4form[formId]);
             sb.append("\n");
         }
         return sb.toString();
-    }
-
-    static public class Bigram
-    {
-        public final int a;
-        public final int b;
-        public int count = 0;
-        public double score;
-        final public String label;
-
-        Bigram(final int a, final int b) {
-            this.a = a;
-            this.b = b;
-            this.label = null;
-        }
-
-        Bigram(final int a, final int b, final String label) {
-            this.a = a;
-            this.b = b;
-            this.label = label;
-        }
-
-        public int inc()
-        {
-            return ++count;
-        }
-
     }
 
 }

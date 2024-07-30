@@ -149,10 +149,10 @@ public class WordSuggest
                 if (fieldText.isStop(formId)) continue;
             }
             else if (locs) {
-                if (!fieldText.formLoc.get(formId)) continue;
+                if (!fieldText.isLocution(formId)) continue;
             }
             else if (hasTags) {
-                if (!wordFilter.accept(fieldText.formTag[formId])) continue;
+                if (!wordFilter.accept(fieldText.tag(formId))) continue;
             }
             
             // formId selected

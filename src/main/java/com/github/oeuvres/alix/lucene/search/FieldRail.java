@@ -42,7 +42,6 @@ import java.nio.channels.FileLock;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -56,7 +55,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -144,12 +142,12 @@ public class FieldRail
      * Returns the count of occurences found. This method may need a lot of optional
      * params, set on the FormEnum object.
      * 
-     * @param pivotsBytes
+     * @param pivotsBytes an ordered set of lucene terms.
      * @param left width of context before a pivot.
      * @param right width of context after a pivot.
      * @param docFilter optional, set of lucene internal docId to restrict collect.
      * @return forms with stats.
-     * @throws IOException
+     * @throws IOException lucene errors.
      */
     public FormEnum coocs(
         final BytesRef[] pivotsBytes, 
@@ -539,7 +537,6 @@ public class FieldRail
         final boolean hasPartition = (docFilter != null);
 
         EdgeMap expressions = new EdgeMap(true);
-        int[] formPun = ftext.formPun;
         int maxDoc = this.maxDoc;
         int[] posInt = this.posInt;
         int[] limInt = this.limInt;
@@ -560,7 +557,7 @@ public class FieldRail
             for (int i = 0, max = limInt[docId]; i < max; i++) {
                 final int formId = bufInt.get();
                 // pun or hole, reset expression
-                if (formId == 0 || Arrays.binarySearch(formPun, formId) >= 0) {
+                if (formId == 0 || ftext.isPunctuation(formId)) {
                     slider.clear();
                     continue;
                 }
@@ -710,7 +707,7 @@ public class FieldRail
     
     /**
      * For an ordered set of forms as bytes, obtained from 
-     * {@link AbstractFieldString#bytesSorted(BytesRefHash, int[])}
+     * {@link AbstractFieldChars#bytesSorted(BytesRefHash, int[])}
      * or {@link AbstractFieldString#bytesSorted(BytesRefHash, int[]),
      * get an ordered list of positions by docId.
      *
@@ -745,10 +742,10 @@ public class FieldRail
                 final boolean hasLive = (liveDocs != null);
                 int docLeaf; // advance cursor to the first doc
                 while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    if (live != null && !live.get(docLeaf)) continue; // deleted doc
+                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
                     final int docId = docBase + docLeaf;
                     // is document in the document filter ?
-                    if (hasFilter && !docFilter.get(docId))continue; 
+                    if (hasFilter && !docFilter.get(docId))continue;
                     final int freq = postings.freq();
                     if (freq == 0) {
                         // bug ?
@@ -851,27 +848,27 @@ public class FieldRail
             throw new IllegalArgumentException(
                     "Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
         }
-        if (forms.formFreq == null || forms.formFreq.length < maxForm) {
+        if (forms.freq4form == null || forms.freq4form.length < maxForm) {
             throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
         }
-        final long N = ftext.occs; // global
+        final long N = ftext.occsAll; // global
         // Count of pivot occurrences for MI scorer
         long add = 0;
         for (int formId : pivotIds) {
-            add += ftext.formOccs(formId);
+            add += ftext.occs(formId);
         }
         final long Ob = add;
         int maxForm = ftext.maxValue;
         // reuse score for multiple calculations
-        if (forms.formScore == null || forms.formScore.length != maxForm) {
-            forms.formScore = new double[maxForm]; // by term, occurrences counts
+        if (forms.score4form == null || forms.score4form.length != maxForm) {
+            forms.score4form = new double[maxForm]; // by term, occurrences counts
         } else {
-            Arrays.fill(forms.formScore, 0);
+            Arrays.fill(forms.score4form, 0);
         }
         //
-        for (int valueId = 0; valueId < maxForm; valueId++) {
+        for (int formId = 0; formId < maxForm; formId++) {
             // No tag filter here, should be done upper
-            long Oab = forms.formFreq[valueId];
+            long Oab = forms.freq4form[formId];
             if (Oab == 0) {
                 continue;
             }
@@ -881,7 +878,7 @@ public class FieldRail
             if (Oab > Ob) {
                 Oab = Ob;
             }
-            forms.formScore[valueId] = mi.score(Oab, ftext.formOccs[valueId], Ob, N);
+            forms.score4form[formId] = mi.score(Oab, ftext.occs(formId), Ob, N);
         }
         // results is populated of scores, do not sort here, let consumer choose
     }

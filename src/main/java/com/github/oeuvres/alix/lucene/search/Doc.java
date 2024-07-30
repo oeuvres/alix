@@ -192,8 +192,8 @@ public class Doc
         StringBuilder sb = new StringBuilder();
 
         FieldText ftext = alix.fieldText(field);
-        int len1 = ftext.occs(docId);
-        int len2 = ftext.occs(docId2);
+        int len1 = ftext.docOccs(docId);
+        int len2 = ftext.docOccs(docId2);
 
         Terms vek1 = getTermVector(field);
         Terms vek2 = alix.reader().termVectors().get(docId2, field);
@@ -344,10 +344,10 @@ public class Doc
         FieldText fieldText = alix.fieldText(field);
         FormEnum forms = fieldText.forms();
         if (hasScorer) {
-            forms.formScore = new double[fieldText.maxValue];
+            forms.score4form = new double[fieldText.maxValue];
         }
-        forms.formFreq = new long[fieldText.maxValue]; // freqs by form
-        int docLen = fieldText.docOccs[docId];
+        forms.freq4form = new long[fieldText.maxValue]; // freqs by form
+        int docOccs = fieldText.docOccs(docId);
 
         // loop on all forms of the document, get score, keep the top
         // final long restLen = fieldText.occsAll - occsDoc;
@@ -361,8 +361,8 @@ public class Doc
             if (bytes.length < 1) {
                 continue;
             }
-            final int formId = fieldText.valueId(bytes);
-            if (hasTags && !wordFilter.accept(fieldText.formTag[formId])) {
+            final int formId = fieldText.formId(bytes);
+            if (hasTags && !wordFilter.accept(fieldText.tag(formId))) {
                 continue;
             }
             if (noStop && fieldText.isStop(formId)) {
@@ -372,15 +372,15 @@ public class Doc
                 continue; // should not arrive, let cry
             }
             if (hasScorer) {
-                distrib.expectation(fieldText.formOccs[formId], fieldText.occs);
-                distrib.idf(fieldText.formDocs[formId], fieldText.docs, fieldText.occs);
+                distrib.expectation(fieldText.occs(formId), fieldText.occsAll);
+                distrib.idf(fieldText.docsByform[formId], fieldText.docsAll, fieldText.occsAll);
             }
             // scorer.weight(termOccs, termDocs); // collection level stats
             long freq = termit.totalTermFreq();
-            forms.formFreq[formId] = freq;
-            forms.freq += freq;
+            forms.freq4form[formId] = freq;
+            forms.freqAll += freq;
             if (hasScorer) {
-                forms.formScore[formId] += distrib.score(freq, docLen);
+                forms.score4form[formId] += distrib.score(freq, docOccs);
                 // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub
                 // complement ?
             }
@@ -514,8 +514,8 @@ public class Doc
         Terms vek2 = alix.reader().termVectors().get(docId2, field);
         Top<String> top = new Top<String>(100);
         FieldText ftext = alix.fieldText(field);
-        int len1 = ftext.occs(docId);
-        int len2 = ftext.occs(docId2);
+        int len1 = ftext.docOccs(docId);
+        int len2 = ftext.docOccs(docId2);
         Terms vek1 = getTermVector(field);
         // double max1 = Double.MIN_VALUE;
         // double max2 = Double.MIN_VALUE;
@@ -611,12 +611,12 @@ public class Doc
      * Return the count of tokens of this doc for field.
      * 
      * @param field name of a stored field.
-     * @return {@link FieldText#occs(int)}.
+     * @return {@link FieldText#docOccs(int)}.
      * @throws IOException Lucene errors.
      */
     public int length(String field) throws IOException
     {
-        return alix.fieldText(field).occs(docId);
+        return alix.fieldText(field).docOccs(docId);
     }
 
     /**

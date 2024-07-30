@@ -10,8 +10,7 @@ import com.github.oeuvres.alix.web.OptionDistrib;
 public interface FormIterator
 {
     /**
-     * Possible sort order. An implementation will have a default sort order
-     * 
+     * Possible sort order. An implementation will have a default sort order.
      */
     public enum Order {
         /** Sort by lexical order with a {@link Collator}. */
@@ -31,9 +30,9 @@ public interface FormIterator
     }
 
     /**
-     * Current formId
+     * Current formId.
      * 
-     * @return An int form identifier
+     * @return An int form identifier.
      */
     public int formId();
 
