@@ -188,9 +188,9 @@ public class FormEnum implements FormIterator
     }
 
     /**
-     * Global count of docs for field
+     * Global count of docs concerned by this field.
      * 
-     * @return
+     * @return docs.
      */
     public int docsAll()
     {
@@ -221,9 +221,9 @@ public class FormEnum implements FormIterator
     }
 
     /**
-     * For requested form, document count in a part
+     * For requested form, amount of documents for a part.
      * 
-     * @return
+     * @return 
      */
     public long docsPart(final int formId)
     {
