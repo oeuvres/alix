@@ -66,19 +66,15 @@ public class FilterCloud extends TokenFilter
     private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
     /** A lemma when possible */
     private final LemAtt lemAtt = addAttribute(LemAtt.class);
-    /** output pun or not ? */
-    boolean pun;
     /** keep right position order */
     private int skippedPositions;
 
-    public FilterCloud(TokenStream in) {
-        super(in);
-        this.pun = false;
-    }
-
-    public FilterCloud(TokenStream in, boolean pun) {
-        super(in);
-        this.pun = pun;
+    /**
+     * Default constructor.
+     * @param input previous filter.
+     */
+    public FilterCloud(TokenStream input) {
+        super(input);
     }
 
     @Override

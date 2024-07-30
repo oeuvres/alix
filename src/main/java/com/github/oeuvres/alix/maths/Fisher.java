@@ -23,7 +23,6 @@ public class Fisher
      *         test. [1] = left-tail Fisher's exact test. [2] = right-tail Fisher's
      *         exact test.
      */
-
     public static double[] test(int n11, int n12, int n21, int n22)
     {
         double result[] = new double[3];
@@ -103,7 +102,6 @@ public class Fisher
      *         log((n-m)!)
      *         </p>
      */
-
     protected static double logCombination(int n, int k)
     {
         return Factorial.logFactorial(n) - Factorial.logFactorial(k) - Factorial.logFactorial(n - k);
@@ -112,15 +110,14 @@ public class Fisher
     /**
      * Compute hypergeometric probability.
      *
-     * @param x
-     * @param n1d
-     * @param n2d
-     * @param nd1
-     * @param nd2
+     * @param x ?
+     * @param n1d ?
+     * @param n2d ?
+     * @param nd1 ?
+     * @param nd2 ?
      *
      * @return The hypergeometric probability.
      */
-
     protected static double hypergeometricProbability(int x, int n1d, int n2d, int nd1, int nd2)
     {
         int n3 = nd1 - x;

@@ -28,7 +28,7 @@ public class AbstractFieldStringTest
             dic.add(bytes);
         }
         String[] search = new String[] {"C", null, null, "a", "A", "B", "à", "À", "ç", "c"};
-        BytesRef[] forms = AbstractFieldString.norm(dic, search);
+        BytesRef[] forms = AbstractFieldString.bytesSorted(dic, search);
         for (BytesRef bytes: forms) {
             System.out.println(bytes.utf8ToString());
         }

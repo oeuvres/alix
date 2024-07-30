@@ -43,22 +43,22 @@ import com.github.oeuvres.alix.maths.Calcul;
  * texts (sequence of ints) inside a limited span. The data structure is
  * optimized to reduce creation of objects with rolling arrays.
  */
-public class EdgeRoll
+public class EdgeRoller
 {
     /** For now, not parametrable */
     private final boolean directed = false;
     /** An efficent ordered index->wordId */
-    private final int[] words;
+    private final int[] nodeLookup;
     /** Word counts, to calculate scores */
-    private final long[] counts;
+    private final long[] freq;
     /** A set to check unicity */
     private final boolean[] uniqs;
+    /** Recorded edges */
+    protected EdgeMatrix matrix;
     /** Global encoutered occurrences */
     private long N;
     /** Distance between position to keep */
     private final int distance;
-    /** Recorded edges */
-    protected EdgeSquare matrix;
     /** Max length of the rollers */
     private int capacity = 2;
     /** Count of active elements in the rollers */
@@ -70,7 +70,7 @@ public class EdgeRoll
     /** Roller of positions */
     private int[] positions = new int[capacity];
     /** Roller of ids */
-    private int[] nodes = new int[capacity];
+    private int[] values = new int[capacity];
     /** Cursor for an iterator, out of scope by default */
     private int cursor = -1;
 
@@ -80,13 +80,13 @@ public class EdgeRoll
      * @param words set of word id.
      * @param distance a distance.
      */
-    public EdgeRoll(int[] words, final int distance) {
+    public EdgeRoller(int[] words, final int distance) {
         words = IntList.uniq(words);
-        this.words = words;
-        this.counts = new long[words.length];
+        this.nodeLookup = words;
+        this.freq = new long[words.length];
         this.uniqs = new boolean[words.length];
         this.distance = distance;
-        this.matrix = new EdgeSquare(words, directed);
+        this.matrix = new EdgeMatrix(words, directed);
     }
 
     /**
@@ -103,30 +103,31 @@ public class EdgeRoll
      * 
      * @return sortable array of edges.
      */
-    public EdgeSquare edges()
+    public EdgeMatrix edges()
     {
         // update matrix with counts for stats
-        return matrix.N(N).counts(counts);
+        return matrix.N(N).nodeCounts(freq);
     }
 
     /**
-     * Push a value, maybe outside waited vocabulary, calculate edges.
+     * Push a nodeValue at a position. If nodeValue is not waited
+     * in the set {@link #nodeLookup}, nothing done.
      * 
      * @param position index of encountered word.
-     * @param pivotId id of word encoutered.
+     * @param nodeValue id of word encoutered.
      */
-    public void push(final int position, final int pivotId)
+    public void push(final int position, final int nodeValue)
     {
         // do not count null words
-        if (pivotId < 1)
+        if (nodeValue < 1)
             return;
         // check if value is waited
-        final int pivotIndex = Arrays.binarySearch(words, pivotId);
-        if (pivotIndex < 0) {
+        final int nodeIndex = Arrays.binarySearch(nodeLookup, nodeValue);
+        if (nodeIndex < 0) {
             return;
         }
         // increment word counts
-        counts[pivotIndex]++;
+        freq[nodeIndex]++;
 
         // Bug [le chat et le enfant]
         // (le, enfant) = 1, not 2
@@ -145,7 +146,7 @@ public class EdgeRoll
             }
             final int coocIndex = node();
             // pivot word coming one more time, previous encounterings already counted
-            if (coocIndex == pivotIndex) {
+            if (coocIndex == nodeIndex) {
                 Arrays.fill(uniqs, false);
                 continue;
             }
@@ -162,14 +163,14 @@ public class EdgeRoll
         for (int coocIndex = 0, max = uniqs.length; coocIndex < max; coocIndex++) {
             if (!uniqs[coocIndex])
                 continue;
-            matrix.inc(pivotIndex, coocIndex);
+            matrix.incByIndex(nodeIndex, coocIndex);
         }
         /*
          * may record some bad edges in some combinations ex (1, 2, 1, 2, 1) width=1:
          * (2,1), (1,2), (2,1)
          */
         // record node in the roller
-        addLast(position, pivotIndex);
+        addLast(position, nodeIndex);
     }
 
     /**
@@ -183,7 +184,7 @@ public class EdgeRoll
         size++;
         // end should be at the right position after last addLast()
         positions[end] = position;
-        nodes[end] = node;
+        values[end] = node;
         end++; // end is needed for grow to loop
         // ++][+++
         // [+++++]
@@ -219,7 +220,7 @@ public class EdgeRoll
         }
         this.capacity = newCap;
         this.positions = newPos;
-        this.nodes = newNods;
+        this.values = newNods;
         this.start = 0;
         this.end = i;
         reset();
@@ -314,7 +315,7 @@ public class EdgeRoll
      */
     private int node()
     {
-        return nodes[cursor];
+        return values[cursor];
     }
 
     /**
@@ -333,7 +334,7 @@ public class EdgeRoll
     private void removeFirst()
     {
         if (size <= 0) {
-            throw new IndexOutOfBoundsException("Empty list, no element available");
+            throw new IndexOutOfBoundsException("Empty list, no element available for remove.");
         }
         // this is sure in all cases
         size--;

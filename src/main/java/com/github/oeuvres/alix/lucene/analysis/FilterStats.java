@@ -64,8 +64,12 @@ public class FilterStats extends TokenFilter
     /** Record offsets by position */
     private Offsets offsets = new Offsets(1024);
 
-    public FilterStats(TokenStream in) {
-        super(in);
+    /**
+     * Default constructor.
+     * @param input previous filter.
+     */
+    public FilterStats(TokenStream input) {
+        super(input);
     }
 
     @Override
@@ -80,9 +84,9 @@ public class FilterStats extends TokenFilter
     }
 
     /**
-     * Returns the cuurent position (or length when stream is consumed).
+     * Returns the current position (or length when stream is consumed).
      * 
-     * @return
+     * @return position.
      */
     public int pos()
     {
@@ -92,7 +96,7 @@ public class FilterStats extends TokenFilter
     /**
      * Return the offsets index for a document, ready to be indexed.
      * 
-     * @return
+     * @return offsets.
      */
     public Offsets offsets()
     {
@@ -102,7 +106,7 @@ public class FilterStats extends TokenFilter
     /**
      * Return the tags in position order.
      * 
-     * @return
+     * @return tag.
      */
     public BinaryUbytes tags()
     {

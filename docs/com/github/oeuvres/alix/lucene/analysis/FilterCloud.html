@@ -125,11 +125,10 @@ loadScripts(document, 'script');</script>
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(org.apache.lucene.analysis.TokenStream)" class="member-name-link">FilterCloud</a><wbr>(org.apache.lucene.analysis.TokenStream&nbsp;in)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
-<div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(org.apache.lucene.analysis.TokenStream,boolean)" class="member-name-link">FilterCloud</a><wbr>(org.apache.lucene.analysis.TokenStream&nbsp;in,
- boolean&nbsp;pun)</code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(org.apache.lucene.analysis.TokenStream)" class="member-name-link">FilterCloud</a><wbr>(org.apache.lucene.analysis.TokenStream&nbsp;input)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Default constructor.</div>
+</div>
 </div>
 </section>
 </li>
@@ -147,7 +146,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#accept()" class="member-name-link">accept</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Most of the tokens are not rejected but rewrited</div>
+<div class="block">Most of the tokens are not rejected but rewrited, except punctuation.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#end()" class="member-name-link">end</a>()</code></div>
@@ -184,14 +183,12 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="&lt;init&gt;(org.apache.lucene.analysis.TokenStream)">
 <h3>FilterCloud</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FilterCloud</span><wbr><span class="parameters">(org.apache.lucene.analysis.TokenStream&nbsp;in)</span></div>
-</section>
-</li>
-<li>
-<section class="detail" id="&lt;init&gt;(org.apache.lucene.analysis.TokenStream,boolean)">
-<h3>FilterCloud</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FilterCloud</span><wbr><span class="parameters">(org.apache.lucene.analysis.TokenStream&nbsp;in,
- boolean&nbsp;pun)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FilterCloud</span><wbr><span class="parameters">(org.apache.lucene.analysis.TokenStream&nbsp;input)</span></div>
+<div class="block">Default constructor.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>input</code> - previous filter.</dd>
+</dl>
 </section>
 </li>
 </ul>
@@ -218,13 +215,11 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="accept()">
 <h3>accept</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">accept</span>()
-                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Most of the tokens are not rejected but rewrited</div>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">accept</span>()</div>
+<div class="block">Most of the tokens are not rejected but rewrited, except punctuation.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
+<dd>true if accepted</dd>
 </dl>
 </section>
 </li>

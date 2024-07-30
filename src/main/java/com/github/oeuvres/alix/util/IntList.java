@@ -347,14 +347,16 @@ public class IntList
         }
         final int len = duplicates.length;
         if (len < 2) return duplicates;
-        Arrays.sort(duplicates);
-        int previous = duplicates[0];
+        // work on a copy, to not sort source
+        int[] work = Arrays.copyOf(duplicates, len);
+        Arrays.sort(work);
+        int previous = work[0];
         int destI = 1;
         for (int i = 1; i < len; i++) {
-            if (duplicates[i] == previous) continue;
-            duplicates[destI++] = previous = duplicates[i];
+            if (work[i] == previous) continue;
+            work[destI++] = previous = work[i];
         }
-        return Arrays.copyOf(duplicates, destI);
+        return Arrays.copyOf(work, destI);
     }
     
     

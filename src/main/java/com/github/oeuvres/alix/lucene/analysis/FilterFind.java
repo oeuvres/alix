@@ -69,11 +69,11 @@ public class FilterFind extends TokenFilter
     private int skippedPositions;
 
     /**
-     * 
-     * @param in
+     * Default constructor.
+     * @param input previous filter.
      */
-    public FilterFind(TokenStream in) {
-        super(in);
+    public FilterFind(TokenStream input) {
+        super(input);
     }
 
     @Override

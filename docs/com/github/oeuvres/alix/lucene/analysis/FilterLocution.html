@@ -133,7 +133,9 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(org.apache.lucene.analysis.TokenStream)" class="member-name-link">FilterLocution</a><wbr>(org.apache.lucene.analysis.TokenStream&nbsp;input)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Default constructor.</div>
+</div>
 </div>
 </section>
 </li>
@@ -159,7 +161,9 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString(java.util.LinkedList)" class="member-name-link">toString</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/LinkedList.html" title="class or interface in java.util" class="external-link">LinkedList</a>&lt;org.apache.lucene.util.AttributeSource.State&gt;&nbsp;stack)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Debug tool to see what is in stack of states.</div>
+</div>
 </div>
 </div>
 </div>
@@ -202,6 +206,11 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="&lt;init&gt;(org.apache.lucene.analysis.TokenStream)">
 <h3>FilterLocution</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FilterLocution</span><wbr><span class="parameters">(org.apache.lucene.analysis.TokenStream&nbsp;input)</span></div>
+<div class="block">Default constructor.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>input</code> - previous filter.</dd>
+</dl>
 </section>
 </li>
 </ul>
@@ -216,6 +225,13 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="toString(java.util.LinkedList)">
 <h3>toString</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">toString</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/LinkedList.html" title="class or interface in java.util" class="external-link">LinkedList</a>&lt;org.apache.lucene.util.AttributeSource.State&gt;&nbsp;stack)</span></div>
+<div class="block">Debug tool to see what is in stack of states.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>stack</code> - a list.</dd>
+<dt>Returns:</dt>
+<dd>a view for dev of all <code>AttributeSource.State</code>.</dd>
+</dl>
 </section>
 </li>
 <li>

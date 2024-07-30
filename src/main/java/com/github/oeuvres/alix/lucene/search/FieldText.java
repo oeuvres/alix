@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
@@ -736,8 +737,6 @@ public class FieldText extends AbstractFieldString
     {
         return formTag[formId];
     }
-    
-
 
     /**
      * Get a dictionary of search, without statistics.
@@ -809,7 +808,7 @@ public class FieldText extends AbstractFieldString
      */
     public int[] valueIds(CharSequence[] forms, final BitSet docFilter) throws IOException
     {
-        BytesRef[] formsBytes = AbstractFieldString.norm(dic, forms);
+        BytesRef[] formsBytes = AbstractFieldString.bytesSorted(dic, forms);
         if (formsBytes == null) return null;
         return valueIds(formsBytes, docFilter);
     }

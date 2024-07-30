@@ -41,7 +41,7 @@ import com.github.oeuvres.alix.maths.Calcul;
 
 /**
  * An object to record edges events (a pair of int), recorder as list of long. Fast for writing, no
- * lookup, maybe expensive in memory if a lot of events. Iterator by count.
+ * lookup, maybe expensive in memory if a lots of events. Iterator by count.
  */
 public class EdgeQueue implements Iterable<Edge>
 {

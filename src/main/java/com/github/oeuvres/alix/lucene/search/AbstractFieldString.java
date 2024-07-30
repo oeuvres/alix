@@ -104,7 +104,7 @@ abstract class AbstractFieldString extends AbstractField
      * @param values  collection of form to test against dictionary.
      * @return set of unique values, sorted for efficient search with {@link TermsEnum#seekExact(BytesRef)}.
      */
-    public static BytesRef[] norm(final BytesRefHash dic, CharSequence[] values)
+    public static BytesRef[] bytesSorted(final BytesRefHash dic, CharSequence[] values)
     {
         if (values == null) {
             return null;
@@ -133,6 +133,40 @@ abstract class AbstractFieldString extends AbstractField
         Arrays.sort(refs);
         return refs;
     }
+    
+    /**
+     * Normalize a list of valueIds to search in an {@link IndexReader}.
+     * Filter forms absent from the dictionary.
+     * 
+     * @param dic a dictionary of terms extracted from a field.
+     * @param bytesIds  collection of ids to test against dictionary.
+     * @return set of unique values, sorted for efficient search with {@link TermsEnum#seekExact(BytesRef)}.
+     */
+    public static BytesRef[] bytesSorted(final BytesRefHash dic, int[] bytesIds)
+    {
+        bytesIds = IntList.uniq(bytesIds);
+        if (bytesIds == null) {
+            return null;
+        }
+        final int maxValue = dic.size();
+        final int bytesLen = bytesIds.length;
+        ArrayList<BytesRef> list = new ArrayList<>(bytesLen);
+        for (int i = 0; i < bytesLen; i++) {
+            final int byteId = bytesIds[i];
+            // ?? shall we inform here that there bad values ?
+            if (byteId >= maxValue) {
+                continue;
+            }
+            BytesRef bytes = new BytesRef();
+            dic.get(i, bytes);
+            list.add(bytes);
+        }
+        if (list.isEmpty()) return null;
+        BytesRef[] refs = list.toArray(BYTES0);
+        Arrays.sort(refs);
+        return refs;
+    }
+
 
     /**
      * Global count of occurrences (except empty positions) for all index.

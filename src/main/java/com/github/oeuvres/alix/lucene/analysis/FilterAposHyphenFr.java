@@ -103,7 +103,10 @@ public class FilterAposHyphenFr extends TokenFilter
     }
     
 
-    
+    /**
+     * Default constructor.
+     * @param input previous filter.
+     */
     protected FilterAposHyphenFr(TokenStream input) {
         super(input);
     }
@@ -190,10 +193,6 @@ public class FilterAposHyphenFr extends TokenFilter
         }
     }
     
-    /**
-     * 
-     */
-
     @Override
     public void reset() throws IOException
     {

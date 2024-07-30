@@ -205,6 +205,18 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static org.apache.lucene.util.BytesRef[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#bytesSorted(org.apache.lucene.util.BytesRefHash,int%5B%5D)" class="member-name-link">bytesSorted</a><wbr>(org.apache.lucene.util.BytesRefHash&nbsp;dic,
+ int[]&nbsp;bytesIds)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Normalize a list of valueIds to search in an <code>IndexReader</code>.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static org.apache.lucene.util.BytesRef[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#bytesSorted(org.apache.lucene.util.BytesRefHash,java.lang.CharSequence%5B%5D)" class="member-name-link">bytesSorted</a><wbr>(org.apache.lucene.util.BytesRefHash&nbsp;dic,
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;values)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Normalize a list of forms to search in an <code>IndexReader</code>.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#docs()" class="member-name-link">docs</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
@@ -260,59 +272,53 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Count of different values.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static org.apache.lucene.util.BytesRef[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#norm(org.apache.lucene.util.BytesRefHash,java.lang.CharSequence%5B%5D)" class="member-name-link">norm</a><wbr>(org.apache.lucene.util.BytesRefHash&nbsp;dic,
- <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;values)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
-<div class="block">Normalize a list of forms to search in an <code>IndexReader</code>.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#nos(org.apache.lucene.search.TopDocs)" class="member-name-link">nos</a><wbr>(org.apache.lucene.search.TopDocs&nbsp;topDocs)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#nos(org.apache.lucene.search.TopDocs)" class="member-name-link">nos</a><wbr>(org.apache.lucene.search.TopDocs&nbsp;topDocs)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Use a list of search as a navigator for a list of doc ids.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs()" class="member-name-link">occs</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs()" class="member-name-link">occs</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Global count of occurrences (except empty positions) for all index.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#stats(com.github.oeuvres.alix.lucene.search.FieldText)" class="member-name-link">stats</a><wbr>(<a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#stats(com.github.oeuvres.alix.lucene.search.FieldText)" class="member-name-link">stats</a><wbr>(<a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Calculate, by facet, global count of occurrences of a text field</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueId(int)" class="member-name-link">valueId</a><wbr>(int&nbsp;docId)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueId(int)" class="member-name-link">valueId</a><wbr>(int&nbsp;docId)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get first available facetId for this docId or -1 if nothing found.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueId(java.lang.CharSequence)" class="member-name-link">valueId</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>&nbsp;form)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns valueId &gt;= 0 if exists, or -1 if not, like <code>BytesRefHash.find(BytesRef)</code></div>
-</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueId(org.apache.lucene.util.BytesRef)" class="member-name-link">valueId</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueId(java.lang.CharSequence)" class="member-name-link">valueId</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>&nbsp;form)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns valueId &gt;= 0 if exists, or -1 if not, like <code>BytesRefHash.find(BytesRef)</code></div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueIds(int)" class="member-name-link">valueIds</a><wbr>(int&nbsp;docId)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueId(org.apache.lucene.util.BytesRef)" class="member-name-link">valueId</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get facetIds for a docId.</div>
+<div class="block">Returns valueId &gt;= 0 if exists, or -1 if not, like <code>BytesRefHash.find(BytesRef)</code></div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueIds(java.lang.CharSequence%5B%5D)" class="member-name-link">valueIds</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueIds(int)" class="member-name-link">valueIds</a><wbr>(int&nbsp;docId)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Get facetIds for a docId.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueIds(java.lang.CharSequence%5B%5D)" class="member-name-link">valueIds</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a sorted array of valueId ready for binarySearch, or
  null if no words found.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueIds(org.apache.lucene.util.BytesRef%5B%5D)" class="member-name-link">valueIds</a><wbr>(org.apache.lucene.util.BytesRef[]&nbsp;forms)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueIds(org.apache.lucene.util.BytesRef%5B%5D)" class="member-name-link">valueIds</a><wbr>(org.apache.lucene.util.BytesRef[]&nbsp;forms)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a sorted array of valueId for found words, ready for binarySearch, or
  null if not found.</div>
 </div>
@@ -645,9 +651,9 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="norm(org.apache.lucene.util.BytesRefHash,java.lang.CharSequence[])">
-<h3>norm</h3>
-<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRef[]</span>&nbsp;<span class="element-name">norm</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRefHash&nbsp;dic,
+<section class="detail" id="bytesSorted(org.apache.lucene.util.BytesRefHash,java.lang.CharSequence[])">
+<h3>bytesSorted</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRef[]</span>&nbsp;<span class="element-name">bytesSorted</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRefHash&nbsp;dic,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;values)</span></div>
 <div class="block">Normalize a list of forms to search in an <code>IndexReader</code>.
  Filter null and forms absent from the dictionary.</div>
@@ -655,6 +661,22 @@ loadScripts(document, 'script');</script>
 <dt>Parameters:</dt>
 <dd><code>dic</code> - a dictionary of terms extracted from a field.</dd>
 <dd><code>values</code> - collection of form to test against dictionary.</dd>
+<dt>Returns:</dt>
+<dd>set of unique values, sorted for efficient search with <code>TermsEnum.seekExact(BytesRef)</code>.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="bytesSorted(org.apache.lucene.util.BytesRefHash,int[])">
+<h3>bytesSorted</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRef[]</span>&nbsp;<span class="element-name">bytesSorted</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRefHash&nbsp;dic,
+ int[]&nbsp;bytesIds)</span></div>
+<div class="block">Normalize a list of valueIds to search in an <code>IndexReader</code>.
+ Filter forms absent from the dictionary.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>dic</code> - a dictionary of terms extracted from a field.</dd>
+<dd><code>bytesIds</code> - collection of ids to test against dictionary.</dd>
 <dt>Returns:</dt>
 <dd>set of unique values, sorted for efficient search with <code>TermsEnum.seekExact(BytesRef)</code>.</dd>
 </dl>

@@ -199,18 +199,18 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">An object to record <a href="com/github/oeuvres/alix/util/Edge.html" title="class in com.github.oeuvres.alix.util"><code>Edge</code></a>s events between int id nodes.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/EdgeQueue.html" title="class in com.github.oeuvres.alix.util">EdgeQueue</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
-<div class="block">An object to record edges events (a pair of int), recorder as list of long.</div>
-</div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/EdgeRoll.html" title="class in com.github.oeuvres.alix.util">EdgeRoll</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
-<div class="block">Record co-occurrences between a fixed set of words (as int values) along
- texts (sequence of ints) inside a limited span.</div>
-</div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">A matrix to record edges between predefined node Ids.</div>
+</div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/EdgeQueue.html" title="class in com.github.oeuvres.alix.util">EdgeQueue</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
+<div class="block">An object to record edges events (a pair of int), recorder as list of long.</div>
+</div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/EdgeRoller.html" title="class in com.github.oeuvres.alix.util">EdgeRoller</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="block">Record co-occurrences between a fixed set of words (as int values) along
+ texts (sequence of ints) inside a limited span.</div>
 </div>
 <div class="col-first odd-row-color all-classes-table all-classes-table-tab3"><a href="com/github/oeuvres/alix/web/Error.html" title="enum in com.github.oeuvres.alix.web">Error</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab3">
@@ -252,18 +252,13 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">A token Filter to plug after a Lemmatizer.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FilterFlagOrth.html" title="class in com.github.oeuvres.alix.lucene.analysis">FilterFlagOrth</a></div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FilterFrPersname.html" title="class in com.github.oeuvres.alix.lucene.analysis">FilterFrPersname</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">
-<div class="block">A final token filter before indexation, to plug after a lemmatizer filter,
- keep orthographic normalize form (names with capital, common words with</div>
-</div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FilterFrPersname.html" title="class in com.github.oeuvres.alix.lucene.analysis">FilterFrPersname</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Plug behind a linguistic tagger, will concat unknown names from dictionaries
  like Victor Hugo, V.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FilterLemmatize.html" title="class in com.github.oeuvres.alix.lucene.analysis">FilterLemmatize</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FilterLemmatize.html" title="class in com.github.oeuvres.alix.lucene.analysis">FilterLemmatize</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">A lucene token filter adding other channels to the token stream
  
  an orthographic form (normalized) in a <a href="com/github/oeuvres/alix/lucene/analysis/tokenattributes/OrthAtt.html" title="interface in com.github.oeuvres.alix.lucene.analysis.tokenattributes"><code>OrthAtt</code></a>
@@ -272,13 +267,18 @@ loadScripts(document, 'script');</script>
  semantic of <a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr"><code>Tag</code></a>
  </div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FilterLocution.html" title="class in com.github.oeuvres.alix.lucene.analysis">FilterLocution</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FilterLocution.html" title="class in com.github.oeuvres.alix.lucene.analysis">FilterLocution</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Plug behind TokenLem, take a Trie dictionary, and try to compound locutions.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FilterStats.html" title="class in com.github.oeuvres.alix.lucene.analysis">FilterStats</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FilterStats.html" title="class in com.github.oeuvres.alix.lucene.analysis">FilterStats</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">A token filter counting tokens.</div>
+</div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FilterXML.html" title="class in com.github.oeuvres.alix.lucene.analysis">FilterXML</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="block">A final token filter before indexation, to plug after a lemmatizer filter,
+ providing most significant tokens for word cloud.</div>
 </div>
 <div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/maths/Fisher.html" title="class in com.github.oeuvres.alix.maths">Fisher</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
@@ -291,7 +291,9 @@ loadScripts(document, 'script');</script>
  where.</div>
 </div>
 <div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/search/FormCollector.FormStats.html" title="class in com.github.oeuvres.alix.lucene.search">FormCollector.FormStats</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">&nbsp;</div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
+<div class="block">Some stats about a form.</div>
+</div>
 <div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">This object is build to collect list of forms with useful stats for semantic
@@ -301,12 +303,11 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab2">&nbsp;</div>
 <div class="col-first even-row-color all-classes-table all-classes-table-tab1"><a href="com/github/oeuvres/alix/lucene/search/FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab1">
-<div class="block">A contract to loop on a list of forms, accessing to different properties,
- with maximum memory reuse.</div>
+<div class="block">A contract to loop on a list of forms, accessing to different properties.</div>
 </div>
 <div class="col-first odd-row-color all-classes-table all-classes-table-tab3"><a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab3">
-<div class="block">Possible sort order implemented.</div>
+<div class="block">Possible sort order.</div>
 </div>
 <div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FrDics.html" title="class in com.github.oeuvres.alix.lucene.analysis">FrDics</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">

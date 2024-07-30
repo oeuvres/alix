@@ -46,12 +46,25 @@ import com.github.oeuvres.alix.util.TopArray;
  */
 public class FormCollector implements FormIterator
 {
+    /**
+     * Some stats about a form.
+     */
     public static final class FormStats
     {
+        /** Final form with stats. */
         public final int formId;
+        /** Collected count. */
         public long freq;
+        /** Calculated score. */
         public double score;
 
+        /**
+         * Constructor with initial values.
+         * 
+         * @param formId final, formId.
+         * @param freq mutable, freq.
+         * @param score mutable, score.
+         */
         FormStats(final int formId, final long freq, final double score) {
             this.formId = formId;
             this.freq = freq;
@@ -70,7 +83,7 @@ public class FormCollector implements FormIterator
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
     /** Limit for this iterator */
-    public int limit;
+    private int limit = -1;
     /** Current formId, set by next() */
     private int formId = -1;
     /** Current freq, set by next() */
@@ -90,8 +103,8 @@ public class FormCollector implements FormIterator
     /**
      * Is this id already recorded ?
      * 
-     * @param formId
-     * @return
+     * @param formId a form identifier.
+     * @return true if this formId is known, false otherwise.
      */
     public boolean contains(final int formId)
     {
@@ -113,8 +126,8 @@ public class FormCollector implements FormIterator
     /**
      * Get stats by formId
      * 
-     * @param formId
-     * @return
+     * @param formId a form id.
+     * @return stats about this form.
      */
     public FormStats get(final int formId)
     {
@@ -130,11 +143,17 @@ public class FormCollector implements FormIterator
     @Override
     public int limit()
     {
-        if (limit > 0)
-            return limit;
-        limit = dic.size();
+        if (limit < 0) limit = size();
         return limit;
     }
+
+    @Override
+    public FormCollector limit(final int limit)
+    {
+        this.limit = limit;
+        return this;
+    }
+    
 
     @Override
     public int next() throws NoSuchElementException
@@ -150,6 +169,13 @@ public class FormCollector implements FormIterator
         return formId;
     }
 
+    /**
+     * Put a stats row for form id.
+     * 
+     * @param formId form id.
+     * @param freq count of occurrences.
+     * @param score calculated score.
+     */
     public void put(final int formId, final long freq, final double score)
     {
         sorter = null; // reset sorter for toString() etc…
@@ -181,6 +207,13 @@ public class FormCollector implements FormIterator
     {
         return score;
     }
+    
+    @Override
+    public int size()
+    {
+        return dic.size();
+    }
+
 
     @Override
     public void sort(final Order order)
@@ -196,9 +229,16 @@ public class FormCollector implements FormIterator
         } else {
             limit = aLimit;
         }
-        if (order == Order.INSERTION) {
-            this.sorter = this.insertOrder.toArray(limit);
-            reset();
+        switch (order) {
+            case INSERTION:
+                this.sorter = this.insertOrder.toArray(limit);
+                reset();
+                return;
+            case FREQ:
+            case SCORE:
+                break;
+            default:
+                throw new IllegalArgumentException("Sort by " + order + " is not implemented here.");
         }
         TopArray top = null;
         int flags = 0;
@@ -207,7 +247,7 @@ public class FormCollector implements FormIterator
         for (FormStats entry : dic.values()) {
             switch (order) {
             case FREQ:
-                top.push(entry.formId, entry.score);
+                top.push(entry.formId, entry.freq);
                 break;
             default:
                 top.push(entry.formId, entry.score);

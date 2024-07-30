@@ -159,25 +159,24 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#coocs(com.github.oeuvres.alix.lucene.search.FormEnum,int%5B%5D,int,int,com.github.oeuvres.alix.web.OptionMI)" class="member-name-link">coocs</a><wbr>(<a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>&nbsp;forms,
- int[]&nbsp;pivotIds,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)" class="member-name-link">coocs</a><wbr>(org.apache.lucene.util.BytesRef[]&nbsp;pivotsBytes,
  int&nbsp;left,
  int&nbsp;right,
- <a href="../../web/OptionMI.html" title="enum in com.github.oeuvres.alix.web">OptionMI</a>&nbsp;mi)</code></div>
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Build a cooccurrence freqList in formId order, attached to a FormEnum object.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../util/EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#edges(int%5B%5D,int,int,int%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">edges</a><wbr>(int[]&nbsp;pivotIds,
  int&nbsp;left,
  int&nbsp;right,
- int[]&nbsp;nodeIds,
+ int[]&nbsp;coocIds,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get edges between a predefined set of words.</div>
+<div class="block">Calculate best edges for coocurrents around pivot words.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../util/EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#edges(int%5B%5D,int,org.apache.lucene.util.BitSet)" class="member-name-link">edges</a><wbr>(int[]&nbsp;formIds,
  int&nbsp;distance,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
@@ -315,36 +314,33 @@ loadScripts(document, 'script');</script>
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="coocs(com.github.oeuvres.alix.lucene.search.FormEnum,int[],int,int,com.github.oeuvres.alix.web.OptionMI)">
+<section class="detail" id="coocs(org.apache.lucene.util.BytesRef[],int,int,org.apache.lucene.util.BitSet)">
 <h3>coocs</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">coocs</span><wbr><span class="parameters">(<a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>&nbsp;forms,
- int[]&nbsp;pivotIds,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">coocs</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRef[]&nbsp;pivotsBytes,
  int&nbsp;left,
  int&nbsp;right,
- <a href="../../web/OptionMI.html" title="enum in com.github.oeuvres.alix.web">OptionMI</a>&nbsp;mi)</span>
-           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
+               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Build a cooccurrence freqList in formId order, attached to a FormEnum object.
  Returns the count of occurences found. This method may need a lot of optional
- params, set on the FormEnum object.
- TODO better documentation of options.</div>
+ params, set on the FormEnum object.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>forms</code> - words to score in context of the pivots.</dd>
-<dd><code>pivotIds</code> - form ids of pivots words.</dd>
+<dd><code>pivotsBytes</code> - </dd>
 <dd><code>left</code> - width of context before a pivot.</dd>
 <dd><code>right</code> - width of context after a pivot.</dd>
-<dd><code>mi</code> - mutual information algorithm to calculate score.</dd>
+<dd><code>docFilter</code> - optional, set of lucene internal docId to restrict collect.</dd>
 <dt>Returns:</dt>
-<dd>count of occurrences found.</dd>
+<dd>forms with stats.</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="edges(int[],int,org.apache.lucene.util.BitSet)">
 <h3>edges</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../../util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></span>&nbsp;<span class="element-name">edges</span><wbr><span class="parameters">(int[]&nbsp;formIds,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../../util/EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></span>&nbsp;<span class="element-name">edges</span><wbr><span class="parameters">(int[]&nbsp;formIds,
  int&nbsp;distance,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</span></div>
 <div class="block">With a set of int formIds, run accross full or part of rails, to collect
@@ -362,19 +358,20 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="edges(int[],int,int,int[],org.apache.lucene.util.BitSet)">
 <h3>edges</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../../util/EdgeSquare.html" title="class in com.github.oeuvres.alix.util">EdgeSquare</a></span>&nbsp;<span class="element-name">edges</span><wbr><span class="parameters">(int[]&nbsp;pivotIds,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../../util/EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></span>&nbsp;<span class="element-name">edges</span><wbr><span class="parameters">(int[]&nbsp;pivotIds,
  int&nbsp;left,
  int&nbsp;right,
- int[]&nbsp;nodeIds,
+ int[]&nbsp;coocIds,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Get edges between a predefined set of words.</div>
+<div class="block">Calculate best edges for coocurrents around pivot words.
+ First pass, search for the most common coocurrents</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>pivotIds</code> - set of formId from a <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, word pivots to search around.</dd>
 <dd><code>left</code> - left size of context in tokens.</dd>
 <dd><code>right</code> - right size of context in tokens.</dd>
-<dd><code>nodeIds</code> - set of formId from a <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, words to search in the contexts</dd>
+<dd><code>coocIds</code> - set of formId from a <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, words to search in the contexts</dd>
 <dd><code>docFilter</code> - optional, set of lucene internal docId to restrict collect.</dd>
 <dt>Returns:</dt>
 <dd>a matrix of formId pairs with count for each pair.</dd>

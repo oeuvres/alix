@@ -88,7 +88,7 @@ loadScripts(document, 'script');</script>
 <hr>
 <div class="type-signature"><span class="modifiers">public static enum </span><span class="element-name type-name-label">FormIterator.Order</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Enum.html" title="class or interface in java.lang" class="external-link">Enum</a>&lt;<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&gt;</span></div>
-<div class="block">Possible sort order implemented.</div>
+<div class="block">Possible sort order. An implementation will have a default sort order</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -110,19 +110,33 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Enum Constant</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code><a href="#ALPHA" class="member-name-link">ALPHA</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Sort by lexical order with a <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/text/Collator.html" title="class or interface in java.text" class="external-link"><code>Collator</code></a>.</div>
+</div>
 <div class="col-first odd-row-color"><code><a href="#DOCS" class="member-name-link">DOCS</a></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">Sort by total count of documents containing this form.</div>
+</div>
 <div class="col-first even-row-color"><code><a href="#FREQ" class="member-name-link">FREQ</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Sort by count of occurrences in selected documents (partition, query…) containing this form.</div>
+</div>
 <div class="col-first odd-row-color"><code><a href="#HITS" class="member-name-link">HITS</a></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">Sort by count of selected documents (partition, query…) containing this form.</div>
+</div>
 <div class="col-first even-row-color"><code><a href="#INSERTION" class="member-name-link">INSERTION</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Sort in order of insertion, without the duplicates.</div>
+</div>
 <div class="col-first odd-row-color"><code><a href="#OCCS" class="member-name-link">OCCS</a></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">Sort by total count of all occurrences in all documents containing this form.</div>
+</div>
 <div class="col-first even-row-color"><code><a href="#SCORE" class="member-name-link">SCORE</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Sort by a calulated score according to a distribution algorithm <a href="../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web"><code>OptionDistrib</code></a>.</div>
+</div>
 </div>
 </section>
 </li>
@@ -172,42 +186,49 @@ the order they are declared.</div>
 <section class="detail" id="ALPHA">
 <h3>ALPHA</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></span>&nbsp;<span class="element-name">ALPHA</span></div>
+<div class="block">Sort by lexical order with a <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/text/Collator.html" title="class or interface in java.text" class="external-link"><code>Collator</code></a>.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="DOCS">
 <h3>DOCS</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></span>&nbsp;<span class="element-name">DOCS</span></div>
+<div class="block">Sort by total count of documents containing this form.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="FREQ">
 <h3>FREQ</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></span>&nbsp;<span class="element-name">FREQ</span></div>
+<div class="block">Sort by count of occurrences in selected documents (partition, query…) containing this form.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="HITS">
 <h3>HITS</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></span>&nbsp;<span class="element-name">HITS</span></div>
+<div class="block">Sort by count of selected documents (partition, query…) containing this form.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="INSERTION">
 <h3>INSERTION</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></span>&nbsp;<span class="element-name">INSERTION</span></div>
+<div class="block">Sort in order of insertion, without the duplicates.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="OCCS">
 <h3>OCCS</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></span>&nbsp;<span class="element-name">OCCS</span></div>
+<div class="block">Sort by total count of all occurrences in all documents containing this form.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="SCORE">
 <h3>SCORE</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></span>&nbsp;<span class="element-name">SCORE</span></div>
+<div class="block">Sort by a calulated score according to a distribution algorithm <a href="../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web"><code>OptionDistrib</code></a>.</div>
 </section>
 </li>
 </ul>

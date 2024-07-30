@@ -84,6 +84,10 @@ public class FilterFrPersname extends TokenFilter
     /** Exit value */
     private boolean exit = false;
 
+    /**
+     * Default constructor.
+     * @param input previous filter.
+     */
     public FilterFrPersname(TokenStream input) {
         super(input);
     }

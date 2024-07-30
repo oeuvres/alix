@@ -65,8 +65,12 @@ public class FilterXML extends TokenFilter
     /** A linguistic category as a short number, see {@link Tag} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
 
-    public FilterXML(TokenStream in) {
-        super(in);
+    /**
+     * Default constructor.
+     * @param input previous filter.
+     */
+    public FilterXML(TokenStream input) {
+        super(input);
     }
 
     @Override

@@ -42,7 +42,7 @@ import org.apache.lucene.util.BytesRef;
 
 /**
  * Data structure to write and read the “offsets” of a document. Offsets are
- * start and end index of tokens in the source CharSequence (the text). Data are
+ * start and end index of tokens in the source {@link CharSequence} (the text). Data are
  * encoded in a binary form suited for stored field
  * {@link StoredField#StoredField(String, BytesRef)},
  * {@link Document#getBinaryValue(String)} or binary fields

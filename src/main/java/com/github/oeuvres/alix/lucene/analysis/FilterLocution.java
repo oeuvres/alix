@@ -45,7 +45,6 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 import com.github.oeuvres.alix.util.Roll;
 
@@ -75,10 +74,20 @@ public class FilterLocution extends TokenFilter
             ORTH.add(new CharsAttImpl(w));
     }
 
+    /**
+     * Default constructor.
+     * @param input previous filter.
+     */
     public FilterLocution(TokenStream input) {
         super(input);
     }
 
+    /**
+     * Debug tool to see what is in stack of states.
+     * 
+     * @param stack a list.
+     * @return a view for dev of all {@link State}.
+     */
     public String toString(LinkedList<State> stack)
     {
         String out = "";

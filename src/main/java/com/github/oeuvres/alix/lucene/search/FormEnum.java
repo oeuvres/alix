@@ -128,7 +128,7 @@ public class FormEnum implements FormIterator
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
     /** Limit for this iterator */
-    public int limit;
+    private int limit = -1;
     /** Current formId, set by next */
     private int formId = -1;
     /** Optional, a set of tags to filter form to collect */
@@ -441,14 +441,20 @@ public class FormEnum implements FormIterator
         formId = sorter[cursor];
     }
 
-    /**
-     * Limit enumeration
-     * 
-     * @return
-     */
+    @Override
     public int limit()
     {
+        if (limit < 0) {
+            limit = size();
+        }
         return limit;
+    }
+
+    @Override
+    public FormEnum limit(final int limit)
+    {
+        this.limit = limit;
+        return this;
     }
 
     @Override
@@ -622,11 +628,7 @@ public class FormEnum implements FormIterator
         return formScore[formId];
     }
 
-    /**
-     * Size of the dictionary (count of different termes)
-     * 
-     * @return
-     */
+    @Override
     public int size()
     {
         return formDic.size();
@@ -663,6 +665,7 @@ public class FormEnum implements FormIterator
      */
     public void sort(final Order order, final int limit, final boolean reverse)
     {
+        this.limit = limit;
         if (formFreq != null && maxValue != formFreq.length) {
             throw new IllegalArgumentException("Corrupted FormEnum name=" + name + " maxForm=" + maxValue
                     + " formOccsFreq.length=" + formFreq.length);
@@ -675,37 +678,42 @@ public class FormEnum implements FormIterator
         case OCCS:
             if (formOccs == null) {
                 throw new IllegalArgumentException(
-                        "Impossible to sort by occs (occurrences total), formOccs has not been set by producer.");
+                    "Impossible to sort by occs (occurrences total), formOccs has not been set by producer."
+                );
             }
             break;
         case DOCS:
             if (formDocs == null) {
                 throw new IllegalArgumentException(
-                        "Impossible to sort docs (documents total), formDocs has not been set by producer.");
+                    "Impossible to sort docs (documents total), formDocs has not been set by producer."
+                );
             }
             break;
         case FREQ:
             if (formFreq == null) {
                 throw new IllegalArgumentException(
-                        "Impossible to sort by freq (occurrences found), seems not results of a search, formFreq has not been set by producer.");
+                    "Impossible to sort by freq (occurrences found), seems not results of a search, formFreq has not been set by producer."
+                );
             }
             break;
         case HITS:
             if (formHits == null) {
                 throw new IllegalArgumentException(
-                        "Impossible to sort by hits (documents found), seems not results of a search, formHits has not been set by producer.");
+                    "Impossible to sort by hits (documents found), seems not results of a search, formHits has not been set by producer."
+                );
             }
             break;
         case SCORE:
             if (formScore == null) {
                 throw new IllegalArgumentException(
-                        "Impossible to sort by score, seems not results of a search with a scorer, formScore has not been set by producer.");
+                    "Impossible to sort by score, seems not results of a search with a scorer, formScore has not been set by producer."
+                );
             }
             break;
         case ALPHA:
             break;
         default:
-            break;
+            throw new IllegalArgumentException("Sort by " + order + " is not implemented here.");
         }
 
         // if (maxForm != formOccsFreq.length) throw new

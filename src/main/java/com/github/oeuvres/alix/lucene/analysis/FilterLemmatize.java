@@ -97,7 +97,8 @@ public final class FilterLemmatize extends TokenFilter
     private final CharsAttImpl copy = new CharsAttImpl();
 
     /**
-     * Default constructor
+     * Default constructor.
+     * @param input previous filter.
      */
     public FilterLemmatize(TokenStream input) {
         super(input);

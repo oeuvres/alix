@@ -78,8 +78,7 @@ loadScripts(document, 'script');</script>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">FormIterator</span></div>
-<div class="block">A contract to loop on a list of forms, accessing to different properties,
- with maximum memory reuse.</div>
+<div class="block">A contract to loop on a list of forms, accessing to different properties.</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -95,7 +94,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color"><code>static enum&nbsp;</code></div>
 <div class="col-second even-row-color"><code><a href="FormIterator.Order.html" class="type-name-link" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Possible sort order implemented.</div>
+<div class="block">Possible sort order.</div>
 </div>
 </div>
 </section>
@@ -119,7 +118,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>long</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#freq()" class="member-name-link">freq</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Current “freq” ()</div>
+<div class="block">Get “freq”, amount of occurrences encountered for current form.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#hasNext()" class="member-name-link">hasNext</a>()</code></div>
@@ -129,22 +128,35 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#limit()" class="member-name-link">limit</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Inform about actual limit</div>
+<div class="block">Get the amout of rows for this iterator.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#next()" class="member-name-link">next</a>()</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#limit(int)" class="member-name-link">limit</a><wbr>(int&nbsp;limit)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Set a limit, may be efficient when collecting top rows according to a sort,
+ like SQL LIMIT.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#next()" class="member-name-link">next</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns the next element identifier in enumeration.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#reset()" class="member-name-link">reset</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#reset()" class="member-name-link">reset</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Call reset() before enumerate elements.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>double</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#score()" class="member-name-link">score</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>double</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#score()" class="member-name-link">score</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Current score</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#size()" class="member-name-link">size</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Total count of distinct forms in this cursor, but all may
+ be not available on iteration, if a <a href="#limit(int)"><code>limit(int)</code></a> have been set before
+ sorting.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order)" class="member-name-link">sort</a><wbr>(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order)</code></div>
@@ -160,7 +172,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>int[]</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#sorter()" class="member-name-link">sorter</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Returns a safe copy of the sorted ids</div>
+<div class="block">Returns a safe copy of the sorted form ids.</div>
 </div>
 </div>
 </div>
@@ -191,9 +203,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="freq()">
 <h3>freq</h3>
 <div class="member-signature"><span class="return-type">long</span>&nbsp;<span class="element-name">freq</span>()</div>
-<div class="block">Current “freq” ()</div>
+<div class="block">Get “freq”, amount of occurrences encountered for current form.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>freq of current form.</dd>
 </dl>
 </section>
 </li>
@@ -212,7 +225,27 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="limit()">
 <h3>limit</h3>
 <div class="member-signature"><span class="return-type">int</span>&nbsp;<span class="element-name">limit</span>()</div>
-<div class="block">Inform about actual limit</div>
+<div class="block">Get the amout of rows for this iterator.
+ Set a limit may be efficient when collecting top rows according to a sort).
+ Like SQL</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>amount of forms to iterate on.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="limit(int)">
+<h3>limit</h3>
+<div class="member-signature"><span class="return-type"><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></span>&nbsp;<span class="element-name">limit</span><wbr><span class="parameters">(int&nbsp;limit)</span></div>
+<div class="block">Set a limit, may be efficient when collecting top rows according to a sort,
+ like SQL LIMIT.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>limit</code> - max amount of rows to sort and to iterate on.</dd>
+<dt>Returns:</dt>
+<dd>this.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -248,13 +281,26 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
+<section class="detail" id="size()">
+<h3>size</h3>
+<div class="member-signature"><span class="return-type">int</span>&nbsp;<span class="element-name">size</span>()</div>
+<div class="block">Total count of distinct forms in this cursor, but all may
+ be not available on iteration, if a <a href="#limit(int)"><code>limit(int)</code></a> have been set before
+ sorting.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>total count of forms.</dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order)">
 <h3>sort</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">sort</span><wbr><span class="parameters">(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order)</span></div>
 <div class="block">Sort according to one order implemented. Sort before iterate.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>order</code> - </dd>
+<dd><code>order</code> - on which to sort.</dd>
 </dl>
 </section>
 </li>
@@ -266,8 +312,8 @@ loadScripts(document, 'script');</script>
 <div class="block">Partial sort to get a top of elements.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>order</code> - An order as a possible keyword</dd>
-<dd><code>limit</code> - </dd>
+<dd><code>order</code> - on which to sort.</dd>
+<dd><code>limit</code> - top element according to sort order.</dd>
 </dl>
 </section>
 </li>
@@ -275,10 +321,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="sorter()">
 <h3>sorter</h3>
 <div class="member-signature"><span class="return-type">int[]</span>&nbsp;<span class="element-name">sorter</span>()</div>
-<div class="block">Returns a safe copy of the sorted ids</div>
+<div class="block">Returns a safe copy of the sorted form ids.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>Sorted formId according to last sort()</dd>
+<dd>Sorted formId according to last sort().</dd>
 </dl>
 </section>
 </li>
