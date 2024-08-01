@@ -32,7 +32,6 @@
  */
 package com.github.oeuvres.alix.fr;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -203,7 +202,13 @@ public enum Tag {
     },
     EXCL(0xF2, "Exclamation", "Ho, Ô, haha… (interjections)") {
     },
-    PARTdem(0xFC, "Part. dém.", "-ci, -là (particule démonstrative)") {
+    PARTdem(0xF3, "Part. dém.", "-ci, -là (particule démonstrative)") {
+    },
+    STOP(0xF8, "Mot “vide”", "Selon un dictionnaire de mots vides") {
+    },
+    NOSTOP(0xF8, "Mot “plein”", "Hors dictionnaire de mots vides") {
+    },
+    LOC(0xFB, "Locution", "parce que, sans pour autant…") {
     },
 
     ;
@@ -364,153 +369,5 @@ public enum Tag {
         if (tag == null)
             return null;
         return tag.label;
-    }
-
-    /**
-     * A filter for different pos code, implemented as a boolean vector.
-     */
-    public static class TagFilter
-    {
-        /**
-         * A boolean vector is a bit more efficient than a bitSet, and is not heavy
-         * here.
-         */
-        boolean[] rule = new boolean[256];
-        int cardinality = -1;
-        boolean nostop;
-        boolean locutions;
-        
-        public int cardinality()
-        {
-            if (cardinality >= 0) {
-                return cardinality;
-            }
-            cardinality = 0;
-            for (boolean tag: rule) {
-                cardinality++;
-            }
-            return cardinality;
-        }
-
-        public boolean accept(int flag)
-        {
-            return rule[flag];
-        }
-
-        public TagFilter clear(final Tag tag)
-        {
-            cardinality = -1;
-            return clear(tag.flag);
-        }
-
-        public TagFilter clear(final int flag)
-        {
-            cardinality = -1;
-            rule[flag] = false;
-            return this;
-        }
-
-        public TagFilter clearAll()
-        {
-            cardinality = -1;
-            rule = new boolean[256];
-            nostop = false;
-            return this;
-        }
-
-        public TagFilter clearGroup(final Tag tag)
-        {
-            return clearGroup(tag.flag);
-        }
-
-        public TagFilter clearGroup(int flag)
-        {
-            cardinality = -1;
-            flag = flag & 0xF0;
-            int lim = flag + 16;
-            for (; flag < lim; flag++)
-                rule[flag] = false;
-            return this;
-        }
-
-        public boolean nostop()
-        {
-            return nostop;
-        }
-
-        public TagFilter nostop(boolean value)
-        {
-            nostop = value;
-            return this;
-        }
-
-        public boolean locutions()
-        {
-            return locutions;
-        }
-
-        public TagFilter locutions(boolean value)
-        {
-            locutions = value;
-            return this;
-        }
-
-        public TagFilter set(Tag tag)
-        {
-            return set(tag.flag);
-        }
-
-        public TagFilter set(final int flag)
-        {
-            cardinality = -1;
-            rule[flag] = true;
-            return this;
-        }
-
-        public TagFilter setAll()
-        {
-            cardinality = -1;
-            Arrays.fill(rule, true);
-            nostop = false;
-            return this;
-        }
-
-        public TagFilter setGroup(Tag tag)
-        {
-            return setGroup(tag.flag);
-        }
-
-        public TagFilter setGroup(int flag)
-        {
-            cardinality = -1;
-            flag = flag & 0xF0;
-            int lim = flag + 16;
-            // System.out.println(String.format("0x%02X", tag));
-            for (; flag < lim; flag++)
-                rule[flag] = true;
-            return this;
-        }
-
-        @Override
-        public String toString()
-        {
-            StringBuilder sb = new StringBuilder();
-            for (int tag = 0; tag < 256; tag++) {
-                if ((tag % 16) == 0)
-                    sb.append(Tag.name(tag)).append("\t");
-                if (rule[tag])
-                    sb.append(1);
-                else
-                    sb.append('·');
-                if ((tag % 16) == 15)
-                    sb.append("\n");
-            }
-            if (nostop)
-                sb.append(" NOSTOP");
-            if (locutions)
-                sb.append(" LOCUTIONS");
-            sb.append("\n");
-            return sb.toString();
-        }
     }
 }

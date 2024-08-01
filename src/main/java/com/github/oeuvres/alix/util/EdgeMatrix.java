@@ -35,8 +35,6 @@ package com.github.oeuvres.alix.util;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import com.github.oeuvres.alix.util.MI;
-
 /**
  * A matrix to record edges between predefined node Ids.
  * Ex: nodeValues = {10,3,6}. Record events like (3,6)++, (6,3)++, (-1,6)++.

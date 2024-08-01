@@ -52,7 +52,9 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 import static com.github.oeuvres.alix.Names.*;
-import com.github.oeuvres.alix.fr.Tag.TagFilter;
+
+import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.lucene.Alix;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
@@ -336,7 +338,7 @@ public class Doc
             throws NoSuchFieldException, IOException
     {
         boolean hasTags = (wordFilter != null);
-        boolean noStop = (wordFilter != null && wordFilter.nostop());
+        boolean noStop = (wordFilter != null && wordFilter.accept(Tag.NOSTOP));
         boolean hasScorer = (scorer != null);
 
         // get index term stats

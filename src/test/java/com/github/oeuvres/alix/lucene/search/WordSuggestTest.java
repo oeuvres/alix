@@ -25,7 +25,8 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.junit.Test;
 
-import com.github.oeuvres.alix.fr.Tag.TagFilter;
+import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.lucene.search.WordSuggest;
 import com.github.oeuvres.alix.lucene.search.WordSuggest.Suggestion;
 import com.github.oeuvres.alix.util.Char;
@@ -81,7 +82,7 @@ public class WordSuggestTest
         startTime = System.nanoTime();
         WordSuggest sugg = new WordSuggest(ftext);
         System.out.println("Buid wordSuggest " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
-        TagFilter wordFilter = new TagFilter().nostop(true);
+        TagFilter wordFilter = new TagFilter().set(Tag.NOSTOP);
         for (final String q : new String[] {
             "paï", 
             // "_m",

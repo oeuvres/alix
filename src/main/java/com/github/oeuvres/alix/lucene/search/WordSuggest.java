@@ -48,7 +48,8 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
-import com.github.oeuvres.alix.fr.Tag.TagFilter;
+import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.TopArray;
@@ -129,8 +130,8 @@ public class WordSuggest
     public int[] list(String q, final TagFilter wordFilter) {
         if (q == null || q.isEmpty()) return new int[0];
         boolean hasTags = (wordFilter != null && wordFilter.cardinality() > 0);
-        boolean noStop = (wordFilter != null && wordFilter.nostop());
-        boolean locs = (wordFilter != null && wordFilter.locutions());
+        boolean noStop = (wordFilter != null && wordFilter.accept(Tag.NOSTOP));
+        boolean locs = (wordFilter != null && wordFilter.accept(Tag.LOC));
 
         IntList formIdList = new IntList();
         q = Char.toASCII(q).toLowerCase();

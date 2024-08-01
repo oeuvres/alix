@@ -55,7 +55,7 @@ import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.fr.Tag.TagFilter;
+import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
@@ -321,7 +321,7 @@ public class FieldText extends FieldCharsAbstract
     public BitSet formFilter(TagFilter wordFilter)
     {
         BitSet rule = new SparseFixedBitSet(maxValue);
-        final boolean noStop = wordFilter.nostop();
+        final boolean noStop = wordFilter.accept(Tag.NOSTOP);
         final int stopLim = stopByForm.length();
         for (int formId = 1; formId < maxValue; formId++) {
             if (!noStop); // no tick for stopword
@@ -357,8 +357,8 @@ public class FieldText extends FieldCharsAbstract
     public FormEnum formEnum(final TagFilter formFilter)
     {
         boolean hasTags = (formFilter != null);
-        boolean noStop = (formFilter != null && formFilter.nostop());
-        boolean locs = (formFilter != null && formFilter.locutions());
+        boolean noStop = (formFilter != null && formFilter.accept(Tag.NOSTOP));
+        boolean locs = (formFilter != null && formFilter.accept(Tag.LOC));
         long[] formFreq = new long[maxValue];
         long freqAll = 0;
         for (int formId = 0; formId < maxValue; formId++) {
@@ -411,8 +411,8 @@ public class FieldText extends FieldCharsAbstract
         FormEnum formEnum = formEnum(); // get global stats 
     
         boolean hasTags = (formFilter != null);
-        boolean noStop = (formFilter != null && formFilter.nostop());
-        boolean locs = (formFilter != null && formFilter.locutions());
+        boolean noStop = (formFilter != null && formFilter.accept(Tag.NOSTOP));
+        boolean locs = (formFilter != null && formFilter.accept(Tag.LOC));
         boolean hasDistrib = (scorer != null);
         boolean hasFilter = (docFilter != null && docFilter.cardinality() > 0);
     
@@ -520,7 +520,7 @@ public class FieldText extends FieldCharsAbstract
         }
         boolean hasTags = (wordFilter != null);
         boolean hasScorer = (scorer != null);
-        boolean noStop = (wordFilter != null && wordFilter.nostop());
+        boolean noStop = (wordFilter != null && wordFilter.accept(Tag.NOSTOP));
         FormEnum[] dics = new FormEnum[parts];
         for (int i = 0; i < parts; i++) {
             FormEnum forms = formEnum();

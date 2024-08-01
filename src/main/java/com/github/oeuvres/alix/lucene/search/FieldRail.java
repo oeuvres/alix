@@ -64,7 +64,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
-import com.github.oeuvres.alix.fr.Tag.TagFilter;
+import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.lucene.Alix;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Edge;

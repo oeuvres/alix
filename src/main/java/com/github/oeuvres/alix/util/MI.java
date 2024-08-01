@@ -32,8 +32,6 @@
  */
 package com.github.oeuvres.alix.util;
 
-import com.github.oeuvres.alix.web.Option;
-
 /**
  * Some algorithms to score co-occurrency.
  */
