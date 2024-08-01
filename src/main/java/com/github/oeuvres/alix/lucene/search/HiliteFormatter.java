@@ -136,10 +136,10 @@ public class HiliteFormatter extends PassageFormatter
      * Copy text from html(start-end) to dest, but without tags. cases :
      * {@code broken start tag>  <tag>  <broken end tag}
      * 
-     * @param dest
-     * @param html
-     * @param start
-     * @param end
+     * @param dest    resulting text, possibly transformed or encoded
+     * @param html    original text content
+     * @param start   index of the first character in content
+     * @param end     index of the character following the last character in content
      */
     public static void detag(StringBuilder dest, String html, int start, int end)
     {

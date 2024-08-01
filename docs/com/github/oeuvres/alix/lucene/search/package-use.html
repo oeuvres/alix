@@ -63,10 +63,6 @@ loadScripts(document, 'script');</script>
 <div class="block">Objects to search and calculate lexical statistics from an index (ex: found
  occurrences by facet)</div>
 </div>
-<div class="col-first even-row-color"><a href="#com.github.oeuvres.alix.web">com.github.oeuvres.alix.web</a></div>
-<div class="col-last even-row-color">
-<div class="block">JspTools tools</div>
-</div>
 </div>
 <section class="package-uses">
 <ul class="block-list">
@@ -91,8 +87,7 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first odd-row-color"><a href="class-use/FieldText.html#com.github.oeuvres.alix.lucene">FieldText</a></div>
 <div class="col-last odd-row-color">
-<div class="block">
- An object recording different stats for a lucene text field.</div>
+<div class="block">An object recording stats for an indexed and tokenized lucene field <code>TextField</code>.</div>
 </div>
 <div class="col-first even-row-color"><a href="class-use/Scale.html#com.github.oeuvres.alix.lucene">Scale</a></div>
 <div class="col-last even-row-color">
@@ -112,63 +107,57 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Collect found documents as a set of docids in a bitSet.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/FieldInt.html#com.github.oeuvres.alix.lucene.search">FieldInt</a></div>
+<div class="col-first odd-row-color"><a href="class-use/FieldFacet.html#com.github.oeuvres.alix.lucene.search">FieldFacet</a></div>
 <div class="col-last odd-row-color">
+<div class="block">A dedicated dictionary for stats on facets.</div>
+</div>
+<div class="col-first even-row-color"><a href="class-use/FieldInt.html#com.github.oeuvres.alix.lucene.search">FieldInt</a></div>
+<div class="col-last even-row-color">
 <div class="block">Retrieve all values of an int field, store it in docId order, calculate some
  stats..</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/FieldInt.IntEnum.html#com.github.oeuvres.alix.lucene.search">FieldInt.IntEnum</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/FieldInt.IntEnum.html#com.github.oeuvres.alix.lucene.search">FieldInt.IntEnum</a></div>
+<div class="col-last odd-row-color">
 <div class="block">A kind of <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Iterator.html" title="class or interface in java.util" class="external-link"><code>Iterator</code></a> for primitive types.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/FieldText.html#com.github.oeuvres.alix.lucene.search">FieldText</a></div>
-<div class="col-last odd-row-color">
-<div class="block">
- An object recording different stats for a lucene text field.</div>
-</div>
-<div class="col-first even-row-color"><a href="class-use/FormCollector.html#com.github.oeuvres.alix.lucene.search">FormCollector</a></div>
+<div class="col-first even-row-color"><a href="class-use/FieldText.html#com.github.oeuvres.alix.lucene.search">FieldText</a></div>
 <div class="col-last even-row-color">
+<div class="block">An object recording stats for an indexed and tokenized lucene field <code>TextField</code>.</div>
+</div>
+<div class="col-first odd-row-color"><a href="class-use/FormCollector.html#com.github.oeuvres.alix.lucene.search">FormCollector</a></div>
+<div class="col-last odd-row-color">
 <div class="block">This implementation of the FormIterator contract allow to build custom lists
  of forms with freq (occurrences count) and score (a double) calculated else
  where.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/FormCollector.FormStats.html#com.github.oeuvres.alix.lucene.search">FormCollector.FormStats</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/FormCollector.FormStats.html#com.github.oeuvres.alix.lucene.search">FormCollector.FormStats</a></div>
+<div class="col-last even-row-color">
 <div class="block">Some stats about a form.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/FormEnum.html#com.github.oeuvres.alix.lucene.search">FormEnum</a></div>
-<div class="col-last even-row-color">
-<div class="block">This object is build to collect list of forms with useful stats for semantic
- interpretations and score calculations.</div>
-</div>
-<div class="col-first odd-row-color"><a href="class-use/FormIterator.html#com.github.oeuvres.alix.lucene.search">FormIterator</a></div>
+<div class="col-first odd-row-color"><a href="class-use/FormEnum.html#com.github.oeuvres.alix.lucene.search">FormEnum</a></div>
 <div class="col-last odd-row-color">
+<div class="block">This object is outputed by an Alix field <code>FieldCharsAbstract</code>, to provide
+ list of terms with stats, for example for queries. according to filters or queries; calculated by th</div>
+</div>
+<div class="col-first even-row-color"><a href="class-use/FormIterator.html#com.github.oeuvres.alix.lucene.search">FormIterator</a></div>
+<div class="col-last even-row-color">
 <div class="block">A contract to loop on a list of forms, accessing to different properties.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/FormIterator.Order.html#com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/FormIterator.Order.html#com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Possible sort order.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/Scale.Tick.html#com.github.oeuvres.alix.lucene.search">Scale.Tick</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/Scale.Tick.html#com.github.oeuvres.alix.lucene.search">Scale.Tick</a></div>
+<div class="col-last even-row-color">
 <div class="block">A row of data for a crossing axis</div>
+</div>
+<div class="col-first odd-row-color"><a href="class-use/Scorer.html#com.github.oeuvres.alix.lucene.search">Scorer</a></div>
+<div class="col-last odd-row-color">
+<div class="block">Distribution laws, to be used in sum</div>
 </div>
 <div class="col-first even-row-color"><a href="class-use/WordSuggest.Suggestion.html#com.github.oeuvres.alix.lucene.search">WordSuggest.Suggestion</a></div>
 <div class="col-last even-row-color">
 <div class="block">Content of a suggested word.</div>
-</div>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="com.github.oeuvres.alix.web">
-<div class="caption"><span>Classes in <a href="package-summary.html">com.github.oeuvres.alix.lucene.search</a> used by <a href="../../web/package-summary.html">com.github.oeuvres.alix.web</a></span></div>
-<div class="summary-table two-column-summary">
-<div class="table-header col-first">Class</div>
-<div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><a href="class-use/FormIterator.Order.html#com.github.oeuvres.alix.web">FormIterator.Order</a></div>
-<div class="col-last even-row-color">
-<div class="block">Possible sort order.</div>
 </div>
 </div>
 </section>

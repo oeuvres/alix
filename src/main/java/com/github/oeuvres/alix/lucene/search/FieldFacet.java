@@ -64,7 +64,6 @@ import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.lucene.search.FormIterator.Order;
 import com.github.oeuvres.alix.util.IntList;
-import com.github.oeuvres.alix.web.OptionDistrib;
 
 /**
  * A dedicated dictionary for stats on facets. This class is lighter than the
@@ -103,7 +102,7 @@ import com.github.oeuvres.alix.web.OptionDistrib;
  * facetId index.
  * </p>
  */
-public class FieldFacet extends AbstractFieldChars
+public class FieldFacet extends FieldCharsAbstract
 {
     /** A table docId => facetId+, used to get freqs */
     private int[][] docForms;
@@ -241,7 +240,6 @@ public class FieldFacet extends AbstractFieldChars
             }
         }
         this.docsAll = docsAll;
-        this.occsAll = occsAll;
         maxValue = dic.size();
     }
 
@@ -287,7 +285,7 @@ public class FieldFacet extends AbstractFieldChars
                     }
                     docForms[docId].push(formId);
                     formDocs.inc(formId);
-                    occsAll++;
+                    // occsAll++;
                 }
             }
         }
@@ -308,13 +306,7 @@ public class FieldFacet extends AbstractFieldChars
      */
     public FormEnum forms() throws IOException
     {
-        FormEnum forms = new FormEnum(
-            dic,
-            docsAll,
-            docsByform,
-            occsAll,
-            null // occs4form not relevant, a facet is not repeated by doc
-        );
+        FormEnum forms = new FormEnum(this);
         forms.sort(Order.ALPHA);
         return forms;
     }
@@ -332,7 +324,7 @@ public class FieldFacet extends AbstractFieldChars
         if (docFilter == null) {
             return forms();
         }
-        forms.hits4form = new int[maxValue];
+        forms.hitsByForm = new int[maxValue];
         for (int docId = 0, max = this.docForms.length; docId < max; docId++) {
             // document not in the filter, go next
             if (!docFilter.get(docId))
@@ -345,7 +337,7 @@ public class FieldFacet extends AbstractFieldChars
             if (facets == null)
                 continue;
             for (int facetId : facets) {
-                forms.hits4form[facetId]++;
+                forms.hitsByForm[facetId]++;
             }
         }
         return forms;
@@ -366,10 +358,10 @@ public class FieldFacet extends AbstractFieldChars
         }
         boolean hasFilter = (docFilter != null);
         FormEnum forms = forms();
-        forms.occs4form = new long[maxValue];
+        forms.occsByForm = new long[maxValue];
         if (hasFilter) {
-            forms.freq4form = new long[maxValue];
-            forms.hits4form = new int[maxValue];
+            forms.freqByForm = new long[maxValue];
+            forms.hitsByForm = new int[maxValue];
         }
         // loop on all docs by docId,
         for (int docId = 0, len = reader.maxDoc(); docId < len; docId++) {
@@ -383,10 +375,10 @@ public class FieldFacet extends AbstractFieldChars
             if (formIds == null)
                 continue;
             for (final int formId : formIds) {
-                forms.occs4form[formId] += occs;
+                forms.occsByForm[formId] += occs;
                 if (hasFilter && docFilter.get(docId)) {
-                    forms.freq4form[formId] += occs;
-                    forms.hits4form[formId]++;
+                    forms.freqByForm[formId] += occs;
+                    forms.hitsByForm[formId]++;
                 }
             }
         }
@@ -407,11 +399,11 @@ public class FieldFacet extends AbstractFieldChars
      * @param ftext required stats from a text field.
      * @param search required set of terms present in the text field.
      * @param docFilter optional set of internal lucene docId.
-     * @param distrib optional distribution to calculate a score for each facet.
+     * @param scorer optional distribution to calculate a score for each facet.
      * @return an enumerator of facets with textual stats.
      * @throws IOException Lucene errors.
      */
-    public FormEnum forms(final FieldText ftext, final String[] search, final BitSet docFilter, OptionDistrib distrib)
+    public FormEnum forms(final FieldText ftext, final String[] search, final BitSet docFilter, Scorer scorer)
             throws IOException
     {
         FormEnum forms = forms(ftext, docFilter);
@@ -429,16 +421,16 @@ public class FieldFacet extends AbstractFieldChars
         if (terms.size() < 1) {
             return forms;
         }
-        boolean hasScorer = (distrib != null);
+        boolean hasScorer = (scorer != null);
         boolean hasFilter = (docFilter != null);
 
         // Crawl index to get stats by facet term about the text search
         BitSet docMap = new FixedBitSet(reader.maxDoc()); // keep memory of already counted docs
 
-        forms.hits4form = new int[maxValue];
-        forms.freq4form = new long[maxValue]; // a vector to count matched occurrences by facet
+        forms.hitsByForm = new int[maxValue];
+        forms.freqByForm = new long[maxValue]; // a vector to count matched occurrences by facet
         if (hasScorer) {
-            forms.score4form = new double[maxValue];
+            forms.scoreByform = new double[maxValue];
         }
         // loop on each term of the search to update the score vector
         @SuppressWarnings("unused")
@@ -458,8 +450,8 @@ public class FieldFacet extends AbstractFieldChars
                 continue;
             }
             if (hasScorer) {
-                distrib.expectation(ftext.occs(formId), ftext.occsAll);
-                distrib.idf(ftext.docsByform[formId], ftext.docsAll, ftext.occsAll);
+                scorer.expectation(ftext.occs(formId), ftext.occsAll);
+                scorer.idf(ftext.docsByform[formId], ftext.docsAll, ftext.occsAll);
             }
             // loop on the reader leaves (opening may have disk cost)
             for (LeafReaderContext context : reader.leaves()) {
@@ -488,21 +480,21 @@ public class FieldFacet extends AbstractFieldChars
                     for (int i = 0, length = facets.length; i < length; i++) {
                         int facetId = facets[i];
                         // first match for this facet, increment the counter of matched facets
-                        if (forms.freq4form[facetId] == 0) {
+                        if (forms.freqByForm[facetId] == 0) {
                             facetMatch++;
                         }
                         // if doc not already counted for another, increment hits for this facet
                         if (!docSeen) {
-                            forms.hits4form[facetId]++;
+                            forms.hitsByForm[facetId]++;
                             forms.hitsAll++;
                         }
                         forms.freqAll += freq;
-                        forms.freq4form[facetId] += freq; // add the matched freqs for this doc to the facet
+                        forms.freqByForm[facetId] += freq; // add the matched freqs for this doc to the facet
                         // what for ?
                         // formPartOccs[facetId] += freq;
                         // term frequency
                         if (hasScorer) {
-                            forms.score4form[facetId] += distrib.score(freq, ftext.docOccs(docId));
+                            forms.scoreByform[facetId] += scorer.score(freq, ftext.docOccs(docId));
                         }
                     }
                     if (!docSeen) {

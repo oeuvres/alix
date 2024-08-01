@@ -35,7 +35,7 @@ package com.github.oeuvres.alix.util;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import com.github.oeuvres.alix.web.OptionMI;
+import com.github.oeuvres.alix.util.MI;
 
 /**
  * A matrix to record edges between predefined node Ids.
@@ -60,7 +60,7 @@ public class EdgeMatrix implements Iterable<Edge>
     /** Node counter for score calculation */
     protected long[] counts;
     /** A mutual information algorithm to score relations */
-    OptionMI MI = OptionMI.JACCARD;
+    MI mi = MI.JACCARD;
 
     /**
      * Build matrix with a limited set of accepted values for nodes.
@@ -139,7 +139,7 @@ public class EdgeMatrix implements Iterable<Edge>
      * @param targetIndex target node index in {@link #nodeLookup}.
      * @return new value
      */
-    protected int incByIndex(final int sourceIndex, final int targetIndex)
+    public int incByIndex(final int sourceIndex, final int targetIndex)
     {
         return ++cells[cellIndexByIndex(sourceIndex, targetIndex)];
     }
@@ -240,11 +240,11 @@ public class EdgeMatrix implements Iterable<Edge>
 
     /**
      * Set a mutual information algorithm.
-     * @param MI mutual information algo.
+     * @param mi mutual information algo.
      */
-    public void setMI(final OptionMI MI)
+    public void setMI(final MI mi)
     {
-        this.MI = MI;
+        this.mi = mi;
     }
 
     /**
@@ -360,7 +360,7 @@ public class EdgeMatrix implements Iterable<Edge>
                         // avoid NaN, edge count may have errors
                         final long ab = Math.min(edgeCount, Math.min(a, b));
                         // PPMI is not discriminant
-                        score = MI.score(ab, a, b, N);
+                        score = mi.score(ab, a, b, N);
                         // score = edgeCount;
                         // big center
                         // score = (double)edgeCount; // centralize

@@ -58,6 +58,11 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Main pilots for indexing and searching, see especially <a href="../../Alix.html" title="class in com.github.oeuvres.alix.lucene"><code>Alix</code></a></div>
 </div>
+<div class="col-first odd-row-color"><a href="#com.github.oeuvres.alix.lucene.search">com.github.oeuvres.alix.lucene.search</a></div>
+<div class="col-last odd-row-color">
+<div class="block">Objects to search and calculate lexical statistics from an index (ex: found
+ occurrences by facet)</div>
+</div>
 </div>
 <section class="class-uses">
 <ul class="block-list">
@@ -75,6 +80,28 @@ loadScripts(document, 'script');</script>
 <div class="block">Get a “facet” object, a cached list of search from a field of type
  <code>SortedDocValuesField</code> or <code>SortedSetDocValuesField</code> ; to get
  lexical stats from a text field.</div>
+</div>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="com.github.oeuvres.alix.lucene.search">
+<h2>Uses of <a href="../FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search">FieldFacet</a> in <a href="../package-summary.html">com.github.oeuvres.alix.lucene.search</a></h2>
+<div class="caption"><span>Constructors in <a href="../package-summary.html">com.github.oeuvres.alix.lucene.search</a> with parameters of type <a href="../FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search">FieldFacet</a></span></div>
+<div class="summary-table three-column-summary">
+<div class="table-header col-first">Modifier</div>
+<div class="table-header col-second">Constructor</div>
+<div class="table-header col-last">Description</div>
+<div class="col-first even-row-color"><code>&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../FormEnum.html#%3Cinit%3E(com.github.oeuvres.alix.lucene.search.FieldFacet)" class="member-name-link">FormEnum</a><wbr>(<a href="../FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search">FieldFacet</a>&nbsp;field)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Build a form enumerator from an alix <a href="../FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldFacet</code></a>, sharing properties 
+ useful to calcultate scores for some queries : 
+ 
+   Dictionary of forms <code>FieldCharsAbstract.dic</code>
+   docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.
+   Σ docsByForm; global count of docs relevant for this field <code>FieldCharsAbstract.docsAll</code>.
+ </div>
 </div>
 </div>
 </section>

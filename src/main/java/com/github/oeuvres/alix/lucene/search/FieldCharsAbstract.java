@@ -17,25 +17,24 @@ import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.util.IntList;
+import com.github.oeuvres.alix.web.Option;
 
 /**
  * Stats for a field with chars, indexed {@link TextField}, or not, like for facets {@link StringField},
  * {@link SortedDocValuesField} or {@link SortedSetDocValuesField}.
  */
-abstract class AbstractFieldChars extends AbstractField
+abstract class FieldCharsAbstract extends FieldAbstract
 {
     /** for {@link Collection#toArray(Object[])}. */
     public static final BytesRef[] BYTES0 = new BytesRef[0];
-    /** Store and populate the search. */
+    /** Dictionary of terms from this field. */
     protected final BytesRefHash dic = new BytesRefHash();
-    /** Global number of docs relevant for this field. */
-    protected int docsAll;
-    /** By form, count of docs. */
+    /** docsByform[formId] = docs; count of docs by form. */
     protected int[] docsByform;
-    /** Global number of occurrences for this field. Occs by form not relevant for a facet. */
-    protected long occsAll;
+    /** Σ docsByForm; global count of docs relevant for this field. */
+    protected int docsAll;
 
-    public AbstractFieldChars(IndexReader reader, String fieldName) throws IOException {
+    public FieldCharsAbstract(IndexReader reader, String fieldName) throws IOException {
         super(reader, fieldName);
     }
 
@@ -250,15 +249,6 @@ abstract class AbstractFieldChars extends AbstractField
         Arrays.sort(refs);
         return refs;
     }
+    
 
-
-    /**
-     * Global count of occurrences (except empty positions) for all index.
-     * 
-     * @return total occurrences for the index.
-     */
-    public long occsAll()
-    {
-        return occsAll;
-    }
 }

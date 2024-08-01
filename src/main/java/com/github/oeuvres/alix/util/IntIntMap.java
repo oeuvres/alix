@@ -35,6 +35,7 @@ package com.github.oeuvres.alix.util;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -98,15 +99,16 @@ public class IntIntMap implements Cloneable
     private int threshold;
     
     /**
-     * Constructor with a default fillFactor
+     * Constructor with a default fillFactor.
      */
     public IntIntMap() {
         this(10);
     }
 
     /**
-     * Constructor with an initial size
-     * @param size
+     * Constructor with an initial size.
+     * 
+     * @param size initial size.
      */
     public IntIntMap(final int size) {
         /*
@@ -123,11 +125,11 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * Add value to a key, create it if not exists
+     * Add value to a key, create it if not exists.
      * 
-     * @param key
-     * @param value new value
-     * @return the vector, to chain input
+     * @param key unique key.
+     * @param value value for the key.
+     * @return this.
      */
     public IntIntMap add(final int key, final int value)
     {
@@ -136,10 +138,10 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * Add a vector to another
+     * Add a map to another.
      * 
-     * @param toadd IntIntMap to add to this on
-     * @return new size
+     * @param toadd IntIntMap to add to this.
+     * @return new size.
      */
     public int add(IntIntMap toadd)
     {
@@ -152,8 +154,8 @@ public class IntIntMap implements Cloneable
     /**
      * Check if a key is used
      * 
-     * @param key
-     * @return
+     * @param key to test.
+     * @return true if already set, false otherwise.
      */
     public boolean contains(final int key)
     {
@@ -163,26 +165,12 @@ public class IntIntMap implements Cloneable
         return true;
     }
 
-    /**
-     * Equality
-     */
-    /*
-     * @Override public boolean equals(Object obj) { if (!(obj instanceof
-     * IntIntMap)) return false; if (obj == this) return true; int[][] a =
-     * ((IntIntMap)obj).toArray(); int[][] b = ((IntIntMap)obj).toArray(); if (
-     * a.length != b.length ) return false; Arrays.sort( a , new Comparator<int[]>()
-     * { public int compare(int[] o1, int[] o2) { return o1[0] - o2[0]; } });
-     * Arrays.sort( b , new Comparator<int[]>() { public int compare(int[] o1, int[]
-     * o2) { return o1[0] - o2[0]; } }); int size = a.length; for ( int i = 0; i <
-     * size; i++) { if (a[0] != b[0]) return false; if (a[1] != b[1]) return false;
-     * } return true; }
-     */
     
     /**
-     * Cosine similarity with vector
+     * Cosine similarity with another vector.
      * 
-     * @param vek
-     * @return the similarity score
+     * @param vek vector to test again.
+     * @return the similarity score.
      */
     public double cosine(IntIntMap vek)
     {
@@ -191,9 +179,9 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * Use after next(), get current entry by iterator.
+     * After next(), get current entry by iterator.
      * 
-     * @return
+     * @return current entry.
      */
     public int[] entry()
     {
@@ -201,10 +189,10 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * Get a value by key
+     * Get a value by key.
      * 
-     * @param key
-     * @return the value
+     * @param key to test.
+     * @return the value, or {@link Integer#MIN_VALUE} if not found.
      */
     public int get(final int key)
     {
@@ -215,9 +203,9 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * Increment a key when it exists, create it if needed, return
+     * Increment a key when it exists, create it if needed, return old value.
      *
-     * @param key
+     * @param key to test.
      * @return old value
      */
     public int inc(final int key)
@@ -243,7 +231,7 @@ public class IntIntMap implements Cloneable
     /**
      * Cosine similarity with vector reduction to intersection only
      * 
-     * @param vek
+     * @param vek a map with int nodes.
      * @return the similarity score
      */
     public double intercos(IntIntMap vek)
@@ -272,6 +260,7 @@ public class IntIntMap implements Cloneable
 
     /**
      * Use after next(), get current key by iterator.
+     * @return cuurent key.
      */
     public int key()
     {
@@ -281,7 +270,8 @@ public class IntIntMap implements Cloneable
     /**
      * Load a String like saved by toString() a space separated intKey:intValue
      * 
-     * @param line
+     * @param line chars to parse.
+     * @return this.
      */
     public IntIntMap load(CharSequence line)
     {
@@ -293,7 +283,7 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * Calculation of magnitude with cache
+     * Calculation of magnitude with cache for cosine.
      * 
      * @return the magnitude
      */
@@ -317,6 +307,8 @@ public class IntIntMap implements Cloneable
     /**
      * Iterate throw data to go to next entry Jump empty cells, set entry by
      * reference.
+     * 
+     * @return false if end of sequence, true otherwise.
      */
     public boolean next()
     {
@@ -333,11 +325,14 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * Put a value by key
+     * Like {@link Map#put(Object, Object)}.
+     * Associates the specified value with the specified key in this map.
+     * If the map previously contained a mapping for the key, the specified value replaced the previous value,
+     * the previous value is returned.
      * 
-     * @param key
-     * @param value
-     * @return old value
+     * @param key to associate with value.
+     * @param value associated with key.
+     * @return previous value associated with key, or {@link Integer#MIN_VALUE} if there was no mapping for key.
      */
     public int put(final int key, final int value)
     {
@@ -345,10 +340,10 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * Put an array of values, index in array is the key
+     * Put an array of values, index in array is the key.
      * 
-     * @param data
-     * @return vector for chaining
+     * @param data data[key] = value.
+     * @return this.
      */
     public IntIntMap put(int[] data)
     {
@@ -362,10 +357,10 @@ public class IntIntMap implements Cloneable
     /**
      * Put an array of keys, fill with a default value.
      * 
-     * @param data Array on int used as a key
-     * @param value Default value for all keys
-     * @param size The amount of data to put
-     * @return
+     * @param data [key1, key2…] array on int used as keys
+     * @param value Default value for all keys.
+     * @param size The amount of data to put.
+     * @return this.
      */
     public IntIntMap put(final int[] data, final int value, int size)
     {
@@ -380,9 +375,10 @@ public class IntIntMap implements Cloneable
 
     
     /**
+     * Remove an entry, like {@link Map#remove(Object)}.
      * 
-     * @param key
-     * @return Old value
+     * @param key of the entry to remove from map.
+     * @return previous value associated with key, or {@link Integer#MIN_VALUE} if there was no mapping for key.
      */
     public int remove(final int key)
     {
@@ -433,6 +429,8 @@ public class IntIntMap implements Cloneable
 
     /**
      * Use after next(), set current entry by iterator.
+     *
+     * @param value new value to associate with current key.
      */
     public void set(int value)
     {
@@ -440,9 +438,10 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * Get internal size
+     * Like {@link Map#size()}.
+     * Returns the number of key-value mappings in this map.
      * 
-     * @return
+     * @return Count of key-value mappings in this map.
      */
     public int size()
     {
@@ -450,8 +449,16 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * An alternative distance calculation, good for little
+     * TextCat is an algorithm to calculate distance between 2 texts
+     * by comparison of ranks of two frequency list.
+     * Comparison of ranks, instead of counts, makes this metric 
+     * less dependent from size of texts.
+     * TextCat is used for language detection with ngrams of letters.
+     * Here keys could be words ids, values are word count.
+     * This experience is more pedagogical than useful.
      * 
+     * @param vek formId → count
+     * @return distance
      */
     public int textcat(IntIntMap vek)
     {
@@ -472,16 +479,17 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * Output a two dimensions array, sorted by value, biggest first
+     * Output a two dimensions array, sorted by value, biggest first.
+     * @return (key, value) entries array.
      */
-    public Pair[] toArray()
+    public Entry[] toArray()
     {
-        Pair[] list = new Pair[size];
+        Entry[] list = new Entry[size];
         int i = 0;
         for (long entry : data) {
             if (entry == FREE_CELL)
                 continue;
-            list[i] = new Pair(key(entry), value(entry));
+            list[i] = new Entry(key(entry), value(entry));
             i++;
         }
         Arrays.sort(list);
@@ -514,6 +522,7 @@ public class IntIntMap implements Cloneable
 
     /**
      * Use after next(), get current value by iterator.
+     * @return current value.
      */
     public int value()
     {
@@ -522,9 +531,6 @@ public class IntIntMap implements Cloneable
 
     
 
-    /**
-     * Equality
-     */
     /*
      * @Override public boolean equals(Object obj) { if (!(obj instanceof
      * IntIntMap)) return false; if (obj == this) return true; int[][] a =
@@ -538,8 +544,10 @@ public class IntIntMap implements Cloneable
      */
     
     /**
+     * Used for cosine distance.
      * 
-     * @return
+     * @param other map vector.
+     * @return 
      */
     public ArrayList<SpecRow> specs(IntIntMap other)
     {
@@ -596,7 +604,8 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * Return an hash<key, order> optimized for textcat
+     * 
+     * @return
      */
     private IntIntMap catprint()
     {
@@ -605,7 +614,7 @@ public class IntIntMap implements Cloneable
         if (catprint != null)
             return catprint;
         // textcat
-        Pair[] pairs = toArray();
+        Entry[] pairs = toArray();
         int[] docprint = new int[size];
         int max = size;
         IntIntMap catprint = new IntIntMap(size);
@@ -847,23 +856,36 @@ public class IntIntMap implements Cloneable
         return docprint;
     }
 
-    public class Pair implements Comparable<Pair>
+    /**
+     * Like {@link Map.Entry}.
+     * Copy key → value pairs.
+     */
+    public class Entry implements Comparable<Entry>
     {
+        /** The key. */
         public final int key;
+        /** The value. */
         public final int value;
     
-        public Pair(final int key, final int value) {
+        /** constructor */
+        public Entry(final int key, final int value) {
             this.key = key;
             this.value = value;
         }
     
         /**
-         * Default sort by value, biggest first
+         * Default sort
+         * <ol>
+         *   <li>Biggest value first</li>
+         *   <li>If value equal, smallest key first</li>
+         * </ol>
          */
         @Override
-        public int compareTo(Pair o)
+        public int compareTo(Entry o)
         {
-            return Integer.compare(o.value, value);
+            int ret = Integer.compare(o.value, value);
+            if (ret != 0) return ret;
+            return Integer.compare(key, o.key);
         }
     
     }
@@ -879,7 +901,18 @@ public class IntIntMap implements Cloneable
         public final int tval;
         public final double spec;
     
-        public SpecRow(final int key, final int source, final int sval, final int target, final int tval, double spec) {
+        /**
+         * Default constructor.
+         * 
+         * @param key
+         * @param source
+         * @param sval
+         * @param target
+         * @param tval
+         * @param spec
+         */
+        public SpecRow(final int key, final int source, final int sval, final int target, final int tval, double spec)  
+        {
             this.key = key;
             this.source = source;
             this.sval = sval;

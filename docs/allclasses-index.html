@@ -170,7 +170,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Machine-dependent arithmetic constants.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/CsvReader.html" title="class in com.github.oeuvres.alix.util">CsvReader</a></div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/CSVReader.html" title="class in com.github.oeuvres.alix.util">CSVReader</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">A light fast csv parser without Strings, especially to load jar resources.</div>
 </div>
@@ -235,8 +235,7 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/search/FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">
-<div class="block">
- An object recording different stats for a lucene text field.</div>
+<div class="block">An object recording stats for an indexed and tokenized lucene field <code>TextField</code>.</div>
 </div>
 <div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FilterAposHyphenFr.html" title="class in com.github.oeuvres.alix.lucene.analysis">FilterAposHyphenFr</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
@@ -296,8 +295,8 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">
-<div class="block">This object is build to collect list of forms with useful stats for semantic
- interpretations and score calculations.</div>
+<div class="block">This object is outputed by an Alix field <code>FieldCharsAbstract</code>, to provide
+ list of terms with stats, for example for queries. according to filters or queries; calculated by th</div>
 </div>
 <div class="col-first odd-row-color all-classes-table all-classes-table-tab1"><a href="com/github/oeuvres/alix/lucene/search/FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab1">
@@ -312,7 +311,10 @@ loadScripts(document, 'script');</script>
 <div class="block">Preloaded word List for lucene indexation in <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/HashMap.html" title="class or interface in java.util" class="external-link"><code>HashMap</code></a>.</div>
 </div>
 <div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/FrDics.LexEntry.html" title="class in com.github.oeuvres.alix.lucene.analysis">FrDics.LexEntry</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">&nbsp;</div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="block">An entry for a dictionary te get lemma from
+ an inflected form.</div>
+</div>
 <div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/maths/Gamma.html" title="class in com.github.oeuvres.alix.maths">Gamma</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Gamma distribution functions.</div>
@@ -384,67 +386,61 @@ loadScripts(document, 'script');</script>
 <div class="block">A light hiliter using a Lucene analyzer and a compiled automaton, designed
  for short texts (ex: show found words when searching in titles).</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/ML.html" title="class in com.github.oeuvres.alix.util">ML</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
-<div class="block">Some useful tools to deal with “Markup Languages” (xml, but also html tag
- soup)</div>
-</div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/Names.html" title="class in com.github.oeuvres.alix">Names</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">&nbsp;</div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/util/Offsets.html" title="class in com.github.oeuvres.alix.lucene.util">Offsets</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
-<div class="block">Data structure to write and read the “offsets” of a document.</div>
-</div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab1"><a href="com/github/oeuvres/alix/web/Option.html" title="interface in com.github.oeuvres.alix.web">Option</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab1">&nbsp;</div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab3"><a href="com/github/oeuvres/alix/web/OptionCat.html" title="enum in com.github.oeuvres.alix.web">OptionCat</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab3">
-<div class="block">Options for filters by grammatical types</div>
-</div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab3"><a href="com/github/oeuvres/alix/web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web">OptionDistrib</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab3">
-<div class="block">Distribution laws, to be used in sum</div>
-</div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab3"><a href="com/github/oeuvres/alix/web/OptionMI.html" title="enum in com.github.oeuvres.alix.web">OptionMI</a></div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab3"><a href="com/github/oeuvres/alix/util/MI.html" title="enum in com.github.oeuvres.alix.util">MI</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab3">
 <div class="block">Some algorithms to score co-occurrency.</div>
 </div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/ML.html" title="class in com.github.oeuvres.alix.util">ML</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
+<div class="block">Some useful tools to deal with “Markup Languages” (xml, but also html tag
+ soup)</div>
+</div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/Names.html" title="class in com.github.oeuvres.alix">Names</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">&nbsp;</div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/util/Offsets.html" title="class in com.github.oeuvres.alix.lucene.util">Offsets</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
+<div class="block">Data structure to write and read the “offsets” of a document.</div>
+</div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab1"><a href="com/github/oeuvres/alix/web/Option.html" title="interface in com.github.oeuvres.alix.web">Option</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab1">&nbsp;</div>
 <div class="col-first odd-row-color all-classes-table all-classes-table-tab3"><a href="com/github/oeuvres/alix/web/OptionMime.html" title="enum in com.github.oeuvres.alix.web">OptionMime</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab3">&nbsp;</div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab3"><a href="com/github/oeuvres/alix/web/OptionOrder.html" title="enum in com.github.oeuvres.alix.web">OptionOrder</a></div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab3"><a href="com/github/oeuvres/alix/web/OptionSort.html" title="enum in com.github.oeuvres.alix.web">OptionSort</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab3">&nbsp;</div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab3"><a href="com/github/oeuvres/alix/web/OptionSort.html" title="enum in com.github.oeuvres.alix.web">OptionSort</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab3">&nbsp;</div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab1"><a href="com/github/oeuvres/alix/lucene/analysis/tokenattributes/OrthAtt.html" title="interface in com.github.oeuvres.alix.lucene.analysis.tokenattributes">OrthAtt</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab1">
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab1"><a href="com/github/oeuvres/alix/lucene/analysis/tokenattributes/OrthAtt.html" title="interface in com.github.oeuvres.alix.lucene.analysis.tokenattributes">OrthAtt</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab1">
 <div class="block">A recast of CharsAtt</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/tokenattributes/OrthAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">OrthAttImpl</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/analysis/tokenattributes/OrthAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">OrthAttImpl</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Custom <code>CharTermAttribute</code> used to normalize an orthographic form of a
  token.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/Profiler.html" title="class in com.github.oeuvres.alix.util">Profiler</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">&nbsp;</div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/RandomName.html" title="class in com.github.oeuvres.alix.util">RandomName</a></div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/Profiler.html" title="class in com.github.oeuvres.alix.util">Profiler</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab2">&nbsp;</div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/Roll.html" title="class in com.github.oeuvres.alix.util">Roll</a>&lt;<a href="com/github/oeuvres/alix/util/Roll.html" title="type parameter in Roll">E</a>&gt;</div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/RandomName.html" title="class in com.github.oeuvres.alix.util">RandomName</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">&nbsp;</div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/Roll.html" title="class in com.github.oeuvres.alix.util">Roll</a>&lt;<a href="com/github/oeuvres/alix/util/Roll.html" title="type parameter in Roll">E</a>&gt;</div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">A fixed size queue, rolling if full.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/Roller.html" title="class in com.github.oeuvres.alix.util">Roller</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/util/Roller.html" title="class in com.github.oeuvres.alix.util">Roller</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Efficient Object to handle a sliding window, on different types, works like a
  circular array.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/search/Scale.html" title="class in com.github.oeuvres.alix.lucene.search">Scale</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/search/Scale.html" title="class in com.github.oeuvres.alix.lucene.search">Scale</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Handle data to display results as a chronology, according to subset of an
  index, given as a bitset.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/search/Scale.Tick.html" title="class in com.github.oeuvres.alix.lucene.search">Scale.Tick</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/search/Scale.Tick.html" title="class in com.github.oeuvres.alix.lucene.search">Scale.Tick</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">A row of data for a crossing axis</div>
+</div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab3"><a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab3">
+<div class="block">Distribution laws, to be used in sum</div>
 </div>
 <div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="com/github/oeuvres/alix/lucene/search/similarities/SimilarityChi2.html" title="class in com.github.oeuvres.alix.lucene.search.similarities">SimilarityChi2</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">

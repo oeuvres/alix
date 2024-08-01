@@ -163,10 +163,10 @@ loadScripts(document, 'script');</script>
 <div class="block">Returns the local Lucene int docId of the document.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#forms(com.github.oeuvres.alix.lucene.Alix,int,java.lang.String,com.github.oeuvres.alix.web.OptionDistrib,com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">forms</a><wbr>(<a href="../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#forms(com.github.oeuvres.alix.lucene.Alix,int,java.lang.String,com.github.oeuvres.alix.lucene.search.Scorer,com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">forms</a><wbr>(<a href="../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
  int&nbsp;docId,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;field,
- <a href="../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web">OptionDistrib</a>&nbsp;distrib,
+ <a href="Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer,
  <a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;wordFilter)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Count of occurrences by term for the document.</div>
@@ -390,24 +390,24 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="forms(com.github.oeuvres.alix.lucene.Alix,int,java.lang.String,com.github.oeuvres.alix.web.OptionDistrib,com.github.oeuvres.alix.fr.Tag.TagFilter)">
+<section class="detail" id="forms(com.github.oeuvres.alix.lucene.Alix,int,java.lang.String,com.github.oeuvres.alix.lucene.search.Scorer,com.github.oeuvres.alix.fr.Tag.TagFilter)">
 <h3>forms</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">forms</span><wbr><span class="parameters">(<a href="../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
  int&nbsp;docId,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;field,
- <a href="../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web">OptionDistrib</a>&nbsp;distrib,
+ <a href="Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer,
  <a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;wordFilter)</span>
                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/NoSuchFieldException.html" title="class or interface in java.lang" class="external-link">NoSuchFieldException</a>,
 <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Count of occurrences by term for the document. Returns an iterator sorted
- according to a scorer. If scorer is null, default is count of occurences.
- <a href="FieldText.html#forms(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.web.OptionDistrib)"><code>FieldText.forms(org.apache.lucene.util.BitSet, TagFilter, OptionDistrib)</code></a></div>
+ according to a scorer. If scorer is null, default is count of occurrences.
+ <a href="FieldText.html#formEnum(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.lucene.search.Scorer)"><code>FieldText.formEnum(org.apache.lucene.util.BitSet, TagFilter, OptionDistrib)</code></a></div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>alix</code> - wrapper around an <code>IndexReader</code> with cached stats.</dd>
 <dd><code>docId</code> - a document id in t</dd>
 <dd><code>field</code> - text field name for a <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>.</dd>
-<dd><code>distrib</code> - score for the terms.</dd>
+<dd><code>scorer</code> - score for the terms.</dd>
 <dd><code>wordFilter</code> - filter words by tags.</dd>
 <dt>Returns:</dt>
 <dd>forms for this document.</dd>

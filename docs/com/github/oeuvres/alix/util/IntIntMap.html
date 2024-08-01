@@ -105,8 +105,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="table-header col-second">Class</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="IntIntMap.Pair.html" class="type-name-link" title="class in com.github.oeuvres.alix.util">IntIntMap.Pair</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-second even-row-color"><code><a href="IntIntMap.Entry.html" class="type-name-link" title="class in com.github.oeuvres.alix.util">IntIntMap.Entry</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.Entry.html" title="class or interface in java.util" class="external-link"><code>Map.Entry</code></a>.</div>
+</div>
 <div class="col-first odd-row-color"><code>class&nbsp;</code></div>
 <div class="col-second odd-row-color"><code><a href="IntIntMap.SpecRow.html" class="type-name-link" title="class in com.github.oeuvres.alix.util">IntIntMap.SpecRow</a></code></div>
 <div class="col-last odd-row-color">
@@ -143,11 +145,11 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="table-header col-last">Description</div>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E()" class="member-name-link">IntIntMap</a>()</code></div>
 <div class="col-last even-row-color">
-<div class="block">Constructor with a default fillFactor</div>
+<div class="block">Constructor with a default fillFactor.</div>
 </div>
 <div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(int)" class="member-name-link">IntIntMap</a><wbr>(int&nbsp;size)</code></div>
 <div class="col-last odd-row-color">
-<div class="block">Constructor with an initial size</div>
+<div class="block">Constructor with an initial size.</div>
 </div>
 </div>
 </section>
@@ -167,12 +169,12 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#add(int,int)" class="member-name-link">add</a><wbr>(int&nbsp;key,
  int&nbsp;value)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Add value to a key, create it if not exists</div>
+<div class="block">Add value to a key, create it if not exists.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#add(com.github.oeuvres.alix.util.IntIntMap)" class="member-name-link">add</a><wbr>(<a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a>&nbsp;toadd)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Add a vector to another</div>
+<div class="block">Add a map to another.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#contains(int)" class="member-name-link">contains</a><wbr>(int&nbsp;key)</code></div>
@@ -182,22 +184,22 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#cosine(com.github.oeuvres.alix.util.IntIntMap)" class="member-name-link">cosine</a><wbr>(<a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a>&nbsp;vek)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Cosine similarity with vector</div>
+<div class="block">Cosine similarity with another vector.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#entry()" class="member-name-link">entry</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Use after next(), get current entry by iterator.</div>
+<div class="block">After next(), get current entry by iterator.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#get(int)" class="member-name-link">get</a><wbr>(int&nbsp;key)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get a value by key</div>
+<div class="block">Get a value by key.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#inc(int)" class="member-name-link">inc</a><wbr>(int&nbsp;key)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Increment a key when it exists, create it if needed, return</div>
+<div class="block">Increment a key when it exists, create it if needed, return old value.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#intercos(com.github.oeuvres.alix.util.IntIntMap)" class="member-name-link">intercos</a><wbr>(<a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a>&nbsp;vek)</code></div>
@@ -217,7 +219,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#magnitude()" class="member-name-link">magnitude</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Calculation of magnitude with cache</div>
+<div class="block">Calculation of magnitude with cache for cosine.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#next()" class="member-name-link">next</a>()</code></div>
@@ -228,7 +230,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#put(int%5B%5D)" class="member-name-link">put</a><wbr>(int[]&nbsp;data)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Put an array of values, index in array is the key</div>
+<div class="block">Put an array of values, index in array is the key.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#put(int%5B%5D,int,int)" class="member-name-link">put</a><wbr>(int[]&nbsp;data,
@@ -241,11 +243,13 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#put(int,int)" class="member-name-link">put</a><wbr>(int&nbsp;key,
  int&nbsp;value)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Put a value by key</div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#put(K,V)" title="class or interface in java.util" class="external-link"><code>Map.put(Object, Object)</code></a>.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#remove(int)" class="member-name-link">remove</a><wbr>(int&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Remove an entry, like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#remove(java.lang.Object)" title="class or interface in java.util" class="external-link"><code>Map.remove(Object)</code></a>.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#reset()" class="member-name-link">reset</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
@@ -261,20 +265,23 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#size()" class="member-name-link">size</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get internal size</div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#size()" title="class or interface in java.util" class="external-link"><code>Map.size()</code></a>.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/ArrayList.html" title="class or interface in java.util" class="external-link">ArrayList</a>&lt;<a href="IntIntMap.SpecRow.html" title="class in com.github.oeuvres.alix.util">IntIntMap.SpecRow</a>&gt;</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#specs(com.github.oeuvres.alix.util.IntIntMap)" class="member-name-link">specs</a><wbr>(<a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a>&nbsp;other)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Used for cosine distance.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#textcat(com.github.oeuvres.alix.util.IntIntMap)" class="member-name-link">textcat</a><wbr>(<a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a>&nbsp;vek)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">An alternative distance calculation, good for little</div>
+<div class="block">TextCat is an algorithm to calculate distance between 2 texts
+ by comparison of ranks of two frequency list.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntIntMap.Pair.html" title="class in com.github.oeuvres.alix.util">IntIntMap.Pair</a>[]</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntIntMap.Entry.html" title="class in com.github.oeuvres.alix.util">IntIntMap.Entry</a>[]</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toArray()" class="member-name-link">toArray</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Output a two dimensions array, sorted by value, biggest first</div>
+<div class="block">Output a two dimensions array, sorted by value, biggest first.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
@@ -345,17 +352,17 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="&lt;init&gt;()">
 <h3>IntIntMap</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">IntIntMap</span>()</div>
-<div class="block">Constructor with a default fillFactor</div>
+<div class="block">Constructor with a default fillFactor.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="&lt;init&gt;(int)">
 <h3>IntIntMap</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">IntIntMap</span><wbr><span class="parameters">(int&nbsp;size)</span></div>
-<div class="block">Constructor with an initial size</div>
+<div class="block">Constructor with an initial size.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>size</code> - </dd>
+<dd><code>size</code> - initial size.</dd>
 </dl>
 </section>
 </li>
@@ -372,13 +379,13 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>add</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a></span>&nbsp;<span class="element-name">add</span><wbr><span class="parameters">(int&nbsp;key,
  int&nbsp;value)</span></div>
-<div class="block">Add value to a key, create it if not exists</div>
+<div class="block">Add value to a key, create it if not exists.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>key</code> - </dd>
-<dd><code>value</code> - new value</dd>
+<dd><code>key</code> - unique key.</dd>
+<dd><code>value</code> - value for the key.</dd>
 <dt>Returns:</dt>
-<dd>the vector, to chain input</dd>
+<dd>this.</dd>
 </dl>
 </section>
 </li>
@@ -386,12 +393,12 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="add(com.github.oeuvres.alix.util.IntIntMap)">
 <h3>add</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">add</span><wbr><span class="parameters">(<a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a>&nbsp;toadd)</span></div>
-<div class="block">Add a vector to another</div>
+<div class="block">Add a map to another.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>toadd</code> - IntIntMap to add to this on</dd>
+<dd><code>toadd</code> - IntIntMap to add to this.</dd>
 <dt>Returns:</dt>
-<dd>new size</dd>
+<dd>new size.</dd>
 </dl>
 </section>
 </li>
@@ -402,8 +409,9 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Check if a key is used</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>key</code> - </dd>
+<dd><code>key</code> - to test.</dd>
 <dt>Returns:</dt>
+<dd>true if already set, false otherwise.</dd>
 </dl>
 </section>
 </li>
@@ -411,12 +419,12 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="cosine(com.github.oeuvres.alix.util.IntIntMap)">
 <h3>cosine</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">cosine</span><wbr><span class="parameters">(<a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a>&nbsp;vek)</span></div>
-<div class="block">Cosine similarity with vector</div>
+<div class="block">Cosine similarity with another vector.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>vek</code> - </dd>
+<dd><code>vek</code> - vector to test again.</dd>
 <dt>Returns:</dt>
-<dd>the similarity score</dd>
+<dd>the similarity score.</dd>
 </dl>
 </section>
 </li>
@@ -424,9 +432,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="entry()">
 <h3>entry</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">entry</span>()</div>
-<div class="block">Use after next(), get current entry by iterator.</div>
+<div class="block">After next(), get current entry by iterator.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>current entry.</dd>
 </dl>
 </section>
 </li>
@@ -434,12 +443,12 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="get(int)">
 <h3>get</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">get</span><wbr><span class="parameters">(int&nbsp;key)</span></div>
-<div class="block">Get a value by key</div>
+<div class="block">Get a value by key.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>key</code> - </dd>
+<dd><code>key</code> - to test.</dd>
 <dt>Returns:</dt>
-<dd>the value</dd>
+<dd>the value, or <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html#MIN_VALUE" title="class or interface in java.lang" class="external-link"><code>Integer.MIN_VALUE</code></a> if not found.</dd>
 </dl>
 </section>
 </li>
@@ -447,10 +456,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="inc(int)">
 <h3>inc</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">inc</span><wbr><span class="parameters">(int&nbsp;key)</span></div>
-<div class="block">Increment a key when it exists, create it if needed, return</div>
+<div class="block">Increment a key when it exists, create it if needed, return old value.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>key</code> - </dd>
+<dd><code>key</code> - to test.</dd>
 <dt>Returns:</dt>
 <dd>old value</dd>
 </dl>
@@ -463,7 +472,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Cosine similarity with vector reduction to intersection only</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>vek</code> - </dd>
+<dd><code>vek</code> - a map with int nodes.</dd>
 <dt>Returns:</dt>
 <dd>the similarity score</dd>
 </dl>
@@ -474,6 +483,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>key</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">key</span>()</div>
 <div class="block">Use after next(), get current key by iterator.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>cuurent key.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -483,7 +496,9 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Load a String like saved by toString() a space separated intKey:intValue</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>line</code> - </dd>
+<dd><code>line</code> - chars to parse.</dd>
+<dt>Returns:</dt>
+<dd>this.</dd>
 </dl>
 </section>
 </li>
@@ -491,7 +506,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="magnitude()">
 <h3>magnitude</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">magnitude</span>()</div>
-<div class="block">Calculation of magnitude with cache</div>
+<div class="block">Calculation of magnitude with cache for cosine.</div>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>the magnitude</dd>
@@ -504,6 +519,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">next</span>()</div>
 <div class="block">Iterate throw data to go to next entry Jump empty cells, set entry by
  reference.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>false if end of sequence, true otherwise.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -511,13 +530,16 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>put</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">put</span><wbr><span class="parameters">(int&nbsp;key,
  int&nbsp;value)</span></div>
-<div class="block">Put a value by key</div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#put(K,V)" title="class or interface in java.util" class="external-link"><code>Map.put(Object, Object)</code></a>.
+ Associates the specified value with the specified key in this map.
+ If the map previously contained a mapping for the key, the specified value replaced the previous value,
+ the previous value is returned.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>key</code> - </dd>
-<dd><code>value</code> - </dd>
+<dd><code>key</code> - to associate with value.</dd>
+<dd><code>value</code> - associated with key.</dd>
 <dt>Returns:</dt>
-<dd>old value</dd>
+<dd>previous value associated with key, or <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html#MIN_VALUE" title="class or interface in java.lang" class="external-link"><code>Integer.MIN_VALUE</code></a> if there was no mapping for key.</dd>
 </dl>
 </section>
 </li>
@@ -525,12 +547,12 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="put(int[])">
 <h3>put</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a></span>&nbsp;<span class="element-name">put</span><wbr><span class="parameters">(int[]&nbsp;data)</span></div>
-<div class="block">Put an array of values, index in array is the key</div>
+<div class="block">Put an array of values, index in array is the key.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>data</code> - </dd>
+<dd><code>data</code> - data[key] = value.</dd>
 <dt>Returns:</dt>
-<dd>vector for chaining</dd>
+<dd>this.</dd>
 </dl>
 </section>
 </li>
@@ -543,10 +565,11 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Put an array of keys, fill with a default value.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>data</code> - Array on int used as a key</dd>
-<dd><code>value</code> - Default value for all keys</dd>
-<dd><code>size</code> - The amount of data to put</dd>
+<dd><code>data</code> - [key1, key2…] array on int used as keys</dd>
+<dd><code>value</code> - Default value for all keys.</dd>
+<dd><code>size</code> - The amount of data to put.</dd>
 <dt>Returns:</dt>
+<dd>this.</dd>
 </dl>
 </section>
 </li>
@@ -554,11 +577,12 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="remove(int)">
 <h3>remove</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">remove</span><wbr><span class="parameters">(int&nbsp;key)</span></div>
+<div class="block">Remove an entry, like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#remove(java.lang.Object)" title="class or interface in java.util" class="external-link"><code>Map.remove(Object)</code></a>.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>key</code> - </dd>
+<dd><code>key</code> - of the entry to remove from map.</dd>
 <dt>Returns:</dt>
-<dd>Old value</dd>
+<dd>previous value associated with key, or <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html#MIN_VALUE" title="class or interface in java.lang" class="external-link"><code>Integer.MIN_VALUE</code></a> if there was no mapping for key.</dd>
 </dl>
 </section>
 </li>
@@ -576,15 +600,21 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>set</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">set</span><wbr><span class="parameters">(int&nbsp;value)</span></div>
 <div class="block">Use after next(), set current entry by iterator.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>value</code> - new value to associate with current key.</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="size()">
 <h3>size</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">size</span>()</div>
-<div class="block">Get internal size</div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#size()" title="class or interface in java.util" class="external-link"><code>Map.size()</code></a>.
+ Returns the number of key-value mappings in this map.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>Count of key-value mappings in this map.</dd>
 </dl>
 </section>
 </li>
@@ -592,14 +622,30 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="textcat(com.github.oeuvres.alix.util.IntIntMap)">
 <h3>textcat</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">textcat</span><wbr><span class="parameters">(<a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a>&nbsp;vek)</span></div>
-<div class="block">An alternative distance calculation, good for little</div>
+<div class="block">TextCat is an algorithm to calculate distance between 2 texts
+ by comparison of ranks of two frequency list.
+ Comparison of ranks, instead of counts, makes this metric 
+ less dependent from size of texts.
+ TextCat is used for language detection with ngrams of letters.
+ Here keys could be words ids, values are word count.
+ This experience is more pedagogical than useful.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>vek</code> - formId → count</dd>
+<dt>Returns:</dt>
+<dd>distance</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="toArray()">
 <h3>toArray</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntIntMap.Pair.html" title="class in com.github.oeuvres.alix.util">IntIntMap.Pair</a>[]</span>&nbsp;<span class="element-name">toArray</span>()</div>
-<div class="block">Output a two dimensions array, sorted by value, biggest first</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntIntMap.Entry.html" title="class in com.github.oeuvres.alix.util">IntIntMap.Entry</a>[]</span>&nbsp;<span class="element-name">toArray</span>()</div>
+<div class="block">Output a two dimensions array, sorted by value, biggest first.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>(key, value) entries array.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -620,13 +666,20 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>value</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">value</span>()</div>
 <div class="block">Use after next(), get current value by iterator.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>current value.</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="specs(com.github.oeuvres.alix.util.IntIntMap)">
 <h3>specs</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/ArrayList.html" title="class or interface in java.util" class="external-link">ArrayList</a>&lt;<a href="IntIntMap.SpecRow.html" title="class in com.github.oeuvres.alix.util">IntIntMap.SpecRow</a>&gt;</span>&nbsp;<span class="element-name">specs</span><wbr><span class="parameters">(<a href="IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a>&nbsp;other)</span></div>
+<div class="block">Used for cosine distance.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>other</code> - map vector.</dd>
 <dt>Returns:</dt>
 </dl>
 </section>

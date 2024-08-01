@@ -30,20 +30,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.web;
+package com.github.oeuvres.alix.util;
+
+import com.github.oeuvres.alix.web.Option;
 
 /**
  * Some algorithms to score co-occurrency.
  */
-public enum OptionMI implements Option {
-    OCCS("Occurrences", "Oab") {
+public enum MI {
+    /** Oab */
+    OCCS() {
         @Override
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
             return Oab;
         }
     },
-    JACCARD("Jaccard", "m11 / (m10 + m01 + m11)") {
+    /** m11 / (m10 + m01 + m11) */
+    JACCARD() {
         @Override
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
@@ -52,7 +56,8 @@ public enum OptionMI implements Option {
             return Oab / (m10 + m01 + Oab);
         }
     },
-    DICE("Dice", "2*m11 / (m10² + m01²)") {
+    /** 2*m11 / (m10² + m01²) */
+    DICE() {
         @Override
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
@@ -61,7 +66,8 @@ public enum OptionMI implements Option {
             return 2 * Oab / (m10 * m10 + m01 * m01);
         }
     },
-    PPMI("PPMI", "Normalized Mutual Information") {
+    /** Normalized Mutual Information. */
+    PPMI() {
         // double log2 = Math.log(2);
         double k = 4;
 
@@ -86,7 +92,8 @@ public enum OptionMI implements Option {
             return pmi / -Math.log(Oab / N);
         }
     },
-    CHI2("Chi2", "Chi2 = Σ(Oi - Ei)²/Ei") {
+    /** Chi2 = Σ(Oi - Ei)²/Ei */
+    CHI2() {
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
             // events : m11, m10, m01, m00 ; expected
@@ -106,7 +113,8 @@ public enum OptionMI implements Option {
             return sum;
         }
     },
-    G("G-test", "G = 2 Σ(Oi.ln(Oi/Ei))") {
+    /** G = 2 Σ(Oi.ln(Oi/Ei)) */
+    G() {
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
             double[] E = E(Oab, Oa, Ob, N);
@@ -149,23 +157,7 @@ public enum OptionMI implements Option {
         return O;
     }
 
-    final public String label;
-
-    public String label()
-    {
-        return label;
-    }
-
-    final public String hint;
-
-    public String hint()
-    {
-        return hint;
-    }
-
-    private OptionMI(final String label, final String hint) {
-        this.label = label;
-        this.hint = hint;
+    private MI() {
     }
 
 }

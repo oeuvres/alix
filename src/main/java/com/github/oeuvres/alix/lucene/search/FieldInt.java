@@ -55,7 +55,7 @@ import org.apache.lucene.util.Bits;
  * Retrieve all values of an int field, store it in docId order, calculate some
  * stats..
  */
-public class FieldInt extends AbstractField
+public class FieldInt extends FieldAbstract
 {
     /** Values, sorted, position in this array is an internal id for the value */
     private final int[] sorted;

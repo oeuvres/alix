@@ -133,42 +133,37 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color"><code>protected final org.apache.lucene.util.BytesRefHash</code></div>
 <div class="col-second odd-row-color"><code><a href="#dic" class="member-name-link">dic</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">Store and populate the search.</div>
+<div class="block">Dictionary of terms from this field.</div>
 </div>
 <div class="col-first even-row-color"><code>protected int</code></div>
 <div class="col-second even-row-color"><code><a href="#docsAll" class="member-name-link">docsAll</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Global number of docs relevant for this field.</div>
+<div class="block">Σ docsByForm; global count of docs relevant for this field.</div>
 </div>
 <div class="col-first odd-row-color"><code>protected int[]</code></div>
 <div class="col-second odd-row-color"><code><a href="#docsByform" class="member-name-link">docsByform</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">By form, count of docs.</div>
+<div class="block">docsByform[formId] = docs; count of docs by form.</div>
 </div>
 <div class="col-first even-row-color"><code>protected final <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second even-row-color"><code><a href="#fieldName" class="member-name-link">fieldName</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Name of the field to extract stats</div>
+<div class="block">Name of a lucene field from which extract and cache stats.</div>
 </div>
 <div class="col-first odd-row-color"><code>protected final org.apache.lucene.index.FieldInfo</code></div>
 <div class="col-second odd-row-color"><code><a href="#info" class="member-name-link">info</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">Infos</div>
+<div class="block">Infos about the lucene field.</div>
 </div>
 <div class="col-first even-row-color"><code>protected int</code></div>
 <div class="col-second even-row-color"><code><a href="#maxValue" class="member-name-link">maxValue</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Number of different values found, is also biggest valueId+1 (like lucene IndexReader.maxDoc())</div>
+<div class="block">Number of different values found = biggest valueId + 1.</div>
 </div>
-<div class="col-first odd-row-color"><code>protected long</code></div>
-<div class="col-second odd-row-color"><code><a href="#occsAll" class="member-name-link">occsAll</a></code></div>
+<div class="col-first odd-row-color"><code>protected final org.apache.lucene.index.IndexReader</code></div>
+<div class="col-second odd-row-color"><code><a href="#reader" class="member-name-link">reader</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">Global number of occurrences for this field.</div>
-</div>
-<div class="col-first even-row-color"><code>protected final org.apache.lucene.index.IndexReader</code></div>
-<div class="col-second even-row-color"><code><a href="#reader" class="member-name-link">reader</a></code></div>
-<div class="col-last even-row-color">
-<div class="block">Cache the state of a reader from which all freqs are counted</div>
+<div class="block">Lucene index reader, cache the state.</div>
 </div>
 </div>
 </section>
@@ -266,10 +261,10 @@ loadScripts(document, 'script');</script>
 <div class="block">Get forms in order from a vector of formId.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#forms(com.github.oeuvres.alix.lucene.search.FieldText,java.lang.String%5B%5D,org.apache.lucene.util.BitSet,com.github.oeuvres.alix.web.OptionDistrib)" class="member-name-link">forms</a><wbr>(<a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#forms(com.github.oeuvres.alix.lucene.search.FieldText,java.lang.String%5B%5D,org.apache.lucene.util.BitSet,com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">forms</a><wbr>(<a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;search,
  org.apache.lucene.util.BitSet&nbsp;docFilter,
- <a href="../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web">OptionDistrib</a>&nbsp;distrib)</code></div>
+ <a href="Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get occurrences count of a text field by facet.</div>
 </div>
@@ -294,27 +289,22 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Use a list of search as a navigator for a list of doc ids.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsAll()" class="member-name-link">occsAll</a>()</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#stats(com.github.oeuvres.alix.lucene.search.FieldText)" class="member-name-link">stats</a><wbr>(<a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Global count of occurrences (except empty positions) for all index.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#stats(com.github.oeuvres.alix.lucene.search.FieldText)" class="member-name-link">stats</a><wbr>(<a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Calculate, by facet, global count of occurrences of a text field</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueId(int)" class="member-name-link">valueId</a><wbr>(int&nbsp;docId)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueId(int)" class="member-name-link">valueId</a><wbr>(int&nbsp;docId)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get first available facetId for this docId or -1 if nothing found.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueIds(int)" class="member-name-link">valueIds</a><wbr>(int&nbsp;docId)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueIds(int)" class="member-name-link">valueIds</a><wbr>(int&nbsp;docId)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get facetIds for a docId.</div>
 </div>
 </div>
@@ -345,56 +335,49 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="dic">
 <h3>dic</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRefHash</span>&nbsp;<span class="element-name">dic</span></div>
-<div class="block">Store and populate the search.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="docsAll">
-<h3>docsAll</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docsAll</span></div>
-<div class="block">Global number of docs relevant for this field.</div>
+<div class="block">Dictionary of terms from this field.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="docsByform">
 <h3>docsByform</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">docsByform</span></div>
-<div class="block">By form, count of docs.</div>
+<div class="block">docsByform[formId] = docs; count of docs by form.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="occsAll">
-<h3>occsAll</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsAll</span></div>
-<div class="block">Global number of occurrences for this field. Occs by form not relevant for a facet.</div>
+<section class="detail" id="docsAll">
+<h3>docsAll</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docsAll</span></div>
+<div class="block">Σ docsByForm; global count of docs relevant for this field.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="fieldName">
 <h3>fieldName</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">fieldName</span></div>
-<div class="block">Name of the field to extract stats</div>
+<div class="block">Name of a lucene field from which extract and cache stats.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="reader">
 <h3>reader</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.index.IndexReader</span>&nbsp;<span class="element-name">reader</span></div>
-<div class="block">Cache the state of a reader from which all freqs are counted</div>
+<div class="block">Lucene index reader, cache the state.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="info">
 <h3>info</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.index.FieldInfo</span>&nbsp;<span class="element-name">info</span></div>
-<div class="block">Infos</div>
+<div class="block">Infos about the lucene field.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="maxValue">
 <h3>maxValue</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">maxValue</span></div>
-<div class="block">Number of different values found, is also biggest valueId+1 (like lucene IndexReader.maxDoc())</div>
+<div class="block">Number of different values found = biggest valueId + 1.</div>
 </section>
 </li>
 </ul>
@@ -478,12 +461,12 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="forms(com.github.oeuvres.alix.lucene.search.FieldText,java.lang.String[],org.apache.lucene.util.BitSet,com.github.oeuvres.alix.web.OptionDistrib)">
+<section class="detail" id="forms(com.github.oeuvres.alix.lucene.search.FieldText,java.lang.String[],org.apache.lucene.util.BitSet,com.github.oeuvres.alix.lucene.search.Scorer)">
 <h3>forms</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">forms</span><wbr><span class="parameters">(<a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;search,
  org.apache.lucene.util.BitSet&nbsp;docFilter,
- <a href="../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web">OptionDistrib</a>&nbsp;distrib)</span>
+ <a href="Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</span>
                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Get occurrences count of a text field by facet.
  For example, an index has 3 facets : withLotsOfDummy, withSomeDummy, withoutDummy.
@@ -499,7 +482,7 @@ loadScripts(document, 'script');</script>
 <dd><code>ftext</code> - required stats from a text field.</dd>
 <dd><code>search</code> - required set of terms present in the text field.</dd>
 <dd><code>docFilter</code> - optional set of internal lucene docId.</dd>
-<dd><code>distrib</code> - optional distribution to calculate a score for each facet.</dd>
+<dd><code>scorer</code> - optional distribution to calculate a score for each facet.</dd>
 <dt>Returns:</dt>
 <dd>an enumerator of facets with textual stats.</dd>
 <dt>Throws:</dt>
@@ -727,17 +710,6 @@ loadScripts(document, 'script');</script>
 <dd><code>bytesIds</code> - collection of ids to test against dictionary.</dd>
 <dt>Returns:</dt>
 <dd>set of unique forms, sorted for efficient search with <code>TermsEnum.seekExact(BytesRef)</code>.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="occsAll()">
-<h3>occsAll</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsAll</span>()</div>
-<div class="block">Global count of occurrences (except empty positions) for all index.</div>
-<dl class="notes">
-<dt>Returns:</dt>
-<dd>total occurrences for the index.</dd>
 </dl>
 </section>
 </li>

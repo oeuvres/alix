@@ -147,8 +147,12 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">A mutable list of ints.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/Top.html#com.github.oeuvres.alix.lucene.search">Top</a></div>
+<div class="col-first even-row-color"><a href="class-use/MI.html#com.github.oeuvres.alix.lucene.search">MI</a></div>
 <div class="col-last even-row-color">
+<div class="block">Some algorithms to score co-occurrency.</div>
+</div>
+<div class="col-first odd-row-color"><a href="class-use/Top.html#com.github.oeuvres.alix.lucene.search">Top</a></div>
+<div class="col-last odd-row-color">
 <div class="block">A queue to select the top elements according to a float score.</div>
 </div>
 </div>
@@ -166,7 +170,7 @@ loadScripts(document, 'script');</script>
  A mutable string implementation that grows on the right (<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Appendable.html" title="class or interface in java.lang" class="external-link"><code>Appendable</code></a>,
  but also, on the left <a href="Chain.html#prepend(char)"><code>Chain.prepend(char)</code></a>.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/CsvReader.Row.html#com.github.oeuvres.alix.util">CsvReader.Row</a></div>
+<div class="col-first odd-row-color"><a href="class-use/CSVReader.Row.html#com.github.oeuvres.alix.util">CSVReader.Row</a></div>
 <div class="col-last odd-row-color">
 <div class="block">Mutable object to record cells as <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link"><code>CharSequence</code></a>.</div>
 </div>
@@ -188,8 +192,10 @@ loadScripts(document, 'script');</script>
 <div class="block">An efficient int-int Map implementation, encoded in a long array for key and
  value.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/IntIntMap.Pair.html#com.github.oeuvres.alix.util">IntIntMap.Pair</a></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first even-row-color"><a href="class-use/IntIntMap.Entry.html#com.github.oeuvres.alix.util">IntIntMap.Entry</a></div>
+<div class="col-last even-row-color">
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.Entry.html" title="class or interface in java.util" class="external-link"><code>Map.Entry</code></a>.</div>
+</div>
 <div class="col-first odd-row-color"><a href="class-use/IntIntMap.SpecRow.html#com.github.oeuvres.alix.util">IntIntMap.SpecRow</a></div>
 <div class="col-last odd-row-color">
 <div class="block">A data row to sort the important values in a cosine.</div>
@@ -214,32 +220,36 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">A fixed list of longs, useful in arrays to be sorted.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/Roll.html#com.github.oeuvres.alix.util">Roll</a></div>
+<div class="col-first odd-row-color"><a href="class-use/MI.html#com.github.oeuvres.alix.util">MI</a></div>
 <div class="col-last odd-row-color">
+<div class="block">Some algorithms to score co-occurrency.</div>
+</div>
+<div class="col-first even-row-color"><a href="class-use/Roll.html#com.github.oeuvres.alix.util">Roll</a></div>
+<div class="col-last even-row-color">
 <div class="block">A fixed size queue, rolling if full.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/Roller.html#com.github.oeuvres.alix.util">Roller</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/Roller.html#com.github.oeuvres.alix.util">Roller</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Efficient Object to handle a sliding window, on different types, works like a
  circular array.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/SparseMat.Counter.html#com.github.oeuvres.alix.util">SparseMat.Counter</a></div>
-<div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><a href="class-use/Top.html#com.github.oeuvres.alix.util">Top</a></div>
-<div class="col-last even-row-color">
+<div class="col-first even-row-color"><a href="class-use/SparseMat.Counter.html#com.github.oeuvres.alix.util">SparseMat.Counter</a></div>
+<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><a href="class-use/Top.html#com.github.oeuvres.alix.util">Top</a></div>
+<div class="col-last odd-row-color">
 <div class="block">A queue to select the top elements according to a float score.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/Top.Entry.html#com.github.oeuvres.alix.util">Top.Entry</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/Top.Entry.html#com.github.oeuvres.alix.util">Top.Entry</a></div>
+<div class="col-last even-row-color">
 <div class="block">A mutable pair (rank, Object), used in the data array of the top queue.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/TopArray.html#com.github.oeuvres.alix.util">TopArray</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/TopArray.html#com.github.oeuvres.alix.util">TopArray</a></div>
+<div class="col-last odd-row-color">
 <div class="block">A queue to select the top elements from a score array where index is a kind
  of id, and value is a score.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/TopArray.IdScore.html#com.github.oeuvres.alix.util">TopArray.IdScore</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/TopArray.IdScore.html#com.github.oeuvres.alix.util">TopArray.IdScore</a></div>
+<div class="col-last even-row-color">
 <div class="block">A mutable pair (id, score), sortable on score only, used as cells in arrays.</div>
 </div>
 </div>

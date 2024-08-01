@@ -83,10 +83,8 @@ loadScripts(document, 'script');</script>
 <div class="type-signature"><span class="modifiers">public class </span><span class="element-name type-name-label">FormEnum</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>
 implements <a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></span></div>
-<div class="block">This object is build to collect list of forms with useful stats for semantic
- interpretations and score calculations. This class is a wrapper around
- different pre-calculated arrays, and is also used to record search specific
- counts like freqs and hits.</div>
+<div class="block">This object is outputed by an Alix field <code>FieldCharsAbstract</code>, to provide
+ list of terms with stats, for example for queries. according to filters or queries; calculated by th</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -108,80 +106,50 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Field</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>protected final org.apache.lucene.util.BytesRefHash</code></div>
-<div class="col-second even-row-color"><code><a href="#dic" class="member-name-link">dic</a></code></div>
+<div class="col-first even-row-color"><code>protected final int[]</code></div>
+<div class="col-second even-row-color"><code><a href="#docsByForm" class="member-name-link">docsByForm</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Field dictionary.</div>
+<div class="block">docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.</div>
 </div>
-<div class="col-first odd-row-color"><code>protected final int[]</code></div>
-<div class="col-second odd-row-color"><code><a href="#docs4form" class="member-name-link">docs4form</a></code></div>
+<div class="col-first odd-row-color"><code>protected long</code></div>
+<div class="col-second odd-row-color"><code><a href="#freqAll" class="member-name-link">freqAll</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">By formId, count of docs, for all index.</div>
-</div>
-<div class="col-first even-row-color"><code>protected final int</code></div>
-<div class="col-second even-row-color"><code><a href="#docsAll" class="member-name-link">docsAll</a></code></div>
-<div class="col-last even-row-color">
-<div class="block">Global number of docs of a field.</div>
-</div>
-<div class="col-first odd-row-color"><code>protected int[]</code></div>
-<div class="col-second odd-row-color"><code><a href="#formDocsPart" class="member-name-link">formDocsPart</a></code></div>
-<div class="col-last odd-row-color">
-<div class="block">By formId, count of docs, for a partition</div>
-</div>
-<div class="col-first even-row-color"><code>protected long[]</code></div>
-<div class="col-second even-row-color"><code><a href="#formOccsPart" class="member-name-link">formOccsPart</a></code></div>
-<div class="col-last even-row-color">
-<div class="block">By formId, count of occurrences, on a partition</div>
-</div>
-<div class="col-first odd-row-color"><code>protected long[]</code></div>
-<div class="col-second odd-row-color"><code><a href="#freq4form" class="member-name-link">freq4form</a></code></div>
-<div class="col-last odd-row-color">
-<div class="block">By formId, count of occurrences, matched or selected</div>
-</div>
-<div class="col-first even-row-color"><code>protected long</code></div>
-<div class="col-second even-row-color"><code><a href="#freqAll" class="member-name-link">freqAll</a></code></div>
-<div class="col-last even-row-color">
 <div class="block">Occurrences found, Σ freq4form</div>
 </div>
-<div class="col-first odd-row-color"><code>protected int[]</code></div>
-<div class="col-second odd-row-color"><code><a href="#hits4form" class="member-name-link">hits4form</a></code></div>
-<div class="col-last odd-row-color">
-<div class="block">By formId, count of docs, matched in a text search</div>
-</div>
-<div class="col-first even-row-color"><code>protected int</code></div>
-<div class="col-second even-row-color"><code><a href="#hitsAll" class="member-name-link">hitsAll</a></code></div>
+<div class="col-first even-row-color"><code>protected long[]</code></div>
+<div class="col-second even-row-color"><code><a href="#freqByForm" class="member-name-link">freqByForm</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Document found, Σ formHits</div>
+<div class="block">hitsByform[formId] = freq; count of occurrences in a set of hits, by form.</div>
+</div>
+<div class="col-first odd-row-color"><code>protected int</code></div>
+<div class="col-second odd-row-color"><code><a href="#hitsAll" class="member-name-link">hitsAll</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">Count of unique documents found.</div>
+</div>
+<div class="col-first even-row-color"><code>protected int[]</code></div>
+<div class="col-second even-row-color"><code><a href="#hitsByForm" class="member-name-link">hitsByForm</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">hitsByform[formId] = hits; count of docs matched or selected by form.</div>
 </div>
 <div class="col-first odd-row-color"><code>protected org.apache.lucene.util.BitSet</code></div>
 <div class="col-second odd-row-color"><code><a href="#hitsVek" class="member-name-link">hitsVek</a></code></div>
 <div class="col-last odd-row-color">
 <div class="block">Vector of documents hits</div>
 </div>
-<div class="col-first even-row-color"><code>protected final int</code></div>
-<div class="col-second even-row-color"><code><a href="#maxValue" class="member-name-link">maxValue</a></code></div>
-<div class="col-last even-row-color">
-<div class="block">Number of different values found, is also biggest valueId+1 see <code>IndexReader.maxDoc()</code>.</div>
-</div>
-<div class="col-first odd-row-color"><code>protected long[]</code></div>
-<div class="col-second odd-row-color"><code><a href="#occs4form" class="member-name-link">occs4form</a></code></div>
-<div class="col-last odd-row-color">
-<div class="block">By formId, count of occurrences</div>
-</div>
 <div class="col-first even-row-color"><code>protected long</code></div>
 <div class="col-second even-row-color"><code><a href="#occsAll" class="member-name-link">occsAll</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Global number of occurrences for this field.</div>
+<div class="block">Σ occsByForm</div>
 </div>
-<div class="col-first odd-row-color"><code>long</code></div>
-<div class="col-second odd-row-color"><code><a href="#occsPart" class="member-name-link">occsPart</a></code></div>
+<div class="col-first odd-row-color"><code>protected long[]</code></div>
+<div class="col-second odd-row-color"><code><a href="#occsByForm" class="member-name-link">occsByForm</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">Count of occurrences for the part explored</div>
+<div class="block">occsByform[formId] = occs; count of occurrences by form <a href="FieldText.html#occsByForm"><code>FieldText.occsByForm</code></a>.</div>
 </div>
 <div class="col-first even-row-color"><code>protected double[]</code></div>
-<div class="col-second even-row-color"><code><a href="#score4form" class="member-name-link">score4form</a></code></div>
+<div class="col-second even-row-color"><code><a href="#scoreByform" class="member-name-link">scoreByform</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">By formId, a relevance score calculated</div>
+<div class="block">scoreByform[formId]=score; a relevance score calculated by form.</div>
 </div>
 <div class="col-first odd-row-color"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]</code></div>
 <div class="col-second odd-row-color"><code><a href="#search" class="member-name-link">search</a></code></div>
@@ -199,13 +167,27 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(org.apache.lucene.util.BytesRefHash,int,int%5B%5D,long,long%5B%5D)" class="member-name-link">FormEnum</a><wbr>(org.apache.lucene.util.BytesRefHash&nbsp;dic,
- int&nbsp;docs,
- int[]&nbsp;docsByForm,
- long&nbsp;occs,
- long[]&nbsp;occsByForm)</code></div>
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(com.github.oeuvres.alix.lucene.search.FieldFacet)" class="member-name-link">FormEnum</a><wbr>(<a href="FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search">FieldFacet</a>&nbsp;field)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Build a form enumerator with required field.</div>
+<div class="block">Build a form enumerator from an alix <a href="FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldFacet</code></a>, sharing properties 
+ useful to calcultate scores for some queries : 
+ 
+   Dictionary of forms <code>FieldCharsAbstract.dic</code>
+   docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.
+   Σ docsByForm; global count of docs relevant for this field <code>FieldCharsAbstract.docsAll</code>.
+ </div>
+</div>
+<div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(com.github.oeuvres.alix.lucene.search.FieldText)" class="member-name-link">FormEnum</a><wbr>(<a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;field)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Build a form enumerator from an alix <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, sharing properties 
+ useful to calcultate scores for some queries : 
+ 
+   Dictionary of forms <code>FieldCharsAbstract.dic</code>
+   docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.
+   Σ docsByForm; global count of docs relevant for this field <code>FieldCharsAbstract.docsAll</code>.
+   occsByform[formId] = occs; count of occurrences by form <a href="FieldText.html#occsByForm"><code>FieldText.occsByForm</code></a>.
+   Σ occsByForm; global count of occs for this field <a href="FieldText.html#occsAll"><code>FieldText.occsAll</code></a>.
+ </div>
 </div>
 </div>
 </section>
@@ -235,78 +217,77 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#docs(int)" class="member-name-link">docs</a><wbr>(int&nbsp;formId)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">For the provided formId, returns the total count of documents in
- corpus containing this form.</div>
+<div class="block">For the requested formId, 
+ get document count containing this form.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#docsAll()" class="member-name-link">docsAll</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Global count of docs for field</div>
+<div class="block">Global count of docs concerned by this field.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#docsByRank(int)" class="member-name-link">docsByRank</a><wbr>(int&nbsp;rank)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">By rank in sort order, returns total count of documents in corpus</div>
+<div class="block">For the form requested by rank in sort order,
+ get document count containing this form.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#docsPart()" class="member-name-link">docsPart</a>()</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>com.github.oeuvres.alix.lucene.search.FieldCharsAbstract</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#field()" class="member-name-link">field</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">For current form, document count in a part</div>
+<div class="block">Get the field from wiche this term enumerator is build on.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#docsPart(int)" class="member-name-link">docsPart</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form()" class="member-name-link">form</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">For requested form, document count in a part</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form()" class="member-name-link">form</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get the current term as a String</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../analysis/tokenattributes/CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)" class="member-name-link">form</a><wbr>(<a href="../analysis/tokenattributes/CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>&nbsp;term)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Copy the current term in a reusable char array.</div>
+<div class="block">For current form in sort order, get its chars as a String.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form(com.github.oeuvres.alix.util.Chain)" class="member-name-link">form</a><wbr>(<a href="../../util/Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;term)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Copy the current term in a reusable char array.</div>
+<div class="block">For current form in sort order, copy the chars
+ in a reusable mutable CharSequence.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form(org.apache.lucene.util.BytesRef)" class="member-name-link">form</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Populate reusable bytes with current term</div>
+<div class="block">For current form in sort order, get its chars
+ with reusable bytes (no return, value populate the bytes).</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formByRank(int)" class="member-name-link">formByRank</a><wbr>(int&nbsp;rank)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">By rank in sort order, returns form</div>
+<div class="block">For the form at this rank in sort order, returns the form as a String.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formId()" class="member-name-link">formId</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Current term, get the formId for the global dic.</div>
+<div class="block">For current form in sort order, get its formId.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freq()" class="member-name-link">freq</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get the count of matching occurrences.</div>
+<div class="block">If a search has set freq by form,
+ for the current form in sort order,
+ get the count of matching occurrences.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freq(int)" class="member-name-link">freq</a><wbr>(int&nbsp;formId)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get the count of matching occurrences</div>
+<div class="block">If a search has set freq by form,
+ for the form id,
+ get the count of matching occurrences .</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freqAll()" class="member-name-link">freqAll</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Global count of matching occurrences</div>
+<div class="block">If a search has set freq by form,
+ get global count of matching occurrences</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freqByRank(int)" class="member-name-link">freqByRank</a><wbr>(int&nbsp;rank)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">By rank in sort order, returns count of matching occurrences</div>
+<div class="block">For the form requested by rank in sort order,
+ get count of matching occurrences.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hasNext()" class="member-name-link">hasNext</a>()</code></div>
@@ -316,24 +297,35 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hits()" class="member-name-link">hits</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get the count of matched documents for the current term.</div>
+<div class="block">If a search has set hits by form,
+ for the current form in sort order,
+ get the count of matching documents.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hits(int)" class="member-name-link">hits</a><wbr>(int&nbsp;formId)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get the count of matched documents for the current term.</div>
+<div class="block">If a search has set hits by form,
+ for the form requested by id,
+ get the count of matching documents.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hitsAll()" class="member-name-link">hitsAll</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Total of document found for this freq list</div>
+<div class="block">If a search has set hits by form,
+ total count of unique documents found.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hitsByRank(int)" class="member-name-link">hitsByRank</a><wbr>(int&nbsp;rank)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">If a search has set hits by form,
+ for the form by rank in sort order,
+ get the count of matching documents.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#last()" class="member-name-link">last</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Set enumerator to last element.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#limit()" class="member-name-link">limit</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
@@ -353,32 +345,25 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs()" class="member-name-link">occs</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Current global number of occurrences for this term</div>
+<div class="block">For the current form in sort order,
+ get the global count of occurrences.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(int)" class="member-name-link">occs</a><wbr>(int&nbsp;formId)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Global number of occurrences for this term</div>
+<div class="block">For the form requested by id,
+ get the global count of occurrences.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsAll()" class="member-name-link">occsAll</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Current global number of occurrences for this term</div>
+<div class="block">Global count of occurrences for this field.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsByRank(int)" class="member-name-link">occsByRank</a><wbr>(int&nbsp;rank)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Global number of occurrences by rank of a term</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsPart()" class="member-name-link">occsPart</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">For current form, occurrence count in a part</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsPart(int)" class="member-name-link">occsPart</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">For requested form, occurrence count in a part</div>
+<div class="block">For the form requested by rank in sort order,
+ get the global count of occurrences.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#reset()" class="member-name-link">reset</a>()</code></div>
@@ -388,19 +373,26 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score()" class="member-name-link">score</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Value used for sorting for current term.</div>
+<div class="block">For the current form in sort order,
+ get the last calculated score.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score(int)" class="member-name-link">score</a><wbr>(int&nbsp;formId)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Value used for sorting for current term.</div>
+<div class="block">For the form requested by id,
+ get the last calculated score.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score(com.github.oeuvres.alix.web.OptionDistrib)" class="member-name-link">score</a><wbr>(<a href="../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web">OptionDistrib</a>&nbsp;distrib)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score(com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">score</a><wbr>(<a href="Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Score all forms with a distribution algorithm.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#scoreByRank(int)" class="member-name-link">scoreByRank</a><wbr>(int&nbsp;rank)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">For the form requested by rank in sort order,
+ get count of matching occurrences.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#size()" class="member-name-link">size</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
@@ -457,59 +449,45 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <h2>Field Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="dic">
-<h3>dic</h3>
-<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRefHash</span>&nbsp;<span class="element-name">dic</span></div>
-<div class="block">Field dictionary.</div>
+<section class="detail" id="docsByForm">
+<h3>docsByForm</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">docsByForm</span></div>
+<div class="block">docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="maxValue">
-<h3>maxValue</h3>
-<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">maxValue</span></div>
-<div class="block">Number of different values found, is also biggest valueId+1 see <code>IndexReader.maxDoc()</code>.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="docsAll">
-<h3>docsAll</h3>
-<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docsAll</span></div>
-<div class="block">Global number of docs of a field.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="docs4form">
-<h3>docs4form</h3>
-<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">docs4form</span></div>
-<div class="block">By formId, count of docs, for all index.</div>
+<section class="detail" id="occsByForm">
+<h3>occsByForm</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">occsByForm</span></div>
+<div class="block">occsByform[formId] = occs; count of occurrences by form <a href="FieldText.html#occsByForm"><code>FieldText.occsByForm</code></a>.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="occsAll">
 <h3>occsAll</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsAll</span></div>
-<div class="block">Global number of occurrences for this field.</div>
+<div class="block">Σ occsByForm</div>
 </section>
 </li>
 <li>
-<section class="detail" id="occs4form">
-<h3>occs4form</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">occs4form</span></div>
-<div class="block">By formId, count of occurrences</div>
+<section class="detail" id="hitsByForm">
+<h3>hitsByForm</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">hitsByForm</span></div>
+<div class="block">hitsByform[formId] = hits; count of docs matched or selected by form.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="hitsAll">
 <h3>hitsAll</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">hitsAll</span></div>
-<div class="block">Document found, Σ formHits</div>
+<div class="block">Count of unique documents found.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="hits4form">
-<h3>hits4form</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">hits4form</span></div>
-<div class="block">By formId, count of docs, matched in a text search</div>
+<section class="detail" id="freqByForm">
+<h3>freqByForm</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">freqByForm</span></div>
+<div class="block">hitsByform[formId] = freq; count of occurrences in a set of hits, by form.</div>
 </section>
 </li>
 <li>
@@ -520,31 +498,10 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 </section>
 </li>
 <li>
-<section class="detail" id="freq4form">
-<h3>freq4form</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">freq4form</span></div>
-<div class="block">By formId, count of occurrences, matched or selected</div>
-</section>
-</li>
-<li>
-<section class="detail" id="score4form">
-<h3>score4form</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">double[]</span>&nbsp;<span class="element-name">score4form</span></div>
-<div class="block">By formId, a relevance score calculated</div>
-</section>
-</li>
-<li>
-<section class="detail" id="formDocsPart">
-<h3>formDocsPart</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">formDocsPart</span></div>
-<div class="block">By formId, count of docs, for a partition</div>
-</section>
-</li>
-<li>
-<section class="detail" id="formOccsPart">
-<h3>formOccsPart</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">formOccsPart</span></div>
-<div class="block">By formId, count of occurrences, on a partition</div>
+<section class="detail" id="scoreByform">
+<h3>scoreByform</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">double[]</span>&nbsp;<span class="element-name">scoreByform</span></div>
+<div class="block">scoreByform[formId]=score; a relevance score calculated by form.</div>
 </section>
 </li>
 <li>
@@ -552,13 +509,6 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <h3>hitsVek</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">org.apache.lucene.util.BitSet</span>&nbsp;<span class="element-name">hitsVek</span></div>
 <div class="block">Vector of documents hits</div>
-</section>
-</li>
-<li>
-<section class="detail" id="occsPart">
-<h3>occsPart</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsPart</span></div>
-<div class="block">Count of occurrences for the part explored</div>
 </section>
 </li>
 <li>
@@ -577,21 +527,38 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <h2>Constructor Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="&lt;init&gt;(org.apache.lucene.util.BytesRefHash,int,int[],long,long[])">
+<section class="detail" id="&lt;init&gt;(com.github.oeuvres.alix.lucene.search.FieldText)">
 <h3>FormEnum</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FormEnum</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRefHash&nbsp;dic,
- int&nbsp;docs,
- int[]&nbsp;docsByForm,
- long&nbsp;occs,
- long[]&nbsp;occsByForm)</span></div>
-<div class="block">Build a form enumerator with required field.</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FormEnum</span><wbr><span class="parameters">(<a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;field)</span></div>
+<div class="block">Build a form enumerator from an alix <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, sharing properties 
+ useful to calcultate scores for some queries : 
+ <ul>
+   <li>Dictionary of forms <code>FieldCharsAbstract.dic</code></li>
+   <li>docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.</li>
+   <li>Σ docsByForm; global count of docs relevant for this field <code>FieldCharsAbstract.docsAll</code>.</li>
+   <li>occsByform[formId] = occs; count of occurrences by form <a href="FieldText.html#occsByForm"><code>FieldText.occsByForm</code></a>.</li>
+   <li>Σ occsByForm; global count of occs for this field <a href="FieldText.html#occsAll"><code>FieldText.occsAll</code></a>.</li>
+ </ul></div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>dic</code> - dictionary of forms <code>AbstractFieldChars.dic</code></dd>
-<dd><code>docs</code> - <code>AbstractFieldChars.docsAll</code></dd>
-<dd><code>docsByForm</code> - <code>AbstractFieldChars.docsByform</code></dd>
-<dd><code>occs</code> - <code>AbstractFieldChars.occsAll</code></dd>
-<dd><code>occsByForm</code> - long[formId] = occs.</dd>
+<dd><code>field</code> - alix stats on an indexed and tokenized lucene field.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="&lt;init&gt;(com.github.oeuvres.alix.lucene.search.FieldFacet)">
+<h3>FormEnum</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FormEnum</span><wbr><span class="parameters">(<a href="FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search">FieldFacet</a>&nbsp;field)</span></div>
+<div class="block">Build a form enumerator from an alix <a href="FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldFacet</code></a>, sharing properties 
+ useful to calcultate scores for some queries : 
+ <ul>
+   <li>Dictionary of forms <code>FieldCharsAbstract.dic</code></li>
+   <li>docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.</li>
+   <li>Σ docsByForm; global count of docs relevant for this field <code>FieldCharsAbstract.docsAll</code>.</li>
+ </ul></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>field</code> - alix stats on an indexed and not tokenized lucene field.</dd>
 </dl>
 </section>
 </li>
@@ -630,11 +597,11 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="docs(int)">
 <h3>docs</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docs</span><wbr><span class="parameters">(int&nbsp;formId)</span></div>
-<div class="block">For the provided formId, returns the total count of documents in
- corpus containing this form.</div>
+<div class="block">For the requested formId, 
+ get document count containing this form.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>formId</code> - </dd>
+<dd><code>formId</code> - a form Id.</dd>
 <dt>Returns:</dt>
 <dd>docs for this form.</dd>
 </dl>
@@ -644,9 +611,10 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="docsAll()">
 <h3>docsAll</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docsAll</span>()</div>
-<div class="block">Global count of docs for field</div>
+<div class="block">Global count of docs concerned by this field.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>docs.</dd>
 </dl>
 </section>
 </li>
@@ -654,29 +622,24 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="docsByRank(int)">
 <h3>docsByRank</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docsByRank</span><wbr><span class="parameters">(int&nbsp;rank)</span></div>
-<div class="block">By rank in sort order, returns total count of documents in corpus</div>
+<div class="block">For the form requested by rank in sort order,
+ get document count containing this form.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>rank</code> - in order of last sort.</dd>
 <dt>Returns:</dt>
+<dd>docs for the form at this rank.</dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="docsPart()">
-<h3>docsPart</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">docsPart</span>()</div>
-<div class="block">For current form, document count in a part</div>
+<section class="detail" id="field()">
+<h3>field</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">com.github.oeuvres.alix.lucene.search.FieldCharsAbstract</span>&nbsp;<span class="element-name">field</span>()</div>
+<div class="block">Get the field from wiche this term enumerator is build on.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="docsPart(int)">
-<h3>docsPart</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">docsPart</span><wbr><span class="parameters">(int&nbsp;formId)</span></div>
-<div class="block">For requested form, document count in a part</div>
-<dl class="notes">
-<dt>Returns:</dt>
+<dd>stats about a lucene field.</dd>
 </dl>
 </section>
 </li>
@@ -684,9 +647,10 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="form()">
 <h3>form</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">form</span>()</div>
-<div class="block">Get the current term as a String</div>
+<div class="block">For current form in sort order, get its chars as a String.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>current chars.</dd>
 </dl>
 </section>
 </li>
@@ -694,11 +658,12 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="formByRank(int)">
 <h3>formByRank</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">formByRank</span><wbr><span class="parameters">(int&nbsp;rank)</span></div>
-<div class="block">By rank in sort order, returns form</div>
+<div class="block">For the form at this rank in sort order, returns the form as a String.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>rank</code> - </dd>
+<dd><code>rank</code> - in order of last sort.</dd>
 <dt>Returns:</dt>
+<dd>form at rank.</dd>
 </dl>
 </section>
 </li>
@@ -706,12 +671,12 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="formId()">
 <h3>formId</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">formId</span>()</div>
-<div class="block">Current term, get the formId for the global dic.</div>
+<div class="block">For current form in sort order, get its formId.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="FormIterator.html#formId()">formId</a></code>&nbsp;in interface&nbsp;<code><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></code></dd>
 <dt>Returns:</dt>
-<dd>An int form identifier.</dd>
+<dd>current formId.</dd>
 </dl>
 </section>
 </li>
@@ -719,22 +684,11 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="form(org.apache.lucene.util.BytesRef)">
 <h3>form</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">form</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRef&nbsp;bytes)</span></div>
-<div class="block">Populate reusable bytes with current term</div>
+<div class="block">For current form in sort order, get its chars
+ with reusable bytes (no return, value populate the bytes).</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>bytes</code> - </dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="form(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)">
-<h3>form</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../analysis/tokenattributes/CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></span>&nbsp;<span class="element-name">form</span><wbr><span class="parameters">(<a href="../analysis/tokenattributes/CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>&nbsp;term)</span></div>
-<div class="block">Copy the current term in a reusable char array.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>term</code> - </dd>
-<dt>Returns:</dt>
+<dd><code>bytes</code> - reusable bytes to populate with current form.</dd>
 </dl>
 </section>
 </li>
@@ -742,7 +696,8 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="form(com.github.oeuvres.alix.util.Chain)">
 <h3>form</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">form</span><wbr><span class="parameters">(<a href="../../util/Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;term)</span></div>
-<div class="block">Copy the current term in a reusable char array.</div>
+<div class="block">For current form in sort order, copy the chars
+ in a reusable mutable CharSequence.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>term</code> - reusable mutable CharSequence.</dd>
@@ -753,11 +708,14 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="freq()">
 <h3>freq</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">freq</span>()</div>
-<div class="block">Get the count of matching occurrences.</div>
+<div class="block">If a search has set freq by form,
+ for the current form in sort order,
+ get the count of matching occurrences.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="FormIterator.html#freq()">freq</a></code>&nbsp;in interface&nbsp;<code><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></code></dd>
 <dt>Returns:</dt>
+<dd>current freq.</dd>
 </dl>
 </section>
 </li>
@@ -765,11 +723,14 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="freq(int)">
 <h3>freq</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">freq</span><wbr><span class="parameters">(int&nbsp;formId)</span></div>
-<div class="block">Get the count of matching occurrences</div>
+<div class="block">If a search has set freq by form,
+ for the form id,
+ get the count of matching occurrences .</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>formId</code> - </dd>
+<dd><code>formId</code> - a form id.</dd>
 <dt>Returns:</dt>
+<dd>freq for this form.</dd>
 </dl>
 </section>
 </li>
@@ -777,9 +738,11 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="freqAll()">
 <h3>freqAll</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">freqAll</span>()</div>
-<div class="block">Global count of matching occurrences</div>
+<div class="block">If a search has set freq by form,
+ get global count of matching occurrences</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>Σ freq by form.</dd>
 </dl>
 </section>
 </li>
@@ -787,11 +750,13 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="freqByRank(int)">
 <h3>freqByRank</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">freqByRank</span><wbr><span class="parameters">(int&nbsp;rank)</span></div>
-<div class="block">By rank in sort order, returns count of matching occurrences</div>
+<div class="block">For the form requested by rank in sort order,
+ get count of matching occurrences.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>rank</code> - </dd>
+<dd><code>rank</code> - in order of last sort.</dd>
 <dt>Returns:</dt>
+<dd>freq for the form at this rank.</dd>
 </dl>
 </section>
 </li>
@@ -813,9 +778,12 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="hits()">
 <h3>hits</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">hits</span>()</div>
-<div class="block">Get the count of matched documents for the current term.</div>
+<div class="block">If a search has set hits by form,
+ for the current form in sort order,
+ get the count of matching documents.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>hits for current form.</dd>
 </dl>
 </section>
 </li>
@@ -823,9 +791,14 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="hits(int)">
 <h3>hits</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">hits</span><wbr><span class="parameters">(int&nbsp;formId)</span></div>
-<div class="block">Get the count of matched documents for the current term.</div>
+<div class="block">If a search has set hits by form,
+ for the form requested by id,
+ get the count of matching documents.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>formId</code> - a form id.</dd>
 <dt>Returns:</dt>
+<dd>hits for this form.</dd>
 </dl>
 </section>
 </li>
@@ -833,19 +806,34 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="hitsAll()">
 <h3>hitsAll</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">hitsAll</span>()</div>
-<div class="block">Total of document found for this freq list</div>
+<div class="block">If a search has set hits by form,
+ total count of unique documents found.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>count of unique documents hit.</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="hitsByRank(int)">
 <h3>hitsByRank</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">hitsByRank</span><wbr><span class="parameters">(int&nbsp;rank)</span></div>
+<div class="block">If a search has set hits by form,
+ for the form by rank in sort order,
+ get the count of matching documents.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>rank</code> - of a form.</dd>
+<dt>Returns:</dt>
+<dd>hits for this form.</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="last()">
 <h3>last</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">last</span>()</div>
+<div class="block">Set enumerator to last element.</div>
 </section>
 </li>
 <li>
@@ -902,9 +890,11 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="occs()">
 <h3>occs</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occs</span>()</div>
-<div class="block">Current global number of occurrences for this term</div>
+<div class="block">For the current form in sort order,
+ get the global count of occurrences.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>global count of occurrences for current form.</dd>
 </dl>
 </section>
 </li>
@@ -912,9 +902,13 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="occs(int)">
 <h3>occs</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occs</span><wbr><span class="parameters">(int&nbsp;formId)</span></div>
-<div class="block">Global number of occurrences for this term</div>
+<div class="block">For the form requested by id,
+ get the global count of occurrences.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>formId</code> - a form id.</dd>
 <dt>Returns:</dt>
+<dd>occs for this form.</dd>
 </dl>
 </section>
 </li>
@@ -922,9 +916,10 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="occsAll()">
 <h3>occsAll</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsAll</span>()</div>
-<div class="block">Current global number of occurrences for this term</div>
+<div class="block">Global count of occurrences for this field.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>Σ occsByForm.</dd>
 </dl>
 </section>
 </li>
@@ -932,29 +927,13 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="occsByRank(int)">
 <h3>occsByRank</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsByRank</span><wbr><span class="parameters">(int&nbsp;rank)</span></div>
-<div class="block">Global number of occurrences by rank of a term</div>
+<div class="block">For the form requested by rank in sort order,
+ get the global count of occurrences.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>rank</code> - in order of last sort.</dd>
 <dt>Returns:</dt>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="occsPart()">
-<h3>occsPart</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsPart</span>()</div>
-<div class="block">For current form, occurrence count in a part</div>
-<dl class="notes">
-<dt>Returns:</dt>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="occsPart(int)">
-<h3>occsPart</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsPart</span><wbr><span class="parameters">(int&nbsp;formId)</span></div>
-<div class="block">For requested form, occurrence count in a part</div>
-<dl class="notes">
-<dt>Returns:</dt>
+<dd>occs for the form at this rank.</dd>
 </dl>
 </section>
 </li>
@@ -974,11 +953,13 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="score()">
 <h3>score</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">score</span>()</div>
-<div class="block">Value used for sorting for current term.</div>
+<div class="block">For the current form in sort order,
+ get the last calculated score.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="FormIterator.html#score()">score</a></code>&nbsp;in interface&nbsp;<code><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></code></dd>
 <dt>Returns:</dt>
+<dd>score for current form.</dd>
 </dl>
 </section>
 </li>
@@ -986,21 +967,24 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="score(int)">
 <h3>score</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">score</span><wbr><span class="parameters">(int&nbsp;formId)</span></div>
-<div class="block">Value used for sorting for current term.</div>
+<div class="block">For the form requested by id,
+ get the last calculated score.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>formId</code> - </dd>
+<dd><code>formId</code> - a form id.</dd>
 <dt>Returns:</dt>
+<dd>score for this form id.</dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="score(com.github.oeuvres.alix.web.OptionDistrib)">
+<section class="detail" id="score(com.github.oeuvres.alix.lucene.search.Scorer)">
 <h3>score</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">score</span><wbr><span class="parameters">(<a href="../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web">OptionDistrib</a>&nbsp;distrib)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">score</span><wbr><span class="parameters">(<a href="Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</span></div>
+<div class="block">Score all forms with a distribution algorithm.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>distrib</code> - </dd>
+<dd><code>scorer</code> - a score algo implementation.</dd>
 </dl>
 </section>
 </li>
@@ -1008,10 +992,13 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="scoreByRank(int)">
 <h3>scoreByRank</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">scoreByRank</span><wbr><span class="parameters">(int&nbsp;rank)</span></div>
+<div class="block">For the form requested by rank in sort order,
+ get count of matching occurrences.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>rank</code> - </dd>
+<dd><code>rank</code> - in order of last sort.</dd>
 <dt>Returns:</dt>
+<dd>score for the form at this rank.</dd>
 </dl>
 </section>
 </li>

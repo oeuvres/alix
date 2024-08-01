@@ -34,9 +34,9 @@ package com.github.oeuvres.alix.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
@@ -61,42 +61,36 @@ import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.IntList;
-import com.github.oeuvres.alix.web.OptionDistrib;
 
 /**
- * <p>
- * An object recording different stats for a lucene text field. Is stable
- * according to a state of the index, could be cached. Record all counts useful
- * for stats. For performances, all fields of the class are visible, so it is
- * unsafe.
- * </p>
- * <p>
- * Provide slices of stats for Terms as s sorted Iterator
- * </p>
+ * An object recording stats for an indexed and tokenized lucene field {@link TextField}. 
+ * Lexical stats needs heavy access to some counts that are not native in classical retrieving engine
+ * like lucene. For example, it could be expensive to get the list of most frequent or relevant terms
+ * from a set of documents found by a query. This object maintain such statistics in memory, for index
+ * considered like a “corpus” (a set texts considered as a whole).
  */
-public class FieldText extends AbstractFieldChars
+public class FieldText extends FieldCharsAbstract
 {
-    /** By formId, is a locution */
-    private BitSet locByForm;
-    /**
-     * By document, count of occurrences for this field (for stats), different from
-     * docLength (empty positions)
-     */
-    private final int[] occsByDoc;
-    /** Count of occurrences by formId */
-    private final long[] occsByForm;
-    /** By formId is Pun */
-    private BitSet punByForm;
-    /** By formId, is a stop word */
+    /** occsByform[formId] = occs; count of occurrences by form. */
+    protected final long[] occsByForm;
+    /** Σ occsByForm; global count of occs for this field, without empty positions. */
+    protected final long occsAll;
+    /** stopByForm.get(formId) == true: form is a stop word. */
     private BitSet stopByForm;
-    /** A tag by formId (maybe used for filtering) */
+    /** tagByForm[formI] = {@link Tag#flag()}; lexical type of form. */
     private int[] tagByForm;
+    /** locByForm.get(formId) == true: form is a locution. */
+    private BitSet locByForm;
+    /** punByForm.get(formId) == true: form is punctuation. */
+    private BitSet punByForm;
+    /** occsByDoc[docId] = occs; count of occurrences by document, without empty positions. */
+    protected final int[] occsByDoc;
+    
     /**
      * Build the dictionaries and stats. Each form indexed for the field will be
-     * identified by an int (formid). This id will be in freq order, so that the
-     * form with formid=1 is the most frequent for the index (formId=0 is the empty
-     * string). This order allows optimizations for co-occurrences matrix,
-     * 
+     * identified by an int (formId). This id will be in freq order: the
+     * form with formId=1 is the most frequent for the index (formId=0 is the empty
+     * string).
      * 
      * @param reader a lucene index reader.
      * @param fieldName name of a lucene text field.
@@ -109,6 +103,7 @@ public class FieldText extends AbstractFieldChars
             throw new IllegalArgumentException(
                     "Field \"" + fieldName + "\" of type " + options + " has no FREQS (see IndexOptions)");
         }
+        long occsAll = 0;
         /*
          * Array in docId order, with the total number of tokens by doc. Term vector
          * cost 1 s. / 1000 books and is not precise. Norms for similarity is not enough
@@ -277,24 +272,25 @@ public class FieldText extends AbstractFieldChars
         }
 
         docsAll = docSet.cardinality();
+        this.occsAll = occsAll;
     }
 
     /**
      * Get a dictionary of terms, without statistics.
      * 
      * @param reader lucene index reader.
-     * @param field a text field name.
+     * @param fieldName a text field name.
      * @return a bytes dictionary.
      * @throws IOException Lucene errors.
      */
-    static public BytesRefHash dic(DirectoryReader reader, String field) throws IOException
+    static public BytesRefHash dic(DirectoryReader reader, String fieldName) throws IOException
     {
         BytesRefHash hashDic = new BytesRefHash();
         BytesRef ref;
         for (LeafReaderContext context : reader.leaves()) {
             LeafReader leaf = context.reader();
             // int docBase = context.docBase;
-            Terms terms = leaf.terms(field);
+            Terms terms = leaf.terms(fieldName);
             if (terms == null) continue;
             TermsEnum tenum = terms.iterator();
             while ((ref = tenum.next()) != null) {
@@ -314,81 +310,6 @@ public class FieldText extends AbstractFieldChars
     public int docOccs(final int docId)
     {
         return occsByDoc[docId];
-    }
-
-    /**
-     * Populate a dictionary of forms by a bitSet of documents, the filter is found
-     * in FormEnum.filter
-     * 
-     * @param formStats the form enumerator to populate.
-     * @param docFilter set of docId.
-     * @return the form enumerator populated.
-     * @throws IOException lucene errors.
-     */
-    public FormEnum filter(final FormEnum formStats, final BitSet docFilter) throws IOException
-    {
-        if (docFilter == null) {
-            throw new IllegalArgumentException("Doc filter missing, nothing interesting could be done without.");
-        }
-        long[] formOccsPart = new long[dic.size()];
-        long[] formOccsFreq = formStats.freq4form;
-        if (formOccsFreq == null) {
-            formOccsFreq = new long[dic.size()];
-            formStats.freq4form = formOccsFreq;
-        }
-        int[] formDocsPart = new int[dic.size()];
-        int[] formDocsHit = formStats.hits4form;
-        if (formDocsHit == null) {
-            formDocsHit = new int[dic.size()];
-            formStats.hits4form = formDocsHit;
-        }
-        // no doc to filter, give a a safe copy of the stats
-        long occsPart = 0;
-        BytesRef bytes;
-        final int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS;
-        // loop an all index to calculate a score for the forms
-        for (LeafReaderContext context : reader.leaves()) {
-            LeafReader leaf = context.reader();
-            final int docBase = context.docBase;
-            Terms terms = leaf.terms(fieldName);
-            if (terms == null) continue;
-            TermsEnum tenum = terms.iterator(); // org.apache.lucene.codecs.blocktree.SegmentTermsEnum
-            PostingsEnum postings = null;
-            while ((bytes = tenum.next()) != null) {
-                final int formId = dic.find(bytes);
-                // int docLeaf;
-                Bits live = leaf.getLiveDocs();
-                boolean hasLive = (live != null);
-                postings = tenum.postings(postings, PostingsEnum.FREQS);
-                // lucene doc says « Some implementations are considerably more efficient than a
-                // loop on all docs »
-                // we should do faster here, navigating by the BitSet
-
-                int docLeaf = -1;
-                for (int docId = docFilter.nextSetBit(0); docId != NO_MORE_DOCS; docId = docFilter.nextSetBit(docId + 1)) {
-                    final int target = docId - docBase;
-                    if (hasLive && live.get(target)) continue;
-                    // if docsEnum is already at good place, do not advance
-                    if (docLeaf < target) {
-                        docLeaf = postings.advance(target);
-                    }
-                    if (docLeaf != target) {
-                        continue;
-                    }
-                    final int freq = postings.freq();
-                    if (freq == 0) continue; // strange, is’n it ? Will probably not arrive
-                    formOccsPart[formId] += freq;
-                    formOccsFreq[formId] += freq;
-                    formDocsPart[formId]++;
-                    formDocsHit[formId]++;
-                    occsPart += freq;
-                }
-            }
-        }
-        formStats.formOccsPart = formOccsPart;
-        formStats.formDocsPart = formDocsPart;
-        formStats.occsPart = occsPart;
-        return formStats;
     }
 
     /**
@@ -421,42 +342,38 @@ public class FieldText extends AbstractFieldChars
      * 
      * @return an object to sort and loop forms.
      */
-    public FormEnum forms()
+    public FormEnum formEnum()
     {
-        FormEnum forms = new FormEnum(
-            dic,
-            docsAll,
-            docsByform,
-            occsAll,
-            occsByForm
-        );
+        FormEnum forms = new FormEnum(this);
         return forms;
     }
 
     /**
      * Global form list, filtered by tags, with global stats.
      * 
-     * @param tags form filter.
+     * @param formFilter form filter.
      * @return an object to sort and loop forms.
      */
-    public FormEnum forms(final TagFilter tags)
+    public FormEnum formEnum(final TagFilter formFilter)
     {
-        boolean hasTags = (tags != null);
-        boolean noStop = (tags != null && tags.nostop());
-        boolean locs = (tags != null && tags.locutions());
+        boolean hasTags = (formFilter != null);
+        boolean noStop = (formFilter != null && formFilter.nostop());
+        boolean locs = (formFilter != null && formFilter.locutions());
         long[] formFreq = new long[maxValue];
+        long freqAll = 0;
         for (int formId = 0; formId < maxValue; formId++) {
             if (noStop && isStop(formId)) continue;
             if (locs && !locByForm.get(formId)) continue;
-            if (hasTags && !tags.accept(tagByForm[formId])) continue;
-            // specif.idf(formOccs[formId], formDocsAll[formId] );
+            if (hasTags && !formFilter.accept(tagByForm[formId])) continue;
             // loop on all docs containing the term ?
             formFreq[formId] = occsByForm[formId];
+            freqAll += occsByForm[formId];
         }
         // now we have all we need to build a sorted iterator on entries
-        FormEnum forms = forms();
-        forms.freq4form = formFreq;
-        // no hits
+        FormEnum forms = formEnum();
+        forms.freqByForm = formFreq;
+        forms.freqAll = freqAll;
+        // are hits interesting here ?
         return forms;
     }
 
@@ -467,15 +384,15 @@ public class FieldText extends AbstractFieldChars
      * @return an object to sort and loop forms.
      * @throws IOException lucene errors.
      */
-    public FormEnum forms(final BitSet docFilter) throws IOException
+    public FormEnum formEnum(final BitSet docFilter) throws IOException
     {
         if (docFilter == null) {
             throw new IllegalArgumentException("BitSet doc filter is null, what kind of results are expected?");
         }
         if (docFilter.cardinality() < 1) { // all is filtered, after sort, iterator should not loop
-            return forms();
+            return formEnum();
         }
-        return forms(docFilter, null, null);
+        return formEnum(docFilter, null, null);
     }
 
     /**
@@ -485,28 +402,29 @@ public class FieldText extends AbstractFieldChars
      * 
      * @param docFilter a set of docId.
      * @param formFilter a set of formId.
-     * @param distrib scoring algorithm.
+     * @param scorer scoring algorithm.
      * @return an object to sort and loop forms.
      * @throws IOException lucene errors.
      */
-    public FormEnum forms(final BitSet docFilter, final TagFilter formFilter, OptionDistrib distrib) throws IOException
+    public FormEnum formEnum(final BitSet docFilter, final TagFilter formFilter, Scorer scorer) throws IOException
     {
-        FormEnum forms = forms();
+        FormEnum formEnum = formEnum(); // get global stats 
     
         boolean hasTags = (formFilter != null);
         boolean noStop = (formFilter != null && formFilter.nostop());
         boolean locs = (formFilter != null && formFilter.locutions());
-        boolean hasDistrib = (distrib != null);
+        boolean hasDistrib = (scorer != null);
         boolean hasFilter = (docFilter != null && docFilter.cardinality() > 0);
     
-        if (hasDistrib) forms.score4form = new double[maxValue];
-        forms.freq4form = new long[maxValue];
-        forms.hits4form = new int[maxValue];
-        forms.occsPart = 0;
+        if (hasDistrib) formEnum.scoreByform = new double[maxValue];
+        formEnum.freqByForm = new long[maxValue];
+        formEnum.hitsByForm = new int[maxValue];
+        
+        int freqAll = 0;
         if (docFilter != null) {
             for (int docId = docFilter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = docFilter
                     .nextSetBit(docId + 1)) {
-                forms.occsPart += occsByDoc[docId];
+                freqAll += occsByDoc[docId];
             }
         }
         // if (hasSpecif) specif.all(occsAll, docsAll);
@@ -534,8 +452,8 @@ public class FieldText extends AbstractFieldChars
                 // if formId is negative, let the error go, problem in reader
                 // for each term, set scorer with global stats
                 if (hasDistrib) {
-                    distrib.idf(docsByform[formId], docsAll, occsAll);
-                    distrib.expectation(occsByForm[formId], occsAll);
+                    scorer.idf(docsByform[formId], docsAll, occsAll);
+                    scorer.expectation(occsByForm[formId], occsAll);
                 }
                 docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
                 int docLeaf;
@@ -548,29 +466,29 @@ public class FieldText extends AbstractFieldChars
                             + bytes.utf8ToString() + " freq=" + freq);
                     // doc not yet encounter, we can count
                     if (!hitsVek.get(docId)) {
-                        forms.hitsAll++;
+                        formEnum.hitsAll++;
                         hitsVek.set(docId);
                     }
-                    forms.hits4form[formId]++;
+                    formEnum.hitsByForm[formId]++;
                     if (hasDistrib) {
-                        final double score = distrib.score(freq, occsByDoc[docId]);
+                        final double score = scorer.score(freq, occsByDoc[docId]);
                         // if (score < 0) forms.formScore[formId] -= score; // all variation is
                         // significant
-                        forms.score4form[formId] += score;
+                        formEnum.scoreByform[formId] += score;
                     }
-                    forms.freq4form[formId] += freq;
-                    forms.freqAll += freq;
+                    formEnum.freqByForm[formId] += freq;
+                    formEnum.freqAll += freq;
                 }
                 if (hasDistrib && docFilter != null) {
                     // add inverse score
-                    final long restFreq = occsByForm[formId] - forms.freq4form[formId];
-                    final long restLen = occsAll - forms.occsPart;
-                    double score = distrib.last(restFreq, restLen);
-                    forms.score4form[formId] += score;
+                    final long restFreq = occsByForm[formId] - formEnum.freqByForm[formId];
+                    final long restLen = occsAll - freqAll;
+                    double score = scorer.last(restFreq, restLen);
+                    formEnum.scoreByform[formId] += score;
                 }
             }
         }
-        return forms;
+        return formEnum;
     }
 
     /**
@@ -582,11 +500,11 @@ public class FieldText extends AbstractFieldChars
      * @param parts count of parts.
      * @param classifier vector of ints where classifier[docId]=part.
      * @param wordFilter filter words by tag.
-     * @param distrib scorer.
+     * @param scorer scorer.
      * @return a set of dictionaries, one for each part.
      * @throws IOException lucene errors.
      */
-    public FormEnum[] forms(final int parts, final int[] classifier, final TagFilter wordFilter, OptionDistrib distrib)
+    public FormEnum[] formEnumByPart(final int parts, final int[] classifier, final TagFilter wordFilter, Scorer scorer)
             throws IOException
     {
         if (parts < 1) {
@@ -601,15 +519,15 @@ public class FieldText extends AbstractFieldChars
                     + classifier.length + " IndexReader.maxDoc()=" + reader.maxDoc());
         }
         boolean hasTags = (wordFilter != null);
-        boolean hasDistrib = (distrib != null);
+        boolean hasScorer = (scorer != null);
         boolean noStop = (wordFilter != null && wordFilter.nostop());
         FormEnum[] dics = new FormEnum[parts];
         for (int i = 0; i < parts; i++) {
-            FormEnum forms = forms();
+            FormEnum forms = formEnum();
             dics[i] = forms;
-            if (hasDistrib) forms.score4form = new double[maxValue];
-            forms.freq4form = new long[maxValue];
-            forms.hits4form = new int[maxValue];
+            if (hasScorer) forms.scoreByform = new double[maxValue];
+            forms.freqByForm = new long[maxValue];
+            forms.hitsByForm = new int[maxValue];
             forms.hitsVek = new FixedBitSet(reader.maxDoc());
         }
         // loop on index
@@ -631,9 +549,9 @@ public class FieldText extends AbstractFieldChars
                 if (hasTags && !wordFilter.accept(tagByForm[formId])) continue;
                 // if formId is negative, let the error go, problem in reader
                 // for each term, set scorer with global stats
-                if (hasDistrib) {
-                    distrib.idf(docsByform[formId], docsAll, occsAll);
-                    distrib.expectation(occsByForm[formId], occsAll);
+                if (hasScorer) {
+                    scorer.idf(docsByform[formId], docsAll, occsAll);
+                    scorer.expectation(occsByForm[formId], occsAll);
                 }
                 docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
                 int docLeaf;
@@ -656,14 +574,14 @@ public class FieldText extends AbstractFieldChars
                         forms.hitsAll++;
                         forms.hitsVek.set(docId);
                     }
-                    forms.hits4form[formId]++;
-                    if (hasDistrib) {
-                        final double score = distrib.score(freq, occsByDoc[docId]);
+                    forms.hitsByForm[formId]++;
+                    if (hasScorer) {
+                        final double score = scorer.score(freq, occsByDoc[docId]);
                         // if (score < 0) forms.formScore[formId] -= score; // all variation is
                         // significant
-                        forms.score4form[formId] += score;
+                        forms.scoreByform[formId] += score;
                     }
-                    forms.freq4form[formId] += freq;
+                    forms.freqByForm[formId] += freq;
                     forms.freqAll += freq;
                 }
                 /*
@@ -675,6 +593,91 @@ public class FieldText extends AbstractFieldChars
             }
         }
         return dics;
+    }
+
+    /**
+     * Check if a form is present in a partition of the index. Returns its formId or
+     * -1 if not found, like {@link BytesRefHash#find(BytesRef)}.
+     * 
+     * @param bytes a word form as bytes.
+     * @param docFilter set of docIds.
+     * @return formId if found, or -1 if not found in partition.
+     * @throws IOException Lucene errors.
+     */
+    public int formId(final BytesRef bytes, final BitSet docFilter) throws IOException
+    {
+        BytesRef[] forms = new BytesRef[] {bytes};
+        int[] ret = formIds(forms, docFilter);
+        if (ret == null) return -1;
+        if (ret.length < 1) {// ?
+            return -1;
+        }
+        return ret[0];
+    }
+
+    /**
+     * Returns a sorted array of valueId ready for binarySearch, or
+     * null if no words found.
+     * 
+     * @param forms set of forms as {@link CharSequence}
+     * @param docFilter set of DocId to include.
+     * @return sorted set of formId.
+     * @throws IOException lucene errors.
+     */
+    public int[] formIds(CharSequence[] forms, final BitSet docFilter) throws IOException
+    {
+        BytesRef[] formsBytes = FieldCharsAbstract.bytesSorted(dic, forms);
+        if (formsBytes == null) return null;
+        return formIds(formsBytes, docFilter);
+    }
+
+    /**
+     * Returns a sorted array of valueId ready for binarySearch, or
+     * null if no words found.
+     * 
+     * @param forms a sorted and verified set of forms as bytes.
+     * @param docFilter set of DocId to include.
+     * @return sorted set of formId.
+     * @throws IOException lucene errors.
+     */
+    private int[] formIds(BytesRef[] forms, final BitSet docFilter) throws IOException
+    {
+        final int formsLen = forms.length;
+        // loop on leaves of the reader, has some cost
+        IntList list = new IntList();
+        PostingsEnum docsEnum = null; // reuse
+        for (LeafReaderContext context : reader.leaves()) {
+            LeafReader leaf = context.reader();
+            final int docBase = context.docBase;
+            Terms terms = leaf.terms(fieldName);
+            if (terms == null) continue;
+            TermsEnum tenum = terms.iterator();
+            Bits live = leaf.getLiveDocs();
+            for (int i = 0; i < formsLen; i++) {
+                final BytesRef bytes = forms[i];
+                if (bytes == null) continue;
+                if (!tenum.seekExact(bytes)) {
+                    continue;
+                }
+                docsEnum = tenum.postings(docsEnum, PostingsEnum.NONE);
+                int docLeaf;
+                while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                    if (live != null && !live.get(docLeaf)) continue; // deleted doc
+                    final int docId = docBase + docLeaf;
+                    if (docFilter != null && !docFilter.get(docId)) continue; // document not in the filter
+                    // a doc should be found
+                    list.push(dic.find(bytes));
+                    // nullify that term
+                    forms[i] = null;
+                    break;
+                }
+            }
+        }
+        if (list.isEmpty()) {
+            return null;
+        }
+        int[] pivots = list.uniq();
+        return pivots;
     }
 
     /**
@@ -794,14 +797,15 @@ public class FieldText extends AbstractFieldChars
     }
 
     /**
-     * Expert. Return a pointer to a vector of document size.
-     * @return occsByDoc[docId] = occs for this doc.
+     * Global count of occurrences (except empty positions) for all index.
+     * 
+     * @return total occurrences for the index.
      */
-    protected int[] occsByDoc()
+    public long occsAll()
     {
-        return occsByDoc;
+        return occsAll;
     }
-    
+
     /**
      * Return tag attached to form according to {@link Tag}.
      * 
@@ -824,91 +828,6 @@ public class FieldText extends AbstractFieldChars
             string.append(ref.utf8ToString() + ": " + occsByForm[i] + "\n");
         }
         return string.toString();
-    }
-
-    /**
-     * Check if a form is present in a partition of the index. Returns its formId or
-     * -1 if not found, like {@link BytesRefHash#find(BytesRef)}.
-     * 
-     * @param bytes a word form as bytes.
-     * @param docFilter set of docIds.
-     * @return formId if found, or -1 if not found in partition.
-     * @throws IOException Lucene errors.
-     */
-    public int valueId(final BytesRef bytes, final BitSet docFilter) throws IOException
-    {
-        BytesRef[] forms = new BytesRef[] {bytes};
-        int[] ret = valueIds(forms, docFilter);
-        if (ret == null) return -1;
-        if (ret.length < 1) {// ?
-            return -1;
-        }
-        return ret[0];
-    }
-
-    /**
-     * Returns a sorted array of valueId ready for binarySearch, or
-     * null if no words found.
-     * 
-     * @param forms set of forms as {@link CharSequence}
-     * @param docFilter set of DocId to include.
-     * @return sorted set of formId.
-     * @throws IOException lucene errors.
-     */
-    public int[] valueIds(CharSequence[] forms, final BitSet docFilter) throws IOException
-    {
-        BytesRef[] formsBytes = AbstractFieldChars.bytesSorted(dic, forms);
-        if (formsBytes == null) return null;
-        return valueIds(formsBytes, docFilter);
-    }
-
-    /**
-     * Returns a sorted array of valueId ready for binarySearch, or
-     * null if no words found.
-     * 
-     * @param forms a sorted and verified set of forms as bytes.
-     * @param docFilter set of DocId to include.
-     * @return sorted set of formId.
-     * @throws IOException lucene errors.
-     */
-    private int[] valueIds(BytesRef[] forms, final BitSet docFilter) throws IOException
-    {
-        final int formsLen = forms.length;
-        // loop on leaves of the reader, has some cost
-        IntList list = new IntList();
-        PostingsEnum docsEnum = null; // reuse
-        for (LeafReaderContext context : reader.leaves()) {
-            LeafReader leaf = context.reader();
-            final int docBase = context.docBase;
-            Terms terms = leaf.terms(fieldName);
-            if (terms == null) continue;
-            TermsEnum tenum = terms.iterator();
-            Bits live = leaf.getLiveDocs();
-            for (int i = 0; i < formsLen; i++) {
-                final BytesRef bytes = forms[i];
-                if (bytes == null) continue;
-                if (!tenum.seekExact(bytes)) {
-                    continue;
-                }
-                docsEnum = tenum.postings(docsEnum, PostingsEnum.NONE);
-                int docLeaf;
-                while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    if (live != null && !live.get(docLeaf)) continue; // deleted doc
-                    final int docId = docBase + docLeaf;
-                    if (docFilter != null && !docFilter.get(docId)) continue; // document not in the filter
-                    // a doc should be found
-                    list.push(dic.find(bytes));
-                    // nullify that term
-                    forms[i] = null;
-                    break;
-                }
-            }
-        }
-        if (list.isEmpty()) {
-            return null;
-        }
-        int[] pivots = list.uniq();
-        return pivots;
     }
 
 

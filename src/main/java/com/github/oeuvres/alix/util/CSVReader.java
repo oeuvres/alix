@@ -44,7 +44,7 @@ import java.nio.charset.StandardCharsets;
  * A light fast csv parser without Strings, especially to load jar resources.
  * Populate a reusable predefined array of object.
  */
-public class CsvReader
+public class CSVReader
 {
     private static final int BUFFER_SIZE = 16384; // tested
     private final char[] buf = new char[BUFFER_SIZE];
@@ -69,7 +69,7 @@ public class CsvReader
      * @param cols number of colums.
      * @throws FileNotFoundException file 404.
      */
-    public CsvReader(final File file, final int cols) throws FileNotFoundException {
+    public CSVReader(final File file, final int cols) throws FileNotFoundException {
         this.reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
         row = new Row(cols);
     }
@@ -79,7 +79,7 @@ public class CsvReader
      * @param reader text to parse.
      * @param cols number of colums.
      */
-    public CsvReader(Reader reader, final int cols) {
+    public CSVReader(Reader reader, final int cols) {
         this(reader, cols, (char) 0);
     }
 
@@ -90,7 +90,7 @@ public class CsvReader
      * @param cols number of colums.
      * @param sep char between cells.
      */
-    public CsvReader(Reader reader, final int cols, final char sep) {
+    public CSVReader(Reader reader, final int cols, final char sep) {
         this.reader = reader;
         row = new Row(cols);
         // quote = '"';

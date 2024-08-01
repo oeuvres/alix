@@ -73,7 +73,7 @@ import com.github.oeuvres.alix.util.EdgeRoller;
 import com.github.oeuvres.alix.util.EdgeMatrix;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.IntPairMutable;
-import com.github.oeuvres.alix.web.OptionMI;
+import com.github.oeuvres.alix.util.MI;
 
 /**
  * Persistent storage of full sequence of all document search for a field. Used
@@ -420,46 +420,46 @@ public class FieldRail
      */
     public EdgeMatrix edges(final int[] pivotIds, final int left, final int right, int[] coocIds, final BitSet docFilter) throws IOException
     {
-        /*
         // sort the pivots
-        BytesRef[] pivotBytes = AbstractFieldString.bytesSorted(this.dic, pivotIds);
+        BytesRef[] pivotBytes = FieldCharsAbstract.bytesSorted(this.dic, pivotIds);
         if (pivotBytes == null) {
             return null;
         }
+        final int pivotLen = pivotBytes.length;
+        if (pivotLen < 1) {
+            return null;
+        }
+        
+                
         // normalize the coocId as a sorted set of unique values
         coocIds = IntList.uniq(coocIds);
         EdgeMatrix matrix = new EdgeMatrix(coocIds, false);
-        IntList span = new IntList();
+        IntList nodeIndexes = new IntList();
         DirectoryReader reader = alix.reader();
         IntBuffer bufInt = channelMap.rewind().asIntBuffer(); // the rail
-        final boolean hasFilter = (docFilter != null); // filter docs ?
+        final boolean hasDocFilter = (docFilter != null); // filter docs ?
+        PostingsEnum postings = null; // reuse
         // loop on leafs, open an index may cost
         for (LeafReaderContext context : reader.leaves()) {
-            final int docBase = context.docBase;
             LeafReader leaf = context.reader();
-            // loop on pivots
-            for (int pivotId : pivotIds) {
-                String form = ftext.form(pivotId);
-                if (form == null || "".equals(form)) {
+            Terms terms = leaf.terms(fieldName);
+            if (terms == null) continue;
+            final int docBase = context.docBase;
+            TermsEnum tenum = terms.iterator();
+            Bits live = leaf.getLiveDocs();
+            final boolean hasLive = (live != null);
+            for (int pivotI = 0; pivotI < pivotLen; pivotI++) {
+                final BytesRef bytes = pivotBytes[pivotI];
+                if (bytes == null) continue;
+                if (!tenum.seekExact(bytes)) {
                     continue;
                 }
-                Term term = new Term(fieldName, form); // do not try to reuse term, false optimisation
-                PostingsEnum postings = leaf.postings(term, PostingsEnum.FREQS | PostingsEnum.POSITIONS);
-                if (postings == null) {
-                    continue;
-                }
-                // loop on docs found
-                final Bits liveDocs = leaf.getLiveDocs();
-                final boolean hasLive = (liveDocs != null);
-                int docLeaf; // advance cursor to the first doc
+                postings = tenum.postings(postings, PostingsEnum.FREQS | PostingsEnum.POSITIONS);
+                int docLeaf;
                 while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
                     final int docId = docBase + docLeaf;
-                    if (hasFilter && !docFilter.get(docId)) {
-                        continue; // document not in the document filter
-                    }
-                    if (hasLive && !liveDocs.get(docLeaf)) {
-                        continue; // deleted doc
-                    }
+                    if (hasDocFilter && !docFilter.get(docId)) continue; // document not in the filter
                     final int docLen = limInt[docId];
                     if (docLen < 2) {
                         continue; // empty doc
@@ -467,12 +467,12 @@ public class FieldRail
                     int freq = postings.freq();
                     if (freq == 0) {
                         // bug ?
-                        System.out.println("BUG cooc, term=" + term + " docId=" + docId + " freq=0");
+                        System.out.println("BUG cooc, term=" + bytes.utf8ToString() + " docId=" + docId + " freq=0");
                         continue;
                     }
                     // term found in this doc, search each occurrence
                     final int posDoc = posInt[docId];
-                    for (int i = 0; i < freq; i++) {
+                    for (int occI = 0; occI < freq; occI++) {
                         int posPivot = -1;
                         try {
                             posPivot = postings.nextPosition();
@@ -483,27 +483,28 @@ public class FieldRail
                             System.out.println("BUG cooc, term=" + postings.toString() + " docId=" + docId + " pos=0");
                             continue;
                         }
-                        span.clear();
+                        nodeIndexes.clear();
                         final int posFrom = Math.max(0, posPivot - left);
                         final int posTo = Math.min(docLen, posPivot + right + 1); // be careful of end Doc
+                        // TODO, not thought enough
                         // collect waited formIds for edges in this context
                         for (int pos = posFrom; pos < posTo; pos++) {
                             final int formId = bufInt.get(posDoc + pos);
-                            final int edgeNode = Arrays.binarySearch(coocIds, formId);
-                            if (edgeNode < 0) { // not a waited node
+                            final int nodeIndex = Arrays.binarySearch(coocIds, formId);
+                            if (nodeIndex < 0) { // not a waited node
                                 continue;
                             }
-                            span.push(edgeNode);
+                            nodeIndexes.push(nodeIndex);
                         }
                         // count edges
-                        final int size = span.size();
+                        final int size = nodeIndexes.size();
                         if (size < 2) {
                             continue;
                         }
                         // what is t for ? 
                         for (int x = 0; x < size - 1; x++) {
                             for (int y = x + 1; y < size; y++) {
-                                matrix.incByIndex(span.get(x), span.get(y));
+                                matrix.incByIndex(nodeIndexes.get(x), nodeIndexes.get(y));
                             }
                         }
                     }
@@ -511,8 +512,6 @@ public class FieldRail
             }
         }
         return matrix;
-        */
-        throw new IOException("Not yet iplemented");
     }
 
     /**
@@ -707,7 +706,7 @@ public class FieldRail
     
     /**
      * For an ordered set of forms as bytes, obtained from 
-     * {@link AbstractFieldChars#bytesSorted(BytesRefHash, int[])}
+     * {@link FieldCharsAbstract#bytesSorted(BytesRefHash, int[])}
      * or {@link AbstractFieldString#bytesSorted(BytesRefHash, int[]),
      * get an ordered list of positions by docId.
      *
@@ -816,8 +815,8 @@ public class FieldRail
 
     /**
      * Scores a {@link FormEnum} with freqs extracted from co-occurrences extraction
-     * in a {@link #coocs(FormEnum, int[], int, int, OptionMI)}. Scoring uses a “mutual information”
-     * {@link OptionMI} algorithm (probability like, not tf-idf like). Parameters
+     * in a {@link #coocs(BytesRef[], int, int, BitSet)}. Scoring uses a “mutual information”
+     * {@link MI} algorithm (probability like, not tf-idf like). Parameters
      * are
      * 
      * <ul>
@@ -829,12 +828,12 @@ public class FieldRail
      * </ul>
      * 
      * 
-     * @param forms form enumeration from {@link #coocs(FormEnum, int[], int, int, OptionMI)}
+     * @param formEnum form enumeration from {@link #coocs(BytesRef[], int, int, BitSet)}.
      * @param pivotIds form ids of pivots words.
      * @param mi mutual information algorithm to calculate score.
      * @throws IOException Lucene errors.
      */
-    private void score(final FormEnum forms, final int[] pivotIds, final OptionMI mi) throws IOException
+    public void score(final FormEnum formEnum, final int[] pivotIds, final MI mi) throws IOException
     {
         /*
          * Strange, can’t understand why it doesn’t work if (this.ftext.formDic !=
@@ -844,11 +843,7 @@ public class FieldRail
          */
         // if (results.limit == 0) throw new IllegalArgumentException("How many sorted
         // forms do you want? set FormEnum.limit");
-        if (forms.occsPart < 1) {
-            throw new IllegalArgumentException(
-                    "Scoring this FormEnum need the count of occurrences in the part, set FormEnum.partOccs");
-        }
-        if (forms.freq4form == null || forms.freq4form.length < maxForm) {
+        if (formEnum.freqByForm == null || formEnum.freqByForm.length < maxForm) {
             throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
         }
         final long N = ftext.occsAll; // global
@@ -860,15 +855,15 @@ public class FieldRail
         final long Ob = add;
         int maxForm = ftext.maxValue;
         // reuse score for multiple calculations
-        if (forms.score4form == null || forms.score4form.length != maxForm) {
-            forms.score4form = new double[maxForm]; // by term, occurrences counts
+        if (formEnum.scoreByform == null || formEnum.scoreByform.length != maxForm) {
+            formEnum.scoreByform = new double[maxForm]; // by term, occurrences counts
         } else {
-            Arrays.fill(forms.score4form, 0);
+            Arrays.fill(formEnum.scoreByform, 0);
         }
         //
         for (int formId = 0; formId < maxForm; formId++) {
             // No tag filter here, should be done upper
-            long Oab = forms.freq4form[formId];
+            long Oab = formEnum.freqByForm[formId];
             if (Oab == 0) {
                 continue;
             }
@@ -878,7 +873,7 @@ public class FieldRail
             if (Oab > Ob) {
                 Oab = Ob;
             }
-            forms.score4form[formId] = mi.score(Oab, ftext.occs(formId), Ob, N);
+            formEnum.scoreByform[formId] = mi.score(Oab, ftext.occs(formId), Ob, N);
         }
         // results is populated of scores, do not sort here, let consumer choose
     }

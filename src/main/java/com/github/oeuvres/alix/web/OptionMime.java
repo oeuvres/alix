@@ -33,8 +33,11 @@
 package com.github.oeuvres.alix.web;
 
 public enum OptionMime {
-    html("text/html; charset=UTF-8"), htf("text/html; charset=UTF-8"), json("application/json"),
-    csv("text/csv; charset=UTF-8"), tsv("text/tsv; charset=UTF-8"),;
+    html("text/html; charset=UTF-8"), 
+    htf("text/html; charset=UTF-8"), 
+    json("application/json"),
+    csv("text/csv; charset=UTF-8"), 
+    tsv("text/tsv; charset=UTF-8");
 
     public final String type;
 

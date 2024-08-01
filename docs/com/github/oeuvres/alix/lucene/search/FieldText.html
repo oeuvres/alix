@@ -78,15 +78,11 @@ loadScripts(document, 'script');</script>
 <hr>
 <div class="type-signature"><span class="modifiers">public class </span><span class="element-name type-name-label">FieldText</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span></div>
-<div class="block"><p>
- An object recording different stats for a lucene text field. Is stable
- according to a state of the index, could be cached. Record all counts useful
- for stats. For performances, all fields of the class are visible, so it is
- unsafe.
- </p>
- <p>
- Provide slices of stats for Terms as s sorted Iterator
- </p></div>
+<div class="block">An object recording stats for an indexed and tokenized lucene field <code>TextField</code>. 
+ Lexical stats needs heavy access to some counts that are not native in classical retrieving engine
+ like lucene. For example, it could be expensive to get the list of most frequent or relevant terms
+ from a set of documents found by a query. This object maintain such statistics in memory, for index
+ considered like a “corpus” (a set texts considered as a whole).</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -107,42 +103,52 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color"><code>protected final org.apache.lucene.util.BytesRefHash</code></div>
 <div class="col-second odd-row-color"><code><a href="#dic" class="member-name-link">dic</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">Store and populate the search.</div>
+<div class="block">Dictionary of terms from this field.</div>
 </div>
 <div class="col-first even-row-color"><code>protected int</code></div>
 <div class="col-second even-row-color"><code><a href="#docsAll" class="member-name-link">docsAll</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Global number of docs relevant for this field.</div>
+<div class="block">Σ docsByForm; global count of docs relevant for this field.</div>
 </div>
 <div class="col-first odd-row-color"><code>protected int[]</code></div>
 <div class="col-second odd-row-color"><code><a href="#docsByform" class="member-name-link">docsByform</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">By form, count of docs.</div>
+<div class="block">docsByform[formId] = docs; count of docs by form.</div>
 </div>
 <div class="col-first even-row-color"><code>protected final <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second even-row-color"><code><a href="#fieldName" class="member-name-link">fieldName</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Name of the field to extract stats</div>
+<div class="block">Name of a lucene field from which extract and cache stats.</div>
 </div>
 <div class="col-first odd-row-color"><code>protected final org.apache.lucene.index.FieldInfo</code></div>
 <div class="col-second odd-row-color"><code><a href="#info" class="member-name-link">info</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">Infos</div>
+<div class="block">Infos about the lucene field.</div>
 </div>
 <div class="col-first even-row-color"><code>protected int</code></div>
 <div class="col-second even-row-color"><code><a href="#maxValue" class="member-name-link">maxValue</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Number of different values found, is also biggest valueId+1 (like lucene IndexReader.maxDoc())</div>
+<div class="block">Number of different values found = biggest valueId + 1.</div>
 </div>
-<div class="col-first odd-row-color"><code>protected long</code></div>
+<div class="col-first odd-row-color"><code>protected final long</code></div>
 <div class="col-second odd-row-color"><code><a href="#occsAll" class="member-name-link">occsAll</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">Global number of occurrences for this field.</div>
+<div class="block">Σ occsByForm; global count of occs for this field, without empty positions.</div>
+</div>
+<div class="col-first even-row-color"><code>protected final int[]</code></div>
+<div class="col-second even-row-color"><code><a href="#occsByDoc" class="member-name-link">occsByDoc</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">occsByDoc[docId] = occs; count of occurrences by document, without empty positions.</div>
+</div>
+<div class="col-first odd-row-color"><code>protected final long[]</code></div>
+<div class="col-second odd-row-color"><code><a href="#occsByForm" class="member-name-link">occsByForm</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">occsByform[formId] = occs; count of occurrences by form.</div>
 </div>
 <div class="col-first even-row-color"><code>protected final org.apache.lucene.index.IndexReader</code></div>
 <div class="col-second even-row-color"><code><a href="#reader" class="member-name-link">reader</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Cache the state of a reader from which all freqs are counted</div>
+<div class="block">Lucene index reader, cache the state.</div>
 </div>
 </div>
 </section>
@@ -188,7 +194,7 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static org.apache.lucene.util.BytesRefHash</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#dic(org.apache.lucene.index.DirectoryReader,java.lang.String)" class="member-name-link">dic</a><wbr>(org.apache.lucene.index.DirectoryReader&nbsp;reader,
- <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;field)</code></div>
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Get a dictionary of terms, without statistics.</div>
 </div>
@@ -207,23 +213,46 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Total count of document affected by the field.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#filter(com.github.oeuvres.alix.lucene.search.FormEnum,org.apache.lucene.util.BitSet)" class="member-name-link">filter</a><wbr>(<a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>&nbsp;formStats,
- org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form(int)" class="member-name-link">form</a><wbr>(int&nbsp;formId)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Populate a dictionary of forms by a bitSet of documents, the filter is found
- in FormEnum.filter</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form(int)" class="member-name-link">form</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get String form for a formId.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>org.apache.lucene.util.BytesRef</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form(int,org.apache.lucene.util.BytesRef)" class="member-name-link">form</a><wbr>(int&nbsp;formId,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>org.apache.lucene.util.BytesRef</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form(int,org.apache.lucene.util.BytesRef)" class="member-name-link">form</a><wbr>(int&nbsp;formId,
  org.apache.lucene.util.BytesRef&nbsp;bytes)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get a String form for a formId, using a mutable array of bytes.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formEnum()" class="member-name-link">formEnum</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Get a non filtered term enum for this field with global stats.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formEnum(com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">formEnum</a><wbr>(<a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;formFilter)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Global form list, filtered by tags, with global stats.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formEnum(org.apache.lucene.util.BitSet)" class="member-name-link">formEnum</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Get forms for this field, filtered by a set of docIds.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formEnum(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">formEnum</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter,
+ <a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;formFilter,
+ <a href="Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Count of occurrences by term for a subset of the index, defined as a BitSet.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formEnumByPart(int,int%5B%5D,com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">formEnumByPart</a><wbr>(int&nbsp;parts,
+ int[]&nbsp;classifier,
+ <a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;wordFilter,
+ <a href="Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Get scored words for a partition of the full index.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>org.apache.lucene.util.BitSet</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formFilter(com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">formFilter</a><wbr>(<a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;wordFilter)</code></div>
@@ -240,10 +269,23 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns formId &gt;= 0 if exists, or -1 if not, like <code>BytesRefHash.find(BytesRef)</code></div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formIds(java.lang.CharSequence%5B%5D)" class="member-name-link">formIds</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formId(org.apache.lucene.util.BytesRef,org.apache.lucene.util.BitSet)" class="member-name-link">formId</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes,
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Check if a form is present in a partition of the index.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formIds(java.lang.CharSequence%5B%5D)" class="member-name-link">formIds</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a sorted array of formId ready for binarySearch, or
+ null if no words found.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formIds(java.lang.CharSequence%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">formIds</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms,
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Returns a sorted array of valueId ready for binarySearch, or
  null if no words found.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
@@ -252,91 +294,56 @@ loadScripts(document, 'script');</script>
 <div class="block">Returns a sorted array of formId for found words, ready for binarySearch, or
  null if not found.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#forms()" class="member-name-link">forms</a>()</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#forms(int%5B%5D)" class="member-name-link">forms</a><wbr>(int[]&nbsp;rail)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get a non filtered term enum for this field with global stats.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#forms(int%5B%5D)" class="member-name-link">forms</a><wbr>(int[]&nbsp;rail)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get forms in order from a vector of formId.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#forms(int,int%5B%5D,com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.web.OptionDistrib)" class="member-name-link">forms</a><wbr>(int&nbsp;parts,
- int[]&nbsp;classifier,
- <a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;wordFilter,
- <a href="../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web">OptionDistrib</a>&nbsp;distrib)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get scored words for a partition of the full index.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#forms(com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">forms</a><wbr>(<a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;tags)</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isLocution(int)" class="member-name-link">isLocution</a><wbr>(int&nbsp;formId)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Global form list, filtered by tags, with global stats.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#forms(org.apache.lucene.util.BitSet)" class="member-name-link">forms</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get forms for this field, filtered by a set of docIds.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#forms(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.web.OptionDistrib)" class="member-name-link">forms</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter,
- <a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;formFilter,
- <a href="../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web">OptionDistrib</a>&nbsp;distrib)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Count of occurrences by term for a subset of the index, defined as a BitSet.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isLocution(int)" class="member-name-link">isLocution</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Is this formId a locution ?</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isPunctuation(int)" class="member-name-link">isPunctuation</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isPunctuation(int)" class="member-name-link">isPunctuation</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Is this formId a punctuation ?</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isStop(int)" class="member-name-link">isStop</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isStop(int)" class="member-name-link">isStop</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Is this formId a StopWord ?</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxValue()" class="member-name-link">maxValue</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxValue()" class="member-name-link">maxValue</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Count of different values.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(int)" class="member-name-link">occs</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(int)" class="member-name-link">occs</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">How many occs for this term in all index ?</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(java.lang.String)" class="member-name-link">occs</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;form)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(java.lang.String)" class="member-name-link">occs</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;form)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get global length (occurrences) for a form.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(java.lang.String%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">occs</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;forms,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(java.lang.String%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">occs</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;forms,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Return count of occurrences for a set of forms with a doc filter.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(org.apache.lucene.util.BytesRef)" class="member-name-link">occs</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(org.apache.lucene.util.BytesRef)" class="member-name-link">occs</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get global length (occurrences) for a form.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsAll()" class="member-name-link">occsAll</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Global count of occurrences (except empty positions) for all index.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected int[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsByDoc()" class="member-name-link">occsByDoc</a>()</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsAll()" class="member-name-link">occsAll</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Expert.</div>
+<div class="block">Global count of occurrences (except empty positions) for all index.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#tag(int)" class="member-name-link">tag</a><wbr>(int&nbsp;formId)</code></div>
@@ -346,19 +353,6 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueId(org.apache.lucene.util.BytesRef,org.apache.lucene.util.BitSet)" class="member-name-link">valueId</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes,
- org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Check if a form is present in a partition of the index.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#valueIds(java.lang.CharSequence%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">valueIds</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms,
- org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns a sorted array of valueId ready for binarySearch, or
- null if no words found.</div>
-</div>
 </div>
 </div>
 </div>
@@ -377,6 +371,27 @@ loadScripts(document, 'script');</script>
 <h2>Field Details</h2>
 <ul class="member-list">
 <li>
+<section class="detail" id="occsByForm">
+<h3>occsByForm</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">occsByForm</span></div>
+<div class="block">occsByform[formId] = occs; count of occurrences by form.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="occsAll">
+<h3>occsAll</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsAll</span></div>
+<div class="block">Σ occsByForm; global count of occs for this field, without empty positions.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="occsByDoc">
+<h3>occsByDoc</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">occsByDoc</span></div>
+<div class="block">occsByDoc[docId] = occs; count of occurrences by document, without empty positions.</div>
+</section>
+</li>
+<li>
 <section class="detail" id="BYTES0">
 <h3>BYTES0</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRef[]</span>&nbsp;<span class="element-name">BYTES0</span></div>
@@ -387,56 +402,49 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="dic">
 <h3>dic</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRefHash</span>&nbsp;<span class="element-name">dic</span></div>
-<div class="block">Store and populate the search.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="docsAll">
-<h3>docsAll</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docsAll</span></div>
-<div class="block">Global number of docs relevant for this field.</div>
+<div class="block">Dictionary of terms from this field.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="docsByform">
 <h3>docsByform</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">docsByform</span></div>
-<div class="block">By form, count of docs.</div>
+<div class="block">docsByform[formId] = docs; count of docs by form.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="occsAll">
-<h3>occsAll</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsAll</span></div>
-<div class="block">Global number of occurrences for this field. Occs by form not relevant for a facet.</div>
+<section class="detail" id="docsAll">
+<h3>docsAll</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docsAll</span></div>
+<div class="block">Σ docsByForm; global count of docs relevant for this field.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="fieldName">
 <h3>fieldName</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">fieldName</span></div>
-<div class="block">Name of the field to extract stats</div>
+<div class="block">Name of a lucene field from which extract and cache stats.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="reader">
 <h3>reader</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.index.IndexReader</span>&nbsp;<span class="element-name">reader</span></div>
-<div class="block">Cache the state of a reader from which all freqs are counted</div>
+<div class="block">Lucene index reader, cache the state.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="info">
 <h3>info</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.index.FieldInfo</span>&nbsp;<span class="element-name">info</span></div>
-<div class="block">Infos</div>
+<div class="block">Infos about the lucene field.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="maxValue">
 <h3>maxValue</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">maxValue</span></div>
-<div class="block">Number of different values found, is also biggest valueId+1 (like lucene IndexReader.maxDoc())</div>
+<div class="block">Number of different values found = biggest valueId + 1.</div>
 </section>
 </li>
 </ul>
@@ -454,9 +462,9 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</span>
           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Build the dictionaries and stats. Each form indexed for the field will be
- identified by an int (formid). This id will be in freq order, so that the
- form with formid=1 is the most frequent for the index (formId=0 is the empty
- string). This order allows optimizations for co-occurrences matrix,</div>
+ identified by an int (formId). This id will be in freq order: the
+ form with formId=1 is the most frequent for the index (formId=0 is the empty
+ string).</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>reader</code> - a lucene index reader.</dd>
@@ -478,13 +486,13 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="dic(org.apache.lucene.index.DirectoryReader,java.lang.String)">
 <h3>dic</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRefHash</span>&nbsp;<span class="element-name">dic</span><wbr><span class="parameters">(org.apache.lucene.index.DirectoryReader&nbsp;reader,
- <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;field)</span>
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</span>
                                                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Get a dictionary of terms, without statistics.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>reader</code> - lucene index reader.</dd>
-<dd><code>field</code> - a text field name.</dd>
+<dd><code>fieldName</code> - a text field name.</dd>
 <dt>Returns:</dt>
 <dd>a bytes dictionary.</dd>
 <dt>Throws:</dt>
@@ -506,25 +514,6 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="filter(com.github.oeuvres.alix.lucene.search.FormEnum,org.apache.lucene.util.BitSet)">
-<h3>filter</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">filter</span><wbr><span class="parameters">(<a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>&nbsp;formStats,
- org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Populate a dictionary of forms by a bitSet of documents, the filter is found
- in FormEnum.filter</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>formStats</code> - the form enumerator to populate.</dd>
-<dd><code>docFilter</code> - set of docId.</dd>
-<dt>Returns:</dt>
-<dd>the form enumerator populated.</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
-</dl>
-</section>
-</li>
-<li>
 <section class="detail" id="formFilter(com.github.oeuvres.alix.fr.Tag.TagFilter)">
 <h3>formFilter</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">org.apache.lucene.util.BitSet</span>&nbsp;<span class="element-name">formFilter</span><wbr><span class="parameters">(<a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;wordFilter)</span></div>
@@ -538,9 +527,9 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="forms()">
-<h3>forms</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">forms</span>()</div>
+<section class="detail" id="formEnum()">
+<h3>formEnum</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">formEnum</span>()</div>
 <div class="block">Get a non filtered term enum for this field with global stats.</div>
 <dl class="notes">
 <dt>Returns:</dt>
@@ -549,23 +538,23 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="forms(com.github.oeuvres.alix.fr.Tag.TagFilter)">
-<h3>forms</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">forms</span><wbr><span class="parameters">(<a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;tags)</span></div>
+<section class="detail" id="formEnum(com.github.oeuvres.alix.fr.Tag.TagFilter)">
+<h3>formEnum</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">formEnum</span><wbr><span class="parameters">(<a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;formFilter)</span></div>
 <div class="block">Global form list, filtered by tags, with global stats.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>tags</code> - form filter.</dd>
+<dd><code>formFilter</code> - form filter.</dd>
 <dt>Returns:</dt>
 <dd>an object to sort and loop forms.</dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="forms(org.apache.lucene.util.BitSet)">
-<h3>forms</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">forms</span><wbr><span class="parameters">(org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<section class="detail" id="formEnum(org.apache.lucene.util.BitSet)">
+<h3>formEnum</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">formEnum</span><wbr><span class="parameters">(org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Get forms for this field, filtered by a set of docIds.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
@@ -578,12 +567,12 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="forms(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.web.OptionDistrib)">
-<h3>forms</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">forms</span><wbr><span class="parameters">(org.apache.lucene.util.BitSet&nbsp;docFilter,
+<section class="detail" id="formEnum(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.lucene.search.Scorer)">
+<h3>formEnum</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">formEnum</span><wbr><span class="parameters">(org.apache.lucene.util.BitSet&nbsp;docFilter,
  <a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;formFilter,
- <a href="../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web">OptionDistrib</a>&nbsp;distrib)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+ <a href="Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</span>
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Count of occurrences by term for a subset of the index, defined as a BitSet.
  Returns an iterator sorted according to a scorer. If scorer is null, default
  is count of occurrences.</div>
@@ -591,7 +580,7 @@ loadScripts(document, 'script');</script>
 <dt>Parameters:</dt>
 <dd><code>docFilter</code> - a set of docId.</dd>
 <dd><code>formFilter</code> - a set of formId.</dd>
-<dd><code>distrib</code> - scoring algorithm.</dd>
+<dd><code>scorer</code> - scoring algorithm.</dd>
 <dt>Returns:</dt>
 <dd>an object to sort and loop forms.</dd>
 <dt>Throws:</dt>
@@ -600,13 +589,13 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="forms(int,int[],com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.web.OptionDistrib)">
-<h3>forms</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>[]</span>&nbsp;<span class="element-name">forms</span><wbr><span class="parameters">(int&nbsp;parts,
+<section class="detail" id="formEnumByPart(int,int[],com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.lucene.search.Scorer)">
+<h3>formEnumByPart</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>[]</span>&nbsp;<span class="element-name">formEnumByPart</span><wbr><span class="parameters">(int&nbsp;parts,
  int[]&nbsp;classifier,
  <a href="../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;wordFilter,
- <a href="../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web">OptionDistrib</a>&nbsp;distrib)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+ <a href="Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</span>
+                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Get scored words for a partition of the full index. A part is a sequential int
  between [0, parts[. Parts are given as a vector of ints where classifier[docId]=part.
  If part &lt; 0, the docId is not counted. Results are returned like an array of <a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FormEnum</code></a>,
@@ -616,9 +605,47 @@ loadScripts(document, 'script');</script>
 <dd><code>parts</code> - count of parts.</dd>
 <dd><code>classifier</code> - vector of ints where classifier[docId]=part.</dd>
 <dd><code>wordFilter</code> - filter words by tag.</dd>
-<dd><code>distrib</code> - scorer.</dd>
+<dd><code>scorer</code> - scorer.</dd>
 <dt>Returns:</dt>
 <dd>a set of dictionaries, one for each part.</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="formId(org.apache.lucene.util.BytesRef,org.apache.lucene.util.BitSet)">
+<h3>formId</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">formId</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRef&nbsp;bytes,
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Check if a form is present in a partition of the index. Returns its formId or
+ -1 if not found, like <code>BytesRefHash.find(BytesRef)</code>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>bytes</code> - a word form as bytes.</dd>
+<dd><code>docFilter</code> - set of docIds.</dd>
+<dt>Returns:</dt>
+<dd>formId if found, or -1 if not found in partition.</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="formIds(java.lang.CharSequence[],org.apache.lucene.util.BitSet)">
+<h3>formIds</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">formIds</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms,
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
+              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Returns a sorted array of valueId ready for binarySearch, or
+ null if no words found.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>forms</code> - set of forms as <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link"><code>CharSequence</code></a></dd>
+<dd><code>docFilter</code> - set of DocId to include.</dd>
+<dt>Returns:</dt>
+<dd>sorted set of formId.</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
 </dl>
@@ -723,13 +750,13 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="occsByDoc()">
-<h3>occsByDoc</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">occsByDoc</span>()</div>
-<div class="block">Expert. Return a pointer to a vector of document size.</div>
+<section class="detail" id="occsAll()">
+<h3>occsAll</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsAll</span>()</div>
+<div class="block">Global count of occurrences (except empty positions) for all index.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>occsByDoc[docId] = occs for this doc.</dd>
+<dd>total occurrences for the index.</dd>
 </dl>
 </section>
 </li>
@@ -753,44 +780,6 @@ loadScripts(document, 'script');</script>
 <dl class="notes">
 <dt>Overrides:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#toString()" title="class or interface in java.lang" class="external-link">toString</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="valueId(org.apache.lucene.util.BytesRef,org.apache.lucene.util.BitSet)">
-<h3>valueId</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">valueId</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRef&nbsp;bytes,
- org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Check if a form is present in a partition of the index. Returns its formId or
- -1 if not found, like <code>BytesRefHash.find(BytesRef)</code>.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>bytes</code> - a word form as bytes.</dd>
-<dd><code>docFilter</code> - set of docIds.</dd>
-<dt>Returns:</dt>
-<dd>formId if found, or -1 if not found in partition.</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="valueIds(java.lang.CharSequence[],org.apache.lucene.util.BitSet)">
-<h3>valueIds</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">valueIds</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms,
- org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Returns a sorted array of valueId ready for binarySearch, or
- null if no words found.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>forms</code> - set of forms as <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link"><code>CharSequence</code></a></dd>
-<dd><code>docFilter</code> - set of DocId to include.</dd>
-<dt>Returns:</dt>
-<dd>sorted set of formId.</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
 </dl>
 </section>
 </li>
@@ -948,17 +937,6 @@ loadScripts(document, 'script');</script>
 <dd><code>bytesIds</code> - collection of ids to test against dictionary.</dd>
 <dt>Returns:</dt>
 <dd>set of unique forms, sorted for efficient search with <code>TermsEnum.seekExact(BytesRef)</code>.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="occsAll()">
-<h3>occsAll</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsAll</span>()</div>
-<div class="block">Global count of occurrences (except empty positions) for all index.</div>
-<dl class="notes">
-<dt>Returns:</dt>
-<dd>total occurrences for the index.</dd>
 </dl>
 </section>
 </li>

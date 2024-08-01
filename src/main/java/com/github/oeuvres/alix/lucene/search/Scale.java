@@ -92,7 +92,7 @@ public class Scale
         // 2 index of same Ticks, access by docId, or access in order of value
         tickByOrder = new Tick[card];
         tickByDocid = new Tick[card];
-        int[] docLength = ftext.occsByDoc();
+        int[] occsByDoc = ftext.occsByDoc;
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
         // loop an all docs of index to catch the int label
@@ -122,7 +122,7 @@ public class Scale
                     min = v;
                 if (max < v)
                     max = v;
-                tick = new Tick(docId, v, docLength[docId]);
+                tick = new Tick(docId, v, occsByDoc[docId]);
                 // put same Tick for different
                 tickByOrder[docId] = tick;
                 tickByDocid[docId] = tick;

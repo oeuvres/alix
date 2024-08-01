@@ -57,7 +57,6 @@ import com.github.oeuvres.alix.lucene.Alix;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Top;
-import com.github.oeuvres.alix.web.OptionDistrib;
 
 /**
  * Tools to display a document
@@ -321,32 +320,32 @@ public class Doc
 
     /**
      * Count of occurrences by term for the document. Returns an iterator sorted
-     * according to a scorer. If scorer is null, default is count of occurences.
-     * {@link FieldText#forms(org.apache.lucene.util.BitSet, TagFilter, OptionDistrib)}
+     * according to a scorer. If scorer is null, default is count of occurrences.
+     * {@link FieldText#formEnum(org.apache.lucene.util.BitSet, TagFilter, OptionDistrib)}
      * 
      * @param alix wrapper around an {@link IndexReader} with cached stats.
      * @param docId a document id in t
      * @param field text field name for a {@link FieldText}.
-     * @param distrib score for the terms.
+     * @param scorer score for the terms.
      * @param wordFilter filter words by tags.
      * @return forms for this document.
      * @throws NoSuchFieldException  not a text field.
      * @throws IOException           Lucene errors.
      */
-    static public FormEnum forms(Alix alix, int docId, String field, OptionDistrib distrib, TagFilter wordFilter)
+    static public FormEnum forms(Alix alix, int docId, String field, Scorer scorer, TagFilter wordFilter)
             throws NoSuchFieldException, IOException
     {
         boolean hasTags = (wordFilter != null);
         boolean noStop = (wordFilter != null && wordFilter.nostop());
-        boolean hasScorer = (distrib != null);
+        boolean hasScorer = (scorer != null);
 
         // get index term stats
         FieldText fieldText = alix.fieldText(field);
-        FormEnum forms = fieldText.forms();
+        FormEnum forms = fieldText.formEnum();
         if (hasScorer) {
-            forms.score4form = new double[fieldText.maxValue];
+            forms.scoreByform = new double[fieldText.maxValue];
         }
-        forms.freq4form = new long[fieldText.maxValue]; // freqs by form
+        forms.freqByForm = new long[fieldText.maxValue]; // freqs by form
         int docOccs = fieldText.docOccs(docId);
 
         // loop on all forms of the document, get score, keep the top
@@ -372,15 +371,15 @@ public class Doc
                 continue; // should not arrive, let cry
             }
             if (hasScorer) {
-                distrib.expectation(fieldText.occs(formId), fieldText.occsAll);
-                distrib.idf(fieldText.docsByform[formId], fieldText.docsAll, fieldText.occsAll);
+                scorer.expectation(fieldText.occs(formId), fieldText.occsAll);
+                scorer.idf(fieldText.docsByform[formId], fieldText.docsAll, fieldText.occsAll);
             }
             // scorer.weight(termOccs, termDocs); // collection level stats
             long freq = termit.totalTermFreq();
-            forms.freq4form[formId] = freq;
+            forms.freqByForm[formId] = freq;
             forms.freqAll += freq;
             if (hasScorer) {
-                forms.score4form[formId] += distrib.score(freq, docOccs);
+                forms.scoreByform[formId] += scorer.score(freq, docOccs);
                 // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub
                 // complement ?
             }

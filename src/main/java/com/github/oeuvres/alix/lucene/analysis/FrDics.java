@@ -46,6 +46,7 @@ import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
@@ -54,8 +55,8 @@ import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.util.WordsAutomatonBuilder;
 import com.github.oeuvres.alix.util.Chain;
-import com.github.oeuvres.alix.util.CsvReader;
-import com.github.oeuvres.alix.util.CsvReader.Row;
+import com.github.oeuvres.alix.util.CSVReader;
+import com.github.oeuvres.alix.util.CSVReader.Row;
 
 /**
  * Preloaded word List for lucene indexation in {@link HashMap}. Efficiency
@@ -90,7 +91,7 @@ public class FrDics
     static String res;
     /** Load dictionaries */
     static {
-        CsvReader csv = null;
+        CSVReader csv = null;
         Reader reader;
         try {
             ArrayList<String> list = new ArrayList<String>();
@@ -104,7 +105,7 @@ public class FrDics
             list.add("\t");
             res = "stop.csv";
             reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
-            csv = new CsvReader(reader, 1);
+            csv = new CSVReader(reader, 1);
             csv.readRow(); // pass first line
             Row row;
             while ((row = csv.readRow()) != null) {
@@ -119,7 +120,7 @@ public class FrDics
 
             res = "word.csv";
             reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
-            csv = new CsvReader(reader, 6);
+            csv = new CSVReader(reader, 6);
             csv.readRow(); // pass first line
             while ((row = csv.readRow()) != null) {
                 Chain orth = row.get(0);
@@ -140,7 +141,7 @@ public class FrDics
                 if (is == null)
                     throw new FileNotFoundException("Unfound resource " + res);
                 reader = new InputStreamReader(is, StandardCharsets.UTF_8);
-                csv = new CsvReader(reader, 4); // some names may have a kind of lemma
+                csv = new CSVReader(reader, 4); // some names may have a kind of lemma
                 csv.readRow();
                 while ((row = csv.readRow()) != null) {
                     Chain graph = row.get(0);
@@ -181,6 +182,11 @@ public class FrDics
          */
     }
 
+    /**
+     * Load a jar resource as dictionary.
+     * 
+     * @param res resource path according to the class loader.
+     */
     private static void load(final String res)
     {
         FrDics.res = res;
@@ -188,6 +194,12 @@ public class FrDics
         load(reader);
     }
 
+    /**
+     * Load a file as a dictionary.
+     * 
+     * @param file file path.
+     * @throws IOException file errors.
+     */
     public static void load(final File file) throws IOException
     {
         FrDics.res = file.getAbsolutePath();
@@ -205,13 +217,13 @@ public class FrDics
      * <li>3. LEM. Optional, lemmatization.</li>
      * </ul>
      * 
-     * @param reader
+     * @param reader for file or jar.
      */
     static public void load(final Reader reader)
     {
-        CsvReader csv = null;
+        CSVReader csv = null;
         try {
-            csv = new CsvReader(reader, 4);
+            csv = new CSVReader(reader, 4);
             csv.readRow(); // skip first line
             Row row;
             while ((row = csv.readRow()) != null) {
@@ -266,9 +278,9 @@ public class FrDics
      */
     private static void load(final Reader reader, final HashMap<CharsAttImpl, CharsAttImpl> map)
     {
-        CsvReader csv = null;
+        CSVReader csv = null;
         try {
-            csv = new CsvReader(reader, 2);
+            csv = new CSVReader(reader, 2);
             csv.readRow(); // skip first line
             Row row;
             while ((row = csv.readRow()) != null) {
@@ -308,9 +320,9 @@ public class FrDics
      */
     private static void locutions(final Reader reader)
     {
-        CsvReader csv = null;
+        CSVReader csv = null;
         try {
-            csv = new CsvReader(reader, 4);
+            csv = new CSVReader(reader, 4);
             csv.readRow(); // skip first line
             Row row;
             while ((row = csv.readRow()) != null) {
@@ -349,22 +361,23 @@ public class FrDics
     /**
      * Insert a compound candidate in the compound tree
      * 
-     * @param graph
+     * @param form a form to insert
+     * @param tree the tree to insert in.
      */
-    protected static void compound(Chain graph, HashMap<CharsAttImpl, Integer> tree)
+    protected static void compound(Chain form, HashMap<CharsAttImpl, Integer> tree)
     {
-        int len = graph.length();
+        int len = form.length();
         for (int i = 0; i < len; i++) {
-            char c = graph.charAt(i);
+            char c = form.charAt(i);
             if (c != '\'' && c != '’' && c != ' ')
                 continue;
             if (c == '’')
-                graph.setCharAt(i, '\'');
+                form.setCharAt(i, '\'');
             CharsAttImpl key;
             if (c == '\'' || c == '’')
-                key = new CharsAttImpl(graph.array(), 0, i + 1);
+                key = new CharsAttImpl(form.array(), 0, i + 1);
             else if (c == ' ')
-                key = new CharsAttImpl(graph.array(), 0, i);
+                key = new CharsAttImpl(form.array(), 0, i);
             else
                 continue;
             Integer entry = tree.get(key);
@@ -374,7 +387,7 @@ public class FrDics
                 tree.put(key, entry | BRANCH);
         }
         // end of word
-        CharsAttImpl key = new CharsAttImpl(graph.array(), 0, len);
+        CharsAttImpl key = new CharsAttImpl(form.array(), 0, len);
         Integer entry = tree.get(key);
         if (entry == null)
             tree.put(key, LEAF);
@@ -382,53 +395,58 @@ public class FrDics
             tree.put(key, entry | LEAF);
     }
 
+    /**
+     * Get a dictionary entry from the word dictionary
+     * with a reusable {@link CharTermAttribute} implementation.
+     * 
+     * @param att {@link CharTermAttribute} implementation.
+     * @return available common word entry for the submitted form, or null if not found.
+     */
     public static LexEntry word(CharsAttImpl att)
     {
         return WORDS.get(att);
     }
 
     /**
-     * Not efficient for a lot of queries.
+     * Get a dictionary entry from the name dictionary
+     * with a reusable {@link CharTermAttribute} implementation.
      * 
-     * @param form
-     * @return
+     * @param att {@link CharTermAttribute} implementation.
+     * @return available proper name entry for the submitted form, or null if not found.
      */
-    public static LexEntry word(String form)
-    {
-        return WORDS.get(new CharsAttImpl(form));
-    }
-
     public static LexEntry name(CharsAttImpl att)
     {
         return NAMES.get(att);
     }
 
     /**
-     * Not efficient for a lot of queries.
+     * Test if the requested chars are in the stop word dictionary.
      * 
-     * @param form
-     * @return
+     * @param ref lucene bytes.
+     * @return true if submitted form is a stop word, false otherwise.
      */
-    public static LexEntry name(String form)
-    {
-        return NAMES.get(new CharsAttImpl(form));
-    }
-
     public static boolean isStop(BytesRef ref)
     {
         return STOP_BYTES.run(ref.bytes, ref.offset, ref.length);
     }
 
+    /**
+     * Test if the requested chars are in the stop word dictionary.
+     * 
+     * @param att {@link CharTermAttribute} implementation.
+     * @return true if submitted form is a stop word, false otherwise.
+     */
     public static boolean isStop(CharsAttImpl att)
     {
         return STOP.contains(att);
     }
 
-    public static boolean isStop(String form)
-    {
-        return STOP.contains(new CharsAttImpl(form));
-    }
-
+    /**
+     * Test if the requested chars are a known abbreviation ending by a dot.
+     * 
+     * @param att {@link CharTermAttribute} implementation.
+     * @return true if submitted form is an abbreviation, false otherwise.
+     */
     public static boolean brevidot(CharsAttImpl att)
     {
         CharsAttImpl val = BREVIDOT.get(att);
@@ -439,6 +457,12 @@ public class FrDics
         return true;
     }
 
+    /**
+     * Get normalized orthographic form for a real grapphical form in text.
+     * 
+     * @param att {@link CharTermAttribute} implementation, normalized.
+     * @return true if a normalization has been done, false otherwise.
+     */
     public static boolean norm(CharsAttImpl att)
     {
         CharsAttImpl val = NORM.get(att);
@@ -448,18 +472,27 @@ public class FrDics
         return true;
     }
 
+    /**
+     * An entry for a dictionary te get lemma from
+     * an inflected form.
+     */
     public static class LexEntry
     {
+        /** A lexical word type. */
         final public int tag;
+        /** Inflected form.  */
         final public CharsAttImpl orth;
+        /** lemma form. */
         final public CharsAttImpl lem;
 
-        public LexEntry(final Chain tag) {
-            this.tag = Tag.flag(tag);
-            orth = null;
-            lem = null;
-        }
-
+        /**
+         * Full constructor with cells coming from a {@link CSVReader}
+         * 
+         * @param graph graphical form found in texts.
+         * @param tag short name for a lexical type.
+         * @param orth normalized orthographic form.
+         * @param lem lemma form.
+         */
         public LexEntry(final Chain graph, final Chain tag, final Chain orth, final Chain lem) {
             if (graph.isEmpty() || tag.isEmpty()) {
                 LOGGER.log(Level.FINEST, res + " graph=" + graph + " tag=" + tag);

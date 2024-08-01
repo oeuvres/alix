@@ -112,22 +112,22 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color"><code>protected final <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second even-row-color"><code><a href="#fieldName" class="member-name-link">fieldName</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Name of the field to extract stats</div>
+<div class="block">Name of a lucene field from which extract and cache stats.</div>
 </div>
 <div class="col-first odd-row-color"><code>protected final org.apache.lucene.index.FieldInfo</code></div>
 <div class="col-second odd-row-color"><code><a href="#info" class="member-name-link">info</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">Infos</div>
+<div class="block">Infos about the lucene field.</div>
 </div>
 <div class="col-first even-row-color"><code>protected int</code></div>
 <div class="col-second even-row-color"><code><a href="#maxValue" class="member-name-link">maxValue</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Number of different values found, is also biggest valueId+1 (like lucene IndexReader.maxDoc())</div>
+<div class="block">Number of different values found = biggest valueId + 1.</div>
 </div>
 <div class="col-first odd-row-color"><code>protected final org.apache.lucene.index.IndexReader</code></div>
 <div class="col-second odd-row-color"><code><a href="#reader" class="member-name-link">reader</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">Cache the state of a reader from which all freqs are counted</div>
+<div class="block">Lucene index reader, cache the state.</div>
 </div>
 </div>
 </section>
@@ -225,28 +225,28 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="fieldName">
 <h3>fieldName</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">fieldName</span></div>
-<div class="block">Name of the field to extract stats</div>
+<div class="block">Name of a lucene field from which extract and cache stats.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="reader">
 <h3>reader</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.index.IndexReader</span>&nbsp;<span class="element-name">reader</span></div>
-<div class="block">Cache the state of a reader from which all freqs are counted</div>
+<div class="block">Lucene index reader, cache the state.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="info">
 <h3>info</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.index.FieldInfo</span>&nbsp;<span class="element-name">info</span></div>
-<div class="block">Infos</div>
+<div class="block">Infos about the lucene field.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="maxValue">
 <h3>maxValue</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">maxValue</span></div>
-<div class="block">Number of different values found, is also biggest valueId+1 (like lucene IndexReader.maxDoc())</div>
+<div class="block">Number of different values found = biggest valueId + 1.</div>
 </section>
 </li>
 </ul>

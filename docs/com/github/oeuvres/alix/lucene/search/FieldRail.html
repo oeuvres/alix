@@ -210,9 +210,17 @@ loadScripts(document, 'script');</script>
 <div class="block">Flatten search of a document in a position order, according to the dictionary
  of search.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString(int)" class="member-name-link">toString</a><wbr>(int&nbsp;docId)</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score(com.github.oeuvres.alix.lucene.search.FormEnum,int%5B%5D,com.github.oeuvres.alix.util.MI)" class="member-name-link">score</a><wbr>(<a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>&nbsp;formEnum,
+ int[]&nbsp;pivotIds,
+ <a href="../../util/MI.html" title="enum in com.github.oeuvres.alix.util">MI</a>&nbsp;mi)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Scores a <a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FormEnum</code></a> with freqs extracted from co-occurrences extraction
+ in a <a href="#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>coocs(BytesRef[], int, int, BitSet)</code></a>.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString(int)" class="member-name-link">toString</a><wbr>(int&nbsp;docId)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">A document as a sequence of tokens.</div>
 </div>
 </div>
@@ -444,6 +452,35 @@ loadScripts(document, 'script');</script>
 <dt>Parameters:</dt>
 <dd><code>terms</code> - A term vector of a document with positions.</dd>
 <dd><code>buf</code> - A reusable binary buffer to index.</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="score(com.github.oeuvres.alix.lucene.search.FormEnum,int[],com.github.oeuvres.alix.util.MI)">
+<h3>score</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">score</span><wbr><span class="parameters">(<a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>&nbsp;formEnum,
+ int[]&nbsp;pivotIds,
+ <a href="../../util/MI.html" title="enum in com.github.oeuvres.alix.util">MI</a>&nbsp;mi)</span>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Scores a <a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FormEnum</code></a> with freqs extracted from co-occurrences extraction
+ in a <a href="#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>coocs(BytesRef[], int, int, BitSet)</code></a>. Scoring uses a “mutual information”
+ <a href="../../util/MI.html" title="enum in com.github.oeuvres.alix.util"><code>MI</code></a> algorithm (probability like, not tf-idf like). Parameters
+ are
+ 
+ <ul>
+ <li>Oab: count of a form (a) observed in a co-occurrency context (b)</li>
+ <li>Oa: count of a form in full corpus, or in a section (filter)</li>
+ <li>Ob: count of occs of the co-occurrency context</li>
+ <li>N: global count of occs from which is extracted the context (full corpus
+ or filtered section)</li>
+ </ul></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>formEnum</code> - form enumeration from <a href="#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>coocs(BytesRef[], int, int, BitSet)</code></a>.</dd>
+<dd><code>pivotIds</code> - form ids of pivots words.</dd>
+<dd><code>mi</code> - mutual information algorithm to calculate score.</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
 </dl>

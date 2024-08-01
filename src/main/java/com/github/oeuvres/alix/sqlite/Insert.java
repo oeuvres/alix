@@ -118,10 +118,11 @@ public class Insert
 
     /**
      * Connect to an sqlite database. Everything is broken if it can’t work, let it
-     * cry
+     * cry.
      * 
+     * @param sqlite file.
      * @throws IOException  Lucene errors.
-     * @throws SQLException
+     * @throws SQLException SQLite errors.
      */
     public static void connect(final File sqlite) throws IOException, SQLException
     {
@@ -152,12 +153,13 @@ public class Insert
     }
 
     /**
+     * Go through a folder of html file to index it.
      * 
-     * @param dir
-     * @throws SQLException
+     * @param dir a directory to crawl.
      * @throws IOException  Lucene errors.
+     * @throws SQLException SQLite errors.
      */
-    public static void crawl(File dir) throws SQLException, IOException
+    public static void crawl(File dir) throws IOException, SQLException
     {
         logger.info(dir.getAbsolutePath());
         con.setAutoCommit(false);
@@ -183,6 +185,13 @@ public class Insert
         con.commit();
     }
 
+    /**
+     * Go through a folder of html file to index it.
+     * 
+     * @param file a zip of html file.
+     * @throws IOException  Lucene errors.
+     * @throws SQLException SQLite errors.
+     */
     public static void unzip(File file) throws SQLException, IOException
     {
         con.setAutoCommit(false);
@@ -212,6 +221,13 @@ public class Insert
         con.commit();
     }
 
+    /**
+     * Parse an XML content to index lexical events in SQLite.
+     * 
+     * @param xml text.
+     * @throws IOException  Lucene errors.
+     * @throws SQLException SQLite errors.
+     */
     public static void parse(final String xml) throws IOException, SQLException
     {
         final int ORTH = 2;

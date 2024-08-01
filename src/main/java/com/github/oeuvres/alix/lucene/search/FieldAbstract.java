@@ -7,16 +7,16 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexReader;
 
-abstract class AbstractField
+abstract class FieldAbstract
 {
-    /** Name of the field to extract stats */
+    /** Name of a lucene field from which extract and cache stats. */
     protected final String fieldName;
-    /** Cache the state of a reader from which all freqs are counted */
+    /** Lucene index reader, cache the state. */
     protected final IndexReader reader;
-    /** Infos */
+    /** Infos about the lucene field. */
     protected final FieldInfo info;
-    /** Number of different values found, is also biggest valueId+1 (like lucene IndexReader.maxDoc()) */
-    protected int maxValue = -1;
+    /** Number of different values found = biggest valueId + 1. */
+    protected int maxValue;
 
     
     /**
@@ -26,7 +26,7 @@ abstract class AbstractField
      * @param fieldName name of a lucene text field.
      * @throws IOException Lucene errors.
      */
-    public AbstractField(final IndexReader reader, final String fieldName) throws IOException
+    public FieldAbstract(final IndexReader reader, final String fieldName) throws IOException
     {
         this.reader = reader;
         this.fieldName = fieldName;

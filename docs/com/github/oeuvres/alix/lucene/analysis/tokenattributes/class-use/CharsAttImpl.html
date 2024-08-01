@@ -62,13 +62,8 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Custom token attributes.</div>
 </div>
-<div class="col-first even-row-color"><a href="#com.github.oeuvres.alix.lucene.search">com.github.oeuvres.alix.lucene.search</a></div>
+<div class="col-first even-row-color"><a href="#com.github.oeuvres.alix.util">com.github.oeuvres.alix.util</a></div>
 <div class="col-last even-row-color">
-<div class="block">Objects to search and calculate lexical statistics from an index (ex: found
- occurrences by facet)</div>
-</div>
-<div class="col-first odd-row-color"><a href="#com.github.oeuvres.alix.util">com.github.oeuvres.alix.util</a></div>
-<div class="col-last odd-row-color">
 <div class="block">Generic data structures.</div>
 </div>
 </div>
@@ -84,10 +79,14 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>final <a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></code></div>
 <div class="col-second even-row-color"><span class="type-name-label">FrDics.LexEntry.</span><code><a href="../../FrDics.LexEntry.html#lem" class="member-name-link">lem</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">lemma form.</div>
+</div>
 <div class="col-first odd-row-color"><code>final <a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">FrDics.LexEntry.</span><code><a href="../../FrDics.LexEntry.html#orth" class="member-name-link">orth</a></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">Inflected form.</div>
+</div>
 </div>
 <div class="caption"><span>Fields in <a href="../../package-summary.html">com.github.oeuvres.alix.lucene.analysis</a> with type parameters of type <a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></span></div>
 <div class="summary-table three-column-summary">
@@ -172,19 +171,31 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>static boolean</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">FrDics.</span><code><a href="../../FrDics.html#brevidot(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)" class="member-name-link">brevidot</a><wbr>(<a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>&nbsp;att)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Test if the requested chars are a known abbreviation ending by a dot.</div>
+</div>
 <div class="col-first odd-row-color"><code>static boolean</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">FrDics.</span><code><a href="../../FrDics.html#isStop(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)" class="member-name-link">isStop</a><wbr>(<a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>&nbsp;att)</code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">Test if the requested chars are in the stop word dictionary.</div>
+</div>
 <div class="col-first even-row-color"><code>static <a href="../../FrDics.LexEntry.html" title="class in com.github.oeuvres.alix.lucene.analysis">FrDics.LexEntry</a></code></div>
 <div class="col-second even-row-color"><span class="type-name-label">FrDics.</span><code><a href="../../FrDics.html#name(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)" class="member-name-link">name</a><wbr>(<a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>&nbsp;att)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Get a dictionary entry from the name dictionary
+ with a reusable <code>CharTermAttribute</code> implementation.</div>
+</div>
 <div class="col-first odd-row-color"><code>static boolean</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">FrDics.</span><code><a href="../../FrDics.html#norm(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)" class="member-name-link">norm</a><wbr>(<a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>&nbsp;att)</code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">Get normalized orthographic form for a real grapphical form in text.</div>
+</div>
 <div class="col-first even-row-color"><code>static <a href="../../FrDics.LexEntry.html" title="class in com.github.oeuvres.alix.lucene.analysis">FrDics.LexEntry</a></code></div>
 <div class="col-second even-row-color"><span class="type-name-label">FrDics.</span><code><a href="../../FrDics.html#word(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)" class="member-name-link">word</a><wbr>(<a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>&nbsp;att)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Get a dictionary entry from the word dictionary
+ with a reusable <code>CharTermAttribute</code> implementation.</div>
+</div>
 </div>
 <div class="caption"><span>Method parameters in <a href="../../package-summary.html">com.github.oeuvres.alix.lucene.analysis</a> with type arguments of type <a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></span></div>
 <div class="summary-table three-column-summary">
@@ -192,7 +203,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>protected static void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">FrDics.</span><code><a href="../../FrDics.html#compound(com.github.oeuvres.alix.util.Chain,java.util.HashMap)" class="member-name-link">compound</a><wbr>(<a href="../../../../util/Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;graph,
+<div class="col-second even-row-color"><span class="type-name-label">FrDics.</span><code><a href="../../FrDics.html#compound(com.github.oeuvres.alix.util.Chain,java.util.HashMap)" class="member-name-link">compound</a><wbr>(<a href="../../../../util/Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;form,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/HashMap.html" title="class or interface in java.util" class="external-link">HashMap</a>&lt;<a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a>&gt;&nbsp;tree)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Insert a compound candidate in the compound tree</div>
@@ -306,33 +317,6 @@ loadScripts(document, 'script');</script>
 <div class="col-second even-row-color"><code><a href="../CharsAttImpl.html#%3Cinit%3E(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)" class="member-name-link">CharsAttImpl</a><wbr>(<a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>&nbsp;token)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Copy chars from another attribute.</div>
-</div>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="com.github.oeuvres.alix.lucene.search">
-<h2>Uses of <a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a> in <a href="../../../search/package-summary.html">com.github.oeuvres.alix.lucene.search</a></h2>
-<div class="caption"><span>Methods in <a href="../../../search/package-summary.html">com.github.oeuvres.alix.lucene.search</a> that return <a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></span></div>
-<div class="summary-table three-column-summary">
-<div class="table-header col-first">Modifier and Type</div>
-<div class="table-header col-second">Method</div>
-<div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code><a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">FormEnum.</span><code><a href="../../../search/FormEnum.html#form(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)" class="member-name-link">form</a><wbr>(<a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>&nbsp;term)</code></div>
-<div class="col-last even-row-color">
-<div class="block">Copy the current term in a reusable char array.</div>
-</div>
-</div>
-<div class="caption"><span>Methods in <a href="../../../search/package-summary.html">com.github.oeuvres.alix.lucene.search</a> with parameters of type <a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></span></div>
-<div class="summary-table three-column-summary">
-<div class="table-header col-first">Modifier and Type</div>
-<div class="table-header col-second">Method</div>
-<div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code><a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">FormEnum.</span><code><a href="../../../search/FormEnum.html#form(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)" class="member-name-link">form</a><wbr>(<a href="../CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>&nbsp;term)</code></div>
-<div class="col-last even-row-color">
-<div class="block">Copy the current term in a reusable char array.</div>
 </div>
 </div>
 </section>

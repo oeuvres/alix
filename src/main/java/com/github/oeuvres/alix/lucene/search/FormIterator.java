@@ -3,7 +3,8 @@ package com.github.oeuvres.alix.lucene.search;
 import java.util.NoSuchElementException;
 import java.text.Collator;
 
-import com.github.oeuvres.alix.web.OptionDistrib;
+import com.github.oeuvres.alix.util.MI;
+
 /**
  * A contract to loop on a list of forms, accessing to different properties.
  */
@@ -25,7 +26,7 @@ public interface FormIterator
         INSERTION,
         /** Sort by total count of all occurrences in all documents containing this form. */
         OCCS, 
-        /** Sort by a calulated score according to a distribution algorithm {@link OptionDistrib}. */
+        /** Sort by a calulated score according to a distribution algorithm {@link MI}. */
         SCORE,
     }
 

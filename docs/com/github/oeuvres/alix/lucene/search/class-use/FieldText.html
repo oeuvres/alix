@@ -102,10 +102,10 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">FieldFacet.</span><code><a href="../FieldFacet.html#forms(com.github.oeuvres.alix.lucene.search.FieldText,java.lang.String%5B%5D,org.apache.lucene.util.BitSet,com.github.oeuvres.alix.web.OptionDistrib)" class="member-name-link">forms</a><wbr>(<a href="../FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext,
+<div class="col-second even-row-color"><span class="type-name-label">FieldFacet.</span><code><a href="../FieldFacet.html#forms(com.github.oeuvres.alix.lucene.search.FieldText,java.lang.String%5B%5D,org.apache.lucene.util.BitSet,com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">forms</a><wbr>(<a href="../FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;search,
  org.apache.lucene.util.BitSet&nbsp;docFilter,
- <a href="../../../web/OptionDistrib.html" title="enum in com.github.oeuvres.alix.web">OptionDistrib</a>&nbsp;distrib)</code></div>
+ <a href="../Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Get occurrences count of a text field by facet.</div>
 </div>
@@ -127,8 +127,21 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Constructor</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../WordSuggest.html#%3Cinit%3E(com.github.oeuvres.alix.lucene.search.FieldText)" class="member-name-link">WordSuggest</a><wbr>(<a href="../FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;fieldText)</code></div>
+<div class="col-second even-row-color"><code><a href="../FormEnum.html#%3Cinit%3E(com.github.oeuvres.alix.lucene.search.FieldText)" class="member-name-link">FormEnum</a><wbr>(<a href="../FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;field)</code></div>
 <div class="col-last even-row-color">
+<div class="block">Build a form enumerator from an alix <a href="../FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, sharing properties 
+ useful to calcultate scores for some queries : 
+ 
+   Dictionary of forms <code>FieldCharsAbstract.dic</code>
+   docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.
+   Σ docsByForm; global count of docs relevant for this field <code>FieldCharsAbstract.docsAll</code>.
+   occsByform[formId] = occs; count of occurrences by form <a href="../FieldText.html#occsByForm"><code>occsByForm</code></a>.
+   Σ occsByForm; global count of occs for this field <a href="../FieldText.html#occsAll"><code>occsAll</code></a>.
+ </div>
+</div>
+<div class="col-first odd-row-color"><code>&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../WordSuggest.html#%3Cinit%3E(com.github.oeuvres.alix.lucene.search.FieldText)" class="member-name-link">WordSuggest</a><wbr>(<a href="../FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;fieldText)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Build an index of words optimized for wildcard searching.</div>
 </div>
 </div>
