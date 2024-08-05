@@ -27,8 +27,8 @@ import org.junit.Test;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.fr.TagFilter;
-import com.github.oeuvres.alix.lucene.search.WordSuggest;
-import com.github.oeuvres.alix.lucene.search.WordSuggest.Suggestion;
+import com.github.oeuvres.alix.lucene.search.SuggestForm;
+import com.github.oeuvres.alix.lucene.search.SuggestForm.Suggestion;
 import com.github.oeuvres.alix.util.Char;
 
 public class WordSuggestTest
@@ -67,7 +67,7 @@ public class WordSuggestTest
 
     public static void markPrint(String word, String q)
     {
-        System.out.println(word + " " + q + " " + WordSuggest.mark(word, q));
+        System.out.println(word + " " + q + " " + SuggestForm.mark(word, q));
     }
 
     public static void search() throws IOException
@@ -80,7 +80,7 @@ public class WordSuggestTest
         FieldText ftext = new FieldText(reader, FIELD);
         System.out.println("Build FieldText " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
         startTime = System.nanoTime();
-        WordSuggest sugg = new WordSuggest(ftext);
+        SuggestForm sugg = new SuggestForm(ftext);
         System.out.println("Buid wordSuggest " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
         TagFilter wordFilter = new TagFilter().set(Tag.NOSTOP);
         for (final String q : new String[] {

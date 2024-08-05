@@ -92,6 +92,7 @@ import static com.github.oeuvres.alix.Names.*;
 import com.github.oeuvres.alix.lucene.analysis.AnalyzerAlix;
 import com.github.oeuvres.alix.lucene.search.FieldFacet;
 import com.github.oeuvres.alix.lucene.search.Scale;
+import com.github.oeuvres.alix.lucene.search.SuggestForm;
 import com.github.oeuvres.alix.lucene.search.FieldText;
 import com.github.oeuvres.alix.lucene.search.FieldRail;
 import com.github.oeuvres.alix.lucene.search.FieldInt;
@@ -803,6 +804,26 @@ public class Alix
         searcher.setSimilarity(similarity);
         return searcher;
     }
+    
+    /**
+     * Get a form suggester for an ASCII wildcard search in a list of real words.
+     * 
+     * @param fieldName Name of a text field.
+     * @return an index to search in the form list of a text field.
+     * @throws IOException Lucene errors.
+     */
+    public SuggestForm suggestForm(final String fieldName) throws IOException
+    {
+        String key = "AlixSuggest" + fieldName;
+        SuggestForm suggester = (SuggestForm) cache(key);
+        if (suggester != null)
+            return suggester;
+        FieldText fieldText = fieldText(fieldName);
+        suggester = new SuggestForm(fieldText);
+        cache(key, suggester);
+        return suggester;
+    }
+
 
     /**
      * Analyze a search according to the default analyzer of this base, is

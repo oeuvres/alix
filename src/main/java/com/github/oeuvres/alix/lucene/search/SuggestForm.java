@@ -35,6 +35,7 @@ package com.github.oeuvres.alix.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
@@ -66,22 +67,25 @@ import com.github.oeuvres.alix.util.TopArray;
  * 
  * Ask for "LÔ", answer {"<mark>Lo</mark>ïc", "Ch<mark>lo</mark>é"} in original order.
  */
-public class WordSuggest
+public class SuggestForm
 {
-    /** Source Alix field wrapper */
-    private final FieldText fieldText;
-    /** The lucene index to search in */
-    private final IndexReader reader;
-    /** The field name */
-    private final String fieldName;
-    /** Forms of a field, by reference */
-    private final BytesRefHash formDic;
+    /** For {@link List#toArray(Object[])} */
+    static final Suggestion[] SUGG0 = new Suggestion[0];
+
     /** Concatenation of all words, in ascii, in Term enumeration order, */
     private final String ascii;
-    /** Starting indexes of words in the ascii String */
-    private final int[] starts;
+    /** The field name */
+    private final String fieldName;
+    /** Source Alix field wrapper */
+    private final FieldText fieldText;
+    /** Forms of a field, by reference */
+    private final BytesRefHash formDic;
     /** formId known by formDic in the ascii String order */
     private final int[] formIds;
+    /** The lucene index to search in */
+    private final IndexReader reader;
+    /** Starting indexes of words in the ascii String */
+    private final int[] starts;
     /** “word count” () dictionary size */
     private final int wc;
     
@@ -90,7 +94,7 @@ public class WordSuggest
      * 
      * @param fieldText name of a lucene indexed field (text).
      */
-    public WordSuggest (final FieldText fieldText)
+    public SuggestForm (final FieldText fieldText)
     {
         this.fieldText = fieldText;
         this.fieldName = fieldText.fieldName;
@@ -121,7 +125,7 @@ public class WordSuggest
     }
 
     /**
-     * Find list of formId in the dictionary of a field.
+     * Find list of formId in the dictionary of a field by .
      * 
      * @param q a query string to find words.
      * @param wordFilter a wordfilter by tags.
@@ -129,9 +133,9 @@ public class WordSuggest
      */
     public int[] list(String q, final TagFilter wordFilter) {
         if (q == null || q.isEmpty()) return new int[0];
-        boolean hasTags = (wordFilter != null && wordFilter.cardinality() > 0);
-        boolean noStop = (wordFilter != null && wordFilter.accept(Tag.NOSTOP));
-        boolean locs = (wordFilter != null && wordFilter.accept(Tag.LOC));
+        boolean hasTags = (wordFilter != null && wordFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0);
+        boolean noStop = (wordFilter != null && wordFilter.get(Tag.NOSTOP));
+        boolean locs = (wordFilter != null && wordFilter.get(Tag.LOC));
 
         IntList formIdList = new IntList();
         q = Char.toASCII(q).toLowerCase();
@@ -153,7 +157,7 @@ public class WordSuggest
                 if (!fieldText.isLocution(formId)) continue;
             }
             else if (hasTags) {
-                if (!wordFilter.accept(fieldText.tag(formId))) continue;
+                if (!wordFilter.get(fieldText.tag(formId))) continue;
             }
             
             // formId selected
@@ -166,6 +170,7 @@ public class WordSuggest
     
     /**
      * With a found word and an ASCII search, propose an highlighted version.
+     * 
      * @param word ex: "Lœs"
      * @param q ex "_OE"
      * @return "L<mark>œ</mark>s"
@@ -237,6 +242,7 @@ public class WordSuggest
     }
     
     /**
+     * Search a wildcard 
      * 
      * @param q
      * @param count
@@ -245,18 +251,18 @@ public class WordSuggest
     public Suggestion[] search(
         final String q, 
         final int count, 
-        final TagFilter wordFilter, 
+        final TagFilter formFilter, 
         final BitSet docFilter
     ) throws IOException
     {
-        final Suggestion[] empty = new Suggestion[0];
-        if (q == null || q.isBlank()) return empty;
-        final int[] formIds = list(q, wordFilter);
+        if (q == null || q.isBlank()) return new Suggestion[0];
+        final int[] formIds = list(q, formFilter);
         final int formLen = formIds.length;
         int[] formHits = new int[formLen];
+        long[] formFreq = new long[formLen];
         // formId in TermsEnum are faster than shuffled
         BytesRef bytes = new BytesRef();
-        PostingsEnum docsEnum = null;
+        PostingsEnum postings = null;
         for (LeafReaderContext context : reader.leaves()) {
             LeafReader leaf = context.reader();
             final int docBase = context.docBase;
@@ -270,63 +276,107 @@ public class WordSuggest
                 if (!tenum.seekExact(bytes)) {
                     continue;
                 }
-                docsEnum = tenum.postings(docsEnum, PostingsEnum.NONE);
+                postings = tenum.postings(postings, PostingsEnum.FREQS);
                 int docLeaf;
-                while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
                     if (live != null && !live.get(docLeaf)) continue; // deleted doc
                     int docId = docBase + docLeaf;
                     if (docFilter != null && !docFilter.get(docId)) continue; // document not in the filter
                     // freq always > 0
                     formHits[i]++;
+                    final int freq = postings.freq();
+                    formFreq[i] += freq;
                 }
             }
         }
-        // Select the top best terms
+        // Select the top best terms by freq
         TopArray top = new TopArray(count);
-        for (int i = 0; i < formLen; i++) {
-            final int hits = formHits[i];
-            if (hits == 0) continue;
-            top.push(formIds[i], hits);
+        for (int formIndex = 0; formIndex < formLen; formIndex++) {
+            final long freq = formFreq[formIndex];
+            if (freq == 0) continue;
+            top.push(formIndex, freq);
         }
         // unroll the top to build the result array
         ArrayList<Suggestion> list = new ArrayList<>();
         for (TopArray.IdScore pair: top) {
-            final int formId = pair.id();
-            final int hits = (int)pair.score();
+            final int formIndex = pair.id();
+            final int formId = formIds[formIndex];
             formDic.get(formId, bytes);
             final String word = bytes.utf8ToString();
             final String marked = mark(word, q);
-            list.add(new Suggestion(word, hits, marked));
+            list.add(new Suggestion(word, marked, formHits[formIndex], formFreq[formIndex]));
         }
-        return list.toArray(empty);
+        return list.toArray(SUGG0);
     }
 
     /**
-     * Content of a suggested word.
+     * Content of a suggested form.
      */
     public static class Suggestion
     {
-        private final String word;
+        /** Count of occurrences. */
+        private final long freq;
+        /** Word form like in the indexed field. */
+        private final String form;
+        /** Count of documents concerned by this form. */
         private final int hits;
+        /** Form with query hilited. */
         private final String marked;
-        public Suggestion(final String word, final int hits, final String marked) {
-            this.word = word;
-            this.hits = hits;
+        
+        /**
+         * Default constructor with required fields.
+         * 
+         * @param form form like in the indexed field.
+         * @param marked form with query hilited.
+         * @param hits count of documents concerned.
+         * @param freq count of occurrences concerned.
+         */
+        public Suggestion(final String form, final String marked, final int hits, final long freq) {
+            this.form = form;
             this.marked = marked;
+            this.hits = hits;
+            this.freq = freq;
         }
-        public String word() {
-            return word;
+        
+        /**
+         * Returns original indexed form.
+         * 
+         * @return form.
+         */
+        public String form() {
+            return form;
         }
+        
+        /**
+         * Count of ocurrences  for this form.
+         * 
+         * @return freq.
+         */
+        public long freq() {
+            return freq;
+        }
+        
+        /**
+         * Count of documents with this form.
+         * 
+         * @return hits.
+         */
         public int hits() {
             return hits;
         }
+        
+        /**
+         * Form with query hilited.
+         * 
+         * @return hilited form.
+         */
         public String marked() {
             return marked;
         }
         @Override
         public String toString()
         {
-            return word + " (" + hits + ") " + marked;
+            return form + " (" + freq + " occs, in " + hits + "docs) " + marked;
         }
     }
 

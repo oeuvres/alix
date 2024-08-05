@@ -57,6 +57,8 @@ import org.apache.lucene.util.Bits;
  */
 public class FieldInt extends FieldAbstract
 {
+    /** Maximum id for a value. */
+    private final int idMax;
     /** Values, sorted, position in this array is an internal id for the value */
     private final int[] sorted;
     /** For each docId, the id of the int value in the sorted vector */
@@ -163,10 +165,10 @@ public class FieldInt extends FieldAbstract
                     + "\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
         }
         // get values of treeMap, should be ordered
-        this.maxValue = counter.size();
-        int[] sorted = new int[maxValue];
-        long[] valOccs = new long[maxValue];
-        int[] valDocs = new int[maxValue];
+        idMax = counter.size();
+        int[] sorted = new int[idMax];
+        long[] valOccs = new long[idMax];
+        int[] valDocs = new int[idMax];
         Map<Integer, Integer> valueDic = new TreeMap<Integer, Integer>(); // a dic intValue => idValue
         int valueId = 0;
         for (Map.Entry<Integer, long[]> entry : counter.entrySet()) {
@@ -364,7 +366,7 @@ public class FieldInt extends FieldAbstract
          */
         public boolean hasNext()
         {
-            return (cursor < (maxValue - 1));
+            return (cursor < (idMax - 1));
         }
 
         /**

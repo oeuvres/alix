@@ -44,9 +44,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
-import org.apache.lucene.util.UnicodeUtil;
 
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.TopArray;
 
@@ -74,6 +72,8 @@ public class FormEnum implements FormIterator
     
     /** hitsByform[formId] = hits; count of docs matched or selected by form. */
     protected int[] hitsByForm;
+    /** hitsByDoc.get(docId) == true: doc found. */
+    protected BitSet hitsByDoc;
     /** Count of unique documents found. */
     protected int hitsAll;
     /** hitsByform[formId] = freq; count of occurrences in a set of hits, by form. */
@@ -94,11 +94,6 @@ public class FormEnum implements FormIterator
     /** Current formId, set by next */
     private int formId = -1;
     
-    /** Vector of documents hits */
-    protected BitSet hitsVek;
-    /** Optional, for a co-occurrence search, pivot words */
-    public String[] search;
-
     /**
      * Build a form enumerator from an alix {@link FieldText}, sharing properties 
      * useful to calcultate scores for some queries : 
@@ -544,7 +539,7 @@ public class FormEnum implements FormIterator
      * 
      * @param scorer a score algo implementation.
      */
-    public void score(Scorer scorer)
+    public void score(Distrib scorer)
     {
         if (freqByForm == null) {
             throw new IllegalArgumentException("No freqs for this dictionary to calculate score on.");
@@ -606,8 +601,10 @@ public class FormEnum implements FormIterator
     {
         this.limit = limit;
         if (freqByForm != null && maxValue != freqByForm.length) {
-            throw new IllegalArgumentException("Corrupted FormEnum maxForm=" + maxValue
-                    + " formOccsFreq.length=" + freqByForm.length);
+            throw new IllegalArgumentException(
+                "Corrupted FormEnum maxForm=" + maxValue
+                + " formOccsFreq.length=" + freqByForm.length
+            );
         }
         if (order == null) {
             reset();
@@ -617,35 +614,35 @@ public class FormEnum implements FormIterator
         case OCCS:
             if (occsByForm == null) {
                 throw new IllegalArgumentException(
-                    "Impossible to sort by occs (occurrences total), formOccs has not been set by producer."
+                    "Impossible to sort by occs (occurrences total), occsByForm is not set."
                 );
             }
             break;
         case DOCS:
             if (docsByForm == null) {
                 throw new IllegalArgumentException(
-                    "Impossible to sort docs (documents total), formDocs has not been set by producer."
+                    "Impossible to sort by docs (documents total), docsByForm is not set."
                 );
             }
             break;
         case FREQ:
             if (freqByForm == null) {
                 throw new IllegalArgumentException(
-                    "Impossible to sort by freq (occurrences found), seems not results of a search, formFreq has not been set by producer."
+                    "Impossible to sort by freq (occurrences found), seems not results of a search, freqByForm is not set."
                 );
             }
             break;
         case HITS:
             if (hitsByForm == null) {
                 throw new IllegalArgumentException(
-                    "Impossible to sort by hits (documents found), seems not results of a search, formHits has not been set by producer."
+                    "Impossible to sort by hits (documents found), seems not results of a search, hitsByForm is not set."
                 );
             }
             break;
         case SCORE:
             if (scoreByform == null) {
                 throw new IllegalArgumentException(
-                    "Impossible to sort by score, seems not results of a search with a scorer, formScore has not been set by producer."
+                    "Impossible to sort by score, seems not results of a search with a scorer, scoreByform is not set."
                 );
             }
             break;

@@ -853,7 +853,7 @@ public class FieldRail
             add += ftext.occs(formId);
         }
         final long Ob = add;
-        int maxForm = ftext.maxValue;
+        int maxForm = ftext.maxForm;
         // reuse score for multiple calculations
         if (formEnum.scoreByform == null || formEnum.scoreByform.length != maxForm) {
             formEnum.scoreByform = new double[maxForm]; // by term, occurrences counts

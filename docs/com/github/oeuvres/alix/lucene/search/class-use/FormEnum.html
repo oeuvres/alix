@@ -78,44 +78,44 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Build a cooccurrence freqList in formId order, attached to a FormEnum object.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">FieldText.</span><code><a href="../FieldText.html#formEnum()" class="member-name-link">formEnum</a>()</code></div>
-<div class="col-last odd-row-color">
-<div class="block">Get a non filtered term enum for this field with global stats.</div>
-</div>
-<div class="col-first even-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">FieldText.</span><code><a href="../FieldText.html#formEnum(com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">formEnum</a><wbr>(<a href="../../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;formFilter)</code></div>
-<div class="col-last even-row-color">
-<div class="block">Global form list, filtered by tags, with global stats.</div>
-</div>
-<div class="col-first odd-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">FieldText.</span><code><a href="../FieldText.html#formEnum(org.apache.lucene.util.BitSet)" class="member-name-link">formEnum</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
-<div class="col-last odd-row-color">
-<div class="block">Get forms for this field, filtered by a set of docIds.</div>
-</div>
-<div class="col-first even-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">FieldText.</span><code><a href="../FieldText.html#formEnum(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">formEnum</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter,
- <a href="../../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;formFilter,
- <a href="../Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</code></div>
-<div class="col-last even-row-color">
-<div class="block">Count of occurrences by term for a subset of the index, defined as a BitSet.</div>
-</div>
-<div class="col-first odd-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>[]</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">FieldText.</span><code><a href="../FieldText.html#formEnumByPart(int,int%5B%5D,com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">formEnumByPart</a><wbr>(int&nbsp;parts,
- int[]&nbsp;classifier,
- <a href="../../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;wordFilter,
- <a href="../Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</code></div>
-<div class="col-last odd-row-color">
-<div class="block">Get scored words for a partition of the full index.</div>
-</div>
-<div class="col-first even-row-color"><code>static <a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Doc.</span><code><a href="../Doc.html#forms(com.github.oeuvres.alix.lucene.Alix,int,java.lang.String,com.github.oeuvres.alix.lucene.search.Scorer,com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">forms</a><wbr>(<a href="../../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
+<div class="col-first odd-row-color"><code>static <a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Doc.</span><code><a href="../Doc.html#formEnum(com.github.oeuvres.alix.lucene.Alix,int,java.lang.String,com.github.oeuvres.alix.lucene.search.Distrib,com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">formEnum</a><wbr>(<a href="../../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
  int&nbsp;docId,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;field,
- <a href="../Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer,
- <a href="../../../fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a>&nbsp;wordFilter)</code></div>
-<div class="col-last even-row-color">
+ <a href="../Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a>&nbsp;distrib,
+ <a href="../../../fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Count of occurrences by term for the document.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">FieldText.</span><code><a href="../FieldText.html#formEnum()" class="member-name-link">formEnum</a>()</code></div>
+<div class="col-last even-row-color">
+<div class="block">Get a non filtered term enum for this field with global stats.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">FieldText.</span><code><a href="../FieldText.html#formEnum(com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">formEnum</a><wbr>(<a href="../../../fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Global form list, filtered by tags, with global stats.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">FieldText.</span><code><a href="../FieldText.html#formEnum(org.apache.lucene.util.BitSet)" class="member-name-link">formEnum</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Get forms for this field, filtered by a set of docIds.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">FieldText.</span><code><a href="../FieldText.html#formEnum(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.TagFilter,com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">formEnum</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter,
+ <a href="../../../fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter,
+ <a href="../Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a>&nbsp;distribution)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Count of occurrences by term for a subset of the index, defined as a BitSet.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>[]</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">FieldText.</span><code><a href="../FieldText.html#formEnumByPart(int,int%5B%5D,com.github.oeuvres.alix.fr.TagFilter,com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">formEnumByPart</a><wbr>(int&nbsp;parts,
+ int[]&nbsp;classifier,
+ <a href="../../../fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter,
+ <a href="../Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a>&nbsp;scorer)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Get scored words for a partition of the full index.</div>
 </div>
 <div class="col-first odd-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">FieldFacet.</span><code><a href="../FieldFacet.html#forms()" class="member-name-link">forms</a>()</code></div>
@@ -123,10 +123,10 @@ loadScripts(document, 'script');</script>
 <div class="block">Returns a new enumerator on all search for this facet in orthographic order</div>
 </div>
 <div class="col-first even-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">FieldFacet.</span><code><a href="../FieldFacet.html#forms(com.github.oeuvres.alix.lucene.search.FieldText,java.lang.String%5B%5D,org.apache.lucene.util.BitSet,com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">forms</a><wbr>(<a href="../FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext,
+<div class="col-second even-row-color"><span class="type-name-label">FieldFacet.</span><code><a href="../FieldFacet.html#forms(com.github.oeuvres.alix.lucene.search.FieldText,java.lang.String%5B%5D,org.apache.lucene.util.BitSet,com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">forms</a><wbr>(<a href="../FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;search,
  org.apache.lucene.util.BitSet&nbsp;docFilter,
- <a href="../Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</code></div>
+ <a href="../Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a>&nbsp;scorer)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Get occurrences count of a text field by facet.</div>
 </div>

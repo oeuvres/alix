@@ -27,12 +27,12 @@ abstract class FieldCharsAbstract extends FieldAbstract
 {
     /** for {@link Collection#toArray(Object[])}. */
     public static final BytesRef[] BYTES0 = new BytesRef[0];
+    /** Number of different values found = biggest formId + 1. */
+    protected int maxForm = -1;
     /** Dictionary of terms from this field. */
     protected final BytesRefHash dic = new BytesRefHash();
     /** docsByform[formId] = docs; count of docs by form. */
     protected int[] docsByform;
-    /** Σ docsByForm; global count of docs relevant for this field. */
-    protected int docsAll;
 
     public FieldCharsAbstract(IndexReader reader, String fieldName) throws IOException {
         super(reader, fieldName);
@@ -47,16 +47,6 @@ abstract class FieldCharsAbstract extends FieldAbstract
     public int docs(int formId)
     {
         return docsByform[formId];
-    }
-
-    /**
-     * Total count of document affected by the field.
-     * 
-     * @return doc count.
-     */
-    public int docsAll()
-    {
-        return docsAll;
     }
 
     /**
@@ -177,6 +167,17 @@ abstract class FieldCharsAbstract extends FieldAbstract
             words[i] = ref.utf8ToString();
         }
         return words;
+    }
+    
+    /**
+     * Count of different values.
+     * Biggest formId+1 like {@link IndexReader#maxDoc()}. Used to build fixed array of form id.
+     * 
+     * @return max value id.
+     */
+    public int maxForm()
+    {
+        return maxForm;
     }
     
     /**

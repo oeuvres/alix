@@ -15,8 +15,8 @@ abstract class FieldAbstract
     protected final IndexReader reader;
     /** Infos about the lucene field. */
     protected final FieldInfo info;
-    /** Number of different values found = biggest valueId + 1. */
-    protected int maxValue;
+    /** Σ docsByForm; global count of docs relevant for this field. */
+    protected int docsAll;
 
     
     /**
@@ -37,13 +37,13 @@ abstract class FieldAbstract
     }
     
     /**
-     * Count of different values.
-     * Biggest valueId+1 (like lucene IndexReader.maxDoc()). Used to build fixed array of form id.
+     * Total count of document affected by the field.
      * 
-     * @return max value id.
+     * @return doc count.
      */
-    public int maxValue()
+    public int docsAll()
     {
-        return maxValue;
+        return docsAll;
     }
+
 }

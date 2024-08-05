@@ -67,8 +67,6 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Most of the tokens are not rejected but rewrited, except punctuation.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#accept(int)" class="member-name-link">accept(int)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/util/SparseMat.Counter.html#add(double)" class="member-name-link">add(double)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/SparseMat.Counter.html" title="class in com.github.oeuvres.alix.util">SparseMat.Counter</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/util/IntIntMap.html#add(int,int)" class="member-name-link">add(int, int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a></dt>
@@ -123,8 +121,16 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/fr/Tag.html#ADJ" class="member-name-link">ADJ</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#ADJ" class="member-name-link">ADJ</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Accept adjectives only</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/fr/Tag.html#ADV" class="member-name-link">ADV</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#ADV" class="member-name-link">ADV</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Accept adverbs only</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/fr/Tag.html#ADVasp" class="member-name-link">ADVasp</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/fr/Tag.html#ADVconj" class="member-name-link">ADVconj</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
@@ -198,6 +204,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="com/github/oeuvres/alix/lucene/AlixTxtIndexer.html#%3Cinit%3E(org.apache.lucene.index.IndexWriter)" class="member-name-link">AlixTxtIndexer(IndexWriter)</a> - Constructor for class com.github.oeuvres.alix.lucene.<a href="com/github/oeuvres/alix/lucene/AlixTxtIndexer.html" title="class in com.github.oeuvres.alix.lucene">AlixTxtIndexer</a></dt>
 <dd>
 <div class="block">Constructor.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#ALL" class="member-name-link">ALL</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Accept all</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html#ALPHA" class="member-name-link">ALPHA</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></dt>
 <dd>
@@ -423,7 +433,7 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Wraps another search's to get bits by LeafReaderContext.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#BM25" class="member-name-link">BM25</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#BM25" class="member-name-link">BM25</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
 <dd>
 <div class="block">Kind of tf-idf.</div>
 </dd>
@@ -534,11 +544,17 @@ loadScripts(document, 'script');</script>
 <div class="block">Try to capitalize (initial capital only) decently, according to some rules
  available in latin language. ex: ÉTATS-UNIS -&gt; États-Unis.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#cardinality()" class="member-name-link">cardinality()</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#cardinality()" class="member-name-link">cardinality()</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Count of flags set to true, like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/BitSet.html#cardinality()" title="class or interface in java.util" class="external-link"><code>BitSet.cardinality()</code></a>.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html#cardinality()" class="member-name-link">cardinality()</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></dt>
 <dd>
 <div class="block">Count of forms with freq &gt; 0, imited from <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/BitSet.html#cardinality()" title="class or interface in java.util" class="external-link"><code>BitSet.cardinality()</code></a>.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#cardinality(com.github.oeuvres.alix.fr.TagFilter,com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">cardinality(TagFilter, TagFilter)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Count of flags set to true.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/IntSeries.html#cat" class="member-name-link">cat</a> - Variable in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntSeries.html" title="class in com.github.oeuvres.alix.util">IntSeries</a></dt>
 <dd>
@@ -644,7 +660,7 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Check if a String is significant</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#CHI2" class="member-name-link">CHI2</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#CHI2" class="member-name-link">CHI2</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
 <dd>
 <div class="block">Chi2 = Σ(Oi - Ei)²/Ei"</div>
 </dd>
@@ -672,16 +688,26 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Clear all entries</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#clear(int)" class="member-name-link">clear(int)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#clear(com.github.oeuvres.alix.fr.Tag)" class="member-name-link">clear(Tag)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#clearAll()" class="member-name-link">clearAll()</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#clearGroup(int)" class="member-name-link">clearGroup(int)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#clearGroup(com.github.oeuvres.alix.fr.Tag)" class="member-name-link">clearGroup(Tag)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#clear(int)" class="member-name-link">clear(int)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Position = false.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#clear(com.github.oeuvres.alix.fr.Tag)" class="member-name-link">clear(Tag)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Position = false.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#clearAll()" class="member-name-link">clearAll()</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Unset all positions.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#clearGroup(int)" class="member-name-link">clearGroup(int)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Clear the hexa group of a byte.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#clearGroup(com.github.oeuvres.alix.fr.Tag)" class="member-name-link">clearGroup(Tag)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Clear the hexa group of a byte.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/analysis/tokenattributes/CharsAttImpl.html#clone()" class="member-name-link">clone()</a> - Method in class com.github.oeuvres.alix.lucene.analysis.tokenattributes.<a href="com/github/oeuvres/alix/lucene/analysis/tokenattributes/CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/util/CSVReader.html#close()" class="member-name-link">close()</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/CSVReader.html" title="class in com.github.oeuvres.alix.util">CSVReader</a></dt>
@@ -1128,6 +1154,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Directed or not</div>
 </dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html" class="type-name-link" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a> - Enum in <a href="com/github/oeuvres/alix/lucene/search/package-summary.html">com.github.oeuvres.alix.lucene.search</a></dt>
+<dd>
+<div class="block">Distribution laws, could be used as scorer to sort <a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FormEnum</code></a>.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/Doc.html#doc()" class="member-name-link">doc()</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Doc.html" title="class in com.github.oeuvres.alix.lucene.search">Doc</a></dt>
 <dd>
 <div class="block">Returns the loaded lucene document.</div>
@@ -1419,11 +1449,15 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Delete files from a list by glob.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#expectation" class="member-name-link">expectation</a> - Variable in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#expectation(double,double)" class="member-name-link">expectation(double, double)</a> - Method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FieldRail.html#expressions(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">expressions(BitSet, Tag.TagFilter)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldRail.html" title="class in com.github.oeuvres.alix.lucene.search">FieldRail</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#expectation" class="member-name-link">expectation</a> - Variable in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
+<dd>
+<div class="block">Freq expected for a form.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#expectation(double,double)" class="member-name-link">expectation(double, double)</a> - Method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
+<dd>
+<div class="block">Set an expected probability for a form (to compare with observed in some distribution algorithm).</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/FieldRail.html#expressions(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">expressions(BitSet, TagFilter)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldRail.html" title="class in com.github.oeuvres.alix.lucene.search">FieldRail</a></dt>
 <dd>
 <div class="block">Loop on the rail to find expression (2 plain words with possible stop words
  between but not holes or punctuation).</div>
@@ -1727,15 +1761,19 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Get a non filtered term enum for this field with global stats.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FieldText.html#formEnum(com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">formEnum(Tag.TagFilter)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/FieldText.html#formEnum(com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">formEnum(TagFilter)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a></dt>
 <dd>
 <div class="block">Global form list, filtered by tags, with global stats.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Doc.html#formEnum(com.github.oeuvres.alix.lucene.Alix,int,java.lang.String,com.github.oeuvres.alix.lucene.search.Distrib,com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">formEnum(Alix, int, String, Distrib, TagFilter)</a> - Static method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Doc.html" title="class in com.github.oeuvres.alix.lucene.search">Doc</a></dt>
+<dd>
+<div class="block">Count of occurrences by term for the document.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FieldText.html#formEnum(org.apache.lucene.util.BitSet)" class="member-name-link">formEnum(BitSet)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a></dt>
 <dd>
 <div class="block">Get forms for this field, filtered by a set of docIds.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FieldText.html#formEnum(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">formEnum(BitSet, Tag.TagFilter, Scorer)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/FieldText.html#formEnum(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.TagFilter,com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">formEnum(BitSet, TagFilter, Distrib)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a></dt>
 <dd>
 <div class="block">Count of occurrences by term for a subset of the index, defined as a BitSet.</div>
 </dd>
@@ -1751,7 +1789,7 @@ loadScripts(document, 'script');</script>
  
    Dictionary of forms <code>FieldCharsAbstract.dic</code>
    docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.
-   Σ docsByForm; global count of docs relevant for this field <code>FieldCharsAbstract.docsAll</code>.
+   Σ docsByForm; global count of docs relevant for this field <code>FieldAbstract.docsAll</code>.
  </div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html#%3Cinit%3E(com.github.oeuvres.alix.lucene.search.FieldText)" class="member-name-link">FormEnum(FieldText)</a> - Constructor for class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></dt>
@@ -1761,16 +1799,16 @@ loadScripts(document, 'script');</script>
  
    Dictionary of forms <code>FieldCharsAbstract.dic</code>
    docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.
-   Σ docsByForm; global count of docs relevant for this field <code>FieldCharsAbstract.docsAll</code>.
+   Σ docsByForm; global count of docs relevant for this field <code>FieldAbstract.docsAll</code>.
    occsByform[formId] = occs; count of occurrences by form <a href="com/github/oeuvres/alix/lucene/search/FieldText.html#occsByForm"><code>FieldText.occsByForm</code></a>.
    Σ occsByForm; global count of occs for this field <a href="com/github/oeuvres/alix/lucene/search/FieldText.html#occsAll"><code>FieldText.occsAll</code></a>.
  </div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FieldText.html#formEnumByPart(int,int%5B%5D,com.github.oeuvres.alix.fr.Tag.TagFilter,com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">formEnumByPart(int, int[], Tag.TagFilter, Scorer)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/FieldText.html#formEnumByPart(int,int%5B%5D,com.github.oeuvres.alix.fr.TagFilter,com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">formEnumByPart(int, int[], TagFilter, Distrib)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a></dt>
 <dd>
 <div class="block">Get scored words for a partition of the full index.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FieldText.html#formFilter(com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">formFilter(Tag.TagFilter)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/FieldText.html#formFilter(com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">formFilter(TagFilter)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a></dt>
 <dd>
 <div class="block">Build a BitSet of formId for efficient filtering of forms by tags.</div>
 </dd>
@@ -1831,11 +1869,7 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Get forms in order from a vector of formId.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Doc.html#forms(com.github.oeuvres.alix.lucene.Alix,int,java.lang.String,com.github.oeuvres.alix.lucene.search.Scorer,com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">forms(Alix, int, String, Scorer, Tag.TagFilter)</a> - Static method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Doc.html" title="class in com.github.oeuvres.alix.lucene.search">Doc</a></dt>
-<dd>
-<div class="block">Count of occurrences by term for the document.</div>
-</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html#forms(com.github.oeuvres.alix.lucene.search.FieldText,java.lang.String%5B%5D,org.apache.lucene.util.BitSet,com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">forms(FieldText, String[], BitSet, Scorer)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search">FieldFacet</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html#forms(com.github.oeuvres.alix.lucene.search.FieldText,java.lang.String%5B%5D,org.apache.lucene.util.BitSet,com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">forms(FieldText, String[], BitSet, Distrib)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search">FieldFacet</a></dt>
 <dd>
 <div class="block">Get occurrences count of a text field by facet.</div>
 </dd>
@@ -1857,6 +1891,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">An entry for a dictionary te get lemma from
  an inflected form.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#freeze()" class="member-name-link">freeze()</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Freeze the vector, no unfreeze() possible.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FormCollector.FormStats.html#freq" class="member-name-link">freq</a> - Variable in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormCollector.FormStats.html" title="class in com.github.oeuvres.alix.lucene.search">FormCollector.FormStats</a></dt>
 <dd>
@@ -1888,13 +1926,13 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Count occurences of terms in a doc.</div>
 </dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#FREQ" class="member-name-link">FREQ</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
+<dd>
+<div class="block">occs found / occs by doc.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html#FREQ" class="member-name-link">FREQ</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></dt>
 <dd>
 <div class="block">Sort by count of occurrences in selected documents (partition, query…) containing this form.</div>
-</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#FREQ" class="member-name-link">FREQ</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
-<dd>
-<div class="block">occs found / occs by doc.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html#freqAll" class="member-name-link">freqAll</a> - Variable in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></dt>
 <dd>
@@ -1945,7 +1983,7 @@ loadScripts(document, 'script');</script>
 <dl class="index">
 <dt><a href="com/github/oeuvres/alix/web/OptionSort.html#g" class="member-name-link">g</a> - Enum constant in enum com.github.oeuvres.alix.web.<a href="com/github/oeuvres/alix/web/OptionSort.html" title="enum in com.github.oeuvres.alix.web">OptionSort</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#G" class="member-name-link">G</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#G" class="member-name-link">G</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
 <dd>
 <div class="block">Log test.</div>
 </dd>
@@ -1964,6 +2002,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="com/github/oeuvres/alix/maths/Gamma.html#%3Cinit%3E()" class="member-name-link">Gamma()</a> - Constructor for class com.github.oeuvres.alix.maths.<a href="com/github/oeuvres/alix/maths/Gamma.html" title="class in com.github.oeuvres.alix.maths">Gamma</a></dt>
 <dd>
 <div class="block">Make class non-instantiable but inheritable.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#get(int)" class="member-name-link">get(int)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Get boolean value of a position.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FormCollector.html#get(int)" class="member-name-link">get(int)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormCollector.html" title="class in com.github.oeuvres.alix.lucene.search">FormCollector</a></dt>
 <dd>
@@ -2001,6 +2043,10 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/Roll.html#get(int)" class="member-name-link">get(int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/Roll.html" title="class in com.github.oeuvres.alix.util">Roll</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#get(com.github.oeuvres.alix.fr.Tag)" class="member-name-link">get(Tag)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Get boolean value of a position.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/util/EdgeMap.html#get(com.github.oeuvres.alix.util.IntPair)" class="member-name-link">get(IntPair)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/EdgeMap.html" title="class in com.github.oeuvres.alix.util">EdgeMap</a></dt>
 <dd>
 <div class="block">Get an edge by key.</div>
@@ -2281,6 +2327,10 @@ loadScripts(document, 'script');</script>
 <div class="block">If a search has set hits by form,
  total count of unique documents found.</div>
 </dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html#hitsByDoc" class="member-name-link">hitsByDoc</a> - Variable in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></dt>
+<dd>
+<div class="block">hitsByDoc.get(docId) == true: doc found.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html#hitsByForm" class="member-name-link">hitsByForm</a> - Variable in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></dt>
 <dd>
 <div class="block">hitsByform[formId] = hits; count of docs matched or selected by form.</div>
@@ -2290,10 +2340,6 @@ loadScripts(document, 'script');</script>
 <div class="block">If a search has set hits by form,
  for the form by rank in sort order,
  get the count of matching documents.</div>
-</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html#hitsVek" class="member-name-link">hitsVek</a> - Variable in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></dt>
-<dd>
-<div class="block">Vector of documents hits</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/web/Link.html#href()" class="member-name-link">href()</a> - Method in interface com.github.oeuvres.alix.web.<a href="com/github/oeuvres/alix/web/Link.html" title="interface in com.github.oeuvres.alix.web">Link</a></dt>
 <dd>
@@ -2340,10 +2386,14 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/web/OptionSort.html#id_inv" class="member-name-link">id_inv</a> - Enum constant in enum com.github.oeuvres.alix.web.<a href="com/github/oeuvres/alix/web/OptionSort.html" title="enum in com.github.oeuvres.alix.web">OptionSort</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#idf" class="member-name-link">idf</a> - Variable in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#idf(double,double,double)" class="member-name-link">idf(double, double, double)</a> - Method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
-<dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#idf" class="member-name-link">idf</a> - Variable in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
+<dd>
+<div class="block">A theoretical inverse document frequency.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#idf(double,double,double)" class="member-name-link">idf(double, double, double)</a> - Method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
+<dd>
+<div class="block">Set an inverse document frequency for tf-idf like scoring.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/AlixSAXIndexer.html#ignorableWhitespace(char%5B%5D,int,int)" class="member-name-link">ignorableWhitespace(char[], int, int)</a> - Method in class com.github.oeuvres.alix.lucene.<a href="com/github/oeuvres/alix/lucene/AlixSAXIndexer.html" title="class in com.github.oeuvres.alix.lucene">AlixSAXIndexer</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/util/Edge.html#inc()" class="member-name-link">inc()</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/Edge.html" title="class in com.github.oeuvres.alix.util">Edge</a></dt>
@@ -2625,6 +2675,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Is first letter Upper case ?</div>
 </dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#isFrozen()" class="member-name-link">isFrozen()</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">If vector is frozen, no more modification are allowed.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/util/Char.html#isHighSurrogate(char)" class="member-name-link">isHighSurrogate(char)</a> - Static method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/Char.html" title="class in com.github.oeuvres.alix.util">Char</a></dt>
 <dd>
 <div class="block">Is the first short of a supplemental unicode codepoint, like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Character.html#isHighSurrogate(char)" title="class or interface in java.lang" class="external-link"><code>Character.isHighSurrogate(char)</code></a>.</div>
@@ -2834,8 +2888,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Set last char (right)</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#last(double,double)" class="member-name-link">last(double, double)</a> - Method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
-<dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#last(double,double)" class="member-name-link">last(double, double)</a> - Method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
+<dd>
+<div class="block">For some scorer (not tf-idf like) like G-Test or Chi2, ΣOi = ΣEi = N.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/analysis/tokenattributes/CharsAttImpl.html#lastChar()" class="member-name-link">lastChar()</a> - Method in class com.github.oeuvres.alix.lucene.analysis.tokenattributes.<a href="com/github/oeuvres/alix/lucene/analysis/tokenattributes/CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></dt>
 <dd>
 <div class="block">Get last char</div>
@@ -2945,7 +3001,7 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/web/Link.html" class="type-name-link" title="interface in com.github.oeuvres.alix.web">Link</a> - Interface in <a href="com/github/oeuvres/alix/web/package-summary.html">com.github.oeuvres.alix.web</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/WordSuggest.html#list(java.lang.String,com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">list(String, Tag.TagFilter)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/WordSuggest.html" title="class in com.github.oeuvres.alix.lucene.search">WordSuggest</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/WordSuggest.html#list(java.lang.String,com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">list(String, TagFilter)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/WordSuggest.html" title="class in com.github.oeuvres.alix.lucene.search">WordSuggest</a></dt>
 <dd>
 <div class="block">Find list of formId in the dictionary of a field.</div>
 </dd>
@@ -3001,14 +3057,16 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/cli/Load.html#%3Cinit%3E()" class="member-name-link">Load()</a> - Constructor for class com.github.oeuvres.alix.cli.<a href="com/github/oeuvres/alix/cli/Load.html" title="class in com.github.oeuvres.alix.cli">Load</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/Tag.html#LOC" class="member-name-link">LOC</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#LOC" class="member-name-link">LOC</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Accept locutions</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/Alix.html#locale" class="member-name-link">locale</a> - Variable in class com.github.oeuvres.alix.lucene.<a href="com/github/oeuvres/alix/lucene/Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a></dt>
 <dd>
 <div class="block">A locale used for sorting search</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#locutions()" class="member-name-link">locutions()</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#locutions(boolean)" class="member-name-link">locutions(boolean)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/maths/Fisher.html#logCombination(int,int)" class="member-name-link">logCombination(int, int)</a> - Static method in class com.github.oeuvres.alix.maths.<a href="com/github/oeuvres/alix/maths/Fisher.html" title="class in com.github.oeuvres.alix.maths">Fisher</a></dt>
 <dd>
 <div class="block">Compute log of number of combinations of n things taken k at a time.</div>
@@ -3140,6 +3198,14 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/lucene/Alix.html#maxDoc()" class="member-name-link">maxDoc()</a> - Method in class com.github.oeuvres.alix.lucene.<a href="com/github/oeuvres/alix/lucene/Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html#maxForm" class="member-name-link">maxForm</a> - Variable in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search">FieldFacet</a></dt>
+<dd>
+<div class="block">Number of different values found = biggest formId + 1.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html#maxForm()" class="member-name-link">maxForm()</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search">FieldFacet</a></dt>
+<dd>
+<div class="block">Count of different values.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/maths/Gamma.html#MAXGAM" class="member-name-link">MAXGAM</a> - Static variable in class com.github.oeuvres.alix.maths.<a href="com/github/oeuvres/alix/maths/Gamma.html" title="class in com.github.oeuvres.alix.maths">Gamma</a></dt>
 <dd>
 <div class="block">Maximum value for which gamma which can be computed.</div>
@@ -3151,14 +3217,6 @@ loadScripts(document, 'script');</script>
 <dt><a href="com/github/oeuvres/alix/maths/Constants.html#MAXPREC" class="member-name-link">MAXPREC</a> - Static variable in class com.github.oeuvres.alix.maths.<a href="com/github/oeuvres/alix/maths/Constants.html" title="class in com.github.oeuvres.alix.maths">Constants</a></dt>
 <dd>
 <div class="block">Machine precision in decimal digits .</div>
-</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html#maxValue" class="member-name-link">maxValue</a> - Variable in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search">FieldFacet</a></dt>
-<dd>
-<div class="block">Number of different values found = biggest valueId + 1.</div>
-</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html#maxValue()" class="member-name-link">maxValue()</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldFacet.html" title="class in com.github.oeuvres.alix.lucene.search">FieldFacet</a></dt>
-<dd>
-<div class="block">Count of different values.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/Names.html#META" class="member-name-link">META</a> - Static variable in class com.github.oeuvres.alix.<a href="com/github/oeuvres/alix/Names.html" title="class in com.github.oeuvres.alix">Names</a></dt>
 <dd>
@@ -3253,6 +3311,10 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/fr/Tag.html#NAME" class="member-name-link">NAME</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#NAME" class="member-name-link">NAME</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Accept all forms known as names</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/Alix.html#NAME" class="member-name-link">NAME</a> - Static variable in class com.github.oeuvres.alix.lucene.<a href="com/github/oeuvres/alix/lucene/Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a></dt>
 <dd>
 <div class="block">Name of the application (for messages)</div>
@@ -3407,10 +3469,16 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Use a list of search as a navigator for a list of doc ids.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#nostop()" class="member-name-link">nostop()</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
+<dt><a href="com/github/oeuvres/alix/fr/Tag.html#NOSTOP" class="member-name-link">NOSTOP</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#nostop(boolean)" class="member-name-link">nostop(boolean)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#NOSTOP" class="member-name-link">NOSTOP</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Refuse stop words</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#NOSTOP_LOC" class="member-name-link">NOSTOP_LOC</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Refuse stop words, bu accept locutions.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/Names.html#NOTALIX" class="member-name-link">NOTALIX</a> - Static variable in class com.github.oeuvres.alix.<a href="com/github/oeuvres/alix/Names.html" title="class in com.github.oeuvres.alix">Names</a></dt>
 <dd>
 <div class="block">For information</div>
@@ -3460,13 +3528,13 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Get global length (occurrences) for a form.</div>
 </dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#OCCS" class="member-name-link">OCCS</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
+<dd>
+<div class="block">Count of occs found.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html#OCCS" class="member-name-link">OCCS</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></dt>
 <dd>
 <div class="block">Sort by total count of all occurrences in all documents containing this form.</div>
-</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#OCCS" class="member-name-link">OCCS</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
-<dd>
-<div class="block">Count of occs found.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/MI.html#OCCS" class="member-name-link">OCCS</a> - Enum constant in enum com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/MI.html" title="enum in com.github.oeuvres.alix.util">MI</a></dt>
 <dd>
@@ -3617,6 +3685,14 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/util/Roll.html#peek()" class="member-name-link">peek()</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/Roll.html" title="class in com.github.oeuvres.alix.util">Roll</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#PERS" class="member-name-link">PERS</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Proper names known as persons</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#PLACE" class="member-name-link">PLACE</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Proper names known as places</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/util/Roller.html#pointer(int)" class="member-name-link">pointer(int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/Roller.html" title="class in com.github.oeuvres.alix.util">Roller</a></dt>
 <dd>
 <div class="block">Get pointer on the data array from a position.</div>
@@ -4018,6 +4094,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Build a row receiver with predefined cout of cells.</div>
 </dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#RS" class="member-name-link">RS</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Proper names not known as persons or places</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/cli/Test.html#run()" class="member-name-link">run()</a> - Method in class com.github.oeuvres.alix.cli.<a href="com/github/oeuvres/alix/cli/Test.html" title="class in com.github.oeuvres.alix.cli">Test</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/XMLIndexer.html#run()" class="member-name-link">run()</a> - Method in class com.github.oeuvres.alix.lucene.<a href="com/github/oeuvres/alix/lucene/XMLIndexer.html" title="class in com.github.oeuvres.alix.lucene">XMLIndexer</a></dt>
@@ -4077,8 +4157,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Set score</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#score(double,double)" class="member-name-link">score(double, double)</a> - Method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
-<dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#score(double,double)" class="member-name-link">score(double, double)</a> - Method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
+<dd>
+<div class="block">Calculate a score for a form by doc.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/util/MI.html#score(double,double,double,double)" class="member-name-link">score(double, double, double, double)</a> - Method in enum com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/MI.html" title="enum in com.github.oeuvres.alix.util">MI</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html#score(int)" class="member-name-link">score(int)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></dt>
@@ -4086,14 +4168,14 @@ loadScripts(document, 'script');</script>
 <div class="block">For the form requested by id,
  get the last calculated score.</div>
 </dd>
+<dt><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html#score(com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">score(Distrib)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></dt>
+<dd>
+<div class="block">Score all forms with a distribution algorithm.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/FieldRail.html#score(com.github.oeuvres.alix.lucene.search.FormEnum,int%5B%5D,com.github.oeuvres.alix.util.MI)" class="member-name-link">score(FormEnum, int[], MI)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FieldRail.html" title="class in com.github.oeuvres.alix.lucene.search">FieldRail</a></dt>
 <dd>
 <div class="block">Scores a <a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FormEnum</code></a> with freqs extracted from co-occurrences extraction
  in a <a href="com/github/oeuvres/alix/lucene/search/FieldRail.html#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>FieldRail.coocs(BytesRef[], int, int, BitSet)</code></a>.</div>
-</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html#score(com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">score(Scorer)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></dt>
-<dd>
-<div class="block">Score all forms with a distribution algorithm.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/similarities/SimilarityChi2.html#score(org.apache.lucene.search.similarities.BasicStats,double,double)" class="member-name-link">score(BasicStats, double, double)</a> - Method in class com.github.oeuvres.alix.lucene.search.similarities.<a href="com/github/oeuvres/alix/lucene/search/similarities/SimilarityChi2.html" title="class in com.github.oeuvres.alix.lucene.search.similarities">SimilarityChi2</a></dt>
 <dd>&nbsp;</dd>
@@ -4120,15 +4202,7 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/lucene/search/BitsCollector.html#scoreMode()" class="member-name-link">scoreMode()</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/BitsCollector.html" title="class in com.github.oeuvres.alix.lucene.search">BitsCollector</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html" class="type-name-link" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a> - Enum in <a href="com/github/oeuvres/alix/lucene/search/package-summary.html">com.github.oeuvres.alix.lucene.search</a></dt>
-<dd>
-<div class="block">Distribution laws, to be used in sum</div>
-</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FormEnum.html#search" class="member-name-link">search</a> - Variable in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></dt>
-<dd>
-<div class="block">Optional, for a co-occurrence search, pivot words</div>
-</dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/WordSuggest.html#search(java.lang.String,int,com.github.oeuvres.alix.fr.Tag.TagFilter,org.apache.lucene.util.BitSet)" class="member-name-link">search(String, int, Tag.TagFilter, BitSet)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/WordSuggest.html" title="class in com.github.oeuvres.alix.lucene.search">WordSuggest</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/WordSuggest.html#search(java.lang.String,int,com.github.oeuvres.alix.fr.TagFilter,org.apache.lucene.util.BitSet)" class="member-name-link">search(String, int, TagFilter, BitSet)</a> - Method in class com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/WordSuggest.html" title="class in com.github.oeuvres.alix.lucene.search">WordSuggest</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/Names.html#SEARCH" class="member-name-link">SEARCH</a> - Static variable in class com.github.oeuvres.alix.<a href="com/github/oeuvres/alix/Names.html" title="class in com.github.oeuvres.alix">Names</a></dt>
 <dd>
@@ -4155,8 +4229,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Modify value</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#set(int)" class="member-name-link">set(int)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#set(int)" class="member-name-link">set(int)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Position = true.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/util/IntIntMap.html#set(int)" class="member-name-link">set(int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntIntMap.html" title="class in com.github.oeuvres.alix.util">IntIntMap</a></dt>
 <dd>
 <div class="block">Use after next(), set current entry by iterator.</div>
@@ -4188,10 +4264,14 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Set value at position</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#set(com.github.oeuvres.alix.fr.Tag)" class="member-name-link">set(Tag)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#setAll()" class="member-name-link">setAll()</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#set(com.github.oeuvres.alix.fr.Tag)" class="member-name-link">set(Tag)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Position = true.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#setAll()" class="member-name-link">setAll()</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Set all positions.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/util/EdgeMatrix.html#setByIndex(int,int,int)" class="member-name-link">setByIndex(int, int, int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></dt>
 <dd>
 <div class="block">Expert, set a cell by node index, more efficient
@@ -4211,10 +4291,14 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Provide a filename for the documents to be processed.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#setGroup(int)" class="member-name-link">setGroup(int)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#setGroup(com.github.oeuvres.alix.fr.Tag)" class="member-name-link">setGroup(Tag)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
-<dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#setGroup(int)" class="member-name-link">setGroup(int)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Set the hexa group of a byte.</div>
+</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#setGroup(com.github.oeuvres.alix.fr.Tag)" class="member-name-link">setGroup(Tag)</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Set the hexa group of a byte.</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/XMLIndexer.html#setIterator(java.util.Iterator)" class="member-name-link">setIterator(Iterator&lt;Path&gt;)</a> - Static method in class com.github.oeuvres.alix.lucene.<a href="com/github/oeuvres/alix/lucene/XMLIndexer.html" title="class in com.github.oeuvres.alix.lucene">XMLIndexer</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/analysis/tokenattributes/CharsAttImpl.html#setLength(int)" class="member-name-link">setLength(int)</a> - Method in class com.github.oeuvres.alix.lucene.analysis.tokenattributes.<a href="com/github/oeuvres/alix/lucene/analysis/tokenattributes/CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a></dt>
@@ -4451,6 +4535,12 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Get the status number.</div>
 </dd>
+<dt><a href="com/github/oeuvres/alix/fr/Tag.html#STOP" class="member-name-link">STOP</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#STOP" class="member-name-link">STOP</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Stop word only</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/analysis/FrDics.html#STOP" class="member-name-link">STOP</a> - Static variable in class com.github.oeuvres.alix.lucene.analysis.<a href="com/github/oeuvres/alix/lucene/analysis/FrDics.html" title="class in com.github.oeuvres.alix.lucene.analysis">FrDics</a></dt>
 <dd>
 <div class="block">French stopwords as hash to filter attributes</div>
@@ -4469,6 +4559,10 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="com/github/oeuvres/alix/fr/Tag.html#SUB" class="member-name-link">SUB</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#SUB" class="member-name-link">SUB</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Significant substantives</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/util/Roll.html#subList(int,int)" class="member-name-link">subList(int, int)</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/Roll.html" title="class in com.github.oeuvres.alix.util">Roll</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/fr/Tag.html#SUBpers" class="member-name-link">SUBpers</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
@@ -4512,11 +4606,11 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Jeu d’étiquettes morphosyntaxique pour le français.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" class="type-name-link" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a> - Class in <a href="com/github/oeuvres/alix/fr/package-summary.html">com.github.oeuvres.alix.fr</a></dt>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html" class="type-name-link" title="class in com.github.oeuvres.alix.fr">TagFilter</a> - Class in <a href="com/github/oeuvres/alix/fr/package-summary.html">com.github.oeuvres.alix.fr</a></dt>
 <dd>
-<div class="block">A filter for different pos code, implemented as a boolean vector.</div>
+<div class="block">A vector of 256 boolean positions to record different flags.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#%3Cinit%3E()" class="member-name-link">TagFilter()</a> - Constructor for class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#%3Cinit%3E()" class="member-name-link">TagFilter()</a> - Constructor for class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/analysis/FilterStats.html#tags()" class="member-name-link">tags()</a> - Method in class com.github.oeuvres.alix.lucene.analysis.<a href="com/github/oeuvres/alix/lucene/analysis/FilterStats.html" title="class in com.github.oeuvres.alix.lucene.analysis">FilterStats</a></dt>
 <dd>
@@ -4557,7 +4651,7 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Set the body, caller should have strip un-necessary contents</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#TFIDF" class="member-name-link">TFIDF</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#TFIDF" class="member-name-link">TFIDF</a> - Enum constant in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
 <dd>
 <div class="block">Metric between “term frequency” and “inverse document frequency”.</div>
 </dd>
@@ -4672,7 +4766,7 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Check if a node has relations</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/cli/Balinoms.html#top(int,com.github.oeuvres.alix.fr.Tag.TagFilter)" class="member-name-link">top(int, Tag.TagFilter)</a> - Method in class com.github.oeuvres.alix.cli.<a href="com/github/oeuvres/alix/cli/Balinoms.html" title="class in com.github.oeuvres.alix.cli">Balinoms</a></dt>
+<dt><a href="com/github/oeuvres/alix/cli/Balinoms.html#top(int,com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">top(int, TagFilter)</a> - Method in class com.github.oeuvres.alix.cli.<a href="com/github/oeuvres/alix/cli/Balinoms.html" title="class in com.github.oeuvres.alix.cli">Balinoms</a></dt>
 <dd>
 <div class="block">Get the top list.</div>
 </dd>
@@ -4717,7 +4811,7 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Get data as an int array, without the duplicates, keeping initial order for uniq value.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html#toString()" class="member-name-link">toString()</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.TagFilter.html" title="class in com.github.oeuvres.alix.fr">Tag.TagFilter</a></dt>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#toString()" class="member-name-link">toString()</a> - Method in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/lucene/Alix.html#toString()" class="member-name-link">toString()</a> - Method in class com.github.oeuvres.alix.lucene.<a href="com/github/oeuvres/alix/lucene/Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a></dt>
 <dd>&nbsp;</dd>
@@ -4843,6 +4937,10 @@ loadScripts(document, 'script');</script>
 </dl>
 <h2 class="title" id="I:U">U</h2>
 <dl class="index">
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#UKNOWN" class="member-name-link">UKNOWN</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Unknown from dictionaries</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/util/IntList.html#uniq()" class="member-name-link">uniq()</a> - Method in class com.github.oeuvres.alix.util.<a href="com/github/oeuvres/alix/util/IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></dt>
 <dd>
 <div class="block">Return a sorted int array of unique values from this list.</div>
@@ -4913,11 +5011,11 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns the enum constant of this type with the specified name.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html#valueOf(java.lang.String)" class="member-name-link">valueOf(String)</a> - Static method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#valueOf(java.lang.String)" class="member-name-link">valueOf(String)</a> - Static method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
 <dd>
 <div class="block">Returns the enum constant of this type with the specified name.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#valueOf(java.lang.String)" class="member-name-link">valueOf(String)</a> - Static method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html#valueOf(java.lang.String)" class="member-name-link">valueOf(String)</a> - Static method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></dt>
 <dd>
 <div class="block">Returns the enum constant of this type with the specified name.</div>
 </dd>
@@ -4947,12 +5045,12 @@ the order they are declared.</div>
 <div class="block">Returns an array containing the constants of this enum type, in
 the order they are declared.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html#values()" class="member-name-link">values()</a> - Static method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/Distrib.html#values()" class="member-name-link">values()</a> - Static method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a></dt>
 <dd>
 <div class="block">Returns an array containing the constants of this enum type, in
 the order they are declared.</div>
 </dd>
-<dt><a href="com/github/oeuvres/alix/lucene/search/Scorer.html#values()" class="member-name-link">values()</a> - Static method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a></dt>
+<dt><a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html#values()" class="member-name-link">values()</a> - Static method in enum com.github.oeuvres.alix.lucene.search.<a href="com/github/oeuvres/alix/lucene/search/FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a></dt>
 <dd>
 <div class="block">Returns an array containing the constants of this enum type, in
 the order they are declared.</div>
@@ -4979,6 +5077,10 @@ the order they are declared.</div>
 </dd>
 <dt><a href="com/github/oeuvres/alix/fr/Tag.html#VERB" class="member-name-link">VERB</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="com/github/oeuvres/alix/fr/TagFilter.html#VERB" class="member-name-link">VERB</a> - Static variable in class com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a></dt>
+<dd>
+<div class="block">Significant verbs</div>
+</dd>
 <dt><a href="com/github/oeuvres/alix/fr/Tag.html#VERBaux" class="member-name-link">VERBaux</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="com/github/oeuvres/alix/fr/Tag.html#VERBaux2" class="member-name-link">VERBaux2</a> - Enum constant in enum com.github.oeuvres.alix.fr.<a href="com/github/oeuvres/alix/fr/Tag.html" title="enum in com.github.oeuvres.alix.fr">Tag</a></dt>

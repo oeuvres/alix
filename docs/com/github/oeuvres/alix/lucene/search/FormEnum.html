@@ -126,15 +126,15 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <div class="col-last odd-row-color">
 <div class="block">Count of unique documents found.</div>
 </div>
-<div class="col-first even-row-color"><code>protected int[]</code></div>
-<div class="col-second even-row-color"><code><a href="#hitsByForm" class="member-name-link">hitsByForm</a></code></div>
+<div class="col-first even-row-color"><code>protected org.apache.lucene.util.BitSet</code></div>
+<div class="col-second even-row-color"><code><a href="#hitsByDoc" class="member-name-link">hitsByDoc</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">hitsByform[formId] = hits; count of docs matched or selected by form.</div>
+<div class="block">hitsByDoc.get(docId) == true: doc found.</div>
 </div>
-<div class="col-first odd-row-color"><code>protected org.apache.lucene.util.BitSet</code></div>
-<div class="col-second odd-row-color"><code><a href="#hitsVek" class="member-name-link">hitsVek</a></code></div>
+<div class="col-first odd-row-color"><code>protected int[]</code></div>
+<div class="col-second odd-row-color"><code><a href="#hitsByForm" class="member-name-link">hitsByForm</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">Vector of documents hits</div>
+<div class="block">hitsByform[formId] = hits; count of docs matched or selected by form.</div>
 </div>
 <div class="col-first even-row-color"><code>protected long</code></div>
 <div class="col-second even-row-color"><code><a href="#occsAll" class="member-name-link">occsAll</a></code></div>
@@ -150,11 +150,6 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <div class="col-second even-row-color"><code><a href="#scoreByform" class="member-name-link">scoreByform</a></code></div>
 <div class="col-last even-row-color">
 <div class="block">scoreByform[formId]=score; a relevance score calculated by form.</div>
-</div>
-<div class="col-first odd-row-color"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]</code></div>
-<div class="col-second odd-row-color"><code><a href="#search" class="member-name-link">search</a></code></div>
-<div class="col-last odd-row-color">
-<div class="block">Optional, for a co-occurrence search, pivot words</div>
 </div>
 </div>
 </section>
@@ -174,7 +169,7 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
  
    Dictionary of forms <code>FieldCharsAbstract.dic</code>
    docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.
-   Σ docsByForm; global count of docs relevant for this field <code>FieldCharsAbstract.docsAll</code>.
+   Σ docsByForm; global count of docs relevant for this field <code>FieldAbstract.docsAll</code>.
  </div>
 </div>
 <div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(com.github.oeuvres.alix.lucene.search.FieldText)" class="member-name-link">FormEnum</a><wbr>(<a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;field)</code></div>
@@ -184,7 +179,7 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
  
    Dictionary of forms <code>FieldCharsAbstract.dic</code>
    docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.
-   Σ docsByForm; global count of docs relevant for this field <code>FieldCharsAbstract.docsAll</code>.
+   Σ docsByForm; global count of docs relevant for this field <code>FieldAbstract.docsAll</code>.
    occsByform[formId] = occs; count of occurrences by form <a href="FieldText.html#occsByForm"><code>FieldText.occsByForm</code></a>.
    Σ occsByForm; global count of occs for this field <a href="FieldText.html#occsAll"><code>FieldText.occsAll</code></a>.
  </div>
@@ -383,7 +378,7 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
  get the last calculated score.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score(com.github.oeuvres.alix.lucene.search.Scorer)" class="member-name-link">score</a><wbr>(<a href="Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score(com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">score</a><wbr>(<a href="Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a>&nbsp;scorer)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Score all forms with a distribution algorithm.</div>
 </div>
@@ -477,6 +472,13 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 </section>
 </li>
 <li>
+<section class="detail" id="hitsByDoc">
+<h3>hitsByDoc</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">org.apache.lucene.util.BitSet</span>&nbsp;<span class="element-name">hitsByDoc</span></div>
+<div class="block">hitsByDoc.get(docId) == true: doc found.</div>
+</section>
+</li>
+<li>
 <section class="detail" id="hitsAll">
 <h3>hitsAll</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">hitsAll</span></div>
@@ -504,20 +506,6 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <div class="block">scoreByform[formId]=score; a relevance score calculated by form.</div>
 </section>
 </li>
-<li>
-<section class="detail" id="hitsVek">
-<h3>hitsVek</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">org.apache.lucene.util.BitSet</span>&nbsp;<span class="element-name">hitsVek</span></div>
-<div class="block">Vector of documents hits</div>
-</section>
-</li>
-<li>
-<section class="detail" id="search">
-<h3>search</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]</span>&nbsp;<span class="element-name">search</span></div>
-<div class="block">Optional, for a co-occurrence search, pivot words</div>
-</section>
-</li>
 </ul>
 </section>
 </li>
@@ -535,7 +523,7 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
  <ul>
    <li>Dictionary of forms <code>FieldCharsAbstract.dic</code></li>
    <li>docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.</li>
-   <li>Σ docsByForm; global count of docs relevant for this field <code>FieldCharsAbstract.docsAll</code>.</li>
+   <li>Σ docsByForm; global count of docs relevant for this field <code>FieldAbstract.docsAll</code>.</li>
    <li>occsByform[formId] = occs; count of occurrences by form <a href="FieldText.html#occsByForm"><code>FieldText.occsByForm</code></a>.</li>
    <li>Σ occsByForm; global count of occs for this field <a href="FieldText.html#occsAll"><code>FieldText.occsAll</code></a>.</li>
  </ul></div>
@@ -554,7 +542,7 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
  <ul>
    <li>Dictionary of forms <code>FieldCharsAbstract.dic</code></li>
    <li>docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.</li>
-   <li>Σ docsByForm; global count of docs relevant for this field <code>FieldCharsAbstract.docsAll</code>.</li>
+   <li>Σ docsByForm; global count of docs relevant for this field <code>FieldAbstract.docsAll</code>.</li>
  </ul></div>
 <dl class="notes">
 <dt>Parameters:</dt>
@@ -978,9 +966,9 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 </section>
 </li>
 <li>
-<section class="detail" id="score(com.github.oeuvres.alix.lucene.search.Scorer)">
+<section class="detail" id="score(com.github.oeuvres.alix.lucene.search.Distrib)">
 <h3>score</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">score</span><wbr><span class="parameters">(<a href="Scorer.html" title="enum in com.github.oeuvres.alix.lucene.search">Scorer</a>&nbsp;scorer)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">score</span><wbr><span class="parameters">(<a href="Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a>&nbsp;scorer)</span></div>
 <div class="block">Score all forms with a distribution algorithm.</div>
 <dl class="notes">
 <dt>Parameters:</dt>

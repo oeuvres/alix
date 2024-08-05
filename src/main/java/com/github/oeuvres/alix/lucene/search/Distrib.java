@@ -1,9 +1,10 @@
 package com.github.oeuvres.alix.lucene.search;
 
 /**
- * Distribution laws, to be used in sum
+ * Distribution laws, could be used as scorer to sort {@link FormEnum}.
+ * Is not a {@link org.apache.lucene.search.Scorer}, nor a {@link org.apache.lucene.search.similarities.Distribution}.
  */
-public enum Scorer {
+public enum Distrib {
     /** Count of occs found. */
     OCCS() {
         @Override
@@ -36,9 +37,7 @@ public enum Scorer {
             return 2.0D * freq * Math.log(freq / Ei);
         }
 
-        /**
-         * Because ΣOi = ΣEi = N, G-test need a last addition (not tf-idf like)
-         */
+        @Override
         public double last(final double freq, final double docLen)
         {
             return score(freq, docLen);
@@ -53,14 +52,14 @@ public enum Scorer {
         private final double k1 = 1.2f;
         /** Classical BM25 param */
         private final double b = 0.75f;
-        /** Cache idf for a term */
+        /** Cache idf for a form */
         private double idf;
 
         @Override
-        public void idf(final double hits, final double docs, final double occs)
+        public void idf(final double hits, final double docsAll, final double occsAll)
         {
-            this.docAvg = occs / docs;
-            this.idf = Math.log(1.0 + (docs - hits + 0.5D) / (hits + 0.5D));
+            this.docAvg = occsAll / docsAll;
+            this.idf = Math.log(1.0 + (docsAll - hits + 0.5D) / (hits + 0.5D));
         }
 
         @Override
@@ -106,6 +105,7 @@ public enum Scorer {
             return O_E * O_E / Ei;
         }
 
+        @Override
         public double last(final double freq, final double docLen)
         {
             return score(freq, docLen);
@@ -121,29 +121,65 @@ public enum Scorer {
      */
     ;
 
-    protected double idf; // a theoretical idf
-    protected double expectation; // global freq expected for a term
+    /** A theoretical inverse document frequency. */
+    protected double idf; 
+    /** Freq expected for a form. */
+    protected double expectation;
 
-    public void expectation(final double formOccs, final double occs)
+    /**
+     * Set an expected probability for a form (to compare with observed in some distribution algorithm).
+     *  
+     * @param occsForm count of occurences for a form.
+     * @param occsAll global count of occurrences.
+     */
+    public void expectation(final double occsForm, final double occsAll)
     {
-        if (occs == 0)
+        if (occsAll == 0)
             return;
-        this.expectation = formOccs / occs;
+        this.expectation = occsForm / occsAll;
     }
 
-    public void idf(final double hits, final double docs, final double occs)
+    /**
+     * Set an inverse document frequency for tf-idf like scoring.
+     * Variable common to all forms for a search.
+     * 
+     * @param hits count of documents with the form.
+     * @param docsAll global count of documents.
+     * @param occsAll global count of occurrences, used for document size average in BM25.
+     */
+    public void idf(final double hits, final double docsAll, final double occsAll)
     {
         return;
     }
 
+    /**
+     * Calculate a score for a form by doc.
+     * 
+     * @param freq form frequency.
+     * @param docLen document size.
+     * @return score for the form in this doc.
+     */
     abstract public double score(final double freq, final double docLen);
 
+    /**
+     * For some scorer (not tf-idf like) like G-Test or Chi2, ΣOi = ΣEi = N.
+     * If N is count off all occurrences (events), if Oi (Observed events) and
+     * Ei (Expected events) concern only a part of occurrences (ex: set of 
+     * documents), then the sum should be finished by a last count.
+     * 
+     * @param freq a frequence observed.
+     * @param docLen a size of events.
+     * @return last observation.
+     */
     public double last(final double freq, final double docLen)
     {
         return 0;
     }
 
-    private Scorer() {
+    /**
+     * Do not freely instantiate.
+     */
+    private Distrib() {
     }
 
 }

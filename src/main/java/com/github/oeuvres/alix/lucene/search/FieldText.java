@@ -172,9 +172,8 @@ public class FieldText extends FieldCharsAbstract
                 docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
                 int docLeaf;
                 Bits live = leaf.getLiveDocs();
-                boolean hasLive = (live != null);
                 while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
+                    if (live != null && !live.get(docLeaf)) continue; // deleted doc
                     final int docId = docBase + docLeaf;
                     int freq = docsEnum.freq();
                     if (freq == 0) continue; // strange, is’n it ? Will probably not arrive
@@ -186,17 +185,17 @@ public class FieldText extends FieldCharsAbstract
                 }
             }
         }
-        final int maxValue = stack.size() + 1; // should be the stack of non empty term + empty term
+        maxForm = stack.size() + 1; // should be the stack of non empty term + empty term
         // here we should have all we need to affect a freq formId
         // sort forms, and reloop on them to get optimized things
         java.util.BitSet stopRecord = new java.util.BitSet(); // record StopWords in a growable BitSet
         java.util.BitSet punRecord = new java.util.BitSet();
-        locByForm = new SparseFixedBitSet(maxValue); // record locutions, size of BitSet will be full
+        locByForm = new SparseFixedBitSet(maxForm); // record locutions, size of BitSet will be full
         
         dic.add(new BytesRef("")); // add empty string as formId=0 for empty positions
-        occsByForm = new long[maxValue];
-        docsByform = new int[maxValue];
-        tagByForm = new int[maxValue];
+        occsByForm = new long[maxForm];
+        docsByform = new int[maxForm];
+        tagByForm = new int[maxForm];
         Collections.sort(stack); // should sort by frequences
         CharsAttImpl chars = new CharsAttImpl(); // to test against indexation dicos
         bytes = new BytesRef();
@@ -315,24 +314,21 @@ public class FieldText extends FieldCharsAbstract
     /**
      * Build a BitSet of formId for efficient filtering of forms by tags.
      * 
-     * @param wordFilter filter 
+     * @param formFilter filter 
      * @return a formId filter.
      */
-    public BitSet formFilter(TagFilter wordFilter)
+    public BitSet formFilter(TagFilter formFilter)
     {
-        BitSet rule = new SparseFixedBitSet(maxValue);
-        final boolean noStop = wordFilter.accept(Tag.NOSTOP);
-        final int stopLim = stopByForm.length();
-        for (int formId = 1; formId < maxValue; formId++) {
-            if (!noStop); // no tick for stopword
-            else if (formId >= stopLim); // formId out of scope of stop words
-            else if (!stopByForm.get(formId)); // not a stop word, let other rules play
-            else { // stop word requested and is a stop word, tick and continue
-                rule.set(formId);
-                continue;
+        BitSet rule = new SparseFixedBitSet(maxForm);
+        final boolean noStop = formFilter.get(Tag.NOSTOP);
+        for (int formId = 1; formId < maxForm; formId++) {
+            if (noStop) {
+                if (isStop(formId)) continue;
             }
-            // set formId by tag
-            if (wordFilter.accept(tagByForm[formId])) rule.set(formId);
+            else {
+                if (!formFilter.get(tagByForm[formId])) continue;
+            }
+            rule.set(formId);
         }
         return rule;
     }
@@ -356,15 +352,21 @@ public class FieldText extends FieldCharsAbstract
      */
     public FormEnum formEnum(final TagFilter formFilter)
     {
-        boolean hasTags = (formFilter != null);
-        boolean noStop = (formFilter != null && formFilter.accept(Tag.NOSTOP));
-        boolean locs = (formFilter != null && formFilter.accept(Tag.LOC));
-        long[] formFreq = new long[maxValue];
+        boolean noStop = (formFilter != null && formFilter.get(Tag.NOSTOP));
+        boolean locs = (formFilter != null && formFilter.get(Tag.LOC));
+        boolean hasTags = (formFilter != null && (formFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+        long[] formFreq = new long[maxForm];
         long freqAll = 0;
-        for (int formId = 0; formId < maxValue; formId++) {
-            if (noStop && isStop(formId)) continue;
-            if (locs && !locByForm.get(formId)) continue;
-            if (hasTags && !formFilter.accept(tagByForm[formId])) continue;
+        for (int formId = 0; formId < maxForm; formId++) {
+            if (noStop) { // special tag
+                if(isStop(formId)) continue;
+            }
+            else if (locs) {  // special tag
+                if(!locByForm.get(formId)) continue;
+            }
+            else if (hasTags) {
+                if(!formFilter.get(tagByForm[formId])) continue;
+            }
             // loop on all docs containing the term ?
             formFreq[formId] = occsByForm[formId];
             freqAll += occsByForm[formId];
@@ -402,33 +404,35 @@ public class FieldText extends FieldCharsAbstract
      * 
      * @param docFilter a set of docId.
      * @param formFilter a set of formId.
-     * @param scorer scoring algorithm.
+     * @param distribution a scoring algorithm.
      * @return an object to sort and loop forms.
      * @throws IOException lucene errors.
      */
-    public FormEnum formEnum(final BitSet docFilter, final TagFilter formFilter, Scorer scorer) throws IOException
+    public FormEnum formEnum(final BitSet docFilter, final TagFilter formFilter, Distrib distribution) throws IOException
     {
         FormEnum formEnum = formEnum(); // get global stats 
     
-        boolean hasTags = (formFilter != null);
-        boolean noStop = (formFilter != null && formFilter.accept(Tag.NOSTOP));
-        boolean locs = (formFilter != null && formFilter.accept(Tag.LOC));
-        boolean hasDistrib = (scorer != null);
+        boolean noStop = (formFilter != null && formFilter.get(Tag.NOSTOP));
+        boolean locs = (formFilter != null && formFilter.get(Tag.LOC));
+        boolean hasTags = (formFilter != null && (formFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+        
+        
+        boolean hasDistrib = (distribution != null);
         boolean hasFilter = (docFilter != null && docFilter.cardinality() > 0);
     
-        if (hasDistrib) formEnum.scoreByform = new double[maxValue];
-        formEnum.freqByForm = new long[maxValue];
-        formEnum.hitsByForm = new int[maxValue];
+        if (hasDistrib) formEnum.scoreByform = new double[maxForm];
+        formEnum.freqByForm = new long[maxForm];
+        formEnum.hitsByForm = new int[maxForm];
         
-        int freqAll = 0;
+        int occsPart = 0;
         if (docFilter != null) {
             for (int docId = docFilter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = docFilter
                     .nextSetBit(docId + 1)) {
-                freqAll += occsByDoc[docId];
+                occsPart += occsByDoc[docId];
             }
         }
         // if (hasSpecif) specif.all(occsAll, docsAll);
-        BitSet hitsVek = new FixedBitSet(reader.maxDoc());
+        BitSet hitsByDoc = new FixedBitSet(reader.maxDoc());
     
         BytesRef bytes;
         // loop an all index to calculate a score for each term before build a more
@@ -437,41 +441,46 @@ public class FieldText extends FieldCharsAbstract
             int docBase = context.docBase;
             LeafReader leaf = context.reader();
             Bits live = leaf.getLiveDocs();
-            final boolean hasLive = (live != null);
             Terms terms = leaf.terms(fieldName);
             if (terms == null) continue;
             TermsEnum tenum = terms.iterator();
-            PostingsEnum docsEnum = null;
+            PostingsEnum postings = null;
             while ((bytes = tenum.next()) != null) {
                 if (bytes.length == 0) continue; // do not count empty positions
                 int formId = dic.find(bytes);
                 // filter some tags
-                if (locs && !locByForm.get(formId)) continue;
-                if (noStop && isStop(formId)) continue;
-                if (hasTags && !formFilter.accept(tagByForm[formId])) continue;
-                // if formId is negative, let the error go, problem in reader
-                // for each term, set scorer with global stats
-                if (hasDistrib) {
-                    scorer.idf(docsByform[formId], docsAll, occsAll);
-                    scorer.expectation(occsByForm[formId], occsAll);
+                if (noStop) { // special tag
+                    if(isStop(formId)) continue;
                 }
-                docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
+                else if (locs) {  // special tag
+                    if(!locByForm.get(formId)) continue;
+                }
+                else if (hasTags) {
+                    if(!formFilter.get(tagByForm[formId])) continue;
+                }
+                // if formId is negative, let the error go, problem in reader
+                // for each form, set scorer with global stats by form, before count by doc
+                if (hasDistrib) {
+                    distribution.idf(docsByform[formId], docsAll, occsAll);
+                    distribution.expectation(occsByForm[formId], occsAll);
+                }
+                postings = tenum.postings(postings, PostingsEnum.FREQS);
                 int docLeaf;
-                while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
+                while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                    if (live != null && !live.get(docLeaf)) continue; // deleted doc
                     int docId = docBase + docLeaf;
                     if (hasFilter && !docFilter.get(docId)) continue; // document not in the filter
-                    int freq = docsEnum.freq();
+                    final int freq = postings.freq();
                     if (freq < 1) throw new ArithmeticException("??? field=" + fieldName + " docId=" + docId + " term="
                             + bytes.utf8ToString() + " freq=" + freq);
                     // doc not yet encounter, we can count
-                    if (!hitsVek.get(docId)) {
+                    if (!hitsByDoc.get(docId)) {
                         formEnum.hitsAll++;
-                        hitsVek.set(docId);
+                        hitsByDoc.set(docId);
                     }
                     formEnum.hitsByForm[formId]++;
                     if (hasDistrib) {
-                        final double score = scorer.score(freq, occsByDoc[docId]);
+                        final double score = distribution.score(freq, occsByDoc[docId]);
                         // if (score < 0) forms.formScore[formId] -= score; // all variation is
                         // significant
                         formEnum.scoreByform[formId] += score;
@@ -479,15 +488,20 @@ public class FieldText extends FieldCharsAbstract
                     formEnum.freqByForm[formId] += freq;
                     formEnum.freqAll += freq;
                 }
-                if (hasDistrib && docFilter != null) {
-                    // add inverse score
-                    final long restFreq = occsByForm[formId] - formEnum.freqByForm[formId];
-                    final long restLen = occsAll - freqAll;
-                    double score = scorer.last(restFreq, restLen);
-                    formEnum.scoreByform[formId] += score;
-                }
             }
         }
+        // finalize some scorer like G or Chi2
+        if (hasDistrib) {
+            for (int formId = 0; formId < maxForm; formId++) {
+                distribution.expectation(occsByForm[formId], occsAll); // do not forget expectation for the form
+                // add inverse score
+                final long restFreq = occsByForm[formId] - formEnum.freqByForm[formId];
+                final long restLen = occsAll - occsPart;
+                double score = distribution.last(restFreq, restLen);
+                formEnum.scoreByform[formId] += score;
+            }
+        }
+
         return formEnum;
     }
 
@@ -499,12 +513,12 @@ public class FieldText extends FieldCharsAbstract
      * 
      * @param parts count of parts.
      * @param classifier vector of ints where classifier[docId]=part.
-     * @param wordFilter filter words by tag.
+     * @param formFilter filter words by tag.
      * @param scorer scorer.
      * @return a set of dictionaries, one for each part.
      * @throws IOException lucene errors.
      */
-    public FormEnum[] formEnumByPart(final int parts, final int[] classifier, final TagFilter wordFilter, Scorer scorer)
+    public FormEnum[] formEnumByPart(final int parts, final int[] classifier, final TagFilter formFilter, Distrib scorer)
             throws IOException
     {
         if (parts < 1) {
@@ -518,17 +532,20 @@ public class FieldText extends FieldCharsAbstract
             throw new IllegalArgumentException("Is your classifer for this index ? classifier.length="
                     + classifier.length + " IndexReader.maxDoc()=" + reader.maxDoc());
         }
-        boolean hasTags = (wordFilter != null);
         boolean hasScorer = (scorer != null);
-        boolean noStop = (wordFilter != null && wordFilter.accept(Tag.NOSTOP));
+        
+        boolean noStop = (formFilter != null && formFilter.get(Tag.NOSTOP));
+        boolean hasTags = (formFilter != null && (formFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+
+        
         FormEnum[] dics = new FormEnum[parts];
         for (int i = 0; i < parts; i++) {
             FormEnum forms = formEnum();
             dics[i] = forms;
-            if (hasScorer) forms.scoreByform = new double[maxValue];
-            forms.freqByForm = new long[maxValue];
-            forms.hitsByForm = new int[maxValue];
-            forms.hitsVek = new FixedBitSet(reader.maxDoc());
+            if (hasScorer) forms.scoreByform = new double[maxForm];
+            forms.freqByForm = new long[maxForm];
+            forms.hitsByForm = new int[maxForm];
+            forms.hitsByDoc = new FixedBitSet(reader.maxDoc());
         }
         // loop on index
         BytesRef bytes;
@@ -537,7 +554,6 @@ public class FieldText extends FieldCharsAbstract
             int docBase = context.docBase;
             LeafReader leaf = context.reader();
             Bits live = leaf.getLiveDocs();
-            final boolean hasLive = (live != null);
             Terms terms = leaf.terms(fieldName);
             if (terms == null) continue;
             TermsEnum tenum = terms.iterator();
@@ -545,8 +561,13 @@ public class FieldText extends FieldCharsAbstract
             while ((bytes = tenum.next()) != null) {
                 if (bytes.length == 0) continue; // do not count empty positions
                 int formId = dic.find(bytes);
-                if (noStop && isStop(formId)) continue;
-                if (hasTags && !wordFilter.accept(tagByForm[formId])) continue;
+                // filter some tags
+                if (noStop) { // special tag
+                    if(isStop(formId)) continue;
+                }
+                else if (hasTags) {
+                    if(!formFilter.get(tagByForm[formId])) continue;
+                }
                 // if formId is negative, let the error go, problem in reader
                 // for each term, set scorer with global stats
                 if (hasScorer) {
@@ -556,7 +577,7 @@ public class FieldText extends FieldCharsAbstract
                 docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
                 int docLeaf;
                 while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
+                    if (live != null && !live.get(docLeaf)) continue; // deleted doc
                     final int docId = docBase + docLeaf;
                     // choose a part
                     final int part = classifier[docId];
@@ -570,9 +591,9 @@ public class FieldText extends FieldCharsAbstract
                     if (freq < 1) throw new ArithmeticException("??? field=" + fieldName + " docId=" + docId + " term="
                             + bytes.utf8ToString() + " freq=" + freq);
                     // doc not yet encounter, we can count
-                    if (!forms.hitsVek.get(docId)) {
+                    if (!forms.hitsByDoc.get(docId)) {
                         forms.hitsAll++;
-                        forms.hitsVek.set(docId);
+                        forms.hitsByDoc.set(docId);
                     }
                     forms.hitsByForm[formId]++;
                     if (hasScorer) {
@@ -712,7 +733,7 @@ public class FieldText extends FieldCharsAbstract
      */
     public boolean isStop(int formId)
     {
-        if (formId >= stopByForm.length()) return false; // outside the set bits, should be not a stop word
+        if (formId <= 0 || formId >= stopByForm.length()) return false; // outside the set bits, should be not a stop word
         return stopByForm.get(formId);
     }
 
@@ -822,7 +843,7 @@ public class FieldText extends FieldCharsAbstract
     {
         StringBuilder string = new StringBuilder();
         BytesRef ref = new BytesRef();
-        int len = Math.min(maxValue, 200);
+        int len = Math.min(maxForm, 200);
         for (int i = 0; i < len; i++) {
             dic.get(i, ref);
             string.append(ref.utf8ToString() + ": " + occsByForm[i] + "\n");

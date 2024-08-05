@@ -328,26 +328,26 @@ public class Doc
      * @param alix wrapper around an {@link IndexReader} with cached stats.
      * @param docId a document id in t
      * @param field text field name for a {@link FieldText}.
-     * @param scorer score for the terms.
-     * @param wordFilter filter words by tags.
+     * @param distrib score for the terms.
+     * @param formFilter filter words by tags.
      * @return forms for this document.
      * @throws NoSuchFieldException  not a text field.
      * @throws IOException           Lucene errors.
      */
-    static public FormEnum forms(Alix alix, int docId, String field, Scorer scorer, TagFilter wordFilter)
+    static public FormEnum formEnum(Alix alix, int docId, String field, Distrib distrib, TagFilter formFilter)
             throws NoSuchFieldException, IOException
     {
-        boolean hasTags = (wordFilter != null);
-        boolean noStop = (wordFilter != null && wordFilter.accept(Tag.NOSTOP));
-        boolean hasScorer = (scorer != null);
+        boolean hasTags = (formFilter != null && (formFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+        boolean noStop = (formFilter != null && formFilter.get(Tag.NOSTOP));
+        boolean hasDistrib = (distrib != null);
 
         // get index term stats
         FieldText fieldText = alix.fieldText(field);
         FormEnum forms = fieldText.formEnum();
-        if (hasScorer) {
-            forms.scoreByform = new double[fieldText.maxValue];
+        if (hasDistrib) {
+            forms.scoreByform = new double[fieldText.maxForm];
         }
-        forms.freqByForm = new long[fieldText.maxValue]; // freqs by form
+        forms.freqByForm = new long[fieldText.maxForm]; // freqs by form
         int docOccs = fieldText.docOccs(docId);
 
         // loop on all forms of the document, get score, keep the top
@@ -363,25 +363,22 @@ public class Doc
                 continue;
             }
             final int formId = fieldText.formId(bytes);
-            if (hasTags && !wordFilter.accept(fieldText.tag(formId))) {
-                continue;
+            if (noStop) {
+                if (fieldText.isStop(formId)) continue;
             }
-            if (noStop && fieldText.isStop(formId)) {
-                continue;
+            else if (hasTags) {
+                if (!formFilter.get(fieldText.tag(formId))) continue;
             }
-            if (formId < 0) {
-                continue; // should not arrive, let cry
-            }
-            if (hasScorer) {
-                scorer.expectation(fieldText.occs(formId), fieldText.occsAll);
-                scorer.idf(fieldText.docsByform[formId], fieldText.docsAll, fieldText.occsAll);
+            if (hasDistrib) {
+                distrib.expectation(fieldText.occs(formId), fieldText.occsAll);
+                distrib.idf(fieldText.docsByform[formId], fieldText.docsAll, fieldText.occsAll);
             }
             // scorer.weight(termOccs, termDocs); // collection level stats
             long freq = termit.totalTermFreq();
             forms.freqByForm[formId] = freq;
             forms.freqAll += freq;
-            if (hasScorer) {
-                forms.scoreByform[formId] += scorer.score(freq, docOccs);
+            if (hasDistrib) {
+                forms.scoreByform[formId] += distrib.score(freq, docOccs);
                 // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub
                 // complement ?
             }

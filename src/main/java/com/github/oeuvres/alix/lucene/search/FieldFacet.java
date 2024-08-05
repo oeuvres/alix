@@ -240,7 +240,7 @@ public class FieldFacet extends FieldCharsAbstract
             }
         }
         this.docsAll = docsAll;
-        maxValue = dic.size();
+        maxForm = dic.size();
     }
 
     /**
@@ -295,7 +295,7 @@ public class FieldFacet extends FieldCharsAbstract
                 continue; // empty line
             this.docForms[i] = docForms[i].toArray();
         }
-        maxValue = dic.size();
+        maxForm = dic.size();
     }
 
     /**
@@ -324,7 +324,7 @@ public class FieldFacet extends FieldCharsAbstract
         if (docFilter == null) {
             return forms();
         }
-        forms.hitsByForm = new int[maxValue];
+        forms.hitsByForm = new int[maxForm];
         for (int docId = 0, max = this.docForms.length; docId < max; docId++) {
             // document not in the filter, go next
             if (!docFilter.get(docId))
@@ -358,10 +358,10 @@ public class FieldFacet extends FieldCharsAbstract
         }
         boolean hasFilter = (docFilter != null);
         FormEnum forms = forms();
-        forms.occsByForm = new long[maxValue];
+        forms.occsByForm = new long[maxForm];
         if (hasFilter) {
-            forms.freqByForm = new long[maxValue];
-            forms.hitsByForm = new int[maxValue];
+            forms.freqByForm = new long[maxForm];
+            forms.hitsByForm = new int[maxForm];
         }
         // loop on all docs by docId,
         for (int docId = 0, len = reader.maxDoc(); docId < len; docId++) {
@@ -403,7 +403,7 @@ public class FieldFacet extends FieldCharsAbstract
      * @return an enumerator of facets with textual stats.
      * @throws IOException Lucene errors.
      */
-    public FormEnum forms(final FieldText ftext, final String[] search, final BitSet docFilter, Scorer scorer)
+    public FormEnum forms(final FieldText ftext, final String[] search, final BitSet docFilter, Distrib scorer)
             throws IOException
     {
         FormEnum forms = forms(ftext, docFilter);
@@ -427,10 +427,10 @@ public class FieldFacet extends FieldCharsAbstract
         // Crawl index to get stats by facet term about the text search
         BitSet docMap = new FixedBitSet(reader.maxDoc()); // keep memory of already counted docs
 
-        forms.hitsByForm = new int[maxValue];
-        forms.freqByForm = new long[maxValue]; // a vector to count matched occurrences by facet
+        forms.hitsByForm = new int[maxForm];
+        forms.freqByForm = new long[maxForm]; // a vector to count matched occurrences by facet
         if (hasScorer) {
-            forms.scoreByform = new double[maxValue];
+            forms.scoreByform = new double[maxForm];
         }
         // loop on each term of the search to update the score vector
         @SuppressWarnings("unused")
@@ -518,7 +518,7 @@ public class FieldFacet extends FieldCharsAbstract
      */
     public int[] nos(final TopDocs topDocs)
     {
-        int[] nos = new int[maxValue];
+        int[] nos = new int[maxForm];
         Arrays.fill(nos, Integer.MIN_VALUE);
         ScoreDoc[] scoreDocs = topDocs.scoreDocs;
         // loop on doc in order
@@ -547,7 +547,7 @@ public class FieldFacet extends FieldCharsAbstract
     public long[] stats(FieldText ftext)
     {
         // try to find it in cache ?
-        long[] formOccsAll = new long[maxValue];
+        long[] formOccsAll = new long[maxForm];
         // loop on each doc to
         for (int docId = 0, len = docForms.length; docId < len; docId++) {
             int[] forms = docForms[docId];
@@ -592,7 +592,7 @@ public class FieldFacet extends FieldCharsAbstract
     {
         StringBuilder string = new StringBuilder();
         BytesRef ref = new BytesRef();
-        for (int i = 0; i < maxValue; i++) {
+        for (int i = 0; i < maxForm; i++) {
             dic.get(i, ref);
             string.append(ref.utf8ToString() + "\n");
         }

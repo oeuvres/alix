@@ -109,20 +109,20 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Field</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>protected final <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color"><code><a href="#fieldName" class="member-name-link">fieldName</a></code></div>
+<div class="col-first even-row-color"><code>protected int</code></div>
+<div class="col-second even-row-color"><code><a href="#docsAll" class="member-name-link">docsAll</a></code></div>
 <div class="col-last even-row-color">
+<div class="block">Σ docsByForm; global count of docs relevant for this field.</div>
+</div>
+<div class="col-first odd-row-color"><code>protected final <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#fieldName" class="member-name-link">fieldName</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Name of a lucene field from which extract and cache stats.</div>
 </div>
-<div class="col-first odd-row-color"><code>protected final org.apache.lucene.index.FieldInfo</code></div>
-<div class="col-second odd-row-color"><code><a href="#info" class="member-name-link">info</a></code></div>
-<div class="col-last odd-row-color">
-<div class="block">Infos about the lucene field.</div>
-</div>
-<div class="col-first even-row-color"><code>protected int</code></div>
-<div class="col-second even-row-color"><code><a href="#maxValue" class="member-name-link">maxValue</a></code></div>
+<div class="col-first even-row-color"><code>protected final org.apache.lucene.index.FieldInfo</code></div>
+<div class="col-second even-row-color"><code><a href="#info" class="member-name-link">info</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Number of different values found = biggest valueId + 1.</div>
+<div class="block">Infos about the lucene field.</div>
 </div>
 <div class="col-first odd-row-color"><code>protected final org.apache.lucene.index.IndexReader</code></div>
 <div class="col-second odd-row-color"><code><a href="#reader" class="member-name-link">reader</a></code></div>
@@ -164,25 +164,25 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">1753 → 17530000 1753-03-01 → 17530301</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#int2date(int)" class="member-name-link">int2date</a><wbr>(int&nbsp;dateNum)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#docsAll()" class="member-name-link">docsAll</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Total count of document affected by the field.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#int2date(int)" class="member-name-link">int2date</a><wbr>(int&nbsp;dateNum)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">17530301 → 1753-03-01, 17530000 → 1753</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FieldInt.IntEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FieldInt.IntEnum</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#iterator()" class="member-name-link">iterator</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FieldInt.IntEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FieldInt.IntEnum</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#iterator()" class="member-name-link">iterator</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Enumerator on all values of the int field with different stats.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#max()" class="member-name-link">max</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get the maximum value.</div>
-</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxValue()" class="member-name-link">maxValue</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#max()" class="member-name-link">max</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Count of different values.</div>
+<div class="block">Get the maximum value.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#min()" class="member-name-link">min</a>()</code></div>
@@ -243,10 +243,10 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="maxValue">
-<h3>maxValue</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">maxValue</span></div>
-<div class="block">Number of different values found = biggest valueId + 1.</div>
+<section class="detail" id="docsAll">
+<h3>docsAll</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docsAll</span></div>
+<div class="block">Σ docsByForm; global count of docs relevant for this field.</div>
 </section>
 </li>
 </ul>
@@ -380,14 +380,13 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="maxValue()">
-<h3>maxValue</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">maxValue</span>()</div>
-<div class="block">Count of different values.
- Biggest valueId+1 (like lucene IndexReader.maxDoc()). Used to build fixed array of form id.</div>
+<section class="detail" id="docsAll()">
+<h3>docsAll</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docsAll</span>()</div>
+<div class="block">Total count of document affected by the field.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>max value id.</dd>
+<dd>doc count.</dd>
 </dl>
 </section>
 </li>
