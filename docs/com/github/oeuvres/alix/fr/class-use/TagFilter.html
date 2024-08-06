@@ -291,17 +291,19 @@ loadScripts(document, 'script');</script>
 <div class="block">Build a BitSet of formId for efficient filtering of forms by tags.</div>
 </div>
 <div class="col-first even-row-color"><code>int[]</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">WordSuggest.</span><code><a href="../../lucene/search/WordSuggest.html#list(java.lang.String,com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">list</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;q,
+<div class="col-second even-row-color"><span class="type-name-label">SuggestForm.</span><code><a href="../../lucene/search/SuggestForm.html#list(java.lang.String,com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">list</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;q,
  <a href="../TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;wordFilter)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Find list of formId in the dictionary of a field.</div>
+<div class="block">Find list of formId in the dictionary of a field by .</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="../../lucene/search/WordSuggest.Suggestion.html" title="class in com.github.oeuvres.alix.lucene.search">WordSuggest.Suggestion</a>[]</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">WordSuggest.</span><code><a href="../../lucene/search/WordSuggest.html#search(java.lang.String,int,com.github.oeuvres.alix.fr.TagFilter,org.apache.lucene.util.BitSet)" class="member-name-link">search</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;q,
+<div class="col-first odd-row-color"><code><a href="../../lucene/search/SuggestForm.Suggestion.html" title="class in com.github.oeuvres.alix.lucene.search">SuggestForm.Suggestion</a>[]</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">SuggestForm.</span><code><a href="../../lucene/search/SuggestForm.html#search(java.lang.String,int,com.github.oeuvres.alix.fr.TagFilter,org.apache.lucene.util.BitSet)" class="member-name-link">search</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;q,
  int&nbsp;count,
- <a href="../TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;wordFilter,
+ <a href="../TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">Search a wildcard</div>
+</div>
 </div>
 </section>
 </li>

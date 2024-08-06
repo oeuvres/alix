@@ -39,8 +39,8 @@ import java.util.Iterator;
 import java.util.TreeMap;
 
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
@@ -83,7 +83,7 @@ public class FieldInt extends FieldAbstract
      * @param fieldName name of a lucene text field.
      * @throws IOException Lucene errors.
      */
-    public FieldInt(final IndexReader reader, final String fieldName) throws IOException {
+    public FieldInt(final DirectoryReader reader, final String fieldName) throws IOException {
         super(reader, fieldName);
         // check infos
         if (info.getDocValuesType() == DocValuesType.NUMERIC)

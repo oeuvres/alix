@@ -40,7 +40,6 @@ import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -49,7 +48,6 @@ import java.util.logging.Logger;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
@@ -59,13 +57,13 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
 import com.github.oeuvres.alix.fr.TagFilter;
-import com.github.oeuvres.alix.lucene.Alix;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Edge;
 import com.github.oeuvres.alix.util.EdgeMap;
@@ -74,6 +72,7 @@ import com.github.oeuvres.alix.util.EdgeMatrix;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.IntPairMutable;
 import com.github.oeuvres.alix.util.MI;
+import com.github.oeuvres.alix.util.RowcolQueue;
 
 /**
  * Persistent storage of full sequence of all document search for a field. Used
@@ -85,12 +84,14 @@ import com.github.oeuvres.alix.util.MI;
 public class FieldRail
 {
     static Logger LOGGER = Logger.getLogger(FieldRail.class.getName());
-    /** State of the index */
-    private final Alix alix;
+    /** Keep the freqs for the field */
+    private final FieldText fieldText;
     /** Name of the reference text field */
     public final String fieldName;
-    /** Keep the freqs for the field */
-    private final FieldText ftext;
+    /** Lucene index reader, cache the state. */
+    protected final DirectoryReader reader;
+    /** Infos about the lucene field. */
+    protected final FieldInfo info;
     /** Dictionary of search for this field */
     protected final BytesRefHash dic;
     /** The path of underlaying file store */
@@ -106,19 +107,20 @@ public class FieldRail
     /** Size of file header */
     static final int headerInt = 3;
     /** Index of positions for each doc im channel */
-    protected int[] posInt;
+    protected int[] indexByDoc;
     /** Index of sizes for each doc */
-    protected int[] limInt;
+    protected int[] lenByDoc;
 
     /**
      * Load rail of words as int, build it as file if necessary.
      * 
-     * @param alix a wrapper around a lucene {@link IndexReader}.
-     * @param fieldName name of a field.
+     * @param fieldText alix stats on an indexed and tokenized lucene field.
      * @throws IOException lucene erros.
      */
-    public FieldRail(Alix alix, String fieldName) throws IOException {
-        FieldInfo info = FieldInfos.getMergedFieldInfos(alix.reader()).fieldInfo(fieldName);
+    public FieldRail(FieldText fieldText) throws IOException {
+        reader = fieldText.reader;
+        info = fieldText.info;
+        this.fieldName = fieldText.fieldName;
         if (info == null) {
             throw new IllegalArgumentException("Field \"" + fieldName + "\" is not known in this index");
         }
@@ -127,46 +129,36 @@ public class FieldRail
             throw new IllegalArgumentException(
                     "Field \"" + fieldName + "\" of type " + options + " has no POSITIONS (see IndexOptions)");
         }
-        this.alix = alix;
-        this.ftext = alix.fieldText(fieldName); // build and cache the dictionary for the field
-        this.fieldName = ftext.fieldName;
-        this.dic = ftext.dic;
+        this.fieldText = fieldText; // build and cache the dictionary for the field
+        this.dic = fieldText.dic;
         this.maxForm = dic.size();
-        this.path = Paths.get(alix.path.toString(), fieldName + ".rail");
+        // path to the store for rails
+        this.path = ((FSDirectory)reader.directory()).getDirectory().resolve(fieldName + ".rail");
         load();
     }
     
 
     /**
-     * Build a cooccurrence freqList in formId order, attached to a FormEnum object.
+     * Build a freqList of coocurrents , attached to a FormEnum object.
      * Returns the count of occurences found. This method may need a lot of optional
      * params, set on the FormEnum object.
      * 
-     * @param pivotsBytes an ordered set of lucene terms.
+     * @param pivotBytes an ordered set of lucene terms.
      * @param left width of context before a pivot.
      * @param right width of context after a pivot.
      * @param docFilter optional, set of lucene internal docId to restrict collect.
      * @return forms with stats.
      * @throws IOException lucene errors.
      */
-    public FormEnum coocs(
-        final BytesRef[] pivotsBytes, 
+    public RowcolQueue coocs(
+        final BytesRef[] pivotBytes, 
         final int left,
         final int right,
         final BitSet docFilter
     ) throws IOException
     {
-        throw new IOException("Not yet implemented.");
-        /*
-         * @param forms words to score in context of the pivots.
-         * @param pivotIds form ids of pivots words.
-         * @param left width of context before a pivot.
-         * @param right width of context after a pivot.
-         * @param mi mutual information algorithm to calculate score.
-         * @return count of occurrences found.
-         * @throws IOException lucene errors.
-        // 1. for accepted docs, collect all positions of pivots in the lucene index
-        // 2. then 
+
+        // 2. 
         // for each index leave
         // collect "postings" for each term
         // for each doc
@@ -175,47 +167,13 @@ public class FieldRail
             throw new IllegalArgumentException("left=" + left + " right=" + right
                     + " not enough context to extract co-occurrences.");
         }
-        // filter documents
-        final boolean hasFilter = (forms.filter != null);
+        // filter documents ?
+        final boolean hasFilter = (docFilter != null && docFilter.cardinality() > 0);
 
-        // filter co-occs by tag
-        boolean hasTags = (forms.tags != null);
-        // filter co-occs stops
-        boolean noStop = (forms.tags != null && forms.tags.nostop());
-        // collect “locutions” (words like “parce que”)
-        boolean locs = (forms.tags != null && forms.tags.locutions());
-        // collect “edges” A B [O] A C => AOx2, ABx2, ACx2, BOx1, COx1, BCx1.
-        boolean hasEdges = (forms.edges != null);
 
-        // for future scoring, formOccs is global or relative to filter ? relative seems
-        // bad
-        // create or reuse arrays in result,
-        if (forms.formFreq == null || forms.formFreq.length != maxForm) {
-            forms.formFreq = new long[maxForm]; // by term, occurrences counts
-        } else {
-            Arrays.fill(forms.formFreq, 0);
-        }
-        // create or reuse hits
-        if (forms.formHits == null || forms.formHits.length != maxForm) {
-            forms.formHits = new int[maxForm]; // by term, document counts
-        } else {
-            Arrays.fill(forms.formHits, 0);
-        }
-
-        // this vector has been useful, but meaning has been forgotten
-        boolean[] formSeen = new boolean[maxForm];
-        long found = 0;
-        final int END = DocIdSetIterator.NO_MORE_DOCS;
-        // collector of scores
-        // int dicSize = this.hashDic.size();
-
-        // for each doc, a bit set is used to record the relevant positions
-        // this will avoid counting interferences when search occurrences are close
-        java.util.BitSet contexts = new java.util.BitSet();
-        java.util.BitSet pivots = new java.util.BitSet();
-        IntBuffer bufInt = channelMap.rewind().asIntBuffer();
         // loop on leafs
-        DirectoryReader reader = alix.reader();
+        // 1. collect all positions of pivots in the lucene index for accepted docs
+        RowcolQueue docposList = new RowcolQueue();
         PostingsEnum postings = null; // reuse
         for (LeafReaderContext context : reader.leaves()) {
             final int docBase = context.docBase;
@@ -224,24 +182,71 @@ public class FieldRail
             if (terms == null) continue;
             TermsEnum tenum = terms.iterator();
             Bits live = leaf.getLiveDocs();
-            // collect all “postings” for the requested search
-            // 
-            ArrayList<PostingsEnum> termDocs = new ArrayList<PostingsEnum>();
-            for (BytesRef bytes : pivotsBytes) {
+            for (BytesRef bytes : pivotBytes) {
                 if (bytes == null) continue;
                 if (!tenum.seekExact(bytes)) {
                     continue;
                 }
-                postings = tenum.postings(postings, PostingsEnum.FREQS | PostingsEnum.POSITIONS);
+                postings = tenum.postings(postings, PostingsEnum.POSITIONS);
                 if (postings == null) {
-                    continue;
+                    // ???
+                    // continue;
                 }
-                final int docPost = postings.nextDoc(); // advance cursor to the first doc
-                if (docPost == END) {
-                    continue;
+                int docLeaf;
+                while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                    if (live != null && !live.get(docLeaf)) continue; // deleted doc
+                    int docId = docBase + docLeaf;
+                    if (hasFilter && !docFilter.get(docId)) continue; // document not in the filter
+                    final int freq = postings.freq();
+                    for (int i = 0; i < freq; i++) {
+                        final int posPivot = postings.nextPosition();
+                        docposList.push(docId, posPivot);
+                        /* 
+                        // tested, is oK
+                        final int formFound = intRail.get(indexDoc + posPivot);
+                        if (formFound != formId) {
+                            Throw new Exception("formId=" + formId + " != " + formFound);
+                        }
+                        */
+                    }
                 }
-                termDocs.add(postings);
+                
             }
+        }
+        // 2. loop on all pivot position by doc
+        // for each doc, a bit set is used to record the relevant positions
+        // this will avoid counting interferences when search occurrences are close
+        FormEnum formEnum = new FormEnum(fieldText);
+        IntBuffer intRail = channelMap.rewind().asIntBuffer().asReadOnlyBuffer(); // the rail
+        java.util.BitSet context = new java.util.BitSet();
+        IntBuffer bufInt = channelMap.rewind().asIntBuffer();
+        docposList.uniq(); // sort and eliminate duplicates
+        docposList.push(Integer.MAX_VALUE, Integer.MAX_VALUE); // end of list
+        int docLast = -1;
+        while (docposList.hasNext()) {
+            docposList.next();
+            final int docId = docposList.row();
+            final int docLen = lenByDoc[docId];
+            final int pos = docposList.col();
+            // end of a doc
+            if (docLast != -1 && docLast != docId) {
+                final int docIndex = indexByDoc[docId];
+                // load the document rail and loop on the context to count co-occurrents
+                for (int formIndex = context.nextSetBit(0); formIndex >= 0; formIndex = context.nextSetBit(formIndex+1)) {
+                    if (formIndex == Integer.MAX_VALUE) break; // or (i+1) would overflow
+                    final int formId = bufInt.get(docIndex + formIndex);
+                    formEnum.freqByForm[formId]++;
+                }
+                // 
+                
+                context.clear();
+                docLast = docId;
+            }
+            context.set(Math.max(0, pos - left), Math.min(docLen, pos + 1 + right));
+        }
+        
+        return docposList;
+        /**
             // loop on all documents for this leaf
             final int max = leaf.maxDoc();
             final Bits liveDocs = leaf.getLiveDocs();
@@ -249,7 +254,7 @@ public class FieldRail
             for (int docLeaf = 0; docLeaf < max; docLeaf++) {
                 final int docId = docBase + docLeaf;
                 final int docLen = limInt[docId];
-                if (hasFilter && !forms.filter.get(docId)) {
+                if (hasFilter && docFilter.get(docId)) {
                     continue; // document not in the document filter
                 }
                 if (hasLive && !liveDocs.get(docLeaf)) {
@@ -311,9 +316,7 @@ public class FieldRail
                     boolean isPivot = pivots.get(pos);
                     pos = contexts.nextSetBit(pos + 1);
                     // gap, another context, reset coocs cluster
-                    if (hasEdges && pos > lastpos + 1) {
-                        forms.edges.declust();
-                    }
+
                     lastpos = pos;
                     // Check words to count
                     if (formId == 0) {
@@ -322,20 +325,16 @@ public class FieldRail
                     // keep pivots
                     else if (isPivot) {
 
-                    } else if (locs && !ftext.formLoc.get(formId)) {
+                    } else if (locs && !fieldText.formLoc.get(formId)) {
                         continue;
-                    } else if (noStop && ftext.isStop(formId)) {
+                    } else if (noStop && fieldText.isStop(formId)) {
                         continue;
                     }
                     // filter coocs by tag
-                    else if (hasTags && !forms.tags.accept(ftext.formTag[formId])) {
+                    else if (hasTags && !forms.tags.accept(fieldText.formTag[formId])) {
                         continue;
                     }
 
-                    if (hasEdges) {
-                        // threshold ?
-                        forms.edges.clust(formId);
-                    }
 
                     forms.occsPart++;
                     forms.formFreq[formId]++;
@@ -350,9 +349,7 @@ public class FieldRail
         if (mi != null) {
             score(forms, pivotIds, mi);
         }
-        return found;
         */
-        
     }
 
     /**
@@ -374,17 +371,17 @@ public class FieldRail
         }
         EdgeRoller span = new EdgeRoller(formIds, distance);
         // filter documents
-        IntBuffer bufInt = channelMap.rewind().asIntBuffer();
+        IntBuffer bufInt = channelMap.rewind().asIntBuffer().asReadOnlyBuffer();
 
         if (docFilter != null) {
             for (int docId = docFilter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = docFilter
                     .nextSetBit(docId + 1)) {
-                if (limInt[docId] == 0) {
+                if (lenByDoc[docId] == 0) {
                     continue; // deleted or with no value for this field
                 }
                 span.clear();
-                bufInt.position(posInt[docId]);
-                for (int position = 0, max = limInt[docId]; position < max; position++) {
+                bufInt.position(indexByDoc[docId]);
+                for (int position = 0, max = lenByDoc[docId]; position < max; position++) {
                     int formId = bufInt.get();
                     span.push(position, formId);
                 }
@@ -392,12 +389,12 @@ public class FieldRail
         } 
         else {
             for (int docId = 0; docId < maxDoc; docId++) {
-                if (limInt[docId] == 0) {
+                if (lenByDoc[docId] == 0) {
                     continue; // deleted or with no value for this field
                 }
                 span.clear();
-                bufInt.position(posInt[docId]);
-                for (int position = 0, max = limInt[docId]; position < max; position++) {
+                bufInt.position(indexByDoc[docId]);
+                for (int position = 0, max = lenByDoc[docId]; position < max; position++) {
                     int formId = bufInt.get();
                     span.push(position, formId);
                 }
@@ -421,7 +418,7 @@ public class FieldRail
     public EdgeMatrix edges(final int[] pivotIds, final int left, final int right, int[] coocIds, final BitSet docFilter) throws IOException
     {
         // sort the pivots
-        BytesRef[] pivotBytes = FieldCharsAbstract.bytesSorted(this.dic, pivotIds);
+        BytesRef[] pivotBytes = fieldText.bytesSorted(pivotIds);
         if (pivotBytes == null) {
             return null;
         }
@@ -435,8 +432,7 @@ public class FieldRail
         coocIds = IntList.uniq(coocIds);
         EdgeMatrix matrix = new EdgeMatrix(coocIds, false);
         IntList nodeIndexes = new IntList();
-        DirectoryReader reader = alix.reader();
-        IntBuffer bufInt = channelMap.rewind().asIntBuffer(); // the rail
+        IntBuffer bufInt = channelMap.rewind().asIntBuffer().asReadOnlyBuffer(); // the rail
         final boolean hasDocFilter = (docFilter != null); // filter docs ?
         PostingsEnum postings = null; // reuse
         // loop on leafs, open an index may cost
@@ -460,7 +456,7 @@ public class FieldRail
                     if (hasLive && !live.get(docLeaf)) continue; // deleted doc
                     final int docId = docBase + docLeaf;
                     if (hasDocFilter && !docFilter.get(docId)) continue; // document not in the filter
-                    final int docLen = limInt[docId];
+                    final int docLen = lenByDoc[docId];
                     if (docLen < 2) {
                         continue; // empty doc
                     }
@@ -471,7 +467,7 @@ public class FieldRail
                         continue;
                     }
                     // term found in this doc, search each occurrence
-                    final int posDoc = posInt[docId];
+                    final int posDoc = indexByDoc[docId];
                     for (int occI = 0; occI < freq; occI++) {
                         int posPivot = -1;
                         try {
@@ -529,34 +525,31 @@ public class FieldRail
         BitSet exclude = null;
         if (formFilter != null) {
             hasExclude = true;
-            exclude = ftext.formFilter(formFilter);
+            exclude = fieldText.formFilter(formFilter);
         } else {
             hasExclude = false;
         }
         final boolean hasPartition = (docFilter != null);
 
         EdgeMap expressions = new EdgeMap(true);
-        int maxDoc = this.maxDoc;
-        int[] posInt = this.posInt;
-        int[] limInt = this.limInt;
-        BytesRefHash formDic = ftext.dic;
+        BytesRefHash formDic = fieldText.dic;
         // no cost in time and memory to take one int view, seems faster to loop
-        IntBuffer bufInt = channelMap.rewind().asIntBuffer();
+        IntBuffer bufInt = channelMap.rewind().asIntBuffer().asReadOnlyBuffer();
         // a vector to record formId events
         IntList slider = new IntList();
         Chain chain = new Chain();
         BytesRef bytes = new BytesRef();
         for (int docId = 0; docId < maxDoc; docId++) {
-            if (limInt[docId] == 0)
+            if (lenByDoc[docId] == 0)
                 continue; // deleted or with no value for this field
             if (hasPartition && !docFilter.get(docId))
                 continue; // document not in the filter
-            bufInt.position(posInt[docId]); // position cursor in the rail
+            bufInt.position(indexByDoc[docId]); // position cursor in the rail
             IntPairMutable key = new IntPairMutable();
-            for (int i = 0, max = limInt[docId]; i < max; i++) {
+            for (int i = 0, max = lenByDoc[docId]; i < max; i++) {
                 final int formId = bufInt.get();
                 // pun or hole, reset expression
-                if (formId == 0 || ftext.isPunctuation(formId)) {
+                if (formId == 0 || fieldText.isPunctuation(formId)) {
                     slider.clear();
                     continue;
                 }
@@ -613,8 +606,8 @@ public class FieldRail
         long[] freqs = new long[dic.size()];
         final boolean hasFilter = (docFilter != null);
         int maxDoc = this.maxDoc;
-        int[] posInt = this.posInt;
-        int[] limInt = this.limInt;
+        int[] posInt = this.indexByDoc;
+        int[] limInt = this.lenByDoc;
 
         /*
          * // if channelMap is copied here as int[], same cost as IntBuffer // gain x2
@@ -622,7 +615,7 @@ public class FieldRail
          * int[(int)(channel.size() / 4)]; channelMap.asIntBuffer().get(rail);
          */
         // no cost in time and memory to take one int view, seems faster to loop
-        IntBuffer bufInt = channelMap.rewind().asIntBuffer();
+        IntBuffer bufInt = channelMap.rewind().asIntBuffer().asReadOnlyBuffer();
         for (int docId = 0; docId < maxDoc; docId++) {
             if (limInt[docId] == 0)
                 continue; // deleted or with no value for this field
@@ -679,7 +672,7 @@ public class FieldRail
         DataInputStream data = new DataInputStream(Channels.newInputStream(channel));
         long version = data.readLong();
         // bad version reproduce
-        if (version != alix.reader().getVersion()) {
+        if (version != reader.getVersion()) {
             data.close();
             channel.close();
             store();
@@ -698,8 +691,8 @@ public class FieldRail
             limInt[i] = docLen;
             indInt += docLen + 1;
         }
-        this.posInt = posInt;
-        this.limInt = limInt;
+        this.indexByDoc = posInt;
+        this.lenByDoc = limInt;
         this.channelMap = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
     }
 
@@ -718,7 +711,6 @@ public class FieldRail
     private Map<Integer, int[]> positions(final BytesRef[] formsBytes, final BitSet docFilter) throws IOException
     {
         boolean hasFilter = (docFilter != null);
-        final IndexReader reader = alix.reader();
         PostingsEnum postings = null;
         final Map<Integer, IntList> work = new HashMap<>();
         // loop on leafs, open an index may cost
@@ -769,7 +761,6 @@ public class FieldRail
                 }
             }
         }
-
         return null;
     }
     
@@ -789,14 +780,13 @@ public class FieldRail
             throw new IOException("No positions to extract.");
         }
         buf.clear(); 
-        BytesRefHash hashDic = this.dic;
         TermsEnum tenum = terms.iterator();
         PostingsEnum postings = null;
         BytesRef bytes = null;
         int maxpos = -1;
         int minpos = Integer.MAX_VALUE;
         while ((bytes = tenum.next()) != null) {
-            int formId = hashDic.find(bytes);
+            int formId = dic.find(bytes);
             if (formId < 0)
                 System.out.println("unknown term? \"" + bytes.utf8ToString() + "\"");
             postings = tenum.postings(postings, PostingsEnum.POSITIONS);
@@ -828,7 +818,7 @@ public class FieldRail
      * </ul>
      * 
      * 
-     * @param formEnum form enumeration from {@link #coocs(BytesRef[], int, int, BitSet)}.
+     * @param formEnum form enumeration.
      * @param pivotIds form ids of pivots words.
      * @param mi mutual information algorithm to calculate score.
      * @throws IOException Lucene errors.
@@ -846,14 +836,14 @@ public class FieldRail
         if (formEnum.freqByForm == null || formEnum.freqByForm.length < maxForm) {
             throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
         }
-        final long N = ftext.occsAll; // global
+        final long N = fieldText.occsAll; // global
         // Count of pivot occurrences for MI scorer
         long add = 0;
         for (int formId : pivotIds) {
-            add += ftext.occs(formId);
+            add += fieldText.occs(formId);
         }
         final long Ob = add;
-        int maxForm = ftext.maxForm;
+        int maxForm = fieldText.maxForm;
         // reuse score for multiple calculations
         if (formEnum.scoreByform == null || formEnum.scoreByform.length != maxForm) {
             formEnum.scoreByform = new double[maxForm]; // by term, occurrences counts
@@ -873,7 +863,7 @@ public class FieldRail
             if (Oab > Ob) {
                 Oab = Ob;
             }
-            formEnum.scoreByform[formId] = mi.score(Oab, ftext.occs(formId), Ob, N);
+            formEnum.scoreByform[formId] = mi.score(Oab, fieldText.occs(formId), Ob, N);
         }
         // results is populated of scores, do not sort here, let consumer choose
     }
@@ -888,7 +878,6 @@ public class FieldRail
     private void store() throws IOException
     {
         final FileLock lock;
-        DirectoryReader reader = alix.reader();
         int maxDoc = reader.maxDoc();
         final FileChannel channel = FileChannel.open(path, StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.READ, StandardOpenOption.WRITE);
@@ -897,10 +886,9 @@ public class FieldRail
         // get document sizes
         // fieldText.docOccs is not correct because of holes
         int[] docLen = new int[maxDoc];
-        // new API, not tested
-        TermVectors tread = reader.termVectors();
+        TermVectors tveks = reader.termVectors();
         for (int docId = 0; docId < maxDoc; docId++) {
-            Terms termVector = tread.get(docId, fieldName);
+            Terms termVector = tveks.get(docId, fieldName);
             docLen[docId] = length(termVector);
         }
 
@@ -918,10 +906,9 @@ public class FieldRail
         bufint.put(docLen);
         IntList ints = new IntList();
 
-        // new API, not tested
-        tread = reader.termVectors();
+        tveks = reader.termVectors();
         for (int docId = 0; docId < maxDoc; docId++) {
-            Terms termVector = tread.get(docId, fieldName);
+            Terms termVector = tveks.get(docId, fieldName);
             if (termVector == null) {
                 bufint.put(-1);
                 continue;
@@ -946,8 +933,8 @@ public class FieldRail
     {
         int limit = 100;
         StringBuilder sb = new StringBuilder();
-        IntBuffer bufInt = channelMap.position(posInt[docId] * 4).asIntBuffer();
-        bufInt.limit(limInt[docId]);
+        IntBuffer bufInt = channelMap.position(indexByDoc[docId] * 4).asIntBuffer();
+        bufInt.limit(lenByDoc[docId]);
         BytesRef ref = new BytesRef();
         while (bufInt.hasRemaining()) {
             int formId = bufInt.get();

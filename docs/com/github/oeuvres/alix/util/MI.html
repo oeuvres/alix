@@ -144,17 +144,21 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected double[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#E(double,double,double,double)" class="member-name-link">E</a><wbr>(double&nbsp;Oab,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#expected(double,double,double,double)" class="member-name-link">expected</a><wbr>(double&nbsp;Oab,
  double&nbsp;Oa,
  double&nbsp;Ob,
  double&nbsp;N)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Used by <a href="#CHI2"><code>CHI2</code></a> or <a href="#G"><code>G</code></a>, calculate the four expected {Eab, Ea, Eb, }</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected double[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#O(double,double,double,double)" class="member-name-link">O</a><wbr>(double&nbsp;Oab,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#observed(double,double,double,double)" class="member-name-link">observed</a><wbr>(double&nbsp;Oab,
  double&nbsp;Oa,
  double&nbsp;Ob,
  double&nbsp;N)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Returns the four observed.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>abstract double</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#score(double,double,double,double)" class="member-name-link">score</a><wbr>(double&nbsp;Oab,
  double&nbsp;Oa,
@@ -283,21 +287,40 @@ not permitted.)</div>
 </section>
 </li>
 <li>
-<section class="detail" id="E(double,double,double,double)">
-<h3>E</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">double[]</span>&nbsp;<span class="element-name">E</span><wbr><span class="parameters">(double&nbsp;Oab,
+<section class="detail" id="expected(double,double,double,double)">
+<h3>expected</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">double[]</span>&nbsp;<span class="element-name">expected</span><wbr><span class="parameters">(double&nbsp;Oab,
  double&nbsp;Oa,
  double&nbsp;Ob,
  double&nbsp;N)</span></div>
+<div class="block">Used by <a href="#CHI2"><code>CHI2</code></a> or <a href="#G"><code>G</code></a>, calculate the four expected {Eab, Ea, Eb, }</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>Oab</code> - </dd>
+<dd><code>Oa</code> - </dd>
+<dd><code>Ob</code> - </dd>
+<dd><code>N</code> - </dd>
+<dt>Returns:</dt>
+</dl>
 </section>
 </li>
 <li>
-<section class="detail" id="O(double,double,double,double)">
-<h3>O</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">double[]</span>&nbsp;<span class="element-name">O</span><wbr><span class="parameters">(double&nbsp;Oab,
+<section class="detail" id="observed(double,double,double,double)">
+<h3>observed</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">double[]</span>&nbsp;<span class="element-name">observed</span><wbr><span class="parameters">(double&nbsp;Oab,
  double&nbsp;Oa,
  double&nbsp;Ob,
  double&nbsp;N)</span></div>
+<div class="block">Returns the four observed.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>Oab</code> - </dd>
+<dd><code>Oa</code> - </dd>
+<dd><code>Ob</code> - </dd>
+<dd><code>N</code> - </dd>
+<dt>Returns:</dt>
+<dd>{O}</dd>
+</dl>
 </section>
 </li>
 </ul>

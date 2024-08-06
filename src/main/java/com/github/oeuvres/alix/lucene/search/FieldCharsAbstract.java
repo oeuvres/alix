@@ -10,6 +10,7 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
@@ -17,7 +18,6 @@ import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.util.IntList;
-import com.github.oeuvres.alix.web.Option;
 
 /**
  * Stats for a field with chars, indexed {@link TextField}, or not, like for facets {@link StringField},
@@ -34,7 +34,7 @@ abstract class FieldCharsAbstract extends FieldAbstract
     /** docsByform[formId] = docs; count of docs by form. */
     protected int[] docsByform;
 
-    public FieldCharsAbstract(IndexReader reader, String fieldName) throws IOException {
+    public FieldCharsAbstract(DirectoryReader reader, String fieldName) throws IOException {
         super(reader, fieldName);
     }
 
@@ -184,11 +184,10 @@ abstract class FieldCharsAbstract extends FieldAbstract
      * Normalize a list of forms to search in an {@link IndexReader}.
      * Filter null and forms absent from the dictionary.
      * 
-     * @param dic a dictionary of terms extracted from a field.
      * @param forms  collection of forms to test against dictionary.
      * @return set of unique forms, sorted for efficient search with {@link TermsEnum#seekExact(BytesRef)}.
      */
-    public static BytesRef[] bytesSorted(final BytesRefHash dic, CharSequence[] forms)
+    public BytesRef[] bytesSorted(CharSequence[] forms)
     {
         if (forms == null) {
             return null;
@@ -222,11 +221,10 @@ abstract class FieldCharsAbstract extends FieldAbstract
      * Normalize a list of formIds to search in an {@link IndexReader}.
      * Filter forms absent from the dictionary.
      * 
-     * @param dic a dictionary of terms extracted from a field.
      * @param bytesIds  collection of ids to test against dictionary.
      * @return set of unique forms, sorted for efficient search with {@link TermsEnum#seekExact(BytesRef)}.
      */
-    public static BytesRef[] bytesSorted(final BytesRefHash dic, int[] bytesIds)
+    public BytesRef[] bytesSorted(int[] bytesIds)
     {
         bytesIds = IntList.uniq(bytesIds);
         if (bytesIds == null) {

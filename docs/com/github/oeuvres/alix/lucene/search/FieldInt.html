@@ -124,7 +124,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Infos about the lucene field.</div>
 </div>
-<div class="col-first odd-row-color"><code>protected final org.apache.lucene.index.IndexReader</code></div>
+<div class="col-first odd-row-color"><code>protected final org.apache.lucene.index.DirectoryReader</code></div>
 <div class="col-second odd-row-color"><code><a href="#reader" class="member-name-link">reader</a></code></div>
 <div class="col-last odd-row-color">
 <div class="block">Lucene index reader, cache the state.</div>
@@ -140,7 +140,7 @@ loadScripts(document, 'script');</script>
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(org.apache.lucene.index.IndexReader,java.lang.String)" class="member-name-link">FieldInt</a><wbr>(org.apache.lucene.index.IndexReader&nbsp;reader,
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(org.apache.lucene.index.DirectoryReader,java.lang.String)" class="member-name-link">FieldInt</a><wbr>(org.apache.lucene.index.DirectoryReader&nbsp;reader,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Constructor,</div>
@@ -231,7 +231,7 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="reader">
 <h3>reader</h3>
-<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.index.IndexReader</span>&nbsp;<span class="element-name">reader</span></div>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.index.DirectoryReader</span>&nbsp;<span class="element-name">reader</span></div>
 <div class="block">Lucene index reader, cache the state.</div>
 </section>
 </li>
@@ -258,9 +258,9 @@ loadScripts(document, 'script');</script>
 <h2>Constructor Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="&lt;init&gt;(org.apache.lucene.index.IndexReader,java.lang.String)">
+<section class="detail" id="&lt;init&gt;(org.apache.lucene.index.DirectoryReader,java.lang.String)">
 <h3>FieldInt</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FieldInt</span><wbr><span class="parameters">(org.apache.lucene.index.IndexReader&nbsp;reader,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FieldInt</span><wbr><span class="parameters">(org.apache.lucene.index.DirectoryReader&nbsp;reader,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</span>
          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Constructor,</div>

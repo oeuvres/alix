@@ -39,9 +39,9 @@ import java.util.Arrays;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -116,7 +116,7 @@ public class FieldFacet extends FieldCharsAbstract
      * @param fieldName name of a lucene text field.
      * @throws IOException Lucene errors.
      */
-    public FieldFacet(final IndexReader reader, final String fieldName) throws IOException {
+    public FieldFacet(final DirectoryReader reader, final String fieldName) throws IOException {
         super(reader, fieldName);
         // final int[] docOccs = new int[reader.maxDoc()];
         type = info.getDocValuesType();

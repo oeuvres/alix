@@ -25,7 +25,6 @@ public enum Distrib {
      * Log test. G = 2 Σ(Oi.ln(Oi/Ei))
      */
     G() {
-        // don’t try to get variation
         @Override
         public double score(final double freq, final double docLen)
         {

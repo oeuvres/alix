@@ -34,8 +34,8 @@ public class FieldRailTest extends FieldRail
         AtomicIntegerArray freqs = new AtomicIntegerArray(dic.size());
         boolean hasFilter = (filter != null);
         int maxDoc = this.maxDoc;
-        int[] posInt = this.posInt;
-        int[] limInt = this.limInt;
+        int[] posInt = this.indexByDoc;
+        int[] limInt = this.lenByDoc;
 
         IntStream loop = IntStream.range(0, maxDoc).filter(docId -> {
             if (limInt[docId] == 0)

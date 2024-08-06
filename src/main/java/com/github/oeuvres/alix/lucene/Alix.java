@@ -398,7 +398,8 @@ public class Alix
         FieldRail fieldRail = (FieldRail) cache(key);
         if (fieldRail != null)
             return fieldRail;
-        fieldRail = new FieldRail(this, fieldName);
+        FieldText fieldText = fieldText(fieldName);
+        fieldRail = new FieldRail(fieldText);
         cache(key, fieldRail);
         return fieldRail;
     }

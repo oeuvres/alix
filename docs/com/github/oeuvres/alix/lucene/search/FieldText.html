@@ -145,7 +145,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">occsByform[formId] = occs; count of occurrences by form.</div>
 </div>
-<div class="col-first even-row-color"><code>protected final org.apache.lucene.index.IndexReader</code></div>
+<div class="col-first even-row-color"><code>protected final org.apache.lucene.index.DirectoryReader</code></div>
 <div class="col-second even-row-color"><code><a href="#reader" class="member-name-link">reader</a></code></div>
 <div class="col-last even-row-color">
 <div class="block">Lucene index reader, cache the state.</div>
@@ -161,7 +161,7 @@ loadScripts(document, 'script');</script>
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(org.apache.lucene.index.IndexReader,java.lang.String)" class="member-name-link">FieldText</a><wbr>(org.apache.lucene.index.IndexReader&nbsp;reader,
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(org.apache.lucene.index.DirectoryReader,java.lang.String)" class="member-name-link">FieldText</a><wbr>(org.apache.lucene.index.DirectoryReader&nbsp;reader,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Build the dictionaries and stats.</div>
@@ -180,16 +180,14 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static org.apache.lucene.util.BytesRef[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#bytesSorted(org.apache.lucene.util.BytesRefHash,int%5B%5D)" class="member-name-link">bytesSorted</a><wbr>(org.apache.lucene.util.BytesRefHash&nbsp;dic,
- int[]&nbsp;bytesIds)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>org.apache.lucene.util.BytesRef[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#bytesSorted(int%5B%5D)" class="member-name-link">bytesSorted</a><wbr>(int[]&nbsp;bytesIds)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Normalize a list of formIds to search in an <code>IndexReader</code>.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static org.apache.lucene.util.BytesRef[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#bytesSorted(org.apache.lucene.util.BytesRefHash,java.lang.CharSequence%5B%5D)" class="member-name-link">bytesSorted</a><wbr>(org.apache.lucene.util.BytesRefHash&nbsp;dic,
- <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>org.apache.lucene.util.BytesRef[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#bytesSorted(java.lang.CharSequence%5B%5D)" class="member-name-link">bytesSorted</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Normalize a list of forms to search in an <code>IndexReader</code>.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static org.apache.lucene.util.BytesRefHash</code></div>
@@ -371,13 +369,6 @@ loadScripts(document, 'script');</script>
 <h2>Field Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="occsByForm">
-<h3>occsByForm</h3>
-<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">occsByForm</span></div>
-<div class="block">occsByform[formId] = occs; count of occurrences by form.</div>
-</section>
-</li>
-<li>
 <section class="detail" id="occsAll">
 <h3>occsAll</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsAll</span></div>
@@ -389,6 +380,13 @@ loadScripts(document, 'script');</script>
 <h3>occsByDoc</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">occsByDoc</span></div>
 <div class="block">occsByDoc[docId] = occs; count of occurrences by document, without empty positions.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="occsByForm">
+<h3>occsByForm</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">occsByForm</span></div>
+<div class="block">occsByform[formId] = occs; count of occurrences by form.</div>
 </section>
 </li>
 <li>
@@ -429,7 +427,7 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="reader">
 <h3>reader</h3>
-<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.index.IndexReader</span>&nbsp;<span class="element-name">reader</span></div>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.index.DirectoryReader</span>&nbsp;<span class="element-name">reader</span></div>
 <div class="block">Lucene index reader, cache the state.</div>
 </section>
 </li>
@@ -456,9 +454,9 @@ loadScripts(document, 'script');</script>
 <h2>Constructor Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="&lt;init&gt;(org.apache.lucene.index.IndexReader,java.lang.String)">
+<section class="detail" id="&lt;init&gt;(org.apache.lucene.index.DirectoryReader,java.lang.String)">
 <h3>FieldText</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FieldText</span><wbr><span class="parameters">(org.apache.lucene.index.IndexReader&nbsp;reader,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FieldText</span><wbr><span class="parameters">(org.apache.lucene.index.DirectoryReader&nbsp;reader,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</span>
           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Build the dictionaries and stats. Each form indexed for the field will be
@@ -910,15 +908,13 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="bytesSorted(org.apache.lucene.util.BytesRefHash,java.lang.CharSequence[])">
+<section class="detail" id="bytesSorted(java.lang.CharSequence[])">
 <h3>bytesSorted</h3>
-<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRef[]</span>&nbsp;<span class="element-name">bytesSorted</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRefHash&nbsp;dic,
- <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRef[]</span>&nbsp;<span class="element-name">bytesSorted</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms)</span></div>
 <div class="block">Normalize a list of forms to search in an <code>IndexReader</code>.
  Filter null and forms absent from the dictionary.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>dic</code> - a dictionary of terms extracted from a field.</dd>
 <dd><code>forms</code> - collection of forms to test against dictionary.</dd>
 <dt>Returns:</dt>
 <dd>set of unique forms, sorted for efficient search with <code>TermsEnum.seekExact(BytesRef)</code>.</dd>
@@ -926,15 +922,13 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="bytesSorted(org.apache.lucene.util.BytesRefHash,int[])">
+<section class="detail" id="bytesSorted(int[])">
 <h3>bytesSorted</h3>
-<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRef[]</span>&nbsp;<span class="element-name">bytesSorted</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRefHash&nbsp;dic,
- int[]&nbsp;bytesIds)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRef[]</span>&nbsp;<span class="element-name">bytesSorted</span><wbr><span class="parameters">(int[]&nbsp;bytesIds)</span></div>
 <div class="block">Normalize a list of formIds to search in an <code>IndexReader</code>.
  Filter forms absent from the dictionary.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>dic</code> - a dictionary of terms extracted from a field.</dd>
 <dd><code>bytesIds</code> - collection of ids to test against dictionary.</dd>
 <dt>Returns:</dt>
 <dd>set of unique forms, sorted for efficient search with <code>TermsEnum.seekExact(BytesRef)</code>.</dd>

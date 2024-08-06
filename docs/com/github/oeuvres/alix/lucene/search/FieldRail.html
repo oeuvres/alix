@@ -115,7 +115,17 @@ loadScripts(document, 'script');</script>
 <div class="block">Name of the reference text field</div>
 </div>
 <div class="col-first even-row-color"><code>protected int[]</code></div>
-<div class="col-second even-row-color"><code><a href="#limInt" class="member-name-link">limInt</a></code></div>
+<div class="col-second even-row-color"><code><a href="#indexByDoc" class="member-name-link">indexByDoc</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">Index of positions for each doc im channel</div>
+</div>
+<div class="col-first odd-row-color"><code>protected final org.apache.lucene.index.FieldInfo</code></div>
+<div class="col-second odd-row-color"><code><a href="#info" class="member-name-link">info</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">Infos about the lucene field.</div>
+</div>
+<div class="col-first even-row-color"><code>protected int[]</code></div>
+<div class="col-second even-row-color"><code><a href="#lenByDoc" class="member-name-link">lenByDoc</a></code></div>
 <div class="col-last even-row-color">
 <div class="block">Index of sizes for each doc</div>
 </div>
@@ -124,10 +134,10 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Max for docId</div>
 </div>
-<div class="col-first even-row-color"><code>protected int[]</code></div>
-<div class="col-second even-row-color"><code><a href="#posInt" class="member-name-link">posInt</a></code></div>
+<div class="col-first even-row-color"><code>protected final org.apache.lucene.index.DirectoryReader</code></div>
+<div class="col-second even-row-color"><code><a href="#reader" class="member-name-link">reader</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Index of positions for each doc im channel</div>
+<div class="block">Lucene index reader, cache the state.</div>
 </div>
 </div>
 </section>
@@ -140,8 +150,7 @@ loadScripts(document, 'script');</script>
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(com.github.oeuvres.alix.lucene.Alix,java.lang.String)" class="member-name-link">FieldRail</a><wbr>(<a href="../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
- <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</code></div>
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(com.github.oeuvres.alix.lucene.search.FieldText)" class="member-name-link">FieldRail</a><wbr>(<a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;fieldText)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Load rail of words as int, build it as file if necessary.</div>
 </div>
@@ -159,13 +168,13 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)" class="member-name-link">coocs</a><wbr>(org.apache.lucene.util.BytesRef[]&nbsp;pivotsBytes,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../util/RowcolQueue.html" title="class in com.github.oeuvres.alix.util">RowcolQueue</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)" class="member-name-link">coocs</a><wbr>(org.apache.lucene.util.BytesRef[]&nbsp;pivotBytes,
  int&nbsp;left,
  int&nbsp;right,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Build a cooccurrence freqList in formId order, attached to a FormEnum object.</div>
+<div class="block">Build a freqList of coocurrents , attached to a FormEnum object.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../util/EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#edges(int%5B%5D,int,int,int%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">edges</a><wbr>(int[]&nbsp;pivotIds,
@@ -248,6 +257,20 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
+<section class="detail" id="reader">
+<h3>reader</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.index.DirectoryReader</span>&nbsp;<span class="element-name">reader</span></div>
+<div class="block">Lucene index reader, cache the state.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="info">
+<h3>info</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.index.FieldInfo</span>&nbsp;<span class="element-name">info</span></div>
+<div class="block">Infos about the lucene field.</div>
+</section>
+</li>
+<li>
 <section class="detail" id="dic">
 <h3>dic</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRefHash</span>&nbsp;<span class="element-name">dic</span></div>
@@ -276,16 +299,16 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="posInt">
-<h3>posInt</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">posInt</span></div>
+<section class="detail" id="indexByDoc">
+<h3>indexByDoc</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">indexByDoc</span></div>
 <div class="block">Index of positions for each doc im channel</div>
 </section>
 </li>
 <li>
-<section class="detail" id="limInt">
-<h3>limInt</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">limInt</span></div>
+<section class="detail" id="lenByDoc">
+<h3>lenByDoc</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">lenByDoc</span></div>
 <div class="block">Index of sizes for each doc</div>
 </section>
 </li>
@@ -298,16 +321,14 @@ loadScripts(document, 'script');</script>
 <h2>Constructor Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="&lt;init&gt;(com.github.oeuvres.alix.lucene.Alix,java.lang.String)">
+<section class="detail" id="&lt;init&gt;(com.github.oeuvres.alix.lucene.search.FieldText)">
 <h3>FieldRail</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FieldRail</span><wbr><span class="parameters">(<a href="../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
- <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldName)</span>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">FieldRail</span><wbr><span class="parameters">(<a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;fieldText)</span>
           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Load rail of words as int, build it as file if necessary.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>alix</code> - a wrapper around a lucene <code>IndexReader</code>.</dd>
-<dd><code>fieldName</code> - name of a field.</dd>
+<dd><code>fieldText</code> - alix stats on an indexed and tokenized lucene field.</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene erros.</dd>
 </dl>
@@ -324,17 +345,17 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="coocs(org.apache.lucene.util.BytesRef[],int,int,org.apache.lucene.util.BitSet)">
 <h3>coocs</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">coocs</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRef[]&nbsp;pivotsBytes,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../../util/RowcolQueue.html" title="class in com.github.oeuvres.alix.util">RowcolQueue</a></span>&nbsp;<span class="element-name">coocs</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRef[]&nbsp;pivotBytes,
  int&nbsp;left,
  int&nbsp;right,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Build a cooccurrence freqList in formId order, attached to a FormEnum object.
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Build a freqList of coocurrents , attached to a FormEnum object.
  Returns the count of occurences found. This method may need a lot of optional
  params, set on the FormEnum object.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>pivotsBytes</code> - an ordered set of lucene terms.</dd>
+<dd><code>pivotBytes</code> - an ordered set of lucene terms.</dd>
 <dd><code>left</code> - width of context before a pivot.</dd>
 <dd><code>right</code> - width of context after a pivot.</dd>
 <dd><code>docFilter</code> - optional, set of lucene internal docId to restrict collect.</dd>
@@ -478,7 +499,7 @@ loadScripts(document, 'script');</script>
  </ul></div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>formEnum</code> - form enumeration from <a href="#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>coocs(BytesRef[], int, int, BitSet)</code></a>.</dd>
+<dd><code>formEnum</code> - form enumeration.</dd>
 <dd><code>pivotIds</code> - form ids of pivots words.</dd>
 <dd><code>mi</code> - mutual information algorithm to calculate score.</dd>
 <dt>Throws:</dt>

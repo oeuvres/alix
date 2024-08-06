@@ -3,16 +3,19 @@ package com.github.oeuvres.alix.lucene.search;
 
 import java.io.IOException;
 
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.IndexReader;
 
+/**
+ * Minimum contract for an Alix field.
+ */
 abstract class FieldAbstract
 {
     /** Name of a lucene field from which extract and cache stats. */
     protected final String fieldName;
     /** Lucene index reader, cache the state. */
-    protected final IndexReader reader;
+    protected final DirectoryReader reader;
     /** Infos about the lucene field. */
     protected final FieldInfo info;
     /** Σ docsByForm; global count of docs relevant for this field. */
@@ -26,7 +29,7 @@ abstract class FieldAbstract
      * @param fieldName name of a lucene text field.
      * @throws IOException Lucene errors.
      */
-    public FieldAbstract(final IndexReader reader, final String fieldName) throws IOException
+    public FieldAbstract(final DirectoryReader reader, final String fieldName) throws IOException
     {
         this.reader = reader;
         this.fieldName = fieldName;

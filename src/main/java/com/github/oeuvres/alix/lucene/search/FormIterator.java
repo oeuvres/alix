@@ -1,5 +1,6 @@
 package com.github.oeuvres.alix.lucene.search;
 
+import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.text.Collator;
 
@@ -45,7 +46,7 @@ public interface FormIterator
     public long freq();
 
     /**
-     * Returns true if the iteration has more elements.
+     * Like {@link Iterator#hasNext()}, returns true if the iteration has more elements.
      * 
      * @return if true, next() can be called without surprise.
      */
@@ -70,7 +71,7 @@ public interface FormIterator
     public FormIterator limit(int limit);
 
     /**
-     * Returns the next element identifier in enumeration.
+     * Like {@link Iterator#next()}, returns the next element identifier in enumeration.
      * 
      * @return A formId
      */

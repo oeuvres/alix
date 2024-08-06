@@ -71,21 +71,20 @@ import com.github.oeuvres.alix.util.IntList;
  */
 public class FieldText extends FieldCharsAbstract
 {
-    /** occsByform[formId] = occs; count of occurrences by form. */
-    protected final long[] occsByForm;
+    /** locByForm.get(formId) == true: form is a locution. */
+    private BitSet locByForm;
     /** Σ occsByForm; global count of occs for this field, without empty positions. */
     protected final long occsAll;
+    /** occsByDoc[docId] = occs; count of occurrences by document, without empty positions. */
+    protected final int[] occsByDoc;
+    /** occsByform[formId] = occs; count of occurrences by form. */
+    protected final long[] occsByForm;
+    /** punByForm.get(formId) == true: form is punctuation. */
+    private BitSet punByForm;
     /** stopByForm.get(formId) == true: form is a stop word. */
     private BitSet stopByForm;
     /** tagByForm[formI] = {@link Tag#flag()}; lexical type of form. */
     private int[] tagByForm;
-    /** locByForm.get(formId) == true: form is a locution. */
-    private BitSet locByForm;
-    /** punByForm.get(formId) == true: form is punctuation. */
-    private BitSet punByForm;
-    /** occsByDoc[docId] = occs; count of occurrences by document, without empty positions. */
-    protected final int[] occsByDoc;
-    
     /**
      * Build the dictionaries and stats. Each form indexed for the field will be
      * identified by an int (formId). This id will be in freq order: the
@@ -96,7 +95,7 @@ public class FieldText extends FieldCharsAbstract
      * @param fieldName name of a lucene text field.
      * @throws IOException Lucene errors.
      */
-    public FieldText(final IndexReader reader, final String fieldName) throws IOException {
+    public FieldText(final DirectoryReader reader, final String fieldName) throws IOException {
         super(reader, fieldName);
         IndexOptions options = info.getIndexOptions();
         if (options == IndexOptions.NONE || options == IndexOptions.DOCS) {
@@ -647,7 +646,7 @@ public class FieldText extends FieldCharsAbstract
      */
     public int[] formIds(CharSequence[] forms, final BitSet docFilter) throws IOException
     {
-        BytesRef[] formsBytes = FieldCharsAbstract.bytesSorted(dic, forms);
+        BytesRef[] formsBytes = bytesSorted(forms);
         if (formsBytes == null) return null;
         return formIds(formsBytes, docFilter);
     }

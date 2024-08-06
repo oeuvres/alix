@@ -96,8 +96,8 @@ public enum MI {
         {
             // events : m11, m10, m01, m00 ; expected
 
-            double[] E = E(Oab, Oa, Ob, N);
-            double[] O = O(Oab, Oa, Ob, N);
+            double[] E = expected(Oab, Oa, Ob, N);
+            double[] O = observed(Oab, Oa, Ob, N);
             int n = 4;
             double sum = 0d;
             for (int i = 0; i < n; i++) {
@@ -115,8 +115,8 @@ public enum MI {
     G() {
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
-            double[] E = E(Oab, Oa, Ob, N);
-            double[] O = O(Oab, Oa, Ob, N);
+            double[] E = expected(Oab, Oa, Ob, N);
+            double[] O = observed(Oab, Oa, Ob, N);
             double sum = 0d;
             for (int i = 0; i < 4; i++) {
                 if (O[i] == 0)
@@ -139,7 +139,15 @@ public enum MI {
 
     abstract public double score(final double Oab, final double Oa, final double Ob, final double N);
 
-    protected double[] E(final double Oab, final double Oa, final double Ob, final double N)
+    /**
+     * Used by {@link #CHI2} or {@link #G}, calculate the four expected {Eab, Ea, Eb, }
+     * @param Oab
+     * @param Oa
+     * @param Ob
+     * @param N
+     * @return
+     */
+    protected double[] expected(final double Oab, final double Oa, final double Ob, final double N)
     {
         // (Oa.Ob + (N-Oa) Ob + Oa (N-Ob) + (N-Oa).(N-Ob)) /N
         // = (Oa.Ob + N.Ob - Oa.Ob + N.Oa - Oa.Ob + N^2 - N.Oa - N.Ob + Oa.Ob) / N
@@ -148,13 +156,23 @@ public enum MI {
         return E;
     }
 
-    protected double[] O(final double Oab, final double Oa, final double Ob, final double N)
+    /**
+     * Returns the four observed.
+     * 
+     * @param Oab
+     * @param Oa
+     * @param Ob
+     * @param N
+     * @return {O}
+     */
+    protected double[] observed(final double Oab, final double Oa, final double Ob, final double N)
     {
         // Oab + Ob - Oab + Oa - Oab + N - Oa - Ob + Oab = N
         double[] O = { Oab, Ob - Oab, Oa - Oab, N - Oa - Ob + Oab };
         return O;
     }
 
+    /** Avoid free instanciation. */
     private MI() {
     }
 
