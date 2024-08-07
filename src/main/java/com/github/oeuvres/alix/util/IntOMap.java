@@ -33,6 +33,7 @@
 package com.github.oeuvres.alix.util;
 
 import java.util.Arrays;
+import java.util.Map;
 
 import com.github.oeuvres.alix.maths.Calcul;
 
@@ -43,7 +44,11 @@ import com.github.oeuvres.alix.maths.Calcul;
  */
 public class IntOMap<E>
 {
+    /** Taken from FastUtil. */
+    private static final int INT_PHI = 0x9E3779B9;
+    /** Default number for no key. */
     public static final int NO_KEY = 0;
+    /** The no value object.  */
     public final E NO_VALUE = null;
 
     /** Keys */
@@ -77,12 +82,18 @@ public class IntOMap<E>
     /**
      * Constructor with default fillFactor
      * 
-     * @param size
+     * @param size expected initial size.
      */
     public IntOMap(final int size) {
         this(size, (float) 0.75);
     }
 
+    /**
+     * Constructor with all parameters
+     * 
+     * @param size > 0.
+     * @param fillFactor [0…1].
+     */
     public IntOMap(final int size, final float fillFactor) {
         if (fillFactor <= 0 || fillFactor >= 1)
             throw new IllegalArgumentException("FillFactor must be between [0-1]");
@@ -98,12 +109,12 @@ public class IntOMap<E>
     }
 
     /**
-     * Test if key is present TODO test if freeValue is a good answer
+     * Like {@link Map#containsKey(Object)}, test if key is present.
      * 
-     * @param key
-     * @return
+     * @param key to test.
+     * @return true if this map contains a mapping for the specified key.
      */
-    public boolean contains(final int key)
+    public boolean containsKey(final int key)
     {
         if (key == NO_KEY)
             return false;
@@ -111,6 +122,13 @@ public class IntOMap<E>
         return idx != -1 ? true : false;
     }
 
+    /**
+     * Like {@link Map#get(Object)}, returns the value to which the specified key is mapped,
+     * or null if this map contains no mapping for the key.
+     * 
+     * @param key whose associated value is to be returned.
+     * @return value to which the specified key is mapped, or null if this map contains no mapping for the key.
+     */
     @SuppressWarnings("unchecked")
     public E get(final int key)
     {
@@ -120,6 +138,68 @@ public class IntOMap<E>
         return idx != -1 ? (E) values[idx] : NO_VALUE;
     }
 
+    /**
+     * Current key, use it after next().
+     * @return current key.
+     */
+    public int key()
+    {
+        return keys[pointer];
+    }
+
+    /**
+     * Give keys as a sorted Array of int.
+     * 
+     * @return set of keys.
+     */
+    public int[] keys()
+    {
+        int[] ret = new int[size];
+        reset();
+        for (int i = 0; i < size; i++) {
+            hasNext();
+            ret[i] = keys[pointer];
+        }
+        Arrays.sort(ret);
+        return ret;
+    }
+
+    /**
+     * A light iterator implementation, 
+     * 
+     * @return true if has next.
+     */
+    public boolean hasNext()
+    {
+        int length = keys.length;
+        while (pointer + 1 < length) {
+            pointer++;
+            if (keys[pointer] != NO_KEY)
+                return true;
+        }
+        reset();
+        return false;
+    }
+
+    /**
+     * A light iterator implementation
+     * 
+     * @return next Element.
+     */
+    public E next()
+    {
+        throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
+    }
+
+    /**
+     * Like {@link Map#put(Object, Object)}, associates the specified value with the specified key 
+     * in this map. If the map previously contained a mapping for the key, 
+     * the old value is replaced by the specified value, and returned.
+     * 
+     * @param key to which associate the specified value.
+     * @param value to be associated with the specified key.
+     * @return previous value associated with <code>key</code>, or <code>null</code> if there was no mapping for <code>key</code>.
+     */
     public Object put(final int key, final E value)
     {
         if (key == NO_KEY) {
@@ -152,6 +232,34 @@ public class IntOMap<E>
         return prev;
     }
 
+    /**
+     * A fast remove by pointer, in a big loop
+     * 
+     * @return previous value associated with <code>key</code>, or <code>null</code> if there was no mapping for <code>key</code>.
+     */
+    @SuppressWarnings("unchecked")
+    public E remove()
+    {
+        // if ( pointer == -1 ) return NO_VALUE;
+        // if ( pointer > keys.length ) return NO_VALUE;
+        // be carful, be consistent
+        if (keys[pointer] == NO_KEY)
+            return NO_VALUE;
+        Object res = values[pointer];
+        values[pointer] = NO_VALUE;
+        shiftKeys(pointer);
+        --size;
+        return (E) res;
+    }
+
+    /**
+     * Like {@link Map#remove(Object)}, removes the mapping for a key from this map if it is present.
+     * Returns the value to which this map previously associated the key, or null if the map contained 
+     * no mapping for the key.
+     * 
+     * @param key to be removed from the map.
+     * @return previous value associated with <code>key</code>, or <code>null</code> if there was no mapping for <code>key</code>.
+     */
     public Object remove(final int key)
     {
         if (key == NO_KEY) {
@@ -175,11 +283,6 @@ public class IntOMap<E>
         return res;
     }
 
-    public int size()
-    {
-        return size;
-    }
-
     /**
      * Reset Iterator, start at -1 so that nextKey() go to 0
      */
@@ -189,32 +292,18 @@ public class IntOMap<E>
     }
 
     /**
-     * A light iterator implementation
+     * Like {@link Map#size()}, returns the number of key-value mappings in this map.
      * 
-     * @return
+     * @return number of key-value mappings in this map.
      */
-    public boolean next()
+    public int size()
     {
-        int length = keys.length;
-        while (pointer + 1 < length) {
-            pointer++;
-            if (keys[pointer] != NO_KEY)
-                return true;
-        }
-        reset();
-        return false;
+        return size;
     }
 
     /**
-     * Current key, for efficiency, no test, use it after next()
-     */
-    public int key()
-    {
-        return keys[pointer];
-    }
-
-    /**
-     * Current value, for efficiency, no test, use it after next()
+     * Current value, use it after next().
+     * @return current value.
      */
     @SuppressWarnings("unchecked")
     public E value()
@@ -223,123 +312,21 @@ public class IntOMap<E>
     }
 
     /**
-     * A fast remove by pointer, in a big loop
-     * 
-     * @return
+     * Returns the least power of two smaller than or equal to 2<sup>30</sup> and
+     * larger than or equal to <code>Math.ceil( expected / f )</code>.
+     *
+     * @param expected the expected number of elements in a hash table.
+     * @param f        the load factor.
+     * @return the minimum possible size for a backing array.
+     * @throws IllegalArgumentException if the necessary size is larger than 2<sup>30</sup>.
      */
-    @SuppressWarnings("unchecked")
-    public E remove()
+    private static int arraySize(final int expected, final float f)
     {
-        // if ( pointer == -1 ) return NO_VALUE;
-        // if ( pointer > keys.length ) return NO_VALUE;
-        // be carful, be consistent
-        if (keys[pointer] == NO_KEY)
-            return NO_VALUE;
-        Object res = values[pointer];
-        values[pointer] = NO_VALUE;
-        shiftKeys(pointer);
-        --size;
-        return (E) res;
-    }
-
-    /**
-     * Give keys as a sorted Array of int
-     */
-    public int[] keys()
-    {
-        int[] ret = new int[size];
-        reset();
-        for (int i = 0; i < size; i++) {
-            next();
-            ret[i] = keys[pointer];
-        }
-        Arrays.sort(ret);
-        return ret;
-    }
-
-    /**
-     * A light iterator implementation
-     * 
-     * @return
-     */
-    @SuppressWarnings("unchecked")
-    public E nextValue()
-    {
-        while (pointer + 1 < keys.length) {
-            pointer++;
-            if (keys[pointer] != NO_KEY)
-                return (E) values[pointer];
-        }
-        reset();
-        return NO_VALUE;
-    }
-
-    private void rehash(final int newCapacity)
-    {
-        threshold = (int) (newCapacity * fillFactor);
-        mask = newCapacity - 1;
-
-        final int oldCapacity = keys.length;
-        final int[] oldKeys = keys;
-        @SuppressWarnings("unchecked")
-        final E[] oldValues = (E[]) values;
-
-        keys = new int[newCapacity];
-        values = new Object[newCapacity];
-        size = hasFreeKey ? 1 : 0;
-
-        for (int i = oldCapacity; i-- > 0;) {
-            if (oldKeys[i] != NO_KEY)
-                put(oldKeys[i], oldValues[i]);
-        }
-    }
-
-    private int shiftKeys(int pos)
-    {
-        // Shift entries with the same hash.
-        int last, slot;
-        int k;
-        final int[] keys = this.keys;
-        while (true) {
-            last = pos;
-            pos = getNextIndex(pos);
-            while (true) {
-                if ((k = keys[pos]) == NO_KEY) {
-                    keys[last] = NO_KEY;
-                    values[last] = NO_VALUE;
-                    return last;
-                }
-                slot = getStartIndex(k); // calculate the starting slot for the current key
-                if (last <= pos ? last >= slot || slot > pos : last >= slot && slot > pos)
-                    break;
-                pos = getNextIndex(pos);
-            }
-            keys[last] = k;
-            values[last] = values[pos];
-        }
-    }
-
-    /**
-     * Find key position in the map.
-     * 
-     * @param key Key to look for
-     * @return Key position or -1 if not found
-     */
-    private int getReadIndex(final int key)
-    {
-        int idx = getStartIndex(key);
-        if (keys[idx] == key) // we check FREE prior to this call
-            return idx;
-        if (keys[idx] == NO_KEY) // end of chain already
-            return -1;
-        final int startIdx = idx;
-        while ((idx = getNextIndex(idx)) != startIdx) {
-            if (keys[idx] == NO_KEY)
-                return -1;
-            if (keys[idx] == key)
-                return idx;
-        }
-        return -1;
+        final long s = Math.max(2, Calcul.nextSquare((long) Math.ceil(expected / f)));
+        if (s > (1 << 30))
+            throw new IllegalArgumentException(
+                    "Too large (" + expected + " expected elements with load factor " + f + ")");
+        return (int) s;
     }
 
     /**
@@ -367,6 +354,29 @@ public class IntOMap<E>
         return idx;
     }
 
+    /**
+     * Find key position in the map.
+     * 
+     * @param key Key to look for
+     * @return Key position or -1 if not found
+     */
+    private int getReadIndex(final int key)
+    {
+        int idx = getStartIndex(key);
+        if (keys[idx] == key) // we check FREE prior to this call
+            return idx;
+        if (keys[idx] == NO_KEY) // end of chain already
+            return -1;
+        final int startIdx = idx;
+        while ((idx = getNextIndex(idx)) != startIdx) {
+            if (keys[idx] == NO_KEY)
+                return -1;
+            if (keys[idx] == key)
+                return idx;
+        }
+        return -1;
+    }
+
     private int getStartIndex(final int key)
     {
         return phiMix(key) & mask;
@@ -377,28 +387,6 @@ public class IntOMap<E>
         return (currentIndex + 1) & mask;
     }
 
-    /**
-     * Returns the least power of two smaller than or equal to 2<sup>30</sup> and
-     * larger than or equal to <code>Math.ceil( expected / f )</code>.
-     *
-     * @param expected the expected number of elements in a hash table.
-     * @param f        the load factor.
-     * @return the minimum possible size for a backing array.
-     * @throws IllegalArgumentException if the necessary size is larger than
-     *                                  2<sup>30</sup>.
-     */
-    private static int arraySize(final int expected, final float f)
-    {
-        final long s = Math.max(2, Calcul.nextSquare((long) Math.ceil(expected / f)));
-        if (s > (1 << 30))
-            throw new IllegalArgumentException(
-                    "Too large (" + expected + " expected elements with load factor " + f + ")");
-        return (int) s;
-    }
-
-    // taken from FastUtil
-    private static final int INT_PHI = 0x9E3779B9;
-
     private static int phiMix(final int x)
     {
         final int h = x * INT_PHI;
@@ -406,8 +394,61 @@ public class IntOMap<E>
     }
 
     /**
-     * Nicer output for debug
+     * Rebuild map.
+     * 
+     * @param newCapacity capacity to ensure.
      */
+    private void rehash(final int newCapacity)
+    {
+        threshold = (int) (newCapacity * fillFactor);
+        mask = newCapacity - 1;
+    
+        final int oldCapacity = keys.length;
+        final int[] oldKeys = keys;
+        @SuppressWarnings("unchecked")
+        final E[] oldValues = (E[]) values;
+    
+        keys = new int[newCapacity];
+        values = new Object[newCapacity];
+        size = hasFreeKey ? 1 : 0;
+    
+        for (int i = oldCapacity; i-- > 0;) {
+            if (oldKeys[i] != NO_KEY)
+                put(oldKeys[i], oldValues[i]);
+        }
+    }
+
+    /**
+     * Shift entries with the same hash.
+     * 
+     * @param pos
+     * @return
+     */
+    private int shiftKeys(int pos)
+    {
+        // 
+        int last, slot;
+        int k;
+        final int[] keys = this.keys;
+        while (true) {
+            last = pos;
+            pos = getNextIndex(pos);
+            while (true) {
+                if ((k = keys[pos]) == NO_KEY) {
+                    keys[last] = NO_KEY;
+                    values[last] = NO_VALUE;
+                    return last;
+                }
+                slot = getStartIndex(k); // calculate the starting slot for the current key
+                if (last <= pos ? last >= slot || slot > pos : last >= slot && slot > pos)
+                    break;
+                pos = getNextIndex(pos);
+            }
+            keys[last] = k;
+            values[last] = values[pos];
+        }
+    }
+
     @Override
     public String toString()
     {
@@ -420,7 +461,7 @@ public class IntOMap<E>
          * +":"+values[i]); }
          */
         reset();
-        while (next()) {
+        while (hasNext()) {
             if (!first)
                 sb.append(", ");
             else

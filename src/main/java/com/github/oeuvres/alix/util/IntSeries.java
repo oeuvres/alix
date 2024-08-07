@@ -32,165 +32,259 @@
  */
 package com.github.oeuvres.alix.util;
 
+import java.util.Arrays;
+
 /**
  * A mutable list of ints with useful metadata, for example to calculate
- * average. This object is not protected, for fast access to fields, be careful
- * to enjoy speed. Not suitable as a key for a hash (mutable).
+ * average. Could be used as a row or column in an array.
  */
 public class IntSeries extends IntList
 {
-    /** Row a count event */
-    public int count;
-    /** Maybe used to keep some event memory */
-    public int last = -1;
-    /** A code, maybe used for a collection of stack */
-    final public int code;
-    /** Row a name, useful for collection */
-    final public String label;
     /** A class */
-    final public int cat;
-    /** Min value */
-    public int min;
+    final private int cat;
+    /** A code, maybe used for a collection of stack */
+    final private int code;
+    /** Row a name, useful for collection */
+    final private String name;
+    /** Row a name, useful for collection */
+    final private String label;
+    
+    
+    /** Deciles data */
+    public int[] decile = new int[11];
+    /** standard deviation */
+    public double devstd;
     /** Max value */
     public int max;
     /** Median value */
-    public int[] decile = new int[11];
+    public double median;
+    /** Arithmetic mean */
+    public double mean;
+    /** Min value */
+    public int min;
+    /** Mode value */
+    public int mode;
+    /** Quartile data */
+    public int[] quartile = new int[5];
     /** Full sum, for average */
     public long sum;
-    /** Average */
-    public double avg;
-    /** standard deviation */
-    public double devstd;
-
     /**
-     * Constructor with no metadata.
+     * Constructor for a statistic series with minimal metadata.
+     * 
+     * @param name identifying chars (usually ASCII), or null if not needed.
+     * @param label displayable label, or null if not needed.
+     * @param code identifying number, or .
+     * @param cat a category, for series grouping.
      */
-    public IntSeries() {
+    public IntSeries(final String name, final String label, final int code, final int cat) {
         super();
-        label = null;
-        code = -1;
-        cat = -1;
-    }
-
-    /**
-     * Constructore with label.
-     * 
-     * @param label
-     */
-    public IntSeries(final String label) {
-        super();
-        this.label = label;
-        code = -1;
-        cat = -1;
-    }
-
-    /**
-     * Constructor with a code.
-     * 
-     * @param code
-     */
-    public IntSeries(final int code) {
-        this.label = null;
-        this.code = code;
-        cat = -1;
-    }
-
-    /**
-     * Constructor with a code and a category.
-     * 
-     * @param code
-     * @param cat
-     */
-    public IntSeries(final int code, final int cat) {
-        this.label = null;
-        this.code = code;
-        this.cat = cat;
-    }
-
-    /**
-     * Constructor with a label and a category.
-     * 
-     * @param label
-     * @param cat
-     */
-    public IntSeries(final String label, final int cat) {
-        this.label = label;
-        this.code = -1;
-        this.cat = cat;
-    }
-
-    /**
-     * Constructor with a label, a code, and a category.
-     * 
-     * @param label
-     * @param code
-     * @param cat
-     */
-    public IntSeries(final String label, final int code, final int cat) {
+        this.name = name;
         this.label = label;
         this.code = code;
         this.cat = cat;
     }
 
+
+
     /**
-     * Cache statistic values.
+     * Cache statistic values for averages of deciles.
      */
-    public void cache()
+    private void calcul()
     {
+        // no modif
+        if (!toHash) return;
+        hashCode(); // set hash for current values
         final int size = this.size;
         if (size == 0) {
             min = 0;
             max = 0;
             sum = 0;
-            avg = 0;
+            mean = 0;
             devstd = 0;
             return;
         }
-        int min = data[0];
-        int max = data[0];
-        long sum = data[0];
-        int val;
-        if (size > 1) {
-            for (int i = 1; i < size; i++) {
-                val = data[i];
-                min = Math.min(min, val);
-                max = Math.max(max, val);
-                sum += val;
-            }
+        if (size == 1) {
+            mean = median = sum = min = max = data[0];
+            Arrays.fill(decile, data[0]);
+            Arrays.fill(quartile, data[0]);
+            devstd = 0;
+            return;
         }
-        this.min = min;
-        this.max = max;
-        this.sum = sum;
-        double avg = (double) sum / (double) size;
-        this.avg = avg;
+        // for median and decile, copy data and sort
+        int[] work = toArray();
+        Arrays.sort(work);
+        min = work[0];
+        max = work[work.length - 1];
+        // loop in sort order
+        int valPrev = work[0] - 200;
+        int modeCount = 0;
+        int modeCountTemp = 0;
+        sum = 0;
+        for (int i = 0; i < size; i++) {
+            final int val = work[i];
+            sum += val;
+            // new value, reset vars for mode
+            if (val != valPrev) {
+                if (modeCountTemp > modeCount) {
+                    mode = valPrev;
+                    modeCount = modeCountTemp;
+                }
+                modeCountTemp = 0;
+            }
+            modeCountTemp++;
+            valPrev = val;
+        }
+
+        mean = (double) sum / (double) size;
         double dev = 0;
         for (int i = 0; i < size; i++) {
-            long val2 = data[i];
-            dev += (avg - val2) * (avg - val2);
+            long val2 = work[i];
+            dev += (mean - val2) * (mean - val2);
         }
         dev = Math.sqrt(dev / size);
         this.devstd = dev;
         // median
-        int[] dest = toArray();
-
-        double part = dest.length / 10.0;
-        for (int i = 0; i < 10; i++) {
-            double point = i * part;
-            decile[i] = dest[(int) point];
-            // else decil[i] = (dest[(int)floor] + dest[(int)floor-1])/2; // why average ?
+        int half = (int)(size / 2.0);
+        if (size % 2 == 1) { // odd
+            median = work[half];
         }
-        decile[10] = dest[size - 1];
+        else {
+            median = (work[half] + work[half+1]) / 2.0;
+        }
+        // decile
+        double part = (work.length) / 10.0;
+        decile[0] = min;
+        for (int i = 1; i < 10; i++) {
+            int index = (int)(Math.ceil(part * i - 1));
+            decile[i] = work[index];
+        }
+        decile[10] = max;
+        // quartile
+        part = (work.length) / 4.0;
+        quartile[0] = min;
+        for (int i = 1; i < 4; i++) {
+            final int index = (int)Math.ceil(part * i) - 1;
+            quartile[i] = work[index];
+        }
+        quartile[4] = max;
     }
 
     /**
-     * Get a decile
+     * Get a decile.
      * 
-     * @param n
-     * @return
+     * @param n [0…10] number of a decile.
+     * @return value at this decile.
+     * @throws ArrayIndexOutOfBoundsException n ∉ [0…10]
      */
-    public int decile(int n)
+    public int decile(int n) throws ArrayIndexOutOfBoundsException
     {
+        if (n < 0 || n > 11) throw new ArrayIndexOutOfBoundsException("A decile is between [0…10], no answer for: "+ n);
+        calcul();
         return decile[n];
     }
 
+    /**
+     * Get a quartile.
+     * 
+     * @param n [0…4] number of a quartile.
+     * @return value at this quartile.
+     * @throws ArrayIndexOutOfBoundsException n ∉ [0…4]
+     */
+    public int quartile(int n) throws ArrayIndexOutOfBoundsException
+    {
+        if (n < 0 || n > 4) throw new ArrayIndexOutOfBoundsException("A decile is between [0…4], no answer for: "+ n);
+        calcul();
+        return quartile[n];
+    }
+
+    /**
+     * Returns minimum value of the series.
+     * 
+     * @return min value.
+     */
+    public int min()
+    {
+        calcul();
+        return min;
+    }
+
+    /**
+     * Returns maximum value of the series.
+     * 
+     * @return max value.
+     */
+    public int max()
+    {
+        calcul();
+        return max;
+    }
+
+    /**
+     * Returns arithmetic mean of the series.
+     * 
+     * @return mean.
+     */
+    public double mean()
+    {
+        calcul();
+        return mean;
+    }
+
+    /**
+     * Returns median of the series.
+     * 
+     * @return median.
+     */
+    public double median()
+    {
+        calcul();
+        return median;
+    }
+
+    /**
+     * Returns mode of the series (most frequent value).
+     * 
+     * @return mode.
+     */
+    public double mode()
+    {
+        calcul();
+        return mode;
+    }
+
+    /**
+     * Returns the label set by constructor.
+     * @return label of the series.
+     */
+    public String label()
+    {
+        return label;
+    }
+
+    /**
+     * Returns the name set by constructor.
+     * @return name of the series.
+     */
+    public String name()
+    {
+        return name;
+    }
+
+    /**
+     * Returns the code set by constructor.
+     * @return code of the series.
+     */
+    public int code()
+    {
+        return code;
+    }
+
+    /**
+     * Returns the cat set by constructor.
+     * @return cat of the series.
+     */
+    public int cat()
+    {
+        return cat;
+    }
 }

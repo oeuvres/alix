@@ -123,6 +123,10 @@ public class IntPair implements Comparable<IntPair>
         return hash;
     }
 
+    /**
+     * Hash function optimized for a pair of int.
+     * @return hash key.
+     */
     protected int hashCalc()
     {
         // hash = (31 * 17 + x) * 31 + y; // 97% collision

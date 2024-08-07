@@ -47,7 +47,7 @@ public class IntTuple implements Comparable<IntTuple>
     /**
      * Constructor with an estimated size.
      * 
-     * @param size
+     * @param size initial size (could grow).
      */
     public IntTuple(final int size) {
         this.size = size;

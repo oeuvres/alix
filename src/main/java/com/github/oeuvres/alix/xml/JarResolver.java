@@ -7,15 +7,13 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.URIResolver;
 import javax.xml.transform.stream.StreamSource;
 
+/**
+ * Resolve XSL url fro a jar.
+ */
 public class JarResolver implements URIResolver
 {
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see javax.xml.transform.URIResolver#resolve(java.lang.String,
-     * java.lang.String)
-     */
+    @Override
     public Source resolve(String href, String base) throws TransformerException
     {
         // base=file:///home/fred/code/Alix/notes.xsl
@@ -28,11 +26,13 @@ public class JarResolver implements URIResolver
     }
 
     /**
-     * @param href
-     * @return
-     * @throws TransformerException
+     * Like {@link Class#getResourceAsStream(String)}.
+     * 
+     * @param href path relative to this package.
+     * @return an InputStream for this resource.
+     * @throws TransformerException IO errors.
      */
-    public InputStream resolve(String href) throws TransformerException
+    public InputStream stream(String href) throws TransformerException
     {
         try {
             InputStream is = getClass().getResourceAsStream(href);

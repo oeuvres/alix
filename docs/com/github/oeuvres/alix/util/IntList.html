@@ -101,14 +101,24 @@ loadScripts(document, 'script');</script>
 <div class="block">Internal data</div>
 </div>
 <div class="col-first odd-row-color"><code>protected int</code></div>
-<div class="col-second odd-row-color"><code><a href="#hash" class="member-name-link">hash</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#hashCache" class="member-name-link">hashCache</a></code></div>
 <div class="col-last odd-row-color">
 <div class="block">Cache an hash code</div>
 </div>
-<div class="col-first even-row-color"><code>protected int</code></div>
-<div class="col-second even-row-color"><code><a href="#size" class="member-name-link">size</a></code></div>
+<div class="col-first even-row-color"><code>protected <a href="Murmur3A.html" title="class in com.github.oeuvres.alix.util">Murmur3A</a></code></div>
+<div class="col-second even-row-color"><code><a href="#murmur" class="member-name-link">murmur</a></code></div>
 <div class="col-last even-row-color">
+<div class="block">Hash code producer</div>
+</div>
+<div class="col-first odd-row-color"><code>protected int</code></div>
+<div class="col-second odd-row-color"><code><a href="#size" class="member-name-link">size</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Current size</div>
+</div>
+<div class="col-first even-row-color"><code>protected boolean</code></div>
+<div class="col-second even-row-color"><code><a href="#toHash" class="member-name-link">toHash</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">Should be rehashed</div>
 </div>
 </div>
 </section>
@@ -204,8 +214,8 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Push one value at the end</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected <a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#push(int%5B%5D)" class="member-name-link">push</a><wbr>(int[]&nbsp;data)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#push(int%5B%5D)" class="member-name-link">push</a><wbr>(int[]&nbsp;vector)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Push a copy of an int array at the end.</div>
 </div>
@@ -280,10 +290,24 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="hash">
-<h3>hash</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">hash</span></div>
+<section class="detail" id="toHash">
+<h3>toHash</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">toHash</span></div>
+<div class="block">Should be rehashed</div>
+</section>
+</li>
+<li>
+<section class="detail" id="hashCache">
+<h3>hashCache</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">hashCache</span></div>
 <div class="block">Cache an hash code</div>
+</section>
+</li>
+<li>
+<section class="detail" id="murmur">
+<h3>murmur</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type"><a href="Murmur3A.html" title="class in com.github.oeuvres.alix.util">Murmur3A</a></span>&nbsp;<span class="element-name">murmur</span></div>
+<div class="block">Hash code producer</div>
 </section>
 </li>
 </ul>
@@ -476,11 +500,11 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="push(int[])">
 <h3>push</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type"><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(int[]&nbsp;data)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntList.html" title="class in com.github.oeuvres.alix.util">IntList</a></span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(int[]&nbsp;vector)</span></div>
 <div class="block">Push a copy of an int array at the end.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>data</code> - array to push.</dd>
+<dd><code>vector</code> - array to push.</dd>
 <dt>Returns:</dt>
 <dd>this.</dd>
 </dl>

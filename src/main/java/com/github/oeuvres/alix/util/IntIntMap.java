@@ -32,9 +32,7 @@
  */
 package com.github.oeuvres.alix.util;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -44,7 +42,7 @@ import com.github.oeuvres.alix.maths.Calcul;
 /**
  * An efficient int-int Map implementation, encoded in a long array for key and
  * value. A special method is used to modify a value by addition. Used for word
- * vectors indexed by int. A local Cosine is implemented. Be careful, do not use
+ * vectors indexed by int. Be careful, do not use
  * -2147483648 as a key (Integer.MIN_VALUE), is used to tag empty value, no
  * warning will be sent.
  * 
@@ -54,27 +52,21 @@ import com.github.oeuvres.alix.maths.Calcul;
  */
 public class IntIntMap implements Cloneable
 {
-    private static final long FREE_CELL;
-    // taken from FastUtil
+    /** taken from FastUtil **/
     private static final int INT_PHI = 0x9E3779B9;
     /** Binary mask to get upper int from data */
     private static long KEY_MASK = 0xFFFFFFFFL;
+    /** Int number for empty key */
     public static final int NO_KEY = Integer.MIN_VALUE;
+    /** Int number for empty value */
     public static final int NO_VALUE = Integer.MIN_VALUE;
-    static { // build FREE_CELL value, to avoid errors
+    /** Long number for empty entry = (key, value) */
+    private static final long FREE_CELL;
+    static {
         FREE_CELL = entry(NO_KEY, NO_VALUE);
     }
-    /** {key, sort order} view of data, used for textcat distance */
-    private IntIntMap catprint;
     /** Keys and values */
     private long[] data;
-    /** A flag for recalculation */
-    private boolean decache = true;
-    /**
-     * Array of keys, sorted by value order, biggest first, used as source to
-     * calculate distances with catprint
-     */
-    private int[] docprint;
     /** The current entry of the pointer */
     private int[] entry = new int[2];
     /** Fill factor, must be between (0 and 1) */
@@ -85,12 +77,12 @@ public class IntIntMap implements Cloneable
     private boolean hasFreeKey;
     /** An automaton to parse a String version of the Map */
     private static Pattern loadre = Pattern.compile("([0-9]+):([0-9]+)");
-    /** Used for cosine */
-    private double magnitude;
-    /** Value for key == Integer.
     /** Mask to calculate the original position */
     private int mask;
 
+    /** If true, map content has changed. */
+    @SuppressWarnings("unused")
+    private boolean decache;
     /** An iterator used to get keys and values */
     private int pointer = -1;
     /** Current map size */
@@ -165,19 +157,6 @@ public class IntIntMap implements Cloneable
         return true;
     }
 
-    
-    /**
-     * Cosine similarity with another vector.
-     * 
-     * @param vek vector to test again.
-     * @return the similarity score.
-     */
-    public double cosine(IntIntMap vek)
-    {
-        double dotp = dotProduct(vek);
-        return dotp / (this.magnitude() * vek.magnitude());
-    }
-
     /**
      * After next(), get current entry by iterator.
      * 
@@ -229,36 +208,6 @@ public class IntIntMap implements Cloneable
      */
     
     /**
-     * Cosine similarity with vector reduction to intersection only
-     * 
-     * @param vek a map with int nodes.
-     * @return the similarity score
-     */
-    public double intercos(IntIntMap vek)
-    {
-        double sum = 0;
-        double mag1 = 0;
-        int val1;
-        double mag2 = 0;
-        int val2;
-        reset();
-        while (next()) {
-            val2 = vek.get(key());
-            if (val2 == IntIntMap.NO_VALUE)
-                continue;
-            val1 = value();
-            sum += val1 * val2;
-            mag1 += val1 * val1;
-            mag2 += val2 * val2;
-        }
-        if (mag1 == 0 || mag2 == 0)
-            return 0;
-        mag1 = Math.sqrt(mag1);
-        mag2 = Math.sqrt(mag2);
-        return sum / (mag1 * mag2);
-    }
-
-    /**
      * Use after next(), get current key by iterator.
      * @return cuurent key.
      */
@@ -280,28 +229,6 @@ public class IntIntMap implements Cloneable
             this.add(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)));
         }
         return this;
-    }
-
-    /**
-     * Calculation of magnitude with cache for cosine.
-     * 
-     * @return the magnitude
-     */
-    public double magnitude()
-    {
-        if (decache)
-            decache();
-        if (magnitude >= 0)
-            return magnitude;
-        long mag = 0;
-        long value; // needed to force casting
-        reset();
-        while (next()) {
-            value = value();
-            mag += value * value;
-        }
-        magnitude = Math.sqrt(mag);
-        return magnitude;
     }
 
     /**
@@ -449,37 +376,7 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * TextCat is an algorithm to calculate distance between 2 texts
-     * by comparison of ranks of two frequency list.
-     * Comparison of ranks, instead of counts, makes this metric 
-     * less dependent from size of texts.
-     * TextCat is used for language detection with ngrams of letters.
-     * Here keys could be words ids, values are word count.
-     * This experience is more pedagogical than useful.
-     * 
-     * @param vek formId → count
-     * @return distance
-     */
-    public int textcat(IntIntMap vek)
-    {
-        IntIntMap catprint = vek.catprint(); // will update cache
-        int[] docprint = docprint();
-        int max = docprint.length;
-        int dist = 0;
-        for (int i = 0; i < max; i++) {
-            int rank = catprint.get(docprint[i]) - 1;
-            if (rank == IntIntMap.NO_VALUE)
-                dist += max; // no value
-            if (rank > i)
-                dist += rank - i;
-            else if (i < rank)
-                dist += i - rank;
-        }
-        return dist;
-    }
-
-    /**
-     * Output a two dimensions array, sorted by value, biggest first.
+     * Output (key, value) entries as an array.
      * @return (key, value) entries array.
      */
     public Entry[] toArray()
@@ -492,7 +389,6 @@ public class IntIntMap implements Cloneable
             list[i] = new Entry(key(entry), value(entry));
             i++;
         }
-        Arrays.sort(list);
         return list;
     }
 
@@ -543,46 +439,6 @@ public class IntIntMap implements Cloneable
      * } return true; }
      */
     
-    /**
-     * Used for cosine distance.
-     * 
-     * @param other map vector.
-     * @return 
-     */
-    public ArrayList<SpecRow> specs(IntIntMap other)
-    {
-        ArrayList<SpecRow> table = new ArrayList<SpecRow>();
-        int key;
-        final int source = -1; // TODO
-        int sval;
-        final int target = -1;
-        int tval;
-        double div = magnitude() * other.magnitude();
-        // loop on the smallest vector
-        if (size < other.size) {
-            reset();
-            while (next()) {
-                key = key();
-                tval = other.get(key);
-                if (tval == IntIntMap.NO_VALUE)
-                    continue;
-                sval = value();
-                table.add(new SpecRow(key, source, sval, target, tval, 1000000.0 * sval * tval / div));
-            }
-        } else {
-            other.reset();
-            while (other.next()) {
-                key = other.key();
-                sval = get(key);
-                if (sval == IntIntMap.NO_VALUE)
-                    continue;
-                tval = other.value();
-                table.add(new SpecRow(key, source, sval, target, tval, 1000000.0 * sval * tval / div));
-            }
-        }
-        Collections.sort(table);
-        return table;
-    }
 
     /**
      * Returns the least power of two smaller than or equal to 2<sup>30</sup> and
@@ -603,76 +459,6 @@ public class IntIntMap implements Cloneable
         return (int) s;
     }
 
-    /**
-     * 
-     * @return
-     */
-    private IntIntMap catprint()
-    {
-        if (decache)
-            decache();
-        if (catprint != null)
-            return catprint;
-        // textcat
-        Entry[] pairs = toArray();
-        int[] docprint = new int[size];
-        int max = size;
-        IntIntMap catprint = new IntIntMap(size);
-        if (max != pairs.length)
-            System.out.println("What ? size do no match: " + max + " != " + docprint.length);
-        for (int i = 0; i < max; i++) {
-            docprint[i] = pairs[i].key;
-            catprint.put(pairs[i].key, i + 1); // 0==NULL
-        }
-        this.docprint = docprint;
-        this.catprint = catprint;
-        return catprint;
-    }
-
-    /**
-     * Delete all cached values
-     */
-    private void decache()
-    {
-        magnitude = -1;
-        docprint = null;
-        catprint = null;
-        decache = false;
-    }
-
-    /**
-     * Used in Cosine calculations
-     * 
-     * @param vek
-     * @return
-     */
-    private double dotProduct(IntIntMap other)
-    {
-        long sum = 0;
-        long value;
-        long ovalue;
-        // loop on the smallest vector
-        if (size < other.size) {
-            reset();
-            while (next()) {
-                ovalue = other.get(key());
-                if (ovalue <= 0)
-                    continue;
-                value = value();
-                sum += ovalue * value;
-            }
-        } else {
-            other.reset();
-            while (other.next()) {
-                value = get(other.key());
-                if (value <= 0)
-                    continue;
-                ovalue = other.value();
-                sum += ovalue * value;
-            }
-        }
-        return sum;
-    }
 
     /**
      * Get an entry by key FREE_CELL if not found
@@ -843,17 +629,14 @@ public class IntIntMap implements Cloneable
     }
 
     /**
-     * Get an int value from a long entry
+     * Get an int value from a long entry.
+     * 
+     * @param entry (key, value).
+     * @return value.
      */
     private static int value(long entry)
     {
         return (int) (entry >> 32);
-    }
-
-    private int[] docprint()
-    {
-        catprint();
-        return docprint;
     }
 
     /**
@@ -866,8 +649,13 @@ public class IntIntMap implements Cloneable
         public final int key;
         /** The value. */
         public final int value;
-    
-        /** constructor */
+
+        /**
+         * Constructor.
+         * 
+         * @param key final key.
+         * @param value final value.
+         */
         public Entry(final int key, final int value) {
             this.key = key;
             this.value = value;
@@ -888,49 +676,6 @@ public class IntIntMap implements Cloneable
             return Integer.compare(key, o.key);
         }
     
-    }
-
-    /**
-     * A data row to sort the important values in a cosine.
-     */
-    public class SpecRow implements Comparable<SpecRow>
-    {
-        public final int key;
-        public final int source;
-        public final int sval;
-        public final int tval;
-        public final double spec;
-    
-        /**
-         * Default constructor.
-         * 
-         * @param key
-         * @param source
-         * @param sval
-         * @param target
-         * @param tval
-         * @param spec
-         */
-        public SpecRow(final int key, final int source, final int sval, final int target, final int tval, double spec)  
-        {
-            this.key = key;
-            this.source = source;
-            this.sval = sval;
-            this.tval = tval;
-            this.spec = spec;
-        }
-    
-        @Override
-        public int compareTo(SpecRow other)
-        {
-            return Double.compare(other.spec, spec);
-        }
-    
-        @Override
-        public String toString()
-        {
-            return key + ":(" + sval + "," + tval + "," + spec + ")";
-        }
     }
 
 }

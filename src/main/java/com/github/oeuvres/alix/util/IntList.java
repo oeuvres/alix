@@ -33,6 +33,7 @@
 package com.github.oeuvres.alix.util;
 
 import java.util.Arrays;
+import java.util.Random;
 
 import com.github.oeuvres.alix.maths.Calcul;
 
@@ -45,8 +46,12 @@ public class IntList
     protected int[] data;
     /** Current size */
     protected int size;
+    /** Should be rehashed */
+    protected boolean toHash;
     /** Cache an hash code */
-    protected int hash;
+    protected int hashCache;
+    /** Hash code producer */
+    protected Murmur3A murmur = new Murmur3A();
 
     /**
      * Simple constructor.
@@ -161,9 +166,8 @@ public class IntList
 
     protected boolean grow(final int position)
     {
-        if (position >= size)
-            size = (position + 1);
-        hash = 0;
+        // do not set size here
+        toHash = true;
         if (position < data.length)
             return false;
         final int oldLength = data.length;
@@ -177,13 +181,12 @@ public class IntList
     @Override
     public int hashCode()
     {
-        if (hash != 0)
-            return hash;
-        int res = 17;
-        for (int i = 0; i < size; i++) {
-            res = 31 * res + data[i];
-        }
-        return res;
+        if (!toHash) return hashCache;
+        murmur.reset();
+        murmur.updateInt(data, 0, size);
+        hashCache = murmur.getHashCode();
+        toHash = false;
+        return hashCache;
     }
 
     /**
@@ -240,14 +243,14 @@ public class IntList
     /**
      * Push a copy of an int array at the end.
      * 
-     * @param data array to push.
+     * @param vector array to push.
      * @return this.
      */
-    protected IntList push(int[] data)
+    public IntList push(int[] vector)
     {
-        int newSize = this.size + data.length;
+        int newSize = this.size + vector.length;
         grow(newSize);
-        System.arraycopy(data, 0, this.data, size, data.length);
+        System.arraycopy(vector, 0, this.data, size, vector.length);
         size = newSize;
         return this;
     }
@@ -263,7 +266,27 @@ public class IntList
     {
         grow(position);
         data[position] = value;
+        if (position >= size) {
+            size = (position + 1);
+        }
         return this;
+    }
+
+    /**
+     * Fisher–Yates shuffle, by random swaps (no copy, array modified in place).
+     * 
+     * @param ar
+     */
+    static void shuffle(int[] ar)
+    {
+        Random rnd = new Random();
+        for (int i = ar.length - 1; i > 0; i--) {
+            int index = rnd.nextInt(i + 1);
+            // Simple swap
+            int a = ar[index];
+            ar[index] = ar[i];
+            ar[i] = a;
+        }
     }
 
     /**

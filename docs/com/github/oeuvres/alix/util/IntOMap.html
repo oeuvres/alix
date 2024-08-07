@@ -94,10 +94,14 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>static final int</code></div>
 <div class="col-second even-row-color"><code><a href="#NO_KEY" class="member-name-link">NO_KEY</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Default number for no key.</div>
+</div>
 <div class="col-first odd-row-color"><code>final <a href="IntOMap.html" title="type parameter in IntOMap">E</a></code></div>
 <div class="col-second odd-row-color"><code><a href="#NO_VALUE" class="member-name-link">NO_VALUE</a></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">The no value object.</div>
+</div>
 </div>
 </section>
 </li>
@@ -119,7 +123,9 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(int,float)" class="member-name-link">IntOMap</a><wbr>(int&nbsp;size,
  float&nbsp;fillFactor)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Constructor with all parameters</div>
+</div>
 </div>
 </section>
 </li>
@@ -135,37 +141,43 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#contains(int)" class="member-name-link">contains</a><wbr>(int&nbsp;key)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#containsKey(int)" class="member-name-link">containsKey</a><wbr>(int&nbsp;key)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Test if key is present TODO test if freeValue is a good answer</div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#containsKey(java.lang.Object)" title="class or interface in java.util" class="external-link"><code>Map.containsKey(Object)</code></a>, test if key is present.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntOMap.html" title="type parameter in IntOMap">E</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#get(int)" class="member-name-link">get</a><wbr>(int&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#key()" class="member-name-link">key</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Current key, for efficiency, no test, use it after next()</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#keys()" class="member-name-link">keys</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Give keys as a sorted Array of int</div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#get(java.lang.Object)" title="class or interface in java.util" class="external-link"><code>Map.get(Object)</code></a>, returns the value to which the specified key is mapped,
+ or null if this map contains no mapping for the key.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#next()" class="member-name-link">next</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hasNext()" class="member-name-link">hasNext</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">A light iterator implementation</div>
+<div class="block">A light iterator implementation,</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#key()" class="member-name-link">key</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Current key, use it after next().</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#keys()" class="member-name-link">keys</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Give keys as a sorted Array of int.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntOMap.html" title="type parameter in IntOMap">E</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#nextValue()" class="member-name-link">nextValue</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#next()" class="member-name-link">next</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">A light iterator implementation</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#put(int,E)" class="member-name-link">put</a><wbr>(int&nbsp;key,
  <a href="IntOMap.html" title="type parameter in IntOMap">E</a>&nbsp;value)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#put(K,V)" title="class or interface in java.util" class="external-link"><code>Map.put(Object, Object)</code></a>, associates the specified value with the specified key 
+ in this map.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntOMap.html" title="type parameter in IntOMap">E</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#remove()" class="member-name-link">remove</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
@@ -173,7 +185,9 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#remove(int)" class="member-name-link">remove</a><wbr>(int&nbsp;key)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#remove(java.lang.Object)" title="class or interface in java.util" class="external-link"><code>Map.remove(Object)</code></a>, removes the mapping for a key from this map if it is present.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#reset()" class="member-name-link">reset</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
@@ -181,16 +195,16 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#size()" class="member-name-link">size</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#size()" title="class or interface in java.util" class="external-link"><code>Map.size()</code></a>, returns the number of key-value mappings in this map.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Nicer output for debug</div>
-</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="IntOMap.html" title="type parameter in IntOMap">E</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#value()" class="member-name-link">value</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Current value, for efficiency, no test, use it after next()</div>
+<div class="block">Current value, use it after next().</div>
 </div>
 </div>
 </div>
@@ -213,6 +227,7 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="NO_KEY">
 <h3>NO_KEY</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">NO_KEY</span></div>
+<div class="block">Default number for no key.</div>
 <dl class="notes">
 <dt>See Also:</dt>
 <dd>
@@ -227,6 +242,7 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="NO_VALUE">
 <h3>NO_VALUE</h3>
 <div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type"><a href="IntOMap.html" title="type parameter in IntOMap">E</a></span>&nbsp;<span class="element-name">NO_VALUE</span></div>
+<div class="block">The no value object.</div>
 </section>
 </li>
 </ul>
@@ -251,7 +267,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Constructor with default fillFactor</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>size</code> - </dd>
+<dd><code>size</code> - expected initial size.</dd>
 </dl>
 </section>
 </li>
@@ -260,6 +276,12 @@ loadScripts(document, 'script');</script>
 <h3>IntOMap</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">IntOMap</span><wbr><span class="parameters">(int&nbsp;size,
  float&nbsp;fillFactor)</span></div>
+<div class="block">Constructor with all parameters</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>size</code> - > 0.</dd>
+<dd><code>fillFactor</code> - [0…1].</dd>
+</dl>
 </section>
 </li>
 </ul>
@@ -271,14 +293,15 @@ loadScripts(document, 'script');</script>
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="contains(int)">
-<h3>contains</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">contains</span><wbr><span class="parameters">(int&nbsp;key)</span></div>
-<div class="block">Test if key is present TODO test if freeValue is a good answer</div>
+<section class="detail" id="containsKey(int)">
+<h3>containsKey</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">containsKey</span><wbr><span class="parameters">(int&nbsp;key)</span></div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#containsKey(java.lang.Object)" title="class or interface in java.util" class="external-link"><code>Map.containsKey(Object)</code></a>, test if key is present.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>key</code> - </dd>
+<dd><code>key</code> - to test.</dd>
 <dt>Returns:</dt>
+<dd>true if this map contains a mapping for the specified key.</dd>
 </dl>
 </section>
 </li>
@@ -286,6 +309,58 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="get(int)">
 <h3>get</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntOMap.html" title="type parameter in IntOMap">E</a></span>&nbsp;<span class="element-name">get</span><wbr><span class="parameters">(int&nbsp;key)</span></div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#get(java.lang.Object)" title="class or interface in java.util" class="external-link"><code>Map.get(Object)</code></a>, returns the value to which the specified key is mapped,
+ or null if this map contains no mapping for the key.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>key</code> - whose associated value is to be returned.</dd>
+<dt>Returns:</dt>
+<dd>value to which the specified key is mapped, or null if this map contains no mapping for the key.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="key()">
+<h3>key</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">key</span>()</div>
+<div class="block">Current key, use it after next().</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>current key.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="keys()">
+<h3>keys</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">keys</span>()</div>
+<div class="block">Give keys as a sorted Array of int.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>set of keys.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="hasNext()">
+<h3>hasNext</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">hasNext</span>()</div>
+<div class="block">A light iterator implementation,</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>true if has next.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="next()">
+<h3>next</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntOMap.html" title="type parameter in IntOMap">E</a></span>&nbsp;<span class="element-name">next</span>()</div>
+<div class="block">A light iterator implementation</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>next Element.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -293,18 +368,42 @@ loadScripts(document, 'script');</script>
 <h3 id="put(int,java.lang.Object)">put</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span>&nbsp;<span class="element-name">put</span><wbr><span class="parameters">(int&nbsp;key,
  <a href="IntOMap.html" title="type parameter in IntOMap">E</a>&nbsp;value)</span></div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#put(K,V)" title="class or interface in java.util" class="external-link"><code>Map.put(Object, Object)</code></a>, associates the specified value with the specified key 
+ in this map. If the map previously contained a mapping for the key, 
+ the old value is replaced by the specified value, and returned.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>key</code> - to which associate the specified value.</dd>
+<dd><code>value</code> - to be associated with the specified key.</dd>
+<dt>Returns:</dt>
+<dd>previous value associated with <code>key</code>, or <code>null</code> if there was no mapping for <code>key</code>.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="remove()">
+<h3>remove</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntOMap.html" title="type parameter in IntOMap">E</a></span>&nbsp;<span class="element-name">remove</span>()</div>
+<div class="block">A fast remove by pointer, in a big loop</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>previous value associated with <code>key</code>, or <code>null</code> if there was no mapping for <code>key</code>.</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="remove(int)">
 <h3>remove</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span>&nbsp;<span class="element-name">remove</span><wbr><span class="parameters">(int&nbsp;key)</span></div>
-</section>
-</li>
-<li>
-<section class="detail" id="size()">
-<h3>size</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">size</span>()</div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#remove(java.lang.Object)" title="class or interface in java.util" class="external-link"><code>Map.remove(Object)</code></a>, removes the mapping for a key from this map if it is present.
+ Returns the value to which this map previously associated the key, or null if the map contained 
+ no mapping for the key.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>key</code> - to be removed from the map.</dd>
+<dt>Returns:</dt>
+<dd>previous value associated with <code>key</code>, or <code>null</code> if there was no mapping for <code>key</code>.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -315,53 +414,24 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="next()">
-<h3>next</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">next</span>()</div>
-<div class="block">A light iterator implementation</div>
+<section class="detail" id="size()">
+<h3>size</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">size</span>()</div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html#size()" title="class or interface in java.util" class="external-link"><code>Map.size()</code></a>, returns the number of key-value mappings in this map.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>number of key-value mappings in this map.</dd>
 </dl>
-</section>
-</li>
-<li>
-<section class="detail" id="key()">
-<h3>key</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">key</span>()</div>
-<div class="block">Current key, for efficiency, no test, use it after next()</div>
 </section>
 </li>
 <li>
 <section class="detail" id="value()">
 <h3>value</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntOMap.html" title="type parameter in IntOMap">E</a></span>&nbsp;<span class="element-name">value</span>()</div>
-<div class="block">Current value, for efficiency, no test, use it after next()</div>
-</section>
-</li>
-<li>
-<section class="detail" id="remove()">
-<h3>remove</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntOMap.html" title="type parameter in IntOMap">E</a></span>&nbsp;<span class="element-name">remove</span>()</div>
-<div class="block">A fast remove by pointer, in a big loop</div>
+<div class="block">Current value, use it after next().</div>
 <dl class="notes">
 <dt>Returns:</dt>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="keys()">
-<h3>keys</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">keys</span>()</div>
-<div class="block">Give keys as a sorted Array of int</div>
-</section>
-</li>
-<li>
-<section class="detail" id="nextValue()">
-<h3>nextValue</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="IntOMap.html" title="type parameter in IntOMap">E</a></span>&nbsp;<span class="element-name">nextValue</span>()</div>
-<div class="block">A light iterator implementation</div>
-<dl class="notes">
-<dt>Returns:</dt>
+<dd>current value.</dd>
 </dl>
 </section>
 </li>
@@ -369,7 +439,6 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="toString()">
 <h3>toString</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">toString</span>()</div>
-<div class="block">Nicer output for debug</div>
 <dl class="notes">
 <dt>Overrides:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#toString()" title="class or interface in java.lang" class="external-link">toString</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></dd>
