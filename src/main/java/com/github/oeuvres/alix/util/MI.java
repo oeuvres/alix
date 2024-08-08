@@ -137,38 +137,66 @@ public enum MI {
      */
     ;
 
+    /**
+     * Score of the co-occurrency.
+     * 
+     * @param Oab observed co-occurrences of ab.
+     * @param Oa observed occurences of a (with ab)
+     * @param Ob observed occurences of b (with ab)
+     * @param N total occurrences, with a and b.
+     * @return a score according to a formula.
+     */
     abstract public double score(final double Oab, final double Oa, final double Ob, final double N);
 
     /**
-     * Used by {@link #CHI2} or {@link #G}, calculate the four expected {Eab, Ea, Eb, }
-     * @param Oab
-     * @param Oa
-     * @param Ob
-     * @param N
-     * @return
+     * Used by {@link #CHI2} or {@link #G}, calculate the four expected {Eab, Ea!b, Eb!a, E!a!b}.
+     * <ul>
+     *   <li>Eab = Oa * Ob / N</li>
+     *   <li>Ea!b = Oa * (N - Ob) / N</li>
+     *   <li>Eb!a = Ob * (N - Oa) / N</li>
+     *   <li>E!a!b = (N - Oa) * (N - Ob) / N</li>
+     * </ul>
+     *   
+     * Σ Ei = ((OaOb) + (OaN - OaOb) + (ObN - OaOb) + (N² -OaN -ObN +OaOb)) / N = N² / N = N
+     *   
+     * 
+     * @param Oab observed co-occurrences of ab.
+     * @param Oa observed occurences of a (with ab)
+     * @param Ob observed occurences of b (with ab)
+     * @param N total occurrences, with a and b.
+     * @return {Eab, Ea!b, Eb!a, E!a!b}
      */
     protected double[] expected(final double Oab, final double Oa, final double Ob, final double N)
     {
         // (Oa.Ob + (N-Oa) Ob + Oa (N-Ob) + (N-Oa).(N-Ob)) /N
         // = (Oa.Ob + N.Ob - Oa.Ob + N.Oa - Oa.Ob + N^2 - N.Oa - N.Ob + Oa.Ob) / N
         // = N^2 / N = N
-        double[] E = { Oa * Ob / N, (N - Oa) * Ob / N, Oa * (N - Ob) / N, (N - Oa) * (N - Ob) / N };
+        double[] E = { Oa * Ob / N, Oa * (N - Ob) / N, Ob * (N - Oa)  / N, (N - Oa) * (N - Ob) / N };
         return E;
     }
 
     /**
-     * Returns the four observed.
+     * Returns the four observed {Oab, Oa!b, Ob!a, O!a!b}.
      * 
-     * @param Oab
-     * @param Oa
-     * @param Ob
-     * @param N
-     * @return {O}
+     * <ul>
+     *   <li>Oab = Oab</li>
+     *   <li>Oa!b = Oa - Oab</li>
+     *   <li>Ob!a = Ob - Oab</li>
+     *   <li>O!a!b = N - Oa - Ob + Oab<li>
+     * </ul>
+     * 
+     * Σ Oi = (Oab) + (Oa -Oab) + (Ob -Oab) + (N -Oa -Ob +Oab) = N
+     * 
+     * @param Oab observed co-occurrences of ab, not used.
+     * @param Oa observed occurences of a (with ab)
+     * @param Ob observed occurences of b (with ab)
+     * @param N total occurrences, with a and b.
+     * @return {Oab, Oa!b, Ob!a, O!a!b}
      */
     protected double[] observed(final double Oab, final double Oa, final double Ob, final double N)
     {
         // Oab + Ob - Oab + Oa - Oab + N - Oa - Ob + Oab = N
-        double[] O = { Oab, Ob - Oab, Oa - Oab, N - Oa - Ob + Oab };
+        double[] O = { Oab, Oa - Oab, Ob - Oab, N - Oa - Ob + Oab };
         return O;
     }
 

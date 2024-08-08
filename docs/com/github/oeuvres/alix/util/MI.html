@@ -149,7 +149,7 @@ loadScripts(document, 'script');</script>
  double&nbsp;Ob,
  double&nbsp;N)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Used by <a href="#CHI2"><code>CHI2</code></a> or <a href="#G"><code>G</code></a>, calculate the four expected {Eab, Ea, Eb, }</div>
+<div class="block">Used by <a href="#CHI2"><code>CHI2</code></a> or <a href="#G"><code>G</code></a>, calculate the four expected {Eab, Ea!</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected double[]</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#observed(double,double,double,double)" class="member-name-link">observed</a><wbr>(double&nbsp;Oab,
@@ -157,7 +157,7 @@ loadScripts(document, 'script');</script>
  double&nbsp;Ob,
  double&nbsp;N)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns the four observed.</div>
+<div class="block">Returns the four observed {Oab, Oa!</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>abstract double</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#score(double,double,double,double)" class="member-name-link">score</a><wbr>(double&nbsp;Oab,
@@ -293,14 +293,23 @@ not permitted.)</div>
  double&nbsp;Oa,
  double&nbsp;Ob,
  double&nbsp;N)</span></div>
-<div class="block">Used by <a href="#CHI2"><code>CHI2</code></a> or <a href="#G"><code>G</code></a>, calculate the four expected {Eab, Ea, Eb, }</div>
+<div class="block">Used by <a href="#CHI2"><code>CHI2</code></a> or <a href="#G"><code>G</code></a>, calculate the four expected {Eab, Ea!b, Eb!a, E!a!b}.
+ <ul>
+   <li>Eab = Oa * Ob / N</li>
+   <li>Ea!b = Oa * (N - Ob) / N</li>
+   <li>Eb!a = Ob * (N - Oa) / N</li>
+   <li>E!a!b = (N - Oa) * (N - Ob) / N</li>
+ </ul>
+   
+ Σ Ei = ((OaOb) + (OaN - OaOb) + (ObN - OaOb) + (N² -OaN -ObN +OaOb)) / N = N² / N = N</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>Oab</code> - </dd>
-<dd><code>Oa</code> - </dd>
-<dd><code>Ob</code> - </dd>
-<dd><code>N</code> - </dd>
+<dd><code>Oab</code> - observed co-occurrences of ab, not used.</dd>
+<dd><code>Oa</code> - observed occurences of a (with ab)</dd>
+<dd><code>Ob</code> - observed occurences of b (with ab)</dd>
+<dd><code>N</code> - total occurrences, with a and b.</dd>
 <dt>Returns:</dt>
+<dd>{Eab, Ea!b, Eb!a, E!a!b}</dd>
 </dl>
 </section>
 </li>
@@ -311,15 +320,24 @@ not permitted.)</div>
  double&nbsp;Oa,
  double&nbsp;Ob,
  double&nbsp;N)</span></div>
-<div class="block">Returns the four observed.</div>
+<div class="block">Returns the four observed {Oab, Oa!b, Ob!a, O!a!b}.
+ 
+ <ul>
+   <li>Oab = Oab</li>
+   <li>Oa!b = Oa - Oab</li>
+   <li>Ob!a = Ob - Oab</li>
+   <li>O!a!b = N - Oa - Ob + Oab<li>
+ </ul>
+ 
+ Σ Oi = (Oab) + (Oa -Oab) + (Ob -Oab) + (N -Oa -Ob +Oab) = N</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>Oab</code> - </dd>
-<dd><code>Oa</code> - </dd>
-<dd><code>Ob</code> - </dd>
-<dd><code>N</code> - </dd>
+<dd><code>Oab</code> - observed co-occurrences of ab, not used.</dd>
+<dd><code>Oa</code> - observed occurences of a (with ab)</dd>
+<dd><code>Ob</code> - observed occurences of b (with ab)</dd>
+<dd><code>N</code> - total occurrences, with a and b.</dd>
 <dt>Returns:</dt>
-<dd>{O}</dd>
+<dd>{Oab, Oa!b, Ob!a, O!a!b}</dd>
 </dl>
 </section>
 </li>

@@ -5,16 +5,58 @@ package com.github.oeuvres.alix.lucene.search;
  * Is not a {@link org.apache.lucene.search.Scorer}, nor a {@link org.apache.lucene.search.similarities.Distribution}.
  */
 public enum Distrib {
-    /** Count of occs found. */
-    OCCS() {
+    /** Kind of tf-idf. */
+    BM25
+    {
+        /** Average of document length */
+        protected double docAvg;
+        /** Classical BM25 param */
+        private final double k1 = 1.2f;
+        /** Classical BM25 param */
+        private final double b = 0.75f;
+        /** Cache idf for a form */
+        private double idf;
+    
+        @Override
+        public void idf(final double hits, final double docsAll, final double occsAll)
+        {
+            this.docAvg = occsAll / docsAll;
+            this.idf = Math.log(1.0 + (docsAll - hits + 0.5D) / (hits + 0.5D));
+        }
+    
         @Override
         public double score(final double freq, final double docLen)
         {
-            return freq;
+            return idf * (freq * (k1 + 1)) / (freq + k1 * (1 - b + b * docLen / docAvg));
         }
+    
+    },
+    /** Chi2 = Σ(Oi - Ei)²/Ei" */
+    CHI2
+    {
+        @Override
+        public double score(final double freq, final double docLen)
+        {
+            // negative is not interesting here
+            if (freq < 1 || docLen < 1)
+                return 0;
+            // expectation for this form should have been set befor
+            final double Ei = expectation * docLen;
+            // Oi = freq
+            double O_E = freq - Ei;
+            return O_E * O_E / Ei;
+        }
+    
+        @Override
+        public double last(final double freq, final double docLen)
+        {
+            return score(freq, docLen);
+        }
+    
     },
     /** occs found / occs by doc. */
-    FREQ() {
+    FREQ()
+    {
         @Override
         public double score(final double freq, final double docLen)
         {
@@ -24,7 +66,8 @@ public enum Distrib {
     /**
      * Log test. G = 2 Σ(Oi.ln(Oi/Ei))
      */
-    G() {
+    G()
+    {
         @Override
         public double score(final double freq, final double docLen)
         {
@@ -43,33 +86,18 @@ public enum Distrib {
         }
 
     },
-    /** Kind of tf-idf. */
-    BM25() {
-        /** Average of document length */
-        protected double docAvg;
-        /** Classical BM25 param */
-        private final double k1 = 1.2f;
-        /** Classical BM25 param */
-        private final double b = 0.75f;
-        /** Cache idf for a form */
-        private double idf;
-
-        @Override
-        public void idf(final double hits, final double docsAll, final double occsAll)
-        {
-            this.docAvg = occsAll / docsAll;
-            this.idf = Math.log(1.0 + (docsAll - hits + 0.5D) / (hits + 0.5D));
-        }
-
+    /** Count of occs found. */
+    OCCS
+    {
         @Override
         public double score(final double freq, final double docLen)
         {
-            return idf * (freq * (k1 + 1)) / (freq + k1 * (1 - b + b * docLen / docAvg));
+            return freq;
         }
-
     },
     /** Metric between “term frequency” and “inverse document frequency”. */
-    TFIDF() {
+    TFIDF()
+    {
         /** A traditional coefficient */
         final double k = 0.2F;
         /** Cache idf for a term */
@@ -87,27 +115,6 @@ public enum Distrib {
         public double score(final double freq, final double docLen)
         {
             return idf * (k + (1 - k) * (double) freq / (double) docLen);
-        }
-
-    },
-    /** Chi2 = Σ(Oi - Ei)²/Ei" */
-    CHI2() {
-
-        @Override
-        public double score(final double freq, final double docLen)
-        {
-            // negative is not interesting here
-            if (freq < 1 || docLen < 1)
-                return 0;
-            final double Ei = expectation * docLen;
-            double O_E = freq - Ei;
-            return O_E * O_E / Ei;
-        }
-
-        @Override
-        public double last(final double freq, final double docLen)
-        {
-            return score(freq, docLen);
         }
 
     },
