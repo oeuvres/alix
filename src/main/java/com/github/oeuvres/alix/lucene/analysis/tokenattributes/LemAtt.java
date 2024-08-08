@@ -34,6 +34,9 @@ package com.github.oeuvres.alix.lucene.analysis.tokenattributes;
 
 import org.apache.lucene.util.Attribute;
 
+/**
+ * Lucene token attribute for lemma event.
+ */
 public interface LemAtt extends Attribute, CharSequence, Appendable
 {
 

@@ -83,7 +83,8 @@ loadScripts(document, 'script');</script>
 <div class="type-signature"><span class="modifiers">public class </span><span class="element-name type-name-label">Murmur3A</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>
 implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a></span></div>
-<div class="block">Murmur3A (murmurhash3_x86_32)</div>
+<div class="block">Murmur3A (murmurhash3_x86_32)
+ Source: https://github.com/greenrobot/essentials/blob/master/java-essentials/src/main/java/org/greenrobot/essentials/hash/Murmur3A.java</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -115,7 +116,9 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getHashCode()" class="member-name-link">getHashCode</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Get hash code as an int.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getValue()" class="member-name-link">getValue</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
@@ -124,9 +127,11 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#update(byte%5B%5D)" class="member-name-link">update</a><wbr>(byte[]&nbsp;b)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Updates the current checksum with the specified array of bytes.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#update(byte%5B%5D,int,int)" class="member-name-link">update</a><wbr>(byte[]&nbsp;bytes,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#update(byte%5B%5D,int,int)" class="member-name-link">update</a><wbr>(byte[]&nbsp;b,
  int&nbsp;off,
  int&nbsp;len)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
@@ -136,41 +141,57 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateBoolean(boolean)" class="member-name-link">updateBoolean</a><wbr>(boolean&nbsp;value)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">updates a byte with 0 for false and 1 for true</div>
+<div class="block">updates a byte with 0 for false and 1 for true.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateDouble(double)" class="member-name-link">updateDouble</a><wbr>(double&nbsp;number)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateDouble(double)" class="member-name-link">updateDouble</a><wbr>(double&nbsp;value)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Updates the current checksum with a double (64 bits, like an long).</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateFloat(float)" class="member-name-link">updateFloat</a><wbr>(float&nbsp;number)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateFloat(float)" class="member-name-link">updateFloat</a><wbr>(float&nbsp;value)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Updates the current checksum with a float (32 bits, like an int).</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateInt(int)" class="member-name-link">updateInt</a><wbr>(int&nbsp;value)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Update with an int value, do not use <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html#update(int)" title="class or interface in java.util.zip" class="external-link"><code>Checksum.update(int)</code></a> (for a byte).</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateInt(int%5B%5D)" class="member-name-link">updateInt</a><wbr>(int[]&nbsp;ints)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateInt(int%5B%5D)" class="member-name-link">updateInt</a><wbr>(int[]&nbsp;values)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Updates the current checksum with the specified array of bytes.</div>
+<div class="block">Updates the current checksum with the specified array of ints.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateInt(int%5B%5D,int,int)" class="member-name-link">updateInt</a><wbr>(int[]&nbsp;ints,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateInt(int%5B%5D,int,int)" class="member-name-link">updateInt</a><wbr>(int[]&nbsp;values,
  int&nbsp;off,
  int&nbsp;len)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Updates the current checksum with the specified array of bytes.</div>
+<div class="block">Updates the current checksum with the specified array of ints.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateLong(long)" class="member-name-link">updateLong</a><wbr>(long&nbsp;value)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Updates the current checksum with a long value.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateLong(long...)" class="member-name-link">updateLong</a><wbr>(long...&nbsp;values)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateLong(long%5B%5D,int,int)" class="member-name-link">updateLong</a><wbr>(long[]&nbsp;values,
+ int&nbsp;off,
+ int&nbsp;len)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Updates the current checksum with the specified array of ints.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateShort(short)" class="member-name-link">updateShort</a><wbr>(short&nbsp;value)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Updates the current checksum with a short value.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateShort(short...)" class="member-name-link">updateShort</a><wbr>(short...&nbsp;values)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#updateShort(short%5B%5D)" class="member-name-link">updateShort</a><wbr>(short[]&nbsp;values)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Updates the current checksum with an array of short.</div>
+</div>
 </div>
 </div>
 </div>
@@ -212,110 +233,14 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="update(int)">
-<h3>update</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">update</span><wbr><span class="parameters">(int&nbsp;b)</span></div>
+<section class="detail" id="getHashCode()">
+<h3>getHashCode</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">getHashCode</span>()</div>
+<div class="block">Get hash code as an int.</div>
 <dl class="notes">
-<dt>Specified by:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html#update(int)" title="class or interface in java.util.zip" class="external-link">update</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a></code></dd>
+<dt>Returns:</dt>
+<dd>32 bits mumurHash.</dd>
 </dl>
-</section>
-</li>
-<li>
-<section class="detail" id="update(byte[],int,int)">
-<h3>update</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">update</span><wbr><span class="parameters">(byte[]&nbsp;bytes,
- int&nbsp;off,
- int&nbsp;len)</span></div>
-<dl class="notes">
-<dt>Specified by:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html#update(byte%5B%5D,int,int)" title="class or interface in java.util.zip" class="external-link">update</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a></code></dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="update(byte[])">
-<h3>update</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">update</span><wbr><span class="parameters">(byte[]&nbsp;b)</span></div>
-<dl class="notes">
-<dt>Specified by:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html#update(byte%5B%5D)" title="class or interface in java.util.zip" class="external-link">update</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a></code></dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="updateShort(short)">
-<h3>updateShort</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateShort</span><wbr><span class="parameters">(short&nbsp;value)</span></div>
-</section>
-</li>
-<li>
-<section class="detail" id="updateShort(short...)">
-<h3>updateShort</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateShort</span><wbr><span class="parameters">(short...&nbsp;values)</span></div>
-</section>
-</li>
-<li>
-<section class="detail" id="updateInt(int)">
-<h3>updateInt</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateInt</span><wbr><span class="parameters">(int&nbsp;value)</span></div>
-</section>
-</li>
-<li>
-<section class="detail" id="updateInt(int[])">
-<h3>updateInt</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateInt</span><wbr><span class="parameters">(int[]&nbsp;ints)</span></div>
-<div class="block">Updates the current checksum with the specified array of bytes.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>ints</code> - the int array to update the checksum with.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="updateInt(int[],int,int)">
-<h3>updateInt</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateInt</span><wbr><span class="parameters">(int[]&nbsp;ints,
- int&nbsp;off,
- int&nbsp;len)</span></div>
-<div class="block">Updates the current checksum with the specified array of bytes.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>ints</code> - the int array to update the checksum with.</dd>
-<dd><code>off</code> - the start offset of the int array.</dd>
-<dd><code>len</code> - the number of bytes to use for the update.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="updateLong(long)">
-<h3>updateLong</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateLong</span><wbr><span class="parameters">(long&nbsp;value)</span></div>
-</section>
-</li>
-<li>
-<section class="detail" id="updateLong(long...)">
-<h3>updateLong</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateLong</span><wbr><span class="parameters">(long...&nbsp;values)</span></div>
-</section>
-</li>
-<li>
-<section class="detail" id="updateFloat(float)">
-<h3>updateFloat</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateFloat</span><wbr><span class="parameters">(float&nbsp;number)</span></div>
-</section>
-</li>
-<li>
-<section class="detail" id="updateDouble(double)">
-<h3>updateDouble</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateDouble</span><wbr><span class="parameters">(double&nbsp;number)</span></div>
-</section>
-</li>
-<li>
-<section class="detail" id="updateBoolean(boolean)">
-<h3>updateBoolean</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateBoolean</span><wbr><span class="parameters">(boolean&nbsp;value)</span></div>
-<div class="block">updates a byte with 0 for false and 1 for true</div>
 </section>
 </li>
 <li>
@@ -329,18 +254,165 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 </section>
 </li>
 <li>
-<section class="detail" id="getHashCode()">
-<h3>getHashCode</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">getHashCode</span>()</div>
-</section>
-</li>
-<li>
 <section class="detail" id="reset()">
 <h3>reset</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">reset</span>()</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html#reset()" title="class or interface in java.util.zip" class="external-link">reset</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="update(int)">
+<h3>update</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">update</span><wbr><span class="parameters">(int&nbsp;b)</span></div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html#update(int)" title="class or interface in java.util.zip" class="external-link">update</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="update(byte[])">
+<h3>update</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">update</span><wbr><span class="parameters">(byte[]&nbsp;b)</span></div>
+<div class="block">Updates the current checksum with the specified array of bytes.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html#update(byte%5B%5D)" title="class or interface in java.util.zip" class="external-link">update</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a></code></dd>
+<dt>Parameters:</dt>
+<dd><code>b</code> - the byte array to update the checksum with.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="update(byte[],int,int)">
+<h3>update</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">update</span><wbr><span class="parameters">(byte[]&nbsp;b,
+ int&nbsp;off,
+ int&nbsp;len)</span></div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html#update(byte%5B%5D,int,int)" title="class or interface in java.util.zip" class="external-link">update</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="updateShort(short)">
+<h3>updateShort</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateShort</span><wbr><span class="parameters">(short&nbsp;value)</span></div>
+<div class="block">Updates the current checksum with a short value.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>value</code> - the short to update the checksum with.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="updateShort(short[])">
+<h3>updateShort</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateShort</span><wbr><span class="parameters">(short[]&nbsp;values)</span></div>
+<div class="block">Updates the current checksum with an array of short.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>values</code> - the short array to update the checksum with.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="updateInt(int)">
+<h3>updateInt</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateInt</span><wbr><span class="parameters">(int&nbsp;value)</span></div>
+<div class="block">Update with an int value, do not use <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/zip/Checksum.html#update(int)" title="class or interface in java.util.zip" class="external-link"><code>Checksum.update(int)</code></a> (for a byte).</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>value</code> - int value.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="updateInt(int[])">
+<h3>updateInt</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateInt</span><wbr><span class="parameters">(int[]&nbsp;values)</span></div>
+<div class="block">Updates the current checksum with the specified array of ints.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>values</code> - the int array to update the checksum with.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="updateInt(int[],int,int)">
+<h3>updateInt</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateInt</span><wbr><span class="parameters">(int[]&nbsp;values,
+ int&nbsp;off,
+ int&nbsp;len)</span></div>
+<div class="block">Updates the current checksum with the specified array of ints.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>values</code> - the int array to update the checksum with.</dd>
+<dd><code>off</code> - the start offset of the int array.</dd>
+<dd><code>len</code> - the number of ints to use for the update.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="updateLong(long)">
+<h3>updateLong</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateLong</span><wbr><span class="parameters">(long&nbsp;value)</span></div>
+<div class="block">Updates the current checksum with a long value.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>value</code> - long value.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="updateLong(long[],int,int)">
+<h3>updateLong</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateLong</span><wbr><span class="parameters">(long[]&nbsp;values,
+ int&nbsp;off,
+ int&nbsp;len)</span></div>
+<div class="block">Updates the current checksum with the specified array of ints.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>values</code> - the long array to update the checksum with.</dd>
+<dd><code>off</code> - the start offset of the int array.</dd>
+<dd><code>len</code> - the number of bytes to use for the update.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="updateFloat(float)">
+<h3>updateFloat</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateFloat</span><wbr><span class="parameters">(float&nbsp;value)</span></div>
+<div class="block">Updates the current checksum with a float (32 bits, like an int).</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>value</code> - the float to update the checksum with.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="updateDouble(double)">
+<h3>updateDouble</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateDouble</span><wbr><span class="parameters">(double&nbsp;value)</span></div>
+<div class="block">Updates the current checksum with a double (64 bits, like an long).</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>value</code> - the double to update the checksum with.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="updateBoolean(boolean)">
+<h3>updateBoolean</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateBoolean</span><wbr><span class="parameters">(boolean&nbsp;value)</span></div>
+<div class="block">updates a byte with 0 for false and 1 for true.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>value</code> - true or false.</dd>
 </dl>
 </section>
 </li>

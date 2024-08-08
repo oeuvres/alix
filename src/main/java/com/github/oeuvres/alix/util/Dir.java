@@ -51,8 +51,153 @@ import java.util.List;
  */
 public class Dir
 {
-    static { // maybe useful to decode file names, but has been not efficient
+    static { // maybe useful to decode file names
         System.setProperty("file.encoding", "UTF-8");
+    }
+
+    /**
+     * Resolve relative links for glob.
+     * 
+     * @param glob requested path as a glob.
+     * @param base file from which resolve relative links.
+     * @return an absolute glob.
+     * @throws IOException file exceptions.
+     */
+    public static String globNorm(String glob, File base) throws IOException
+    {
+        glob = glob.trim();
+        if (glob.equals("")) {
+            return null;
+        }
+        if (glob.startsWith("#")) {
+            return null;
+        }
+        // File.separator regularisation needed
+        if (File.separatorChar == '\\') {
+            glob = glob.replaceAll("[/\\\\]", File.separator + File.separator);
+        }
+        else {
+            glob = glob.replaceAll("[/\\\\]", File.separator);
+        }
+        if (!new File(glob).isAbsolute()) {
+            File dir = base.getAbsoluteFile();
+            if (glob.startsWith("." + File.separator)) {
+                glob = glob.substring(2);
+            }
+            while (glob.startsWith(".." + File.separator)) {
+                dir = dir.getParentFile();
+                glob = glob.substring(3);
+            }
+            File f = new File(dir, glob);
+            return f.getAbsolutePath();
+        }
+        else {
+            return glob;
+        }
+    }
+
+    /**
+     * Add files to a list with a glob.
+     *
+     * @param paths list of paths to populate.
+     * @param glob pattern of file to append.
+     * @return the list of paths completed.
+     * @throws IOException file errors.
+     */
+    public static List<Path> include(List<Path> paths, final String glob) throws IOException
+    {
+        if (paths == null) {
+            throw new IOException("List<Path> paths is null, a list is needed to add Path");
+        }
+        if (glob == null) {
+            return paths;
+        }
+        // name encoding problem in linux WSL, with File or Path
+        Path basedir = new File(glob.replaceFirst("[\\[\\*\\?\\{].*", "") + "DUMMY").getParentFile().toPath();
+        File globFile = new File(glob);
+        if (globFile.exists()) {
+            paths.add(globFile.toPath());
+            return paths;
+        }
+    
+        String pattern = glob;
+        if (File.separator.equals("\\")) { // for Windows
+            pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes all those '\' needed
+        }
+        final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern); // new File(glob)
+    
+        Files.walkFileTree(basedir, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) throws IOException
+            {
+                String dirname = path.getFileName().toString();
+                if (dirname.startsWith(".") || dirname.startsWith("_")) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                return FileVisitResult.CONTINUE;
+            }
+    
+            @Override
+            public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException
+            {
+                String filename = path.getFileName().toString();
+                if (filename.startsWith(".") || filename.startsWith("_")) {
+                    return FileVisitResult.CONTINUE;
+                }
+                if (pathMatcher.matches(path)) {
+                    paths.add(path);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+    
+            @Override
+            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException
+            {
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        return paths;
+    }
+
+    /**
+     * Delete files from a list by glob.
+     * 
+     * @param paths list of files.
+     * @param glob pattern to select files.
+     * @return list of selected paths.
+     * @throws IOException file errors.
+     */
+    static public  List<Path> exclude(final List<Path> paths, final String glob) throws IOException
+    {
+        if (glob == null) {
+            return paths;
+        }
+        String pattern = glob;
+        if (File.separator.equals("\\")) { // for Windows
+            pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes all those '\' needed
+        }
+        final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
+        
+        Iterator<Path> it = paths.iterator();
+        while (it.hasNext()) {
+            Path path = it.next();
+            if (pathMatcher.matches(path)) {
+                it.remove();
+            }
+        }
+        return paths;
+    }
+
+    /**
+     * List files by glob.
+     * 
+     * @param glob pattern to select files.
+     * @return list of selected paths.
+     * @throws IOException file errors.
+     */
+    public static List<Path> ls(final String glob) throws IOException
+    {
+        return include(new ArrayList<Path>(), glob);
     }
 
     /**
@@ -97,111 +242,6 @@ public class Dir
             }
         }
         return file.delete();
-    }
-
-    /**
-     * List files by glob.
-     * 
-     * @param glob pattern to select files.
-     * @return list of selected paths.
-     * @throws IOException file errors.
-     */
-    public static List<Path> ls(final String glob) throws IOException
-    {
-        return include(new ArrayList<Path>(), glob);
-    }
-    
-
-    /**
-     * Delete files from a list by glob.
-     * 
-     * @param paths list of files.
-     * @param glob pattern to select files.
-     * @return list of selected paths.
-     * @throws IOException file errors.
-     */
-    static public  List<Path> exclude(final List<Path> paths, final String glob) throws IOException
-    {
-        if (glob == null) {
-            return paths;
-        }
-        String pattern = glob;
-        if (File.separator.equals("\\")) { // for Windows
-            pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes all those '\' needed
-        }
-        final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
-        
-        Iterator<Path> it = paths.iterator();
-        while (it.hasNext()) {
-            Path path = it.next();
-            if (pathMatcher.matches(path)) {
-                it.remove();
-            }
-        }
-        return paths;
-    }
-
-    /**
-     * Add files to a list with a glob.
-     *
-     * @param paths list of paths to populate.
-     * @param glob pattern of file to append.
-     * @return the list of paths completed.
-     * @throws IOException file errors.
-     */
-    public static List<Path> include(List<Path> paths, final String glob) throws IOException
-    {
-        if (paths == null) {
-            throw new IOException("List<Path> paths is null, a list is needed to add Path");
-        }
-        if (glob == null) {
-            return paths;
-        }
-        // name encoding problem in linux WSL, with File or Path
-        Path basedir = new File(glob.replaceFirst("[\\[\\*\\?\\{].*", "") + "DUMMY").getParentFile().toPath();
-        File globFile = new File(glob);
-        if (globFile.exists()) {
-            paths.add(globFile.toPath());
-            return paths;
-        }
-
-        String pattern = glob;
-        if (File.separator.equals("\\")) { // for Windows
-            pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes all those '\' needed
-        }
-        final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern); // new File(glob)
-
-        Files.walkFileTree(basedir, new SimpleFileVisitor<Path>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) throws IOException
-            {
-                String dirname = path.getFileName().toString();
-                if (dirname.startsWith(".") || dirname.startsWith("_")) {
-                    return FileVisitResult.SKIP_SUBTREE;
-                }
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException
-            {
-                String filename = path.getFileName().toString();
-                if (filename.startsWith(".") || filename.startsWith("_")) {
-                    return FileVisitResult.CONTINUE;
-                }
-                if (pathMatcher.matches(path)) {
-                    paths.add(path);
-                }
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException
-            {
-                return FileVisitResult.CONTINUE;
-            }
-        });
-        return paths;
     }
 
     /**

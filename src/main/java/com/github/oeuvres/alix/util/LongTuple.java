@@ -32,7 +32,7 @@
  */
 package com.github.oeuvres.alix.util;
 
-import java.util.Arrays;
+import java.util.List;
 
 /**
  * A fixed list of longs, useful in arrays to be sorted.
@@ -43,11 +43,17 @@ public class LongTuple implements Comparable<LongTuple>
     final protected long[] data;
     /** Size of tuple */
     final protected int size;
-    /** HashCode cache */
-    protected int hash;
+    /** Cache an hash code */
+    protected int hashCache;
+    /** Should be rehashed */
+    protected boolean hashOK;
+    /** Hash code producer */
+    protected Murmur3A murmur = new Murmur3A();
 
     /**
      * Constructor setting the size.
+     * 
+     * @param size number of long in this tuple.
      */
     public LongTuple(final int size) {
         this.size = size;
@@ -55,10 +61,10 @@ public class LongTuple implements Comparable<LongTuple>
     }
 
     /**
-     * Build a pair
+     * Build a pair.
      * 
-     * @param a
-     * @param b
+     * @param a first element of the pair.
+     * @param b second element of the pair.
      */
     public LongTuple(final long a, long b) {
         size = 2;
@@ -68,11 +74,11 @@ public class LongTuple implements Comparable<LongTuple>
     }
 
     /**
-     * Build a 3-tuple
+     * Build a 3-tuple.
      * 
-     * @param a
-     * @param b
-     * @param c
+     * @param a first element of the triplet.
+     * @param b second  element of the triplet.
+     * @param c third  element of the triplet.
      */
     public LongTuple(final long a, final long b, final long c) {
         size = 3;
@@ -82,51 +88,17 @@ public class LongTuple implements Comparable<LongTuple>
         data[2] = c;
     }
 
-    /**
-     * Get value for a position.
-     * 
-     * @param pos
-     * @return
-     */
-    public long get(int pos)
+    @Override
+    public int compareTo(LongTuple tuple)
     {
-        return data[pos];
-    }
-
-    /**
-     * Size of data.
-     * 
-     * @return
-     */
-    public int size()
-    {
-        return size;
-    }
-
-    /**
-     * 
-     * @return
-     */
-    public long[] toArray()
-    {
-        return toArray(null);
-    }
-
-    /**
-     * Fill the provided array with sorted values, or create new if null provided
-     * 
-     * @param dest
-     * @return
-     */
-    public long[] toArray(long[] dest)
-    {
-        if (dest == null)
-            dest = new long[size];
-        int lim = Math.min(dest.length, size);
-        System.arraycopy(data, 0, dest, 0, lim);
-        // if provided array is bigger than size, do not sort with other values
-        Arrays.sort(dest, 0, lim);
-        return dest;
+        if (size != tuple.size)
+            return Integer.compare(size, tuple.size);
+        int lim = size; // avoid a content lookup
+        for (int i = 0; i < lim; i++) {
+            if (data[i] != tuple.data[i])
+                return Long.compare(data[i], tuple.data[i]);
+        }
+        return 0;
     }
 
     @Override
@@ -149,17 +121,55 @@ public class LongTuple implements Comparable<LongTuple>
         return false;
     }
 
-    @Override
-    public int compareTo(LongTuple tuple)
+    /**
+     * Like {@link List#get(int)}, returns the element at the specified position in this list.
+     * 
+     * @param index position of the element to return.
+     * @return The element at the specified position in this list.
+     */
+    public long get(int index)
     {
-        if (size != tuple.size)
-            return Integer.compare(size, tuple.size);
-        int lim = size; // avoid a content lookup
-        for (int i = 0; i < lim; i++) {
-            if (data[i] != tuple.data[i])
-                return Long.compare(data[i], tuple.data[i]);
-        }
-        return 0;
+        return data[index];
+    }
+
+    @Override
+    public int hashCode()
+    {
+        if (hashOK) return hashCache;
+        murmur.reset();
+        murmur.updateLong(data, 0, size);
+        hashCache = murmur.getHashCode();
+        hashOK = false;
+        return hashCache;
+    }
+    
+    /**
+     * Like {@link List#toArray()}, returns an array containing all of the elements in this list
+     * in proper sequence (from first to last element).
+     * 
+     * @return An array containing all of the elements in this list in proper sequence.
+     */
+    public long[] toArray()
+    {
+        return toArray(null);
+    }
+
+    /**
+     * Fill the provided array with sorted values, or create new if null provided.
+     * If the list fits in the specified array, it is returned therein,
+     * without modification of further positions.
+     * If the array provided is smaller than list content, it is filled up to its length.
+     * 
+     * @param dest array to fill in, up to dest.length.
+     * @return same array.
+     */
+    public long[] toArray(long[] dest)
+    {
+        if (dest == null)
+            dest = new long[size];
+        int lim = Math.min(dest.length, size);
+        System.arraycopy(data, 0, dest, 0, lim);
+        return dest;
     }
 
     @Override
@@ -174,6 +184,16 @@ public class LongTuple implements Comparable<LongTuple>
         }
         sb.append(')');
         return sb.toString();
+    }
+
+    /**
+     * Like {@link List#size()}, returns the number of elements in this list.
+     * 
+     * @return The number of elements in this list.
+     */
+    public int size()
+    {
+        return size;
     }
 
 }

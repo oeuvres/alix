@@ -102,9 +102,19 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Internal data</div>
 </div>
 <div class="col-first odd-row-color"><code>protected int</code></div>
-<div class="col-second odd-row-color"><code><a href="#hash" class="member-name-link">hash</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#hashCache" class="member-name-link">hashCache</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">HashCode cache</div>
+<div class="block">Cache an hash code</div>
+</div>
+<div class="col-first even-row-color"><code>protected boolean</code></div>
+<div class="col-second even-row-color"><code><a href="#hashOK" class="member-name-link">hashOK</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">Should be rehashed</div>
+</div>
+<div class="col-first odd-row-color"><code>protected <a href="Murmur3A.html" title="class in com.github.oeuvres.alix.util">Murmur3A</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#murmur" class="member-name-link">murmur</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">Hash code producer</div>
 </div>
 <div class="col-first even-row-color"><code>protected final int</code></div>
 <div class="col-second even-row-color"><code><a href="#size" class="member-name-link">size</a></code></div>
@@ -129,13 +139,13 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(long,long)" class="member-name-link">LongTuple</a><wbr>(long&nbsp;a,
  long&nbsp;b)</code></div>
 <div class="col-last odd-row-color">
-<div class="block">Build a pair</div>
+<div class="block">Build a pair.</div>
 </div>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(long,long,long)" class="member-name-link">LongTuple</a><wbr>(long&nbsp;a,
  long&nbsp;b,
  long&nbsp;c)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Build a 3-tuple</div>
+<div class="block">Build a 3-tuple.</div>
 </div>
 </div>
 </section>
@@ -158,32 +168,38 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#equals(java.lang.Object)" class="member-name-link">equals</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;o)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#get(int)" class="member-name-link">get</a><wbr>(int&nbsp;pos)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#get(int)" class="member-name-link">get</a><wbr>(int&nbsp;index)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get value for a position.</div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/List.html#get(int)" title="class or interface in java.util" class="external-link"><code>List.get(int)</code></a>, returns the element at the specified position in this list.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#size()" class="member-name-link">size</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hashCode()" class="member-name-link">hashCode</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#size()" class="member-name-link">size</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/List.html#size()" title="class or interface in java.util" class="external-link"><code>List.size()</code></a>, returns the number of elements in this list.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toArray()" class="member-name-link">toArray</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Size of data.</div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/List.html#toArray()" title="class or interface in java.util" class="external-link"><code>List.toArray()</code></a>, returns an array containing all of the elements in this list
+ in proper sequence (from first to last element).</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toArray()" class="member-name-link">toArray</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toArray(long%5B%5D)" class="member-name-link">toArray</a><wbr>(long[]&nbsp;dest)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Fill the provided array with sorted values, or create new if null provided</div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toArray(long%5B%5D)" class="member-name-link">toArray</a><wbr>(long[]&nbsp;dest)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Fill the provided array with sorted values, or create new if null provided.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 </div>
 </div>
 </div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-java.lang.Object">Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></h3>
-<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#clone()" title="class or interface in java.lang" class="external-link">clone</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#finalize()" title="class or interface in java.lang" class="external-link">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#getClass()" title="class or interface in java.lang" class="external-link">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#hashCode()" title="class or interface in java.lang" class="external-link">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#notify()" title="class or interface in java.lang" class="external-link">notify</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#notifyAll()" title="class or interface in java.lang" class="external-link">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#wait()" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#wait(long)" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#wait(long,int)" title="class or interface in java.lang" class="external-link">wait</a></code></div>
+<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#clone()" title="class or interface in java.lang" class="external-link">clone</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#finalize()" title="class or interface in java.lang" class="external-link">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#getClass()" title="class or interface in java.lang" class="external-link">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#notify()" title="class or interface in java.lang" class="external-link">notify</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#notifyAll()" title="class or interface in java.lang" class="external-link">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#wait()" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#wait(long)" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#wait(long,int)" title="class or interface in java.lang" class="external-link">wait</a></code></div>
 </section>
 </li>
 </ul>
@@ -210,10 +226,24 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 </section>
 </li>
 <li>
-<section class="detail" id="hash">
-<h3>hash</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">hash</span></div>
-<div class="block">HashCode cache</div>
+<section class="detail" id="hashCache">
+<h3>hashCache</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">hashCache</span></div>
+<div class="block">Cache an hash code</div>
+</section>
+</li>
+<li>
+<section class="detail" id="hashOK">
+<h3>hashOK</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">hashOK</span></div>
+<div class="block">Should be rehashed</div>
+</section>
+</li>
+<li>
+<section class="detail" id="murmur">
+<h3>murmur</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type"><a href="Murmur3A.html" title="class in com.github.oeuvres.alix.util">Murmur3A</a></span>&nbsp;<span class="element-name">murmur</span></div>
+<div class="block">Hash code producer</div>
 </section>
 </li>
 </ul>
@@ -229,6 +259,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>LongTuple</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">LongTuple</span><wbr><span class="parameters">(int&nbsp;size)</span></div>
 <div class="block">Constructor setting the size.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>size</code> - number of long in this tuple.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -236,11 +270,11 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>LongTuple</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">LongTuple</span><wbr><span class="parameters">(long&nbsp;a,
  long&nbsp;b)</span></div>
-<div class="block">Build a pair</div>
+<div class="block">Build a pair.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>a</code> - </dd>
-<dd><code>b</code> - </dd>
+<dd><code>a</code> - first element of the pair.</dd>
+<dd><code>b</code> - second element of the pair.</dd>
 </dl>
 </section>
 </li>
@@ -250,12 +284,12 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">LongTuple</span><wbr><span class="parameters">(long&nbsp;a,
  long&nbsp;b,
  long&nbsp;c)</span></div>
-<div class="block">Build a 3-tuple</div>
+<div class="block">Build a 3-tuple.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>a</code> - </dd>
-<dd><code>b</code> - </dd>
-<dd><code>c</code> - </dd>
+<dd><code>a</code> - first element of the triplet.</dd>
+<dd><code>b</code> - second  element of the triplet.</dd>
+<dd><code>c</code> - third  element of the triplet.</dd>
 </dl>
 </section>
 </li>
@@ -268,45 +302,12 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="get(int)">
-<h3>get</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">get</span><wbr><span class="parameters">(int&nbsp;pos)</span></div>
-<div class="block">Get value for a position.</div>
+<section class="detail" id="compareTo(com.github.oeuvres.alix.util.LongTuple)">
+<h3>compareTo</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">compareTo</span><wbr><span class="parameters">(<a href="LongTuple.html" title="class in com.github.oeuvres.alix.util">LongTuple</a>&nbsp;tuple)</span></div>
 <dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>pos</code> - </dd>
-<dt>Returns:</dt>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="size()">
-<h3>size</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">size</span>()</div>
-<div class="block">Size of data.</div>
-<dl class="notes">
-<dt>Returns:</dt>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="toArray()">
-<h3>toArray</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">toArray</span>()</div>
-<dl class="notes">
-<dt>Returns:</dt>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="toArray(long[])">
-<h3>toArray</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">toArray</span><wbr><span class="parameters">(long[]&nbsp;dest)</span></div>
-<div class="block">Fill the provided array with sorted values, or create new if null provided</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>dest</code> - </dd>
-<dt>Returns:</dt>
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Comparable.html#compareTo(T)" title="class or interface in java.lang" class="external-link">compareTo</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;<a href="LongTuple.html" title="class in com.github.oeuvres.alix.util">LongTuple</a>&gt;</code></dd>
 </dl>
 </section>
 </li>
@@ -321,12 +322,53 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 </section>
 </li>
 <li>
-<section class="detail" id="compareTo(com.github.oeuvres.alix.util.LongTuple)">
-<h3>compareTo</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">compareTo</span><wbr><span class="parameters">(<a href="LongTuple.html" title="class in com.github.oeuvres.alix.util">LongTuple</a>&nbsp;tuple)</span></div>
+<section class="detail" id="get(int)">
+<h3>get</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">get</span><wbr><span class="parameters">(int&nbsp;index)</span></div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/List.html#get(int)" title="class or interface in java.util" class="external-link"><code>List.get(int)</code></a>, returns the element at the specified position in this list.</div>
 <dl class="notes">
-<dt>Specified by:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Comparable.html#compareTo(T)" title="class or interface in java.lang" class="external-link">compareTo</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;<a href="LongTuple.html" title="class in com.github.oeuvres.alix.util">LongTuple</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>index</code> - position of the element to return.</dd>
+<dt>Returns:</dt>
+<dd>The element at the specified position in this list.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="hashCode()">
+<h3>hashCode</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">hashCode</span>()</div>
+<dl class="notes">
+<dt>Overrides:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#hashCode()" title="class or interface in java.lang" class="external-link">hashCode</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="toArray()">
+<h3>toArray</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">toArray</span>()</div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/List.html#toArray()" title="class or interface in java.util" class="external-link"><code>List.toArray()</code></a>, returns an array containing all of the elements in this list
+ in proper sequence (from first to last element).</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>An array containing all of the elements in this list in proper sequence.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="toArray(long[])">
+<h3>toArray</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">toArray</span><wbr><span class="parameters">(long[]&nbsp;dest)</span></div>
+<div class="block">Fill the provided array with sorted values, or create new if null provided.
+ If the list fits in the specified array, it is returned therein,
+ without modification of further positions.
+ If the array provided is smaller than list content, it is filled up to its length.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>dest</code> - array to fill in, up to dest.length.</dd>
+<dt>Returns:</dt>
+<dd>same array.</dd>
 </dl>
 </section>
 </li>
@@ -337,6 +379,17 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <dl class="notes">
 <dt>Overrides:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#toString()" title="class or interface in java.lang" class="external-link">toString</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="size()">
+<h3>size</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">size</span>()</div>
+<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/List.html#size()" title="class or interface in java.util" class="external-link"><code>List.size()</code></a>, returns the number of elements in this list.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>The number of elements in this list.</dd>
 </dl>
 </section>
 </li>

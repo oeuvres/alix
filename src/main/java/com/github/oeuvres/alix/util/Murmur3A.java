@@ -19,6 +19,8 @@ import java.util.zip.Checksum;
 
 /**
  * Murmur3A (murmurhash3_x86_32)
+ * Source: https://github.com/greenrobot/essentials/blob/master/java-essentials/src/main/java/org/greenrobot/essentials/hash/Murmur3A.java
+ * 
  */
 public class Murmur3A implements Checksum {
 
@@ -33,13 +35,71 @@ public class Murmur3A implements Checksum {
     private int partialK1;
     private int partialK1Pos;
 
+    /**
+     * Constructor with no seed.
+     */
     public Murmur3A() {
         seed = 0;
     }
 
+    /**
+     * Constructor with a seed.
+     * @param seed start value for the checksum.
+     */
     public Murmur3A(int seed) {
         this.seed = seed;
         h1 = seed;
+    }
+
+    /**
+     * 
+     * @param k1
+     */
+    private void applyK1(int k1) {
+        k1 *= C1;
+        k1 = (k1 << 15) | (k1 >>> 17);  // ROTL32(k1,15);
+        k1 *= C2;
+    
+        h1 ^= k1;
+        h1 = (h1 << 13) | (h1 >>> 19);  // ROTL32(h1,13);
+        h1 = h1 * 5 + 0xe6546b64;
+    }
+
+    /**
+     * Get hash code as an int.
+     * 
+     * @return 32 bits mumurHash.
+     */
+    public int getHashCode() {
+        int finished = h1;
+        if (partialK1Pos > 0) {
+            int k1 = partialK1 * C1;
+            k1 = (k1 << 15) | (k1 >>> 17);  // ROTL32(k1,15);
+            k1 *= C2;
+            finished ^= k1;
+        }
+        finished ^= length;
+    
+        // fmix
+        finished ^= finished >>> 16;
+        finished *= 0x85ebca6b;
+        finished ^= finished >>> 13;
+        finished *= 0xc2b2ae35;
+        finished ^= finished >>> 16;
+        return finished;
+    }
+
+    @Override
+    public long getValue() {
+    
+        return 0xFFFFFFFFL & getHashCode();
+    }
+
+    @Override
+    public void reset() {
+        h1 = seed;
+        length = 0;
+        partialK1Pos = 0;
     }
 
     @Override
@@ -66,10 +126,19 @@ public class Murmur3A implements Checksum {
         length++;
     }
 
+    /**
+     * Updates the current checksum with the specified array of bytes.
+     * 
+     * @param b the byte array to update the checksum with.
+     */
+    public void update(byte[] b) {
+        update(b, 0, b.length);
+    }
+
     @Override
-    public void update(byte[] bytes, int off, int len) {
+    public void update(byte[] b, int off, int len) {
         while (partialK1Pos != 0 && len > 0) {
-            update(bytes[off]);
+            update(b[off]);
             off++;
             len--;
         }
@@ -77,21 +146,22 @@ public class Murmur3A implements Checksum {
         final int remainder = len & 3;
         final int stop = off + len - remainder;
         for (int index = off; index < stop; index += 4) {
-            int k1 = (bytes[index] & 0xff) | ((bytes[index + 1] & 0xff) << 8) |
-                    ((bytes[index + 2] & 0xff) << 16) | (bytes[index + 3] << 24);
+            int k1 = (b[index] & 0xff) | ((b[index + 1] & 0xff) << 8) |
+                    ((b[index + 2] & 0xff) << 16) | (b[index + 3] << 24);
             applyK1(k1);
         }
         length += stop - off;
 
         for (int i = 0; i < remainder; i++) {
-            update(bytes[stop + i]);
+            update(b[stop + i]);
         }
     }
 
-    public void update(byte[] b) {
-        update(b, 0, b.length);
-    }
-
+    /**
+     * Updates the current checksum with a short value.
+     * 
+     * @param value the short to update the checksum with.
+     */
     public void updateShort(short value) {
         switch (partialK1Pos) {
             case 0:
@@ -117,7 +187,12 @@ public class Murmur3A implements Checksum {
         length += 2;
     }
 
-    public void updateShort(short... values) {
+    /**
+     * Updates the current checksum with an array of short.
+     * 
+     * @param values the short array to update the checksum with.
+     */
+    public void updateShort(short[] values) {
         int len = values.length;
         if (len > 0 && (partialK1Pos == 0 || partialK1Pos == 2)) {
             // Bulk tweak: for some weird reason this is 25-60% faster than the else block
@@ -147,6 +222,11 @@ public class Murmur3A implements Checksum {
         }
     }
 
+    /**
+     * Update with an int value, do not use {@link Checksum#update(int)} (for a byte).
+     * 
+     * @param value int value.
+     */
     public void updateInt(int value) {
         switch (partialK1Pos) {
             case 0:
@@ -172,33 +252,40 @@ public class Murmur3A implements Checksum {
     }
 
     /**
-     * Updates the current checksum with the specified array of bytes.
-     * @param ints the int array to update the checksum with.
+     * Updates the current checksum with the specified array of ints.
+     * 
+     * @param values the int array to update the checksum with.
      */
-    public void updateInt(int[] ints) {
-        updateInt(ints, 0, ints.length);
+    public void updateInt(int[] values) {
+        updateInt(values, 0, values.length);
     }
     
     /**
-     * Updates the current checksum with the specified array of bytes.
-     * @param ints the int array to update the checksum with.
+     * Updates the current checksum with the specified array of ints.
+     * 
+     * @param values the int array to update the checksum with.
      * @param off the start offset of the int array.
-     * @param len the number of bytes to use for the update.
+     * @param len the number of ints to use for the update.
      */
-    public void updateInt(int[] ints, int off, int len) {
+    public void updateInt(int[] values, int off, int len) {
         if (partialK1Pos == 0) {
             // Bulk tweak: for some weird reason this is 25-60% faster than the else block
             for (int index = off, max = off + len; index < max; index++) {
-                applyK1(ints[index]);
+                applyK1(values[index]);
             }
             length += 4 * len;
         } else {
             for (int index = off, max = off + len; index < max; index++) {
-                updateInt(ints[index]);
+                updateInt(values[index]);
             }
         }
     }
 
+    /**
+     * Updates the current checksum with a long value.
+     * 
+     * @param value long value.
+     */
     public void updateLong(long value) {
         switch (partialK1Pos) {
             case 0:
@@ -227,73 +314,54 @@ public class Murmur3A implements Checksum {
         length += 8;
     }
 
-    public void updateLong(long... values) {
+    /**
+     * Updates the current checksum with the specified array of ints.
+     * 
+     * @param values the long array to update the checksum with.
+     * @param off the start offset of the int array.
+     * @param len the number of bytes to use for the update.
+     */
+    public void updateLong(long[] values, int off, int len) {
         if (partialK1Pos == 0) {
             // Bulk tweak: for some weird reason this is ~25% faster than the else block
-            for (long value : values) {
+            for (int index = off, max = off + len; index < max; index++) {
+                final long value = values[index];
                 applyK1((int) (value & 0xffffffff));
                 applyK1((int) (value >>> 32));
             }
-            length += 8 * values.length;
+            length += 8 * len;
         } else {
-            for (long value : values) {
+            for (int index = off, max = off + len; index < max; index++) {
+                final long value = values[index];
                 updateLong(value);
             }
         }
     }
 
-    public void updateFloat(float number) {
-        updateInt(Float.floatToIntBits(number));
+    /**
+     * Updates the current checksum with a float (32 bits, like an int).
+     * 
+     * @param value the float to update the checksum with.
+     */
+    public void updateFloat(float value) {
+        updateInt(Float.floatToIntBits(value));
     }
 
-    public void updateDouble(double number) {
-        updateLong(Double.doubleToLongBits(number));
+    /**
+     * Updates the current checksum with a double (64 bits, like an long).
+     * 
+     * @param value the double to update the checksum with.
+     */
+    public void updateDouble(double value) {
+        updateLong(Double.doubleToLongBits(value));
     }
 
-    /** updates a byte with 0 for false and 1 for true */
+    /**
+     * updates a byte with 0 for false and 1 for true.
+     * 
+     * @param value true or false.
+     */
     public void updateBoolean(boolean value) {
         update(value ? 1 : 0);
-    }
-
-    private void applyK1(int k1) {
-        k1 *= C1;
-        k1 = (k1 << 15) | (k1 >>> 17);  // ROTL32(k1,15);
-        k1 *= C2;
-
-        h1 ^= k1;
-        h1 = (h1 << 13) | (h1 >>> 19);  // ROTL32(h1,13);
-        h1 = h1 * 5 + 0xe6546b64;
-    }
-
-    @Override
-    public long getValue() {
-
-        return 0xFFFFFFFFL & getHashCode();
-    }
-    
-    public int getHashCode() {
-        int finished = h1;
-        if (partialK1Pos > 0) {
-            int k1 = partialK1 * C1;
-            k1 = (k1 << 15) | (k1 >>> 17);  // ROTL32(k1,15);
-            k1 *= C2;
-            finished ^= k1;
-        }
-        finished ^= length;
-
-        // fmix
-        finished ^= finished >>> 16;
-        finished *= 0x85ebca6b;
-        finished ^= finished >>> 13;
-        finished *= 0xc2b2ae35;
-        finished ^= finished >>> 16;
-        return finished;
-    }
-
-    @Override
-    public void reset() {
-        h1 = seed;
-        length = 0;
-        partialK1Pos = 0;
     }
 }

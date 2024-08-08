@@ -141,7 +141,7 @@ public class XMLIndexer implements Runnable
         }
         // alix.xsl transformer
         JarResolver resloader = new JarResolver();
-        StreamSource tei2alixSource = new StreamSource(resloader.resolve("alix.xsl"));
+        StreamSource tei2alixSource = new StreamSource(resloader.stream("alix.xsl"));
         // need a specific proc with the jar uri resolver
         TransformerFactory proc = getXSLFactory();
         proc.setURIResolver(resloader);
@@ -176,7 +176,7 @@ public class XMLIndexer implements Runnable
         // alix.xsl transformer
         final TransformerHandler tei2alixHandler;
         JarResolver resloader = new JarResolver();
-        StreamSource tei2alixSource = new StreamSource(resloader.resolve("alix.xsl"));
+        StreamSource tei2alixSource = new StreamSource(resloader.stream("alix.xsl"));
         TransformerFactory proc = getXSLFactory();
         proc.setURIResolver(resloader);
         final Templates tei2alixTemplates = proc.newTemplates(tei2alixSource); // keep XSLFactory to resolve jar imports

@@ -92,7 +92,7 @@ public class IntSeries extends IntList
     private void calcul()
     {
         // no modif
-        if (!toHash) return;
+        if (hashOK) return;
         hashCode(); // set hash for current values
         final int size = this.size;
         if (size == 0) {

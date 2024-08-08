@@ -46,10 +46,10 @@ public class IntList
     protected int[] data;
     /** Current size */
     protected int size;
-    /** Should be rehashed */
-    protected boolean toHash;
     /** Cache an hash code */
     protected int hashCache;
+    /** True if hash is OK */
+    protected boolean hashOK;
     /** Hash code producer */
     protected Murmur3A murmur = new Murmur3A();
 
@@ -167,7 +167,7 @@ public class IntList
     protected boolean grow(final int position)
     {
         // do not set size here
-        toHash = true;
+        hashOK = false;
         if (position < data.length)
             return false;
         final int oldLength = data.length;
@@ -181,11 +181,11 @@ public class IntList
     @Override
     public int hashCode()
     {
-        if (!toHash) return hashCache;
+        if (hashOK) return hashCache;
         murmur.reset();
         murmur.updateInt(data, 0, size);
         hashCache = murmur.getHashCode();
-        toHash = false;
+        hashOK = true;
         return hashCache;
     }
 

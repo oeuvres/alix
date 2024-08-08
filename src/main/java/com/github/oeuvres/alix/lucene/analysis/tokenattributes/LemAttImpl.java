@@ -32,6 +32,12 @@
  */
 package com.github.oeuvres.alix.lucene.analysis.tokenattributes;
 
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+
+/**
+ * Custom {@link CharTermAttribute} used to normalize a lemma form of a
+ * token.
+ */
 public final class LemAttImpl extends CharsAttImpl implements LemAtt
 {
 

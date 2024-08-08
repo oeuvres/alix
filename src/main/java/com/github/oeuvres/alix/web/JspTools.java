@@ -40,7 +40,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -69,7 +68,10 @@ public class JspTools
     /** for cookies */
     private final static int MONTH = 60 * 60 * 24 * 30;
 
-    /** Wrap the global jsp variables */
+    /**
+     * Wrap the global jsp variables.
+     * @param page jsp page context.
+     */
     public JspTools(final PageContext page) {
         this.request = (HttpServletRequest) page.getRequest();
         this.response = (HttpServletResponse) page.getResponse();
@@ -77,7 +79,12 @@ public class JspTools
         this.page = page;
     }
 
-    /** Check if a String is significant */
+    /**
+     * Check if a String is significant as parameter value.
+     * 
+     * @param s String to test.
+     * @return true if significant, false otherwise.
+     */
     public static boolean check(String s)
     {
         if (s == null)
@@ -93,8 +100,8 @@ public class JspTools
     /**
      * Get a cookie value by name.
      * 
-     * @param name
-     * @return null if not set
+     * @param name name of the cookie.
+     * @return value if cookie set, or null.
      */
     public String cookie(final String name)
     {
@@ -116,8 +123,8 @@ public class JspTools
     /**
      * Send a cookie to client.
      * 
-     * @param name
-     * @param value
+     * @param name name of the cookie.
+     * @param value value to set.
      */
     public void cookie(String name, String value)
     {
@@ -133,7 +140,10 @@ public class JspTools
     }
 
     /**
-     * Ensure that a String could be included in an html attribute with quotes
+     * Ensure that a String could be included in an html attribute with quotes.
+     * 
+     * @param cs chars to escape.
+     * @return String escaped for html.
      */
     public static String escape(final CharSequence cs)
     {
@@ -157,34 +167,10 @@ public class JspTools
     }
 
     /**
-     * Escape HTML for input
+     * Ensure that a String could be included in an html attribute with quotes.
      * 
-     * @param out
-     * @param cs
-     * @throws IOException Lucene errors.
-     */
-    public static void escape(final Writer out, final CharSequence cs) throws IOException
-    {
-        if (cs == null)
-            return;
-        for (int i = 0; i < cs.length(); i++) {
-            char c = cs.charAt(i);
-            if (c == '"')
-                out.append("&quot;");
-            else if (c == '<')
-                out.append("&lt;");
-            else if (c == '>')
-                out.append("&gt;");
-            else if (c == '&')
-                out.append("&amp;");
-            else
-                out.append(c);
-        }
-        return;
-    }
-
-    /**
-     * Ensure that a String could be included in an html attribute with quotes
+     * @param s source chars.
+     * @return escaped String.
      */
     public static String escUrl(final String s)
     {
@@ -210,7 +196,11 @@ public class JspTools
     }
 
     /**
-     * Get a request parameter as a boolean with a defaul value.
+     * Get a request parameter as a boolean with a default value.
+     * 
+     * @param name     Name of a request parameter.
+     * @param fallback Default value.
+     * @return priority order: request, fallback.
      */
     public boolean getBoolean(final String name, final boolean fallback)
     {
@@ -222,6 +212,15 @@ public class JspTools
         return fallback;
     }
 
+    /**
+     * Get a request parameter as a boolean with a default value, and an optional
+     * cookie persistence.
+     * 
+     * @param name     Name of a request parameter.
+     * @param fallback Default value.
+     * @param cookie   Name of a cookie.
+     * @return priority order: request, cookie, fallback.
+     */
     public boolean getBoolean(final String name, final boolean fallback, final String cookie)
     {
         String value = request.getParameter(name);
@@ -249,21 +248,6 @@ public class JspTools
         // cookie seems to have a problem, reset it
         cookie(name, null);
         return fallback;
-    }
-
-    /**
-     * Get a request parameter as a boolean with a default value, and an optional
-     * cookie persistence.
-     * 
-     * @param name     Name of a request parameter.
-     * @param fallback Default value.
-     * @param cookie   Name of a cookie is given as an Enum to control cookies
-     *                 proliferation.
-     * @return Priority order: request, cookie, fallback.
-     */
-    public boolean getBoolean(final String name, final boolean fallback, final Enum<?> cookie)
-    {
-        return getBoolean(name, fallback, cookie.name());
     }
 
     /**
@@ -339,24 +323,10 @@ public class JspTools
     }
 
     /**
-     * Get a request parameter as an {@link Enum} value that will ensure a closed
-     * list of values, with a default value, and an optional cookie persistence.
+     * Useful for servlet 3.0 (and not 3.1).
      * 
-     * @param name     Name of a request parameter.
-     * @param fallback Default value.
-     * @param cookie   Name of a cookie for persistence.
-     * @return Priority order: request, cookie, fallback.
-     */
-    public Enum<?> getEnum(final String name, final Enum<?> fallback, final Enum<?> cookie)
-    {
-        return getEnum(name, fallback, cookie.name());
-    }
-
-    /**
-     * Useful for servlet 3.0 (and not 3.1)
-     * 
-     * @param part
-     * @return
+     * @param part multipart/form-data
+     * @return file name of uploaded file.
      */
     static public String getFileName(Part part)
     {
@@ -373,9 +343,9 @@ public class JspTools
     /**
      * Get a request parameter as a float with default value.
      * 
-     * @param name
-     * @param fallback
-     * @return
+     * @param name     name of a request parameter.
+     * @param fallback default value.
+     * @return Priority order: request, fallback.
      */
     public float getFloat(final String name, final float fallback)
     {
@@ -394,17 +364,11 @@ public class JspTools
      * Get a request parameter as a float with a default value, and a cookie
      * persistence.
      * 
-     * @param name     Name of http param.
-     * @param fallback Default value.
-     * @param cookie   Name of a cookie is given as an Enum to control cookies
-     *                 proliferation.
-     * @return Priority order: request, cookie, fallback.
+     * @param name     name of http param.
+     * @param fallback default value.
+     * @param cookie   name of a cookie.
+     * @return priority order: request, cookie, fallback.
      */
-    public float getFloat(final String name, final float fallback, final Enum<?> cookie)
-    {
-        return getFloat(name, fallback, cookie.name());
-    }
-
     public float getFloat(final String name, final float fallback, final String cookie)
     {
         String value = request.getParameter(name);
@@ -439,47 +403,53 @@ public class JspTools
     /**
      * Get a request parameter as an int with a default value.
      * 
-     * @param name
-     * @param fallback
-     * @return
+     * @param name     name of http param.
+     * @param fallback default value.
+     * @return priority order: request, fallback.
      */
     public int getInt(final String name, final int fallback)
     {
         return getInt(name, null, fallback, null);
     }
 
+    /**
+     * Get a request parameter as an int with a default value, and a cookie
+     * persistence.
+     * 
+     * @param name     name of an http param.
+     * @param fallback default value.
+     * @param cookie   name of a cookie.
+     * @return priority order: request, cookie, fallback.
+     */
     public int getInt(final String name, final int fallback, final String cookie)
     {
         return getInt(name, null, fallback, cookie);
     }
 
-    public int getInt(final String name, final int[] span, final int fallback)
+    /**
+     * Get a request parameter as an int with a default value, and a cookie
+     * persistence.
+     * 
+     * @param name     name of an http param.
+     * @param range [min, max].
+     * @param fallback default value.
+     * @return priority order: request, fallback.
+     */
+    public int getInt(final String name, final int[] range, final int fallback)
     {
-        return getInt(name, span, fallback, null);
+        return getInt(name, range, fallback, null);
     }
 
-    private Integer getIntegerAtt(final String name)
-    {
-        Object att = request.getAttribute(name);
-        if (att == null) return null;
-        if (att  instanceof Integer) return (Integer)att;
-        return null;
-    }
-
-    private Integer parseInt(final String value)
-    {
-        if (value == null) return null;
-        if (!check(value)) return null;
-        int no;
-        try {
-            no = Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            return null;
-        }
-        Integer ret = no;
-        return ret;
-    }
-    
+    /**
+     * Get a request parameter as an int with a default value, and a cookie
+     * persistence. Value should be included in a range.
+     * 
+     * @param name     name of an http param.
+     * @param range [min, max].
+     * @param fallback default value.
+     * @param cookie   name of a cookie.
+     * @return if value in range, priority order: request, cookie, fallback.
+     */
     public int getInt(final String name, final int[] range, final int fallback, final String cookie)
     {
         int min = Integer.MIN_VALUE;
@@ -533,10 +503,25 @@ public class JspTools
     }
 
     /**
+     * Use request attribute {@link HttpServletRequest#getAttribute(String)} as a fallback value.
+     * 
+     * @param name of a request attribute.
+     * @return an Integer if was set, null if nothing set or not an Integer.
+     */
+    private Integer getIntegerAtt(final String name)
+    {
+        Object att = request.getAttribute(name);
+        if (att == null) return null;
+        if (att  instanceof Integer) return (Integer)att;
+        return null;
+    }
+
+    /**
      * Get an int Range between a min and a max (included).
-     * @param name Name of an http param
-     * @param range range[0] = min value, range[1] = max
-     * @return [] if no value or values = [min, max], [point] if one value, [lower, upper] if 2 value
+     * 
+     * @param name name of an http param.
+     * @param range [min, max].
+     * @return [] if no value, [] if at least one value outise [min, max], [point] if 1 value, [lower, upper] if 2 values.
      */
     public int[] getIntRange(final String name, final int[] range)
     {
@@ -589,10 +574,10 @@ public class JspTools
     }
 
     /**
-     * Return
+     * Returns a set of unique int values.
      * 
-     * @param name
-     * @return
+     * @param name of an http param.
+     * @return array of int values without duplicates.
      */
     public int[] getIntSet(final String name)
     {
@@ -602,96 +587,80 @@ public class JspTools
         }
         IntList list = new IntList(vals.length);
         for (String val : vals) {
-            int i = -1;
+            int value = -1;
             try {
-                i = Integer.parseInt(val);
+                value = Integer.parseInt(val);
             } catch (Exception e) {
                 // output error ?
                 continue;
             }
-            list.set(i, 1);
+            list.push(value);
         }
         return list.toSet();
     }
 
-    /**
-     * Get a value from a map (usually static)
-     */
-    public Object getMap(final String name, Map<String, ?> map, String fallback)
-    {
-        String value = request.getParameter(name);
-        if (map.containsKey(value)) {
-            return map.get(value);
-        }
-        if (fallback == null) {
-            return null;
-        }
-        return map.get(fallback);
-    }
 
-    /**
-     * Get a value from a map (usually static), with cookie persistance
-     */
-    public Object getMap(final String name, Map<String, ?> map, String fallback, String cookie)
-    {
-        String value = request.getParameter(name);
-        // a value requested, let’s try it
-        if (check(value)) {
-            // it works, store it and send it
-            if (map.containsKey(value)) {
-                cookie(cookie, value);
-                return map.get(value);
-            }
-        }
-        // value is not null but empty, reset cookie, return default
-        if (value != null && "".equals(value.trim())) {
-            cookie(name, null);
-            return map.get(fallback);
-        }
-        // bad request or null request, try to get cookie
-        value = cookie(cookie);
-        // bad memory, things has changed, reset cookie
-        if (!map.containsKey(value)) {
-            cookie(name, null);
-            value = fallback;
-        }
-        return map.get(value);
-    }
 
     /**
      * Get a request parameter as a String with a default value.
+     * 
+     * @param name     name of an http param.
+     * @param fallback default value.
+     * @return priority order: request, fallback.
      */
     public String getString(final String name, final String fallback)
     {
-        return getString(name, fallback, ""); // cookie=null produce ambig
+        return getString(name, fallback, null, null);
     }
 
     /**
-     * Get a request parameter as a String with a default value, and a cookie
-     * persistency.
+     * Get a request parameter as a String with a default value, or optional cookie
+     * persistence. Optional set of accepted values.
+     * 
+     * @param name     name of http param.
+     * @param fallback default value.
+     * @param set accepted values.
+     * @param cookie   name of a cookie.
+     * @return Priority order: request, cookie, fallback.
      */
-    public String getString(final String name, final String fallback, final String cookie)
+    public String getString(final String name, final String fallback, final Set<String> set, final String cookie)
     {
-        final String par = request.getParameter(name);
-        String att = null;
-        if (par == null) {
-            Object o = request.getAttribute(name);
-            if (o != null && o instanceof String && check((String)o)) {
-                att = (String) o;
-            }
-        }
+        String par = request.getParameter(name);
         // no cookie name, answer fast
-        if (!check(cookie)) {
-            if (check(par)) {
+        if (!check(cookie) && check(par)) {
+            if (set == null) {
                 return par;
             }
-            if (check(att)) {
+            else if (set.contains(par)) {
+                return par;
+            }
+            // not an accepted value in the set
+            else {
+                par = null;
+            }
+        }
+        Object o = request.getAttribute(name);
+        String att = null;
+        if (o != null && o instanceof String) {
+            att = (String) o;
+        }
+        // no cookie name, answer fast
+        if (!check(cookie) && check(att)) {
+            if (set == null) {
+                return att;
+            }
+            else if (set.contains(att)) {
                 return att;
             }
             else {
-                return fallback;
+                att = null;
             }
         }
+        // no cookie, no value,send fallback
+        if (!check(cookie)) {
+            return fallback;
+        }
+        
         // now deal with cookie name
         final String cookieValue = cookie(cookie);
         // set cookie with a desired param
@@ -708,38 +677,8 @@ public class JspTools
     }
 
     /**
-     * Get a request parameter as a String with a default value, or optional cookie
-     * persistence.
-     * 
-     * @param name     Name of http param.
-     * @param fallback Default value.
-     * @param cookie   Name of a cookie is given as an Enum to control cookies
-     *                 proliferation.
-     * @return Priority order: request, cookie, fallback.
-     */
-    public String getString(final String name, final String fallback, final Enum<?> cookie)
-    {
-        return getString(name, fallback, cookie.name());
-    }
-
-    /**
-     * Get a request parameter as a String from a list of value (first is default)
-     */
-    public String getStringOf(final String name, final Set<String> set, final String fallback)
-    {
-        String value = request.getParameter(name);
-        if (value == null) {
-            return fallback;
-        }
-        if (set.contains(value)) {
-            return value;
-        }
-        return fallback;
-    }
-
-    /**
      * Get a repeated parameter as an array of String, filtered of empty strings and
-     * repeated values. Original order is kept, first seen,
+     * repeated values. Original order is kept.
      * 
      * @param name Name of request parameter
      * @return Null if no plain values
@@ -768,7 +707,9 @@ public class JspTools
     }
 
     /**
-     * Return request object, maybe useful in context of a method
+     * Return request object.
+     *
+     * @return request object.
      */
     public HttpServletRequest request()
     {
@@ -776,7 +717,9 @@ public class JspTools
     }
 
     /**
-     * Return response object, maybe useful in context of a method
+     * Return response object.
+     * 
+     * @return response object.
      */
     public HttpServletResponse response()
     {
@@ -784,7 +727,30 @@ public class JspTools
     }
 
     /**
-     * Build url parameters
+     * Parse a request parameter value as an int.
+     * 
+     * @param value String to parse.
+     * @return Integer value or null if no Integer found.
+     */
+    private Integer parseInt(final String value)
+    {
+        if (value == null) return null;
+        if (!check(value)) return null;
+        int no;
+        try {
+            no = Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        Integer ret = no;
+        return ret;
+    }
+
+    /**
+     * Build a query string from a set of parameters names, values are taken from http request.
+     *
+     * @param pars list of paramter names.
+     * @return a query string, ready for a href attribute.
      */
     public String queryString(final String[] pars)
     {

@@ -62,9 +62,13 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
+/**
+ * Load an XML/TEI corpus in a custom Lucene index for Alix.
+ */
 @Command(name = "com.github.oeuvres.alix.cli.Load", description = "Load an XML/TEI corpus in a custom Lucene index for Alix.")
 public class Load implements Callable<Integer>
 {
+    /** Prefix for log lines. */
     public static String APP = "Alix";
 
     static {
@@ -144,39 +148,6 @@ public class Load implements Callable<Integer>
         return 0;
     }
 
-    public String globNorm(String glob, File base) throws IOException
-    {
-        glob = glob.trim();
-        if (glob.equals("")) {
-            return null;
-        }
-        if (glob.startsWith("#")) {
-            return null;
-        }
-        // File.separator regularisation needed
-        if (File.separatorChar == '\\') {
-            glob = glob.replaceAll("[/\\\\]", File.separator + File.separator);
-        }
-        else {
-            glob = glob.replaceAll("[/\\\\]", File.separator);
-        }
-        if (!new File(glob).isAbsolute()) {
-            File dir = base.getAbsoluteFile();
-            if (glob.startsWith("." + File.separator)) {
-                glob = glob.substring(2);
-            }
-            while (glob.startsWith(".." + File.separator)) {
-                dir = dir.getParentFile();
-                glob = glob.substring(3);
-            }
-            File f = new File(dir, glob);
-            return f.getAbsolutePath();
-        }
-        else {
-            return glob;
-        }
-    }
-
     /**
      * Parse properties to produce an alix lucene index
      * 
@@ -227,7 +198,7 @@ public class Load implements Callable<Integer>
             List<String> lines = Files.readAllLines(file.toPath());
             for (int i = 0; i < lines.size(); i++) {
                 String glob = lines.get(i);
-                glob = globNorm(glob, base);
+                glob = Dir.globNorm(glob, base);
                 Dir.include(paths, glob);
             }
         }
@@ -243,7 +214,7 @@ public class Load implements Callable<Integer>
             final File base = propsFile.getCanonicalFile().getParentFile();
             for (String glob : blurf) {
                 // System.out.println("[" + APP + "] process " + glob );
-                glob = globNorm(glob, base);
+                glob = Dir.globNorm(glob, base);
                 Dir.include(paths, glob);
             }
         }
@@ -255,7 +226,7 @@ public class Load implements Callable<Integer>
             final File base = propsFile.getCanonicalFile().getParentFile();
             String[] globs = prop.split(" *[;] *|[\t ]*[\n\r]+[\t ]*");
             for (String glob : globs) {
-                glob = globNorm(glob, base);
+                glob = Dir.globNorm(glob, base);
                 Dir.exclude(paths, glob);
             }
         }

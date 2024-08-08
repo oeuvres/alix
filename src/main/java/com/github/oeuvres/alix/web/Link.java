@@ -36,34 +36,37 @@ import java.lang.reflect.Field;
 
 import javax.servlet.http.HttpServletRequest;
 
+/**
+ * Automates tabs link in a navigation bar.
+ */
 public interface Link
 {
 
     /**
      * The link to page relative to root
      * 
-     * @return
+     * @return &lt;a href="{href}?…"&gt;
      */
     public String href();
 
     /**
-     * A text label for a link
+     * A text label for a link.
      * 
-     * @return
+     * @return &lt;a&gt;{label}&lt;/a&gt;
      */
     public String label();
 
     /**
-     * The link to page relative to root
+     * Text representing advisory information about the link.
      * 
-     * @return
+     * @return &lt;a title="{hint}"&gt;
      */
     public String hint();
 
     /**
      * Http parameters to keep on links
      * 
-     * @return
+     * @return &lt;a href="…?{par}=value&amp;{par}=value"&gt;
      */
     public String[] pars();
 
@@ -112,10 +115,11 @@ public interface Link
     }
 
     /**
-     * Loop on tabs to build a nav bar
+     * Loop on tabs to build a nav bar.
      * 
-     * @param request
-     * @return
+     * @param request to get parameters values {@link HttpServletRequest#getParameter(String)}.
+     * @param hrefHome href prefix.
+     * @return html for a nav bar.
      */
     public default String nav(final HttpServletRequest request, String hrefHome)
     {
