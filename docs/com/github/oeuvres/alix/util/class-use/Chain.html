@@ -367,74 +367,63 @@ loadScripts(document, 'script');</script>
 <div class="block">Append a chain.</div>
 </div>
 <div class="col-first odd-row-color"><code>static void</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">ML.</span><code><a href="../ML.html#append(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int,int)" class="member-name-link">append</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
- int&nbsp;offset,
- <a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
- int&nbsp;chars,
- int&nbsp;words)</code></div>
-<div class="col-last odd-row-color">
-<div class="block">From a random point in an xml file, append text (with possibly broken tag),
- limit to an amount of chars, or words.</div>
-</div>
-<div class="col-first even-row-color"><code>static void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">ML.</span><code><a href="../ML.html#appendChars(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int)" class="member-name-link">appendChars</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
+<div class="col-second odd-row-color"><span class="type-name-label">ML.</span><code><a href="../ML.html#appendChars(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int)" class="member-name-link">appendChars</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
  int&nbsp;offset,
  <a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
  int&nbsp;chars)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code>static void</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">ML.</span><code><a href="../ML.html#appendWords(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int)" class="member-name-link">appendWords</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
+<div class="col-last odd-row-color">
+<div class="block">Used to build a concordance.</div>
+</div>
+<div class="col-first even-row-color"><code>static void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">ML.</span><code><a href="../ML.html#appendWords(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int)" class="member-name-link">appendWords</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
  int&nbsp;offset,
  <a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
  int&nbsp;words)</code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Chain.</span><code><a href="../Chain.html#copy(com.github.oeuvres.alix.util.Chain)" class="member-name-link">copy</a><wbr>(<a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain)</code></div>
 <div class="col-last even-row-color">
+<div class="block">Used to build a concordance.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Chain.</span><code><a href="../Chain.html#copy(com.github.oeuvres.alix.util.Chain)" class="member-name-link">copy</a><wbr>(<a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Replace this chain content by a copy of a chain (keep allocated memory if
  enough).</div>
 </div>
-<div class="col-first odd-row-color"><code>static <a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Char.</span><code><a href="../Char.html#deligat(com.github.oeuvres.alix.util.Chain)" class="member-name-link">deligat</a><wbr>(<a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;source)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>static <a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Char.</span><code><a href="../Char.html#deligat(com.github.oeuvres.alix.util.Chain)" class="member-name-link">deligat</a><wbr>(<a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;source)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Deligature, Æ → AE, œ → oe…</div>
 </div>
-<div class="col-first even-row-color"><code>static void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">ML.</span><code><a href="../ML.html#detag(java.lang.String,int,int,com.github.oeuvres.alix.util.Chain,java.util.Set)" class="member-name-link">detag</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
+<div class="col-first odd-row-color"><code>static void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">ML.</span><code><a href="../ML.html#detag(java.lang.String,int,int,com.github.oeuvres.alix.util.Chain,java.util.Set)" class="member-name-link">detag</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
  int&nbsp;begin,
  int&nbsp;end,
  <a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;dest,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;&nbsp;include)</code></div>
-<div class="col-last even-row-color">
+<div class="col-last odd-row-color">
 <div class="block">Return a normalize-space() text version of an xml excerpt (possibly with
  broken tags).</div>
 </div>
-<div class="col-first odd-row-color"><code>static char</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">ML.</span><code><a href="../ML.html#forChar(com.github.oeuvres.alix.util.Chain)" class="member-name-link">forChar</a><wbr>(<a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;ent)</code></div>
-<div class="col-last odd-row-color">
-<div class="block">See <a href="../ML.html#forChar(java.lang.String)"><code>ML.forChar(String)</code></a>, with a custom mutable String.</div>
-</div>
-<div class="col-first even-row-color"><code>static void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">ML.</span><code><a href="../ML.html#prepend(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int,int)" class="member-name-link">prepend</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
- int&nbsp;offset,
- <a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
- int&nbsp;chars,
- int&nbsp;words)</code></div>
+<div class="col-first even-row-color"><code>static char</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">ML.</span><code><a href="../ML.html#forChar(com.github.oeuvres.alix.util.Chain)" class="member-name-link">forChar</a><wbr>(<a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;ent)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Provide a text version of an xml excerpt (possibly broken).</div>
+<div class="block">See <a href="../ML.html#forChar(java.lang.String)"><code>ML.forChar(String)</code></a>, with a custom mutable String.</div>
 </div>
 <div class="col-first odd-row-color"><code>static void</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">ML.</span><code><a href="../ML.html#prependChars(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int)" class="member-name-link">prependChars</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
  int&nbsp;offset,
  <a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
  int&nbsp;chars)</code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">Used to build a concordance.</div>
+</div>
 <div class="col-first even-row-color"><code>static void</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">ML.</span><code><a href="../ML.html#prependWords(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int)" class="member-name-link">prependWords</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
  int&nbsp;offset,
  <a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
  int&nbsp;words)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Used to build a concordance.</div>
+</div>
 </div>
 <div class="caption"><span>Constructors in <a href="../package-summary.html">com.github.oeuvres.alix.util</a> with parameters of type <a href="../Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a></span></div>
 <div class="summary-table three-column-summary">

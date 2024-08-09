@@ -25,7 +25,9 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
  */
 public class ML
 {
+    /** limit kwic width */
     private static int KWIC_MAXCHARS = 500;
+    /** HTML entities */
     public static final HashMap<String, Character> HTMLENT = new HashMap<String, Character>();
     static {
         BufferedReader buf = new BufferedReader(
@@ -58,8 +60,8 @@ public class ML
      * Get the char from an HTML entity like &amp;gt; or &amp;#128;. Will not work
      * on supplementary char like &amp;Afr; 𝔄 &amp;x1d504; (3 bytes).
      * 
-     * @param ent
-     * @return
+     * @param ent html entity.
+     * @return unicode char.
      */
     public static char forChar(final String ent)
     {
@@ -72,8 +74,8 @@ public class ML
     /**
      * See {@link #forChar(String)}, with a custom mutable String.
      * 
-     * @param ent
-     * @return
+     * @param ent html entity.
+     * @return unicode char.
      */
     public static char forChar(final Chain ent)
     {
@@ -88,8 +90,8 @@ public class ML
      * See {@link #forChar(String)}, with a custom implementation of lucene
      * {@link CharTermAttribute} sharing the same hash fuction as a String.
      * 
-     * @param ent
-     * @return
+     * @param ent html entity.
+     * @return unicode char.
      */
     public static char forChar(final CharsAttImpl ent)
     {
@@ -103,8 +105,8 @@ public class ML
     /**
      * Is it a char allowed in an entity code ?
      * 
-     * @param c
-     * @return
+     * @param c char to test.
+     * @return true if ASCII and letter or digit, false otherwise.
      */
     public static boolean isInEnt(char c)
     {
@@ -116,6 +118,9 @@ public class ML
 
     /**
      * Return a normalize-space() text version of an xml excerpt (possibly broken).
+     *
+     * @param xml span of text with tags.
+     * @return normalized text without tags.
      */
     public static String detag(final String xml)
     {
@@ -130,6 +135,10 @@ public class ML
     /**
      * Return a normalize-space() text version of an xml excerpt (possibly broken),
      * with selected tags allowed
+     * 
+     * @param xml span of text with tags.
+     * @param include set of tags allowed.
+     * @return normalized text without tags.
      */
     public static String detag(final String xml, Set<String> include)
     {
@@ -145,6 +154,12 @@ public class ML
     /**
      * Return a normalize-space() text version of an xml excerpt (possibly with
      * broken tags). Chain could be reused here for performances.
+     * 
+     * @param xml span of text with tags.
+     * @param begin start index in xml.
+     * @param end end index in xml.
+     * @param dest destination {@link CharSequence}.
+     * @param include set of tags allowed.
      */
     @SuppressWarnings("unlikely-arg-type")
     public static void detag(final String xml, int begin, int end, Chain dest, Set<String> include)
@@ -233,23 +248,48 @@ public class ML
         if (tagLength >= 0) dest.setLength(tagLength);
     }
 
+    /**
+     * Used to build a concordance. 
+     * From a random point in an xml file, append text to a mutable destination charSequence,
+     * limit to an amount of words.
+     * 
+     * @param xml source markup text.
+     * @param offset position in xml from which append words or chars.
+     * @param chain destination chain.
+     * @param words amount of words to append.
+     */
     public static void appendWords(final String xml, int offset, final Chain chain, final int words)
     {
         append(xml, offset, chain, -1, words);
     }
 
+    /**
+     * Used to build a concordance. 
+     * From a random point in an xml file, append text to a mutable destination charSequence,
+     * limit to an amount of chars.
+     * 
+     * @param xml source markup text.
+     * @param offset position in xml from which append words or chars.
+     * @param chain destination chain.
+     * @param chars amount of chars to append.
+     */
     public static void appendChars(final String xml, int offset, final Chain chain, final int chars)
     {
         append(xml, offset, chain, chars, -1);
     }
 
     /**
-     * From a random point in an xml file, append text (with possibly broken tag),
+     * Used to build a concordance. 
+     * From a random point in an xml file, append text to a mutable destination charSequence,
      * limit to an amount of chars, or words.
      * 
-     * @param xml
+     * @param xml source markup text.
+     * @param offset position in xml from which append words or chars.
+     * @param chain destination chain.
+     * @param chars amount of chars append.
+     * @param words amount of words to append.
      */
-    public static void append(final String xml, int offset, final Chain chain, int chars, int words)
+    private static void append(final String xml, int offset, final Chain chain, int chars, int words)
     {
         // silently limit parameters
         if (words <= 0 && chars <= 0)
@@ -326,22 +366,48 @@ public class ML
         // ? delete last char for words ?
     }
 
+    /**
+     * Used to build a concordance. 
+     * From a random point in an xml file, prepend text to a mutable destination charSequence,
+     * limit to an amount of words.
+     * 
+     * @param xml source markup text.
+     * @param offset position in xml from which prepend words or chars.
+     * @param chain destination chain.
+     * @param words amount of words to prepend.
+     */
     public static void prependWords(final String xml, int offset, final Chain chain, final int words)
     {
         prepend(xml, offset, chain, -1, words);
     }
 
+    /**
+     * Used to build a concordance. 
+     * From a random point in an xml file, prepend text to a mutable destination charSequence,
+     * limit to an amount of chars.
+     * 
+     * @param xml source markup text.
+     * @param offset position in xml from which prepend words or chars.
+     * @param chain destination chain.
+     * @param chars amount of chars prepend.
+     */
     public static void prependChars(final String xml, int offset, final Chain chain, final int chars)
     {
         prepend(xml, offset, chain, chars, -1);
     }
 
     /**
-     * Provide a text version of an xml excerpt (possibly broken).
+     * Used to build a concordance. 
+     * From a random point in an xml file, prepend text to a mutable destination charSequence,
+     * limit to an amount of chars, or words.
      * 
-     * @param xml
+     * @param xml source markup text.
+     * @param offset position in xml from which prepend words or chars.
+     * @param chain destination chain.
+     * @param chars amount of chars prepend.
+     * @param words amount of words to prepend.
      */
-    public static void prepend(final String xml, int offset, final Chain chain, int chars, int words)
+    private static void prepend(final String xml, int offset, final Chain chain, int chars, int words)
     {
         // silently limit parameters
         if (words <= 0 && chars <= 0)
@@ -416,11 +482,11 @@ public class ML
     }
 
     /**
-     * Tool to load entities from a json file
+     * Tool to load entities from a json file.
      * 
-     * @param path
-     * @throws UnsupportedEncodingException
-     * @throws IOException                  Lucene errors.
+     * @param path file path.
+     * @throws UnsupportedEncodingException not an UTF-8 file.
+     * @throws IOException file error.
      */
     static void load(final String path) throws UnsupportedEncodingException, IOException
     {

@@ -147,7 +147,7 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <div class="block">occsByform[formId] = occs; count of occurrences by form <a href="FieldText.html#occsByForm"><code>FieldText.occsByForm</code></a>.</div>
 </div>
 <div class="col-first even-row-color"><code>protected double[]</code></div>
-<div class="col-second even-row-color"><code><a href="#scoreByform" class="member-name-link">scoreByform</a></code></div>
+<div class="col-second even-row-color"><code><a href="#scoreByForm" class="member-name-link">scoreByForm</a></code></div>
 <div class="col-last even-row-color">
 <div class="block">scoreByform[formId]=score; a relevance score calculated by form.</div>
 </div>
@@ -229,158 +229,170 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>com.github.oeuvres.alix.lucene.search.FieldCharsAbstract</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#field()" class="member-name-link">field</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Get the field from wiche this term enumerator is build on.</div>
+<div class="block">Get the field from wich this term enumerator is build on.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form()" class="member-name-link">form</a>()</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#filter(com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">filter</a><wbr>(<a href="../../fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Filter forms.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form()" class="member-name-link">form</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">For current form in sort order, get its chars as a String.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form(com.github.oeuvres.alix.util.Chain)" class="member-name-link">form</a><wbr>(<a href="../../util/Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;term)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form(com.github.oeuvres.alix.util.Chain)" class="member-name-link">form</a><wbr>(<a href="../../util/Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;term)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">For current form in sort order, copy the chars
  in a reusable mutable CharSequence.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form(org.apache.lucene.util.BytesRef)" class="member-name-link">form</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#form(org.apache.lucene.util.BytesRef)" class="member-name-link">form</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">For current form in sort order, get its chars
  with reusable bytes (no return, value populate the bytes).</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formByRank(int)" class="member-name-link">formByRank</a><wbr>(int&nbsp;rank)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formByRank(int)" class="member-name-link">formByRank</a><wbr>(int&nbsp;rank)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">For the form at this rank in sort order, returns the form as a String.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formId()" class="member-name-link">formId</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formId()" class="member-name-link">formId</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">For current form in sort order, get its formId.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freq()" class="member-name-link">freq</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freq()" class="member-name-link">freq</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">If a search has set freq by form,
  for the current form in sort order,
  get the count of matching occurrences.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freq(int)" class="member-name-link">freq</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freq(int)" class="member-name-link">freq</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">If a search has set freq by form,
  for the form id,
  get the count of matching occurrences .</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freqAll()" class="member-name-link">freqAll</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freqAll()" class="member-name-link">freqAll</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">If a search has set freq by form,
  get global count of matching occurrences</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freqByRank(int)" class="member-name-link">freqByRank</a><wbr>(int&nbsp;rank)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#freqByRank(int)" class="member-name-link">freqByRank</a><wbr>(int&nbsp;rank)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">For the form requested by rank in sort order,
  get count of matching occurrences.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hasNext()" class="member-name-link">hasNext</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hasNext()" class="member-name-link">hasNext</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Iterator.html#hasNext()" title="class or interface in java.util" class="external-link"><code>Iterator.hasNext()</code></a>, returns true if the iteration has more elements.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hits()" class="member-name-link">hits</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hits()" class="member-name-link">hits</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">If a search has set hits by form,
  for the current form in sort order,
  get the count of matching documents.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hits(int)" class="member-name-link">hits</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hits(int)" class="member-name-link">hits</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">If a search has set hits by form,
  for the form requested by id,
  get the count of matching documents.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hitsAll()" class="member-name-link">hitsAll</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hitsAll()" class="member-name-link">hitsAll</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">If a search has set hits by form,
  total count of unique documents found.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hitsByRank(int)" class="member-name-link">hitsByRank</a><wbr>(int&nbsp;rank)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hitsByRank(int)" class="member-name-link">hitsByRank</a><wbr>(int&nbsp;rank)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">If a search has set hits by form,
  for the form by rank in sort order,
  get the count of matching documents.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#last()" class="member-name-link">last</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#last()" class="member-name-link">last</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set enumerator to last element.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#limit()" class="member-name-link">limit</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#limit()" class="member-name-link">limit</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get the amout of rows for this iterator.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#limit(int)" class="member-name-link">limit</a><wbr>(int&nbsp;limit)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#limit(int)" class="member-name-link">limit</a><wbr>(int&nbsp;limit)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set a limit, may be efficient when collecting top rows according to a sort,
  like SQL LIMIT.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#next()" class="member-name-link">next</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#next()" class="member-name-link">next</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Like <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Iterator.html#next()" title="class or interface in java.util" class="external-link"><code>Iterator.next()</code></a>, returns the next element identifier in enumeration.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs()" class="member-name-link">occs</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs()" class="member-name-link">occs</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">For the current form in sort order,
  get the global count of occurrences.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(int)" class="member-name-link">occs</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(int)" class="member-name-link">occs</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">For the form requested by id,
  get the global count of occurrences.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsAll()" class="member-name-link">occsAll</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsAll()" class="member-name-link">occsAll</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Global count of occurrences for this field.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsByRank(int)" class="member-name-link">occsByRank</a><wbr>(int&nbsp;rank)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsByRank(int)" class="member-name-link">occsByRank</a><wbr>(int&nbsp;rank)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">For the form requested by rank in sort order,
  get the global count of occurrences.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#reset()" class="member-name-link">reset</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#reset()" class="member-name-link">reset</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Call reset() before enumerate elements.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score()" class="member-name-link">score</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score()" class="member-name-link">score</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">For the current form in sort order,
  get the last calculated score.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score(int)" class="member-name-link">score</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score(int)" class="member-name-link">score</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">For the form requested by id,
  get the last calculated score.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score(com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">score</a><wbr>(<a href="Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a>&nbsp;scorer)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score(com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">score</a><wbr>(<a href="Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a>&nbsp;scorer)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Score all forms with a distribution formula,</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score(com.github.oeuvres.alix.util.MI,int%5B%5D)" class="member-name-link">score</a><wbr>(<a href="../../util/MI.html" title="enum in com.github.oeuvres.alix.util">MI</a>&nbsp;mi,
+ int[]&nbsp;pivotIds)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Score all forms with a distribution algorithm.</div>
+<div class="block">Scores a <a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FormEnum</code></a> with freqs extracted from co-occurrences extraction
+ in a <a href="FieldRail.html#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>FieldRail.coocs(BytesRef[], int, int, BitSet)</code></a>.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#scoreByRank(int)" class="member-name-link">scoreByRank</a><wbr>(int&nbsp;rank)</code></div>
@@ -395,23 +407,23 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
  be not available on iteration, if a <a href="FormIterator.html#limit(int)"><code>FormIterator.limit(int)</code></a> have been set before
  sorting.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order)" class="member-name-link">sort</a><wbr>(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Sort according to one order implemented.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order,int)" class="member-name-link">sort</a><wbr>(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order,
  int&nbsp;limit)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Partial sort to get a top of elements.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order,int,boolean)" class="member-name-link">sort</a><wbr>(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order,
  int&nbsp;limit,
  boolean&nbsp;reverse)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Prepare the order of enumeration with a vector.</div>
+<div class="block">Partial sort to get a top of elements, with possible reverse order.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static int[]</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#sortAlpha(org.apache.lucene.util.BytesRefHash)" class="member-name-link">sortAlpha</a><wbr>(org.apache.lucene.util.BytesRefHash&nbsp;dic)</code></div>
@@ -500,9 +512,9 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 </section>
 </li>
 <li>
-<section class="detail" id="scoreByform">
-<h3>scoreByform</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">double[]</span>&nbsp;<span class="element-name">scoreByform</span></div>
+<section class="detail" id="scoreByForm">
+<h3>scoreByForm</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">double[]</span>&nbsp;<span class="element-name">scoreByForm</span></div>
 <div class="block">scoreByform[formId]=score; a relevance score calculated by form.</div>
 </section>
 </li>
@@ -624,10 +636,23 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <section class="detail" id="field()">
 <h3>field</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">com.github.oeuvres.alix.lucene.search.FieldCharsAbstract</span>&nbsp;<span class="element-name">field</span>()</div>
-<div class="block">Get the field from wiche this term enumerator is build on.</div>
+<div class="block">Get the field from wich this term enumerator is build on.</div>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>stats about a lucene field.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="filter(com.github.oeuvres.alix.fr.TagFilter)">
+<h3>filter</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">filter</span><wbr><span class="parameters">(<a href="../../fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter)</span></div>
+<div class="block">Filter forms. For excluded form, unset freq, hits and score if exists.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>formFilter</code> - form filter.</dd>
+<dt>Returns:</dt>
+<dd>this.</dd>
 </dl>
 </section>
 </li>
@@ -966,10 +991,39 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 </section>
 </li>
 <li>
+<section class="detail" id="score(com.github.oeuvres.alix.util.MI,int[])">
+<h3>score</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">score</span><wbr><span class="parameters">(<a href="../../util/MI.html" title="enum in com.github.oeuvres.alix.util">MI</a>&nbsp;mi,
+ int[]&nbsp;pivotIds)</span>
+               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Scores a <a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FormEnum</code></a> with freqs extracted from co-occurrences extraction
+ in a <a href="FieldRail.html#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>FieldRail.coocs(BytesRef[], int, int, BitSet)</code></a>. Scoring uses a “mutual information”
+ <a href="../../util/MI.html" title="enum in com.github.oeuvres.alix.util"><code>MI</code></a> formula (probability like, not tf-idf like). Parameters
+ are
+ 
+ <ul>
+ <li>Oab: freq(a), count of a form (a) observed in a co-occurrency context of a pivot (b)</li>
+ <li>Oa: occs(a), count of a form in full corpus</li>
+ <li>Ob: occs(b), sum of occs of the pivots</li>
+ <li>N: occsAll(), global count of occs from which is extracted the context (full corpus
+ or filtered section)</li>
+ </ul></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>mi</code> - mutual information algorithm to calculate score.</dd>
+<dd><code>pivotIds</code> - form ids of pivots words.</dd>
+<dt>Returns:</dt>
+<dd>this</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="score(com.github.oeuvres.alix.lucene.search.Distrib)">
 <h3>score</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">score</span><wbr><span class="parameters">(<a href="Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a>&nbsp;scorer)</span></div>
-<div class="block">Score all forms with a distribution algorithm.</div>
+<div class="block">Score all forms with a distribution formula,</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>scorer</code> - a score algo implementation.</dd>
@@ -1009,7 +1063,7 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <li>
 <section class="detail" id="sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order)">
 <h3>sort</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">sort</span><wbr><span class="parameters">(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">sort</span><wbr><span class="parameters">(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order)</span></div>
 <div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="FormIterator.html#sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order)">FormIterator</a></code></span></div>
 <div class="block">Sort according to one order implemented. Sort before iterate.</div>
 <dl class="notes">
@@ -1017,13 +1071,15 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <dd><code><a href="FormIterator.html#sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order)">sort</a></code>&nbsp;in interface&nbsp;<code><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>order</code> - on which to sort.</dd>
+<dt>Returns:</dt>
+<dd>this</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order,int)">
 <h3>sort</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">sort</span><wbr><span class="parameters">(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">sort</span><wbr><span class="parameters">(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order,
  int&nbsp;limit)</span></div>
 <div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="FormIterator.html#sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order,int)">FormIterator</a></code></span></div>
 <div class="block">Partial sort to get a top of elements.</div>
@@ -1033,21 +1089,28 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
 <dt>Parameters:</dt>
 <dd><code>order</code> - on which to sort.</dd>
 <dd><code>limit</code> - top element according to sort order.</dd>
+<dt>Returns:</dt>
+<dd>this</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order,int,boolean)">
 <h3>sort</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">sort</span><wbr><span class="parameters">(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">sort</span><wbr><span class="parameters">(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order,
  int&nbsp;limit,
  boolean&nbsp;reverse)</span></div>
-<div class="block">Prepare the order of enumeration with a vector.</div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="FormIterator.html#sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order,int,boolean)">FormIterator</a></code></span></div>
+<div class="block">Partial sort to get a top of elements, with possible reverse order.</div>
 <dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="FormIterator.html#sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order,int,boolean)">sort</a></code>&nbsp;in interface&nbsp;<code><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>order</code> - sort order accepted.</dd>
 <dd><code>limit</code> - limit the number of forms returned.</dd>
 <dd><code>reverse</code> - reverse order according to order.</dd>
+<dt>Returns:</dt>
+<dd>this</dd>
 </dl>
 </section>
 </li>

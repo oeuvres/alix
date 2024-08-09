@@ -94,7 +94,9 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/HashMap.html" title="class or interface in java.util" class="external-link">HashMap</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Character.html" title="class or interface in java.lang" class="external-link">Character</a>&gt;</code></div>
 <div class="col-second even-row-color"><code><a href="#HTMLENT" class="member-name-link">HTMLENT</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">HTML entities</div>
+</div>
 </div>
 </section>
 </li>
@@ -123,91 +125,80 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#append(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int,int)" class="member-name-link">append</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
- int&nbsp;offset,
- <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
- int&nbsp;chars,
- int&nbsp;words)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
-<div class="block">From a random point in an xml file, append text (with possibly broken tag),
- limit to an amount of chars, or words.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#appendChars(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int)" class="member-name-link">appendChars</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#appendChars(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int)" class="member-name-link">appendChars</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
  int&nbsp;offset,
  <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
  int&nbsp;chars)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#appendWords(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int)" class="member-name-link">appendWords</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Used to build a concordance.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#appendWords(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int)" class="member-name-link">appendWords</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
  int&nbsp;offset,
  <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
  int&nbsp;words)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#detag(java.lang.String)" class="member-name-link">detag</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Used to build a concordance.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#detag(java.lang.String)" class="member-name-link">detag</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Return a normalize-space() text version of an xml excerpt (possibly broken).</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#detag(java.lang.String,int,int,com.github.oeuvres.alix.util.Chain,java.util.Set)" class="member-name-link">detag</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#detag(java.lang.String,int,int,com.github.oeuvres.alix.util.Chain,java.util.Set)" class="member-name-link">detag</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
  int&nbsp;begin,
  int&nbsp;end,
  <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;dest,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;&nbsp;include)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Return a normalize-space() text version of an xml excerpt (possibly with
  broken tags).</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#detag(java.lang.String,java.util.Set)" class="member-name-link">detag</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#detag(java.lang.String,java.util.Set)" class="member-name-link">detag</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;&nbsp;include)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Return a normalize-space() text version of an xml excerpt (possibly broken),
  with selected tags allowed</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static char</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#forChar(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)" class="member-name-link">forChar</a><wbr>(<a href="../lucene/analysis/tokenattributes/CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>&nbsp;ent)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static char</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#forChar(com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl)" class="member-name-link">forChar</a><wbr>(<a href="../lucene/analysis/tokenattributes/CharsAttImpl.html" title="class in com.github.oeuvres.alix.lucene.analysis.tokenattributes">CharsAttImpl</a>&nbsp;ent)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">See <a href="#forChar(java.lang.String)"><code>forChar(String)</code></a>, with a custom implementation of lucene
  <code>CharTermAttribute</code> sharing the same hash fuction as a String.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static char</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#forChar(com.github.oeuvres.alix.util.Chain)" class="member-name-link">forChar</a><wbr>(<a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;ent)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static char</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#forChar(com.github.oeuvres.alix.util.Chain)" class="member-name-link">forChar</a><wbr>(<a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;ent)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">See <a href="#forChar(java.lang.String)"><code>forChar(String)</code></a>, with a custom mutable String.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static char</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#forChar(java.lang.String)" class="member-name-link">forChar</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;ent)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static char</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#forChar(java.lang.String)" class="member-name-link">forChar</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;ent)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Get the char from an HTML entity like &amp;gt; or &amp;#128;.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#isInEnt(char)" class="member-name-link">isInEnt</a><wbr>(char&nbsp;c)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
-<div class="block">Is it a char allowed in an entity code ?</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#prepend(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int,int)" class="member-name-link">prepend</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
- int&nbsp;offset,
- <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
- int&nbsp;chars,
- int&nbsp;words)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#isInEnt(char)" class="member-name-link">isInEnt</a><wbr>(char&nbsp;c)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
-<div class="block">Provide a text version of an xml excerpt (possibly broken).</div>
+<div class="block">Is it a char allowed in an entity code ?</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#prependChars(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int)" class="member-name-link">prependChars</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
  int&nbsp;offset,
  <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
  int&nbsp;chars)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Used to build a concordance.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#prependWords(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int)" class="member-name-link">prependWords</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
  int&nbsp;offset,
  <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
  int&nbsp;words)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Used to build a concordance.</div>
+</div>
 </div>
 </div>
 </div>
@@ -229,6 +220,7 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="HTMLENT">
 <h3>HTMLENT</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/HashMap.html" title="class or interface in java.util" class="external-link">HashMap</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Character.html" title="class or interface in java.lang" class="external-link">Character</a>&gt;</span>&nbsp;<span class="element-name">HTMLENT</span></div>
+<div class="block">HTML entities</div>
 </section>
 </li>
 </ul>
@@ -261,8 +253,9 @@ loadScripts(document, 'script');</script>
  on supplementary char like &amp;Afr; 𝔄 &amp;x1d504; (3 bytes).</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>ent</code> - </dd>
+<dd><code>ent</code> - html entity.</dd>
 <dt>Returns:</dt>
+<dd>unicode char.</dd>
 </dl>
 </section>
 </li>
@@ -273,8 +266,9 @@ loadScripts(document, 'script');</script>
 <div class="block">See <a href="#forChar(java.lang.String)"><code>forChar(String)</code></a>, with a custom mutable String.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>ent</code> - </dd>
+<dd><code>ent</code> - html entity.</dd>
 <dt>Returns:</dt>
+<dd>unicode char.</dd>
 </dl>
 </section>
 </li>
@@ -286,8 +280,9 @@ loadScripts(document, 'script');</script>
  <code>CharTermAttribute</code> sharing the same hash fuction as a String.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>ent</code> - </dd>
+<dd><code>ent</code> - html entity.</dd>
 <dt>Returns:</dt>
+<dd>unicode char.</dd>
 </dl>
 </section>
 </li>
@@ -298,8 +293,9 @@ loadScripts(document, 'script');</script>
 <div class="block">Is it a char allowed in an entity code ?</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>c</code> - </dd>
+<dd><code>c</code> - char to test.</dd>
 <dt>Returns:</dt>
+<dd>true if ASCII and letter or digit, false otherwise.</dd>
 </dl>
 </section>
 </li>
@@ -308,6 +304,12 @@ loadScripts(document, 'script');</script>
 <h3>detag</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">detag</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml)</span></div>
 <div class="block">Return a normalize-space() text version of an xml excerpt (possibly broken).</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>xml</code> - span of text with tags.</dd>
+<dt>Returns:</dt>
+<dd>normalized text without tags.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -317,6 +319,13 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;&nbsp;include)</span></div>
 <div class="block">Return a normalize-space() text version of an xml excerpt (possibly broken),
  with selected tags allowed</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>xml</code> - span of text with tags.</dd>
+<dd><code>include</code> - set of tags allowed.</dd>
+<dt>Returns:</dt>
+<dd>normalized text without tags.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -329,6 +338,14 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Set.html" title="class or interface in java.util" class="external-link">Set</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;&nbsp;include)</span></div>
 <div class="block">Return a normalize-space() text version of an xml excerpt (possibly with
  broken tags). Chain could be reused here for performances.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>xml</code> - span of text with tags.</dd>
+<dd><code>begin</code> - start index in xml.</dd>
+<dd><code>end</code> - end index in xml.</dd>
+<dd><code>dest</code> - destination <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link"><code>CharSequence</code></a>.</dd>
+<dd><code>include</code> - set of tags allowed.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -338,6 +355,16 @@ loadScripts(document, 'script');</script>
  int&nbsp;offset,
  <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
  int&nbsp;words)</span></div>
+<div class="block">Used to build a concordance. 
+ From a random point in an xml file, append text to a mutable destination charSequence,
+ limit to an amount of words.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>xml</code> - source markup text.</dd>
+<dd><code>offset</code> - position in xml from which append words or chars.</dd>
+<dd><code>chain</code> - destination chain.</dd>
+<dd><code>words</code> - amount of words to append.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -347,21 +374,15 @@ loadScripts(document, 'script');</script>
  int&nbsp;offset,
  <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
  int&nbsp;chars)</span></div>
-</section>
-</li>
-<li>
-<section class="detail" id="append(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int,int)">
-<h3>append</h3>
-<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">append</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
- int&nbsp;offset,
- <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
- int&nbsp;chars,
- int&nbsp;words)</span></div>
-<div class="block">From a random point in an xml file, append text (with possibly broken tag),
- limit to an amount of chars, or words.</div>
+<div class="block">Used to build a concordance. 
+ From a random point in an xml file, append text to a mutable destination charSequence,
+ limit to an amount of chars.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>xml</code> - </dd>
+<dd><code>xml</code> - source markup text.</dd>
+<dd><code>offset</code> - position in xml from which append words or chars.</dd>
+<dd><code>chain</code> - destination chain.</dd>
+<dd><code>chars</code> - amount of chars to append.</dd>
 </dl>
 </section>
 </li>
@@ -372,6 +393,16 @@ loadScripts(document, 'script');</script>
  int&nbsp;offset,
  <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
  int&nbsp;words)</span></div>
+<div class="block">Used to build a concordance. 
+ From a random point in an xml file, prepend text to a mutable destination charSequence,
+ limit to an amount of words.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>xml</code> - source markup text.</dd>
+<dd><code>offset</code> - position in xml from which prepend words or chars.</dd>
+<dd><code>chain</code> - destination chain.</dd>
+<dd><code>words</code> - amount of words to prepend.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -381,20 +412,15 @@ loadScripts(document, 'script');</script>
  int&nbsp;offset,
  <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
  int&nbsp;chars)</span></div>
-</section>
-</li>
-<li>
-<section class="detail" id="prepend(java.lang.String,int,com.github.oeuvres.alix.util.Chain,int,int)">
-<h3>prepend</h3>
-<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">prepend</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;xml,
- int&nbsp;offset,
- <a href="Chain.html" title="class in com.github.oeuvres.alix.util">Chain</a>&nbsp;chain,
- int&nbsp;chars,
- int&nbsp;words)</span></div>
-<div class="block">Provide a text version of an xml excerpt (possibly broken).</div>
+<div class="block">Used to build a concordance. 
+ From a random point in an xml file, prepend text to a mutable destination charSequence,
+ limit to an amount of chars.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>xml</code> - </dd>
+<dd><code>xml</code> - source markup text.</dd>
+<dd><code>offset</code> - position in xml from which prepend words or chars.</dd>
+<dd><code>chain</code> - destination chain.</dd>
+<dd><code>chars</code> - amount of chars prepend.</dd>
 </dl>
 </section>
 </li>

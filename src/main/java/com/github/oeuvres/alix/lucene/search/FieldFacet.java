@@ -430,7 +430,7 @@ public class FieldFacet extends FieldCharsAbstract
         forms.hitsByForm = new int[maxForm];
         forms.freqByForm = new long[maxForm]; // a vector to count matched occurrences by facet
         if (hasScorer) {
-            forms.scoreByform = new double[maxForm];
+            forms.scoreByForm = new double[maxForm];
         }
         // loop on each term of the search to update the score vector
         @SuppressWarnings("unused")
@@ -494,7 +494,7 @@ public class FieldFacet extends FieldCharsAbstract
                         // formPartOccs[facetId] += freq;
                         // term frequency
                         if (hasScorer) {
-                            forms.scoreByform[facetId] += scorer.score(freq, ftext.docOccs(docId));
+                            forms.scoreByForm[facetId] += scorer.score(freq, ftext.docOccs(docId));
                         }
                     }
                     if (!docSeen) {

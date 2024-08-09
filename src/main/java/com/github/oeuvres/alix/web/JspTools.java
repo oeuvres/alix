@@ -617,6 +617,20 @@ public class JspTools
      * @param name     name of http param.
      * @param fallback default value.
      * @param set accepted values.
+     * @return Priority order: request, fallback.
+     */
+    public String getString(final String name, final String fallback, final Set<String> set)
+    {
+        return getString(name, fallback, set, null);
+    }
+    
+    /**
+     * Get a request parameter as a String with a default value, or optional cookie
+     * persistence. Optional set of accepted values.
+     * 
+     * @param name     name of http param.
+     * @param fallback default value.
+     * @param set accepted values.
      * @param cookie   name of a cookie.
      * @return Priority order: request, cookie, fallback.
      */

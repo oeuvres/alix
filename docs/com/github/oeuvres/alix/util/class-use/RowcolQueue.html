@@ -70,13 +70,14 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code><a href="../RowcolQueue.html" title="class in com.github.oeuvres.alix.util">RowcolQueue</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">FieldRail.</span><code><a href="../../lucene/search/FieldRail.html#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)" class="member-name-link">coocs</a><wbr>(org.apache.lucene.util.BytesRef[]&nbsp;pivotBytes,
- int&nbsp;left,
- int&nbsp;right,
+<div class="col-first even-row-color"><code>protected <a href="../RowcolQueue.html" title="class in com.github.oeuvres.alix.util">RowcolQueue</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">FieldRail.</span><code><a href="../../lucene/search/FieldRail.html#positions(org.apache.lucene.util.BytesRef%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">positions</a><wbr>(org.apache.lucene.util.BytesRef[]&nbsp;pivotBytes,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Build a freqList of coocurrents , attached to a FormEnum object.</div>
+<div class="block">For an ordered set of forms as bytes, obtained from 
+ <code>FieldCharsAbstract.bytesSorted(CharSequence[])</code>
+ or <code>FieldCharsAbstract.bytesSorted(int[])</code>,
+ get an ordered list of positions by docId.</div>
 </div>
 </div>
 </section>

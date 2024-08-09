@@ -39,7 +39,6 @@ import java.util.Collections;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -84,7 +83,7 @@ public class FieldText extends FieldCharsAbstract
     /** stopByForm.get(formId) == true: form is a stop word. */
     private BitSet stopByForm;
     /** tagByForm[formI] = {@link Tag#flag()}; lexical type of form. */
-    private int[] tagByForm;
+    protected int[] tagByForm;
     /**
      * Build the dictionaries and stats. Each form indexed for the field will be
      * identified by an int (formId). This id will be in freq order: the
@@ -344,41 +343,6 @@ public class FieldText extends FieldCharsAbstract
     }
 
     /**
-     * Global form list, filtered by tags, with global stats.
-     * 
-     * @param formFilter form filter.
-     * @return an object to sort and loop forms.
-     */
-    public FormEnum formEnum(final TagFilter formFilter)
-    {
-        boolean noStop = (formFilter != null && formFilter.get(Tag.NOSTOP));
-        boolean locs = (formFilter != null && formFilter.get(Tag.LOC));
-        boolean hasTags = (formFilter != null && (formFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
-        long[] formFreq = new long[maxForm];
-        long freqAll = 0;
-        for (int formId = 0; formId < maxForm; formId++) {
-            if (noStop) { // special tag
-                if(isStop(formId)) continue;
-            }
-            else if (locs) {  // special tag
-                if(!locByForm.get(formId)) continue;
-            }
-            else if (hasTags) {
-                if(!formFilter.get(tagByForm[formId])) continue;
-            }
-            // loop on all docs containing the term ?
-            formFreq[formId] = occsByForm[formId];
-            freqAll += occsByForm[formId];
-        }
-        // now we have all we need to build a sorted iterator on entries
-        FormEnum forms = formEnum();
-        forms.freqByForm = formFreq;
-        forms.freqAll = freqAll;
-        // are hits interesting here ?
-        return forms;
-    }
-
-    /**
      * Get forms for this field, filtered by a set of docIds.
      * 
      * @param docFilter a set of docId.
@@ -419,7 +383,7 @@ public class FieldText extends FieldCharsAbstract
         boolean hasDistrib = (distribution != null);
         boolean hasFilter = (docFilter != null && docFilter.cardinality() > 0);
     
-        if (hasDistrib) formEnum.scoreByform = new double[maxForm];
+        if (hasDistrib) formEnum.scoreByForm = new double[maxForm];
         formEnum.freqByForm = new long[maxForm];
         formEnum.hitsByForm = new int[maxForm];
         
@@ -482,7 +446,7 @@ public class FieldText extends FieldCharsAbstract
                         final double score = distribution.score(freq, occsByDoc[docId]);
                         // if (score < 0) forms.formScore[formId] -= score; // all variation is
                         // significant
-                        formEnum.scoreByform[formId] += score;
+                        formEnum.scoreByForm[formId] += score;
                     }
                     formEnum.freqByForm[formId] += freq;
                     formEnum.freqAll += freq;
@@ -497,7 +461,7 @@ public class FieldText extends FieldCharsAbstract
                 final long restFreq = occsByForm[formId] - formEnum.freqByForm[formId];
                 final long restLen = occsAll - occsPart;
                 double score = distribution.last(restFreq, restLen);
-                formEnum.scoreByform[formId] += score;
+                formEnum.scoreByForm[formId] += score;
             }
         }
 
@@ -541,7 +505,7 @@ public class FieldText extends FieldCharsAbstract
         for (int i = 0; i < parts; i++) {
             FormEnum forms = formEnum();
             dics[i] = forms;
-            if (hasScorer) forms.scoreByform = new double[maxForm];
+            if (hasScorer) forms.scoreByForm = new double[maxForm];
             forms.freqByForm = new long[maxForm];
             forms.hitsByForm = new int[maxForm];
             forms.hitsByDoc = new FixedBitSet(reader.maxDoc());
@@ -599,7 +563,7 @@ public class FieldText extends FieldCharsAbstract
                         final double score = scorer.score(freq, occsByDoc[docId]);
                         // if (score < 0) forms.formScore[formId] -= score; // all variation is
                         // significant
-                        forms.scoreByform[formId] += score;
+                        forms.scoreByForm[formId] += score;
                     }
                     forms.freqByForm[formId] += freq;
                     forms.freqAll += freq;
@@ -634,7 +598,7 @@ public class FieldText extends FieldCharsAbstract
         }
         return ret[0];
     }
-
+    
     /**
      * Returns a sorted array of valueId ready for binarySearch, or
      * null if no words found.

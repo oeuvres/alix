@@ -345,7 +345,7 @@ public class Doc
         FieldText fieldText = alix.fieldText(field);
         FormEnum forms = fieldText.formEnum();
         if (hasDistrib) {
-            forms.scoreByform = new double[fieldText.maxForm];
+            forms.scoreByForm = new double[fieldText.maxForm];
         }
         forms.freqByForm = new long[fieldText.maxForm]; // freqs by form
         int docOccs = fieldText.docOccs(docId);
@@ -378,7 +378,7 @@ public class Doc
             forms.freqByForm[formId] = freq;
             forms.freqAll += freq;
             if (hasDistrib) {
-                forms.scoreByform[formId] += distrib.score(freq, docOccs);
+                forms.scoreByForm[formId] += distrib.score(freq, docOccs);
                 // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub
                 // complement ?
             }

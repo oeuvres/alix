@@ -158,20 +158,27 @@ loadScripts(document, 'script');</script>
  be not available on iteration, if a <a href="#limit(int)"><code>limit(int)</code></a> have been set before
  sorting.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order)" class="member-name-link">sort</a><wbr>(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Sort according to one order implemented.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order,int)" class="member-name-link">sort</a><wbr>(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order,
  int&nbsp;limit)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Partial sort to get a top of elements.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>int[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#sorter()" class="member-name-link">sorter</a>()</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order,int,boolean)" class="member-name-link">sort</a><wbr>(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order,
+ int&nbsp;limit,
+ boolean&nbsp;reverse)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Partial sort to get a top of elements, with possible reverse order.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>int[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#sorter()" class="member-name-link">sorter</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a safe copy of the sorted form ids.</div>
 </div>
 </div>
@@ -296,24 +303,45 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order)">
 <h3>sort</h3>
-<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">sort</span><wbr><span class="parameters">(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order)</span></div>
+<div class="member-signature"><span class="return-type"><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></span>&nbsp;<span class="element-name">sort</span><wbr><span class="parameters">(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order)</span></div>
 <div class="block">Sort according to one order implemented. Sort before iterate.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>order</code> - on which to sort.</dd>
+<dt>Returns:</dt>
+<dd>this</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order,int)">
 <h3>sort</h3>
-<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">sort</span><wbr><span class="parameters">(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order,
+<div class="member-signature"><span class="return-type"><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></span>&nbsp;<span class="element-name">sort</span><wbr><span class="parameters">(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order,
  int&nbsp;limit)</span></div>
 <div class="block">Partial sort to get a top of elements.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>order</code> - on which to sort.</dd>
 <dd><code>limit</code> - top element according to sort order.</dd>
+<dt>Returns:</dt>
+<dd>this</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="sort(com.github.oeuvres.alix.lucene.search.FormIterator.Order,int,boolean)">
+<h3>sort</h3>
+<div class="member-signature"><span class="return-type"><a href="FormIterator.html" title="interface in com.github.oeuvres.alix.lucene.search">FormIterator</a></span>&nbsp;<span class="element-name">sort</span><wbr><span class="parameters">(<a href="FormIterator.Order.html" title="enum in com.github.oeuvres.alix.lucene.search">FormIterator.Order</a>&nbsp;order,
+ int&nbsp;limit,
+ boolean&nbsp;reverse)</span></div>
+<div class="block">Partial sort to get a top of elements, with possible reverse order.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>order</code> - sort order accepted.</dd>
+<dd><code>limit</code> - limit the number of forms returned.</dd>
+<dd><code>reverse</code> - reverse order according to order.</dd>
+<dt>Returns:</dt>
+<dd>this</dd>
 </dl>
 </section>
 </li>

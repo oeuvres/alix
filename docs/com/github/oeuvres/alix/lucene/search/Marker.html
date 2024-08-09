@@ -95,7 +95,7 @@ loadScripts(document, 'script');</script>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(org.apache.lucene.analysis.Analyzer,java.lang.String)" class="member-name-link">Marker</a><wbr>(org.apache.lucene.analysis.Analyzer&nbsp;analyzer,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;q)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Build an hiliter with an analyzer, and a query</div>
+<div class="block">Build an hiliter with an analyzer, and a query.</div>
 </div>
 </div>
 </section>
@@ -120,7 +120,9 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#mark(java.lang.String)" class="member-name-link">mark</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;text)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Mark a text with compiled autoaton.</div>
+</div>
 </div>
 </div>
 </div>
@@ -144,13 +146,13 @@ loadScripts(document, 'script');</script>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">Marker</span><wbr><span class="parameters">(org.apache.lucene.analysis.Analyzer&nbsp;analyzer,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;q)</span>
        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Build an hiliter with an analyzer, and a query</div>
+<div class="block">Build an hiliter with an analyzer, and a query.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>analyzer</code> - </dd>
-<dd><code>q</code> - </dd>
+<dd><code>analyzer</code> - lucene analyzer.</dd>
+<dd><code>q</code> - query to parse and find.</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
 </dl>
 </section>
 </li>
@@ -171,10 +173,11 @@ loadScripts(document, 'script');</script>
 <div class="block">Build a char automaton (not for smileys and other 3 bytes)</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>chars</code> - </dd>
-<dd><code>offset</code> - </dd>
-<dd><code>length</code> - </dd>
+<dd><code>chars</code> - char sequence with glob.</dd>
+<dd><code>offset</code> - start index in chars.</dd>
+<dd><code>length</code> - amount of chars to parse.</dd>
 <dt>Returns:</dt>
+<dd>the automaton.</dd>
 </dl>
 </section>
 </li>
@@ -183,9 +186,14 @@ loadScripts(document, 'script');</script>
 <h3>mark</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">mark</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;text)</span>
             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Mark a text with compiled autoaton.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>text</code> - html</dd>
+<dt>Returns:</dt>
+<dd>text marked.</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
 </dl>
 </section>
 </li>

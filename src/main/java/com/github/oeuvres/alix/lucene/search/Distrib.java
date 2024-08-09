@@ -169,7 +169,7 @@ public enum Distrib {
 
     /**
      * For some scorer (not tf-idf like) like G-Test or Chi2, ΣOi = ΣEi = N.
-     * If N is count off all occurrences (events), if Oi (Observed events) and
+     * If N is count of all occurrences (events), if Oi (Observed events) and
      * Ei (Expected events) concern only a part of occurrences (ex: set of 
      * documents), then the sum should be finished by a last count.
      * 

@@ -108,12 +108,7 @@ abstract class FieldCharsAbstract extends FieldAbstract
     public int[] formIds(CharSequence[] forms) throws IOException
     {
         if (forms == null) return null;
-        final int formsLen = forms.length;
-        if (formsLen < 0) return null;
-        final BytesRef[] formsBytes = new BytesRef[formsLen];
-        for (int i = 0; i < formsLen; i++) {
-            formsBytes[i] = new BytesRef(forms[i]);
-        }
+        final BytesRef[] formsBytes = bytesSorted(forms);
         return formIds(formsBytes);
     }
 

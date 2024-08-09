@@ -32,10 +32,8 @@
  */
 package com.github.oeuvres.alix.util;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
 import java.util.NoSuchElementException;
 
 import com.github.oeuvres.alix.maths.Calcul;

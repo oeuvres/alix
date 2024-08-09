@@ -58,17 +58,17 @@ public class Marker
     /** The analyzer used for search string and text to parse */
     final Analyzer analyzer;
     /** Caching token stream ? */
-    /** Automaton */
+    /** Automaton for bytes */
     final Automaton automaton;
-    /** */
+    /** Automaton for chars */
     final CharacterRunAutomaton tester;
 
     /**
-     * Build an hiliter with an analyzer, and a query
+     * Build an hiliter with an analyzer, and a query.
      * 
-     * @param analyzer
-     * @param q
-     * @throws IOException
+     * @param analyzer lucene analyzer.
+     * @param q query to parse and find.
+     * @throws IOException lucene errors.
      */
     public Marker(Analyzer analyzer, String q) throws IOException {
         this.q = q;
@@ -102,10 +102,10 @@ public class Marker
     /**
      * Build a char automaton (not for smileys and other 3 bytes)
      * 
-     * @param chars
-     * @param offset
-     * @param length
-     * @return
+     * @param chars char sequence with glob.
+     * @param offset start index in chars.
+     * @param length amount of chars to parse.
+     * @return the automaton.
      */
     public static Automaton automaton(char[] chars, int offset, int length)
     {
@@ -132,6 +132,13 @@ public class Marker
         return Operations.concatenate(cogs);
     }
 
+    /**
+     * Mark a text with compiled autoaton.
+     * 
+     * @param text html
+     * @return text marked.
+     * @throws IOException lucene errors.
+     */
     public String mark(String text) throws IOException
     {
         // reusable string reader ?

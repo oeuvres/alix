@@ -150,6 +150,11 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Lucene index reader, cache the state.</div>
 </div>
+<div class="col-first odd-row-color"><code>protected int[]</code></div>
+<div class="col-second odd-row-color"><code><a href="#tagByForm" class="member-name-link">tagByForm</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">tagByForm[formI] = <a href="../../fr/Tag.html#flag()"><code>Tag.flag()</code></a>; lexical type of form.</div>
+</div>
 </div>
 </section>
 </li>
@@ -228,129 +233,124 @@ loadScripts(document, 'script');</script>
 <div class="block">Get a non filtered term enum for this field with global stats.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formEnum(com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">formEnum</a><wbr>(<a href="../../fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formEnum(org.apache.lucene.util.BitSet)" class="member-name-link">formEnum</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Global form list, filtered by tags, with global stats.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formEnum(org.apache.lucene.util.BitSet)" class="member-name-link">formEnum</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get forms for this field, filtered by a set of docIds.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formEnum(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.TagFilter,com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">formEnum</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formEnum(org.apache.lucene.util.BitSet,com.github.oeuvres.alix.fr.TagFilter,com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">formEnum</a><wbr>(org.apache.lucene.util.BitSet&nbsp;docFilter,
  <a href="../../fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter,
  <a href="Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a>&nbsp;distribution)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Count of occurrences by term for a subset of the index, defined as a BitSet.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formEnumByPart(int,int%5B%5D,com.github.oeuvres.alix.fr.TagFilter,com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">formEnumByPart</a><wbr>(int&nbsp;parts,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a>[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formEnumByPart(int,int%5B%5D,com.github.oeuvres.alix.fr.TagFilter,com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">formEnumByPart</a><wbr>(int&nbsp;parts,
  int[]&nbsp;classifier,
  <a href="../../fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter,
  <a href="Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a>&nbsp;scorer)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get scored words for a partition of the full index.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>org.apache.lucene.util.BitSet</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formFilter(com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">formFilter</a><wbr>(<a href="../../fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>org.apache.lucene.util.BitSet</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formFilter(com.github.oeuvres.alix.fr.TagFilter)" class="member-name-link">formFilter</a><wbr>(<a href="../../fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Build a BitSet of formId for efficient filtering of forms by tags.</div>
 </div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formId(java.lang.CharSequence)" class="member-name-link">formId</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>&nbsp;form)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Returns formId &gt;= 0 if exists, or -1 if not, like <code>BytesRefHash.find(BytesRef)</code></div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formId(java.lang.CharSequence)" class="member-name-link">formId</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>&nbsp;form)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formId(org.apache.lucene.util.BytesRef)" class="member-name-link">formId</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns formId &gt;= 0 if exists, or -1 if not, like <code>BytesRefHash.find(BytesRef)</code></div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formId(org.apache.lucene.util.BytesRef)" class="member-name-link">formId</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns formId &gt;= 0 if exists, or -1 if not, like <code>BytesRefHash.find(BytesRef)</code></div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formId(org.apache.lucene.util.BytesRef,org.apache.lucene.util.BitSet)" class="member-name-link">formId</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formId(org.apache.lucene.util.BytesRef,org.apache.lucene.util.BitSet)" class="member-name-link">formId</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Check if a form is present in a partition of the index.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formIds(java.lang.CharSequence%5B%5D)" class="member-name-link">formIds</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formIds(java.lang.CharSequence%5B%5D)" class="member-name-link">formIds</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a sorted array of formId ready for binarySearch, or
  null if no words found.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formIds(java.lang.CharSequence%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">formIds</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formIds(java.lang.CharSequence%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">formIds</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/CharSequence.html" title="class or interface in java.lang" class="external-link">CharSequence</a>[]&nbsp;forms,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a sorted array of valueId ready for binarySearch, or
  null if no words found.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formIds(org.apache.lucene.util.BytesRef%5B%5D)" class="member-name-link">formIds</a><wbr>(org.apache.lucene.util.BytesRef[]&nbsp;forms)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#formIds(org.apache.lucene.util.BytesRef%5B%5D)" class="member-name-link">formIds</a><wbr>(org.apache.lucene.util.BytesRef[]&nbsp;forms)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a sorted array of formId for found words, ready for binarySearch, or
  null if not found.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#forms(int%5B%5D)" class="member-name-link">forms</a><wbr>(int[]&nbsp;rail)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#forms(int%5B%5D)" class="member-name-link">forms</a><wbr>(int[]&nbsp;rail)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get forms in order from a vector of formId.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isLocution(int)" class="member-name-link">isLocution</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isLocution(int)" class="member-name-link">isLocution</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Is this formId a locution ?</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isPunctuation(int)" class="member-name-link">isPunctuation</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isPunctuation(int)" class="member-name-link">isPunctuation</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Is this formId a punctuation ?</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isStop(int)" class="member-name-link">isStop</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isStop(int)" class="member-name-link">isStop</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Is this formId a StopWord ?</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxForm()" class="member-name-link">maxForm</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxForm()" class="member-name-link">maxForm</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Count of different values.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(int)" class="member-name-link">occs</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(int)" class="member-name-link">occs</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">How many occs for this term in all index ?</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(java.lang.String)" class="member-name-link">occs</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;form)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(java.lang.String)" class="member-name-link">occs</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;form)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get global length (occurrences) for a form.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(java.lang.String%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">occs</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;forms,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(java.lang.String%5B%5D,org.apache.lucene.util.BitSet)" class="member-name-link">occs</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;forms,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Return count of occurrences for a set of forms with a doc filter.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(org.apache.lucene.util.BytesRef)" class="member-name-link">occs</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occs(org.apache.lucene.util.BytesRef)" class="member-name-link">occs</a><wbr>(org.apache.lucene.util.BytesRef&nbsp;bytes)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get global length (occurrences) for a form.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsAll()" class="member-name-link">occsAll</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#occsAll()" class="member-name-link">occsAll</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Global count of occurrences (except empty positions) for all index.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#tag(int)" class="member-name-link">tag</a><wbr>(int&nbsp;formId)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#tag(int)" class="member-name-link">tag</a><wbr>(int&nbsp;formId)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Return tag attached to form according to <a href="../../fr/Tag.html" title="enum in com.github.oeuvres.alix.fr"><code>Tag</code></a>.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 </div>
 </div>
 </div>
@@ -387,6 +387,13 @@ loadScripts(document, 'script');</script>
 <h3>occsByForm</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">occsByForm</span></div>
 <div class="block">occsByform[formId] = occs; count of occurrences by form.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="tagByForm">
+<h3>tagByForm</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">tagByForm</span></div>
+<div class="block">tagByForm[formI] = <a href="../../fr/Tag.html#flag()"><code>Tag.flag()</code></a>; lexical type of form.</div>
 </section>
 </li>
 <li>
@@ -530,19 +537,6 @@ loadScripts(document, 'script');</script>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">formEnum</span>()</div>
 <div class="block">Get a non filtered term enum for this field with global stats.</div>
 <dl class="notes">
-<dt>Returns:</dt>
-<dd>an object to sort and loop forms.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="formEnum(com.github.oeuvres.alix.fr.TagFilter)">
-<h3>formEnum</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">formEnum</span><wbr><span class="parameters">(<a href="../../fr/TagFilter.html" title="class in com.github.oeuvres.alix.fr">TagFilter</a>&nbsp;formFilter)</span></div>
-<div class="block">Global form list, filtered by tags, with global stats.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>formFilter</code> - form filter.</dd>
 <dt>Returns:</dt>
 <dd>an object to sort and loop forms.</dd>
 </dl>

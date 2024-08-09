@@ -33,6 +33,9 @@
  */
 package com.github.oeuvres.alix;
 
+/**
+ * List of static names for Alix.
+ */
 public final class Names
 {
     /** For a cookie */

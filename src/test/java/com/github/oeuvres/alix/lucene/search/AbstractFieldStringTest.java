@@ -28,9 +28,11 @@ public class AbstractFieldStringTest
             dic.add(bytes);
         }
         String[] search = new String[] {"C", null, null, "a", "A", "B", "à", "À", "ç", "c"};
+        /*
         BytesRef[] forms = FieldCharsAbstract.bytesSorted(dic, search);
         for (BytesRef bytes: forms) {
             System.out.println(bytes.utf8ToString());
         }
+        */
     }
 }

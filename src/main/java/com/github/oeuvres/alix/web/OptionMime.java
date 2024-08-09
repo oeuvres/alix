@@ -33,14 +33,25 @@
 package com.github.oeuvres.alix.web;
 
 public enum OptionMime {
+    /** html */
     html("text/html; charset=UTF-8"), 
+    /** html alternative */
     htf("text/html; charset=UTF-8"), 
+    /** json */
     json("application/json"),
+    /** csv */
     csv("text/csv; charset=UTF-8"), 
+    /** tsv */
     tsv("text/tsv; charset=UTF-8");
 
+    /** Mime-type */
     public final String type;
 
+    /**
+     * Constructor with type.
+     * 
+     * @param type mime-type.
+     */
     private OptionMime(final String type) {
         this.type = type;
     }

@@ -13,8 +13,9 @@ import com.github.oeuvres.alix.lucene.Alix;
 
 public class FieldRailTest extends FieldRail
 {
-    public FieldRailTest(Alix alix, String fieldName) throws IOException {
-        super(alix, fieldName);
+
+    public FieldRailTest(FieldText fieldText) throws IOException {
+        super(fieldText);
         // TODO Auto-generated constructor stub
     }
 
