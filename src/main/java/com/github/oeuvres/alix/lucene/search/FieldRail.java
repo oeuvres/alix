@@ -42,14 +42,11 @@ import java.nio.channels.FileLock;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -62,6 +59,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
+import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.util.Chain;
@@ -71,7 +69,6 @@ import com.github.oeuvres.alix.util.EdgeRoller;
 import com.github.oeuvres.alix.util.EdgeMatrix;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.IntPairMutable;
-import com.github.oeuvres.alix.util.MI;
 import com.github.oeuvres.alix.util.RowcolQueue;
 
 /**
@@ -115,7 +112,7 @@ public class FieldRail
      * Load rail of words as int, build it as file if necessary.
      * 
      * @param fieldText alix stats on an indexed and tokenized lucene field.
-     * @throws IOException lucene erros.
+     * @throws IOException lucene errors.
      */
     public FieldRail(FieldText fieldText) throws IOException {
         reader = fieldText.reader;
@@ -147,10 +144,10 @@ public class FieldRail
      * @param left width of context before a pivot.
      * @param right width of context after a pivot.
      * @param docFilter optional, set of lucene internal docId to restrict collect.
-     * @return forms with stats.
+     * @return forms with freq.
      * @throws IOException lucene errors.
      */
-    public RowcolQueue coocs(
+    public FormEnum coocs(
         final BytesRef[] pivotBytes, 
         final int left,
         final int right,
@@ -167,189 +164,55 @@ public class FieldRail
             throw new IllegalArgumentException("left=" + left + " right=" + right
                     + " not enough context to extract co-occurrences.");
         }
-        // filter documents ?
-        final boolean hasFilter = (docFilter != null && docFilter.cardinality() > 0);
 
 
         // loop on leafs
         // 1. collect all positions of pivots in the lucene index for accepted docs
-        RowcolQueue docposList = new RowcolQueue();
-        PostingsEnum postings = null; // reuse
-        for (LeafReaderContext context : reader.leaves()) {
-            final int docBase = context.docBase;
-            LeafReader leaf = context.reader();
-            Terms terms = leaf.terms(fieldName);
-            if (terms == null) continue;
-            TermsEnum tenum = terms.iterator();
-            Bits live = leaf.getLiveDocs();
-            for (BytesRef bytes : pivotBytes) {
-                if (bytes == null) continue;
-                if (!tenum.seekExact(bytes)) {
-                    continue;
-                }
-                postings = tenum.postings(postings, PostingsEnum.POSITIONS);
-                if (postings == null) {
-                    // ???
-                    // continue;
-                }
-                int docLeaf;
-                while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    if (live != null && !live.get(docLeaf)) continue; // deleted doc
-                    int docId = docBase + docLeaf;
-                    if (hasFilter && !docFilter.get(docId)) continue; // document not in the filter
-                    final int freq = postings.freq();
-                    for (int i = 0; i < freq; i++) {
-                        final int posPivot = postings.nextPosition();
-                        docposList.push(docId, posPivot);
-                        /* 
-                        // tested, is oK
-                        final int formFound = intRail.get(indexDoc + posPivot);
-                        if (formFound != formId) {
-                            Throw new Exception("formId=" + formId + " != " + formFound);
-                        }
-                        */
-                    }
-                }
-                
-            }
-        }
         // 2. loop on all pivot position by doc
         // for each doc, a bit set is used to record the relevant positions
         // this will avoid counting interferences when search occurrences are close
         FormEnum formEnum = new FormEnum(fieldText);
+        formEnum.freqByForm = new long[maxForm];
+        formEnum.freqAll = 0;
+        formEnum.hitsByForm = new int[maxForm];
+        BitSet formByDoc = new FixedBitSet(maxForm);
         IntBuffer intRail = channelMap.rewind().asIntBuffer().asReadOnlyBuffer(); // the rail
         java.util.BitSet context = new java.util.BitSet();
-        IntBuffer bufInt = channelMap.rewind().asIntBuffer();
-        docposList.uniq(); // sort and eliminate duplicates
+        
+        RowcolQueue docposList = positions(pivotBytes, docFilter);
         docposList.push(Integer.MAX_VALUE, Integer.MAX_VALUE); // end of list
         int docLast = -1;
         while (docposList.hasNext()) {
             docposList.next();
             final int docId = docposList.row();
-            final int docLen = lenByDoc[docId];
             final int pos = docposList.col();
             // end of a doc
             if (docLast != -1 && docLast != docId) {
-                final int docIndex = indexByDoc[docId];
+                formByDoc.clear();
+                final int docIndex = indexByDoc[docLast];
                 // load the document rail and loop on the context to count co-occurrents
                 for (int formIndex = context.nextSetBit(0); formIndex >= 0; formIndex = context.nextSetBit(formIndex+1)) {
                     if (formIndex == Integer.MAX_VALUE) break; // or (i+1) would overflow
-                    final int formId = bufInt.get(docIndex + formIndex);
+                    final int formId = intRail.get(docIndex + formIndex);
+                    if (formId < 1) {
+                        continue;
+                    }
                     formEnum.freqByForm[formId]++;
+                    if (!formByDoc.get(formId)) {
+                        formEnum.hitsByForm[formId]++;
+                        formByDoc.set(formId);
+                    }
+                    formEnum.freqAll++;
                 }
-                // 
-                
+                if (docId == Integer.MAX_VALUE) break; // end of list
                 context.clear();
-                docLast = docId;
             }
+            docLast = docId;
+            final int docLen = lenByDoc[docId];
             context.set(Math.max(0, pos - left), Math.min(docLen, pos + 1 + right));
         }
         
-        return docposList;
-        /**
-            // loop on all documents for this leaf
-            final int max = leaf.maxDoc();
-            final Bits liveDocs = leaf.getLiveDocs();
-            final boolean hasLive = (liveDocs != null);
-            for (int docLeaf = 0; docLeaf < max; docLeaf++) {
-                final int docId = docBase + docLeaf;
-                final int docLen = limInt[docId];
-                if (hasFilter && docFilter.get(docId)) {
-                    continue; // document not in the document filter
-                }
-                if (hasLive && !liveDocs.get(docLeaf)) {
-                    continue; // deleted doc
-                }
-                // reset the positions of the rail
-                contexts.clear();
-                pivots.clear();
-                boolean hit = false;
-                // loop on each term iterator to get positions for this doc
-                for (PostingsEnum postings : termDocs) {
-                    int docPost = postings.docID(); // get current doc for these term postings
-                    if (docPost == docLeaf) {
-                        // OK
-                    } else if (docPost == END) {
-                        continue; // end of postings, try next term
-                    } else if (docPost > docLeaf) {
-                        continue; // postings ahead of current doc, try next term
-                    } else if (docPost < docLeaf) {
-                        docPost = postings.advance(docLeaf); // try to advance postings to this doc
-                        if (docPost > docLeaf)
-                            continue; // next doc for this term is ahead current term
-                    }
-                    if (docPost != docLeaf) {
-                        // ? bug ?
-                        System.out.println("BUG cooc, docLeaf=" + docLeaf + " docPost=" + docPost);
-                    }
-                    int freq = postings.freq();
-                    if (freq == 0) {
-                        // bug ?
-                        System.out.println("BUG cooc, term=" + postings.toString() + " docId=" + docId + " freq=0");
-                    }
-
-                    hit = true;
-                    // term found in this doc, search each occurrence
-                    for (; freq > 0; freq--) {
-                        final int position = postings.nextPosition();
-                        final int fromIndex = Math.max(0, position - left);
-                        final int toIndex = Math.min(docLen, position + right + 1); // be careful of end Doc
-                        contexts.set(fromIndex, toIndex);
-                        pivots.set(position);
-                        found++;
-                    }
-                }
-                if (!hit) {
-                    continue;
-                }
-                // count all freqs with pivot
-                // partOccs += contexts.cardinality(); // no, do not count holes
-                // TODISCUSS substract search from contexts
-                // contexts.andNot(search);
-                // load the document rail and loop on the contexts to count co-occurrents
-                final int posDoc = posInt[docId];
-                int pos = contexts.nextSetBit(0);
-                int lastpos = 0;
-                Arrays.fill(formSeen, false);
-                while (pos >= 0) {
-                    int formId = bufInt.get(posDoc + pos);
-                    boolean isPivot = pivots.get(pos);
-                    pos = contexts.nextSetBit(pos + 1);
-                    // gap, another context, reset coocs cluster
-
-                    lastpos = pos;
-                    // Check words to count
-                    if (formId == 0) {
-                        continue;
-                    }
-                    // keep pivots
-                    else if (isPivot) {
-
-                    } else if (locs && !fieldText.formLoc.get(formId)) {
-                        continue;
-                    } else if (noStop && fieldText.isStop(formId)) {
-                        continue;
-                    }
-                    // filter coocs by tag
-                    else if (hasTags && !forms.tags.accept(fieldText.formTag[formId])) {
-                        continue;
-                    }
-
-
-                    forms.occsPart++;
-                    forms.formFreq[formId]++;
-                    // has been useful for a scoring algorithm
-                    if (!formSeen[formId]) {
-                        forms.formHits[formId]++;
-                        formSeen[formId] = true;
-                    }
-                }
-            }
-        }
-        if (mi != null) {
-            score(forms, pivotIds, mi);
-        }
-        */
+        return formEnum;
     }
 
     /**
@@ -699,69 +562,62 @@ public class FieldRail
     
     /**
      * For an ordered set of forms as bytes, obtained from 
-     * {@link FieldCharsAbstract#bytesSorted(BytesRefHash, int[])}
-     * or {@link AbstractFieldString#bytesSorted(BytesRefHash, int[]),
+     * {@link FieldCharsAbstract#bytesSorted(CharSequence[])}
+     * or {@link FieldCharsAbstract#bytesSorted(int[])},
      * get an ordered list of positions by docId.
+     * Used by {@link #coocs(BytesRef[], int, int, BitSet)}.
      *
-     * @param formBytes mandatory, ordered set of terms of this field, as bytes.
+     * @param pivotBytes mandatory, ordered set of terms of this field, as bytes.
      * @param docFilter optional, set of lucene internal docId to limit search.
-     * @return
-     * @throws IOException 
+     * @return an iterator of (row, col) pairs.
+     * @throws IOException lucene errors.
      */
-    private Map<Integer, int[]> positions(final BytesRef[] formsBytes, final BitSet docFilter) throws IOException
+    protected RowcolQueue positions(final BytesRef[] pivotBytes, final BitSet docFilter) throws IOException
     {
-        boolean hasFilter = (docFilter != null);
-        PostingsEnum postings = null;
-        final Map<Integer, IntList> work = new HashMap<>();
-        // loop on leafs, open an index may cost
+        // filter documents ?
+        final boolean hasFilter = (docFilter != null && docFilter.cardinality() > 0);
+        RowcolQueue docposList = new RowcolQueue();
+        PostingsEnum postings = null; // reuse
         for (LeafReaderContext context : reader.leaves()) {
             final int docBase = context.docBase;
             LeafReader leaf = context.reader();
             Terms terms = leaf.terms(fieldName);
             if (terms == null) continue;
             TermsEnum tenum = terms.iterator();
-            final Bits live = leaf.getLiveDocs();
-            // loop on pivots
-            for (final BytesRef bytes : formsBytes) {
+            Bits live = leaf.getLiveDocs();
+            for (BytesRef bytes : pivotBytes) {
                 if (bytes == null) continue;
                 if (!tenum.seekExact(bytes)) {
                     continue;
                 }
-                postings = tenum.postings(postings, PostingsEnum.FREQS | PostingsEnum.POSITIONS);
-                // loop on docs found
-                final Bits liveDocs = leaf.getLiveDocs();
-                final boolean hasLive = (liveDocs != null);
-                int docLeaf; // advance cursor to the first doc
+                postings = tenum.postings(postings, PostingsEnum.POSITIONS);
+                if (postings == null) {
+                    // ???
+                    // continue;
+                }
+                int docLeaf;
                 while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
-                    final int docId = docBase + docLeaf;
-                    // is document in the document filter ?
-                    if (hasFilter && !docFilter.get(docId))continue;
+                    if (live != null && !live.get(docLeaf)) continue; // deleted doc
+                    int docId = docBase + docLeaf;
+                    if (hasFilter && !docFilter.get(docId)) continue; // document not in the filter
                     final int freq = postings.freq();
-                    if (freq == 0) {
-                        // bug ?
-                        new IOException("BUG cooc, term=" + bytes.utf8ToString() + " docId=" + docId + " freq=0");
-                    }
-                    IntList vector = work.get(docId);
-                    if (vector == null) vector = new IntList();
-                    work.put(docId, vector);
-                    // term found in this doc, search each occurrence
                     for (int i = 0; i < freq; i++) {
-                        int posPivot = -1;
-                        try {
-                            posPivot = postings.nextPosition();
-                        } catch (Exception e) {
-                            throw new IOException("" + postings);
+                        final int posPivot = postings.nextPosition();
+                        docposList.push(docId, posPivot);
+                        /* 
+                        // tested, is oK
+                        final int formFound = intRail.get(indexDoc + posPivot);
+                        if (formFound != formId) {
+                            Throw new Exception("formId=" + formId + " != " + formFound);
                         }
-                        if (posPivot < 0) {
-                            throw new IOException("BUG cooc, term=" + postings.toString() + " docId=" + docId + " pos=0");
-                        }
-                        vector.push(posPivot);
+                        */
                     }
                 }
+                
             }
         }
-        return null;
+        docposList.uniq(); // sort and eliminate duplicates
+        return docposList;
     }
     
     /**
@@ -801,71 +657,6 @@ public class FieldRail
                 buf.set(pos, formId);
             }
         }
-    }
-
-    /**
-     * Scores a {@link FormEnum} with freqs extracted from co-occurrences extraction
-     * in a {@link #coocs(BytesRef[], int, int, BitSet)}. Scoring uses a “mutual information”
-     * {@link MI} algorithm (probability like, not tf-idf like). Parameters
-     * are
-     * 
-     * <ul>
-     * <li>Oab: count of a form (a) observed in a co-occurrency context (b)</li>
-     * <li>Oa: count of a form in full corpus, or in a section (filter)</li>
-     * <li>Ob: count of occs of the co-occurrency context</li>
-     * <li>N: global count of occs from which is extracted the context (full corpus
-     * or filtered section)</li>
-     * </ul>
-     * 
-     * 
-     * @param formEnum form enumeration.
-     * @param pivotIds form ids of pivots words.
-     * @param mi mutual information algorithm to calculate score.
-     * @throws IOException Lucene errors.
-     */
-    public void score(final FormEnum formEnum, final int[] pivotIds, final MI mi) throws IOException
-    {
-        /*
-         * Strange, can’t understand why it doesn’t work if (this.ftext.formDic !=
-         * results.formDic) { throw new
-         * IllegalArgumentException("Not the same fields. Rail for coocs: " +
-         * this.ftext.name + ", freqList build with " + results.name + " field"); }
-         */
-        // if (results.limit == 0) throw new IllegalArgumentException("How many sorted
-        // forms do you want? set FormEnum.limit");
-        if (formEnum.freqByForm == null || formEnum.freqByForm.length < maxForm) {
-            throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
-        }
-        final long N = fieldText.occsAll; // global
-        // Count of pivot occurrences for MI scorer
-        long add = 0;
-        for (int formId : pivotIds) {
-            add += fieldText.occs(formId);
-        }
-        final long Ob = add;
-        int maxForm = fieldText.maxForm;
-        // reuse score for multiple calculations
-        if (formEnum.scoreByform == null || formEnum.scoreByform.length != maxForm) {
-            formEnum.scoreByform = new double[maxForm]; // by term, occurrences counts
-        } else {
-            Arrays.fill(formEnum.scoreByform, 0);
-        }
-        //
-        for (int formId = 0; formId < maxForm; formId++) {
-            // No tag filter here, should be done upper
-            long Oab = formEnum.freqByForm[formId];
-            if (Oab == 0) {
-                continue;
-            }
-            // a form in a cooccurrence, may be more frequent than the pivots (repetition in
-            // a large context)
-            // this will confuse common algorithms
-            if (Oab > Ob) {
-                Oab = Ob;
-            }
-            formEnum.scoreByform[formId] = mi.score(Oab, fieldText.occs(formId), Ob, N);
-        }
-        // results is populated of scores, do not sort here, let consumer choose
     }
 
     /**

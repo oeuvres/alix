@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+import com.github.oeuvres.alix.lucene.search.FormIterator.Order;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.TopArray;
 
@@ -214,26 +215,32 @@ public class FormCollector implements FormIterator
         return dic.size();
     }
 
-
     @Override
-    public void sort(final Order order)
+    public FormCollector sort(final Order order)
     {
-        sort(order, -1);
+        return sort(order, -1, false);
     }
 
     @Override
-    public void sort(final Order order, final int aLimit)
+    public FormCollector sort(final Order order, final int limit)
     {
-        if (aLimit < 1 || aLimit > dic.size()) {
-            limit = dic.size();
+        return sort(order, limit, false);
+    }
+
+    
+    @Override
+    public FormCollector sort(final Order order, final int limit, final boolean reverse)
+    {
+        if (limit < 1 || limit > dic.size()) {
+            this.limit = dic.size();
         } else {
-            limit = aLimit;
+            this.limit = limit;
         }
         switch (order) {
             case INSERTION:
                 this.sorter = this.insertOrder.toArray(limit);
                 reset();
-                return;
+                return this;
             case FREQ:
             case SCORE:
                 break;
@@ -242,6 +249,8 @@ public class FormCollector implements FormIterator
         }
         TopArray top = null;
         int flags = 0;
+        if (reverse)
+            flags |= TopArray.REVERSE;
         top = new TopArray(limit, flags);
         // populate the top
         for (FormStats entry : dic.values()) {
@@ -258,6 +267,7 @@ public class FormCollector implements FormIterator
         int[] sorter = top.toArray();
         this.sorter = sorter;
         reset();
+        return this;
     }
 
     @Override
@@ -287,5 +297,4 @@ public class FormCollector implements FormIterator
         }
         return sb.toString();
     }
-
 }

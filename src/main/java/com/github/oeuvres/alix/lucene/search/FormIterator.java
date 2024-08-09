@@ -102,16 +102,28 @@ public interface FormIterator
      * Sort according to one order implemented. Sort before iterate.
      * 
      * @param order on which to sort.
+     * @return this
      */
-    public void sort(final Order order);
+    public FormIterator sort(final Order order);
 
     /**
      * Partial sort to get a top of elements.
      * 
      * @param order on which to sort.
      * @param limit top element according to sort order.
+     * @return this
      */
-    public void sort(final Order order, final int limit);
+    public FormIterator sort(final Order order, final int limit);
+
+    /**
+     * Partial sort to get a top of elements, with possible reverse order.
+     * 
+     * @param order sort order accepted.
+     * @param limit limit the number of forms returned.
+     * @param reverse reverse order according to order.
+     * @return this
+     */
+    public FormIterator sort(final Order order, final int limit, boolean reverse);
 
     /**
      * Returns a safe copy of the sorted form ids.
