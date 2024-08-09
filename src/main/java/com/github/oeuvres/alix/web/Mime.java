@@ -30,42 +30,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.util;
+package com.github.oeuvres.alix.web;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.lang.instrument.Instrumentation;
+/**
+ * List of mime types.
+ */
+public enum Mime {
+    /** html */
+    html("text/html; charset=UTF-8"), 
+    /** html alternative */
+    htf("text/html; charset=UTF-8"), 
+    /** json */
+    json("application/json"),
+    /** csv */
+    csv("text/csv; charset=UTF-8"), 
+    /** tsv */
+    tsv("text/tsv; charset=UTF-8");
 
-public class Profiler
-{
-    private static Instrumentation instrumentation;
-
-    public static void premain(String args, Instrumentation inst)
-    {
-        instrumentation = inst;
-    }
-
-    public static long getObjectSize(Object o)
-    {
-        return instrumentation.getObjectSize(o);
-    }
+    /** Mime-type */
+    public final String type;
 
     /**
-     * Works only with Serializable object
+     * Constructor with type.
      * 
-     * @param o
-     * @return
-     * @throws IOException Lucene errors.
+     * @param type mime-type.
      */
-    public static long serSize(Object o) throws IOException
-    {
-        Serializable ser = null;
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(baos);
-        oos.writeObject(ser);
-        oos.close();
-        return baos.size();
+    private Mime(final String type) {
+        this.type = type;
     }
 }

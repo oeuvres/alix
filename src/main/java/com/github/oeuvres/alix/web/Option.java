@@ -34,18 +34,30 @@ package com.github.oeuvres.alix.web;
 
 import java.lang.reflect.Field;
 
+/**
+ * An html &lt;option&gt;.
+ */
 public interface Option
 {
     /**
-     * Ensure that an option has a human label.
+     * A text label for an option.
+     * 
+     * @return &lt;option&gt;{label}&lt;/option&gt;
      */
     public String label();
 
     /**
-     * Optional hint
+     * Text representing advisory information about the option.
+     * 
+     * @return &lt;option title="{hint}"&gt;
      */
     public String hint();
 
+    /**
+     * Print all options as HTML.
+     * 
+     * @return html of the options.
+     */
     public default String options()
     {
         StringBuilder sb = new StringBuilder();
@@ -54,7 +66,8 @@ public interface Option
                 continue;
             try {
                 Option option = (Option) f.get(null);
-                html(sb, option);
+                final boolean selected = (option == this);
+                sb.append(option.html(selected));
             } catch (IllegalArgumentException | IllegalAccessException e) {
                 continue;
             }
@@ -77,30 +90,38 @@ public interface Option
         String[] values = list.split("[\\s,;]+");
         Class cls = ((Enum<?>) this).getDeclaringClass();
         for (String name : values) {
-            Option opt = null;
+            Option option = null;
             try {
-                opt = (Option) Enum.valueOf(cls, name);
+                option = (Option) Enum.valueOf(cls, name);
             } catch (IllegalArgumentException e) {
                 sb.append("<!-- " + name + "  " + cls + "  " + e + "-->\n");
                 continue;
             }
-            html(sb, opt);
+            final boolean selected = (option == this);
+            sb.append(option.html(selected));
         }
         return sb.toString();
     }
 
-    public default void html(StringBuilder sb, Option option)
+    /**
+     * Print this option as HTML.
+     * 
+     * @param selected if option selected.
+     * @return HTML.
+     */
+    public default String html(boolean selected)
     {
+        StringBuilder sb = new StringBuilder();
         sb.append("<option");
-        if (this == option)
+        if (selected)
             sb.append(" selected=\"selected\"");
-        sb.append(" value=\"").append(option.toString()).append("\"");
+        sb.append(" value=\"").append(toString()).append("\"");
         if (hint() != null)
-            sb.append(" title=\"").append(option.hint()).append("\"");
+            sb.append(" title=\"").append(hint()).append("\"");
         sb.append(">");
-        sb.append(option.label());
+        sb.append(label());
         sb.append("</option>\n");
-
+        return sb.toString();
     }
 
 }

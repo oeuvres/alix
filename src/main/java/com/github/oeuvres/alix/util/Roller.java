@@ -46,7 +46,9 @@ public abstract class Roller
     protected int zero;
 
     /**
-     * Constructor
+     * Constructor with initial capacity.
+     *
+     * @param capacity initial size.
      */
     public Roller(final int capacity) {
         this.capacity = capacity;
@@ -55,7 +57,7 @@ public abstract class Roller
     /**
      * Return the size of the roller
      * 
-     * @return
+     * @return number of elements.
      */
     public int size()
     {
@@ -64,7 +66,10 @@ public abstract class Roller
 
     /**
      * Get pointer on the data array from a position. Will roll around array if out
-     * the limits
+     * the limits.
+     * 
+     * @param pos requested position.
+     * @return internal index array.
      */
     protected int pointer(final int pos)
     {

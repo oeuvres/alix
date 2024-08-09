@@ -124,7 +124,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(int)" class="member-name-link">Roller</a><wbr>(int&nbsp;capacity)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Constructor</div>
+<div class="block">Constructor with initial capacity.</div>
 </div>
 </div>
 </section>
@@ -200,7 +200,11 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="&lt;init&gt;(int)">
 <h3>Roller</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">Roller</span><wbr><span class="parameters">(int&nbsp;capacity)</span></div>
-<div class="block">Constructor</div>
+<div class="block">Constructor with initial capacity.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>capacity</code> - initial size.</dd>
+</dl>
 </section>
 </li>
 </ul>
@@ -218,6 +222,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Return the size of the roller</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>number of elements.</dd>
 </dl>
 </section>
 </li>
@@ -226,7 +231,13 @@ loadScripts(document, 'script');</script>
 <h3>pointer</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">pointer</span><wbr><span class="parameters">(int&nbsp;pos)</span></div>
 <div class="block">Get pointer on the data array from a position. Will roll around array if out
- the limits</div>
+ the limits.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>pos</code> - requested position.</dd>
+<dt>Returns:</dt>
+<dd>internal index array.</dd>
+</dl>
 </section>
 </li>
 </ul>
