@@ -772,7 +772,7 @@ public class Alix
         Scale scale = (Scale) cache(key);
         if (scale != null)
             return scale;
-        scale = new Scale(this, null, fieldInt, fieldText);
+        scale = new Scale(this, fieldInt, fieldText, null);
         cache(key, scale);
         return scale;
     }

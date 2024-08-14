@@ -75,14 +75,31 @@ public class Scale
     /** Maximum int label of the int field for the corpus */
     private final int max;
 
+    /**
+     * Constructor with alix objects for a lucene reader, an int field, and a text field.
+     *  
+     * @param alix wrapper on a lucene reader.
+     * @param fieldInt stats on an int field.
+     * @param fieldText stats on a text field.
+     * @throws IOException lucene errors.
+     */
     public Scale(final Alix alix, final String fieldInt, final String fieldText) throws IOException {
-        this(alix, null, fieldInt, fieldText);
+        this(alix, fieldInt, fieldText, null);
     }
 
-    public Scale(final Alix alix, final BitSet filter, final String fieldInt, final String fieldText)
+    /**
+     * Constructor with alix objects for a lucene reader, an int field, and a text field.
+     *  
+     * @param alix wrapper on a lucene reader.
+     * @param fieldInt stats on an int field.
+     * @param fieldText stats on a text field.
+     * @param docFilter if not null, documents to exclude from stats.
+     * @throws IOException lucene errors.
+     */
+    public Scale(final Alix alix, final String fieldInt, final String fieldText, final BitSet docFilter)
             throws IOException {
         this.alix = alix;
-        this.filter = filter;
+        this.filter = docFilter;
         this.fint = alix.fieldInt(fieldInt);
         this.ftext = alix.fieldText(fieldText);
         IndexReader reader = alix.reader();
@@ -113,7 +130,7 @@ public class Scale
                 }
                 int docId = docBase + docLeaf;
                 // doc not in corpus, go next
-                if (filter != null && !filter.get(docId)) {
+                if (docFilter != null && !docFilter.get(docId)) {
                     continue;
                 }
                 Tick tick;
@@ -171,13 +188,24 @@ public class Scale
     /** A row of data for a crossing axis */
     public static class Tick
     {
+        /** Lucene internal id for the doc. */
         public final int docId;
+        /** int value for the doc */
         public final int value;
+        /** count of occurrences */
         public final long length;
+        /** Σ length */
         public long cumul;
 
-        public Tick(final int docid, final int value, final long length) {
-            this.docId = docid;
+        /**
+         * Constructor for all final field.
+         * 
+         * @param docId lucene internal id for the doc.
+         * @param value int value for the doc.
+         * @param length count of occurrences.
+         */
+        public Tick(final int docId, final int value, final long length) {
+            this.docId = docId;
             this.value = value;
             this.length = length;
         }
@@ -190,7 +218,9 @@ public class Scale
     }
 
     /**
-     * Minimum label of this scale
+     * Minimum value of this scale.
+     *
+     * @return minimum value.
      */
     public int min()
     {
@@ -198,7 +228,9 @@ public class Scale
     }
 
     /**
-     * Maximun label of this scale
+     * Maximun value of this scale.
+     * 
+     * @return maximum value.
      */
     public int max()
     {
@@ -206,7 +238,9 @@ public class Scale
     }
 
     /**
-     * Returns the total count of occurrences for this scale
+     * Returns the total count of occurrences for this scale.
+     * 
+     * @return total count of occurrences.
      */
     public long length()
     {
@@ -214,9 +248,9 @@ public class Scale
     }
 
     /**
-     * Return data to display an axis for the corpus
+     * Return data to display an axis for the corpus.
      * 
-     * @return
+     * @return lists of ticks.
      */
     public Tick[] axis()
     {
@@ -224,9 +258,9 @@ public class Scale
     }
 
     /**
-     * Share the step calculation between data and legend
+     * Share the step calculation between data and legend.
      * 
-     * @param dots
+     * @param dots 
      * @return
      */
     private double step(final int dots)
@@ -246,7 +280,10 @@ public class Scale
     }
 
     /**
-     * For each dot, his occurrence index, a label like a year, and a doc order
+     * For each dot, his occurrence index, a label like a year, and a doc order.
+     * 
+     * @param dots How many dots for a curve?
+     * @return a complex double array to document more.
      */
     public long[][] legend(final int dots)
     {
@@ -284,7 +321,7 @@ public class Scale
      * 
      * @param forms A list of terms to search
      * @param dots  Number of dots by curve.
-     * @return
+     * @return a complex array.
      * @throws IOException Lucene errors.
      */
     public long[][] curves(String[] forms, int dots) throws IOException

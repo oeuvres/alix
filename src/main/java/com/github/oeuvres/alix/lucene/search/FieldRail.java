@@ -154,20 +154,15 @@ public class FieldRail
         final BitSet docFilter
     ) throws IOException
     {
-
-        // 2. 
-        // for each index leave
-        // collect "postings" for each term
-        // for each doc
-        // get position of term found
         if (left < 0 || right < 0 || (left + right) < 1) {
             throw new IllegalArgumentException("left=" + left + " right=" + right
                     + " not enough context to extract co-occurrences.");
         }
 
 
-        // loop on leafs
         // 1. collect all positions of pivots in the lucene index for accepted docs
+        RowcolQueue docposList = positions(pivotBytes, docFilter);
+
         // 2. loop on all pivot position by doc
         // for each doc, a bit set is used to record the relevant positions
         // this will avoid counting interferences when search occurrences are close
@@ -175,45 +170,109 @@ public class FieldRail
         formEnum.freqByForm = new long[maxForm];
         formEnum.freqAll = 0;
         formEnum.hitsByForm = new int[maxForm];
+        
         BitSet formByDoc = new FixedBitSet(maxForm);
         IntBuffer intRail = channelMap.rewind().asIntBuffer().asReadOnlyBuffer(); // the rail
-        java.util.BitSet context = new java.util.BitSet();
-        
-        RowcolQueue docposList = positions(pivotBytes, docFilter);
-        docposList.push(Integer.MAX_VALUE, Integer.MAX_VALUE); // end of list
+        BitSet form4context = new FixedBitSet(maxForm);
         int docLast = -1;
         while (docposList.hasNext()) {
             docposList.next();
             final int docId = docposList.row();
             final int pos = docposList.col();
             // end of a doc
-            if (docLast != -1 && docLast != docId) {
+            if (docLast != docId) {
                 formByDoc.clear();
-                final int docIndex = indexByDoc[docLast];
-                // load the document rail and loop on the context to count co-occurrents
-                for (int formIndex = context.nextSetBit(0); formIndex >= 0; formIndex = context.nextSetBit(formIndex+1)) {
-                    if (formIndex == Integer.MAX_VALUE) break; // or (i+1) would overflow
-                    final int formId = intRail.get(docIndex + formIndex);
-                    if (formId < 1) {
-                        continue;
-                    }
-                    formEnum.freqByForm[formId]++;
-                    if (!formByDoc.get(formId)) {
-                        formEnum.hitsByForm[formId]++;
-                        formByDoc.set(formId);
-                    }
-                    formEnum.freqAll++;
-                }
-                if (docId == Integer.MAX_VALUE) break; // end of list
-                context.clear();
             }
             docLast = docId;
+            // loop in this context
+            final int docIndex = indexByDoc[docId];
             final int docLen = lenByDoc[docId];
-            context.set(Math.max(0, pos - left), Math.min(docLen, pos + 1 + right));
+            // load the document rail and loop on the context to count co-occurrents
+            final int from = Math.max(0, pos - left);
+            final int to = Math.min(docLen, pos + 1 + right);
+            // loop on this context to collect the known words from which to get a matrix
+            form4context.clear();
+            for (int formIndex = from; formIndex < to; formIndex++) {
+                final int formId = intRail.get(docIndex + formIndex);
+                if (formId < 1) {
+                    continue;
+                }
+                // already seen in this context (ex: le, un…)
+                if (form4context.get(formId)) {
+                    continue;
+                }
+                form4context.set(formId);
+                formEnum.freqByForm[formId]++;
+                if (!formByDoc.get(formId)) {
+                    formEnum.hitsByForm[formId]++;
+                    formByDoc.set(formId);
+                }
+                formEnum.freqAll++;
+            }
         }
-        
         return formEnum;
     }
+
+    /**
+     * Loop on a set of pivots, explore their context,
+     * record edges between a set of cooccurents in these contexts.
+     * The set coocIds should have been obtained by {@link #coocs(BytesRef[], int, int, BitSet)}.
+     * 
+     * @param pivotIds set of formId from a {@link FieldText}, word pivots to search around.
+     * @param left     left size of context in tokens.
+     * @param right    right size of context in tokens.
+     * @param coocIds  set of formId from a {@link FieldText}, words to search in the contexts
+     * @param docFilter optional, set of lucene internal docId to restrict collect.
+     * @return a matrix of formId pairs with count for each pair.
+     * @throws IOException lucene errors.
+     */
+    public EdgeMatrix edges(final int[] pivotIds, final int left, final int right, int[] coocIds, final BitSet docFilter) throws IOException
+    {
+        if (left < 0 || right < 0 || (left + right) < 1) {
+            throw new IllegalArgumentException("left=" + left + " right=" + right
+                    + " not enough context to explore edges.");
+        }
+        // 1. collect all positions of pivots in the lucene index for accepted docs
+        BytesRef[] pivotBytes = fieldText.bytesSorted(pivotIds);
+        RowcolQueue docposList = positions(pivotBytes, docFilter);
+        IntBuffer intRail = channelMap.rewind().asIntBuffer().asReadOnlyBuffer(); // the rail
+        // 2. loop on pivot and load edges between selected nodes
+        EdgeMatrix matrix = new EdgeMatrix(coocIds, false);
+        final int[] nodeLookup = matrix.nodeLookup();
+        final IntList nodeIndexes = new IntList();
+        while (docposList.hasNext()) {
+            docposList.next();
+            final int docId = docposList.row();
+            final int docIndex = indexByDoc[docId];
+            final int docLen = lenByDoc[docId];
+            final int pos = docposList.col();
+            final int from = Math.max(0, pos - left);
+            final int to = Math.min(docLen, pos + 1 + right);
+            // loop on this context to collect the known words from which to get a matrix
+            nodeIndexes.clear();
+            for (int formIndex = from; formIndex < to; formIndex++) {
+                final int formId = intRail.get(docIndex + formIndex);
+                if (formId < 1) {
+                    continue;
+                }
+                final int nodeIndex = Arrays.binarySearch(nodeLookup, formId);
+                if (nodeIndex < 0) continue;
+                nodeIndexes.push(nodeIndex);
+            }
+            // double loop on the collected nodeIndex to fill the matrix of edges
+            final int nodeIndexesSize = nodeIndexes.size();
+            if (nodeIndexesSize < 2) {
+                continue;
+            }
+            for (int x = 0; x < nodeIndexesSize - 1; x++) {
+                for (int y = x + 1; y < nodeIndexesSize; y++) {
+                    matrix.incByIndex(nodeIndexes.get(x), nodeIndexes.get(y));
+                }
+            }
+        }
+        return matrix;
+    }
+
 
     /**
      * With a set of int formIds, run accross full or part of rails, to collect
@@ -264,113 +323,6 @@ public class FieldRail
             }
         }
         return span.edges();
-    }
-
-    /**
-     * Calculate best edges for coocurrents around pivot words.
-     * First pass, search for the most common coocurrents 
-     * 
-     * @param pivotIds set of formId from a {@link FieldText}, word pivots to search around.
-     * @param left     left size of context in tokens.
-     * @param right    right size of context in tokens.
-     * @param coocIds  set of formId from a {@link FieldText}, words to search in the contexts
-     * @param docFilter optional, set of lucene internal docId to restrict collect.
-     * @return a matrix of formId pairs with count for each pair.
-     * @throws IOException lucene errors.
-     */
-    public EdgeMatrix edges(final int[] pivotIds, final int left, final int right, int[] coocIds, final BitSet docFilter) throws IOException
-    {
-        // sort the pivots
-        BytesRef[] pivotBytes = fieldText.bytesSorted(pivotIds);
-        if (pivotBytes == null) {
-            return null;
-        }
-        final int pivotLen = pivotBytes.length;
-        if (pivotLen < 1) {
-            return null;
-        }
-        
-                
-        // normalize the coocId as a sorted set of unique values
-        coocIds = IntList.uniq(coocIds);
-        EdgeMatrix matrix = new EdgeMatrix(coocIds, false);
-        IntList nodeIndexes = new IntList();
-        IntBuffer bufInt = channelMap.rewind().asIntBuffer().asReadOnlyBuffer(); // the rail
-        final boolean hasDocFilter = (docFilter != null); // filter docs ?
-        PostingsEnum postings = null; // reuse
-        // loop on leafs, open an index may cost
-        for (LeafReaderContext context : reader.leaves()) {
-            LeafReader leaf = context.reader();
-            Terms terms = leaf.terms(fieldName);
-            if (terms == null) continue;
-            final int docBase = context.docBase;
-            TermsEnum tenum = terms.iterator();
-            Bits live = leaf.getLiveDocs();
-            final boolean hasLive = (live != null);
-            for (int pivotI = 0; pivotI < pivotLen; pivotI++) {
-                final BytesRef bytes = pivotBytes[pivotI];
-                if (bytes == null) continue;
-                if (!tenum.seekExact(bytes)) {
-                    continue;
-                }
-                postings = tenum.postings(postings, PostingsEnum.FREQS | PostingsEnum.POSITIONS);
-                int docLeaf;
-                while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    if (hasLive && !live.get(docLeaf)) continue; // deleted doc
-                    final int docId = docBase + docLeaf;
-                    if (hasDocFilter && !docFilter.get(docId)) continue; // document not in the filter
-                    final int docLen = lenByDoc[docId];
-                    if (docLen < 2) {
-                        continue; // empty doc
-                    }
-                    int freq = postings.freq();
-                    if (freq == 0) {
-                        // bug ?
-                        System.out.println("BUG cooc, term=" + bytes.utf8ToString() + " docId=" + docId + " freq=0");
-                        continue;
-                    }
-                    // term found in this doc, search each occurrence
-                    final int posDoc = indexByDoc[docId];
-                    for (int occI = 0; occI < freq; occI++) {
-                        int posPivot = -1;
-                        try {
-                            posPivot = postings.nextPosition();
-                        } catch (Exception e) {
-                            throw new IOException("" + postings);
-                        }
-                        if (posPivot < 0) {
-                            System.out.println("BUG cooc, term=" + postings.toString() + " docId=" + docId + " pos=0");
-                            continue;
-                        }
-                        nodeIndexes.clear();
-                        final int posFrom = Math.max(0, posPivot - left);
-                        final int posTo = Math.min(docLen, posPivot + right + 1); // be careful of end Doc
-                        // TODO, not thought enough
-                        // collect waited formIds for edges in this context
-                        for (int pos = posFrom; pos < posTo; pos++) {
-                            final int formId = bufInt.get(posDoc + pos);
-                            final int nodeIndex = Arrays.binarySearch(coocIds, formId);
-                            if (nodeIndex < 0) { // not a waited node
-                                continue;
-                            }
-                            nodeIndexes.push(nodeIndex);
-                        }
-                        // count edges
-                        final int size = nodeIndexes.size();
-                        if (size < 2) {
-                            continue;
-                        }
-                        // what is t for ? 
-                        for (int x = 0; x < size - 1; x++) {
-                            for (int y = x + 1; y < size; y++) {
-                                matrix.incByIndex(nodeIndexes.get(x), nodeIndexes.get(y));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return matrix;
     }
 
     /**

@@ -39,7 +39,13 @@ import java.util.NoSuchElementException;
 
 /**
  * A queue to select the top elements from a score array where index is a kind
- * of id, and value is a score.
+ * of id, and value is a score. Efficiency comes from the {@link #last()} method.
+ * When an entry (id, score) is submitted with {@link #push(int, double)},
+ * and if top is not full, it is always accepted, no sort done at this step.
+ * When an entry is submitted and top is full, if its score is lesser than the
+ * minimum, it is not inserted. If an entry is insertable, it replaces the minimum,
+ * and a new minimum is searched to be replaced. This algorithm limits object creation.
+ * Sorting is only done 
  */
 public class TopArray implements Iterable<TopArray.IdScore>
 {
@@ -53,9 +59,7 @@ public class TopArray implements Iterable<TopArray.IdScore>
     final private boolean noZero;
     /** Max size of the top to extract */
     final private int size;
-    /**
-     * Data stored as a Pair score+int, easy to sort before exported as an array.
-     */
+    /** Data stored as a Pair score+int */
     final protected IdScore[] data;
     /** Fill data before */
     private boolean full;
@@ -69,9 +73,10 @@ public class TopArray implements Iterable<TopArray.IdScore>
     private double max = Double.MIN_VALUE;
 
     /**
-     * Constructor without data
+     * Constructor without data, for reuse
      * 
-     * @param size
+     * @param size number of top elements to select.
+     * @param flags {@link REVERSE} | {@link NO_ZERO}
      */
     public TopArray(final int size, final int flags) {
         if ((flags & REVERSE) > 0)
@@ -89,12 +94,25 @@ public class TopArray implements Iterable<TopArray.IdScore>
     }
 
     /**
-     * Constructor without data, for reuse
+     * Constructor.
      * 
-     * @param size
+     * @param size number of top elements to select.
      */
     public TopArray(final int size) {
         this(size, 0);
+    }
+
+    /**
+     * Clear all entries
+     * 
+     * @return this.
+     */
+    public TopArray clear()
+    {
+        fill = 0;
+        min = Double.MAX_VALUE;
+        max = Double.MIN_VALUE;
+        return this;
     }
 
     /*
@@ -104,6 +122,29 @@ public class TopArray implements Iterable<TopArray.IdScore>
      * Entry(id, freqs[id]); fill++; } this.fill = fill; if (fill == size) full =
      * true; sort(); }
      */
+
+    /**
+     * Test if score is insertable. True if:
+     * 
+     * <ul>
+     * <li>top is not full</li>
+     * <li>score is bigger than {@link #min()} in natural order</li>
+     * <li>score is lower than {@link #max()} in reverse order</li>
+     * </ul>
+     * 
+     * @param score the score to test.
+     * @return true if insertable, false otherwise.
+     */
+    public boolean isInsertable(final double score)
+    {
+        if (noZero && score == 0)
+            return false;
+        if (!full)
+            return true;
+        if (reverse)
+            return (Double.compare(score, max) < 0);
+        return (Double.compare(score, min) > 0);
+    }
 
     @Override
     public Iterator<IdScore> iterator()
@@ -142,41 +183,10 @@ public class TopArray implements Iterable<TopArray.IdScore>
     }
 
     /**
-     * Sort the data
-     */
-    private void sort()
-    {
-        if (reverse)
-            Arrays.sort(data, 0, fill, Collections.reverseOrder());
-        else
-            Arrays.sort(data, 0, fill);
-        last = fill - 1;
-    }
-
-    /**
-     * Returns the minimum score.
+     * Return the count of elements inserted, maybe lesser 
+     * than initial {@link #size} if not yet full.
      * 
-     * @return
-     */
-    public double min()
-    {
-        return min;
-    }
-
-    /**
-     * Returns the maximum score.
-     * 
-     * @return
-     */
-    public double max()
-    {
-        return max;
-    }
-
-    /**
-     * Return the count of elements
-     * 
-     * @return
+     * @return count of inserted elements.
      */
     public int length()
     {
@@ -184,60 +194,31 @@ public class TopArray implements Iterable<TopArray.IdScore>
     }
 
     /**
-     * Clear all entries
+     * Returns the maximum score.
      * 
-     * @return
+     * @return maximum score.
      */
-    public TopArray clear()
+    public double max()
     {
-        fill = 0;
-        min = Double.MAX_VALUE;
-        max = Double.MIN_VALUE;
-        return this;
+        return max;
     }
 
     /**
+     * Returns the minimum score.
      * 
-     * @param data
-     * @return
+     * @return minimum score.
      */
-    public TopArray push(final double[] data)
+    public double min()
     {
-        for (int id = 0, length = data.length; id < length; id++)
-            push(id, data[id]);
-        return this;
+        return min;
     }
 
     /**
+     * Push a new (id, score) entry, keep it in the top if score is bigger than the smallest.
      * 
-     * @param data
-     * @return
-     */
-    public TopArray push(final int[] data)
-    {
-        for (int id = 0, length = data.length; id < length; id++)
-            push(id, data[id]);
-        return this;
-    }
-
-    /**
-     * 
-     * @param data
-     * @return
-     */
-    public TopArray push(final long[] data)
-    {
-        for (int id = 0, length = data.length; id < length; id++)
-            push(id, data[id]);
-        return this;
-    }
-
-    /**
-     * Push a new Pair, keep it in the top if score is bigger than the smallest.
-     * 
-     * @param id
-     * @param score
-     * @return
+     * @param id id to test.
+     * @param score score of the id.
+     * @return this.
      */
     public TopArray push(final int id, final double score)
     {
@@ -277,32 +258,65 @@ public class TopArray implements Iterable<TopArray.IdScore>
     }
 
     /**
-     * Test if score is insertable, true if:
+     * Push a list of scores where id is the index of the score in the array,
+     * data[id] = score.
      * 
-     * <ul>
-     * <li>top is not full</li>
-     * <li>score is bigger than {@link #min()} in natural order</li>
-     * <li>score is lower than {@link #max()} in reverse order</li>
-     * </ul>
-     * 
-     * @param score
+     * @param data data[id] = score.
+     * @return this.
      */
-    public boolean isInsertable(final double score)
+    public TopArray push(final int[] data)
     {
-        if (noZero && score == 0)
-            return false;
-        if (!full)
-            return true;
+        for (int id = 0, length = data.length; id < length; id++)
+            push(id, data[id]);
+        return this;
+    }
+
+    /**
+     * Push a list of scores where id is the index of the score in the array,
+     * data[id] = score.
+     * 
+     * @param data data[id] = score.
+     * @return this.
+     */
+    public TopArray push(final long[] data)
+    {
+        for (int id = 0, length = data.length; id < length; id++)
+            push(id, data[id]);
+        return this;
+    }
+
+    /**
+     * Push a list of scores where id is the index of the score in the array,
+     * data[id] = score.
+     * 
+     * @param data data[id] = score.
+     * @return this.
+     */
+    public TopArray push(final double[] data)
+    {
+        for (int id = 0, length = data.length; id < length; id++)
+            push(id, data[id]);
+        return this;
+    }
+
+    /**
+     * Sort the data.
+     */
+    private void sort()
+    {
         if (reverse)
-            return (Double.compare(score, max) < 0);
-        return (Double.compare(score, min) > 0);
+            Arrays.sort(data, 0, fill, Collections.reverseOrder());
+        else
+            Arrays.sort(data, 0, fill);
+        last = fill - 1;
     }
 
     /**
      * Return the ids, sorted according to the chosen order, default is bigger
-     * first, reverse is smaller first.
+     * first, reverse is smaller first. ids.length == {@link #fill}. If top is
+     * not full, fill &lt; {@link #size}; if top is full, {@link #fill} == {@link #size}.
      * 
-     * @return
+     * @return sorted ids.
      */
     public int[] toArray()
     {
@@ -339,10 +353,10 @@ public class TopArray implements Iterable<TopArray.IdScore>
         private double score;
 
         /**
-         * Constructor
+         * Constructor with initial value.
          * 
-         * @param score
-         * @param value
+         * @param id initial id.
+         * @param score initial score.
          */
         IdScore(final int id, final double score) {
             this.id = id;
@@ -350,10 +364,10 @@ public class TopArray implements Iterable<TopArray.IdScore>
         }
 
         /**
-         * Modify value
+         * Modify value.
          * 
-         * @param id
-         * @param score
+         * @param id new id.
+         * @param score new score.
          */
         protected void set(final int id, final double score)
         {
@@ -361,11 +375,21 @@ public class TopArray implements Iterable<TopArray.IdScore>
             this.score = score;
         }
 
+        /**
+         * Get the id of the entry.
+         * 
+         * @return id
+         */
         public int id()
         {
             return id;
         }
 
+        /**
+         * Get the score of the entry.
+         * 
+         * @return score.
+         */
         public double score()
         {
             return score;
@@ -392,9 +416,7 @@ public class TopArray implements Iterable<TopArray.IdScore>
     {
         int current = 0; // the current element we are looking at
 
-        /**
-         * If cursor is less than size, return OK.
-         */
+
         @Override
         public boolean hasNext()
         {
@@ -404,9 +426,6 @@ public class TopArray implements Iterable<TopArray.IdScore>
                 return false;
         }
 
-        /**
-         * Return current element
-         */
         @Override
         public IdScore next()
         {

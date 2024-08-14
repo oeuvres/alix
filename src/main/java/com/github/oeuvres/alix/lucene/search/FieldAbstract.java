@@ -18,7 +18,7 @@ abstract class FieldAbstract
     protected final DirectoryReader reader;
     /** Infos about the lucene field. */
     protected final FieldInfo info;
-    /** Σ docsByForm; global count of docs relevant for this field. */
+    /** Global count of docs relevant for this field. */
     protected int docsAll;
 
     

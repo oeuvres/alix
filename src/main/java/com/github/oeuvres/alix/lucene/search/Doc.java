@@ -371,7 +371,7 @@ public class Doc
             }
             if (hasDistrib) {
                 distrib.expectation(fieldText.occs(formId), fieldText.occsAll);
-                distrib.idf(fieldText.docsByform[formId], fieldText.docsAll, fieldText.occsAll);
+                distrib.idf(fieldText.docsByForm[formId], fieldText.docsAll, fieldText.occsAll);
             }
             // scorer.weight(termOccs, termDocs); // collection level stats
             long freq = termit.totalTermFreq();

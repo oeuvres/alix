@@ -105,6 +105,10 @@ public class XMLIndexer implements Runnable
         return proc;
     }
     
+    /**
+     * Set a synchronized iterator for multi threads.
+     * @param iterator list of path as an iterator.
+     */
     static public void setIterator(final Iterator<Path> iterator) {
         if (running) {
             throw new RuntimeException("List of paths to index is not yet exhausted");
@@ -296,7 +300,7 @@ public class XMLIndexer implements Runnable
     /**
      * A synchonized method to get the next file to index.
      * 
-     * @return
+     * @return file to process.
      */
     synchronized static public Path next()
     {
@@ -312,6 +316,8 @@ public class XMLIndexer implements Runnable
 
     /**
      * Log info.
+     * 
+     * @param o object to log.
      */
     public static void info(Object o)
     {
@@ -320,6 +326,8 @@ public class XMLIndexer implements Runnable
 
     /**
      * Log recoverable error.
+     * 
+     * @param o object to log.
      */
     public static void error(Object o)
     {
@@ -334,7 +342,7 @@ public class XMLIndexer implements Runnable
     /**
      * Log fatal error.
      * 
-     * @param o
+     * @param o object to log.
      */
     public static void fatal(Object o)
     {

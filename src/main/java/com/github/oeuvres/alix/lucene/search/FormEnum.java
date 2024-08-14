@@ -65,7 +65,7 @@ public class FormEnum implements FormIterator
     private final BytesRefHash dic;
     /** Number of different values found, is also biggest valueId+1 see {@link IndexReader#maxDoc()}. */
     private final int maxForm;
-    /** docsByform[formId] = docs; count of docs by form {@link FieldCharsAbstract#docsByform}. */
+    /** docsByform[formId] = docs; count of docs by form {@link FieldCharsAbstract#docsByForm}. */
     protected final int[] docsByForm;
     /** Σ docsByForm; global count of docs relevant for this field {@link FieldCharsAbstract#docsAll}. */
     private final int docsAll;
@@ -103,7 +103,7 @@ public class FormEnum implements FormIterator
      * useful to calcultate scores for some queries : 
      * <ul>
      *   <li>Dictionary of forms {@link FieldCharsAbstract#dic}</li>
-     *   <li>docsByform[formId] = docs; count of docs by form {@link FieldCharsAbstract#docsByform}.</li>
+     *   <li>docsByform[formId] = docs; count of docs by form {@link FieldCharsAbstract#docsByForm}.</li>
      *   <li>Σ docsByForm; global count of docs relevant for this field {@link FieldCharsAbstract#docsAll}.</li>
      *   <li>occsByform[formId] = occs; count of occurrences by form {@link FieldText#occsByForm}.</li>
      *   <li>Σ occsByForm; global count of occs for this field {@link FieldText#occsAll}.</li>
@@ -116,7 +116,7 @@ public class FormEnum implements FormIterator
         this.field = field;
         dic = field.dic;
         maxForm = dic.size();
-        docsByForm = field.docsByform;
+        docsByForm = field.docsByForm;
         docsAll = field.docsAll;
         occsByForm = field.occsByForm;
         occsAll = field.occsAll;
@@ -127,7 +127,7 @@ public class FormEnum implements FormIterator
      * useful to calcultate scores for some queries : 
      * <ul>
      *   <li>Dictionary of forms {@link FieldCharsAbstract#dic}</li>
-     *   <li>docsByform[formId] = docs; count of docs by form {@link FieldCharsAbstract#docsByform}.</li>
+     *   <li>docsByform[formId] = docs; count of docs by form {@link FieldCharsAbstract#docsByForm}.</li>
      *   <li>Σ docsByForm; global count of docs relevant for this field {@link FieldCharsAbstract#docsAll}.</li>
      * </ul>
      * 
@@ -138,7 +138,7 @@ public class FormEnum implements FormIterator
         dic = field.dic;
         maxForm = dic.size();
         docsAll = field.docsAll;
-        docsByForm = field.docsByform;
+        docsByForm = field.docsByForm;
     }
     
     /**
@@ -560,6 +560,7 @@ public class FormEnum implements FormIterator
             this.sorter(IntStream.range(0, maxForm).toArray());
             // throw new NegativeArraySizeException("No order rule to sort on. Use FormEnum.sort() before");
         }
+        this.limit = sorter.length;
         rank = -1;
         formId = -1;
     }
@@ -613,14 +614,6 @@ public class FormEnum implements FormIterator
      */
     public FormEnum score(final MI mi, final int[] pivotIds) throws IOException
     {
-        /*
-         * Strange, can’t understand why it doesn’t work if (this.ftext.formDic !=
-         * results.formDic) { throw new
-         * IllegalArgumentException("Not the same fields. Rail for coocs: " +
-         * this.ftext.name + ", freqList build with " + results.name + " field"); }
-         */
-        // if (results.limit == 0) throw new IllegalArgumentException("How many sorted
-        // forms do you want? set FormEnum.limit");
         if (freqByForm == null || freqByForm.length < maxForm) {
             throw new IllegalArgumentException("Scoring this FormEnum required a freqList, set FormEnum.freqs");
         }
@@ -708,7 +701,6 @@ public class FormEnum implements FormIterator
     @Override
     public FormEnum sort(final Order order, final int limit, final boolean reverse)
     {
-        this.limit = limit;
         if (freqByForm != null && maxForm != freqByForm.length) {
             throw new IllegalArgumentException(
                 "Corrupted FormEnum maxForm=" + maxForm
@@ -893,7 +885,6 @@ public class FormEnum implements FormIterator
     public String toString()
     {
         final BytesRef bytes = new BytesRef();
-        int limit = Math.min(dic.size(), 100);
         StringBuilder sb = new StringBuilder();
         sb.append("size=" + dic.size() + "\n");
         if (sorter == null) {
@@ -902,6 +893,7 @@ public class FormEnum implements FormIterator
             for (int i = 0; i < limit; i++)
                 sorter[i] = i;
         }
+        int limit = Math.min(Math.min(dic.size(), 100), sorter.length);
         boolean hasScore = (scoreByForm != null);
         boolean hasHits = (hitsByForm != null);
         boolean hasDocs = (docsByForm != null);
@@ -911,12 +903,14 @@ public class FormEnum implements FormIterator
             int formId = sorter[pos];
             dic.get(formId, bytes);
             sb.append((pos + 1) + ". [" + formId + "] " + bytes.utf8ToString());
-            if (hasScore)
+            if (hasScore) {
                 sb.append(" score=" + scoreByForm[formId]);
+            }
 
             if (hasOccs && hasFreq) {
                 sb.append(" freq=" + freqByForm[formId] + "/" + occsByForm[formId]);
-            } else if (hasOccs) {
+            }
+            else if (hasOccs) {
                 sb.append(" freq=" + occsByForm[formId]);
             }
             if (hasHits && hasDocs)

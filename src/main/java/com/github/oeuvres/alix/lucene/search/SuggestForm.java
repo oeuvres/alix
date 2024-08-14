@@ -242,11 +242,14 @@ public class SuggestForm
     }
     
     /**
-     * Search a wildcard 
+     * Search a wildcard.
      * 
-     * @param q
-     * @param count
-     * @throws IOException
+     * @param q wildcard query.
+     * @param count amount of terms to collect.
+     * @param formFilter optional filter by tag.
+     * @param docFilter optional filter of documents.
+     * @return a list of words ordered by freq.
+     * @throws IOException lucene errors.
      */
     public Suggestion[] search(
         final String q, 

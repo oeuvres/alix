@@ -36,7 +36,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-import com.github.oeuvres.alix.lucene.search.FormIterator.Order;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.TopArray;
 
@@ -47,39 +46,11 @@ import com.github.oeuvres.alix.util.TopArray;
  */
 public class FormCollector implements FormIterator
 {
-    /**
-     * Some stats about a form.
-     */
-    public static final class FormStats
-    {
-        /** Final form with stats. */
-        public final int formId;
-        /** Collected count. */
-        public long freq;
-        /** Calculated score. */
-        public double score;
-
-        /**
-         * Constructor with initial values.
-         * 
-         * @param formId final, formId.
-         * @param freq mutable, freq.
-         * @param score mutable, score.
-         */
-        FormStats(final int formId, final long freq, final double score) {
-            this.formId = formId;
-            this.freq = freq;
-            this.score = score;
-        }
-    }
-
-    /** Keep */
+    /** Dictionary of forms */
     Map<Integer, FormStats> dic = new HashMap<>();
     /** Keep order of insertion */
     private IntList insertOrder = new IntList();
-    /**
-     * An array of formId in the order we want to iterate on, default is input order
-     */
+    /** An array of formId in the order we want to iterate on, default is input order */
     private int[] sorter;
     /** Cursor, to iterate in the sorter */
     private int cursor = -1;
@@ -296,5 +267,31 @@ public class FormCollector implements FormIterator
                 break;
         }
         return sb.toString();
+    }
+
+    /**
+     * Some stats about a form.
+     */
+    public static final class FormStats
+    {
+        /** Final form with stats. */
+        public final int formId;
+        /** Collected count. */
+        public long freq;
+        /** Calculated score. */
+        public double score;
+    
+        /**
+         * Constructor with initial values.
+         * 
+         * @param formId final, formId.
+         * @param freq mutable, freq.
+         * @param score mutable, score.
+         */
+        FormStats(final int formId, final long freq, final double score) {
+            this.formId = formId;
+            this.freq = freq;
+            this.score = score;
+        }
     }
 }

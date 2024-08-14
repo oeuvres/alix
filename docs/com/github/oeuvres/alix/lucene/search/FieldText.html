@@ -108,10 +108,10 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color"><code>protected int</code></div>
 <div class="col-second even-row-color"><code><a href="#docsAll" class="member-name-link">docsAll</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Σ docsByForm; global count of docs relevant for this field.</div>
+<div class="block">Global count of docs relevant for this field.</div>
 </div>
 <div class="col-first odd-row-color"><code>protected int[]</code></div>
-<div class="col-second odd-row-color"><code><a href="#docsByform" class="member-name-link">docsByform</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#docsByForm" class="member-name-link">docsByForm</a></code></div>
 <div class="col-last odd-row-color">
 <div class="block">docsByform[formId] = docs; count of docs by form.</div>
 </div>
@@ -186,7 +186,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>org.apache.lucene.util.BytesRef[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#bytesSorted(int%5B%5D)" class="member-name-link">bytesSorted</a><wbr>(int[]&nbsp;bytesIds)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#bytesSorted(int%5B%5D)" class="member-name-link">bytesSorted</a><wbr>(int[]&nbsp;formIds)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Normalize a list of formIds to search in an <code>IndexReader</code>.</div>
 </div>
@@ -418,9 +418,9 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="docsByform">
-<h3>docsByform</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">docsByform</span></div>
+<section class="detail" id="docsByForm">
+<h3>docsByForm</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">docsByForm</span></div>
 <div class="block">docsByform[formId] = docs; count of docs by form.</div>
 </section>
 </li>
@@ -449,7 +449,7 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="docsAll">
 <h3>docsAll</h3>
 <div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docsAll</span></div>
-<div class="block">Σ docsByForm; global count of docs relevant for this field.</div>
+<div class="block">Global count of docs relevant for this field.</div>
 </section>
 </li>
 </ul>
@@ -918,12 +918,12 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="bytesSorted(int[])">
 <h3>bytesSorted</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRef[]</span>&nbsp;<span class="element-name">bytesSorted</span><wbr><span class="parameters">(int[]&nbsp;bytesIds)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">org.apache.lucene.util.BytesRef[]</span>&nbsp;<span class="element-name">bytesSorted</span><wbr><span class="parameters">(int[]&nbsp;formIds)</span></div>
 <div class="block">Normalize a list of formIds to search in an <code>IndexReader</code>.
  Filter forms absent from the dictionary.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>bytesIds</code> - collection of ids to test against dictionary.</dd>
+<dd><code>formIds</code> - collection of ids to test against dictionary.</dd>
 <dt>Returns:</dt>
 <dd>set of unique forms, sorted for efficient search with <code>TermsEnum.seekExact(BytesRef)</code>.</dd>
 </dl>

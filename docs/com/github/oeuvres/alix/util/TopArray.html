@@ -84,7 +84,13 @@ loadScripts(document, 'script');</script>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>
 implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Iterable.html" title="class or interface in java.lang" class="external-link">Iterable</a>&lt;<a href="TopArray.IdScore.html" title="class in com.github.oeuvres.alix.util">TopArray.IdScore</a>&gt;</span></div>
 <div class="block">A queue to select the top elements from a score array where index is a kind
- of id, and value is a score.</div>
+ of id, and value is a score. Efficiency comes from the <code>last()</code> method.
+ When an entry (id, score) is submitted with <a href="#push(int,double)"><code>push(int, double)</code></a>,
+ and if top is not full, it is always accepted, no sort done at this step.
+ When an entry is submitted and top is full, if its score is lesser than the
+ minimum, it is not inserted. If an entry is insertable, it replaces the minimum,
+ and a new minimum is searched to be replaced. This algorithm limits object creation.
+ Sorting is only done</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -117,7 +123,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-first even-row-color"><code>protected final <a href="TopArray.IdScore.html" title="class in com.github.oeuvres.alix.util">TopArray.IdScore</a>[]</code></div>
 <div class="col-second even-row-color"><code><a href="#data" class="member-name-link">data</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Data stored as a Pair score+int, easy to sort before exported as an array.</div>
+<div class="block">Data stored as a Pair score+int</div>
 </div>
 <div class="col-first odd-row-color"><code>static final int</code></div>
 <div class="col-second odd-row-color"><code><a href="#NO_ZERO" class="member-name-link">NO_ZERO</a></code></div>
@@ -142,12 +148,12 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="table-header col-last">Description</div>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(int)" class="member-name-link">TopArray</a><wbr>(int&nbsp;size)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Constructor without data, for reuse</div>
+<div class="block">Constructor.</div>
 </div>
 <div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(int,int)" class="member-name-link">TopArray</a><wbr>(int&nbsp;size,
  int&nbsp;flags)</code></div>
 <div class="col-last odd-row-color">
-<div class="block">Constructor without data</div>
+<div class="block">Constructor without data, for reuse</div>
 </div>
 </div>
 </section>
@@ -171,13 +177,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isInsertable(double)" class="member-name-link">isInsertable</a><wbr>(double&nbsp;score)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Test if score is insertable, true if:
- 
- 
- top is not full
- score is bigger than <a href="#min()"><code>min()</code></a> in natural order
- score is lower than <a href="#max()"><code>max()</code></a> in reverse order
- </div>
+<div class="block">Test if score is insertable.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Iterator.html" title="class or interface in java.util" class="external-link">Iterator</a>&lt;<a href="TopArray.IdScore.html" title="class in com.github.oeuvres.alix.util">TopArray.IdScore</a>&gt;</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#iterator()" class="member-name-link">iterator</a>()</code></div>
@@ -185,7 +185,8 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#length()" class="member-name-link">length</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Return the count of elements</div>
+<div class="block">Return the count of elements inserted, maybe lesser 
+ than initial <code>size</code> if not yet full.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#max()" class="member-name-link">max</a>()</code></div>
@@ -199,24 +200,33 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#push(double%5B%5D)" class="member-name-link">push</a><wbr>(double[]&nbsp;data)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Push a list of scores where id is the index of the score in the array,
+ data[id] = score.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#push(int%5B%5D)" class="member-name-link">push</a><wbr>(int[]&nbsp;data)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Push a list of scores where id is the index of the score in the array,
+ data[id] = score.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#push(int,double)" class="member-name-link">push</a><wbr>(int&nbsp;id,
  double&nbsp;score)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Push a new Pair, keep it in the top if score is bigger than the smallest.</div>
+<div class="block">Push a new (id, score) entry, keep it in the top if score is bigger than the smallest.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#push(long%5B%5D)" class="member-name-link">push</a><wbr>(long[]&nbsp;data)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Push a list of scores where id is the index of the score in the array,
+ data[id] = score.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toArray()" class="member-name-link">toArray</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Return the ids, sorted according to the chosen order, default is bigger
- first, reverse is smaller first.</div>
+ first, reverse is smaller first. ids.length == <code>fill</code>.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
@@ -275,7 +285,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="data">
 <h3>data</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type"><a href="TopArray.IdScore.html" title="class in com.github.oeuvres.alix.util">TopArray.IdScore</a>[]</span>&nbsp;<span class="element-name">data</span></div>
-<div class="block">Data stored as a Pair score+int, easy to sort before exported as an array.</div>
+<div class="block">Data stored as a Pair score+int</div>
 </section>
 </li>
 </ul>
@@ -291,10 +301,11 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>TopArray</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">TopArray</span><wbr><span class="parameters">(int&nbsp;size,
  int&nbsp;flags)</span></div>
-<div class="block">Constructor without data</div>
+<div class="block">Constructor without data, for reuse</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>size</code> - </dd>
+<dd><code>size</code> - number of top elements to select.</dd>
+<dd><code>flags</code> - <a href="#REVERSE"><code>REVERSE</code></a> | <a href="#NO_ZERO"><code>NO_ZERO</code></a></dd>
 </dl>
 </section>
 </li>
@@ -302,10 +313,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="&lt;init&gt;(int)">
 <h3>TopArray</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">TopArray</span><wbr><span class="parameters">(int&nbsp;size)</span></div>
-<div class="block">Constructor without data, for reuse</div>
+<div class="block">Constructor.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>size</code> - </dd>
+<dd><code>size</code> - number of top elements to select.</dd>
 </dl>
 </section>
 </li>
@@ -318,6 +329,36 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
+<section class="detail" id="clear()">
+<h3>clear</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></span>&nbsp;<span class="element-name">clear</span>()</div>
+<div class="block">Clear all entries</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>this.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="isInsertable(double)">
+<h3>isInsertable</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isInsertable</span><wbr><span class="parameters">(double&nbsp;score)</span></div>
+<div class="block">Test if score is insertable. True if:
+ 
+ <ul>
+ <li>top is not full</li>
+ <li>score is bigger than <a href="#min()"><code>min()</code></a> in natural order</li>
+ <li>score is lower than <a href="#max()"><code>max()</code></a> in reverse order</li>
+ </ul></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>score</code> - the score to test.</dd>
+<dt>Returns:</dt>
+<dd>true if insertable, false otherwise.</dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="iterator()">
 <h3>iterator</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Iterator.html" title="class or interface in java.util" class="external-link">Iterator</a>&lt;<a href="TopArray.IdScore.html" title="class in com.github.oeuvres.alix.util">TopArray.IdScore</a>&gt;</span>&nbsp;<span class="element-name">iterator</span>()</div>
@@ -328,12 +369,14 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 </section>
 </li>
 <li>
-<section class="detail" id="min()">
-<h3>min</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">min</span>()</div>
-<div class="block">Returns the minimum score.</div>
+<section class="detail" id="length()">
+<h3>length</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">length</span>()</div>
+<div class="block">Return the count of elements inserted, maybe lesser 
+ than initial <code>size</code> if not yet full.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>count of inserted elements.</dd>
 </dl>
 </section>
 </li>
@@ -344,59 +387,18 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Returns the maximum score.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>maximum score.</dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="length()">
-<h3>length</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">length</span>()</div>
-<div class="block">Return the count of elements</div>
+<section class="detail" id="min()">
+<h3>min</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">min</span>()</div>
+<div class="block">Returns the minimum score.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="clear()">
-<h3>clear</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></span>&nbsp;<span class="element-name">clear</span>()</div>
-<div class="block">Clear all entries</div>
-<dl class="notes">
-<dt>Returns:</dt>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="push(double[])">
-<h3>push</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(double[]&nbsp;data)</span></div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>data</code> - </dd>
-<dt>Returns:</dt>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="push(int[])">
-<h3>push</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(int[]&nbsp;data)</span></div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>data</code> - </dd>
-<dt>Returns:</dt>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="push(long[])">
-<h3>push</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(long[]&nbsp;data)</span></div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>data</code> - </dd>
-<dt>Returns:</dt>
+<dd>minimum score.</dd>
 </dl>
 </section>
 </li>
@@ -405,29 +407,55 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>push</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(int&nbsp;id,
  double&nbsp;score)</span></div>
-<div class="block">Push a new Pair, keep it in the top if score is bigger than the smallest.</div>
+<div class="block">Push a new (id, score) entry, keep it in the top if score is bigger than the smallest.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>id</code> - </dd>
-<dd><code>score</code> - </dd>
+<dd><code>id</code> - id to test.</dd>
+<dd><code>score</code> - score of the id.</dd>
 <dt>Returns:</dt>
+<dd>this.</dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="isInsertable(double)">
-<h3>isInsertable</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isInsertable</span><wbr><span class="parameters">(double&nbsp;score)</span></div>
-<div class="block">Test if score is insertable, true if:
- 
- <ul>
- <li>top is not full</li>
- <li>score is bigger than <a href="#min()"><code>min()</code></a> in natural order</li>
- <li>score is lower than <a href="#max()"><code>max()</code></a> in reverse order</li>
- </ul></div>
+<section class="detail" id="push(int[])">
+<h3>push</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(int[]&nbsp;data)</span></div>
+<div class="block">Push a list of scores where id is the index of the score in the array,
+ data[id] = score.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>score</code> - </dd>
+<dd><code>data</code> - data[id] = score.</dd>
+<dt>Returns:</dt>
+<dd>this.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="push(long[])">
+<h3>push</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(long[]&nbsp;data)</span></div>
+<div class="block">Push a list of scores where id is the index of the score in the array,
+ data[id] = score.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>data</code> - data[id] = score.</dd>
+<dt>Returns:</dt>
+<dd>this.</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="push(double[])">
+<h3>push</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="TopArray.html" title="class in com.github.oeuvres.alix.util">TopArray</a></span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(double[]&nbsp;data)</span></div>
+<div class="block">Push a list of scores where id is the index of the score in the array,
+ data[id] = score.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>data</code> - data[id] = score.</dd>
+<dt>Returns:</dt>
+<dd>this.</dd>
 </dl>
 </section>
 </li>
@@ -436,9 +464,11 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>toArray</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">toArray</span>()</div>
 <div class="block">Return the ids, sorted according to the chosen order, default is bigger
- first, reverse is smaller first.</div>
+ first, reverse is smaller first. ids.length == <code>fill</code>. If top is
+ not full, fill &lt; <code>size</code>; if top is full, <code>fill</code> == <code>size</code>.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>sorted ids.</dd>
 </dl>
 </section>
 </li>

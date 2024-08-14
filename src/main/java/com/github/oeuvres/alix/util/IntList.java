@@ -89,6 +89,9 @@ public class IntList
     {
         grow(position);
         data[position] += amount;
+        if (position >= size) {
+            size = (position + 1);
+        }
         return this;
     }
 
@@ -199,6 +202,9 @@ public class IntList
     {
         grow(position);
         data[position]++;
+        if (position >= size) {
+            size = (position + 1);
+        }
         return this;
     }
 

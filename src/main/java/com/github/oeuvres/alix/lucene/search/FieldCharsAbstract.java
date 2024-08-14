@@ -32,7 +32,7 @@ abstract class FieldCharsAbstract extends FieldAbstract
     /** Dictionary of terms from this field. */
     protected final BytesRefHash dic = new BytesRefHash();
     /** docsByform[formId] = docs; count of docs by form. */
-    protected int[] docsByform;
+    protected int[] docsByForm;
 
     public FieldCharsAbstract(DirectoryReader reader, String fieldName) throws IOException {
         super(reader, fieldName);
@@ -46,7 +46,7 @@ abstract class FieldCharsAbstract extends FieldAbstract
      */
     public int docs(int formId)
     {
-        return docsByform[formId];
+        return docsByForm[formId];
     }
 
     /**
@@ -216,26 +216,26 @@ abstract class FieldCharsAbstract extends FieldAbstract
      * Normalize a list of formIds to search in an {@link IndexReader}.
      * Filter forms absent from the dictionary.
      * 
-     * @param bytesIds  collection of ids to test against dictionary.
+     * @param formIds  collection of ids to test against dictionary.
      * @return set of unique forms, sorted for efficient search with {@link TermsEnum#seekExact(BytesRef)}.
      */
-    public BytesRef[] bytesSorted(int[] bytesIds)
+    public BytesRef[] bytesSorted(int[] formIds)
     {
-        bytesIds = IntList.uniq(bytesIds);
-        if (bytesIds == null) {
+        formIds = IntList.uniq(formIds);
+        if (formIds == null) {
             return null;
         }
         final int maxForm = dic.size();
-        final int bytesLen = bytesIds.length;
+        final int bytesLen = formIds.length;
         ArrayList<BytesRef> list = new ArrayList<>(bytesLen);
         for (int i = 0; i < bytesLen; i++) {
-            final int byteId = bytesIds[i];
+            final int formId = formIds[i];
             // ?? shall we inform here that there bad values ?
-            if (byteId >= maxForm) {
+            if (formId < 1 || formId >= maxForm) {
                 continue;
             }
             BytesRef bytes = new BytesRef();
-            dic.get(i, bytes);
+            dic.get(formId, bytes);
             list.add(bytes);
         }
         if (list.isEmpty()) return null;

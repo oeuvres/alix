@@ -146,7 +146,9 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#setIterator(java.util.Iterator)" class="member-name-link">setIterator</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Iterator.html" title="class or interface in java.util" class="external-link">Iterator</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/file/Path.html" title="class or interface in java.nio.file" class="external-link">Path</a>&gt;&nbsp;iterator)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Set a synchronized iterator for multi threads.</div>
+</div>
 </div>
 </div>
 </div>
@@ -195,6 +197,11 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="setIterator(java.util.Iterator)">
 <h3>setIterator</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">setIterator</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Iterator.html" title="class or interface in java.util" class="external-link">Iterator</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/file/Path.html" title="class or interface in java.nio.file" class="external-link">Path</a>&gt;&nbsp;iterator)</span></div>
+<div class="block">Set a synchronized iterator for multi threads.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>iterator</code> - list of path as an iterator.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -214,6 +221,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">A synchonized method to get the next file to index.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>file to process.</dd>
 </dl>
 </section>
 </li>
@@ -222,6 +230,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>info</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">info</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;o)</span></div>
 <div class="block">Log info.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>o</code> - object to log.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -229,6 +241,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>error</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">error</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;o)</span></div>
 <div class="block">Log recoverable error.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>o</code> - object to log.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -238,7 +254,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Log fatal error.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>o</code> - </dd>
+<dd><code>o</code> - object to log.</dd>
 </dl>
 </section>
 </li>

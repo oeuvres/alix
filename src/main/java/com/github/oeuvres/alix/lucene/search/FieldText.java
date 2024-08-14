@@ -192,7 +192,7 @@ public class FieldText extends FieldCharsAbstract
         
         dic.add(new BytesRef("")); // add empty string as formId=0 for empty positions
         occsByForm = new long[maxForm];
-        docsByform = new int[maxForm];
+        docsByForm = new int[maxForm];
         tagByForm = new int[maxForm];
         Collections.sort(stack); // should sort by frequences
         CharsAttImpl chars = new CharsAttImpl(); // to test against indexation dicos
@@ -203,7 +203,7 @@ public class FieldText extends FieldCharsAbstract
             final int formId = dic.add(bytes); // copy it in the other dic and get its definitive id
             // if (bytes.length == 0) formId = 0; // if empty pos is counted
             occsByForm[formId] = rec.occs;
-            docsByform[formId] = rec.docs;
+            docsByForm[formId] = rec.docs;
             if (FrDics.isStop(bytes)) stopRecord.set(formId);
             chars.copy(bytes); // convert utf-8 bytes to utf-16 chars
             final int indexOfSpace = chars.indexOf(' ');
@@ -424,7 +424,7 @@ public class FieldText extends FieldCharsAbstract
                 // if formId is negative, let the error go, problem in reader
                 // for each form, set scorer with global stats by form, before count by doc
                 if (hasDistrib) {
-                    distribution.idf(docsByform[formId], docsAll, occsAll);
+                    distribution.idf(docsByForm[formId], docsAll, occsAll);
                     distribution.expectation(occsByForm[formId], occsAll);
                 }
                 postings = tenum.postings(postings, PostingsEnum.FREQS);
@@ -534,7 +534,7 @@ public class FieldText extends FieldCharsAbstract
                 // if formId is negative, let the error go, problem in reader
                 // for each term, set scorer with global stats
                 if (hasScorer) {
-                    scorer.idf(docsByform[formId], docsAll, occsAll);
+                    scorer.idf(docsByForm[formId], docsAll, occsAll);
                     scorer.expectation(occsByForm[formId], occsAll);
                 }
                 docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);

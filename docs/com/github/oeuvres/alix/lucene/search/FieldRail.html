@@ -183,7 +183,8 @@ loadScripts(document, 'script');</script>
  int[]&nbsp;coocIds,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Calculate best edges for coocurrents around pivot words.</div>
+<div class="block">Loop on a set of pivots, explore their context,
+ record edges between a set of cooccurents in these contexts.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../util/EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#edges(int%5B%5D,int,org.apache.lucene.util.BitSet)" class="member-name-link">edges</a><wbr>(int[]&nbsp;formIds,
@@ -368,6 +369,32 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
+<section class="detail" id="edges(int[],int,int,int[],org.apache.lucene.util.BitSet)">
+<h3>edges</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../../util/EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></span>&nbsp;<span class="element-name">edges</span><wbr><span class="parameters">(int[]&nbsp;pivotIds,
+ int&nbsp;left,
+ int&nbsp;right,
+ int[]&nbsp;coocIds,
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Loop on a set of pivots, explore their context,
+ record edges between a set of cooccurents in these contexts.
+ The set coocIds should have been obtained by <a href="#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>coocs(BytesRef[], int, int, BitSet)</code></a>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>pivotIds</code> - set of formId from a <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, word pivots to search around.</dd>
+<dd><code>left</code> - left size of context in tokens.</dd>
+<dd><code>right</code> - right size of context in tokens.</dd>
+<dd><code>coocIds</code> - set of formId from a <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, words to search in the contexts</dd>
+<dd><code>docFilter</code> - optional, set of lucene internal docId to restrict collect.</dd>
+<dt>Returns:</dt>
+<dd>a matrix of formId pairs with count for each pair.</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="edges(int[],int,org.apache.lucene.util.BitSet)">
 <h3>edges</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../../util/EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></span>&nbsp;<span class="element-name">edges</span><wbr><span class="parameters">(int[]&nbsp;formIds,
@@ -382,31 +409,6 @@ loadScripts(document, 'script');</script>
 <dd><code>docFilter</code> - optional, set of lucene internal docId to restrict collect.</dd>
 <dt>Returns:</dt>
 <dd>a formIds x formIds matrix with count for each pair.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="edges(int[],int,int,int[],org.apache.lucene.util.BitSet)">
-<h3>edges</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../../util/EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></span>&nbsp;<span class="element-name">edges</span><wbr><span class="parameters">(int[]&nbsp;pivotIds,
- int&nbsp;left,
- int&nbsp;right,
- int[]&nbsp;coocIds,
- org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Calculate best edges for coocurrents around pivot words.
- First pass, search for the most common coocurrents</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>pivotIds</code> - set of formId from a <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, word pivots to search around.</dd>
-<dd><code>left</code> - left size of context in tokens.</dd>
-<dd><code>right</code> - right size of context in tokens.</dd>
-<dd><code>coocIds</code> - set of formId from a <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, words to search in the contexts</dd>
-<dd><code>docFilter</code> - optional, set of lucene internal docId to restrict collect.</dd>
-<dt>Returns:</dt>
-<dd>a matrix of formId pairs with count for each pair.</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
 </dl>
 </section>
 </li>

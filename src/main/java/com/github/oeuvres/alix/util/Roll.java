@@ -49,7 +49,8 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
     private E[] data;
 
     /**
-     * Constructor, init data
+     * Constructor, fixed data size.
+     * @param size number of elements of this roll.
      */
     @SuppressWarnings("unchecked")
     public Roll(final int size) {
@@ -72,6 +73,26 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
         return true;
     }
 
+
+
+    @Override
+    public void add(int arg0, E arg1)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+
+
+    @Override
+    public boolean addAll(int arg0, Collection<? extends E> arg1)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+
+
     @Override
     public E remove()
     {
@@ -90,16 +111,16 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
     }
 
     /**
-     * Set value at position
+     * Set value by position. Will never overflow the roller.
      * 
-     * @param pos
-     * @param value
-     * @return the primary value
+     * @param position index where to set the value.
+     * @param value element to store at the position.
+     * @return the previous value at the position or null if 
      */
     @Override
-    public E set(final int pos, final E value)
+    public E set(final int position, final E value)
     {
-        int index = pointer(pos);
+        int index = pointer(position);
         E ret = data[index];
         data[index] = value;
         return ret;
@@ -124,9 +145,10 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
     }
 
     /**
-     * Fill with a value
-     * 
-     * @return
+     * Fill the roller with a default value.
+     *
+     * @param value defaults value for positions.
+     * @return this.
      */
     public Roll<E> fill(final E value)
     {
@@ -156,11 +178,84 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
     }
 
     @Override
+    public E element()
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+
+
+    @Override
+    public int indexOf(Object arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+
+
+    @Override
     public Iterator<E> iterator()
     {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Not yet implemented");
     }
+
+
+
+    @Override
+    public int lastIndexOf(Object arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+
+
+    @Override
+    public ListIterator<E> listIterator()
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+
+
+    @Override
+    public ListIterator<E> listIterator(int arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+
+
+    @Override
+    public boolean offer(E arg0)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+
+
+    @Override
+    public E poll()
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+
+
+    @Override
+    public E remove(int arg0)
+    {
+        throw new UnsupportedOperationException("Not relevant, use LinkedList instead");
+    }
+
+
 
     @Override
     public boolean remove(Object arg0)
@@ -183,6 +278,15 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
     }
 
     @Override
+    public List<E> subList(int arg0, int arg1)
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+
+
+    @Override
     public Object[] toArray()
     {
         // TODO Auto-generated method stub
@@ -191,82 +295,6 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
 
     @Override
     public <T> T[] toArray(T[] arg0)
-    {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public E element()
-    {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public boolean offer(E arg0)
-    {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public E poll()
-    {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public void add(int arg0, E arg1)
-    {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public boolean addAll(int arg0, Collection<? extends E> arg1)
-    {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public int indexOf(Object arg0)
-    {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public int lastIndexOf(Object arg0)
-    {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public ListIterator<E> listIterator()
-    {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public ListIterator<E> listIterator(int arg0)
-    {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public E remove(int arg0)
-    {
-        throw new UnsupportedOperationException("Not relevant, use LinkedList instead");
-    }
-
-    @Override
-    public List<E> subList(int arg0, int arg1)
     {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Not yet implemented");

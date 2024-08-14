@@ -35,7 +35,10 @@ package com.github.oeuvres.alix.lucene.search.similarities;
 import org.apache.lucene.search.similarities.BasicStats;
 import org.apache.lucene.search.similarities.SimilarityBase;
 
-public class SimilarityOccs extends SimilarityBase
+/**
+ * Very simple scorer by freq, intersting for testing.
+ */
+public class SimilarityFreq extends SimilarityBase
 {
 
     @Override

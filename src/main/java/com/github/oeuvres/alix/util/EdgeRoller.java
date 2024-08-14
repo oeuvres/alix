@@ -42,6 +42,8 @@ import com.github.oeuvres.alix.maths.Calcul;
  * Record co-occurrences between a fixed set of words (as int values) along
  * texts (sequence of ints) inside a limited span. The data structure is
  * optimized to reduce creation of objects with rolling arrays.
+ * 
+ * This object seems nice, but is very complex. @Deprecated
  */
 public class EdgeRoller
 {

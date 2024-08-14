@@ -244,6 +244,10 @@ public final class WordsAutomatonBuilder
     @SuppressWarnings("deprecation")
     private static final Comparator<CharsRef> comparator = CharsRef.getUTF16SortedAsUTF8Comparator();
 
+    /**
+     * Add a charSequence.
+     * @param current chars to add.
+     */
     public void add(String current)
     {
         int pos = 0, max = current.length();
@@ -268,6 +272,8 @@ public final class WordsAutomatonBuilder
      * Add another character sequence to this automaton. The sequence must be
      * lexicographically larger or equal compared to any previous sequences added to
      * this automaton (the input must be sorted).
+     * 
+     * @param current char sequence to add.
      */
     public void add(CharsRef current)
     {
@@ -341,6 +347,9 @@ public final class WordsAutomatonBuilder
      * Build a minimal, deterministic automaton from a sorted list of
      * {@link BytesRef} representing strings in UTF-8. These strings must be
      * binary-sorted.
+     * 
+     * @param input binary-sorted list of {@link BytesRef}
+     * @return an automaton.
      */
     public static Automaton build(Collection<BytesRef> input)
     {
@@ -365,8 +374,8 @@ public final class WordsAutomatonBuilder
     /**
      * Build an automaton from a list of strings, sorted is not required.
      * 
-     * @param words
-     * @return
+     * @param words list of strings.
+     * @return an automaton.
      */
     public static Automaton buildFronStrings(List<String> words)
     {
@@ -378,8 +387,8 @@ public final class WordsAutomatonBuilder
     /**
      * Build an automaton from an array of Strings (will be sorted).
      * 
-     * @param words
-     * @return
+     * @param words list of strings.
+     * @return an automaton.
      */
     public static Automaton buildFronStrings(String[] words)
     {
@@ -406,6 +415,9 @@ public final class WordsAutomatonBuilder
 
     /**
      * Copy <code>current</code> into an internal buffer.
+     * 
+     * @param current char
+     * @return always true (?).
      */
     private boolean setPrevious(CharsRef current)
     {
@@ -419,6 +431,8 @@ public final class WordsAutomatonBuilder
     /**
      * Replace last child of <code>state</code> with an already registered state or
      * stateRegistry the last child state.
+     * 
+     * @param state for replace or register.
      */
     private void replaceOrRegister(State state)
     {
@@ -438,6 +452,10 @@ public final class WordsAutomatonBuilder
     /**
      * Add a suffix of <code>current</code> starting at <code>fromIndex</code>
      * (inclusive) to state <code>state</code>.
+     * 
+     * @param state state to which add suffix chars.
+     * @param current chars to add.
+     * @param fromIndex start index in current.
      */
     private void addSuffix(State state, CharSequence current, int fromIndex)
     {

@@ -99,7 +99,9 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#add(java.lang.String)" class="member-name-link">add</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;current)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Add a charSequence.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#add(org.apache.lucene.util.CharsRef)" class="member-name-link">add</a><wbr>(org.apache.lucene.util.CharsRef&nbsp;current)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
@@ -147,6 +149,11 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="add(java.lang.String)">
 <h3>add</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">add</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;current)</span></div>
+<div class="block">Add a charSequence.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>current</code> - chars to add.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -156,6 +163,10 @@ loadScripts(document, 'script');</script>
 <div class="block">Add another character sequence to this automaton. The sequence must be
  lexicographically larger or equal compared to any previous sequences added to
  this automaton (the input must be sorted).</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>current</code> - char sequence to add.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -177,6 +188,12 @@ loadScripts(document, 'script');</script>
 <div class="block">Build a minimal, deterministic automaton from a sorted list of
  <code>BytesRef</code> representing strings in UTF-8. These strings must be
  binary-sorted.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>input</code> - binary-sorted list of <code>BytesRef</code></dd>
+<dt>Returns:</dt>
+<dd>an automaton.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -186,8 +203,9 @@ loadScripts(document, 'script');</script>
 <div class="block">Build an automaton from a list of strings, sorted is not required.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>words</code> - </dd>
+<dd><code>words</code> - list of strings.</dd>
 <dt>Returns:</dt>
+<dd>an automaton.</dd>
 </dl>
 </section>
 </li>
@@ -198,8 +216,9 @@ loadScripts(document, 'script');</script>
 <div class="block">Build an automaton from an array of Strings (will be sorted).</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>words</code> - </dd>
+<dd><code>words</code> - list of strings.</dd>
 <dt>Returns:</dt>
+<dd>an automaton.</dd>
 </dl>
 </section>
 </li>

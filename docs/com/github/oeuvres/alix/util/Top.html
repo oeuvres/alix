@@ -138,7 +138,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isInsertable(float)" class="member-name-link">isInsertable</a><wbr>(float&nbsp;score)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Test if score is bigger than the smallest.</div>
+<div class="block">Test if score is insertable.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Iterator.html" title="class or interface in java.util" class="external-link">Iterator</a>&lt;<a href="Top.Entry.html" title="class in com.github.oeuvres.alix.util">Top.Entry</a>&lt;<a href="Top.html" title="type parameter in Top">E</a>&gt;&gt;</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#iterator()" class="member-name-link">iterator</a>()</code></div>
@@ -158,7 +158,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the minimum score.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="Top.html" title="class in com.github.oeuvres.alix.util">Top</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#push(double,E)" class="member-name-link">push</a><wbr>(double&nbsp;score,
  <a href="Top.html" title="type parameter in Top">E</a>&nbsp;value)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
@@ -199,7 +199,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Constructor with fixed size.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>size</code> - </dd>
+<dd><code>size</code> - desired count of top objects.</dd>
 </dl>
 </section>
 </li>
@@ -225,10 +225,19 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <section class="detail" id="isInsertable(float)">
 <h3>isInsertable</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isInsertable</span><wbr><span class="parameters">(float&nbsp;score)</span></div>
-<div class="block">Test if score is bigger than the smallest.</div>
+<div class="block">Test if score is insertable. Maybe used to avoid heavy element calculation
+ required by <a href="#push(double,E)"><code>push(double, Object)</code></a>. True if:
+ 
+ <ul>
+ <li>top is not full</li>
+ <li>score is bigger than <a href="#min()"><code>min()</code></a> in natural order</li>
+ <li>score is lower than <a href="#max()"><code>max()</code></a> in reverse order</li>
+ </ul></div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>score</code> - </dd>
+<dd><code>score</code> - the score to test.</dd>
+<dt>Returns:</dt>
+<dd>true if insertable, false otherwise.</dd>
 </dl>
 </section>
 </li>
@@ -239,6 +248,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Returns the minimum score.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>the minimum score.</dd>
 </dl>
 </section>
 </li>
@@ -249,6 +259,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Returns the maximum score.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>the maximum score.</dd>
 </dl>
 </section>
 </li>
@@ -259,19 +270,22 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Return the count of elements</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>count of elements &lt;= size.</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="push(double,E)">
 <h3 id="push(double,java.lang.Object)">push</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(double&nbsp;score,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="Top.html" title="class in com.github.oeuvres.alix.util">Top</a></span>&nbsp;<span class="element-name">push</span><wbr><span class="parameters">(double&nbsp;score,
  <a href="Top.html" title="type parameter in Top">E</a>&nbsp;value)</span></div>
 <div class="block">Push a new Pair, keep it in the top if score is bigger than the smallest.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>score</code> - </dd>
-<dd><code>value</code> - </dd>
+<dd><code>score</code> - score for the object.</dd>
+<dd><code>value</code> - object for the score.</dd>
+<dt>Returns:</dt>
+<dd>this</dd>
 </dl>
 </section>
 </li>
@@ -282,6 +296,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Return the values, sorted by rank, biggest first.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>array of elements.</dd>
 </dl>
 </section>
 </li>

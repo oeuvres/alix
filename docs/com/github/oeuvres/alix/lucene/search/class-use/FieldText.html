@@ -102,7 +102,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">FieldFacet.</span><code><a href="../FieldFacet.html#forms(com.github.oeuvres.alix.lucene.search.FieldText,java.lang.String%5B%5D,org.apache.lucene.util.BitSet,com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">forms</a><wbr>(<a href="../FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext,
+<div class="col-second even-row-color"><span class="type-name-label">FieldFacet.</span><code><a href="../FieldFacet.html#formEnum(com.github.oeuvres.alix.lucene.search.FieldText,java.lang.String%5B%5D,org.apache.lucene.util.BitSet,com.github.oeuvres.alix.lucene.search.Distrib)" class="member-name-link">formEnum</a><wbr>(<a href="../FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;search,
  org.apache.lucene.util.BitSet&nbsp;docFilter,
  <a href="../Distrib.html" title="enum in com.github.oeuvres.alix.lucene.search">Distrib</a>&nbsp;scorer)</code></div>
@@ -110,7 +110,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Get occurrences count of a text field by facet.</div>
 </div>
 <div class="col-first odd-row-color"><code><a href="../FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">FieldFacet.</span><code><a href="../FieldFacet.html#forms(com.github.oeuvres.alix.lucene.search.FieldText,org.apache.lucene.util.BitSet)" class="member-name-link">forms</a><wbr>(<a href="../FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext,
+<div class="col-second odd-row-color"><span class="type-name-label">FieldFacet.</span><code><a href="../FieldFacet.html#formEnum(com.github.oeuvres.alix.lucene.search.FieldText,org.apache.lucene.util.BitSet)" class="member-name-link">formEnum</a><wbr>(<a href="../FieldText.html" title="class in com.github.oeuvres.alix.lucene.search">FieldText</a>&nbsp;ftext,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Get occurences stats by facet from a text field.</div>
@@ -138,7 +138,7 @@ loadScripts(document, 'script');</script>
  useful to calcultate scores for some queries : 
  
    Dictionary of forms <code>FieldCharsAbstract.dic</code>
-   docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByform</code>.
+   docsByform[formId] = docs; count of docs by form <code>FieldCharsAbstract.docsByForm</code>.
    Σ docsByForm; global count of docs relevant for this field <code>FieldAbstract.docsAll</code>.
    occsByform[formId] = occs; count of occurrences by form <a href="../FieldText.html#occsByForm"><code>occsByForm</code></a>.
    Σ occsByForm; global count of occs for this field <a href="../FieldText.html#occsAll"><code>occsAll</code></a>.

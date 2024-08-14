@@ -47,9 +47,7 @@ import java.util.NoSuchElementException;
  */
 public class Top<E> implements Iterable<Top.Entry<E>>
 {
-    /**
-     * Data stored as a Pair rank+object, easy to sort before exported as an array.
-     */
+    /** Data stored as a Pair rank+object, easy to sort before exported as an array */
     private final Entry<E>[] data;
     /** Max size of the top to extract */
     private final int size;
@@ -67,7 +65,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     /**
      * Constructor with fixed size.
      * 
-     * @param size
+     * @param size desired count of top objects.
      */
     @SuppressWarnings("unchecked")
     public Top(final int size) {
@@ -81,11 +79,9 @@ public class Top<E> implements Iterable<Top.Entry<E>>
      */
     class TopIterator implements Iterator<Entry<E>>
     {
-        int current = 0; // the current element we are looking at
+        /* The current element we are looking at */
+        int current = 0;
 
-        /**
-         * If cursor is less than size, return OK.
-         */
         @Override
         public boolean hasNext()
         {
@@ -95,9 +91,6 @@ public class Top<E> implements Iterable<Top.Entry<E>>
                 return false;
         }
 
-        /**
-         * Return current element
-         */
         @Override
         public Entry<E> next()
         {
@@ -132,6 +125,9 @@ public class Top<E> implements Iterable<Top.Entry<E>>
         this.last = last;
     }
 
+    /**
+     * Sort the entries.
+     */
     private void sort()
     {
         Arrays.sort(data, 0, fill);
@@ -139,9 +135,17 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     }
 
     /**
-     * Test if score is bigger than the smallest.
+     * Test if score is insertable. Maybe used to avoid heavy element calculation
+     * required by {@link #push(double, Object)}. True if:
      * 
-     * @param score
+     * <ul>
+     * <li>top is not full</li>
+     * <li>score is bigger than {@link #min()} in natural order</li>
+     * <li>score is lower than {@link #max()} in reverse order</li>
+     * </ul>
+     * 
+     * @param score the score to test.
+     * @return true if insertable, false otherwise.
      */
     public boolean isInsertable(final float score)
     {
@@ -150,8 +154,8 @@ public class Top<E> implements Iterable<Top.Entry<E>>
 
     /**
      * Returns the minimum score.
-     * 
-     * @return
+     *
+     * @return the minimum score.
      */
     public double min()
     {
@@ -161,7 +165,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     /**
      * Returns the maximum score.
      * 
-     * @return
+     * @return the maximum score.
      */
     public double max()
     {
@@ -171,7 +175,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     /**
      * Return the count of elements
      * 
-     * @return
+     * @return count of elements &lt;= size.
      */
     public int length()
     {
@@ -181,10 +185,11 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     /**
      * Push a new Pair, keep it in the top if score is bigger than the smallest.
      * 
-     * @param score
-     * @param value
+     * @param score score for the object.
+     * @param value object for the score.
+     * @return this
      */
-    public boolean push(final double score, final E value)
+    public Top push(final double score, final E value)
     {
         // should fill initial array
         if (!full) {
@@ -195,31 +200,31 @@ public class Top<E> implements Iterable<Top.Entry<E>>
             data[fill] = new Entry<E>(score, value);
             fill++;
             if (fill < size)
-                return true;
+                return this;
             // finished
             full = true;
             // find index of minimum rank
             last();
-            return true;
+            return this;
         }
         // less than min, go away
         // if (score <= data[last].score) return;
         // compare in Float is more precise, no less efficient
         if (Double.compare(score, min) <= 0)
-            return false;
+            return this;
         if (Double.compare(score, max) > 0)
             max = score;
         // bigger than last, modify it
         data[last].set(score, value);
         // find last
         last();
-        return true;
+        return this;
     }
 
     /**
      * Return the values, sorted by rank, biggest first.
      * 
-     * @return
+     * @return array of elements.
      */
     public E[] toArray()
     {
@@ -253,14 +258,14 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     {
         /** The rank to compare values */
         double score;
-        /** The value */
+        /** The element value */
         E value;
 
         /**
-         * Constructor
+         * Initial constructor of an entry.
          * 
-         * @param score
-         * @param value
+         * @param score initial score.
+         * @param value initial value.
          */
         Entry(final double score, final E value) {
             this.score = score;
@@ -268,10 +273,10 @@ public class Top<E> implements Iterable<Top.Entry<E>>
         }
 
         /**
-         * Modify value
+         * Modify the entry without object creation.
          * 
-         * @param score
-         * @param value
+         * @param score new score.
+         * @param value new value.
          */
         protected void set(final double score, final E value)
         {
@@ -279,11 +284,20 @@ public class Top<E> implements Iterable<Top.Entry<E>>
             this.value = value;
         }
 
+        /**
+         * Get the value.
+         * @return value element.
+         */
         public E value()
         {
             return value;
         }
 
+        /**
+         * Get the score.
+         * 
+         * @return score.
+         */
         public double score()
         {
             return score;

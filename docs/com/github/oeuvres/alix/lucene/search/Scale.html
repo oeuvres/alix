@@ -148,12 +148,16 @@ loadScripts(document, 'script');</script>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(com.github.oeuvres.alix.lucene.Alix,java.lang.String,java.lang.String)" class="member-name-link">Scale</a><wbr>(<a href="../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldInt,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldText)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
-<div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(com.github.oeuvres.alix.lucene.Alix,org.apache.lucene.util.BitSet,java.lang.String,java.lang.String)" class="member-name-link">Scale</a><wbr>(<a href="../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
- org.apache.lucene.util.BitSet&nbsp;filter,
+<div class="col-last even-row-color">
+<div class="block">Constructor with alix objects for a lucene reader, an int field, and a text field.</div>
+</div>
+<div class="col-constructor-name odd-row-color"><code><a href="#%3Cinit%3E(com.github.oeuvres.alix.lucene.Alix,java.lang.String,java.lang.String,org.apache.lucene.util.BitSet)" class="member-name-link">Scale</a><wbr>(<a href="../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldInt,
- <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldText)</code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldText,
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Constructor with alix objects for a lucene reader, an int field, and a text field.</div>
+</div>
 </div>
 </section>
 </li>
@@ -171,7 +175,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="Scale.Tick.html" title="class in com.github.oeuvres.alix.lucene.search">Scale.Tick</a>[]</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#axis()" class="member-name-link">axis</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Return data to display an axis for the corpus</div>
+<div class="block">Return data to display an axis for the corpus.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[][]</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#curves(java.lang.String%5B%5D,int)" class="member-name-link">curves</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;forms,
@@ -182,22 +186,22 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long[][]</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#legend(int)" class="member-name-link">legend</a><wbr>(int&nbsp;dots)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">For each dot, his occurrence index, a label like a year, and a doc order</div>
+<div class="block">For each dot, his occurrence index, a label like a year, and a doc order.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#length()" class="member-name-link">length</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns the total count of occurrences for this scale</div>
+<div class="block">Returns the total count of occurrences for this scale.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#max()" class="member-name-link">max</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Maximun label of this scale</div>
+<div class="block">Maximun value of this scale.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#min()" class="member-name-link">min</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Minimum label of this scale</div>
+<div class="block">Minimum value of this scale.</div>
 </div>
 </div>
 </div>
@@ -266,23 +270,34 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldInt,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldText)</span>
       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Constructor with alix objects for a lucene reader, an int field, and a text field.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>alix</code> - wrapper on a lucene reader.</dd>
+<dd><code>fieldInt</code> - stats on an int field.</dd>
+<dd><code>fieldText</code> - stats on a text field.</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="&lt;init&gt;(com.github.oeuvres.alix.lucene.Alix,org.apache.lucene.util.BitSet,java.lang.String,java.lang.String)">
+<section class="detail" id="&lt;init&gt;(com.github.oeuvres.alix.lucene.Alix,java.lang.String,java.lang.String,org.apache.lucene.util.BitSet)">
 <h3>Scale</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">Scale</span><wbr><span class="parameters">(<a href="../Alix.html" title="class in com.github.oeuvres.alix.lucene">Alix</a>&nbsp;alix,
- org.apache.lucene.util.BitSet&nbsp;filter,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldInt,
- <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldText)</span>
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;fieldText,
+ org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Constructor with alix objects for a lucene reader, an int field, and a text field.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>alix</code> - wrapper on a lucene reader.</dd>
+<dd><code>fieldInt</code> - stats on an int field.</dd>
+<dd><code>fieldText</code> - stats on a text field.</dd>
+<dd><code>docFilter</code> - if not null, documents to exclude from stats.</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - lucene errors.</dd>
 </dl>
 </section>
 </li>
@@ -298,30 +313,43 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="min()">
 <h3>min</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">min</span>()</div>
-<div class="block">Minimum label of this scale</div>
+<div class="block">Minimum value of this scale.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>minimum value.</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="max()">
 <h3>max</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">max</span>()</div>
-<div class="block">Maximun label of this scale</div>
+<div class="block">Maximun value of this scale.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>maximum value.</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="length()">
 <h3>length</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">length</span>()</div>
-<div class="block">Returns the total count of occurrences for this scale</div>
+<div class="block">Returns the total count of occurrences for this scale.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>total count of occurrences.</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="axis()">
 <h3>axis</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="Scale.Tick.html" title="class in com.github.oeuvres.alix.lucene.search">Scale.Tick</a>[]</span>&nbsp;<span class="element-name">axis</span>()</div>
-<div class="block">Return data to display an axis for the corpus</div>
+<div class="block">Return data to display an axis for the corpus.</div>
 <dl class="notes">
 <dt>Returns:</dt>
+<dd>lists of ticks.</dd>
 </dl>
 </section>
 </li>
@@ -329,7 +357,13 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="legend(int)">
 <h3>legend</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long[][]</span>&nbsp;<span class="element-name">legend</span><wbr><span class="parameters">(int&nbsp;dots)</span></div>
-<div class="block">For each dot, his occurrence index, a label like a year, and a doc order</div>
+<div class="block">For each dot, his occurrence index, a label like a year, and a doc order.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>dots</code> - How many dots for a curve?</dd>
+<dt>Returns:</dt>
+<dd>a complex double array to document more.</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -349,6 +383,7 @@ loadScripts(document, 'script');</script>
 <dd><code>forms</code> - A list of terms to search</dd>
 <dd><code>dots</code> - Number of dots by curve.</dd>
 <dt>Returns:</dt>
+<dd>a complex array.</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - Lucene errors.</dd>
 </dl>
