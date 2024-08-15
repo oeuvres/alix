@@ -148,20 +148,25 @@ public class FieldRail
      * @throws IOException lucene errors.
      */
     public FormEnum coocs(
-        final BytesRef[] pivotBytes, 
+        final int[] pivotIds, 
         final int left,
         final int right,
         final BitSet docFilter
     ) throws IOException
     {
         if (left < 0 || right < 0 || (left + right) < 1) {
-            throw new IllegalArgumentException("left=" + left + " right=" + right
-                    + " not enough context to extract co-occurrences.");
+            throw new IllegalArgumentException(
+                "left=" + left + " right=" + right
+                + " not enough context to extract co-occurrences."
+            );
         }
-
-
+        if (pivotIds == null || pivotIds.length == 0) {
+            throw new IllegalArgumentException("Pivot term(s) missing, A set of form Ids is required");
+        }
+        // 
+        int[] pivotLookup = IntList.uniq(pivotIds);
         // 1. collect all positions of pivots in the lucene index for accepted docs
-        RowcolQueue docposList = positions(pivotBytes, docFilter);
+        RowcolQueue docposList = positions(fieldText.bytesSorted(pivotLookup), docFilter);
 
         // 2. loop on all pivot position by doc
         // for each doc, a bit set is used to record the relevant positions
@@ -175,25 +180,40 @@ public class FieldRail
         IntBuffer intRail = channelMap.rewind().asIntBuffer().asReadOnlyBuffer(); // the rail
         BitSet form4context = new FixedBitSet(maxForm);
         int docLast = -1;
+        
+        int toLast = -1; // remember last from to not recount coocs
         while (docposList.hasNext()) {
             docposList.next();
             final int docId = docposList.row();
-            final int pos = docposList.col();
+            final int pivotIndex = docposList.col();
             // end of a doc
             if (docLast != docId) {
                 formByDoc.clear();
+                toLast = -1;
             }
             docLast = docId;
             // loop in this context
             final int docIndex = indexByDoc[docId];
             final int docLen = lenByDoc[docId];
+            // stats for pivot here, because of context overlap
+            final int pivotId = intRail.get(docIndex + pivotIndex);
+            formEnum.freqByForm[pivotId]++;
+            if (!formByDoc.get(pivotId)) {
+                formEnum.hitsByForm[pivotId]++;
+                formByDoc.set(pivotId);
+            }
+            
             // load the document rail and loop on the context to count co-occurrents
-            final int from = Math.max(0, pos - left);
-            final int to = Math.min(docLen, pos + 1 + right);
+            final int from = Math.max(0, Math.max(toLast + 1, pivotIndex - left));
+            final int to = Math.min(docLen, pivotIndex + 1 + right);
+            toLast = to;
             // loop on this context to collect the known words from which to get a matrix
             form4context.clear();
             for (int formIndex = from; formIndex < to; formIndex++) {
                 final int formId = intRail.get(docIndex + formIndex);
+                if (Arrays.binarySearch(pivotLookup, formId) > -1) {
+                    continue; // pivot is counted upper, because of context overlap
+                }
                 if (formId < 1) {
                     continue;
                 }
@@ -203,11 +223,11 @@ public class FieldRail
                 }
                 form4context.set(formId);
                 formEnum.freqByForm[formId]++;
+                formEnum.freqAll++;
                 if (!formByDoc.get(formId)) {
                     formEnum.hitsByForm[formId]++;
                     formByDoc.set(formId);
                 }
-                formEnum.freqAll++;
             }
         }
         return formEnum;
@@ -289,7 +309,7 @@ public class FieldRail
         // loop on occs
         // push edges
         if (formIds == null || formIds.length == 0) {
-            throw new IllegalArgumentException("Search term(s) missing, A set of Ids is required");
+            throw new IllegalArgumentException("Search term(s) missing, A set of form Ids is required");
         }
         EdgeRoller span = new EdgeRoller(formIds, distance);
         // filter documents

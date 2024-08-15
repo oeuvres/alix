@@ -137,13 +137,21 @@ public class TopArray implements Iterable<TopArray.IdScore>
      */
     public boolean isInsertable(final double score)
     {
-        if (noZero && score == 0)
+        if (Double.isNaN(score)) {
             return false;
-        if (!full)
+        }
+        else if (noZero && score == 0) {
+            return false;
+        }
+        else if (!full) {
             return true;
-        if (reverse)
+        }
+        if (reverse) {
             return (Double.compare(score, max) < 0);
-        return (Double.compare(score, min) > 0);
+        }
+        else {
+            return (Double.compare(score, min) > 0);
+        }
     }
 
     @Override
@@ -222,8 +230,12 @@ public class TopArray implements Iterable<TopArray.IdScore>
      */
     public TopArray push(final int id, final double score)
     {
-        if (noZero && score == 0)
+        if (Double.isNaN(score)) {
             return this;
+        }
+        if (noZero && score == 0) {
+            return this;
+        }
         // should fill initial array
         if (!full) {
             if (Double.compare(score, max) > 0)

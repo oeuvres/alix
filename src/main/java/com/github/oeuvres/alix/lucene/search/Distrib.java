@@ -40,7 +40,7 @@ public enum Distrib {
             // negative is not interesting here
             if (freq < 1 || docLen < 1)
                 return 0;
-            // expectation for this form should have been set befor
+            // expectation for this form should have been set before
             final double Ei = expectation * docLen;
             // Oi = freq
             double O_E = freq - Ei;

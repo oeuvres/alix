@@ -123,8 +123,10 @@ public enum MI {
                     continue; // is it gut ?
                 sum += O[i] * Math.log(O[i] / E[i]);
             }
+            /* ???
             if (Oab < E[0])
                 return sum * -2;
+            */
             return sum * 2;
         }
     },

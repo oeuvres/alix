@@ -686,15 +686,29 @@ public class JspTools
         if (check(cookieValue)) return cookieValue;
         else return fallback;
     }
-
+    
     /**
      * Get a repeated parameter as an array of String, filtered of empty strings and
      * repeated values. Original order is kept.
      * 
-     * @param name Name of request parameter
-     * @return Null if no plain values
+     * @param name name of request parameter.
+     * @return null if no plain values.
      */
     public String[] getStringSet(final String name)
+    {
+        return getStringSet(name, null);
+    }
+
+
+    /**
+     * Get a repeated parameter as an array of String, filtered of empty strings,
+     * repeated values, and value not accepted in a set. Original order is kept.
+     * 
+     * @param name name of request parameter.
+     * @param set optional, a set of accepted values.
+     * @return null if no accepted plain values.
+     */
+    public String[] getStringSet(final String name, final Set<String> set)
     {
         final String[] empty = new String[0];
         String[] values = request.getParameterValues(name);
@@ -709,6 +723,7 @@ public class JspTools
                 continue;
             if (dic.contains(v))
                 continue;
+            if (set != null && !set.contains(v)) continue;
             dic.add(v);
             list.add(v);
         }

@@ -35,6 +35,7 @@ package com.github.oeuvres.alix.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Set;
 
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
@@ -386,9 +387,8 @@ public class FieldFacet extends FieldCharsAbstract
      * Searching for the word "dummy" may result in a count of occurrences of the word "dummy"
      * very different on each facet (withLotsOfDummy: a lot, withSomeDummy: some, withoutDummy: 0).
      * 
-     * 
      * Query maybe restricted by a doc filter (a
-     * corpus). If there are no search in the search, will cry. Returns an iterator
+     * corpus). If there are no terms in the search, will cry. Returns an iterator
      * on search of this facet, with scores and other stats.
      * 
      * @param ftext required stats from a text field.

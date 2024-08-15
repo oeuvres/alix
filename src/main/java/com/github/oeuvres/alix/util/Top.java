@@ -116,8 +116,12 @@ public class Top<E> implements Iterable<Top.Entry<E>>
         double min = data[0].score;
         for (int i = 1; i < size; i++) {
             // if (data[i].score >= min) continue;
-            if (Double.compare(data[i].score, min) >= 0)
+            if (Double.isNaN(data[i].score)) {
                 continue;
+            }
+            else if (Double.compare(data[i].score, min) >= 0) {
+                continue;
+            }
             min = data[i].score;
             last = i;
         }
@@ -189,13 +193,18 @@ public class Top<E> implements Iterable<Top.Entry<E>>
      * @param value object for the score.
      * @return this
      */
+    @SuppressWarnings("rawtypes")
     public Top push(final double score, final E value)
     {
         // should fill initial array
         if (!full) {
-            if (Double.compare(score, max) > 0)
+            if (Double.isNaN(score)) {
+                // nothing
+            }
+            else if (Double.compare(score, max) > 0) {
                 max = score;
-            if (Double.compare(score, min) < 0)
+            }
+            else if (Double.compare(score, min) < 0)
                 min = score;
             data[fill] = new Entry<E>(score, value);
             fill++;
@@ -209,11 +218,15 @@ public class Top<E> implements Iterable<Top.Entry<E>>
         }
         // less than min, go away
         // if (score <= data[last].score) return;
-        // compare in Float is more precise, no less efficient
-        if (Double.compare(score, min) <= 0)
+        if (Double.isNaN(score)) {
             return this;
-        if (Double.compare(score, max) > 0)
+        }
+        else if (Double.compare(score, min) <= 0) {
+            return this;
+        }
+        else if (Double.compare(score, max) > 0) {
             max = score;
+        }
         // bigger than last, modify it
         data[last].set(score, value);
         // find last
@@ -306,7 +319,18 @@ public class Top<E> implements Iterable<Top.Entry<E>>
         @Override
         public int compareTo(Entry pair)
         {
-            return Double.compare(pair.score, score);
+            if (Double.isNaN(score) && Double.isNaN(pair.score)) {
+                return 0;
+            }
+            else if (Double.isNaN(score)) {
+                return +1;
+            }
+            else if (Double.isNaN(pair.score)) {
+                return -1;
+            }
+            else {
+                return Double.compare(pair.score, score);
+            }
         }
 
         @Override
