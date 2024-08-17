@@ -108,7 +108,8 @@ public class EdgeRoller
     public EdgeMatrix edges()
     {
         // update matrix with counts for stats
-        return matrix.N(N).nodeCounts(freq);
+        // matrix.N(N).nodeCounts(freq);
+        return matrix;
     }
 
     /**

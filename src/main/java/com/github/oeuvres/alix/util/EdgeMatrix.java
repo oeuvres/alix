@@ -33,7 +33,11 @@
 package com.github.oeuvres.alix.util;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
+
+import com.github.oeuvres.alix.util.TopArray.IdScore;
 
 /**
  * A matrix to record edges between predefined node Ids.
@@ -43,38 +47,50 @@ import java.util.Iterator;
  */
 public class EdgeMatrix implements Iterable<Edge>
 {
-    /** Original set of nodeId */
-    protected final int[] nodeValues;
-    /** Sorted set of nodeId for lookup and index */
-    protected final int[] nodeLookup;
+    /** Original set of node,  */
+    protected final Map<Integer, Long> nodes;
+    /** NodeId sorted without duplicate */
+    protected final int[] nodeUniq;
+    /** Global occurrences by nodeIndex for scoring */
+    protected final long[] nodeOccs;
+    /** Global count of occurrences for scoring */
+    protected final long occsAll;
+    /** Lookup nodeValue → nodeIndex */
+    protected final HashMap<Integer, Integer> nodeLookup = new HashMap<>();
     /** The edges */
     protected final int[] cells;
     /** Size of a side */
     protected final int nodeLen;
     /** Directed or not */
     protected final boolean directed;
-    /** Global population of occurrences for score calculation */
-    protected long N;
-    /** Node counter for score calculation */
-    protected long[] counts;
-    /** A mutual information algorithm to score relations */
-    MI mi = MI.JACCARD;
+    /** A mutual information equation for scoring edges */
+    protected MI mi;
 
     /**
      * Build matrix with a limited set of accepted values for nodes.
      * If this recorder is not directed, (3,6) == (6,3).
      * 
-     * @param nodeValues    A list of ints.
+     * @param nodes    (formId → occs for this form)
+     * @param occsAll global count of events, to score edges.
      * @param directed true if direction should be kept in pairs.
      */
-    public EdgeMatrix(final int[] nodeValues, final boolean directed)
+    public EdgeMatrix(Map<Integer, Long> nodes, final long occsAll, final boolean directed)
     {
-        this.nodeValues = nodeValues;
-        this.nodeLookup = IntList.uniq(nodeValues);
+        this.nodes = nodes;
+        this.occsAll = occsAll;
         this.directed = directed;
-        this.nodeLen = this.nodeLookup.length;
-        this.cells = new int[nodeLen * nodeLen];
+        nodeLen = nodes.size();
+        nodeUniq = nodes.keySet().stream().mapToInt(Integer::intValue).toArray();
+        Arrays.sort(nodeUniq);
+        nodeOccs = new long[nodeLen];
+        for (int index = 0; index < nodeLen; index++) {
+            final int nodeId = nodeUniq[index];
+            nodeLookup.put(nodeId, index);
+            nodeOccs[index] = nodes.get(nodeId);
+        }
+        cells = new int[nodeLen * nodeLen];
     }
+
     
     /**
      * Return an index in {@link #cells} if both node values
@@ -147,21 +163,19 @@ public class EdgeMatrix implements Iterable<Edge>
      */
     public Iterator<Edge> iterator()
     {
-        return new EdgeIt(cells);
+        return new EdgeIt();
     }
 
     /**
-     * Expert, set a global population to calculate a score.
+     * Set a correlation indice.
      * 
-     * @param N a global population to calculate stats.
-     * @return this.
+     * @param mi correlation implementation.
      */
-    protected EdgeMatrix N(final long N)
+    public void mi(MI mi)
     {
-        this.N = N;
-        return this;
+        this.mi = mi;
     }
-
+    
     /**
      * Get the nodeIndex of a nodeValue. Returns a negative index
      * if the value is not found in {@link #nodeLookup}, like
@@ -170,33 +184,9 @@ public class EdgeMatrix implements Iterable<Edge>
      * @param nodeValue a node value, possibly not accepted.
      * @return nodeIndex in {@link #nodeLookup}, or negative value if not found.
      */
-    public int nodeIndex(final int nodeValue)
+    public Integer nodeIndex(final int nodeValue)
     {
-        return Arrays.binarySearch(nodeLookup, nodeValue);
-    }
-
-    /**
-     * Expert, return a pointer on the {@link #nodeLookup} table, useful to ensure
-     * {@link #nodeCounts}.
-     * 
-     * @return set of sorted unique nodeValues.
-     */
-    public int[] nodeLookup()
-    {
-        return nodeLookup;
-    }
-
-    /**
-     * Expert, set counts per node to calculate a score.
-     * counts[index] = count for nodeLookup[index].
-     * 
-     * @param counts global count per node.
-     * @return this.
-     */
-    protected EdgeMatrix nodeCounts(final long[] counts)
-    {
-        this.counts = counts;
-        return this;
+        return nodeLookup.get(nodeValue);
     }
 
     /**
@@ -236,14 +226,6 @@ public class EdgeMatrix implements Iterable<Edge>
         return ret;
     }
 
-    /**
-     * Set a mutual information algorithm.
-     * @param mi mutual information algo.
-     */
-    public void setMI(final MI mi)
-    {
-        this.mi = mi;
-    }
 
     /**
      * Get source node index in {@link #nodeLookup} by edge index in {@link #cells}.
@@ -255,7 +237,7 @@ public class EdgeMatrix implements Iterable<Edge>
     {
         return cellIndex / nodeLen;
     }
-
+    
     /**
      * Get target node index in {@link #nodeLookup} by edge index in {@link #cells}.
      *  
@@ -272,11 +254,11 @@ public class EdgeMatrix implements Iterable<Edge>
     {
         StringBuilder sb = new StringBuilder();
         for (int nodeIndex = 0; nodeIndex < nodeLen; nodeIndex++) {
-            sb.append("\t" + nodeLookup[nodeIndex]);
+            sb.append("\t" + nodeUniq[nodeIndex]);
         }
         sb.append("\n");
         for (int y = 0; y < nodeLen; y++) {
-            sb.append(nodeLookup[y]);
+            sb.append(nodeUniq[y]);
             for (int x = 0; x < nodeLen; x++) {
                 sb.append("\t" + cells[y * nodeLen + x]);
             }
@@ -286,12 +268,10 @@ public class EdgeMatrix implements Iterable<Edge>
     }
 
     /**
-     * An iterator of edges.
+     * A complex iterator on edges, trying to avoid orphans.
      */
     public class EdgeIt implements Iterator<Edge>
     {
-        /** Count of row and cols */
-        private final int nodeLen;
         /**
          * Copy of the edges data, will be destroy to avoid duplicates edges when
          * looping by nodes
@@ -310,10 +290,9 @@ public class EdgeMatrix implements Iterable<Edge>
          * This iterator will produce a very specific order among edges to limit orphans.
          * @param cells
          */
-        EdgeIt(final int[] cells) {
+        EdgeIt() {
             // take a copy of data
             this.edges = Arrays.copyOf(cells, cells.length);
-            nodeLen = (int) Math.sqrt(cells.length);
             // total edges to exhaust
             /*
              * if (directed) { // directed, square this.edgeLen = nodeLen * nodeLen; } else
@@ -324,22 +303,6 @@ public class EdgeMatrix implements Iterable<Edge>
             // loop on data and prepare variables to calculate a score by edge
             table = new Edge[nodeLen][nodeLen];
 
-            // context counts has not been set outside, calculate with what we have
-            if (counts == null) {
-                counts = new long[nodeLen];
-                N = 0;
-                for (int cellIndex = 0, len = cells.length; cellIndex < len; cellIndex++) {
-                    final int sourceIndex = sourceIndexByCellIndex(cellIndex);
-                    final int targetIndex = targetIndexByCellIndex(cellIndex);
-                    if (sourceIndex == targetIndex)
-                        continue; // do not count selfish
-                    counts[sourceIndex] += cells[cellIndex];
-                    counts[targetIndex] += cells[cellIndex];
-                    N += cells[cellIndex] + cells[cellIndex]; // 2 events
-
-                }
-            }
-
             // score edges and sort them by node
             // remember, edges replicated for non directed
             for (int sourceIndex = 0; sourceIndex < nodeLen; sourceIndex++) {
@@ -349,25 +312,18 @@ public class EdgeMatrix implements Iterable<Edge>
                     if (sourceIndex == targetIndex) {
                         edgeCount = 0; // do not count selfish, may produce orphans
                     }
-                    double score;
+                    double score = edgeCount;
                     if (edgeCount == 0) {
                         score = -Double.MAX_VALUE;
-                    } else {
-                        final long a = counts[sourceIndex];
-                        final long b = counts[targetIndex];
-                        // avoid NaN, edge count may have errors
+                    } 
+                    else if (mi != null) {
+                        final long a = nodeOccs[sourceIndex];
+                        final long b = nodeOccs[targetIndex];
+                        // avoid NaN, edge count may have duplicates
                         final long ab = Math.min(edgeCount, Math.min(a, b));
-                        // PPMI is not discriminant
-                        score = mi.score(ab, a, b, N);
-                        // score = edgeCount;
-                        // big center
-                        // score = (double)edgeCount; // centralize
-                        // no sense
-                        // score = ((double)nodesCount[source]/edgeCount +
-                        // nodesCount[target]/(double)edgeCount) / 2;
-
+                        score = mi.score(ab, a, b, occsAll);
                     }
-                    table[sourceIndex][targetIndex] = new Edge(nodeLookup[sourceIndex], nodeLookup[targetIndex], directed, cellIndex, null).count(edgeCount).score(score);
+                    table[sourceIndex][targetIndex] = new Edge(nodeUniq[sourceIndex], nodeUniq[targetIndex], directed, cellIndex, null).count(edgeCount).score(score);
                 }
                 Arrays.sort(table[sourceIndex]);
             }
@@ -380,7 +336,7 @@ public class EdgeMatrix implements Iterable<Edge>
          */
         public Edge top(final int nodeId)
         {
-            final int line = Arrays.binarySearch(nodeLookup, nodeId);
+            final int line = nodeLookup.get(nodeId);
             if (line < 0) { // uknown word
                 return null;
             }
@@ -461,11 +417,57 @@ public class EdgeMatrix implements Iterable<Edge>
             return -1;
         }
 
-        @Override
-        public void remove()
+    }
+
+    
+    
+    /**
+     * A simple iterator with possible scoring.
+     */
+    public class EdgeIterator implements Iterator<Edge>
+    {
+        /** Count of row and cols */
+        private final Iterator<IdScore> topIt;
+        
+        
+        EdgeIterator()
         {
-            throw new UnsupportedOperationException();
+            final TopArray top = new TopArray(cells.length);
+            if (mi != null) {
+                for (int cellIndex = 0; cellIndex < cells.length; cellIndex++) {
+                    final int Oab = cells[cellIndex];
+                    final long Oa = nodeOccs[sourceIndexByCellIndex(cellIndex)];
+                    final long Ob = nodeOccs[targetIndexByCellIndex(cellIndex)];
+                    top.push(cellIndex, mi.score(Oab, Oa, Ob, occsAll));
+                }
+            }
+            else {
+                top.push(cells);
+            }
+            topIt = top.iterator();
         }
-    };
+
+
+        @Override
+        public boolean hasNext()
+        {
+            return topIt.hasNext();
+        }
+
+        @Override
+        public Edge next()
+        {
+            final IdScore topRow = topIt.next();
+            final Edge edge = new Edge(
+                nodeUniq[sourceIndexByCellIndex(topRow.id())],
+                nodeUniq[targetIndexByCellIndex(topRow.id())],
+                directed
+            );
+            edge.count((int)topRow.score());
+            return edge;
+        }
+        
+    }
+    
 
 }

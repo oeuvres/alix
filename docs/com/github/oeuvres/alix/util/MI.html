@@ -111,22 +111,26 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first odd-row-color"><code><a href="#DICE" class="member-name-link">DICE</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">2*m11 / (m10² + m01²)</div>
+<div class="block">2*fxy / (fx + fy)</div>
 </div>
-<div class="col-first even-row-color"><code><a href="#G" class="member-name-link">G</a></code></div>
+<div class="col-first even-row-color"><code><a href="#DICE_LOG" class="member-name-link">DICE_LOG</a></code></div>
 <div class="col-last even-row-color">
+<div class="block">14 + log2(DICE) https://nlp.fi.muni.cz/raslan/2008/raslan08.pdf#page=14</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="#G" class="member-name-link">G</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">G = 2 Σ(Oi.ln(Oi/Ei))</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="#JACCARD" class="member-name-link">JACCARD</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code><a href="#JACCARD" class="member-name-link">JACCARD</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">m11 / (m10 + m01 + m11)</div>
 </div>
-<div class="col-first even-row-color"><code><a href="#OCCS" class="member-name-link">OCCS</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code><a href="#OCCS" class="member-name-link">OCCS</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Oab</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="#PPMI" class="member-name-link">PPMI</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code><a href="#PPMI" class="member-name-link">PPMI</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Normalized Mutual Information.</div>
 </div>
 </div>
@@ -216,7 +220,14 @@ the order they are declared.</div>
 <section class="detail" id="DICE">
 <h3>DICE</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="MI.html" title="enum in com.github.oeuvres.alix.util">MI</a></span>&nbsp;<span class="element-name">DICE</span></div>
-<div class="block">2*m11 / (m10² + m01²)</div>
+<div class="block">2*fxy / (fx + fy)</div>
+</section>
+</li>
+<li>
+<section class="detail" id="DICE_LOG">
+<h3>DICE_LOG</h3>
+<div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="MI.html" title="enum in com.github.oeuvres.alix.util">MI</a></span>&nbsp;<span class="element-name">DICE_LOG</span></div>
+<div class="block">14 + log2(DICE) https://nlp.fi.muni.cz/raslan/2008/raslan08.pdf#page=14</div>
 </section>
 </li>
 <li>

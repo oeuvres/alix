@@ -79,7 +79,7 @@ loadScripts(document, 'script');</script>
  int[]&nbsp;pivotIds)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Scores a <a href="../../lucene/search/FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FormEnum</code></a> with freqs extracted from co-occurrences extraction
- in a <a href="../../lucene/search/FieldRail.html#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>FieldRail.coocs(BytesRef[], int, int, BitSet)</code></a>.</div>
+ in a <a href="../../lucene/search/FieldRail.html#coocs(int%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>FieldRail.coocs(int[], int, int, BitSet)</code></a>.</div>
 </div>
 </div>
 </section>
@@ -87,6 +87,17 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="com.github.oeuvres.alix.util">
 <h2>Uses of <a href="../MI.html" title="enum in com.github.oeuvres.alix.util">MI</a> in <a href="../package-summary.html">com.github.oeuvres.alix.util</a></h2>
+<div class="caption"><span>Fields in <a href="../package-summary.html">com.github.oeuvres.alix.util</a> declared as <a href="../MI.html" title="enum in com.github.oeuvres.alix.util">MI</a></span></div>
+<div class="summary-table three-column-summary">
+<div class="table-header col-first">Modifier and Type</div>
+<div class="table-header col-second">Field</div>
+<div class="table-header col-last">Description</div>
+<div class="col-first even-row-color"><code>protected <a href="../MI.html" title="enum in com.github.oeuvres.alix.util">MI</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">EdgeMatrix.</span><code><a href="../EdgeMatrix.html#mi" class="member-name-link">mi</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">A mutual information equation for scoring edges</div>
+</div>
+</div>
 <div class="caption"><span>Methods in <a href="../package-summary.html">com.github.oeuvres.alix.util</a> that return <a href="../MI.html" title="enum in com.github.oeuvres.alix.util">MI</a></span></div>
 <div class="summary-table three-column-summary">
 <div class="table-header col-first">Modifier and Type</div>
@@ -110,9 +121,9 @@ the order they are declared.</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">EdgeMatrix.</span><code><a href="../EdgeMatrix.html#setMI(com.github.oeuvres.alix.util.MI)" class="member-name-link">setMI</a><wbr>(<a href="../MI.html" title="enum in com.github.oeuvres.alix.util">MI</a>&nbsp;mi)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">EdgeMatrix.</span><code><a href="../EdgeMatrix.html#mi(com.github.oeuvres.alix.util.MI)" class="member-name-link">mi</a><wbr>(<a href="../MI.html" title="enum in com.github.oeuvres.alix.util">MI</a>&nbsp;mi)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Set a mutual information algorithm.</div>
+<div class="block">Set a correlation indice.</div>
 </div>
 </div>
 </section>

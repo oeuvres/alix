@@ -54,14 +54,20 @@ public enum MI {
             return Oab / (m10 + m01 + Oab);
         }
     },
-    /** 2*m11 / (m10² + m01²) */
+    /** 2*fxy / (fx + fy) */
     DICE() {
         @Override
         public double score(final double Oab, final double Oa, final double Ob, final double N)
         {
-            double m10 = Oa - Oab;
-            double m01 = Ob - Oab;
-            return 2 * Oab / (m10 * m10 + m01 * m01);
+            return 2.0 * Oab / (Oa + Ob);
+        }
+    },
+    /** 14 + log2(DICE) https://nlp.fi.muni.cz/raslan/2008/raslan08.pdf#page=14 */
+    DICE_LOG() {
+        @Override
+        public double score(final double Oab, final double Oa, final double Ob, final double N)
+        {
+            return (14 + Math.log(2.0 * Oab / (Oa + Ob)) / Math.log(2));
         }
     },
     /** Normalized Mutual Information. */

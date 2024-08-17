@@ -42,6 +42,8 @@ import java.nio.channels.FileLock;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.lucene.index.DirectoryReader;
@@ -65,7 +67,6 @@ import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Edge;
 import com.github.oeuvres.alix.util.EdgeMap;
-import com.github.oeuvres.alix.util.EdgeRoller;
 import com.github.oeuvres.alix.util.EdgeMatrix;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.IntPairMutable;
@@ -140,7 +141,7 @@ public class FieldRail
      * Returns the count of occurences found. This method may need a lot of optional
      * params, set on the FormEnum object.
      * 
-     * @param pivotBytes an ordered set of lucene terms.
+     * @param pivotIds an set of lucene terms.
      * @param left width of context before a pivot.
      * @param right width of context after a pivot.
      * @param docFilter optional, set of lucene internal docId to restrict collect.
@@ -236,7 +237,7 @@ public class FieldRail
     /**
      * Loop on a set of pivots, explore their context,
      * record edges between a set of cooccurents in these contexts.
-     * The set coocIds should have been obtained by {@link #coocs(BytesRef[], int, int, BitSet)}.
+     * The set coocIds should have been obtained by {@link #coocs(int[], int, int, BitSet)}.
      * 
      * @param pivotIds set of formId from a {@link FieldText}, word pivots to search around.
      * @param left     left size of context in tokens.
@@ -257,8 +258,14 @@ public class FieldRail
         RowcolQueue docposList = positions(pivotBytes, docFilter);
         IntBuffer intRail = channelMap.rewind().asIntBuffer().asReadOnlyBuffer(); // the rail
         // 2. loop on pivot and load edges between selected nodes
-        EdgeMatrix matrix = new EdgeMatrix(coocIds, false);
-        final int[] nodeLookup = matrix.nodeLookup();
+        Map<Integer, Long> nodes = new HashMap<>();
+        for (int formId: pivotIds) {
+            nodes.put(formId, fieldText.occs(formId));
+        }
+        for (int formId: coocIds) {
+            nodes.put(formId, fieldText.occs(formId));
+        }
+        EdgeMatrix matrix = new EdgeMatrix(nodes, fieldText.occsAll(), false);
         final IntList nodeIndexes = new IntList();
         while (docposList.hasNext()) {
             docposList.next();
@@ -275,8 +282,8 @@ public class FieldRail
                 if (formId < 1) {
                     continue;
                 }
-                final int nodeIndex = Arrays.binarySearch(nodeLookup, formId);
-                if (nodeIndex < 0) continue;
+                final Integer nodeIndex = matrix.nodeIndex(formId);
+                if (nodeIndex == null) continue;
                 nodeIndexes.push(nodeIndex);
             }
             // double loop on the collected nodeIndex to fill the matrix of edges
@@ -292,7 +299,6 @@ public class FieldRail
         }
         return matrix;
     }
-
 
     /**
      * With a set of int formIds, run accross full or part of rails, to collect
@@ -311,38 +317,26 @@ public class FieldRail
         if (formIds == null || formIds.length == 0) {
             throw new IllegalArgumentException("Search term(s) missing, A set of form Ids is required");
         }
-        EdgeRoller span = new EdgeRoller(formIds, distance);
         // filter documents
+        /*
         IntBuffer bufInt = channelMap.rewind().asIntBuffer().asReadOnlyBuffer();
-
-        if (docFilter != null) {
-            for (int docId = docFilter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = docFilter
-                    .nextSetBit(docId + 1)) {
-                if (lenByDoc[docId] == 0) {
-                    continue; // deleted or with no value for this field
-                }
-                span.clear();
-                bufInt.position(indexByDoc[docId]);
-                for (int position = 0, max = lenByDoc[docId]; position < max; position++) {
-                    int formId = bufInt.get();
-                    span.push(position, formId);
-                }
+        for (int docId = 0; docId < maxDoc; docId++) {
+            if (lenByDoc[docId] == 0) {
+                continue; // deleted or with no value for this field
             }
-        } 
-        else {
-            for (int docId = 0; docId < maxDoc; docId++) {
-                if (lenByDoc[docId] == 0) {
-                    continue; // deleted or with no value for this field
-                }
-                span.clear();
-                bufInt.position(indexByDoc[docId]);
-                for (int position = 0, max = lenByDoc[docId]; position < max; position++) {
-                    int formId = bufInt.get();
-                    span.push(position, formId);
-                }
+            if (docFilter != null && !docFilter.get(docId)) {
+                continue;
+            }
+            span.clear();
+            bufInt.position(indexByDoc[docId]);
+            for (int position = 0, max = lenByDoc[docId]; position < max; position++) {
+                int formId = bufInt.get();
+                span.push(position, formId);
             }
         }
         return span.edges();
+        */
+        throw new UnsupportedOperationException("Bugs here, use edges(nodeId, left, right, nodeIds, docFilter) instead.");
     }
 
     /**
@@ -537,7 +531,7 @@ public class FieldRail
      * {@link FieldCharsAbstract#bytesSorted(CharSequence[])}
      * or {@link FieldCharsAbstract#bytesSorted(int[])},
      * get an ordered list of positions by docId.
-     * Used by {@link #coocs(BytesRef[], int, int, BitSet)}.
+     * Used by {@link #coocs(int[], int, int, BitSet)}.
      *
      * @param pivotBytes mandatory, ordered set of terms of this field, as bytes.
      * @param docFilter optional, set of lucene internal docId to limit search.

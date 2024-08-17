@@ -595,7 +595,7 @@ public class FormEnum implements FormIterator
     
     /**
      * Scores a {@link FormEnum} with freqs extracted from co-occurrences extraction
-     * in a {@link FieldRail#coocs(BytesRef[], int, int, BitSet)}. Scoring uses a “mutual information”
+     * in a {@link FieldRail#coocs(int[], int, int, BitSet)}. Scoring uses a “mutual information”
      * {@link MI} formula (probability like, not tf-idf like). Parameters
      * are
      * 

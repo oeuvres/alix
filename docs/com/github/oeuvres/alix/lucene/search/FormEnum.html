@@ -392,7 +392,7 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
  int[]&nbsp;pivotIds)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Scores a <a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FormEnum</code></a> with freqs extracted from co-occurrences extraction
- in a <a href="FieldRail.html#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>FieldRail.coocs(BytesRef[], int, int, BitSet)</code></a>.</div>
+ in a <a href="FieldRail.html#coocs(int%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>FieldRail.coocs(int[], int, int, BitSet)</code></a>.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#scoreByRank(int)" class="member-name-link">scoreByRank</a><wbr>(int&nbsp;rank)</code></div>
@@ -997,7 +997,7 @@ implements <a href="FormIterator.html" title="interface in com.github.oeuvres.al
  int[]&nbsp;pivotIds)</span>
                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Scores a <a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FormEnum</code></a> with freqs extracted from co-occurrences extraction
- in a <a href="FieldRail.html#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>FieldRail.coocs(BytesRef[], int, int, BitSet)</code></a>. Scoring uses a “mutual information”
+ in a <a href="FieldRail.html#coocs(int%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>FieldRail.coocs(int[], int, int, BitSet)</code></a>. Scoring uses a “mutual information”
  <a href="../../util/MI.html" title="enum in com.github.oeuvres.alix.util"><code>MI</code></a> formula (probability like, not tf-idf like). Parameters
  are
  

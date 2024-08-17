@@ -169,7 +169,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)" class="member-name-link">coocs</a><wbr>(org.apache.lucene.util.BytesRef[]&nbsp;pivotBytes,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#coocs(int%5B%5D,int,int,org.apache.lucene.util.BitSet)" class="member-name-link">coocs</a><wbr>(int[]&nbsp;pivotIds,
  int&nbsp;left,
  int&nbsp;right,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</code></div>
@@ -345,9 +345,9 @@ loadScripts(document, 'script');</script>
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="coocs(org.apache.lucene.util.BytesRef[],int,int,org.apache.lucene.util.BitSet)">
+<section class="detail" id="coocs(int[],int,int,org.apache.lucene.util.BitSet)">
 <h3>coocs</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">coocs</span><wbr><span class="parameters">(org.apache.lucene.util.BytesRef[]&nbsp;pivotBytes,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="FormEnum.html" title="class in com.github.oeuvres.alix.lucene.search">FormEnum</a></span>&nbsp;<span class="element-name">coocs</span><wbr><span class="parameters">(int[]&nbsp;pivotIds,
  int&nbsp;left,
  int&nbsp;right,
  org.apache.lucene.util.BitSet&nbsp;docFilter)</span>
@@ -357,7 +357,7 @@ loadScripts(document, 'script');</script>
  params, set on the FormEnum object.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>pivotBytes</code> - an ordered set of lucene terms.</dd>
+<dd><code>pivotIds</code> - an set of lucene terms.</dd>
 <dd><code>left</code> - width of context before a pivot.</dd>
 <dd><code>right</code> - width of context after a pivot.</dd>
 <dd><code>docFilter</code> - optional, set of lucene internal docId to restrict collect.</dd>
@@ -379,7 +379,7 @@ loadScripts(document, 'script');</script>
                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Loop on a set of pivots, explore their context,
  record edges between a set of cooccurents in these contexts.
- The set coocIds should have been obtained by <a href="#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>coocs(BytesRef[], int, int, BitSet)</code></a>.</div>
+ The set coocIds should have been obtained by <a href="#coocs(int%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>coocs(int[], int, int, BitSet)</code></a>.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>pivotIds</code> - set of formId from a <a href="FieldText.html" title="class in com.github.oeuvres.alix.lucene.search"><code>FieldText</code></a>, word pivots to search around.</dd>
@@ -472,7 +472,7 @@ loadScripts(document, 'script');</script>
  <code>FieldCharsAbstract.bytesSorted(CharSequence[])</code>
  or <code>FieldCharsAbstract.bytesSorted(int[])</code>,
  get an ordered list of positions by docId.
- Used by <a href="#coocs(org.apache.lucene.util.BytesRef%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>coocs(BytesRef[], int, int, BitSet)</code></a>.</div>
+ Used by <a href="#coocs(int%5B%5D,int,int,org.apache.lucene.util.BitSet)"><code>coocs(int[], int, int, BitSet)</code></a>.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>pivotBytes</code> - mandatory, ordered set of terms of this field, as bytes.</dd>

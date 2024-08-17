@@ -102,7 +102,12 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-first even-row-color"><code>class&nbsp;</code></div>
 <div class="col-second even-row-color"><code><a href="EdgeMatrix.EdgeIt.html" class="type-name-link" title="class in com.github.oeuvres.alix.util">EdgeMatrix.EdgeIt</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">An iterator of edges.</div>
+<div class="block">A complex iterator on edges, trying to avoid orphans.</div>
+</div>
+<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="EdgeMatrix.EdgeIterator.html" class="type-name-link" title="class in com.github.oeuvres.alix.util">EdgeMatrix.EdgeIterator</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">A simple iterator with possible scoring.</div>
 </div>
 </div>
 </section>
@@ -121,35 +126,45 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-last even-row-color">
 <div class="block">The edges</div>
 </div>
-<div class="col-first odd-row-color"><code>protected long[]</code></div>
-<div class="col-second odd-row-color"><code><a href="#counts" class="member-name-link">counts</a></code></div>
+<div class="col-first odd-row-color"><code>protected final boolean</code></div>
+<div class="col-second odd-row-color"><code><a href="#directed" class="member-name-link">directed</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">Node counter for score calculation</div>
-</div>
-<div class="col-first even-row-color"><code>protected final boolean</code></div>
-<div class="col-second even-row-color"><code><a href="#directed" class="member-name-link">directed</a></code></div>
-<div class="col-last even-row-color">
 <div class="block">Directed or not</div>
 </div>
-<div class="col-first odd-row-color"><code>protected long</code></div>
-<div class="col-second odd-row-color"><code><a href="#N" class="member-name-link">N</a></code></div>
-<div class="col-last odd-row-color">
-<div class="block">Global population of occurrences for score calculation</div>
-</div>
-<div class="col-first even-row-color"><code>protected final int</code></div>
-<div class="col-second even-row-color"><code><a href="#nodeLen" class="member-name-link">nodeLen</a></code></div>
+<div class="col-first even-row-color"><code>protected <a href="MI.html" title="enum in com.github.oeuvres.alix.util">MI</a></code></div>
+<div class="col-second even-row-color"><code><a href="#mi" class="member-name-link">mi</a></code></div>
 <div class="col-last even-row-color">
+<div class="block">A mutual information equation for scoring edges</div>
+</div>
+<div class="col-first odd-row-color"><code>protected final int</code></div>
+<div class="col-second odd-row-color"><code><a href="#nodeLen" class="member-name-link">nodeLen</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Size of a side</div>
 </div>
-<div class="col-first odd-row-color"><code>protected final int[]</code></div>
-<div class="col-second odd-row-color"><code><a href="#nodeLookup" class="member-name-link">nodeLookup</a></code></div>
-<div class="col-last odd-row-color">
-<div class="block">Sorted set of nodeId for lookup and index</div>
-</div>
-<div class="col-first even-row-color"><code>protected final int[]</code></div>
-<div class="col-second even-row-color"><code><a href="#nodeValues" class="member-name-link">nodeValues</a></code></div>
+<div class="col-first even-row-color"><code>protected final <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/HashMap.html" title="class or interface in java.util" class="external-link">HashMap</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a>&gt;</code></div>
+<div class="col-second even-row-color"><code><a href="#nodeLookup" class="member-name-link">nodeLookup</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Original set of nodeId</div>
+<div class="block">Lookup nodeValue → nodeIndex</div>
+</div>
+<div class="col-first odd-row-color"><code>protected final long[]</code></div>
+<div class="col-second odd-row-color"><code><a href="#nodeOccs" class="member-name-link">nodeOccs</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">Global occurrences by nodeIndex for scoring</div>
+</div>
+<div class="col-first even-row-color"><code>protected final <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Long.html" title="class or interface in java.lang" class="external-link">Long</a>&gt;</code></div>
+<div class="col-second even-row-color"><code><a href="#nodes" class="member-name-link">nodes</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">Original set of node,</div>
+</div>
+<div class="col-first odd-row-color"><code>protected final int[]</code></div>
+<div class="col-second odd-row-color"><code><a href="#nodeUniq" class="member-name-link">nodeUniq</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">NodeId sorted without duplicate</div>
+</div>
+<div class="col-first even-row-color"><code>protected final long</code></div>
+<div class="col-second even-row-color"><code><a href="#occsAll" class="member-name-link">occsAll</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">Global count of occurrences for scoring</div>
 </div>
 </div>
 </section>
@@ -162,7 +177,8 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(int%5B%5D,boolean)" class="member-name-link">EdgeMatrix</a><wbr>(int[]&nbsp;nodeValues,
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(java.util.Map,long,boolean)" class="member-name-link">EdgeMatrix</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Long.html" title="class or interface in java.lang" class="external-link">Long</a>&gt;&nbsp;nodes,
+ long&nbsp;occsAll,
  boolean&nbsp;directed)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Build matrix with a limited set of accepted values for nodes.</div>
@@ -202,26 +218,15 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Return an iterator on data</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected <a href="EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#N(long)" class="member-name-link">N</a><wbr>(long&nbsp;N)</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#mi(com.github.oeuvres.alix.util.MI)" class="member-name-link">mi</a><wbr>(<a href="MI.html" title="enum in com.github.oeuvres.alix.util">MI</a>&nbsp;mi)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Expert, set a global population to calculate a score.</div>
+<div class="block">Set a correlation indice.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>protected <a href="EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#nodeCounts(long%5B%5D)" class="member-name-link">nodeCounts</a><wbr>(long[]&nbsp;counts)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#nodeIndex(int)" class="member-name-link">nodeIndex</a><wbr>(int&nbsp;nodeValue)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Expert, set counts per node to calculate a score.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#nodeIndex(int)" class="member-name-link">nodeIndex</a><wbr>(int&nbsp;nodeValue)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get the nodeIndex of a nodeValue.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#nodeLookup()" class="member-name-link">nodeLookup</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Expert, return a pointer on the <a href="#nodeLookup"><code>nodeLookup</code></a> table, useful to ensure
- <a href="#nodeCounts(long%5B%5D)"><code>nodeCounts(long[])</code></a>.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#set(int,int,int)" class="member-name-link">set</a><wbr>(int&nbsp;sourceValue,
@@ -241,14 +246,9 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <div class="block">Expert, set a cell by node index, more efficient
  if lookup already done by caller on same <a href="#nodeLookup"><code>nodeLookup</code></a>.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setMI(com.github.oeuvres.alix.util.MI)" class="member-name-link">setMI</a><wbr>(<a href="MI.html" title="enum in com.github.oeuvres.alix.util">MI</a>&nbsp;mi)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Set a mutual information algorithm.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 </div>
 </div>
 </div>
@@ -270,17 +270,38 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h2>Field Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="nodeValues">
-<h3>nodeValues</h3>
-<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">nodeValues</span></div>
-<div class="block">Original set of nodeId</div>
+<section class="detail" id="nodes">
+<h3>nodes</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Long.html" title="class or interface in java.lang" class="external-link">Long</a>&gt;</span>&nbsp;<span class="element-name">nodes</span></div>
+<div class="block">Original set of node,</div>
+</section>
+</li>
+<li>
+<section class="detail" id="nodeUniq">
+<h3>nodeUniq</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">nodeUniq</span></div>
+<div class="block">NodeId sorted without duplicate</div>
+</section>
+</li>
+<li>
+<section class="detail" id="nodeOccs">
+<h3>nodeOccs</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">nodeOccs</span></div>
+<div class="block">Global occurrences by nodeIndex for scoring</div>
+</section>
+</li>
+<li>
+<section class="detail" id="occsAll">
+<h3>occsAll</h3>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">occsAll</span></div>
+<div class="block">Global count of occurrences for scoring</div>
 </section>
 </li>
 <li>
 <section class="detail" id="nodeLookup">
 <h3>nodeLookup</h3>
-<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">nodeLookup</span></div>
-<div class="block">Sorted set of nodeId for lookup and index</div>
+<div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/HashMap.html" title="class or interface in java.util" class="external-link">HashMap</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a>&gt;</span>&nbsp;<span class="element-name">nodeLookup</span></div>
+<div class="block">Lookup nodeValue → nodeIndex</div>
 </section>
 </li>
 <li>
@@ -305,17 +326,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 </section>
 </li>
 <li>
-<section class="detail" id="N">
-<h3>N</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">N</span></div>
-<div class="block">Global population of occurrences for score calculation</div>
-</section>
-</li>
-<li>
-<section class="detail" id="counts">
-<h3>counts</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type">long[]</span>&nbsp;<span class="element-name">counts</span></div>
-<div class="block">Node counter for score calculation</div>
+<section class="detail" id="mi">
+<h3>mi</h3>
+<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type"><a href="MI.html" title="enum in com.github.oeuvres.alix.util">MI</a></span>&nbsp;<span class="element-name">mi</span></div>
+<div class="block">A mutual information equation for scoring edges</div>
 </section>
 </li>
 </ul>
@@ -327,15 +341,17 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h2>Constructor Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="&lt;init&gt;(int[],boolean)">
+<section class="detail" id="&lt;init&gt;(java.util.Map,long,boolean)">
 <h3>EdgeMatrix</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">EdgeMatrix</span><wbr><span class="parameters">(int[]&nbsp;nodeValues,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">EdgeMatrix</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Long.html" title="class or interface in java.lang" class="external-link">Long</a>&gt;&nbsp;nodes,
+ long&nbsp;occsAll,
  boolean&nbsp;directed)</span></div>
 <div class="block">Build matrix with a limited set of accepted values for nodes.
  If this recorder is not directed, (3,6) == (6,3).</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>nodeValues</code> - A list of ints.</dd>
+<dd><code>nodes</code> - (formId → occs for this form)</dd>
+<dd><code>occsAll</code> - global count of events, to score edges.</dd>
 <dd><code>directed</code> - true if direction should be kept in pairs.</dd>
 </dl>
 </section>
@@ -394,22 +410,20 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 </section>
 </li>
 <li>
-<section class="detail" id="N(long)">
-<h3>N</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type"><a href="EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></span>&nbsp;<span class="element-name">N</span><wbr><span class="parameters">(long&nbsp;N)</span></div>
-<div class="block">Expert, set a global population to calculate a score.</div>
+<section class="detail" id="mi(com.github.oeuvres.alix.util.MI)">
+<h3>mi</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">mi</span><wbr><span class="parameters">(<a href="MI.html" title="enum in com.github.oeuvres.alix.util">MI</a>&nbsp;mi)</span></div>
+<div class="block">Set a correlation indice.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>N</code> - a global population to calculate stats.</dd>
-<dt>Returns:</dt>
-<dd>this.</dd>
+<dd><code>mi</code> - correlation implementation.</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="nodeIndex(int)">
 <h3>nodeIndex</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">nodeIndex</span><wbr><span class="parameters">(int&nbsp;nodeValue)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a></span>&nbsp;<span class="element-name">nodeIndex</span><wbr><span class="parameters">(int&nbsp;nodeValue)</span></div>
 <div class="block">Get the nodeIndex of a nodeValue. Returns a negative index
  if the value is not found in <a href="#nodeLookup"><code>nodeLookup</code></a>, like
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Arrays.html#binarySearch(int%5B%5D,int)" title="class or interface in java.util" class="external-link"><code>Arrays.binarySearch(int[], int)</code></a>.</div>
@@ -418,32 +432,6 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <dd><code>nodeValue</code> - a node value, possibly not accepted.</dd>
 <dt>Returns:</dt>
 <dd>nodeIndex in <a href="#nodeLookup"><code>nodeLookup</code></a>, or negative value if not found.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="nodeLookup()">
-<h3>nodeLookup</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">nodeLookup</span>()</div>
-<div class="block">Expert, return a pointer on the <a href="#nodeLookup"><code>nodeLookup</code></a> table, useful to ensure
- <a href="#nodeCounts(long%5B%5D)"><code>nodeCounts(long[])</code></a>.</div>
-<dl class="notes">
-<dt>Returns:</dt>
-<dd>set of sorted unique nodeValues.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="nodeCounts(long[])">
-<h3>nodeCounts</h3>
-<div class="member-signature"><span class="modifiers">protected</span>&nbsp;<span class="return-type"><a href="EdgeMatrix.html" title="class in com.github.oeuvres.alix.util">EdgeMatrix</a></span>&nbsp;<span class="element-name">nodeCounts</span><wbr><span class="parameters">(long[]&nbsp;counts)</span></div>
-<div class="block">Expert, set counts per node to calculate a score.
- counts[index] = count for nodeLookup[index].</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>counts</code> - global count per node.</dd>
-<dt>Returns:</dt>
-<dd>this.</dd>
 </dl>
 </section>
 </li>
@@ -482,17 +470,6 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <dd><code>cellValue</code> - value to set for pair.</dd>
 <dt>Returns:</dt>
 <dd>old value.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="setMI(com.github.oeuvres.alix.util.MI)">
-<h3>setMI</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">setMI</span><wbr><span class="parameters">(<a href="MI.html" title="enum in com.github.oeuvres.alix.util">MI</a>&nbsp;mi)</span></div>
-<div class="block">Set a mutual information algorithm.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>mi</code> - mutual information algo.</dd>
 </dl>
 </section>
 </li>
