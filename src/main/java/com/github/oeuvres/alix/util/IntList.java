@@ -40,7 +40,9 @@ import java.util.Set;
 import com.github.oeuvres.alix.maths.Calcul;
 
 /**
- * A mutable list of ints.
+ * A mutable list of ints. Tested as 2x faster than ArrayList&lt;Integer&gt; for insertion,
+ * 10x for mutable operations like {@link #inc(int)} {@link #add(int, int)}. Lighter in memory,
+ * Integer is 20 bytes, int is 4.
  */
 public class IntList
 {
