@@ -88,7 +88,7 @@ public class EdgeRoller
         this.freq = new long[words.length];
         this.uniqs = new boolean[words.length];
         this.distance = distance;
-        this.matrix = new EdgeMatrix(words, directed);
+        this.matrix = null;
     }
 
     /**

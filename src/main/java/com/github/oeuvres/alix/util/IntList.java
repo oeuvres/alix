@@ -33,7 +33,9 @@
 package com.github.oeuvres.alix.util;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 import com.github.oeuvres.alix.maths.Calcul;
 
@@ -339,11 +341,11 @@ public class IntList
     {
         final int[] dst = new int[size];
         int dstPos = 0;
-        IntIntMap map = new IntIntMap(size);
+        Set<Integer> set = new HashSet<>(size);
         for (int srcPos = 0; srcPos < size; srcPos++) {
             final int value = data[srcPos];
-            if (map.contains(value)) continue;
-            map.put(value, 1);
+            if (set.contains(value)) continue;
+            set.add(value);
             dst[dstPos++] = value;
         }
         return Arrays.copyOf(dst, dstPos);
