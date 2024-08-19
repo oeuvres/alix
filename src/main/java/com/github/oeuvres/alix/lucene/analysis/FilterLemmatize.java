@@ -115,6 +115,7 @@ public final class FilterLemmatize extends TokenFilter
         if (!input.incrementToken()) {
             return false;
         }
+        lemAtt.clear();
         int flags = flagsAtt.getFlags();
         if (flags == XML) { // tags maybe used upper
             return true;
@@ -197,7 +198,7 @@ public final class FilterLemmatize extends TokenFilter
                     termAtt.buffer()[0] = c1;
                 flagsAtt.setFlags(entry.tag);
                 if (entry.lem != null)
-                    lemAtt.setEmpty().append(entry.lem);
+                    lemAtt.copy(entry.lem);
                 if (entry.orth != null) {
                     orthAtt.copy(entry.orth);
                 }
@@ -215,7 +216,7 @@ public final class FilterLemmatize extends TokenFilter
             // known word
             flagsAtt.setFlags(entry.tag);
             if (entry.lem != null)
-                lemAtt.append(entry.lem);
+                lemAtt.copy(entry.lem);
             if (entry.orth != null) {
                 orthAtt.copy(entry.orth);
             }

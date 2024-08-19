@@ -20,11 +20,11 @@ import org.junit.Test;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 public class TokenStreamsTest {
     
-    @Test
     public void cloud() throws IOException
     {
         String text = "note<a class=\"noteref\" href=\"#note2\" id=\"note2_\" epub:type=\"noteref\">1</a>";
@@ -67,7 +67,8 @@ public class TokenStreamsTest {
         // final TypeAttribute typeAttribute = tokenStream.addAttribute(TypeAttribute.class);
         final PositionIncrementAttribute posIncAttribute = tokenStream.addAttribute(PositionIncrementAttribute.class);
         // final PositionLengthAttribute posLenAttribute = tokenStream.addAttribute(PositionLengthAttribute.class);
-        final CharsAttImpl orthAtt = (CharsAttImpl) tokenStream.addAttribute(OrthAtt.class);
+        final CharsAttImpl orthAttribute = (CharsAttImpl) tokenStream.addAttribute(OrthAtt.class);
+        final CharsAttImpl lemAttribute = (CharsAttImpl) tokenStream.addAttribute(LemAtt.class);
         tokenStream.reset();
         while(tokenStream.incrementToken()) {
             System.out.print(""
@@ -77,16 +78,19 @@ public class TokenStreamsTest {
               + "|" + text.substring(offsetAttribute.startOffset(),  offsetAttribute.endOffset()) + "|\t" 
               // + offsetAttribute.startOffset() + "\t"
               // + offsetAttribute.endOffset() + "\t" 
-              + posIncAttribute.getPositionIncrement() + "\t"
+              // + posIncAttribute.getPositionIncrement() + "\t"
+              + "orth:" + orthAttribute.toString() + "\t" 
+              + "lem:" + lemAttribute.toString() + "\t" 
               + "\n"
             );
         }
     }
     
+    @Test
     public void aposHyph() throws IOException
     {
-        Analyzer ana = new AnalyzerAposHyph();
-        String text = "Connais-toi toi-même ?L’aujourd’hui d’hier. Parlons-en. Qu’est-ce que c’est ?";
+        Analyzer ana = new AnalyzerCloud();
+        String text = " 5.  évidence et la certitude sont toujours fonction l’une de l’autre. Connais-toi toi-même ?L’aujourd’hui d’hier. Parlons-en. Qu’est-ce que c’est ?";
         analyze(ana.tokenStream("field", text), text);
         ana.close();
     }

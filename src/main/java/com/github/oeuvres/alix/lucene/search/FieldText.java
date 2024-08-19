@@ -365,6 +365,8 @@ public class FieldText extends FieldCharsAbstract
      * Returns an iterator sorted according to a scorer. If scorer is null, default
      * is count of occurrences.
      * 
+     * Possible optimisations: java.util.BitSet, no loop on docs if no docFilter.
+     * 
      * @param docFilter a set of docId.
      * @param formFilter a set of formId.
      * @param distribution a scoring algorithm.
