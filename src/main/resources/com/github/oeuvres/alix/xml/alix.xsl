@@ -33,7 +33,7 @@
   <!-- Name of file, provided by caller -->
   <xsl:param name="filename"/>
   <!-- For links in TOC -->
-  <xsl:variable name="split" select="true()"/>
+  <xsl:variable name="split" select=".//tei:div[key('split', generate-id())]"/>
   <!--  clean url -->
   <xsl:variable name="_ext"/>
   <!-- Get metas as a global var to insert fields in all chapters -->
@@ -179,18 +179,20 @@
     <xsl:if test="@type">
       <alix:field name="type" type="category" value="{@type}"/>
     </xsl:if>
-    <alix:field name="bibl" type="meta" xmlns="http://www.w3.org/1999/xhtml">
+    <alix:field name="bibl" type="meta">
       <xsl:copy-of select="$bibl-book"/>
     </alix:field>
     <xsl:if test="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'ref']">
-      <alix:field name="ref" type="meta" xmlns="http://www.w3.org/1999/xhtml">
+      <alix:field name="ref" type="meta">
         <xsl:apply-templates select="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'ref']"/>
       </alix:field>
     </xsl:if>
-    <alix:field name="toc" type="store" xmlns="http://www.w3.org/1999/xhtml">
-      <xsl:call-template name="toc"/>
+    <alix:field name="toc" type="store">
+      <xsl:call-template name="toc">
+        <xsl:with-param name="class"/>
+      </xsl:call-template>
     </alix:field>
-    <xsl:call-template name="refs"/>
+    <xsl:call-template name="links"/>
     <xsl:choose>
       <xsl:when test="$doctype = 'book'">
         <!-- process chapters -->
@@ -373,7 +375,7 @@
         </xsl:when>
       </xsl:choose>
       <alix:field name="type" type="category" value="{@type}"/>
-      <alix:field name="bibl" type="meta" xmlns="http://www.w3.org/1999/xhtml">
+      <alix:field name="bibl" type="meta">
         <xsl:copy-of select="$bibl-book"/>
         <xsl:variable name="analytic">
           <xsl:call-template name="analytic"/>
@@ -414,18 +416,18 @@
         </alix:field>
       </xsl:if>
       <!-- get the internal links -->
-      <xsl:call-template name="refs"/>
+      <xsl:call-template name="links"/>
     </alix:chapter>
   </xsl:template>
   <!-- links supposed internal -->
-  <xsl:template name="refs">
+  <xsl:template name="links">
     <xsl:for-each select=".//tei:ref">
       <xsl:variable name="target" select="normalize-space(@target)"/>
       <xsl:choose>
         <xsl:when test="$target = ''"/>
         <xsl:when test="starts-with($target, 'http')"/>
         <xsl:otherwise>
-          <alix:field name="ref" type="facet" value="{$target}"/>
+          <alix:field name="link" type="facet" value="{$target}"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:for-each>

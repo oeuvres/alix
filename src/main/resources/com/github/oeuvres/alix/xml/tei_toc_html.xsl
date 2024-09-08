@@ -35,6 +35,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
   
   <!-- Generate an absolute table of sections -->
   <xsl:template name="toc">
+    <xsl:param name="class">tree</xsl:param>
     <xsl:variable name="html">
       <xsl:apply-templates select="/*/tei:text/tei:front" mode="li">
         <xsl:with-param name="localid" select="generate-id()"/>
@@ -50,7 +51,12 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
       </xsl:apply-templates>   
     </xsl:variable>
     <xsl:if test="$html != ''">
-      <ol class="tree">
+      <ol>
+        <xsl:if test="$class != ''">
+          <xsl:attribute name="class">
+            <xsl:value-of select="$class"/>
+          </xsl:attribute>
+        </xsl:if>
         <xsl:copy-of select="$html"/>
       </ol>
     </xsl:if>
