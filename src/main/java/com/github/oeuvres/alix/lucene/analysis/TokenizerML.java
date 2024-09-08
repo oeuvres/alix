@@ -135,7 +135,13 @@ public class TokenizerML  extends Tokenizer
                 }
             }
             // if no luck, a try to go back in buffer can fall in negative
-            // if (bufferIndex < 0) bufferIndex = 0;
+            if (bufferIndex < 0) {
+                /*
+                System.out.println(new String(buffer.getBuffer()));
+                System.out.println("\n================\n\n");
+                */
+                bufferIndex = 0;
+            }
             lastChar = c;
             c = buffer.getBuffer()[bufferIndex];
             // default, go next

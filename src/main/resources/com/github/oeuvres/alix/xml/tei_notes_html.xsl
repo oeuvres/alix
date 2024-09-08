@@ -34,11 +34,15 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
         </xsl:variable>
         <xsl:if test="$notes != ''">
           <section class="footnotes">
+            <xsl:value-of select="$lf"/>
             <xsl:for-each select="exslt:node-set($notes)/*">
               <xsl:sort select="substring-before(concat(@class, ' '), ' ')"/>
+              <xsl:value-of select="$lf"/>
               <xsl:copy-of select="."/>
+              <xsl:value-of select="$lf"/>
             </xsl:for-each>
           </section>
+          <xsl:value-of select="$lf"/>
         </xsl:if>
         <!--
         <xsl:variable name="notes" select=".//tei:note"/>
