@@ -6,11 +6,13 @@
   xmlns:alix="https://oeuvres.github.io/alix" 
   xmlns:epub="http://www.idpf.org/2007/ops"
   xmlns:tei="http://www.tei-c.org/ns/1.0"
+  exclude-result-prefixes="tei"
   
-  extension-element-prefixes="saxon"
+  xmlns:exslt="http://exslt.org/common"
   xmlns:saxon="http://saxon.sf.net/"
+  extension-element-prefixes="exslt saxon"
   
-  exclude-result-prefixes="tei">
+  >
   <xsl:import href="tei_flow_html.xsl"/>
   <xsl:import href="tei_notes_html.xsl"/>
   <xsl:import href="tei_toc_html.xsl"/>
@@ -421,13 +423,25 @@
   </xsl:template>
   <!-- links supposed internal -->
   <xsl:template name="links">
-    <xsl:for-each select=".//tei:ref">
-      <xsl:variable name="target" select="normalize-space(@target)"/>
+    <xsl:variable name="links">
+      <xsl:for-each select=".//tei:ref">
+        <xsl:sort select="@target"/>
+        <xsl:variable name="target" select="normalize-space(@target)"/>
+        <xsl:choose>
+          <xsl:when test="$target = ''"/>
+          <xsl:when test="starts-with($target, 'http')"/>
+          <xsl:otherwise>
+            <alix:field name="link" type="facet" value="{$target}"/>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:for-each>
+    </xsl:variable>
+    <xsl:for-each select="exslt:node-set($links)/*">
+      <xsl:variable name="value" select="@value"/>
       <xsl:choose>
-        <xsl:when test="$target = ''"/>
-        <xsl:when test="starts-with($target, 'http')"/>
+        <xsl:when test="preceding-sibling::*[@value = $value]"/>
         <xsl:otherwise>
-          <alix:field name="link" type="facet" value="{$target}"/>
+          <xsl:copy-of select="."/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:for-each>
