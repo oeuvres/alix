@@ -68,6 +68,7 @@ public class IntSeries extends IntList
     public int[] quartile = new int[5];
     /** Full sum, for average */
     public long sum;
+    
     /**
      * Constructor for a statistic series with minimal metadata.
      * 
@@ -76,8 +77,8 @@ public class IntSeries extends IntList
      * @param code identifying number, or .
      * @param cat a category, for series grouping.
      */
-    public IntSeries(final String name, final String label, final int code, final int cat) {
-        super();
+    public IntSeries(final int capacity, final String name, final String label, final int code, final int cat) {
+        super(capacity);
         this.name = name;
         this.label = label;
         this.code = code;

@@ -69,7 +69,7 @@ public class IntList
      * 
      * @param capacity initial size.
      */
-    public IntList(int capacity) {
+    public IntList(final int capacity) {
         data = new int[capacity];
     }
 

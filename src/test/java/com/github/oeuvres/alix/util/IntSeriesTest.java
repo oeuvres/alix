@@ -9,7 +9,7 @@ public class IntSeriesTest {
     @Test
     public void calcs()
     {
-        IntSeries series = new IntSeries("test", null, 0, 0);
+        IntSeries series = new IntSeries(4, "test", null, 0, 0);
         
         
         series.clear();

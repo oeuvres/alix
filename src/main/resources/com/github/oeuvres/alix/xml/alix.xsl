@@ -101,25 +101,25 @@
     </xsl:choose>
   </xsl:variable>
 
-  <!-- Racine -->
+  <!-- Root -->
   <xsl:template match="/*">
     <xsl:choose>
       <xsl:when test="@type='article'">
-        <alix:article xmlns:epub="http://www.idpf.org/2007/ops">
+        <alix:article xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml">
           <xsl:call-template name="alix:root">
             <xsl:with-param name="doctype">article</xsl:with-param>
           </xsl:call-template>
         </alix:article>
       </xsl:when>
       <xsl:when test="@type='book'">
-        <alix:book>
+        <alix:book xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml">
           <xsl:call-template name="alix:root">
             <xsl:with-param name="doctype">book</xsl:with-param>
           </xsl:call-template>
         </alix:book>
       </xsl:when>
       <xsl:when test="@type='document'">
-        <alix:document xmlns:epub="http://www.idpf.org/2007/ops">
+        <alix:document xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
           <xsl:call-template name="alix:root">
             <xsl:with-param name="doctype">document</xsl:with-param>
           </xsl:call-template>
@@ -127,7 +127,7 @@
       </xsl:when>
       <!-- let it like that for obvie -->
       <xsl:when test="true()">
-        <alix:book xmlns:epub="http://www.idpf.org/2007/ops">
+        <alix:book xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
           <xsl:call-template name="alix:root">
             <xsl:with-param name="doctype">book</xsl:with-param>
           </xsl:call-template>
@@ -135,14 +135,14 @@
       </xsl:when>
       <!--There are chapters -->
       <xsl:when test=".//tei:div[key('split', generate-id())]">
-        <alix:book xmlns:epub="http://www.idpf.org/2007/ops">
+        <alix:book xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
           <xsl:call-template name="alix:root">
             <xsl:with-param name="doctype">book</xsl:with-param>
           </xsl:call-template>
         </alix:book>
       </xsl:when>
       <xsl:otherwise>
-        <alix:document xmlns:epub="http://www.idpf.org/2007/ops">
+        <alix:document xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
           <xsl:call-template name="alix:root">
             <xsl:with-param name="doctype">document</xsl:with-param>
           </xsl:call-template>
@@ -162,7 +162,7 @@
           <xsl:value-of select="$filename"/>
         </xsl:when>
         <xsl:otherwise>
-          <xsl:message terminate="no">NO id for this book, will be hard to retrieve. Set xsl:param $filename on call or in your sourcefile /tei:TEI/@xml:id</xsl:message>
+          <xsl:message terminate="no">NO id for this document, will be hard to retrieve. Set xsl:param $filename on call, or set /tei:TEI/@xml:id in your sourcefile</xsl:message>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:attribute>
@@ -190,6 +190,7 @@
     <alix:field name="toc" type="store" xmlns="http://www.w3.org/1999/xhtml">
       <xsl:call-template name="toc"/>
     </alix:field>
+    <xsl:call-template name="refs"/>
     <xsl:choose>
       <xsl:when test="$doctype = 'book'">
         <!-- process chapters -->
@@ -412,7 +413,22 @@
           <xsl:value-of select="$next"/>
         </alix:field>
       </xsl:if>
+      <!-- get the internal links -->
+      <xsl:call-template name="refs"/>
     </alix:chapter>
+  </xsl:template>
+  <!-- links supposed internal -->
+  <xsl:template name="refs">
+    <xsl:for-each select=".//tei:ref">
+      <xsl:variable name="target" select="normalize-space(@target)"/>
+      <xsl:choose>
+        <xsl:when test="$target = ''"/>
+        <xsl:when test="starts-with($target, 'http')"/>
+        <xsl:otherwise>
+          <alix:field name="ref" type="facet" value="{$target}"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:for-each>
   </xsl:template>
   <!-- Terms in subtitle could be boosted ? -->
   <xsl:template name="children">

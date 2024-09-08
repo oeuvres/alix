@@ -518,7 +518,7 @@ public class JspTools
      * 
      * @param name name of an http param.
      * @param range [min, max].
-     * @return [] if no value, [] if at least one value outise [min, max], [point] if 1 value, [lower, upper] if 2 values.
+     * @return null if no value, [lower, higher], lower < higher, lower >= min, higher <= max.
      */
     public int[] getIntRange(final String name, final int[] range)
     {
@@ -531,43 +531,32 @@ public class JspTools
             max = Math.max(range[0], range[1]);
         }
         String[] values = request.getParameterValues(name);
-        if (values == null || values.length < 1) {
-            return new int[0];
+        if (values == null || values.length < 2) {
+            return null;
         }
         final int[] data = new int[2];
-        int pos = 0;
-        for (String v : values) {
-            int value;
-            try {
-                value = Integer.parseInt(v);
-            } 
-            catch (Exception e) {
-                continue;
-            }
-            data[pos++] = value;
-            if (pos == 2) break;
+        int valid = 0;
+        try {
+            data[0] = Integer.parseInt(values[0]);
+            valid++;
         }
-        if (pos == 0) {
-            return new int[0];
+        catch (Exception e) {
+            data[0] = min;
         }
-        else if (pos == 1) {
-            if (data[0] < min || data[0] > max) return null;
-            return new int[] {data[0]};
+        try {
+            data[1] = Integer.parseInt(values[1]);
+            valid++;
         }
-        else {
-            final int lower = Math.max(Math.min(data[0], data[1]), min);
-            final int upper = Math.min(Math.max(data[0], data[1]), max);
-            if (lower == min && upper == max) {
-                // probably default values, no info
-                return new int[0];
-            }
-            else if (lower == upper) {
-                return new int[] {lower};
-            }
-            else {
-                return new int[] {lower, upper};
-            }
+        catch (Exception e) {
+            data[1] = max;
         }
+        if (valid < 1) {
+            return null;
+        }
+        
+        final int lower = Math.max(Math.min(data[0], data[1]), min);
+        final int upper = Math.min(Math.max(data[0], data[1]), max);
+        return new int[] {lower, upper};
     }
 
     /**
