@@ -1093,7 +1093,7 @@ Tables
           </xsl:apply-templates>
         </xsl:element>
       </xsl:when>
-      <xsl:when test="$rend = ''">
+      <xsl:when test="not(@rend) or $rend = ''">
         <i>
           <xsl:call-template name="atts"/>
           <xsl:apply-templates>
@@ -1124,14 +1124,6 @@ Tables
             <xsl:with-param name="from" select="$from"/>
           </xsl:apply-templates>
         </sub>
-      </xsl:when>
-      <xsl:when test="contains($rend, 'initial') or starts-with($rend, 'over') or starts-with($rend, 'sc') or starts-with($rend, 'under')">
-        <span>
-          <xsl:call-template name="atts"/>
-          <xsl:apply-templates>
-            <xsl:with-param name="from" select="$from"/>
-          </xsl:apply-templates>
-        </span>
       </xsl:when>
       <xsl:when test="starts-with($rend, 'exp')">
         <sup>
@@ -1165,14 +1157,22 @@ Tables
           </xsl:apply-templates>
         </span>
       </xsl:when>
-      <!-- maybe tei generated from html mess, thing like <i rend="t15"></i> -->
-      <xsl:otherwise>
-        <i>
+      <xsl:when test="contains($rend, 'initial') or starts-with($rend, 'over') or starts-with($rend, 'sc') or starts-with($rend, 'under')">
+        <span>
           <xsl:call-template name="atts"/>
           <xsl:apply-templates>
             <xsl:with-param name="from" select="$from"/>
           </xsl:apply-templates>
-        </i>
+        </span>
+      </xsl:when>
+      <!-- maybe tei generated from html mess, thing like <i rend="t15"></i> -->
+      <xsl:otherwise>
+        <span>
+          <xsl:call-template name="atts"/>
+          <xsl:apply-templates>
+            <xsl:with-param name="from" select="$from"/>
+          </xsl:apply-templates>
+        </span>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
@@ -2312,7 +2312,7 @@ Centralize some html attribute policy, especially for id, and class
   -->
   <xsl:template name="atts">
     <!-- Add some html classes to the automatic ones -->
-    <xsl:param name="rend"/>
+    <xsl:param name="rend" select="@rend"/>
     <!-- Ddelegate class attribution to another template -->
     <xsl:call-template name="class">
       <xsl:with-param name="rend" select="$rend"/>
