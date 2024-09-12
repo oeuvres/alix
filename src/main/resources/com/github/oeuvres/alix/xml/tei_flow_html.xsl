@@ -431,7 +431,7 @@ Sections
       </xsl:choose>
     </xsl:variable>
     <xsl:element name="{$el}">
-      <xsl:variable name="prev" select="preceding-sibling::*[not(self::tei:pb)][not(self::tei:cb)][1]"/>
+      <xsl:variable name="prev" select="preceding-sibling::*[not(self::tei:pb)][1]"/>
       <xsl:variable name="char1" select="substring( normalize-space(.), 1, 1)"/>
       <xsl:call-template name="atts">
         <xsl:with-param name="rend">

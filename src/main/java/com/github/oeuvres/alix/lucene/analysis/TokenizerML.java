@@ -89,11 +89,11 @@ public class TokenizerML  extends Tokenizer
     /** Buffer of chars */
     private final CharacterBuffer buffer = CharacterUtils.newCharacterBuffer(8192);
     /** Position in buffer */
-    private int bufferIndex = -1;
+    private int bufferIndex = 0;
     /** size of buffer*/
-    private int  bufferLen = -1;
+    private int  bufferLen = 0;
     /** current char offset */
-    private int offset = -1;
+    private int offset = 0;
     
     /**
      * Build a Tokenizer for Markup tagged text.
@@ -106,18 +106,17 @@ public class TokenizerML  extends Tokenizer
     public final boolean incrementToken() throws IOException
     {
         clearAttributes();
+        // flags
         boolean intag = false;
         boolean number = false;
         
         // Mandatory start of a term
-        int startOffset = offset;
-        // Optional end of term if offset is wrong
-        int endOffset = -1;
-        char lastChar = 0;
+        int startOffset = -1;
+        char lastChar;
         char c = 0;
+        int endOffset;
         while (true) {
-            bufferIndex++;
-            offset++;
+            endOffset = offset;
             // needs more chars ? start (-1, -1). End (0, 0).
             if (bufferIndex >= bufferLen) {
                 // use default lucene code to read chars from source
@@ -128,7 +127,6 @@ public class TokenizerML  extends Tokenizer
                 if (bufferLen == 0) {
                     // last term to send, 
                     if (!termAtt.isEmpty()) {
-                        offset++;
                         break;
                     }
                     return false;
@@ -136,11 +134,7 @@ public class TokenizerML  extends Tokenizer
             }
             // if no luck, a try to go back in buffer can fall in negative
             if (bufferIndex < 0) {
-                /*
-                System.out.println(new String(buffer.getBuffer()));
-                System.out.println("\n================\n\n");
-                */
-                bufferIndex = 0;
+                // bufferIndex = 0;
             }
             lastChar = c;
             c = buffer.getBuffer()[bufferIndex];
@@ -150,144 +144,119 @@ public class TokenizerML  extends Tokenizer
             if (c == '<') {
                 // send pending term, come back next call
                 if (!termAtt.isEmpty()) {
-                    bufferIndex--;
-                    endOffset = offset;
-                    offset--;
                     break;
                 }
                 intag = true;
                 startOffset = offset;
+                termAtt.append(c);
             }
             // inside a tag, record char
-            if (intag) {
+            else if (intag) {
                 termAtt.append(c);
-                if (c == '>') { // end of tag, send it
+                if (c == '>') { // end of tag, send it, set for next char
                     flagsAtt.setFlags(Tag.XML.flag);
                     endOffset = offset + 1; // position of '>' + 1
+                    bufferIndex++;
+                    offset++;
                     break;
                 }
-                continue;
             }
-
             // num
-            if (Char.isDigit(c)) {
+            else if (Char.isDigit(c)) {
                 if (termAtt.isEmpty()) {
                     number = true;
                     flagsAtt.setFlags(Tag.NUM.flag());
                     startOffset = offset;
                 }
-                // start a negative umber
+                // start a negative number
                 if (termAtt.length() == 1 && lastChar == '-') {
                     number = true;
                     flagsAtt.setFlags(Tag.NUM.flag());
                 }
                 // if not a number started, will be appended to something else
                 termAtt.append(c);
-                continue;
             }
             // decimal ?
-            if (number && (c == '.' || c == ',')) {
+            else if (number && (c == '.' || c == ',') && lastChar != '.' && lastChar != ',') {
                 termAtt.append(c);
-                continue;
             }
             // end of number, send, and go back on next call
-            if (number && !Char.isDigit(c)) {
+            else if (number && !Char.isDigit(c)) {
                 number = false;
-                // was not a decimal go back
+                // dot or comma after number was punctuation
                 if (lastChar == '.' || lastChar == ',') {
+                    termAtt.setLength(termAtt.length() - 1);
                     bufferIndex--;
                     offset--;
-                    termAtt.setLength(termAtt.length() - 1);
                 }
-                endOffset = offset;
-                bufferIndex--;
-                offset--;
                 break;
             }
-            
-            
             // if a letter, sure we add it 
-            if (Char.isToken(c)) {
+            else if (Char.isToken(c)) {
                 // start of token, record startOffset
                 if (termAtt.isEmpty()) {
                     startOffset = offset;
                 }
 
-                if (c == (char) 0xAD) continue; // soft hyphen, do not append to term
                 if (c == '’') c = '\''; // normalize apos
-                termAtt.append(c);
+                if (c != (char) 0xAD) { // soft hyphen, do not append to term
+                    termAtt.append(c);
+                }
                 // something went wrong in loops or it is not a text with space like 
-                if (termAtt.length() >= TOKEN_MAX_SIZE)
+                if (termAtt.length() >= TOKEN_MAX_SIZE) {
+                    bufferIndex++;
+                    offset++;
                     break; // a too big token stop
-                // default, go next char
-                continue;
+                }
             }
-            
-            
             // abbreviation ?
-            if (c == '.' && Char.isLetter(lastChar)) {
-                // M., p., probably abbr
-                if (termAtt.length() == 1) {
-                    termAtt.append(c);
-                    continue;
-                }
-                // U.S.S.R.
-                if (termAtt.length() > 2 && termAtt.charAt(termAtt.length()-2) == '.') {
-                    termAtt.append(c);
-                    continue;
-                }
-                // let work PUNsent after
+            else if (c == '.' && Char.isLetter(lastChar) && (
+                   termAtt.length() == 1 // M., p., probably abbr
+                || (termAtt.length() > 2 && termAtt.charAt(termAtt.length()-2) == '.') // U.S.S.R.
+            )) {
+                termAtt.append(c);
             }
-            
             // Clause punctuation, send a punctuation event to separate tokens
-            if (Char.isPUNcl(c)) {
-                // send pending term, come back next call
+            else if (',' == c || ';' == c || ':' == c || '(' == c || ')' == c || '—' == c || '–' == c 
+                    || '"' == c || '«' == c || '»' == c ) {
+                // send pending term, come back next call, 
                 if (!termAtt.isEmpty()) {
-                    endOffset = offset; // position of ','
-                    bufferIndex--;
-                    offset--;
                     break;
                 }
+                // send the punctuation
+                termAtt.append(c);
                 startOffset = offset;
                 endOffset = offset + 1;
-                termAtt.append(c);
                 flagsAtt.setFlags(Tag.PUNclause.flag);
+                bufferIndex++;
+                offset++;
                 break;
             }
-            
             // Possible sentence delimiters
-            if (c == '.' || c == '…' || c == '?' || c == '!' || c == '«' || c == '—' || c == ':') {
+            else if (c == '.' || c == '…' || c == '?' || c == '!' ) {
                 // if pending word, send, and come back later
-                if (!termAtt.isEmpty()) {
-                    endOffset = offset;
-                    bufferIndex--;
-                    offset--;
+                if (!termAtt.isEmpty() && lastChar != '.' && lastChar != '?' && lastChar != '!') {
                     break;
                 }
-                // append punctuation and wait for space to send (???, !!!)
+                // append punctuation and wait for space to send (???, !!!, ...)
                 if (termAtt.isEmpty()) {
                     flagsAtt.setFlags(Tag.PUNsent.flag);
                     startOffset = offset;
                 }
-                endOffset = offset + 1;
                 termAtt.append(c);
-                // continue;
-                // break; // will bug on !!!, ..., ???, but not on bad spaces?bug
             }
-            
-            // no word to append, go next char
-            if (termAtt.isEmpty()) {
-                continue;
+            // not token char, token to send
+            else if (!termAtt.isEmpty()) {
+                break;
             }
-            break;
+            bufferIndex++;
+            offset++;
         }
         // here, a term should be ready, send it
         posIncAtt.setPositionIncrement(1);
         posLenAtt.setPositionLength(1);
-        if (endOffset < 1) endOffset = offset; // default is to send term on a space
         offsetAtt.setOffset(correctOffset(startOffset), correctOffset(endOffset));
-
-
+        // do not increment buffer and offset here, ex: word<endOfWord/>, break is done on '<'
         return true;
     }
     
@@ -303,9 +272,9 @@ public class TokenizerML  extends Tokenizer
     public void reset() throws IOException
     {
         super.reset();
-        bufferIndex = -1;
-        bufferLen = -1;
-        offset = -1;
+        bufferIndex = 0;
+        bufferLen = 0;
+        offset = 0;
         buffer.reset(); // make sure to reset the IO buffer!!
     }
     

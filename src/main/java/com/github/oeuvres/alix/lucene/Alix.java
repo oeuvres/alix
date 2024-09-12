@@ -859,14 +859,11 @@ public class Alix
         if (q == null || "".equals(q.trim()))
             return null;
         // if
-        if (fieldName == null)
-            fieldName = SEARCH;
+        if (fieldName == null) {
+            fieldName = "query";
+        }
         TokenStream ts = analyzer.tokenStream(fieldName, q); // keep punctuation to group search
         CharTermAttribute token = ts.addAttribute(CharTermAttribute.class);
-        // not generic for other analyzers but may become interesting for a search
-        // parser
-        // CharsLemAtt lem = ts.addAttribute(CharsLemAtt.class);
-        // FlagsAttribute flags = ts.addAttribute(FlagsAttribute.class);
         ts.reset();
         try {
             while (ts.incrementToken()) {

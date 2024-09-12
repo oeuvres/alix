@@ -113,10 +113,8 @@ public class FilterCloud extends TokenFilter
         // record an empty token at puctuation position for the rails
         if (Tag.PUN.sameParent(tag)) {
             if (tag == Tag.PUNclause.flag) {
-                termAtt.setEmpty().append(",");
             }
             else if (tag == Tag.PUNsent.flag) {
-                termAtt.setEmpty().append(".");
             }
             else if (tag == Tag.PUNpara.flag || tag == Tag.PUNsection.flag) {
                 // let it

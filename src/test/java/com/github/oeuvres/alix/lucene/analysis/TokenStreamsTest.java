@@ -25,27 +25,26 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 public class TokenStreamsTest {
     
-    public void cloud() throws IOException
+    public void tokML() throws IOException
     {
-        String text = "note<a class=\"noteref\" href=\"#note2\" id=\"note2_\" epub:type=\"noteref\">1</a>";
-        
+        String text = "\"pris conscience\" enfant";
+        // String text = "Voir PIAGET, p. 10. À 10,5% en 1985, 1987 et 1988... U.S.S.R. ";
+        // String text = "note<a class=\"noteref\" href=\"#note2\" id=\"note2_\" epub:type=\"noteref\">1</a>";
+        // String text = "<span class=\"sc\">Piaget</span> (1907) <i>Un, moineau albinos</i>";
+        // soft hyphen
+        // String text = "Ce problème est de savoir si l’interprétation psycho-réflexo­logique exclut l’interprétation psychologique ou si elle la complète simplement.";
         TokenizerML tokenizer = new TokenizerML();
         tokenizer.setReader(new StringReader(text));
         analyze(tokenizer, text);
-        /*
-        // Analyzer ana = new AnalyzerCloud();
-        Analyzer ana = new AnalyzerLem();
+    }
+    
+    @Test
+    public void query() throws IOException
+    {
+        String text = "\"Pris conscience\" enfant";
+        Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);
         ana.close();
-        */
-    }
-
-    public void points() throws IOException
-    {
-        TokenizerML tokenizer = new TokenizerML();
-        String text = "Voir PIAGET, p. 10. À 10,5% en 1985, 1987 et 1988. U.S.S.R. ";
-        tokenizer.setReader(new StringReader(text));
-        analyze(tokenizer, text);
     }
     
     public void html() throws IOException
@@ -86,7 +85,6 @@ public class TokenStreamsTest {
         }
     }
     
-    @Test
     public void aposHyph() throws IOException
     {
         Analyzer ana = new AnalyzerCloud();
@@ -95,15 +93,14 @@ public class TokenStreamsTest {
         ana.close();
     }
 
-    static public class ShingleAnalyzer extends Analyzer
+    static public class AposHyphenAnalyzer extends Analyzer
     {
-        @SuppressWarnings("resource")
         @Override
         public TokenStreamComponents createComponents(String field)
         {
             final Tokenizer tokenizer = new TokenizerML(); // segment words
             TokenStream ts = new FilterAposHyphenFr(tokenizer);
-            ts = new FilterLemmatize(ts); // provide lemma+pos
+            // ts = new FilterLemmatize(ts); // provide lemma+pos
             // ts = new FilterFind(ts); // orthographic form and lemma as term to index
             // ts = new ASCIIFoldingFilter(ts); // no accents
             return new TokenStreamComponents(tokenizer, ts);
@@ -111,13 +108,13 @@ public class TokenStreamsTest {
 
     }
     
-    static public class AnalyzerAposHyph extends Analyzer
+    static public class AsciiAnalyzer extends Analyzer
     {
         @Override
         public TokenStreamComponents createComponents(String field)
         {
             final Tokenizer tokenizer = new TokenizerML(); // segment words
-            TokenStream result = new FilterAposHyphenFr(tokenizer); // provide lemma+pos
+            TokenStream result = new ASCIIFoldingFilter(tokenizer); // provide lemma+pos
             return new TokenStreamComponents(tokenizer, result);
         }
 
