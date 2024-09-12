@@ -120,7 +120,7 @@ public class FilterCloud extends TokenFilter
                 // let it
             }
             else {
-                termAtt.setEmpty().append("");
+                // termAtt.setEmpty().append("");
             }
         }
         // unify numbers
