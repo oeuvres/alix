@@ -168,6 +168,10 @@
         </xsl:otherwise>
       </xsl:choose>
     </xsl:attribute>
+    <xsl:if test="/*/@cert">
+      <alix:field name="cert" type="facet" value="{normalize-space(/*/@cert)}"/>
+    </xsl:if>
+
     <xsl:copy-of select="$info"/>
     <!-- Date of global book -->
     <xsl:variable name="year" select="substring($docdate, 1, 4)"/>
@@ -345,6 +349,14 @@
           <xsl:value-of select="@xml:id"/>
         </xsl:attribute>
       </xsl:if>
+      <xsl:choose>
+        <xsl:when test="@cert">
+          <alix:field name="cert" type="facet" value="{normalize-space(@cert)}"/>
+        </xsl:when>
+        <xsl:when test="/*/@cert">
+          <alix:field name="cert" type="facet" value="{normalize-space(/*/@cert)}"/>
+        </xsl:when>
+      </xsl:choose>
       <alix:field name="toc" type="store">
         <xsl:call-template name="toclocal"/>
       </alix:field>
