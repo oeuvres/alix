@@ -41,7 +41,7 @@ public class TokenStreamsTest {
     @Test
     public void query() throws IOException
     {
-        String text = "\"Pris conscience\" enfant";
+        String text = "\"Pris conscience\" enfant aut*";
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);
         ana.close();

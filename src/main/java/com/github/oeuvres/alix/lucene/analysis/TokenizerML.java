@@ -192,6 +192,10 @@ public class TokenizerML  extends Tokenizer
                 }
                 break;
             }
+            // specific joker 
+            else if (c == '*' && !termAtt.isEmpty()) {
+                termAtt.append(c);
+            }
             // if a letter, sure we add it 
             else if (Char.isToken(c)) {
                 // start of token, record startOffset
