@@ -193,8 +193,8 @@ public class Doc
         StringBuilder sb = new StringBuilder();
 
         FieldText ftext = alix.fieldText(field);
-        int len1 = ftext.docOccs(docId);
-        int len2 = ftext.docOccs(docId2);
+        int len1 = ftext.occsByDoc(docId);
+        int len2 = ftext.occsByDoc(docId2);
 
         Terms vek1 = getTermVector(field);
         Terms vek2 = alix.reader().termVectors().get(docId2, field);
@@ -348,7 +348,7 @@ public class Doc
             forms.scoreByForm = new double[fieldText.maxForm];
         }
         forms.freqByForm = new long[fieldText.maxForm]; // freqs by form
-        int docOccs = fieldText.docOccs(docId);
+        int occsByDoc = fieldText.occsByDoc(docId);
 
         // loop on all forms of the document, get score, keep the top
         // final long restLen = fieldText.occsAll - occsDoc;
@@ -378,7 +378,7 @@ public class Doc
             forms.freqByForm[formId] = freq;
             forms.freqAll += freq;
             if (hasDistrib) {
-                forms.scoreByForm[formId] += distrib.score(freq, docOccs);
+                forms.scoreByForm[formId] += distrib.score(freq, occsByDoc);
                 // scores[formId] -= scorer.last(formOccsAll[formId] - freq, restLen); // sub
                 // complement ?
             }
@@ -512,8 +512,8 @@ public class Doc
         Terms vek2 = alix.reader().termVectors().get(docId2, field);
         Top<String> top = new Top<String>(100);
         FieldText ftext = alix.fieldText(field);
-        int len1 = ftext.docOccs(docId);
-        int len2 = ftext.docOccs(docId2);
+        int len1 = ftext.occsByDoc(docId);
+        int len2 = ftext.occsByDoc(docId2);
         Terms vek1 = getTermVector(field);
         // double max1 = Double.MIN_VALUE;
         // double max2 = Double.MIN_VALUE;
@@ -609,12 +609,12 @@ public class Doc
      * Return the count of tokens of this doc for field.
      * 
      * @param field name of a stored field.
-     * @return {@link FieldText#docOccs(int)}.
+     * @return {@link FieldText#occsByDoc(int)}.
      * @throws IOException Lucene errors.
      */
     public int length(String field) throws IOException
     {
-        return alix.fieldText(field).docOccs(docId);
+        return alix.fieldText(field).occsByDoc(docId);
     }
 
     /**

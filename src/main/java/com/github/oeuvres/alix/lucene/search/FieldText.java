@@ -299,17 +299,6 @@ public class FieldText extends FieldCharsAbstract
     }
 
     /**
-     * Total count of occurrences (except empty positions) for a docId.
-     * 
-     * @param docId lucene internal doc id.
-     * @return occurrences count for this doc.
-     */
-    public int docOccs(final int docId)
-    {
-        return occsByDoc[docId];
-    }
-
-    /**
      * Build a BitSet of formId for efficient filtering of forms by tags.
      * 
      * @param formFilter filter 
@@ -801,6 +790,17 @@ public class FieldText extends FieldCharsAbstract
     public int tag(int formId)
     {
         return tagByForm[formId];
+    }
+
+    /**
+     * Total count of occurrences (except empty positions) for a docId.
+     * 
+     * @param docId lucene internal doc id.
+     * @return occurrences count for this doc.
+     */
+    public int occsByDoc(final int docId)
+    {
+        return occsByDoc[docId];
     }
 
     @Override

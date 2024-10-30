@@ -58,13 +58,13 @@ import org.apache.lucene.util.Bits;
 public class FieldInt extends FieldAbstract
 {
     /** Maximum id for a value. */
-    private final int idMax;
+    private final int vidMax;
     /** Values, sorted, position in this array is an internal id for the value */
-    private final int[] sorted;
+    private final int[] vidValue;
     /** For each docId, the id of the int value in the sorted vector */
-    private final int[] docValue;
+    private final int[] docVid;
     /** Count of docs by int value int the order of the sorted cursor */
-    private final int[] valueDocs;
+    private final int[] vidDocs;
     /** Maximum value */
     private final int maximum;
     /** Minimum value */
@@ -98,9 +98,9 @@ public class FieldInt extends FieldAbstract
         // should be NumericDocValues or IntPoint with one dimension here
 
         int maxDoc = reader.maxDoc();
-        final int[] docInt = new int[maxDoc];
+        final int[] docValue = new int[maxDoc];
         // fill with min value for docs deleted or with no values
-        Arrays.fill(docInt, Integer.MIN_VALUE);
+        Arrays.fill(docValue, Integer.MIN_VALUE);
 
         // NumericDocValues
 
@@ -131,7 +131,7 @@ public class FieldInt extends FieldAbstract
                     int value = (int) docs4num.longValue(); // long value is here force to int;
                     docs++;
                     sum += value;
-                    docInt[docId] = value;
+                    docValue[docId] = value;
                     if (min > value)
                         min = value;
                     if (max < value)
@@ -150,7 +150,7 @@ public class FieldInt extends FieldAbstract
         }
         // IntPoint
         else if (info.getPointDimensionCount() > 0) {
-            IntPointVisitor visitor = new IntPointVisitor(docInt, counter);
+            IntPointVisitor visitor = new IntPointVisitor(docValue, counter);
             for (LeafReaderContext context : reader.leaves()) {
                 visitor.setContext(context); // for liveDocs and docBase
                 LeafReader leaf = context.reader();
@@ -165,31 +165,29 @@ public class FieldInt extends FieldAbstract
                     + "\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
         }
         // get values of treeMap, should be ordered
-        idMax = counter.size();
-        int[] sorted = new int[idMax];
-        long[] valOccs = new long[idMax];
-        int[] valDocs = new int[idMax];
+        vidMax = counter.size();
+        vidValue = new int[vidMax];
+        // long[] valOccs = new long[idMax];
+        vidDocs = new int[vidMax];
         Map<Integer, Integer> valueDic = new TreeMap<Integer, Integer>(); // a dic intValue => idValue
         int valueId = 0;
         for (Map.Entry<Integer, long[]> entry : counter.entrySet()) {
             final int valueInt = entry.getKey();
-            sorted[valueId] = valueInt;
+            vidValue[valueId] = valueInt;
             valueDic.put(valueInt, valueId);
-            valDocs[valueId] = (int) entry.getValue()[0];
-            valOccs[valueId] = entry.getValue()[1];
+            vidDocs[valueId] = (int) entry.getValue()[0];
+            // valOccs[valueId] = entry.getValue()[1];
             valueId++;
         }
         // for each docId, replace the int value by it’s id
         for (int docId = 0; docId < maxDoc; docId++) {
-            int valueInt = docInt[docId];
-            if (valueInt == Integer.MIN_VALUE)
+            int value = docValue[docId];
+            if (value == Integer.MIN_VALUE)
                 continue;
-            docInt[docId] = valueDic.get(valueInt); // should not be null, let cry
+            docValue[docId] = valueDic.get(value); // should not be null, let cry
         }
 
-        this.docValue = docInt;
-        this.sorted = sorted;
-        this.valueDocs = valDocs;
+        this.docVid = docValue;
     }
 
 
@@ -250,6 +248,26 @@ public class FieldInt extends FieldAbstract
     public static int year(final double dateNum)
     {
         return (int) Math.ceil(dateNum / 10000);
+    }
+    
+    /**
+     * By docId, returns the indexed int value for the doc,
+     * or {@link Integer.MIN_VALUE} if no value for this doc.
+     * @param docId
+     * @return 
+     */
+    public int value4doc(final int docId)
+    {
+        if (docId < 0) {
+            throw new IllegalArgumentException("docId=" + docId +"  < 0");
+        }
+        if (docId >= docVid.length) {
+            throw new IllegalArgumentException("docId=" + docId +"  > reader.maxDoc()=" + reader.maxDoc());
+        }
+        final int vid = docVid[docId];
+        // no value for this doc
+        if (vid < 0) return vid;
+        return vidValue[vid];
     }
 
     /**
@@ -342,7 +360,7 @@ public class FieldInt extends FieldAbstract
         int max = Integer.MIN_VALUE;
         for (int docId = docFilter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = docFilter
                 .nextSetBit(docId + 1)) {
-            final int val = sorted[docValue[docId]];
+            final int val = vidValue[docVid[docId]];
             if (val < min)
                 min = val;
             if (val > max)
@@ -366,7 +384,7 @@ public class FieldInt extends FieldAbstract
          */
         public boolean hasNext()
         {
-            return (cursor < (idMax - 1));
+            return (cursor < (vidMax - 1));
         }
 
         /**
@@ -383,7 +401,7 @@ public class FieldInt extends FieldAbstract
          */
         public int docs()
         {
-            return valueDocs[cursor];
+            return vidDocs[cursor];
         }
 
         /**
@@ -393,7 +411,7 @@ public class FieldInt extends FieldAbstract
          */
         public long value()
         {
-            return sorted[cursor];
+            return vidValue[cursor];
         }
     }
 

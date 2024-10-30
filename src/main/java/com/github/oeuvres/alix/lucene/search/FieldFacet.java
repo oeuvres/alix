@@ -117,7 +117,7 @@ public class FieldFacet extends FieldCharsAbstract
      */
     public FieldFacet(final DirectoryReader reader, final String fieldName) throws IOException {
         super(reader, fieldName);
-        // final int[] docOccs = new int[reader.maxDoc()];
+        // final int[] occsByDoc = new int[reader.maxDoc()];
         type = info.getDocValuesType();
         IndexOptions options = info.getIndexOptions();
         formsByDoc = new int[reader.maxDoc()][];
@@ -328,7 +328,7 @@ public class FieldFacet extends FieldCharsAbstract
             formEnum.hitsAll++; // document hit
             // empty document, probably a book cover, but we don’t want a dependance here on
             // a FieldText
-            // if (ftext.docOccs[docId] < 1) continue;
+            // if (ftext.occsByDoc[docId] < 1) continue;
             int[] facets = formsByDoc[docId];
             if (facets == null)
                 continue;
@@ -362,7 +362,7 @@ public class FieldFacet extends FieldCharsAbstract
         // loop on all docs by docId,
         for (int docId = 0, len = reader.maxDoc(); docId < len; docId++) {
             // get occs count by doc
-            long occs = ftext.docOccs(docId);
+            long occs = ftext.occsByDoc(docId);
             if (hasFilter && docFilter.get(docId)) {
                 formEnum.hitsAll++;
                 formEnum.occsAll += occs;
@@ -489,7 +489,7 @@ public class FieldFacet extends FieldCharsAbstract
                         // formPartOccs[facetId] += freq;
                         // term frequency
                         if (hasScorer) {
-                            formEnum.scoreByForm[facetId] += scorer.score(freq, ftext.docOccs(docId));
+                            formEnum.scoreByForm[facetId] += scorer.score(freq, ftext.occsByDoc(docId));
                         }
                     }
                     if (!docSeen) {
@@ -548,9 +548,9 @@ public class FieldFacet extends FieldCharsAbstract
             int[] forms = formsByDoc[docId];
             if (forms == null)
                 continue;
-            final int docOccs = ftext.docOccs(docId);
+            final int occsByDoc = ftext.occsByDoc(docId);
             for (final int formId : forms) {
-                formOccsAll[formId] += docOccs;
+                formOccsAll[formId] += occsByDoc;
             }
         }
         return formOccsAll;
