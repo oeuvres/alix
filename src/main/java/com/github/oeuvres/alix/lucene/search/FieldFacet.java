@@ -349,36 +349,7 @@ public class FieldFacet extends FieldCharsAbstract
      */
     public FormEnum formEnum(final FieldText ftext, final BitSet docFilter) throws IOException
     {
-        if (ftext == null) {
-            throw new IllegalArgumentException("A TextField (with indexed tokens) is required here");
-        }
-        boolean hasFilter = (docFilter != null);
-        FormEnum formEnum = formEnum();
-        formEnum.occsByForm = new long[maxForm];
-        if (hasFilter) {
-            formEnum.freqByForm = new long[maxForm];
-            formEnum.hitsByForm = new int[maxForm];
-        }
-        // loop on all docs by docId,
-        for (int docId = 0, len = reader.maxDoc(); docId < len; docId++) {
-            // get occs count by doc
-            long occs = ftext.occsByDoc(docId);
-            if (hasFilter && docFilter.get(docId)) {
-                formEnum.hitsAll++;
-                formEnum.occsAll += occs;
-            }
-            final int[] formIds = formsByDoc[docId];
-            if (formIds == null)
-                continue;
-            for (final int formId : formIds) {
-                formEnum.occsByForm[formId] += occs;
-                if (hasFilter && docFilter.get(docId)) {
-                    formEnum.freqByForm[formId] += occs;
-                    formEnum.hitsByForm[formId]++;
-                }
-            }
-        }
-        return formEnum;
+        return formEnum(ftext, docFilter, null, null);
     }
 
     /**
@@ -392,115 +363,121 @@ public class FieldFacet extends FieldCharsAbstract
      * on search of this facet, with scores and other stats.
      * 
      * @param ftext required stats from a text field.
-     * @param search required set of terms present in the text field.
      * @param docFilter optional set of internal lucene docId.
+     * @param formBytes optional set of terms present in the text field.
      * @param scorer optional distribution to calculate a score for each facet.
      * @return an enumerator of facets with textual stats.
      * @throws IOException Lucene errors.
      */
-    public FormEnum formEnum(final FieldText ftext, final String[] search, final BitSet docFilter, Distrib scorer)
+    public FormEnum formEnum(final FieldText ftext, final BitSet docFilter, final BytesRef[] formsBytes, Distrib scorer)
             throws IOException
     {
-        FormEnum formEnum = formEnum(ftext, docFilter);
-        ArrayList<Term> terms = new ArrayList<Term>();
-        if (search != null && search.length != 0) {
-            for (String f : search) {
-                if (f == null)
-                    continue;
-                if (f.isEmpty())
-                    continue;
-                terms.add(new Term(ftext.fieldName, f));
+        if (ftext == null) {
+            throw new IllegalArgumentException("A TextField (with indexed tokens) is required here");
+        }
+        FormEnum formEnum = formEnum();
+        formEnum.occsAll = ftext.occsAll();
+        formEnum.occsByForm = new long[maxForm];
+        // loop on all docs by docId to set occs by facet
+        for (int docId = 0, len = reader.maxDoc(); docId < len; docId++) {
+            final long occs = ftext.occsByDoc(docId);
+            int[] facets = formsByDoc[docId]; // get the facets for this doc
+            if (facets == null) continue;
+            for (final int facetId: facets) {
+                formEnum.occsByForm[facetId] += occs;
             }
         }
-        // no terms found
-        if (terms.size() < 1) {
+        boolean hasFilter = (docFilter != null);
+        // no query to search with, but a doc filter to set hits
+        if (formsBytes == null && hasFilter) {
+            formEnum.hitsByForm = new int[maxForm];
+            // loop on all docs by docId to set hits by facet
+            for (int docId = 0, len = reader.maxDoc(); docId < len; docId++) {
+                if (!docFilter.get(docId)) continue;
+                formEnum.hitsAll++;
+                int[] facets = formsByDoc[docId]; // get the facets for this doc
+                if (facets == null) continue;
+                for (final int facetId: facets) {
+                    formEnum.occsByForm[facetId] ++;
+                }
+            }
+            return formEnum;
+        }
+        // no more stats to get here
+        else if (formsBytes == null) {
             return formEnum;
         }
         boolean hasScorer = (scorer != null);
-        boolean hasFilter = (docFilter != null);
+        
+        
+
 
         // Crawl index to get stats by facet term about the text search
-        BitSet docMap = new FixedBitSet(reader.maxDoc()); // keep memory of already counted docs
+        java.util.BitSet docMap = new java.util.BitSet(reader.maxDoc()); // keep memory of already counted docs
 
         formEnum.hitsByForm = new int[maxForm];
         formEnum.freqByForm = new long[maxForm]; // a vector to count matched occurrences by facet
-        if (hasScorer) {
-            formEnum.scoreByForm = new double[maxForm];
-        }
-        // loop on each term of the search to update the score vector
-        @SuppressWarnings("unused")
-        int facetMatch = 0; // number of matched facets by this search
-        @SuppressWarnings("unused")
-        long occsMatch = 0; // total occurrences matched
 
-        // loop on search, this order of loops may be not efficient for a big list of
-        // search
-        // loop by term is better for some stats
-        for (Term term : terms) {
-            // long[] formPartOccs = new long[size]; // a vector to count matched
-            // occurrences for this term, by facet
-            final int formId = ftext.formId(term.bytes());
-            // shall we do something here if word not known ?
-            if (formId < 1) {
-                continue;
-            }
-            if (hasScorer) {
-                scorer.expectation(ftext.occs(formId), ftext.occsAll);
-                scorer.idf(ftext.docsByForm[formId], ftext.docsAll, ftext.occsAll);
-            }
-            // loop on the reader leaves (opening may have disk cost)
-            for (LeafReaderContext context : reader.leaves()) {
-                LeafReader leaf = context.reader();
-                // get the ocurrence count for the term
-                PostingsEnum postings = leaf.postings(term);
-                if (postings == null) {
-                    continue;
-                }
-                final int docBase = context.docBase;
+
+        // hits by form, to record a var for scoring
+        final int[] hitsByForm = new int[ftext.maxForm()];
+        PostingsEnum docsEnum = null; // reuse
+        for (LeafReaderContext context : reader.leaves()) {
+            LeafReader leaf = context.reader();
+            final int docBase = context.docBase;
+            Terms terms = leaf.terms(ftext.name());
+            if (terms == null) continue;
+            TermsEnum tenum = terms.iterator();
+            for (final BytesRef bytes : formsBytes) {
+                if (bytes == null) continue;
+                if (!tenum.seekExact(bytes)) continue; // term may be absent from this leaf
+                final int formId = ftext.formId(bytes);
+                docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
                 int docLeaf;
-                // loop on the docs for this term
-                while ((docLeaf = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    int docId = docBase + docLeaf;
-                    if (hasFilter && !docFilter.get(docId))
-                        continue; // document not in the metadata filter
-                    final int freq = postings.freq();
-                    if (freq == 0) {
-                        continue; // no occurrence for this term (why found with no freqs ?)
-                    }
+                final Bits live = leaf.getLiveDocs();
+                while ((docLeaf = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                    if (live != null && !live.get(docLeaf)) continue; // deleted doc
+                    final int docId = docBase + docLeaf;
+                    if (hasFilter &&!docFilter.get(docId)) continue; // document not in the filter
+                    hitsByForm[formId]++; // increment hits by form
+                    final int freq = docsEnum.freq();
+                    if (freq == 0) continue; // no occurrence for this term
                     final boolean docSeen = docMap.get(docId); // doc has been seen for another term in the search
                     int[] facets = formsByDoc[docId]; // get the facets of this doc
-                    if (facets == null)
-                        continue; // could be null if doc matching but not faceted
-                    occsMatch += freq;
-                    for (int i = 0, length = facets.length; i < length; i++) {
-                        int facetId = facets[i];
-                        // first match for this facet, increment the counter of matched facets
-                        if (formEnum.freqByForm[facetId] == 0) {
-                            facetMatch++;
-                        }
+                    if (facets == null) continue; // could be null if doc matching but not faceted
+                    // some docs may have no facets, like books covers
+                    if (!docSeen) formEnum.hitsAll++; // 
+                    formEnum.freqAll += freq; // all terms matched
+                    // loop on facets for this term in this leaf
+                    for (final int facetId : facets) {
                         // if doc not already counted for another, increment hits for this facet
                         if (!docSeen) {
                             formEnum.hitsByForm[facetId]++;
-                            formEnum.hitsAll++;
+                            docMap.set(docId);
                         }
-                        formEnum.freqAll += freq;
                         formEnum.freqByForm[facetId] += freq; // add the matched freqs for this doc to the facet
-                        // what for ?
-                        // formPartOccs[facetId] += freq;
-                        // term frequency
-                        if (hasScorer) {
-                            formEnum.scoreByForm[facetId] += scorer.score(freq, ftext.occsByDoc(docId));
-                        }
-                    }
-                    if (!docSeen) {
-                        docMap.set(docId); // do not recount this doc as hit for another term
                     }
                 }
             }
-
+        }
+        // loop on facets to calculate score
+        if (hasScorer) {
+            formEnum.scoreByForm = new double[maxForm];
+            for (int facetId = 0; facetId < maxForm; facetId++) {
+                for (final BytesRef bytes : formsBytes) {
+                    final int formId = ftext.formId(bytes);
+                    scorer.expectation(ftext.occs(formId), ftext.occsAll);
+                    // hits here is the count of docs 
+                    scorer.idf(ftext.docsByForm[formId], ftext.docsAll, ftext.occsAll);
+                    // ??
+                    formEnum.scoreByForm[facetId] += scorer.score(formEnum.freqByForm[facetId], formEnum.occsByForm[facetId]);
+                }
+            }
         }
         return formEnum;
     }
+    
+    
 
     /**
      * Use a list of search as a navigator for a list of doc ids. The list is

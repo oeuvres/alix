@@ -187,11 +187,11 @@ abstract class FieldCharsAbstract extends FieldAbstract
         if (forms == null) {
             return null;
         }
-        final int maxForm = dic.size();
         final int formsLen = forms.length;
         if (formsLen < 1) {
             return null;
         }
+        final int maxForm = dic.size();
         BitSet uniq = new FixedBitSet(maxForm);
         ArrayList<BytesRef> list = new ArrayList<>(formsLen);
         for (int i = 0; i < formsLen; i++) {

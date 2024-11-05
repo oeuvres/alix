@@ -174,7 +174,7 @@ public class FieldText extends FieldCharsAbstract
                     if (live != null && !live.get(docLeaf)) continue; // deleted doc
                     final int docId = docBase + docLeaf;
                     int freq = docsEnum.freq();
-                    if (freq == 0) continue; // strange, is’n it ? Will probably not arrive
+                    if (freq == 0) continue; // observed
                     rec.docs++;
                     rec.occs += freq;
                     occsAll += freq;

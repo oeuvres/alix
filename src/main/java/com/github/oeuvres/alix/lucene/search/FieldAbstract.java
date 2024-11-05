@@ -49,4 +49,13 @@ abstract class FieldAbstract
         return docsAll;
     }
 
+    /**
+     * Get name of this field.
+     * 
+     * @return {@link #fieldName}
+     */
+    public String name()
+    {
+        return fieldName;
+    }
 }
