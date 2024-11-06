@@ -86,7 +86,7 @@ public class SuggestForm
     private final IndexReader reader;
     /** Starting indexes of words in the ascii String */
     private final int[] starts;
-    /** “word count” () dictionary size */
+    /** “word count”, dictionary size */
     private final int wc;
     
     /**

@@ -70,20 +70,21 @@ import com.github.oeuvres.alix.util.IntList;
  */
 public class FieldText extends FieldCharsAbstract
 {
-    /** locByForm.get(formId) == true: form is a locution. */
-    private BitSet locByForm;
     /** Σ occsByForm; global count of occs for this field, without empty positions. */
     protected final long occsAll;
     /** occsByDoc[docId] = occs; count of occurrences by document, without empty positions. */
-    protected final int[] occsByDoc;
+    protected final int[] docId4occs;
     /** occsByform[formId] = occs; count of occurrences by form. */
-    protected final long[] occsByForm;
-    /** punByForm.get(formId) == true: form is punctuation. */
-    private BitSet punByForm;
-    /** stopByForm.get(formId) == true: form is a stop word. */
-    private BitSet stopByForm;
-    /** tagByForm[formI] = {@link Tag#flag()}; lexical type of form. */
-    protected int[] tagByForm;
+    protected final long[] formId4occs;
+    /** formId4isPun.get(formId) == true: form is punctuation. */
+    private BitSet formId4isPun;
+    /** formId4isStop.get(formId) == true: form is a stop word. */
+    private BitSet formId4isStop;
+    /** formId4flag[formId] = {@link Tag#flag()}; lexical type of form. */
+    protected int[] formId4flag;
+    /** formId4isLoc.get(formId) == true: form is a locution. */
+    private BitSet formId4isLoc;
+    
     /**
      * Build the dictionaries and stats. Each form indexed for the field will be
      * identified by an int (formId). This id will be in freq order: the
@@ -109,7 +110,7 @@ public class FieldText extends FieldCharsAbstract
          * https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/
          * apache/lucene/search/similarities/SimilarityBase.java#L185
          */
-        occsByDoc = new int[reader.maxDoc()];
+        docId4occs = new int[reader.maxDoc()];
         // used between leaves to avoid errors in docs count
         final FixedBitSet docSet = new FixedBitSet(reader.maxDoc());
         // extract all terms on first pass to give a formId in frequence ordert
@@ -178,7 +179,7 @@ public class FieldText extends FieldCharsAbstract
                     rec.docs++;
                     rec.occs += freq;
                     occsAll += freq;
-                    occsByDoc[docId] += freq;
+                    docId4occs[docId] += freq;
                     docSet.set(docId);
                 }
             }
@@ -188,12 +189,12 @@ public class FieldText extends FieldCharsAbstract
         // sort forms, and reloop on them to get optimized things
         java.util.BitSet stopRecord = new java.util.BitSet(); // record StopWords in a growable BitSet
         java.util.BitSet punRecord = new java.util.BitSet();
-        locByForm = new SparseFixedBitSet(maxForm); // record locutions, size of BitSet will be full
+        formId4isLoc = new SparseFixedBitSet(maxForm); // record locutions, size of BitSet will be full
         
         dic.add(new BytesRef("")); // add empty string as formId=0 for empty positions
-        occsByForm = new long[maxForm];
-        docsByForm = new int[maxForm];
-        tagByForm = new int[maxForm];
+        formId4occs = new long[maxForm];
+        formId4docs = new int[maxForm];
+        formId4flag = new int[maxForm];
         Collections.sort(stack); // should sort by frequences
         CharsAttImpl chars = new CharsAttImpl(); // to test against indexation dicos
         bytes = new BytesRef();
@@ -202,31 +203,31 @@ public class FieldText extends FieldCharsAbstract
             tmpDic.get(rec.tmpId, bytes); // get the term
             final int formId = dic.add(bytes); // copy it in the other dic and get its definitive id
             // if (bytes.length == 0) formId = 0; // if empty pos is counted
-            occsByForm[formId] = rec.occs;
-            docsByForm[formId] = rec.docs;
+            formId4occs[formId] = rec.occs;
+            formId4docs[formId] = rec.docs;
             if (FrDics.isStop(bytes)) stopRecord.set(formId);
             chars.copy(bytes); // convert utf-8 bytes to utf-16 chars
             final int indexOfSpace = chars.indexOf(' ');
-            if (indexOfSpace > 0) locByForm.set(formId);
+            if (indexOfSpace > 0) formId4isLoc.set(formId);
             LexEntry entry = FrDics.word(chars);
             if (entry != null) {
-                tagByForm[formId] = entry.tag;
+                formId4flag[formId] = entry.tag;
                 continue;
             }
             entry = FrDics.name(chars);
             if (entry != null) {
                 if (entry.tag == Tag.NAMEpers.flag || entry.tag == Tag.NAMEpersf.flag || entry.tag == Tag.NAMEpersm.flag
                         || entry.tag == Tag.NAMEfict.flag || entry.tag == Tag.NAMEauthor.flag) {
-                    tagByForm[formId] = Tag.NAMEpers.flag;
+                    formId4flag[formId] = Tag.NAMEpers.flag;
                     continue;
                 }
                 else {
-                    tagByForm[formId] = entry.tag;
+                    formId4flag[formId] = entry.tag;
                     continue;
                 }
             }
             if (Char.isPunctuation(chars.charAt(0))) {
-                tagByForm[formId] = Tag.PUN.flag;
+                formId4flag[formId] = Tag.PUN.flag;
                 punRecord.set(formId);
                 continue;
             }
@@ -236,11 +237,11 @@ public class FieldText extends FieldCharsAbstract
                 entry = FrDics.word(chars);
                 if (entry != null) {
                     if (entry.tag == Tag.SUBpers.flag) {
-                        tagByForm[formId] = Tag.NAMEpers.flag;
+                        formId4flag[formId] = Tag.NAMEpers.flag;
                         continue;
                     }
                     if (entry.tag == Tag.SUBplace.flag) {
-                        tagByForm[formId] = Tag.NAMEplace.flag;
+                        formId4flag[formId] = Tag.NAMEplace.flag;
                         continue;
                     }
                 }
@@ -249,23 +250,23 @@ public class FieldText extends FieldCharsAbstract
                 if (entry != null) {
                     if (entry.tag == Tag.NAMEpers.flag || entry.tag == Tag.NAMEpersf.flag
                             || entry.tag == Tag.NAMEpersm.flag) {
-                        tagByForm[formId] = Tag.NAMEpers.flag;
+                        formId4flag[formId] = Tag.NAMEpers.flag;
                         continue;
                     }
                 }
             }
 
             // if (chars.length() < 1) continue; // ?
-            if (Char.isUpperCase(chars.charAt(0))) tagByForm[formId] = Tag.NAME.flag;
+            if (Char.isUpperCase(chars.charAt(0))) formId4flag[formId] = Tag.NAME.flag;
         }
         // convert a java.lang growable BitSets in fixed lucene ones
-        stopByForm = new FixedBitSet(stopRecord.length());
+        formId4isStop = new FixedBitSet(stopRecord.length());
         for (int formId = stopRecord.nextSetBit(0); formId != -1; formId = stopRecord.nextSetBit(formId + 1)) {
-            stopByForm.set(formId);
+            formId4isStop.set(formId);
         }
-        punByForm = new FixedBitSet(punRecord.length());
+        formId4isPun = new FixedBitSet(punRecord.length());
         for (int formId = punRecord.nextSetBit(0); formId != -1; formId = punRecord.nextSetBit(formId + 1)) {
-            punByForm.set(formId);
+            formId4isPun.set(formId);
         }
 
         docsAll = docSet.cardinality();
@@ -313,7 +314,7 @@ public class FieldText extends FieldCharsAbstract
                 if (isStop(formId)) continue;
             }
             else {
-                if (!formFilter.get(tagByForm[formId])) continue;
+                if (!formFilter.get(formId4flag[formId])) continue;
             }
             rule.set(formId);
         }
@@ -375,14 +376,14 @@ public class FieldText extends FieldCharsAbstract
         boolean hasFilter = (docFilter != null && docFilter.cardinality() > 0);
     
         if (hasDistrib) formEnum.scoreByForm = new double[maxForm];
-        formEnum.freqByForm = new long[maxForm];
-        formEnum.hitsByForm = new int[maxForm];
+        formEnum.formId4freq = new long[maxForm];
+        formEnum.formId4hits = new int[maxForm];
         
         int occsPart = 0;
         if (docFilter != null) {
             for (int docId = docFilter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = docFilter
                     .nextSetBit(docId + 1)) {
-                occsPart += occsByDoc[docId];
+                occsPart += docId4occs[docId];
             }
         }
         // if (hasSpecif) specif.all(occsAll, docsAll);
@@ -407,16 +408,16 @@ public class FieldText extends FieldCharsAbstract
                     if(isStop(formId)) continue;
                 }
                 else if (locs) {  // special tag
-                    if(!locByForm.get(formId)) continue;
+                    if(!formId4isLoc.get(formId)) continue;
                 }
                 else if (hasTags) {
-                    if(!formFilter.get(tagByForm[formId])) continue;
+                    if(!formFilter.get(formId4flag[formId])) continue;
                 }
                 // if formId is negative, let the error go, problem in reader
                 // for each form, set scorer with global stats by form, before count by doc
                 if (hasDistrib) {
-                    distribution.idf(docsByForm[formId], docsAll, occsAll);
-                    distribution.expectation(occsByForm[formId], occsAll);
+                    distribution.idf(formId4docs[formId], docsAll, occsAll);
+                    distribution.expectation(formId4occs[formId], occsAll);
                 }
                 postings = tenum.postings(postings, PostingsEnum.FREQS);
                 int docLeaf;
@@ -432,14 +433,14 @@ public class FieldText extends FieldCharsAbstract
                         formEnum.hitsAll++;
                         hitsByDoc.set(docId);
                     }
-                    formEnum.hitsByForm[formId]++;
+                    formEnum.formId4hits[formId]++;
                     if (hasDistrib) {
-                        final double score = distribution.score(freq, occsByDoc[docId]);
+                        final double score = distribution.score(freq, docId4occs[docId]);
                         // if (score < 0) forms.formScore[formId] -= score; // all variation is
                         // significant
                         formEnum.scoreByForm[formId] += score;
                     }
-                    formEnum.freqByForm[formId] += freq;
+                    formEnum.formId4freq[formId] += freq;
                     formEnum.freqAll += freq;
                 }
             }
@@ -447,9 +448,9 @@ public class FieldText extends FieldCharsAbstract
         // finalize some scorer like G or Chi2
         if (hasDistrib) {
             for (int formId = 0; formId < maxForm; formId++) {
-                distribution.expectation(occsByForm[formId], occsAll); // do not forget expectation for the form
+                distribution.expectation(formId4occs[formId], occsAll); // do not forget expectation for the form
                 // add inverse score
-                final long restFreq = occsByForm[formId] - formEnum.freqByForm[formId];
+                final long restFreq = formId4occs[formId] - formEnum.formId4freq[formId];
                 final long restLen = occsAll - occsPart;
                 double score = distribution.last(restFreq, restLen);
                 formEnum.scoreByForm[formId] += score;
@@ -497,9 +498,9 @@ public class FieldText extends FieldCharsAbstract
             FormEnum forms = formEnum();
             dics[i] = forms;
             if (hasScorer) forms.scoreByForm = new double[maxForm];
-            forms.freqByForm = new long[maxForm];
-            forms.hitsByForm = new int[maxForm];
-            forms.hitsByDoc = new FixedBitSet(reader.maxDoc());
+            forms.formId4freq = new long[maxForm];
+            forms.formId4hits = new int[maxForm];
+            forms.docId4match = new FixedBitSet(reader.maxDoc());
         }
         // loop on index
         BytesRef bytes;
@@ -520,13 +521,13 @@ public class FieldText extends FieldCharsAbstract
                     if(isStop(formId)) continue;
                 }
                 else if (hasTags) {
-                    if(!formFilter.get(tagByForm[formId])) continue;
+                    if(!formFilter.get(formId4flag[formId])) continue;
                 }
                 // if formId is negative, let the error go, problem in reader
                 // for each term, set scorer with global stats
                 if (hasScorer) {
-                    scorer.idf(docsByForm[formId], docsAll, occsAll);
-                    scorer.expectation(occsByForm[formId], occsAll);
+                    scorer.idf(formId4docs[formId], docsAll, occsAll);
+                    scorer.expectation(formId4occs[formId], occsAll);
                 }
                 docsEnum = tenum.postings(docsEnum, PostingsEnum.FREQS);
                 int docLeaf;
@@ -545,18 +546,18 @@ public class FieldText extends FieldCharsAbstract
                     if (freq < 1) throw new ArithmeticException("??? field=" + fieldName + " docId=" + docId + " term="
                             + bytes.utf8ToString() + " freq=" + freq);
                     // doc not yet encounter, we can count
-                    if (!forms.hitsByDoc.get(docId)) {
+                    if (!forms.docId4match.get(docId)) {
                         forms.hitsAll++;
-                        forms.hitsByDoc.set(docId);
+                        forms.docId4match.set(docId);
                     }
-                    forms.hitsByForm[formId]++;
+                    forms.formId4hits[formId]++;
                     if (hasScorer) {
-                        final double score = scorer.score(freq, occsByDoc[docId]);
+                        final double score = scorer.score(freq, docId4occs[docId]);
                         // if (score < 0) forms.formScore[formId] -= score; // all variation is
                         // significant
                         forms.scoreByForm[formId] += score;
                     }
-                    forms.freqByForm[formId] += freq;
+                    forms.formId4freq[formId] += freq;
                     forms.freqAll += freq;
                 }
                 /*
@@ -663,8 +664,8 @@ public class FieldText extends FieldCharsAbstract
      */
     public boolean isLocution(int formId)
     {
-        if (formId >= locByForm.length()) return false; // outside the set bits, should be not a stop word
-        return locByForm.get(formId);
+        if (formId >= formId4isLoc.length()) return false; // outside the set bits, should be not a stop word
+        return formId4isLoc.get(formId);
     }
 
     /**
@@ -675,8 +676,8 @@ public class FieldText extends FieldCharsAbstract
      */
     public boolean isPunctuation(int formId)
     {
-        if (formId >= punByForm.length()) return false; // outside the set bits, should be not a stop word
-        return punByForm.get(formId);
+        if (formId >= formId4isPun.length()) return false; // outside the set bits, should be not a stop word
+        return formId4isPun.get(formId);
     }
 
     /**
@@ -687,8 +688,8 @@ public class FieldText extends FieldCharsAbstract
      */
     public boolean isStop(int formId)
     {
-        if (formId <= 0 || formId >= stopByForm.length()) return false; // outside the set bits, should be not a stop word
-        return stopByForm.get(formId);
+        if (formId <= 0 || formId >= formId4isStop.length()) return false; // outside the set bits, should be not a stop word
+        return formId4isStop.get(formId);
     }
 
     /**
@@ -699,7 +700,7 @@ public class FieldText extends FieldCharsAbstract
      */
     public long occs(int formId)
     {
-        return occsByForm[formId];
+        return formId4occs[formId];
     }
 
     /**
@@ -714,7 +715,7 @@ public class FieldText extends FieldCharsAbstract
         final BytesRef bytes = new BytesRef(form);
         final int id = dic.find(bytes);
         if (id < 0) return -1;
-        return occsByForm[id];
+        return formId4occs[id];
     }
 
     /**
@@ -728,7 +729,7 @@ public class FieldText extends FieldCharsAbstract
     {
         final int id = dic.find(bytes);
         if (id < 0) return -1;
-        return occsByForm[id];
+        return formId4occs[id];
     }
 
     /**
@@ -789,7 +790,7 @@ public class FieldText extends FieldCharsAbstract
      */
     public int tag(int formId)
     {
-        return tagByForm[formId];
+        return formId4flag[formId];
     }
 
     /**
@@ -800,7 +801,7 @@ public class FieldText extends FieldCharsAbstract
      */
     public int occsByDoc(final int docId)
     {
-        return occsByDoc[docId];
+        return docId4occs[docId];
     }
 
     @Override
@@ -811,7 +812,7 @@ public class FieldText extends FieldCharsAbstract
         int len = Math.min(maxForm, 200);
         for (int i = 0; i < len; i++) {
             dic.get(i, ref);
-            string.append(ref.utf8ToString() + ": " + occsByForm[i] + "\n");
+            string.append(ref.utf8ToString() + ": " + formId4occs[i] + "\n");
         }
         return string.toString();
     }

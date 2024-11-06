@@ -31,8 +31,8 @@ abstract class FieldCharsAbstract extends FieldAbstract
     protected int maxForm = -1;
     /** Dictionary of terms from this field. */
     protected final BytesRefHash dic = new BytesRefHash();
-    /** docsByform[formId] = docs; count of docs by form. */
-    protected int[] docsByForm;
+    /** formId4docs[formId] = docs; count of docs by form. */
+    protected int[] formId4docs;
 
     public FieldCharsAbstract(DirectoryReader reader, String fieldName) throws IOException {
         super(reader, fieldName);
@@ -46,7 +46,7 @@ abstract class FieldCharsAbstract extends FieldAbstract
      */
     public int docs(int formId)
     {
-        return docsByForm[formId];
+        return formId4docs[formId];
     }
 
     /**

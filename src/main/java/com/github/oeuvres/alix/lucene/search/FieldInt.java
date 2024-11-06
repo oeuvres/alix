@@ -58,13 +58,13 @@ import org.apache.lucene.util.Bits;
 public class FieldInt extends FieldAbstract
 {
     /** Maximum id for a value. */
-    private final int vidMax;
-    /** Values, sorted, position in this array is an internal id for the value */
-    private final int[] vidValue;
-    /** For each docId, the id of the int value in the sorted vector */
-    private final int[] docVid;
-    /** Count of docs by int value int the order of the sorted cursor */
-    private final int[] vidDocs;
+    private final int valueIdMax;
+    /** valueId4value[valueId] = value, unique values, sorted, position in array is an internal value id */
+    private final int[] valueId4value;
+    /** docId4valueId[docId] = valueId, For each docId, the id of the int value in the sorted vector */
+    private final int[] docId4valueId;
+    /** valueId4docs[valueId] = docs, count of docs by int value in the order of the sorted cursor */
+    private final int[] valueId4docs;
     /** Maximum value */
     private final int maximum;
     /** Minimum value */
@@ -165,17 +165,17 @@ public class FieldInt extends FieldAbstract
                     + "\", bad type to get an int vector by docId, is not an IntPoint or NumericDocValues.");
         }
         // get values of treeMap, should be ordered
-        vidMax = counter.size();
-        vidValue = new int[vidMax];
+        valueIdMax = counter.size();
+        valueId4value = new int[valueIdMax];
         // long[] valOccs = new long[idMax];
-        vidDocs = new int[vidMax];
+        valueId4docs = new int[valueIdMax];
         Map<Integer, Integer> valueDic = new TreeMap<Integer, Integer>(); // a dic intValue => idValue
         int valueId = 0;
         for (Map.Entry<Integer, long[]> entry : counter.entrySet()) {
             final int valueInt = entry.getKey();
-            vidValue[valueId] = valueInt;
+            valueId4value[valueId] = valueInt;
             valueDic.put(valueInt, valueId);
-            vidDocs[valueId] = (int) entry.getValue()[0];
+            valueId4docs[valueId] = (int) entry.getValue()[0];
             // valOccs[valueId] = entry.getValue()[1];
             valueId++;
         }
@@ -187,7 +187,7 @@ public class FieldInt extends FieldAbstract
             docValue[docId] = valueDic.get(value); // should not be null, let cry
         }
 
-        this.docVid = docValue;
+        this.docId4valueId = docValue;
     }
 
 
@@ -251,23 +251,38 @@ public class FieldInt extends FieldAbstract
     }
     
     /**
+     * Count of documents for an int value.
+     * 
+     * @return docs for this value if it exists, 0 if value out of bounds or not in set.
+     */
+    public int docs(final int value)
+    {
+        final int vid = Arrays.binarySearch(valueId4value, value);
+        // value not found
+        if (vid < 0) {
+            return 0;
+        }
+        return valueId4docs[vid];
+    }
+    
+    /**
      * By docId, returns the indexed int value for the doc,
      * or {@link Integer.MIN_VALUE} if no value for this doc.
      * @param docId
      * @return 
      */
-    public int value4doc(final int docId)
+    public int docId4value(final int docId)
     {
         if (docId < 0) {
             throw new IllegalArgumentException("docId=" + docId +"  < 0");
         }
-        if (docId >= docVid.length) {
+        if (docId >= docId4valueId.length) {
             throw new IllegalArgumentException("docId=" + docId +"  > reader.maxDoc()=" + reader.maxDoc());
         }
-        final int vid = docVid[docId];
+        final int valueId = docId4valueId[docId];
         // no value for this doc
-        if (vid < 0) return vid;
-        return vidValue[vid];
+        if (valueId < 0) return valueId;
+        return valueId4value[valueId];
     }
 
     /**
@@ -360,7 +375,7 @@ public class FieldInt extends FieldAbstract
         int max = Integer.MIN_VALUE;
         for (int docId = docFilter.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = docFilter
                 .nextSetBit(docId + 1)) {
-            final int val = vidValue[docVid[docId]];
+            final int val = valueId4value[docId4valueId[docId]];
             if (val < min)
                 min = val;
             if (val > max)
@@ -384,7 +399,7 @@ public class FieldInt extends FieldAbstract
          */
         public boolean hasNext()
         {
-            return (cursor < (vidMax - 1));
+            return (cursor < (valueIdMax - 1));
         }
 
         /**
@@ -401,7 +416,7 @@ public class FieldInt extends FieldAbstract
          */
         public int docs()
         {
-            return vidDocs[cursor];
+            return valueId4docs[cursor];
         }
 
         /**
@@ -411,7 +426,7 @@ public class FieldInt extends FieldAbstract
          */
         public long value()
         {
-            return vidValue[cursor];
+            return valueId4value[cursor];
         }
     }
 

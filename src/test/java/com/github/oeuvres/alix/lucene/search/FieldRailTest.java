@@ -4,12 +4,9 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.stream.IntStream;
 
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.IndexOptions;
+
 import org.apache.lucene.util.BitSet;
 
-import com.github.oeuvres.alix.lucene.Alix;
 
 public class FieldRailTest extends FieldRail
 {
@@ -35,8 +32,8 @@ public class FieldRailTest extends FieldRail
         AtomicIntegerArray freqs = new AtomicIntegerArray(dic.size());
         boolean hasFilter = (filter != null);
         int maxDoc = this.maxDoc;
-        int[] posInt = this.indexByDoc;
-        int[] limInt = this.lenByDoc;
+        int[] posInt = this.docId4offset;
+        int[] limInt = this.docId4len;
 
         IntStream loop = IntStream.range(0, maxDoc).filter(docId -> {
             if (limInt[docId] == 0)

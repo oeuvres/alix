@@ -347,7 +347,7 @@ public class Doc
         if (hasDistrib) {
             forms.scoreByForm = new double[fieldText.maxForm];
         }
-        forms.freqByForm = new long[fieldText.maxForm]; // freqs by form
+        forms.formId4freq = new long[fieldText.maxForm]; // freqs by form
         int occsByDoc = fieldText.occsByDoc(docId);
 
         // loop on all forms of the document, get score, keep the top
@@ -371,11 +371,11 @@ public class Doc
             }
             if (hasDistrib) {
                 distrib.expectation(fieldText.occs(formId), fieldText.occsAll);
-                distrib.idf(fieldText.docsByForm[formId], fieldText.docsAll, fieldText.occsAll);
+                distrib.idf(fieldText.formId4docs[formId], fieldText.docsAll, fieldText.occsAll);
             }
             // scorer.weight(termOccs, termDocs); // collection level stats
             long freq = termit.totalTermFreq();
-            forms.freqByForm[formId] = freq;
+            forms.formId4freq[formId] = freq;
             forms.freqAll += freq;
             if (hasDistrib) {
                 forms.scoreByForm[formId] += distrib.score(freq, occsByDoc);

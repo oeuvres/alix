@@ -104,10 +104,10 @@ public class FieldRail
     private final int maxForm;
     /** Size of file header */
     static final int headerInt = 3;
-    /** Index of positions for each doc im channel */
-    protected int[] indexByDoc;
-    /** Index of sizes for each doc */
-    protected int[] lenByDoc;
+    /** docId4offset[docId] = offset, start index of positions for each doc in channel */
+    protected int[] docId4offset;
+    /** docId4le[docId] =  Index of sizes for each doc */
+    protected int[] docId4len;
 
     /**
      * Load rail of words as int, build it as file if necessary.
@@ -173,9 +173,9 @@ public class FieldRail
         // for each doc, a bit set is used to record the relevant positions
         // this will avoid counting interferences when search occurrences are close
         FormEnum formEnum = new FormEnum(fieldText);
-        formEnum.freqByForm = new long[maxForm];
+        formEnum.formId4freq = new long[maxForm];
         formEnum.freqAll = 0;
-        formEnum.hitsByForm = new int[maxForm];
+        formEnum.formId4hits = new int[maxForm];
         
         BitSet formByDoc = new FixedBitSet(maxForm);
         IntBuffer intRail = channelMap.rewind().asIntBuffer().asReadOnlyBuffer(); // the rail
@@ -194,13 +194,13 @@ public class FieldRail
             }
             docLast = docId;
             // loop in this context
-            final int docIndex = indexByDoc[docId];
-            final int docLen = lenByDoc[docId];
+            final int docOffset = docId4offset[docId];
+            final int docLen = docId4len[docId];
             // stats for pivot here, because of context overlap
-            final int pivotId = intRail.get(docIndex + pivotIndex);
-            formEnum.freqByForm[pivotId]++;
+            final int pivotId = intRail.get(docOffset + pivotIndex);
+            formEnum.formId4freq[pivotId]++;
             if (!formByDoc.get(pivotId)) {
-                formEnum.hitsByForm[pivotId]++;
+                formEnum.formId4hits[pivotId]++;
                 formByDoc.set(pivotId);
             }
             
@@ -211,7 +211,7 @@ public class FieldRail
             // loop on this context to collect the known words from which to get a matrix
             form4context.clear();
             for (int formIndex = from; formIndex < to; formIndex++) {
-                final int formId = intRail.get(docIndex + formIndex);
+                final int formId = intRail.get(docOffset + formIndex);
                 if (Arrays.binarySearch(pivotLookup, formId) > -1) {
                     continue; // pivot is counted upper, because of context overlap
                 }
@@ -223,10 +223,10 @@ public class FieldRail
                     continue;
                 }
                 form4context.set(formId);
-                formEnum.freqByForm[formId]++;
+                formEnum.formId4freq[formId]++;
                 formEnum.freqAll++;
                 if (!formByDoc.get(formId)) {
-                    formEnum.hitsByForm[formId]++;
+                    formEnum.formId4hits[formId]++;
                     formByDoc.set(formId);
                 }
             }
@@ -270,15 +270,15 @@ public class FieldRail
         while (docposList.hasNext()) {
             docposList.next();
             final int docId = docposList.row();
-            final int docIndex = indexByDoc[docId];
-            final int docLen = lenByDoc[docId];
+            final int docOffset = docId4offset[docId];
+            final int docLen = docId4len[docId];
             final int pos = docposList.col();
             final int from = Math.max(0, pos - left);
             final int to = Math.min(docLen, pos + 1 + right);
             // loop on this context to collect the known words from which to get a matrix
             nodeIndexes.clear();
             for (int formIndex = from; formIndex < to; formIndex++) {
-                final int formId = intRail.get(docIndex + formIndex);
+                final int formId = intRail.get(docOffset + formIndex);
                 if (formId < 1) {
                     continue;
                 }
@@ -369,13 +369,13 @@ public class FieldRail
         Chain chain = new Chain();
         BytesRef bytes = new BytesRef();
         for (int docId = 0; docId < maxDoc; docId++) {
-            if (lenByDoc[docId] == 0)
+            if (docId4len[docId] == 0)
                 continue; // deleted or with no value for this field
             if (hasPartition && !docFilter.get(docId))
                 continue; // document not in the filter
-            bufInt.position(indexByDoc[docId]); // position cursor in the rail
+            bufInt.position(docId4offset[docId]); // position cursor in the rail
             IntPairMutable key = new IntPairMutable();
-            for (int i = 0, max = lenByDoc[docId]; i < max; i++) {
+            for (int i = 0, max = docId4len[docId]; i < max; i++) {
                 final int formId = bufInt.get();
                 // pun or hole, reset expression
                 if (formId == 0 || fieldText.isPunctuation(formId)) {
@@ -435,8 +435,8 @@ public class FieldRail
         long[] freqs = new long[dic.size()];
         final boolean hasFilter = (docFilter != null);
         int maxDoc = this.maxDoc;
-        int[] posInt = this.indexByDoc;
-        int[] limInt = this.lenByDoc;
+        int[] posInt = this.docId4offset;
+        int[] limInt = this.docId4len;
 
         /*
          * // if channelMap is copied here as int[], same cost as IntBuffer // gain x2
@@ -520,8 +520,8 @@ public class FieldRail
             limInt[i] = docLen;
             indInt += docLen + 1;
         }
-        this.indexByDoc = posInt;
-        this.lenByDoc = limInt;
+        this.docId4offset = posInt;
+        this.docId4len = limInt;
         this.channelMap = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
     }
 
@@ -690,8 +690,8 @@ public class FieldRail
     {
         int limit = 100;
         StringBuilder sb = new StringBuilder();
-        IntBuffer bufInt = channelMap.position(indexByDoc[docId] * 4).asIntBuffer();
-        bufInt.limit(lenByDoc[docId]);
+        IntBuffer bufInt = channelMap.position(docId4offset[docId] * 4).asIntBuffer();
+        bufInt.limit(docId4len[docId]);
         BytesRef ref = new BytesRef();
         while (bufInt.hasRemaining()) {
             int formId = bufInt.get();
