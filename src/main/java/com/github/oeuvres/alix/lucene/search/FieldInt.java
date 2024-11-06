@@ -34,6 +34,8 @@ package com.github.oeuvres.alix.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Iterator;
 import java.util.TreeMap;
@@ -97,7 +99,7 @@ public class FieldInt extends FieldAbstract
         }
         // should be NumericDocValues or IntPoint with one dimension here
 
-        int maxDoc = reader.maxDoc();
+        final int maxDoc = reader.maxDoc();
         final int[] docValue = new int[maxDoc];
         // fill with min value for docs deleted or with no values
         Arrays.fill(docValue, Integer.MIN_VALUE);
@@ -257,12 +259,12 @@ public class FieldInt extends FieldAbstract
      */
     public int docs(final int value)
     {
-        final int vid = Arrays.binarySearch(valueId4value, value);
+        final int valueId = Arrays.binarySearch(valueId4value, value);
         // value not found
-        if (vid < 0) {
+        if (valueId < 0) {
             return 0;
         }
-        return valueId4docs[vid];
+        return valueId4docs[valueId];
     }
     
     /**
@@ -314,27 +316,6 @@ public class FieldInt extends FieldAbstract
         return date;
     }
 
-    /*
-     * Obsolete ? Wait till someone cry public void form(IntEnum iterator, String
-     * form) throws IOException { Term term = new Term(ftextName, form); if
-     * (reader.docFreq(term) < 1) return; // nothing added to iterator, shall we say
-     * it ? final long[] freqs = new long[maxValue]; // array to populate final
-     * int NO_MORE_DOCS = DocIdSetIterator.NO_MORE_DOCS; // loop an all index to get
-     * occs for the term for each valueId for (LeafReaderContext context :
-     * reader.leaves()) { int docBase = context.docBase; LeafReader leaf =
-     * context.reader(); Bits live = leaf.getLiveDocs(); final boolean hasLive =
-     * (live != null); PostingsEnum postings = leaf.postings(term,
-     * PostingsEnum.FREQS); int docLeaf; while ((docLeaf = postings.nextDoc()) !=
-     * NO_MORE_DOCS) { if (hasLive && !live.get(docLeaf)) continue; // deleted doc
-     * int docId = docBase + docLeaf; int freq = postings.freq(); if (freq < 1)
-     * throw new ArithmeticException( "??? field=" + name + " docId=" + docId +
-     * " form=" + form + " freq=" + freq); final int valueInt = docValue[docId]; //
-     * get the value id of this doc if (valueInt == Integer.MIN_VALUE) continue; //
-     * no value for this doc freqs[valueInt] += freq; // add freq } } if
-     * (iterator.dicOccs == null) iterator.dicOccs = new HashMap<String, long[]>();
-     * iterator.dicOccs.put(form, freqs); }
-     */
-
     /**
      * Enumerator on all values of the int field with different stats.
      * 
@@ -382,6 +363,25 @@ public class FieldInt extends FieldAbstract
                 max = val;
         }
         return new int[] { min, max };
+    }
+    
+    /**
+     * Return count of docs by value, with an optional doc filter.
+     * 
+     * @param docFilter if (docFilter.get(docId) == true) {map.increment(value)}
+     * @return Map<value, docs>
+     */
+    public Map<Integer, Integer> docs(final BitSet docFilter)
+    {
+        final Map<Integer, Integer> map = new HashMap<>();
+        final int maxDoc = reader.maxDoc();
+        for (int docId = 0; docId < maxDoc; docId++) {
+            if (docFilter!= null && !docFilter.get(docId)) continue;
+            final int value = docId4value(docId);
+            if (value == Integer.MIN_VALUE) continue;
+            map.put(value, map.getOrDefault(value, 0) + 1);
+        }
+        return map;
     }
 
     /**
