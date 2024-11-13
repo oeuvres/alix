@@ -394,7 +394,8 @@ public class FieldFacet extends FieldCharsAbstract
                 int[] facets = docId4facetId[docId]; // get the facets for this doc
                 if (facets == null) continue;
                 for (final int facetId: facets) {
-                    formEnum.formId4occs[facetId] ++;
+                    formEnum.formId4occs[facetId]++;
+                    formEnum.formId4hits[facetId]++;
                 }
             }
             return formEnum;

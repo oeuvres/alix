@@ -518,7 +518,7 @@ public class JspTools
      * 
      * @param name name of an http param.
      * @param range [min, max].
-     * @return null if no value, [lower, higher], lower < higher, lower >= min, higher <= max.
+     * @return [] if no value, [value] if one value, [lower, higher] if two values, lower < higher, lower >= min, higher <= max.
      */
     public int[] getIntRange(final String name, final int[] range)
     {
@@ -531,32 +531,54 @@ public class JspTools
             max = Math.max(range[0], range[1]);
         }
         String[] values = request.getParameterValues(name);
-        if (values == null || values.length < 2) {
-            return null;
+        if (values == null || values.length == 0) {
+            return new int[0];
+        }
+        Integer value0 = null;
+        try {
+            value0 = Integer.valueOf(values[0]);
+        }
+        catch (Exception e) {
+        }
+        if (values.length == 1) {
+            if (value0 == null) {
+                return new int[0];
+            }
+            else if (value0 >= min && value0 <= max) {
+                return new int[]{value0};
+            }
+            else {
+                return new int[0];
+            }
+        }
+        Integer value1 = null;
+        try {
+            value1 = Integer.parseInt(values[1]);
+        }
+        catch (Exception e) {
+        }
+        // two null values, nothing to return
+        if (value0 == null && value1 == null) {
+            return new int[0];
         }
         final int[] data = new int[2];
-        int valid = 0;
-        try {
-            data[0] = Integer.parseInt(values[0]);
-            valid++;
-        }
-        catch (Exception e) {
+        // [,upper] ?
+        if (value0 == null) {
+            if (value1 < min) return new int[0];
             data[0] = min;
+            data[1] = Integer.min(value1, max);
         }
-        try {
-            data[1] = Integer.parseInt(values[1]);
-            valid++;
-        }
-        catch (Exception e) {
+        // [lower,] ?
+        else if (value1 == null) {
+            if (value0 > max) return new int[0];
+            data[0] = Integer.max(value0, min);
             data[1] = max;
         }
-        if (valid < 1) {
-            return null;
+        else {
+            data[0] = Integer.max(Integer.min(value0, value1), min);
+            data[1] = Integer.min(Integer.max(value0, value1), max);
         }
-        
-        final int lower = Math.max(Math.min(data[0], data[1]), min);
-        final int upper = Math.min(Math.max(data[0], data[1]), max);
-        return new int[] {lower, upper};
+        return data;
     }
 
     /**
