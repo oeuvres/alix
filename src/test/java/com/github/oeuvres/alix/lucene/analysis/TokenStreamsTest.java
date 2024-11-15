@@ -24,7 +24,17 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 public class TokenStreamsTest {
+
     
+    @Test
+    public void locution() throws IOException
+    {
+        String text = "Le chemin de fer d’utilité locale. J’ai pris conscience de mon inanité parce que j’ai pensé.";
+        Analyzer ana = new AnalyzerLocution();
+        analyze(ana.tokenStream("_cloud", text), text);
+        ana.close();
+    }
+
     public void tokML() throws IOException
     {
         String text = "\"pris conscience\" enfant";
@@ -38,7 +48,6 @@ public class TokenStreamsTest {
         analyze(tokenizer, text);
     }
     
-    @Test
     public void query() throws IOException
     {
         String text = "\"Pris conscience\" enfant aut*";
@@ -119,6 +128,20 @@ public class TokenStreamsTest {
         }
 
     }
+
+    static public class AnalyzerLocution extends Analyzer
+    {
+        @Override
+        public TokenStreamComponents createComponents(String field)
+        {
+            final Tokenizer tokenizer = new TokenizerML(); // segment words
+            TokenStream ts = new FilterLemmatize(tokenizer); // provide lemma+pos
+            ts = new FilterLocution(ts); // concat known locutions
+            return new TokenStreamComponents(tokenizer, ts);
+        }
+
+    }
+
     
     static public class AnalyzerLem extends Analyzer
     {

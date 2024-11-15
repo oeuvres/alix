@@ -46,7 +46,6 @@ import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
-import com.github.oeuvres.alix.util.Roll;
 
 /**
  * Plug behind TokenLem, take a Trie dictionary, and try to compound locutions.
@@ -64,14 +63,15 @@ public class FilterLocution extends TokenFilter
     /** A lemma when possible */
     private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** A stack of states */
-    private Roll<State> stack = new Roll<State>(10);
+    private AttributeQueue queue;
     /** A term used to concat a compound */
     private CharsAttImpl compound = new CharsAttImpl();
     /** past paticiples to not take as infinitives */
-    public static final HashSet<CharsAttImpl> ORTH = new HashSet<CharsAttImpl>();
+    public static final HashSet<CharsAttImpl> EXCEPTIONS = new HashSet<CharsAttImpl>();
     static {
-        for (String w : new String[] { "pris", "prise'", "prises" })
-            ORTH.add(new CharsAttImpl(w));
+        for (String w : new String[] { "pris", "prise'", "prises" }) {
+            EXCEPTIONS.add(new CharsAttImpl(w));
+        }
     }
 
     /**
@@ -80,6 +80,7 @@ public class FilterLocution extends TokenFilter
      */
     public FilterLocution(TokenStream input) {
         super(input);
+        queue = new AttributeQueue(10, this);
     }
 
     /**
@@ -110,56 +111,44 @@ public class FilterLocution extends TokenFilter
     public final boolean incrementToken() throws IOException
     {
         CharsAttImpl orth = (CharsAttImpl) orthAtt;
-        boolean token = false;
         compound.setEmpty();
-        Integer treeState;
-        final int BRANCH = FrDics.BRANCH; // localize
-        final int LEAF = FrDics.LEAF; // localize
-        int loop = -1;
         int startOffset = offsetAtt.startOffset();
-        boolean maybeVerb = false;
-        do {
-            loop++;
-            // something in stack, 2 cases
-            // 1. good to output
-            // 2. restart a loop
-            if (stack.size() > loop) {
-                restoreState(stack.get(loop));
-                if (Tag.PUN.sameParent(flagsAtt.getFlags()) || termAtt.length() == 0) {
-                    if (stack.isEmpty())
-                        return true;
-                }
-            } else {
-                boolean more = input.incrementToken();
-                if (!more) { // stream is exhausted, exhaust the stack,
-                    if (stack.isEmpty())
-                        return false; // nothing more to find
-                    restoreState(stack.remove());
-                    return true;
-                }
-                // is a branch stop, exhaust stack
-                if (Tag.PUN.sameParent(flagsAtt.getFlags()) || termAtt.length() == 0) {
-                    // if nothing in stack, go out with current state
-                    if (stack.isEmpty())
-                        return true;
-                    // if stack is not empty, restore first, add this state to the stack
-                    if (!stack.isEmpty())
-                        stack.add(captureState());
-                    restoreState(stack.remove());
-                    return true;
-                }
-                token = true; // ???
-            }
-            // first token of a compound candidate, remember start offset
-            if (loop == 0)
-                startOffset = offsetAtt.startOffset();
-            // not the first token prepare compounding
-            if (loop > 0 && !compound.endsWith('\''))
-                compound.append(' ');
+        boolean verbSeen = false;
+        // a dead end has not conclude as a locution, exhaust states recorded in queue
+        if (!queue.isEmpty()) {
+            queue.removeFirst(this);
+            return true;
+        }
 
+        // let’s start to explore the tree
+        do {
+            boolean hasToken = input.incrementToken();
+            // no more token, and nothing to output, exit
+            if (!hasToken && queue.isEmpty()) {
+                return false;
+            }
+            // no more token, but still some terms in queue to send
+            if (!hasToken) {
+                queue.removeFirst(this);
+                return true;
+            }
+            // if token is pun, end of branch, exit
+            if (Tag.PUN.sameParent(flagsAtt.getFlags()) || termAtt.length() == 0) {
+                // if queue is not empty, copy this state, restore first, and send
+                if (!queue.isEmpty()) {
+                    queue.addLast(this);
+                    queue.removeFirst(this);
+                }
+                return true;
+            }
+            // append a ' ' to last token (if any) for compound test
+            if (!compound.isEmpty() && !compound.endsWith('\'')) { // append separator before the term
+                compound.append(' ');
+            }
+            // choose version of form to append for test, according to its pos
             int tag = flagsAtt.getFlags();
-            // for adjectives to no confuse with verbs
-            if (orthAtt.length() != 0 && ORTH.contains(orthAtt)) {
+            // forms to keep as is
+            if (orthAtt.length() != 0 && EXCEPTIONS.contains(orthAtt)) {
                 compound.append(orthAtt);
             }
             else if (Tag.NUM.sameParent(tag)) {
@@ -170,12 +159,12 @@ public class FilterLocution extends TokenFilter
             }
             // verbs, compound key is the lemma
             else if (Tag.VERB.sameParent(tag) && lemAtt.length() != 0) {
-                maybeVerb = true;
+                verbSeen = true;
                 compound.append(lemAtt);
             }
             // "ne fait pas l’affaire"
-            else if (maybeVerb && orth.equals("pas")) {
-                compound.setLength(compound.length() - 1); // suppres last ' '
+            else if (verbSeen && orth.equals("pas")) {
+                compound.rtrim(); // suppres last ' '
             }
             // for other words, orth may have correct initial capital of sentence
             else if (!Tag.SUB.sameParent(tag) && orth.length() != 0) {
@@ -186,63 +175,65 @@ public class FilterLocution extends TokenFilter
                 compound.append(termAtt);
             }
 
-            treeState = FrDics.TREELOC.get(compound);
+            final Integer nodeType = FrDics.TREELOC.get(compound);
 
-            if (treeState == null) {
-                // here, we could try to fix "parti pris" ("pris" seen as verb "prendre") ?
-                // if nothing in stack, and new token, go out with current state
-                if (stack.isEmpty() && loop == 0)
-                    return true;
-                // if stack is not empty and a new token, add it to the stack
-                if (token)
-                    stack.add(captureState());
-                restoreState(stack.remove());
+            // dead end
+            if (nodeType == null) {
+                // if queue is not empty, copy this state, restore first, and send
+                if (!queue.isEmpty()) {
+                    queue.addLast(this);
+                    queue.removeFirst(this);
+                }
                 return true;
             }
-
-            // it’s a compound
-            if ((treeState & LEAF) > 0) {
-                stack.clear();
+            // a locution found, set state of atts according to this locution
+            else if ((nodeType & FrDics.LEAF) > 0) {
+                queue.clear();
                 // get its entry
                 LexEntry entry = FrDics.WORDS.get(compound);
-                if (entry == null)
+                if (entry == null) {
                     entry = FrDics.NAMES.get(compound);
+                }
+                // known entry, find its lem
                 if (entry != null) {
                     flagsAtt.setFlags(entry.tag);
                     termAtt.setEmpty().append(compound);
-                    if (entry.orth != null)
+                    if (entry.orth != null) {
                         orth.setEmpty().append(entry.orth);
-                    else
+                    }
+                    else {
                         orth.setEmpty();
-                    if (entry.lem != null)
+                    }
+                    if (entry.lem != null) {
                         lemAtt.setEmpty().append(entry.lem);
-                    else
+                    }
+                    else {
                         lemAtt.setEmpty();
-                } else {
+                    }
+                }
+                // no lemma or tags for this locution
+                else {
                     termAtt.setEmpty().append(compound);
                     orth.setEmpty().append(compound);
                     lemAtt.setEmpty();
                 }
-
+                // set offset
                 offsetAtt.setOffset(startOffset, offsetAtt.endOffset());
-                // no more compound with this prefix, we are happy
-                if ((treeState & BRANCH) == 0)
+                // no more locution candidate starting with same prefix
+                if ((nodeType & FrDics.BRANCH) == 0) {
                     return true;
-                // compound may continue, lookahead should continue, store this step
-                stack.add(captureState());
+                }
+                // store this locution in the queue, try to go ahead ((chemin de fer) d’intérêt local)
+                queue.addLast(this);
             }
-            // should be a part of a compound, store state if it’s a new token
+            // should be a part of a compound, store state in case dead end, for rewind 
+            else if ((nodeType & FrDics.BRANCH) > 0) {
+                queue.addLast(this);
+            }
             else {
-                if (token)
-                    stack.add(captureState());
+                throw new RuntimeException("Unknow value in TREELOC:" + nodeType);
             }
-
-        } while (loop < 10); // a compound bigger than 10, there’s a problem, should not arrive
-        if (!stack.isEmpty()) {
-            restoreState(stack.remove());
-            return true;
-        }
-        return true; // ?? pb à la fin
+        } while (true); // a compound bigger than 10 should hurt queue
     }
 
     @Override

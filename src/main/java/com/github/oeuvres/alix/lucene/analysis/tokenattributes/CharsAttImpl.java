@@ -377,7 +377,7 @@ public class CharsAttImpl extends AttributeImpl
     @Override
     public void copyTo(AttributeImpl target)
     {
-        copyTo(target);
+        ((CharTermAttribute)target).copyBuffer(chars, 0, len);
     }
 
     /**
@@ -570,8 +570,9 @@ public class CharsAttImpl extends AttributeImpl
      * Get last char
      * 
      * @return last char.
+     * @throws ArrayIndexOutOfBoundsException if there is no char
      */
-    public char lastChar()
+    public char lastChar() throws ArrayIndexOutOfBoundsException
     {
         return chars[len - 1];
     }
@@ -643,6 +644,38 @@ public class CharsAttImpl extends AttributeImpl
         if (this.mark > -1)
             this.len = this.mark;
         this.mark = -1; //
+        return this;
+    }
+    
+    /**
+     * Delete spaces at end (right trim)
+     * @return
+     */
+    public final CharsAttImpl rtrim()
+    {
+        while (len > 0) {
+            char c = chars[len - 1];
+            if (c != ' ') break;
+            len--;
+            hash = 0;
+        }
+        return this;
+    }
+
+    /**
+     * Delete different characters at the end (right trim)
+     * 
+     * @param spaces char codes to delete
+     * @return
+     */
+    public final CharsAttImpl rtrim(String spaces)
+    {
+        while (len > 0) {
+            char c = chars[len - 1];
+            if (spaces.indexOf(c) < 0) break;
+            len--;
+            hash = 0;
+        }
         return this;
     }
 
