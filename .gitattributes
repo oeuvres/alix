@@ -1,4 +1,4 @@
-* text eol=lf
+* text=auto eol=lf
 
 # Java sources
 *.java          text diff=java
@@ -22,6 +22,7 @@
 *.jspf          text
 *.jspx          text
 *.properties    text
+*.rdfs          text
 *.rng           text
 *.tld           text
 *.tag           text
