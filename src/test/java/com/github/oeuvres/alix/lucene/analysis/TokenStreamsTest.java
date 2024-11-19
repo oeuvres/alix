@@ -135,7 +135,9 @@ public class TokenStreamsTest {
         public TokenStreamComponents createComponents(String field)
         {
             final Tokenizer tokenizer = new TokenizerML(); // segment words
-            TokenStream ts = new FilterLemmatize(tokenizer); // provide lemma+pos
+            TokenStream ts;
+            ts = new FilterAposHyphenFr(tokenizer);
+            ts = new FilterLemmatize(ts); // provide lemma+pos
             ts = new FilterLocution(ts); // concat known locutions
             return new TokenStreamComponents(tokenizer, ts);
         }
