@@ -75,9 +75,17 @@ public class AttributeQueue extends Roller
         zero = pointer(1);
     }
 
-    public void get(final int pos, AttributeSource target)
+    public AttributeSource peekFirst()
     {
-        data[pointer(pos)].copyTo(target);
+        if (size < 1) {
+            throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
+        }
+        return data[zero];
+    }
+
+    public void copyTo(AttributeSource target, final int position)
+    {
+        data[pointer(position)].copyTo(target);
     }
 
     /**
@@ -87,7 +95,7 @@ public class AttributeQueue extends Roller
      * @param value element to store at the position.
      * @return the previous value at the position or null if 
      */
-    public void set(final int position, AttributeSource source)
+    public void set(AttributeSource source, final int position)
     {
         final int pointer = pointer(position);
         source.copyTo(data[pointer]);
@@ -101,11 +109,6 @@ public class AttributeQueue extends Roller
     public boolean isEmpty()
     {
         return (size == 0);
-    }
-
-    public void peekFirst(AttributeSource target)
-    {
-        data[zero].copyTo(target);
     }
 
     @Override

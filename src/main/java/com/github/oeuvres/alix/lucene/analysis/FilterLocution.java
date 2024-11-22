@@ -110,27 +110,26 @@ public class FilterLocution extends TokenFilter
     @Override
     public final boolean incrementToken() throws IOException
     {
-        CharsAttImpl orth = (CharsAttImpl) orthAtt;
+        // first, append at least one token
+        if (queue.isEmpty()) {
+            boolean hasToken = input.incrementToken();
+            if (!hasToken) return false;
+            queue.addLast(this);
+        }
+        // exhaust que
+
+        // restart compound at each call
         compound.setEmpty();
         int startOffset = offsetAtt.startOffset();
-        boolean verbSeen = false;
-        // a dead end has not conclude as a locution, exhaust states recorded in queue
-        if (!queue.isEmpty()) {
-            queue.removeFirst(this);
-            return true;
-        }
 
-        // let’s start to explore the tree
+        // boolean verbSeen = false;
+        // a dead end has not conclude as a locution, exhaust states recorded in queue
+
+        // let’s start to explore the queue
         do {
-            boolean hasToken = input.incrementToken();
-            // no more token, and nothing to output, exit
-            if (!hasToken && queue.isEmpty()) {
-                return false;
-            }
-            // no more token, but still some terms in queue to send
-            if (!hasToken) {
+            // restore first token in queue
+            else {
                 queue.removeFirst(this);
-                return true;
             }
             // if token is pun, end of branch, exit
             if (Tag.PUN.sameParent(flagsAtt.getFlags()) || termAtt.length() == 0) {
