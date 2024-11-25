@@ -37,8 +37,8 @@ public class FilterAposHyphenFr extends TokenFilter
     /** Ellisions prefix */
     static final public HashMap<CharsAttImpl, CharsAttImpl> PREFIX = new HashMap<CharsAttImpl, CharsAttImpl>((int) (30 / 0.75));
     static { // ellisions
-        put(PREFIX, "d'", "de"); // vient d’où ?
-        put(PREFIX, "D'", "de");
+        put(PREFIX, "d'", "d'"); // vient d’où ?
+        put(PREFIX, "D'", "d'");
         put(PREFIX, "j'", "je"); // j’aime.
         put(PREFIX, "J'", "je");
         put(PREFIX, "l'", "l'"); // je l’aime. le ou la

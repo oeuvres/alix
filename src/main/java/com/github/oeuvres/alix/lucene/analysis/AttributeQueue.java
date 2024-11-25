@@ -32,6 +32,7 @@
  */
 package com.github.oeuvres.alix.lucene.analysis;
 
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.AttributeSource;
 
 import com.github.oeuvres.alix.util.Roller;
@@ -65,14 +66,19 @@ public class AttributeQueue extends Roller
         size++;
     }
 
-    public void removeFirst(AttributeSource target)
+    public void clear()
     {
-        if (size < 1) {
-            throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
-        }
-        data[zero].copyTo(target);
-        size--;
-        zero = pointer(1);
+        size = 0;
+    }
+
+    public void copyTo(AttributeSource target, final int position)
+    {
+        data[pointer(position)].copyTo(target);
+    }
+
+    public boolean isEmpty()
+    {
+        return (size == 0);
     }
 
     public AttributeSource peekFirst()
@@ -83,9 +89,31 @@ public class AttributeQueue extends Roller
         return data[zero];
     }
 
-    public void copyTo(AttributeSource target, final int position)
+    public void peekFirst(AttributeSource target)
     {
-        data[pointer(position)].copyTo(target);
+        if (size < 1) {
+            throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
+        }
+        data[zero].copyTo(target);
+    }
+
+    public void removeFirst()
+    {
+        if (size < 1) {
+            throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
+        }
+        size--;
+        zero = pointer(1);
+    }
+
+    public void removeFirst(AttributeSource target)
+    {
+        if (size < 1) {
+            throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
+        }
+        data[zero].copyTo(target);
+        size--;
+        zero = pointer(1);
     }
 
     /**
@@ -101,25 +129,19 @@ public class AttributeQueue extends Roller
         source.copyTo(data[pointer]);
     }
 
-    public void clear()
-    {
-        size = 0;
-    }
-
-    public boolean isEmpty()
-    {
-        return (size == 0);
-    }
-
     @Override
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
         sb.append("[");
         for (int i = 0; i < size; i++) {
-            if (i > 0)
-                sb.append(", ");
-            sb.append(data[pointer(i)]);
+            if (i > 0) sb.append(", ");
+            if (data[pointer(i)].hasAttribute(CharTermAttribute.class)) {
+                sb.append(data[pointer(i)].getAttribute(CharTermAttribute.class));
+            }
+            else {
+                sb.append(data[pointer(i)]);
+            }
         }
         sb.append("]");
         return sb.toString();

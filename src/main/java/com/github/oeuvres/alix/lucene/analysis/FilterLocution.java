@@ -59,7 +59,7 @@ public class FilterLocution extends TokenFilter
     /** Current original term, do not cast here */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** A normalized orthographic form (ex : capitalization) */
-    private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
+    private final CharsAttImpl orthAtt = (CharsAttImpl) addAttribute(OrthAtt.class);
     /** A lemma when possible */
     private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** A stack of states */
@@ -110,35 +110,40 @@ public class FilterLocution extends TokenFilter
     @Override
     public final boolean incrementToken() throws IOException
     {
-        // first, append at least one token
-        if (queue.isEmpty()) {
-            boolean hasToken = input.incrementToken();
-            if (!hasToken) return false;
-            queue.addLast(this);
-        }
-        // exhaust que
-
+        System.out.println("call ");
+        clearAttributes();
         // restart compound at each call
         compound.setEmpty();
+        // flag up to exhaust queue before getting new token
+        boolean exhaust = true;
+
         int startOffset = offsetAtt.startOffset();
 
-        // boolean verbSeen = false;
+        boolean verbSeen = false;
         // a dead end has not conclude as a locution, exhaust states recorded in queue
-
         // let’s start to explore the queue
         do {
-            // restore first token in queue
-            else {
+            // first call in loop, queu has to be exhausted
+            if (exhaust && !queue.isEmpty()) {
                 queue.removeFirst(this);
+                startOffset = offsetAtt.startOffset();
+                System.out.println("restore first " + termAtt);
             }
+            else {
+                boolean hasToken = input.incrementToken();
+                if (queue.isEmpty() && !hasToken) return false;
+                else if(!hasToken) {
+                    System.out.println("End problem " + queue);
+                    return false;
+                }
+                System.out.println("incrementToken " + termAtt);
+            }
+            // next iteration should append 
+            exhaust = false;
             // if token is pun, end of branch, exit
             if (Tag.PUN.sameParent(flagsAtt.getFlags()) || termAtt.length() == 0) {
-                // if queue is not empty, copy this state, restore first, and send
-                if (!queue.isEmpty()) {
-                    queue.addLast(this);
-                    queue.removeFirst(this);
-                }
-                return true;
+                compound.clear();
+                break;
             }
             // append a ' ' to last token (if any) for compound test
             if (!compound.isEmpty() && !compound.endsWith('\'')) { // append separator before the term
@@ -162,32 +167,34 @@ public class FilterLocution extends TokenFilter
                 compound.append(lemAtt);
             }
             // "ne fait pas l’affaire"
-            else if (verbSeen && orth.equals("pas")) {
+            else if (verbSeen && orthAtt.equals("pas")) {
                 compound.rtrim(); // suppres last ' '
             }
             // for other words, orth may have correct initial capital of sentence
-            else if (!Tag.SUB.sameParent(tag) && orth.length() != 0) {
-                compound.append(orth);
+            else if (orthAtt.length() != 0) {
+                compound.append(orthAtt);
             }
             // Nations Unies ?
             else {
                 compound.append(termAtt);
             }
-
             final Integer nodeType = FrDics.TREELOC.get(compound);
+
+            System.out.println("compound=" + compound + " type=" + nodeType + " queue=" + queue);
+
 
             // dead end
             if (nodeType == null) {
-                // if queue is not empty, copy this state, restore first, and send
-                if (!queue.isEmpty()) {
-                    queue.addLast(this);
-                    queue.removeFirst(this);
-                }
-                return true;
+                // restore first token in queue (may be also the last)
+                // if (!queue.isEmpty()) // should be never empty
+                // if (!queue.isEmpty()) queue.peekFirst(this);
+                queue.addLast(this);
+                queue.removeFirst(this);
+                break;
             }
+
             // a locution found, set state of atts according to this locution
-            else if ((nodeType & FrDics.LEAF) > 0) {
-                queue.clear();
+            if ((nodeType & FrDics.LEAF) > 0) {
                 // get its entry
                 LexEntry entry = FrDics.WORDS.get(compound);
                 if (entry == null) {
@@ -198,10 +205,10 @@ public class FilterLocution extends TokenFilter
                     flagsAtt.setFlags(entry.tag);
                     termAtt.setEmpty().append(compound);
                     if (entry.orth != null) {
-                        orth.setEmpty().append(entry.orth);
+                        orthAtt.setEmpty().append(entry.orth);
                     }
                     else {
-                        orth.setEmpty();
+                        orthAtt.setEmpty();
                     }
                     if (entry.lem != null) {
                         lemAtt.setEmpty().append(entry.lem);
@@ -213,26 +220,28 @@ public class FilterLocution extends TokenFilter
                 // no lemma or tags for this locution
                 else {
                     termAtt.setEmpty().append(compound);
-                    orth.setEmpty().append(compound);
+                    orthAtt.setEmpty().append(compound);
                     lemAtt.setEmpty();
                 }
                 // set offset
                 offsetAtt.setOffset(startOffset, offsetAtt.endOffset());
                 // no more locution candidate starting with same prefix
                 if ((nodeType & FrDics.BRANCH) == 0) {
-                    return true;
+                    break;
                 }
                 // store this locution in the queue, try to go ahead ((chemin de fer) d’intérêt local)
+                queue.clear();
                 queue.addLast(this);
+                continue;
             }
             // should be a part of a compound, store state in case dead end, for rewind 
             else if ((nodeType & FrDics.BRANCH) > 0) {
+                // store this state
                 queue.addLast(this);
             }
-            else {
-                throw new RuntimeException("Unknow value in TREELOC:" + nodeType);
-            }
         } while (true); // a compound bigger than 10 should hurt queue
+        // queue.removeFirst(this);
+        return true;
     }
 
     @Override

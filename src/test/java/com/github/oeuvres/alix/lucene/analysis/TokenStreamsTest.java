@@ -29,7 +29,7 @@ public class TokenStreamsTest {
     @Test
     public void locution() throws IOException
     {
-        String text = "Le chemin de fer d’utilité locale. J’ai pris conscience de mon inanité parce que j’ai pensé.";
+        String text = "Le chemin de Fer d’utilité locale";
         Analyzer ana = new AnalyzerLocution();
         analyze(ana.tokenStream("_cloud", text), text);
         ana.close();
