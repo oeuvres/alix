@@ -54,8 +54,8 @@ public class AnalyzerCloud extends Analyzer
         TokenStream ts = tokenizer; // segment words
         ts = new FilterAposHyphenFr(ts); // fr split on ’ and -
         ts = new FilterLemmatize(ts); // provide lemma+pos
-        // compounds: parce que (quite expensive, 20% time)
-        // ts = new FilterLocution(ts); StackOverflowError
+        // compounds: parce que
+        ts = new FilterLocution(ts);
         // link unknown names is bad
         // result = new FilterFrPersname(result);
         ts = new FilterCloud(ts);

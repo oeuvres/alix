@@ -73,6 +73,12 @@ public class AttributeQueue extends Roller
 
     public void copyTo(AttributeSource target, final int position)
     {
+        if (size < 1) {
+            throw new ArrayIndexOutOfBoundsException("size=0, no element to copy");
+        }
+        if (position < 0 || position >= size) {
+            throw new ArrayIndexOutOfBoundsException("position=" + position + ", not in [0," + size +"[");
+        }
         data[pointer(position)].copyTo(target);
     }
 

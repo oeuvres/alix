@@ -2,8 +2,12 @@ package com.github.oeuvres.alix.lucene.analysis;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -29,8 +33,16 @@ public class TokenStreamsTest {
     @Test
     public void locution() throws IOException
     {
-        String text = "Le chemin de Fer d’utilité locale";
-        Analyzer ana = new AnalyzerLocution();
+        String text = "";
+        // File file = new File("src/test/resources/article.xml");
+        // String text = Files.readString(Paths.get(file.getAbsolutePath()), StandardCharsets.UTF_8);
+        text = "<h1 class=\"head\">Avant-propos\n"
+            + "<br class=\"lb\"/>de la seconde édition<a class=\"bookmark\" href=\"#body\"> </a>\n"
+            + "         </h1>\n"
+            + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion"
+        ;
+        text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience dernièrement.";
+        Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);
         ana.close();
     }

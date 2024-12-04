@@ -45,6 +45,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 /**
@@ -61,15 +62,16 @@ public class FilterLocution extends TokenFilter
     /** A normalized orthographic form (ex : capitalization) */
     private final CharsAttImpl orthAtt = (CharsAttImpl) addAttribute(OrthAtt.class);
     /** A lemma when possible */
-    private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
+    private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(LemAtt.class);
     /** A stack of states */
     private AttributeQueue queue;
     /** A term used to concat a compound */
     private CharsAttImpl compound = new CharsAttImpl();
     /** past paticiples to not take as infinitives */
     public static final HashSet<CharsAttImpl> EXCEPTIONS = new HashSet<CharsAttImpl>();
+    // parti pris, prise de conscience
     static {
-        for (String w : new String[] { "pris", "prise'", "prises" }) {
+        for (String w : new String[] {  }) {
             EXCEPTIONS.add(new CharsAttImpl(w));
         }
     }
@@ -80,7 +82,7 @@ public class FilterLocution extends TokenFilter
      */
     public FilterLocution(TokenStream input) {
         super(input);
-        queue = new AttributeQueue(10, this);
+        // here, “this” has not all its attributes, AttributeQueue.copyTo() will bug
     }
 
     /**
@@ -110,39 +112,49 @@ public class FilterLocution extends TokenFilter
     @Override
     public final boolean incrementToken() throws IOException
     {
-        System.out.println("call ");
+        if (queue == null) {
+            queue = new AttributeQueue(10, this);
+        }
         clearAttributes();
         // restart compound at each call
         compound.setEmpty();
         // flag up to exhaust queue before getting new token
-        boolean exhaust = true;
-
-        int startOffset = offsetAtt.startOffset();
 
         boolean verbSeen = false;
-        // a dead end has not conclude as a locution, exhaust states recorded in queue
-        // let’s start to explore the queue
+
+        // start with a token
+        int queuePos = 0;
+        if (!queue.isEmpty()) {
+            queue.peekFirst(this);
+            queuePos++;
+        }
+        else {
+            boolean hasToken = input.incrementToken();
+            if(!hasToken) {
+                return false;
+            }
+        }
+        int startLoc = offsetAtt.startOffset();
+        
+        // let’s start to find a locution
         do {
-            // first call in loop, queu has to be exhausted
-            if (exhaust && !queue.isEmpty()) {
-                queue.removeFirst(this);
-                startOffset = offsetAtt.startOffset();
-                System.out.println("restore first " + termAtt);
-            }
-            else {
-                boolean hasToken = input.incrementToken();
-                if (queue.isEmpty() && !hasToken) return false;
-                else if(!hasToken) {
-                    System.out.println("End problem " + queue);
-                    return false;
-                }
-                System.out.println("incrementToken " + termAtt);
-            }
-            // next iteration should append 
-            exhaust = false;
+            /*
+            System.out.println("loop\t"
+                + termAtt.toString() + "\t" 
+                + Tag.name(flagsAtt.getFlags()) + "\t" 
+                // + orthAtt.toString() + "|\t|" 
+                + offsetAtt.startOffset() + "\t"
+                + offsetAtt.endOffset() + "\t" 
+                + queue + "\t"
+                // + posIncAttribute.getPositionIncrement() + "\t"
+                + "orth:" + orthAtt.toString() + "\t" 
+                + "lem:" + lemAtt.toString() + "\t" 
+            );
+            */
+            final int tag = flagsAtt.getFlags();
             // if token is pun, end of branch, exit
-            if (Tag.PUN.sameParent(flagsAtt.getFlags()) || termAtt.length() == 0) {
-                compound.clear();
+            if (Tag.PUN.sameParent(tag) || tag == Tag.XML.flag || termAtt.length() == 0) {
+                // after the loop, the queue logic before exit
                 break;
             }
             // append a ' ' to last token (if any) for compound test
@@ -150,7 +162,6 @@ public class FilterLocution extends TokenFilter
                 compound.append(' ');
             }
             // choose version of form to append for test, according to its pos
-            int tag = flagsAtt.getFlags();
             // forms to keep as is
             if (orthAtt.length() != 0 && EXCEPTIONS.contains(orthAtt)) {
                 compound.append(orthAtt);
@@ -180,16 +191,12 @@ public class FilterLocution extends TokenFilter
             }
             final Integer nodeType = FrDics.TREELOC.get(compound);
 
-            System.out.println("compound=" + compound + " type=" + nodeType + " queue=" + queue);
+            // System.out.println("compound=" + compound + " type=" + nodeType + " isVerb=" + Tag.VERB.sameParent(tag) + " queue=" + queue);
 
 
             // dead end
             if (nodeType == null) {
-                // restore first token in queue (may be also the last)
-                // if (!queue.isEmpty()) // should be never empty
-                // if (!queue.isEmpty()) queue.peekFirst(this);
-                queue.addLast(this);
-                queue.removeFirst(this);
+                // the queue logic after the loop
                 break;
             }
 
@@ -208,7 +215,7 @@ public class FilterLocution extends TokenFilter
                         orthAtt.setEmpty().append(entry.orth);
                     }
                     else {
-                        orthAtt.setEmpty();
+                        orthAtt.setEmpty().append(compound);
                     }
                     if (entry.lem != null) {
                         lemAtt.setEmpty().append(entry.lem);
@@ -224,23 +231,55 @@ public class FilterLocution extends TokenFilter
                     lemAtt.setEmpty();
                 }
                 // set offset
-                offsetAtt.setOffset(startOffset, offsetAtt.endOffset());
-                // no more locution candidate starting with same prefix
+                offsetAtt.setOffset(startLoc, offsetAtt.endOffset());
+                
+                // no more locution candidate starting with same prefix, send
                 if ((nodeType & FrDics.BRANCH) == 0) {
-                    break;
+                    queue.clear();
+                    return true;
                 }
                 // store this locution in the queue, try to go ahead ((chemin de fer) d’intérêt local)
                 queue.clear();
-                queue.addLast(this);
-                continue;
             }
-            // should be a part of a compound, store state in case dead end, for rewind 
-            else if ((nodeType & FrDics.BRANCH) > 0) {
-                // store this state
-                queue.addLast(this);
+            // here we should be in a branch
+            if ((nodeType & FrDics.BRANCH) == 0) {
+                throw new IOException("### not a branch ?" + queue);
             }
-        } while (true); // a compound bigger than 10 should hurt queue
-        // queue.removeFirst(this);
+            // get another token, from queue
+            if (queue.size() > queuePos) {
+                queue.copyTo(this, queuePos);
+                queuePos++;
+            }
+            // get another token, from stream
+            else {
+                // current token should be new, record it
+                if (queue.isEmpty()) {
+                    queue.addLast(this);
+                }
+                boolean hasToken = input.incrementToken();
+                // no more token to explore branch, exhaust queue
+                if (!hasToken) {
+                    queue.removeFirst();
+                    return true;
+                }
+                System.out.println(queue);
+                // lets try to append to compound
+            }
+
+            
+        } while (true); // a compound bigger than queue should hurt and avoid infinite loop
+        // nothing stored, new token, not starting a locution, send it
+        if (queue.isEmpty()) {
+        }
+        // a restored token at first call, empty it and send it
+        else if (queuePos > 0) {
+            queue.removeFirst();
+        }
+        // more than one token to restore
+        else { // if (queue.size() > 1)
+            queue.addLast(this);
+            queue.removeFirst(this);
+        }
         return true;
     }
 
