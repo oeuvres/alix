@@ -138,6 +138,7 @@ public class FilterLocution extends TokenFilter
         
         // let’s start to find a locution
         do {
+            boolean hasToken = false;
             /*
             System.out.println("loop\t"
                 + termAtt.toString() + "\t" 
@@ -245,24 +246,21 @@ public class FilterLocution extends TokenFilter
             if ((nodeType & FrDics.BRANCH) == 0) {
                 throw new IOException("### not a branch ?" + queue);
             }
+            // current token is new, obtain at call or in loop 
+            if (queuePos == 0 || hasToken) queue.addLast(this);
             // get another token, from queue
-            if (queue.size() > queuePos) {
+            if (queuePos > 0 && queuePos < queue.size()) {
                 queue.copyTo(this, queuePos);
                 queuePos++;
             }
-            // get another token, from stream
+            // or get another token, from stream
             else {
-                // current token should be new, record it
-                if (queue.isEmpty()) {
-                    queue.addLast(this);
-                }
-                boolean hasToken = input.incrementToken();
+                hasToken = input.incrementToken();
                 // no more token to explore branch, exhaust queue
                 if (!hasToken) {
                     queue.removeFirst();
                     return true;
                 }
-                System.out.println(queue);
                 // lets try to append to compound
             }
 
