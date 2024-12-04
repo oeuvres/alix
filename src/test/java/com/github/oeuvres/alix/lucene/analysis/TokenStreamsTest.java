@@ -36,12 +36,13 @@ public class TokenStreamsTest {
         String text = "";
         // File file = new File("src/test/resources/article.xml");
         // String text = Files.readString(Paths.get(file.getAbsolutePath()), StandardCharsets.UTF_8);
+        text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience dernièrement.";
+        text = "s’il les prenait en considération…. parce que l’acte étant à";
         text = "<h1 class=\"head\">Avant-propos\n"
             + "<br class=\"lb\"/>de la seconde édition<a class=\"bookmark\" href=\"#body\"> </a>\n"
             + "         </h1>\n"
             + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion"
         ;
-        text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience dernièrement.";
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);
         ana.close();
@@ -90,19 +91,25 @@ public class TokenStreamsTest {
         final CharsAttImpl orthAttribute = (CharsAttImpl) tokenStream.addAttribute(OrthAtt.class);
         final CharsAttImpl lemAttribute = (CharsAttImpl) tokenStream.addAttribute(LemAtt.class);
         tokenStream.reset();
+        int startLast = 0;
         while(tokenStream.incrementToken()) {
+            final int startOffset = offsetAttribute.startOffset();
             System.out.print(""
               + termAttribute.toString() + "\t" 
               + Tag.name(flagsAttribute.getFlags()) + "\t" 
               // + orthAtt.toString() + "|\t|" 
-              + "|" + text.substring(offsetAttribute.startOffset(),  offsetAttribute.endOffset()) + "|\t" 
-              // + offsetAttribute.startOffset() + "\t"
-              // + offsetAttribute.endOffset() + "\t" 
+              + "|" + text.substring(startOffset,  offsetAttribute.endOffset()) + "|\t" 
+              + startOffset + "\t"
+              + offsetAttribute.endOffset() + "\t" 
               // + posIncAttribute.getPositionIncrement() + "\t"
               + "orth:" + orthAttribute.toString() + "\t" 
               + "lem:" + lemAttribute.toString() + "\t" 
               + "\n"
             );
+            if (startOffset < startLast) {
+                System.out.println("\n==== startLast=" + startLast + " > startOffset=" + startOffset + "\n");
+            }
+            startLast = startOffset;
         }
     }
     

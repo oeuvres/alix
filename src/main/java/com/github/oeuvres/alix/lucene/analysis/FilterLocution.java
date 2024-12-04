@@ -115,6 +115,7 @@ public class FilterLocution extends TokenFilter
         if (queue == null) {
             queue = new AttributeQueue(10, this);
         }
+        // System.out.println(queue);
         clearAttributes();
         // restart compound at each call
         compound.setEmpty();
@@ -124,13 +125,14 @@ public class FilterLocution extends TokenFilter
 
         // start with a token
         int queuePos = 0;
+        boolean tokFirst = false;
         if (!queue.isEmpty()) {
             queue.peekFirst(this);
             queuePos++;
         }
         else {
-            boolean hasToken = input.incrementToken();
-            if(!hasToken) {
+            tokFirst = input.incrementToken();
+            if(!tokFirst) {
                 return false;
             }
         }
@@ -138,20 +140,6 @@ public class FilterLocution extends TokenFilter
         
         // let’s start to find a locution
         do {
-            boolean hasToken = false;
-            /*
-            System.out.println("loop\t"
-                + termAtt.toString() + "\t" 
-                + Tag.name(flagsAtt.getFlags()) + "\t" 
-                // + orthAtt.toString() + "|\t|" 
-                + offsetAtt.startOffset() + "\t"
-                + offsetAtt.endOffset() + "\t" 
-                + queue + "\t"
-                // + posIncAttribute.getPositionIncrement() + "\t"
-                + "orth:" + orthAtt.toString() + "\t" 
-                + "lem:" + lemAtt.toString() + "\t" 
-            );
-            */
             final int tag = flagsAtt.getFlags();
             // if token is pun, end of branch, exit
             if (Tag.PUN.sameParent(tag) || tag == Tag.XML.flag || termAtt.length() == 0) {
@@ -239,43 +227,46 @@ public class FilterLocution extends TokenFilter
                     queue.clear();
                     return true;
                 }
-                // store this locution in the queue, try to go ahead ((chemin de fer) d’intérêt local)
+                // try to go ahead ((chemin de fer) d’intérêt local)
                 queue.clear();
+                queue.addLast(this);
+                queuePos = 0;
             }
             // here we should be in a branch
             if ((nodeType & FrDics.BRANCH) == 0) {
                 throw new IOException("### not a branch ?" + queue);
             }
-            // current token is new, obtain at call or in loop 
-            if (queuePos == 0 || hasToken) queue.addLast(this);
-            // get another token, from queue
+            // first token was new, add it to queue, 
+            if (tokFirst) {
+                queue.addLast(this);
+                tokFirst = false;
+            }
+            // get another token from queue
             if (queuePos > 0 && queuePos < queue.size()) {
                 queue.copyTo(this, queuePos);
                 queuePos++;
             }
-            // or get another token, from stream
+            // or get another token from stream
             else {
-                hasToken = input.incrementToken();
+                boolean hasToken = input.incrementToken();
                 // no more token to explore branch, exhaust queue
                 if (!hasToken) {
-                    queue.removeFirst();
+                    queue.removeFirst(this);
                     return true;
                 }
-                // lets try to append to compound
+                queuePos = 0; // no more token to get from the queue, say it
+                queue.addLast(this);
             }
-
+            // continue, current token will be append to compound
             
         } while (true); // a compound bigger than queue should hurt and avoid infinite loop
-        // nothing stored, new token, not starting a locution, send it
-        if (queue.isEmpty()) {
+        
+        // do add add to queue here, every thing should have be done in branch
+        if (queue.isEmpty()) { // common case, OK
+            return true;
         }
-        // a restored token at first call, empty it and send it
-        else if (queuePos > 0) {
-            queue.removeFirst();
-        }
-        // more than one token to restore
-        else { // if (queue.size() > 1)
-            queue.addLast(this);
+        // we are in the queue
+        else {
             queue.removeFirst(this);
         }
         return true;
@@ -290,6 +281,7 @@ public class FilterLocution extends TokenFilter
     @Override
     public void end() throws IOException
     {
+        
         super.end();
     }
 }
