@@ -126,16 +126,16 @@ public class FilterLocution extends TokenFilter
         // start with a token
         int queuePos = 0;
         boolean tokFirst = false;
-        if (!queue.isEmpty()) {
+        if (!queue.isEmpty()) { // exhaust queue
             queue.peekFirst(this);
             queuePos++;
         }
-        else {
+        else { // or get new token
             tokFirst = input.incrementToken();
-            if(!tokFirst) {
-                return false;
-            }
+            // no more token, exit and say it
+            if(!tokFirst) return false;
         }
+        // record start of a possible locution candidate
         int startLoc = offsetAtt.startOffset();
         
         // let’s start to find a locution
@@ -156,7 +156,7 @@ public class FilterLocution extends TokenFilter
                 compound.append(orthAtt);
             }
             else if (Tag.NUM.sameParent(tag)) {
-                compound.append("NUM");
+                compound.append("#");
             }
             else if (Tag.NAME.sameParent(tag)) {
                 compound.append(termAtt);
@@ -261,12 +261,11 @@ public class FilterLocution extends TokenFilter
             
         } while (true); // a compound bigger than queue should hurt and avoid infinite loop
         
-        // do add add to queue here, every thing should have be done in branch
+        // do not add to queue here, every thing should have be done in branch
         if (queue.isEmpty()) { // common case, OK
             return true;
         }
-        // we are in the queue
-        else {
+        else { // we are in the queue
             queue.removeFirst(this);
         }
         return true;
