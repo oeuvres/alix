@@ -347,16 +347,17 @@ public class FieldRail
      * @param formFilter optional, type of words to exclude from expressions like verbs, etc…
      * @return expressions as an {@link Iterable} of edges
      */
-    public EdgeMap expressions(final BitSet docFilter, final TagFilter formFilter)
+    public EdgeMap expressions(final BitSet docFilter, final TagFilter include, final TagFilter exclude)
     {
 
-        final boolean hasExclude;
-        BitSet exclude = null;
-        if (formFilter != null) {
-            hasExclude = true;
-            exclude = fieldText.formFilter(formFilter);
-        } else {
-            hasExclude = false;
+        BitSet formInc = null;
+        if (include != null) {
+            formInc = fieldText.formFilter(include);
+        }
+        BitSet formExc = null;
+        if (exclude != null) {
+            formExc = fieldText.formFilter(exclude);
+            // formExc.set(0);
         }
         final boolean hasPartition = (docFilter != null);
 
@@ -377,28 +378,30 @@ public class FieldRail
             IntPairMutable key = new IntPairMutable();
             for (int i = 0, max = docId4len[docId]; i < max; i++) {
                 final int formId = bufInt.get();
-                // pun or hole, reset expression
-                if (formId == 0 || fieldText.isPunctuation(formId)) {
+                // exclude, reset expression
+                if (formExc != null && formExc.get(formId)) {
                     slider.clear();
                     continue;
                 }
-                if (hasExclude) {
-                    final boolean excluded = exclude.get(formId);
+                boolean inc = true;
+                if (formInc != null) {
+                    inc = formInc.get(formId);
+                }
+                // form is not kept, do not start or end an expression
+                // maybe an interstitial stopword like in "maison de la culture"
+                if (!inc) {
                     // do not start an expression on an excluded word
-                    if (excluded) {
-                        if (!slider.isEmpty())
-                            slider.push(formId);
-                        continue;
+                    if (!slider.isEmpty()) {
+                        slider.push(formId);
                     }
-                    // reset on verb ? to check
-                    // if (Tag.VERB.sameParent(tag)) { slider.reset(); continue; }
+                    continue;
                 }
                 // should be a plain word here
                 if (slider.isEmpty()) { // start of an expression
                     slider.push(formId);
                     continue;
                 }
-                // here we have something to test or to store
+                // here we are clothing  something to test or to store
                 slider.push(formId); // don’t forget the current formId
                 key.set(slider.first(), formId);
                 Edge edge = expressions.get(key);

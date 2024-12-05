@@ -50,7 +50,7 @@ public class Edge implements Comparable<Edge>
     /** For information, an index commodity */
     public final int edgeId;
     /** For information, an optional label */
-    public final String form;
+    public final String label;
     /** Count */
     private long count;
     /** A score has been set */
@@ -73,10 +73,10 @@ public class Edge implements Comparable<Edge>
      * 
      * @param sourceId a node id.
      * @param targetId a node id.
-     * @param form optional, a label, ex: a collected expression ().
+     * @param label optional, a label, ex: a collected expression ().
      */
-    public Edge(final int sourceId, final int targetId, final String form) {
-        this(sourceId, targetId, true, -1, form);
+    public Edge(final int sourceId, final int targetId, final String label) {
+        this(sourceId, targetId, true, -1, label);
     }
 
     /**
@@ -97,14 +97,14 @@ public class Edge implements Comparable<Edge>
      * @param targetId a node id.
      * @param directed optional, true if direction imports, false otherwise.
      * @param edgeId optional, an id for this edge, set by a collector.
-     * @param form optional, a label, ex: a collected expression ().
+     * @param label optional, a label, ex: a collected expression ().
      */
-    public Edge(final int sourceId, final int targetId, final boolean directed, final int edgeId, final String form) {
+    public Edge(final int sourceId, final int targetId, final boolean directed, final int edgeId, final String label) {
         this.sourceId = sourceId;
         this.targetId = targetId;
         this.directed = directed;
         this.edgeId = edgeId;
-        this.form = form;
+        this.label = label;
     }
 
     /**
@@ -174,7 +174,7 @@ public class Edge implements Comparable<Edge>
     /**
      * An Edge is said equals if it has same source id and target id.
      * Equality is also available for {@link IntPair}, {@link IntSeries}, and int[] array with 2 values.
-     * (Direction is nt handled here).
+     * (Direction is not handled here).
      */
     @Override
     public boolean equals(Object o)
@@ -266,8 +266,8 @@ public class Edge implements Comparable<Edge>
     public String toString()
     {
         return ((edgeId != -1)?edgeId + ". ":"") 
-            + ((form != null)?form + " ":"")
-            + sourceId + (directed?" → ":" ↔ ") + targetId 
+            + ((label != null)?label + " ":"")
+            // + sourceId + (directed?" → ":" ↔ ") + targetId 
             + " (" + count + (hasScore?"; " + score: "")+ ")";
     }
 }

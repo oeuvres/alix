@@ -42,6 +42,7 @@ import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
 public class AnalyzerAlix extends DelegatingAnalyzerWrapper
 {
     Analyzer cloudAnalyzer = new AnalyzerCloud();
+    Analyzer orthAnalyzer = new AnalyzerOrth();
     Analyzer findAnalyzer = new AnalyzerFind();
     Analyzer queryAnalyzer = new AnalyzerQuery();
 
@@ -59,6 +60,8 @@ public class AnalyzerAlix extends DelegatingAnalyzerWrapper
             return queryAnalyzer;
         } else if (fieldName.endsWith("_cloud")) {
             return cloudAnalyzer;
+        } else if (fieldName.endsWith("_orth")) {
+            return orthAnalyzer;
         } else {
             return findAnalyzer;
         }
