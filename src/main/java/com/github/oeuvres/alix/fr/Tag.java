@@ -274,7 +274,7 @@ public enum Tag {
     STOP(0xF8, "Mot “vide”", "Selon un dictionnaire de mots vides") {
     },
     /** Non stop word */
-    NOSTOP(0xF8, "Mot “plein”", "Hors dictionnaire de mots vides") {
+    NOSTOP(0xF9, "Mot “plein”", "Hors dictionnaire de mots vides") {
     },
     /** Locution  (maybe substantive, conjunction…) */
     LOC(0xFB, "Locution", "parce que, sans pour autant…") {

@@ -46,9 +46,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -79,29 +76,17 @@ import com.github.oeuvres.alix.util.RowcolQueue;
  * int:maxDoc, maxDoc*[int:docLength], maxDoc*[docLength*[int:formId], int:-1]
  */
 // ChronicleMap has been tested, but it is not more than x2 compared to lucene BinaryField, so stay in Lucene
-public class FieldRail
+public class FieldRail  extends FieldCharsAbstract
 {
     static Logger LOGGER = Logger.getLogger(FieldRail.class.getName());
     /** Keep the freqs for the field */
     private final FieldText fieldText;
-    /** Name of the reference text field */
-    public final String fieldName;
-    /** Lucene index reader, cache the state. */
-    protected final DirectoryReader reader;
-    /** Infos about the lucene field. */
-    protected final FieldInfo info;
-    /** Dictionary of search for this field */
-    protected final BytesRefHash dic;
     /** The path of underlaying file store */
     private final Path path;
     /** Cache a fileChannel for read */
     protected FileChannel channel;
     /** A buffer on file */
     protected MappedByteBuffer channelMap;
-    /** Max for docId */
-    protected int maxDoc;
-    /** Max for formId */
-    private final int maxForm;
     /** Size of file header */
     static final int headerInt = 3;
     /** docId4offset[docId] = offset, start index of positions for each doc in channel */
@@ -116,17 +101,7 @@ public class FieldRail
      * @throws IOException lucene errors.
      */
     public FieldRail(FieldText fieldText) throws IOException {
-        reader = fieldText.reader;
-        info = fieldText.info;
-        this.fieldName = fieldText.fieldName;
-        if (info == null) {
-            throw new IllegalArgumentException("Field \"" + fieldName + "\" is not known in this index");
-        }
-        IndexOptions options = info.getIndexOptions();
-        if (options != IndexOptions.DOCS_AND_FREQS_AND_POSITIONS && options != IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) {
-            throw new IllegalArgumentException(
-                    "Field \"" + fieldName + "\" of type " + options + " has no POSITIONS (see IndexOptions)");
-        }
+        super(fieldText.reader, fieldText.fieldName);
         this.fieldText = fieldText; // build and cache the dictionary for the field
         this.dic = fieldText.dic;
         this.maxForm = dic.size();
@@ -347,18 +322,13 @@ public class FieldRail
      * @param formFilter optional, type of words to exclude from expressions like verbs, etc…
      * @return expressions as an {@link Iterable} of edges
      */
-    public EdgeMap expressions(final BitSet docFilter, final TagFilter include, final TagFilter exclude)
+    public EdgeMap expressions(final BitSet docFilter, final TagFilter start, final TagFilter middle, final TagFilter end)
     {
 
-        BitSet formInc = null;
-        if (include != null) {
-            formInc = fieldText.formFilter(include);
-        }
-        BitSet formExc = null;
-        if (exclude != null) {
-            formExc = fieldText.formFilter(exclude);
-            // formExc.set(0);
-        }
+        BitSet formStart = fieldText.formFilter(start);
+        BitSet formMiddle = fieldText.formFilter(middle);
+        BitSet formEnd = fieldText.formFilter(end);
+        
         final boolean hasPartition = (docFilter != null);
 
         EdgeMap expressions = new EdgeMap(true);
@@ -369,56 +339,60 @@ public class FieldRail
         IntList slider = new IntList();
         Chain chain = new Chain();
         BytesRef bytes = new BytesRef();
+        IntPairMutable key = new IntPairMutable();
         for (int docId = 0; docId < maxDoc; docId++) {
-            if (docId4len[docId] == 0)
+            if (docId4len[docId] < 1)
                 continue; // deleted or with no value for this field
             if (hasPartition && !docFilter.get(docId))
                 continue; // document not in the filter
             bufInt.position(docId4offset[docId]); // position cursor in the rail
-            IntPairMutable key = new IntPairMutable();
             for (int i = 0, max = docId4len[docId]; i < max; i++) {
                 final int formId = bufInt.get();
-                // exclude, reset expression
-                if (formExc != null && formExc.get(formId)) {
-                    slider.clear();
+                if (formId < 1) {
+                    System.out.println("\n **" + formId );
                     continue;
                 }
-                boolean inc = true;
-                if (formInc != null) {
-                    inc = formInc.get(formId);
-                }
-                // form is not kept, do not start or end an expression
-                // maybe an interstitial stopword like in "maison de la culture"
-                if (!inc) {
-                    // do not start an expression on an excluded word
-                    if (!slider.isEmpty()) {
+                // shall we start an expression ?
+                if (slider.isEmpty()) {
+                    if (formStart.get(formId)) {
                         slider.push(formId);
                     }
                     continue;
                 }
-                // should be a plain word here
-                if (slider.isEmpty()) { // start of an expression
-                    slider.push(formId);
+                // shall we close an expression ?
+                else if (formEnd.get(formId)) {
+                    slider.push(formId); // don’t forget the current formId
+                    key.set(slider.first(), formId); // create a key by start-end
+                    Edge edge = expressions.get(key);
+                    if (edge == null) { // new expression
+                        chain.reset();
+                        for (int jj = 0, len = slider.size(); jj < len; jj++) {
+                            if (jj > 0 && chain.last() != '\'')
+                                chain.append(' ');
+                            formDic.get(slider.get(jj), bytes);
+                            chain.append(bytes);
+                        }
+                        edge = new Edge(key.x(), key.y(), chain.toString());
+                        expressions.put(edge);
+                    }
+                    edge.inc();
+                    // reset candidate compound
+                    slider.clear();
+                    // end may be the start of new compond
+                    if (formStart.get(formId)) {
+                        slider.push(formId);
+                    }
                     continue;
                 }
-                // here we are clothing  something to test or to store
-                slider.push(formId); // don’t forget the current formId
-                key.set(slider.first(), formId);
-                Edge edge = expressions.get(key);
-                if (edge == null) { // new expression
-                    chain.reset();
-                    for (int jj = 0, len = slider.size(); jj < len; jj++) {
-                        if (jj > 0 && chain.last() != '\'')
-                            chain.append(' ');
-                        formDic.get(slider.get(jj), bytes);
-                        chain.append(bytes);
+                // shall we append middle word or clear expression ?
+                else {
+                    if (formMiddle.get(formId)) {
+                        slider.push(formId);
                     }
-                    edge = new Edge(key.x(), key.y(), chain.toString());
-                    expressions.put(edge);
+                    else {
+                        slider.clear();
+                    }
                 }
-                edge.inc();
-                // reset candidate compound, and start by current form
-                slider.clear().push(formId);
             }
         }
         return expressions;
@@ -511,9 +485,10 @@ public class FieldRail
             channel = FileChannel.open(path, StandardOpenOption.READ);
             data = new DataInputStream(Channels.newInputStream(channel));
         }
-
-        int maxDoc = data.readInt();
+        final int maxDoc = data.readInt();
+        /* OK?
         this.maxDoc = maxDoc;
+        */
         int[] posInt = new int[maxDoc];
         int[] limInt = new int[maxDoc];
         int indInt = headerInt + maxDoc;
