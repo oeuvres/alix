@@ -156,7 +156,8 @@ public final class FilterLemmatize extends TokenFilter
             if (orthAtt.lastChar() == '.')
                 len--;
             int n = Calcul.roman2int(orthAtt.buffer(), 0, len);
-            if (n > 0) {
+            // Roman number for more than one char, pb M<sup>elle</sup>
+            if (len > 1 && n > 0) {
                 flagsAtt.setFlags(Tag.NUM.flag);
                 lemAtt.append("" + n);
                 return true;

@@ -44,6 +44,7 @@ public class TokenStreamsTest {
             + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion"
         ;
         text = "débile (Brang : 14 ; …) d’âge mental de sept ans, à qui je donne une trentaine";
+        text = "M<sup>elle</sup>";
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);
         ana.close();
