@@ -18,6 +18,8 @@ abstract class FieldAbstract
     protected final DirectoryReader reader;
     /** Infos about the lucene field. */
     protected final FieldInfo info;
+    /** One greater than the largest possible docId. */
+    protected final int maxDoc;
     /** Global count of docs relevant for this field. */
     protected int docsAll;
 
@@ -32,6 +34,7 @@ abstract class FieldAbstract
     public FieldAbstract(final DirectoryReader reader, final String fieldName) throws IOException
     {
         this.reader = reader;
+        this.maxDoc = reader.maxDoc();
         this.fieldName = fieldName;
         this.info = FieldInfos.getMergedFieldInfos(reader).fieldInfo(fieldName);
         if (info == null) {
@@ -58,4 +61,17 @@ abstract class FieldAbstract
     {
         return fieldName;
     }
+    
+    /**
+     * Returns one greater than the largest possible document number. 
+     * This may be used to, e.g.,determine how big to allocate an array which will have an element 
+     * for every document number in an index.
+     * 
+     * @return {@link DirectoryReader#maxDoc()}
+     */
+    public int maxDoc()
+    {
+        return maxDoc;
+    }
+    
 }

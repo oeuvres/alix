@@ -113,6 +113,7 @@ public class FieldFacet extends FieldCharsAbstract
      */
     public FieldFacet(final DirectoryReader reader, final String fieldName) throws IOException {
         super(reader, fieldName);
+        dic = new BytesRefHash();
         // final int[] occsByDoc = new int[reader.maxDoc()];
         type = info.getDocValuesType();
         IndexOptions options = info.getIndexOptions();

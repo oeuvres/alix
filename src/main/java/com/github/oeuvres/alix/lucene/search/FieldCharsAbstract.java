@@ -30,7 +30,7 @@ abstract class FieldCharsAbstract extends FieldAbstract
     /** Number of different values found = biggest formId + 1. */
     protected int maxForm = -1;
     /** Dictionary of terms from this field. */
-    protected final BytesRefHash dic = new BytesRefHash();
+    protected BytesRefHash dic;
     /** formId4docs[formId] = docs; count of docs by form. */
     protected int[] formId4docs;
 

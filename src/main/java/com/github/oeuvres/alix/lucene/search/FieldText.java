@@ -97,6 +97,7 @@ public class FieldText extends FieldCharsAbstract
      */
     public FieldText(final DirectoryReader reader, final String fieldName) throws IOException {
         super(reader, fieldName);
+        dic = new BytesRefHash();
         IndexOptions options = info.getIndexOptions();
         if (options == IndexOptions.NONE || options == IndexOptions.DOCS) {
             throw new IllegalArgumentException(
@@ -110,9 +111,9 @@ public class FieldText extends FieldCharsAbstract
          * https://github.com/apache/lucene-solr/blob/master/lucene/core/src/java/org/
          * apache/lucene/search/similarities/SimilarityBase.java#L185
          */
-        docId4occs = new int[reader.maxDoc()];
+        docId4occs = new int[maxDoc];
         // used between leaves to avoid errors in docs count
-        final FixedBitSet docSet = new FixedBitSet(reader.maxDoc());
+        final FixedBitSet docSet = new FixedBitSet(maxDoc);
         // extract all terms on first pass to give a formId in frequence ordert
         class FormRecord implements Comparable<FormRecord>
         {
@@ -308,15 +309,30 @@ public class FieldText extends FieldCharsAbstract
     public BitSet formFilter(TagFilter formFilter)
     {
         BitSet rule = new SparseFixedBitSet(maxForm);
+        final boolean stop = formFilter.get(Tag.STOP);
         final boolean noStop = formFilter.get(Tag.NOSTOP);
         for (int formId = 1; formId < maxForm; formId++) {
-            if (noStop) {
+            // wanting stop word, come before nostop (setAll behavior)
+            if (stop) {
+                if (isStop(formId)) {
+                    rule.set(formId);
+                    continue;
+                }
+            }
+            // nostop 
+            else if (noStop) {
                 if (isStop(formId)) continue;
+                // if noStop is alone, accept all others
+                if (formFilter.cardinality() == 1) {
+                    rule.set(formId);
+                    continue;
+                }
             }
-            else {
-                if (!formFilter.get(formId4flag[formId])) continue;
+            // general case
+            final int flag = formId4flag[formId];
+            if (formFilter.get(flag)) {
+                rule.set(formId);
             }
-            rule.set(formId);
         }
         return rule;
     }
