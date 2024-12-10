@@ -49,7 +49,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
  * tokens are deleted. This allows simple computation of a token context (ex:
  * span queries, co-occurrences).
  */
-public class FilterXML extends TokenFilter
+public class FilterHTML extends TokenFilter
 {
     /** XML flag */
     final static int XML = Tag.XML.flag;
@@ -61,13 +61,16 @@ public class FilterXML extends TokenFilter
     // private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
     /** A linguistic category as a short number, see {@link Tag} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    /** A flag for non content element */
+    private int skip;
 
     /**
      * Default constructor.
      * @param input previous filter.
      */
-    public FilterXML(TokenStream input) {
+    public FilterHTML(TokenStream input) {
         super(input);
+        skip = 0;
     }
 
     @SuppressWarnings("unlikely-arg-type")
@@ -75,9 +78,22 @@ public class FilterXML extends TokenFilter
     public final boolean incrementToken() throws IOException
     {
         while (input.incrementToken()) {
+            
+            if (skip > 0) {
+                if (termAtt.equals("</aside>") || termAtt.equals("</nav>")) {
+                    skip--;
+                    if (skip < 0) skip = 0;
+                }
+                continue;
+            }
+            
             // not XML tag, return it with no change
             if (flagsAtt.getFlags() != XML) {
                 return true;
+            }
+            if (termAtt.startsWith("<aside") || termAtt.startsWith("<nav")) {
+                skip++;
+                continue;
             }
             // most positions of XML tags will be skipped without information
             if (termAtt.equals("</p>") || termAtt.equals("</li>") || termAtt.equals("</td>")) {
@@ -101,12 +117,14 @@ public class FilterXML extends TokenFilter
     public void reset() throws IOException
     {
         super.reset();
+        skip = 0;
     }
 
     @Override
     public void end() throws IOException
     {
         super.end();
+        skip = 0;
     }
 
 }

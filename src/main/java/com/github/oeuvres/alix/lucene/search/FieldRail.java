@@ -349,7 +349,7 @@ public class FieldRail  extends FieldCharsAbstract
             for (int i = 0, max = docId4len[docId]; i < max; i++) {
                 final int formId = bufInt.get();
                 if (formId < 1) {
-                    System.out.println("\n **" + formId );
+                    // error if -1, 0 is hole
                     continue;
                 }
                 // shall we start an expression ?

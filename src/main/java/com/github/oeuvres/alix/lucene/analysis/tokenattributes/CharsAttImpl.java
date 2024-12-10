@@ -399,6 +399,19 @@ public class CharsAttImpl extends AttributeImpl
     }
 
     /**
+     * Test an ending char.
+     * 
+     * @param c char to test.
+     * @return true if last char == c, false otherwise.
+     */
+    public boolean endsWith(final char c)
+    {
+        if (len < 1)
+            return false;
+        return (chars[len - 1] == c);
+    }
+
+    /**
      * Test a suffix, char by char.
      * 
      * @param suffix to test.
@@ -416,19 +429,6 @@ public class CharsAttImpl extends AttributeImpl
             i--;
         }
         return true;
-    }
-
-    /**
-     * Test an ending char.
-     * 
-     * @param c char to test.
-     * @return true if last char == c, false otherwise.
-     */
-    public boolean endsWith(final char c)
-    {
-        if (len < 1)
-            return false;
-        return (chars[len - 1] == c);
     }
 
     @Override
@@ -713,6 +713,37 @@ public class CharsAttImpl extends AttributeImpl
         Objects.checkFromIndexSize(0, length, chars.length);
         len = length;
         return this;
+    }
+    
+    /**
+     * Test a starting char.
+     * 
+     * @param c char to test.
+     * @return true if starting char == c, false otherwise.
+     */
+    public boolean startsWith(final char c)
+    {
+        if (len < 1)
+            return false;
+        return (chars[0] == c);
+    }
+    
+    /**
+     * Test a suffix, char by char.
+     * 
+     * @param suffix to test.
+     * @return true if attribute ends by suffix, false otherwise.
+     */
+    public boolean startsWith(final String prefix)
+    {
+        final int prefixLen = prefix.length();
+        if (prefixLen > len)
+            return false;
+        for (int i = 0; i < prefixLen; i++) {
+            if (chars[i] != prefix.charAt(i))
+                return false;
+        }
+        return true;
     }
 
     @Override

@@ -49,7 +49,7 @@ public class AnalyzerMeta extends Analyzer
     {
         final Tokenizer tokenizer = new TokenizerML(); // segment words
         TokenStream ts = tokenizer;
-        ts = new FilterXML(ts); // strip tags
+        ts = new FilterHTML(ts); // strip tags
         ts = new FilterAposHyphenFr(ts); // fr split on ’ and -
         ts = new ASCIIFoldingFilter(ts); // no accents
         return new TokenStreamComponents(tokenizer, ts);
