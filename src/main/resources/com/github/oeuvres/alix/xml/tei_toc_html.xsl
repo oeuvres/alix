@@ -120,13 +120,14 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
           <xsl:otherwise>collateral</xsl:otherwise>
         </xsl:choose>
       </xsl:attribute>
+      <xsl:variable name="generate-id" select="generate-id()"/>
       <!-- link only on last split child -->
       <xsl:choose>
-        <xsl:when test="key('split', generate-id())">
+        <xsl:when test="key('split', $generate-id)">
           <a>
             <xsl:attribute name="href">
               <xsl:choose>
-                <xsl:when test="generate-id() = $localid">#</xsl:when>
+                <xsl:when test="$generate-id = $localid">#</xsl:when>
                 <xsl:otherwise>
                   <xsl:call-template name="href"/>
                 </xsl:otherwise>
@@ -140,6 +141,16 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
           <div>
             <xsl:call-template name="title"/>
           </div>
+        </xsl:when>
+        <!-- in local tree, no more localid, local anchor -->
+        <xsl:when test="not($localid)">
+          <a>
+            <xsl:attribute name="href">
+              <xsl:text>#</xsl:text>
+              <xsl:call-template name="id"/>
+            </xsl:attribute>
+            <xsl:call-template name="title"/>
+          </a>
         </xsl:when>
         <xsl:otherwise>
           <xsl:call-template name="a"/>
@@ -156,19 +167,18 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
             </xsl:apply-templates>
           </ol>
         </xsl:when>
-        <!-- local tree, go in, forget localid -->
-        <xsl:when test="generate-id() = $localid">
-          <ol>
-            <xsl:apply-templates select="$children" mode="toclocal"/>
-          </ol>
-        </xsl:when>
-        <!-- in local tree -->
+        <!-- in local tree, no more localid -->
         <xsl:when test="not($localid)">
           <ol>
             <xsl:apply-templates select="$children" mode="toclocal"/>
           </ol>
         </xsl:when>
-        <!-- Should ne  -->
+        <!-- local tree, go in, forget localid -->
+        <xsl:when test="$generate-id = $localid">
+          <ol>
+            <xsl:apply-templates select="$children" mode="toclocal"/>
+          </ol>
+        </xsl:when>
       </xsl:choose>
     </li>
   </xsl:template>
