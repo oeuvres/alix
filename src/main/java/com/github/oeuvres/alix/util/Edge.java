@@ -166,7 +166,7 @@ public class Edge implements Comparable<Edge>
      * 
      * @return an int id.
      */
-    public double edgeId()
+    public int edgeId()
     {
         return edgeId;
     }
@@ -247,7 +247,7 @@ public class Edge implements Comparable<Edge>
      * 
      * @return a node id.
      */
-    public double sourceId()
+    public int sourceId()
     {
         return sourceId;
     }
@@ -257,7 +257,7 @@ public class Edge implements Comparable<Edge>
      * 
      * @return a node id.
      */
-    public double targetId()
+    public int targetId()
     {
         return targetId;
     }
