@@ -580,22 +580,12 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
       </span>
     </span>
   </xsl:template>
-  <!-- Note sans appel -->
+  <!-- Block notes -->
   <xsl:template match="tei:back/tei:note | tei:div/tei:note | tei:div0/tei:note | tei:div1/tei:note | tei:div2/tei:note | tei:div3/tei:note | tei:div4/tei:note | tei:front/tei:note | tei:sp/tei:note">
-    <xsl:choose>
-      <xsl:when test="not(tei:p|tei:div)">
-        <p>
-          <xsl:call-template name="noteatts"/>
-          <xsl:apply-templates/>
-        </p>
-      </xsl:when>
-      <xsl:otherwise>
-        <div>
-          <xsl:call-template name="noteatts"/>
-          <xsl:apply-templates/>
-        </div>
-      </xsl:otherwise>
-    </xsl:choose>
+    <aside>
+      <xsl:call-template name="noteatts"/>
+      <xsl:apply-templates/>
+    </aside>
   </xsl:template>
   <!-- Note, texte, pour les notes déportée -->
   <xsl:template match="tei:div[@type='notes']/tei:note" priority="5">
