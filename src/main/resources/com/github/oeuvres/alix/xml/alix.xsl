@@ -169,7 +169,7 @@
       </xsl:choose>
     </xsl:attribute>
     <xsl:if test="/*/@cert">
-      <alix:field name="cert" type="facet" value="{normalize-space(/*/@cert)}"/>
+      <alix:field name="cert" type="category" value="{normalize-space(/*/@cert)}"/>
     </xsl:if>
 
     <xsl:copy-of select="$info"/>
@@ -350,11 +350,19 @@
         </xsl:attribute>
       </xsl:if>
       <xsl:choose>
-        <xsl:when test="@cert">
-          <alix:field name="cert" type="facet" value="{normalize-space(@cert)}"/>
+        <xsl:when test="@cert and normalize-space(@cert) != ''">
+          <alix:field name="cert" type="category" value="{normalize-space(@cert)}"/>
         </xsl:when>
-        <xsl:when test="/*/@cert">
-          <alix:field name="cert" type="facet" value="{normalize-space(/*/@cert)}"/>
+        <xsl:when test="/*/@cert and normalize-space(/*/@cert) != ''">
+          <alix:field name="cert" type="category" value="{normalize-space(/*/@cert)}"/>
+        </xsl:when>
+      </xsl:choose>
+      <xsl:choose>
+        <xsl:when test="@type and normalize-space(@type) != ''">
+          <alix:field name="type" type="category" value="{normalize-space(@type)}"/>
+        </xsl:when>
+        <xsl:when test="/*/@type and normalize-space(/*/@type) != ''">
+          <alix:field name="type" type="category" value="{normalize-space(/*/@type)}"/>
         </xsl:when>
       </xsl:choose>
       <alix:field name="toc" type="store">
@@ -388,7 +396,6 @@
           <alix:field name="year" type="int" value="{$bookyear}"/>
         </xsl:when>
       </xsl:choose>
-      <alix:field name="type" type="category" value="{@type}"/>
       <alix:field name="bibl" type="meta">
         <xsl:copy-of select="$bibl-book"/>
         <xsl:variable name="analytic">
