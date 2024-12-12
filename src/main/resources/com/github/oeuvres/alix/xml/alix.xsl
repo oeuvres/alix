@@ -78,6 +78,9 @@
       <xsl:when test="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'html:title']">
         <xsl:apply-templates select="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'html:title']/node()"/>
       </xsl:when>
+      <xsl:when test="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'zotero']">
+        <xsl:apply-templates select="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'zotero']/node()"/>
+      </xsl:when>
       <xsl:otherwise>
         <xsl:if test="$byline != ''">
           <span class="byline">
@@ -349,6 +352,9 @@
           <xsl:value-of select="@xml:id"/>
         </xsl:attribute>
       </xsl:if>
+      <xsl:if test="/*/@type and normalize-space(/*/@xml:id) != ''">
+        <alix:field name="bookid" type="category" value="{normalize-space(/*/@xml:id)}"/>
+      </xsl:if>
       <xsl:choose>
         <xsl:when test="@cert and normalize-space(@cert) != ''">
           <alix:field name="cert" type="category" value="{normalize-space(@cert)}"/>
@@ -381,7 +387,7 @@
           </xsl:if>
         </article>
       </alix:field>
-      <!-- replication of tags -->
+      <!-- replication of tags from parent -->
       <xsl:copy-of select="$tags"/>
       <!-- Todo, chapter authors -->
       <xsl:copy-of select="$info"/>
@@ -397,17 +403,24 @@
         </xsl:when>
       </xsl:choose>
       <alix:field name="bibl" type="meta">
-        <xsl:copy-of select="$bibl-book"/>
-        <xsl:variable name="analytic">
-          <xsl:call-template name="analytic"/>
-        </xsl:variable>
-        <xsl:if test="$analytic != ''">
-          <xsl:text> « </xsl:text>
-          <span class="analytic">
-            <xsl:copy-of select="$analytic"/>
-          </span>
-          <xsl:text> »</xsl:text>
-        </xsl:if>
+        <xsl:choose>
+          <xsl:when test="tei:head/tei:note[@type = 'bibl']">
+            <xsl:apply-templates select="tei:head/tei:note[@type = 'bibl']/node()"/>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:copy-of select="$bibl-book"/>
+            <xsl:variable name="analytic">
+              <xsl:call-template name="analytic"/>
+            </xsl:variable>
+            <xsl:if test="$analytic != ''">
+              <xsl:text> « </xsl:text>
+              <span class="analytic">
+                <xsl:copy-of select="$analytic"/>
+              </span>
+              <xsl:text> »</xsl:text>
+            </xsl:if>
+          </xsl:otherwise>
+        </xsl:choose>
       </alix:field>
       <alix:field name="analytic" type="meta">
         <xsl:call-template name="analytic"/>
