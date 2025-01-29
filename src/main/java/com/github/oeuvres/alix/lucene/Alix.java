@@ -228,15 +228,15 @@ public class Alix
         if (dirType == null)
             dirType = FSDirectoryType.FSDirectory;
         switch (dirType) {
-        case MMapDirectory:
-            dir = MMapDirectory.open(path);
-            break;
-        case NIOFSDirectory:
-            dir = NIOFSDirectory.open(path);
-            break;
-        default:
-            dir = FSDirectory.open(path);
-            break;
+            case MMapDirectory:
+                dir = MMapDirectory.open(path);
+                break;
+            case NIOFSDirectory:
+                dir = NIOFSDirectory.open(path);
+                break;
+            default:
+                dir = FSDirectory.open(path);
+                break;
         }
         // What about reuse strategy ?
         if (analyzer == null) {
