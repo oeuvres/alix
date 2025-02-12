@@ -65,9 +65,11 @@
       <xsl:variable name="value">
         <xsl:apply-templates select="." mode="key"/>
       </xsl:variable>
-      <alix:field name="term" type="facet" value="{normalize-space($value)}"/>
-      <xsl:if test="@type">
-        <alix:field name="{@type}" type="facet" value="{normalize-space($value)}"/>
+      <xsl:if test="normalize-space($value) != ''">
+        <alix:field name="term" type="facet" value="{normalize-space($value)}"/>
+        <xsl:if test="@type and @type != 'term'">
+          <alix:field name="{@type}" type="facet" value="{normalize-space($value)}"/>
+        </xsl:if>
       </xsl:if>
     </xsl:for-each>
   </xsl:variable>
@@ -202,13 +204,13 @@
       </xsl:call-template>
     </alix:field>
     <xsl:call-template name="links"/>
+    <xsl:copy-of select="$tags"/>
     <xsl:choose>
       <xsl:when test="$doctype = 'book'">
         <!-- process chapters -->
         <xsl:apply-templates mode="alix" select="*"/>
       </xsl:when>
       <xsl:otherwise>
-        <xsl:copy-of select="$tags"/>
         <alix:field name="text" type="text">
           <article>
             <xsl:choose>
@@ -371,6 +373,10 @@
           <alix:field name="type" type="category" value="{normalize-space(/*/@type)}"/>
         </xsl:when>
       </xsl:choose>
+      <!-- replication of tags from parent -->
+      <xsl:copy-of select="$tags"/>
+      <!-- Todo, chapter authors -->
+      <xsl:copy-of select="$info"/>
       <alix:field name="toc" type="store">
         <xsl:call-template name="toclocal"/>
       </alix:field>
@@ -387,10 +393,6 @@
           </xsl:if>
         </article>
       </alix:field>
-      <!-- replication of tags from parent -->
-      <xsl:copy-of select="$tags"/>
-      <!-- Todo, chapter authors -->
-      <xsl:copy-of select="$info"/>
       <!-- local date or replicate book date ? -->
       <xsl:variable name="chapyear" select="substring(@when, 1, 4)"/>
       <xsl:variable name="bookyear" select="substring($docdate, 1, 4)"/>
