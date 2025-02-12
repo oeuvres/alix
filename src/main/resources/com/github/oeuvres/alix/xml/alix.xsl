@@ -57,6 +57,19 @@
         <xsl:copy-of select="$byline"/>
       </alix:field>
     </xsl:if>
+    <!-- rights -->
+    <xsl:choose>
+      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/tei:p">
+        <alix:field name="rights" type="meta">
+          <xsl:apply-templates select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/tei:p/node()"/>
+        </alix:field>
+      </xsl:when>
+      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/tei:licence/@target">
+        <alix:field name="rights" type="meta">
+          <xsl:value-of select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/tei:licence/@target"/>
+        </alix:field>
+      </xsl:when>
+    </xsl:choose>
   </xsl:variable>
   
   <!-- tags to add at text level (not the book cover) for better stats -->

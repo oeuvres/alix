@@ -335,11 +335,6 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
     <xsl:variable name="children" select="tei:group | tei:text | tei:div 
       | tei:div0 | tei:div1 | tei:div2 | tei:div3 | tei:div4 | tei:div5 | tei:div6 | tei:div7 "/>
     <xsl:choose>
-      <xsl:when test="self::tei:body and count($children) &lt; 1">
-        <li>
-          <xsl:call-template name="a"/>
-        </li>
-      </xsl:when>
       <xsl:when test="count($children) = 1">
         <li>
           <xsl:variable name="title">
@@ -359,6 +354,12 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
           </xsl:for-each>
         </li>
       </xsl:when>
+      <xsl:when test="count($children) &gt; 0">
+        <xsl:apply-templates select="tei:group | tei:text | tei:div 
+      | tei:div0 | tei:div1" mode="li"/>
+      </xsl:when>
+      <!-- body without parts, do nothing ? castList ? titlePage ? -->
+      <xsl:when test="self::tei:body"/>
       <!-- simple content ? -->
       <xsl:when test="not(tei:castList | tei:div | tei:div1)">
         <li>
@@ -382,9 +383,6 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
             </xsl:for-each>
           </ol>
         </li>
-      </xsl:when>
-      <xsl:when test="self::tei:body">
-        <xsl:apply-templates select="tei:castList | tei:div | tei:div1 | tei:titlePage" mode="li"/>
       </xsl:when>
       <!-- div content -->
       <xsl:otherwise>
