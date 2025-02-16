@@ -426,7 +426,8 @@ public class FieldText extends FieldCharsAbstract
                 else if (locs) {  // special tag
                     if(!formId4isLoc.get(formId)) continue;
                 }
-                else if (hasTags) {
+                // tags which are not NOSTOP or LOC
+                if (hasTags) {
                     if(!formFilter.get(formId4flag[formId])) continue;
                 }
                 // if formId is negative, let the error go, problem in reader

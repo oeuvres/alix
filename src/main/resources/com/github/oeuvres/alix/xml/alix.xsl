@@ -217,13 +217,14 @@
       </xsl:call-template>
     </alix:field>
     <xsl:call-template name="links"/>
-    <xsl:copy-of select="$tags"/>
     <xsl:choose>
       <xsl:when test="$doctype = 'book'">
+        <!-- No tags for a book -->
         <!-- process chapters -->
         <xsl:apply-templates mode="alix" select="*"/>
       </xsl:when>
       <xsl:otherwise>
+        <xsl:copy-of select="$tags"/>
         <alix:field name="text" type="text">
           <article>
             <xsl:choose>
