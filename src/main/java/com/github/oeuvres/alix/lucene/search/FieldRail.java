@@ -67,6 +67,7 @@ import com.github.oeuvres.alix.util.EdgeMap;
 import com.github.oeuvres.alix.util.EdgeMatrix;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.IntPairMutable;
+import com.github.oeuvres.alix.util.IntRoller;
 import com.github.oeuvres.alix.util.RowcolQueue;
 
 /**
@@ -209,6 +210,49 @@ public class FieldRail  extends FieldCharsAbstract
         return formEnum;
     }
 
+    public int[][] coocmat(
+        final int left,
+        final int right,
+        int maxForm,
+        final BitSet docFilter
+    ) throws IOException {
+        if (maxForm < 1) maxForm = this.maxForm;
+        int[][] mat = new int[maxForm][maxForm];
+        if (left < 0 || right < 0 || (left + right) < 1) {
+            throw new IllegalArgumentException(
+                "left=" + left + " right=" + right
+                + " not enough context to extract co-occurrences."
+            );
+        }
+        final boolean hasFilter = (docFilter != null);
+        IntRoller roll = new IntRoller(1 + left + right);
+        IntBuffer bufInt = channelMap.rewind().asIntBuffer().asReadOnlyBuffer();
+        for (int docId = 0; docId < maxDoc; docId++) {
+            if (this.docId4len[docId] == 0)
+                continue; // deleted or with no value for this field
+            if (hasFilter && !docFilter.get(docId))
+                continue; // document not in the filter
+            bufInt.position(this.docId4offset[docId]);
+            
+            roll.fill(-1);
+            for (int i = 0, max = this.docId4len[docId]; i < max; i++) {
+                final int formId = bufInt.get();
+                if (formId >= maxForm) continue;
+                roll.add(formId);
+                final int pivot = roll.get(-right);
+                if (pivot < 0) continue;
+                for (int rollPos = -(left + right); rollPos <= 0; rollPos++) {
+                    if (rollPos == (- right)) continue;
+                    final int cooc = roll.get(rollPos);
+                    if (cooc < 0) continue;
+                    mat[pivot][cooc]++;
+                }
+            }
+        }
+        return mat;
+    }
+
+
     /**
      * Loop on a set of pivots, explore their context,
      * record edges between a set of cooccurents in these contexts.
@@ -319,7 +363,9 @@ public class FieldRail  extends FieldCharsAbstract
      * between but not holes or punctuation).
      * 
      * @param docFilter optional, a set of lucene internal doc id for a partition.
-     * @param formFilter optional, type of words to exclude from expressions like verbs, etc…
+     * @param start first word of an expression, a set of tags (stopwords, verbs…) to exclude
+     * @param middle words between start and end, a set of tags (stopwords, verbs…) to exclude
+     * @param end last word of an expression, a set of tags (stopwords, verbs…) to exclude
      * @return expressions as an {@link Iterable} of edges
      */
     public EdgeMap expressions(final BitSet docFilter, final TagFilter start, final TagFilter middle, final TagFilter end)
@@ -399,6 +445,15 @@ public class FieldRail  extends FieldCharsAbstract
     }
 
     /**
+     * Returns underlying {@link FieldText} given to constructor {@link #FieldRail(FieldText)}
+     * @return the underlying <code>FieldText</code>
+     */
+    public FieldText fieldText()
+    {
+        return fieldText;
+    }
+    
+    /**
      * From a set of documents provided as a BitSet, return a freqlist as an int
      * vector, where index is the formId for the field, the value is count of
      * occurrences of the term. Counts are extracted from stored <i>rails</i>.
@@ -415,11 +470,8 @@ public class FieldRail  extends FieldCharsAbstract
         int[] posInt = this.docId4offset;
         int[] limInt = this.docId4len;
 
-        /*
-         * // if channelMap is copied here as int[], same cost as IntBuffer // gain x2
-         * if int[] is preloaded at class level, but cost mem int[] rail = new
-         * int[(int)(channel.size() / 4)]; channelMap.asIntBuffer().get(rail);
-         */
+        // if channelMap is copied here as int[], same time as IntBuffer,
+        // but memory cost
         // no cost in time and memory to take one int view, seems faster to loop
         IntBuffer bufInt = channelMap.rewind().asIntBuffer().asReadOnlyBuffer();
         for (int docId = 0; docId < maxDoc; docId++) {
@@ -657,7 +709,7 @@ public class FieldRail  extends FieldCharsAbstract
         lock.close();
         channel.close();
     }
-
+    
     /**
      * A document as a sequence of tokens.
      * 

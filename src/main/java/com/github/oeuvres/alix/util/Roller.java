@@ -42,7 +42,7 @@ public abstract class Roller
     protected final int capacity;
     /** Number of elements set */
     protected int size;
-    /** Pointer on first cell */
+    /** Pointer on the “zero” cell */
     protected int zero;
 
     /**
@@ -55,30 +55,56 @@ public abstract class Roller
     }
 
     /**
-     * Return the size of the roller
-     * 
-     * @return number of elements.
+     * Removes all of the elements, {@link #isEmpty()} will return <code>true</code>
+     * after this method.
+     * Contract similar to {@link java.util.Collection#clear()}.
      */
-    public int size()
+    public void clear()
     {
-        return size;
+        size = 0;
+        zero = 0;
+    }
+
+    /**
+     * Returns <code>true</code> if this collection contains no elements.
+     * Contract similar to {@link java.util.Collection#isEmpty()}.
+     * 
+     * @return <code>true</code> if no value have been added or if values have been cleared
+     */
+    public boolean isEmpty()
+    {
+        return (size == 0);
     }
 
     /**
      * Get pointer on the data array from a position. Will roll around array if out
      * the limits.
      * 
-     * @param pos requested position.
+     * @param position requested position.
      * @return internal index array.
      */
-    protected int pointer(final int pos)
+    protected int pointer(final int position)
     {
-        /*
-         * if (ord < -left) throw(new ArrayIndexOutOfBoundsException(
-         * ord+" < "+(-left)+", left context size.\n"+this.toString() )); else if (ord >
-         * right) throw(new ArrayIndexOutOfBoundsException(
-         * ord+" > "+(+right)+", right context size.\n"+this.toString() ));
-         */
-        return (((zero + pos) % capacity) + capacity) % capacity;
+        return (((zero + position) % capacity) + capacity) % capacity;
+    }
+
+    /**
+     * Returns the number of value added.
+     * Contract similar to {@link java.util.Collection#size()},
+     * 
+     * @return number of values
+     */
+    public int size()
+    {
+        return size;
+    }
+    
+    /**
+     * Expert only, set the zero position in the data vector.
+     * @param index
+     */
+    public void zero(final int index)
+    {
+        zero = index;
     }
 }

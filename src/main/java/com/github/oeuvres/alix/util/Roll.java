@@ -50,12 +50,12 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
 
     /**
      * Constructor, fixed data size.
-     * @param size number of elements of this roll.
+     * @param capacity number of elements of this roll.
      */
     @SuppressWarnings("unchecked")
-    public Roll(final int size) {
-        super(size);
-        data = (E[]) new Object[size];
+    public Roll(final int capacity) {
+        super(capacity);
+        data = (E[]) new Object[capacity];
     }
     
     

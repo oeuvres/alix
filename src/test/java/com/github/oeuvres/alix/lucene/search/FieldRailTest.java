@@ -1,19 +1,60 @@
 package com.github.oeuvres.alix.lucene.search;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicIntegerArray;
-import java.util.stream.IntStream;
-
-
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.FixedBitSet;
+
+import com.github.oeuvres.alix.lucene.Alix;
 
 
-public class FieldRailTest extends FieldRail
+public class FieldRailTest
 {
-
-    public FieldRailTest(FieldText fieldText) throws IOException {
-        super(fieldText);
-        // TODO Auto-generated constructor stub
+    public static void main(String[] args) throws IOException {
+        final int left = 5;
+        final int right = 5;
+        final int maxForm = 20000;
+        long startTime = System.nanoTime();
+        Path filePath = Paths.get("piaget_cooc,5,5.csv");
+        BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
+        final Alix alix = Alix.instance("test", Paths.get("../piaget_labo/lucene/piaget"));
+        final String fieldName = "text_cloud";
+        FieldRail frail = alix.fieldRail(fieldName);
+        BitSet docFilter = new FixedBitSet(frail.maxDoc());
+        // do it one time to start alix
+        docFilter.set(5);
+        /*
+        System.out.println(frail.maxForm());
+        for (int formId = 0; formId < frail.maxForm(); formId++) {
+            writer.append(frail.form(formId) + " " + frail.fieldText().occs(formId) + "\n");
+        }
+        writer.flush();
+        */
+        int[][] mat = frail.coocmat(5, 5, maxForm, docFilter);
+        final String sep = ",";
+        final int note = mat[0][0];
+        System.out.println(note + "  " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
+        startTime = System.nanoTime();
+        mat = frail.coocmat(left, right, 20000, null);
+        System.out.println("matrix " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
+        startTime = System.nanoTime();
+        for (int formId = 0; formId < maxForm; formId++) {
+            writer.append(sep + frail.form(formId).replaceAll(sep, "\",\""));
+        }
+        writer.append("\n");
+        for (int pivotId = 0; pivotId < maxForm; pivotId++) {
+            writer.append(frail.form(pivotId));
+            for (int coocId = 0; coocId < maxForm; coocId++) {
+                writer.append("," + mat[pivotId][coocId]);
+            }
+            writer.append("\n");
+        }
+        writer.flush();
+        System.out.println("write " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
     }
 
     /**
@@ -24,6 +65,7 @@ public class FieldRailTest extends FieldRail
      * @return
      * @throws IOException Lucene errors.
      */
+    /*
     protected AtomicIntegerArray freqsParallel(final BitSet filter) throws IOException
     {
         // may take big place in mem
@@ -53,4 +95,5 @@ public class FieldRailTest extends FieldRail
         loop.count(); // go
         return freqs;
     }
+    */
 }
