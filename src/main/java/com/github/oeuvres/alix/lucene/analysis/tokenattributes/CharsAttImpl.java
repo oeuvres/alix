@@ -729,10 +729,10 @@ public class CharsAttImpl extends AttributeImpl
     }
     
     /**
-     * Test a suffix, char by char.
+     * Test a prefix, char by char.
      * 
-     * @param suffix to test.
-     * @return true if attribute ends by suffix, false otherwise.
+     * @param prefix to test
+     * @return true if attribute ends by suffix, false otherwise
      */
     public boolean startsWith(final String prefix)
     {

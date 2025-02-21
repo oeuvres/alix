@@ -72,9 +72,9 @@ public class FieldText extends FieldCharsAbstract
 {
     /** Σ occsByForm; global count of occs for this field, without empty positions. */
     protected final long occsAll;
-    /** occsByDoc[docId] = occs; count of occurrences by document, without empty positions. */
+    /** docId4occs[docId] = count of occurrences for a document, without empty positions. */
     protected final int[] docId4occs;
-    /** occsByform[formId] = occs; count of occurrences by form. */
+    /** formId4occs[formId] = count of occurrences for a form. */
     protected final long[] formId4occs;
     /** formId4isPun.get(formId) == true: form is punctuation. */
     private BitSet formId4isPun;

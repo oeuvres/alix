@@ -518,7 +518,7 @@ public class JspTools
      * 
      * @param name name of an http param.
      * @param range [min, max].
-     * @return [] if no value, [value] if one value, [lower, higher] if two values, lower < higher, lower >= min, higher <= max.
+     * @return [] if no value, [value] if one value, [lower, higher] if two values, lower &lt; higher, lower &gt;= min, higher &lt;= max.
      */
     public int[] getIntRange(final String name, final int[] range)
     {

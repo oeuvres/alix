@@ -12,3 +12,4 @@ com.github.oeuvres.alix.sqlite
 com.github.oeuvres.alix.util
 com.github.oeuvres.alix.web
 com.github.oeuvres.alix.xml
+org.apache.lucene.search.vectorhighlight

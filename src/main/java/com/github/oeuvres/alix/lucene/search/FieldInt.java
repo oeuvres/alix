@@ -269,7 +269,7 @@ public class FieldInt extends FieldAbstract
     
     /**
      * By docId, returns the indexed int value for the doc,
-     * or {@link Integer.MIN_VALUE} if no value for this doc.
+     * or {@link Integer#MIN_VALUE} if no value for this doc.
      * @param docId
      * @return 
      */
@@ -369,7 +369,7 @@ public class FieldInt extends FieldAbstract
      * Return count of docs by value, with an optional doc filter.
      * 
      * @param docFilter if (docFilter.get(docId) == true) {map.increment(value)}
-     * @return Map<value, docs>
+     * @return Map&lt;value, docs&gt;
      */
     public Map<Integer, Integer> docs(final BitSet docFilter)
     {

@@ -361,7 +361,7 @@ public class FieldFacet extends FieldCharsAbstract
      * 
      * @param ftext required stats from a text field.
      * @param docFilter optional set of internal lucene docId.
-     * @param formBytes optional set of terms present in the text field.
+     * @param formsBytes optional set of terms present in the text field.
      * @param scorer optional distribution to calculate a score for each facet.
      * @return an enumerator of facets with textual stats.
      * @throws IOException Lucene errors.

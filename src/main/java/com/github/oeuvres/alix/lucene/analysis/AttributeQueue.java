@@ -48,15 +48,20 @@ public class AttributeQueue extends Roller
     /**
      * Constructor, fixed data size.
      * @param size number of elements of this roll.
+     * @param atts clonable attributes
      */
-    public AttributeQueue(final int size, AttributeSource clonable) {
+    public AttributeQueue(final int size, AttributeSource atts) {
         super(size);
         data = new AttributeSource[size];
         for (int i = 0; i < size; i++) {
-            data[i] = clonable.cloneAttributes();
+            data[i] = atts.cloneAttributes();
         }
     }
 
+    /**
+     * Add attributes to queue.
+     * @param source Attributes to add
+     */
     public void addLast(AttributeSource source)
     {
         if (size >= capacity) {
@@ -66,11 +71,19 @@ public class AttributeQueue extends Roller
         size++;
     }
 
+    /**
+     * Clear the Queue.
+     */
     public void clear()
     {
         size = 0;
     }
 
+    /**
+     * Copy attributes from a position to the specified target, to change indexation state.
+     * @param target The attributes where copy to
+     * @param position The stored position from which copy
+     */
     public void copyTo(AttributeSource target, final int position)
     {
         if (size < 1) {
@@ -82,27 +95,43 @@ public class AttributeQueue extends Roller
         data[pointer(position)].copyTo(target);
     }
 
+    /**
+     * Returns true if empty.
+     * 
+     * @return true if empty
+     */
     public boolean isEmpty()
     {
         return (size == 0);
     }
 
+    /**
+     * Give a pointer on the first attributes of the queue.
+     * @return attributes stored
+     */
     public AttributeSource peekFirst()
     {
         if (size < 1) {
-            throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
+            throw new ArrayIndexOutOfBoundsException("size = 0, no element to return");
         }
         return data[zero];
     }
 
+    /**
+     * Copy the first attributes in the queue to the specified target, to change indexation state.
+     * @param target
+     */
     public void peekFirst(AttributeSource target)
     {
         if (size < 1) {
-            throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
+            throw new ArrayIndexOutOfBoundsException("size = 0, no element to copy");
         }
         data[zero].copyTo(target);
     }
 
+    /**
+     * Remove first element in the queue if exists.
+     */
     public void removeFirst()
     {
         if (size < 1) {
@@ -125,9 +154,8 @@ public class AttributeQueue extends Roller
     /**
      * Set value by position. Will never overflow the roller.
      * 
-     * @param position index where to set the value.
-     * @param value element to store at the position.
-     * @return the previous value at the position or null if 
+     * @param source element to store at the position
+     * @param position index where to set the value
      */
     public void set(AttributeSource source, final int position)
     {
