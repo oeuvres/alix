@@ -117,6 +117,14 @@ public class Insert
     private static final int TOK_DOC = 1;
 
     /**
+     * Avoid instantiation, use static methods instead.
+     */
+    private Insert()
+    {
+        
+    }
+    
+    /**
      * Connect to an sqlite database. Everything is broken if it can’t work, let it
      * cry.
      * 

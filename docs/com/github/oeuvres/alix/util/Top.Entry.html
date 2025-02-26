@@ -90,8 +90,12 @@ loadScripts(document, 'script');</script>
 </div>
 <section class="class-description" id="class-description">
 <dl class="notes">
+<dt>Type Parameters:</dt>
+<dd><code>E</code> - Parameterize element type</dd>
+</dl>
+<dl class="notes">
 <dt>All Implemented Interfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;<a href="Top.Entry.html" title="class in com.github.oeuvres.alix.util">Top.Entry</a>&gt;</code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;<a href="Top.Entry.html" title="class in com.github.oeuvres.alix.util">Top.Entry</a>&lt;E&gt;&gt;</code></dd>
 </dl>
 <dl class="notes">
 <dt>Enclosing class:</dt>
@@ -100,7 +104,7 @@ loadScripts(document, 'script');</script>
 <hr>
 <div class="type-signature"><span class="modifiers">public static class </span><span class="element-name type-name-label">Top.Entry&lt;E&gt;</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>
-implements <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;<a href="Top.Entry.html" title="class in com.github.oeuvres.alix.util">Top.Entry</a>&gt;</span></div>
+implements <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;<a href="Top.Entry.html" title="class in com.github.oeuvres.alix.util">Top.Entry</a>&lt;E&gt;&gt;</span></div>
 <div class="block">A mutable pair (rank, Object), used in the data array of the top queue.</div>
 </section>
 <section class="summary">
@@ -117,7 +121,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#compareTo(com.github.oeuvres.alix.util.Top.Entry)" class="member-name-link">compareTo</a><wbr>(<a href="Top.Entry.html" title="class in com.github.oeuvres.alix.util">Top.Entry</a>&nbsp;pair)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#compareTo(com.github.oeuvres.alix.util.Top.Entry)" class="member-name-link">compareTo</a><wbr>(<a href="Top.Entry.html" title="class in com.github.oeuvres.alix.util">Top.Entry</a>&lt;<a href="Top.Entry.html" title="type parameter in Top.Entry">E</a>&gt;&nbsp;pair)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>double</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#score()" class="member-name-link">score</a>()</code></div>
@@ -193,7 +197,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base
 <li>
 <section class="detail" id="compareTo(com.github.oeuvres.alix.util.Top.Entry)">
 <h3>compareTo</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">compareTo</span><wbr><span class="parameters">(<a href="Top.Entry.html" title="class in com.github.oeuvres.alix.util">Top.Entry</a>&nbsp;pair)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">compareTo</span><wbr><span class="parameters">(<a href="Top.Entry.html" title="class in com.github.oeuvres.alix.util">Top.Entry</a>&lt;<a href="Top.Entry.html" title="type parameter in Top.Entry">E</a>&gt;&nbsp;pair)</span></div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Comparable.html#compareTo(T)" title="class or interface in java.lang" class="external-link">compareTo</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;<a href="Top.Entry.html" title="type parameter in Top.Entry">E</a>&gt;</code></dd>

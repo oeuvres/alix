@@ -186,7 +186,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#docId4value(int)" class="member-name-link">docId4value</a><wbr>(int&nbsp;docId)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">By docId, returns the indexed int value for the doc,
+<div class="block">By docId, returns the first indexed int value for the doc,
  or <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Integer.html#MIN_VALUE" title="class or interface in java.lang" class="external-link"><code>Integer.MIN_VALUE</code></a> if no value for this doc.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
@@ -365,8 +365,10 @@ loadScripts(document, 'script');</script>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docs</span><wbr><span class="parameters">(int&nbsp;value)</span></div>
 <div class="block">Count of documents for an int value.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>value</code> - to test among documents.</dd>
 <dt>Returns:</dt>
-<dd>docs for this value if it exists, 0 if value out of bounds or not in set.</dd>
+<dd>docs document count for this value if it exists, 0 if value out of bounds or not in set.</dd>
 </dl>
 </section>
 </li>
@@ -374,12 +376,13 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="docId4value(int)">
 <h3>docId4value</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">docId4value</span><wbr><span class="parameters">(int&nbsp;docId)</span></div>
-<div class="block">By docId, returns the indexed int value for the doc,
+<div class="block">By docId, returns the first indexed int value for the doc,
  or <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Integer.html#MIN_VALUE" title="class or interface in java.lang" class="external-link"><code>Integer.MIN_VALUE</code></a> if no value for this doc.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>docId</code> - </dd>
+<dd><code>docId</code> - an internal lucene document id.</dd>
 <dt>Returns:</dt>
+<dd>the first value indexed for this document.</dd>
 </dl>
 </section>
 </li>

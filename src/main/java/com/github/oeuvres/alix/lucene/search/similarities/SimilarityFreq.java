@@ -40,6 +40,13 @@ import org.apache.lucene.search.similarities.SimilarityBase;
  */
 public class SimilarityFreq extends SimilarityBase
 {
+    /**
+     * Default constructor.
+     */
+    public SimilarityFreq()
+    {
+        super();
+    }
 
     @Override
     protected double score(BasicStats stats, double freq, double docLen)

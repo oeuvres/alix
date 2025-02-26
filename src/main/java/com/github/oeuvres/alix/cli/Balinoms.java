@@ -69,6 +69,14 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 @Command(name = "Balinoms", description = "Tag names in an XML/TEI file", mixinStandardHelpOptions = true)
 public class Balinoms implements Callable<Integer>
 {
+    /**
+     * Default constructor.
+     */
+    public Balinoms()
+    {
+        
+    }
+    
     static class Name implements Comparable<Name>
     {
         int count = 1;

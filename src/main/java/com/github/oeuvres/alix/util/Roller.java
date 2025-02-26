@@ -100,8 +100,9 @@ public abstract class Roller
     }
     
     /**
-     * Expert only, set the zero position in the data vector.
-     * @param index
+     * Expert only, set the zero position in the data array.
+     * 
+     * @param index index in the data array for the zero relative position.
      */
     public void zero(final int index)
     {

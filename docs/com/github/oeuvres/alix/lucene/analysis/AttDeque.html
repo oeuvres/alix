@@ -39,7 +39,7 @@ loadScripts(document, 'script');</script>
 <p>Summary:</p>
 <ul>
 <li>Nested</li>
-<li>Field</li>
+<li><a href="#field-summary">Field</a></li>
 <li><a href="#constructor-summary">Constr</a></li>
 <li><a href="#method-summary">Method</a></li>
 </ul>
@@ -59,7 +59,7 @@ loadScripts(document, 'script');</script>
 <ul class="sub-nav-list">
 <li>Summary:&nbsp;</li>
 <li>Nested&nbsp;|&nbsp;</li>
-<li>Field&nbsp;|&nbsp;</li>
+<li><a href="#field-summary">Field</a>&nbsp;|&nbsp;</li>
 <li><a href="#constructor-summary">Constr</a>&nbsp;|&nbsp;</li>
 <li><a href="#method-summary">Method</a></li>
 </ul>
@@ -86,18 +86,36 @@ loadScripts(document, 'script');</script>
 <h1 title="Class AttDeque" class="title">Class AttDeque</h1>
 </div>
 <div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">java.lang.Object</a>
+<div class="inheritance"><a href="../../util/Roller.html" title="class in com.github.oeuvres.alix.util">com.github.oeuvres.alix.util.Roller</a>
 <div class="inheritance">com.github.oeuvres.alix.lucene.analysis.AttDeque</div>
+</div>
 </div>
 <section class="class-description" id="class-description">
 <hr>
 <div class="type-signature"><span class="modifiers">public class </span><span class="element-name type-name-label">AttDeque</span>
-<span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span></div>
-<div class="block">A kind of <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/LinkedList.html" title="class or interface in java.util" class="external-link"><code>LinkedList</code></a> of reusable attributes, without <code>AttributeImpl.clone()</code> 
- and other creation of objects, for efficiency.
- Is used in analysis process to store states that can be recorded from both ends (ex : prefixes and suffixes)</div>
+<span class="extends-implements">extends <a href="../../util/Roller.html" title="class in com.github.oeuvres.alix.util">Roller</a></span></div>
+<div class="block">A fixed size collection of lucene <code>AttributeSource</code>, 
+ allowing insertion and removal at both ends,
+ a bit like a <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Deque.html" title="class or interface in java.util" class="external-link"><code>Deque</code></a>. This class is used in the context of 
+ a <code>TokenFilter</code>, to record states needed
+ by forward lookup or backward lookup (ex: concatenation of expressions).
+ 
+ This deque do not inherits from
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Collection.html" title="class or interface in java.util" class="external-link"><code>Collection</code></a> framework, because in the context of a
+ lucene analysis process, values of attributes like the actual token are volatile and needs to be copied
+ <code>AttributeSource.copyTo(AttributeSource)</code> else where to be kept.</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
+<!-- =========== FIELD SUMMARY =========== -->
+<li>
+<section class="field-summary" id="field-summary">
+<h2>Field Summary</h2>
+<div class="inherited-list">
+<h3 id="fields-inherited-from-class-com.github.oeuvres.alix.util.Roller">Fields inherited from class&nbsp;com.github.oeuvres.alix.util.<a href="../../util/Roller.html" title="class in com.github.oeuvres.alix.util">Roller</a></h3>
+<code><a href="../../util/Roller.html#capacity">capacity</a>, <a href="../../util/Roller.html#size">size</a>, <a href="../../util/Roller.html#zero">zero</a></code></div>
+</section>
+</li>
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
 <li>
 <section class="constructor-summary" id="constructor-summary">
@@ -106,8 +124,11 @@ loadScripts(document, 'script');</script>
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E()" class="member-name-link">AttDeque</a>()</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(int,org.apache.lucene.util.AttributeSource)" class="member-name-link">AttDeque</a><wbr>(int&nbsp;size,
+ org.apache.lucene.util.AttributeSource&nbsp;atts)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Constructor, fixed data size.</div>
+</div>
 </div>
 </section>
 </li>
@@ -123,69 +144,51 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addFirst(char%5B%5D,int,int,int,int)" class="member-name-link">addFirst</a><wbr>(char[]&nbsp;buffer,
- int&nbsp;copyOffset,
- int&nbsp;copyLength,
- int&nbsp;startOffset,
- int&nbsp;endOffset)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addLast(org.apache.lucene.util.AttributeSource)" class="member-name-link">addLast</a><wbr>(org.apache.lucene.util.AttributeSource&nbsp;source)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Prepend a state at start of the list.</div>
+<div class="block">Add attributes to queue.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addFirst(org.apache.lucene.analysis.tokenattributes.CharTermAttribute,int,int)" class="member-name-link">addFirst</a><wbr>(org.apache.lucene.analysis.tokenattributes.CharTermAttribute&nbsp;term,
- int&nbsp;startOffset,
- int&nbsp;endOffset)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#clear()" class="member-name-link">clear</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Prepend a state at start of the list.</div>
+<div class="block">Clear the Queue.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addFirst(org.apache.lucene.analysis.tokenattributes.CharTermAttribute,org.apache.lucene.analysis.tokenattributes.OffsetAttribute)" class="member-name-link">addFirst</a><wbr>(org.apache.lucene.analysis.tokenattributes.CharTermAttribute&nbsp;term,
- org.apache.lucene.analysis.tokenattributes.OffsetAttribute&nbsp;offsets)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#copyTo(org.apache.lucene.util.AttributeSource,int)" class="member-name-link">copyTo</a><wbr>(org.apache.lucene.util.AttributeSource&nbsp;target,
+ int&nbsp;position)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Prepend a state at start of the list.</div>
+<div class="block">Copy attributes from a position to the specified target, to change indexation state.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isEmpty()" class="member-name-link">isEmpty</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Returns true if empty.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>org.apache.lucene.util.AttributeSource</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#peekFirst()" class="member-name-link">peekFirst</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Give a pointer on the first attributes of the queue.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addLast(char%5B%5D,int,int,int,int)" class="member-name-link">addLast</a><wbr>(char[]&nbsp;buffer,
- int&nbsp;copyOffset,
- int&nbsp;copyLength,
- int&nbsp;startOffset,
- int&nbsp;endOffset)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#peekFirst(org.apache.lucene.util.AttributeSource)" class="member-name-link">peekFirst</a><wbr>(org.apache.lucene.util.AttributeSource&nbsp;target)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Append a state at end of the list.</div>
+<div class="block">Copy the first attributes in the queue to the specified target, to change indexation state.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addLast(org.apache.lucene.analysis.tokenattributes.CharTermAttribute,int,int)" class="member-name-link">addLast</a><wbr>(org.apache.lucene.analysis.tokenattributes.CharTermAttribute&nbsp;term,
- int&nbsp;startOffset,
- int&nbsp;endOffset)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#removeFirst()" class="member-name-link">removeFirst</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Append a state at end of the list.</div>
+<div class="block">Remove first element in the queue if exists.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addLast(org.apache.lucene.analysis.tokenattributes.CharTermAttribute,org.apache.lucene.analysis.tokenattributes.OffsetAttribute)" class="member-name-link">addLast</a><wbr>(org.apache.lucene.analysis.tokenattributes.CharTermAttribute&nbsp;term,
- org.apache.lucene.analysis.tokenattributes.OffsetAttribute&nbsp;offsets)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#removeFirst(org.apache.lucene.util.AttributeSource)" class="member-name-link">removeFirst</a><wbr>(org.apache.lucene.util.AttributeSource&nbsp;target)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Prepend a state at end of the list.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isEmpty()" class="member-name-link">isEmpty</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/AbstractCollection.html#isEmpty()" title="class or interface in java.util" class="external-link"><code>AbstractCollection.isEmpty()</code></a>.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#removeFirst(org.apache.lucene.analysis.tokenattributes.CharTermAttribute,org.apache.lucene.analysis.tokenattributes.OffsetAttribute)" class="member-name-link">removeFirst</a><wbr>(org.apache.lucene.analysis.tokenattributes.CharTermAttribute&nbsp;term,
- org.apache.lucene.analysis.tokenattributes.OffsetAttribute&nbsp;offsets)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Poll the first state from list, copy chars in a CharTermAttribute implementing
- <code>CharTermAttribute.copyBuffer(char[], int, int)</code>, copy startOffset and
- endOffset in <code>OffsetAttribute.setOffset(int, int)</code>.</div>
+<div class="block">Remove first element in the queue and copy its values to target.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#removeLast(org.apache.lucene.analysis.tokenattributes.CharTermAttribute,org.apache.lucene.analysis.tokenattributes.OffsetAttribute)" class="member-name-link">removeLast</a><wbr>(org.apache.lucene.analysis.tokenattributes.CharTermAttribute&nbsp;term,
- org.apache.lucene.analysis.tokenattributes.OffsetAttribute&nbsp;offsets)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#set(org.apache.lucene.util.AttributeSource,int)" class="member-name-link">set</a><wbr>(org.apache.lucene.util.AttributeSource&nbsp;source,
+ int&nbsp;position)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Pop the last state from list, copy chars in a CharTermAttribute implementing
- <code>CharTermAttribute.copyBuffer(char[], int, int)</code>, copy startOffset and
- endOffset in <code>OffsetAttribute.setOffset(int, int)</code>.</div>
+<div class="block">Set value by position.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
@@ -193,6 +196,9 @@ loadScripts(document, 'script');</script>
 </div>
 </div>
 </div>
+<div class="inherited-list">
+<h3 id="methods-inherited-from-class-com.github.oeuvres.alix.util.Roller">Methods inherited from class&nbsp;com.github.oeuvres.alix.util.<a href="../../util/Roller.html" title="class in com.github.oeuvres.alix.util">Roller</a></h3>
+<code><a href="../../util/Roller.html#pointer(int)">pointer</a>, <a href="../../util/Roller.html#size()">size</a>, <a href="../../util/Roller.html#zero(int)">zero</a></code></div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-java.lang.Object">Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></h3>
 <code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#clone()" title="class or interface in java.lang" class="external-link">clone</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#equals(java.lang.Object)" title="class or interface in java.lang" class="external-link">equals</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#finalize()" title="class or interface in java.lang" class="external-link">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#getClass()" title="class or interface in java.lang" class="external-link">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#hashCode()" title="class or interface in java.lang" class="external-link">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#notify()" title="class or interface in java.lang" class="external-link">notify</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#notifyAll()" title="class or interface in java.lang" class="external-link">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#wait()" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#wait(long)" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#wait(long,int)" title="class or interface in java.lang" class="external-link">wait</a></code></div>
@@ -208,9 +214,16 @@ loadScripts(document, 'script');</script>
 <h2>Constructor Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="&lt;init&gt;()">
+<section class="detail" id="&lt;init&gt;(int,org.apache.lucene.util.AttributeSource)">
 <h3>AttDeque</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">AttDeque</span>()</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">AttDeque</span><wbr><span class="parameters">(int&nbsp;size,
+ org.apache.lucene.util.AttributeSource&nbsp;atts)</span></div>
+<div class="block">Constructor, fixed data size.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>size</code> - number of elements of this roll.</dd>
+<dd><code>atts</code> - clonable attributes</dd>
+</dl>
 </section>
 </li>
 </ul>
@@ -222,106 +235,37 @@ loadScripts(document, 'script');</script>
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="addFirst(org.apache.lucene.analysis.tokenattributes.CharTermAttribute,org.apache.lucene.analysis.tokenattributes.OffsetAttribute)">
-<h3>addFirst</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">addFirst</span><wbr><span class="parameters">(org.apache.lucene.analysis.tokenattributes.CharTermAttribute&nbsp;term,
- org.apache.lucene.analysis.tokenattributes.OffsetAttribute&nbsp;offsets)</span></div>
-<div class="block">Prepend a state at start of the list.
- Like <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Deque.html#addFirst(E)" title="class or interface in java.util" class="external-link"><code>Deque.addFirst(Object)</code></a>.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>term</code> - chars Attribute.</dd>
-<dd><code>offsets</code> - <code>OffsetAttribute.startOffset()</code> and  <code>OffsetAttribute.endOffset()</code> in source text.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="addFirst(org.apache.lucene.analysis.tokenattributes.CharTermAttribute,int,int)">
-<h3>addFirst</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">addFirst</span><wbr><span class="parameters">(org.apache.lucene.analysis.tokenattributes.CharTermAttribute&nbsp;term,
- int&nbsp;startOffset,
- int&nbsp;endOffset)</span></div>
-<div class="block">Prepend a state at start of the list.
- Like <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Deque.html#addFirst(E)" title="class or interface in java.util" class="external-link"><code>Deque.addFirst(Object)</code></a>.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>term</code> - chars Attribute.</dd>
-<dd><code>startOffset</code> - like <code>OffsetAttribute.startOffset()</code>.</dd>
-<dd><code>endOffset</code> - like <code>OffsetAttribute.endOffset()</code>.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="addFirst(char[],int,int,int,int)">
-<h3>addFirst</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">addFirst</span><wbr><span class="parameters">(char[]&nbsp;buffer,
- int&nbsp;copyOffset,
- int&nbsp;copyLength,
- int&nbsp;startOffset,
- int&nbsp;endOffset)</span></div>
-<div class="block">Prepend a state at start of the list.
- Parameters are designed to efficiently record a substring of a <code>CharTermAttribute</code>,
- using <code>CharTermAttribute.buffer()</code> and free offsets.
- Like <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Deque.html#addFirst(E)" title="class or interface in java.util" class="external-link"><code>Deque.addFirst(Object)</code></a>.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>buffer</code> - chars of source Attribute <code>CharTermAttribute.buffer()</code>.</dd>
-<dd><code>copyOffset</code> - like in <code>CharTermAttribute.copyBuffer(char[], int, int)</code>.</dd>
-<dd><code>copyLength</code> - like for <code>CharTermAttribute.copyBuffer(char[], int, int)</code>.</dd>
-<dd><code>startOffset</code> - like <code>OffsetAttribute.startOffset()</code>.</dd>
-<dd><code>endOffset</code> - like <code>OffsetAttribute.endOffset()</code>.</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="addLast(org.apache.lucene.analysis.tokenattributes.CharTermAttribute,org.apache.lucene.analysis.tokenattributes.OffsetAttribute)">
+<section class="detail" id="addLast(org.apache.lucene.util.AttributeSource)">
 <h3>addLast</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">addLast</span><wbr><span class="parameters">(org.apache.lucene.analysis.tokenattributes.CharTermAttribute&nbsp;term,
- org.apache.lucene.analysis.tokenattributes.OffsetAttribute&nbsp;offsets)</span></div>
-<div class="block">Prepend a state at end of the list.
- Like <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Deque.html#addLast(E)" title="class or interface in java.util" class="external-link"><code>Deque.addLast(Object)</code></a>.</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">addLast</span><wbr><span class="parameters">(org.apache.lucene.util.AttributeSource&nbsp;source)</span></div>
+<div class="block">Add attributes to queue.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>term</code> - chars Attribute.</dd>
-<dd><code>offsets</code> - <code>OffsetAttribute.startOffset()</code> and  <code>OffsetAttribute.endOffset()</code> in source text.</dd>
+<dd><code>source</code> - Attributes to add</dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="addLast(org.apache.lucene.analysis.tokenattributes.CharTermAttribute,int,int)">
-<h3>addLast</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">addLast</span><wbr><span class="parameters">(org.apache.lucene.analysis.tokenattributes.CharTermAttribute&nbsp;term,
- int&nbsp;startOffset,
- int&nbsp;endOffset)</span></div>
-<div class="block">Append a state at end of the list.
- Like <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Deque.html#addLast(E)" title="class or interface in java.util" class="external-link"><code>Deque.addLast(Object)</code></a>.</div>
+<section class="detail" id="clear()">
+<h3>clear</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">clear</span>()</div>
+<div class="block">Clear the Queue.</div>
 <dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>term</code> - chars Attribute.</dd>
-<dd><code>startOffset</code> - like <code>OffsetAttribute.startOffset()</code>.</dd>
-<dd><code>endOffset</code> - like <code>OffsetAttribute.endOffset()</code>.</dd>
+<dt>Overrides:</dt>
+<dd><code><a href="../../util/Roller.html#clear()">clear</a></code>&nbsp;in class&nbsp;<code><a href="../../util/Roller.html" title="class in com.github.oeuvres.alix.util">Roller</a></code></dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="addLast(char[],int,int,int,int)">
-<h3>addLast</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">addLast</span><wbr><span class="parameters">(char[]&nbsp;buffer,
- int&nbsp;copyOffset,
- int&nbsp;copyLength,
- int&nbsp;startOffset,
- int&nbsp;endOffset)</span></div>
-<div class="block">Append a state at end of the list.
- Parameters are designed to efficiently record a substring of a <code>CharTermAttribute</code>,
- using <code>CharTermAttribute.buffer()</code> and free offsets.
- Like <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Deque.html#addLast(E)" title="class or interface in java.util" class="external-link"><code>Deque.addLast(Object)</code></a>.</div>
+<section class="detail" id="copyTo(org.apache.lucene.util.AttributeSource,int)">
+<h3>copyTo</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">copyTo</span><wbr><span class="parameters">(org.apache.lucene.util.AttributeSource&nbsp;target,
+ int&nbsp;position)</span></div>
+<div class="block">Copy attributes from a position to the specified target, to change indexation state.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>buffer</code> - chars of source Attribute <code>CharTermAttribute.buffer()</code>.</dd>
-<dd><code>copyOffset</code> - like in <code>CharTermAttribute.copyBuffer(char[], int, int)</code>.</dd>
-<dd><code>copyLength</code> - like for <code>CharTermAttribute.copyBuffer(char[], int, int)</code>.</dd>
-<dd><code>startOffset</code> - like <code>OffsetAttribute.startOffset()</code>.</dd>
-<dd><code>endOffset</code> - like <code>OffsetAttribute.endOffset()</code>.</dd>
+<dd><code>target</code> - The attributes where copy to</dd>
+<dd><code>position</code> - The stored position from which copy</dd>
 </dl>
 </section>
 </li>
@@ -329,42 +273,65 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="isEmpty()">
 <h3>isEmpty</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isEmpty</span>()</div>
-<div class="block">Like <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/AbstractCollection.html#isEmpty()" title="class or interface in java.util" class="external-link"><code>AbstractCollection.isEmpty()</code></a>.</div>
+<div class="block">Returns true if empty.</div>
+<dl class="notes">
+<dt>Overrides:</dt>
+<dd><code><a href="../../util/Roller.html#isEmpty()">isEmpty</a></code>&nbsp;in class&nbsp;<code><a href="../../util/Roller.html" title="class in com.github.oeuvres.alix.util">Roller</a></code></dd>
+<dt>Returns:</dt>
+<dd>true if empty</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="peekFirst()">
+<h3>peekFirst</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">org.apache.lucene.util.AttributeSource</span>&nbsp;<span class="element-name">peekFirst</span>()</div>
+<div class="block">Give a pointer on the first attributes of the queue.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>true if empty, false otherwise.</dd>
+<dd>attributes stored</dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="removeFirst(org.apache.lucene.analysis.tokenattributes.CharTermAttribute,org.apache.lucene.analysis.tokenattributes.OffsetAttribute)">
+<section class="detail" id="peekFirst(org.apache.lucene.util.AttributeSource)">
+<h3>peekFirst</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">peekFirst</span><wbr><span class="parameters">(org.apache.lucene.util.AttributeSource&nbsp;target)</span></div>
+<div class="block">Copy the first attributes in the queue to the specified target, to change indexation state.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>target</code> - destination where to copy attribute values</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="removeFirst()">
 <h3>removeFirst</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">removeFirst</span><wbr><span class="parameters">(org.apache.lucene.analysis.tokenattributes.CharTermAttribute&nbsp;term,
- org.apache.lucene.analysis.tokenattributes.OffsetAttribute&nbsp;offsets)</span></div>
-<div class="block">Poll the first state from list, copy chars in a CharTermAttribute implementing
- <code>CharTermAttribute.copyBuffer(char[], int, int)</code>, copy startOffset and
- endOffset in <code>OffsetAttribute.setOffset(int, int)</code>.
- Like <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Deque.html#removeFirst()" title="class or interface in java.util" class="external-link"><code>Deque.removeFirst()</code></a>.</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">removeFirst</span>()</div>
+<div class="block">Remove first element in the queue if exists.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="removeFirst(org.apache.lucene.util.AttributeSource)">
+<h3>removeFirst</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">removeFirst</span><wbr><span class="parameters">(org.apache.lucene.util.AttributeSource&nbsp;target)</span></div>
+<div class="block">Remove first element in the queue and copy its values to target.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>term</code> - attribute where chars are copied to.</dd>
-<dd><code>offsets</code> - <code>AttributeImpl</code> with offsets in source text.</dd>
+<dd><code>target</code> - destination where to copy attribute values</dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="removeLast(org.apache.lucene.analysis.tokenattributes.CharTermAttribute,org.apache.lucene.analysis.tokenattributes.OffsetAttribute)">
-<h3>removeLast</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">removeLast</span><wbr><span class="parameters">(org.apache.lucene.analysis.tokenattributes.CharTermAttribute&nbsp;term,
- org.apache.lucene.analysis.tokenattributes.OffsetAttribute&nbsp;offsets)</span></div>
-<div class="block">Pop the last state from list, copy chars in a CharTermAttribute implementing
- <code>CharTermAttribute.copyBuffer(char[], int, int)</code>, copy startOffset and
- endOffset in <code>OffsetAttribute.setOffset(int, int)</code>.
- Like <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Deque.html#removeLast()" title="class or interface in java.util" class="external-link"><code>Deque.removeLast()</code></a>.</div>
+<section class="detail" id="set(org.apache.lucene.util.AttributeSource,int)">
+<h3>set</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">set</span><wbr><span class="parameters">(org.apache.lucene.util.AttributeSource&nbsp;source,
+ int&nbsp;position)</span></div>
+<div class="block">Set value by position. Will never overflow the roller.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>term</code> - attribute where chars are copied to.</dd>
-<dd><code>offsets</code> - <code>AttributeImpl</code> with offsets in source text.</dd>
+<dd><code>source</code> - element to store at the position</dd>
+<dd><code>position</code> - index where to set the value</dd>
 </dl>
 </section>
 </li>

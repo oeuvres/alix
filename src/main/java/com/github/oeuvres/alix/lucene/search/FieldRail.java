@@ -210,10 +210,23 @@ public class FieldRail  extends FieldCharsAbstract
         return formEnum;
     }
 
+    /**
+     * Build a square matrix of co-occurencies.
+     * cooc[3][5] = 2 means, for pivot word with formId=3, there are 2 co-occurences
+     * of word with formId=5, in the context of <code>-left</code> and <code>+right</code>
+     * words around the pivot.
+     * 
+     * @param maxForm size of the side of the square matrix to return, allow to prune low frequencies occurrences.
+     * @param left width of context before a pivot.
+     * @param right width of context after a pivot.
+     * @param docFilter optional, set of lucene internal docId to restrict collect.
+     * @return a co-occureny matrix.
+     * @throws IOException lucene errors.
+     */
     public int[][] coocmat(
+        int maxForm,
         final int left,
         final int right,
-        int maxForm,
         final BitSet docFilter
     ) throws IOException {
         if (maxForm < 1) maxForm = this.maxForm;

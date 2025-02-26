@@ -57,6 +57,13 @@ public class ML
     }
 
     /**
+     * Avoid instantiation, use static methods instead.
+     */
+    private ML()
+    {
+        
+    }
+    /**
      * Get the char from an HTML entity like &amp;gt; or &amp;#128;. Will not work
      * on supplementary char like &amp;Afr; 𝔄 &amp;x1d504; (3 bytes).
      * 

@@ -1,336 +1,197 @@
+/*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
+ * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
+ *                Frédéric Glorieux <frederic.glorieux@fictif.org>
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
+ *
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache license.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
+ * for a java course at Inalco  http://www.er-tim.fr/
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
+ * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * http://savannah.nongnu.org/projects/sdx/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.github.oeuvres.alix.lucene.analysis;
 
-import java.util.AbstractCollection;
-import java.util.Deque;
-
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
-import org.apache.lucene.util.AttributeImpl;
+import org.apache.lucene.util.AttributeSource;
 
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.util.Roller;
 
 /**
- * A kind of {@link java.util.LinkedList} of reusable attributes, without {@link AttributeImpl#clone()} 
- * and other creation of objects, for efficiency.
- * Is used in analysis process to store states that can be recorded from both ends (ex : prefixes and suffixes)
+ * A fixed size collection of lucene {@link AttributeSource}, 
+ * allowing insertion and removal at both ends,
+ * a bit like a {@link java.util.Deque}. This class is used in the context of 
+ * a {@link org.apache.lucene.analysis.TokenFilter}, to record states needed
+ * by forward lookup or backward lookup (ex: concatenation of expressions).
+ * 
+ * This deque do not inherits from
+ * {@link java.util.Collection} framework, because in the context of a
+ * lucene analysis process, values of attributes like the actual token are volatile and needs to be copied
+ * {@link AttributeSource#copyTo(AttributeSource)} else where to be kept.
  */
-public class AttDeque
+public class AttDeque extends Roller
 {
-    /** Amount of nodes to create  */
-    static int DEFAULT_GROW = 4;
-    /** The root of the list */
-    private Occ root = new Occ(0);
-    /** First element in list. */
-    private Occ first;
-    /** Last element in list. */
-    private Occ last;
+    /** Data of the sliding window */
+    private AttributeSource[] data;
 
     /**
-     * Ensure that first node has at least one node before, or create one.
+     * Constructor, fixed data size.
+     * @param size number of elements of this roll.
+     * @param atts clonable attributes
      */
-    private void addFirst() {
-        if (first == null) {
-            first = last = root;
-            return;
+    public AttDeque(final int size, AttributeSource atts) {
+        super(size);
+        data = new AttributeSource[size];
+        for (int i = 0; i < size; i++) {
+            data[i] = atts.cloneAttributes();
         }
-        if (first.before == null) {
-            Occ butt = first;
-            for (int i = 0; i < DEFAULT_GROW; i++) {
-                final Occ node = new Occ(butt.position - 1);
-                butt.before = node;
-                node.after = butt;
-                butt = node;
-            }
+    }
+
+    /**
+     * Add attributes to queue.
+     * @param source Attributes to add
+     */
+    public void addLast(AttributeSource source)
+    {
+        if (size >= capacity) {
+            throw new ArrayIndexOutOfBoundsException("size = capacity = " + (size) + ", impossible to add more");
         }
-        first = first.before;
+        source.copyTo(data[pointer(size)]);
+        size++;
     }
 
-
     /**
-     * Prepend a state at start of the list.
-     * Like {@link Deque#addFirst(Object)}.
-     * 
-     * @param term chars Attribute.
-     * @param offsets {@link OffsetAttribute#startOffset()} and  {@link OffsetAttribute#endOffset()} in source text.
+     * Clear the Queue.
      */
-    public void addFirst(final CharTermAttribute term, final OffsetAttribute offsets)
+    public void clear()
     {
-        addFirst();
-        first.copy(term, offsets);
+        size = 0;
     }
-    
+
     /**
-     * Prepend a state at start of the list.
-     * Like {@link Deque#addFirst(Object)}.
-     * 
-     * @param term chars Attribute.
-     * @param startOffset like {@link OffsetAttribute#startOffset()}.
-     * @param endOffset like {@link OffsetAttribute#endOffset()}.
+     * Copy attributes from a position to the specified target, to change indexation state.
+     * @param target The attributes where copy to
+     * @param position The stored position from which copy
      */
-    public void addFirst(final CharTermAttribute term, final int startOffset, final int endOffset)
+    public void copyTo(AttributeSource target, final int position)
     {
-        addFirst();
-        first.copy(term, startOffset, endOffset);
-    }
-
-    /**
-     * Prepend a state at start of the list.
-     * Parameters are designed to efficiently record a substring of a {@link CharTermAttribute},
-     * using {@link CharTermAttribute#buffer()} and free offsets.
-     * Like {@link Deque#addFirst(Object)}.
-     * 
-     * @param buffer chars of source Attribute {@link CharTermAttribute#buffer()}.
-     * @param copyOffset like in {@link CharTermAttribute#copyBuffer(char[], int, int)}.
-     * @param copyLength like for {@link CharTermAttribute#copyBuffer(char[], int, int)}.
-     * @param startOffset like {@link OffsetAttribute#startOffset()}.
-     * @param endOffset like {@link OffsetAttribute#endOffset()}.
-     */
-    public void addFirst(
-        char[] buffer,
-        final int copyOffset, 
-        final int copyLength, 
-        final int startOffset, 
-        final int endOffset
-    ){
-        addFirst();
-        first.copy(buffer, copyOffset, copyLength, startOffset, endOffset);
-    }
-
-    /**
-     * Ensure that last node has at least one node after, or create some: {#DEFAULT_GROW}.
-     */
-    private void addLast() {
-        if (last == null) {
-            first = last = root;
-            return;
+        if (size < 1) {
+            throw new ArrayIndexOutOfBoundsException("size=0, no element to copy");
         }
-        if (last.after == null) {
-            Occ butt = last;
-            for (int i = 0; i < DEFAULT_GROW; i++) {
-                final Occ node = new Occ(butt.position + 1);
-                butt.after = node;
-                node.before = butt;
-                butt = node;
-            }
+        if (position < 0 || position >= size) {
+            throw new ArrayIndexOutOfBoundsException("position=" + position + ", not in [0," + size +"[");
         }
-        last = last.after;
+        data[pointer(position)].copyTo(target);
     }
 
-
     /**
-     * Prepend a state at end of the list.
-     * Like {@link Deque#addLast(Object)}.
+     * Returns true if empty.
      * 
-     * @param term chars Attribute.
-     * @param offsets {@link OffsetAttribute#startOffset()} and  {@link OffsetAttribute#endOffset()} in source text.
-     */
-    public void addLast(final CharTermAttribute term, final OffsetAttribute offsets)
-    {
-        addLast();
-        last.copy(term, offsets);
-    }
-    
-    /**
-     * Append a state at end of the list.
-     * Like {@link Deque#addLast(Object)}.
-     * 
-     * @param term chars Attribute.
-     * @param startOffset like {@link OffsetAttribute#startOffset()}.
-     * @param endOffset like {@link OffsetAttribute#endOffset()}.
-     */
-    public void addLast(final CharTermAttribute term, final int startOffset, final int endOffset)
-    {
-        addLast();
-        last.copy(term, startOffset, endOffset);
-    }
-
-    
-    /**
-     * Append a state at end of the list.
-     * Parameters are designed to efficiently record a substring of a {@link CharTermAttribute},
-     * using {@link CharTermAttribute#buffer()} and free offsets.
-     * Like {@link Deque#addLast(Object)}.
-     * 
-     * @param buffer chars of source Attribute {@link CharTermAttribute#buffer()}.
-     * @param copyOffset like in {@link CharTermAttribute#copyBuffer(char[], int, int)}.
-     * @param copyLength like for {@link CharTermAttribute#copyBuffer(char[], int, int)}.
-     * @param startOffset like {@link OffsetAttribute#startOffset()}.
-     * @param endOffset like {@link OffsetAttribute#endOffset()}.
-     */
-    public void addLast(
-        char[] buffer,
-        final int copyOffset, 
-        final int copyLength, 
-        final int startOffset, 
-        final int endOffset
-    ){
-        addLast();
-        last.copy(buffer, copyOffset, copyLength, startOffset, endOffset);
-    }
-
-    /**
-     * Like {@link AbstractCollection#isEmpty()}.
-     * @return true if empty, false otherwise.
+     * @return true if empty
      */
     public boolean isEmpty()
     {
-        return (first == null);
-    }
-    
-    /**
-     * Poll the first state from list, copy chars in a CharTermAttribute implementing
-     * {@link CharTermAttribute#copyBuffer(char[], int, int)}, copy startOffset and
-     * endOffset in {@link OffsetAttribute#setOffset(int, int)}.
-     * Like {@link Deque#removeFirst()}.
-     * 
-     * @param term attribute where chars are copied to.
-     * @param offsets {@link AttributeImpl} with offsets in source text.
-     */
-    public void removeFirst(final CharTermAttribute term, final OffsetAttribute offsets)
-    {
-        if (first == null) {
-            throw new IndexOutOfBoundsException("Stack is empty, no more values to pop");
-        }
-        first.copyTo(term, offsets);
-        if (first == last) {
-            first = last = null;
-        }
-        else {
-            first = first.after;
-        }
+        return (size == 0);
     }
 
-    
     /**
-     * Pop the last state from list, copy chars in a CharTermAttribute implementing
-     * {@link CharTermAttribute#copyBuffer(char[], int, int)}, copy startOffset and
-     * endOffset in {@link OffsetAttribute#setOffset(int, int)}.
-     * Like {@link Deque#removeLast()}.
-     * 
-     * @param term attribute where chars are copied to.
-     * @param offsets {@link AttributeImpl} with offsets in source text.
+     * Give a pointer on the first attributes of the queue.
+     * @return attributes stored
      */
-    public void removeLast(final CharTermAttribute term, final OffsetAttribute offsets)
+    public AttributeSource peekFirst()
     {
-        if (last == null) {
-            throw new IndexOutOfBoundsException("Stack is empty, no more values to pop");
+        if (size < 1) {
+            throw new ArrayIndexOutOfBoundsException("size = 0, no element to return");
         }
-        last.copyTo(term, offsets);
-        if (last == first) {
-            last = first = null;
-        }
-        else {
-            last = last.before;
-        }
+        return data[zero];
     }
-    
+
+    /**
+     * Copy the first attributes in the queue to the specified target, to change indexation state.
+     * @param target destination where to copy attribute values
+     */
+    public void peekFirst(AttributeSource target)
+    {
+        if (size < 1) {
+            throw new ArrayIndexOutOfBoundsException("size = 0, no element to copy");
+        }
+        data[zero].copyTo(target);
+    }
+
+    /**
+     * Remove first element in the queue if exists.
+     */
+    public void removeFirst()
+    {
+        if (size < 1) {
+            throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
+        }
+        size--;
+        zero = pointer(1);
+    }
+
+    /**
+     * Remove first element in the queue and copy its values to target.
+     * 
+     * @param target destination where to copy attribute values
+     */
+    public void removeFirst(AttributeSource target)
+    {
+        if (size < 1) {
+            throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
+        }
+        data[zero].copyTo(target);
+        size--;
+        zero = pointer(1);
+    }
+
+    /**
+     * Set value by position. Will never overflow the roller.
+     * 
+     * @param source element to store at the position
+     * @param position index where to set the value
+     */
+    public void set(AttributeSource source, final int position)
+    {
+        source.copyTo(data[pointer(position)]);
+    }
+
     @Override
     public String toString()
     {
-        if (first == null) {
-            return "[empty]";
-        }
         StringBuilder sb = new StringBuilder();
-        Occ occ = first;
-        do {
-            sb.append(occ).append("; ");
-            if (occ == last) break;
-            occ = occ.after;
-        } while(occ != null);
+        sb.append("[");
+        for (int i = 0; i < size; i++) {
+            if (i > 0) sb.append(", ");
+            if (data[pointer(i)].hasAttribute(CharTermAttribute.class)) {
+                sb.append(data[pointer(i)].getAttribute(CharTermAttribute.class));
+            }
+            else {
+                sb.append(data[pointer(i)]);
+            }
+        }
+        sb.append("]");
         return sb.toString();
-    }
-
-    /**
-     * Object to record an analysis state (a kind of occurrence).
-     */
-    private static class Occ
-    {
-        final int position;
-        Occ before;
-        Occ after;
-        int startOffset;
-        int endOffset;
-        final CharsAttImpl chars = new CharsAttImpl();
-
-        /**
-         * Constructor with a fixe position in string.
-         * @param position 0 for root node, <0 before root, >0 after root.
-         */
-        public Occ(final int position) {
-            this.position = position;
-        }
-        
-        /**
-         * Store some attributes value.
-         * @param term chars Attribute.
-         * @param offsets 
-         */
-        private void copy(final CharTermAttribute term, final OffsetAttribute offsets)
-        {
-            copy(term, offsets.startOffset(), offsets.endOffset());
-        }
-
-        /**
-         * Store a term with its position in source text.
-         * @param term chars Attribute.
-         * @param startOffset like {@link OffsetAttribute#startOffset()}.
-         * @param endOffset like {@link OffsetAttribute#endOffset()}.
-         */
-        private void copy(final CharTermAttribute term, final int startOffset, final int endOffset)
-        {
-            chars.copy(term);
-            this.startOffset = startOffset;
-            this.endOffset = endOffset;
-        }
-
-        /**
-         * Store a {@TokenStream} state with raw values.
-         * 
-         * @param buffer chars of source Attribute {@link CharTermAttribute#buffer()}.
-         * @param copyOffset like in {@link CharTermAttribute#copyBuffer(char[], int, int)}.
-         * @param copyLength like for {@link CharTermAttribute#copyBuffer(char[], int, int)}.
-         * @param startOffset like {@link OffsetAttribute#startOffset()}.
-         * @param endOffset like {@link OffsetAttribute#endOffset()}.
-         */
-        private void copy(
-            char[] buffer,
-            final int copyOffset, 
-            final int copyLength, 
-            final int startOffset, 
-            final int endOffset
-        ) {
-            this.startOffset = startOffset;
-            this.endOffset = endOffset;
-            chars.copyBuffer(buffer, copyOffset, copyLength);
-        }
-        
-        /**
-         * Copy content of this state to {@link AttributeImpl}s.
-         * 
-         * @param term destination {@link AttributeImpl} with token chars.
-         * @param destination {@link AttributeImpl} with offsets in source text.
-         */
-        private void copyTo(final CharTermAttribute term, final OffsetAttribute offsets)
-        {
-            chars.copyTo(term);
-            offsets.setOffset(startOffset, endOffset);
-        }
-        
-        @Override
-        public String toString()
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.append(position)
-                .append(". ")
-                .append(chars)
-                .append(" (")
-                .append(startOffset)
-                .append(",")
-                .append(endOffset)
-                .append(")")
-            ;
-            return sb.toString();
-        }
     }
 
 }

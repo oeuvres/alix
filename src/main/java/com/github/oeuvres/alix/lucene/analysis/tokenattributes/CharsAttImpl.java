@@ -649,7 +649,7 @@ public class CharsAttImpl extends AttributeImpl
     
     /**
      * Delete spaces at end (right trim)
-     * @return
+     * @return <code>this</code>
      */
     public final CharsAttImpl rtrim()
     {
@@ -666,7 +666,7 @@ public class CharsAttImpl extends AttributeImpl
      * Delete different characters at the end (right trim)
      * 
      * @param spaces char codes to delete
-     * @return
+     * @return <code>this</code>
      */
     public final CharsAttImpl rtrim(String spaces)
     {

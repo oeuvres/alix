@@ -72,6 +72,7 @@ public class IntSeries extends IntList
     /**
      * Constructor for a statistic series with minimal metadata.
      * 
+     * @param capacity initial size of the series.
      * @param name identifying chars (usually ASCII), or null if not needed.
      * @param label displayable label, or null if not needed.
      * @param code identifying number, or .

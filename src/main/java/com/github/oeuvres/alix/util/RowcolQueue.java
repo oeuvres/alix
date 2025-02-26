@@ -57,6 +57,13 @@ public class RowcolQueue
     private int rank = -1;
 
     /**
+     * Default constructor.
+     */
+    public RowcolQueue()
+    {
+        
+    }
+    /**
      * Get current col in enumeration.
      * 
      * @return current col.

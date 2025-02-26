@@ -40,6 +40,7 @@ import java.util.NoSuchElementException;
  */
 public class IntRoller extends Roller
 {
+    /** Fixed size data array. */
     protected final int[] data;
 
     /**
@@ -54,7 +55,7 @@ public class IntRoller extends Roller
     /**
      * Add a value to roller. 
      * Contract similar to {@link java.util.Collection#add(E)}.
-     * @param value
+     * @param value to append to head.
      * @return always true.
      */
     public boolean add(final int value)
@@ -82,23 +83,6 @@ public class IntRoller extends Roller
     }
 
     /**
-     * Retrieves and removes the head of this roller. Throws an exception if this roller is empty.
-     * Contract similar to {@link java.util.Queue#remove()}.
-     * @return last added element
-     * @throws NoSuchElementException
-     */
-    public int remove() throws NoSuchElementException
-    {
-        if (size < 1) {
-            throw new NoSuchElementException("This roller is empty, no value to remove.");
-        }
-        final int value = data[zero];
-        size--;
-        zero = pointer(1);
-        return value;
-    }
-    
-    /**
      * Retrieves a value at a position.
      * Contract similar to {@link java.util.List#get(int)},
      * but without exceptions, because all positions are accepted, even negative;
@@ -111,6 +95,23 @@ public class IntRoller extends Roller
         return data[pointer(position)];
     }
 
+    /**
+     * Retrieves and removes the head of this roller. Throws an exception if this roller is empty.
+     * Contract similar to {@link java.util.Queue#remove()}.
+     * @return last added element
+     * @throws NoSuchElementException if collection is empty.
+     */
+    public int remove() throws NoSuchElementException
+    {
+        if (size < 1) {
+            throw new NoSuchElementException("This roller is empty, no value to remove.");
+        }
+        final int value = data[zero];
+        size--;
+        zero = pointer(1);
+        return value;
+    }
+    
     /**
      * Replaces the value at the specified position with the specified value.
      * Contract similar to {@link java.util.List#set(int,java.lang.Object)},

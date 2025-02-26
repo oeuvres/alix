@@ -581,9 +581,9 @@ public class Alix
     }
 
     /**
-     * @see IndexReader#maxDoc()
+     * {@link IndexReader#maxDoc()}
      * 
-     * @return Max number fo a docId in this index.
+     * @return Max number for a docId in this index.
      * @throws IOException Lucene errors.
      */
     public int maxDoc() throws IOException
@@ -594,6 +594,7 @@ public class Alix
     }
 
     /**
+     * Returns name of this index.
      * 
      * @return Name of this Alix index.
      */
@@ -603,7 +604,7 @@ public class Alix
     }
 
     /**
-     * Build a lucene {@link Query} from a query {@link String}.
+     * Build a lucene {@link Query} from a user {@link String}.
      * 
      * @param fieldName Name of a text field.
      * @param q         User query String.

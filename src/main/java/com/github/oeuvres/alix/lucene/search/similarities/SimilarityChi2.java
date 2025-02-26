@@ -43,6 +43,14 @@ import org.apache.lucene.search.similarities.SimilarityBase;
 public class SimilarityChi2 extends SimilarityBase
 {
 
+    /**
+     * Default constructor.
+     */
+    public SimilarityChi2()
+    {
+        super();
+    }
+    
     @Override
     protected double score(BasicStats stats, double freq, double docLen)
     {

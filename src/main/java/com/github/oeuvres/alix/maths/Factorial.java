@@ -54,13 +54,19 @@ public class Factorial
             1.5036165148649983E300, 2.5260757449731988E302, 4.2690680090047056E304, 7.257415615308004E306 };
 
     /**
+     * Avoid instantiation, use static methods instead.
+     */
+    private Factorial()
+    {
+        
+    }
+    /**
      * Compute factorial of an integer.
      *
      * @param n Number for which to compute factorial.
      *
      * @return n!
      */
-
     public static double factorial(int n)
     {
         if (n < 0)

@@ -42,7 +42,14 @@ import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
  */
 public class AnalyzerMeta extends Analyzer
 {
-
+    /**
+     * Default constructor.
+     */
+    public AnalyzerMeta()
+    {
+        super();
+    }
+    
     @SuppressWarnings("resource")
     @Override
     protected TokenStreamComponents createComponents(String fieldName)

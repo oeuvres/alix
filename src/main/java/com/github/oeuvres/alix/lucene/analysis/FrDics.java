@@ -183,6 +183,13 @@ public class FrDics
     }
 
     /**
+     * Avoid instantiation, use static method instead.
+     */
+    private FrDics()
+    {
+        
+    }
+    /**
      * Load a jar resource as dictionary.
      * 
      * @param res resource path according to the class loader.

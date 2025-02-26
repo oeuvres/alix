@@ -91,7 +91,7 @@ loadScripts(document, 'script');</script>
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>Direct Known Subclasses:</dt>
-<dd><code><a href="../lucene/analysis/AttributeQueue.html" title="class in com.github.oeuvres.alix.lucene.analysis">AttributeQueue</a></code>, <code><a href="IntRoller.html" title="class in com.github.oeuvres.alix.util">IntRoller</a></code>, <code><a href="Roll.html" title="class in com.github.oeuvres.alix.util">Roll</a></code></dd>
+<dd><code><a href="../lucene/analysis/AttDeque.html" title="class in com.github.oeuvres.alix.lucene.analysis">AttDeque</a></code>, <code><a href="IntRoller.html" title="class in com.github.oeuvres.alix.util">IntRoller</a></code>, <code><a href="Roll.html" title="class in com.github.oeuvres.alix.util">Roll</a></code></dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public abstract class </span><span class="element-name type-name-label">Roller</span>
@@ -178,7 +178,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#zero(int)" class="member-name-link">zero</a><wbr>(int&nbsp;index)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Expert only, set the zero position in the data vector.</div>
+<div class="block">Expert only, set the zero position in the data array.</div>
 </div>
 </div>
 </div>
@@ -296,10 +296,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="zero(int)">
 <h3>zero</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">zero</span><wbr><span class="parameters">(int&nbsp;index)</span></div>
-<div class="block">Expert only, set the zero position in the data vector.</div>
+<div class="block">Expert only, set the zero position in the data array.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>index</code> - </dd>
+<dd><code>index</code> - index in the data array for the zero relative position.</dd>
 </dl>
 </section>
 </li>

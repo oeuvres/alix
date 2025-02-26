@@ -54,6 +54,14 @@ public class Dir
     static { // maybe useful to decode file names
         System.setProperty("file.encoding", "UTF-8");
     }
+    
+    /**
+     * Avoid instantiation.
+     */
+    private Dir()
+    {
+        
+    }
 
     /**
      * Resolve relative links for glob.

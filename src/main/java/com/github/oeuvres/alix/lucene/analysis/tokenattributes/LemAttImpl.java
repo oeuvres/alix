@@ -40,5 +40,11 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  */
 public final class LemAttImpl extends CharsAttImpl implements LemAtt
 {
-
+    /**
+     * Default constructor;
+     */
+    public LemAttImpl()
+    {
+        super();
+    }
 }

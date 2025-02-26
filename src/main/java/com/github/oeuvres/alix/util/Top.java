@@ -44,6 +44,8 @@ import java.util.NoSuchElementException;
  * minimum in the collection. Less flexible data structure have been tested (ex
  * : parallel array of simple types), no sensible gains were observed. The array
  * is only sorted on demand.
+ * 
+ * @param <E> Parameterize element type
  */
 public class Top<E> implements Iterable<Top.Entry<E>>
 {
@@ -265,9 +267,10 @@ public class Top<E> implements Iterable<Top.Entry<E>>
 
     /**
      * A mutable pair (rank, Object), used in the data array of the top queue.
+     * 
+     * @param <E> Parameterize element type
      */
-    @SuppressWarnings("rawtypes")
-    static public class Entry<E> implements Comparable<Entry>
+    static public class Entry<E> implements Comparable<Entry<E>>
     {
         /** The rank to compare values */
         double score;
@@ -317,7 +320,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
         }
 
         @Override
-        public int compareTo(Entry pair)
+        public int compareTo(Entry<E> pair)
         {
             if (Double.isNaN(score) && Double.isNaN(pair.score)) {
                 return 0;

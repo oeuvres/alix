@@ -31,7 +31,7 @@ public class FilterAposHyphenFr extends TokenFilter
     /** A linguistic category as a short number, see {@link Tag} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** Stack of stored states */
-    private final AttDeque deque = new AttDeque();
+    private final AttLinkedList deque = new AttLinkedList();
     
     
     /** Ellisions prefix */

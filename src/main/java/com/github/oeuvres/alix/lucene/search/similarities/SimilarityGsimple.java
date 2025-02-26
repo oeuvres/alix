@@ -42,6 +42,14 @@ import org.apache.lucene.search.similarities.SimilarityBase;
  */
 public class SimilarityGsimple extends SimilarityBase
 {
+    /**
+     * Default constructor.
+     */
+    public SimilarityGsimple()
+    {
+        super();
+    }
+
 
     @Override
     protected double score(BasicStats stats, double freq, double docLen)

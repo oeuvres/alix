@@ -43,8 +43,12 @@ import org.apache.lucene.analysis.Tokenizer;
 public class AnalyzerCloud extends Analyzer
 {
     /**
-     * Force creation of a new token stream pipeline, for multi threads indexing.
+     * Default constructor.
      */
+    public AnalyzerCloud()
+    {
+        super();
+    }
 
     @SuppressWarnings("resource")
     @Override

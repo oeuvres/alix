@@ -109,7 +109,9 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>protected final int[]</code></div>
 <div class="col-second even-row-color"><code><a href="#data" class="member-name-link">data</a></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">Fixed size data array.</div>
+</div>
 </div>
 <div class="inherited-list">
 <h3 id="fields-inherited-from-class-com.github.oeuvres.alix.util.Roller">Fields inherited from class&nbsp;com.github.oeuvres.alix.util.<a href="Roller.html" title="class in com.github.oeuvres.alix.util">Roller</a></h3>
@@ -195,6 +197,7 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="data">
 <h3>data</h3>
 <div class="member-signature"><span class="modifiers">protected final</span>&nbsp;<span class="return-type">int[]</span>&nbsp;<span class="element-name">data</span></div>
+<div class="block">Fixed size data array.</div>
 </section>
 </li>
 </ul>
@@ -232,7 +235,7 @@ loadScripts(document, 'script');</script>
  Contract similar to <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Collection.html#add(E)" title="class or interface in java.util" class="external-link"><code>Collection.add(E)</code></a>.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>value</code> - </dd>
+<dd><code>value</code> - to append to head.</dd>
 <dt>Returns:</dt>
 <dd>always true.</dd>
 </dl>
@@ -250,21 +253,6 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="remove()">
-<h3>remove</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">remove</span>()
-           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/NoSuchElementException.html" title="class or interface in java.util" class="external-link">NoSuchElementException</a></span></div>
-<div class="block">Retrieves and removes the head of this roller. Throws an exception if this roller is empty.
- Contract similar to <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Queue.html#remove()" title="class or interface in java.util" class="external-link"><code>Queue.remove()</code></a>.</div>
-<dl class="notes">
-<dt>Returns:</dt>
-<dd>last added element</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/NoSuchElementException.html" title="class or interface in java.util" class="external-link">NoSuchElementException</a></code></dd>
-</dl>
-</section>
-</li>
-<li>
 <section class="detail" id="get(int)">
 <h3>get</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">get</span><wbr><span class="parameters">(int&nbsp;position)</span></div>
@@ -277,6 +265,21 @@ loadScripts(document, 'script');</script>
 <dd><code>position</code> - position of the value to replace</dd>
 <dt>Returns:</dt>
 <dd>the value at the specified position</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="remove()">
+<h3>remove</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">remove</span>()
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/NoSuchElementException.html" title="class or interface in java.util" class="external-link">NoSuchElementException</a></span></div>
+<div class="block">Retrieves and removes the head of this roller. Throws an exception if this roller is empty.
+ Contract similar to <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Queue.html#remove()" title="class or interface in java.util" class="external-link"><code>Queue.remove()</code></a>.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>last added element</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/NoSuchElementException.html" title="class or interface in java.util" class="external-link">NoSuchElementException</a></code> - if collection is empty.</dd>
 </dl>
 </section>
 </li>

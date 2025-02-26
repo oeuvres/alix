@@ -91,6 +91,14 @@ public class Load implements Callable<Integer>
     String dstname;
     /** Possible local transformation for pre-indexation */
     String xsl;
+    
+    /**
+     * Default constructor.
+     */
+    public Load()
+    {
+        
+    }
 
     /**
      * Return true if a directory does not exist or if it has been removed.
@@ -290,6 +298,7 @@ public class Load implements Callable<Integer>
     }
 
     /**
+     * Write documents to a lucene index.
      * 
      * @param name Name of the base.
      * @param path Path where to write the path index.

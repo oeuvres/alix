@@ -22,7 +22,7 @@ public class AttDequeTest {
     {
         final CharTermAttribute term = new CharsAttImpl();
         final OffsetAttribute offsets = new OffsetAttributeImpl();
-        final AttDeque deque = new AttDeque();
+        final AttLinkedList deque = new AttLinkedList();
         final String[] src = new String[] {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"};
         final int srcLen = src.length;
         for (int i = 0; i < srcLen; i++) {

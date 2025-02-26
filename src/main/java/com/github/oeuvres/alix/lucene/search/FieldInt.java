@@ -255,7 +255,8 @@ public class FieldInt extends FieldAbstract
     /**
      * Count of documents for an int value.
      * 
-     * @return docs for this value if it exists, 0 if value out of bounds or not in set.
+     * @param value to test among documents.
+     * @return docs document count for this value if it exists, 0 if value out of bounds or not in set.
      */
     public int docs(final int value)
     {
@@ -268,10 +269,10 @@ public class FieldInt extends FieldAbstract
     }
     
     /**
-     * By docId, returns the indexed int value for the doc,
+     * By docId, returns the first indexed int value for the doc,
      * or {@link Integer#MIN_VALUE} if no value for this doc.
-     * @param docId
-     * @return 
+     * @param docId an internal lucene document id.
+     * @return the first value indexed for this document.
      */
     public int docId4value(final int docId)
     {
@@ -392,6 +393,13 @@ public class FieldInt extends FieldAbstract
         /** Internal cursor */
         private int cursor = -1;
 
+        /**
+         * Default constructor.
+         */
+        private IntEnum()
+        {
+            
+        }
         /**
          * There are search left
          * 

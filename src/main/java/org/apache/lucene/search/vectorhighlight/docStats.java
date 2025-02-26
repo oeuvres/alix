@@ -11,23 +11,27 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRefBuilder;
 
+/**
+ * Get stats from a {@link FieldQuery} in the context of the package
+ * to access to protected methods.
+ */
 public class docStats
 {
-    static public Set<String> terms(
-        final String fieldName, 
-        final FieldQuery fieldQuery
-    ) {
-        Set<String> termSet = fieldQuery.getTermSet(fieldName);
-        return termSet;
-    }
-    
     /**
-     * Get count of terms from a query.
+     * Do not instantiate, use static methods instead.
+     */
+    private docStats()
+    {
+        
+    }
+    /**
+     * Get count of matching tokens in a document from a query.
      *
      * @param reader IndexReader of the index
      * @param docId document id to be highlighted
      * @param fieldName field of the document to get terms from
      * @param fieldQuery FieldQuery object
+     * @return count of matching tokens
      * @throws IOException If there is a low-level I/O error
      */
     static public int occs(

@@ -12,6 +12,13 @@ import javax.xml.transform.stream.StreamSource;
  */
 public class JarResolver implements URIResolver
 {
+    /**
+     * Default constructor.
+     */
+    public JarResolver()
+    {
+        super();
+    }
 
     @Override
     public Source resolve(String href, String base) throws TransformerException

@@ -42,6 +42,8 @@ import java.util.Queue;
 /**
  * A fixed size queue, rolling if full. Very efficient but without security.
  * Always happy, will never send an exception, but sometimes null value.
+
+ * @param <E> Parameterize element type
  */
 public class Roll<E> extends Roller implements Queue<E>, List<E>
 {

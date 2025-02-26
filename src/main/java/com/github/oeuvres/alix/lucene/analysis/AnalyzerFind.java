@@ -43,6 +43,14 @@ import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
  */
 public class AnalyzerFind extends Analyzer
 {
+    /**
+     * Default constructor.
+     */
+    public AnalyzerFind()
+    {
+        super();
+    }
+    
     @SuppressWarnings("resource")
     @Override
     public TokenStreamComponents createComponents(String field)

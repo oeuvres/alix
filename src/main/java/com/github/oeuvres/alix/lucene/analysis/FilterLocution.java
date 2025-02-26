@@ -64,7 +64,7 @@ public class FilterLocution extends TokenFilter
     /** A lemma when possible */
     private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(LemAtt.class);
     /** A stack of states */
-    private AttributeQueue queue;
+    private AttDeque queue;
     /** A term used to concat a compound */
     private CharsAttImpl compound = new CharsAttImpl();
     /** past paticiples to not take as infinitives */
@@ -113,7 +113,7 @@ public class FilterLocution extends TokenFilter
     public final boolean incrementToken() throws IOException
     {
         if (queue == null) {
-            queue = new AttributeQueue(10, this);
+            queue = new AttDeque(10, this);
         }
         // System.out.println(queue);
         clearAttributes();
@@ -179,8 +179,6 @@ public class FilterLocution extends TokenFilter
                 compound.append(termAtt);
             }
             final Integer nodeType = FrDics.TREELOC.get(compound);
-
-            // System.out.println("compound=" + compound + " type=" + nodeType + " isVerb=" + Tag.VERB.sameParent(tag) + " queue=" + queue);
 
 
             // dead end

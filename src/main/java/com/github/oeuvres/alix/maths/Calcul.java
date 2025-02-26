@@ -38,6 +38,8 @@ import java.math.RoundingMode;
 /**
  * https://nic.schraudolph.org/pubs/Schraudolph99.pdf
  * https://github.com/stanfordnlp/CoreNLP/blob/master/src/edu/stanford/nlp/math/SloppyMath.java
+ * 
+ * @author Luciano Culacciatti
  */
 public class Calcul
 {
@@ -45,12 +47,19 @@ public class Calcul
     private static final BigDecimal SQRT_PRE = new BigDecimal(10).pow(SQRT_DIG.intValue());
 
     /**
+     * Avoid instantiation.
+     */
+    private Calcul()
+    {
+        
+    }
+    
+    /**
      * Square root from a {@link BigDecimal}.
      * http://www.codeproject.com/Tips/257031/Implementing-SqrtRoot-in-BigDecimal
      * 
      * @param c Value.
      * @return Square root.
-     * @author Luciano Culacciatti
      */
     public static BigDecimal sqrt(BigDecimal c)
     {
@@ -60,7 +69,6 @@ public class Calcul
     /**
      * Private utility method used to compute the square root of a BigDecimal.
      * 
-     * @author Luciano Culacciatti
      * @url http://www.codeproject.com/Tips/257031/Implementing-SqrtRoot-in-BigDecimal
      */
     private static BigDecimal sqrtNewtonRaphson(BigDecimal c, BigDecimal xn, BigDecimal precision)

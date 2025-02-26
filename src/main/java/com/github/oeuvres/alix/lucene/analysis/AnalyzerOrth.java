@@ -43,9 +43,13 @@ import org.apache.lucene.analysis.Tokenizer;
 public class AnalyzerOrth extends Analyzer
 {
     /**
-     * Force creation of a new token stream pipeline, for multi threads indexing.
+     * Default constructor.
      */
-
+    public AnalyzerOrth()
+    {
+        super();
+    }
+    
     @SuppressWarnings("resource")
     @Override
     public TokenStreamComponents createComponents(String field)

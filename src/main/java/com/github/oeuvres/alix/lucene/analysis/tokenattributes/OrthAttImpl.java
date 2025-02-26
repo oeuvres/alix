@@ -40,5 +40,11 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  */
 public final class OrthAttImpl extends CharsAttImpl implements OrthAtt
 {
-
+    /**
+     * Default constructor.
+     */
+    public OrthAttImpl()
+    {
+        super();
+    }
 }

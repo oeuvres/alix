@@ -361,7 +361,7 @@ public enum Tag {
     }
 
     /**
-     * 
+     * Return the identifier number for this tag.
      * @return The identifier number.
      */
     public int flag()
@@ -370,9 +370,9 @@ public enum Tag {
     }
 
     /**
-     * 
-     * @param name A Tag name.
-     * @return The Identifier number of a Tag.
+     * Returns the identifier number of a <code>Tag</code>, by name.
+     * @param name A mutable Tag name.
+     * @return The identifier number of a <code>Tag</code>.
      */
     public static int flag(final Chain name)
     {

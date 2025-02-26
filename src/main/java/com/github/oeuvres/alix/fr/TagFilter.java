@@ -44,6 +44,13 @@ public class TagFilter
     boolean[] rule = new boolean[256];
 
     /**
+     * Default constructor.
+     */
+    public TagFilter()
+    {
+        
+    }
+    /**
      * Count of flags set to true, like {@link BitSet#cardinality()}.
      * 
      * @return count of flags = true.

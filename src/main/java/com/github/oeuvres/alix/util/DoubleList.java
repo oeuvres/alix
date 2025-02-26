@@ -47,6 +47,14 @@ public class DoubleList
     protected double[] data = new double[64];
 
     /**
+     * Default constructor.
+     */
+    public DoubleList()
+    {
+        
+    }
+    
+    /**
      * Like {@link List#size()}, returns the number of values in this list.
      * 
      * @return amount of values.

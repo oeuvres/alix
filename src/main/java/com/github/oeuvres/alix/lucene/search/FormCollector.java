@@ -64,6 +64,14 @@ public class FormCollector implements FormIterator
     private double score;
 
     /**
+     * Default constructor.
+     */
+    public FormCollector()
+    {
+        super();
+    }
+    
+    /**
      * Clear object
      */
     public void clear()
