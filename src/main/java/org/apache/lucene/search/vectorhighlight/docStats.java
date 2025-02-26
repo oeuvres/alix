@@ -24,6 +24,21 @@ public class docStats
     {
         
     }
+    
+    /**
+     * Get list of terms matching a complex query.
+     * 
+     * @param fieldName field of the document to get terms from
+     * @param fieldQuery FieldQuery object
+     * @return set of terms matching a query.
+     */
+    static public Set<String> terms(
+            final String fieldName, 
+            final FieldQuery fieldQuery
+        ) {
+            Set<String> termSet = fieldQuery.getTermSet(fieldName);
+            return termSet;
+    }
     /**
      * Get count of matching tokens in a document from a query.
      *
