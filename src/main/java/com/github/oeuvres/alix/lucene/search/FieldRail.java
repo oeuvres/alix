@@ -32,8 +32,14 @@
  */
 package com.github.oeuvres.alix.lucene.search;
 
+import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.DataInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.IntBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.Channels;
@@ -60,6 +66,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 
+import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Edge;
@@ -370,6 +377,66 @@ public class FieldRail  extends FieldCharsAbstract
         */
         throw new UnsupportedOperationException("Bugs here, use edges(nodeId, left, right, nodeIds, docFilter) instead.");
     }
+    
+    public void export(
+        String outFile,
+        final BitSet docFilter,
+        final BitSet formFilter
+    ) throws IOException {
+        final boolean hasFilter = (docFilter != null);
+        IntBuffer bufInt = channelMap.rewind().asIntBuffer().asReadOnlyBuffer();
+        BytesRef bytes = new BytesRef();
+        
+        try (OutputStream out = new BufferedOutputStream(new FileOutputStream(outFile))) {
+            for (int docId = 0; docId < maxDoc; docId++) {
+                if (this.docId4len[docId] == 0)
+                    continue; // deleted or with no value for this field
+                if (hasFilter && !docFilter.get(docId))
+                    continue; // document not in the filter
+                bufInt.position(this.docId4offset[docId]);
+                for (int i = 0, max = this.docId4len[docId]; i < max; i++) {
+                    final int formId = bufInt.get();
+                    final int flag = fieldText.formId4flag[formId];
+                    if (flag == Tag.PUNsection.flag) {
+                        out.write(10);
+                        out.write(10);
+                        out.write(10);
+                        continue;
+                    }
+                    else if (flag == Tag.PUNpara.flag) {
+                        out.write(10);
+                        out.write(10);
+                        continue;
+                    }
+                    else if (flag == Tag.PUNsent.flag) {
+                        out.write(10);
+                        continue;
+                    }
+                    else if (fieldText.isStop(formId)) {
+                        continue;
+                    }
+                    // chain locutions
+                    else if (fieldText.isLocution(formId)) {
+                        this.dic.get(formId, bytes);
+                        
+                        for (int j = bytes.offset; j < (bytes.offset + bytes.length); j++) {
+                            byte b = bytes.bytes[j];
+                            if (b == 20) b = 95;
+                            out.write(b);
+                        }
+                        out.write(32);
+                    }
+                    else {
+                        this.dic.get(formId, bytes);
+                        out.write(bytes.bytes, bytes.offset, bytes.length);
+                        out.write(32);
+                    }
+                }
+            }
+            out.flush();
+        }
+    }
+
 
     /**
      * Loop on the rail to find expression (2 plain words with possible stop words

@@ -227,8 +227,20 @@ public class FieldText extends FieldCharsAbstract
                     continue;
                 }
             }
-            if (Char.isPunctuation(chars.charAt(0))) {
-                formId4flag[formId] = Tag.PUN.flag;
+            char c = chars.charAt(0);
+            if (Char.isPunctuation(c)) {
+                if (c == '§') {
+                    formId4flag[formId] = Tag.PUNsection.flag;
+                }
+                else if (c == '¶') {
+                    formId4flag[formId] = Tag.PUNpara.flag;
+                }
+                else if (c == '.' || c == '…' || c == '?' || c == '!' ) {
+                    formId4flag[formId] = Tag.PUNsent.flag;
+                }
+                else {
+                    formId4flag[formId] = Tag.PUN.flag;
+                }
                 punRecord.set(formId);
                 continue;
             }

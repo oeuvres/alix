@@ -14,13 +14,12 @@ import com.github.oeuvres.alix.lucene.Alix;
 
 public class FieldRailTest
 {
-    public static void main(String[] args) throws IOException {
+    public static void matrix() throws IOException
+    {
         final int left = 5;
         final int right = 5;
         final int maxForm = 20000;
         long startTime = System.nanoTime();
-        Path filePath = Paths.get("piaget_cooc,5,5.csv");
-        BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
         final Alix alix = Alix.instance("test", Paths.get("../piaget_labo/lucene/piaget"));
         final String fieldName = "text_cloud";
         FieldRail frail = alix.fieldRail(fieldName);
@@ -34,11 +33,14 @@ public class FieldRailTest
         }
         writer.flush();
         */
-        int[][] mat = frail.coocmat(5, 5, maxForm, docFilter);
-        final String sep = ",";
+        int[][] mat = frail.coocmat(left, right, maxForm, docFilter);
         final int note = mat[0][0];
         System.out.println(note + "  " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
         startTime = System.nanoTime();
+        /**
+        Path filePath = Paths.get("piaget_cooc,5,5.csv");
+        BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
+        final String sep = ",";
         mat = frail.coocmat(left, right, 20000, null);
         System.out.println("matrix " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
         startTime = System.nanoTime();
@@ -54,7 +56,28 @@ public class FieldRailTest
             writer.append("\n");
         }
         writer.flush();
+        **/
         System.out.println("write " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
+    }
+    
+    public static void export() throws IOException
+    {
+        final Alix alix = Alix.instance("test", Paths.get("../piaget_labo/lucene/piaget"));
+        final String fieldName = "text_cloud";
+        FieldRail frail = alix.fieldRail(fieldName);
+        BitSet docFilter = new FixedBitSet(frail.maxDoc());
+        docFilter.set(1100);
+        frail.export(
+            "piaget.txt",
+            null,
+            null
+        );
+        
+    }
+    
+    public static void main(String[] args) throws IOException
+    {
+        export();
     }
 
     /**
