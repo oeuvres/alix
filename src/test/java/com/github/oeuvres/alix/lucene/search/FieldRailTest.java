@@ -73,7 +73,7 @@ public class FieldRailTest
         // BitSet docFilter = new FixedBitSet(frail.maxDoc());
         // docFilter.set(1100);
         TagFilter formFilter = new TagFilter();
-        // formFilter.set(Tag.NOSTOP.flag);
+        formFilter.set(Tag.NOSTOP.flag);
         String fileName = "../word2vec/";
         fileName += path.getFileName().toString();
         fileName += "_" + fieldName;
