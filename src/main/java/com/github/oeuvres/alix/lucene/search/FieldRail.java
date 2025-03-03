@@ -381,12 +381,12 @@ public class FieldRail  extends FieldCharsAbstract
     public void export(
         String outFile,
         final BitSet docFilter,
-        final BitSet formFilter
+        final TagFilter formFilter
     ) throws IOException {
         final boolean hasFilter = (docFilter != null);
         IntBuffer bufInt = channelMap.rewind().asIntBuffer().asReadOnlyBuffer();
         BytesRef bytes = new BytesRef();
-        
+        final boolean nostop = (formFilter != null)?formFilter.get(Tag.NOSTOP.flag):false;
         try (OutputStream out = new BufferedOutputStream(new FileOutputStream(outFile))) {
             for (int docId = 0; docId < maxDoc; docId++) {
                 if (this.docId4len[docId] == 0)
@@ -412,16 +412,18 @@ public class FieldRail  extends FieldCharsAbstract
                         out.write(10);
                         continue;
                     }
-                    else if (fieldText.isStop(formId)) {
+                    else if (Tag.parent(flag) == Tag.PUN) {
+                        continue;
+                    }
+                    else if (nostop && fieldText.isStop(formId)) {
                         continue;
                     }
                     // chain locutions
                     else if (fieldText.isLocution(formId)) {
                         this.dic.get(formId, bytes);
-                        
                         for (int j = bytes.offset; j < (bytes.offset + bytes.length); j++) {
                             byte b = bytes.bytes[j];
-                            if (b == 20) b = 95;
+                            if (b == 32) b = 95;
                             out.write(b);
                         }
                         out.write(32);

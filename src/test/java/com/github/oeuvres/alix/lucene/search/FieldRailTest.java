@@ -9,6 +9,8 @@ import java.nio.file.Paths;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 
+import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.lucene.Alix;
 
 
@@ -62,17 +64,27 @@ public class FieldRailTest
     
     public static void export() throws IOException
     {
-        final Alix alix = Alix.instance("test", Paths.get("../piaget_labo/lucene/piaget"));
+        Path path = Paths.get("../piaget_labo/lucene/piaget");
+        // Path path = Paths.get("../ddr_lab/lucene/rougemont");
+        final Alix alix = Alix.instance("test", path);
         final String fieldName = "text_cloud";
         FieldRail frail = alix.fieldRail(fieldName);
-        BitSet docFilter = new FixedBitSet(frail.maxDoc());
-        docFilter.set(1100);
+        BitSet docFilter = null;
+        // BitSet docFilter = new FixedBitSet(frail.maxDoc());
+        // docFilter.set(1100);
+        TagFilter formFilter = new TagFilter();
+        // formFilter.set(Tag.NOSTOP.flag);
+        String fileName = "../word2vec/";
+        fileName += path.getFileName().toString();
+        fileName += "_" + fieldName;
+        if (formFilter.get(Tag.NOSTOP.flag)) fileName += "_nostop";
+        fileName += ".txt";
         frail.export(
-            "piaget.txt",
-            null,
-            null
+            fileName,
+            docFilter,
+            formFilter
         );
-        
+        System.out.println(fileName + " exported");
     }
     
     public static void main(String[] args) throws IOException
