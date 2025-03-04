@@ -76,8 +76,8 @@ public class FieldRailTest
         formFilter.set(Tag.NOSTOP.flag);
         String fileName = "../word2vec/";
         fileName += path.getFileName().toString();
-        fileName += "_" + fieldName;
-        if (formFilter.get(Tag.NOSTOP.flag)) fileName += "_nostop";
+        // fileName += "_" + fieldName;
+        // if (formFilter.get(Tag.NOSTOP.flag)) fileName += "_nostop";
         fileName += ".txt";
         frail.export(
             fileName,
