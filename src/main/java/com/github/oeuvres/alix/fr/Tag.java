@@ -76,6 +76,9 @@ public enum Tag {
     /** Expression verb */
     VERBexpr(0x15, "V. d’expression", "Dire, répondre, s’écrier… (verbes d’expression).") {
     },
+    /** Infinitive */
+    VERBinf(0x17, "Infinitif", "Infinitif.") {
+    },
     /** Participle past */
     VERBppass(0x18, "Part. passé", "Participe passé (tous emplois : verbal, adjectif, substantif).") {
     },

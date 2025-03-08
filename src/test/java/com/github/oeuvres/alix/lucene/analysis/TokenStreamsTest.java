@@ -44,8 +44,9 @@ public class TokenStreamsTest {
             + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion"
         ;
         text = "débile (Brang : 14 ; …) d’âge mental de sept ans, à qui je donne une trentaine";
-        text = "M<sup>elle</sup>";
-        Analyzer ana = new AnalyzerAlix();
+        text = "C'est. C’est. M<sup>elle</sup> est gentille.";
+        // Analyzer ana = new AnalyzerAlix();
+        Analyzer ana = new AnalyzerLem();
         analyze(ana.tokenStream("_cloud", text), text);
         ana.close();
     }
@@ -152,12 +153,17 @@ public class TokenStreamsTest {
 
     static public class AnalyzerLocution extends Analyzer
     {
+        public AnalyzerLocution()
+        {
+            super();
+        }
+        @SuppressWarnings("resource")
         @Override
         public TokenStreamComponents createComponents(String field)
         {
             final Tokenizer tokenizer = new TokenizerML(); // segment words
-            TokenStream ts;
-            ts = new FilterAposHyphenFr(tokenizer);
+            TokenStream ts  = tokenizer;
+            ts = new FilterAposHyphenFr(ts);
             ts = new FilterLemmatize(ts); // provide lemma+pos
             ts = new FilterLocution(ts); // concat known locutions
             return new TokenStreamComponents(tokenizer, ts);

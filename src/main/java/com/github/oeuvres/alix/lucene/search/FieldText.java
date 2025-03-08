@@ -488,7 +488,7 @@ public class FieldText extends FieldCharsAbstract
 
         return formEnum;
     }
-
+    
     /**
      * Get scored words for a partition of the full index. A part is a sequential int
      * between [0, parts[. Parts are given as a vector of ints where classifier[docId]=part.

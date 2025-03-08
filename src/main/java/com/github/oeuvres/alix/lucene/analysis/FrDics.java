@@ -118,19 +118,20 @@ public class FrDics
             Automaton automaton = WordsAutomatonBuilder.buildFronStrings(list);
             STOP_BYTES = new ByteRunAutomaton(automaton);
 
-            res = "word.csv";
+            res = "word.tsv";
             reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
-            csv = new CSVReader(reader, 6);
+            csv = new CSVReader(reader, 3, '\t');
             csv.readRow(); // pass first line
             while ((row = csv.readRow()) != null) {
                 Chain orth = row.get(0);
                 if (orth.isEmpty() || orth.charAt(0) == '#')
                     continue;
                 // keep first key
+                orth.replace('’', '\'');
                 if (WORDS.containsKey(orth))
                     continue;
                 CharsAttImpl key = new CharsAttImpl(orth);
-                WORDS.put(key, new LexEntry(row.get(0), row.get(1), null, row.get(2)));
+                WORDS.put(key, new LexEntry(orth, row.get(2), null, row.get(1)));
             }
             // nouns, put persons after places (Molière is also a village, but not very
             // common)
@@ -147,7 +148,8 @@ public class FrDics
                     Chain graph = row.get(0);
                     if (graph.isEmpty() || graph.charAt(0) == '#')
                         continue;
-                    LexEntry entry = new LexEntry(row.get(0), row.get(1), row.get(2), null);
+                    graph.replace('’', '\'');
+                    LexEntry entry = new LexEntry(graph, row.get(1), row.get(2), null);
                     NAMES.put(new CharsAttImpl(graph), entry);
                     if (graph.contains(' ')) {
                         compound(graph, TREELOC);
@@ -238,6 +240,7 @@ public class FrDics
                 if (graph.isEmpty() || graph.charAt(0) == '#')
                     continue;
                 // entry to remove
+                graph.replace('’', '\'');
                 if (graph.first() == '-') {
                     graph.firstDel();
                     WORDS.remove(graph);
@@ -248,7 +251,7 @@ public class FrDics
                 WORDS.remove(graph);
                 NAMES.remove(graph);
                 CharsAttImpl key = new CharsAttImpl(graph);
-                LexEntry entry = new LexEntry(row.get(0), row.get(1), row.get(2), row.get(3));
+                LexEntry entry = new LexEntry(graph, row.get(1), row.get(2), row.get(3));
                 if (graph.isFirstUpper())
                     NAMES.put(key, entry);
                 else
@@ -504,15 +507,22 @@ public class FrDics
             if (graph.isEmpty() || tag.isEmpty()) {
                 LOGGER.log(Level.FINEST, res + " graph=" + graph + " tag=" + tag);
             }
+            graph.replace('’', '\'');
             this.tag = Tag.flag(tag);
-            if (orth == null || orth.isEmpty())
+            if (orth == null || orth.isEmpty()) {
                 this.orth = null;
-            else
+            }
+            else {
+                orth.replace('’', '\'');
                 this.orth = new CharsAttImpl(orth);
-            if (lem == null || lem.isEmpty())
+            }
+            if (lem == null || lem.isEmpty()) {
                 this.lem = null;
-            else
+            }
+            else {
+                lem.replace('’', '\'');
                 this.lem = new CharsAttImpl(lem);
+            }
         }
 
         @Override
