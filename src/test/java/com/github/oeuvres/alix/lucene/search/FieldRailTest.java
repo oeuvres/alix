@@ -65,17 +65,16 @@ public class FieldRailTest
     
     public static void export() throws IOException
     {
-        // Path path = Paths.get("../piaget_labo/lucene/piaget");
-        Path path = Paths.get("../ddr_lab/lucene/rougemont");
+        Path path = Paths.get("../piaget_labo/lucene/piaget");
+        // Path path = Paths.get("../ddr_lab/lucene/rougemont");
         final Alix alix = Alix.instance("test", path);
         final String fieldName = "text_cloud";
         FieldRail frail = alix.fieldRail(fieldName);
-        // BitSet docFilter = null;
-        BitSet docFilter = new SparseFixedBitSet(frail.maxDoc());
-        docFilter.set(500);
+        BitSet docFilter = null;
+        // BitSet docFilter = new SparseFixedBitSet(frail.maxDoc());
         TagFilter tagFilter = new TagFilter();
-        // tagFilter.set(Tag.NOSTOP.flag);
-        tagFilter.set(Tag.SUB); // .set(Tag.VERB);
+        tagFilter.set(Tag.NOSTOP).set(Tag.SUB).set(Tag.ADJ)
+            .set(Tag.VERB).set(Tag.VERBppass).set(Tag.VERBger).set(Tag.NULL);
         String fileName = "../word2vec/";
         fileName += path.getFileName().toString();
         // fileName += "_" + fieldName;

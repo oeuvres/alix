@@ -766,7 +766,7 @@ public class FormEnum implements FormIterator
         if (this.limit < 0 || this.limit > maxForm) {
             this.limit = maxForm;
         }
-        top = new TopArray(limit, flags);
+        top = new TopArray(this.limit, flags);
         // boolean noZeroScore = false;
         if (scoreByForm != null && order != Order.SCORE) {
             // noZeroScore = true;

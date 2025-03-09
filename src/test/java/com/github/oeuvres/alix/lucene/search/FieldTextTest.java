@@ -39,7 +39,7 @@ public class FieldTextTest
         }
         final FieldText ftext = alix.fieldText(fname);
         BitSet docFilter = null;
-        TagFilter tagFilter = new TagFilter().set(Tag.NAME).set(Tag.NOSTOP); // .set(Tag.ADJ).set(Tag.UNKNOWN).setGroup(Tag.NAME).set(Tag.NULL).set(Tag.NOSTOP);
+        TagFilter tagFilter = new TagFilter().set(Tag.NULL).set(Tag.NOSTOP); // .set(Tag.ADJ).set(Tag.UNKNOWN).setGroup(Tag.NAME).set(Tag.NULL).set(Tag.NOSTOP);
         FormEnum formEnum = ftext.formEnum(docFilter, tagFilter, Distrib.BM25);
         formEnum.sort(order, limit);
         System.out.println(formEnum);
