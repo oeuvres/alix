@@ -270,7 +270,13 @@ public class FieldText extends FieldCharsAbstract
             }
 
             // if (chars.length() < 1) continue; // ?
-            if (Char.isUpperCase(chars.charAt(0))) formId4flag[formId] = Tag.NAME.flag;
+            if (Char.isUpperCase(chars.charAt(0))) {
+                if (chars.length() == 1);
+                else if (chars.length() == 2 && chars.charAt(1) == '\'');
+                else {
+                    formId4flag[formId] = Tag.NAME.flag;
+                }
+            }
         }
         // convert a java.lang growable BitSets in fixed lucene ones
         formId4isStop = new FixedBitSet(stopRecord.length());
@@ -315,19 +321,22 @@ public class FieldText extends FieldCharsAbstract
     /**
      * Build a BitSet of formId for efficient filtering of forms by tags.
      * 
-     * @param formFilter filter 
+     * @param tagFilter filter 
      * @return a formId filter.
      */
-    public BitSet formFilter(TagFilter formFilter)
+    public BitSet formFilter(TagFilter tagFilter)
     {
-        BitSet rule = new SparseFixedBitSet(maxForm);
-        final boolean stop = formFilter.get(Tag.STOP);
-        final boolean noStop = formFilter.get(Tag.NOSTOP);
+        // todo, locutions ?
+        if (tagFilter == null || tagFilter.cardinality() < 1) return null;
+        boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+        BitSet formFilter = new SparseFixedBitSet(maxForm);
+        final boolean stop = tagFilter.get(Tag.STOP);
+        final boolean noStop = tagFilter.get(Tag.NOSTOP);
         for (int formId = 1; formId < maxForm; formId++) {
             // wanting stop word, come before nostop (setAll behavior)
             if (stop) {
                 if (isStop(formId)) {
-                    rule.set(formId);
+                    formFilter.set(formId);
                     continue;
                 }
             }
@@ -335,18 +344,18 @@ public class FieldText extends FieldCharsAbstract
             else if (noStop) {
                 if (isStop(formId)) continue;
                 // if noStop is alone, accept all others
-                if (formFilter.cardinality() == 1) {
-                    rule.set(formId);
+                if (tagFilter.cardinality() == 1) {
+                    formFilter.set(formId);
                     continue;
                 }
             }
             // general case
             final int flag = formId4flag[formId];
-            if (formFilter.get(flag)) {
-                rule.set(formId);
+            if (tagFilter.get(flag)) {
+                formFilter.set(formId);
             }
         }
-        return rule;
+        return formFilter;
     }
 
     /**
@@ -386,19 +395,19 @@ public class FieldText extends FieldCharsAbstract
      * Possible optimisations: java.util.BitSet, no loop on docs if no docFilter.
      * 
      * @param docFilter a set of docId.
-     * @param formFilter a set of formId.
+     * @param tagFilter a set of formId.
      * @param distribution a scoring algorithm.
      * @return an object to sort and loop forms.
      * @throws IOException lucene errors.
      */
-    public FormEnum formEnum(final BitSet docFilter, final TagFilter formFilter, Distrib distribution) throws IOException
+    public FormEnum formEnum(final BitSet docFilter, final TagFilter tagFilter, Distrib distribution) throws IOException
     {
         FormEnum formEnum = formEnum(); // get global stats 
     
-        boolean noStop = (formFilter != null && formFilter.get(Tag.NOSTOP));
-        boolean locs = (formFilter != null && formFilter.get(Tag.LOC));
-        boolean hasTags = (formFilter != null && (formFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
-        
+        boolean noStop = (tagFilter != null && tagFilter.get(Tag.NOSTOP));
+        boolean locs = (tagFilter != null && tagFilter.get(Tag.LOC));
+        boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+        System.out.println(hasTags);
         
         boolean hasDistrib = (distribution != null);
         boolean hasFilter = (docFilter != null && docFilter.cardinality() > 0);
@@ -430,7 +439,7 @@ public class FieldText extends FieldCharsAbstract
             PostingsEnum postings = null;
             while ((bytes = tenum.next()) != null) {
                 if (bytes.length == 0) continue; // do not count empty positions
-                int formId = dic.find(bytes);
+                final int formId = dic.find(bytes);
                 // filter some tags
                 if (noStop) { // special tag
                     if(isStop(formId)) continue;
@@ -440,7 +449,13 @@ public class FieldText extends FieldCharsAbstract
                 }
                 // tags which are not NOSTOP or LOC
                 if (hasTags) {
-                    if(!formFilter.get(formId4flag[formId])) continue;
+                    final int flag = formId4flag[formId];
+                    
+                    if(!tagFilter.get(flag)) {
+                        formId4occs[formId] = 0;
+                        formId4docs[formId] = 0;
+                        continue;
+                    }
                 }
                 // if formId is negative, let the error go, problem in reader
                 // for each form, set scorer with global stats by form, before count by doc

@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.SparseFixedBitSet;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.fr.TagFilter;
@@ -69,12 +70,12 @@ public class FieldRailTest
         final Alix alix = Alix.instance("test", path);
         final String fieldName = "text_cloud";
         FieldRail frail = alix.fieldRail(fieldName);
-        BitSet docFilter = null;
-        // BitSet docFilter = new FixedBitSet(frail.maxDoc());
-        // docFilter.set(1100);
+        // BitSet docFilter = null;
+        BitSet docFilter = new SparseFixedBitSet(frail.maxDoc());
+        docFilter.set(500);
         TagFilter tagFilter = new TagFilter();
-        tagFilter.set(Tag.NOSTOP.flag);
-        tagFilter.set(Tag.SUB).set(Tag.ADJ).set(Tag.VERB)
+        // tagFilter.set(Tag.NOSTOP.flag);
+        tagFilter.set(Tag.SUB); // .set(Tag.VERB);
         String fileName = "../word2vec/";
         fileName += path.getFileName().toString();
         // fileName += "_" + fieldName;
@@ -83,7 +84,7 @@ public class FieldRailTest
         frail.export(
             fileName,
             docFilter,
-            formFilter
+            tagFilter
         );
         System.out.println(fileName + " exported");
     }

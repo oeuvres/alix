@@ -761,10 +761,12 @@ public class FormEnum implements FormIterator
         if (reverse)
             flags |= TopArray.REVERSE;
         TopArray top = null;
-        if (limit < 1)
-            top = new TopArray(maxForm, flags);
-        else
-            top = new TopArray(limit, flags);
+        
+        this.limit = limit;
+        if (this.limit < 0 || this.limit > maxForm) {
+            this.limit = maxForm;
+        }
+        top = new TopArray(limit, flags);
         // boolean noZeroScore = false;
         if (scoreByForm != null && order != Order.SCORE) {
             // noZeroScore = true;
@@ -886,14 +888,14 @@ public class FormEnum implements FormIterator
     {
         final BytesRef bytes = new BytesRef();
         StringBuilder sb = new StringBuilder();
-        sb.append("size=" + dic.size() + "\n");
+        sb.append("dic.size=" + dic.size() + "\n");
         if (sorter == null) {
             sb.append("No sorter, limit=" + limit + "\n");
             sorter = new int[limit];
             for (int i = 0; i < limit; i++)
                 sorter[i] = i;
         }
-        int limit = Math.min(Math.min(dic.size(), 100), sorter.length);
+        final int limit = Math.min(Math.min(dic.size(), this.limit), sorter.length);
         boolean hasScore = (scoreByForm != null);
         boolean hasHits = (formId4hits != null);
         boolean hasDocs = (formId4docs != null);

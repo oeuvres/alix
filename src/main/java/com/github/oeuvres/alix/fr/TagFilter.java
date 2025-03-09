@@ -20,7 +20,7 @@ public class TagFilter
     static final public TagFilter NAME = new TagFilter().setGroup(Tag.NAME).freeze();
     /** Refuse stop words */
     static final public TagFilter NOSTOP = new TagFilter().set(Tag.NOSTOP).freeze();
-    /** Refuse stop words, bu accept locutions. */
+    /** Refuse stop words, but accept locutions. */
     static final public TagFilter NOSTOP_LOC = new TagFilter().set(Tag.NOSTOP).set(Tag.LOC).freeze();
     /** Proper names known as persons */
     static final public TagFilter PERS =new TagFilter().set(Tag.NAME).set(Tag.NAMEpers).set(Tag.NAMEpersf).set(Tag.NAMEpersm).set(Tag.NAMEauthor).set(Tag.NAMEfict).freeze();

@@ -169,6 +169,9 @@ public final class FilterLemmatize extends TokenFilter
             copy.copy(orthAtt);
             // c1 = orth.charAt(0); // keep initial cap, maybe useful
             entry = FrDics.name(orthAtt); // known name ?
+            if (entry == null) {
+                entry = FrDics.name(orthAtt.capitalize()); // known name ?
+            }
             if (entry != null) {
                 flagsAtt.setFlags(entry.tag);
                 // maybe a normalized form for the name
@@ -206,6 +209,7 @@ public final class FilterLemmatize extends TokenFilter
                 return true;
             } else { // unknown word, infer it's a NAME
                 flagsAtt.setFlags(Tag.NAME.flag);
+                if (copy.length() > 3) copy.capitalize();
                 orthAtt.copy(copy);
                 return true;
             }
