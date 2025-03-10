@@ -40,7 +40,7 @@ import java.util.NoSuchElementException;
 /**
  * A queue to select the top elements according to a float score. Efficiency
  * come from a data structure without object creation. An array is populated
- * with entries (float score, Object value), only if score is better than the
+ * with entries (double score, Object value), only if score is better than the
  * minimum in the collection. Less flexible data structure have been tested (ex
  * : parallel array of simple types), no sensible gains were observed. The array
  * is only sorted on demand.
