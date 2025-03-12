@@ -235,18 +235,18 @@ public class FormEnum implements FormIterator
     /**
      * Filter forms. For excluded form, unset freq, hits and score if exists.
      * 
-     * @param formFilter form filter.
+     * @param tagFilter form filter.
      * @return this.
      */
-    public FormEnum filter(final TagFilter formFilter)
+    public FormEnum filter(final TagFilter tagFilter)
     {
         if (!(field instanceof FieldText)) {
             throw new UnsupportedOperationException("Field " + field.fieldName + " is not instanceof FieldText, filter form is not possible " + field);
         }
         FieldText fieldText = (FieldText)field;
-        boolean noStop = (formFilter != null && formFilter.get(Tag.NOSTOP));
-        boolean locs = (formFilter != null && formFilter.get(Tag.LOC));
-        boolean hasTags = (formFilter != null && (formFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+        boolean noStop = (tagFilter != null && tagFilter.get(Tag.NOSTOP));
+        boolean locs = (tagFilter != null && tagFilter.get(Tag.LOC));
+        boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
 
         boolean hasFreq = (formId4freq != null);
         boolean hasHits = (formId4hits != null);
@@ -266,7 +266,7 @@ public class FormEnum implements FormIterator
             }
             // use tags even if no stop is set, allow to filter unknown or null
             if (hasTags) {
-                if(!formFilter.get(fieldText.formId4flag[formId])) unset = true;
+                if(!tagFilter.get(fieldText.formId4flag[formId])) unset = true;
             }
             // if no freq, give occs for the form
             if (!hasFreq) {

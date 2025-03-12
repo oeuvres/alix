@@ -22,16 +22,16 @@ public class FieldTextTest
     @SuppressWarnings("unused")
     public static void freqList() throws IOException
     {
-        Path path = Paths.get("../piaget_labo/lucene/piaget");
-        // Path path = Paths.get("../ddr_lab/lucene/rougemont");
+        // Path path = Paths.get("../piaget_labo/lucene/piaget");
+        Path path = Paths.get("../ddr_lab/lucene/rougemont");
         final Alix alix = Alix.instance("test", path);
         final String q = null;
-        final int limit = 1000;
+        final int limit = 100;
         final int left = 5;
         final int right = 5;
         final String book = null;
 
-        final Order order = FormEnum.Order.SCORE;
+        final Order order = FormEnum.Order.FREQ;
         // Where to search in
         String fname = "text_cloud";
         if (q != null) {
@@ -39,7 +39,8 @@ public class FieldTextTest
         }
         final FieldText ftext = alix.fieldText(fname);
         BitSet docFilter = null;
-        TagFilter tagFilter = new TagFilter().set(Tag.NULL).set(Tag.NOSTOP); // .set(Tag.ADJ).set(Tag.UNKNOWN).setGroup(Tag.NAME).set(Tag.NULL).set(Tag.NOSTOP);
+        // TagFilter tagFilter = new TagFilter().set(Tag.NOSTOP); // .set(Tag.ADJ).set(Tag.UNKNOWN).setGroup(Tag.NAME).set(Tag.NULL).set(Tag.NOSTOP);
+        TagFilter tagFilter = new TagFilter().setGroup(Tag.NAME);
         FormEnum formEnum = ftext.formEnum(docFilter, tagFilter, Distrib.BM25);
         formEnum.sort(order, limit);
         System.out.println(formEnum);
