@@ -33,7 +33,6 @@
 package com.github.oeuvres.alix.util;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -70,23 +69,27 @@ public class Top<E> implements Iterable<Top.Entry<E>>
      * Pre create all objects.
      * 
      * @param size desired count of top objects.
-     * @throws SecurityException 
-     * @throws NoSuchMethodException 
-     * @throws InvocationTargetException 
      * @throws IllegalArgumentException 
-     * @throws IllegalAccessException 
-     * @throws InstantiationException 
      */
     @SuppressWarnings("unchecked")
-    public Top(Class<E> clazz, final int size) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
+    public Top(Class<E> clazz, final int size) throws IllegalArgumentException {
         if (size <= 0) {
             throw new IllegalArgumentException(String.format("size=%d is not exactly a relevant size for a list", size));
         }
+        if (clazz == null) {
+            throw new IllegalArgumentException("Class of desired items is required to instantiate them.");
+        }
         this.size = size;
         data = new Entry[size];
-        for (int i = 0; i < size; i++) {
-            data[i] = new Entry<E>(Double.NaN, clazz.getDeclaredConstructor().newInstance());
+        try {
+            for (int i = 0; i < size; i++) {
+                data[i] = new Entry<E>(Double.NaN, clazz.getDeclaredConstructor().newInstance());
+            }
         }
+        catch (Exception e) {
+            throw new IllegalArgumentException(String.format("Class=%s impossible to instantiate", clazz.getName() ), e);
+        }
+
     }
 
     /**
