@@ -33,24 +33,29 @@
 package com.github.oeuvres.alix.util;
 
 /**
- * An edge between 2 int nodes with a score, optimized to be sorted by score in
- * an Array, or to be a value in HashMap. Is not good as a key in an HashMap,
- * because natural order is not good for sorting buckets in HashMap. Nodes are
- * not mutable, but score is mutable, especially to be incremented as value in a
- * Map.
+ * An edge between 2 nodes with a score, optimized to be sorted by score in
+ * an Array.
+ * This object is especially thought to sort vectors
+ * without object creation.
+ * Nodes are
+ * not mutable, but count or score are mutable, especially to be incremented.
  */
 public class Edge implements Comparable<Edge>
 {
-    /** Source node id */
-    public final int sourceId;
-    /** Target node id */
-    public final int targetId;
     /** For information */
-    public final boolean directed;
+    private final Boolean directed;
+    /** Source node id */
+    private int sourceId = Integer.MIN_VALUE;
+    /** Source node label */
+    private String sourceLabel;
+    /** Target node id */
+    private int targetId = Integer.MIN_VALUE;
+    /** Target node label */
+    private String targetLabel;
     /** For information, an index commodity */
-    public final int edgeId;
+    private int edgeId = Integer.MIN_VALUE;
     /** For information, an optional label */
-    public final String label;
+    private String edgeLabel;
     /** Count */
     private long count;
     /** A score has been set */
@@ -59,52 +64,17 @@ public class Edge implements Comparable<Edge>
     private double score;
 
     /**
-     * Build an edge between 2 nodes identified by an int (not mutables).
-     * 
-     * @param sourceId a node id.
-     * @param targetId a node id.
+     * An empty edge.
      */
-    public Edge(final int sourceId, final int targetId) {
-        this(sourceId, targetId, true, -1, null);
+    public Edge() {
+        directed = null;
     }
 
     /**
-     * Build an edge between 2 nodes identified by an int (not mutables).
-     * 
-     * @param sourceId a node id.
-     * @param targetId a node id.
-     * @param label optional, a label, ex: a collected expression ().
+     * An empty edge.
      */
-    public Edge(final int sourceId, final int targetId, final String label) {
-        this(sourceId, targetId, true, -1, label);
-    }
-
-    /**
-     * Build an edge between 2 nodes identified by an int, with a direction (not mutables).
-     * 
-     * @param sourceId a node id.
-     * @param targetId a node id.
-     * @param directed optional, true if direction imports, false otherwise.
-     */
-    public Edge(final int sourceId, final int targetId, final boolean directed) {
-        this(sourceId, targetId, directed, -1, null);
-    }
-
-    /**
-     * Build an edge between 2 nodes identified by an int, with an optional direction, and an optional edgeId (not mutables).
-     * 
-     * @param sourceId a node id.
-     * @param targetId a node id.
-     * @param directed optional, true if direction imports, false otherwise.
-     * @param edgeId optional, an id for this edge, set by a collector.
-     * @param label optional, a label, ex: a collected expression ().
-     */
-    public Edge(final int sourceId, final int targetId, final boolean directed, final int edgeId, final String label) {
-        this.sourceId = sourceId;
-        this.targetId = targetId;
+    public Edge(final boolean directed) {
         this.directed = directed;
-        this.edgeId = edgeId;
-        this.label = label;
     }
 
     /**
@@ -162,6 +132,27 @@ public class Edge implements Comparable<Edge>
     }
 
     /**
+     * Get edge label.
+     * 
+     * @return a label.
+     */
+    public String edgeLabel()
+    {
+        return edgeLabel;
+    }
+
+    /**
+     * Set edge label.
+     * 
+     * @return this, for chaining
+     */
+    public Edge edgeLabel(final String edgeLabel)
+    {
+        this.edgeLabel = edgeLabel;
+        return this;
+    }
+
+    /**
      * Get edge id.
      * 
      * @return an int id.
@@ -169,6 +160,17 @@ public class Edge implements Comparable<Edge>
     public int edgeId()
     {
         return edgeId;
+    }
+
+    /**
+     * Set edge id.
+     * 
+     * @return this, for chaining
+     */
+    public Edge edgeId(final int edgeId)
+    {
+        this.edgeId = edgeId;
+        return this;
     }
 
     /**
@@ -191,20 +193,6 @@ public class Edge implements Comparable<Edge>
             int[] a = (int[]) o;
             if (a.length < 2) return false;
             return (this.sourceId == a[0] && this.targetId == a[1]);
-        }
-        if (o instanceof IntPair) {
-            IntPair pair = (IntPair) o;
-            return (this.sourceId == pair.x && this.targetId == pair.y);
-        }
-        if (o instanceof IntSeries) {
-            IntSeries series = (IntSeries) o;
-            if (series.size() != 2)
-                return false;
-            if (this.sourceId != series.data[0])
-                return false;
-            if (this.targetId != series.data[1])
-                return false;
-            return true;
         }
         return false;
     }
@@ -243,6 +231,27 @@ public class Edge implements Comparable<Edge>
     }
 
     /**
+     * Get source label.
+     * 
+     * @return a node label.
+     */
+    public String sourceLabel()
+    {
+        return sourceLabel;
+    }
+    
+    /**
+     * Set source label.
+     * 
+     * @return this, for chaining
+     */
+    public Edge sourceLabel(final String sourceLabel)
+    {
+        this.sourceLabel = sourceLabel;
+        return this;
+    }
+
+    /**
      * Get source id.
      * 
      * @return a node id.
@@ -250,6 +259,38 @@ public class Edge implements Comparable<Edge>
     public int sourceId()
     {
         return sourceId;
+    }
+    
+    /**
+     * Set source id.
+     * 
+     * @return this, for chaining
+     */
+    public Edge sourceId(final int sourceId)
+    {
+        this.sourceId = sourceId;
+        return this;
+    }
+
+    /**
+     * Get target label.
+     * 
+     * @return a label.
+     */
+    public String targetLabel()
+    {
+        return targetLabel;
+    }
+    
+    /**
+     * Set target label.
+     * 
+     * @return this, for chaining
+     */
+    public Edge targetLabel(final String targetLabel)
+    {
+        this.targetLabel = targetLabel;
+        return this;
     }
 
     /**
@@ -261,13 +302,31 @@ public class Edge implements Comparable<Edge>
     {
         return targetId;
     }
+    
+    /**
+     * Set target id.
+     * 
+     * @return this, for chaining
+     */
+    public Edge targetId(final int targetId)
+    {
+        this.targetId = targetId;
+        return this;
+    }
 
     @Override
     public String toString()
     {
-        return ((edgeId != -1)?edgeId + ". ":"") 
-            + ((label != null)?label + " ":"")
-            // + sourceId + (directed?" → ":" ↔ ") + targetId 
-            + " (" + count + (hasScore?"; " + score: "")+ ")";
+        StringBuilder sb = new StringBuilder();
+        if (edgeId != Integer.MIN_VALUE) sb.append(edgeId + ". ");
+        if (edgeLabel != null) sb.append(edgeLabel);
+        if (hasScore) sb.append( "(" + score + ") ");
+        if (sourceId != Integer.MIN_VALUE) sb.append("[" + sourceId + "]");
+        if (sourceLabel != null) sb.append(sourceLabel);
+        if (directed!= null && directed) sb.append(" → ");
+        else sb.append(" ↔ ");
+        if (targetId != Integer.MIN_VALUE) sb.append("[" + targetId + "]");
+        if (targetLabel != null) sb.append(targetLabel);
+        return sb.toString();
     }
 }

@@ -145,7 +145,7 @@ public class EdgeMap implements Iterable<Edge>
      */
     public Edge put(final Edge edge)
     {
-        return edges.put(new IntPair(edge.sourceId, edge.targetId), edge);
+        return edges.put(new IntPair(edge.sourceId(), edge.targetId()), edge);
     }
 
     /**
@@ -164,7 +164,7 @@ public class EdgeMap implements Iterable<Edge>
         }
         Edge edge = edges.get(key);
         if (edge == null) {
-            edge = new Edge(key.x, key.y, directed);
+            edge = new Edge (directed).sourceId(key.x).targetId(key.y);
             edges.put(new IntPair(key), edge);
         }
         edge.inc();

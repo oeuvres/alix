@@ -33,13 +33,10 @@
 package com.github.oeuvres.alix.lucene.search;
 
 import java.io.BufferedOutputStream;
-import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.nio.IntBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.Channels;
@@ -501,7 +498,8 @@ public class FieldRail  extends FieldCharsAbstract
                             formDic.get(slider.get(jj), bytes);
                             chain.append(bytes);
                         }
-                        edge = new Edge(key.x(), key.y(), chain.toString());
+                        edge = new Edge().sourceId(key.x()).targetId(key.y()).edgeLabel(chain.toString());
+
                         expressions.put(edge);
                     }
                     edge.inc();

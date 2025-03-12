@@ -323,7 +323,7 @@ public class EdgeMatrix implements Iterable<Edge>
                         final long ab = Math.min(edgeCount, Math.min(a, b));
                         score = mi.score(ab, a, b, occsAll);
                     }
-                    table[sourceIndex][targetIndex] = new Edge(nodeUniq[sourceIndex], nodeUniq[targetIndex], directed, cellIndex, null).count(edgeCount).score(score);
+                    table[sourceIndex][targetIndex] = new Edge(directed).sourceId(nodeUniq[sourceIndex]).targetId( nodeUniq[targetIndex]).edgeId(cellIndex).count(edgeCount).score(score);
                 }
                 Arrays.sort(table[sourceIndex]);
             }
@@ -376,9 +376,9 @@ public class EdgeMatrix implements Iterable<Edge>
             while (true) {
                 final Edge edge = table[line][cols[line]];
                 // if value OK, send it
-                if (edges[edge.edgeId] > 0) {
+                if (edges[edge.edgeId()] > 0) {
                     // this should be OK for non directed
-                    edges[edge.edgeId] = -1; // do not replay this edge
+                    edges[edge.edgeId()] = -1; // do not replay this edge
                     cols[line]++; // prepare next col
                     line = nextLine(line);
                     return edge;
@@ -458,12 +458,10 @@ public class EdgeMatrix implements Iterable<Edge>
         public Edge next()
         {
             final IdScore topRow = topIt.next();
-            final Edge edge = new Edge(
-                nodeUniq[sourceIndexByCellIndex(topRow.id())],
-                nodeUniq[targetIndexByCellIndex(topRow.id())],
-                directed
-            );
-            edge.count((int)topRow.score());
+            final Edge edge = new Edge(directed)
+                .sourceId(nodeUniq[sourceIndexByCellIndex(topRow.id())])
+                .targetId(nodeUniq[targetIndexByCellIndex(topRow.id())])
+            .count((int)topRow.score());
             return edge;
         }
         
