@@ -39,7 +39,6 @@ import java.util.ArrayList;
 import java.util.Locale;
 import java.util.logging.Logger;
 
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;

@@ -81,6 +81,7 @@ public class Insert
      */
     static class AnalyzerSite extends Analyzer
     {
+        @SuppressWarnings("resource")
         @Override
         protected TokenStreamComponents createComponents(String fieldName)
         {

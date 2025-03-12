@@ -102,6 +102,7 @@ public class Balinoms implements Callable<Integer>
     static class AnalyzerNames extends Analyzer
     {
 
+        @SuppressWarnings("resource")
         @Override
         protected TokenStreamComponents createComponents(String fieldName)
         {

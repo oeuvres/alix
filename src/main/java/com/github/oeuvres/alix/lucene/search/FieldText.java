@@ -328,7 +328,7 @@ public class FieldText extends FieldCharsAbstract
     {
         // todo, locutions ?
         if (tagFilter == null || tagFilter.cardinality() < 1) return null;
-        boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+        // boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
         BitSet formFilter = new SparseFixedBitSet(maxForm);
         final boolean stop = tagFilter.get(Tag.STOP);
         final boolean noStop = tagFilter.get(Tag.NOSTOP);

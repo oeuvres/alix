@@ -148,6 +148,7 @@ public class Char
      * "lLlNnNnNnnNnOoOo" + "OoOoRrRrRrSsSsSs" + "SsTtTtTtUuUuUuUu" +
      * "UuUuWwYyYZzZzZzF" ;
      */
+    @SuppressWarnings("unused")
     private static final String ASCII_LOW_C0 = "aaaaaaæceeeeiiii" + "ðnooooo×Øuuuuybß" + "aaaaaaæceeeeiiii"
             + "ðnooooo÷øuuuuyþy" + "aaaaaaccccccccdd" + "ddeeeeeeeeeegggg" + "gggghhhhiiiiiiii" + "iijjjjkkklllllll"
             + "lllnnnnnnnnnoooo" + "oooorrrrrrssssss" + "ssttttttuuuuuuuu" + "uuuuwwyyyzzzzzzf";

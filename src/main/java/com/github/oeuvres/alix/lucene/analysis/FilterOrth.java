@@ -65,6 +65,7 @@ public class FilterOrth extends TokenFilter
     /** A normalized orthographic form */
     private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
     /** A lemma when possible */
+    @SuppressWarnings("unused")
     private final LemAtt lemAtt = addAttribute(LemAtt.class);
     /** keep right position order */
     private int skippedPositions;
