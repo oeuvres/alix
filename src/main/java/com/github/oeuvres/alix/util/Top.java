@@ -33,6 +33,7 @@
 package com.github.oeuvres.alix.util;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -58,22 +59,34 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     /** Index of fill factor, before data full */
     private int fill = 0;
     /** Index of the minimum rank in data */
-    private int last;
+    private int minIndex;
     /** Min score */
-    private double min = Double.MAX_VALUE;
+    private double min = Double.NaN;
     /** Max score */
-    private double max = Double.MIN_VALUE;
+    private double max = Double.NaN;
 
     /**
      * Constructor with fixed size.
+     * Pre create all objects.
      * 
      * @param size desired count of top objects.
+     * @throws SecurityException 
+     * @throws NoSuchMethodException 
+     * @throws InvocationTargetException 
+     * @throws IllegalArgumentException 
+     * @throws IllegalAccessException 
+     * @throws InstantiationException 
      */
     @SuppressWarnings("unchecked")
-    public Top(final int size) {
+    public Top(Class<E> clazz, final int size) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
+        if (size <= 0) {
+            throw new IllegalArgumentException(String.format("size=%d is not exactly a relevant size for a list", size));
+        }
         this.size = size;
-        // hack, OK ?
         data = new Entry[size];
+        for (int i = 0; i < size; i++) {
+            data[i] = new Entry<E>(Double.NaN, clazz.getDeclaredConstructor().newInstance());
+        }
     }
 
     /**
@@ -112,23 +125,25 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     /**
      * Set internal pointer to the minimum score.
      */
-    private void last()
+    private void update()
     {
-        int last = 0;
-        double min = data[0].score;
+        minIndex = 0;
+        min = data[0].score;
+        max = data[0].score;
         for (int i = 1; i < size; i++) {
             // if (data[i].score >= min) continue;
             if (Double.isNaN(data[i].score)) {
                 continue;
             }
-            else if (Double.compare(data[i].score, min) >= 0) {
-                continue;
+            if (Double.compare(data[i].score, max) >= 0) {
+                max = data[i].score;
             }
-            min = data[i].score;
-            last = i;
+            // set minimum values
+            if (Double.compare(data[i].score, min) < 0) {
+                min = data[i].score;
+                minIndex = i;
+            }
         }
-        this.min = min;
-        this.last = last;
     }
 
     /**
@@ -137,8 +152,85 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     private void sort()
     {
         Arrays.sort(data, 0, fill);
-        last = size - 1;
+        minIndex = size - 1;
     }
+
+    /**
+     * Insertion without object creation.
+     * To insert an item in the top,
+     * propose a score, if it’s already inferior to the minimum
+     * this method will return null.
+     * If score is insertable, an E object 
+     * will be returned, allowing user to change its
+     * fields (without object creation).
+     * 
+     * @param score score for the object.
+     * @param value object for the score.
+     * @return this
+     */
+    public E insert(final double score)
+    {
+        if (Double.isNaN(score)) {
+            return null;
+        }
+        if (!full) {
+            data[fill].score(score);
+            E ret = data[fill].value();
+            fill++;
+            if (fill >= size) {
+                full = true;
+            }
+            update();
+            return ret;
+        }
+        // for equal minimum value, keep first object inserted
+        if (Double.compare(score, min) <= 0) {
+            return null;
+        }
+        // bigger than last, modify it
+        data[minIndex].score(score);
+        E ret = data[minIndex].value();
+        // update minIndex
+        update();
+        return ret;
+    }
+    
+    /**
+     * To insert an item in the top,
+     * propose a score, if it’s already inferior to the minimum
+     * this method will return null.
+     * If score is insertable, an E object 
+     * will be returned, allowing user to change its
+     * fields (without object creation).
+     * 
+     * @param score score for the object.
+     * @param value object for the score.
+     * @return this
+     */
+    public Top<E> insert(final double score, final E value)
+    {
+        if (Double.isNaN(score)) {
+        }
+        else if (!full) {
+            data[fill].score(score).value(value);
+            fill++;
+            if (fill >= size) {
+                full = true;
+            }
+            update();
+        }
+        // for equal minimum value, keep first object inserted
+        else if (Double.compare(score, min) <= 0) {
+        }
+        // bigger than smaller, modify it
+        else {
+            data[minIndex].score(score);
+            // update minIndex
+            update();
+        }
+        return this;
+    }
+
 
     /**
      * Test if score is insertable. Maybe used to avoid heavy element calculation
@@ -146,16 +238,18 @@ public class Top<E> implements Iterable<Top.Entry<E>>
      * 
      * <ul>
      * <li>top is not full</li>
-     * <li>score is bigger than {@link #min()} in natural order</li>
-     * <li>score is lower than {@link #max()} in reverse order</li>
+     * <li>score is bigger than {@link #min()}</li>
      * </ul>
      * 
      * @param score the score to test.
      * @return true if insertable, false otherwise.
      */
-    public boolean isInsertable(final float score)
+    public boolean isInsertable(final double score)
     {
-        return (!full || (score <= data[last].score));
+        if (Double.isNaN(score)) return false;
+        if (!full) return true;
+        if (Double.compare(score, min) > 0) return true;
+        return false;
     }
 
     /**
@@ -189,54 +283,6 @@ public class Top<E> implements Iterable<Top.Entry<E>>
     }
 
     /**
-     * Push a new Pair, keep it in the top if score is bigger than the smallest.
-     * 
-     * @param score score for the object.
-     * @param value object for the score.
-     * @return this
-     */
-    @SuppressWarnings("rawtypes")
-    public Top push(final double score, final E value)
-    {
-        // should fill initial array
-        if (!full) {
-            if (Double.isNaN(score)) {
-                // nothing
-            }
-            else if (Double.compare(score, max) > 0) {
-                max = score;
-            }
-            else if (Double.compare(score, min) < 0)
-                min = score;
-            data[fill] = new Entry<E>(score, value);
-            fill++;
-            if (fill < size)
-                return this;
-            // finished
-            full = true;
-            // find index of minimum rank
-            last();
-            return this;
-        }
-        // less than min, go away
-        // if (score <= data[last].score) return;
-        if (Double.isNaN(score)) {
-            return this;
-        }
-        else if (Double.compare(score, min) <= 0) {
-            return this;
-        }
-        else if (Double.compare(score, max) > 0) {
-            max = score;
-        }
-        // bigger than last, modify it
-        data[last].set(score, value);
-        // find last
-        last();
-        return this;
-    }
-
-    /**
      * Return the values, sorted by rank, biggest first.
      * 
      * @return array of elements.
@@ -259,7 +305,8 @@ public class Top<E> implements Iterable<Top.Entry<E>>
         StringBuilder sb = new StringBuilder();
         for (Entry<E> entry : data) {
             if (entry == null)
-                continue; //
+                continue;
+            if (Double.isNaN(entry.score)) continue;
             sb.append(entry.toString()).append("\n");
         }
         return sb.toString();
@@ -310,6 +357,16 @@ public class Top<E> implements Iterable<Top.Entry<E>>
         }
 
         /**
+         * Set the value.
+         * @return this.
+         */
+        public Entry<E> value(final E value)
+        {
+            this.value = value;
+            return this;
+        }
+
+        /**
          * Get the score.
          * 
          * @return score.
@@ -317,6 +374,17 @@ public class Top<E> implements Iterable<Top.Entry<E>>
         public double score()
         {
             return score;
+        }
+
+        /**
+         * Set score.
+         * 
+         * @return this.
+         */
+        public Entry<E> score(final double score)
+        {
+            this.score = score;
+            return this;
         }
 
         @Override

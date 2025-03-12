@@ -33,6 +33,7 @@
 package com.github.oeuvres.alix.lucene.search;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -505,12 +506,18 @@ public class Doc
      * @return most frequent words in common.
      * @throws NoSuchFieldException  not a text field.
      * @throws IOException          Lucene errors.
+     * @throws SecurityException 
+     * @throws NoSuchMethodException 
+     * @throws InvocationTargetException 
+     * @throws IllegalArgumentException 
+     * @throws IllegalAccessException 
+     * @throws InstantiationException 
      */
-    public Top<String> intersect(final String field, final int docId2) throws IOException, NoSuchFieldException
+    public Top<String> intersect(final String field, final int docId2) throws IOException, NoSuchFieldException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException
     {
         // new lucene API, not tested
         Terms vek2 = alix.reader().termVectors().get(docId2, field);
-        Top<String> top = new Top<String>(100);
+        Top<String> top = new Top<String>(String.class, 100);
         FieldText ftext = alix.fieldText(field);
         int len1 = ftext.occsByDoc(docId);
         int len2 = ftext.occsByDoc(docId2);
@@ -528,7 +535,6 @@ public class Doc
             if (tomat.run(term1.bytes, term1.offset, term1.length))
                 continue;
             double count1 = termit1.totalTermFreq();
-            String form = term1.utf8ToString();
             double count2 = 0;
             // loop on other doc to find
             while (true) {
@@ -548,7 +554,10 @@ public class Doc
             count1 = count1 / len1;
             count2 = count2 / len2;
             // final double ratio = Math.max(count1, count2) / Math.min(count1, count2);
-            top.push(count1 + count2, form);
+            final double score = count1 + count2;
+            if (top.isInsertable(score)) {
+                top.insert(score, term1.utf8ToString());
+            }
         }
         return top;
     }
