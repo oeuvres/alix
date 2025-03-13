@@ -136,6 +136,7 @@ public final class FilterLemmatize extends TokenFilter
         
         
         orthAtt.copy(termAtt); // start with original term
+        FrDics.norm(orthAtt); // normalise : Etat -> État, naître -> naitre
         // pass through zero-length search
         // Get first char
         char c1 = orthAtt.charAt(0);
@@ -165,7 +166,6 @@ public final class FilterLemmatize extends TokenFilter
             // Do not touch to recognized ABBR, like O.N.
             // if (flagsAtt.getFlags() != Tag.ABBR) orth.capitalize(); // GRANDE-BRETAGNE ->
             // Grande-Bretagne
-            FrDics.norm(orthAtt); // normalise : Etat -> État
             copy.copy(orthAtt);
             // c1 = orth.charAt(0); // keep initial cap, maybe useful
             entry = FrDics.name(orthAtt); // known name ?

@@ -44,7 +44,8 @@ public class TokenStreamsTest {
         ;
         text = "débile (Brang : 14 ; …) d’âge mental de sept ans, à qui je donne une trentaine";
         text = "Il y a d’abord trop d’enfants à naître d’âge immature.";
-        text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants.";
+        text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors !";
+        text = "Il fallait naître avant !";
 
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);

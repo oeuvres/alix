@@ -300,7 +300,9 @@ public class FrDics
                 // populate the tree of locutions, even with orth normalisation
                 // do not put j’ or d’ in TREELOC
                 
-                if (graph.contains(' ') || (graph.contains('\'') && !graph.endsWith("'"))) decompose(graph, TREELOC);
+                if (graph.contains(' ') || (graph.contains('\'') && !graph.endsWith("'")) ) {
+                    decompose(graph, TREELOC);
+                }
                 // Normalization of form ?
                 Chain orth = row.get(ORTH);
                 if (!orth.isEmpty()) {

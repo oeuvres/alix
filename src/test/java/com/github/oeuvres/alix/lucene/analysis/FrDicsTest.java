@@ -16,7 +16,18 @@ import com.github.oeuvres.alix.util.Chain;
 
 public class FrDicsTest {
 
+
     @Test
+    public void lookup()
+    {
+        CharsAttImpl chars = new CharsAttImpl();
+        for (String word: new String[] {"d'abord", "parce qu’", "xx e"}) {
+            chars.setEmpty().append(word);
+            FrDics.norm(chars);
+            System.out.println(chars + " " + FrDics.word(chars));
+        }
+    }
+
     public void decompose()
     {
         HashMap<CharsAttImpl, Integer> locs = new HashMap<CharsAttImpl, Integer>();

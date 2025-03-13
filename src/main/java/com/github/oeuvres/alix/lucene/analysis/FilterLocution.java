@@ -115,7 +115,6 @@ public class FilterLocution extends TokenFilter
         if (queue == null) {
             queue = new AttDeque(10, this);
         }
-        // System.out.println(queue);
         clearAttributes();
         // restart compound at each call
         compound.setEmpty();
@@ -152,10 +151,12 @@ public class FilterLocution extends TokenFilter
             }
             // choose version of form to append for test, according to its pos
             // forms to keep as is
+            /*
             if (orthAtt.length() != 0 && EXCEPTIONS.contains(orthAtt)) {
                 compound.append(orthAtt);
             }
-            else if (Tag.NUM.sameParent(tag)) {
+            */
+            if (Tag.NUM.sameParent(tag)) {
                 compound.append("#");
             }
             else if (Tag.NAME.sameParent(tag)) {
@@ -178,6 +179,8 @@ public class FilterLocution extends TokenFilter
             else {
                 compound.append(termAtt);
             }
+            
+            
             final Integer nodeType = FrDics.TREELOC.get(compound);
 
 
@@ -191,6 +194,7 @@ public class FilterLocution extends TokenFilter
             // a locution found, set state of atts according to this locution
             if ((nodeType & FrDics.LEAF) > 0) {
                 // get its entry
+                FrDics.norm(compound); // xx e -> 20e
                 LexEntry entry = FrDics.WORDS.get(compound);
                 if (entry == null) {
                     entry = FrDics.NAMES.get(compound);
@@ -228,9 +232,8 @@ public class FilterLocution extends TokenFilter
                 }
                 // try to go ahead ((chemin de fer) d’intérêt local)
                 queue.clear();
-                // bad idea here, will be done after
+                // it’s OK
                 queue.addLast(this);
-                System.out.println(queue);
                 queuePos = 0;
             }
             // here we should be in a branch
