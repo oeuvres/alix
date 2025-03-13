@@ -67,6 +67,16 @@ import com.github.oeuvres.alix.util.CSVReader.Row;
 @SuppressWarnings("unlikely-arg-type")
 public class FrDics
 {
+    /** Column for a graphy like found in texts, required */
+    public final static int GRAPH = 0;
+    /** Column for a grammatical category, required if no ORTH */
+    public final static int TAG = 1;
+    /** Column for a lemma, optional */
+    public final static int LEM = 2;
+    /** Column for an “orthography”, a right graphy, optional, used for normalization at indexation */
+    public final static int ORTH = 3;
+    /** Separator of colums */
+    public final 
     /** Logger */
     static Logger LOGGER = Logger.getLogger(FrDics.class.getName());
     /** Flag for compound, end of term */
@@ -89,10 +99,58 @@ public class FrDics
     static final public HashMap<CharsAttImpl, CharsAttImpl> BREVIDOT = new HashMap<CharsAttImpl, CharsAttImpl>((int) (100 / 0.75));
     /** current dictionnary loaded, for logging */
     static String res;
+    
+    
     /** Load dictionaries */
     static {
+        compileStopwords();
+        load("brevidot.csv", BREVIDOT);
+        // first word win
+        String[] files = { 
+            "locutions.csv", // compounds to decompose
+            "caps.csv",      // normalization of initial capital without accent
+            "orth.csv",      // normalisation of oe œ, and some other word
+            "num.csv",       // normalisation of ordinals for centuries
+            "author.csv",    // well known authorities (writers)
+            "name.csv",      // other proper names
+            "forename.csv",  // foreName with gender
+            "place.csv",     // world place name 
+            "word.csv",      // the big dic
+            "france.csv",    // places in France
+            "commune.csv"    // french town, at the end
+        };
+        for (String f : files) {
+            loadResource(f);
+        }
+    }
+    
+    /**
+     * Avoid instantiation, use static method instead.
+     */
+    private FrDics()
+    {
+        
+    }
+
+    /**
+     * Test if the requested chars are a known abbreviation ending by a dot.
+     * 
+     * @param att {@link CharTermAttribute} implementation.
+     * @return true if submitted form is an abbreviation, false otherwise.
+     */
+    public static boolean brevidot(CharsAttImpl att)
+    {
+        CharsAttImpl val = BREVIDOT.get(att);
+        if (val == null)
+            return false;
+        if (!val.isEmpty())
+            att.copy(val);
+        return true;
+    }
+
+    private static void compileStopwords()
+    {
         CSVReader csv = null;
-        Reader reader;
         try {
             ArrayList<String> list = new ArrayList<String>();
             // unmodifiable map with jdk10 Map.copyOf is not faster
@@ -104,7 +162,7 @@ public class FrDics
             STOP.add(new CharsAttImpl("\t"));
             list.add("\t");
             res = "stop.csv";
-            reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
+            Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
             csv = new CSVReader(reader, 1);
             csv.readRow(); // pass first line
             Row row;
@@ -117,46 +175,6 @@ public class FrDics
             }
             Automaton automaton = WordsAutomatonBuilder.buildFronStrings(list);
             STOP_BYTES = new ByteRunAutomaton(automaton);
-
-            res = "word.tsv";
-            reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
-            csv = new CSVReader(reader, 3, '\t');
-            csv.readRow(); // pass first line
-            while ((row = csv.readRow()) != null) {
-                Chain orth = row.get(0);
-                if (orth.isEmpty() || orth.charAt(0) == '#')
-                    continue;
-                // keep first key
-                orth.replace('’', '\'');
-                if (WORDS.containsKey(orth))
-                    continue;
-                CharsAttImpl key = new CharsAttImpl(orth);
-                WORDS.put(key, new LexEntry(orth, row.get(2), null, row.get(1)));
-            }
-            // nouns, put persons after places (Molière is also a village, but not very
-            // common)
-            String[] files = { "commune.csv", "france.csv", "forename.csv", "place.csv", "author.csv", "name.csv" };
-            for (String f : files) {
-                res = f;
-                InputStream is = Tag.class.getResourceAsStream(res);
-                if (is == null)
-                    throw new FileNotFoundException("Unfound resource " + res);
-                reader = new InputStreamReader(is, StandardCharsets.UTF_8);
-                csv = new CSVReader(reader, 4); // some names may have a kind of lemma
-                csv.readRow();
-                while ((row = csv.readRow()) != null) {
-                    Chain graph = row.get(0);
-                    if (graph.isEmpty() || graph.charAt(0) == '#')
-                        continue;
-                    graph.replace('’', '\'');
-                    LexEntry entry = new LexEntry(graph, row.get(1), row.get(2), null);
-                    NAMES.put(new CharsAttImpl(graph), entry);
-                    if (graph.contains(' ')) {
-                        compound(graph, TREELOC);
-                    }
-                }
-                csv.close();
-            }
         }
         // output errors at start
         catch (Exception e) {
@@ -167,205 +185,6 @@ public class FrDics
             }
             e.printStackTrace();
         }
-        try {
-            load("caps.csv", NORM);
-            load("orth.csv", NORM);
-            load("brevidot.csv", BREVIDOT);
-            locutions("locutions.csv");
-            load("num.csv");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        /*
-         * File zejar = new
-         * File(FrDics.class.getProtectionDomain().getCodeSource().getLocation().getPath
-         * ()); File localdic = new File(zejar.getParentFile(), "alix-cloud.csv"); if
-         * (localdic.exists()) load(localdic, LOCAL);
-         */
-    }
-
-    /**
-     * Avoid instantiation, use static method instead.
-     */
-    private FrDics()
-    {
-        
-    }
-    /**
-     * Load a jar resource as dictionary.
-     * 
-     * @param res resource path according to the class loader.
-     */
-    private static void load(final String res)
-    {
-        FrDics.res = res;
-        Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
-        load(reader);
-    }
-
-    /**
-     * Load a file as a dictionary.
-     * 
-     * @param file file path.
-     * @throws IOException file errors.
-     */
-    public static void load(final File file) throws IOException
-    {
-        FrDics.res = file.getAbsolutePath();
-        Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
-        load(reader);
-    }
-
-    /**
-     * Insert a local csv (comma separated values) dictionary of 4 cols:
-     * <ul>
-     * <li>0. GRAPH. Required, graphical form used as a key (could be a lemma for
-     * verbs in locutions like “avoir l’air”).</li>
-     * <li>1. TAG. Required, morpho-syntaxic code.</li>
-     * <li>2. ORTH. Optional, form normalization.</li>
-     * <li>3. LEM. Optional, lemmatization.</li>
-     * </ul>
-     * 
-     * @param reader for file or jar.
-     */
-    static public void load(final Reader reader)
-    {
-        CSVReader csv = null;
-        try {
-            csv = new CSVReader(reader, 4);
-            csv.readRow(); // skip first line
-            Row row;
-            while ((row = csv.readRow()) != null) {
-                Chain graph = row.get(0);
-                if (graph.isEmpty() || graph.charAt(0) == '#')
-                    continue;
-                // entry to remove
-                graph.replace('’', '\'');
-                if (graph.first() == '-') {
-                    graph.firstDel();
-                    WORDS.remove(graph);
-                    NAMES.remove(graph);
-                    continue;
-                }
-                // remove other versions (ex : Russes => Russie)
-                WORDS.remove(graph);
-                NAMES.remove(graph);
-                CharsAttImpl key = new CharsAttImpl(graph);
-                LexEntry entry = new LexEntry(graph, row.get(1), row.get(2), row.get(3));
-                if (graph.isFirstUpper())
-                    NAMES.put(key, entry);
-                else
-                    WORDS.put(key, entry);
-                if (graph.contains(' '))
-                    compound(graph, TREELOC);
-            }
-            csv.close();
-        } catch (Exception e) {
-            System.out.println("Dictionary parse error in file " + reader);
-            if (csv != null)
-                System.out.println(" line " + csv.line());
-            else
-                System.out.println();
-            e.printStackTrace();
-        }
-    }
-
-    private static void load(final String res, final HashMap<CharsAttImpl, CharsAttImpl> map) throws FileNotFoundException
-    {
-        InputStream stream = Tag.class.getResourceAsStream(res);
-        if (stream == null) {
-            throw new FileNotFoundException("Resource not found: " + Tag.class.getPackageName() + "/" + res);
-        }
-        Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
-        load(reader, map);
-    }
-
-    /**
-     * Simple load of table equivalent
-     * 
-     * @param reader
-     * @param map
-     */
-    private static void load(final Reader reader, final HashMap<CharsAttImpl, CharsAttImpl> map)
-    {
-        CSVReader csv = null;
-        try {
-            csv = new CSVReader(reader, 2);
-            csv.readRow(); // skip first line
-            Row row;
-            while ((row = csv.readRow()) != null) {
-                Chain key = row.get(0);
-                if (key.isEmpty() || key.charAt(0) == '#')
-                    continue;
-                Chain value = row.get(1);
-                // if (value.isEmpty()) continue; // a value maybe empty
-                map.put(new CharsAttImpl(key), new CharsAttImpl(value));
-            }
-            reader.close();
-        } catch (Exception e) {
-            System.out.println("Dictionary parse error in file " + reader);
-            if (csv != null)
-                System.out.println(" line " + csv.line());
-            else
-                System.out.println();
-            e.printStackTrace();
-        }
-    }
-
-    private static void locutions(final String res)
-    {
-        Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
-        locutions(reader);
-    }
-
-    /**
-     * Insert a csv table known to be a series of multi token locutions.
-     * <li>0. GRAPH. Required, graphical form used as a key (could be a lemma for
-     * verbs like “avoir l’air”).
-     * <li>1. TAG. Required, morpho-syntaxic code
-     * <li>2. ORTH. Optional, form normalization
-     * 
-     * @param reader
-     * @param map
-     */
-    private static void locutions(final Reader reader)
-    {
-        CSVReader csv = null;
-        try {
-            csv = new CSVReader(reader, 4);
-            csv.readRow(); // skip first line
-            Row row;
-            while ((row = csv.readRow()) != null) {
-                Chain graph = row.get(0);
-                if (graph.isEmpty() || graph.charAt(0) == '#')
-                    continue;
-                // load the form in the compound tree if it is multi token (badly sometimes not)
-                if (graph.contains(' ') || graph.contains('’') || graph.contains('\''))
-                    compound(graph, TREELOC);
-                // load the word in the global dic (last win)
-                CharsAttImpl key = new CharsAttImpl(graph);
-                Chain orth = row.get(2);
-                LexEntry entry = new LexEntry(row.get(0), row.get(1), orth, row.get(3));
-                // entry may be known by normalized key only
-                if (Tag.NAME.sameParent(entry.tag)) {
-                    NAMES.put(key, entry);
-                    if (orth != null && !NAMES.containsKey(orth))
-                        NAMES.put(new CharsAttImpl(orth), entry);
-                } else {
-                    WORDS.put(key, entry);
-                    if (orth != null && !WORDS.containsKey(orth))
-                        WORDS.put(new CharsAttImpl(orth), entry);
-                }
-            }
-            reader.close();
-        } catch (Exception e) {
-            System.out.print("Dictionary parse error in " + reader);
-            if (csv != null)
-                System.out.println(" line " + csv.line());
-            else
-                System.out.println();
-            e.printStackTrace();
-        }
     }
 
     /**
@@ -374,22 +193,21 @@ public class FrDics
      * @param form a form to insert
      * @param tree the tree to insert in.
      */
-    protected static void compound(Chain form, HashMap<CharsAttImpl, Integer> tree)
+    protected static void decompose(Chain form, HashMap<CharsAttImpl, Integer> tree)
     {
         int len = form.length();
         for (int i = 0; i < len; i++) {
             char c = form.charAt(i);
-            if (c != '\'' && c != '’' && c != ' ')
-                continue;
-            if (c == '’')
-                form.setCharAt(i, '\'');
+            if (c == '’') {
+                c = '\'';
+                form.setCharAt(i, c);
+            }
             CharsAttImpl key;
-            if (c == '\'' || c == '’')
+            if (c == '\'')
                 key = new CharsAttImpl(form.array(), 0, i + 1);
             else if (c == ' ')
                 key = new CharsAttImpl(form.array(), 0, i);
-            else
-                continue;
+            else continue;
             Integer entry = tree.get(key);
             if (entry == null)
                 tree.put(key, BRANCH);
@@ -403,30 +221,6 @@ public class FrDics
             tree.put(key, LEAF);
         else
             tree.put(key, entry | LEAF);
-    }
-
-    /**
-     * Get a dictionary entry from the word dictionary
-     * with a reusable {@link CharTermAttribute} implementation.
-     * 
-     * @param att {@link CharTermAttribute} implementation.
-     * @return available common word entry for the submitted form, or null if not found.
-     */
-    public static LexEntry word(CharsAttImpl att)
-    {
-        return WORDS.get(att);
-    }
-
-    /**
-     * Get a dictionary entry from the name dictionary
-     * with a reusable {@link CharTermAttribute} implementation.
-     * 
-     * @param att {@link CharTermAttribute} implementation.
-     * @return available proper name entry for the submitted form, or null if not found.
-     */
-    public static LexEntry name(CharsAttImpl att)
-    {
-        return NAMES.get(att);
     }
 
     /**
@@ -452,19 +246,148 @@ public class FrDics
     }
 
     /**
-     * Test if the requested chars are a known abbreviation ending by a dot.
+     * Load a jar resource as dictionary.
+     * 
+     * @param res resource path according to the class loader.
+     */
+    private static void loadResource(final String res)
+    {
+        FrDics.res = res;
+        Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
+        load(reader, false);
+    }
+
+    /**
+     * Load a file as a dictionary.
+     * 
+     * @param file file path.
+     * @throws IOException file errors.
+     */
+    public static void load(final File file) throws IOException
+    {
+        FrDics.res = file.getAbsolutePath();
+        Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
+        // default is replace
+        load(reader, true);
+    }
+
+    /**
+     * Insert a local csv (comma separated values) dictionary of 4 cols:
+     * <ul>
+     * <li>0. GRAPH. Required, graphical form used as a key (could be a lemma for
+     * verbs in locutions like “avoir l’air”).</li>
+     * <li>1. TAG. Required, morpho-syntaxic code.</li>
+     * <li>2. LEM. Optional, lemmatization.</li>
+     * <li>4. ORTH. Optional, form normalization.</li>
+     * </ul>
+     * 
+     * @param reader for file or jar.
+     */
+    static public void load(final Reader reader, boolean replace)
+    {
+        CSVReader csv = null;
+        try {
+            csv = new CSVReader(reader, 4);
+            csv.readRow(); // skip first line
+            Row row;
+            while ((row = csv.readRow()) != null) {
+                Chain graph = row.get(GRAPH);
+                if (graph.isEmpty() || graph.charAt(0) == '#')
+                    continue;
+                // normalize apos
+                graph.replace('’', '\'');
+                // check if it is normalization
+                // populate the tree of locutions, even with orth normalisation
+                // do not put j’ or d’ in TREELOC
+                
+                if (graph.contains(' ') || (graph.contains('\'') && !graph.endsWith("'"))) decompose(graph, TREELOC);
+                // Normalization of form ?
+                Chain orth = row.get(ORTH);
+                if (!orth.isEmpty()) {
+                    NORM.put(new CharsAttImpl(graph), new CharsAttImpl(orth));
+                    continue;
+                }
+
+                
+                // not replace, internal lexicons, first value win
+                if (!replace) {
+                    if (WORDS.containsKey(graph) || NAMES.containsKey(graph)) continue;
+                }
+                // replace, especially for user files
+                else {
+                    // deletion of a form starting by 0
+                    if (graph.first() == '0') {
+                        graph.firstDel();
+                        WORDS.remove(graph);
+                        NAMES.remove(graph);
+                        continue;
+                    }
+                    // remove previous versions (ex : Russes => Russie)
+                    WORDS.remove(graph);
+                    NAMES.remove(graph);
+                }
+                // a lexical entry
+                LexEntry entry = new LexEntry(graph, row.get(TAG), row.get(LEM));
+                if (graph.isFirstUpper())
+                    NAMES.put(new CharsAttImpl(graph), entry);
+                else
+                    WORDS.put(new CharsAttImpl(graph), entry);
+            }
+            csv.close();
+        } catch (Exception e) {
+            System.out.println("Dictionary parse error in file " + reader);
+            if (csv != null)
+                System.out.println(" line " + csv.line());
+            else
+                System.out.println();
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Simple load of table equivalent
+     * 
+     * @param reader
+     * @param map
+     */
+    private static void load(final String res, final HashMap<CharsAttImpl, CharsAttImpl> map)
+    {
+        FrDics.res = res;
+        Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
+        CSVReader csv = null;
+        try {
+            csv = new CSVReader(reader, 2);
+            csv.readRow(); // skip first line
+            Row row;
+            while ((row = csv.readRow()) != null) {
+                Chain key = row.get(0);
+                if (key.isEmpty() || key.charAt(0) == '#')
+                    continue;
+                Chain value = row.get(1);
+                // if (value.isEmpty()) continue; // a value maybe empty
+                map.put(new CharsAttImpl(key), new CharsAttImpl(value));
+            }
+            reader.close();
+        } catch (Exception e) {
+            System.out.println("Dictionary parse error in file " + reader);
+            if (csv != null)
+                System.out.println(" line " + csv.line());
+            else
+                System.out.println();
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Get a dictionary entry from the name dictionary
+     * with a reusable {@link CharTermAttribute} implementation.
      * 
      * @param att {@link CharTermAttribute} implementation.
-     * @return true if submitted form is an abbreviation, false otherwise.
+     * @return available proper name entry for the submitted form, or null if not found.
      */
-    public static boolean brevidot(CharsAttImpl att)
+    public static LexEntry name(CharsAttImpl att)
     {
-        CharsAttImpl val = BREVIDOT.get(att);
-        if (val == null)
-            return false;
-        if (!val.isEmpty())
-            att.copy(val);
-        return true;
+        return NAMES.get(att);
     }
 
     /**
@@ -483,15 +406,27 @@ public class FrDics
     }
 
     /**
+     * Get a dictionary entry from the word dictionary
+     * with a reusable {@link CharTermAttribute} implementation.
+     * 
+     * @param att {@link CharTermAttribute} implementation.
+     * @return available common word entry for the submitted form, or null if not found.
+     */
+    public static LexEntry word(CharsAttImpl att)
+    {
+        return WORDS.get(att);
+    }
+
+    /**
      * An entry for a dictionary te get lemma from
      * an inflected form.
      */
     public static class LexEntry
     {
+        /** Inflected form.  */
+        final public CharsAttImpl graph;
         /** A lexical word type. */
         final public int tag;
-        /** Inflected form.  */
-        final public CharsAttImpl orth;
         /** lemma form. */
         final public CharsAttImpl lem;
 
@@ -500,22 +435,16 @@ public class FrDics
          * 
          * @param graph graphical form found in texts.
          * @param tag short name for a lexical type.
-         * @param orth normalized orthographic form.
+         * @param graph normalized orthographic form.
          * @param lem lemma form.
          */
-        public LexEntry(final Chain graph, final Chain tag, final Chain orth, final Chain lem) {
+        public LexEntry(final Chain graph, final Chain tag, final Chain lem) {
             if (graph.isEmpty() || tag.isEmpty()) {
                 LOGGER.log(Level.FINEST, res + " graph=" + graph + " tag=" + tag);
             }
             graph.replace('’', '\'');
             this.tag = Tag.flag(tag);
-            if (orth == null || orth.isEmpty()) {
-                this.orth = null;
-            }
-            else {
-                orth.replace('’', '\'');
-                this.orth = new CharsAttImpl(orth);
-            }
+            this.graph = new CharsAttImpl(graph);
             if (lem == null || lem.isEmpty()) {
                 this.lem = null;
             }
@@ -530,8 +459,8 @@ public class FrDics
         {
             StringBuilder sb = new StringBuilder();
             sb.append(Tag.name(this.tag));
-            if (orth != null)
-                sb.append(" orth=").append(orth);
+            if (graph != null)
+                sb.append(" graph=").append(graph);
             if (lem != null)
                 sb.append(" lem=").append(lem);
             // if (branch) sb.append(" BRANCH");

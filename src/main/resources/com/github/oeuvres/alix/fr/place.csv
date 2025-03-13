@@ -1,633 +1,630 @@
-GRAPH,TAG,ORTH
-
-# MONUMENT
-
-Bâtiment-Neuf,NAMEplace
-Bicêtre,NAMEplace
-Champs-Élysées,NAMEplace
-Châtelet,NAMEplace
-Filles-du-Calvaire,NAMEplace
-Haie-Sainte,NAMEplace
-Iéna,NAMEplace
-Louvre,NAMEplace
-Montmartre,NAMEplace
-Montparnasse,NAMEplace
-Nivelles,NAMEplace
-Petit-Picpus,NAMEplace
-Saint-Merry,NAMEplace
-Vaugirard,NAMEplace
-
-# AIRES
-
-Abruzzes,NAMEplace
-Afrique,NAMEplace
-Alaska,NAMEplace
-Alsace-Lorraine,NAMEplace
-Amérique,NAMEplace
-Amériques,NAMEplace
-Andalousie,NAMEplace
-Arizona,NAMEplace
-Arkansas,NAMEplace
-Asie,NAMEplace
-Australia,NAMEplace,Australie
-Baléares,NAMEplace
-Byzance,NAMEplace
-Euphrate,NAMEplace
-Europa,NAMEplace,Europe
-Europe,NAMEplace,
-Flandres,NAMEplace,
-Majorque,NAMEplace,
-Mallorca,NAMEplace,Majorque
-Méditerranée,NAMEplace
-Phénicie,NAMEplace
-Sardaigne,NAMEplace
-Scandinavie,NAMEplace
-Tahiti,NAMEplace
-Galles,NAMEplace
-Pays de Galles,NAMEplace
-pays de Galles,NAMEplace,Pays de Galles
-
-# VILLES
-
-# Samara,NAMEplace # person ?
-# Sofia,NAMEplace # person ?
-# Sydney,NAMEplace # person ?
-# Victoria,NAMEplace # person ?
-Abadan,NAMEplace
-Aberdeen,NAMEplace
-Abidjan,NAMEplace
-Accra,NAMEplace
-Ad-Dammam,NAMEplace
-Adana,NAMEplace
-Addis Ababa,NAMEplace
-Adelaide,NAMEplace
-Agadir,NAMEplace
-Agra,NAMEplace
-Ahmadabad,NAMEplace
-Ahvaz,NAMEplace
-Alep,NAMEplace
-Al-Jizah,NAMEplace
-Al-Khartum Bahri,NAMEplace
-Al-Madinah,NAMEplace
-Aleppo,NAMEplace
-Alexandria,NAMEplace
-Algiers,NAMEplace
-Allahabad,NAMEplace
-Almaty,NAMEplace
-Amalfi,NAMEplace
-Amman,NAMEplace
-Amsterdam,NAMEplace
-Amritsar,NAMEplace
-Ankara,NAMEplace
-Anshan,NAMEplace
-Antananarivo,NAMEplace
-Athènes,NAMEplace
-Antioche,NAMEplace
-Anvers,NAMEplace
-Aurangabad,NAMEplace
-Baghdad,NAMEplace
-Baku,NAMEplace
-Bâle,NAMEplace
-Bamako,NAMEplace
-Bandung,NAMEplace
-Bangalore,NAMEplace
-Bangkok,NAMEplace
-Baotou,NAMEplace
-Barcelone,NAMEplace
-Barcelona,NAMEplace
-Barranquilla,NAMEplace
-Basra,NAMEplace
-Beijing,NAMEplace
-Beirut,NAMEplace
-Bekasi,NAMEplace
-Belém,NAMEplace
-Belgrade,NAMEplace
-Belo Horizonte,NAMEplace
-Benares,NAMEplace
-Benin City,NAMEplace
-Berlin,NAMEplace
-Berne,NAMEplace
-Beyrouth,NAMEplace
-Bhopal,NAMEplace
-Boétie,NAMEplace,La Boétie
-Bogor,NAMEplace
-Bombay,NAMEplace
-Brasília,NAMEplace
-Brazzaville,NAMEplace
-Bruxelles,NAMEplace
-Bruxelles-Midi,NAMEplace
-Bucharest,NAMEplace
-Budapest,NAMEplace
-Buenos Aires,NAMEplace,Buenos-Aires
-Buenos-Aires,NAMEplace
-Bursa,NAMEplace
-Cairo,NAMEplace
-Calcutta,NAMEplace
-Calgary,NAMEplace
-Cali,NAMEplace
-Caloocan,NAMEplace
-Campinas,NAMEplace
-Cape Town,NAMEplace
-Caracas,NAMEplace
-Casablanca,NAMEplace
-Changchun,NAMEplace
-Changsha,NAMEplace
-Chelyabinsk,NAMEplace
-Chengdu,NAMEplace
-Chennai,NAMEplace
-Chicago,NAMEplace
-Chittagong,NAMEplace
-Chongqing,NAMEplace
-Ciudad Juárez,NAMEplace
-Columbia,NAMEplace
-Conakry,NAMEplace
-Córdoba,NAMEplace
-Corinthe,NAMEplace
-Curitiba,NAMEplace
-Dakar,NAMEplace
-Dalian,NAMEplace
-Dallas-Fort Worth,NAMEplace
-Damascus,NAMEplace
-Dar es Salaam,NAMEplace
-Datong,NAMEplace
-Delhi,NAMEplace
-Depok,NAMEplace
-Dhaka,NAMEplace
-Dnepropetrovsk,NAMEplace
-Donetsk,NAMEplace
-Douala,NAMEplace
-Dubai,NAMEplace
-Durban,NAMEplace
-East Rand,NAMEplace
-Ekaterinburg,NAMEplace
-Ekurhuleni,NAMEplace
-Esfahan,NAMEplace
-Faisalabad,NAMEplace
-Faridabad,NAMEplace
-Fès,NAMEplace
-Fortaleza,NAMEplace
-Fujian,NAMEplace
-Fukuoka-Kitakyushu,NAMEplace
-Fushun,NAMEplace
-Fuzhou,NAMEplace
-Gaziantep,NAMEplace
-Genève,NAMEplace
-Ghaziabad,NAMEplace
-Glasgow,NAMEplace
-Goiânia,NAMEplace
-Goyang,NAMEplace
-Guadalajara,NAMEplace
-Guangzhou,NAMEplace
-Guarulhos,NAMEplace
-Guayaquil,NAMEplace
-Guiyang,NAMEplace
-Gujranwala,NAMEplace
-Hai Phong,NAMEplace
-Hamburg,NAMEplace
-Handan,NAMEplace
-Hangzhou,NAMEplace
-Hanoi,NAMEplace
-Haora,NAMEplace
-Harare,NAMEplace
-Harbin,NAMEplace
-Havana,NAMEplace
-Harvard,NAMEplace
-Hefei,NAMEplace
-Hiroshima,NAMEplace
-Ho Chi Minh City,NAMEplace
-Hong Kong,NAMEplace
-Houston,NAMEplace
-Hyderabad,NAMEplace
-Ibadan,NAMEplace
-Inch'on,NAMEplace
-Indore,NAMEplace
-Istanbul,NAMEplace
-Izmir,NAMEplace
-Jabalpur,NAMEplace
-Jaipur,NAMEplace
-Jakarta,NAMEplace
-Jamshedpur,NAMEplace
-Jiangsu,NAMEplace
-Jidda,NAMEplace
-Jilin,NAMEplace
-Jinan,NAMEplace
-Jiulong,NAMEplace
-Johannesburg,NAMEplace
-Kabul,NAMEplace
-Kaduna,NAMEplace
-Kaesong,NAMEplace
-Kalyan,NAMEplace
-Kampala,NAMEplace
-Kano,NAMEplace
-Kanpur,NAMEplace
-Kaohsiung,NAMEplace
-Karachi,NAMEplace
-Karaj,NAMEplace
-Kawasaki,NAMEplace
-Kazan,NAMEplace
-Kharkov,NAMEplace
-Khartoum,NAMEplace
-Kiev,NAMEplace
-Kinshasa,NAMEplace
-Kitakyushu,NAMEplace
-Kobe,NAMEplace
-Kuala Lumpur,NAMEplace
-Kunming,NAMEplace
-Kuwait City,NAMEplace
-Kwangju,NAMEplace
-Kyoto,NAMEplace
-La Haye,NAMEplace
-la Haye,NAMEplace,La Haye
-La Matanza,NAMEplace
-La Mecque,NAMEplace
-Lagos,NAMEplace
-Lahore,NAMEplace
-Lanzhou,NAMEplace
-Le Caire,NAMEplace
-León,NAMEplace
-Lima,NAMEplace
-London,NAMEplace
-Londres,NAMEplace
-Los Angeles,NAMEplace
-Luanda,NAMEplace
-Lucknow,NAMEplace
-Ludhiana,NAMEplace
-Luoyang,NAMEplace
-Lusaka,NAMEplace
-Madras,NAMEplace
-Madrid,NAMEplace
-Manaus,NAMEplace
-Maputo,NAMEplace
-Maracaibo,NAMEplace
-Mashhad,NAMEplace
-Mecca,NAMEplace
-Medan,NAMEplace
-Medellin,NAMEplace
-Medellín,NAMEplace
-Meerut,NAMEplace
-Melbourne,NAMEplace
-Metro Manila,NAMEplace
-Mexico City,NAMEplace
-Milan,NAMEplace
-Minsk,NAMEplace
-Mogadishu,NAMEplace
-Monterrey,NAMEplace
-Montevideo,NAMEplace
-Montréal,NAMEplace
-Morelos,NAMEplace
-Moscou,NAMEplace
-Moscow,NAMEplace
-Mosul,NAMEplace
-Multan,NAMEplace
-Mumbai,NAMEplace
-Munich,NAMEplace
-Nagoya,NAMEplace
-Nagpur,NAMEplace
-Nairobi,NAMEplace
-Nampho,NAMEplace
-Nanchang,NAMEplace
-Nanchong,NAMEplace
-Nanjing,NAMEplace
-Nanning,NAMEplace
-Naples,NAMEplace
-Nashik,NAMEplace
-Neuchâtel,NAMEplace
-New York,NAMEplace
-New-York,NAMEplace,New York
-Nezahualcóyotl,NAMEplace
-Nizhni Novgorod,NAMEplace
-Novosibirsk,NAMEplace
-Odessa,NAMEplace
-Omdurman,NAMEplace
-Omsk,NAMEplace
-Osaka-Kobe,NAMEplace
-Ottawa,NAMEplace
-Ouagadougou,NAMEplace
-Palembang,NAMEplace
-Palmyre,NAMEplace
-Parme,NAMEplace
-Patna,NAMEplace
-Perm,NAMEplace
-Perth,NAMEplace
-Peshawar,NAMEplace
-Petersbourg,NAMEplace
-Petersburg,NAMEplace
-Philadelphia,NAMEplace
-Phoenix-Mesa,NAMEplace
-Pimpri-Chinchwad,NAMEplace
-Pise,NAMEplace
-Poona,NAMEplace
-Port-au-Prince,NAMEplace
-Pôrto Alegre,NAMEplace
-Prague,NAMEplace
-Pretoria,NAMEplace
-Puebla,NAMEplace
-Pune,NAMEplace
-Pusan,NAMEplace
-Pyongyang,NAMEplace
-Qingdao,NAMEplace
-Qiqihar,NAMEplace
-Qom,NAMEplace
-Quezon City,NAMEplace
-Quito,NAMEplace
-Rabat,NAMEplace
-Rajkot,NAMEplace
-Rawalpindi,NAMEplace
-Recife,NAMEplace
-Rhein-Main,NAMEplace
-Rhein-Neckar,NAMEplace
-Rhein-Ruhr,NAMEplace
-Rio de Janeiro,NAMEplace
-Rio,NAMEplace
-Riyadh,NAMEplace
-Rome,NAMEplace
-Rostov-on-Don,NAMEplace
-Saint Petersbourg,NAMEplace
-Saint Petersburg,NAMEplace
-Salvador,NAMEplace
-Samut Prakan,NAMEplace
-San Antonio,NAMEplace
-San Diego,NAMEplace
-San-Francisco,NAMEplace
-Sana'a,NAMEplace
-Santa Cruz,NAMEplace
-Santa Fé de Bogotá,NAMEplace
-Santiago,NAMEplace
-Santo-Domingo,NAMEplace
-Sao Luis,NAMEplace
-São Paulo,NAMEplace
-Sapporo,NAMEplace
-Semarang,NAMEplace
-Sendai,NAMEplace
-Seongnam,NAMEplace
-Seoul,NAMEplace
-Shanghai,NAMEplace
-Shangqiu,NAMEplace
-Shantou,NAMEplace
-Shenyang,NAMEplace
-Shenzhen,NAMEplace
-Shijiazhuang,NAMEplace
-Shiraz,NAMEplace
-Sholapur,NAMEplace
-Shubra al-Khaymah,NAMEplace
-Si Racha,NAMEplace
-Singapore,NAMEplace
-Soweto,NAMEplace
-Surabaja,NAMEplace
-Surat,NAMEplace
-Suwon,NAMEplace
-Suzhou,NAMEplace
-T'aichung,NAMEplace
-Tabriz,NAMEplace
-Taegu,NAMEplace
-Taejon,NAMEplace
-Taipei,NAMEplace
-Taiyuan,NAMEplace
-Tangerang,NAMEplace
-Tangshan,NAMEplace
-Taškent,NAMEplace
-Tbilisi,NAMEplace
-Tehran,NAMEplace
-Thana,NAMEplace
-Tianjin,NAMEplace
-Tijuana,NAMEplace
-Tokyo,NAMEplace
-Tolède,NAMEplace
-Toronto,NAMEplace
-Tripoli,NAMEplace
-Ufa,NAMEplace
-Ujung Pandang,NAMEplace
-Ulsan,NAMEplace
-Urumqi,NAMEplace
-Vadodara,NAMEplace
-Valencia,NAMEplace
-Vancouver,NAMEplace
-Varanasi,NAMEplace
-Vienna,NAMEplace
-Visakhapatnam,NAMEplace
-Volgograd,NAMEplace
-Warsaw,NAMEplace
-Wuhan,NAMEplace
-Wuxi,NAMEplace
-Xian,NAMEplace
-Xiantao,NAMEplace
-Xuzhou,NAMEplace
-Yangon,NAMEplace
-Yantai,NAMEplace
-Yaoundé,NAMEplace
-Yerevan,NAMEplace
-Yokohama,NAMEplace
-Yulin,NAMEplace
-Guangxi,NAMEplace
-Zapopan,NAMEplace
-Zhengzhou,NAMEplace
-Zibo,NAMEplace
-Zigong,NAMEplace
-
-
-
-# PAYS
-
-Afghanistan,NAMEplace
-Afrique du Sud,NAMEplace
-Albanie,NAMEplace
-Algérie,NAMEplace
-Allemagne,NAMEplace
-Andorre,NAMEplace
-Angleterre,NAMEplace
-Angola,NAMEplace
-Antigua-et-Barbuda,NAMEplace
-Arabie saoudite,NAMEplace
-Argentine,NAMEplace
-Arménie,NAMEplace
-Australie,NAMEplace
-Autriche,NAMEplace
-Azerbaïdjan,NAMEplace
-Bahamas,NAMEplace
-Bahreïn,NAMEplace
-Bangladesh,NAMEplace
-Barbade,NAMEplace
-Bélarus,NAMEplace
-Belgique,NAMEplace
-Belize,NAMEplace
-Bénin,NAMEplace
-Bhoutan,NAMEplace
-Bolivie,NAMEplace
-Bosnie-Herzégovine,NAMEplace
-Botswana,NAMEplace
-Brésil,NAMEplace
-Brunéi Darussalam,NAMEplace
-Bulgarie,NAMEplace
-Burkina Faso,NAMEplace
-Burundi,NAMEplace
-Cabo Verde,NAMEplace
-Cambodge,NAMEplace
-Cameroun,NAMEplace
-Canada,NAMEplace
-Chili,NAMEplace
-Chine,NAMEplace
-Chypre,NAMEplace
-Colombie,NAMEplace
-Comores,NAMEplace
-Congo,NAMEplace
-Costa Rica,NAMEplace
-Côte d'Ivoire,NAMEplace
-Croatie,NAMEplace
-Cuba,NAMEplace
-Danemark,NAMEplace
-Djibouti,NAMEplace
-#Dominique,NAMEplace
-Écosse,NAMEplace
-Égypte,NAMEplace
-El Salvador,NAMEplace
-Émirats arabes unis,NAMEplace
-Équateur,NAMEplace
-Érythrée,NAMEplace
-Espagne,NAMEplace
-Estonie,NAMEplace
-États-Unis,NAMEplace
-Éthiopie,NAMEplace
-Europe,NAMEplace
-Fédération de Russie,NAMEplace
-Fidji,NAMEplace
-Finlande,NAMEplace
-France,NAMEplace
-Gabon,NAMEplace
-Gambie,NAMEplace
-Géorgie,NAMEplace
-Ghana,NAMEplace
-Grèce,NAMEplace
-Grenade,NAMEplace
-Grande-Bretagne,NAMEplace
-Guatemala,NAMEplace
-Guinée,NAMEplace
-Guinée équatoriale,NAMEplace
-Guinée-Bissau,NAMEplace
-Guyana,NAMEplace
-Haïti,NAMEplace
-Hollande,NAMEplace
-Honduras,NAMEplace
-Hongrie,NAMEplace
-Îles Cook,NAMEplace
-Îles Marshall,NAMEplace
-Îles Salomon,NAMEplace
-Inde,NAMEplace
-Indonésie,NAMEplace
-Iran,NAMEplace
-Iraq,NAMEplace
-Irak,NAMEplace
-Irlande,NAMEplace
-Irlande du Nord,NAMEplace
-Islande,NAMEplace
-Israël,NAMEplace
-Italie,NAMEplace
-Jamaïque,NAMEplace
-Japon,NAMEplace
-Jordanie,NAMEplace
-Kazakhstan,NAMEplace
-Kenya,NAMEplace
-Kirghizistan,NAMEplace
-Kiribati,NAMEplace
-Koweït,NAMEplace
-Lesotho,NAMEplace
-Lettonie,NAMEplace
-Liban,NAMEplace
-Libéria,NAMEplace
-Libye,NAMEplace
-Lituanie,NAMEplace
-Luxembourg,NAMEplace
-Macédoine,NAMEplace
-Madagascar,NAMEplace
-Malaisie,NAMEplace
-Malawi,NAMEplace
-Maldives,NAMEplace
-Mali,NAMEplace
-Malte,NAMEplace
-Maroc,NAMEplace
-# Maurice,NAMEplace
-Mauritanie,NAMEplace
-Mexique,NAMEplace
-Micronésie,NAMEplace
-Monaco,NAMEplace
-Mongolie,NAMEplace
-Mosambique,NAMEplace,Mozambique
-Monténégro,NAMEplace
-Mozambique,NAMEplace
-Myanmar,NAMEplace
-Namibie,NAMEplace
-Nauru,NAMEplace
-Népal,NAMEplace
-Nicaragua,NAMEplace
-Niger,NAMEplace
-Nigéria,NAMEplace
-Nioué,NAMEplace
-Norvège,NAMEplace
-Nouvelle-Zélande,NAMEplace
-Oman,NAMEplace
-Ouganda,NAMEplace
-Ouzbékistan,NAMEplace
-Pakistan,NAMEplace
-Palaos,NAMEplace
-Palestine,NAMEplace
-Panama,NAMEplace
-Papouasie-Nouvelle-Guinée,NAMEplace
-Paraguay,NAMEplace
-Pays-Bas,NAMEplace
-Pérou,NAMEplace
-Philippines,NAMEplace
-Pologne,NAMEplace
-Portugal,NAMEplace
-Qatar,NAMEplace
-Syrie,NAMEplace
-Centrafrique,NAMEplace
-Corée,NAMEplace
-Moldova,NAMEplace
-Lao,NAMEplace
-République dominicaine,NAMEplace
-Tanzanie,NAMEplace
-Roumanie,NAMEplace
-Royaume-Uni,NAMEplace
-Russie,NAMEplace
-Rwanda,NAMEplace
-Sainte-Lucie,NAMEplace
-Saint-Kitts-et-Nevis,NAMEplace
-Saint-Marin,NAMEplace
-Saint-Vincent-et-les Grenadines,NAMEplace
-Samoa,NAMEplace
-Sao Tomé-et-Principe,NAMEplace
-Sénégal,NAMEplace
-Serbie,NAMEplace
-Seychelles,NAMEplace
-Sierra Leone,NAMEplace
-Singapour,NAMEplace
-Slovaquie,NAMEplace
-Slovénie,NAMEplace
-Somalie,NAMEplace
-Soudan,NAMEplace
-Sri Lanka,NAMEplace
-Suède,NAMEplace
-Suisse,NAMEplace
-Suriname,NAMEplace
-Swaziland,NAMEplace
-Tadjikistan,NAMEplace
-Tchad,NAMEplace
-Tchéquie,NAMEplace
-Thaïlande,NAMEplace
-Timor-Leste,NAMEplace
-Togo,NAMEplace
-Tonga,NAMEplace
-Trinité-et-Tobago,NAMEplace
-Tunisie,NAMEplace
-Turkménistan,NAMEplace
-Turquie,NAMEplace
-Tuvalu,NAMEplace
-Ukraine,NAMEplace
-Uruguay,NAMEplace
-Vanuatu,NAMEplace
-Venezuela,NAMEplace
-Viet Nam,NAMEplace
-Yémen,NAMEplace
-Zambie,NAMEplace
-Zimbabwe,NAMEplace
-
-
+GRAPH,CAT,LEM,ORTH
+,,,
+# MONUMENT,,,
+,,,
+Bâtiment-Neuf,NAMEplace,,
+Bicêtre,NAMEplace,,
+Champs-Élysées,NAMEplace,,
+Châtelet,NAMEplace,,
+Filles-du-Calvaire,NAMEplace,,
+Haie-Sainte,NAMEplace,,
+Iéna,NAMEplace,,
+Louvre,NAMEplace,,
+Montmartre,NAMEplace,,
+Montparnasse,NAMEplace,,
+Nivelles,NAMEplace,,
+Petit-Picpus,NAMEplace,,
+Saint-Merry,NAMEplace,,
+Vaugirard,NAMEplace,,
+,,,
+# AIRES,,,
+,,,
+Abruzzes,NAMEplace,,
+Afrique,NAMEplace,,
+Alaska,NAMEplace,,
+Alsace-Lorraine,NAMEplace,,
+Amérique,NAMEplace,,
+Amériques,NAMEplace,,
+Andalousie,NAMEplace,,
+Arizona,NAMEplace,,
+Arkansas,NAMEplace,,
+Asie,NAMEplace,,
+Australia,,,Australie
+Baléares,NAMEplace,,
+Byzance,NAMEplace,,
+Euphrate,NAMEplace,,
+Europa,,,Europe
+Europe,NAMEplace,,
+Flandres,NAMEplace,,
+Majorque,NAMEplace,,
+Mallorca,,,Majorque
+Méditerranée,NAMEplace,,
+Phénicie,NAMEplace,,
+Sardaigne,NAMEplace,,
+Scandinavie,NAMEplace,,
+Tahiti,NAMEplace,,
+Galles,NAMEplace,,
+Pays de Galles,NAMEplace,,
+pays de Galles,,,Pays de Galles
+,,,
+# VILLES,,,
+,,,
+# Samara,NAMEplace # person ?,,
+# Sofia,NAMEplace # person ?,,
+# Sydney,NAMEplace # person ?,,
+# Victoria,NAMEplace # person ?,,
+Abadan,NAMEplace,,
+Aberdeen,NAMEplace,,
+Abidjan,NAMEplace,,
+Accra,NAMEplace,,
+Ad-Dammam,NAMEplace,,
+Adana,NAMEplace,,
+Addis Ababa,NAMEplace,,
+Adelaide,NAMEplace,,
+Agadir,NAMEplace,,
+Agra,NAMEplace,,
+Ahmadabad,NAMEplace,,
+Ahvaz,NAMEplace,,
+Alep,NAMEplace,,
+Al-Jizah,NAMEplace,,
+Al-Khartum Bahri,NAMEplace,,
+Al-Madinah,NAMEplace,,
+Aleppo,NAMEplace,,
+Alexandria,NAMEplace,,
+Algiers,NAMEplace,,
+Allahabad,NAMEplace,,
+Almaty,NAMEplace,,
+Amalfi,NAMEplace,,
+Amman,NAMEplace,,
+Amsterdam,NAMEplace,,
+Amritsar,NAMEplace,,
+Ankara,NAMEplace,,
+Anshan,NAMEplace,,
+Antananarivo,NAMEplace,,
+Athènes,NAMEplace,,
+Antioche,NAMEplace,,
+Anvers,NAMEplace,,
+Aurangabad,NAMEplace,,
+Baghdad,NAMEplace,,
+Baku,NAMEplace,,
+Bâle,NAMEplace,,
+Bamako,NAMEplace,,
+Bandung,NAMEplace,,
+Bangalore,NAMEplace,,
+Bangkok,NAMEplace,,
+Baotou,NAMEplace,,
+Barcelone,NAMEplace,,
+Barcelona,NAMEplace,,
+Barranquilla,NAMEplace,,
+Basra,NAMEplace,,
+Beijing,NAMEplace,,
+Beirut,NAMEplace,,
+Bekasi,NAMEplace,,
+Belém,NAMEplace,,
+Belgrade,NAMEplace,,
+Belo Horizonte,NAMEplace,,
+Benares,NAMEplace,,
+Benin City,NAMEplace,,
+Berlin,NAMEplace,,
+Berne,NAMEplace,,
+Beyrouth,NAMEplace,,
+Bhopal,NAMEplace,,
+Bogor,NAMEplace,,
+Bombay,NAMEplace,,
+Brasília,NAMEplace,,
+Brazzaville,NAMEplace,,
+Bruxelles,NAMEplace,,
+Bruxelles-Midi,NAMEplace,,
+Bucharest,NAMEplace,,
+Budapest,NAMEplace,,
+Buenos Aires,,,Buenos-Aires
+Buenos-Aires,NAMEplace,,
+Bursa,NAMEplace,,
+Cairo,NAMEplace,,
+Calcutta,NAMEplace,,
+Calgary,NAMEplace,,
+Cali,NAMEplace,,
+Caloocan,NAMEplace,,
+Campinas,NAMEplace,,
+Cape Town,NAMEplace,,
+Caracas,NAMEplace,,
+Casablanca,NAMEplace,,
+Changchun,NAMEplace,,
+Changsha,NAMEplace,,
+Chelyabinsk,NAMEplace,,
+Chengdu,NAMEplace,,
+Chennai,NAMEplace,,
+Chicago,NAMEplace,,
+Chittagong,NAMEplace,,
+Chongqing,NAMEplace,,
+Ciudad Juárez,NAMEplace,,
+Columbia,NAMEplace,,
+Conakry,NAMEplace,,
+Córdoba,NAMEplace,,
+Corinthe,NAMEplace,,
+Curitiba,NAMEplace,,
+Dakar,NAMEplace,,
+Dalian,NAMEplace,,
+Dallas-Fort Worth,NAMEplace,,
+Damascus,NAMEplace,,
+Dar es Salaam,NAMEplace,,
+Datong,NAMEplace,,
+Delhi,NAMEplace,,
+Depok,NAMEplace,,
+Dhaka,NAMEplace,,
+Dnepropetrovsk,NAMEplace,,
+Donetsk,NAMEplace,,
+Douala,NAMEplace,,
+Dubai,NAMEplace,,
+Durban,NAMEplace,,
+East Rand,NAMEplace,,
+Ekaterinburg,NAMEplace,,
+Ekurhuleni,NAMEplace,,
+Esfahan,NAMEplace,,
+Faisalabad,NAMEplace,,
+Faridabad,NAMEplace,,
+Fès,NAMEplace,,
+Fortaleza,NAMEplace,,
+Fujian,NAMEplace,,
+Fukuoka-Kitakyushu,NAMEplace,,
+Fushun,NAMEplace,,
+Fuzhou,NAMEplace,,
+Gaziantep,NAMEplace,,
+Genève,NAMEplace,,
+Ghaziabad,NAMEplace,,
+Glasgow,NAMEplace,,
+Goiânia,NAMEplace,,
+Goyang,NAMEplace,,
+Guadalajara,NAMEplace,,
+Guangzhou,NAMEplace,,
+Guarulhos,NAMEplace,,
+Guayaquil,NAMEplace,,
+Guiyang,NAMEplace,,
+Gujranwala,NAMEplace,,
+Hai Phong,NAMEplace,,
+Hamburg,NAMEplace,,
+Handan,NAMEplace,,
+Hangzhou,NAMEplace,,
+Hanoi,NAMEplace,,
+Haora,NAMEplace,,
+Harare,NAMEplace,,
+Harbin,NAMEplace,,
+Havana,NAMEplace,,
+Harvard,NAMEplace,,
+Hefei,NAMEplace,,
+Hiroshima,NAMEplace,,
+Ho Chi Minh City,NAMEplace,,
+Hong Kong,NAMEplace,,
+Houston,NAMEplace,,
+Hyderabad,NAMEplace,,
+Ibadan,NAMEplace,,
+Inch'on,NAMEplace,,
+Indore,NAMEplace,,
+Istanbul,NAMEplace,,
+Izmir,NAMEplace,,
+Jabalpur,NAMEplace,,
+Jaipur,NAMEplace,,
+Jakarta,NAMEplace,,
+Jamshedpur,NAMEplace,,
+Jiangsu,NAMEplace,,
+Jidda,NAMEplace,,
+Jilin,NAMEplace,,
+Jinan,NAMEplace,,
+Jiulong,NAMEplace,,
+Johannesburg,NAMEplace,,
+Kabul,NAMEplace,,
+Kaduna,NAMEplace,,
+Kaesong,NAMEplace,,
+Kalyan,NAMEplace,,
+Kampala,NAMEplace,,
+Kano,NAMEplace,,
+Kanpur,NAMEplace,,
+Kaohsiung,NAMEplace,,
+Karachi,NAMEplace,,
+Karaj,NAMEplace,,
+Kawasaki,NAMEplace,,
+Kazan,NAMEplace,,
+Kharkov,NAMEplace,,
+Khartoum,NAMEplace,,
+Kiev,NAMEplace,,
+Kinshasa,NAMEplace,,
+Kitakyushu,NAMEplace,,
+Kobe,NAMEplace,,
+Kuala Lumpur,NAMEplace,,
+Kunming,NAMEplace,,
+Kuwait City,NAMEplace,,
+Kwangju,NAMEplace,,
+Kyoto,NAMEplace,,
+La Haye,NAMEplace,,
+la Haye,,,La Haye
+La Matanza,NAMEplace,,
+La Mecque,NAMEplace,,
+Lagos,NAMEplace,,
+Lahore,NAMEplace,,
+Lanzhou,NAMEplace,,
+Le Caire,NAMEplace,,
+León,NAMEplace,,
+Lima,NAMEplace,,
+London,NAMEplace,,
+Londres,NAMEplace,,
+Los Angeles,NAMEplace,,
+Luanda,NAMEplace,,
+Lucknow,NAMEplace,,
+Ludhiana,NAMEplace,,
+Luoyang,NAMEplace,,
+Lusaka,NAMEplace,,
+Madras,NAMEplace,,
+Madrid,NAMEplace,,
+Manaus,NAMEplace,,
+Maputo,NAMEplace,,
+Maracaibo,NAMEplace,,
+Mashhad,NAMEplace,,
+Mecca,NAMEplace,,
+Medan,NAMEplace,,
+Medellin,NAMEplace,,
+Medellín,NAMEplace,,
+Meerut,NAMEplace,,
+Melbourne,NAMEplace,,
+Metro Manila,NAMEplace,,
+Mexico City,NAMEplace,,
+Milan,NAMEplace,,
+Minsk,NAMEplace,,
+Mogadishu,NAMEplace,,
+Monterrey,NAMEplace,,
+Montevideo,NAMEplace,,
+Montréal,NAMEplace,,
+Morelos,NAMEplace,,
+Moscou,NAMEplace,,
+Moscow,NAMEplace,,
+Mosul,NAMEplace,,
+Multan,NAMEplace,,
+Mumbai,NAMEplace,,
+Munich,NAMEplace,,
+Nagoya,NAMEplace,,
+Nagpur,NAMEplace,,
+Nairobi,NAMEplace,,
+Nampho,NAMEplace,,
+Nanchang,NAMEplace,,
+Nanchong,NAMEplace,,
+Nanjing,NAMEplace,,
+Nanning,NAMEplace,,
+Naples,NAMEplace,,
+Nashik,NAMEplace,,
+Neuchâtel,NAMEplace,,
+New York,NAMEplace,,
+New-York,,,New York
+Nezahualcóyotl,NAMEplace,,
+Nizhni Novgorod,NAMEplace,,
+Novosibirsk,NAMEplace,,
+Odessa,NAMEplace,,
+Omdurman,NAMEplace,,
+Omsk,NAMEplace,,
+Osaka-Kobe,NAMEplace,,
+Ottawa,NAMEplace,,
+Ouagadougou,NAMEplace,,
+Palembang,NAMEplace,,
+Palmyre,NAMEplace,,
+Parme,NAMEplace,,
+Patna,NAMEplace,,
+Perm,NAMEplace,,
+Perth,NAMEplace,,
+Peshawar,NAMEplace,,
+Petersbourg,NAMEplace,,
+Petersburg,NAMEplace,,
+Philadelphia,NAMEplace,,
+Phoenix-Mesa,NAMEplace,,
+Pimpri-Chinchwad,NAMEplace,,
+Pise,NAMEplace,,
+Poona,NAMEplace,,
+Port-au-Prince,NAMEplace,,
+Pôrto Alegre,NAMEplace,,
+Prague,NAMEplace,,
+Pretoria,NAMEplace,,
+Puebla,NAMEplace,,
+Pune,NAMEplace,,
+Pusan,NAMEplace,,
+Pyongyang,NAMEplace,,
+Qingdao,NAMEplace,,
+Qiqihar,NAMEplace,,
+Qom,NAMEplace,,
+Quezon City,NAMEplace,,
+Quito,NAMEplace,,
+Rabat,NAMEplace,,
+Rajkot,NAMEplace,,
+Rawalpindi,NAMEplace,,
+Recife,NAMEplace,,
+Rhein-Main,NAMEplace,,
+Rhein-Neckar,NAMEplace,,
+Rhein-Ruhr,NAMEplace,,
+Rio de Janeiro,NAMEplace,,
+Rio,NAMEplace,,
+Riyadh,NAMEplace,,
+Rome,NAMEplace,,
+Rostov-on-Don,NAMEplace,,
+Saint Petersbourg,NAMEplace,,
+Saint Petersburg,NAMEplace,,
+Salvador,NAMEplace,,
+Samut Prakan,NAMEplace,,
+San Antonio,NAMEplace,,
+San Diego,NAMEplace,,
+San-Francisco,NAMEplace,,
+Sana'a,NAMEplace,,
+Santa Cruz,NAMEplace,,
+Santa Fé de Bogotá,NAMEplace,,
+Santiago,NAMEplace,,
+Santo-Domingo,NAMEplace,,
+Sao Luis,NAMEplace,,
+São Paulo,NAMEplace,,
+Sapporo,NAMEplace,,
+Semarang,NAMEplace,,
+Sendai,NAMEplace,,
+Seongnam,NAMEplace,,
+Seoul,NAMEplace,,
+Shanghai,NAMEplace,,
+Shangqiu,NAMEplace,,
+Shantou,NAMEplace,,
+Shenyang,NAMEplace,,
+Shenzhen,NAMEplace,,
+Shijiazhuang,NAMEplace,,
+Shiraz,NAMEplace,,
+Sholapur,NAMEplace,,
+Shubra al-Khaymah,NAMEplace,,
+Si Racha,NAMEplace,,
+Singapore,NAMEplace,,
+Soweto,NAMEplace,,
+Surabaja,NAMEplace,,
+Surat,NAMEplace,,
+Suwon,NAMEplace,,
+Suzhou,NAMEplace,,
+T'aichung,NAMEplace,,
+Tabriz,NAMEplace,,
+Taegu,NAMEplace,,
+Taejon,NAMEplace,,
+Taipei,NAMEplace,,
+Taiyuan,NAMEplace,,
+Tangerang,NAMEplace,,
+Tangshan,NAMEplace,,
+Taškent,NAMEplace,,
+Tbilisi,NAMEplace,,
+Tehran,NAMEplace,,
+Thana,NAMEplace,,
+Tianjin,NAMEplace,,
+Tijuana,NAMEplace,,
+Tokyo,NAMEplace,,
+Tolède,NAMEplace,,
+Toronto,NAMEplace,,
+Tripoli,NAMEplace,,
+Ufa,NAMEplace,,
+Ujung Pandang,NAMEplace,,
+Ulsan,NAMEplace,,
+Urumqi,NAMEplace,,
+Vadodara,NAMEplace,,
+Valencia,NAMEplace,,
+Vancouver,NAMEplace,,
+Varanasi,NAMEplace,,
+Vienna,NAMEplace,,
+Visakhapatnam,NAMEplace,,
+Volgograd,NAMEplace,,
+Warsaw,NAMEplace,,
+Wuhan,NAMEplace,,
+Wuxi,NAMEplace,,
+Xian,NAMEplace,,
+Xiantao,NAMEplace,,
+Xuzhou,NAMEplace,,
+Yangon,NAMEplace,,
+Yantai,NAMEplace,,
+Yaoundé,NAMEplace,,
+Yerevan,NAMEplace,,
+Yokohama,NAMEplace,,
+Yulin,NAMEplace,,
+Guangxi,NAMEplace,,
+Zapopan,NAMEplace,,
+Zhengzhou,NAMEplace,,
+Zibo,NAMEplace,,
+Zigong,NAMEplace,,
+,,,
+,,,
+,,,
+# PAYS,,,
+,,,
+Afghanistan,NAMEplace,,
+Afrique du Sud,NAMEplace,,
+Albanie,NAMEplace,,
+Algérie,NAMEplace,,
+Allemagne,NAMEplace,,
+Andorre,NAMEplace,,
+Angleterre,NAMEplace,,
+Angola,NAMEplace,,
+Antigua-et-Barbuda,NAMEplace,,
+Arabie saoudite,NAMEplace,,
+Argentine,NAMEplace,,
+Arménie,NAMEplace,,
+Australie,NAMEplace,,
+Autriche,NAMEplace,,
+Azerbaïdjan,NAMEplace,,
+Bahamas,NAMEplace,,
+Bahreïn,NAMEplace,,
+Bangladesh,NAMEplace,,
+Barbade,NAMEplace,,
+Bélarus,NAMEplace,,
+Belgique,NAMEplace,,
+Belize,NAMEplace,,
+Bénin,NAMEplace,,
+Bhoutan,NAMEplace,,
+Bolivie,NAMEplace,,
+Bosnie-Herzégovine,NAMEplace,,
+Botswana,NAMEplace,,
+Brésil,NAMEplace,,
+Brunéi Darussalam,NAMEplace,,
+Bulgarie,NAMEplace,,
+Burkina Faso,NAMEplace,,
+Burundi,NAMEplace,,
+Cabo Verde,NAMEplace,,
+Cambodge,NAMEplace,,
+Cameroun,NAMEplace,,
+Canada,NAMEplace,,
+Chili,NAMEplace,,
+Chine,NAMEplace,,
+Chypre,NAMEplace,,
+Colombie,NAMEplace,,
+Comores,NAMEplace,,
+Congo,NAMEplace,,
+Costa Rica,NAMEplace,,
+Côte d'Ivoire,NAMEplace,,
+Croatie,NAMEplace,,
+Cuba,NAMEplace,,
+Danemark,NAMEplace,,
+Djibouti,NAMEplace,,
+#Dominique,NAMEplace,,
+Écosse,NAMEplace,,
+Égypte,NAMEplace,,
+El Salvador,NAMEplace,,
+Émirats arabes unis,NAMEplace,,
+Équateur,NAMEplace,,
+Érythrée,NAMEplace,,
+Espagne,NAMEplace,,
+Estonie,NAMEplace,,
+États-Unis,NAMEplace,,
+Éthiopie,NAMEplace,,
+Europe,NAMEplace,,
+Fédération de Russie,NAMEplace,,
+Fidji,NAMEplace,,
+Finlande,NAMEplace,,
+France,NAMEplace,,
+Gabon,NAMEplace,,
+Gambie,NAMEplace,,
+Géorgie,NAMEplace,,
+Ghana,NAMEplace,,
+Grèce,NAMEplace,,
+Grenade,NAMEplace,,
+Grande-Bretagne,NAMEplace,,
+Guatemala,NAMEplace,,
+Guinée,NAMEplace,,
+Guinée équatoriale,NAMEplace,,
+Guinée-Bissau,NAMEplace,,
+Guyana,NAMEplace,,
+Haïti,NAMEplace,,
+Hollande,NAMEplace,,
+Honduras,NAMEplace,,
+Hongrie,NAMEplace,,
+Îles Cook,NAMEplace,,
+Îles Marshall,NAMEplace,,
+Îles Salomon,NAMEplace,,
+Inde,NAMEplace,,
+Indonésie,NAMEplace,,
+Iran,NAMEplace,,
+Iraq,NAMEplace,,
+Irak,NAMEplace,,
+Irlande,NAMEplace,,
+Irlande du Nord,NAMEplace,,
+Islande,NAMEplace,,
+Israël,NAMEplace,,
+Italie,NAMEplace,,
+Jamaïque,NAMEplace,,
+Japon,NAMEplace,,
+Jordanie,NAMEplace,,
+Kazakhstan,NAMEplace,,
+Kenya,NAMEplace,,
+Kirghizistan,NAMEplace,,
+Kiribati,NAMEplace,,
+Koweït,NAMEplace,,
+Lesotho,NAMEplace,,
+Lettonie,NAMEplace,,
+Liban,NAMEplace,,
+Libéria,NAMEplace,,
+Libye,NAMEplace,,
+Lituanie,NAMEplace,,
+Luxembourg,NAMEplace,,
+Macédoine,NAMEplace,,
+Madagascar,NAMEplace,,
+Malaisie,NAMEplace,,
+Malawi,NAMEplace,,
+Maldives,NAMEplace,,
+Mali,NAMEplace,,
+Malte,NAMEplace,,
+Maroc,NAMEplace,,
+# Maurice,NAMEplace,,
+Mauritanie,NAMEplace,,
+Mexique,NAMEplace,,
+Micronésie,NAMEplace,,
+Monaco,NAMEplace,,
+Mongolie,NAMEplace,,
+Mosambique,,,Mozambique
+Monténégro,NAMEplace,,
+Mozambique,NAMEplace,,
+Myanmar,NAMEplace,,
+Namibie,NAMEplace,,
+Nauru,NAMEplace,,
+Népal,NAMEplace,,
+Nicaragua,NAMEplace,,
+Niger,NAMEplace,,
+Nigéria,NAMEplace,,
+Nioué,NAMEplace,,
+Norvège,NAMEplace,,
+Nouvelle-Zélande,NAMEplace,,
+Oman,NAMEplace,,
+Ouganda,NAMEplace,,
+Ouzbékistan,NAMEplace,,
+Pakistan,NAMEplace,,
+Palaos,NAMEplace,,
+Palestine,NAMEplace,,
+Panama,NAMEplace,,
+Papouasie-Nouvelle-Guinée,NAMEplace,,
+Paraguay,NAMEplace,,
+Pays-Bas,NAMEplace,,
+Pérou,NAMEplace,,
+Philippines,NAMEplace,,
+Pologne,NAMEplace,,
+Portugal,NAMEplace,,
+Qatar,NAMEplace,,
+Syrie,NAMEplace,,
+Centrafrique,NAMEplace,,
+Corée,NAMEplace,,
+Moldova,NAMEplace,,
+Lao,NAMEplace,,
+République dominicaine,NAMEplace,,
+Tanzanie,NAMEplace,,
+Roumanie,NAMEplace,,
+Royaume-Uni,NAMEplace,,
+Russie,NAMEplace,,
+Rwanda,NAMEplace,,
+Sainte-Lucie,NAMEplace,,
+Saint-Kitts-et-Nevis,NAMEplace,,
+Saint-Marin,NAMEplace,,
+Saint-Vincent-et-les Grenadines,NAMEplace,,
+Samoa,NAMEplace,,
+Sao Tomé-et-Principe,NAMEplace,,
+Sénégal,NAMEplace,,
+Serbie,NAMEplace,,
+Seychelles,NAMEplace,,
+Sierra Leone,NAMEplace,,
+Singapour,NAMEplace,,
+Slovaquie,NAMEplace,,
+Slovénie,NAMEplace,,
+Somalie,NAMEplace,,
+Soudan,NAMEplace,,
+Sri Lanka,NAMEplace,,
+Suède,NAMEplace,,
+Suisse,NAMEplace,,
+Suriname,NAMEplace,,
+Swaziland,NAMEplace,,
+Tadjikistan,NAMEplace,,
+Tchad,NAMEplace,,
+Tchéquie,NAMEplace,,
+Thaïlande,NAMEplace,,
+Timor-Leste,NAMEplace,,
+Togo,NAMEplace,,
+Tonga,NAMEplace,,
+Trinité-et-Tobago,NAMEplace,,
+Tunisie,NAMEplace,,
+Turkménistan,NAMEplace,,
+Turquie,NAMEplace,,
+Tuvalu,NAMEplace,,
+Ukraine,NAMEplace,,
+Uruguay,NAMEplace,,
+Vanuatu,NAMEplace,,
+Venezuela,NAMEplace,,
+Viet Nam,NAMEplace,,
+Yémen,NAMEplace,,
+Zambie,NAMEplace,,
+Zimbabwe,NAMEplace,,

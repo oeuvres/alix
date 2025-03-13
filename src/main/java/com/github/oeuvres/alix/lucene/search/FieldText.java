@@ -407,7 +407,6 @@ public class FieldText extends FieldCharsAbstract
         boolean noStop = (tagFilter != null && tagFilter.get(Tag.NOSTOP));
         boolean locs = (tagFilter != null && tagFilter.get(Tag.LOC));
         boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
-        System.out.println(hasTags);
         
         boolean hasDistrib = (distribution != null);
         boolean hasFilter = (docFilter != null && docFilter.cardinality() > 0);

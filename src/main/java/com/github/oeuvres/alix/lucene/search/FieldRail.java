@@ -398,7 +398,6 @@ public class FieldRail  extends FieldCharsAbstract
                     if (flag == Tag.PUNsection.flag) {
                         out.write(10);
                         out.write(10);
-                        out.write(10);
                         continue;
                     }
                     else if (flag == Tag.PUNpara.flag) {
@@ -407,7 +406,7 @@ public class FieldRail  extends FieldCharsAbstract
                         continue;
                     }
                     else if (flag == Tag.PUNsent.flag) {
-                        out.write(10);
+                        // out.write(10);
                         continue;
                     }
                     else if (Tag.parent(flag) == Tag.PUN) {

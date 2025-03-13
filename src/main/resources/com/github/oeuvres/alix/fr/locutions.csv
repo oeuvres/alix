@@ -1,9 +1,10 @@
-GRAPH,CAT,ORTH,LEM
+GRAPH,TAG,LEM,ORTH
 à base de,PREP,,
 à bon droit,ADV,,
 à bord,ADV,,
 à bord de,PREP,,
-à bord du,PREP,à bord de,
+à bord d’,,,à bord de
+à bord du,,,à bord de
 à bout de,PREP,,
 à bout de force,ADJ,,
 à bout portant,ADV,,
@@ -11,6 +12,9 @@ GRAPH,CAT,ORTH,LEM
 a capella,ADV,,
 a cappella,ADV,,
 à cause de,PREP,,
+à cause d',,,à cause de
+à cause du,,,à cause de
+à cause des,,,à cause de
 à cet égard,PREP,,
 à chaque fois,ADV,,
 à chaque fois que,CONJsub,,
@@ -41,10 +45,10 @@ a giorno,ADV,,
 à l'autre bout de,PREP,,
 à l'aveuglette,ADV,,
 à l'aveuglette,ADV,,
-à l'égard de,PREP,à l'égard de,
-à l'égard du,PREP,à l'égard de,
-à l'égard des,PREP,à l'égard de,
-à l'égard d',PREP,à l'égard de,
+à l'égard de,PREP,,
+à l'égard du,,,à l'égard de
+à l'égard des,,,à l'égard de
+à l'égard d',,,à l'égard de
 à l'encan,ADV,,
 à l'encan,ADV,,
 à l'envi,ADV,,
@@ -81,10 +85,10 @@ a giorno,ADV,,
 à la lumière de,PREP,,
 à la lumière des,PREP,,
 à la lumière du,PREP,,
-à la manière d’,PREP,à la manière de,
-à la manière du,PREP,à la manière de,
+à la manière d’,,,à la manière de
+à la manière du,,,à la manière de
 à la manière de,PREP,,
-à la manière des,PREP,,à la manière de
+à la manière des,PREP,à la manière de,
 à la mémoire de,PREP,,
 à la place de,PREP,,
 à la réserve de,PREP,,
@@ -113,10 +117,10 @@ a posteriori,ADV,,
 a priori,ADV,,
 a priori,SUB,,
 à priori,ADV,,
-à propos de,PREP,à propos de,
-à propos des,PREP,à propos de,
-à propos du,PREP,à propos de,
-à propos d',PREP,à propos de,
+à propos de,PREP,,
+à propos des,,,à propos de
+à propos du,,,à propos de
+à propos d',,,à propos de
 à proprement parler,ADV,,
 à quoi bon,ADVinter,,
 à raison de,PREP,,
@@ -144,36 +148,36 @@ a priori,SUB,,
 au premier chef,ADV,,
 au premier abord,ADV,,
 au bas,ADV,,
-au bas d',PREP,au bas de,
+au bas d',,,au bas de
 au bas de,PREP,,
-au bas du,PREP,au bas de,
+au bas du,,,au bas de
 au beau milieu de,PREP,,
-au bord d',PREP,au bord de,
+au bord d',,,au bord de
 au bord de,PREP,,
-au bord des,PREP,au bord de,
-au bord du,PREP,au bord de,
-au bout d',PREP,au bout de,
+au bord des,,,au bord de
+au bord du,,,au bord de
+au bout d',,,au bout de
 au bout de,PREP,,
-au bout des,PREP,au bout de,
-au bout du,PREP,au bout de,
+au bout des,,,au bout de
+au bout du,,,au bout de
 au cas où,CONJsub,,
 au contraire,ADV,,
 au contraire de,PREP,,
 au cours de,PREP,,
 au cours des,PREP,,
 au cours du,PREP,,
-au delà,ADV,,
-au-delà,ADV,au delà,
+au delà,,,au-delà
+au-delà,ADV,,
 au dépourvu,ADV,,
 au détriment de,PREP,,
 au droit de,PREP,,
 au lieu de,PREP,,
 au lieu d',PREP,,
 au lieu et place de,PREP,,
-au milieu d',PREP,au milieu de,
+au milieu d',,,au milieu de
 au milieu de,PREP,,
-au milieu des,PREP,au milieu de,
-au milieu du,PREP,au milieu de,
+au milieu des,,,au milieu de
+au milieu du,,,au milieu de
 au moins,ADV,,
 au moment de,PREP,,
 au moment où,PREP,,
@@ -205,27 +209,27 @@ au vu de,PREP,,
 au vu et au su de,PREP,,
 au vu et su de,PREP,,
 autrement dit,ADVconj,,
-autrement dire,ADV,autrement dit,
+autrement dire,,,autrement dit
 aux aguets,ADV,,
 aux dépens de,PREP,,
 aux fins de,PREP,,
 aux lieu et place de,PREP,,
 aux portes de,PREP,,
 aux yeux de,PREP,,
-académie des sciences,SUB,Académie des Sciences,
+académie des sciences,,,Académie des Sciences
 Académie des Sciences,SUB,,
-académie des sciences morales,SUB,Académie des Sciences morales et politiques,
-Académie des Sciences morales,SUB,,
-académie des sciences morales et politiques,SUB,Académie des Sciences morales et politiques,
+académie des sciences morales,,,Académie des Sciences morales et politiques
+Académie des Sciences morales,,,Académie des Sciences morales et politiques
+académie des sciences morales et politiques,,,Académie des Sciences morales et politiques
 Académie des Sciences morales et politiques,SUB,,
 acid jazz,SUB,,
 acte sexuel,SUB,,
-actes sexuels,SUB,acte sexuel,
+actes sexuels,,,acte sexuel
 action painting,SUB,,
 ad hoc,ADJ,,
 administrateur général,SUB,,
-affaires étrangères,SUB,Affaires étrangères,
-Affaires étrangères,SUB,Affaires étrangères,
+affaires étrangères,,,Affaires étrangères
+Affaires étrangères,SUB,,
 afin d,PREP,,
 afin d',PREP,,
 afin de,PREP,,
@@ -265,7 +269,7 @@ autre chose,SUB,,
 autre part,ADV,,
 autrement dit,ADVconj,,
 av. J.-C.,NUM,,
-avant J.-C.,NUM,av. J.-C.,
+avant J.-C.,,,av. J.-C.
 avant de,PREP,,
 avant même que,CONJsub,,
 avant que,CONJsub,,
@@ -279,23 +283,23 @@ bain de mer,SUB,,
 bains de mer,SUB,,
 bande à part,SUB,,
 bas de page,SUB,,
-bas ventre,SUB,bas-ventre,
+bas ventre,,,bas-ventre
 bas-ventre,SUB,,
 beat generation,SUB,,
-beau fils,SUB,beau-fils,
-beau frère,SUB,beau-frère,
-beau père,SUB,beau-père,
+beau fils,,,beau-fils
+beau frère,,,beau-frère
+beau père,,,beau-père
 beau temps,SUB,,
 beaucoup de,DETindef,,
-beaux esprits,SUB,bel esprit,
+beaux esprits,,,bel esprit
 bec de gaz,SUB,,
 becs de gaz,SUB,,
 bel canto,SUB,,
 bel esprit,SUB,,
-belle fille,SUB,belle-fille,
+belle fille,,,belle-fille
 belle lurette,SUB,,
-belle mère,SUB,belle-mère,
-belle sœur,SUB,belle-sœur,
+belle mère,,,belle-mère
+belle sœur,,,belle-sœur
 best of,SUB,,
 bien entendu,ADV,,
 bien loin de,PREP,,
@@ -328,7 +332,7 @@ bonne humeur,SUB,,
 bonne manière,SUB,,
 bonne part,SUB,,
 bonne volonté,SUB,,
-bonnes volontés,SUB,,bonne volonté
+bonnes volontés,SUB,bonne volonté,
 bonnes gens,SUB,,
 bordel de merde,EXCL,,
 bouche bée,SUB,,
@@ -337,9 +341,10 @@ bras dessus bras dessous,ADV,,
 brown sugar,SUB,,
 bubble gum,SUB,,
 buen retiro,SUB,,
-Bureau international d’Éducation,NAMEorg,,
-Bureau international d’Education,NAMEorg,Bureau international d’Éducation,
-Bureau international d’éducation,NAMEorg,Bureau international d’Éducation,
+BIE,NAMEorg,,
+Bureau international d’Éducation,,,BIE
+Bureau international d’Education,,,BIE
+Bureau international d’éducation,,,BIE
 by night,ADJ,,
 c'est-à-dire,ADVconj,,
 cabinet de toilette,SUB,,
@@ -349,28 +354,32 @@ call girl,SUB,,
 call girls,SUB,,
 canadian river,SUB,,
 caput mortuum,SUB,,
+carte postale,SUB,,
+cartes postales,SUB,carte postale,,
 cas particulier,SUB,,
 casus belli,SUB,,
 ce dernier,PROindef,,
 cela supposé,PREP,,
-celle ci,PROdem,celle-ci,
-celle là,PROdem,celle-là,
+celle ci,,,celle-ci
+celle là,,,celle-là
 celle-ci,PROdem,,
 celle-là,PROdem,,
-celui ci,PROdem,celui-ci,
-celui là,PROdem,celui-là,
+celui ci,,,celui-ci
+celui là,,,celui-là
 celui-ci,PROdem,,
 celui-là,PROdem,,
+centrale nucléaire,SUB,,
+centrales nucléaires,SUB,centrale nucléaire,
 cependant que,CONJsub,,
 ces derniers,PROindef,,
 cette dernière,PROindef,,
 cette fois ci,ADVconj,,
 cette fois là,ADVconj,,
 cette fois où,CONJcoord,,
-cette fois-ci,ADVconj,cette fois ci,
-cette fois-là,ADVconj,cette fois ci,
-ceux ci,PROdem,ceux-ci,
-ceux là,PROdem,ceux-là,
+cette fois-ci,,,cette fois ci
+cette fois-là,,,cette fois ci
+ceux ci,,,ceux-ci
+ceux là,,,ceux-là
 chambre à coucher,SUB,,
 Chambre des députés,SUB,,
 champ de bataille,SUB,,
@@ -380,22 +389,22 @@ chaque fois que,CONJsub,,
 check up,SUB,,
 chef d'entreprise,SUB,,
 chef d’État,SUB,,
-chef d’état,SUB,chef d’État,
-chef de l’État,SUB,chef d’État,
-chefs d’État,SUB,,chef d’État
-chefs d’état,SUB,chefs d’État,chef d’État
-chefs de l’État,SUB,chefs d’État,chef d’État
-chef d'oeuvre,SUB,chef-d'œuvre,
-chef d'œuvre,SUB,chef-d'œuvre,
-chef-d'oeuvre,SUB,chef-d'œuvre,
+chef d’état,,,chef d’État
+chef de l’État,,,chef d’État
+chefs d’État,SUB,chef d’État,
+chefs d’état,,,chefs d’État
+chefs de l’État,,,chefs d’État
+chef d'oeuvre,,,chef-d'œuvre
+chef d'œuvre,,,chef-d'œuvre
+chef-d'oeuvre,,,chef-d'œuvre
 chef-d'œuvre,SUB,,
-chefs d'oeuvre,SUB,,chef-d'œuvre
-chefs d'œuvre,SUB,chefs-d'œuvre,chef-d'œuvre
-chefs-d'oeuvre,SUB,chefs-d'œuvre,chef-d'œuvre
-chefs-d'œuvre,SUB,chefs-d'œuvre,chef-d'œuvre
+chefs d'oeuvre,SUB,chef-d'œuvre,
+chefs d'œuvre,SUB,chef-d'œuvre,chefs-d'œuvre
+chefs-d'oeuvre,SUB,chef-d'œuvre,chefs-d'œuvre
+chefs-d'œuvre,SUB,chef-d'œuvre,chefs-d'œuvre
 chemin de fer,SUB,,
 chemin de fer d'intérêt local,SUB,,
-chemins de fer,SUB,,chemin de fer
+chemins de fer,SUB,chemin de fer,
 chemise de nuit,SUB,,
 chewing gum,SUB,,
 chien de fusil,SUB,,
@@ -412,20 +421,21 @@ comic books,SUB,,
 commedia dell'arte,SUB,,
 compte tenu de,PREP,,
 conférence de presse,SUB,,
-conformément à,PREP,conformément à,
-conformément au,PREP,conformément à,
-conformément aux,PREP,conformément à,
+conformément à,PREP,,
+conformément au,,,conformément à
+conformément aux,,,conformément à
 connaissance de cause,SUB,,
 conseil d'administration,SUB,,
-conseil d'Etat,SUB,Conseil d'État,
-conseil d'etat,SUB,Conseil d'État,
-conseil d'état,SUB,Conseil d'État,
+Conseil d'État,SUB
+conseil d'Etat,,,Conseil d'État
+conseil d'etat,,,Conseil d'État
+conseil d'état,,,Conseil d'État
 conseil général,SUB,,
 conseiller général,SUB,,
 conséquemment à,PREP,,
-contrairement à,PREP,contrairement à,
-contrairement au,PREP,contrairement à,
-contrairement aux,PREP,contrairement à,
+contrairement à,PREP,,
+contrairement au,,,contrairement à
+contrairement aux,,,contrairement à
 corn flakes,SUB,,
 corps de garde,SUB,,
 côte à côte,ADV,,
@@ -447,10 +457,10 @@ coup sur coup,ADV,,
 coups d'épée,SUB,,
 coups d'oeil,SUB,,
 coups d'œil,SUB,,
-coups de balai,SUB,coup de balai,
-coups de bâton,SUB,coup de bâton,
+coups de balai,SUB,coup de balai
+coups de bâton,SUB,coup de bâton
 coups de feu,SUB,,
-coups de fusil,SUB,coup de fusil,
+coups de fusil,SUB,coup de fusil
 coups de main,SUB,,
 coups de pied,SUB,,
 coups de pistolet,SUB,,
@@ -459,7 +469,8 @@ coups de vent,SUB,,
 coups et blessures,SUB,,
 coups et blessures aggravés,SUB,,
 cour d'assises,SUB,,
-cour suprême,NAMEorg,Cour suprême,
+Cour suprême,NAMEorg,,
+cour suprême,,,Cour suprême
 courrier électronique,SUB,,
 cri de joie,SUB,,
 critique d'art,SUB,,
@@ -504,17 +515,20 @@ de façon à,PREP,,
 de facto,ADV,,
 de guingois,ADV,,
 de haut en bas,ADV,,
-de la part de,PREP,de la part de,
-de la part d’,PREP,de la part de,
-de la part du,PREP,de la part de,
-de la part des,PREP,de la part de,
+de la part de,PREP,,
+de la part d’,,,de la part de
+de la part du,,,de la part de
+de la part des,,,de la part de
 de long en large,ADV,,
 de manière à,PREP,,
 de manière générale,ADVconj,,
 de même,ADV,,
 de même que,CONJcoord,,
-demi siècle,SUB,demi-siècle,
-demi siècles,SUB,demi-siècles,demi-siècle
+de nouveau,ADV,,
+demi-siècle,SUB,,
+demi siècle,,,demi-siècle
+demi-siècles,SUB,demi-siècle,
+demi siècles,,,demi-siècles
 de mon côté,PREP,,
 de niveau avec,PREP,,
 de par,PREP,,
@@ -524,9 +538,9 @@ de plano,ADV,,
 de plein gré,ADV,,
 de plus,ADVconj,,
 de plus en plus,ADV,,
-de préférence à,PREP,de préférence à,
-de préférence au,PREP,de préférence à,
-de préférence aux,PREP,de préférence à,
+de préférence à,PREP,,
+de préférence au,,,de préférence à
+de préférence aux,,,de préférence à
 de prime abord,ADV,,
 de profundis,SUB,,
 de santis,SUB,,
@@ -563,6 +577,8 @@ donner l’impression,VERB,,
 donner la main,VERB,,
 drelin drelin,EXCL,,
 droit d’ainesse,SUB,,
+droits de l’homme,SUB,,
+Droits de l’homme,,,droits de l’homme
 du côté de,PREP,,
 du fond du cœur,ADV,,
 du haut en bas,ADV,,
@@ -575,11 +591,14 @@ eau minérale,SUB,,
 ecce homo,ADV,,
 éclat de rire,SUB,,
 éclater de rire,VERB,,
-éclats de rire,SUB,éclat de rire,
-École polytechnique,SUB,École Polytechnique,
+éclats de rire,SUB,éclat de rire
+École polytechnique,,,École Polytechnique
 École Polytechnique,SUB,,
+école primaire,SUB,,
+écoles primaires,SUB,école primaire,
+États-Unis d’Amérique,,,États-Unis,
 empreinte digitale,SUB,,
-empreintes digitales,SUB,empreinte digitale,
+empreintes digitales,SUB,empreinte digitale
 en amont d’,PREP,,
 en amont de,PREP,,
 en amont des,PREP,,
@@ -607,45 +626,45 @@ en d’autres termes,ADVconj,,
 en deçà,ADV,,
 en deçà de,PREP,,
 en définitive,ADV,,
-en dehors de,ADVconj,en dehors de,
-en dehors du,ADVconj,en dehors de,
-en dehors des,ADVconj,en dehors de,
-en dehors d’,ADVconj,en dehors de,
-en dépit de,PREP,en dépit de,
-en dépit du,PREP,en dépit de,
-en dépit des,PREP,en dépit de,
-en dépit d',PREP,en dépit de,
+en dehors de,ADVconj,,
+en dehors du,,,en dehors de
+en dehors des,,,en dehors de
+en dehors d’,,,en dehors de
+en dépit de,PREP,,
+en dépit du,,,en dépit de
+en dépit des,,,en dépit de
+en dépit d',,,en dépit de
 en dessous,PREP,,
 en effet,ADVconj,,
 en exécution de,PREP,,
 en face,ADV,,
-en face de,PREP,en face de,
-en face du,PREP,en face de,
-en face des,PREP,en face de,
-en face d’,PREP,en face de,
+en face de,PREP,,
+en face du,,,en face de
+en face des,,,en face de
+en face d’,,,en face de
 en fait de,PREP,,
-en faveur de,ADV,en faveur de,
-en faveur du,ADV,en faveur de,
-en faveur des,ADV,en faveur de,
-en faveur d’,ADV,en faveur de,
+en faveur de,ADV,,
+en faveur du,,,en faveur de
+en faveur des,,,en faveur de
+en faveur d’,,,en faveur de
 en filigrane,ADV,,
 en fin de compte,ADV,,
 en fonction de,PREP,,
-# en forme,ADV,, # je m’en forme une idée
+# en forme,ADV, # je m’en forme une idée,
 en forme de,PREP,,
 en friche,ADJ,,
 en général,ADV,,
 en grande partie,ADV,,
-en guise de,PREP,en guise de,
-en guise d’,PREP,en guise de,
+en guise de,PREP,,
+en guise d’,,,en guise de
 en haut,ADV,,
 en lieu et place de,PREP,,
 en loucedé,ADV,,
 en marge,ADV,,
-en marge de,PREP,en marge de,
-en marge des,PREP,en marge de,
-en marge du,PREP,en marge de,
-en marge d’,PREP,en marge de,
+en marge de,PREP,,
+en marge des,,,en marge de
+en marge du,,,en marge de
+en marge d’,,,en marge de
 en matière de,PREP,,
 en même temps,ADV,,
 en même temps que,PREP,,
@@ -657,18 +676,18 @@ en passant,ADV,,
 en passe de,PREP,,
 en permanence,ADV,,
 en plein,ADV,,
-en pleine,ADV,,en plein
+en pleine,ADV,en plein,
 en plein essor,ADV,,
 en plein jour,ADV,,
 en pleine connaissance de cause,ADV,,
 en présence,ADV,,
-en présence de,PREP,en présence de,
-en présence du,PREP,en présence de,
-en présence des,PREP,en présence de,
-en présence d’,PREP,en présence de,
-en proie à,PREP,en proie à,
-en proie au,PREP,en proie à,
-en proie aux,PREP,en proie à,
+en présence de,PREP,,
+en présence du,,,en présence de
+en présence des,,,en présence de
+en présence d’,,,en présence de
+en proie à,PREP,,
+en proie au,,,en proie à
+en proie aux,,,en proie à
 en quelque sorte,ADV,,
 en raison de,PREP,,
 en réalité,ADVconj,,
@@ -686,35 +705,35 @@ en sus de,PREP,,
 en tapinois,ADV,,
 en tapinois,ADV,,
 en tant que,CONJcoord,,
-en terme de,PREP,en terme de,
-en terme d',PREP,en terme de,
-en termes de,PREP,en termes de,
-en termes d',PREP,en termes de,
+en terme de,PREP,,
+en terme d',,,en terme de
+en termes de,,,en termes de
+en termes d',,,en termes de
 en tous cas,ADVconj,,
 en train de,ADV,,
-en train d',ADV,en train de,
+en train d',,,en train de
 en vain,ADV,,
 en vérité,ADV,,
-en vertu de,PREP,en vertu de,
-en vertu du,PREP,en vertu de,
-en vertu des,PREP,en vertu de,
-en vertu d’,PREP,en vertu de,
+en vertu de,PREP,,
+en vertu du,,,en vertu de
+en vertu des,,,en vertu de
+en vertu d’,,,en vertu de
 en vigueur,ADV,,
 en vue de,PREP,,
 encore une fois,ADVconj,,
-enfant de choeur,SUB,enfant de chœur,
+enfant de choeur,,,enfant de chœur
 enfant de chœur,SUB,,
-enfants de choeur,SUB,enfants de chœur,
-enfants de chœur,SUB,,
+enfants de choeur,,,enfants de chœur
+enfants de chœur,SUB,enfant de chœur,
 entenant de,PREP,,
 entendre parler,VERB,,
 entrer en ligne de compte,VERB,,
 est-ce qu,ADV,,
 est-ce qu',ADV,,
 est-ce que,ADV,,
-et caetera,ADVdeg,etc.,
-et cætera,ADVdeg,,
-et cetera,ADVdeg,etc.,
+et caetera,,,etc.
+et cætera,,,etc.
+et cetera,,,etc.
 et seq,ADV,,
 étant donné,PREP,,
 état civil,SUB,,
@@ -726,22 +745,22 @@ et seq,ADV,,
 état de grâce,SUB,,
 état de nature,SUB,,
 état de siège,SUB,,
-être parti,VERB,,partir
-être partis,VERB,,partir
-être partie,VERB,,partir
-être parties,VERB,,partir
-être tenu,VERB,,être tenu
-être tenus,VERB,,être tenu
-être tenue,VERB,,être tenu
-être tenues,VERB,,être tenu
-eu égard à,PREP,eu égard à,
-eu égard au,PREP,eu égard à,
-eu égard aux,PREP,eu égard à,
+être parti,VERB,partir,
+être partis,VERB,partir,
+être partie,VERB,partir,
+être parties,VERB,partir,
+être tenu,VERB,être tenu,
+être tenus,VERB,être tenu,
+être tenue,VERB,être tenu,
+être tenues,VERB,être tenu,
+eu égard à,PREP,,
+eu égard au,,,eu égard à
+eu égard aux,,,eu égard à
 ex abrupto,ADV,,
 ex nihilo,ADV,,
-face à,PREP,face à,
-face au,PREP,face à,
-face aux,PREP,face à,
+face à,PREP,,
+face au,,,face à
+face aux,,,face à
 face à face,SUB,,
 faire abstraction,VERB,,
 faire face,VERB,,
@@ -774,24 +793,25 @@ gardes nationaux,SUB,,
 gare centrale,SUB,,
 général en chef,SUB,,
 gengis khan,SUB,,
+genre humain,SUB,,
 gens du monde,SUB,,
 girl friend,SUB,,
 goutte à goutte,ADV,,
 gouverneur général,SUB,,
-grâce à,PREP,grace à,
-grâce au,PREP,grace à,
-grâce aux,PREP,grace à,
+grâce à,PREP,,
+grâce au,,,grace à
+grâce aux,,,grace à
 grâces à,PREP,,
 grain de beauté,SUB,,
-grand chose,SUB,grand-chose,
+grand chose,,,grand-chose
 grand dieu,SUB,,
-grand mère,SUB,grand-mère,
-grand oncle,SUB,grand-oncle,
-grand père,SUB,grand-père,
+grand mère,,,grand-mère
+grand oncle,,,grand-oncle
+grand père,,,grand-père
 grand seigneur,SUB,,
-grand'chose,SUB,grand-chose,
-grand'mère,SUB,grand-mère,
-grand'père,SUB,grand-père,
+grand'chose,,,grand-chose
+grand'mère,,,grand-mère
+grand'père,,,grand-père
 grand'tante,SUB,,
 grands dieux,SUB,,
 grands seigneurs,SUB,grand seigneur,
@@ -806,7 +826,7 @@ happy ends,SUB,,
 happy few,SUB,,
 hard edge,SUB,,
 has been,SUB,,
-haut de forme,SUB,haut-de-forme,
+haut de forme,,,haut-de-forme
 haut fait,SUB,,
 haut rang,SUB,,
 haut-de-forme,SUB,,
@@ -821,7 +841,10 @@ high life,SUB,,
 high tech,ADJ,,
 hold up,SUB,,
 homme d’affaires,SUB,,
-homme d’état,SUB,,
+homme d’état,SUB,homme d’État,
+homme d’État,SUB,,
+hommes d’état,SUB,homme d’État,hommes d’État
+hommes d’État,SUB,homme d’État,
 homo erectus,SUB,,
 homo habilis,SUB,,
 hong kong,SUB,,
@@ -841,8 +864,11 @@ il n’en reste pas moins que,PREP,,
 il pourrait bien se faire que,PREP,,
 il se pourrait que,PREP,,
 il serait possible que,PREP,,
+il y a,VERBaux,il y a,
 il y avoir,VERBaux,il y a,
-il y avoir avoir,VERBaux,il y a,
+il y avait,VERBaux,il y a,
+il y aura,VERBaux,il y a,
+il y a eut,VERBaux,il y a,
 in absentia,ADV,,
 in abstracto,ADV,,
 in anima vili,ADV,,
@@ -869,9 +895,9 @@ irish coffee,SUB,,
 ite missa est,SUB,,
 jet society,SUB,,
 jeune fille,SUB,,
-jeunes filles,SUB,,jeune fille
+jeunes filles,SUB,jeune fille,
 jeune homme,SUB,,
-jeunes hommes,SUB,,jeune homme
+jeunes hommes,SUB,jeune homme,
 jeunes gens,SUB,,
 jouer le rôle de,VERB,,
 jouer un rôle,VERB,,
@@ -879,9 +905,9 @@ jour après jour,ADV,,
 jour de l'an,SUB,,
 juge d’instruction,SUB,,
 juge de paix,SUB,,
-jusqu’à,PREP,jusque,
-jusqu’au,PREP,jusque,
-jusqu’aux,PREP,jusque,
+jusqu’à,,,jusque
+jusqu’au,,,jusque
+jusqu’aux,,,jusque
 jusqu'à ce que,CONJsub,,
 jusqu'à la fin,PREP,,
 jusqu'à nouvel ordre,ADV,,
@@ -975,14 +1001,14 @@ les vôtres,PROposs,,
 libre arbitre,SUB,,
 lieutenant de police,SUB,,
 ligne de compte,SUB,,
-lieu-commun,SUB,lieu commun,
+lieu-commun,,,lieu commun
 lieu commun,SUB,,
-lieux communs,SUB,,lieu commun
-lieux-communs,SUB,lieux communs,lieu commun
+lieux communs,SUB,lieu commun,
+lieux-communs,,,lieux communs
 lit de sangle,SUB,,
 livre sterling,SUB,,
 livres de rente,SUB,,
-livres sterling,SUB,,livre sterling
+livres sterling,SUB,livre sterling,
 loc. cit.,SUB,,
 loin de,PREP,,
 long terme,SUB,,
@@ -1042,42 +1068,45 @@ middle class,SUB,,
 milk shake,SUB,,
 ministère public,SUB,,
 ministre de l'Intérieur,SUB,,
-ministre de l'intérieur,SUB,ministre de l'Intérieur,
+ministre de l'intérieur,,,ministre de l'Intérieur
 ministre de la guerre,SUB,,
 ministre de la justice,SUB,,
-ministre des affaires étrangères,SUB,Ministre des Affaires étrangères,
-ministre des Affaires étrangères,SUB,Ministre des Affaires étrangères,
+ministre des affaires étrangères,,,Ministre des Affaires étrangères
+ministre des Affaires étrangères,,,Ministre des Affaires étrangères
 Ministre des Affaires étrangères,SUB,,
-ministère des affaires étrangères,SUB,ministère des Affaires étrangères,
-ministère des Affaires étrangères,SUB,ministère des Affaires étrangères,
-Ministère des Affaires étrangères,SUB,ministère des Affaires étrangères,
-ministre des finances,SUB,ministre des Finances,
+ministère des affaires étrangères,,,ministère des Affaires étrangères
+Ministère des Affaires étrangères,,,ministère des Affaires étrangères
+ministère des Affaires étrangères,SUB,,
+ministre des finances,,,ministre des Finances
 ministre des Finances,SUB,,
 minus habens,SUB,,
 mise en cause,SUB,,
-mise en oeuvre,SUB,mise en œuvre,
+mise en oeuvre,,,mise en œuvre
 mise en œuvre,SUB,,
 mise en ordre,SUB,,
 mise en place,SUB,,
 mise en question,SUB,,
+mode de vie,SUB,,
+modes de vie,SUB,mode de vie,
 modern style,SUB,,
 modern style,ADJ,,
 modus operandi,SUB,,
 modus vivendi,SUB,,
 mon Dieu,EXCL,,
 mot d’ordre,SUB,,
-mots d’ordre,SUB,,mot d’ordre
+mots d’ordre,SUB,mot d’ordre,
 motu proprio,ADV,,
-Moyen Age,SUB,Moyen-Âge,
-moyen age,SUB,Moyen-Âge,
-Moyen Âge,SUB,Moyen-Âge,
-moyen âge,SUB,Moyen-Âge,
-moyen-âge,SUB,Moyen-Âge,
+Moyen Age,,,Moyen-Âge
+moyen age,,,Moyen-Âge
+Moyen Âge,,,Moyen-Âge
+moyen âge,,,Moyen-Âge
+moyen-âge,,,Moyen-Âge
+Moyen-Âge,SUB,,
 moyen terme,SUB,,
 music hall,SUB,,
 mutatis mutandis,ADV,,
-n'est ce pas,ADV,n'est-ce pas,
-n’est ce pas,ADV,n'est-ce pas,
+n'est ce pas,,,n'est-ce pas
+n’est ce pas,,,n'est-ce pas
 n'est-ce pas,ADV,,
 n’est-ce pas,ADV,,
 n'importe qui,PROindef,,
@@ -1124,18 +1153,18 @@ par accident,ADV,,
 par ailleurs,ADV,,
 par certains côtés,PREP,,
 par comparaison,ADV,,
-par comparaison à,PREP,,par comparaison à
-par comparaison au,PREP,,par comparaison à
-par comparaison aux,PREP,,par comparaison à
+par comparaison à,PREP,par comparaison à,
+par comparaison au,PREP,par comparaison à,
+par comparaison aux,PREP,par comparaison à,
 par conséquent,CONJcoord,,
 par crainte de,PREP,,
 par delà,PREP,,
-par derrière,PREP,par-derrière,
-par devant,PREP,par-devant,
+par derrière,,,par-derrière
+par devant,,,par-devant
 par-devant notaire,PREP,,
 par devers,PREP,,
-par dessous,PREP,par-dessous,
-par dessus,PREP,par-dessus,
+par dessous,,,par-dessous
+par dessus,,,par-dessus
 par définition,ADV,,
 par écrit,ADV,,
 par essence,ADV,,
@@ -1146,25 +1175,24 @@ par là,ADV,,
 par l’intermédiaire de,PREP,,
 par manque de,PREP,,
 par mégarde,ADV,,
-par opposition à,PREP,,par opposition à
-par opposition au,PREP,,par opposition à
-par opposition aux,PREP,,par opposition à
-par préférence à,PREP,,par préférence à
-par préférence au,PREP,,par préférence à
-par préférence aux,PREP,,par préférence à
-par rapport à,PREP,,par rapport à
-par rapport au,PREP,,par rapport à
-par rapport aux,PREP,,par rapport à
+par opposition à,PREP,par opposition à,
+par opposition au,PREP,par opposition à,
+par opposition aux,PREP,par opposition à,
+par préférence à,PREP,par préférence à,
+par préférence au,PREP,par préférence à,
+par préférence aux,PREP,par préférence à,
+par rapport à,PREP,par rapport à,
+par rapport au,PREP,par rapport à,
+par rapport aux,PREP,par rapport à,
 par suite,ADVconj,,
 par suite de,PREP,,
 par surcroît,ADVdeg,,
 parce que,CONJsub,,
-parce qu,CONJsub,parce que,
-parce qu',CONJsub,parce que,
+parce qu,,,parce que
+parce qu',,,parce que
 parole d'honneur,SUB,,
 part time,SUB,,
-parti pris,SUB,parti-pris,
-parti prendre,SUB,parti-pris,
+parti pris,,,parti-pris
 pas plus que,PREP,,
 pas plus tard que,PREP,,
 paso doble,SUB,,
@@ -1193,7 +1221,7 @@ plutôt deux fois que une,ADV,,
 poignée de main,SUB,,
 poignées de main,SUB,,
 point de vue,SUB,,
-points de vue,SUB,,point de vue
+points de vue,SUB,point de vue,
 pom-pom girl,SUB,,
 pom-pom girls,SUB,,
 pomme de terre,SUB,,
@@ -1205,9 +1233,9 @@ porte d’entrée,SUB,,
 porte de derrière,SUB,,
 porter à croire,VERB,,
 poser question,VERB,,
-poser des questions,VERB,,poser question
-poser la question,VERB,,poser question
-poser une question,VERB,,poser question
+poser des questions,VERB,poser question,
+poser la question,VERB,poser question,
+poser une question,VERB,poser question,
 post it,SUB,,
 post mortem,ADV,,
 pour autant que,PREP,,
@@ -1225,7 +1253,7 @@ pour une fois,ADVconj,,
 pour une fois que,CONJsub,,
 premier âge,SUB,,
 premier consul,SUB,,
-premier ministre,SUB,Premier ministre,
+premier ministre,,,Premier ministre
 Premier ministre,SUB,,
 premier plan,SUB,,
 prendre au sérieux,VERB,,
@@ -1251,7 +1279,6 @@ presse écrite,SUB,,
 prêt à,PREP,,
 prime time,SUB,,
 prise de conscience,SUB,,
-prendre de conscience,SUB,prise de conscience,
 prix Nobel,SUB,,
 proche de,PREP,,
 procureur du roi,SUB,,
@@ -1264,9 +1291,9 @@ punching ball,SUB,,
 qu'est-ce que,ADV,,
 quand et quand,PREP,,
 quand même,ADV,,
-quant à,PREP,,quant à
-quant au,PREP,,quant à
-quant aux,PREP,,quant à
+quant à,PREP,quant à,
+quant au,PREP,quant à,
+quant aux,PREP,quant à,
 quart d'heure,SUB,,
 quartier général,SUB,,
 que le diable l'emporte,EXCL,,
@@ -1279,18 +1306,18 @@ qui que,CONJsub,,
 quoi qu’il en fût,PREP,,
 quoi que,CONJsub,,
 raison d'état,SUB,,
-raisons d'état,SUB,,raison d'état
+raisons d'état,SUB,raison d'état,
 rapport sexuel,SUB,,
 rapports sexuels,SUB,,
 recto tono,ADV,,
 red river,SUB,,
 rédacteur en chef,SUB,,
-rédactrice en chef,SUB,,rédacteur en chef
+rédactrice en chef,SUB,rédacteur en chef,
 reine mère,SUB,,
 relation sexuelle,SUB,,
 relations sexuelles,SUB,,
 remettre en question,VERB,,
-rendez vous,SUB,rendez-vous,
+rendez vous,,,rendez-vous
 rendre compte,VERB,,
 rendre grâce,VERB,,
 rendre hommage,VERB,,
@@ -1308,9 +1335,9 @@ robe de chambre,SUB,,
 rocking chair,SUB,,
 rouge à lèvres,SUB,,
 s’agir,VERB,,
-s’en tenir à,VERB,,s’en tenir à
-s’en tenir au,VERB,,s’en tenir à
-s’en tenir aux,VERB,,s’en tenir à
+s’en tenir à,VERB,s’en tenir à,
+s’en tenir au,VERB,s’en tenir à,
+s’en tenir aux,VERB,s’en tenir à,
 s’agissant de,PREP,,
 sac à dos,SUB,,
 sainte nitouche,SUB,,
@@ -1347,7 +1374,7 @@ signe de tête,SUB,,
 sine die,ADV,,
 sine qua non,ADV,,
 Société des Nations,NAMEorg,,
-Société des nations,NAMEorg,Société des Nations,
+Société des nations,,,Société des Nations
 Son Excellence,NAMEpers,,
 sous couleur de,PREP,,
 sous couvert de,PREP,,
@@ -1363,7 +1390,7 @@ sous peine de,PREP,,
 sous prétexte de,PREP,,
 sous réserve de,PREP,,
 sous un nouveau jour,PREP,,
-soutien gorge,SUB,soutien-gorge,
+soutien gorge,,,soutien-gorge
 soutien-gorge,SUB,,
 souventes fois,ADV,,
 sri lankais,SUB,,
@@ -1374,9 +1401,9 @@ story board,SUB,,
 stricto sensu,ADV,,
 struggle for life,SUB,,
 sui generis,ADJ,,
-suite à,PREP,,suite à
-suite au,PREP,,suite à
-suite aux,PREP,,suite à
+suite à,PREP,suite à,
+suite au,PREP,suite à,
+suite aux,PREP,suite à,
 supposé que,PREP,,
 sur le plan,PREP,,
 sur le point de,PREP,,
@@ -1386,12 +1413,12 @@ table d’écoute,SUB,,
 table de chevet,SUB,,
 table des matières,SUB,,
 table ronde,SUB,,
-Table ronde,SUB,table ronde,
-Table Ronde,SUB,table ronde,
+Table ronde,,,table ronde
+Table Ronde,,,table ronde
 taï chi,SUB,,
 talavera de la reina,SUB,,
-tandis qu,CONJsub,tandis que,
-tandis qu',CONJsub,tandis que,
+tandis qu,,,tandis que
+tandis qu',,,tandis que
 tandis que,CONJsub,,
 tant de,DETindef,,
 tant et si bien que,PREP,,
@@ -1405,10 +1432,10 @@ temps à perdre,SUB,,
 tenir compte,VERB,,
 tenir lieu de,VERB,,
 terme à terme,ADJ,,
-ne tenir pas lieu de,VERB,tenir lieu de,
+ne tenir pas lieu de,,,tenir lieu de
 terra incognita,SUB,,
-tiers monde,SUB,Tiers Monde,
-Tiers Monde,SUB,Tiers Monde,
+tiers monde,,,Tiers Monde
+Tiers Monde,,,Tiers Monde
 toile cirée,SUB,,
 too much,ADJ,,
 top models,SUB,,
@@ -1428,8 +1455,8 @@ trésorier général,SUB,,
 tribunal d’instance,SUB,,
 tribunal d’instance,SUB,,
 Tribunal de Commerce,SUB,,
-tribunal de commerce,SUB,Tribunal de Commerce,
-tribunal de Commerce,SUB,Tribunal de Commerce,
+tribunal de commerce,,,Tribunal de Commerce
+tribunal de Commerce,,,Tribunal de Commerce
 trois fois,ADV,,
 trois fois par an,ADV,,
 trois fois par mois,ADV,,
@@ -1496,7 +1523,7 @@ vice-président général,SUB,,
 vie privée,SUB,,
 vie quotidienne,SUB,,
 vieille dame,SUB,,
-vis à vis,ADVconj,vis-à-vis,
+vis à vis,,,vis-à-vis
 vis-à-vis,ADV,,
 vis-à-vis de,PREP,,
 Votre Excellence,NAMEpers,,

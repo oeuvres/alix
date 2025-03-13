@@ -36,7 +36,6 @@ public class TokenStreamsTest {
         String text = "";
         // File file = new File("src/test/resources/article.xml");
         // String text = Files.readString(Paths.get(file.getAbsolutePath()), StandardCharsets.UTF_8);
-        text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience dernièrement.";
         text = "s’il les prenait en considération…. parce que l’acte étant à";
         text = "<h1 class=\"head\">Avant-propos\n"
             + "<br class=\"lb\"/>de la seconde édition<a class=\"bookmark\" href=\"#body\"> </a>\n"
@@ -44,7 +43,9 @@ public class TokenStreamsTest {
             + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion"
         ;
         text = "débile (Brang : 14 ; …) d’âge mental de sept ans, à qui je donne une trentaine";
-        text = "Il y a d’abord une inflation psychologique, c’est-à-dire ;";
+        text = "Il y a d’abord trop d’enfants à naître d’âge immature.";
+        text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants.";
+
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);
         ana.close();
@@ -97,15 +98,15 @@ public class TokenStreamsTest {
         while(tokenStream.incrementToken()) {
             final int startOffset = offsetAttribute.startOffset();
             System.out.print(""
-              + termAttribute.toString() + "\t" 
+              + "term=" + termAttribute.toString() + "\t" 
               + Tag.name(flagsAttribute.getFlags()) + "\t" 
               // + orthAtt.toString() + "|\t|" 
               + "|" + text.substring(startOffset,  offsetAttribute.endOffset()) + "|\t" 
               + startOffset + "\t"
               + offsetAttribute.endOffset() + "\t" 
               // + posIncAttribute.getPositionIncrement() + "\t"
-              + "orth:" + orthAttribute.toString() + "\t" 
-              + "lem:" + lemAttribute.toString() + "\t" 
+              + "orth=" + orthAttribute.toString() + "\t" 
+              + "lem=" + lemAttribute.toString() + "\t" 
               + "\n"
             );
             if (startOffset < startLast) {
@@ -163,7 +164,7 @@ public class TokenStreamsTest {
             final Tokenizer tokenizer = new TokenizerML(); // segment words
             TokenStream ts  = tokenizer;
             ts = new FilterAposHyphenFr(ts);
-            ts = new FilterLemmatize(ts); // provide lemma+pos
+            // ts = new FilterLemmatize(ts); // provide lemma+pos
             ts = new FilterLocution(ts); // concat known locutions
             return new TokenStreamComponents(tokenizer, ts);
         }

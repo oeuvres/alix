@@ -1,4 +1,4 @@
-GRAPH,TAG,ORTH,LEM
+GRAPH,TAG,LEM,ORTH
 ,,,
 # Abréviations,,,
 T.S.F.,SUB,,
@@ -7,16 +7,16 @@ P.S.,NAMEorg,,
 NUM,NUM,,
 ,,,
 # Organisation,,,
-action française,NAMEorg,Action Française,
-Action française,NAMEorg,Action Française,
+action française,,,Action Française
+Action française,,,Action Française
 Action Française,NAMEorg,,
 Assemblée nationale,NAMEorg,,
-Assemblée,NAMEorg,Assemblée nationale,
+Assemblée,,,Assemblée nationale
 État,NAMEorg,,
-États,NAMEorg,État,
-SAMU,NAMEorg,SAMU,
-Samu,NAMEorg,SAMU,
-samu,NAMEorg,SAMU,
+États,,,État
+SAMU,NAMEorg,,
+Samu,,,SAMU
+samu,,,SAMU
 Société,NAMEorg,,
 Société,NAMEorg,,
 Société générale,NAMEorg,,
@@ -24,27 +24,27 @@ Sûreté générale,NAMEorg,,
 Unesco,NAMEorg,,
 Unicef,NAMEorg,,
 ,,,
-# Événements
+# Événements,,,
 Austerlitz,NAMEevent,,
 Renaissance,NAMEevent,,
 Révolution,NAMEevent,,
 Waterloo,NAMEevent,,
-
+,,,
 ,,,
 ,,,
 # Autres personne,,,
 ,,,
-général de Gaulle,NAMEpers,de Gaulle,
-Général de Gaulle,NAMEpers,de Gaulle,
-de Gaulle,NAMEpers,de Gaulle,
-Charles de Gaulle,NAMEpers,de Gaulle,
-De Gaulle,NAMEpers,de Gaulle,
+général de Gaulle,,,de Gaulle
+Général de Gaulle,,,de Gaulle
+de Gaulle,NAMEpers,,
+Charles de Gaulle,,,de Gaulle
+De Gaulle,,,de Gaulle
 Dreyfus,NAMEpers,,
-Duguesclin,NAMEpers,Du Guesclin,
+Duguesclin,,,Du Guesclin
 Du Guesclin,NAMEpers,,
-Durer,NAMEpers,Dürer,
-Éléonore de Guienne,NAMEpers,Aliénor d'Aquitaine,
-Éliogabale,NAMEpers,Héliogabale,
+Durer,,,Dürer
+Éléonore de Guienne,,,Aliénor d'Aquitaine
+Éliogabale,,,Héliogabale
 François Ier,NAMEpers,,
 Gandhi,NAMEpers,,
 Halévy,NAMEpers,,
@@ -67,8 +67,8 @@ Lefèvre,NAMEpers,,
 Maurois,NAMEpers,,
 Mussolini,NAMEpers,,
 République,NAMEorg,,
-de Rougemont,NAMEpers,Rougemont,
-Denis de Rougemont,NAMEpers,Rougemont,
+de Rougemont,,,Rougemont
+Denis de Rougemont,,,Rougemont
 Thiers,NAMEpers,,
 ,,,
 ,,,
@@ -76,10 +76,9 @@ Thiers,NAMEpers,,
 Christ,NAMEpers,,
 Ciel,NAMEgod,,
 Dieu,NAMEgod,,
-Jésus,NAMEgod,Jésus-Christ,
-Jésus-Christ,NAMEgod,Jésus-Christ,
-Jésus-christ,NAMEgod,Jésus-Christ,
-Jesus-Christ,NAMEgod,Jésus-Christ,
+Jésus,,,Jésus-Christ
+Jésus-Christ,NAMEgod,,
+Jésus-christ,,,Jésus-Christ
 Saint-Sacrement,NAMEgod,,
 Seigneur,NAMEgod,,
 ,,,
@@ -131,8 +130,8 @@ Eaque,NAMEgod,,
 Eglé,NAMEgod,,
 Éole,NAMEgod,,
 Éole,NAMEgod,,
-Eole,NAMEgod,Éole,
-Eole,NAMEgod,Éole,
+Eole,,,Éole
+Eole,,,Éole
 Epiméthée,NAMEgod,,
 Erato,NAMEgod,,
 Erèbe,NAMEgod,,
@@ -292,15 +291,15 @@ Diomède,NAMEgod,,
 Eétès,NAMEgod,,
 Éétès,NAMEgod,,
 Égée,NAMEgod,,
-Egée,NAMEgod,Égée,
+Egée,,,Égée
 Egiste,NAMEgod,,
 Egisthe,NAMEgod,,
 Électre,NAMEgod,,
-Electre,NAMEgod,Électre,
+Electre,,,Électre
 Endymion,NAMEgod,,
 Enée,NAMEgod,,
 Énée,NAMEgod,,
-Enée,NAMEgod,Énée,
+Enée,,,Énée
 Erostrate,NAMEgod,,
 Esculape,NAMEgod,,
 Eson,NAMEgod,,

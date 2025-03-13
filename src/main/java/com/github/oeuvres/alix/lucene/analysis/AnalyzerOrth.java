@@ -57,8 +57,9 @@ public class AnalyzerOrth extends Analyzer
         final Tokenizer tokenizer = new TokenizerML();
         TokenStream ts = tokenizer; // segment words
         ts = new FilterAposHyphenFr(ts); // fr split on ’ and -
-        ts = new FilterLemmatize(ts); // provide lemma+pos
-        // compounds: parce que
+        // provide lemma+pos
+        ts = new FilterLemmatize(ts);
+        // group compounds after lemmatization for verbal compounds
         ts = new FilterLocution(ts);
         // link unknown names is bad
         // result = new FilterFrPersname(result);

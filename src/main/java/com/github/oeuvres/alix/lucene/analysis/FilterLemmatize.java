@@ -175,8 +175,8 @@ public final class FilterLemmatize extends TokenFilter
             if (entry != null) {
                 flagsAtt.setFlags(entry.tag);
                 // maybe a normalized form for the name
-                if (entry.orth != null)
-                    orthAtt.copy(entry.orth);
+                if (entry.graph != null)
+                    orthAtt.copy(entry.graph);
                 if (entry.lem != null)
                     lemAtt.copy(entry.lem);
                 return true;
@@ -203,8 +203,8 @@ public final class FilterLemmatize extends TokenFilter
                 flagsAtt.setFlags(entry.tag);
                 if (entry.lem != null)
                     lemAtt.copy(entry.lem);
-                if (entry.orth != null) {
-                    orthAtt.copy(entry.orth);
+                if (entry.graph != null) {
+                    orthAtt.copy(entry.graph);
                 }
                 return true;
             } else { // unknown word, infer it's a NAME
@@ -222,8 +222,8 @@ public final class FilterLemmatize extends TokenFilter
             flagsAtt.setFlags(entry.tag);
             if (entry.lem != null)
                 lemAtt.copy(entry.lem);
-            if (entry.orth != null) {
-                orthAtt.copy(entry.orth);
+            if (entry.graph != null) {
+                orthAtt.copy(entry.graph);
             }
         }
         return true;

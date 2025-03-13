@@ -184,6 +184,7 @@ public class FilterLocution extends TokenFilter
             // dead end
             if (nodeType == null) {
                 // the queue logic after the loop
+                // queue.removeFirst();
                 break;
             }
 
@@ -227,7 +228,9 @@ public class FilterLocution extends TokenFilter
                 }
                 // try to go ahead ((chemin de fer) d’intérêt local)
                 queue.clear();
+                // bad idea here, will be done after
                 queue.addLast(this);
+                System.out.println(queue);
                 queuePos = 0;
             }
             // here we should be in a branch
@@ -239,6 +242,7 @@ public class FilterLocution extends TokenFilter
                 queue.addLast(this);
                 tokFirst = false;
             }
+            
             // get another token from queue
             if (queuePos > 0 && queuePos < queue.size()) {
                 queue.copyTo(this, queuePos);
@@ -256,6 +260,7 @@ public class FilterLocution extends TokenFilter
                 queue.addLast(this);
             }
             // continue, current token will be append to compound
+
             
         } while (true); // a compound bigger than queue should hurt and avoid infinite loop
         

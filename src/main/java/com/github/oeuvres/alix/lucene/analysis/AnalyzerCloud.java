@@ -59,7 +59,7 @@ public class AnalyzerCloud extends Analyzer
         ts = new FilterHTML(ts); // interpret tags
         ts = new FilterAposHyphenFr(ts); // fr split on ’ and -
         ts = new FilterLemmatize(ts); // provide lemma+pos
-        // compounds: parce que
+        // group compounds after lemmatization for verbal compounds
         ts = new FilterLocution(ts);
         // link unknown names is bad
         // result = new FilterFrPersname(result);

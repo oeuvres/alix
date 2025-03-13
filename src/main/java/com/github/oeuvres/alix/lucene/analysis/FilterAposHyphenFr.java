@@ -11,6 +11,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 /**
  * A filter that decomposes words on a list of suffixes and prefixes, mainly to handle 
@@ -26,6 +27,8 @@ public class FilterAposHyphenFr extends TokenFilter
     final static int XML = Tag.XML.flag;
     /** Term from tokenizer. */
     private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
+    /** A normalized orthographic form, original term is kept */
+    private final CharsAttImpl orthAtt = (CharsAttImpl) addAttribute(OrthAtt.class);
     /** Char index in source text. */
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** A linguistic category as a short number, see {@link Tag} */
@@ -37,8 +40,8 @@ public class FilterAposHyphenFr extends TokenFilter
     /** Ellisions prefix */
     static final public HashMap<CharsAttImpl, CharsAttImpl> PREFIX = new HashMap<CharsAttImpl, CharsAttImpl>((int) (30 / 0.75));
     static { // ellisions
-        put(PREFIX, "d'", "d'"); // keep ' for locution, like d’abord
-        put(PREFIX, "D'", "d'");
+        put(PREFIX, "d'", "de"); // keep ' for locution, like d’abord
+        put(PREFIX, "D'", "de");
         put(PREFIX, "j'", "je"); // j’aime.
         put(PREFIX, "J'", "je");
         put(PREFIX, "l'", "l'"); // je l’aime. le ou la
@@ -169,7 +172,8 @@ public class FilterAposHyphenFr extends TokenFilter
                         offsetAtt.endOffset()
                     );
                     // send the prefix
-                    termAtt.copy(value);
+                    termAtt.setLength(aposPos + 1);
+                    orthAtt.copy(value);
                     offsetAtt.setOffset(startOffset, startOffset + aposPos + 1);
                     return true;
                 }
