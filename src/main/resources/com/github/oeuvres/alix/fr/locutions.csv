@@ -102,6 +102,7 @@ a giorno,ADV,,
 à lurelure,ADV,,
 à mon encontre,ADV,,
 à notre encontre,ADV,,
+à nouveau,ADV,,
 à NUM fois,ADV,,
 à part,PREP,,
 à part ça,PREP,,
@@ -707,8 +708,8 @@ en tapinois,ADV,,
 en tant que,CONJcoord,,
 en terme de,PREP,,
 en terme d',,,en terme de
-en termes de,,,en termes de
-en termes d',,,en termes de
+en termes de,,,en terme de
+en termes d',,,en terme de
 en tous cas,ADVconj,,
 en train de,ADV,,
 en train d',,,en train de
@@ -799,8 +800,9 @@ girl friend,SUB,,
 goutte à goutte,ADV,,
 gouverneur général,SUB,,
 grâce à,PREP,,
-grâce au,,,grace à
-grâce aux,,,grace à
+grâce au,,,grâce à
+grâce aux,,,grâce à
+grace à,,,grâce à
 grâces à,PREP,,
 grain de beauté,SUB,,
 grand chose,,,grand-chose
@@ -1360,6 +1362,7 @@ secrétaire général,SUB,,
 sedia gestatoria,SUB,,
 self-made man,SUB,,
 sens commun,SUB,,
+sens critique,SUB,,
 sens unique,SUB,,
 se trouver,VERB,,
 serrer la main,VERB,,

@@ -44,6 +44,8 @@ public class FilterAposHyphenFr extends TokenFilter
         put(PREFIX, "D'", "de");
         put(PREFIX, "j'", "je"); // j’aime.
         put(PREFIX, "J'", "je");
+        put(PREFIX, "jusqu'", "jusque");
+        put(PREFIX, "jusqu'", "jusque");
         put(PREFIX, "l'", "l'"); // je l’aime. le ou la
         put(PREFIX, "L'", "l'");
         put(PREFIX, "lorsqu'", "lorsque");
