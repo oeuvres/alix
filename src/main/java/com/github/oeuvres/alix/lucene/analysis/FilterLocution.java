@@ -198,8 +198,8 @@ public class FilterLocution extends TokenFilter
                 if (entry != null) {
                     flagsAtt.setFlags(entry.tag);
                     termAtt.setEmpty().append(compound);
-                    if (entry.orth != null) {
-                        orthAtt.setEmpty().append(entry.orth);
+                    if (entry.graph != null) {
+                        orthAtt.setEmpty().append(entry.graph);
                     }
                     else {
                         orthAtt.setEmpty().append(compound);
