@@ -65,13 +65,15 @@ public class FieldRailTest
     
     public static void export() throws IOException
     {
-        // Path path = Paths.get("../piaget_labo/lucene/piaget");
-        Path path = Paths.get("../ddr_lab/lucene/rougemont");
+        Path path = Paths.get("../piaget_labo/lucene/piaget");
+        // Path path = Paths.get("../ddr_lab/lucene/rougemont");
         final Alix alix = Alix.instance("test", path);
         final String fieldName = "text_cloud";
         FieldRail frail = alix.fieldRail(fieldName);
-        BitSet docFilter = null;
-        // BitSet docFilter = new SparseFixedBitSet(frail.maxDoc());
+        // BitSet docFilter = null;
+        BitSet docFilter = new SparseFixedBitSet(frail.maxDoc());
+        docFilter.set(alix.getDocId("piaget1922a05"));
+        // piaget1922a05
         TagFilter tagFilter = new TagFilter();
         tagFilter.set(Tag.NOSTOP).set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME)
             .set(Tag.VERB).set(Tag.VERBppas).set(Tag.VERBger); // no more unknown .set(Tag.NULL);

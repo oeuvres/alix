@@ -451,8 +451,9 @@ public class FieldText extends FieldCharsAbstract
                     final int flag = formId4flag[formId];
                     
                     if(!tagFilter.get(flag)) {
-                        formId4occs[formId] = 0;
-                        formId4docs[formId] = 0;
+                        // OK if we have a copy
+                        formEnum.formId4occs[formId] = 0;
+                        formEnum.formId4docs[formId] = 0;
                         continue;
                     }
                 }

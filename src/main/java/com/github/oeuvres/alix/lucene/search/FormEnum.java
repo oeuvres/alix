@@ -115,9 +115,9 @@ public class FormEnum implements FormIterator
         this.field = field;
         dic = field.dic;
         maxForm = dic.size();
-        formId4docs = field.formId4docs;
+        formId4docs = Arrays.copyOf(field.formId4docs, field.formId4docs.length);
         docsAll = field.docsAll;
-        formId4occs = field.formId4occs;
+        formId4occs = Arrays.copyOf(field.formId4occs, field.formId4occs.length);
         occsAll = field.occsAll;
     }
     
@@ -137,7 +137,7 @@ public class FormEnum implements FormIterator
         dic = field.dic;
         maxForm = dic.size();
         docsAll = field.docsAll;
-        formId4docs = field.formId4docs;
+        formId4docs = Arrays.copyOf(field.formId4docs, field.formId4docs.length);
     }
     
     /**
