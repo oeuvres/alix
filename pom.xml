@@ -15,7 +15,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <tests.skip>true</tests.skip>
@@ -47,6 +47,11 @@
             <groupId>net.sf.saxon</groupId>
             <artifactId>Saxon-HE</artifactId>
             <version>12.5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.oeuvres</groupId>
+            <artifactId>jword2vec</artifactId>
+            <version>0.11-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>info.picocli</groupId>
@@ -81,20 +86,21 @@
             <version>4.13.1</version>
             <scope>test</scope>
         </dependency>
-        <!-- Word2vec -->
+        <!-- Memory size of object -->
         <dependency>
-			<groupId>com.github.oeuvres</groupId>
-			<artifactId>jword2vec</artifactId>
-			<version>0.11-SNAPSHOT</version>
-		</dependency>
+            <groupId>org.openjdk.jol</groupId>
+            <artifactId>jol-core</artifactId>
+            <version>0.17</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
-			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.14.0</version>
-			</plugin>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+            </plugin>
             <plugin>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.4.2</version>

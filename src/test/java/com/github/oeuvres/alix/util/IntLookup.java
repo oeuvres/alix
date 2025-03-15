@@ -9,6 +9,9 @@ import java.util.TreeSet;
 
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
+import org.openjdk.jol.info.ClassLayout;
+import org.openjdk.jol.info.GraphLayout;
+import org.openjdk.jol.vm.VM;
 
 
 
@@ -43,6 +46,7 @@ public class IntLookup
             final int laps = (int)((double)(System.nanoTime() - start) / 1000000);
             System.out.println("  " + laps + " ms. found=" + found);
         }
+        System.out.println(GraphLayout.parseInstance(lookup).toFootprint());
         System.out.println();
     }
 
@@ -63,6 +67,7 @@ public class IntLookup
             final int laps = (int)((double)(System.nanoTime() - start) / 1000000);
             System.out.println("  " + laps + " ms. found=" + found);
         }
+        System.out.println(GraphLayout.parseInstance(lookup).toFootprint());
         System.out.println();
     }
 
@@ -84,6 +89,7 @@ public class IntLookup
             final int laps = (int)((double)(System.nanoTime() - start) / 1000000);
             System.out.println("  " + laps + " ms. found=" + found);
         }
+        System.out.println(GraphLayout.parseInstance(lookup).toFootprint());
         System.out.println();
     }
 
@@ -104,6 +110,7 @@ public class IntLookup
             final int laps = (int)((double)(System.nanoTime() - start) / 1000000);
             System.out.println("  " + laps + " ms. found=" + found);
         }
+        System.out.println(GraphLayout.parseInstance(lookup).toFootprint());
         System.out.println();
     }
 
@@ -124,6 +131,7 @@ public class IntLookup
             final int laps = (int)((double)(System.nanoTime() - start) / 1000000);
             System.out.println("  " + laps + " ms. found=" + found);
         }
+        System.out.println(GraphLayout.parseInstance(lookup).toFootprint());
         System.out.println();
     }
 
@@ -144,6 +152,7 @@ public class IntLookup
             final int laps = (int)((double)(System.nanoTime() - start) / 1000000);
             System.out.println("  " + laps + " ms. found=" + found);
         }
+        System.out.println(GraphLayout.parseInstance(lookup).toFootprint());
         System.out.println();
     }
 
@@ -165,6 +174,7 @@ public class IntLookup
             final int laps = (int)((double)(System.nanoTime() - start) / 1000000);
             System.out.println("  " + laps + " ms. found=" + found);
         }
+        System.out.println(GraphLayout.parseInstance(lookup).toFootprint());
         System.out.println();
     }
 
@@ -185,6 +195,7 @@ public class IntLookup
             final int laps = (int)((double)(System.nanoTime() - start) / 1000000);
             System.out.println("  " + laps + " ms. found=" + found);
         }
+        System.out.println(GraphLayout.parseInstance(lookup).toFootprint());
         System.out.println();
     }
 
@@ -205,6 +216,7 @@ public class IntLookup
             final int laps = (int)((double)(System.nanoTime() - start) / 1000000);
             System.out.println("  " + laps + " ms. found=" + found);
         }
+        System.out.println(GraphLayout.parseInstance(lookup).toFootprint());
         System.out.println();
     }
 
@@ -225,16 +237,18 @@ public class IntLookup
             final int laps = (int)((double)(System.nanoTime() - start) / 1000000);
             System.out.println("  " + laps + " ms. found=" + found);
         }
+        System.out.println(GraphLayout.parseInstance(lookup).toFootprint());
         System.out.println();
     }
 
     public static void main(String[] args)
     {
+        System.out.println(VM.current().details());
         intArray();
-        bitSet();
         bool();
-        sparseBitSet();
         fixedBitSet();
+        bitSet();
+        sparseBitSet();
         hashSet();
         hashMap();
         intMap();
