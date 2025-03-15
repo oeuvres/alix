@@ -38,14 +38,20 @@ public class FieldRailTest
         docFilter.set(docId);
         */
         TagFilter tagFilter = new TagFilter();
-        /*
-        tagFilter.set(Tag.NOSTOP).set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME)
-            .set(Tag.VERB).set(Tag.VERBppas).set(Tag.VERBger); // no more unknown .set(Tag.NULL);
-        */
-        tagFilter.set(Tag.NAME);
+        tagFilter.set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME).set(Tag.VERB).set(Tag.VERBppas).set(Tag.VERBger); // no more unknown .set(Tag.NULL);
+        // tagFilter.setAll().clearGroup(Tag.NULL).clearGroup(Tag.PUN);
+        System.out.println(tagFilter);
 
+        BitSet formFilter = frail.fieldText().formFilter(tagFilter);
+        for (int formId = 0; formId < 1000; formId++) {
+            boolean set = formFilter.get(formId);
+            if (!set) continue; 
+            final int tag = frail.fieldText().tag(formId);
+            System.out.print(frail.fieldText().form(formId) + " ");
+        }
+        
         CoocMat coocMat = frail.coocMat(left, right, tagFilter, freqMin, null);
-        Path filePath = Paths.get("work/piaget_cooc,5,5.tsv");
+        Path filePath = Paths.get("work/piaget_cooc,5,5,nostop.tsv");
         BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
         final String sep = "\t";
         int[] headers = coocMat.headers();
@@ -57,7 +63,7 @@ public class FieldRailTest
         writer.append("\n");
         for (int row = 0; row < headersLen; row++) {
             final int formId = headers[row];
-            writer.append(frail.form(formId).replaceAll(sep, " "));
+            writer.append(frail.form(formId).replaceAll(sep, " ") + " (" + frail.fieldText().occs(formId) + ")");
             for (int col = 0; col < headersLen; col++) {
                 writer.append(sep + coocMat.getByRowCol(row, col));
             }
@@ -81,7 +87,7 @@ public class FieldRailTest
         // docFilter.set(alix.getDocId("piaget1922a05"));
         // piaget1922a05
         TagFilter tagFilter = new TagFilter();
-        tagFilter.set(Tag.NOSTOP).set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME).clear(Tag.NAMEfict)
+        tagFilter.set(Tag.NOSTOP).set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME)
             .set(Tag.VERB).set(Tag.VERBppas).set(Tag.VERBger); // no more unknown .set(Tag.NULL);
         String fileName = "../word2vec/";
         fileName += path.getFileName().toString();
@@ -98,7 +104,7 @@ public class FieldRailTest
     
     public static void main(String[] args) throws IOException
     {
-        export();
+        matrix();
     }
 
     /**

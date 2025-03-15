@@ -47,16 +47,25 @@ public enum Tag {
     // 0x, messages internes
     
     /** No information */
-    NULL(0, "—", "Défaut, aucune information.") {
+    NULL(0x00, "—", "Défaut, aucune information.") {
     },
     /** Known as unknown from dicitonaries */
     UNKNOWN(0x01, "Inconnu", "Connu comme inconnu des dictionnaires.") {
     },
     /** XML tag */
-    XML(0x01, "XML", "<tag att=\"value\">, </tag>…") {
+    XML(0x04, "XML", "<tag att=\"value\">, </tag>…") {
     },
     /** Message send by a process */
-    TEST(0x0F, "Test", "Message envoyé par une étape de traitement.") {
+    TEST(0x07, "Test", "Message envoyé par une étape de traitement.") {
+    },
+    /** Stop word */
+    STOP(0x08, "Mot “vide”", "Selon un dictionnaire de mots vides") {
+    },
+    /** Non stop word */
+    NOSTOP(0x09, "Mot “plein”", "Hors dictionnaire de mots vides") {
+    },
+    /** Locution  (maybe substantive, conjunction…) */
+    LOC(0x0A, "Locution", "parce que, sans pour autant…") {
     },
 
     // 1x, verbes
@@ -272,15 +281,6 @@ public enum Tag {
     },
     /** Demonstrative particle */
     PARTdem(0xF3, "Part. dém.", "-ci, -là (particule démonstrative)") {
-    },
-    /** Stop word */
-    STOP(0xF8, "Mot “vide”", "Selon un dictionnaire de mots vides") {
-    },
-    /** Non stop word */
-    NOSTOP(0xF9, "Mot “plein”", "Hors dictionnaire de mots vides") {
-    },
-    /** Locution  (maybe substantive, conjunction…) */
-    LOC(0xFB, "Locution", "parce que, sans pour autant…") {
     },
 
     ;

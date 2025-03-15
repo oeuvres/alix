@@ -334,6 +334,8 @@ public class FieldText extends FieldCharsAbstract
         BitSet formFilter = new SparseFixedBitSet(maxForm);
         final boolean stop = tagFilter.get(Tag.STOP);
         final boolean noStop = tagFilter.get(Tag.NOSTOP);
+        final boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+
         for (int formId = 1; formId < maxForm; formId++) {
             // wanting stop word, come before nostop (setAll behavior)
             if (stop) {
@@ -346,7 +348,7 @@ public class FieldText extends FieldCharsAbstract
             else if (noStop) {
                 if (isStop(formId)) continue;
                 // if noStop is alone, accept all others
-                if (tagFilter.cardinality() == 1) {
+                if (!hasTags) {
                     formFilter.set(formId);
                     continue;
                 }
