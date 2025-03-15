@@ -80,7 +80,7 @@ public class Balinoms implements Callable<Integer>
     static class Name implements Comparable<Name>
     {
         int count = 1;
-        int tag = Tag.NAME.flag;
+        int tag = Tag.NAME.no;
         String form;
 
         Name(final String form) {
@@ -203,30 +203,30 @@ public class Balinoms implements Callable<Integer>
 
                 out.print(xml.substring(begin, attOff.startOffset()));
                 begin = attOff.endOffset();
-                if (Tag.NAMEplace.flag == flag) {
+                if (Tag.NAMEplace.no == flag) {
                     out.print("<placeName>");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</placeName>");
-                    inc(lemAtt, Tag.NAMEplace.flag);
+                    inc(lemAtt, Tag.NAMEplace.no);
                 }
                 // personne
-                else if (Tag.NAMEpers.flag == flag || Tag.NAMEfict.flag == flag) {
+                else if (Tag.NAMEpers.no == flag || Tag.NAMEfict.no == flag) {
                     out.print("<persName key=\"" + lemAtt + "\">");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</persName>");
-                    inc(lemAtt, Tag.NAMEpers.flag);
+                    inc(lemAtt, Tag.NAMEpers.no);
                 }
                 // non repéré supposé personne
-                else if (Tag.NAME.flag == flag) {
+                else if (Tag.NAME.no == flag) {
                     out.print("<persName key=\"" + lemAtt + "\">");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</persName>");
-                    inc(lemAtt, Tag.NAMEpers.flag);
+                    inc(lemAtt, Tag.NAMEpers.no);
                 } else { // || Tag.NAMEauthor.flag == flag
                     out.print("<name>");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</name>");
-                    inc(lemAtt, Tag.NAME.flag);
+                    inc(lemAtt, Tag.NAME.no);
                 }
 
             }

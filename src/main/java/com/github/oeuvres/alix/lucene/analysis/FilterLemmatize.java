@@ -80,7 +80,7 @@ import com.github.oeuvres.alix.util.Char;
 public final class FilterLemmatize extends TokenFilter
 {
     /** XML flag */
-    final static int XML = Tag.XML.flag;
+    final static int XML = Tag.XML.no;
     /** The term provided by the Tokenizer */
     private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** A linguistic category as an int, from {@link Tag} */
@@ -122,7 +122,7 @@ public final class FilterLemmatize extends TokenFilter
         }
         // store pun event, skiping XML
         // was last token a sentence punctuation ?
-        if (flags == Tag.PUNsection.flag ||flags == Tag.PUNpara.flag || flags == Tag.PUNsent.flag) {
+        if (flags == Tag.PUNsection.no ||flags == Tag.PUNpara.no || flags == Tag.PUNsent.no) {
             // record a pun event
             this.pun = true;
             return true;
@@ -151,7 +151,7 @@ public final class FilterLemmatize extends TokenFilter
         if (Char.isUpperCase(c1)) {
 
             // roman number already detected
-            if (flagsAtt.getFlags() == Tag.NUM.flag)
+            if (flagsAtt.getFlags() == Tag.NUM.no)
                 return true;
             int len = orthAtt.length();
             if (orthAtt.lastChar() == '.')
@@ -159,7 +159,7 @@ public final class FilterLemmatize extends TokenFilter
             int n = Calcul.roman2int(orthAtt.buffer(), 0, len);
             // Roman number for more than one char, pb M<sup>elle</sup>
             if (len > 1 && n > 0) {
-                flagsAtt.setFlags(Tag.NUM.flag);
+                flagsAtt.setFlags(Tag.NUM.no);
                 lemAtt.append("" + n);
                 return true;
             }
@@ -208,7 +208,7 @@ public final class FilterLemmatize extends TokenFilter
                 }
                 return true;
             } else { // unknown word, infer it's a NAME
-                flagsAtt.setFlags(Tag.NAME.flag);
+                flagsAtt.setFlags(Tag.NAME.no);
                 if (copy.length() > 3) copy.capitalize();
                 orthAtt.copy(copy);
                 return true;

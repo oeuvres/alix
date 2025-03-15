@@ -141,7 +141,7 @@ public class FilterLocution extends TokenFilter
         do {
             final int tag = flagsAtt.getFlags();
             // if token is pun, end of branch, exit
-            if (Tag.PUN.sameParent(tag) || tag == Tag.XML.flag || termAtt.length() == 0) {
+            if (Tag.PUN.sameParent(tag) || tag == Tag.XML.no || termAtt.length() == 0) {
                 // after the loop, the queue logic before exit
                 break;
             }

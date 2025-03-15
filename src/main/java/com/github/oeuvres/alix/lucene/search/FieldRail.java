@@ -412,17 +412,17 @@ public class FieldRail  extends FieldCharsAbstract
                 for (int i = 0, max = this.docId4len[docId]; i < max; i++) {
                     final int formId = bufInt.get();
                     final int flag = fieldText.formId4flag[formId];
-                    if (flag == Tag.PUNsection.flag) {
-                        out.write(10);
-                        out.write(10);
+                    if (flag == Tag.PUNsection.no) {
+                        out.write('\n');
+                        out.write('\n');
                         continue;
                     }
-                    else if (flag == Tag.PUNpara.flag) {
-                        out.write(10);
-                        out.write(10);
+                    else if (flag == Tag.PUNpara.no) {
+                        out.write('\n');
+                        out.write('\n');
                         continue;
                     }
-                    else if (flag == Tag.PUNsent.flag) {
+                    else if (flag == Tag.PUNsent.no) {
                         // out.write(10);
                         continue;
                     }

@@ -52,9 +52,9 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 public class FilterHTML extends TokenFilter
 {
     /** XML flag */
-    final static int XML = Tag.XML.flag;
-    final static int PARA = Tag.PUNpara.flag;
-    final static int SECTION = Tag.PUNsection.flag;
+    final static int XML = Tag.XML.no;
+    final static int PARA = Tag.PUNpara.no;
+    final static int SECTION = Tag.PUNsection.no;
     /** The term provided by the Tokenizer */
     private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */

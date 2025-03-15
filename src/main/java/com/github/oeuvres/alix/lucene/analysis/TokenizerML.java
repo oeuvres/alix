@@ -155,7 +155,7 @@ public class TokenizerML  extends Tokenizer
             else if (intag) {
                 termAtt.append(c);
                 if (c == '>') { // end of tag, send it, set for next char
-                    flagsAtt.setFlags(Tag.XML.flag);
+                    flagsAtt.setFlags(Tag.XML.no);
                     endOffset = offset + 1; // position of '>' + 1
                     bufferIndex++;
                     offset++;
@@ -166,13 +166,13 @@ public class TokenizerML  extends Tokenizer
             else if (Char.isDigit(c)) {
                 if (termAtt.isEmpty()) {
                     number = true;
-                    flagsAtt.setFlags(Tag.NUM.flag());
+                    flagsAtt.setFlags(Tag.NUM.no());
                     startOffset = offset;
                 }
                 // start a negative number
                 if (termAtt.length() == 1 && lastChar == '-') {
                     number = true;
-                    flagsAtt.setFlags(Tag.NUM.flag());
+                    flagsAtt.setFlags(Tag.NUM.no());
                 }
                 // if not a number started, will be appended to something else
                 termAtt.append(c);
@@ -225,7 +225,7 @@ public class TokenizerML  extends Tokenizer
                 termAtt.append(c);
                 startOffset = offset;
                 endOffset = offset + 1;
-                flagsAtt.setFlags(Tag.PUNclause.flag);
+                flagsAtt.setFlags(Tag.PUNclause.no);
                 bufferIndex++;
                 offset++;
                 break;
@@ -247,7 +247,7 @@ public class TokenizerML  extends Tokenizer
                 }
                 // append punctuation and wait for space to send (???, !!!, ...)
                 if (termAtt.isEmpty()) {
-                    flagsAtt.setFlags(Tag.PUNsent.flag);
+                    flagsAtt.setFlags(Tag.PUNsent.no);
                     startOffset = offset;
                 }
                 termAtt.append(c);

@@ -49,10 +49,10 @@ public class TokenStreamsTest {
         text = "Il y a d’abord trop d’enfants à naître d’âge immature.";
         text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors !";
         text = "Il fallait naître jusqu’alors !";
-        text = "Les faux maîtres de Mur. Obs. aux P.U.F. sous contrôle.";
+        text = "Les faux maîtres de Mur. Obs. aux P.U.F.</p> sous contrôle.";
 
         Analyzer ana = new AnalyzerAlix();
-        analyze(ana.tokenStream("_cloud", text), text);
+        analyze(ana.tokenStream("_orth", text), text);
         ana.close();
     }
 

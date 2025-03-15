@@ -24,7 +24,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 public class FilterAposHyphenFr extends TokenFilter
 {
     /** XML flag */
-    final static int XML = Tag.XML.flag;
+    final static int XML = Tag.XML.no;
     /** Term from tokenizer. */
     private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** A normalized orthographic form, original term is kept */

@@ -288,7 +288,7 @@ public enum Tag {
     /** Logger */
     static Logger LOGGER = Logger.getLogger(Tag.class.getName());
     /** A structured bit flag between 0-255 */
-    final public int flag;
+    final public int no;
     /** The first hexa digit, used as a type grouping */
     final public int parent;
     /** A name without spaces */
@@ -299,58 +299,23 @@ public enum Tag {
     final public String desc;
 
     /** Constructor */
-    Tag(final int flag, final String label, final String desc) {
-        this.flag = flag;
+    Tag(final int no, final String label, final String desc) {
+        this.no = no;
         this.label = label;
         this.desc = desc;
-        this.parent = flag & 0xF0;
+        this.parent = no & 0xF0;
         this.name = this.toString();
     }
 
     /** Array to get a tag by number */
-    private static final Tag[] Flag4tag = new Tag[256];
+    private static final Tag[] no4tag = new Tag[256];
     /** Dictionary to get number of a tag by name */
-    private static final Map<String, Integer> Name4flag = new HashMap<String, Integer>();
+    private static final Map<String, Integer> name4no = new HashMap<String, Integer>();
     static {
         for (Tag tag : Tag.values()) {
-            Flag4tag[tag.flag] = tag;
-            Name4flag.put(tag.toString(), tag.flag);
+            no4tag[tag.no] = tag;
+            name4no.put(tag.toString(), tag.no);
         }
-    }
-
-    /**
-     * Check if Tag share same parent, by number.
-     * 
-     * @param flag Number of a Tag.
-     * @return True if tags have same class.
-     */
-    public boolean sameParent(final int flag)
-    {
-        return ((flag & 0xF0) == parent);
-    }
-
-    /**
-     * Return parent Tag by number
-     * 
-     * @param flag Number of a Tag.
-     * @return The parent Tag.
-     */
-    static public Tag parent(final int flag)
-    {
-        Tag ret = Flag4tag[flag & 0xF0];
-        if (ret == null)
-            return UNKNOWN;
-        return ret;
-    }
-
-    /**
-     * Return the String value of the tag.
-     * 
-     * @return Label.
-     */
-    public String label()
-    {
-        return label;
     }
 
     /**
@@ -364,12 +329,50 @@ public enum Tag {
     }
 
     /**
+     * Return the String value of the tag.
+     * 
+     * @return Label.
+     */
+    public String label()
+    {
+        return label;
+    }
+
+    /**
+     * Get Tag label by number identifier.
+     * 
+     * @param no Tag identifier number.
+     * @return Label of a Tag.
+     */
+    public static String label(final int no)
+    {
+        Tag tag = tag(no);
+        if (tag == null)
+            return null;
+        return tag.label;
+    }
+
+    /**
+     * Get Tag name by number identifier.
+     * 
+     * @param no Tag identifier number.
+     * @return Name of a Tag.
+     */
+    public static String name(final int no)
+    {
+        Tag tag = tag(no);
+        if (tag == null)
+            return null;
+        return tag.name;
+    }
+
+    /**
      * Return the identifier number for this tag.
      * @return The identifier number.
      */
-    public int flag()
+    public int no()
     {
-        return flag;
+        return no;
     }
 
     /**
@@ -377,69 +380,65 @@ public enum Tag {
      * @param name A mutable Tag name.
      * @return The identifier number of a <code>Tag</code>.
      */
-    public static int flag(final Chain name)
+    public static int no(final Chain name)
     {
         @SuppressWarnings("unlikely-arg-type")
-        Integer ret = Name4flag.get(name);
+        Integer ret = name4no.get(name);
         if (ret == null) {
             LOGGER.log(Level.FINEST, "[Alix] unknown tag:" + name);
-            return UNKNOWN.flag;
+            return UNKNOWN.no;
         }
         return ret;
     }
 
     /**
-     * Get Tag number by name.
-     * 
+     * Returns the identifier number of a <code>Tag</code>, by name.
      * @param name A tag name.
-     * @return The identifier number of a Tag.
+     * @return The identifier number of a <code>Tag</code>.
      */
-    public static int flag(final String name)
+    public static int no(final String name)
     {
-        Integer ret = Name4flag.get(name);
+        Integer ret = name4no.get(name);
         if (ret == null)
-            return UNKNOWN.flag;
+            return UNKNOWN.no;
         return ret;
+    }
+
+    /**
+     * Return parent Tag by number
+     * 
+     * @param no Number of a Tag.
+     * @return The parent Tag.
+     */
+    static public Tag parent(final int no)
+    {
+        Tag ret = no4tag[no & 0xF0];
+        if (ret == null)
+            return UNKNOWN;
+        return ret;
+    }
+
+    /**
+     * Check if Tag share same parent, by number.
+     * 
+     * @param no Number of a Tag.
+     * @return True if tags have same class.
+     */
+    public boolean sameParent(final int no)
+    {
+        return ((no & 0xF0) == parent);
     }
 
     /**
      * Get Tag by number.
      * 
-     * @param flag A Tag identifier number.
+     * @param no A Tag identifier number.
      * @return A Tag.
      */
-    public static Tag tag(int flag)
+    public static Tag tag(int no)
     {
         // the int may be used as a more complex bit flag
-        flag = flag & 0xFF;
-        return Flag4tag[flag];
-    }
-
-    /**
-     * Get Tag name by number identifier.
-     * 
-     * @param flag Tag identifier number.
-     * @return Name of a Tag.
-     */
-    public static String name(int flag)
-    {
-        Tag tag = tag(flag);
-        if (tag == null)
-            return null;
-        return tag.name;
-    }
-
-    /**
-     * Get Tag label by number identifier.
-     * 
-     * @param flag Tag identifier number.
-     * @return Label of a Tag.
-     */
-    public static String label(int flag)
-    {
-        Tag tag = tag(flag);
-        if (tag == null)
-            return null;
-        return tag.label;
+        no = no & 0xFF;
+        return no4tag[no];
     }
 }

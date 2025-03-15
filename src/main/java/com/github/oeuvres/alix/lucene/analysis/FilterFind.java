@@ -52,7 +52,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 public class FilterFind extends TokenFilter
 {
     /** XML flag */
-    final static int XML = Tag.XML.flag;
+    final static int XML = Tag.XML.no;
     /** The term provided by the Tokenizer */
     private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
     /** A linguistic category as a short number, from Tag */

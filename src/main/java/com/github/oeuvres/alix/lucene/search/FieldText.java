@@ -80,7 +80,7 @@ public class FieldText extends FieldCharsAbstract
     private BitSet formId4isPun;
     /** formId4isStop.get(formId) == true: form is a stop word. */
     private BitSet formId4isStop;
-    /** formId4flag[formId] = {@link Tag#flag()}; lexical type of form. */
+    /** formId4flag[formId] = {@link Tag#no()}; lexical type of form. */
     protected int[] formId4flag;
     /** formId4isLoc.get(formId) == true: form is a locution. */
     private BitSet formId4isLoc;
@@ -218,9 +218,9 @@ public class FieldText extends FieldCharsAbstract
             }
             entry = FrDics.name(chars);
             if (entry != null) {
-                if (entry.tag == Tag.NAMEpers.flag || entry.tag == Tag.NAMEpersf.flag || entry.tag == Tag.NAMEpersm.flag
-                        || entry.tag == Tag.NAMEauthor.flag) {
-                    formId4flag[formId] = Tag.NAMEpers.flag;
+                if (entry.tag == Tag.NAMEpers.no || entry.tag == Tag.NAMEpersf.no || entry.tag == Tag.NAMEpersm.no
+                        || entry.tag == Tag.NAMEauthor.no) {
+                    formId4flag[formId] = Tag.NAMEpers.no;
                     continue;
                 }
                 else {
@@ -231,16 +231,16 @@ public class FieldText extends FieldCharsAbstract
             char c = chars.charAt(0);
             if (Char.isPunctuation(c)) {
                 if (c == '§') {
-                    formId4flag[formId] = Tag.PUNsection.flag;
+                    formId4flag[formId] = Tag.PUNsection.no;
                 }
                 else if (c == '¶') {
-                    formId4flag[formId] = Tag.PUNpara.flag;
+                    formId4flag[formId] = Tag.PUNpara.no;
                 }
                 else if (c == '.' || c == '…' || c == '?' || c == '!' ) {
-                    formId4flag[formId] = Tag.PUNsent.flag;
+                    formId4flag[formId] = Tag.PUNsent.no;
                 }
                 else {
-                    formId4flag[formId] = Tag.PUN.flag;
+                    formId4flag[formId] = Tag.PUN.no;
                 }
                 punRecord.set(formId);
                 continue;
@@ -250,21 +250,21 @@ public class FieldText extends FieldCharsAbstract
                 // monsieur Madeleine
                 entry = FrDics.word(chars);
                 if (entry != null) {
-                    if (entry.tag == Tag.SUBpers.flag) {
-                        formId4flag[formId] = Tag.NAMEpers.flag;
+                    if (entry.tag == Tag.SUBpers.no) {
+                        formId4flag[formId] = Tag.NAMEpers.no;
                         continue;
                     }
-                    if (entry.tag == Tag.SUBplace.flag) {
-                        formId4flag[formId] = Tag.NAMEplace.flag;
+                    if (entry.tag == Tag.SUBplace.no) {
+                        formId4flag[formId] = Tag.NAMEplace.no;
                         continue;
                     }
                 }
                 // Jean Valjean
                 entry = FrDics.name(chars);
                 if (entry != null) {
-                    if (entry.tag == Tag.NAMEpers.flag || entry.tag == Tag.NAMEpersf.flag
-                            || entry.tag == Tag.NAMEpersm.flag) {
-                        formId4flag[formId] = Tag.NAMEpers.flag;
+                    if (entry.tag == Tag.NAMEpers.no || entry.tag == Tag.NAMEpersf.no
+                            || entry.tag == Tag.NAMEpersm.no) {
+                        formId4flag[formId] = Tag.NAMEpers.no;
                         continue;
                     }
                 }
@@ -276,7 +276,7 @@ public class FieldText extends FieldCharsAbstract
                 else if (chars.length() <= 3 && chars.lastChar() == '\'');
                 else if (Char.isDigit(chars.lastChar()));
                 else {
-                    formId4flag[formId] = Tag.NAME.flag;
+                    formId4flag[formId] = Tag.NAME.no;
                 }
             }
         }

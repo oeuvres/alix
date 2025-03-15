@@ -56,9 +56,12 @@ public class AnalyzerCloud extends Analyzer
     {
         final Tokenizer tokenizer = new TokenizerML();
         TokenStream ts = tokenizer; // segment words
-        ts = new FilterHTML(ts); // interpret tags
-        ts = new FilterAposHyphenFr(ts); // fr split on ’ and -
-        ts = new FilterLemmatize(ts); // provide lemma+pos
+        // interpret html tags as token events like para or section
+        ts = new FilterHTML(ts);
+        // fr split on ’ and -
+        ts = new FilterAposHyphenFr(ts);
+        // provide lemma+pos
+        ts = new FilterLemmatize(ts);
         // group compounds after lemmatization for verbal compounds
         ts = new FilterLocution(ts);
         // link unknown names is bad

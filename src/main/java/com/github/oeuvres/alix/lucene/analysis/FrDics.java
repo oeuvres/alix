@@ -465,7 +465,7 @@ public class FrDics
                 LOGGER.log(Level.FINEST, res + " graph=" + graph + " tag=" + tag);
             }
             graph.replace('’', '\'');
-            this.tag = Tag.flag(tag);
+            this.tag = Tag.no(tag);
             this.graph = new CharsAttImpl(graph);
             if (lem == null || lem.isEmpty()) {
                 this.lem = null;

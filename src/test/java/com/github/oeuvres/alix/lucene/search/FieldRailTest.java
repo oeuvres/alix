@@ -80,18 +80,20 @@ public class FieldRailTest
         final Alix alix = Alix.instance("test", path);
         File dicFile = new File("../piaget_labo/install/piaget-dic.csv");
         FrDics.load(dicFile.getCanonicalPath(), dicFile);
-        final String fieldName = "text_cloud";
+        final String fieldName = "text_orth";
         FieldRail frail = alix.fieldRail(fieldName);
         BitSet docFilter = null;
         // BitSet docFilter = new SparseFixedBitSet(frail.maxDoc());
         // docFilter.set(alix.getDocId("piaget1922a05"));
         // piaget1922a05
         TagFilter tagFilter = new TagFilter();
-        tagFilter.set(Tag.NOSTOP).set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME)
-            .set(Tag.VERB).set(Tag.VERBppas).set(Tag.VERBger); // no more unknown .set(Tag.NULL);
+        //  tagFilter.set(Tag.NOSTOP).set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME).set(Tag.VERB).set(Tag.VERBppas).set(Tag.VERBger); // no more unknown .set(Tag.NULL);
+        tagFilter.set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME).set(Tag.VERB).set(Tag.VERBppas).set(Tag.VERBger); // no more 
+        // tagFilter.setAll().clearGroup(Tag.NULL).clearGroup(Tag.PUN);
+
         String fileName = "../word2vec/";
         fileName += path.getFileName().toString();
-        // fileName += "_" + fieldName;
+        fileName += "-inflected,nostop";
         // if (formFilter.get(Tag.NOSTOP.flag)) fileName += "_nostop";
         fileName += ".txt";
         frail.export(
@@ -104,7 +106,7 @@ public class FieldRailTest
     
     public static void main(String[] args) throws IOException
     {
-        matrix();
+        export();
     }
 
     /**
