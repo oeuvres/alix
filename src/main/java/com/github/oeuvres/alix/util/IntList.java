@@ -230,7 +230,7 @@ public class IntList
     public int last()
     {
         if (size < 1) {
-            throw new ArrayIndexOutOfBoundsException("The list is empty, no first element");
+            throw new ArrayIndexOutOfBoundsException("The list is empty, no last element");
         }
         return data[size - 1];
     }

@@ -206,7 +206,8 @@ public class FieldText extends FieldCharsAbstract
             // if (bytes.length == 0) formId = 0; // if empty pos is counted
             formId4occs[formId] = rec.occs;
             formId4docs[formId] = rec.docs;
-            if (FrDics.isStop(bytes)) stopRecord.set(formId);
+            final boolean isStop = FrDics.isStop(bytes);
+            if (isStop) stopRecord.set(formId);
             chars.copy(bytes); // convert utf-8 bytes to utf-16 chars
             final int indexOfSpace = chars.indexOf(' ');
             if (indexOfSpace > 0) formId4isLoc.set(formId);
@@ -218,7 +219,7 @@ public class FieldText extends FieldCharsAbstract
             entry = FrDics.name(chars);
             if (entry != null) {
                 if (entry.tag == Tag.NAMEpers.flag || entry.tag == Tag.NAMEpersf.flag || entry.tag == Tag.NAMEpersm.flag
-                        || entry.tag == Tag.NAMEfict.flag || entry.tag == Tag.NAMEauthor.flag) {
+                        || entry.tag == Tag.NAMEauthor.flag) {
                     formId4flag[formId] = Tag.NAMEpers.flag;
                     continue;
                 }
@@ -269,10 +270,11 @@ public class FieldText extends FieldCharsAbstract
                 }
             }
 
-            // if (chars.length() < 1) continue; // ?
-            if (Char.isUpperCase(chars.charAt(0))) {
+            // tag name ?
+            if (!isStop && Char.isUpperCase(chars.charAt(0))) {
                 if (chars.length() == 1);
-                else if (chars.length() == 2 && chars.charAt(1) == '\'');
+                else if (chars.length() <= 3 && chars.lastChar() == '\'');
+                else if (Char.isDigit(chars.lastChar()));
                 else {
                     formId4flag[formId] = Tag.NAME.flag;
                 }
@@ -408,6 +410,7 @@ public class FieldText extends FieldCharsAbstract
         boolean locs = (tagFilter != null && tagFilter.get(Tag.LOC));
         boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
         
+        
         boolean hasDistrib = (distribution != null);
         boolean hasFilter = (docFilter != null && docFilter.cardinality() > 0);
     
@@ -452,8 +455,8 @@ public class FieldText extends FieldCharsAbstract
                     
                     if(!tagFilter.get(flag)) {
                         // OK if we have a copy
-                        formEnum.formId4occs[formId] = 0;
-                        formEnum.formId4docs[formId] = 0;
+                        // formEnum.formId4occs[formId] = 0;
+                        // formEnum.formId4docs[formId] = 0;
                         continue;
                     }
                 }

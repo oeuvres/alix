@@ -214,13 +214,6 @@ public class TokenizerML  extends Tokenizer
                     break; // a too big token stop
                 }
             }
-            // abbreviation ?
-            else if (c == '.' && Char.isLetter(lastChar) && (
-                   termAtt.length() == 1 // M., p., probably abbr
-                || (termAtt.length() > 2 && termAtt.charAt(termAtt.length()-2) == '.') // U.S.S.R.
-            )) {
-                termAtt.append(c);
-            }
             // Clause punctuation, send a punctuation event to separate tokens
             else if (',' == c || ';' == c || ':' == c || '(' == c || ')' == c || '—' == c || '–' == c 
                     || '"' == c || '«' == c || '»' == c ) {
@@ -236,6 +229,15 @@ public class TokenizerML  extends Tokenizer
                 bufferIndex++;
                 offset++;
                 break;
+            }
+            // abbreviation ?
+            else if (c == '.' && Char.isLetter(lastChar) ) {
+                termAtt.append(c);
+                // not an abbreviaiton, send, dot wil be handle after
+                if (!FrDics.BREVIDOT.containsKey(termAtt)) {
+                    termAtt.setLength(termAtt.length() - 1);
+                    break;
+                }
             }
             // Possible sentence delimiters
             else if (c == '.' || c == '…' || c == '?' || c == '!' ) {

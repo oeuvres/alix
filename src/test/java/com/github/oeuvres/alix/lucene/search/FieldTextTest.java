@@ -1,6 +1,7 @@
 package com.github.oeuvres.alix.lucene.search;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -13,6 +14,7 @@ import org.apache.lucene.util.SparseFixedBitSet;
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.lucene.Alix;
+import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.search.FormIterator.Order;
 
 
@@ -22,8 +24,10 @@ public class FieldTextTest
     @SuppressWarnings("unused")
     public static void freqList() throws IOException
     {
-        // Path path = Paths.get("../piaget_labo/lucene/piaget");
-        Path path = Paths.get("../ddr_lab/lucene/rougemont");
+        Path path = Paths.get("../piaget_labo/lucene/piaget");
+        File dic = new File("../piaget_labo/install/piaget-dic.csv");
+        FrDics.load(dic.getCanonicalPath(), dic);
+        // Path path = Paths.get("../ddr_lab/lucene/rougemont");
         final Alix alix = Alix.instance("test", path);
         final String q = null;
         final int limit = 100;
@@ -40,7 +44,8 @@ public class FieldTextTest
         final FieldText ftext = alix.fieldText(fname);
         BitSet docFilter = null;
         // TagFilter tagFilter = new TagFilter().set(Tag.NOSTOP); // .set(Tag.ADJ).set(Tag.UNKNOWN).setGroup(Tag.NAME).set(Tag.NULL).set(Tag.NOSTOP);
-        TagFilter tagFilter = new TagFilter().setGroup(Tag.NAME);
+        // TagFilter tagFilter = new TagFilter().setGroup(Tag.NAME);
+        TagFilter tagFilter = new TagFilter().set(Tag.NAMEfict);
         FormEnum formEnum = ftext.formEnum(docFilter, tagFilter, Distrib.BM25);
         formEnum.sort(order, limit);
         System.out.println(formEnum);

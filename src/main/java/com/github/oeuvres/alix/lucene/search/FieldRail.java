@@ -62,10 +62,12 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.SparseFixedBitSet;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.util.Chain;
+import com.github.oeuvres.alix.util.CoocMat;
 import com.github.oeuvres.alix.util.Edge;
 import com.github.oeuvres.alix.util.EdgeMap;
 import com.github.oeuvres.alix.util.EdgeMatrix;
@@ -213,7 +215,7 @@ public class FieldRail  extends FieldCharsAbstract
         }
         return formEnum;
     }
-
+    
     /**
      * Build a square matrix of co-occurencies.
      * cooc[3][5] = 2 means, for pivot word with formId=3, there are 2 co-occurences
@@ -227,14 +229,13 @@ public class FieldRail  extends FieldCharsAbstract
      * @return a co-occureny matrix.
      * @throws IOException lucene errors.
      */
-    public int[][] coocmat(
-        int maxForm,
+    public CoocMat coocMat(
         final int left,
         final int right,
+        final TagFilter tagFilter,
+        final int freqMin,
         final BitSet docFilter
     ) throws IOException {
-        if (maxForm < 1) maxForm = this.maxForm;
-        int[][] mat = new int[maxForm][maxForm];
         if (left < 0 || right < 0 || (left + right) < 1) {
             throw new IllegalArgumentException(
                 "left=" + left + " right=" + right
@@ -242,6 +243,22 @@ public class FieldRail  extends FieldCharsAbstract
             );
         }
         final boolean hasFilter = (docFilter != null);
+        final BitSet formFilter;
+        if (tagFilter != null) {
+            formFilter = fieldText.formFilter(tagFilter);
+        }
+        else {
+            formFilter = new FixedBitSet(maxForm);
+            ((FixedBitSet)formFilter).set(1, maxForm);
+        }
+        // unset all words below minFreq
+        if (freqMin > 0) {
+            for (int formId = 0; formId < maxForm; formId++) {
+                if (fieldText.occs(formId) < freqMin) formFilter.clear(formId);
+            }
+        }
+        CoocMat coocMat = new CoocMat(formFilter);
+        
         IntRoller roll = new IntRoller(1 + left + right);
         IntBuffer bufInt = channelMap.rewind().asIntBuffer().asReadOnlyBuffer();
         for (int docId = 0; docId < maxDoc; docId++) {
@@ -254,7 +271,7 @@ public class FieldRail  extends FieldCharsAbstract
             roll.fill(-1);
             for (int i = 0, max = this.docId4len[docId]; i < max; i++) {
                 final int formId = bufInt.get();
-                if (formId >= maxForm) continue;
+                if (!formFilter.get(formId)) continue;
                 roll.add(formId);
                 final int pivot = roll.get(-right);
                 if (pivot < 0) continue;
@@ -262,11 +279,11 @@ public class FieldRail  extends FieldCharsAbstract
                     if (rollPos == (- right)) continue;
                     final int cooc = roll.get(rollPos);
                     if (cooc < 0) continue;
-                    mat[pivot][cooc]++;
+                    coocMat.inc(pivot, cooc);
                 }
             }
         }
-        return mat;
+        return coocMat;
     }
 
 

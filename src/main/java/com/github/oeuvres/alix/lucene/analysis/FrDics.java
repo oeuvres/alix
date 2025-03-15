@@ -43,6 +43,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -73,10 +74,10 @@ public class FrDics
     public final static int TAG = 1;
     /** Column for a lemma, optional */
     public final static int LEM = 2;
-    /** Column for an “orthography”, a right graphy, optional, used for normalization at indexation */
-    public final static int ORTH = 3;
-    /** Separator of colums */
-    public final 
+    /** Column for normalized form at indexation */
+    public final static int NORM = 3;
+    /** Avoid multiple loading of external resource */
+    private static final Set<String> loaded = new HashSet<>();
     /** Logger */
     static Logger LOGGER = Logger.getLogger(FrDics.class.getName());
     /** Flag for compound, end of term */
@@ -94,7 +95,7 @@ public class FrDics
     /** A tree to resolve compounds */
     static final public HashMap<CharsAttImpl, Integer> TREELOC = new HashMap<CharsAttImpl, Integer>((int) (1500 / 0.75));
     /** Graphic normalization (replacement) */
-    static final public HashMap<CharsAttImpl, CharsAttImpl> NORM = new HashMap<CharsAttImpl, CharsAttImpl>((int) (100 / 0.75));
+    static final public HashMap<CharsAttImpl, CharsAttImpl> NORMALIZE = new HashMap<CharsAttImpl, CharsAttImpl>((int) (100 / 0.75));
     /** Abbreviations with a final dot */
     static final public HashMap<CharsAttImpl, CharsAttImpl> BREVIDOT = new HashMap<CharsAttImpl, CharsAttImpl>((int) (100 / 0.75));
     /** current dictionnary loaded, for logging */
@@ -111,16 +112,16 @@ public class FrDics
             "caps.csv",      // normalization of initial capital without accent
             "orth.csv",      // normalisation of oe œ, and some other word
             "num.csv",       // normalisation of ordinals for centuries
+            "word.csv",      // the big dic, before some names
             "author.csv",    // well known authorities (writers)
             "name.csv",      // other proper names
             "forename.csv",  // foreName with gender
             "place.csv",     // world place name 
-            "word.csv",      // the big dic
             "france.csv",    // places in France
             "commune.csv"    // french town, at the end
         };
         for (String f : files) {
-            loadResource(f);
+            loadResource(f, f);
         }
     }
     
@@ -188,6 +189,16 @@ public class FrDics
     }
 
     /**
+     * Verify that a dictionary is already loaded.
+     * @param key a local identifying name for a dictionary
+     * @return
+     */
+    public static boolean contains(final String key)
+    {
+        return loaded.contains(key);
+    }
+
+    /**
      * Insert a compound candidate in the compound tree
      * 
      * @param form a form to insert
@@ -250,25 +261,25 @@ public class FrDics
      * 
      * @param res resource path according to the class loader.
      */
-    private static void loadResource(final String res)
+    private static void loadResource(final String key, final String res)
     {
         FrDics.res = res;
         Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
-        load(reader, false);
+        load(key, reader, false);
     }
-
+    
     /**
      * Load a file as a dictionary.
      * 
      * @param file file path.
      * @throws IOException file errors.
      */
-    public static void load(final File file) throws IOException
+    public static void load(final String key, final File file) throws IOException
     {
         FrDics.res = file.getAbsolutePath();
         Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
         // default is replace
-        load(reader, true);
+        load(key, reader, true);
     }
 
     /**
@@ -283,8 +294,13 @@ public class FrDics
      * 
      * @param reader for file or jar.
      */
-    static public void load(final Reader reader, boolean replace)
+    static public void load(final String key, final Reader reader, boolean replace)
     {
+        if (loaded.contains(key)) {
+            System.out.println(key + " already loaded");
+            return;
+        }
+        loaded.add(key);
         CSVReader csv = null;
         try {
             csv = new CSVReader(reader, 4);
@@ -303,10 +319,14 @@ public class FrDics
                 if (graph.contains(' ') || (graph.contains('\'') && !graph.endsWith("'")) ) {
                     decompose(graph, TREELOC);
                 }
+                // known abbreviation with final dot
+                if (graph.last() == '.') {
+                    BREVIDOT.put(new CharsAttImpl(graph), null);
+                }
                 // Normalization of form ?
-                Chain orth = row.get(ORTH);
-                if (!orth.isEmpty()) {
-                    NORM.put(new CharsAttImpl(graph), new CharsAttImpl(orth));
+                Chain norm = row.get(NORM);
+                if (!norm.isEmpty()) {
+                    NORMALIZE.put(new CharsAttImpl(graph), new CharsAttImpl(norm));
                     continue;
                 }
 
@@ -400,7 +420,7 @@ public class FrDics
      */
     public static boolean norm(CharsAttImpl att)
     {
-        CharsAttImpl val = NORM.get(att);
+        CharsAttImpl val = NORMALIZE.get(att);
         if (val == null)
             return false;
         att.setEmpty().append(val);

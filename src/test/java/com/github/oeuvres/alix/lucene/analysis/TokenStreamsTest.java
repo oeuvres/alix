@@ -33,6 +33,9 @@ public class TokenStreamsTest {
     @Test
     public void locution() throws IOException
     {
+        File dic = new File("D:/code/piaget_labo/install/piaget-dic.csv");
+        FrDics.load(dic.getCanonicalPath(), dic);
+
         String text = "";
         // File file = new File("src/test/resources/article.xml");
         // String text = Files.readString(Paths.get(file.getAbsolutePath()), StandardCharsets.UTF_8);
@@ -46,7 +49,7 @@ public class TokenStreamsTest {
         text = "Il y a d’abord trop d’enfants à naître d’âge immature.";
         text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors !";
         text = "Il fallait naître jusqu’alors !";
-        text = "Les faux maîtres";
+        text = "Les faux maîtres de Mur. Obs. aux P.U.F. sous contrôle.";
 
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);

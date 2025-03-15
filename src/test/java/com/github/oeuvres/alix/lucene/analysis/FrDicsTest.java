@@ -17,7 +17,6 @@ import com.github.oeuvres.alix.util.Chain;
 public class FrDicsTest {
 
 
-    @Test
     public void lookup()
     {
         CharsAttImpl chars = new CharsAttImpl();
@@ -39,16 +38,17 @@ public class FrDicsTest {
         System.out.println(locs);
     }
     
+    @Test
     public void load() throws IOException
     {
-        System.out.println(FrDics.TREELOC.get("d’"));
-        File dic = new File("D:/code/ddr_lab/install/ddr-dic.csv");
-        FrDics.load(dic);
+        System.out.println("d’: " + FrDics.TREELOC.get("d’"));
+        File dic = new File("D:/code/piaget_labo/install/piaget-dic.csv");
+        FrDics.load(dic.getCanonicalPath(), dic);
         CharsAttImpl chars = new CharsAttImpl();
-        for (String word: new String[] {"français", "stato-national", "de nouveau"}) {
+        for (String word: new String[] {"français", "Mur", "de nouveau"}) {
             chars.setEmpty().append(word);
             FrDics.norm(chars);
-            System.out.println(chars + " " + FrDics.word(chars));
+            System.out.println(chars + " —word— " + FrDics.word(chars)+ " —name— " + FrDics.name(chars));
         }
 
     }

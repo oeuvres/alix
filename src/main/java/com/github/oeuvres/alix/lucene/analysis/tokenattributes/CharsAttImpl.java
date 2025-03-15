@@ -513,7 +513,9 @@ public class CharsAttImpl extends AttributeImpl
     }
 
     /**
-     * Same hashCode() as a String computed as <blockquote>
+     * HashCode() computed like a String, but not compatible with String object
+     * as a key in a HashMap (jdk makes difference between IsoLatin and UTF16).
+     * <blockquote>
      * 
      * <pre>
      * s[0]*31^(n-1) + s[1]*31^(n-2) + ... + s[n-1]

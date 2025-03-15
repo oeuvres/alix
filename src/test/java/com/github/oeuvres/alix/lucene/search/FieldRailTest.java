@@ -1,6 +1,7 @@
 package com.github.oeuvres.alix.lucene.search;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -13,6 +14,8 @@ import org.apache.lucene.util.SparseFixedBitSet;
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.lucene.Alix;
+import com.github.oeuvres.alix.lucene.analysis.FrDics;
+import com.github.oeuvres.alix.util.CoocMat;
 
 
 public class FieldRailTest
@@ -21,46 +24,47 @@ public class FieldRailTest
     {
         final int left = 5;
         final int right = 5;
-        final int maxForm = 20000;
+        final int freqMin = 10;
         long startTime = System.nanoTime();
         final Alix alix = Alix.instance("test", Paths.get("../piaget_labo/lucene/piaget"));
+        // load children names
+        File dicFile = new File("../piaget_labo/install/piaget-dic.csv");
+        FrDics.load(dicFile.getCanonicalPath(), dicFile);
         final String fieldName = "text_cloud";
         FieldRail frail = alix.fieldRail(fieldName);
-        BitSet docFilter = new FixedBitSet(frail.maxDoc());
-        // do it one time to start alix
-        docFilter.set(5);
         /*
-        System.out.println(frail.maxForm());
-        for (int formId = 0; formId < frail.maxForm(); formId++) {
-            writer.append(frail.form(formId) + " " + frail.fieldText().occs(formId) + "\n");
-        }
-        writer.flush();
+        BitSet docFilter = new SparseFixedBitSet(frail.maxDoc());
+        final int docId = alix.getDocId("piaget1947a05");
+        docFilter.set(docId);
         */
-        int[][] mat = frail.coocmat(left, right, maxForm, docFilter);
-        final int note = mat[0][0];
-        System.out.println(note + "  " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
-        startTime = System.nanoTime();
-        /**
-        Path filePath = Paths.get("piaget_cooc,5,5.csv");
+        TagFilter tagFilter = new TagFilter();
+        /*
+        tagFilter.set(Tag.NOSTOP).set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME)
+            .set(Tag.VERB).set(Tag.VERBppas).set(Tag.VERBger); // no more unknown .set(Tag.NULL);
+        */
+        tagFilter.set(Tag.NAME);
+
+        CoocMat coocMat = frail.coocMat(left, right, tagFilter, freqMin, null);
+        Path filePath = Paths.get("work/piaget_cooc,5,5.tsv");
         BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
-        final String sep = ",";
-        mat = frail.coocmat(left, right, 20000, null);
-        System.out.println("matrix " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
-        startTime = System.nanoTime();
-        for (int formId = 0; formId < maxForm; formId++) {
-            writer.append(sep + frail.form(formId).replaceAll(sep, "\",\""));
+        final String sep = "\t";
+        int[] headers = coocMat.headers();
+        final int headersLen = headers.length;
+        for (int col = 0; col < headersLen; col++) {
+            final int formId = headers[col];
+            writer.append(sep + frail.form(formId).replaceAll(sep, " "));
         }
         writer.append("\n");
-        for (int pivotId = 0; pivotId < maxForm; pivotId++) {
-            writer.append(frail.form(pivotId));
-            for (int coocId = 0; coocId < maxForm; coocId++) {
-                writer.append("," + mat[pivotId][coocId]);
+        for (int row = 0; row < headersLen; row++) {
+            final int formId = headers[row];
+            writer.append(frail.form(formId).replaceAll(sep, " "));
+            for (int col = 0; col < headersLen; col++) {
+                writer.append(sep + coocMat.getByRowCol(row, col));
             }
             writer.append("\n");
         }
         writer.flush();
-        **/
-        System.out.println("write " + (((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
+        System.out.println((((double)( System.nanoTime() - startTime)) / 1000000) + "ms");
     }
     
     public static void export() throws IOException
@@ -68,14 +72,16 @@ public class FieldRailTest
         Path path = Paths.get("../piaget_labo/lucene/piaget");
         // Path path = Paths.get("../ddr_lab/lucene/rougemont");
         final Alix alix = Alix.instance("test", path);
+        File dicFile = new File("../piaget_labo/install/piaget-dic.csv");
+        FrDics.load(dicFile.getCanonicalPath(), dicFile);
         final String fieldName = "text_cloud";
         FieldRail frail = alix.fieldRail(fieldName);
-        // BitSet docFilter = null;
-        BitSet docFilter = new SparseFixedBitSet(frail.maxDoc());
-        docFilter.set(alix.getDocId("piaget1922a05"));
+        BitSet docFilter = null;
+        // BitSet docFilter = new SparseFixedBitSet(frail.maxDoc());
+        // docFilter.set(alix.getDocId("piaget1922a05"));
         // piaget1922a05
         TagFilter tagFilter = new TagFilter();
-        tagFilter.set(Tag.NOSTOP).set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME)
+        tagFilter.set(Tag.NOSTOP).set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME).clear(Tag.NAMEfict)
             .set(Tag.VERB).set(Tag.VERBppas).set(Tag.VERBger); // no more unknown .set(Tag.NULL);
         String fileName = "../word2vec/";
         fileName += path.getFileName().toString();

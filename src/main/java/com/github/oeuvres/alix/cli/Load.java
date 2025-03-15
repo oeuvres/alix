@@ -248,7 +248,7 @@ public class Load implements Callable<Integer>
                 throw new FileNotFoundException("Local dictionary file not found <entry key=\"" + key + "\">" + prop
                         + "</entry>, resolved as " + dicfile.getAbsolutePath());
             }
-            FrDics.load(dicfile);
+            FrDics.load(dicfile.getCanonicalPath(), dicfile);
         }
 
         // set a local xsl to generate alix:document
