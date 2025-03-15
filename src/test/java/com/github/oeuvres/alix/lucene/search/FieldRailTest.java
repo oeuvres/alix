@@ -75,33 +75,47 @@ public class FieldRailTest
     
     public static void export() throws IOException
     {
-        Path path = Paths.get("../piaget_labo/lucene/piaget");
-        // Path path = Paths.get("../ddr_lab/lucene/rougemont");
-        final Alix alix = Alix.instance("test", path);
+        Path lucenePath = Paths.get("../piaget_labo/lucene/piaget");
         File dicFile = new File("../piaget_labo/install/piaget-dic.csv");
+        /*
+        Path lucenePath = Paths.get("../ddr_lab/lucene/rougemont");
+        File dicFile = new File("../ddr_lab/install/ddr-dic.csv");
+        */
+
         FrDics.load(dicFile.getCanonicalPath(), dicFile);
-        final String fieldName = "text_orth";
-        FieldRail frail = alix.fieldRail(fieldName);
+        final Alix alix = Alix.instance("test", lucenePath);
+        
+        
         BitSet docFilter = null;
         // BitSet docFilter = new SparseFixedBitSet(frail.maxDoc());
         // docFilter.set(alix.getDocId("piaget1922a05"));
         // piaget1922a05
         TagFilter tagFilter = new TagFilter();
-        //  tagFilter.set(Tag.NOSTOP).set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME).set(Tag.VERB).set(Tag.VERBppas).set(Tag.VERBger); // no more unknown .set(Tag.NULL);
-        tagFilter.set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME).set(Tag.VERB).set(Tag.VERBppas).set(Tag.VERBger); // no more 
-        // tagFilter.setAll().clearGroup(Tag.NULL).clearGroup(Tag.PUN);
-
-        String fileName = "../word2vec/";
-        fileName += path.getFileName().toString();
-        fileName += "-inflected,nostop";
-        // if (formFilter.get(Tag.NOSTOP.flag)) fileName += "_nostop";
-        fileName += ".txt";
-        frail.export(
-            fileName,
+        String baseName = "../word2vec/" +  lucenePath.getFileName().toString();
+        tagFilter.setAll().clearGroup(Tag.NULL).clearGroup(Tag.PUN);
+        alix.fieldRail("text_orth").export(
+            baseName + "-inflected,gram.txt",
             docFilter,
             tagFilter
         );
-        System.out.println(fileName + " exported");
+        alix.fieldRail("text_cloud").export(
+            baseName + "-lemma,gram.txt",
+            docFilter,
+            tagFilter
+        );
+        tagFilter.set(Tag.NOSTOP);
+        alix.fieldRail("text_orth").export(
+            baseName + "-inflected,nostop.txt",
+            docFilter,
+            tagFilter
+        );
+        alix.fieldRail("text_cloud").export(
+            baseName + "-lemma,nostop.txt",
+            docFilter,
+            tagFilter
+        );
+        
+        System.out.println(baseName + " exported");
     }
     
     public static void main(String[] args) throws IOException
