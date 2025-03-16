@@ -233,8 +233,8 @@ public class TokenizerML  extends Tokenizer
             // abbreviation ?
             else if (c == '.' && Char.isLetter(lastChar) ) {
                 termAtt.append(c);
-                // not an abbreviaiton, send, dot wil be handle after
-                if (!FrDics.BREVIDOT.containsKey(termAtt)) {
+                // not an abbreviaiton, send without dot
+                if (!FrDics.isBrevidot(termAtt)) {
                     termAtt.setLength(termAtt.length() - 1);
                     break;
                 }

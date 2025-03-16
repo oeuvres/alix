@@ -75,12 +75,12 @@ public class FieldRailTest
     
     public static void export() throws IOException
     {
+        /*
         Path lucenePath = Paths.get("../piaget_labo/lucene/piaget");
         File dicFile = new File("../piaget_labo/install/piaget-dic.csv");
-        /*
+        */
         Path lucenePath = Paths.get("../ddr_lab/lucene/rougemont");
         File dicFile = new File("../ddr_lab/install/ddr-dic.csv");
-        */
 
         FrDics.load(dicFile.getCanonicalPath(), dicFile);
         final Alix alix = Alix.instance("test", lucenePath);

@@ -106,6 +106,21 @@ public class CharsAttImpl extends AttributeImpl
     }
 
     /**
+     * Copy chars from a mutable String {@link Chain}. Use it to build an optimized
+     * key in an HashMap. Do not used in a token stream, getBytesRef() will not be
+     * available.
+     * 
+     * @param chain value.
+     * @param offset start offset to copy from
+     * @param length amount of chars to copy
+     */
+    public CharsAttImpl(Chain chain, final int offset, final int length) {
+        chars = new char[length];
+        chain.getChars(offset, offset + length, chars, 0);
+        len = length;
+    }
+
+    /**
      * Copy chars from another attribute. Use it to build an optimized
      * key in an HashMap. Do not used in a token stream, getBytesRef() will not be
      * available.
@@ -120,7 +135,7 @@ public class CharsAttImpl extends AttributeImpl
 
     /**
      * Copy chars from a char array. Use it to build an optimized
-     * key in an HashMap. Do not used in a token stream, getBytesRef() will not be
+     * key in an HashMap. Do not use in a token stream, getBytesRef() will not be
      * available.
      * 
      * @param buffer source char array.

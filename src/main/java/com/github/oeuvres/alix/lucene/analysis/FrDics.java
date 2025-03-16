@@ -43,6 +43,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -88,16 +89,16 @@ public class FrDics
     static final public HashSet<CharsAttImpl> STOP = new HashSet<CharsAttImpl>((int) (1000 / 0.75));
     /** French stopwords as binary automaton */
     public static ByteRunAutomaton STOP_BYTES;
-    /** 130 000 types French lexicon seems not too bad for memory */
-    static final public HashMap<CharsAttImpl, LexEntry> WORDS = new HashMap<CharsAttImpl, LexEntry>((int) (150000 / 0.75));
+    /** 500 000 types French lexicon seems not too bad for memory */
+    static final public HashMap<CharsAttImpl, LexEntry> WORDS = new HashMap<>((int) (500000 / 0.75));
     /** French names on which keep Capitalization */
-    static final public HashMap<CharsAttImpl, LexEntry> NAMES = new HashMap<CharsAttImpl, LexEntry>((int) (50000 / 0.75));
+    static final public HashMap<CharsAttImpl, LexEntry> NAMES = new HashMap<>((int) (50000 / 0.75));
     /** A tree to resolve compounds */
-    static final public HashMap<CharsAttImpl, Integer> TREELOC = new HashMap<CharsAttImpl, Integer>((int) (1500 / 0.75));
+    static final public HashMap<CharsAttImpl, Integer> TREELOC = new HashMap<>((int) (1500 / 0.75));
     /** Graphic normalization (replacement) */
-    static final public HashMap<CharsAttImpl, CharsAttImpl> NORMALIZE = new HashMap<CharsAttImpl, CharsAttImpl>((int) (100 / 0.75));
+    static final public Map<CharsAttImpl, CharsAttImpl> NORMALIZE = new HashMap<>((int) (100 / 0.75));
     /** Abbreviations with a final dot */
-    static final public HashMap<CharsAttImpl, CharsAttImpl> BREVIDOT = new HashMap<CharsAttImpl, CharsAttImpl>((int) (100 / 0.75));
+    static final public Set<CharsAttImpl> BREVIDOT = new HashSet<>((int) (200 / 0.75));
     /** current dictionnary loaded, for logging */
     static String res;
     
@@ -105,13 +106,13 @@ public class FrDics
     /** Load dictionaries */
     static {
         compileStopwords();
-        load("brevidot.csv", BREVIDOT);
         // first word win
         String[] files = { 
             "locutions.csv", // compounds to decompose
             "caps.csv",      // normalization of initial capital without accent
             "orth.csv",      // normalisation of oe œ, and some other word
             "num.csv",       // normalisation of ordinals for centuries
+            "brevidot.csv",  // abbreviations finishing by a dot
             "word.csv",      // the big dic, before some names
             "author.csv",    // well known authorities (writers)
             "name.csv",      // other proper names
@@ -139,14 +140,9 @@ public class FrDics
      * @param att {@link CharTermAttribute} implementation.
      * @return true if submitted form is an abbreviation, false otherwise.
      */
-    public static boolean brevidot(CharsAttImpl att)
+    public static boolean isBrevidot(CharsAttImpl att)
     {
-        CharsAttImpl val = BREVIDOT.get(att);
-        if (val == null)
-            return false;
-        if (!val.isEmpty())
-            att.copy(val);
-        return true;
+        return BREVIDOT.contains(att);
     }
 
     private static void compileStopwords()
@@ -294,13 +290,13 @@ public class FrDics
      * 
      * @param reader for file or jar.
      */
-    static public void load(final String key, final Reader reader, boolean replace)
+    static public void load(final String name, final Reader reader, boolean replace)
     {
-        if (loaded.contains(key)) {
-            System.out.println(key + " already loaded");
+        if (loaded.contains(name)) {
+            System.out.println(name + " already loaded");
             return;
         }
-        loaded.add(key);
+        loaded.add(name);
         CSVReader csv = null;
         try {
             csv = new CSVReader(reader, 4);
@@ -312,18 +308,23 @@ public class FrDics
                     continue;
                 // normalize apos
                 graph.replace('’', '\'');
-                // check if it is normalization
-                // populate the tree of locutions, even with orth normalisation
+                // populate the tree of locutions, even with normalisation, to find it
                 // do not put j’ or d’ in TREELOC
                 
-                if (graph.contains(' ') || (graph.contains('\'') && !graph.endsWith("'")) ) {
+                boolean hasSpace = graph.contains(' ');
+                if (hasSpace || (graph.contains('\'') && !graph.endsWith("'")) ) {
                     decompose(graph, TREELOC);
                 }
-                // known abbreviation with final dot
-                if (graph.last() == '.') {
-                    BREVIDOT.put(new CharsAttImpl(graph), null);
+                // known abbreviation with at least one final dot, add the compounds
+                // do not handle multi word abbreviation like "av. J.-C."
+                if (!hasSpace && graph.last() == '.') {
+                    for (int length = 2; length <= graph.length() ; length++) {
+                        if (graph.charAt(length - 1) != '.') continue;
+                        CharsAttImpl key = new CharsAttImpl(graph, 0, length);
+                        BREVIDOT.add(key);
+                    }
                 }
-                // Normalization of form ?
+                // check if it is normalization
                 Chain norm = row.get(NORM);
                 if (!norm.isEmpty()) {
                     NORMALIZE.put(new CharsAttImpl(graph), new CharsAttImpl(norm));
