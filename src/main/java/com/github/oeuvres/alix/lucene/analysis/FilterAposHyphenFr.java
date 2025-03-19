@@ -165,9 +165,10 @@ public class FilterAposHyphenFr extends TokenFilter
             }
             // test prefixes
             if (aposFirst > 0) {
-                test.copy(termAtt, 0, aposFirst + 1);
+                test.wrap(termAtt.buffer(), 0, aposFirst + 1);
                 final int startOffset = offsetAtt.startOffset();
                 if (PREFIX.containsKey(test)) {
+                    /*
                     final CharsAttImpl value = PREFIX.get(test);
                     if (value == null) {
                         // skip this prefix, retry to find something
@@ -175,6 +176,7 @@ public class FilterAposHyphenFr extends TokenFilter
                         offsetAtt.setOffset(startOffset + aposFirst + 1, offsetAtt.endOffset());
                         continue;
                     }
+                    */
                     // keep term after prefix for next call
                     deque.addLast(
                         termAtt.buffer(), 
@@ -191,7 +193,7 @@ public class FilterAposHyphenFr extends TokenFilter
             }
             if (hyphLast > 0) {
                 // test suffix
-                test.copy(termAtt, hyphLast, termAtt.length() - hyphLast);
+                test.wrap(termAtt.buffer(), hyphLast, termAtt.length() - hyphLast);
                 if (SUFFIX.containsKey(test)) {
                     final CharsAttImpl value = SUFFIX.get(test);
                     // if value is not skipped, add it at start in stack

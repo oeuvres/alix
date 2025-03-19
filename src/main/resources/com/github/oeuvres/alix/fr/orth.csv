@@ -1,4 +1,4 @@
-GRAPH,TAG,LEM,ORTH
+GRAPH,TAG,LEM,NORM
 –,,,—
 &,,,et
 &c,,,etc.
@@ -72,6 +72,7 @@ Créuse,,,Créüse
 Cufa,,,Koufa
 Czar,,,Tsar
 Daurat,,,Dorat
+d',,,de
 dec,,,décembre
 déc,,,décembre
 déja,,,déjà
@@ -185,6 +186,7 @@ Idzikovsky,,,Idzikovski
 Idzikowsky,,,Idzikovski
 ih,,,hi
 Jacovleff,,,Iakovlev
+j',,,je
 janv,,,janvier
 Jasons,,,Jason
 Jean de Mena,,,Juan de Mena
@@ -197,12 +199,14 @@ Jordano,,,Giordano
 Joukoff,,,Joukov
 juil,,,juillet
 juill,,,juillet
+jusqu',,,jusque
 Képler,,,Kepler
 Khèyam,,,Khayyam
 Khovanschtina,,,Khovanchtchina
 Koran,,,Coran
 Krüdner,,,Krüdener
 Kubelick,,,Kubelik
+l',,,l'
 Laferronnais,,,La Ferronays
 Lafeuillade,,,La Feuillade
 Landovska,,,Landovska
@@ -221,9 +225,11 @@ Léonidoff,,,Leonidov
 Litz,,,Listz
 Loëve-Veimars,,,Loève-Veimars
 Loève-Veymars,,,Loève-Veimars
+lorsqu',,,lorsque
 Lulli,,,Lully
 Luzan,,,Luzán
 lvanoff,,,Ivanov
+m',,,me
 main-d'oeuvre,,,main-d'œuvre
 maitre,,,maître
 Malaca,,,Malacca
@@ -281,6 +287,7 @@ Mrs,,,messieurs
 mrs,,,messieurs
 Munster,,,Münster
 Murger,,,Mürger
+n',,,ne
 Napierkowska,,,Napierkovska
 Nemtchinova,,,Nemtchinova
 naît,,,nait
@@ -385,6 +392,10 @@ Prokofieff,,,Prokofiev
 pré-opératoire,,,,préopératoire
 pré-opératoires,,,,préopératoires
 Prudhomme,,,Sully-Prudhomme
+puisqu',,,puisque
+qu',,,que
+quelqu',,,quelque
+quoiqu',,,quoique
 rancoeur,,,rancœur
 rancoeurs,,,rancœurs
 Rimski-Korsakoff,,,Rimski-Korsakov
@@ -394,6 +405,7 @@ Rob-Roy,,,Rob Roy
 Rocroy,,,Rocroi
 Romanoff,,,Romanov
 roy,,,roi
+s',,,se
 sacré-coeur,,,sacré-cœur
 Sakharoff,,,Sakharov
 Sakharoffs,,,Sakharov
@@ -423,6 +435,7 @@ Stravinsky,,,Stravinsky
 Strawinsky,,,Stravinsky
 Sunium,,,Sounion
 Svirskaya,,,Svirskaïa
+t',,,te
 Taïroff,,,Tairov
 tape-à-l'oeil,,,tape-à-l'œil
 tape-à-l'oeil,,,tape-à-l'œil
