@@ -68,6 +68,20 @@
             <artifactId>json</artifactId>
             <version>20240303</version>
         </dependency>
+        
+        <!-- Pos tagging -->
+        <dependency>
+            <groupId>org.apache.opennlp</groupId>
+            <artifactId>opennlp-tools</artifactId>
+            <version>2.5.3</version>
+        </dependency>
+        <dependency> 
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-simple</artifactId>
+          <version>2.0.17</version>
+        </dependency>
+        
+        <!-- Servlet API -->
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
@@ -80,13 +94,14 @@
             <version>2.3.3</version>
             <scope>provided</scope>
         </dependency>
+        
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.13.1</version>
             <scope>test</scope>
         </dependency>
-        <!-- Memory size of object -->
+        <!-- Memory size of an object -->
         <dependency>
             <groupId>org.openjdk.jol</groupId>
             <artifactId>jol-core</artifactId>
