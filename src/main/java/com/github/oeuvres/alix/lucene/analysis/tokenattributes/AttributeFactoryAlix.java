@@ -24,6 +24,8 @@ final public class AttributeFactoryAlix extends AttributeFactory
     @Override
     public AttributeImpl createAttributeInstance(Class<? extends Attribute> attClass)
     {
+        return delegate.createAttributeInstance(attClass);
+        /*
         // for chars attributes, return a CharsAttImpl with advanced char 
         if (attClass == CharTermAttribute.class) {
             return new CharsAttImpl();
@@ -31,5 +33,6 @@ final public class AttributeFactoryAlix extends AttributeFactory
         else {
             return delegate.createAttributeInstance(attClass);
         }
+        */
     }
 }

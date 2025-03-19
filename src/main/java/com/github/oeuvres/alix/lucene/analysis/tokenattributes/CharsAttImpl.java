@@ -54,10 +54,12 @@ import com.github.oeuvres.alix.lucene.analysis.FrDics;
  * capitalize).
  */
 public class CharsAttImpl extends AttributeImpl
-        implements CharTermAttribute, TermToBytesRefAttribute, Appendable, Cloneable, CharSequence, Comparable<CharSequence>
+        implements CharsAtt, CharTermAttribute, TermToBytesRefAttribute, Appendable, Cloneable, CharSequence, Comparable<CharSequence>
 {
     /** The data */
     private char[] chars;
+    /** Start index in the array */
+    private int zero = 0;
     /** The present size */
     private int len = 0;
     /** A mark set with @see #mark() */
@@ -165,7 +167,7 @@ public class CharsAttImpl extends AttributeImpl
         if (csq == null)
             csq = "null";
         // re-organize this?
-        Objects.checkFromToIndex(start, end, csq.length());
+        Objects.checkFromToIndex(start, csq.length(), end);
         final int length = end - start;
         if (length == 0)
             return this;
@@ -201,7 +203,7 @@ public class CharsAttImpl extends AttributeImpl
     public final CharsAttImpl append(char c)
     {
         hash = 0;
-        resizeBuffer(len + 1)[len++] = c;
+        resizeBuffer(zero + len + 1)[len++] = c;
         return this;
     }
 
@@ -215,7 +217,7 @@ public class CharsAttImpl extends AttributeImpl
         if (s == null)
             return appendNull();
         final int length = s.length();
-        s.getChars(0, length, resizeBuffer(this.len + length), this.len);
+        s.getChars(0, length, resizeBuffer(zero + this.len + length), this.len);
         this.len += length;
         return this;
     }
@@ -228,7 +230,7 @@ public class CharsAttImpl extends AttributeImpl
         if (s == null)
             return appendNull();
         final int length = s.length();
-        s.getChars(0, length, resizeBuffer(this.len + length), this.len);
+        s.getChars(0, length, resizeBuffer(zero + this.len + length), this.len);
         this.len += length;
         return this;
     }
@@ -241,7 +243,7 @@ public class CharsAttImpl extends AttributeImpl
         if (ta == null)
             return appendNull();
         final int length = ta.length();
-        System.arraycopy(ta.buffer(), 0, resizeBuffer(this.len + length), this.len, length);
+        System.arraycopy(ta.buffer(), 0, resizeBuffer(zero + this.len + length), this.len, length);
         len += length;
         return this;
     }
@@ -253,7 +255,7 @@ public class CharsAttImpl extends AttributeImpl
     private CharsAttImpl appendNull()
     {
         hash = 0;
-        resizeBuffer(len + 4);
+        resizeBuffer(zero + len + 4);
         chars[len++] = 'n';
         chars[len++] = 'u';
         chars[len++] = 'l';
@@ -279,10 +281,10 @@ public class CharsAttImpl extends AttributeImpl
         if (len == 0)
             return this;
         char last = ' ';
-        char c = chars[0];
+        char c = chars[zero];
         if (Char.isLowerCase(c))
-            chars[0] = Character.toUpperCase(c);
-        for (int i = 1; i < len; i++) {
+            chars[zero] = Character.toUpperCase(c);
+        for (int i = zero + 1; i < zero + len; i++) {
             c = chars[i];
             if (last == '-') {
                 if (Char.isLowerCase(c)) {
@@ -302,14 +304,13 @@ public class CharsAttImpl extends AttributeImpl
     public final char charAt(int index)
     {
         Objects.checkIndex(index, len);
-        return chars[index];
+        return chars[zero + index];
     }
 
     @Override
     public void clear()
     {
-        hash = 0;
-        len = 0;
+        this.setEmpty();
     }
 
     @Override
@@ -318,7 +319,7 @@ public class CharsAttImpl extends AttributeImpl
         CharsAttImpl t = (CharsAttImpl) super.clone();
         // Do a deep clone
         t.chars = new char[this.len];
-        System.arraycopy(this.chars, 0, t.chars, 0, this.len);
+        System.arraycopy(this.chars, zero, t.chars, 0, this.len);
         t.builder = new BytesRefBuilder();
         t.builder.copyBytes(builder.get());
         t.hash = 0;
@@ -331,7 +332,7 @@ public class CharsAttImpl extends AttributeImpl
     {
         char[] chars = this.chars;
         int lim = Math.min(len, other.length());
-        for (int offset = 0; offset < lim; offset++) {
+        for (int offset = zero; offset < zero + lim; offset++) {
             char c1 = chars[offset];
             char c2 = other.charAt(offset);
             if (c1 != c2) {
@@ -350,11 +351,12 @@ public class CharsAttImpl extends AttributeImpl
     public final CharsAttImpl copy(CharTermAttribute ta)
     {
         hash = 0;
+        zero = 0;
         len = ta.length();
         System.arraycopy(ta.buffer(), 0, resizeBuffer(len), 0, len);
         return this;
     }
-
+    
     /**
      * Copy a substring of a {@link CharTermAttribute} in the buffer.
      * 
@@ -366,11 +368,11 @@ public class CharsAttImpl extends AttributeImpl
     public final CharsAttImpl copy(CharTermAttribute ta, final int start, final int len)
     {
         this.hash = 0;
+        zero = 0;
         this.len = len;
         System.arraycopy(ta.buffer(), start, resizeBuffer(len), 0, len);
         return this;
     }
-
     /**
      * Copy UTF-8 bytes {@link BytesRef} in the char[] buffer. Used by Alix to test
      * UTF-8 bytes against chars[] stores in HashMap {@link FrDics}
@@ -382,6 +384,7 @@ public class CharsAttImpl extends AttributeImpl
     {
         // content modified, reset hashCode
         hash = 0;
+        zero = 0;
         // ensure buffer size at bytes length
         char[] chars = resizeBuffer(bytes.length);
         // get the length in chars after conversion
@@ -392,7 +395,8 @@ public class CharsAttImpl extends AttributeImpl
     @Override
     public void copyTo(AttributeImpl target)
     {
-        ((CharTermAttribute)target).copyBuffer(chars, 0, len);
+        CharTermAttribute t = (CharTermAttribute) target;
+        t.copyBuffer(chars, zero, zero + len);
     }
 
     /**
@@ -402,14 +406,14 @@ public class CharsAttImpl extends AttributeImpl
      */
     public void copyTo(CharTermAttribute target)
     {
-        target.copyBuffer(chars, 0, len);
+        target.copyBuffer(chars, zero, zero+len);
     }
 
     @Override
     public final void copyBuffer(char[] buffer, int offset, int length)
     {
-        growTermBuffer(length);
-        System.arraycopy(buffer, offset, chars, 0, length);
+        growTermBuffer(zero + length);
+        System.arraycopy(buffer, offset, chars, zero, length);
         len = length;
     }
 
@@ -423,7 +427,7 @@ public class CharsAttImpl extends AttributeImpl
     {
         if (len < 1)
             return false;
-        return (chars[len - 1] == c);
+        return (chars[zero + len - 1] == c);
     }
 
     /**
@@ -437,8 +441,8 @@ public class CharsAttImpl extends AttributeImpl
         final int olen = suffix.length();
         if (olen > len)
             return false;
-        int i = len - 1;
-        for (int j = olen - 1; j >= 0; j--) {
+        int i = zero + len - 1;
+        for (int j = olen - 1; j >= zero; j--) {
             if (chars[i] != suffix.charAt(j))
                 return false;
             i--;
@@ -462,9 +466,12 @@ public class CharsAttImpl extends AttributeImpl
             if (this.hashCode() != term.hashCode())
                 return false;
             char[] test = term.chars;
+            int srcChar = zero;
+            int testChar = term.zero;
             for (int i = 0; i < len; i++) {
-                if (test[i] != chars[i])
-                    return false;
+                if (test[testChar] != chars[srcChar]) return false;
+                srcChar++;
+                testChar++;
             }
             return true;
         }
@@ -474,7 +481,7 @@ public class CharsAttImpl extends AttributeImpl
             if (cs.length() != len)
                 return false;
             for (int i = 0; i < len; i++) {
-                if (cs.charAt(i) != chars[i])
+                if (cs.charAt(i) != chars[zero + i])
                     return false;
             }
             return true;
@@ -485,7 +492,7 @@ public class CharsAttImpl extends AttributeImpl
                 return false;
             char[] test = chain.array();
             int start = chain.start();
-            for (int i = 0; i < len; i++) {
+            for (int i = zero; i < zero + len; i++) {
                 if (test[start] != chars[i])
                     return false;
                 start++;
@@ -495,7 +502,7 @@ public class CharsAttImpl extends AttributeImpl
             char[] test = (char[]) other;
             if (test.length != len)
                 return false;
-            for (int i = 0; i < len; i++) {
+            for (int i = zero; i < zero + len; i++) {
                 if (test[i] != chars[i])
                     return false;
             }
@@ -508,7 +515,7 @@ public class CharsAttImpl extends AttributeImpl
     @Override
     public BytesRef getBytesRef()
     {
-        builder.copyChars(chars, 0, len);
+        builder.copyChars(chars, zero, zero+len);
         return builder.get();
     }
 
@@ -549,8 +556,8 @@ public class CharsAttImpl extends AttributeImpl
         int h = hash;
         if (h == 0) {
             char[] chars = this.chars;
-            int end = len;
-            for (int i = 0; i < end; i++) {
+            int end = zero + len;
+            for (int i = zero; i < end; i++) {
                 h = 31 * h + chars[i];
             }
             hash = h;
@@ -567,7 +574,7 @@ public class CharsAttImpl extends AttributeImpl
     public int indexOf(final char c)
     {
         for (int i = 0; i < len; i++) {
-            if (c == chars[i])
+            if (c == chars[zero + i])
                 return i;
         }
         return -1;
@@ -591,7 +598,8 @@ public class CharsAttImpl extends AttributeImpl
      */
     public char lastChar() throws ArrayIndexOutOfBoundsException
     {
-        return chars[len - 1];
+        if (len < 1) throw new ArrayIndexOutOfBoundsException("Empty value, no lastChar");
+        return chars[zero + len - 1];
     }
 
     /**
@@ -602,8 +610,8 @@ public class CharsAttImpl extends AttributeImpl
      */
     public int lastIndexOf(final char c)
     {
-        for (int i = len - 1; i > 0; i--) {
-            if (c == chars[i])
+        for (int i = len - 1; i >= 0; i--) {
+            if (c == chars[zero + i])
                 return i;
         }
         return -1;
@@ -671,7 +679,7 @@ public class CharsAttImpl extends AttributeImpl
     public final CharsAttImpl rtrim()
     {
         while (len > 0) {
-            char c = chars[len - 1];
+            char c = chars[zero + len - 1];
             if (c != ' ') break;
             len--;
             hash = 0;
@@ -688,7 +696,7 @@ public class CharsAttImpl extends AttributeImpl
     public final CharsAttImpl rtrim(String spaces)
     {
         while (len > 0) {
-            char c = chars[len - 1];
+            char c = chars[zero + len - 1];
             if (spaces.indexOf(c) < 0) break;
             len--;
             hash = 0;
@@ -705,13 +713,14 @@ public class CharsAttImpl extends AttributeImpl
     public void setCharAt(int pos, char c)
     {
         hash = 0;
-        chars[pos] = c;
+        chars[zero + pos] = c;
     }
 
     @Override
-    public final CharsAttImpl setEmpty()
+    public final CharsAtt setEmpty()
     {
         hash = 0;
+        zero = 0;
         len = 0;
         mark = -1; // unallow restore mark()
         return this;
@@ -742,7 +751,7 @@ public class CharsAttImpl extends AttributeImpl
     {
         if (len < 1)
             return false;
-        return (chars[0] == c);
+        return (chars[zero] == c);
     }
     
     /**
@@ -767,7 +776,7 @@ public class CharsAttImpl extends AttributeImpl
     public final CharSequence subSequence(final int start, final int end)
     {
         Objects.checkFromToIndex(start, end, len);
-        return new String(chars, start, end - start);
+        return new String(chars, zero + start, zero + end - start);
     }
 
     /**
@@ -778,9 +787,20 @@ public class CharsAttImpl extends AttributeImpl
      */
     public CharsAttImpl toLower()
     {
+        return toLower(0, len);
+    }
+    
+    /**
+     * Convert some chars from the buffer to lower case. To avoid default JDK
+     * conversion, some efficiency come from tests with the {@link Char}.
+     * 
+     * @return this, for chaining.
+     */
+    public CharsAttImpl toLower(final int offset, final int len)
+    {
         hash = 0;
         char c;
-        for (int i = 0; i < len; i++) {
+        for (int i = zero + offset; i < zero + len; i++) {
             c = chars[i];
             if (!Char.isUpperCase(c))
                 continue;
@@ -788,6 +808,8 @@ public class CharsAttImpl extends AttributeImpl
         }
         return this;
     }
+    
+    
 
     /**
      * Returns solely the term text as specified by the {@link CharSequence}
@@ -796,11 +818,11 @@ public class CharsAttImpl extends AttributeImpl
     @Override
     public String toString()
     {
-        return new String(chars, 0, len);
+        return new String(chars, zero, zero + len);
     }
 
     /**
-     * If we can’t remember if @see #mark() has been set, ensure, reset it.
+     * If we can’t remember if {@link #mark()} has been set, ensure, reset it.
      * 
      * @return this, for chaining.
      */
@@ -810,4 +832,26 @@ public class CharsAttImpl extends AttributeImpl
         return this;
     }
     
+    public CharsAttImpl wrap(final char[] buffer, final int length)
+    {
+        return wrap(buffer, 0, length);
+    }
+
+    
+    /**
+     * Wrap an external char buffer (no copy), especially to work on a {@link CharTermAttribute#buffer()}.
+     * 
+     * @param buffer chars to backed
+     * @param length amount of chars to 
+     * @return this
+     */
+    public CharsAttImpl wrap(final char[] buffer, final int offset, final int length)
+    {
+        this.chars = buffer;
+        this.zero = offset;
+        this.len = length;
+        this.mark = 0;
+        this.hash = 0;
+        return this;
+    }
 }

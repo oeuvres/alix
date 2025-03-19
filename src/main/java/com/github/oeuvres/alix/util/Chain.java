@@ -74,27 +74,6 @@ public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
     }
 
     /**
-     * Wrap the char array of another chain. Any change in this chain will affect
-     * the other chain.
-     * @param chain Wrapped chain of chars.
-     */
-    public Chain(final Chain chain) {
-        this.chars = chain.chars;
-        this.zero = chain.zero;
-        this.size = chain.size;
-    }
-
-    /**
-     * Back the chain to an external char array (no copy). The char sequence is
-     * considered empty (start = size = 0)
-     * 
-     * @param src Source char array.
-     */
-    public Chain(final char[] src) {
-        this.chars = src;
-    }
-
-    /**
      * Back the chain to an external char array (no copy).
      * 
      * @param src      Source char array.
@@ -216,42 +195,6 @@ public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
         write(size, s, start, end);
         size += len;
         return this;
-    }
-
-    /**
-     * Poor a string in data, array should have right size
-     * 
-     * @param dstOffset  Position in this Chain from where to write chars.
-     * @param src        Source char sequence to get char from.
-     * @param srcStart   Start index of chars to copy from source char sequence.
-     * @param srcEnd     End index of chars to copy from source char array.
-     */
-    private void write(final int dstOffset, final CharSequence src, int srcStart, final int srcEnd)
-    {
-        final int len = srcEnd - srcStart;
-        if (len < 0) {
-            throw new NegativeArraySizeException("start=" + srcStart + " end=" + srcEnd + " start > end, no chars to append");
-        }
-        if (len > 4) { // only use instanceof check series for longer CSQs, else simply iterate
-            if (src instanceof String) {
-                ((String) src).getChars(srcStart, srcEnd, chars, zero + dstOffset);
-            } else if (src instanceof StringBuilder) {
-                ((StringBuilder) src).getChars(srcStart, srcEnd, chars, zero + dstOffset);
-            } else if (src instanceof StringBuffer) {
-                ((StringBuffer) src).getChars(srcStart, srcEnd, chars, zero + dstOffset);
-            } else if (src instanceof CharBuffer && ((CharBuffer) src).hasArray()) {
-                final CharBuffer cb = (CharBuffer) src;
-                System.arraycopy(cb.array(), cb.arrayOffset() + cb.position() + srcStart, chars, zero + dstOffset, len);
-            } else {
-                for (int i = zero + dstOffset, limit = zero + dstOffset + len; i < limit; i++) {
-                    chars[i] = src.charAt(srcStart++);
-                }
-            }
-        } else {
-            for (int i = zero + dstOffset, limit = zero + dstOffset + len; i < limit; i++) {
-                chars[i] = src.charAt(srcStart++);
-            }
-        }
     }
 
     /**
@@ -1434,6 +1377,56 @@ public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
             }
         }
         return out_pos - out_offset;
+    }
+
+    /**
+     * Back the chain to an external char array (no copy). The char sequence is
+     * considered empty (start = size = 0)
+     * 
+     * @param src Source char array.
+     */
+    public Chain wrap(final char[] src) {
+        this.chars = src;
+        hash = 0;
+        zero = 0;
+        size = src.length;
+        return this;
+    }
+
+    /**
+     * Poor a string in data, array should have right size
+     * 
+     * @param dstOffset  Position in this Chain from where to write chars.
+     * @param src        Source char sequence to get char from.
+     * @param srcStart   Start index of chars to copy from source char sequence.
+     * @param srcEnd     End index of chars to copy from source char array.
+     */
+    private void write(final int dstOffset, final CharSequence src, int srcStart, final int srcEnd)
+    {
+        final int len = srcEnd - srcStart;
+        if (len < 0) {
+            throw new NegativeArraySizeException("start=" + srcStart + " end=" + srcEnd + " start > end, no chars to append");
+        }
+        if (len > 4) { // only use instanceof check series for longer CSQs, else simply iterate
+            if (src instanceof String) {
+                ((String) src).getChars(srcStart, srcEnd, chars, zero + dstOffset);
+            } else if (src instanceof StringBuilder) {
+                ((StringBuilder) src).getChars(srcStart, srcEnd, chars, zero + dstOffset);
+            } else if (src instanceof StringBuffer) {
+                ((StringBuffer) src).getChars(srcStart, srcEnd, chars, zero + dstOffset);
+            } else if (src instanceof CharBuffer && ((CharBuffer) src).hasArray()) {
+                final CharBuffer cb = (CharBuffer) src;
+                System.arraycopy(cb.array(), cb.arrayOffset() + cb.position() + srcStart, chars, zero + dstOffset, len);
+            } else {
+                for (int i = zero + dstOffset, limit = zero + dstOffset + len; i < limit; i++) {
+                    chars[i] = src.charAt(srcStart++);
+                }
+            }
+        } else {
+            for (int i = zero + dstOffset, limit = zero + dstOffset + len; i < limit; i++) {
+                chars[i] = src.charAt(srcStart++);
+            }
+        }
     }
 
 }

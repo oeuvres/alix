@@ -46,23 +46,25 @@ import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAttImpl;
 
 /**
  * Plug behind TokenLem, take a Trie dictionary, and try to compound locutions.
  */
 public class FilterLocution extends TokenFilter
 {
+    /** The term provided by the Tokenizer */
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** Current char offset */
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** Current Flags */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-    /** Current original term, do not cast here */
-    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** A normalized orthographic form (ex : capitalization) */
-    private final CharsAttImpl orthAtt = (CharsAttImpl) addAttribute(OrthAtt.class);
+    private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
     /** A lemma when possible */
-    private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(LemAtt.class);
+    private final LemAtt lemAtt = addAttribute(LemAtt.class);
     /** A stack of states */
     private AttDeque queue;
     /** A term used to concat a compound */
@@ -118,6 +120,10 @@ public class FilterLocution extends TokenFilter
         clearAttributes();
         // restart compound at each call
         compound.setEmpty();
+        
+        // cast 
+        
+        
         // flag up to exhaust queue before getting new token
 
         boolean verbSeen = false;
@@ -171,6 +177,10 @@ public class FilterLocution extends TokenFilter
             else if (verbSeen && orthAtt.equals("pas")) {
                 compound.rtrim(); // suppres last ' '
             }
+            // if original term ends with an apos, use it, D’accord
+            else if (termAtt.charAt(termAtt.length() - 1) == '\'') {
+                compound.append(termAtt, 0, termAtt.length());
+            }
             // for other words, orth may have correct initial capital of sentence
             else if (orthAtt.length() != 0) {
                 compound.append(orthAtt);
@@ -182,7 +192,6 @@ public class FilterLocution extends TokenFilter
             
             
             final Integer nodeType = FrDics.TREELOC.get(compound);
-
 
             // dead end
             if (nodeType == null) {
@@ -233,36 +242,34 @@ public class FilterLocution extends TokenFilter
                 // try to go ahead ((chemin de fer) d’intérêt local)
                 queue.clear();
                 // it’s OK
-                queue.addLast(this);
+                // queue.addLast(this);
                 queuePos = 0;
             }
-            // here we should be in a branch
-            if ((nodeType & FrDics.BRANCH) == 0) {
-                throw new IOException("### not a branch ?" + queue);
-            }
-            // first token was new, add it to queue, 
-            if (tokFirst) {
-                queue.addLast(this);
-                tokFirst = false;
-            }
-            
-            // get another token from queue
-            if (queuePos > 0 && queuePos < queue.size()) {
-                queue.copyTo(this, queuePos);
-                queuePos++;
-            }
-            // or get another token from stream
-            else {
-                boolean hasToken = input.incrementToken();
-                // no more token to explore branch, exhaust queue
-                if (!hasToken) {
-                    queue.removeFirst(this);
-                    return true;
+            if ((nodeType & FrDics.BRANCH) != 0) {
+                // first token was new, add it to queue, 
+                if (tokFirst) {
+                    queue.addLast(this);
+                    tokFirst = false;
                 }
-                queuePos = 0; // no more token to get from the queue, say it
-                queue.addLast(this);
+                
+                // get another token from queue
+                if (queuePos > 0 && queuePos < queue.size()) {
+                    queue.copyTo(this, queuePos);
+                    queuePos++;
+                }
+                // or get another token from stream
+                else {
+                    clearAttributes(); // clear before lematize, because of orth
+                    boolean hasToken = input.incrementToken();
+                    // no more token to explore branch, exhaust queue
+                    if (!hasToken) {
+                        queue.removeFirst(this);
+                        return true;
+                    }
+                    queuePos = 0; // no more token to get from the queue, say it
+                    queue.addLast(this);
+                }
             }
-            // continue, current token will be append to compound
 
             
         } while (true); // a compound bigger than queue should hurt and avoid infinite loop

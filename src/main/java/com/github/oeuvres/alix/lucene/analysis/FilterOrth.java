@@ -57,7 +57,7 @@ public class FilterOrth extends TokenFilter
     /** XML flag */
     final static int XML = Tag.XML.no;
     /** The term provided by the Tokenizer */
-    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
     /** A linguistic category as a short number, see {@link Tag} */

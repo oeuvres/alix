@@ -75,6 +75,7 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldDocs;
@@ -255,6 +256,18 @@ public class Alix
     public Analyzer analyzer()
     {
         return this.analyzer;
+    }
+
+    /**
+     * Get list of docId parent documents (books) of nested documents (chapters), sorted by
+     * the String id.
+     * 
+     * @return An ordered linst of docid.
+     * @throws IOException Lucene exceptions.
+     */
+    public int[] books() throws IOException
+    {
+        return books(new Sort(new SortField("ALIX_ID", SortField.Type.STRING)));
     }
 
     /**

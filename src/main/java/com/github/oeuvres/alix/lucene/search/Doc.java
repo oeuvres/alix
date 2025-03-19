@@ -613,7 +613,7 @@ public class Doc
         return lines;
     }
     */
-
+    
     /**
      * Return the count of tokens of this doc for field.
      * 

@@ -5,6 +5,7 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 import java.util.TreeSet;
 
 import org.apache.lucene.util.FixedBitSet;
@@ -31,6 +32,8 @@ public class IntLookup
             set.push(value);
         }
     }
+    
+
     
     static void binarySearch()
     {

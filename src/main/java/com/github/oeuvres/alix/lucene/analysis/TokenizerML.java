@@ -80,12 +80,14 @@ public class TokenizerML  extends Tokenizer
     /** Max size of a word */
     private final int TOKEN_MAX_SIZE = 256;
     /** The term provided by the Tokenizer */
-    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
     private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** A linguistic category as a short number, see {@link Tag} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    /** Used as char[] wrapper for testing */
+    private final CharsAttImpl test = new CharsAttImpl();
     /** Buffer of chars */
     private final CharacterBuffer buffer = CharacterUtils.newCharacterBuffer(8192);
     /** Position in buffer */
@@ -234,7 +236,7 @@ public class TokenizerML  extends Tokenizer
             else if (c == '.' && Char.isLetter(lastChar) ) {
                 termAtt.append(c);
                 // not an abbreviaiton, send without dot
-                if (!FrDics.isBrevidot(termAtt)) {
+                if (!FrDics.isBrevidot( test.wrap(termAtt.buffer(), termAtt.length()) )) {
                     termAtt.setLength(termAtt.length() - 1);
                     break;
                 }

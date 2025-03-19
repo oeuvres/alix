@@ -65,8 +65,6 @@ public class AnalyzerOrth extends Analyzer
         ts = new FilterLemmatize(ts);
         // group compounds after lemmatization for verbal compounds
         ts = new FilterLocution(ts);
-        // link unknown names is bad
-        // result = new FilterFrPersname(result);
         ts = new FilterOrth(ts);
         return new TokenStreamComponents(tokenizer, ts);
     }

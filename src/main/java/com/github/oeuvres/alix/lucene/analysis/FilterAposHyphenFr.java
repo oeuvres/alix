@@ -11,6 +11,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 /**
@@ -25,14 +26,14 @@ public class FilterAposHyphenFr extends TokenFilter
 {
     /** XML flag */
     final static int XML = Tag.XML.no;
-    /** Term from tokenizer. */
-    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
-    /** A normalized orthographic form, original term is kept */
-    private final CharsAttImpl orthAtt = (CharsAttImpl) addAttribute(OrthAtt.class);
+    /** The term provided by the Tokenizer */
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** Char index in source text. */
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** A linguistic category as a short number, see {@link Tag} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    /** Used as char[] wrapper for testing */
+    private final CharsAttImpl test = new CharsAttImpl();
     /** Stack of stored states */
     private final AttLinkedList deque = new AttLinkedList();
     
@@ -139,59 +140,67 @@ public class FilterAposHyphenFr extends TokenFilter
             if (++loop > 10) {
                 throw new IOException("AposHyph décon: " + deque);
             }
-            final int hyphPos = termAtt.lastIndexOf('-');
-            final int aposPos = termAtt.indexOf('\'');
-            if (hyphPos < 0 && aposPos < 0) {
+            char[] chars = termAtt.buffer();
+            int hyphLast = termAtt.length() - 1;
+            for (; hyphLast >= 0; hyphLast--) {
+                if ('-' == chars[hyphLast]) break;
+            }
+            int aposFirst = 0;
+            for (; aposFirst < termAtt.length(); aposFirst++) {
+                if ('\'' == chars[aposFirst]) break;
+            }
+            if (aposFirst >= termAtt.length()) aposFirst = -1;
+
+            if (aposFirst < 0 && hyphLast < 0) {
                 // no changes
                 return true;
             }
             // apos is last char, let it run, maybe maths A', D'
-            if ((aposPos + 1) == termAtt.length()) {
+            if ((aposFirst + 1) == termAtt.length()) {
                 return true;
             }
             // hyphen is first char, let it run, maybe linguistic -suffix
-            if (hyphPos == 0) {
+            if (hyphLast == 0) {
                 return true;
             }
             // test prefixes
-            if (aposPos > 0) {
-                test.copy(termAtt, 0, aposPos + 1);
+            if (aposFirst > 0) {
+                test.copy(termAtt, 0, aposFirst + 1);
                 final int startOffset = offsetAtt.startOffset();
                 if (PREFIX.containsKey(test)) {
                     final CharsAttImpl value = PREFIX.get(test);
                     if (value == null) {
                         // skip this prefix, retry to find something
-                        termAtt.copy(termAtt, aposPos + 1, termAtt.length() - aposPos - 1);
-                        offsetAtt.setOffset(startOffset + aposPos + 1, offsetAtt.endOffset());
+                        termAtt.copyBuffer(termAtt.buffer(), aposFirst + 1, termAtt.length() - aposFirst - 1);
+                        offsetAtt.setOffset(startOffset + aposFirst + 1, offsetAtt.endOffset());
                         continue;
                     }
                     // keep term after prefix for next call
                     deque.addLast(
                         termAtt.buffer(), 
-                        aposPos + 1, 
-                        termAtt.length() - aposPos - 1,
-                        startOffset + aposPos + 1,
+                        aposFirst + 1, 
+                        termAtt.length() - aposFirst - 1,
+                        startOffset + aposFirst + 1,
                         offsetAtt.endOffset()
                     );
                     // send the prefix
-                    termAtt.setLength(aposPos + 1);
-                    orthAtt.copy(value);
-                    offsetAtt.setOffset(startOffset, startOffset + aposPos + 1);
+                    termAtt.setLength(aposFirst + 1);
+                    offsetAtt.setOffset(startOffset, startOffset + aposFirst + 1);
                     return true;
                 }
             }
-            if (hyphPos > 0) {
+            if (hyphLast > 0) {
                 // test suffix
-                test.copy(termAtt, hyphPos, termAtt.length() - hyphPos);
+                test.copy(termAtt, hyphLast, termAtt.length() - hyphLast);
                 if (SUFFIX.containsKey(test)) {
                     final CharsAttImpl value = SUFFIX.get(test);
                     // if value is not skipped, add it at start in stack
                     if (value != null) {
-                        deque.addFirst(value, offsetAtt.startOffset()+hyphPos, offsetAtt.endOffset());
+                        deque.addFirst(value, offsetAtt.startOffset()+hyphLast, offsetAtt.endOffset());
                     }
                     // set term without suffix, let work the loop
-                    offsetAtt.setOffset(offsetAtt.startOffset(), offsetAtt.startOffset() + hyphPos);
-                    termAtt.setLength(hyphPos);
+                    offsetAtt.setOffset(offsetAtt.startOffset(), offsetAtt.startOffset() + hyphLast);
+                    termAtt.setLength(hyphLast);
                     continue;
                 }
             }

@@ -54,13 +54,14 @@ public class FilterFind extends TokenFilter
     /** XML flag */
     final static int XML = Tag.XML.no;
     /** The term provided by the Tokenizer */
-    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
-    /** A linguistic category as a short number, from Tag */
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    /** Current Flags */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    /** A normalized orthographic form (ex : capitalization) */
+    private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
     /** A lemma when possible */
-    private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(LemAtt.class);
-    /** A normalized orthographic form */
-    private final CharsAttImpl orthAtt = (CharsAttImpl) addAttribute(OrthAtt.class);
+    private final LemAtt lemAtt = addAttribute(LemAtt.class);
+    /** Last token was Punctuation */
     /** A lemma when possible */
     private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
     /** Flag to record lemma */

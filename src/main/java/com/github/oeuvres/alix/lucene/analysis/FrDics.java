@@ -54,6 +54,7 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.util.WordsAutomatonBuilder;
 import com.github.oeuvres.alix.util.Chain;
@@ -86,19 +87,19 @@ public class FrDics
     /** Flag for compound, to be continued */
     static final public int BRANCH = 0x200;
     /** French stopwords as hash to filter attributes */
-    static final public HashSet<CharsAttImpl> STOP = new HashSet<CharsAttImpl>((int) (1000 / 0.75));
+    static final public HashSet<CharsAtt> STOP = new HashSet<>((int) (1000 / 0.75));
     /** French stopwords as binary automaton */
     public static ByteRunAutomaton STOP_BYTES;
     /** 500 000 types French lexicon seems not too bad for memory */
-    static final public HashMap<CharsAttImpl, LexEntry> WORDS = new HashMap<>((int) (500000 / 0.75));
+    static final public HashMap<CharsAtt, LexEntry> WORDS = new HashMap<>((int) (500000 / 0.75));
     /** French names on which keep Capitalization */
-    static final public HashMap<CharsAttImpl, LexEntry> NAMES = new HashMap<>((int) (50000 / 0.75));
+    static final public HashMap<CharsAtt, LexEntry> NAMES = new HashMap<>((int) (50000 / 0.75));
     /** A tree to resolve compounds */
-    static final public HashMap<CharsAttImpl, Integer> TREELOC = new HashMap<>((int) (1500 / 0.75));
+    static final public HashMap<CharsAtt, Integer> TREELOC = new HashMap<>((int) (1500 / 0.75));
     /** Graphic normalization (replacement) */
-    static final public Map<CharsAttImpl, CharsAttImpl> NORMALIZE = new HashMap<>((int) (100 / 0.75));
+    static final public Map<CharsAtt, CharsAtt> NORMALIZE = new HashMap<>((int) (100 / 0.75));
     /** Abbreviations with a final dot */
-    static final public Set<CharsAttImpl> BREVIDOT = new HashSet<>((int) (200 / 0.75));
+    static final public Set<CharsAtt> BREVIDOT = new HashSet<>((int) (200 / 0.75));
     /** current dictionnary loaded, for logging */
     static String res;
     
@@ -200,7 +201,7 @@ public class FrDics
      * @param form a form to insert
      * @param tree the tree to insert in.
      */
-    protected static void decompose(Chain form, HashMap<CharsAttImpl, Integer> tree)
+    protected static void decompose(Chain form, HashMap<CharsAtt, Integer> tree)
     {
         int len = form.length();
         for (int i = 0; i < len; i++) {
@@ -373,7 +374,7 @@ public class FrDics
      * @param reader
      * @param map
      */
-    private static void load(final String res, final HashMap<CharsAttImpl, CharsAttImpl> map)
+    private static void load(final String res, final HashMap<CharsAtt, CharsAtt> map)
     {
         FrDics.res = res;
         Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
@@ -408,7 +409,7 @@ public class FrDics
      * @param att {@link CharTermAttribute} implementation.
      * @return available proper name entry for the submitted form, or null if not found.
      */
-    public static LexEntry name(CharsAttImpl att)
+    public static LexEntry name(CharsAtt att)
     {
         return NAMES.get(att);
     }
@@ -419,9 +420,9 @@ public class FrDics
      * @param att {@link CharTermAttribute} implementation, normalized.
      * @return true if a normalization has been done, false otherwise.
      */
-    public static boolean norm(CharsAttImpl att)
+    public static boolean norm(CharsAtt att)
     {
-        CharsAttImpl val = NORMALIZE.get(att);
+        CharsAtt val = NORMALIZE.get(att);
         if (val == null)
             return false;
         att.setEmpty().append(val);
@@ -435,7 +436,7 @@ public class FrDics
      * @param att {@link CharTermAttribute} implementation.
      * @return available common word entry for the submitted form, or null if not found.
      */
-    public static LexEntry word(CharsAttImpl att)
+    public static LexEntry word(CharsAtt att)
     {
         return WORDS.get(att);
     }

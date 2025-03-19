@@ -41,7 +41,6 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
@@ -57,7 +56,7 @@ public class FilterCloud extends TokenFilter
     /** XML flag */
     final static int XML = Tag.XML.no;
     /** The term provided by the Tokenizer */
-    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
     /** A linguistic category as a short number, see {@link Tag} */
@@ -138,7 +137,7 @@ public class FilterCloud extends TokenFilter
         // filter some names
         if (Tag.NAME.sameParent(tag)) {
             // A. J.-J.
-            if (termAtt.endsWith('.') && termAtt.length() <= 5) {
+            if (termAtt.charAt(termAtt.length() - 1) == '.' && termAtt.length() <= 5) {
                 return false;
             }
             // J.-Cl

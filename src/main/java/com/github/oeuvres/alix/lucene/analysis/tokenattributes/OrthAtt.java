@@ -32,11 +32,9 @@
  */
 package com.github.oeuvres.alix.lucene.analysis.tokenattributes;
 
-import org.apache.lucene.util.Attribute;
-
 /**
  * A recast of CharsAtt
  */
-public interface OrthAtt extends Attribute, CharSequence, Appendable
+public interface OrthAtt extends CharsAtt
 {
 }

@@ -38,6 +38,7 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
@@ -82,13 +83,13 @@ public final class FilterLemmatize extends TokenFilter
     /** XML flag */
     final static int XML = Tag.XML.no;
     /** The term provided by the Tokenizer */
-    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
-    /** A linguistic category as an int, from {@link Tag} */
-    private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    /** A normalized orthographic form (ex : capitalization) */
+    private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
     /** A lemma when possible */
-    private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(LemAtt.class);
-    /** A normalized orthographic form, original term is kept */
-    private final CharsAttImpl orthAtt = (CharsAttImpl) addAttribute(OrthAtt.class);
+    private final LemAtt lemAtt = addAttribute(LemAtt.class);
+    /** Current Flags */
+    private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** Last token was Punctuation */
     private boolean pun = true;
     /** Store state */
@@ -115,7 +116,7 @@ public final class FilterLemmatize extends TokenFilter
         if (!input.incrementToken()) {
             return false;
         }
-        lemAtt.clear();
+        lemAtt.setEmpty();
         int flags = flagsAtt.getFlags();
         if (flags == XML) { // tags maybe used upper
             return true;
@@ -132,17 +133,17 @@ public final class FilterLemmatize extends TokenFilter
         // 0 length event ?
         if (termAtt.length() == 0)
             return true;
-        
-        
-        
-        orthAtt.copy(termAtt); // start with original term
-        FrDics.norm(orthAtt); // normalise : Etat -> État, naître -> naitre
-        // pass through zero-length search
         // Get first char
-        char c1 = orthAtt.charAt(0);
+        char c1 = termAtt.charAt(0);
         // Not a word
-        if (!Char.isToken(c1))
-            return true;
+        if (!Char.isToken(c1)) return true;
+        
+        // upper process may have normalize some things
+        if (orthAtt.length() == 0) {
+            orthAtt.copy(termAtt); // start with original term
+        }
+        // normalise oeil -> œil, Etat -> État, naître -> naitre
+        FrDics.norm((CharsAttImpl)orthAtt);
 
         LexEntry entry;
         // First letter of token is upper case, is it a name ? Is it an upper case
@@ -163,9 +164,7 @@ public final class FilterLemmatize extends TokenFilter
                 lemAtt.append("" + n);
                 return true;
             }
-            // Do not touch to recognized ABBR, like O.N.
-            // if (flagsAtt.getFlags() != Tag.ABBR) orth.capitalize(); // GRANDE-BRETAGNE ->
-            // Grande-Bretagne
+            // Copy orthAtt if restore is needed
             copy.copy(orthAtt);
             // c1 = orth.charAt(0); // keep initial cap, maybe useful
             entry = FrDics.name(orthAtt); // known name ?
@@ -174,11 +173,7 @@ public final class FilterLemmatize extends TokenFilter
             }
             if (entry != null) {
                 flagsAtt.setFlags(entry.tag);
-                // maybe a normalized form for the name
-                if (entry.graph != null)
-                    orthAtt.copy(entry.graph);
-                if (entry.lem != null)
-                    lemAtt.copy(entry.lem);
+                if (entry.lem != null) lemAtt.copy(entry.lem);
                 return true;
             }
             // Charles-François-Bienvenu, Va-t’en, Allez-vous
@@ -195,26 +190,24 @@ public final class FilterLemmatize extends TokenFilter
             }
             entry = FrDics.word(orthAtt.toLower()); // known word ?
             if (entry != null) { // known word
+                // norm here after right casing, J
+                FrDics.norm(orthAtt);
                 // if not after a pun, maybe a capitalized concept État, or a name La Fontaine,
                 // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc.
                 // restore initial cap
-                if (!puncopy)
-                    termAtt.buffer()[0] = c1;
+                if (!puncopy) termAtt.buffer()[0] = c1;
                 flagsAtt.setFlags(entry.tag);
-                if (entry.lem != null)
-                    lemAtt.copy(entry.lem);
-                if (entry.graph != null) {
-                    orthAtt.copy(entry.graph);
-                }
+                if (entry.lem != null) lemAtt.copy(entry.lem);
                 return true;
-            } else { // unknown word, infer it's a NAME
+            } 
+            else { // unknown word, infer it's a NAME
                 flagsAtt.setFlags(Tag.NAME.no);
                 if (copy.length() > 3) copy.capitalize();
                 orthAtt.copy(copy);
                 return true;
             }
-        } else {
-            FrDics.norm(orthAtt); // normalise oeil -> œil
+        } 
+        else {
             entry = FrDics.word(orthAtt);
             if (entry == null)
                 return true;
@@ -222,9 +215,6 @@ public final class FilterLemmatize extends TokenFilter
             flagsAtt.setFlags(entry.tag);
             if (entry.lem != null)
                 lemAtt.copy(entry.lem);
-            if (entry.graph != null) {
-                orthAtt.copy(entry.graph);
-            }
         }
         return true;
     }

@@ -67,12 +67,12 @@ public class FilterFrPersname extends TokenFilter
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** Current Flags */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-    /** Current term */
-    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
-    /** A normalized orthographic form */
-    private final CharsAttImpl orthAtt = (CharsAttImpl) addAttribute(OrthAtt.class);
-    /** A lemma, needed to restore states */
-    private final CharsAttImpl lemAtt = (CharsAttImpl) addAttribute(LemAtt.class);
+    /** The term provided by the Tokenizer */
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    /** A normalized orthographic form (ex : capitalization) */
+    private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
+    /** A lemma when possible */
+    private final LemAtt lemAtt = addAttribute(LemAtt.class);
     /** An efficient stack of states */
     private Roll<State> stack = new Roll<State>(8);
     /** Chars used to concat names like in text */
@@ -186,7 +186,7 @@ public class FilterFrPersname extends TokenFilter
                     tagEnd = Tag.NAMEpers.no;
                 // separator
                 String sep = " ";
-                if (termAtt.lastChar() == '\'')
+                if (termAtt.charAt(termAtt.length() - 1) == '\'')
                     sep = "";
                 concTerm.append(sep + termAtt);
                 if (!orthAtt.isEmpty())

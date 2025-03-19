@@ -56,7 +56,8 @@ public class FilterHTML extends TokenFilter
     final static int PARA = Tag.PUNpara.no;
     final static int SECTION = Tag.PUNsection.no;
     /** The term provided by the Tokenizer */
-    private final CharsAttImpl termAtt = (CharsAttImpl) addAttribute(CharTermAttribute.class);
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    private final CharsAttImpl test = new CharsAttImpl();
     /** The position increment (inform it if positions are stripped) */
     // private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
     /** A linguistic category as a short number, see {@link Tag} */
@@ -78,9 +79,10 @@ public class FilterHTML extends TokenFilter
     public final boolean incrementToken() throws IOException
     {
         while (input.incrementToken()) {
-            
+            // update the char wrapper
+            test.wrap(termAtt.buffer(), termAtt.length());
             if (skip > 0) {
-                if (termAtt.equals("</aside>") || termAtt.equals("</nav>")) {
+                if (test.equals("</aside>") || test.equals("</nav>")) {
                     skip--;
                     if (skip < 0) skip = 0;
                 }
@@ -91,17 +93,18 @@ public class FilterHTML extends TokenFilter
             if (flagsAtt.getFlags() != XML) {
                 return true;
             }
-            if (termAtt.startsWith("<aside") || termAtt.startsWith("<nav")) {
+            if (
+                    test.startsWith("<aside") || test.startsWith("<nav")) {
                 skip++;
                 continue;
             }
             // most positions of XML tags will be skipped without information
-            if (termAtt.equals("</p>") || termAtt.equals("</li>") || termAtt.equals("</td>")) {
+            if (test.equals("</p>") || test.equals("</li>") || test.equals("</td>")) {
                 flagsAtt.setFlags(PARA);
                 termAtt.setEmpty().append("¶");
                 return true;
             }
-            if (termAtt.equals("</section>") || termAtt.equals("</article>")) {
+            if (test.equals("</section>") || test.equals("</article>")) {
                 flagsAtt.setFlags(SECTION);
                 termAtt.setEmpty().append("§");
                 return true;
