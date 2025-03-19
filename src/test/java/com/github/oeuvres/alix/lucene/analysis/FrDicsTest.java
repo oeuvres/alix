@@ -11,6 +11,7 @@ import org.apache.lucene.util.BytesRef;
 // import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.junit.Test;
 
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Chain;
 
@@ -29,7 +30,7 @@ public class FrDicsTest {
 
     public void decompose()
     {
-        HashMap<CharsAttImpl, Integer> locs = new HashMap<CharsAttImpl, Integer>();
+        HashMap<CharsAtt, Integer> locs = new HashMap<CharsAtt, Integer>();
         Chain chain = new Chain();
         for (String word: new String[] {"d'abord", "d’antan", "chemin de fer", "chemin de fer d’intérêt local"}) {
             chain.copy(word);
