@@ -33,8 +33,6 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.LinkedList;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -46,9 +44,7 @@ import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAttImpl;
 
 /**
  * Plug behind TokenLem, take a Trie dictionary, and try to compound locutions.

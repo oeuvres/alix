@@ -38,7 +38,6 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
-import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
@@ -116,6 +115,7 @@ public final class FilterLemmatize extends TokenFilter
         if (!input.incrementToken()) {
             return false;
         }
+        
         lemAtt.setEmpty();
         int flags = flagsAtt.getFlags();
         if (flags == XML) { // tags maybe used upper
@@ -172,7 +172,7 @@ public final class FilterLemmatize extends TokenFilter
                 entry = FrDics.name(orthAtt.capitalize()); // known name ?
             }
             if (entry != null) {
-                flagsAtt.setFlags(entry.tag);
+                if (flags == Tag.NULL.no) flagsAtt.setFlags(entry.tag);
                 if (entry.lem != null) lemAtt.copy(entry.lem);
                 return true;
             }
@@ -184,7 +184,7 @@ public final class FilterLemmatize extends TokenFilter
                 entry = FrDics.name(orthAtt);
                 orthAtt.setLength(length);
                 if (entry != null) {
-                    flagsAtt.setFlags(entry.tag);
+                    if (flags == Tag.NULL.no) flagsAtt.setFlags(entry.tag);
                     return true;
                 }
             }
@@ -196,12 +196,12 @@ public final class FilterLemmatize extends TokenFilter
                 // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc.
                 // restore initial cap
                 if (!puncopy) termAtt.buffer()[0] = c1;
-                flagsAtt.setFlags(entry.tag);
+                if (flags == Tag.NULL.no) flagsAtt.setFlags(entry.tag);
                 if (entry.lem != null) lemAtt.copy(entry.lem);
                 return true;
             } 
             else { // unknown word, infer it's a NAME
-                flagsAtt.setFlags(Tag.NAME.no);
+                if (flags == Tag.NULL.no) flagsAtt.setFlags(Tag.NAME.no);
                 if (copy.length() > 3) copy.capitalize();
                 orthAtt.copy(copy);
                 return true;
@@ -212,9 +212,8 @@ public final class FilterLemmatize extends TokenFilter
             if (entry == null)
                 return true;
             // known word
-            flagsAtt.setFlags(entry.tag);
-            if (entry.lem != null)
-                lemAtt.copy(entry.lem);
+            if (flags == Tag.NULL.no) flagsAtt.setFlags(entry.tag);
+            if (entry.lem != null) lemAtt.copy(entry.lem);
         }
         return true;
     }

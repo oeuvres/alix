@@ -60,13 +60,12 @@ public class AnalyzerPos extends Analyzer
         ts = new FilterHTML(ts);
         // fr split on ’ and -
         ts = new FilterAposHyphenFr(ts);
-        // pos tagging
+        // pos tagging before lemmatize
+        ts = new FilterLemmatize(ts);
         // provide lemma+pos
         ts = new FilterLemmatize(ts);
         // group compounds after lemmatization for verbal compounds
         ts = new FilterLocution(ts);
-        // link unknown names is bad
-        // result = new FilterFrPersname(result);
         ts = new FilterCloud(ts);
         return new TokenStreamComponents(tokenizer, ts);
     }

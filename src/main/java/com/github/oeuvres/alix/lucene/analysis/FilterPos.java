@@ -32,7 +32,10 @@
  */
 package com.github.oeuvres.alix.lucene.analysis;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashSet;
 import java.util.LinkedList;
 
@@ -50,6 +53,9 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAttImpl;
 
+import opennlp.tools.postag.POSModel;
+import opennlp.tools.postag.POSTaggerME;
+
 /**
  * Plug behind TokenLem, take a Trie dictionary, and try to compound locutions.
  */
@@ -60,16 +66,26 @@ public class FilterPos extends TokenFilter
     }
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-    /** Current char offset */
-    private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** Current Flags */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-    /** A normalized orthographic form (ex : capitalization) */
-    private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
-    /** A lemma when possible */
-    private final LemAtt lemAtt = addAttribute(LemAtt.class);
     /** A stack of states */
     private AttDeque queue;
+    /** Maximum size of a sentence to send to the tagger */
+    final static int SENTMAX = 200;
+    /** The pos tagger */
+    static private POSTaggerME tagger;
+    static {
+        // model must be static, tagger should be thread safe till 
+        try (InputStream modelIn = new FileInputStream("models/opennlp-fr-ud-gsd-pos-1.2-2.5.0.bin")) {
+            final POSModel posModel = new POSModel(modelIn);
+            tagger = new POSTaggerME(posModel);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    /** state of the queue */
+    private boolean tagged = false;
 
     /**
      * Default constructor.
@@ -87,9 +103,23 @@ public class FilterPos extends TokenFilter
         if (queue == null) {
             queue = new AttDeque(200, this);
         }
-        // store states till pun
-        // when pun, send sentence to posTagger, set pos in queue
         // empty the queue
+        if (tagged && !queue.isEmpty()) {
+            clearAttributes();
+            queue.removeFirst(this);
+        }
+        
+        // store states till pun
+        while (queue.size() < SENTMAX) {
+            clearAttributes(); // clear before next incrementToken
+            final boolean isLast = incrementToken();
+            
+            queue.addLast(this);
+            
+            
+            
+        }
+        // when pun, send sentence to posTagger, set pos in queue
         
         return true;
     }

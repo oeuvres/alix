@@ -62,7 +62,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.SparseFixedBitSet;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.fr.TagFilter;

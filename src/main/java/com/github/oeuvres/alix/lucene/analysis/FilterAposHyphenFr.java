@@ -11,8 +11,6 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 /**
  * A filter that decomposes words on a list of suffixes and prefixes, mainly to handle 
@@ -32,8 +30,6 @@ public class FilterAposHyphenFr extends TokenFilter
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** A linguistic category as a short number, see {@link Tag} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-    /** Used as char[] wrapper for testing */
-    private final CharsAttImpl test = new CharsAttImpl();
     /** Stack of stored states */
     private final AttLinkedList deque = new AttLinkedList();
     
