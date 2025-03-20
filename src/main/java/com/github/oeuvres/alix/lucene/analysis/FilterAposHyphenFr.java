@@ -23,7 +23,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 public class FilterAposHyphenFr extends TokenFilter
 {
     /** XML flag */
-    final static int XML = Tag.XML.no;
+    final static int XML = Tag.XML.no();
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** Char index in source text. */

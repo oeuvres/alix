@@ -53,8 +53,6 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
  */
 public class FilterOrth extends TokenFilter
 {
-    /** XML flag */
-    final static int XML = Tag.XML.no;
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */
@@ -85,7 +83,7 @@ public class FilterOrth extends TokenFilter
         skippedPositions = 0;
         while (input.incrementToken()) {
             // no position for XML between words
-            if (flagsAtt.getFlags() == XML) {
+            if (flagsAtt.getFlags() == Tag.XML.no()) {
                 continue;
             }
             if (accept()) {
@@ -107,16 +105,16 @@ public class FilterOrth extends TokenFilter
     protected boolean accept()
     {
         final int tag = flagsAtt.getFlags();
-        if (tag == Tag.TEST.no) {
+        if (tag == Tag.TEST.no()) {
             System.out.println(termAtt + " — " + orthAtt);
         }
         // record an empty token at puctuation position for the rails
         if (Tag.PUN.sameParent(tag)) {
-            if (tag == Tag.PUNclause.no) {
+            if (tag == Tag.PUNclause.no()) {
             }
-            else if (tag == Tag.PUNsent.no) {
+            else if (tag == Tag.PUNsent.no()) {
             }
-            else if (tag == Tag.PUNpara.no || tag == Tag.PUNsection.no) {
+            else if (tag == Tag.PUNpara.no() || tag == Tag.PUNsection.no()) {
                 // let it
             }
             else {

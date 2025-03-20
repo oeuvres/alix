@@ -50,8 +50,6 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
  */
 public class FilterFind extends TokenFilter
 {
-    /** XML flag */
-    final static int XML = Tag.XML.no;
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** Current Flags */
@@ -91,7 +89,7 @@ public class FilterFind extends TokenFilter
         skippedPositions = 0;
         while (input.incrementToken()) {
             // no position for XML between words
-            if (flagsAtt.getFlags() == XML) {
+            if (flagsAtt.getFlags() == Tag.XML.no()) {
                 continue;
             }
             if (accept()) {

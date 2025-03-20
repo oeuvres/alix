@@ -157,7 +157,7 @@ public class TokenizerML  extends Tokenizer
             else if (intag) {
                 termAtt.append(c);
                 if (c == '>') { // end of tag, send it, set for next char
-                    flagsAtt.setFlags(Tag.XML.no);
+                    flagsAtt.setFlags(Tag.XML.no());
                     endOffset = offset + 1; // position of '>' + 1
                     bufferIndex++;
                     offset++;
@@ -227,7 +227,7 @@ public class TokenizerML  extends Tokenizer
                 termAtt.append(c);
                 startOffset = offset;
                 endOffset = offset + 1;
-                flagsAtt.setFlags(Tag.PUNclause.no);
+                flagsAtt.setFlags(Tag.PUNclause.no());
                 bufferIndex++;
                 offset++;
                 break;
@@ -249,7 +249,7 @@ public class TokenizerML  extends Tokenizer
                 }
                 // append punctuation and wait for space to send (???, !!!, ...)
                 if (termAtt.isEmpty()) {
-                    flagsAtt.setFlags(Tag.PUNsent.no);
+                    flagsAtt.setFlags(Tag.PUNsent.no());
                     startOffset = offset;
                 }
                 termAtt.append(c);

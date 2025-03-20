@@ -288,15 +288,15 @@ public enum Tag {
     /** Logger */
     static Logger LOGGER = Logger.getLogger(Tag.class.getName());
     /** A structured bit flag between 0-255 */
-    final public int no;
+    final private int no;
     /** The first hexa digit, used as a type grouping */
-    final public int parent;
+    final private int parent;
     /** A name without spaces */
-    final public String name;
+    final private String name;
     /** A french label for humans */
-    final public String label;
+    final private String label;
     /** A line of explanation */
-    final public String desc;
+    final private String desc;
 
     /** Constructor */
     Tag(final int no, final String label, final String desc) {

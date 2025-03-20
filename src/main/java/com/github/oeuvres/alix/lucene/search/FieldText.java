@@ -218,9 +218,9 @@ public class FieldText extends FieldCharsAbstract
             }
             entry = FrDics.name(chars);
             if (entry != null) {
-                if (entry.tag == Tag.NAMEpers.no || entry.tag == Tag.NAMEpersf.no || entry.tag == Tag.NAMEpersm.no
-                        || entry.tag == Tag.NAMEauthor.no) {
-                    formId4flag[formId] = Tag.NAMEpers.no;
+                if (entry.tag == Tag.NAMEpers.no() || entry.tag == Tag.NAMEpersf.no() || entry.tag == Tag.NAMEpersm.no()
+                        || entry.tag == Tag.NAMEauthor.no()) {
+                    formId4flag[formId] = Tag.NAMEpers.no();
                     continue;
                 }
                 else {
@@ -231,16 +231,16 @@ public class FieldText extends FieldCharsAbstract
             char c = chars.charAt(0);
             if (Char.isPunctuation(c)) {
                 if (c == '§') {
-                    formId4flag[formId] = Tag.PUNsection.no;
+                    formId4flag[formId] = Tag.PUNsection.no();
                 }
                 else if (c == '¶') {
-                    formId4flag[formId] = Tag.PUNpara.no;
+                    formId4flag[formId] = Tag.PUNpara.no();
                 }
                 else if (c == '.' || c == '…' || c == '?' || c == '!' ) {
-                    formId4flag[formId] = Tag.PUNsent.no;
+                    formId4flag[formId] = Tag.PUNsent.no();
                 }
                 else {
-                    formId4flag[formId] = Tag.PUN.no;
+                    formId4flag[formId] = Tag.PUN.no();
                 }
                 punRecord.set(formId);
                 continue;
@@ -250,21 +250,21 @@ public class FieldText extends FieldCharsAbstract
                 // monsieur Madeleine
                 entry = FrDics.word(chars);
                 if (entry != null) {
-                    if (entry.tag == Tag.SUBpers.no) {
-                        formId4flag[formId] = Tag.NAMEpers.no;
+                    if (entry.tag == Tag.SUBpers.no()) {
+                        formId4flag[formId] = Tag.NAMEpers.no();
                         continue;
                     }
-                    if (entry.tag == Tag.SUBplace.no) {
-                        formId4flag[formId] = Tag.NAMEplace.no;
+                    if (entry.tag == Tag.SUBplace.no()) {
+                        formId4flag[formId] = Tag.NAMEplace.no();
                         continue;
                     }
                 }
                 // Jean Valjean
                 entry = FrDics.name(chars);
                 if (entry != null) {
-                    if (entry.tag == Tag.NAMEpers.no || entry.tag == Tag.NAMEpersf.no
-                            || entry.tag == Tag.NAMEpersm.no) {
-                        formId4flag[formId] = Tag.NAMEpers.no;
+                    if (entry.tag == Tag.NAMEpers.no() || entry.tag == Tag.NAMEpersf.no()
+                            || entry.tag == Tag.NAMEpersm.no()) {
+                        formId4flag[formId] = Tag.NAMEpers.no();
                         continue;
                     }
                 }
@@ -276,7 +276,7 @@ public class FieldText extends FieldCharsAbstract
                 else if (chars.length() <= 3 && chars.lastChar() == '\'');
                 else if (Char.isDigit(chars.lastChar()));
                 else {
-                    formId4flag[formId] = Tag.NAME.no;
+                    formId4flag[formId] = Tag.NAME.no();
                 }
             }
         }

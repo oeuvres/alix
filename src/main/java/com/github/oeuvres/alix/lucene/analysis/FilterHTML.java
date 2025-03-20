@@ -51,10 +51,6 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
  */
 public class FilterHTML extends TokenFilter
 {
-    /** XML flag */
-    final static int XML = Tag.XML.no;
-    final static int PARA = Tag.PUNpara.no;
-    final static int SECTION = Tag.PUNsection.no;
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final CharsAttImpl test = new CharsAttImpl();
@@ -90,7 +86,7 @@ public class FilterHTML extends TokenFilter
             }
             
             // not XML tag, return it with no change
-            if (flagsAtt.getFlags() != XML) {
+            if (flagsAtt.getFlags() != Tag.XML.no()) {
                 return true;
             }
             if (
@@ -100,12 +96,12 @@ public class FilterHTML extends TokenFilter
             }
             // most positions of XML tags will be skipped without information
             if (test.equals("</p>") || test.equals("</li>") || test.equals("</td>")) {
-                flagsAtt.setFlags(PARA);
+                flagsAtt.setFlags(Tag.PUNpara.no());
                 termAtt.setEmpty().append("¶");
                 return true;
             }
             if (test.equals("</section>") || test.equals("</article>")) {
-                flagsAtt.setFlags(SECTION);
+                flagsAtt.setFlags(Tag.PUNsection.no());
                 termAtt.setEmpty().append("§");
                 return true;
             }
