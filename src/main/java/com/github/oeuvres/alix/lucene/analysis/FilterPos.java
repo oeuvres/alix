@@ -55,6 +55,9 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAttImpl;
  */
 public class FilterPos extends TokenFilter
 {
+    static {
+        System.setProperty("opennlp.interner.class","opennlp.tools.util.jvm.JvmStringInterner");
+    }
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** Current char offset */
@@ -67,16 +70,6 @@ public class FilterPos extends TokenFilter
     private final LemAtt lemAtt = addAttribute(LemAtt.class);
     /** A stack of states */
     private AttDeque queue;
-    /** A term used to concat a compound */
-    private CharsAttImpl compound = new CharsAttImpl();
-    /** past paticiples to not take as infinitives */
-    public static final HashSet<CharsAttImpl> EXCEPTIONS = new HashSet<CharsAttImpl>();
-    // parti pris, prise de conscience
-    static {
-        for (String w : new String[] {  }) {
-            EXCEPTIONS.add(new CharsAttImpl(w));
-        }
-    }
 
     /**
      * Default constructor.
@@ -87,200 +80,17 @@ public class FilterPos extends TokenFilter
         // here, “this” has not all its attributes, AttributeQueue.copyTo() will bug
     }
 
-    /**
-     * Debug tool to see what is in stack of states.
-     * 
-     * @param stack a list.
-     * @return a view for dev of all {@link State}.
-     */
-    public String toString(LinkedList<State> stack)
-    {
-        String out = "";
-        State restore = captureState();
-        boolean first = true;
-        for (State s : stack) {
-            if (first)
-                first = false;
-            else
-                out += ", ";
-            restoreState(s);
-            out += termAtt;
-        }
-        restoreState(restore);
-        return out;
-    }
-
-    @SuppressWarnings("unlikely-arg-type")
     @Override
     public final boolean incrementToken() throws IOException
     {
+        // needed here to have all atts in queue
         if (queue == null) {
-            queue = new AttDeque(10, this);
+            queue = new AttDeque(200, this);
         }
-        clearAttributes();
-        // restart compound at each call
-        compound.setEmpty();
+        // store states till pun
+        // when pun, send sentence to posTagger, set pos in queue
+        // empty the queue
         
-        // cast 
-        
-        
-        // flag up to exhaust queue before getting new token
-
-        boolean verbSeen = false;
-
-        // start with a token
-        int queuePos = 0;
-        boolean tokFirst = false;
-        if (!queue.isEmpty()) { // exhaust queue
-            queue.peekFirst(this);
-            queuePos++;
-        }
-        else { // or get new token
-            tokFirst = input.incrementToken();
-            // no more token, exit and say it
-            if(!tokFirst) return false;
-        }
-        // record start of a possible locution candidate
-        int startLoc = offsetAtt.startOffset();
-        
-        // let’s start to find a locution
-        do {
-            final int tag = flagsAtt.getFlags();
-            // if token is pun, end of branch, exit
-            if (Tag.PUN.sameParent(tag) || tag == Tag.XML.no || termAtt.length() == 0) {
-                // after the loop, the queue logic before exit
-                break;
-            }
-            // append a ' ' to last token (if any) for compound test
-            if (!compound.isEmpty() && !compound.endsWith('\'')) { // append separator before the term
-                compound.append(' ');
-            }
-            // choose version of form to append for test, according to its pos
-            // forms to keep as is
-            /*
-            if (orthAtt.length() != 0 && EXCEPTIONS.contains(orthAtt)) {
-                compound.append(orthAtt);
-            }
-            */
-            if (Tag.NUM.sameParent(tag)) {
-                compound.append("#");
-            }
-            else if (Tag.NAME.sameParent(tag)) {
-                compound.append(termAtt);
-            }
-            // verbs, compound key is the lemma
-            else if (Tag.VERB.sameParent(tag) && lemAtt.length() != 0) {
-                verbSeen = true;
-                compound.append(lemAtt);
-            }
-            // "ne fait pas l’affaire"
-            else if (verbSeen && orthAtt.equals("pas")) {
-                compound.rtrim(); // suppres last ' '
-            }
-            // if original term ends with an apos, use it, D’accord
-            else if (termAtt.charAt(termAtt.length() - 1) == '\'') {
-                compound.append(termAtt, 0, termAtt.length());
-            }
-            // for other words, orth may have correct initial capital of sentence
-            else if (orthAtt.length() != 0) {
-                compound.append(orthAtt);
-            }
-            // Nations Unies ?
-            else {
-                compound.append(termAtt);
-            }
-            
-            
-            final Integer nodeType = FrDics.TREELOC.get(compound);
-
-            // dead end
-            if (nodeType == null) {
-                // the queue logic after the loop
-                // queue.removeFirst();
-                break;
-            }
-
-            // a locution found, set state of atts according to this locution
-            if ((nodeType & FrDics.LEAF) > 0) {
-                // get its entry
-                FrDics.norm(compound); // xx e -> 20e
-                LexEntry entry = FrDics.WORDS.get(compound);
-                if (entry == null) {
-                    entry = FrDics.NAMES.get(compound);
-                }
-                // known entry, find its lem
-                if (entry != null) {
-                    flagsAtt.setFlags(entry.tag);
-                    termAtt.setEmpty().append(compound);
-                    if (entry.graph != null) {
-                        orthAtt.setEmpty().append(entry.graph);
-                    }
-                    else {
-                        orthAtt.setEmpty().append(compound);
-                    }
-                    if (entry.lem != null) {
-                        lemAtt.setEmpty().append(entry.lem);
-                    }
-                    else {
-                        lemAtt.setEmpty();
-                    }
-                }
-                // no lemma or tags for this locution
-                else {
-                    termAtt.setEmpty().append(compound);
-                    orthAtt.setEmpty().append(compound);
-                    lemAtt.setEmpty();
-                }
-                // set offset
-                offsetAtt.setOffset(startLoc, offsetAtt.endOffset());
-                
-                // no more locution candidate starting with same prefix, send
-                if ((nodeType & FrDics.BRANCH) == 0) {
-                    queue.clear();
-                    return true;
-                }
-                // try to go ahead ((chemin de fer) d’intérêt local)
-                queue.clear();
-                // it’s OK
-                // queue.addLast(this);
-                queuePos = 0;
-            }
-            if ((nodeType & FrDics.BRANCH) != 0) {
-                // first token was new, add it to queue, 
-                if (tokFirst) {
-                    queue.addLast(this);
-                    tokFirst = false;
-                }
-                
-                // get another token from queue
-                if (queuePos > 0 && queuePos < queue.size()) {
-                    queue.copyTo(this, queuePos);
-                    queuePos++;
-                }
-                // or get another token from stream
-                else {
-                    clearAttributes(); // clear before lematize, because of orth
-                    boolean hasToken = input.incrementToken();
-                    // no more token to explore branch, exhaust queue
-                    if (!hasToken) {
-                        queue.removeFirst(this);
-                        return true;
-                    }
-                    queuePos = 0; // no more token to get from the queue, say it
-                    queue.addLast(this);
-                }
-            }
-
-            
-        } while (true); // a compound bigger than queue should hurt and avoid infinite loop
-        
-        // do not add to queue here, every thing should have be done in branch
-        if (queue.isEmpty()) { // common case, OK
-            return true;
-        }
-        else { // we are in the queue
-            queue.removeFirst(this);
-        }
         return true;
     }
 

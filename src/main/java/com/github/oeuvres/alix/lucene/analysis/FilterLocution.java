@@ -69,14 +69,6 @@ public class FilterLocution extends TokenFilter
     private AttDeque queue;
     /** A term used to concat a compound */
     private CharsAttImpl compound = new CharsAttImpl();
-    /** past paticiples to not take as infinitives */
-    public static final HashSet<CharsAttImpl> EXCEPTIONS = new HashSet<CharsAttImpl>();
-    // parti pris, prise de conscience
-    static {
-        for (String w : new String[] {  }) {
-            EXCEPTIONS.add(new CharsAttImpl(w));
-        }
-    }
 
     /**
      * Default constructor.
@@ -87,37 +79,15 @@ public class FilterLocution extends TokenFilter
         // here, “this” has not all its attributes, AttributeQueue.copyTo() will bug
     }
 
-    /**
-     * Debug tool to see what is in stack of states.
-     * 
-     * @param stack a list.
-     * @return a view for dev of all {@link State}.
-     */
-    public String toString(LinkedList<State> stack)
-    {
-        String out = "";
-        State restore = captureState();
-        boolean first = true;
-        for (State s : stack) {
-            if (first)
-                first = false;
-            else
-                out += ", ";
-            restoreState(s);
-            out += termAtt;
-        }
-        restoreState(restore);
-        return out;
-    }
-
     @SuppressWarnings("unlikely-arg-type")
     @Override
     public final boolean incrementToken() throws IOException
     {
+        // needed here to have all atts in queue
         if (queue == null) {
             queue = new AttDeque(10, this);
         }
-        clearAttributes();
+        clearAttributes(); // clear before next incrementToken
         // restart compound at each call
         compound.setEmpty();
         

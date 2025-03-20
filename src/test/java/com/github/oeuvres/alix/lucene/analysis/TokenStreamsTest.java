@@ -48,8 +48,8 @@ public class TokenStreamsTest {
         text = "Il y a d’abord trop d’enfants à naître d’âge immature.";
         text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors !";
         text = "Il fallait naître jusqu’alors !";
-        text = "N’ai-je trop aimer les P.U.F. le chemin de Fer d’intérêt local <aside>en note</aside> … </p>";
         text = "Enfant de sept ans, à qui je donne une trentaine";
+        text = "N’ai-je trop aimer les P.U.F. le chemin de Fer d’intérêt local <aside>en note</aside> … </p>";
 
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_orth", text), text);
