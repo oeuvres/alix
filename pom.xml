@@ -186,6 +186,7 @@
                                           <include>net.sf.saxon:Saxon-HE</include>
                                           <include>org.xmlresolver:xmlresolver</include>
                                           <include>com.github.oeuvres:alix</include>
+                                          <include>org.apache.opennlp:opennlp-tools</include>
                                     </includes>
                                 </dependencySet>
                             </dependencySets>

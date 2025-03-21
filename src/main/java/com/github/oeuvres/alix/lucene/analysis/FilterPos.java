@@ -36,6 +36,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
@@ -71,7 +74,8 @@ public class FilterPos extends TokenFilter
     static private POSModel posModel;
     static {
         // model must be static, tagger should be thread safe till 
-        try (InputStream modelIn = new FileInputStream("models/opennlp-fr-ud-gsd-pos-1.2-2.5.0.bin")) {
+
+        try (InputStream modelIn = Tag.class.getResourceAsStream("opennlp-fr-ud-gsd-pos-1.2-2.5.0.bin")) {
              posModel = new POSModel(modelIn);
         }
         catch (IOException e) {
@@ -130,7 +134,7 @@ public class FilterPos extends TokenFilter
         // store states till pun
         while (queue.size() < SENTMAX) {
             clearAttributes(); // clear before next incrementToken
-            toksLeft = incrementToken();
+            toksLeft = input.incrementToken();
             if (!toksLeft) break;
             queue.addLast(this);
             final int flags = flagsAtt.getFlags();

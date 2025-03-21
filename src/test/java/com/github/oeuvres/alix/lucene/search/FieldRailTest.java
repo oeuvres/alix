@@ -38,7 +38,7 @@ public class FieldRailTest
         docFilter.set(docId);
         */
         TagFilter tagFilter = new TagFilter();
-        tagFilter.set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME).set(Tag.VERB).set(Tag.VERBppas).set(Tag.VERBger); // no more unknown .set(Tag.NULL);
+        tagFilter.set(Tag.SUB).set(Tag.ADJ).setGroup(Tag.NAME).set(Tag.VERB).set(Tag.VERBpp).set(Tag.VERBger); // no more unknown .set(Tag.NULL);
         // tagFilter.setAll().clearGroup(Tag.NULL).clearGroup(Tag.PUN);
         System.out.println(tagFilter);
 

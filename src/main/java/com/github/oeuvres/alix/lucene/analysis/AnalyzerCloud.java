@@ -60,13 +60,17 @@ public class AnalyzerCloud extends Analyzer
         ts = new FilterHTML(ts);
         // fr split on ’ and -
         ts = new FilterAposHyphenFr(ts);
+        // pos tagging before lemmatize
+        ts = new FilterPos(ts);
+        /*
         // provide lemma+pos
         ts = new FilterLemmatize(ts);
         // group compounds after lemmatization for verbal compounds
         ts = new FilterLocution(ts);
-        // link unknown names is bad
-        // result = new FilterFrPersname(result);
+        // last filter èrepare term to index
         ts = new FilterCloud(ts);
+        */
+        ts = new FilterPosFin(ts);
         return new TokenStreamComponents(tokenizer, ts);
     }
 

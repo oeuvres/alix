@@ -89,7 +89,7 @@ public enum Tag {
     VERBinf(0x17, "Infinitif", "Infinitif.") {
     },
     /** Participle past */
-    VERBppas(0x18, "Part. passé", "Participe passé (tous emplois : verbal, adjectif, substantif).") {
+    VERBpp(0x18, "Part. passé", "Participe passé (tous emplois : verbal, adjectif, substantif).") {
     },
     /** Participle present */
     VERBger(0x19, "Gérondif", "Participe présent (tous emplois : verbal, adjectif, substantif).") {
