@@ -85,6 +85,7 @@ public class AttDeque extends Roller
      */
     public void clear()
     {
+        zero = 0;
         size = 0;
     }
 
@@ -102,6 +103,26 @@ public class AttDeque extends Roller
             throw new ArrayIndexOutOfBoundsException("position=" + position + ", not in [0," + size +"[");
         }
         data[pointer(position)].copyTo(target);
+    }
+
+    /**
+     * Give a pointer on attributes of a token.
+     * Contract similar to {@link java.util.List#get(int)}.
+     * 
+     * @return attributes stored
+     */
+    public AttributeSource get(int index)
+    {
+        if (size < 1) {
+            throw new ArrayIndexOutOfBoundsException("size=0, no element to return");
+        }
+        if (index < 0) {
+            throw new ArrayIndexOutOfBoundsException("index=" + index + " < 0");
+        }
+        if (index >= size) {
+            throw new ArrayIndexOutOfBoundsException("index=" + index + " >= size" + size);
+        }
+        return data[zero + index];
     }
 
     /**
@@ -164,6 +185,7 @@ public class AttDeque extends Roller
         size--;
         zero = pointer(1);
     }
+    
 
     /**
      * Set value by position. Will never overflow the roller.

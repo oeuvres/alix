@@ -197,7 +197,7 @@ public enum Tag {
     /** Demonstrative determiner */
     DETdem(0x6C, "Dét. dém.", "Ce, cette, ces… (déterminant démonstratif).") {
     },
-    /** Possesive determiner */
+    /** Possessive determiner */
     DETposs(0x6D, "Dét. poss.", "Son, ma, leurs… (déterminant possessif).") {
     },
 
@@ -234,6 +234,9 @@ public enum Tag {
     /** Preposition */
     PREP(0x88, "Préposition", "De, dans, par…") {
     },
+    /** ? tagger opennlp */
+    PREPpro(0x89, "ADP+PRON", "Tag opennlp") {
+    },
 
     // Ax, Numéraux divers
     /** Numeral, other than below */
@@ -249,7 +252,10 @@ public enum Tag {
     MATH(0xA3, "Math", "+, -, /… (opérateur mathématique).") {
     },
     /** Units */
-    NUMunit(0xA4, "Unités", "Cm, mm, kg… (unités métriques).") {
+    NUMunit(0xA4, "Unité", "Cm, mm, kg… (unités métriques).") {
+    },
+    /** Symbols */
+    SYM(0xA8, "Symbole", "??? Opennlp") {
     },
 
     // Cx, punctuations
@@ -288,15 +294,15 @@ public enum Tag {
     /** Logger */
     static Logger LOGGER = Logger.getLogger(Tag.class.getName());
     /** A structured bit flag between 0-255 */
-    final private int no;
+    public final int no;
+    /** A name without spaces */
+    public final String name;
+    /** A french label for humans */
+    public final String label;
+    /** A line of explanation */
+    public final String desc;
     /** The first hexa digit, used as a type grouping */
     final private int parent;
-    /** A name without spaces */
-    final private String name;
-    /** A french label for humans */
-    final private String label;
-    /** A line of explanation */
-    final private String desc;
 
     /** Constructor */
     Tag(final int no, final String label, final String desc) {
@@ -318,25 +324,6 @@ public enum Tag {
         }
     }
 
-    /**
-     * Return the String description of the tag.
-     * 
-     * @return Description.
-     */
-    public String desc()
-    {
-        return desc;
-    }
-
-    /**
-     * Return the String value of the tag.
-     * 
-     * @return Label.
-     */
-    public String label()
-    {
-        return label;
-    }
 
     /**
      * Get Tag label by number identifier.
@@ -364,15 +351,6 @@ public enum Tag {
         if (tag == null)
             return null;
         return tag.name;
-    }
-
-    /**
-     * Return the identifier number for this tag.
-     * @return The identifier number.
-     */
-    public int no()
-    {
-        return no;
     }
 
     /**

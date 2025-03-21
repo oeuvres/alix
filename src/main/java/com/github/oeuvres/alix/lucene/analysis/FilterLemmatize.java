@@ -116,12 +116,12 @@ public final class FilterLemmatize extends TokenFilter
         
         lemAtt.setEmpty();
         int flags = flagsAtt.getFlags();
-        if (flags == Tag.XML.no()) { // tags maybe used upper
+        if (flags == Tag.XML.no) { // tags maybe used upper
             return true;
         }
         // store pun event, skiping XML
         // was last token a sentence punctuation ?
-        if (flags == Tag.PUNsection.no() ||flags == Tag.PUNpara.no() || flags == Tag.PUNsent.no()) {
+        if (flags == Tag.PUNsection.no ||flags == Tag.PUNpara.no || flags == Tag.PUNsent.no) {
             // record a pun event
             this.pun = true;
             return true;
@@ -150,7 +150,7 @@ public final class FilterLemmatize extends TokenFilter
         if (Char.isUpperCase(c1)) {
 
             // roman number already detected
-            if (flagsAtt.getFlags() == Tag.NUM.no())
+            if (flagsAtt.getFlags() == Tag.NUM.no)
                 return true;
             int len = orthAtt.length();
             if (orthAtt.lastChar() == '.')
@@ -158,7 +158,7 @@ public final class FilterLemmatize extends TokenFilter
             int n = Calcul.roman2int(orthAtt.buffer(), 0, len);
             // Roman number for more than one char, pb M<sup>elle</sup>
             if (len > 1 && n > 0) {
-                flagsAtt.setFlags(Tag.NUM.no());
+                flagsAtt.setFlags(Tag.NUM.no);
                 lemAtt.append("" + n);
                 return true;
             }
@@ -170,7 +170,7 @@ public final class FilterLemmatize extends TokenFilter
                 entry = FrDics.name(orthAtt.capitalize()); // known name ?
             }
             if (entry != null) {
-                if (flags == Tag.NULL.no()) flagsAtt.setFlags(entry.tag);
+                if (flags == Tag.NULL.no) flagsAtt.setFlags(entry.tag);
                 if (entry.lem != null) lemAtt.copy(entry.lem);
                 return true;
             }
@@ -182,7 +182,7 @@ public final class FilterLemmatize extends TokenFilter
                 entry = FrDics.name(orthAtt);
                 orthAtt.setLength(length);
                 if (entry != null) {
-                    if (flags == Tag.NULL.no()) flagsAtt.setFlags(entry.tag);
+                    if (flags == Tag.NULL.no) flagsAtt.setFlags(entry.tag);
                     return true;
                 }
             }
@@ -194,12 +194,12 @@ public final class FilterLemmatize extends TokenFilter
                 // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc.
                 // restore initial cap
                 if (!puncopy) termAtt.buffer()[0] = c1;
-                if (flags == Tag.NULL.no()) flagsAtt.setFlags(entry.tag);
+                if (flags == Tag.NULL.no) flagsAtt.setFlags(entry.tag);
                 if (entry.lem != null) lemAtt.copy(entry.lem);
                 return true;
             } 
             else { // unknown word, infer it's a NAME
-                if (flags == Tag.NULL.no()) flagsAtt.setFlags(Tag.NAME.no());
+                if (flags == Tag.NULL.no) flagsAtt.setFlags(Tag.NAME.no);
                 if (copy.length() > 3) copy.capitalize();
                 orthAtt.copy(copy);
                 return true;
@@ -210,7 +210,7 @@ public final class FilterLemmatize extends TokenFilter
             if (entry == null)
                 return true;
             // known word
-            if (flags == Tag.NULL.no()) flagsAtt.setFlags(entry.tag);
+            if (flags == Tag.NULL.no) flagsAtt.setFlags(entry.tag);
             if (entry.lem != null) lemAtt.copy(entry.lem);
         }
         return true;

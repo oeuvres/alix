@@ -30,44 +30,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene.analysis;
+package com.github.oeuvres.alix.lucene.analysis.tokenattributes;
 
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /**
- * Analysis scenario for French in Alix. The linguistic features of Alix are
- * language dependent.
+ * Custom {@link CharTermAttribute} implementation with more 
+ * methods to work on chars during indexing analysis.
  */
-public class AnalyzerPos extends Analyzer
+public final class TermAttImpl extends CharsAttImpl implements CharTermAttribute
 {
     /**
-     * Default constructor.
+     * Default constructor;
      */
-    public AnalyzerPos()
+    public TermAttImpl()
     {
         super();
     }
-
-    @SuppressWarnings("resource")
-    @Override
-    public TokenStreamComponents createComponents(String field)
-    {
-        final Tokenizer tokenizer = new TokenizerML();
-        TokenStream ts = tokenizer; // segment words
-        // interpret html tags as token events like para or section
-        ts = new FilterHTML(ts);
-        // fr split on ’ and -
-        ts = new FilterAposHyphenFr(ts);
-        // pos tagging before lemmatize
-        ts = new FilterPos(ts);
-        // provide lemma+pos
-        // ts = new FilterLemmatize(ts);
-        // group compounds after lemmatization for verbal compounds
-        // ts = new FilterLocution(ts);
-        // ts = new FilterCloud(ts);
-        return new TokenStreamComponents(tokenizer, ts);
-    }
-
 }

@@ -52,7 +52,7 @@ public class TokenStreamsTest {
         text = "N’ai-je trop aimer les P.U.F. le chemin de Fer d’intérêt local <aside>en note</aside> … </p>";
 
         Analyzer ana = new AnalyzerAlix();
-        analyze(ana.tokenStream("_orth", text), text);
+        analyze(ana.tokenStream("_pos", text), text);
         ana.close();
     }
 

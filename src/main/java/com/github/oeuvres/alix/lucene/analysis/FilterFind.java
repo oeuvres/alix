@@ -89,7 +89,7 @@ public class FilterFind extends TokenFilter
         skippedPositions = 0;
         while (input.incrementToken()) {
             // no position for XML between words
-            if (flagsAtt.getFlags() == Tag.XML.no()) {
+            if (flagsAtt.getFlags() == Tag.XML.no) {
                 continue;
             }
             if (accept()) {

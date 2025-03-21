@@ -28,7 +28,7 @@ final public class AttributeFactoryAlix extends AttributeFactory
         /*
         // for chars attributes, return a CharsAttImpl with advanced char 
         if (attClass == CharTermAttribute.class) {
-            return new CharsAttImpl();
+            return new TermAttImpl();
         }
         else {
             return delegate.createAttributeInstance(attClass);

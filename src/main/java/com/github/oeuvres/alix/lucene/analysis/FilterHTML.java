@@ -86,7 +86,7 @@ public class FilterHTML extends TokenFilter
             }
             
             // not XML tag, return it with no change
-            if (flagsAtt.getFlags() != Tag.XML.no()) {
+            if (flagsAtt.getFlags() != Tag.XML.no) {
                 return true;
             }
             if (
@@ -96,12 +96,12 @@ public class FilterHTML extends TokenFilter
             }
             // most positions of XML tags will be skipped without information
             if (test.equals("</p>") || test.equals("</li>") || test.equals("</td>")) {
-                flagsAtt.setFlags(Tag.PUNpara.no());
+                flagsAtt.setFlags(Tag.PUNpara.no);
                 termAtt.setEmpty().append("¶");
                 return true;
             }
             if (test.equals("</section>") || test.equals("</article>")) {
-                flagsAtt.setFlags(Tag.PUNsection.no());
+                flagsAtt.setFlags(Tag.PUNsection.no);
                 termAtt.setEmpty().append("§");
                 return true;
             }

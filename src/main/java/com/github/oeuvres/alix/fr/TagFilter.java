@@ -113,7 +113,7 @@ public class TagFilter
      */
     public TagFilter clear(final Tag tag) throws IndexOutOfBoundsException, UnsupportedOperationException
     {
-        return clear(tag.no());
+        return clear(tag.no);
     }
 
     /**
@@ -157,7 +157,7 @@ public class TagFilter
      */
     public TagFilter clearGroup(final Tag tag) throws IndexOutOfBoundsException, UnsupportedOperationException
     {
-        return clearGroup(tag.no());
+        return clearGroup(tag.no);
     }
 
     /**
@@ -198,7 +198,7 @@ public class TagFilter
      */
     public boolean get(final Tag tag) throws IndexOutOfBoundsException
     {
-        return get(tag.no());
+        return get(tag.no);
     }
 
     /**
@@ -237,7 +237,7 @@ public class TagFilter
      */
     public TagFilter set(Tag tag) throws IndexOutOfBoundsException, UnsupportedOperationException
     {
-        return set(tag.no());
+        return set(tag.no);
     }
 
     /**
@@ -281,7 +281,7 @@ public class TagFilter
      */
     public TagFilter setGroup(Tag tag) throws IndexOutOfBoundsException, UnsupportedOperationException
     {
-        return setGroup(tag.no());
+        return setGroup(tag.no);
     }
 
     /**

@@ -38,20 +38,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Map;
+import static java.util.Map.entry;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
-import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAttImpl;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAttImpl;
 
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerME;
@@ -73,17 +68,38 @@ public class FilterPos extends TokenFilter
     /** Maximum size of a sentence to send to the tagger */
     final static int SENTMAX = 200;
     /** The pos tagger */
-    static private POSTaggerME tagger;
+    static private POSModel posModel;
     static {
         // model must be static, tagger should be thread safe till 
         try (InputStream modelIn = new FileInputStream("models/opennlp-fr-ud-gsd-pos-1.2-2.5.0.bin")) {
-            final POSModel posModel = new POSModel(modelIn);
-            tagger = new POSTaggerME(posModel);
+             posModel = new POSModel(modelIn);
         }
         catch (IOException e) {
             e.printStackTrace();
         }
     }
+    /** non thread safe tagger, one by instance of filter */
+    private POSTaggerME tagger;
+    /** tag  */
+    Map<String, Tag> tagList = Map.ofEntries(
+        entry("ADJ", Tag.ADJ),
+        entry("ADP", Tag.PREP),
+        entry("ADP+DET", Tag.DETprep),
+        entry("ADP+PRON", Tag.PREPpro),
+        entry("ADV", Tag.ADV),
+        entry("AUX", Tag.VERBaux),
+        entry("CCONJ", Tag.CONJcoord),
+        entry("DET", Tag.DET),
+        entry("INTJ", Tag.EXCL),
+        entry("NOUN", Tag.SUB),
+        entry("PRON", Tag.PRO),
+        entry("PROPN", Tag.NAME),
+        entry("PUNCT", Tag.PUN),
+        entry("SCONJ", Tag.CONJsub),
+        entry("SYM", Tag.SYM),
+        entry("VERB", Tag.VERB),
+        entry("X", Tag.UNKNOWN)
+    );
     /** state of the queue */
     private boolean tagged = false;
 
@@ -93,6 +109,7 @@ public class FilterPos extends TokenFilter
      */
     public FilterPos(TokenStream input) {
         super(input);
+        tagger = new POSTaggerME(posModel);
         // here, “this” has not all its attributes, AttributeQueue.copyTo() will bug
     }
 
@@ -101,26 +118,45 @@ public class FilterPos extends TokenFilter
     {
         // needed here to have all atts in queue
         if (queue == null) {
-            queue = new AttDeque(200, this);
+            queue = new AttDeque(SENTMAX, this);
         }
         // empty the queue
-        if (tagged && !queue.isEmpty()) {
+        if (!queue.isEmpty()) {
             clearAttributes();
             queue.removeFirst(this);
+            return true;
         }
-        
+        boolean toksLeft = true;
         // store states till pun
         while (queue.size() < SENTMAX) {
             clearAttributes(); // clear before next incrementToken
-            final boolean isLast = incrementToken();
-            
+            toksLeft = incrementToken();
+             if (!toksLeft) break;
             queue.addLast(this);
-            
-            
-            
+            final int flags = flagsAtt.getFlags();
+            if (
+                   flags == Tag.PUNsection.no
+                || flags == Tag.PUNpara.no
+                || flags == Tag.PUNsent.no
+            ) break;
         }
-        // when pun, send sentence to posTagger, set pos in queue
-        
+        // should be finisehd here
+        if (queue.size() == 0) {
+            assert toksLeft == false: "Tokens left but queue empty 🤔";
+            return false;
+        }
+        String[] sentence = new String[queue.size()];
+        for (int i = 0; i < queue.size(); i++) {
+            CharTermAttribute term = queue.get(i).getAttribute(CharTermAttribute.class);
+            sentence[i] = new String(term.buffer(), 0, term.length()).intern(); // should be fast
+        }
+        String[] tags = tagger.tag(sentence);
+        for (int i = 0; i < queue.size(); i++) {
+            FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
+            flags.setFlags(tagList.get(tags[i]).no);
+        }
+        clearAttributes();
+        queue.removeFirst(this);
         return true;
     }
 
