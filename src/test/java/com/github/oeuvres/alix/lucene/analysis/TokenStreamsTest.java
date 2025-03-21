@@ -33,7 +33,7 @@ public class TokenStreamsTest {
     @Test
     public void locution() throws IOException
     {
-        File dic = new File("D:/code/piaget_labo/install/piaget-dic.csv");
+        File dic = new File("../piaget_labo/install/piaget-dic.csv");
         FrDics.load(dic.getCanonicalPath(), dic);
 
         String text = "";

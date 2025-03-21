@@ -131,7 +131,7 @@ public class FilterPos extends TokenFilter
         while (queue.size() < SENTMAX) {
             clearAttributes(); // clear before next incrementToken
             toksLeft = incrementToken();
-             if (!toksLeft) break;
+            if (!toksLeft) break;
             queue.addLast(this);
             final int flags = flagsAtt.getFlags();
             if (
