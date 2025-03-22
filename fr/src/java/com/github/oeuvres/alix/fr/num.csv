@@ -1,0 +1,252 @@
+GRAPH,TAG,LEM,ORTH
+1 e,,,1er
+1 er,,,1er
+I e,,,1er
+i e,,,1er
+I er,,,1er
+i er,,,1er
+ier,,,1er
+Ier,,,1er
+Ie,,,1er
+iᵉ,,,1er
+Iᵉ,,,1er
+premier,,,1er
+1er,DETnum,,
+1er siècle,NAMEevent,,
+,,,
+2 e,,,2e
+2 eme,,,2e
+2 ème,,,2e
+II e,,,2e
+ii e,,,2e
+II nd,,,2e
+ii nd,,,2e
+IIe,,,2e
+iie,,,2e
+IIᵉ,,,2e
+iiᵉ,,,2e
+deuxième,,,2e
+2e,DETnum,,
+2e siècle,NAMEevent,,
+,,,
+III e,,,3e
+iii e,,,3e
+IIIe,,,3e
+iiie,,,3e
+IIIᵉ,,,3e
+iiiᵉ,,,3e
+troisième,,,3e
+3e,DETnum,,
+3e siècle,NAMEevent,,
+,,,
+4 e,,,4e
+IV e,,,4e
+iv e,,,4e
+IV e,,,4e
+iv e,,,4e
+IVe,,,4e
+ive,,,4e
+IVᵉ,,,4e
+ivᵉ,,,4e
+quatrième,,,4e
+4e,DETnum,,
+4e siècle,NAMEevent,,
+,,,
+V e,,,5e
+v e,,,5e
+5e,,,5e
+5 e,,,5e
+V e,,,5e
+v e,,,5e
+Ve,,,5e
+ve,,,5e
+Vᵉ,,,5e
+vᵉ,,,5e
+cinquième,,,5e
+5e,DETnum,,
+5e siècle,NAMEevent,,
+,,,
+6 e,,,6e
+VI e,,,6e
+vi e,,,6e
+VI e,,,6e
+vi e,,,6e
+# vie,,,6e
+VIe,,,6e
+viᵉ,,,6e
+VIᵉ,,,6e
+sixième,,,6e
+6e,DETnum,,
+6e siècle,NAMEevent,,
+,,,
+7 e,,,6e
+VII e,,,7e
+vii e,,,7e
+viie,,,7e
+VIIe,,,7e
+viiᵉ,,,7e
+VIIᵉ,,,7e
+septième,,,7e
+7e,DETnum,,
+7e siècle,NAMEevent,,
+,,,
+8 e,,,8e
+viii e,,,8e
+VIII e,,,8e
+viiie,,,8e
+VIIIe,,,8e
+viiiᵉ,,,8e
+VIIIᵉ,,,8e
+huitième,,,8e
+8e,DETnum,,
+8e siècle,NAMEevent,,
+,,,
+9 e,,,9e
+ixe,,,9e
+IXe,,,9e
+ix e,,,9e
+IX e,,,9e
+ix e,,,9e
+IX e,,,9e
+ixᵉ,,,9e
+IXᵉ,,,9e
+neuvième,,,9e
+9e,DETnum,,
+9e siècle,NAMEevent,,
+,,,
+10 e,,,10e
+X e,,,10e
+x e,,,10e
+x e,,,10e
+X e,,,10e
+xe,,,10e
+Xe,,,10e
+xᵉ,,,10e
+Xᵉ,,,10e
+10e,DETnum,,
+dixième,,,10e
+10e siècle,NAMEevent,,
+,,,
+11 e,,,11e
+XI e,,,11e
+xi e,,,11e
+xie,,,11e
+XIe,,,11e
+xiᵉ,,,11e
+XIᵉ,,,11e
+onzième,,,11e
+11e,DETnum,,
+11e siècle,NAMEevent,,
+,,,
+12 e,,,12e
+xii e,,,12e
+XII e,,,12e
+xiie,,,12e
+XIIe,,,12e
+xiiᵉ,,,12e
+XIIᵉ,,,12e
+douzième,,,12e
+12e,DETnum,,
+12e siècle,NAMEevent,,
+,,,
+13 e,,,13e
+xiii e,,,13e
+XIII e,,,13e
+xiiie,,,13e
+XIIIe,,,13e
+xiiiᵉ,,,13e
+XIIIᵉ,,,13e
+treizième,,,13e
+13e,DETnum,,
+13e siècle,NAMEevent,,
+,,,
+14 e,,,14e
+xiv e,,,14e
+XIV e,,,14e
+xive,,,14e
+XIVe,,,14e
+xivᵉ,,,14e
+XIVᵉ,,,14e
+quatorzième,,,14e
+14e,DETnum,,
+14e siècle,NAMEevent,,
+,,,
+15 e,,,15e
+XV e,,,15e
+xv e,,,15e
+xve,,,15e
+XVe,,,15e
+xvᵉ,,,15e
+XVᵉ,,,15e
+quinzième,,,15e
+15e,DETnum,,
+15e siècle,NAMEevent,,
+,,,
+16 e,,,16e
+xvi e,,,16e
+XVI e,,,16e
+xvie,,,16e
+XVIe,,,16e
+xviᵉ,,,16e
+XVIᵉ,,,16e
+seizième,,,16e
+16e,DETnum,,
+16e siècle,NAMEevent,,
+,,,
+17 e,,,17e
+xvii e,,,17e
+XVII e,,,17e
+xviie,,,17e
+XVIIe,,,17e
+xviiᵉ,,,17e
+XVIIᵉ,,,17e
+dix-septième,,,17e
+17e,DETnum,,
+17e siècle,NAMEevent,,
+,,,
+18 e,,,18e
+xviii e,,,18e
+XVIII e,,,18e
+xviiie,,,18e
+XVIIIe,,,18e
+xviiiᵉ,,,18e
+XVIIIᵉ,,,18e
+dix-huitième,,,18e
+18e,DETnum,,
+18e siècle,NAMEevent,,
+,,,
+19 e,,,19e
+xix e,,,19e
+XIX e,,,19e
+xixe,,,19e
+XIXe,,,19e
+xixᵉ,,,19e
+XIXᵉ,,,19e
+dix-neuvième,,,19e
+19e,DETnum,,
+19e siècle,NAMEevent,,
+,,,
+20 e,,,20e
+xx e,,,20e
+XX e,,,20e
+xxe,,,20e
+XXe,,,20e
+xxᵉ,,,20e
+XXᵉ,,,20e
+vingtième,,,20e
+20e,DETnum,,
+20e siècle,NAMEevent,,
+,,,
+21 e,,,21e
+XXI e,,,21e
+xxi e,,,21e
+xxi e,,,21e
+XXI e,,,21e
+xxie,,,21e
+XXIe,,,21e
+xxiᵉ,,,21e
+XXIᵉ,,,21e
+vingt-et-unième,,,21e
+21e,DETnum,,
+21e siècle,NAMEevent,,
+,,,

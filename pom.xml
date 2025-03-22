@@ -7,11 +7,16 @@
 
     <groupId>com.github.oeuvres</groupId>
     <artifactId>alix</artifactId>
-    <version>0.9.2-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <url>http://oeuvres.github.io/alix</url>
 
     <name>alix</name>
-    <url>http://oeuvres.github.io/alix</url>
+
+
+    <modules>
+        <module>util</module>
+    </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -21,198 +26,4 @@
         <tests.skip>true</tests.skip>
     </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-core</artifactId>
-            <version>10.1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-analysis-common</artifactId>
-            <version>10.1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-highlighter</artifactId>
-            <version>10.1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-test-framework</artifactId>
-            <version>10.1.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>net.sf.saxon</groupId>
-            <artifactId>Saxon-HE</artifactId>
-            <version>12.5</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.oeuvres</groupId>
-            <artifactId>jword2vec</artifactId>
-            <version>0.11-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>org.xerial</groupId>
-            <artifactId>sqlite-jdbc</artifactId>
-            <version>3.49.1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>info.picocli</groupId>
-            <artifactId>picocli</artifactId>
-            <version>4.7.6</version>
-        </dependency>
-        <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>json</artifactId>
-            <version>20240303</version>
-        </dependency>
-        
-        <!-- Pos tagging -->
-        <dependency>
-            <groupId>org.apache.opennlp</groupId>
-            <artifactId>opennlp-tools</artifactId>
-            <version>2.5.3</version>
-        </dependency>
-        <dependency> 
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-simple</artifactId>
-          <version>2.0.17</version>
-        </dependency>
-        
-        <!-- Servlet API -->
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>4.0.1</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>javax.servlet.jsp</groupId>
-            <artifactId>javax.servlet.jsp-api</artifactId>
-            <version>2.3.3</version>
-            <scope>provided</scope>
-        </dependency>
-        
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.1</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- Memory size of an object -->
-        <dependency>
-            <groupId>org.openjdk.jol</groupId>
-            <artifactId>jol-core</artifactId>
-            <version>0.17</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.0</version>
-            </plugin>
-            <plugin>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>3.4.2</version>
-            </plugin>
-            <!-- Saxon will not work inside a maven-shade-plugin -->
-            <plugin>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.6.3</version>
-                <configuration>
-                    <reportOutputDirectory>${project.basedir}</reportOutputDirectory>
-                    <destDir>docs</destDir>
-                    <encoding>UTF-8</encoding>
-                    <docencoding>UTF-8</docencoding>
-                    <notimestamp>true</notimestamp>
-                </configuration>
-            </plugin>
-            <!-- clean lifecycle, see
-            https://maven.apache.org/ref/current/maven-core/lifecycles.html#clean_Lifecycle -->
-            <plugin>
-                <artifactId>maven-clean-plugin</artifactId>
-                <version>3.1.0</version>
-            </plugin>
-            <!-- default lifecycle, jar packaging: see
-            https://maven.apache.org/ref/current/maven-core/default-bindings.html#Plugin_bindings_for_jar_packaging -->
-            <plugin>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.0.2</version>
-            </plugin>
-            <plugin>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.1</version>
-                <configuration>
-                    <skipTests>${tests.skip}</skipTests>
-                </configuration>
-            </plugin>
-            <plugin>
-                <artifactId>maven-install-plugin</artifactId>
-                <version>2.5.2</version>
-            </plugin>
-            <plugin>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <version>2.8.2</version>
-            </plugin>
-            <plugin>
-                <artifactId>maven-project-info-reports-plugin</artifactId>
-                <version>3.0.0</version>
-            </plugin>
-            <plugin>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.7.1</version>
-                <configuration>
-                    <outputDirectory>${project.basedir}</outputDirectory>
-                    <finalName>${project.artifactId}</finalName>
-                    <inlineDescriptors>
-                        <inlineDescriptor>
-                            <id>cli</id>
-                            <formats>
-                                <format>dir</format>
-                            </formats>
-                            <includeBaseDirectory>false</includeBaseDirectory>
-                            <dependencySets>
-                                <dependencySet>
-                                    <outputDirectory>lib</outputDirectory>
-                                    <includes>
-                                          <include>org.apache.lucene:lucene-core</include>
-                                          <include>org.apache.lucene:lucene-analysis-common</include>
-                                          <include>info.picocli:picocli</include>
-                                          <include>net.sf.saxon:Saxon-HE</include>
-                                          <include>org.xmlresolver:xmlresolver</include>
-                                          <include>com.github.oeuvres:alix</include>
-                                          <include>org.apache.opennlp:opennlp-tools</include>
-                                          <include>org.slf4j:slf4j-simple</include>
-                                          <include>org.slf4j:slf4j-api</include>
-                                    </includes>
-                                </dependencySet>
-                            </dependencySets>
-                        </inlineDescriptor>
-                    </inlineDescriptors>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>make-assembly</id> <!-- this is used for inheritance merges -->
-                        <phase>package</phase> <!-- bind to the packaging phase -->
-                        <goals>
-                          <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.1</version>
-                <configuration>
-                    <mainClass>com.github.oeuvres.alix.cli.Load</mainClass>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 </project>
