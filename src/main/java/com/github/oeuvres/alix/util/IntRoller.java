@@ -61,11 +61,11 @@ public class IntRoller extends Roller
     public boolean add(final int value)
     {
         if (size < capacity) {
-            zero = size;
-            data[zero] = value;
+            zero(size);
+            data[pointer(0)] = value;
             size++;
-        } else { // do not change the size and roll
-            zero = pointer(1);
+        } else { // do not change the size, roll
+            zero(pointer(1));
             data[pointer(size)] = value;
         }
         return true;
@@ -78,7 +78,7 @@ public class IntRoller extends Roller
     public void fill(final int value)
     {
         Arrays.fill(data, value);
-        zero = 0;
+        zero(0);
         size = capacity;
     }
 
@@ -87,12 +87,12 @@ public class IntRoller extends Roller
      * Contract similar to {@link java.util.List#get(int)},
      * but without exceptions, because all positions are accepted, even negative;
      * will roll around array if out of the limits.
-     * @param position position of the value to replace
+     * @param index position of the value to replace
      * @return the value at the specified position
      */
-    public int get(final int position)
+    public int get(final int index)
     {
-        return data[pointer(position)];
+        return data[pointer(index)];
     }
 
     /**
@@ -106,9 +106,9 @@ public class IntRoller extends Roller
         if (size < 1) {
             throw new NoSuchElementException("This roller is empty, no value to remove.");
         }
-        final int value = data[zero];
+        final int value = data[pointer(0)];
         size--;
-        zero = pointer(1);
+        zero(pointer(1));
         return value;
     }
     
@@ -117,14 +117,14 @@ public class IntRoller extends Roller
      * Contract similar to {@link java.util.List#set(int,java.lang.Object)},
      * but without exceptions, because all positions are accepted, even negative;
      * will roll around array if out of the limits.
-     * @param position position of the value to replace
+     * @param index position of the value to replace
      * @param value value to be stored at the specified position
      * @return the value previously at the specified position
      */
-    public int set(final int position, final int value)
+    public int set(final int index, final int value)
     {
-        final int last = data[pointer(position)];
-        data[pointer(position)] = value;
+        final int last = data[pointer(index)];
+        data[pointer(index)] = value;
         return last;
     }
     

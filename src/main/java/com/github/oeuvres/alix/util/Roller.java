@@ -33,8 +33,8 @@
 package com.github.oeuvres.alix.util;
 
 /**
- * Efficient Object to handle a sliding window, on different types, works like a
- * circular array.
+ * An efficient sliding window, agnostic on type, maybe used on a primitive array., works like a
+ * circular array, to avoid object creation.
  */
 public abstract class Roller
 {
@@ -43,7 +43,7 @@ public abstract class Roller
     /** Number of elements set */
     protected int size;
     /** Pointer on the “zero” cell */
-    protected int zero;
+    private int zero;
 
     /**
      * Constructor with initial capacity.
@@ -100,7 +100,8 @@ public abstract class Roller
     }
     
     /**
-     * Expert only, set the zero position in the data array.
+     * Expert only, set the zero position in the data array,
+     * for example, after a {@link java.util.Deque#removeFirst()}.
      * 
      * @param index index in the data array for the zero relative position.
      */

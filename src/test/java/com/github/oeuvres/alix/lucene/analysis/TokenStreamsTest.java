@@ -52,7 +52,7 @@ public class TokenStreamsTest {
         text = "Personne n’a point aimé le point de personne.</p>";
 
         Analyzer ana = new AnalyzerAlix();
-        analyze(ana.tokenStream("_pos", text), text);
+        analyze(ana.tokenStream("_cloud", text), text);
         ana.close();
     }
 

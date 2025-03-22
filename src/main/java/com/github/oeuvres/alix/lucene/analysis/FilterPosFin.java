@@ -114,6 +114,9 @@ public class FilterPosFin extends TokenFilter
         else if (orthAtt.length() != 0) {
             termAtt.setEmpty().append(orthAtt + "_" + Tag.name(tag));
         }
+        else {
+            termAtt.append("_" + Tag.name(tag));
+        }
 
         return true;
     }

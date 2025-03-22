@@ -32,17 +32,12 @@
  */
 package com.github.oeuvres.alix.lucene.analysis;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
-import java.util.LinkedList;
+
 import java.util.Map;
 import static java.util.Map.entry;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -96,13 +91,14 @@ public class FilterPos extends TokenFilter
         entry("DET", Tag.DET),
         entry("INTJ", Tag.EXCL),
         entry("NOUN", Tag.SUB),
+        entry("NUM", Tag.NUM),
         entry("PRON", Tag.PRO),
         entry("PROPN", Tag.NAME),
         entry("PUNCT", Tag.PUN),
         entry("SCONJ", Tag.CONJsub),
-        entry("SYM", Tag.SYM),
+        entry("SYM", Tag.NULL),
         entry("VERB", Tag.VERB),
-        entry("X", Tag.UNKNOWN)
+        entry("X", Tag.NULL)
     );
     /** state of the queue */
     private boolean tagged = false;
@@ -147,16 +143,26 @@ public class FilterPos extends TokenFilter
         // should be finisehd here
         if (queue.size() == 0) {
             assert toksLeft == false: "Tokens left but queue empty 🤔";
-            return false;
+            return toksLeft;
         }
         String[] sentence = new String[queue.size()];
         for (int i = 0; i < queue.size(); i++) {
-            CharTermAttribute term = queue.get(i).getAttribute(CharTermAttribute.class);
-            sentence[i] = new String(term.buffer(), 0, term.length()).intern(); // should be fast
+            FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
+            // those tags will not help tagger
+            if (flags.getFlags() == Tag.PUNsection.no || flags.getFlags() == Tag.PUNpara.no) {
+                sentence[i] = "";
+            }
+            else {
+                CharTermAttribute term = queue.get(i).getAttribute(CharTermAttribute.class);
+                sentence[i] = new String(term.buffer(), 0, term.length()).intern(); // should be fast
+            }
         }
         String[] tags = tagger.tag(sentence);
         for (int i = 0; i < queue.size(); i++) {
             FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
+            // let tag decided before
+            if (flags.getFlags() != Tag.NULL.no) {
+            }
             flags.setFlags(tagList.get(tags[i]).no);
         }
         clearAttributes();

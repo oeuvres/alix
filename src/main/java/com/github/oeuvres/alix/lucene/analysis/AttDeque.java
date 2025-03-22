@@ -80,29 +80,21 @@ public class AttDeque extends Roller
         size++;
     }
 
-    /**
-     * Clear the Queue.
-     */
-    public void clear()
-    {
-        zero = 0;
-        size = 0;
-    }
 
     /**
      * Copy attributes from a position to the specified target, to change indexation state.
      * @param target The attributes where copy to
-     * @param position The stored position from which copy
+     * @param index The stored position from which copy
      */
-    public void copyTo(AttributeSource target, final int position)
+    public void copyTo(AttributeSource target, final int index)
     {
         if (size < 1) {
             throw new ArrayIndexOutOfBoundsException("size=0, no element to copy");
         }
-        if (position < 0 || position >= size) {
-            throw new ArrayIndexOutOfBoundsException("position=" + position + ", not in [0," + size +"[");
+        if (index < 0 || index >= size) {
+            throw new ArrayIndexOutOfBoundsException("position=" + index + ", not in [0," + size +"[");
         }
-        data[pointer(position)].copyTo(target);
+        data[pointer(index)].copyTo(target);
     }
 
     /**
@@ -111,7 +103,7 @@ public class AttDeque extends Roller
      * 
      * @return attributes stored
      */
-    public AttributeSource get(int index)
+    public AttributeSource get(final int index)
     {
         if (size < 1) {
             throw new ArrayIndexOutOfBoundsException("size=0, no element to return");
@@ -120,19 +112,9 @@ public class AttDeque extends Roller
             throw new ArrayIndexOutOfBoundsException("index=" + index + " < 0");
         }
         if (index >= size) {
-            throw new ArrayIndexOutOfBoundsException("index=" + index + " >= size" + size);
+            throw new ArrayIndexOutOfBoundsException("index=" + index + " >= size=" + size);
         }
-        return data[zero + index];
-    }
-
-    /**
-     * Returns true if empty.
-     * 
-     * @return true if empty
-     */
-    public boolean isEmpty()
-    {
-        return (size == 0);
+        return data[pointer(index)];
     }
 
     /**
@@ -144,7 +126,7 @@ public class AttDeque extends Roller
         if (size < 1) {
             throw new ArrayIndexOutOfBoundsException("size = 0, no element to return");
         }
-        return data[zero];
+        return data[pointer(0)];
     }
 
     /**
@@ -156,11 +138,13 @@ public class AttDeque extends Roller
         if (size < 1) {
             throw new ArrayIndexOutOfBoundsException("size = 0, no element to copy");
         }
-        data[zero].copyTo(target);
+        data[pointer(0)].copyTo(target);
     }
 
     /**
-     * Remove first element in the queue if exists.
+     * Remove first element in the roller if exists,
+     * contract similar to {@link java.util.Deque#removeFirst()}.
+     * 
      */
     public void removeFirst()
     {
@@ -168,11 +152,12 @@ public class AttDeque extends Roller
             throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
         }
         size--;
-        zero = pointer(1);
+        zero(pointer(1));
     }
 
     /**
-     * Remove first element in the queue and copy its values to target.
+     * Remove first element in the queue and copy its values to target,
+     * contract similar to {@link java.util.Deque#removeFirst()}.
      * 
      * @param target destination where to copy attribute values
      */
@@ -181,9 +166,9 @@ public class AttDeque extends Roller
         if (size < 1) {
             throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
         }
-        data[zero].copyTo(target);
+        data[pointer(0)].copyTo(target);
         size--;
-        zero = pointer(1);
+        zero(pointer(1));
     }
     
 

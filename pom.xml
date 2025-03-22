@@ -187,6 +187,8 @@
                                           <include>org.xmlresolver:xmlresolver</include>
                                           <include>com.github.oeuvres:alix</include>
                                           <include>org.apache.opennlp:opennlp-tools</include>
+                                          <include>org.slf4j:slf4j-simple</include>
+                                          <include>org.slf4j:slf4j-api</include>
                                     </includes>
                                 </dependencySet>
                             </dependencySets>

@@ -70,7 +70,7 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
             size++;
         } else { // do not change the size and roll
             data[pointer(size)] = element;
-            zero = pointer(1);
+            zero(pointer(1));
         }
         return true;
     }
@@ -100,9 +100,9 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
     {
         if (size < 1)
             return null;
-        E ret = data[zero];
+        E ret = data[pointer(0)];
         size--;
-        zero = pointer(1);
+        zero(pointer(1));
         return ret;
     }
 
@@ -143,7 +143,7 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
     @Override
     public E peek()
     {
-        return (E) data[zero];
+        return (E) data[pointer(0)];
     }
 
     /**
@@ -245,7 +245,6 @@ public class Roll<E> extends Roller implements Queue<E>, List<E>
     @Override
     public E poll()
     {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
