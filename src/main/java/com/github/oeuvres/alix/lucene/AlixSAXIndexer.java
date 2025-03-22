@@ -32,6 +32,8 @@
  */
 package com.github.oeuvres.alix.lucene;
 
+import static com.github.oeuvres.alix.common.Names.*;
+
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -55,7 +57,6 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
-import static com.github.oeuvres.alix.Names.*;
 import com.github.oeuvres.alix.lucene.analysis.AnalyzerMeta;
 
 /**

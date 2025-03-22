@@ -32,6 +32,8 @@
  */
 package com.github.oeuvres.alix.lucene;
 
+import static com.github.oeuvres.alix.common.Names.*;
+
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.file.Files;
@@ -87,8 +89,6 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
-
-import static com.github.oeuvres.alix.Names.*;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalyzerAlix;
 import com.github.oeuvres.alix.lucene.search.FieldFacet;

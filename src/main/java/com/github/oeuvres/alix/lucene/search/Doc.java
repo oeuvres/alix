@@ -32,6 +32,8 @@
  */
 package com.github.oeuvres.alix.lucene.search;
 
+import static com.github.oeuvres.alix.common.Names.*;
+
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.text.DecimalFormatSymbols;
@@ -51,8 +53,6 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
-
-import static com.github.oeuvres.alix.Names.*;
 
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.fr.TagFilter;

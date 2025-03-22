@@ -1,6 +1,6 @@
 package com.github.oeuvres.alix.lucene;
 
-import static com.github.oeuvres.alix.Names.*;
+import static com.github.oeuvres.alix.common.Names.*;
 
 import java.security.InvalidParameterException;
 import java.util.HashSet;

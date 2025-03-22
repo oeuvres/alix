@@ -32,6 +32,8 @@
  */
 package com.github.oeuvres.alix.lucene;
 
+import static com.github.oeuvres.alix.common.Names.*;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -58,7 +60,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 
-import static com.github.oeuvres.alix.Names.*;
 import com.github.oeuvres.alix.lucene.analysis.AnalyzerMeta;
 import com.github.oeuvres.alix.util.Dir;
 

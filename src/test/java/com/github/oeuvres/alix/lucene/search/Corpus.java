@@ -32,6 +32,8 @@
  */
 package com.github.oeuvres.alix.lucene.search;
 
+import static com.github.oeuvres.alix.common.Names.*;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
@@ -55,7 +57,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import static com.github.oeuvres.alix.Names.*;
 import com.github.oeuvres.alix.lucene.Alix;
 
 /**
