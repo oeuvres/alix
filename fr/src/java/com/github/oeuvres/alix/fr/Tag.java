@@ -35,9 +35,6 @@ package com.github.oeuvres.alix.fr;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.github.oeuvres.alix.util.Chain;
-
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -351,22 +348,6 @@ public enum Tag {
         if (tag == null)
             return null;
         return tag.name;
-    }
-
-    /**
-     * Returns the identifier number of a <code>Tag</code>, by name.
-     * @param name A mutable Tag name.
-     * @return The identifier number of a <code>Tag</code>.
-     */
-    public static int no(final Chain name)
-    {
-        @SuppressWarnings("unlikely-arg-type")
-        Integer ret = name4no.get(name);
-        if (ret == null) {
-            LOGGER.log(Level.FINEST, "[Alix] unknown tag:" + name);
-            return UNKNOWN.no;
-        }
-        return ret;
     }
 
     /**
