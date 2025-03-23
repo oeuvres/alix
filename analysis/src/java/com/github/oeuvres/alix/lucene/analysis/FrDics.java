@@ -54,7 +54,6 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
 import com.github.oeuvres.alix.fr.Tag;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
-import com.github.oeuvres.alix.lucene.util.WordsAutomatonBuilder;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.CSVReader.Row;
@@ -85,7 +84,7 @@ public class FrDics
     /** Flag for compound, to be continued */
     static final public int BRANCH = 0x200;
     /** French stopwords as hash to filter attributes */
-    static final public HashSet<CharsAtt> STOP = new HashSet<>((int) (1000 / 0.75));
+    // static final public HashSet<CharsAtt> STOP = new HashSet<>((int) (1000 / 0.75));
     /** French stopwords as binary automaton */
     public static ByteRunAutomaton STOP_BYTES;
     /** 500 000 types French lexicon seems not too bad for memory */
@@ -104,7 +103,6 @@ public class FrDics
     
     /** Load dictionaries */
     static {
-        compileStopwords();
         // first word win
         String[] files = { 
             "locutions.csv", // compounds to decompose
@@ -142,45 +140,6 @@ public class FrDics
     public static boolean isBrevidot(CharsAttImpl att)
     {
         return BREVIDOT.contains(att);
-    }
-
-    private static void compileStopwords()
-    {
-        CSVReader csv = null;
-        try {
-            ArrayList<String> list = new ArrayList<String>();
-            // unmodifiable map with jdk10 Map.copyOf is not faster
-            // add common col separator, the csv parser is not very robust
-            STOP.add(new CharsAttImpl(";"));
-            list.add(";");
-            STOP.add(new CharsAttImpl(","));
-            list.add(",");
-            STOP.add(new CharsAttImpl("\t"));
-            list.add("\t");
-            res = "stop.csv";
-            Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
-            csv = new CSVReader(reader, 1);
-            csv.readRow(); // pass first line
-            Row row;
-            while ((row = csv.readRow()) != null) {
-                Chain cell0 = row.get(0);
-                if (cell0.isEmpty() || cell0.charAt(0) == '#')
-                    continue;
-                STOP.add(new CharsAttImpl(cell0));
-                list.add(cell0.toString());
-            }
-            Automaton automaton = WordsAutomatonBuilder.buildFronStrings(list);
-            STOP_BYTES = new ByteRunAutomaton(automaton);
-        }
-        // output errors at start
-        catch (Exception e) {
-            if (csv == null) {
-                System.out.println("Dictionary parse error in file " + res);
-            } else {
-                System.out.println("Dictionary parse error in file " + res + " line " + csv.line());
-            }
-            e.printStackTrace();
-        }
     }
 
     /**
@@ -238,17 +197,6 @@ public class FrDics
     public static boolean isStop(BytesRef ref)
     {
         return STOP_BYTES.run(ref.bytes, ref.offset, ref.length);
-    }
-
-    /**
-     * Test if the requested chars are in the stop word dictionary.
-     * 
-     * @param att {@link CharTermAttribute} implementation.
-     * @return true if submitted form is a stop word, false otherwise.
-     */
-    public static boolean isStop(CharsAttImpl att)
-    {
-        return STOP.contains(att);
     }
 
     /**

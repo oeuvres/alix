@@ -18,6 +18,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
+        <lucene.version>10.1.0</lucene.version>
         <tests.skip>true</tests.skip>
     </properties>
 
@@ -26,6 +27,9 @@
         <module>common</module>
         <module>fr</module>
         <module>analysis</module>
+        <module>search</module>
+        <module>sqlite</module>
+        <module>test</module>
     </modules>
 
 </project>

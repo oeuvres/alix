@@ -44,7 +44,7 @@ import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
-import com.github.oeuvres.alix.maths.Calcul;
+import com.github.oeuvres.alix.util.Calcul;
 import com.github.oeuvres.alix.util.Char;
 
 /**
