@@ -10,14 +10,9 @@
     <version>1.0.0</version>
     <packaging>pom</packaging>
     <url>http://oeuvres.github.io/alix</url>
-
     <name>alix</name>
 
-
-    <modules>
-        <module>util</module>
-    </modules>
-
+    
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -25,5 +20,12 @@
         <maven.compiler.target>21</maven.compiler.target>
         <tests.skip>true</tests.skip>
     </properties>
+
+    <modules>
+        <module>util</module>
+        <module>common</module>
+        <module>fr</module>
+        <module>analysis</module>
+    </modules>
 
 </project>

@@ -10,9 +10,9 @@
         <version>1.0.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>alix-util</artifactId>
+    <artifactId>alix-common</artifactId>
     <packaging>jar</packaging>
-    <name>Alix, util</name>
+    <name>Alix, lucene shared code</name>
     <build>
         <sourceDirectory>src/java</sourceDirectory>
     </build>
