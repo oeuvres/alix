@@ -30,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene;
+package com.github.alix.lucene.load;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;

@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene;
+package com.github.alix.lucene.load;
 
 import static com.github.oeuvres.alix.common.Names.*;
 

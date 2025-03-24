@@ -24,20 +24,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>alix-util</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>alix-common</artifactId>
             <version>${project.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-core</artifactId>
-            <version>${lucene.version}</version>
-        </dependency>
         <dependency>
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-analysis-common</artifactId>

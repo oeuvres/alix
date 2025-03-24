@@ -13,6 +13,18 @@
     <artifactId>alix-common</artifactId>
     <packaging>jar</packaging>
     <name>Alix, lucene shared code</name>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.lucene</groupId>
+            <artifactId>lucene-core</artifactId>
+            <version>${lucene.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>alix-util</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
     <build>
         <sourceDirectory>src/java</sourceDirectory>
     </build>

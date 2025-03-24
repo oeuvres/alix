@@ -31,6 +31,6 @@
  * limitations under the License.
  */
 /**
- * Main pilots for indexing and searching, see especially {@link Alix}
+ * Pilots for indexing corpora.
  */
-package com.github.oeuvres.alix.lucene;
+package com.github.alix.lucene.load;

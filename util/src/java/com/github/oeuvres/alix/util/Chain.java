@@ -1233,7 +1233,7 @@ public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
     @Override
     public String toString()
     {
-        return new String(chars, zero, size);
+        return new String(chars, zero, size).intern();
     }
 
     /**

@@ -413,7 +413,7 @@ public class FrDics
                 LOGGER.log(Level.FINEST, res + " graph=" + graph + " tag=" + tag);
             }
             graph.replace('’', '\'');
-            this.tag = Tag.no(tag);
+            this.tag = Tag.no(tag.toString());
             this.graph = new CharsAttImpl(graph);
             if (lem == null || lem.isEmpty()) {
                 this.lem = null;
