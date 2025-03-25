@@ -177,6 +177,22 @@ public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
         size += len;
         return this;
     }
+    
+    /**
+     * Append utf-8 bytes.
+     * 
+     * @param bytes The bytes to be decoded into chars.
+     * @param offset The index of the first byte to decode.
+     * @param length The number of bytes to decode.
+     * @return This Chain object for chaining.
+     */
+    public Chain append(final byte[] bytes, final int offset, final int length)
+    {
+        ensureRight(length);
+        final int added = UTF8toUTF16(bytes, offset, length, chars, zero + size);
+        size += added;
+        return this;
+    }
 
     /**
      * Return a pointer on the internal char array chars.

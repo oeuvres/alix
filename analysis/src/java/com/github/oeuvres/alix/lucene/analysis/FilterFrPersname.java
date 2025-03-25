@@ -41,7 +41,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
-import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
@@ -109,21 +109,21 @@ public class FilterFrPersname extends TokenFilter
         // is a name starting ?
         boolean nameFound = false;
         // if a foreName, it is a person
-        if (flags == Tag.NAMEpersf.no || flags == Tag.NAMEpersm.no) {
-            tagEnd = Tag.NAMEpers.no;
+        if (flags == TagFr.NAMEpersf.no || flags == TagFr.NAMEpersm.no) {
+            tagEnd = TagFr.NAMEpers.no;
             nameFound = true;
         }
         // found as a name (capitalization resolved)
-        else if (Tag.NAME.sameParent(flags) && Char.isUpperCase(termAtt.charAt(0))) {
+        else if (TagFr.NAME.sameParent(flags) && Char.isUpperCase(termAtt.charAt(0))) {
             tagEnd = flags;
             nameFound = true;
         }
         // possible candidates
-        else if (flags == Tag.SUBpers.no) { // Madame, Maître…
-            tagEnd = Tag.NAMEpers.no;
+        else if (flags == TagFr.SUBpers.no) { // Madame, Maître…
+            tagEnd = TagFr.NAMEpers.no;
             stack.add(captureState()); // store state in case of rewind (Monsieur Madeleine YES, Madame va bien ? NO)
-        } else if (flags == Tag.SUBplace.no) { // Rue, faubourg…
-            tagEnd = Tag.NAMEplace.no;
+        } else if (flags == TagFr.SUBplace.no) { // Rue, faubourg…
+            tagEnd = TagFr.NAMEplace.no;
             stack.add(captureState()); // allow possibility to rewind
         } else
             return true; // no names, go out
@@ -142,7 +142,7 @@ public class FilterFrPersname extends TokenFilter
         else
             concOrth.copy(orthAtt).mark(); // a previous filter may have set something good, mlle > mademoiselle
 
-        if (flagsAtt.getFlags() == Tag.SUBpers.no)
+        if (flagsAtt.getFlags() == TagFr.SUBpers.no)
             ; // monsieur, madame, not the key
         else if (!lemAtt.isEmpty())
             concLem.copy(lemAtt).mark();
@@ -174,16 +174,16 @@ public class FilterFrPersname extends TokenFilter
             // char.isUpperCase(termAtt.charAt(0)) // unsafe ex : verses L’amour de ma mère
             // // Je dirais au grand César
             // Louis le Grand ?
-            if (Char.isUpperCase(termAtt.charAt(0))) { // Tag.NAME.sameParent(flags2)
+            if (Char.isUpperCase(termAtt.charAt(0))) { // TagFr.NAME.sameParent(flags2)
                 // Set final flag according to future events
-                if (flags2 == Tag.NAMEplace.no && tagEnd != Tag.NAMEpers.no)
-                    tagEnd = Tag.NAMEplace.no; // Le [comte de Toulouse] is a person, not a place
-                else if (flags2 == Tag.NAMEpers.no)
-                    tagEnd = Tag.NAMEpers.no;
-                else if (flags2 == Tag.NAMEpersf.no)
-                    tagEnd = Tag.NAMEpers.no;
-                else if (flags2 == Tag.NAMEpersm.no)
-                    tagEnd = Tag.NAMEpers.no;
+                if (flags2 == TagFr.NAMEplace.no && tagEnd != TagFr.NAMEpers.no)
+                    tagEnd = TagFr.NAMEplace.no; // Le [comte de Toulouse] is a person, not a place
+                else if (flags2 == TagFr.NAMEpers.no)
+                    tagEnd = TagFr.NAMEpers.no;
+                else if (flags2 == TagFr.NAMEpersf.no)
+                    tagEnd = TagFr.NAMEpers.no;
+                else if (flags2 == TagFr.NAMEpersm.no)
+                    tagEnd = TagFr.NAMEpers.no;
                 // separator
                 String sep = " ";
                 if (termAtt.charAt(termAtt.length() - 1) == '\'')
@@ -194,7 +194,7 @@ public class FilterFrPersname extends TokenFilter
                 else
                     concOrth.append(sep + termAtt);
 
-                if (concLem.isEmpty() && (flags2 == Tag.NAMEpersm.no || flags2 == Tag.NAMEpersf.no))
+                if (concLem.isEmpty() && (flags2 == TagFr.NAMEpersm.no || flags2 == TagFr.NAMEpersf.no))
                     ; // de Suzon
                 else {
                     if (concLem.isEmpty())

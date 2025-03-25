@@ -51,7 +51,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
-import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Chain;
@@ -207,7 +207,7 @@ public class FrDics
     private static void loadResource(final String key, final String res)
     {
         FrDics.res = res;
-        Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
+        Reader reader = new InputStreamReader(TagFr.class.getResourceAsStream(res), StandardCharsets.UTF_8);
         load(key, reader, false);
     }
     
@@ -323,7 +323,7 @@ public class FrDics
     private static void load(final String res, final HashMap<CharsAtt, CharsAtt> map)
     {
         FrDics.res = res;
-        Reader reader = new InputStreamReader(Tag.class.getResourceAsStream(res), StandardCharsets.UTF_8);
+        Reader reader = new InputStreamReader(TagFr.class.getResourceAsStream(res), StandardCharsets.UTF_8);
         CSVReader csv = null;
         try {
             csv = new CSVReader(reader, 2);
@@ -413,7 +413,7 @@ public class FrDics
                 LOGGER.log(Level.FINEST, res + " graph=" + graph + " tag=" + tag);
             }
             graph.replace('’', '\'');
-            this.tag = Tag.no(tag.toString());
+            this.tag = TagFr.no(tag.toString());
             this.graph = new CharsAttImpl(graph);
             if (lem == null || lem.isEmpty()) {
                 this.lem = null;
@@ -428,7 +428,7 @@ public class FrDics
         public String toString()
         {
             StringBuilder sb = new StringBuilder();
-            sb.append(Tag.name(this.tag));
+            sb.append(TagFr.name(this.tag));
             if (graph != null)
                 sb.append(" graph=").append(graph);
             if (lem != null)

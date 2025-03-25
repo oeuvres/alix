@@ -40,7 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
-import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
@@ -57,7 +57,7 @@ public class FilterCloud extends TokenFilter
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
-    /** A linguistic category as a short number, see {@link Tag} */
+    /** A linguistic category as a short number, see {@link TagFr} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** A normalized orthographic form */
     private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
@@ -82,7 +82,7 @@ public class FilterCloud extends TokenFilter
         skippedPositions = 0;
         while (input.incrementToken()) {
             // no position for XML between words
-            if (flagsAtt.getFlags() == Tag.XML.no) {
+            if (flagsAtt.getFlags() == TagFr.XML.no) {
                 continue;
             }
             if (accept()) {
@@ -104,16 +104,16 @@ public class FilterCloud extends TokenFilter
     protected boolean accept()
     {
         final int tag = flagsAtt.getFlags();
-        if (tag == Tag.TEST.no) {
+        if (tag == TagFr.TEST.no) {
             System.out.println(termAtt + " — " + orthAtt);
         }
         // record an empty token at puctuation position for the rails
-        if (Tag.PUN.sameParent(tag)) {
-            if (tag == Tag.PUNclause.no) {
+        if (TagFr.PUN.sameParent(tag)) {
+            if (tag == TagFr.PUNclause.no) {
             }
-            else if (tag == Tag.PUNsent.no) {
+            else if (tag == TagFr.PUNsent.no) {
             }
-            else if (tag == Tag.PUNpara.no || tag == Tag.PUNsection.no) {
+            else if (tag == TagFr.PUNpara.no || tag == TagFr.PUNsection.no) {
                 // let it
             }
             else {
@@ -121,7 +121,7 @@ public class FilterCloud extends TokenFilter
             }
         }
         // unify numbers
-        else if (Tag.NUM.sameParent(tag)) {
+        else if (TagFr.NUM.sameParent(tag)) {
             termAtt.setEmpty().append("n°");
         }
         // replace term by lemma when available
@@ -133,7 +133,7 @@ public class FilterCloud extends TokenFilter
             termAtt.setEmpty().append(orthAtt);
         }
         // filter some names
-        if (Tag.NAME.sameParent(tag)) {
+        if (TagFr.NAME.sameParent(tag)) {
             // A. J.-J.
             if (termAtt.charAt(termAtt.length() - 1) == '.' && termAtt.length() <= 5) {
                 return false;
@@ -146,7 +146,7 @@ public class FilterCloud extends TokenFilter
             // if (termAtt.length() == 2 && Char.isUpperCase(termAtt.charAt(0)) &&
             // termAtt.charAt(1) == '.') return false;
             /*
-             * // filter first names if (tag == Tag.NAMEpersf || tag == Tag.NAMEpersm)
+             * // filter first names if (tag == TagFr.NAMEpersf || tag == TagFr.NAMEpersm)
              * return false; // M., A. if (termAtt.charAt(termAtt.length() - 1) == '.')
              * return false; // J.-J if (termAtt.charAt(termAtt.length() - 2) == '-') return
              * false;

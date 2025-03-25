@@ -39,7 +39,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
-import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 
 /**
@@ -56,7 +56,7 @@ public class FilterHTML extends TokenFilter
     private final CharsAttImpl test = new CharsAttImpl();
     /** The position increment (inform it if positions are stripped) */
     // private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
-    /** A linguistic category as a short number, see {@link Tag} */
+    /** A linguistic category as a short number, see {@link TagFr} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** A flag for non content element */
     private int skip;
@@ -86,7 +86,7 @@ public class FilterHTML extends TokenFilter
             }
             
             // not XML tag, return it with no change
-            if (flagsAtt.getFlags() != Tag.XML.no) {
+            if (flagsAtt.getFlags() != TagFr.XML.no) {
                 return true;
             }
             if (
@@ -96,12 +96,12 @@ public class FilterHTML extends TokenFilter
             }
             // most positions of XML tags will be skipped without information
             if (test.equals("</p>") || test.equals("</li>") || test.equals("</td>")) {
-                flagsAtt.setFlags(Tag.PUNpara.no);
+                flagsAtt.setFlags(TagFr.PUNpara.no);
                 termAtt.setEmpty().append("¶");
                 return true;
             }
             if (test.equals("</section>") || test.equals("</article>")) {
-                flagsAtt.setFlags(Tag.PUNsection.no);
+                flagsAtt.setFlags(TagFr.PUNsection.no);
                 termAtt.setEmpty().append("§");
                 return true;
             }

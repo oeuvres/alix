@@ -40,7 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
-import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
@@ -113,7 +113,7 @@ public class FilterLocution extends TokenFilter
         do {
             final int tag = flagsAtt.getFlags();
             // if token is pun, end of branch, exit
-            if (Tag.PUN.sameParent(tag) || tag == Tag.XML.no || termAtt.length() == 0) {
+            if (TagFr.PUN.sameParent(tag) || tag == TagFr.XML.no || termAtt.length() == 0) {
                 // after the loop, the queue logic before exit
                 break;
             }
@@ -128,14 +128,14 @@ public class FilterLocution extends TokenFilter
                 compound.append(orthAtt);
             }
             */
-            if (Tag.NUM.sameParent(tag)) {
+            if (TagFr.NUM.sameParent(tag)) {
                 compound.append("#");
             }
-            else if (Tag.NAME.sameParent(tag)) {
+            else if (TagFr.NAME.sameParent(tag)) {
                 compound.append(termAtt);
             }
             // verbs, compound key is the lemma
-            else if (Tag.VERB.sameParent(tag) && lemAtt.length() != 0) {
+            else if (TagFr.VERB.sameParent(tag) && lemAtt.length() != 0) {
                 verbSeen = true;
                 compound.append(lemAtt);
             }

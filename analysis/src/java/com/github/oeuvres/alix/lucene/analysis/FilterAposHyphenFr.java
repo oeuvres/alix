@@ -9,9 +9,8 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
-import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.common.Tag;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
-
 /**
  * A filter that decomposes words on a list of suffixes and prefixes, mainly to handle 
  * hyphenation and apostrophe ellision in French. The original token is broken and lost,
@@ -22,13 +21,11 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
  */
 public class FilterAposHyphenFr extends TokenFilter
 {
-    /** XML flag */
-    final static int XML = Tag.XML.no;
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** Char index in source text. */
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-    /** A linguistic category as a short number, see {@link Tag} */
+    /** A linguistic category as a short number, see {@link TagFr} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** Stack of stored states */
     private final AttLinkedList deque = new AttLinkedList();
@@ -128,7 +125,7 @@ public class FilterAposHyphenFr extends TokenFilter
             }
         }
         // do not try to split in XML tags
-        if (flagsAtt.getFlags() == XML) {
+        if (flagsAtt.getFlags() == Tag.XML.no) {
             return true;
         }
         int loop = 0;

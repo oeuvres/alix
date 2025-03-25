@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.fr;
+package com.github.oeuvres.alix.common;
 
 import java.util.Arrays;
 import java.util.BitSet;
@@ -8,36 +8,7 @@ import java.util.BitSet;
  */
 public class TagFilter
 {
-    /** Accept adjectives only */
-    static final public TagFilter ADJ = new TagFilter().set(Tag.ADJ).set(Tag.VERBger).freeze();
-    /** Accept adverbs only */
-    static final public TagFilter ADV = new TagFilter().set(Tag.ADV).freeze();
-    /** Accept all */
-    static final public TagFilter ALL = null;
-    /** Accept locutions */
-    static final public TagFilter LOC = new TagFilter().set(Tag.LOC).freeze();
-    /** Accept all forms known as names */
-    static final public TagFilter NAME = new TagFilter().setGroup(Tag.NAME).freeze();
-    /** Refuse stop words */
-    static final public TagFilter NOSTOP = new TagFilter().set(Tag.NOSTOP).freeze();
-    /** Refuse stop words, but accept locutions. */
-    static final public TagFilter NOSTOP_LOC = new TagFilter().set(Tag.NOSTOP).set(Tag.LOC).freeze();
-    /** Proper names known as persons */
-    static final public TagFilter PERS =new TagFilter().set(Tag.NAME).set(Tag.NAMEpers).set(Tag.NAMEpersf).set(Tag.NAMEpersm).set(Tag.NAMEauthor).set(Tag.NAMEfict).freeze();
-    /** Proper names known as places */
-    static final public TagFilter PLACE = new TagFilter().set(Tag.NAMEplace).freeze();
-    /** Proper names not known as persons or places */
-    static final public TagFilter RS = new TagFilter().set(Tag.NAME).set(Tag.NAMEevent).set(Tag.NAMEgod).set(Tag.NAMEorg).set(Tag.NAMEpeople).freeze();
-    /** Stop word only */
-    static final public TagFilter STOP = new TagFilter().setAll().clearGroup(Tag.SUB).clearGroup(Tag.NAME).clear(Tag.VERB).clear(Tag.ADJ).clear(0).freeze();
-    // static final public TagFilter STRONG = new TagFilter().set(Tag.SUB).set(Tag.VERB).set(Tag.ADJ).set(Tag.NOSTOP);
-    /** Significant substantives */
-    static final public TagFilter SUB = new TagFilter().set(Tag.SUB).freeze();
-    /** Unknown from dictionaries */
-    static final public TagFilter UKNOWN = new TagFilter().set(0).freeze();
-    /** Significant verbs */
-    static final public TagFilter VERB = new TagFilter().set(Tag.VERB).freeze();
-    
+
     /** If frozen=true, modify vector is impossible. */
     boolean frozen;
     /** A boolean vector of accepted flags {@link Tag#no}, boolean array is faster than a {@link BitSet}. */
@@ -62,6 +33,29 @@ public class TagFilter
             if (flag) cardinality++;
         }
         return cardinality;
+    }
+    
+    
+    /**
+     * Returns true if an info tag [0x10, 0xFF] is set.
+     */
+    public boolean hasInfoTag()
+    {
+        for (int i = 0x10; i <= 0xFF; i++) {
+            if (rule[i]) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if a control tag [0x00, 0x0F] is set.
+     */
+    public boolean hasControlTag()
+    {
+        for (int i = 0x00; i <= 0x0F; i++) {
+            if (rule[i]) return true;
+        }
+        return false;
     }
 
     /**

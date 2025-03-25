@@ -55,8 +55,8 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
+import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.fr.FrTag;
-import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterFrPersname;
 import com.github.oeuvres.alix.lucene.analysis.TokenizerML;

@@ -675,7 +675,7 @@ public class Alix
         int aff = 0;
         try {
             while (ts.incrementToken()) {
-                // if (Tag.isPun(flags.getFlags())) continue;
+                // if (TagFr.isPun(flags.getFlags())) continue;
                 // position may have been striped
                 if (token.length() == 0)
                     continue;
@@ -894,8 +894,8 @@ public class Alix
                     word = token.toString();
                 }
                 /*
-                 * final int tag = flags.getFlags(); if (Tag.isPun(tag)) { // start a new line
-                 * if (token.equals(";") || tag == Tag.PUNsent) { search.add(null); } continue;
+                 * final int tag = flags.getFlags(); if (TagFr.isPun(tag)) { // start a new line
+                 * if (token.equals(";") || tag == TagFr.PUNsent) { search.add(null); } continue;
                  * }
                  */
                 /*

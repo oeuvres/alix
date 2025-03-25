@@ -40,7 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
-import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
@@ -57,7 +57,7 @@ public class FilterPosFin extends TokenFilter
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
-    /** A linguistic category as a short number, see {@link Tag} */
+    /** A linguistic category as a short number, see {@link TagFr} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** A normalized orthographic form */
     private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
@@ -82,7 +82,7 @@ public class FilterPosFin extends TokenFilter
         skippedPositions = 0;
         while (input.incrementToken()) {
             // no position for XML between words
-            if (flagsAtt.getFlags() == Tag.XML.no) {
+            if (flagsAtt.getFlags() == TagFr.XML.no) {
                 continue;
             }
             if (accept()) {
@@ -105,17 +105,17 @@ public class FilterPosFin extends TokenFilter
     {
         final int tag = flagsAtt.getFlags();
         // record an empty token at puctuation position for the rails
-        if (Tag.PUN.sameParent(tag)) return false;
+        if (TagFr.PUN.sameParent(tag)) return false;
         // unify numbers
-        else if (Tag.NUM.sameParent(tag)) {
+        else if (TagFr.NUM.sameParent(tag)) {
             termAtt.setEmpty().append("n°");
         }
         // or take the normalized form
         else if (orthAtt.length() != 0) {
-            termAtt.setEmpty().append(orthAtt + "_" + Tag.name(tag));
+            termAtt.setEmpty().append(orthAtt + "_" + TagFr.name(tag));
         }
         else {
-            termAtt.append("_" + Tag.name(tag));
+            termAtt.append("_" + TagFr.name(tag));
         }
 
         return true;

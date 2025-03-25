@@ -46,8 +46,9 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
-import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.fr.TagFilter;
+import com.github.oeuvres.alix.common.TagFilter;
+import com.github.oeuvres.alix.fr.TagFr;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.MI;
 import com.github.oeuvres.alix.util.TopArray;
@@ -244,9 +245,9 @@ public class FormEnum implements FormIterator
             throw new UnsupportedOperationException("Field " + field.fieldName + " is not instanceof FieldText, filter form is not possible " + field);
         }
         FieldText fieldText = (FieldText)field;
-        boolean noStop = (tagFilter != null && tagFilter.get(Tag.NOSTOP));
-        boolean locs = (tagFilter != null && tagFilter.get(Tag.LOC));
-        boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+        boolean noStop = (tagFilter != null && tagFilter.get(TagFr.NOSTOP));
+        boolean locs = (tagFilter != null && tagFilter.get(TagFr.LOC));
+        boolean hasTags = (tagFilter != null && tagFilter.hasInfoTag());
 
         boolean hasFreq = (formId4freq != null);
         boolean hasHits = (formId4hits != null);
@@ -346,7 +347,7 @@ public class FormEnum implements FormIterator
     {
         final BytesRef bytes = new BytesRef();
         dic.get(formId, bytes);
-        term.reset().append(bytes);
+        term.reset().append(bytes.bytes, bytes.offset, bytes.length);
     }
 
     /**

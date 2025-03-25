@@ -63,8 +63,8 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 
-import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.fr.TagFilter;
+import com.github.oeuvres.alix.common.TagFilter;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.CoocMat;
 import com.github.oeuvres.alix.util.Edge;
@@ -411,21 +411,21 @@ public class FieldRail  extends FieldCharsAbstract
                 for (int i = 0, max = this.docId4len[docId]; i < max; i++) {
                     final int formId = bufInt.get();
                     final int flag = fieldText.formId4flag[formId];
-                    if (flag == Tag.PUNsection.no) {
+                    if (flag == TagFr.PUNsection.no) {
                         out.write('\n');
                         out.write('\n');
                         continue;
                     }
-                    else if (flag == Tag.PUNpara.no) {
+                    else if (flag == TagFr.PUNpara.no) {
                         out.write('\n');
                         out.write('\n');
                         continue;
                     }
-                    else if (flag == Tag.PUNsent.no) {
+                    else if (flag == TagFr.PUNsent.no) {
                         // out.write(10);
                         continue;
                     }
-                    else if (Tag.parent(flag) == Tag.PUN) {
+                    else if (TagFr.parent(flag) == TagFr.PUN) {
                         continue;
                     }
                     else if (formFilter != null && !formFilter.get(formId)) {
@@ -511,7 +511,7 @@ public class FieldRail  extends FieldCharsAbstract
                             if (jj > 0 && chain.last() != '\'')
                                 chain.append(' ');
                             formDic.get(slider.get(jj), bytes);
-                            chain.append(bytes);
+                            chain.append(bytes.bytes, bytes.offset, bytes.length);
                         }
                         edge = new Edge().sourceId(key.x()).targetId(key.y()).edgeLabel(chain.toString());
 

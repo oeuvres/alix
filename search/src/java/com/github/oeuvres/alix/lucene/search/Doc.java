@@ -54,8 +54,8 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
-import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.fr.TagFilter;
+import com.github.oeuvres.alix.common.Tag;
+import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.lucene.Alix;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
@@ -338,7 +338,7 @@ public class Doc
     static public FormEnum formEnum(Alix alix, int docId, String field, Distrib distrib, TagFilter formFilter)
             throws NoSuchFieldException, IOException
     {
-        boolean hasTags = (formFilter != null && (formFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+        boolean hasTags = (formFilter != null && formFilter.hasInfoTag());
         boolean noStop = (formFilter != null && formFilter.get(Tag.NOSTOP));
         boolean hasDistrib = (distrib != null);
 

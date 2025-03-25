@@ -53,8 +53,8 @@ import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
-import com.github.oeuvres.alix.fr.Tag;
-import com.github.oeuvres.alix.fr.TagFilter;
+import com.github.oeuvres.alix.common.TagFilter;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
@@ -80,7 +80,7 @@ public class FieldText extends FieldCharsAbstract
     private BitSet formId4isPun;
     /** formId4isStop.get(formId) == true: form is a stop word. */
     private BitSet formId4isStop;
-    /** formId4flag[formId] = {@link Tag#no()}; lexical type of form. */
+    /** formId4flag[formId] = {@link TagFr#no()}; lexical type of form. */
     protected int[] formId4flag;
     /** formId4isLoc.get(formId) == true: form is a locution. */
     private BitSet formId4isLoc;
@@ -218,9 +218,9 @@ public class FieldText extends FieldCharsAbstract
             }
             entry = FrDics.name(chars);
             if (entry != null) {
-                if (entry.tag == Tag.NAMEpers.no || entry.tag == Tag.NAMEpersf.no || entry.tag == Tag.NAMEpersm.no
-                        || entry.tag == Tag.NAMEauthor.no) {
-                    formId4flag[formId] = Tag.NAMEpers.no;
+                if (entry.tag == TagFr.NAMEpers.no || entry.tag == TagFr.NAMEpersf.no || entry.tag == TagFr.NAMEpersm.no
+                        || entry.tag == TagFr.NAMEauthor.no) {
+                    formId4flag[formId] = TagFr.NAMEpers.no;
                     continue;
                 }
                 else {
@@ -231,16 +231,16 @@ public class FieldText extends FieldCharsAbstract
             char c = chars.charAt(0);
             if (Char.isPunctuation(c)) {
                 if (c == '§') {
-                    formId4flag[formId] = Tag.PUNsection.no;
+                    formId4flag[formId] = TagFr.PUNsection.no;
                 }
                 else if (c == '¶') {
-                    formId4flag[formId] = Tag.PUNpara.no;
+                    formId4flag[formId] = TagFr.PUNpara.no;
                 }
                 else if (c == '.' || c == '…' || c == '?' || c == '!' ) {
-                    formId4flag[formId] = Tag.PUNsent.no;
+                    formId4flag[formId] = TagFr.PUNsent.no;
                 }
                 else {
-                    formId4flag[formId] = Tag.PUN.no;
+                    formId4flag[formId] = TagFr.PUN.no;
                 }
                 punRecord.set(formId);
                 continue;
@@ -250,21 +250,21 @@ public class FieldText extends FieldCharsAbstract
                 // monsieur Madeleine
                 entry = FrDics.word(chars);
                 if (entry != null) {
-                    if (entry.tag == Tag.SUBpers.no) {
-                        formId4flag[formId] = Tag.NAMEpers.no;
+                    if (entry.tag == TagFr.SUBpers.no) {
+                        formId4flag[formId] = TagFr.NAMEpers.no;
                         continue;
                     }
-                    if (entry.tag == Tag.SUBplace.no) {
-                        formId4flag[formId] = Tag.NAMEplace.no;
+                    if (entry.tag == TagFr.SUBplace.no) {
+                        formId4flag[formId] = TagFr.NAMEplace.no;
                         continue;
                     }
                 }
                 // Jean Valjean
                 entry = FrDics.name(chars);
                 if (entry != null) {
-                    if (entry.tag == Tag.NAMEpers.no || entry.tag == Tag.NAMEpersf.no
-                            || entry.tag == Tag.NAMEpersm.no) {
-                        formId4flag[formId] = Tag.NAMEpers.no;
+                    if (entry.tag == TagFr.NAMEpers.no || entry.tag == TagFr.NAMEpersf.no
+                            || entry.tag == TagFr.NAMEpersm.no) {
+                        formId4flag[formId] = TagFr.NAMEpers.no;
                         continue;
                     }
                 }
@@ -276,7 +276,7 @@ public class FieldText extends FieldCharsAbstract
                 else if (chars.length() <= 3 && chars.lastChar() == '\'');
                 else if (Char.isDigit(chars.lastChar()));
                 else {
-                    formId4flag[formId] = Tag.NAME.no;
+                    formId4flag[formId] = TagFr.NAME.no;
                 }
             }
         }
@@ -332,9 +332,9 @@ public class FieldText extends FieldCharsAbstract
         if (tagFilter == null || tagFilter.cardinality() < 1) return null;
         // boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
         BitSet formFilter = new SparseFixedBitSet(maxForm);
-        final boolean stop = tagFilter.get(Tag.STOP);
-        final boolean noStop = tagFilter.get(Tag.NOSTOP);
-        final boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+        final boolean stop = tagFilter.get(TagFr.STOP);
+        final boolean noStop = tagFilter.get(TagFr.NOSTOP);
+        final boolean hasTags = (tagFilter != null && tagFilter.hasInfoTag());
 
         for (int formId = 1; formId < maxForm; formId++) {
             // wanting stop word, come before nostop (setAll behavior)
@@ -408,9 +408,9 @@ public class FieldText extends FieldCharsAbstract
     {
         FormEnum formEnum = formEnum(); // get global stats 
     
-        boolean noStop = (tagFilter != null && tagFilter.get(Tag.NOSTOP));
-        boolean locs = (tagFilter != null && tagFilter.get(Tag.LOC));
-        boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+        boolean noStop = (tagFilter != null && tagFilter.get(TagFr.NOSTOP));
+        boolean locs = (tagFilter != null && tagFilter.get(TagFr.LOC));
+        boolean hasTags = (tagFilter != null && tagFilter.hasInfoTag());
         
         
         boolean hasDistrib = (distribution != null);
@@ -538,8 +538,8 @@ public class FieldText extends FieldCharsAbstract
         }
         boolean hasScorer = (scorer != null);
         
-        boolean noStop = (formFilter != null && formFilter.get(Tag.NOSTOP));
-        boolean hasTags = (formFilter != null && (formFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
+        boolean noStop = (formFilter != null && formFilter.get(TagFr.NOSTOP));
+        boolean hasTags = (formFilter != null && formFilter.hasInfoTag());
 
         
         FormEnum[] dics = new FormEnum[parts];
@@ -832,7 +832,7 @@ public class FieldText extends FieldCharsAbstract
     }
 
     /**
-     * Return tag attached to form according to {@link Tag}.
+     * Return tag attached to form according to {@link TagFr}.
      * 
      * @param formId id of a form.
      * @return tag for the form.

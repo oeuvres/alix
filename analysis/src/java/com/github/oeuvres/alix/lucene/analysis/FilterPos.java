@@ -44,7 +44,8 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
-import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.common.Tag;
+import com.github.oeuvres.alix.fr.TagFr;
 
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerME;
@@ -70,7 +71,7 @@ public class FilterPos extends TokenFilter
     static {
         // model must be static, tagger should be thread safe till 
 
-        try (InputStream modelIn = Tag.class.getResourceAsStream("opennlp-fr-ud-gsd-pos-1.2-2.5.0.bin")) {
+        try (InputStream modelIn = TagFr.class.getResourceAsStream("opennlp-fr-ud-gsd-pos-1.2-2.5.0.bin")) {
              posModel = new POSModel(modelIn);
         }
         catch (IOException e) {
@@ -81,24 +82,24 @@ public class FilterPos extends TokenFilter
     private POSTaggerME tagger;
     /** tag  */
     Map<String, Tag> tagList = Map.ofEntries(
-        entry("ADJ", Tag.ADJ),
-        entry("ADP", Tag.PREP),
-        entry("ADP+DET", Tag.DETprep),
-        entry("ADP+PRON", Tag.PREPpro),
-        entry("ADV", Tag.ADV),
-        entry("AUX", Tag.VERBaux),
-        entry("CCONJ", Tag.CONJcoord),
-        entry("DET", Tag.DET),
-        entry("INTJ", Tag.EXCL),
-        entry("NOUN", Tag.SUB),
-        entry("NUM", Tag.NUM),
-        entry("PRON", Tag.PRO),
-        entry("PROPN", Tag.NAME),
-        entry("PUNCT", Tag.PUN),
-        entry("SCONJ", Tag.CONJsub),
-        entry("SYM", Tag.NULL),
-        entry("VERB", Tag.VERB),
-        entry("X", Tag.NULL)
+        entry("ADJ", TagFr.ADJ),
+        entry("ADP", TagFr.PREP),
+        entry("ADP+DET", TagFr.DETprep),
+        entry("ADP+PRON", TagFr.PREPpro),
+        entry("ADV", TagFr.ADV),
+        entry("AUX", TagFr.VERBaux),
+        entry("CCONJ", TagFr.CONJcoord),
+        entry("DET", TagFr.DET),
+        entry("INTJ", TagFr.EXCL),
+        entry("NOUN", TagFr.SUB),
+        entry("NUM", TagFr.NUM),
+        entry("PRON", TagFr.PRO),
+        entry("PROPN", TagFr.NAME),
+        entry("PUNCT", TagFr.PUN),
+        entry("SCONJ", TagFr.CONJsub),
+        entry("SYM", TagFr.NULL),
+        entry("VERB", TagFr.VERB),
+        entry("X", TagFr.NULL)
     );
     /** state of the queue */
     private boolean tagged = false;
@@ -135,9 +136,9 @@ public class FilterPos extends TokenFilter
             queue.addLast(this);
             final int flags = flagsAtt.getFlags();
             if (
-                   flags == Tag.PUNsection.no
-                || flags == Tag.PUNpara.no
-                || flags == Tag.PUNsent.no
+                   flags == TagFr.PUNsection.no
+                || flags == TagFr.PUNpara.no
+                || flags == TagFr.PUNsent.no
             ) break;
         }
         // should be finisehd here
@@ -149,7 +150,7 @@ public class FilterPos extends TokenFilter
         for (int i = 0; i < queue.size(); i++) {
             FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
             // those tags will not help tagger
-            if (flags.getFlags() == Tag.PUNsection.no || flags.getFlags() == Tag.PUNpara.no) {
+            if (flags.getFlags() == TagFr.PUNsection.no || flags.getFlags() == TagFr.PUNpara.no) {
                 sentence[i] = "";
             }
             else {
@@ -161,7 +162,7 @@ public class FilterPos extends TokenFilter
         for (int i = 0; i < queue.size(); i++) {
             FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
             // let tag decided before
-            if (flags.getFlags() != Tag.NULL.no) {
+            if (flags.getFlags() != TagFr.NULL.no) {
             }
             flags.setFlags(tagList.get(tags[i]).no);
         }
