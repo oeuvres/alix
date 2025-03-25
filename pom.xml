@@ -18,7 +18,9 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
+        <!-- do not work with maven-dependency-plugin 
         <lucene.version>10.1.0</lucene.version>
+        -->
         <tests.skip>true</tests.skip>
     </properties>
 

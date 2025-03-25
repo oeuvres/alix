@@ -55,7 +55,7 @@ import com.github.oeuvres.alix.lucene.Alix;
 public class Scale
 {
     /** The lucene index */
-    private final Alix alix;
+    private final AlixReader alix;
     /** An optional corpus as a set of docIds */
     private final BitSet filter;
     /** Field name, type: NumericDocValuesField, for int values */
@@ -83,7 +83,7 @@ public class Scale
      * @param fieldText stats on a text field.
      * @throws IOException lucene errors.
      */
-    public Scale(final Alix alix, final String fieldInt, final String fieldText) throws IOException {
+    public Scale(final AlixReader alix, final String fieldInt, final String fieldText) throws IOException {
         this(alix, fieldInt, fieldText, null);
     }
 
@@ -96,7 +96,7 @@ public class Scale
      * @param docFilter if not null, documents to exclude from stats.
      * @throws IOException lucene errors.
      */
-    public Scale(final Alix alix, final String fieldInt, final String fieldText, final BitSet docFilter)
+    public Scale(final AlixReader alix, final String fieldInt, final String fieldText, final BitSet docFilter)
             throws IOException {
         this.alix = alix;
         this.filter = docFilter;

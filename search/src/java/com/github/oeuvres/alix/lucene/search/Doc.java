@@ -72,7 +72,7 @@ public class Doc
     /** Format numbers with the dot */
     final static DecimalFormatSymbols ensyms = DecimalFormatSymbols.getInstance(Locale.ENGLISH);
     /** The lucene index to read in */
-    final private Alix alix;
+    final private AlixReader alix;
     /** Id of a document in this reader {@link IndexReader#document(int)} */
     final int docId;
     /** Permanent id for the document */
@@ -90,7 +90,7 @@ public class Doc
      * @param id persistant external id of document.
      * @throws IOException Lucene errors.
      */
-    public Doc(final Alix alix, final String id) throws IOException {
+    public Doc(final AlixReader alix, final String id) throws IOException {
         this(alix, id, null);
     }
 
@@ -104,7 +104,7 @@ public class Doc
      * @param fieldsToLoad list of stored fields to load.
      * @throws IOException Lucene errors.
      */
-    public Doc(final Alix alix, final String id, final HashSet<String> fieldsToLoad) throws IOException {
+    public Doc(final AlixReader alix, final String id, final HashSet<String> fieldsToLoad) throws IOException {
         int docId = alix.getDocId(id);
         if (docId < 0) {
             throw new IllegalArgumentException("No document found with id: " + id);
@@ -130,7 +130,7 @@ public class Doc
      * @param docId internal lucene docId.
      * @throws IOException Lucene errors.
      */
-    public Doc(final Alix alix, final int docId) throws IOException {
+    public Doc(final AlixReader alix, final int docId) throws IOException {
         this(alix, docId, null);
     }
 
@@ -144,7 +144,7 @@ public class Doc
      * @param fieldsToLoad list of stored fields to load.
      * @throws IOException Lucene errors.
      */
-    public Doc(final Alix alix, final int docId, final HashSet<String> fieldsToLoad) throws IOException {
+    public Doc(final AlixReader alix, final int docId, final HashSet<String> fieldsToLoad) throws IOException {
         StoredFields fread = alix.reader().storedFields();
         if (fieldsToLoad == null) {
             document = fread.document(docId);
@@ -335,7 +335,7 @@ public class Doc
      * @throws NoSuchFieldException  not a text field.
      * @throws IOException           Lucene errors.
      */
-    static public FormEnum formEnum(Alix alix, int docId, String field, Distrib distrib, TagFilter formFilter)
+    static public FormEnum formEnum(AlixReader alix, int docId, String field, Distrib distrib, TagFilter formFilter)
             throws NoSuchFieldException, IOException
     {
         boolean hasTags = (formFilter != null && formFilter.hasInfoTag());
@@ -491,7 +491,7 @@ public class Doc
     /**
      * Returns the persistent String id of the document.
      * 
-     * @return Alix id.
+     * @return AlixReader id.
      */
     public String id()
     {

@@ -66,7 +66,6 @@ import org.apache.lucene.util.FixedBitSet;
 import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.util.Chain;
-import com.github.oeuvres.alix.util.CoocMat;
 import com.github.oeuvres.alix.util.Edge;
 import com.github.oeuvres.alix.util.EdgeMap;
 import com.github.oeuvres.alix.util.EdgeMatrix;
