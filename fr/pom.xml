@@ -13,6 +13,13 @@
     <artifactId>alix-fr</artifactId>
     <packaging>jar</packaging>
     <name>Alix, french resources</name>
+    <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>alix-util</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
     <build>
         <sourceDirectory>src/java</sourceDirectory>
     </build>

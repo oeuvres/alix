@@ -30,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.cli;
+package com.github.oeuvres.alix.lucene.load;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,7 +55,7 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
-import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.FrTag;
 import com.github.oeuvres.alix.fr.TagFilter;
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterFrPersname;
@@ -66,7 +66,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 /**
  * Adhoc tool to extract Names.
  */
-@Command(name = "Balinoms", description = "Tag names in an XML/TEI file", mixinStandardHelpOptions = true)
+@Command(name = "Balinoms", description = "FrTag names in an XML/TEI file", mixinStandardHelpOptions = true)
 public class Balinoms implements Callable<Integer>
 {
     /**
@@ -80,7 +80,7 @@ public class Balinoms implements Callable<Integer>
     static class Name implements Comparable<Name>
     {
         int count = 1;
-        int tag = Tag.NAME.no;
+        int tag = FrTag.NAME.no;
         String form;
 
         Name(final String form) {
@@ -164,7 +164,7 @@ public class Balinoms implements Callable<Integer>
     }
 
     /**
-     * Tag name in an XML string.
+     * FrTag name in an XML string.
      * 
      * @param xml The source XML content.
      * @param out A writer for different destinations.
@@ -189,7 +189,7 @@ public class Balinoms implements Callable<Integer>
                 toks++;
                 final int flag = attFlags.getFlags();
                 // TODO test to avoid over tagging ?
-                if (!Tag.NAME.sameParent(flag))
+                if (!FrTag.NAME.sameParent(flag))
                     continue;
                 // Should not arrive, but it arrives
                 if (lemAtt.isEmpty()) {
@@ -203,30 +203,30 @@ public class Balinoms implements Callable<Integer>
 
                 out.print(xml.substring(begin, attOff.startOffset()));
                 begin = attOff.endOffset();
-                if (Tag.NAMEplace.no == flag) {
+                if (FrTag.NAMEplace.no == flag) {
                     out.print("<placeName>");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</placeName>");
-                    inc(lemAtt, Tag.NAMEplace.no);
+                    inc(lemAtt, FrTag.NAMEplace.no);
                 }
                 // personne
-                else if (Tag.NAMEpers.no == flag || Tag.NAMEfict.no == flag) {
+                else if (FrTag.NAMEpers.no == flag || FrTag.NAMEfict.no == flag) {
                     out.print("<persName key=\"" + lemAtt + "\">");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</persName>");
-                    inc(lemAtt, Tag.NAMEpers.no);
+                    inc(lemAtt, FrTag.NAMEpers.no);
                 }
                 // non repéré supposé personne
-                else if (Tag.NAME.no == flag) {
+                else if (FrTag.NAME.no == flag) {
                     out.print("<persName key=\"" + lemAtt + "\">");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</persName>");
-                    inc(lemAtt, Tag.NAMEpers.no);
-                } else { // || Tag.NAMEauthor.flag == flag
+                    inc(lemAtt, FrTag.NAMEpers.no);
+                } else { // || FrTag.NAMEauthor.flag == flag
                     out.print("<name>");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</name>");
-                    inc(lemAtt, Tag.NAME.no);
+                    inc(lemAtt, FrTag.NAME.no);
                 }
 
             }
@@ -275,7 +275,7 @@ public class Balinoms implements Callable<Integer>
         sb.append("forme\ttype\teffectif\n");
         int n = 1;
         for (Entry entry : lexiq) {
-            sb.append(entry.form + "\t" + Tag.name(entry.flag) + "\t" + entry.count + "\n");
+            sb.append(entry.form + "\t" + FrTag.name(entry.flag) + "\t" + entry.count + "\n");
             if (n == limit)
                 break;
             n++;

@@ -30,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.alix.lucene.load;
+package com.github.oeuvres.alix.lucene.load;
 
 import static com.github.oeuvres.alix.common.Names.*;
 

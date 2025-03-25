@@ -30,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.alix.lucene.load;
+package com.github.oeuvres.alix.lucene.load;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -135,7 +135,7 @@ public class XMLIndexer implements Runnable
         // final SAXTransformerFactory stf = (SAXTransformerFactory)TransformerFactory.newInstance();
         if (preXsl != null) {
             if (!new File(preXsl).exists()) {
-                throw new FileNotFoundException("\n[" + Alix.NAME + "] pre transformation XSLfile not found: " + preXsl);
+                throw new FileNotFoundException("\n[alix] pre transformation XSLfile not found: " + preXsl);
             }
             Templates preTemplates = getXSLFactory().newTemplates(new StreamSource(preXsl));
             preHandler = stf.newTransformerHandler(preTemplates);
@@ -192,7 +192,7 @@ public class XMLIndexer implements Runnable
         TransformerHandler preHandler = null;
         if (preXsl != null) {
             if (!new File(preXsl).exists()) {
-                throw new FileNotFoundException("\n[" + Alix.NAME + "] pre transformation XSLfile not found: " + preXsl);
+                throw new FileNotFoundException("\n[alix] pre transformation XSLfile not found: " + preXsl);
             }
             final Templates preTemplates = getXSLFactory().newTemplates(new StreamSource(preXsl));
             preHandler = stf.newTransformerHandler(preTemplates);
@@ -366,7 +366,7 @@ public class XMLIndexer implements Runnable
             throws TransformerException, InterruptedException, ParserConfigurationException, SAXException, IOException 
     {
         // compile XSLT, maybe it could be done before?
-        info("[" + Alix.NAME + "]" + " lucene=\"" + writer.getDirectory() + "\"");
+        info("[alix]" + " lucene=\"" + writer.getDirectory() + "\"");
         // check if repeated filename
         Map<String, Integer> hash = new HashMap<String, Integer>();
         for (int i = 0, size = files.size(); i < size; i++) {
@@ -396,7 +396,7 @@ public class XMLIndexer implements Runnable
             ;
         if (files.size() < 1) {
             throw new FileNotFoundException(
-                    "\n[" + Alix.NAME + "] No file found to index files=\"" + files.toString() + "\"");
+                    "\n[alix] No file found to index files=\"" + files.toString() + "\"");
         }
         int threads = 1;
 
