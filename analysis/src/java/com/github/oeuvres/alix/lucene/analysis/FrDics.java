@@ -103,6 +103,10 @@ public class FrDics
     
     /** Load dictionaries */
     static {
+        int loaded = TagFr.ADJ.no;
+        if (loaded == 0) {
+            throw new NullPointerException("Tags are not static loaded.");
+        }
         // first word win
         String[] files = { 
             "locutions.csv", // compounds to decompose

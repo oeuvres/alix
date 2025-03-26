@@ -40,7 +40,7 @@ import com.github.oeuvres.alix.common.Tag;
  */
 public class TagFr extends Tag {
 
-	// 1x, verbes
+    // 1x, verbes
     /** Semantic verb */
     public static final Tag VERB = new Tag("VERB", 0x10, "Verbe", "Verbe sémantique (hors autres catégories verbales).");
     /** Auxiliary verb */
@@ -197,9 +197,16 @@ public class TagFr extends Tag {
     /** Demonstrative particle */
     public static final Tag PARTdem = new Tag("PARTdem", 0xF3, "Part. dém.", "-ci, -là (particule démonstrative)");
 
+    /**
+     * Default constructor, super()
+     * @param name
+     * @param no
+     * @param label
+     * @param desc
+     */
     public TagFr(final String name, final int no, final String label, final String desc) {
-		super(name, no, label, desc);
-	}
+        super(name, no, label, desc);
+    }
 
 
 }

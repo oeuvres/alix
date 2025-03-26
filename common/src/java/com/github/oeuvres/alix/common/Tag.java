@@ -6,7 +6,7 @@ import java.util.Map;
 import com.github.oeuvres.alix.fr.TagFr;
 
 /**
- * Extendable enumeration like {@link java.util.logging}.
+ * Extendable enumeration, like {@link java.util.logging.Level}.
  */
 public class Tag {
     /** A structured bit flag between 0-255 */
@@ -19,6 +19,10 @@ public class Tag {
     public final String desc;
     /** The first hexa digit, used as a type grouping */
     final private int parent;
+    /** Array to get a tag by number */
+    private static final Tag[] no4tag = new Tag[256];
+    /** Dictionary to get number of a tag by name */
+    private static final Map<String, Integer> name4no = new HashMap<String, Integer>();
     
     // 0x, internal messages
     
@@ -37,28 +41,33 @@ public class Tag {
     /** Locution  (maybe substantive, conjunction…) */
     public static final Tag LOC = new Tag("LOC", 0x0A, "Locution", "parce que, sans pour autant…");
 
-    /** Array to get a tag by number */
-    private static final Tag[] no4tag = new Tag[256];
-    /** Dictionary to get number of a tag by name */
-    private static final Map<String, Integer> name4no = new HashMap<String, Integer>();
 
-
-
-    /** Constructor */
+    /**
+     * Constructor for a Tag, to register as static.
+     * 
+     * @param name 
+     * @param no
+     * @param label
+     * @param desc
+     */
     public Tag(final String name, final int no, final String label, final String desc) {
-    	if (no < 0 || no > 255) {
-    		throw new IllegalArgumentException("no=" + no + ", out of range [0, 255]");
-    	}
+        if (no < 0 || no > 255) {
+            throw new IllegalArgumentException("no=" + no + ", out of range [0, 255]");
+        }
         this.no = no;
         this.label = label;
         this.desc = desc;
         this.parent = no & 0xF0;
-        this.name = this.toString();
+        this.name = name;
         add(this);
     }
     
 
-    private static synchronized void add(Tag tag) {
+    /**
+     * Add a tag to list (synchronized?)
+     * @param tag
+     */
+    private static void add(Tag tag) {
         no4tag[tag.no] = tag;
         name4no.put(tag.name, tag.no);
     }
@@ -142,5 +151,10 @@ public class Tag {
         no = no & 0xFF;
         return no4tag[no];
     }
-
+    
+    @Override
+    public String toString()
+    {
+        return no + " " + name + " " + label + " " + desc;
+    }
 }
