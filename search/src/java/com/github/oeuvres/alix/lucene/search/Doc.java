@@ -56,9 +56,7 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 import com.github.oeuvres.alix.common.Tag;
 import com.github.oeuvres.alix.common.TagFilter;
-import com.github.oeuvres.alix.lucene.Alix;
-import com.github.oeuvres.alix.lucene.analysis.FrDics;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.index.BytesDic;
 import com.github.oeuvres.alix.util.Top;
 
 /**
@@ -171,9 +169,9 @@ public class Doc
      * @throws IOException          Lucene errors.
      * @throws NoSuchFieldException Field doesn’t exists.
      */
-    public String contrast(final String field, final int docId2) throws IOException, NoSuchFieldException
+    public String contrast(final String field, final int docId2, final BytesDic stopwords) throws IOException, NoSuchFieldException
     {
-        return contrast(field, docId2, false);
+        return contrast(field, docId2, stopwords, false);
     }
 
     /**
@@ -187,7 +185,7 @@ public class Doc
      * @throws IOException          Lucene errors.
      * @throws NoSuchFieldException Field doesn’t exists.
      */
-    public String contrast(final String field, final int docId2, final boolean right)
+    public String contrast(final String field, final int docId2, final BytesDic stopwords, final boolean right)
             throws IOException, NoSuchFieldException
     {
         String text = get(field);
@@ -208,16 +206,13 @@ public class Doc
         // loop on search source, compare with dest
         double max1 = Double.MIN_VALUE;
         double max2 = Double.MIN_VALUE;
-        CharsAttImpl att = new CharsAttImpl();
         while (termit1.next() != null) {
+            term1 = termit1.term();
+            if (stopwords != null && stopwords.contains(term1)) continue;
+
             // termit1.ord(); UnsupportedOperationException
             final int count1 = (int) termit1.totalTermFreq();
-            term1 = termit1.term();
             String form = term1.utf8ToString();
-            att.setEmpty().append(form);
-            if (FrDics.isStop(att))
-                continue;
-
             int count2 = 0;
             while (true) {
                 if (term2 == null)
@@ -513,7 +508,8 @@ public class Doc
      * @throws IllegalAccessException 
      * @throws InstantiationException 
      */
-    public Top<String> intersect(final String field, final int docId2) throws IOException, NoSuchFieldException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException
+    public Top<String> intersect(final String field, final int docId2, final BytesDic stopwords) 
+        throws IOException, NoSuchFieldException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException
     {
         // new lucene API, not tested
         Terms vek2 = alix.reader().termVectors().get(docId2, field);
@@ -528,12 +524,10 @@ public class Doc
         TermsEnum termit2 = vek2.iterator();
         BytesRef term1;
         BytesRef term2 = termit2.next();
-        ByteRunAutomaton tomat = FrDics.STOP_BYTES;
         // loop on source search
         while ((term1 = termit1.next()) != null) {
             // filter stop word
-            if (tomat.run(term1.bytes, term1.offset, term1.length))
-                continue;
+            if (stopwords != null && stopwords.contains(term1)) continue;
             double count1 = termit1.totalTermFreq();
             double count2 = 0;
             // loop on other doc to find

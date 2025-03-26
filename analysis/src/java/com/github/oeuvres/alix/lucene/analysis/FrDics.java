@@ -32,6 +32,7 @@
  */
 package com.github.oeuvres.alix.lucene.analysis;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -43,13 +44,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
@@ -78,35 +77,27 @@ public class FrDics
     /** Avoid multiple loading of external resource */
     private static final Set<String> loaded = new HashSet<>();
     /** Logger */
-    static Logger LOGGER = Logger.getLogger(FrDics.class.getName());
+    static Logger LOGGER = LoggerFactory.getLogger(FrDics.class.getName());
     /** Flag for compound, end of term */
     static final public int LEAF = 0x100;
     /** Flag for compound, to be continued */
     static final public int BRANCH = 0x200;
-    /** French stopwords as hash to filter attributes */
-    // static final public HashSet<CharsAtt> STOP = new HashSet<>((int) (1000 / 0.75));
-    /** French stopwords as binary automaton */
-    public static ByteRunAutomaton STOP_BYTES;
     /** 500 000 types French lexicon seems not too bad for memory */
-    static final public HashMap<CharsAtt, LexEntry> WORDS = new HashMap<>((int) (500000 / 0.75));
+    static final private HashMap<CharsAtt, LexEntry> WORDS = new HashMap<>((int) (500000 / 0.75));
     /** French names on which keep Capitalization */
-    static final public HashMap<CharsAtt, LexEntry> NAMES = new HashMap<>((int) (50000 / 0.75));
+    static final private HashMap<CharsAtt, LexEntry> NAMES = new HashMap<>((int) (50000 / 0.75));
     /** A tree to resolve compounds */
-    static final public HashMap<CharsAtt, Integer> TREELOC = new HashMap<>((int) (1500 / 0.75));
+    static final HashMap<CharsAtt, Integer> TREELOC = new HashMap<>((int) (1500 / 0.75));
     /** Graphic normalization (replacement) */
-    static final public Map<CharsAtt, CharsAtt> NORMALIZE = new HashMap<>((int) (100 / 0.75));
+    static final private Map<CharsAtt, CharsAtt> NORMALIZE = new HashMap<>((int) (100 / 0.75));
     /** Abbreviations with a final dot */
-    static final public Set<CharsAtt> BREVIDOT = new HashSet<>((int) (200 / 0.75));
+    static final private Set<CharsAtt> BREVIDOT = new HashSet<>((int) (200 / 0.75));
     /** current dictionnary loaded, for logging */
     static String res;
     
     
     /** Load dictionaries */
     static {
-        int loaded = TagFr.ADJ.no;
-        if (loaded == 0) {
-            throw new NullPointerException("Tags are not static loaded.");
-        }
         // first word win
         String[] files = { 
             "locutions.csv", // compounds to decompose
@@ -193,17 +184,6 @@ public class FrDics
     }
 
     /**
-     * Test if the requested chars are in the stop word dictionary.
-     * 
-     * @param ref lucene bytes.
-     * @return true if submitted form is a stop word, false otherwise.
-     */
-    public static boolean isStop(BytesRef ref)
-    {
-        return STOP_BYTES.run(ref.bytes, ref.offset, ref.length);
-    }
-
-    /**
      * Load a jar resource as dictionary.
      * 
      * @param res resource path according to the class loader.
@@ -241,7 +221,7 @@ public class FrDics
      * 
      * @param reader for file or jar.
      */
-    static public void load(final String name, final Reader reader, boolean replace)
+    synchronized static public void load(final String name, final Reader reader, boolean replace)
     {
         if (loaded.contains(name)) {
             System.out.println(name + " already loaded");
@@ -414,10 +394,10 @@ public class FrDics
          */
         public LexEntry(final Chain graph, final Chain tag, final Chain lem) {
             if (graph.isEmpty() || tag.isEmpty()) {
-                LOGGER.log(Level.FINEST, res + " graph=" + graph + " tag=" + tag);
+                LOGGER.debug(res + " graph=" + graph + " tag=" + tag);
             }
             graph.replace('’', '\'');
-            this.tag = TagFr.no(tag.toString());
+            this.tag = TagFr.NULL.no(tag.toString());
             this.graph = new CharsAttImpl(graph);
             if (lem == null || lem.isEmpty()) {
                 this.lem = null;
@@ -432,7 +412,7 @@ public class FrDics
         public String toString()
         {
             StringBuilder sb = new StringBuilder();
-            sb.append(TagFr.name(this.tag));
+            sb.append(TagFr.NULL.name(this.tag));
             if (graph != null)
                 sb.append(" graph=").append(graph);
             if (lem != null)

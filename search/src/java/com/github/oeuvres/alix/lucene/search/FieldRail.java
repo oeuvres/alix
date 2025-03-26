@@ -409,7 +409,7 @@ public class FieldRail  extends FieldCharsAbstract
                 bufInt.position(this.docId4offset[docId]);
                 for (int i = 0, max = this.docId4len[docId]; i < max; i++) {
                     final int formId = bufInt.get();
-                    final int flag = fieldText.formId4flag[formId];
+                    final int flag = fieldText.formId4tagNo[formId];
                     if (flag == TagFr.PUNsection.no) {
                         out.write('\n');
                         out.write('\n');

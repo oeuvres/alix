@@ -30,13 +30,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.util;
+package com.github.oeuvres.alix.lucene.search;
 
 
 import java.util.Arrays;
 
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
+
+import com.github.oeuvres.alix.util.IntList;
 
 
 /**

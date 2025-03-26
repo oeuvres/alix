@@ -12,6 +12,8 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 
+import com.github.oeuvres.alix.lucene.search.BitsCollectorManager;
+
 public class BitsCollectorManagerTest extends LuceneTestCase
 {
 

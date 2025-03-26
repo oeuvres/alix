@@ -35,7 +35,7 @@ package com.github.oeuvres.alix.lucene.analysis;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 
 /**
@@ -135,7 +135,7 @@ public class CharsDic
             StringBuilder sb = new StringBuilder();
             sb.append(key);
             if (tag > 0)
-                sb.append(" ").append(Tag.name(tag)).append(" ");
+                sb.append(" ").append(TagFr.name(tag)).append(" ");
             sb.append(" (").append(count).append(")");
             return sb.toString();
         }

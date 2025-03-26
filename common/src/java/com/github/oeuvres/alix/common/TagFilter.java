@@ -302,8 +302,7 @@ public class TagFilter
     {
         StringBuilder sb = new StringBuilder();
         for (int tag = 0; tag < 256; tag++) {
-            if ((tag % 16) == 0)
-                sb.append(Tag.name(tag)).append("\t");
+            if ((tag % 16) == 0) sb.append(Integer.toHexString(tag)).append("\t");
             if (rule[tag])
                 sb.append(1);
             else

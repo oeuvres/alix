@@ -35,7 +35,6 @@ package com.github.oeuvres.alix.util;
 import java.util.Arrays;
 import java.util.Map;
 
-import com.github.oeuvres.alix.maths.Calcul;
 
 /**
  * An efficient int-Object Map implementation. source:

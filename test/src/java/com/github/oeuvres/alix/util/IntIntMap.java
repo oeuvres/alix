@@ -37,7 +37,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.github.oeuvres.alix.maths.Calcul;
+import com.github.oeuvres.alix.util.Calcul;
 
 /**
  * An efficient int-int Map implementation, encoded in a long array for key and

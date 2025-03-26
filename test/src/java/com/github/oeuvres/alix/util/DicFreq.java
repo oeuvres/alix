@@ -49,7 +49,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.github.oeuvres.alix.maths.Calcul;
+import com.github.oeuvres.alix.util.Calcul;
 
 /**
  * <p>

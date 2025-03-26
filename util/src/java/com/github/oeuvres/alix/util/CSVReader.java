@@ -32,6 +32,7 @@
  */
 package com.github.oeuvres.alix.util;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -70,7 +71,7 @@ public class CSVReader
      * @throws FileNotFoundException file 404.
      */
     public CSVReader(final File file, final int cols) throws FileNotFoundException {
-        this.reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
+        this.reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
         row = new Row(cols);
     }
 
@@ -91,7 +92,7 @@ public class CSVReader
      * @param sep char between cells.
      */
     public CSVReader(Reader reader, final int cols, final char sep) {
-        this.reader = reader;
+        this.reader = getBufferedReader(reader);
         row = new Row(cols);
         // quote = '"';
         this.sep = sep;
@@ -106,13 +107,11 @@ public class CSVReader
         reader.close();
     }
 
-    /**
-     * Current row, popualted by last {@link #readRow()}.
-     * @return pointer to row.
-     */
-    public Row row()
+    private static BufferedReader getBufferedReader(Reader reader)
     {
-        return this.row;
+        return (reader instanceof BufferedReader)
+            ? (BufferedReader) reader
+            : new BufferedReader(reader);
     }
 
     /**
@@ -199,6 +198,17 @@ public class CSVReader
         line++;
         return row;
     }
+    
+
+    /**
+     * Current row, popualted by last {@link #readRow()}.
+     * @return pointer to row.
+     */
+    public Row row()
+    {
+        return this.row;
+    }
+
 
     /**
      * Mutable object to record cells as {@link CharSequence}.
@@ -261,7 +271,7 @@ public class CSVReader
                 return null;
             return cells[pointer++];
         }
-
+        
         @Override
         public String toString()
         {

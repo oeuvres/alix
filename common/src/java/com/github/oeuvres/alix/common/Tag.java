@@ -74,12 +74,12 @@ public class Tag {
 
 
     /**
-     * Get TagFr label by number identifier.
+     * Get Tag label by number identifier.
      * 
      * @param no TagFr identifier number.
      * @return Label of a TagFr.
      */
-    public static String label(final int no)
+    public String label(final int no)
     {
         Tag tag = tag(no);
         if (tag == null)
@@ -93,7 +93,7 @@ public class Tag {
      * @param no TagFr identifier number.
      * @return Name of a TagFr.
      */
-    public static String name(final int no)
+    public String name(final int no)
     {
         Tag tag = tag(no);
         if (tag == null)
@@ -106,7 +106,7 @@ public class Tag {
      * @param name A tag name.
      * @return The identifier number of a <code>TagFr</code>.
      */
-    public static int no(final String name)
+    public int no(final String name)
     {
         Integer ret = name4no.get(name);
         if (ret == null)
@@ -120,7 +120,7 @@ public class Tag {
      * @param no Number of a TagFr.
      * @return The parent TagFr.
      */
-    static public Tag parent(final int no)
+    public Tag parent(final int no)
     {
         Tag ret = no4tag[no & 0xF0];
         if (ret == null)
@@ -140,12 +140,12 @@ public class Tag {
     }
 
     /**
-     * Get TagFr by number.
+     * Get Tag by number.
      * 
      * @param no A TagFr identifier number.
      * @return A TagFr.
      */
-    public static Tag tag(int no)
+    public Tag tag(int no)
     {
         // the int may be used as a more complex bit flag
         no = no & 0xFF;

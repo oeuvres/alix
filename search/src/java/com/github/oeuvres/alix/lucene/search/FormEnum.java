@@ -267,7 +267,7 @@ public class FormEnum implements FormIterator
             }
             // use tags even if no stop is set, allow to filter unknown or null
             if (hasTags) {
-                if(!tagFilter.get(fieldText.formId4flag[formId])) unset = true;
+                if(!tagFilter.get(fieldText.formId4tagNo[formId])) unset = true;
             }
             // if no freq, give occs for the form
             if (!hasFreq) {

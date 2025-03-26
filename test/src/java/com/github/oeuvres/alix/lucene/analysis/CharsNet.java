@@ -36,7 +36,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 
-import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.IntPair;
 import com.github.oeuvres.alix.util.IntPairMutable;
@@ -201,7 +201,7 @@ public class CharsNet
             StringBuilder sb = new StringBuilder();
             sb.append(label);
             if (tag > 0)
-                sb.append(" ").append(Tag.name(tag)).append(" ");
+                sb.append(" ").append(TagFr.name(tag)).append(" ");
             sb.append(" (").append(count).append(")");
             return sb.toString();
         }

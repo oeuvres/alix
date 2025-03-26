@@ -275,7 +275,7 @@ public class Balinoms implements Callable<Integer>
         sb.append("forme\ttype\teffectif\n");
         int n = 1;
         for (Entry entry : lexiq) {
-            sb.append(entry.form + "\t" + TagFr.name(entry.flag) + "\t" + entry.count + "\n");
+            sb.append(entry.form + "\t" + TagFr.NULL.name(entry.flag) + "\t" + entry.count + "\n");
             if (n == limit)
                 break;
             n++;

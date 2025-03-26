@@ -1,4 +1,5 @@
-package com.github.oeuvres.alix.util;
+package com.github.oeuvres.alix.lucene.search;
+
 
 import static org.junit.Assert.*;
 
@@ -10,6 +11,7 @@ import java.util.Map;
 import java.util.Random;
 
 import org.junit.Test;
+import com.github.oeuvres.alix.lucene.search.CoocMat;
 
 public class CoocMatTest
 {

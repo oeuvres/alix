@@ -22,7 +22,8 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 // import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.junit.Test;
 
-import com.github.oeuvres.alix.fr.Tag;
+import com.github.oeuvres.alix.common.Tag;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
@@ -31,9 +32,10 @@ public class TokenStreamsTest {
 
     
     @Test
-    public void locution() throws IOException
+    static public void locution() throws IOException
     {
-        File dic = new File("../piaget_labo/install/piaget-dic.csv");
+        System.out.println("works ?");
+        File dic = new File("../../piaget_labo/install/piaget-dic.csv");
         FrDics.load(dic.getCanonicalPath(), dic);
 
         String text = "";
@@ -86,7 +88,7 @@ public class TokenStreamsTest {
         analyze(tokenizer, text);
     }
     
-    private void analyze(TokenStream tokenStream, String text) throws IOException
+    private static void analyze(TokenStream tokenStream, String text) throws IOException
     {
         
 
@@ -104,7 +106,7 @@ public class TokenStreamsTest {
             final int startOffset = offsetAttribute.startOffset();
             System.out.print(""
               + "term=" + termAttribute.toString() + "\t" 
-              + Tag.name(flagsAttribute.getFlags()) + "\t" 
+              + Tag.NULL.name(flagsAttribute.getFlags()) + "\t" 
               // + orthAtt.toString() + "|\t|" 
               + "|" + text.substring(startOffset,  offsetAttribute.endOffset()) + "|\t" 
               + startOffset + "\t"
@@ -189,4 +191,8 @@ public class TokenStreamsTest {
 
     }
 
+    static public void main(String[] args) throws IOException
+    {
+        locution();
+    }
 }

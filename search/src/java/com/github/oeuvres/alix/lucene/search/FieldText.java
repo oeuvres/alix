@@ -53,11 +53,11 @@ import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
+import com.github.oeuvres.alix.common.Tag;
 import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.fr.TagFr;
-import com.github.oeuvres.alix.lucene.analysis.FrDics;
-import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.index.BytesDic;
+import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.IntList;
 
@@ -81,9 +81,11 @@ public class FieldText extends FieldCharsAbstract
     /** formId4isStop.get(formId) == true: form is a stop word. */
     private BitSet formId4isStop;
     /** formId4flag[formId] = {@link TagFr#no()}; lexical type of form. */
-    protected int[] formId4flag;
+    protected int[] formId4tagNo;
     /** formId4isLoc.get(formId) == true: form is a locution. */
     private BitSet formId4isLoc;
+    /** Tag set */
+    private Tag tag = TagFr.NULL;
     
     /**
      * Build the dictionaries and stats. Each form indexed for the field will be
@@ -95,7 +97,7 @@ public class FieldText extends FieldCharsAbstract
      * @param fieldName name of a lucene text field.
      * @throws IOException Lucene errors.
      */
-    public FieldText(final DirectoryReader reader, final String fieldName) throws IOException {
+    public FieldText(final DirectoryReader reader, final String fieldName, final BytesDic stopwords) throws IOException {
         super(reader, fieldName);
         dic = new BytesRefHash();
         IndexOptions options = info.getIndexOptions();
@@ -195,9 +197,9 @@ public class FieldText extends FieldCharsAbstract
         dic.add(new BytesRef("")); // add empty string as formId=0 for empty positions
         formId4occs = new long[maxForm];
         formId4docs = new int[maxForm];
-        formId4flag = new int[maxForm];
+        formId4tagNo = new int[maxForm];
         Collections.sort(stack); // should sort by frequences
-        CharsAttImpl chars = new CharsAttImpl(); // to test against indexation dicos
+        Chain chain = new Chain();
         bytes = new BytesRef();
 
         for (FormRecord rec : stack) {
@@ -206,78 +208,32 @@ public class FieldText extends FieldCharsAbstract
             // if (bytes.length == 0) formId = 0; // if empty pos is counted
             formId4occs[formId] = rec.occs;
             formId4docs[formId] = rec.docs;
-            final boolean isStop = FrDics.isStop(bytes);
-            if (isStop) stopRecord.set(formId);
-            chars.copy(bytes); // convert utf-8 bytes to utf-16 chars
-            final int indexOfSpace = chars.indexOf(' ');
-            if (indexOfSpace > 0) formId4isLoc.set(formId);
-            LexEntry entry = FrDics.word(chars);
-            if (entry != null) {
-                formId4flag[formId] = entry.tag;
-                continue;
-            }
-            entry = FrDics.name(chars);
-            if (entry != null) {
-                if (entry.tag == TagFr.NAMEpers.no || entry.tag == TagFr.NAMEpersf.no || entry.tag == TagFr.NAMEpersm.no
-                        || entry.tag == TagFr.NAMEauthor.no) {
-                    formId4flag[formId] = TagFr.NAMEpers.no;
-                    continue;
-                }
-                else {
-                    formId4flag[formId] = entry.tag;
-                    continue;
-                }
-            }
-            char c = chars.charAt(0);
+            if (stopwords != null && stopwords.contains(bytes)) stopRecord.set(formId);
+            // find the pos, in case of term 
+            chain.setLength(0).append(bytes.bytes, bytes.offset, bytes.length);
+            char c = chain.charAt(0);
             if (Char.isPunctuation(c)) {
                 if (c == '§') {
-                    formId4flag[formId] = TagFr.PUNsection.no;
+                    formId4tagNo[formId] = TagFr.PUNsection.no;
                 }
                 else if (c == '¶') {
-                    formId4flag[formId] = TagFr.PUNpara.no;
+                    formId4tagNo[formId] = TagFr.PUNpara.no;
                 }
                 else if (c == '.' || c == '…' || c == '?' || c == '!' ) {
-                    formId4flag[formId] = TagFr.PUNsent.no;
+                    formId4tagNo[formId] = TagFr.PUNsent.no;
                 }
                 else {
-                    formId4flag[formId] = TagFr.PUN.no;
+                    formId4tagNo[formId] = TagFr.PUN.no;
                 }
                 punRecord.set(formId);
                 continue;
             }
-            if (indexOfSpace > 0) {
-                chars.setLength(indexOfSpace);
-                // monsieur Madeleine
-                entry = FrDics.word(chars);
-                if (entry != null) {
-                    if (entry.tag == TagFr.SUBpers.no) {
-                        formId4flag[formId] = TagFr.NAMEpers.no;
-                        continue;
-                    }
-                    if (entry.tag == TagFr.SUBplace.no) {
-                        formId4flag[formId] = TagFr.NAMEplace.no;
-                        continue;
-                    }
-                }
-                // Jean Valjean
-                entry = FrDics.name(chars);
-                if (entry != null) {
-                    if (entry.tag == TagFr.NAMEpers.no || entry.tag == TagFr.NAMEpersf.no
-                            || entry.tag == TagFr.NAMEpersm.no) {
-                        formId4flag[formId] = TagFr.NAMEpers.no;
-                        continue;
-                    }
-                }
-            }
-
-            // tag name ?
-            if (!isStop && Char.isUpperCase(chars.charAt(0))) {
-                if (chars.length() == 1);
-                else if (chars.length() <= 3 && chars.lastChar() == '\'');
-                else if (Char.isDigit(chars.lastChar()));
-                else {
-                    formId4flag[formId] = TagFr.NAME.no;
-                }
+            final int indexOfSpace = chain.indexOf(' ');
+            if (indexOfSpace > 0) formId4isLoc.set(formId);
+            final int indexOfUnder = chain.indexOf('_');
+            if (indexOfUnder > 0) {
+                final String name = new String(chain.array(), chain.offset(indexOfUnder), chain.length() - indexOfUnder).intern();
+                formId4tagNo[formId] = tag.no(name);
             }
         }
         // convert a java.lang growable BitSets in fixed lucene ones
@@ -354,7 +310,7 @@ public class FieldText extends FieldCharsAbstract
                 }
             }
             // general case
-            final int flag = formId4flag[formId];
+            final int flag = formId4tagNo[formId];
             if (tagFilter.get(flag)) {
                 formFilter.set(formId);
             }
@@ -453,7 +409,7 @@ public class FieldText extends FieldCharsAbstract
                 }
                 // tags which are not NOSTOP or LOC
                 if (hasTags) {
-                    final int flag = formId4flag[formId];
+                    final int flag = formId4tagNo[formId];
                     
                     if(!tagFilter.get(flag)) {
                         // OK if we have a copy
@@ -570,7 +526,7 @@ public class FieldText extends FieldCharsAbstract
                     if(isStop(formId)) continue;
                 }
                 else if (hasTags) {
-                    if(!formFilter.get(formId4flag[formId])) continue;
+                    if(!formFilter.get(formId4tagNo[formId])) continue;
                 }
                 // if formId is negative, let the error go, problem in reader
                 // for each term, set scorer with global stats
@@ -839,7 +795,7 @@ public class FieldText extends FieldCharsAbstract
      */
     public int tag(int formId)
     {
-        return formId4flag[formId];
+        return formId4tagNo[formId];
     }
 
     /**

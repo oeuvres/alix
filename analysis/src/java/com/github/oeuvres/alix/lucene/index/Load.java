@@ -54,6 +54,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.AnalyzerAlix;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.util.Dir;
@@ -306,7 +307,7 @@ public class Load implements Callable<Integer>
      */
     public void write(String name, Path path) throws Exception
     {
-        IndexWriter writer = AlixWriter.writer(path, new AnalyzerAlix());
+        IndexWriter writer = AlixWriter.writer(path, new AnalyzerAlix(TagFr.NULL));
         XMLIndexer.index(writer, paths, xsl);
         System.out.println("[" + APP + "] " + name + " Merging");
         writer.commit();

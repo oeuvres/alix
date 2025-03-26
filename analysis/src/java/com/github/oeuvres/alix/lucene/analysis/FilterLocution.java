@@ -170,9 +170,9 @@ public class FilterLocution extends TokenFilter
             if ((nodeType & FrDics.LEAF) > 0) {
                 // get its entry
                 FrDics.norm(compound); // xx e -> 20e
-                LexEntry entry = FrDics.WORDS.get(compound);
+                LexEntry entry = FrDics.word(compound);
                 if (entry == null) {
-                    entry = FrDics.NAMES.get(compound);
+                    entry = FrDics.name(compound);
                 }
                 // known entry, find its lem
                 if (entry != null) {

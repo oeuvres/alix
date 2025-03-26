@@ -748,6 +748,22 @@ public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
         }
         return h;
     }
+    
+    /**
+     * First position of a char.
+     * 
+     * @param c char to search.
+     * @return -1 if not found or positive index if found
+     */
+    public int indexOf(final char c)
+    {
+        for (int i = 0; i < size; i++) {
+            if (c == chars[zero + i])
+                return i;
+        }
+        return -1;
+    }
+
 
     /**
      * Insert chars at a position, moving possible chars after the inserted ones.
@@ -922,6 +938,18 @@ public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
         }
         return new String(newChars, 0, length);
     }
+    
+    /**
+     * Expert only, returns offset in the internal char[] array for index,
+     * useful in conjunction with {@link #array()} to use chars.
+     * 
+     * @param index
+     * @return
+     */
+    public int offset(int index)
+    {
+        return zero+index;
+    }
 
     /**
      * Append a char at start (left).
@@ -1057,7 +1085,10 @@ public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
         }
         if (newLength > size) {
             ensureRight(newLength - size);
+            // fill new chars with 0
+            Arrays.fill(chars, zero+size, zero+newLength, '\0');
         }
+        if (newLength == 0) zero = 0;
         this.size = newLength;
         this.hash = 0;
         return this;

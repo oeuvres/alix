@@ -36,7 +36,7 @@ import java.util.Arrays;
 
 import java.util.NoSuchElementException;
 
-import com.github.oeuvres.alix.maths.Calcul;
+import com.github.oeuvres.alix.util.Calcul;
 
 /**
  * Record co-occurrences between a fixed set of words (as int values) along
