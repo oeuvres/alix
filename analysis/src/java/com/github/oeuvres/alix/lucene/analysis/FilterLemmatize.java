@@ -39,7 +39,8 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
-import com.github.oeuvres.alix.fr.TagFr;
+import static com.github.oeuvres.alix.common.Flags.*;
+import static com.github.oeuvres.alix.fr.TagFr.*;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
@@ -116,12 +117,12 @@ public final class FilterLemmatize extends TokenFilter
         
         lemAtt.setEmpty();
         int flags = flagsAtt.getFlags();
-        if (flags == TagFr.XML.no) { // tags maybe used upper
+        if (flags == XML.code) { // tags maybe used upper
             return true;
         }
         // store pun event, skiping XML
         // was last token a sentence punctuation ?
-        if (flags == TagFr.PUNsection.no ||flags == TagFr.PUNpara.no || flags == TagFr.PUNsent.no) {
+        if (flags == PUNsection.code ||flags == PUNpara.code || flags == PUNsent.code) {
             // record a pun event
             this.pun = true;
             return true;
@@ -146,11 +147,11 @@ public final class FilterLemmatize extends TokenFilter
         LexEntry entry;
         // First letter of token is upper case, is it a name ? Is it an upper case
         // header ?
-        // Do no touch to abbreviations
+        // Do not touch to abbreviations
         if (Char.isUpperCase(c1)) {
 
             // roman number already detected
-            if (flagsAtt.getFlags() == TagFr.NUM.no)
+            if (flagsAtt.getFlags() == NUM.code)
                 return true;
             int len = orthAtt.length();
             if (orthAtt.lastChar() == '.')
@@ -158,7 +159,7 @@ public final class FilterLemmatize extends TokenFilter
             int n = Calcul.roman2int(orthAtt.buffer(), 0, len);
             // Roman number for more than one char, pb M<sup>elle</sup>
             if (len > 1 && n > 0) {
-                flagsAtt.setFlags(TagFr.NUM.no);
+                flagsAtt.setFlags(NUM.code);
                 lemAtt.append("" + n);
                 return true;
             }
@@ -170,7 +171,7 @@ public final class FilterLemmatize extends TokenFilter
                 entry = FrDics.name(orthAtt.capitalize()); // known name ?
             }
             if (entry != null) {
-                if (flags == TagFr.NULL.no) flagsAtt.setFlags(entry.tag);
+                if (flags == NULL.code) flagsAtt.setFlags(entry.tag);
                 if (entry.lem != null) lemAtt.copy(entry.lem);
                 return true;
             }
@@ -182,7 +183,7 @@ public final class FilterLemmatize extends TokenFilter
                 entry = FrDics.name(orthAtt);
                 orthAtt.setLength(length);
                 if (entry != null) {
-                    if (flags == TagFr.NULL.no) flagsAtt.setFlags(entry.tag);
+                    if (flags == NULL.code) flagsAtt.setFlags(entry.tag);
                     return true;
                 }
             }
@@ -194,12 +195,12 @@ public final class FilterLemmatize extends TokenFilter
                 // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc.
                 // restore initial cap
                 if (!puncopy) termAtt.buffer()[0] = c1;
-                if (flags == TagFr.NULL.no) flagsAtt.setFlags(entry.tag);
+                if (flags == NULL.code) flagsAtt.setFlags(entry.tag);
                 if (entry.lem != null) lemAtt.copy(entry.lem);
                 return true;
             } 
             else { // unknown word, infer it's a NAME
-                if (flags == TagFr.NULL.no) flagsAtt.setFlags(TagFr.NAME.no);
+                if (flags == NULL.code) flagsAtt.setFlags(NAME.code);
                 if (copy.length() > 3) copy.capitalize();
                 orthAtt.copy(copy);
                 return true;
@@ -210,7 +211,7 @@ public final class FilterLemmatize extends TokenFilter
             if (entry == null)
                 return true;
             // known word
-            if (flags == TagFr.NULL.no) flagsAtt.setFlags(entry.tag);
+            if (flags == NULL.code) flagsAtt.setFlags(entry.tag);
             if (entry.lem != null) lemAtt.copy(entry.lem);
         }
         return true;

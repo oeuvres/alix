@@ -40,7 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
-import com.github.oeuvres.alix.fr.TagFr;
+import static com.github.oeuvres.alix.common.Flags.*;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
@@ -82,7 +82,7 @@ public class FilterCloud extends TokenFilter
         skippedPositions = 0;
         while (input.incrementToken()) {
             // no position for XML between words
-            if (flagsAtt.getFlags() == TagFr.XML.no) {
+            if (flagsAtt.getFlags() == XML.code) {
                 continue;
             }
             if (accept()) {
@@ -103,17 +103,17 @@ public class FilterCloud extends TokenFilter
      */
     protected boolean accept()
     {
-        final int tag = flagsAtt.getFlags();
-        if (tag == TagFr.TEST.no) {
+        final int flags = flagsAtt.getFlags();
+        if (flags == TEST.code) {
             System.out.println(termAtt + " — " + orthAtt);
         }
         // record an empty token at puctuation position for the rails
-        if (TagFr.PUN.sameParent(tag)) {
-            if (tag == TagFr.PUNclause.no) {
+        if (PUN.isPun(flags)) {
+            if (flags == PUNclause.code) {
             }
-            else if (tag == TagFr.PUNsent.no) {
+            else if (flags == PUNsent.code) {
             }
-            else if (tag == TagFr.PUNpara.no || tag == TagFr.PUNsection.no) {
+            else if (flags == PUNpara.code || flags == PUNsection.code) {
                 // let it
             }
             else {
@@ -121,7 +121,7 @@ public class FilterCloud extends TokenFilter
             }
         }
         // unify numbers
-        else if (TagFr.NUM.sameParent(tag)) {
+        else if (flags == NUM.code) {
             termAtt.setEmpty().append("n°");
         }
         // replace term by lemma when available
@@ -131,26 +131,6 @@ public class FilterCloud extends TokenFilter
         // or take the normalized form
         else if (orthAtt.length() != 0) {
             termAtt.setEmpty().append(orthAtt);
-        }
-        // filter some names
-        if (TagFr.NAME.sameParent(tag)) {
-            // A. J.-J.
-            if (termAtt.charAt(termAtt.length() - 1) == '.' && termAtt.length() <= 5) {
-                return false;
-            }
-            // J.-Cl
-            if (termAtt.length() > 2 && termAtt.charAt(1) == '.' && termAtt.charAt(2) == '-') {
-                return false;
-            }
-            // A., B.…
-            // if (termAtt.length() == 2 && Char.isUpperCase(termAtt.charAt(0)) &&
-            // termAtt.charAt(1) == '.') return false;
-            /*
-             * // filter first names if (tag == TagFr.NAMEpersf || tag == TagFr.NAMEpersm)
-             * return false; // M., A. if (termAtt.charAt(termAtt.length() - 1) == '.')
-             * return false; // J.-J if (termAtt.charAt(termAtt.length() - 2) == '-') return
-             * false;
-             */
         }
         return true;
     }

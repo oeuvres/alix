@@ -80,7 +80,7 @@ public class Balinoms implements Callable<Integer>
     static class Name implements Comparable<Name>
     {
         int count = 1;
-        int tag = TagFr.NAME.no;
+        int tag = TagFr.NAME.code;
         String form;
 
         Name(final String form) {
@@ -203,30 +203,30 @@ public class Balinoms implements Callable<Integer>
 
                 out.print(xml.substring(begin, attOff.startOffset()));
                 begin = attOff.endOffset();
-                if (TagFr.NAMEplace.no == flag) {
+                if (TagFr.NAMEplace.code == flag) {
                     out.print("<placeName>");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</placeName>");
-                    inc(lemAtt, TagFr.NAMEplace.no);
+                    inc(lemAtt, TagFr.NAMEplace.code);
                 }
                 // personne
-                else if (TagFr.NAMEpers.no == flag || TagFr.NAMEfict.no == flag) {
+                else if (TagFr.NAMEpers.code == flag || TagFr.NAMEfict.code == flag) {
                     out.print("<persName key=\"" + lemAtt + "\">");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</persName>");
-                    inc(lemAtt, TagFr.NAMEpers.no);
+                    inc(lemAtt, TagFr.NAMEpers.code);
                 }
                 // non repéré supposé personne
-                else if (TagFr.NAME.no == flag) {
+                else if (TagFr.NAME.code == flag) {
                     out.print("<persName key=\"" + lemAtt + "\">");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</persName>");
-                    inc(lemAtt, TagFr.NAMEpers.no);
+                    inc(lemAtt, TagFr.NAMEpers.code);
                 } else { // || TagFr.NAMEauthor.flag == flag
                     out.print("<name>");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</name>");
-                    inc(lemAtt, TagFr.NAME.no);
+                    inc(lemAtt, TagFr.NAME.code);
                 }
 
             }

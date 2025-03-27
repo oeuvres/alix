@@ -36,8 +36,6 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 
-import com.github.oeuvres.alix.common.Tag;
-
 /**
  * Analysis scenario for French in Alix. The linguistic features of Alix are
  * language dependent.
@@ -62,7 +60,7 @@ public class AnalyzerCloud extends Analyzer
         // fr split on ’ and -
         ts = new FilterAposHyphenFr(ts);
         // pos tagging before lemmatize
-        ts = new FilterPos(ts);
+        ts = new FilterFrPos(ts);
         /*
         // provide lemma+pos
         ts = new FilterLemmatize(ts);

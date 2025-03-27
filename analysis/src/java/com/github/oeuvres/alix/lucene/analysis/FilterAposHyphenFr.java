@@ -9,7 +9,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
-import com.github.oeuvres.alix.common.Tag;
+import static com.github.oeuvres.alix.common.Flags.*;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 /**
  * A filter that decomposes words on a list of suffixes and prefixes, mainly to handle 
@@ -125,7 +125,7 @@ public class FilterAposHyphenFr extends TokenFilter
             }
         }
         // do not try to split in XML tags
-        if (flagsAtt.getFlags() == Tag.XML.no) {
+        if (flagsAtt.getFlags() == XML.code) {
             return true;
         }
         int loop = 0;

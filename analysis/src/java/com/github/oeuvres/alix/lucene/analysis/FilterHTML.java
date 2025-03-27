@@ -39,7 +39,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
-import com.github.oeuvres.alix.fr.TagFr;
+import static com.github.oeuvres.alix.common.Flags.*;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 
 /**
@@ -86,7 +86,7 @@ public class FilterHTML extends TokenFilter
             }
             
             // not XML tag, return it with no change
-            if (flagsAtt.getFlags() != TagFr.XML.no) {
+            if (flagsAtt.getFlags() != XML.code) {
                 return true;
             }
             if (
@@ -96,12 +96,12 @@ public class FilterHTML extends TokenFilter
             }
             // most positions of XML tags will be skipped without information
             if (test.equals("</p>") || test.equals("</li>") || test.equals("</td>")) {
-                flagsAtt.setFlags(TagFr.PUNpara.no);
+                flagsAtt.setFlags(PUNpara.code);
                 termAtt.setEmpty().append("¶");
                 return true;
             }
             if (test.equals("</section>") || test.equals("</article>")) {
-                flagsAtt.setFlags(TagFr.PUNsection.no);
+                flagsAtt.setFlags(PUNsection.code);
                 termAtt.setEmpty().append("§");
                 return true;
             }

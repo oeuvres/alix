@@ -12,14 +12,14 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.AttributeFactory;
 
-import com.github.oeuvres.alix.fr.TagFr;
+import static com.github.oeuvres.alix.common.Flags.*;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.AttributeFactoryAlix;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Char;
 
 /**
  * A tokenizer for latin script languages and possible XML like tags. Tags are kept in token stream for further analysis.
- * A {@link FlagsAttribute} is set with an int define in {@link TagFr}.
+ * A {@link FlagsAttribute} is set with an int define in {@link Flags}.
  *
  * <pre>
  * &lt;p&gt;            XML
@@ -157,7 +157,7 @@ public class TokenizerML  extends Tokenizer
             else if (intag) {
                 termAtt.append(c);
                 if (c == '>') { // end of tag, send it, set for next char
-                    flagsAtt.setFlags(TagFr.XML.no);
+                    flagsAtt.setFlags(XML.code);
                     endOffset = offset + 1; // position of '>' + 1
                     bufferIndex++;
                     offset++;
@@ -168,13 +168,13 @@ public class TokenizerML  extends Tokenizer
             else if (Char.isDigit(c)) {
                 if (termAtt.isEmpty()) {
                     number = true;
-                    flagsAtt.setFlags(TagFr.NUM.no);
+                    flagsAtt.setFlags(NUM.code);
                     startOffset = offset;
                 }
                 // start a negative number
                 if (termAtt.length() == 1 && lastChar == '-') {
                     number = true;
-                    flagsAtt.setFlags(TagFr.NUM.no);
+                    flagsAtt.setFlags(NUM.code);
                 }
                 // if not a number started, will be appended to something else
                 termAtt.append(c);
@@ -227,7 +227,7 @@ public class TokenizerML  extends Tokenizer
                 termAtt.append(c);
                 startOffset = offset;
                 endOffset = offset + 1;
-                flagsAtt.setFlags(TagFr.PUNclause.no);
+                flagsAtt.setFlags(PUNclause.code);
                 bufferIndex++;
                 offset++;
                 break;
@@ -249,7 +249,7 @@ public class TokenizerML  extends Tokenizer
                 }
                 // append punctuation and wait for space to send (???, !!!, ...)
                 if (termAtt.isEmpty()) {
-                    flagsAtt.setFlags(TagFr.PUNsent.no);
+                    flagsAtt.setFlags(PUNsent.code);
                     startOffset = offset;
                 }
                 termAtt.append(c);

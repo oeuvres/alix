@@ -40,7 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
-import com.github.oeuvres.alix.fr.TagFr;
+import static com.github.oeuvres.alix.common.Flags.*;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
@@ -113,7 +113,7 @@ public class FilterLocution extends TokenFilter
         do {
             final int tag = flagsAtt.getFlags();
             // if token is pun, end of branch, exit
-            if (TagFr.PUN.sameParent(tag) || tag == TagFr.XML.no || termAtt.length() == 0) {
+            if (PUN.isPun(tag) || tag == XML.code || termAtt.length() == 0) {
                 // after the loop, the queue logic before exit
                 break;
             }

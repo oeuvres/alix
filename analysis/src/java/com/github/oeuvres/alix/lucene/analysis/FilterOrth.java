@@ -40,7 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
-import com.github.oeuvres.alix.fr.TagFr;
+import static com.github.oeuvres.alix.common.Flags.*;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
@@ -83,7 +83,7 @@ public class FilterOrth extends TokenFilter
         skippedPositions = 0;
         while (input.incrementToken()) {
             // no position for XML between words
-            if (flagsAtt.getFlags() == TagFr.XML.no) {
+            if (flagsAtt.getFlags() == XML.code) {
                 continue;
             }
             if (accept()) {
@@ -105,16 +105,16 @@ public class FilterOrth extends TokenFilter
     protected boolean accept()
     {
         final int tag = flagsAtt.getFlags();
-        if (tag == TagFr.TEST.no) {
+        if (tag == TEST.code) {
             System.out.println(termAtt + " — " + orthAtt);
         }
         // record an empty token at puctuation position for the rails
-        if (TagFr.PUN.sameParent(tag)) {
-            if (tag == TagFr.PUNclause.no) {
+        if (PUN.isPun(tag)) {
+            if (tag == PUNclause.code) {
             }
-            else if (tag == TagFr.PUNsent.no) {
+            else if (tag == PUNsent.code) {
             }
-            else if (tag == TagFr.PUNpara.no || tag == TagFr.PUNsection.no) {
+            else if (tag == PUNpara.code || tag == PUNsection.code) {
                 // let it
             }
             else {
@@ -122,7 +122,7 @@ public class FilterOrth extends TokenFilter
             }
         }
         // unify numbers
-        else if (TagFr.NUM.sameParent(tag)) {
+        else if (tag == NUM.code) {
             termAtt.setEmpty().append("n°");
         }
         // replace term by normalized form

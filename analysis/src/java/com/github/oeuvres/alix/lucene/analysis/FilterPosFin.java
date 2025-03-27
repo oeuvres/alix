@@ -40,7 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
-import com.github.oeuvres.alix.common.Tag;
+import static com.github.oeuvres.alix.common.Flags.*;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
@@ -83,7 +83,7 @@ public class FilterPosFin extends TokenFilter
         skippedPositions = 0;
         while (input.incrementToken()) {
             // no position for XML between words
-            if (flagsAtt.getFlags() == TagFr.XML.no) {
+            if (flagsAtt.getFlags() == XML.code) {
                 continue;
             }
             if (accept()) {
@@ -106,17 +106,17 @@ public class FilterPosFin extends TokenFilter
     {
         final int flags = flagsAtt.getFlags();
         // record an empty token at puctuation position for the rails
-        if (TagFr.PUN.sameParent(flags)) return false;
+        if (PUN.isPun(flags)) return false;
         // unify numbers
-        else if (TagFr.NUM.sameParent(flags)) {
+        else if (flags == NUM.code) {
             termAtt.setEmpty().append("n°");
         }
         // or take the normalized form
         else if (orthAtt.length() != 0) {
-            termAtt.setEmpty().append(orthAtt + "_" + TagFr.NULL.name(flags));
+            termAtt.setEmpty().append(orthAtt + "_" + TagFr.name(flags));
         }
         else {
-            termAtt.append("_" + TagFr.NULL.name(flags));
+            termAtt.append("_" + TagFr.name(flags));
         }
 
         return true;

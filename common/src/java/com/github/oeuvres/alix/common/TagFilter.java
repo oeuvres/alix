@@ -11,7 +11,7 @@ public class TagFilter
 
     /** If frozen=true, modify vector is impossible. */
     boolean frozen;
-    /** A boolean vector of accepted flags {@link Tag#no}, boolean array is faster than a {@link BitSet}. */
+    /** A boolean vector of accepted flags {@link Tag#code()}, boolean array is faster than a {@link BitSet}. */
     boolean[] rule = new boolean[256];
 
     /**
@@ -100,14 +100,14 @@ public class TagFilter
     /**
      * Position = false.
      * 
-     * @param tag position by name {@link Tag#no}.
+     * @param tag position by name {@link Tag#code()}.
      * @return this.
      * @throws IndexOutOfBoundsException position outside [0, 255].
      * @throws UnsupportedOperationException vector is frozen, modification is forbidden.
      */
     public TagFilter clear(final Tag tag) throws IndexOutOfBoundsException, UnsupportedOperationException
     {
-        return clear(tag.no);
+        return clear(tag.code());
     }
 
     /**
@@ -144,14 +144,14 @@ public class TagFilter
      * Clear the hexa group of a byte. For example flag=0x43 will set to false 
      * the positions [0x40, 0x4F].
      * 
-     * @param tag position by name {@link Tag#no} in the group to clear.
+     * @param tag position by name {@link Tag#code()} in the group to clear.
      * @return this
      * @throws IndexOutOfBoundsException position outside [0, 255].
      * @throws UnsupportedOperationException vector is frozen, modification is forbidden.
      */
     public TagFilter clearGroup(final Tag tag) throws IndexOutOfBoundsException, UnsupportedOperationException
     {
-        return clearGroup(tag.no);
+        return clearGroup(tag.code());
     }
 
     /**
@@ -186,13 +186,13 @@ public class TagFilter
     /**
      * Get boolean value of a position.
      * 
-     * @param tag position by name {@link Tag#no}.
+     * @param tag position by name {@link Tag#code()}.
      * @return true if position is set, false if it is default or cleared.
      * @throws IndexOutOfBoundsException position outside [0, 255].
      */
     public boolean get(final Tag tag) throws IndexOutOfBoundsException
     {
-        return get(tag.no);
+        return get(tag.code());
     }
 
     /**
@@ -211,7 +211,7 @@ public class TagFilter
     }
     
     /**
-     * If vector is frozen, no more modification are allowed.
+     * If vector is frozen, code more modification are allowed.
      * 
      * @return true if frozen, false otherwise.
      */
@@ -224,14 +224,14 @@ public class TagFilter
     /**
      * Position = true.
      * 
-     * @param tag position by name {@link Tag#no}.
+     * @param tag position by name {@link Tag#code()}.
      * @return this.
      * @throws IndexOutOfBoundsException position outside [0, 255].
      * @throws UnsupportedOperationException vector is frozen, modification is forbidden.
      */
     public TagFilter set(Tag tag) throws IndexOutOfBoundsException, UnsupportedOperationException
     {
-        return set(tag.no);
+        return set(tag.code());
     }
 
     /**
@@ -268,14 +268,14 @@ public class TagFilter
      * Set the hexa group of a byte. For example flag=0x43 will set to true 
      * the positions [0x40, 0x4F].
      * 
-     * @param tag position by name {@link Tag#no} in the group to set.
+     * @param tag position by name {@link Tag#code()} in the group to set.
      * @return this
      * @throws IndexOutOfBoundsException position outside [0, 255].
      * @throws UnsupportedOperationException vector is frozen, modification is forbidden.
      */
     public TagFilter setGroup(Tag tag) throws IndexOutOfBoundsException, UnsupportedOperationException
     {
-        return setGroup(tag.no);
+        return setGroup(tag.code());
     }
 
     /**

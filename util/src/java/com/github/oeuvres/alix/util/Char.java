@@ -46,33 +46,33 @@ public class Char
     /** Properties of chars by index */
     static final short[] CHARS = new short[SIZE];
     /** Binary flag, a letter */
-    public static final short LETTER = 0b000000000000001;
+    public static final short LETTER =       0b000000000000001;
     /** Binary flag, a token char */
-    public static final short TOKEN = 0b000000000000010;
+    public static final short TOKEN =        0b000000000000010;
     /** Binary flag, a space */
-    public static final short SPACE = 0b000000000000100;
+    public static final short SPACE =        0b000000000000100;
     /** Binary flag, punctuation char */
-    public static final short PUNCTUATION = 0b000000000001000;
+    public static final short PUNCTUATION =  0b000000000001000;
     /** Binary flag, lower case letter. */
-    public static final short LOWERCASE = 0b000000000010000;
+    public static final short LOWERCASE =    0b000000000010000;
     /** Binary flag, upper case letter. */
-    public static final short UPPERCASE = 0b000000000100000;
+    public static final short UPPERCASE =    0b000000000100000;
     /** Binary flag, not used. */
-    public static final short VOWEL = 0b000000001000000;
+    public static final short VOWEL =        0b000000001000000;
     /** Binary flag, not used. */
-    public static final short CONSONNANT = 0b000000010000000;
+    public static final short CONSONNANT =   0b000000010000000;
     /** Binary flag, a digit. */
-    public static final short DIGIT = 0b000000100000000;
+    public static final short DIGIT =        0b000000100000000;
     /** Binary flag, punctuation char for sentence. */
-    public static final short PUNsent = 0b000001000000000;
+    public static final short PUNsent =      0b000001000000000;
     /** Binary flag, punctuation char for clause in a sentence. */
-    public static final short PUNclause = 0b000010000000000;
+    public static final short PUNclause =    0b000010000000000;
     /** Binary flag, math operator. */
-    public static final short MATH = 0b000100000000000;
+    public static final short MATH =         0b000100000000000;
     /** Binary flag, isLowSurrogate. */
-    public static final short LOWSUR = 0b010000000000000;
+    public static final short LOWSUR =       0b010000000000000;
     /** Binary flag, isHighSurrogate. */
-    public static final short HIGHSUR = 0b100000000000000;
+    public static final short HIGHSUR =      0b100000000000000;
     /** Binary flag, composite shortcut, word separator. */
     public static final short PUNCTUATION_OR_SPACE = SPACE | PUNCTUATION;
     /** Binary flag, composite shortcut, word char. */

@@ -40,7 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
-import com.github.oeuvres.alix.fr.TagFr;
+import static com.github.oeuvres.alix.common.Flags.*;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
@@ -89,7 +89,7 @@ public class FilterFind extends TokenFilter
         skippedPositions = 0;
         while (input.incrementToken()) {
             // no position for XML between words
-            if (flagsAtt.getFlags() == TagFr.XML.no) {
+            if (flagsAtt.getFlags() == XML.code) {
                 continue;
             }
             if (accept()) {
@@ -116,7 +116,7 @@ public class FilterFind extends TokenFilter
     {
         final int tag = flagsAtt.getFlags();
         // jump punctuation position
-        if (TagFr.PUN.sameParent(tag)) {
+        if (PUN.isPun(tag)) {
             return false;
         }
         // append normalize form if exists

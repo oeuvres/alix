@@ -45,7 +45,10 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import com.github.oeuvres.alix.common.Tag;
-import com.github.oeuvres.alix.fr.TagFr;
+import com.github.oeuvres.alix.fr.French;
+
+import static com.github.oeuvres.alix.common.Flags.*;
+import static com.github.oeuvres.alix.fr.TagFr.*;
 
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerME;
@@ -53,7 +56,7 @@ import opennlp.tools.postag.POSTaggerME;
 /**
  * Plug behind TokenLem, take a Trie dictionary, and try to compound locutions.
  */
-public class FilterPos extends TokenFilter
+public class FilterFrPos extends TokenFilter
 {
     static {
         System.setProperty("opennlp.interner.class","opennlp.tools.util.jvm.JvmStringInterner");
@@ -71,7 +74,7 @@ public class FilterPos extends TokenFilter
     static {
         // model must be static, tagger should be thread safe till 
 
-        try (InputStream modelIn = TagFr.class.getResourceAsStream("opennlp-fr-ud-gsd-pos-1.2-2.5.0.bin")) {
+        try (InputStream modelIn = French.class.getResourceAsStream(French.OPENNLP_POS.resource)) {
              posModel = new POSModel(modelIn);
         }
         catch (IOException e) {
@@ -82,24 +85,24 @@ public class FilterPos extends TokenFilter
     private POSTaggerME tagger;
     /** tag  */
     Map<String, Tag> tagList = Map.ofEntries(
-        entry("ADJ", TagFr.ADJ),
-        entry("ADP", TagFr.PREP),
-        entry("ADP+DET", TagFr.DETprep),
-        entry("ADP+PRON", TagFr.PREPpro),
-        entry("ADV", TagFr.ADV),
-        entry("AUX", TagFr.VERBaux),
-        entry("CCONJ", TagFr.CONJcoord),
-        entry("DET", TagFr.DET),
-        entry("INTJ", TagFr.EXCL),
-        entry("NOUN", TagFr.SUB),
-        entry("NUM", TagFr.NUM),
-        entry("PRON", TagFr.PRO),
-        entry("PROPN", TagFr.NAME),
-        entry("PUNCT", TagFr.PUN),
-        entry("SCONJ", TagFr.CONJsub),
-        entry("SYM", TagFr.NULL),
-        entry("VERB", TagFr.VERB),
-        entry("X", TagFr.NULL)
+        entry("ADJ", ADJ),
+        entry("ADP", PREP),
+        entry("ADP+DET", DETprep),
+        entry("ADP+PRON", PREPpro),
+        entry("ADV", ADV),
+        entry("AUX", VERBaux),
+        entry("CCONJ", CONJcoord),
+        entry("DET", DET),
+        entry("INTJ", EXCL),
+        entry("NOUN", SUB),
+        entry("NUM", NUM),
+        entry("PRON", PRO),
+        entry("PROPN", NAME),
+        entry("PUNCT", PUN),
+        entry("SCONJ", CONJsub),
+        entry("SYM", NULL),
+        entry("VERB", VERB),
+        entry("X", NULL)
     );
     /** state of the queue */
     private boolean tagged = false;
@@ -108,7 +111,7 @@ public class FilterPos extends TokenFilter
      * Default constructor.
      * @param input previous filter.
      */
-    public FilterPos(TokenStream input) {
+    public FilterFrPos(TokenStream input) {
         super(input);
         tagger = new POSTaggerME(posModel);
         // here, “this” has not all its attributes, AttributeQueue.copyTo() will bug
@@ -136,9 +139,9 @@ public class FilterPos extends TokenFilter
             queue.addLast(this);
             final int flags = flagsAtt.getFlags();
             if (
-                   flags == TagFr.PUNsection.no
-                || flags == TagFr.PUNpara.no
-                || flags == TagFr.PUNsent.no
+                   flags == PUNsection.code
+                || flags == PUNpara.code
+                || flags == PUNsent.code
             ) break;
         }
         // should be finisehd here
@@ -150,7 +153,7 @@ public class FilterPos extends TokenFilter
         for (int i = 0; i < queue.size(); i++) {
             FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
             // those tags will not help tagger
-            if (flags.getFlags() == TagFr.PUNsection.no || flags.getFlags() == TagFr.PUNpara.no) {
+            if (flags.getFlags() == PUNsection.code || flags.getFlags() == PUNpara.code) {
                 sentence[i] = "";
             }
             else {
@@ -162,9 +165,9 @@ public class FilterPos extends TokenFilter
         for (int i = 0; i < queue.size(); i++) {
             FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
             // let tag decided before
-            if (flags.getFlags() != TagFr.NULL.no) {
+            if (flags.getFlags() != NULL.code) {
             }
-            flags.setFlags(tagList.get(tags[i]).no);
+            flags.setFlags(tagList.get(tags[i]).code());
         }
         clearAttributes();
         queue.removeFirst(this);
