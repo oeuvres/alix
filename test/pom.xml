@@ -13,7 +13,6 @@
     </parent>
     <artifactId>alix-test</artifactId>
     <packaging>jar</packaging>
-    <name>Alix, tests</name>
 
     <dependencies>
         <dependency>

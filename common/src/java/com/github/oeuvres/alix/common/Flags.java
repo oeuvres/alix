@@ -37,14 +37,21 @@ public enum Flags implements Tag
     ;
     public final int code;
     static final Index index = new Index(0, 15);
-    static {
+    static
+    {
         for (Flags tag : Flags.values()) index.add(tag.code, tag);
     }
 
-    private Flags(final int code) {
+    private Flags(final int code)
+    {
         this.code = code;
     }
-    public boolean isPun(final int code) {
+    public boolean isPun(final int code)
+    {
         return (code == 0x08 || code == 0x09 || code == 0x0A || code == 0x0B || code == 0x0C);
+    }
+    public int code()
+    {
+        return code;
     }
 }

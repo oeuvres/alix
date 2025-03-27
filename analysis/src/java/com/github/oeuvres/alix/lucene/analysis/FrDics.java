@@ -50,6 +50,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.oeuvres.alix.common.Tag;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
@@ -397,7 +398,7 @@ public class FrDics
                 LOGGER.debug(res + " graph=" + graph + " tag=" + tag);
             }
             graph.replace('’', '\'');
-            this.tag = TagFr.NULL.no(tag.toString());
+            this.tag = TagFr.valueOf(tag.toString()).code();
             this.graph = new CharsAttImpl(graph);
             if (lem == null || lem.isEmpty()) {
                 this.lem = null;
@@ -412,7 +413,7 @@ public class FrDics
         public String toString()
         {
             StringBuilder sb = new StringBuilder();
-            sb.append(TagFr.NULL.name(this.tag));
+            sb.append(TagFr.VERB.name(this.tag));
             if (graph != null)
                 sb.append(" graph=").append(graph);
             if (lem != null)

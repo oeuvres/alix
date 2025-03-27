@@ -57,6 +57,8 @@ import picocli.CommandLine.Parameters;
 
 import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.fr.TagFr;
+
+import static com.github.oeuvres.alix.fr.TagFr.*;
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterFrPersname;
 import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
@@ -80,7 +82,7 @@ public class Balinoms implements Callable<Integer>
     static class Name implements Comparable<Name>
     {
         int count = 1;
-        int tag = TagFr.NAME.code;
+        int tag = NAME.code;
         String form;
 
         Name(final String form) {
@@ -189,7 +191,7 @@ public class Balinoms implements Callable<Integer>
                 toks++;
                 final int flag = attFlags.getFlags();
                 // TODO test to avoid over tagging ?
-                if (!TagFr.NAME.sameParent(flag))
+                if (!NAME.isName(flag))
                     continue;
                 // Should not arrive, but it arrives
                 if (lemAtt.isEmpty()) {
@@ -203,30 +205,30 @@ public class Balinoms implements Callable<Integer>
 
                 out.print(xml.substring(begin, attOff.startOffset()));
                 begin = attOff.endOffset();
-                if (TagFr.NAMEplace.code == flag) {
+                if (NAMEplace.code == flag) {
                     out.print("<placeName>");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</placeName>");
-                    inc(lemAtt, TagFr.NAMEplace.code);
+                    inc(lemAtt, NAMEplace.code);
                 }
                 // personne
-                else if (TagFr.NAMEpers.code == flag || TagFr.NAMEfict.code == flag) {
+                else if (NAMEpers.code == flag || NAMEfict.code == flag) {
                     out.print("<persName key=\"" + lemAtt + "\">");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</persName>");
-                    inc(lemAtt, TagFr.NAMEpers.code);
+                    inc(lemAtt, NAMEpers.code);
                 }
                 // non repéré supposé personne
-                else if (TagFr.NAME.code == flag) {
+                else if (NAME.code == flag) {
                     out.print("<persName key=\"" + lemAtt + "\">");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</persName>");
-                    inc(lemAtt, TagFr.NAMEpers.code);
+                    inc(lemAtt, NAMEpers.code);
                 } else { // || TagFr.NAMEauthor.flag == flag
                     out.print("<name>");
                     out.print(xml.substring(attOff.startOffset(), attOff.endOffset()));
                     out.print("</name>");
-                    inc(lemAtt, TagFr.NAME.code);
+                    inc(lemAtt, NAME.code);
                 }
 
             }
@@ -275,7 +277,7 @@ public class Balinoms implements Callable<Integer>
         sb.append("forme\ttype\teffectif\n");
         int n = 1;
         for (Entry entry : lexiq) {
-            sb.append(entry.form + "\t" + TagFr.NULL.name(entry.flag) + "\t" + entry.count + "\n");
+            sb.append(entry.form + "\t" + TagFr.name(entry.flag) + "\t" + entry.count + "\n");
             if (n == limit)
                 break;
             n++;

@@ -307,7 +307,7 @@ public class Load implements Callable<Integer>
      */
     public void write(String name, Path path) throws Exception
     {
-        IndexWriter writer = AlixWriter.writer(path, new AnalyzerAlix(TagFr.NULL));
+        IndexWriter writer = AlixWriter.writer(path, new AnalyzerAlix());
         XMLIndexer.index(writer, paths, xsl);
         System.out.println("[" + APP + "] " + name + " Merging");
         writer.commit();

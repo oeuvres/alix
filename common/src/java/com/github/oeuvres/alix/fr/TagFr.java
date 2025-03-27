@@ -220,7 +220,7 @@ public enum TagFr implements Tag {
         return code;
     }
 
-    public boolean isName(final int code)
+    static public boolean isName(final int code)
     {
         return ((code & 0xF0) == NAME.code);
     }
@@ -229,4 +229,10 @@ public enum TagFr implements Tag {
     {
         return index.get(code).name();
     }
+    
+    static public boolean isVerb(final int code)
+    {
+        return ((code & 0xF0) == VERB.code);
+    }
+
 }
