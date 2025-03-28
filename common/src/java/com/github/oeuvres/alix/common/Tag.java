@@ -23,18 +23,22 @@ public interface Tag {
         }
         public void add(int code, Tag tag) {
             if (code < min || code > max) {
-                throw new IllegalArgumentException("code=" + code + ", out of range [" + min +", " + max + "]");
+                throw new IllegalArgumentException("code=" + code + " for “" + tag + "”, out of range [" + min +", " + max + "]");
             }
             if (code4tag[code] != null) {
-                throw new IllegalArgumentException("code=" + code + ", already affected to tag=" + tag);
+                throw new IllegalArgumentException("code=" + code  + " for “" + tag + ", already affected to tag=" + code4tag[code]);
             }
             code4tag[code] = tag;
         }
+        /**
+         * Returns a {@link Tag} by code, or null if code out of range, or if 
+         * no tag for this code.
+         * @param code {@link Tag#code()}-
+         * @return tag for this code if any or null.
+         */
         public Tag get(final int code) {
-            if (code4tag[code] == null) {
-                throw new NullPointerException("No tag for code=" + code + ".");
-            }
-            return null;
+            if (code < min || code > max) return null;
+            return code4tag[code];
         }
     }
 

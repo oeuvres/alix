@@ -50,6 +50,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.oeuvres.alix.common.Flags;
 import com.github.oeuvres.alix.common.Tag;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
@@ -394,11 +395,29 @@ public class FrDics
          * @param lem lemma form.
          */
         public LexEntry(final Chain graph, final Chain tag, final Chain lem) {
-            if (graph.isEmpty() || tag.isEmpty()) {
-                LOGGER.debug(res + " graph=" + graph + " tag=" + tag);
+            if (graph.isEmpty()) {
+                LOGGER.debug(res + " graph=" + graph + "? Graph empty, tag=" + tag + ", lem=" + lem);
             }
             graph.replace('’', '\'');
-            this.tag = TagFr.valueOf(tag.toString()).code();
+            String tagKey = tag.toString();
+            Tag tagEnum = null;
+            try {
+               tagEnum = TagFr.valueOf(tagKey);
+            }
+            catch (IllegalArgumentException e) {
+                try {
+                    tagEnum = Flags.valueOf(tagKey);
+                 }
+                catch (IllegalArgumentException ee) {
+                    LOGGER.debug(res + " graph=" + graph + " tag=" + tag + "? tag not found.");
+                }
+            }
+            if (tagEnum != null) {
+                this.tag = tagEnum.code();
+            }
+            else {
+                this.tag = 0;
+            }
             this.graph = new CharsAttImpl(graph);
             if (lem == null || lem.isEmpty()) {
                 this.lem = null;

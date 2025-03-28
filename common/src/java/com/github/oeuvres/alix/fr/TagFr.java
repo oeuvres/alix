@@ -77,11 +77,9 @@ public enum TagFr implements Tag {
 
     // 3x, entités nommées
     /** Proper name, unknown from dictionaries */
-    NAME(0x40, "Nom propre",
-            "Kala Matah, Taj Mah de Groüpt… (nom propre inféré de la typographie, inconnu des dictionnaires)."),
+    NAME(0x40, "Nom propre",  "Kala Matah, Taj Mah de Groüpt… (nom propre inféré de la typographie, inconnu des dictionnaires)."),
     /** Personal name */
-    NAMEpers(0x41, "Personne",
-            "Victor Hugo, monsieur A… (Nom de de personne reconnu par dictionnaire ou inféré d’une titulature)."),
+    NAMEpers(0x41, "Personne",  "Victor Hugo, monsieur A… (Nom de de personne reconnu par dictionnaire ou inféré d’une titulature)."),
     /** Masculine firstname */
     NAMEpersm(0x42, "Prénom m.", "Charles, Jean… (prénom masculin non ambigu, dictionnaire)."),
     /** Feminine firstname */
@@ -90,15 +88,16 @@ public enum TagFr implements Tag {
     NAMEplace(0x44, "Lieu", "Paris, Allemagne… (nom de lieu, dictionnaire)."),
     /** Organisation name */
     NAMEorg(0x45, "Organisation", "l’Église, l’État, P.S.… (nom d’organisation, dictionnaire)."),
-    /** People name */
-    NAMEpeople(0x46, "Peuple", " (nom de peuple, dictionnaire)."),
     /** Event name */
     NAMEevent(0x47, "Événement", "La Révolution, XIIe siècle… (nom d’événement, dictionnaire)."),
     /** Author name */
     NAMEauthor(0x48, "Auteur", "Hugo, Racine, La Fontaine… (nom de persone auteur, dictionnaire)."),
     /** Fiction character name */
     NAMEfict(0x49, "Personnage", "Rodogune, Chicot… (nom de personnage fictif, dictionnaire)."),
-    // NAMEtitle(0x3A, "Titre", " Titre d’œuvre (dictionnaire)") { },
+    /** title name */
+    NAMEtitle(0x4A, "Titre", " Titre d’œuvre (dictionnaire)") { },
+    /** People name */
+    NAMEpeople(0x4E, "Peuple", " (nom de peuple, dictionnaire)."),
     /** God name */
     NAMEgod(0x4F, "Divinité", "Dieu, Cupidon… (noms de divinité, dictionnaire)."),
 
@@ -160,6 +159,7 @@ public enum TagFr implements Tag {
     /** Preposition */
     PREP(0x88, "Préposition", "De, dans, par…"),
     PREPpro(0x89, "ADP+PRON", "TagFr opennlp"),
+    
     // Ax, Numéraux divers
     /** Numeral, other than below */
     NUMBER(0xA0, "Numéral", "3, milliers, centième… (nombre quantifiant)."),
@@ -230,13 +230,21 @@ public enum TagFr implements Tag {
 
     static public String name(final int code)
     {
-        return index.get(code).name();
+        Tag tag = index.get(code);
+        if (tag == null) return null;
+        return tag.name();
     }
     
     @Override
     public int code(final String name)
     {
         return valueOf(name).code;
+    }
+
+    @Override
+    public String toString()
+    {
+        return String.format("%02X", code) + "\t" + this.name() + "\t" + this.label + "\t" + this.desc;
     }
 
 }

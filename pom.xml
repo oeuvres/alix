@@ -29,7 +29,9 @@
         <module>fr</module>
         <module>analysis</module>
         <module>search</module>
+        <!--
         <module>test</module>
+        -->
     </modules>
     
     
