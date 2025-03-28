@@ -32,7 +32,6 @@
  */
 package com.github.oeuvres.alix.lucene.search;
 
-import static com.github.oeuvres.alix.common.Names.*;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -52,9 +51,9 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
-import com.github.oeuvres.alix.common.Tag;
+import static com.github.oeuvres.alix.common.Flags.*;
+import static com.github.oeuvres.alix.common.Names.*;
 import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.lucene.index.BytesDic;
 import com.github.oeuvres.alix.util.Top;
@@ -334,7 +333,7 @@ public class Doc
             throws NoSuchFieldException, IOException
     {
         boolean hasTags = (formFilter != null && formFilter.hasInfoTag());
-        boolean noStop = (formFilter != null && formFilter.get(Tag.NOSTOP));
+        boolean noStop = (formFilter != null && formFilter.get(NOSTOP));
         boolean hasDistrib = (distrib != null);
 
         // get index term stats

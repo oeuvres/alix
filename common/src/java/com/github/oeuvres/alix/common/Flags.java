@@ -50,8 +50,16 @@ public enum Flags implements Tag
     {
         return (code == 0x08 || code == 0x09 || code == 0x0A || code == 0x0B || code == 0x0C);
     }
+    
+    @Override
     public int code()
     {
         return code;
+    }
+    
+    @Override
+    public int code(final String name)
+    {
+        return valueOf(name).code;
     }
 }

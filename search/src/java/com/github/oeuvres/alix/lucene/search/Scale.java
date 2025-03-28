@@ -46,8 +46,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
-import com.github.oeuvres.alix.lucene.Alix;
-
 /**
  * Handle data to display results as a chronology, according to subset of an
  * index, given as a bitset.

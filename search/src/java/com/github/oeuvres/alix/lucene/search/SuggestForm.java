@@ -49,8 +49,8 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
+import static com.github.oeuvres.alix.common.Flags.*;
 import com.github.oeuvres.alix.common.TagFilter;
-import com.github.oeuvres.alix.common.Tag;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.TopArray;
@@ -134,8 +134,8 @@ public class SuggestForm
     public int[] list(String q, final TagFilter wordFilter) {
         if (q == null || q.isEmpty()) return new int[0];
         boolean hasTags = (wordFilter != null && wordFilter.hasInfoTag());
-        boolean noStop = (wordFilter != null && wordFilter.get(Tag.NOSTOP));
-        boolean locs = (wordFilter != null && wordFilter.get(Tag.LOC));
+        boolean noStop = (wordFilter != null && wordFilter.get(NOSTOP));
+        boolean locs = (wordFilter != null && wordFilter.get(LOC));
 
         IntList formIdList = new IntList();
         q = Char.toASCII(q).toLowerCase();

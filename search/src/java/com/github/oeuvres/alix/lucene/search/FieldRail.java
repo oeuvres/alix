@@ -63,8 +63,8 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 
+import static com.github.oeuvres.alix.common.Flags.*;
 import com.github.oeuvres.alix.common.TagFilter;
-import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Edge;
 import com.github.oeuvres.alix.util.EdgeMap;
@@ -410,21 +410,21 @@ public class FieldRail  extends FieldCharsAbstract
                 for (int i = 0, max = this.docId4len[docId]; i < max; i++) {
                     final int formId = bufInt.get();
                     final int flag = fieldText.formId4tagNo[formId];
-                    if (flag == TagFr.PUNsection.no) {
+                    if (flag == PUNsection.code) {
                         out.write('\n');
                         out.write('\n');
                         continue;
                     }
-                    else if (flag == TagFr.PUNpara.no) {
+                    else if (flag == PUNpara.code) {
                         out.write('\n');
                         out.write('\n');
                         continue;
                     }
-                    else if (flag == TagFr.PUNsent.no) {
+                    else if (flag == PUNsent.code) {
                         // out.write(10);
                         continue;
                     }
-                    else if (TagFr.parent(flag) == TagFr.PUN) {
+                    else if (PUN.isPun(flag)) {
                         continue;
                     }
                     else if (formFilter != null && !formFilter.get(formId)) {

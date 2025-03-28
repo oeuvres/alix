@@ -53,6 +53,8 @@ import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
+import static com.github.oeuvres.alix.common.Flags.*;
+
 import com.github.oeuvres.alix.common.Tag;
 import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.fr.TagFr;
@@ -84,8 +86,10 @@ public class FieldText extends FieldCharsAbstract
     protected int[] formId4tagNo;
     /** formId4isLoc.get(formId) == true: form is a locution. */
     private BitSet formId4isLoc;
-    /** Tag set */
-    private Tag tag = TagFr.NULL;
+    /** Tag set TODO parameter */
+    private final Tag tag = TagFr.VERB;
+    /** Preload stopword, TODO parameter */
+    private BytesDic stopwords = new BytesDic().load(TagFr.class.getResourceAsStream("stop.csv"));
     
     /**
      * Build the dictionaries and stats. Each form indexed for the field will be
@@ -97,7 +101,7 @@ public class FieldText extends FieldCharsAbstract
      * @param fieldName name of a lucene text field.
      * @throws IOException Lucene errors.
      */
-    public FieldText(final DirectoryReader reader, final String fieldName, final BytesDic stopwords) throws IOException {
+    public FieldText(final DirectoryReader reader, final String fieldName) throws IOException {
         super(reader, fieldName);
         dic = new BytesRefHash();
         IndexOptions options = info.getIndexOptions();
@@ -214,16 +218,16 @@ public class FieldText extends FieldCharsAbstract
             char c = chain.charAt(0);
             if (Char.isPunctuation(c)) {
                 if (c == '§') {
-                    formId4tagNo[formId] = TagFr.PUNsection.no;
+                    formId4tagNo[formId] = PUNsection.code;
                 }
                 else if (c == '¶') {
-                    formId4tagNo[formId] = TagFr.PUNpara.no;
+                    formId4tagNo[formId] = PUNpara.code;
                 }
                 else if (c == '.' || c == '…' || c == '?' || c == '!' ) {
-                    formId4tagNo[formId] = TagFr.PUNsent.no;
+                    formId4tagNo[formId] = PUNsent.code;
                 }
                 else {
-                    formId4tagNo[formId] = TagFr.PUN.no;
+                    formId4tagNo[formId] = PUN.code;
                 }
                 punRecord.set(formId);
                 continue;
@@ -233,7 +237,7 @@ public class FieldText extends FieldCharsAbstract
             final int indexOfUnder = chain.indexOf('_');
             if (indexOfUnder > 0) {
                 final String name = new String(chain.array(), chain.offset(indexOfUnder), chain.length() - indexOfUnder).intern();
-                formId4tagNo[formId] = tag.no(name);
+                formId4tagNo[formId] = tag.code(name);
             }
         }
         // convert a java.lang growable BitSets in fixed lucene ones
@@ -288,8 +292,8 @@ public class FieldText extends FieldCharsAbstract
         if (tagFilter == null || tagFilter.cardinality() < 1) return null;
         // boolean hasTags = (tagFilter != null && (tagFilter.cardinality(null, TagFilter.NOSTOP_LOC) > 0));
         BitSet formFilter = new SparseFixedBitSet(maxForm);
-        final boolean stop = tagFilter.get(TagFr.STOP);
-        final boolean noStop = tagFilter.get(TagFr.NOSTOP);
+        final boolean stop = tagFilter.get(STOP);
+        final boolean noStop = tagFilter.get(NOSTOP);
         final boolean hasTags = (tagFilter != null && tagFilter.hasInfoTag());
 
         for (int formId = 1; formId < maxForm; formId++) {
@@ -364,8 +368,8 @@ public class FieldText extends FieldCharsAbstract
     {
         FormEnum formEnum = formEnum(); // get global stats 
     
-        boolean noStop = (tagFilter != null && tagFilter.get(TagFr.NOSTOP));
-        boolean locs = (tagFilter != null && tagFilter.get(TagFr.LOC));
+        boolean noStop = (tagFilter != null && tagFilter.get(NOSTOP));
+        boolean locs = (tagFilter != null && tagFilter.get(LOC));
         boolean hasTags = (tagFilter != null && tagFilter.hasInfoTag());
         
         
@@ -494,7 +498,7 @@ public class FieldText extends FieldCharsAbstract
         }
         boolean hasScorer = (scorer != null);
         
-        boolean noStop = (formFilter != null && formFilter.get(TagFr.NOSTOP));
+        boolean noStop = (formFilter != null && formFilter.get(NOSTOP));
         boolean hasTags = (formFilter != null && formFilter.hasInfoTag());
 
         

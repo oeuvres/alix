@@ -40,4 +40,5 @@ public interface Tag {
 
     public String name();
     public int code();
+    public int code(String name);
 }

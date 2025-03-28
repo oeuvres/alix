@@ -61,10 +61,11 @@ public class BytesDic
      * @param file
      * @throws IOException
      */
-    public void load(final File file) throws IOException
+    public BytesDic load(final File file) throws IOException
     {
         Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
         load(reader);
+        return this;
     }
     
     /**
@@ -73,10 +74,11 @@ public class BytesDic
      * @param stream resource to load.
      * @throws IOException
      */
-    public void load(final InputStream stream) throws IOException
+    public BytesDic load(final InputStream stream) throws IOException
     {
         Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
         load(reader);
+        return this;
     }
     
     /**
@@ -85,7 +87,7 @@ public class BytesDic
      * @param reader reader to load.
      * @throws IOException
      */
-    public void load(Reader reader) throws IOException
+    public BytesDic load(Reader reader) throws IOException
     {
         try (BufferedReader br = getBufferedReader(reader)) {
             String word = null;
@@ -99,6 +101,7 @@ public class BytesDic
                 dic.add(bytes);
             }
         }
+        return this;
     }
     
     /**

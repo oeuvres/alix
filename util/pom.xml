@@ -12,7 +12,6 @@
     </parent>
     <artifactId>alix-util</artifactId>
     <packaging>jar</packaging>
-    <name>Alix, util</name>
     <build>
         <sourceDirectory>src/java</sourceDirectory>
     </build>

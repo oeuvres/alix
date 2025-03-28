@@ -90,6 +90,7 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
 
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.search.FieldFacet;
 import com.github.oeuvres.alix.lucene.search.Scale;
 import com.github.oeuvres.alix.lucene.search.SuggestForm;

@@ -33,9 +33,7 @@
 package com.github.oeuvres.alix.fr;
 
 
-import com.github.oeuvres.alix.common.Flags;
 import com.github.oeuvres.alix.common.Tag;
-import com.github.oeuvres.alix.common.Tag.Index;
 
 /**
  * Jeu d’étiquettes morphosyntaxique pour le français.
@@ -188,7 +186,7 @@ public enum TagFr implements Tag {
     ;
     static final Index index = new Index(16, 255);
     static {
-        for (Flags tag : Flags.values()) index.add(tag.code, tag);
+        for (TagFr tag : TagFr.values()) index.add(tag.code(), tag);
     }
 
     /** A structured bit flag between 0-255 */
@@ -224,15 +222,21 @@ public enum TagFr implements Tag {
     {
         return ((code & 0xF0) == NAME.code);
     }
+    
+    static public boolean isVerb(final int code)
+    {
+        return ((code & 0xF0) == VERB.code);
+    }
 
     static public String name(final int code)
     {
         return index.get(code).name();
     }
     
-    static public boolean isVerb(final int code)
+    @Override
+    public int code(final String name)
     {
-        return ((code & 0xF0) == VERB.code);
+        return valueOf(name).code;
     }
 
 }
