@@ -34,7 +34,6 @@ package com.github.oeuvres.alix.lucene.analysis;
 
 
 import java.util.Map;
-import static java.util.Map.entry;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -85,24 +84,24 @@ public class FilterFrPos extends TokenFilter
     private POSTaggerME tagger;
     /** tag  */
     Map<String, Tag> tagList = Map.ofEntries(
-        entry("ADJ", ADJ),
-        entry("ADP", PREP),
-        entry("ADP+DET", DETprep),
-        entry("ADP+PRON", PREPpro),
-        entry("ADV", ADV),
-        entry("AUX", VERBaux),
-        entry("CCONJ", CONJcoord),
-        entry("DET", DET),
-        entry("INTJ", EXCL),
-        entry("NOUN", SUB),
-        entry("NUM", NUM),
-        entry("PRON", PRO),
-        entry("PROPN", NAME),
-        entry("PUNCT", PUN),
-        entry("SCONJ", CONJsub),
-        entry("SYM", NULL),
-        entry("VERB", VERB),
-        entry("X", NULL)
+        Map.entry("ADJ", ADJ),
+        Map.entry("ADP", PREP),
+        Map.entry("ADP+DET", DETprep),
+        Map.entry("ADP+PRON", PREPpro),
+        Map.entry("ADV", ADV),
+        Map.entry("AUX", VERBaux),
+        Map.entry("CCONJ", CONJcoord),
+        Map.entry("DET", DET),
+        Map.entry("INTJ", EXCL),
+        Map.entry("NOUN", SUB),
+        Map.entry("NUM", NUM),
+        Map.entry("PRON", PRO),
+        Map.entry("PROPN", NAME),
+        Map.entry("PUNCT", PUN),
+        Map.entry("SCONJ", CONJsub),
+        Map.entry("SYM", TOKEN),
+        Map.entry("VERB", VERB),
+        Map.entry("X", TOKEN)
     );
     /** state of the queue */
     private boolean tagged = false;
@@ -165,7 +164,7 @@ public class FilterFrPos extends TokenFilter
         for (int i = 0; i < queue.size(); i++) {
             FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
             // let tag decided before
-            if (flags.getFlags() != NULL.code) {
+            if (flags.getFlags() != TOKEN.code) {
             }
             flags.setFlags(tagList.get(tags[i]).code());
         }

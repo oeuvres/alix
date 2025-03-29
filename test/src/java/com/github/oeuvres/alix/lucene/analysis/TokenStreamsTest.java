@@ -34,7 +34,6 @@ public class TokenStreamsTest {
     @Test
     static public void locution() throws IOException
     {
-        System.out.println("works ?");
         File dic = new File("../../piaget_labo/install/piaget-dic.csv");
         FrDics.load(dic.getCanonicalPath(), dic);
 
@@ -51,7 +50,7 @@ public class TokenStreamsTest {
         text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors !";
         text = "Il fallait naître jusqu’alors !";
         text = "le chemin de Fer d’intérêt local <aside>en note</aside> … ";
-        text = "Personne n’a point aimé le point de personne.</p>";
+        text = "Lw cheval blanc d’Henri IV est le même que celui de machin. Tu as peut-être raison.";
 
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);
@@ -106,7 +105,7 @@ public class TokenStreamsTest {
             final int startOffset = offsetAttribute.startOffset();
             System.out.print(""
               + "term=" + termAttribute.toString() + "\t" 
-              + Tag.NULL.name(flagsAttribute.getFlags()) + "\t" 
+              + TagFr.name(flagsAttribute.getFlags()) + "\t" 
               // + orthAtt.toString() + "|\t|" 
               + "|" + text.substring(startOffset,  offsetAttribute.endOffset()) + "|\t" 
               + startOffset + "\t"

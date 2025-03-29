@@ -32,14 +32,12 @@
  */
 package com.github.oeuvres.alix.lucene.analysis;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -50,8 +48,8 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.oeuvres.alix.common.Flags;
 import com.github.oeuvres.alix.common.Tag;
+import com.github.oeuvres.alix.common.Flags;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
@@ -96,7 +94,59 @@ public class FrDics
     static final private Set<CharsAtt> BREVIDOT = new HashSet<>((int) (200 / 0.75));
     /** current dictionnary loaded, for logging */
     static String res;
-    
+    /** Convert tags from dictionary to tags obtained by tagger 
+        entry("ADJ", ADJ),
+        entry("ADP", PREP),
+        entry("ADP+DET", DETprep),
+        entry("ADP+PRON", PREPpro),
+        entry("ADV", ADV),
+        entry("AUX", VERBaux),
+        entry("CCONJ", CONJcoord),
+        entry("DET", DET),
+        entry("INTJ", EXCL),
+        entry("NOUN", SUB),
+        entry("NUM", NUM),
+        entry("PRON", PRO),
+        entry("PROPN", NAME),
+        entry("PUNCT", PUN),
+        entry("SCONJ", CONJsub),
+        entry("SYM", TOKEN),
+        entry("VERB", VERB),
+        entry("X", TOKEN)
+     */
+    Map<String, String> tagList = Map.ofEntries(
+        Map.entry("VERB", "VERB"), // 305193
+        Map.entry("SUB", "SUB"), // 110474
+        Map.entry("ADJ", "ADJ"), // 67833
+        Map.entry("VERBger", "VERB"), // 8207
+        Map.entry("ADV", "ADV"), // 2331
+        Map.entry("VERBppas", "VERB"), // 1107
+        Map.entry("VERBaux2", "VERB"), // 639
+        Map.entry("VERBexpr", "VERB"), // 270
+        Map.entry("NUM", "NUM"), // 254
+        Map.entry("EXCL", "EXCL"), // 166
+        Map.entry("VERBaux", "VERBaux"), // 132
+        Map.entry("VERBmod", "VERB"), // 91
+        Map.entry("PREP", "PREP"), // 73
+        Map.entry("PROpers", "PRO"), // 59
+        Map.entry("DETindef", "DET"), // 34
+        Map.entry("ADVscen", "ADV"), // 32
+        Map.entry("DETposs", "DET"), // 31
+        Map.entry("PROindef", "PRO"), // 26
+        Map.entry("ADVdeg", "ADV"), // 23
+        Map.entry("ADVasp", "ADV"), // 22
+        Map.entry("SUBplace", "SUB"), // 22
+        Map.entry("PROdem", "PRO"), // 21
+        Map.entry("ADVconj", "ADV"), // 20
+        Map.entry("CONJsub", "CONJsub"), // 16
+        Map.entry("DETart", "DET"), // 11
+        Map.entry("ADVneg", "ADV"), // 11
+        Map.entry("CONJcoord", "CONJcoord"), // 10
+        Map.entry("DETprep", "DETprep"), // 4
+        Map.entry("DETdem", "DETdem"), // 4
+        Map.entry("ADVquest", "ADV") // 4
+    );
+
     
     /** Load dictionaries */
     static {
@@ -250,15 +300,21 @@ public class FrDics
                 }
                 // known abbreviation with at least one final dot, add the compounds
                 // do not handle multi word abbreviation like "av. J.-C."
+                Chain norm = row.get(NORM);
                 if (!hasSpace && graph.last() == '.') {
+                    // if multiple dots like U.S.A., add U., U.S., and U.S.A.
                     for (int length = 2; length <= graph.length() ; length++) {
                         if (graph.charAt(length - 1) != '.') continue;
                         CharsAttImpl key = new CharsAttImpl(graph, 0, length);
                         BREVIDOT.add(key);
                     }
+                    if (!norm.isEmpty()) {
+                        NORMALIZE.put(new CharsAttImpl(graph), new CharsAttImpl(norm));
+                    }
+                    // do not add brevidots to dico ? 
+                    continue; 
                 }
                 // check if it is normalization
-                Chain norm = row.get(NORM);
                 if (!norm.isEmpty()) {
                     NORMALIZE.put(new CharsAttImpl(graph), new CharsAttImpl(norm));
                     continue;
@@ -396,7 +452,7 @@ public class FrDics
          */
         public LexEntry(final Chain graph, final Chain tag, final Chain lem) {
             if (graph.isEmpty()) {
-                LOGGER.debug(res + " graph=" + graph + "? Graph empty, tag=" + tag + ", lem=" + lem);
+                LOGGER.debug(res + " graph=\"" + graph + "\"? Graph empty, tag=\"" + tag + "\", lem=\"" + lem +"\"");
             }
             graph.replace('’', '\'');
             String tagKey = tag.toString();
@@ -409,7 +465,7 @@ public class FrDics
                     tagEnum = Flags.valueOf(tagKey);
                  }
                 catch (IllegalArgumentException ee) {
-                    LOGGER.debug(res + " graph=" + graph + " tag=" + tag + "? tag not found.");
+                    LOGGER.debug(res + " graph=\"" + graph + "\" tag=\"" + tag + "\"? tag not found.");
                 }
             }
             if (tagEnum != null) {
@@ -434,9 +490,9 @@ public class FrDics
             StringBuilder sb = new StringBuilder();
             sb.append(TagFr.VERB.name(this.tag));
             if (graph != null)
-                sb.append(" graph=").append(graph);
+                sb.append(" graph=\"").append(graph).append("\"");
             if (lem != null)
-                sb.append(" lem=").append(lem);
+                sb.append(" lem=\"").append(lem).append("\"");
             // if (branch) sb.append(" BRANCH");
             // if (leaf) sb.append(" LEAF");
             // sb.append("\n");

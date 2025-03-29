@@ -54,7 +54,7 @@ public class FrDicsTest {
 
     }
 
-    
+    /*
     public void stopwords()
     {
         for (String word: new String[] {"de", "le", "la", "voiture"}) {
@@ -62,5 +62,6 @@ public class FrDicsTest {
             System.out.println(word + ":" + FrDics.isStop(bytes));
         }
     }
+    */
 
 }

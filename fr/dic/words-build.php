@@ -139,4 +139,26 @@ function toWord()
     }
 }
 
+function tags()
+{
+    $tags = [];
+    $read = @fopen(__DIR__ . "/grammalecte.tsv", "r");
+    if ($read) {
+        while (($line = fgets($read, 4096)) !== false) {
+            $data = str_getcsv($line, "\t");
+            $tag = $data[1];
+            if (isset($tags[$tag])) $tags[$tag]++;
+            else $tags[$tag] = 1;
+        }
+        if (!feof($read)) {
+            echo "Error: unexpected fgets() fail\n";
+        }
+        fclose($read);
+    }
+    arsort($tags);
+    foreach($tags as $key=>$count) {
+        echo "entry(\"$key\", \"$key\"), // $count\n";
+    }
+}
+
 toWord();

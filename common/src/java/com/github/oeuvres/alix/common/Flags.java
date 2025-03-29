@@ -9,10 +9,10 @@ public enum Flags implements Tag
     // 0x, possible flags 
     
     /** No information */
-    NULL(0x00),
+    TOKEN(0x00),
     /** Known as unknown from dicitonaries */
     UNKNOWN(0x01),
-    /** Message send by a process */
+    /** Message sent by a process */
     TEST(0x02),
     /** XML tag */
     XML(0x03),

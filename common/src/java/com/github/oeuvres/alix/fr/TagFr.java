@@ -107,15 +107,13 @@ public enum TagFr implements Tag {
     /** Negation adverb */
     ADVneg(0x51, "Adv. négation", "Ne, pas, point… (adverbe de négation)."),
     /** Question adverb */
-    ADVinter(0x52, "Adv. interr.", "Comment, est-ce que (adverbe interrogatif)."),
+    ADVquest(0x52, "Adv. interr.", "Comment, est-ce que (adverbe interrogatif)."),
     /** Space-time adverb */
     ADVscen(0x53, "Adv. scène", ":Ici, maintenant, derrière… (adverbe spacio-temporel)."),
     /** Aspect adverb */
     ADVasp(0x54, "Adv. aspect", "Toujours, souvent… (adverbe de temps, d’aspect)."),
     /** Gradation adverb */
     ADVdeg(0x55, "Adv. degré", "Plus, presque, très… (adverbe d’intensité)"),
-    /** Modal adverb */
-    ADVmod(0x56, "Adv. mode", "Probablement, peut-être… (adverbe de modalité)"),
 
     // 6x, déterminants
     /** Determiner, other than below */
@@ -127,7 +125,7 @@ public enum TagFr implements Tag {
     /** Numbers */
     DETnum(0x63, "Dét. num.", "Deux, trois… (déterminant numéral)."),
     /** Quantifiers */
-    DETindef(0x6A, "Dét. indéf.", "Tout, tous quelques… (déterminant indéfini)."),
+    DETindef(0x6A, "Dét. indéf.", "Tout, tous, quelles, quelques… (déterminant indéfini)."),
     /** Interrogative determiner */
     DETinter(0x6B, "Dét. inter.", "Quel, quelles… (déterminant interrogatif)."),
     /** Demonstrative determiner */
@@ -140,12 +138,16 @@ public enum TagFr implements Tag {
     PRO(0x70, "Pronom", "Pronom hors catégories particulières."),
     /** Personal pronouns */
     PROpers(0x71, "Pron. pers.", "Il, se, je, moi, nous… (pronom personnel)."),
-    /** Indefinite pronouns */
-    PROindef(0x7A, "Pron. indéf", "Y, rien, tout… (pronom indéfini)."),
     /** Demonstrative pronouns */
-    PROdem(0x7C, "Pron. dém.", "C’, ça, cela… (pronom démonstratif)."),
+    PROdem(0x72, "Pron. dém.", "C’, ça, cela… (pronom démonstratif)."),
     /** Possessive pronouns */
-    PROposs(0x7D, "Pron. poss.", "Le mien, la sienne… (pronom possessif)."),
+    PROposs(0x73, "Pron. poss.", "Le mien, la sienne… (pronom possessif)."),
+    /** Possessive pronouns */
+    PROquest(0x74, "Pron. inter.", "Qui, où, quoi ? (pronom interrogatif)"),
+    /** Possessive pronouns */
+    PROrel(0x75, "Pron. rel.", "Auquel, desquelles… (pronom relatif)"),
+    /** Indefinite pronouns */
+    PROindef(0x7F, "Pron. indéf", "Y, rien, tout… (pronom indéfini)."),
 
     // 8x, connecteurs
     /** Connectors, other than below */
@@ -180,8 +182,6 @@ public enum TagFr implements Tag {
     ABBR(0xF1, "Abréviation", ""),
     /** Exclamation */
     EXCL(0xF2, "Exclamation", "Ho, Ô, haha… (interjections)"),
-    /** Demonstrative particle */
-    PARTdem(0xF3, "Part. dém.", "-ci, -là (particule démonstrative)"),
 
     ;
     static final Index index = new Index(16, 255);

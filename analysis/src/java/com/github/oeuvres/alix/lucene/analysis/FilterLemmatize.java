@@ -171,7 +171,7 @@ public final class FilterLemmatize extends TokenFilter
                 entry = FrDics.name(orthAtt.capitalize()); // known name ?
             }
             if (entry != null) {
-                if (flags == NULL.code) flagsAtt.setFlags(entry.tag);
+                if (flags == TOKEN.code) flagsAtt.setFlags(entry.tag);
                 if (entry.lem != null) lemAtt.copy(entry.lem);
                 return true;
             }
@@ -183,7 +183,7 @@ public final class FilterLemmatize extends TokenFilter
                 entry = FrDics.name(orthAtt);
                 orthAtt.setLength(length);
                 if (entry != null) {
-                    if (flags == NULL.code) flagsAtt.setFlags(entry.tag);
+                    if (flags == TOKEN.code) flagsAtt.setFlags(entry.tag);
                     return true;
                 }
             }
@@ -195,12 +195,12 @@ public final class FilterLemmatize extends TokenFilter
                 // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc.
                 // restore initial cap
                 if (!puncopy) termAtt.buffer()[0] = c1;
-                if (flags == NULL.code) flagsAtt.setFlags(entry.tag);
+                if (flags == TOKEN.code) flagsAtt.setFlags(entry.tag);
                 if (entry.lem != null) lemAtt.copy(entry.lem);
                 return true;
             } 
             else { // unknown word, infer it's a NAME
-                if (flags == NULL.code) flagsAtt.setFlags(NAME.code);
+                if (flags == TOKEN.code) flagsAtt.setFlags(NAME.code);
                 if (copy.length() > 3) copy.capitalize();
                 orthAtt.copy(copy);
                 return true;
@@ -211,7 +211,7 @@ public final class FilterLemmatize extends TokenFilter
             if (entry == null)
                 return true;
             // known word
-            if (flags == NULL.code) flagsAtt.setFlags(entry.tag);
+            if (flags == TOKEN.code) flagsAtt.setFlags(entry.tag);
             if (entry.lem != null) lemAtt.copy(entry.lem);
         }
         return true;
