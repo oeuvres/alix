@@ -58,7 +58,8 @@ import opennlp.tools.postag.POSTaggerME;
 public class FilterFrPos extends TokenFilter
 {
     static {
-        System.setProperty("opennlp.interner.class","opennlp.tools.util.jvm.JvmStringInterner");
+        // let opennlp decide, he knows better
+        // System.setProperty("opennlp.interner.class","opennlp.tools.util.jvm.JvmStringInterner");
     }
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -67,7 +68,7 @@ public class FilterFrPos extends TokenFilter
     /** A stack of states */
     private AttDeque queue;
     /** Maximum size of a sentence to send to the tagger */
-    final static int SENTMAX = 200;
+    final static int SENTMAX = 300;
     /** The pos tagger */
     static private POSModel posModel;
     static {
@@ -149,6 +150,7 @@ public class FilterFrPos extends TokenFilter
             return toksLeft;
         }
         String[] sentence = new String[queue.size()];
+        boolean first = true;
         for (int i = 0; i < queue.size(); i++) {
             FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
             // those tags will not help tagger
@@ -157,16 +159,22 @@ public class FilterFrPos extends TokenFilter
             }
             else {
                 CharTermAttribute term = queue.get(i).getAttribute(CharTermAttribute.class);
-                sentence[i] = new String(term.buffer(), 0, term.length()).intern(); // should be fast
+                // do not intern, maybe better for memory but not for speed
+                sentence[i] = new String(term.buffer(), 0, term.length());
+                // bug initial cap, Tu_NAME vas_VERB bien_ ?_PUN
+                if (first) sentence[i] = sentence[i].toLowerCase();
+                first = false;
             }
         }
         String[] tags = tagger.tag(sentence);
         for (int i = 0; i < queue.size(); i++) {
             FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
-            // let tag decided before
+            // keep previous tags, especially pun precision
             if (flags.getFlags() != TOKEN.code) {
             }
-            flags.setFlags(tagList.get(tags[i]).code());
+            else {
+                flags.setFlags(tagList.get(tags[i]).code());
+            }
         }
         clearAttributes();
         queue.removeFirst(this);

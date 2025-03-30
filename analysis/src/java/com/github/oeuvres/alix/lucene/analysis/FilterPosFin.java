@@ -106,7 +106,9 @@ public class FilterPosFin extends TokenFilter
     {
         final int flags = flagsAtt.getFlags();
         // record an empty token at puctuation position for the rails
-        if (PUN.isPun(flags)) return false;
+        if (PUN.isPun(flags)) {
+            return true;
+        }
         // unify numbers
         else if (flags == NUM.code) {
             termAtt.setEmpty().append("n°");

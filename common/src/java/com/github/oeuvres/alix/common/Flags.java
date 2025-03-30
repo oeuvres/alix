@@ -51,6 +51,13 @@ public enum Flags implements Tag
         return (code == 0x08 || code == 0x09 || code == 0x0A || code == 0x0B || code == 0x0C);
     }
     
+    static public String name(final int code)
+    {
+        Tag tag = index.get(code);
+        if (tag == null) return null;
+        return tag.name();
+    }
+
     @Override
     public int code()
     {

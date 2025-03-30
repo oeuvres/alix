@@ -22,6 +22,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 // import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.junit.Test;
 
+import com.github.oeuvres.alix.common.Flags;
 import com.github.oeuvres.alix.common.Tag;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
@@ -50,7 +51,7 @@ public class TokenStreamsTest {
         text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors !";
         text = "Il fallait naître jusqu’alors !";
         text = "le chemin de Fer d’intérêt local <aside>en note</aside> … ";
-        text = "Lw cheval blanc d’Henri IV est le même que celui de machin. Tu as peut-être raison.";
+        text = "tu vas à la maison ?";
 
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);
@@ -103,9 +104,11 @@ public class TokenStreamsTest {
         int startLast = 0;
         while(tokenStream.incrementToken()) {
             final int startOffset = offsetAttribute.startOffset();
+            String tag = TagFr.name(flagsAttribute.getFlags());
+            if (tag == null) Flags.name(flagsAttribute.getFlags());
             System.out.print(""
               + "term=" + termAttribute.toString() + "\t" 
-              + TagFr.name(flagsAttribute.getFlags()) + "\t" 
+              + tag + "\t" 
               // + orthAtt.toString() + "|\t|" 
               + "|" + text.substring(startOffset,  offsetAttribute.endOffset()) + "|\t" 
               + startOffset + "\t"

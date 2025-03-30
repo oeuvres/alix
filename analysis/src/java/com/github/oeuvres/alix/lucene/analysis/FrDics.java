@@ -320,30 +320,7 @@ public class FrDics
                     continue;
                 }
 
-                
-                // not replace, internal lexicons, first value win
-                if (!replace) {
-                    if (WORDS.containsKey(graph) || NAMES.containsKey(graph)) continue;
-                }
-                // replace, especially for user files
-                else {
-                    // deletion of a form starting by 0
-                    if (graph.first() == '0') {
-                        graph.firstDel();
-                        WORDS.remove(graph);
-                        NAMES.remove(graph);
-                        continue;
-                    }
-                    // remove previous versions (ex : Russes => Russie)
-                    WORDS.remove(graph);
-                    NAMES.remove(graph);
-                }
-                // a lexical entry
-                LexEntry entry = new LexEntry(graph, row.get(TAG), row.get(LEM));
-                if (graph.isFirstUpper())
-                    NAMES.put(new CharsAttImpl(graph), entry);
-                else
-                    WORDS.put(new CharsAttImpl(graph), entry);
+                putRecord(graph, row.get(TAG), row.get(LEM), replace);
             }
             csv.close();
         } catch (Exception e) {
@@ -356,37 +333,30 @@ public class FrDics
         }
     }
 
-    /**
-     * Simple load of table equivalent
-     * 
-     * @param reader
-     * @param map
-     */
-    private static void load(final String res, final HashMap<CharsAtt, CharsAtt> map)
+    private static void putRecord(Chain graph, Chain tag, Chain lem, boolean replace)
     {
-        FrDics.res = res;
-        Reader reader = new InputStreamReader(TagFr.class.getResourceAsStream(res), StandardCharsets.UTF_8);
-        CSVReader csv = null;
-        try {
-            csv = new CSVReader(reader, 2);
-            csv.readRow(); // skip first line
-            Row row;
-            while ((row = csv.readRow()) != null) {
-                Chain key = row.get(0);
-                if (key.isEmpty() || key.charAt(0) == '#')
-                    continue;
-                Chain value = row.get(1);
-                // if (value.isEmpty()) continue; // a value maybe empty
-                map.put(new CharsAttImpl(key), new CharsAttImpl(value));
+        if (graph.first() == '0') {
+            graph.firstDel();
+            NAMES.remove(graph);
+            WORDS.remove(graph);
+            WORDS.remove(graph.append("_").append(tag));
+            return;
+        }
+        // is a name
+        else if (graph.isFirstUpper()) {
+            if (!replace && NAMES.containsKey(graph)) return;
+            LexEntry entry = new LexEntry(graph, tag, lem);
+            NAMES.put(new CharsAttImpl(graph), entry);
+        }
+        // is a word, add an entry for GRAPH_TAG
+        else {
+            LexEntry entry = new LexEntry(graph, tag, lem);
+            if (!tag.isEmpty()) {
+                CharsAttImpl graph_tag = new CharsAttImpl(graph).append("_").append(tag);
+                if (!replace && !WORDS.containsKey(graph_tag)) WORDS.put(graph_tag, entry);
             }
-            reader.close();
-        } catch (Exception e) {
-            System.out.println("Dictionary parse error in file " + reader);
-            if (csv != null)
-                System.out.println(" line " + csv.line());
-            else
-                System.out.println();
-            e.printStackTrace();
+            if (!replace && !WORDS.containsKey(graph)) WORDS.put(new CharsAttImpl(graph), entry);
+            
         }
     }
 
