@@ -41,6 +41,8 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import static com.github.oeuvres.alix.common.Flags.*;
 import static com.github.oeuvres.alix.fr.TagFr.*;
+
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
@@ -92,8 +94,6 @@ public final class FilterLemmatize extends TokenFilter
     private boolean pun = true;
     /** Store state */
     private State save;
-    /** Reusable char sequence for some tests and transformations */
-    private final CharsAttImpl copy = new CharsAttImpl();
 
     /**
      * Default constructor.
@@ -106,6 +106,8 @@ public final class FilterLemmatize extends TokenFilter
     @Override
     public final boolean incrementToken() throws IOException
     {
+        // Reusable char sequence for some tests and transformations
+        final CharsAttImpl testAtt = new CharsAttImpl();
         if (save != null) {
             restoreState(save);
             save = null;
@@ -144,78 +146,101 @@ public final class FilterLemmatize extends TokenFilter
         // normalise oeil -> œil, Etat -> État, naître -> naitre
         FrDics.norm((CharsAttImpl)orthAtt);
 
-        LexEntry entry;
         // First letter of token is upper case, is it a name ? Is it an upper case
         // header ?
         // Do not touch to abbreviations
         if (Char.isUpperCase(c1)) {
 
             // roman number already detected
-            if (flagsAtt.getFlags() == NUM.code)
-                return true;
+            if (flagsAtt.getFlags() == DIGIT.code) return true;
             int len = orthAtt.length();
-            if (orthAtt.lastChar() == '.')
-                len--;
+            if (orthAtt.lastChar() == '.') len--;
             int n = Calcul.roman2int(orthAtt.buffer(), 0, len);
             // Roman number for more than one char, pb M<sup>elle</sup>
             if (len > 1 && n > 0) {
-                flagsAtt.setFlags(NUM.code);
+                flagsAtt.setFlags(DIGIT.code);
                 lemAtt.append("" + n);
                 return true;
             }
             // Copy orthAtt if restore is needed
-            copy.copy(orthAtt);
+            testAtt.copy(orthAtt);
             // c1 = orth.charAt(0); // keep initial cap, maybe useful
-            entry = FrDics.name(orthAtt); // known name ?
-            if (entry == null) {
-                entry = FrDics.name(orthAtt.capitalize()); // known name ?
+            LexEntry entryName = FrDics.name(testAtt); // known name ? USSR ?
+            if (entryName == null) {
+                entryName = FrDics.name(testAtt.capitalize()); // known name ?
             }
-            if (entry != null) {
-                if (flags == TOKEN.code) flagsAtt.setFlags(entry.tag);
-                if (entry.lem != null) lemAtt.copy(entry.lem);
+            if (entryName != null) {
+                // trust dictionary
+                flagsAtt.setFlags(entryName.tag);
+                // could be normalization
+                if (entryName.lem != null) lemAtt.copy(entryName.lem);
                 return true;
             }
             // Charles-François-Bienvenu, Va-t’en, Allez-vous
             int pos = orthAtt.indexOf('-');
             if (pos > 0) {
-                int length = orthAtt.length();
-                orthAtt.setLength(pos);
-                entry = FrDics.name(orthAtt);
-                orthAtt.setLength(length);
-                if (entry != null) {
-                    if (flags == TOKEN.code) flagsAtt.setFlags(entry.tag);
+                int length = testAtt.length();
+                testAtt.setLength(pos);
+                entryName = FrDics.name(testAtt);
+                orthAtt.setLength(length); // restore length
+                if (entryName != null) {
+                    // trust dictionary
+                    flagsAtt.setFlags(entryName.tag);
                     return true;
                 }
             }
-            entry = FrDics.word(orthAtt.toLower()); // known word ?
-            if (entry != null) { // known word
+            LexEntry entryWord = null;
+            String tag = TagFr.name(flags);
+            if (tag != null) {
+                final int testLength = testAtt.length();
+                entryWord = FrDics.word(testAtt.toLower().append("_").append(tag));
+                testAtt.setLength(testLength); // restore test length
+            }
+            if (entryWord == null) {
+                entryWord = FrDics.word(testAtt);
+            }
+            if (entryWord != null) { // known word
+                orthAtt.toLower();
                 // norm here after right casing, J
                 FrDics.norm(orthAtt);
                 // if not after a pun, maybe a capitalized concept État, or a name La Fontaine,
                 // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc.
                 // restore initial cap
                 if (!puncopy) termAtt.buffer()[0] = c1;
-                if (flags == TOKEN.code) flagsAtt.setFlags(entry.tag);
-                if (entry.lem != null) lemAtt.copy(entry.lem);
+                flagsAtt.setFlags(entryWord.tag); // trust dictionary
+                if (entryWord.lem != null) lemAtt.copy(entryWord.lem);
                 return true;
             } 
             else { // unknown word, infer it's a NAME
                 if (flags == TOKEN.code) flagsAtt.setFlags(NAME.code);
-                if (copy.length() > 3) copy.capitalize();
-                orthAtt.copy(copy);
+                // Normalize caps ? NAME -> Name
+                orthAtt.capitalize();
                 return true;
             }
         } 
         else {
-            entry = FrDics.word(orthAtt);
-            if (entry == null)
+            LexEntry entryWord = null;
+            testAtt.copy(orthAtt);
+            String tag = TagFr.name(flags);
+            if (tag != null) {
+                final int testLength = testAtt.length();
+                entryWord = FrDics.word(testAtt.append("_").append(tag));
+                System.out.println(testAtt);
+                testAtt.setLength(testLength); // restore test length
+            }
+            if (entryWord == null) {
+                entryWord = FrDics.word(testAtt);
+            }
+            if (entryWord == null) {
                 return true;
+            }
             // known word
-            if (flags == TOKEN.code) flagsAtt.setFlags(entry.tag);
-            if (entry.lem != null) lemAtt.copy(entry.lem);
+            flagsAtt.setFlags(entryWord.tag); // trust dictionary
+            if (entryWord.lem != null) lemAtt.copy(entryWord.lem);
         }
         return true;
     }
+    
 
     @Override
     public void reset() throws IOException

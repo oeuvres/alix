@@ -129,7 +129,7 @@ public class FilterLocution extends TokenFilter
                 compound.append(orthAtt);
             }
             */
-            if (tag == NUM.code) {
+            if (tag == DIGIT.code) {
                 compound.append("#");
             }
             else if (NAME.isName(tag)) {

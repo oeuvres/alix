@@ -41,6 +41,9 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import static com.github.oeuvres.alix.common.Flags.*;
+import static com.github.oeuvres.alix.fr.TagFr.*;
+
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
@@ -121,8 +124,12 @@ public class FilterCloud extends TokenFilter
             }
         }
         // unify numbers
-        else if (flags == NUM.code) {
-            termAtt.setEmpty().append("n°");
+        else if (flags == DIGIT.code) {
+            termAtt.setEmpty().append("#");
+        }
+        // keep names as is
+        else if (TagFr.isName(flags)) {
+            termAtt.setEmpty().append(lemAtt);
         }
         // replace term by lemma when available
         else if (lemAtt.length() != 0) {

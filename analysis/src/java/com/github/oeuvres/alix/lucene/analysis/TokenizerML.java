@@ -168,13 +168,13 @@ public class TokenizerML  extends Tokenizer
             else if (Char.isDigit(c)) {
                 if (termAtt.isEmpty()) {
                     number = true;
-                    flagsAtt.setFlags(NUM.code);
+                    flagsAtt.setFlags(DIGIT.code);
                     startOffset = offset;
                 }
                 // start a negative number
                 if (termAtt.length() == 1 && lastChar == '-') {
                     number = true;
-                    flagsAtt.setFlags(NUM.code);
+                    flagsAtt.setFlags(DIGIT.code);
                 }
                 // if not a number started, will be appended to something else
                 termAtt.append(c);

@@ -110,8 +110,8 @@ public class FilterPosFin extends TokenFilter
             return true;
         }
         // unify numbers
-        else if (flags == NUM.code) {
-            termAtt.setEmpty().append("n°");
+        else if (flags == DIGIT.code) {
+            termAtt.setEmpty().append("#");
         }
         // or take the normalized form
         else if (orthAtt.length() != 0) {

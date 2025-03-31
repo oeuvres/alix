@@ -122,7 +122,7 @@ public class FilterOrth extends TokenFilter
             }
         }
         // unify numbers
-        else if (tag == NUM.code) {
+        else if (tag == DIGIT.code) {
             termAtt.setEmpty().append("n°");
         }
         // replace term by normalized form

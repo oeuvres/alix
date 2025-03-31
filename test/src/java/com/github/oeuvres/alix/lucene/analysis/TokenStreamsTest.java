@@ -51,7 +51,7 @@ public class TokenStreamsTest {
         text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors !";
         text = "Il fallait naître jusqu’alors !";
         text = "le chemin de Fer d’intérêt local <aside>en note</aside> … ";
-        text = "tu vas à la maison ?";
+        text = "Il a 50 ans.";
 
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);
@@ -104,8 +104,10 @@ public class TokenStreamsTest {
         int startLast = 0;
         while(tokenStream.incrementToken()) {
             final int startOffset = offsetAttribute.startOffset();
-            String tag = TagFr.name(flagsAttribute.getFlags());
-            if (tag == null) Flags.name(flagsAttribute.getFlags());
+            final int flags = flagsAttribute.getFlags();
+            String tag = TagFr.name(flags);
+            if (tag == null) tag = Flags.name(flags);
+            if (tag == null) tag = "" + flags;
             System.out.print(""
               + "term=" + termAttribute.toString() + "\t" 
               + tag + "\t" 

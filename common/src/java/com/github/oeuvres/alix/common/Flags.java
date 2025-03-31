@@ -23,7 +23,7 @@ public enum Flags implements Tag
     /** Locution  (maybe substantive, conjunction…) */
     LOC(0x06),
     /** [0-9\-] numbers */
-    NUM(0x07),
+    DIGIT(0x07),
     /** Punctuation, other than below */
     PUN(0x08),
     /** §, section punctuation, inferred from XML */

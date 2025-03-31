@@ -164,7 +164,7 @@ public enum TagFr implements Tag {
     
     // Ax, Numéraux divers
     /** Numeral, other than below */
-    NUMBER(0xA0, "Numéral", "3, milliers, centième… (nombre quantifiant)."),
+    NUM(0xA0, "Numéral", "quatre-vingt, milliers, centième… (nombre quantifiant)."),
     /** Ordinal */
     NUMno(0xA1, "Numéro", "1er, second… (nombre non quantifiant, code, “ordinal”…)."),
     /** Reference */
