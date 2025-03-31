@@ -173,7 +173,7 @@ public final class FilterLemmatize extends TokenFilter
                 // trust dictionary
                 flagsAtt.setFlags(entryName.tag);
                 // could be normalization
-                if (entryName.lem != null) lemAtt.copy(entryName.lem);
+                if (entryName.lem != null) orthAtt.copy(entryName.lem);
                 return true;
             }
             // Charles-François-Bienvenu, Va-t’en, Allez-vous

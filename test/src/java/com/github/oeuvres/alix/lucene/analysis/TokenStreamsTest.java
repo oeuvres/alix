@@ -51,7 +51,7 @@ public class TokenStreamsTest {
         text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors !";
         text = "Il fallait naître jusqu’alors !";
         text = "le chemin de Fer d’intérêt local <aside>en note</aside> … ";
-        text = "Il a 50 ans.";
+        text = "C’est le tien ? Non, le mien est vers.";
 
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);

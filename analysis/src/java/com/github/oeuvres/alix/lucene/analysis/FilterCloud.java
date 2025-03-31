@@ -68,6 +68,40 @@ public class FilterCloud extends TokenFilter
     private final LemAtt lemAtt = addAttribute(LemAtt.class);
     /** keep right position order */
     private int skippedPositions;
+    /** Convert flags as tag to append to term */
+    static String[] suffix = new String[256];
+    static {
+        suffix[VERB.code] = "_VERB"; // 305875
+        suffix[SUB.code] = ""; // 110522
+        suffix[ADJ.code] = "_ADJ"; // 67833
+        suffix[VERBger.code] = "_VERB"; // 8207
+        suffix[ADV.code] = "_ADV"; // 2336
+        suffix[VERBppas.code] = "_VERB"; // 1107
+        suffix[VERBexpr.code] = "_VERB"; // 270
+        suffix[NUM.code] = ""; // 254
+        suffix[EXCL.code] = ""; // 166
+        suffix[VERBmod.code] = "_VERB"; // 91
+        suffix[VERBaux.code] = "_AUX"; // 89
+        suffix[PREP.code] = "_MG"; // 71
+        suffix[PROpers.code] = "_MG"; // 51
+        suffix[ADVscen.code] = "_MG"; // 33
+        suffix[DETindef.code] = "_MG"; // 31
+        suffix[PROindef.code] = "_MG"; // 28
+        suffix[PROdem.code] = "_MG"; // 27
+        suffix[ADVasp.code] = "_MG"; // 24
+        suffix[ADVdeg.code] = "_MG"; // 23
+        suffix[PROrel.code] = "_MG"; // 18
+        suffix[PROquest.code] = "_MG"; // 16
+        suffix[CONJsub.code] = "_MG"; // 16
+        suffix[DETposs.code] = "_MG"; // 15
+        suffix[ADVconj.code] = "_MG"; // 15
+        suffix[DETart.code] = "_MG"; // 11
+        suffix[DETdem.code] = "_MG"; // 10
+        suffix[CONJcoord.code] = "_MG"; // 10
+        suffix[ADVneg.code] = "_MG"; // 9
+        suffix[ADVquest.code] = "_MG"; // 4
+        suffix[DETprep.code] = "_MG"; // 4
+    }
 
     /**
      * Default constructor.
@@ -122,23 +156,24 @@ public class FilterCloud extends TokenFilter
             else {
                 // termAtt.setEmpty().append("");
             }
+            return true;
         }
         // unify numbers
-        else if (flags == DIGIT.code) {
+        if (flags == DIGIT.code || flags == NUM.code) {
             termAtt.setEmpty().append("#");
+            return true;
         }
-        // keep names as is
-        else if (TagFr.isName(flags)) {
-            termAtt.setEmpty().append(lemAtt);
+        
+        // keep flexion of substantives ? Nothing to append to term
+        if (flags == SUB.code) {
+            if (orthAtt.length() != 0) {
+                termAtt.setEmpty().append(orthAtt);
+            }
+            return true;
         }
-        // replace term by lemma when available
-        else if (lemAtt.length() != 0) {
-            termAtt.setEmpty().append(lemAtt);
-        }
-        // or take the normalized form
-        else if (orthAtt.length() != 0) {
-            termAtt.setEmpty().append(orthAtt);
-        }
+        if (!lemAtt.isEmpty()) termAtt.setEmpty().append(lemAtt);
+        else if (!orthAtt.isEmpty()) termAtt.setEmpty().append(orthAtt);
+        termAtt.append(suffix[flags]);
         return true;
     }
 

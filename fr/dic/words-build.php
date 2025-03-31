@@ -146,6 +146,13 @@ function tags()
     if ($read) {
         while (($line = fgets($read, 4096)) !== false) {
             $data = str_getcsv($line, "\t");
+            /*
+            if (!isset($data[3])) {
+                echo $line;
+                continue;
+            }
+            if (strpos($data[3], "mg") === 0) continue;
+            */
             $tag = $data[1];
             if (isset($tags[$tag])) $tags[$tag]++;
             else $tags[$tag] = 1;
@@ -157,8 +164,10 @@ function tags()
     }
     arsort($tags);
     foreach($tags as $key=>$count) {
-        echo "entry(\"$key\", \"$key\"), // $count\n";
+        //         tags[VERB.code] = "_VERB"; // 305791
+        echo "         tags[$key.code] = \"_$key\"; // $count\n";
     }
 }
 
-toWord();
+// toWord();
+tags();

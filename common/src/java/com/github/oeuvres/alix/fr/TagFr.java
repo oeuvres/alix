@@ -47,8 +47,7 @@ public enum TagFr implements Tag {
     /** Auxiliary verb */
     VERBaux(0x11, "Auxilliaire", "Être, avoir. (verbe auxilliaire du français)"),
     /** Semi-auxiliary verb */
-    VERBaux2(0x12, "Semi‑aux.",
-            "« Je vais faire… », aller, faire, venir de. (verbes semi-auxilliaires, faiblement sémantiques)."),
+    // VERBaux2(0x12, "Semi. aux.", "« Je vais faire… », aller, faire, venir de. (verbes semi-auxilliaires, faiblement sémantiques)."),
     /** Modal verb */
     VERBmod(0x13, "Modaux", "Devoir, pouvoir, falloir. (verbes modaux)."),
     /** Expression verb */
@@ -68,9 +67,9 @@ public enum TagFr implements Tag {
      * "Substantif féminin", "(futur)") { },
      */
     /** Person title */
-    SUBpers(0x28, "Titulature", "Monsieur, madame, prince… (introduit des noms de personnes)."),
+    // SUBpers(0x28, "Titulature", "Monsieur, madame, prince… (introduit des noms de personnes)."),
     /** Adress substantive */
-    SUBplace(0x29, "Adressage", "Faubourg, rue, hôtel… (introduit des noms de lieux)."),
+    // SUBplace(0x29, "Adressage", "Faubourg, rue, hôtel… (introduit des noms de lieux)."),
 
     /** Adjective */
     ADJ(0x30, "Adjectif", "Adjectif, en emploi qualificatif ou attribut."),
