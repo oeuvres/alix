@@ -169,5 +169,28 @@ function tags()
     }
 }
 
+function duplicates()
+{
+    $records = [];
+    $read = @fopen(__DIR__ . "/grammalecte.tsv", "r");
+    if ($read) {
+        while (($line = fgets($read, 4096)) !== false) {
+            $data = str_getcsv($line, "\t");
+            $key = $data[0] . "_" . $data[1];
+            if ($data[1] == "VERB") $key .= $key . "_" . $data[3];
+            if (isset($records[$key])) {
+                echo $line;
+            }
+            else {
+                $records[$key] = true;
+            }
+        }
+        if (!feof($read)) {
+            echo "Error: unexpected fgets() fail\n";
+        }
+        fclose($read);
+    }
+}
+
 // toWord();
-tags();
+duplicates();
