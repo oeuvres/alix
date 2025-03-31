@@ -195,5 +195,5 @@ function duplicates()
     }
 }
 
-// toWord();
+toWord();
 duplicates();

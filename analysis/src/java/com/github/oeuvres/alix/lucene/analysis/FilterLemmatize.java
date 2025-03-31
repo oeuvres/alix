@@ -225,7 +225,6 @@ public final class FilterLemmatize extends TokenFilter
             if (tag != null) {
                 final int testLength = testAtt.length();
                 entryWord = FrDics.word(testAtt.append("_").append(tag));
-                System.out.println(testAtt);
                 testAtt.setLength(testLength); // restore test length
             }
             if (entryWord == null) {

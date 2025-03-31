@@ -98,7 +98,7 @@ public class FilterFrPos extends TokenFilter
         Map.entry("NUM", NUM),
         Map.entry("PRON", PRO),
         Map.entry("PROPN", NAME),
-        Map.entry("PUNCT", PUN),
+        Map.entry("PUNCT", TOKEN), // pun is filtered upper, tagger bug
         Map.entry("SCONJ", CONJsub),
         Map.entry("SYM", TOKEN),
         Map.entry("VERB", VERB),
@@ -173,6 +173,7 @@ public class FilterFrPos extends TokenFilter
             if (flags.getFlags() != TOKEN.code) {
             }
             else {
+                System.out.println(tags[i]);
                 flags.setFlags(tagList.get(tags[i]).code());
             }
         }
