@@ -169,11 +169,10 @@ public class FilterFrPos extends TokenFilter
         String[] tags = tagger.tag(sentence);
         for (int i = 0; i < queue.size(); i++) {
             FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
-            // keep previous tags, especially pun precision
+            // keep previous tags, especially pun precision ; do not trust pun inferences of tagger
             if (flags.getFlags() != TOKEN.code) {
             }
             else {
-                System.out.println(tags[i]);
                 flags.setFlags(tagList.get(tags[i]).code());
             }
         }

@@ -462,7 +462,7 @@ public class CharsAttImpl extends AttributeImpl
             CharsAttImpl term = (CharsAttImpl) other;
             if (term.len != len)
                 return false;
-            // if hashcode already calculated, if different, not same strings
+            // force hashcode calculation, if different, not same strings
             if (this.hashCode() != term.hashCode())
                 return false;
             char[] test = term.chars;
@@ -475,18 +475,7 @@ public class CharsAttImpl extends AttributeImpl
             }
             return true;
         }
-        // String or other CharSequence, access char by char
-        else if (other instanceof CharSequence) {
-            CharSequence cs = (CharSequence) other;
-            if (cs.length() != len)
-                return false;
-            for (int i = 0; i < len; i++) {
-                if (cs.charAt(i) != chars[zero + i])
-                    return false;
-            }
-            return true;
-        }
-        if (other instanceof Chain) {
+        else if (other instanceof Chain) {
             Chain chain = (Chain) other;
             if (chain.length() != len)
                 return false;
@@ -498,7 +487,8 @@ public class CharsAttImpl extends AttributeImpl
                 start++;
             }
             return true;
-        } else if (other instanceof char[]) {
+        } 
+        else if (other instanceof char[]) {
             char[] test = (char[]) other;
             if (test.length != len)
                 return false;
@@ -507,8 +497,21 @@ public class CharsAttImpl extends AttributeImpl
                     return false;
             }
             return true;
-        } else
+        } 
+        // String or other CharSequence, access char by char
+        else if (other instanceof CharSequence) {
+            CharSequence cs = (CharSequence) other;
+            if (cs.length() != len)
+                return false;
+            for (int i = 0; i < len; i++) {
+                if (cs.charAt(i) != chars[zero + i])
+                    return false;
+            }
+            return true;
+        }
+        else {
             return false;
+        }
     }
 
     // *** TermToBytesRefAttribute interface ***

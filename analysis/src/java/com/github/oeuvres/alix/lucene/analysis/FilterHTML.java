@@ -75,7 +75,7 @@ public class FilterHTML extends TokenFilter
     public final boolean incrementToken() throws IOException
     {
         while (input.incrementToken()) {
-            // update the char wrapper
+            // update the char wrapper with present term
             test.wrap(termAtt.buffer(), termAtt.length());
             if (skip > 0) {
                 if (test.equals("</aside>") || test.equals("</nav>")) {
@@ -90,7 +90,7 @@ public class FilterHTML extends TokenFilter
                 return true;
             }
             if (
-                    test.startsWith("<aside") || test.startsWith("<nav")) {
+                test.startsWith("<aside") || test.startsWith("<nav")) {
                 skip++;
                 continue;
             }
@@ -106,9 +106,6 @@ public class FilterHTML extends TokenFilter
                 return true;
             }
         }
-        /*
-         * while (input.incrementToken()) { if (accept()) return true; }
-         */
         return false;
     }
 

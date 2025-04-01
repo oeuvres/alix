@@ -41,6 +41,7 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import static com.github.oeuvres.alix.common.Flags.*;
+import com.github.oeuvres.alix.fr.TagFr;
 import static com.github.oeuvres.alix.fr.TagFr.*;
 import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
@@ -132,11 +133,11 @@ public class FilterLocution extends TokenFilter
             if (tag == DIGIT.code) {
                 compound.append("#");
             }
-            else if (NAME.isName(tag)) {
+            else if (TagFr.isName(tag)) {
                 compound.append(termAtt);
             }
             // verbs, compound key is the lemma
-            else if (VERB.isVerb(tag) && lemAtt.length() != 0) {
+            else if (TagFr.isVerb(tag) && lemAtt.length() != 0) {
                 verbSeen = true;
                 compound.append(lemAtt);
             }

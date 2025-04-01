@@ -191,9 +191,10 @@ public final class FilterLemmatize extends TokenFilter
             }
             LexEntry entryWord = null;
             String tag = TagFr.name(flags);
+            testAtt.toLower(); // test if lower is known
             if (tag != null) {
                 final int testLength = testAtt.length();
-                entryWord = FrDics.word(testAtt.toLower().append("_").append(tag));
+                entryWord = FrDics.word(testAtt.append("_").append(tag));
                 testAtt.setLength(testLength); // restore test length
             }
             if (entryWord == null) {

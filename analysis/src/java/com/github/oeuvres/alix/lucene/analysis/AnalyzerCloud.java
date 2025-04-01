@@ -50,6 +50,7 @@ public class AnalyzerCloud extends Analyzer
         super();
     }
 
+    @SuppressWarnings("resource")
     @Override
     public TokenStreamComponents createComponents(String field)
     {
@@ -63,10 +64,8 @@ public class AnalyzerCloud extends Analyzer
         ts = new FilterFrPos(ts);
         // provide lemma+pos
         ts = new FilterLemmatize(ts);
-        /*
         // group compounds after lemmatization for verbal compounds
         ts = new FilterLocution(ts);
-        */
         // last filter èrepare term to index
         ts = new FilterCloud(ts);
         return new TokenStreamComponents(tokenizer, ts);
