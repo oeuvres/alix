@@ -436,18 +436,18 @@ public class CharsAttImpl extends AttributeImpl
      * @param suffix to test.
      * @return true if attribute ends by suffix, false otherwise.
      */
-    public boolean endsWith(final String suffix)
+    public int endsWith(final  CharSequence suffix)
     {
         final int olen = suffix.length();
         if (olen > len)
-            return false;
-        int i = zero + len - 1;
+            return -1;
+        int i = zero + len;
         for (int j = olen - 1; j >= zero; j--) {
-            if (chars[i] != suffix.charAt(j))
-                return false;
             i--;
+            if (chars[i] != suffix.charAt(j))
+                return -1;
         }
-        return true;
+        return i;
     }
 
     @Override
@@ -659,6 +659,7 @@ public class CharsAttImpl extends AttributeImpl
         reflector.reflect(TermToBytesRefAttribute.class, "bytes", getBytesRef());
     }
 
+    
     /**
      * Restore String size like it was recorded with last @see #mark(). If no mark
      * has been set, nothing is done. Used mark is deleted, explicit @see #mark() is

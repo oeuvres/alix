@@ -3,8 +3,6 @@ GRAPH,TAG,LEM,ORTH
 à bon droit,ADV,,
 à bord,ADV,,
 à bord de,PREP,,
-à bord d’,,,à bord de
-à bord du,,,à bord de
 à bout de,PREP,,
 à bout de force,ADJ,,
 à bout portant,ADV,,
@@ -12,9 +10,6 @@ GRAPH,TAG,LEM,ORTH
 a capella,ADV,,
 a cappella,ADV,,
 à cause de,PREP,,
-à cause d',,,à cause de
-à cause du,,,à cause de
-à cause des,,,à cause de
 à cet égard,PREP,,
 à chaque fois,ADV,,
 à chaque fois que,CONJsub,,
@@ -46,9 +41,6 @@ a giorno,ADV,,
 à l'aveuglette,ADV,,
 à l'aveuglette,ADV,,
 à l'égard de,PREP,,
-à l'égard du,,,à l'égard de
-à l'égard des,,,à l'égard de
-à l'égard d',,,à l'égard de
 à l'encan,ADV,,
 à l'encan,ADV,,
 à l'envi,ADV,,
@@ -81,14 +73,7 @@ a giorno,ADV,,
 à la condition de,PREP,,
 à la fois,ADV,,
 à la longue,ADV,,
-à la lumière d’,PREP,,
 à la lumière de,PREP,,
-à la lumière des,PREP,,
-à la lumière du,PREP,,
-à la manière d’,,,à la manière de
-à la manière du,,,à la manière de
-à la manière de,PREP,,
-à la manière des,PREP,à la manière de,
 à la mémoire de,PREP,,
 à la place de,PREP,,
 à la réserve de,PREP,,
@@ -119,9 +104,6 @@ a priori,ADV,,
 a priori,SUB,,
 à priori,ADV,,
 à propos de,PREP,,
-à propos des,,,à propos de
-à propos du,,,à propos de
-à propos d',,,à propos de
 à proprement parler,ADV,,
 à quoi bon,ADVquest,,
 à raison de,PREP,,
@@ -149,44 +131,28 @@ a priori,SUB,,
 au premier chef,ADV,,
 au premier abord,ADV,,
 au bas,ADV,,
-au bas d',,,au bas de
 au bas de,PREP,,
-au bas du,,,au bas de
 au beau milieu de,PREP,,
-au bord d',,,au bord de
 au bord de,PREP,,
-au bord des,,,au bord de
-au bord du,,,au bord de
-au bout d',,,au bout de
 au bout de,PREP,,
-au bout des,,,au bout de
-au bout du,,,au bout de
 au cas où,CONJsub,,
 au contraire,ADV,,
 au contraire de,PREP,,
 au cours de,PREP,,
-au cours des,PREP,,
-au cours du,PREP,,
 au delà,,,au-delà
 au-delà,ADV,,
 au dépourvu,ADV,,
 au détriment de,PREP,,
 au droit de,PREP,,
 au lieu de,PREP,,
-au lieu d',PREP,,
 au lieu et place de,PREP,,
-au milieu d',,,au milieu de
 au milieu de,PREP,,
-au milieu des,,,au milieu de
-au milieu du,,,au milieu de
 au moins,ADV,,
 au moment de,PREP,,
 au moment où,PREP,,
 au moyen de,PREP,,
 au niveau de,PREP,,
-au nom d’,PREP,,
 au nom de,PREP,,
-au nom du,PREP,,
 au préjudice de,PREP,,
 au prétexte de,PREP,,
 au prix de,PREP,,
@@ -194,9 +160,7 @@ au ras de,PREP,,
 au rebours de,PREP,,
 au regard de,PREP,,
 au risque de,PREP,,
-au sein d’,PREP,,
 au sein de,PREP,,
-au sein du,PREP,,
 au sens étroit,ADV,,
 au sens figuré,ADV,,
 au sens large,ADV,,
@@ -232,11 +196,7 @@ ad hoc,ADJ,,
 administrateur général,SUB,,
 affaires étrangères,,,Affaires étrangères
 Affaires étrangères,SUB,,
-afin d,PREP,,
-afin d',PREP,,
 afin de,PREP,,
-afin de,PREP,,
-afin qu,CONJsub,,
 afin que,CONJsub,,
 after shave,SUB,,
 agent de change,SUB,,
@@ -425,8 +385,6 @@ commedia dell'arte,SUB,,
 compte tenu de,PREP,,
 conférence de presse,SUB,,
 conformément à,PREP,,
-conformément au,,,conformément à
-conformément aux,,,conformément à
 connaissance de cause,SUB,,
 conseil d'administration,SUB,,
 Conseil d'État,SUB
@@ -437,8 +395,6 @@ conseil général,SUB,,
 conseiller général,SUB,,
 conséquemment à,PREP,,
 contrairement à,PREP,,
-contrairement au,,,contrairement à
-contrairement aux,,,contrairement à
 corn flakes,SUB,,
 corps de garde,SUB,,
 côte à côte,ADV,,
@@ -519,9 +475,6 @@ de facto,ADV,,
 de guingois,ADV,,
 de haut en bas,ADV,,
 de la part de,PREP,,
-de la part d’,,,de la part de
-de la part du,,,de la part de
-de la part des,,,de la part de
 de long en large,ADV,,
 de manière à,PREP,,
 de manière générale,ADVconj,,
@@ -542,8 +495,6 @@ de plein gré,ADV,,
 de plus,ADVconj,,
 de plus en plus,ADV,,
 de préférence à,PREP,,
-de préférence au,,,de préférence à
-de préférence aux,,,de préférence à
 de prime abord,ADV,,
 de profundis,SUB,,
 de santis,SUB,,
@@ -602,17 +553,11 @@ ecce homo,ADV,,
 États-Unis d’Amérique,,,États-Unis,
 empreinte digitale,SUB,,
 empreintes digitales,SUB,empreinte digitale
-en amont d’,PREP,,
 en amont de,PREP,,
-en amont des,PREP,,
-en amont du,PREP,,
 en apparence,ADVconj,,
 en arrière,ADV,,
 en arrière de,PREP,,
-en aval d’,PREP,,
 en aval de,PREP,,
-en aval des,PREP,,
-en aval du,PREP,,
 en avant de,PREP,,
 en bas,ADV,,
 en bonne voie,ADV,,
@@ -630,26 +575,14 @@ en deçà,ADV,,
 en deçà de,PREP,,
 en définitive,ADV,,
 en dehors de,ADVconj,,
-en dehors du,,,en dehors de
-en dehors des,,,en dehors de
-en dehors d’,,,en dehors de
 en dépit de,PREP,,
-en dépit du,,,en dépit de
-en dépit des,,,en dépit de
-en dépit d',,,en dépit de
 en dessous,PREP,,
 en effet,ADVconj,,
 en exécution de,PREP,,
 en face,ADV,,
 en face de,PREP,,
-en face du,,,en face de
-en face des,,,en face de
-en face d’,,,en face de
 en fait de,PREP,,
 en faveur de,ADV,,
-en faveur du,,,en faveur de
-en faveur des,,,en faveur de
-en faveur d’,,,en faveur de
 en filigrane,ADV,,
 en fin de compte,ADV,,
 en fonction de,PREP,,
@@ -659,15 +592,11 @@ en friche,ADJ,,
 en général,ADV,,
 en grande partie,ADV,,
 en guise de,PREP,,
-en guise d’,,,en guise de
 en haut,ADV,,
 en lieu et place de,PREP,,
 en loucedé,ADV,,
 en marge,ADV,,
 en marge de,PREP,,
-en marge des,,,en marge de
-en marge du,,,en marge de
-en marge d’,,,en marge de
 en matière de,PREP,,
 en même temps,ADV,,
 en même temps que,PREP,,
@@ -685,12 +614,7 @@ en plein jour,ADV,,
 en pleine connaissance de cause,ADV,,
 en présence,ADV,,
 en présence de,PREP,,
-en présence du,,,en présence de
-en présence des,,,en présence de
-en présence d’,,,en présence de
 en proie à,PREP,,
-en proie au,,,en proie à
-en proie aux,,,en proie à
 en quelque sorte,ADV,,
 en raison de,PREP,,
 en réalité,ADVconj,,
@@ -709,18 +633,11 @@ en tapinois,ADV,,
 en tapinois,ADV,,
 en tant que,CONJcoord,,
 en terme de,PREP,,
-en terme d',,,en terme de
-en termes de,,,en terme de
-en termes d',,,en terme de
 en tous cas,ADVconj,,
 en train de,ADV,,
-en train d',,,en train de
 en vain,ADV,,
 en vérité,ADV,,
 en vertu de,PREP,,
-en vertu du,,,en vertu de
-en vertu des,,,en vertu de
-en vertu d’,,,en vertu de
 en vigueur,ADV,,
 en vue de,PREP,,
 encore une fois,ADVconj,,
@@ -731,8 +648,6 @@ enfants de chœur,SUB,enfant de chœur,
 entenant de,PREP,,
 entendre parler,VERB,,
 entrer en ligne de compte,VERB,,
-est-ce qu,ADV,,
-est-ce qu',ADV,,
 est-ce que,ADV,,
 et caetera,,,etc.
 et cætera,,,etc.
@@ -757,13 +672,9 @@ et seq,ADV,,
 être tenue,VERB,être tenu,
 être tenues,VERB,être tenu,
 eu égard à,PREP,,
-eu égard au,,,eu égard à
-eu égard aux,,,eu égard à
 ex abrupto,ADV,,
 ex nihilo,ADV,,
 face à,PREP,,
-face au,,,face à
-face aux,,,face à
 face à face,SUB,,
 faire abstraction,VERB,,
 faire face,VERB,,
@@ -802,9 +713,6 @@ girl friend,SUB,,
 goutte à goutte,ADV,,
 gouverneur général,SUB,,
 grâce à,PREP,,
-grâce au,,,grâce à
-grâce aux,,,grâce à
-grace à,,,grâce à
 grâces à,PREP,,
 grain de beauté,SUB,,
 grand chose,,,grand-chose
@@ -909,9 +817,6 @@ jour après jour,ADV,,
 jour de l'an,SUB,,
 juge d’instruction,SUB,,
 juge de paix,SUB,,
-jusqu’à,,,jusque
-jusqu’au,,,jusque
-jusqu’aux,,,jusque
 jusqu'à ce que,CONJsub,,
 jusqu'à la fin,PREP,,
 jusqu'à nouvel ordre,ADV,,
@@ -940,8 +845,6 @@ la onzième,DETnum,,
 la plata,SUB,,
 la plupart,PROindef,,
 la plupart de,DETindef,,
-la plupart des,DETindef,,
-la plupart du,DETindef,,
 la première,DETnum,,
 la première fois,ADV,,
 la quatrième,DETnum,,
@@ -965,8 +868,6 @@ le dixième,DETnum,,
 le douzième,DETnum,,
 le huitième,DETnum,,
 le long de,PREP,,
-le long des,PREP,,
-le long du,PREP,,
 le mien,PROposs,,
 le moment venu,ADVconj,,
 le neuvième,DETnum,,
@@ -1420,8 +1321,6 @@ Table ronde,,,table ronde
 Table Ronde,,,table ronde
 taï chi,SUB,,
 talavera de la reina,SUB,,
-tandis qu,,,tandis que
-tandis qu',,,tandis que
 tandis que,CONJsub,,
 tant de,DETindef,,
 tant et si bien que,PREP,,

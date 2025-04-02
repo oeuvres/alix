@@ -430,11 +430,11 @@ public class FrDics
             try {
                tagEnum = TagFr.valueOf(tagKey);
             }
-            catch (IllegalArgumentException e) {
+            catch (Exception e) {
                 try {
                     tagEnum = Flags.valueOf(tagKey);
                  }
-                catch (IllegalArgumentException ee) {
+                catch (Exception ee) {
                     LOGGER.debug(res + " graph=\"" + graph + "\" tag=\"" + tag + "\"? tag not found.");
                 }
             }

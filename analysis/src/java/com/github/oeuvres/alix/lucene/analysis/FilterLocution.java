@@ -33,6 +33,7 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -67,6 +68,23 @@ public class FilterLocution extends TokenFilter
     private AttDeque queue;
     /** A term used to concat a compound */
     private CharsAttImpl compound = new CharsAttImpl();
+    /** Simple frozen pair of Strings */
+    final class Pair {
+        final String search;
+        final String replace;
+        public Pair(final String search, final String replace) {
+            this.search = search;
+            this.replace = replace;
+        }
+    }
+    List<Pair> endings = List.of(
+        new Pair(" d'",  " de"),
+        new Pair(" du",  " de"),
+        new Pair(" des", " de"),
+        new Pair(" au",  " à"),
+        new Pair(" aux", " à"),
+        new Pair("qu'", "que")
+    );
 
     /**
      * Default constructor.
@@ -101,7 +119,7 @@ public class FilterLocution extends TokenFilter
         boolean tokFirst = false;
         if (!queue.isEmpty()) { // exhaust queue
             queue.peekFirst(this);
-            queuePos++;
+            queuePos++; // sure ?
         }
         else { // or get new token
             tokFirst = input.incrementToken();
@@ -112,6 +130,7 @@ public class FilterLocution extends TokenFilter
         int startLoc = offsetAtt.startOffset();
         
         // let’s start to find a locution
+        
         do {
             final int tag = flagsAtt.getFlags();
             // if token is pun, end of branch, exit
@@ -119,8 +138,9 @@ public class FilterLocution extends TokenFilter
                 // after the loop, the queue logic before exit
                 break;
             }
+            final boolean wasEmpty = compound.isEmpty();
             // append a ' ' to last token (if any) for compound test
-            if (!compound.isEmpty() && !compound.endsWith('\'')) { // append separator before the term
+            if (!wasEmpty && !compound.endsWith('\'')) { // append separator before the term
                 compound.append(' ');
             }
             // choose version of form to append for test, according to its pos
@@ -148,6 +168,7 @@ public class FilterLocution extends TokenFilter
             // if original term ends with an apos, use it, D’accord
             else if (termAtt.charAt(termAtt.length() - 1) == '\'') {
                 compound.append(termAtt, 0, termAtt.length());
+                if (wasEmpty) compound.toLower();
             }
             // for other words, orth may have correct initial capital of sentence
             else if (orthAtt.length() != 0) {
@@ -159,12 +180,22 @@ public class FilterLocution extends TokenFilter
             }
             
             
-            final Integer nodeType = FrDics.TREELOC.get(compound);
+            Integer nodeType = FrDics.TREELOC.get(compound);
 
+            // Test another ending word, (parce qu’ => parce que)
+            if (!wasEmpty && nodeType == null) {
+                for (Pair pair: endings) {
+                    final int length = compound.endsWith(pair.search);
+                    if (length < 0) continue;
+                    compound.setLength(length).append(pair.replace);
+                    nodeType = FrDics.TREELOC.get(compound);
+                    System.out.println(compound);
+                    break;
+                }
+            }
+            
             // dead end
             if (nodeType == null) {
-                // the queue logic after the loop
-                // queue.removeFirst();
                 break;
             }
 

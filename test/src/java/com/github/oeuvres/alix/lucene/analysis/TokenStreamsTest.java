@@ -44,7 +44,7 @@ public class TokenStreamsTest {
         ;
         text = "Il fallait naître jusqu’alors !";
         text = "Le sujet était périlleux : si particulier, il prêtait à des abus de pittoresque, de couleur locale, de détails techniques ou de fastidieuses explications nécessaires, défauts auxquels Montherlant n’a pas toujours échappé, mais qu’il domine dans l’ensemble et entraîne dans l’allure puissante à la fois et désinvolte de son récit.";
-        text = "Le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors <aside>en note</aside> !";
+        text = "D’accord, le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors <aside>en note</aside> j’en veux !";
         
 
         Analyzer ana = new AnalyzerAlix();
