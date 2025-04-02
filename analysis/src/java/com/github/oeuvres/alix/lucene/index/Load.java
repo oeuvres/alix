@@ -50,7 +50,6 @@ import org.apache.lucene.index.IndexWriter;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalyzerAlix;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
-import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.util.Dir;
 
 import picocli.CommandLine;
