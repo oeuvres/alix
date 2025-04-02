@@ -40,24 +40,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 import java.util.Properties;
 import java.util.Scanner;
 import java.util.concurrent.Callable;
 
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 
-import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.AnalyzerAlix;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.util.Dir;
+
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -71,12 +66,6 @@ public class Load implements Callable<Integer>
 {
     /** Prefix for log lines. */
     public static String APP = "Alix";
-
-    static {
-        // System.setProperty("java.util.logging.SimpleFormatter.format", "[%1$tF %1$tT]
-        // [%4$-7s] %5$s %n");
-        System.setProperty("java.util.logging.SimpleFormatter.format", "[%4$-7s] %5$s %n");
-    }
 
     @Parameters(arity = "1..*", paramLabel = "base.xml", description = "1 or more Java/XML/properties describing a document base (label, src…)")
     File[] conflist;

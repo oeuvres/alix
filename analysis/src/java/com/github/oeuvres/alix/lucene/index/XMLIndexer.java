@@ -47,8 +47,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
@@ -60,10 +58,14 @@ import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
 import javax.xml.transform.stream.StreamSource;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 
+import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.xml.JarResolver;
 
 /**
@@ -72,7 +74,7 @@ import com.github.oeuvres.alix.xml.JarResolver;
 public class XMLIndexer implements Runnable
 {
     /** logger */
-    private static final Logger LOGGER = Logger.getLogger(XMLIndexer.class.getName());
+    private static Logger LOGGER = LoggerFactory.getLogger(XMLIndexer.class);
     /** SAX factory */
     static final SAXParserFactory SAXFactory = SAXParserFactory.newInstance();
     static {
@@ -235,7 +237,7 @@ public class XMLIndexer implements Runnable
                 }
             }
             catch (Exception e) {
-                LOGGER.log(Level.SEVERE, e.toString());
+                LOGGER.error(e.toString());
                 continue;
             }
             
@@ -290,7 +292,7 @@ public class XMLIndexer implements Runnable
             }
             catch (Exception e) {
                 e.printStackTrace();
-                LOGGER.log(Level.SEVERE, e.toString());
+                LOGGER.error(e.toString());
                 continue;
             }
 

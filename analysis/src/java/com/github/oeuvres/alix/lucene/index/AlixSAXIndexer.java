@@ -32,14 +32,14 @@
  */
 package com.github.oeuvres.alix.lucene.index;
 
-import static com.github.oeuvres.alix.common.Names.*;
-
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Locale;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
@@ -57,6 +57,7 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import static com.github.oeuvres.alix.common.Names.*;
 import com.github.oeuvres.alix.lucene.analysis.AnalyzerMeta;
 
 /**
@@ -78,7 +79,7 @@ import com.github.oeuvres.alix.lucene.analysis.AnalyzerMeta;
 public class AlixSAXIndexer extends DefaultHandler
 {
     /** logger */
-    private static final Logger LOGGER = Logger.getLogger(AlixSAXIndexer.class.getName());
+    private static Logger LOGGER = LoggerFactory.getLogger(AlixSAXIndexer.class);
     final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
     final static DecimalFormat df000 = new DecimalFormat("000", frsyms);
     /** Lucene writer */
@@ -474,14 +475,14 @@ public class AlixSAXIndexer extends DefaultHandler
             case INT:
                 int val = 0;
                 if (value == null) {
-                    LOGGER.warning("<alix:field name=\"" + name + "\"> A field of @type=\"" + type
+                    LOGGER.warn("<alix:field name=\"" + name + "\"> A field of @type=\"" + type
                             + "\" must have an attribute @value=\"number\"");
                     break;
                 }
                 try {
                     val = Integer.parseInt(value);
                 } catch (Exception e) {
-                    LOGGER.warning("<alix:field name=\"" + name + "\" type=\"" + type + "\"> @value=\"" + value
+                    LOGGER.warn("<alix:field name=\"" + name + "\" type=\"" + type + "\"> @value=\"" + value
                             + "\" is not a number.");
                     break;
                 }
@@ -490,7 +491,7 @@ public class AlixSAXIndexer extends DefaultHandler
                 break;
             case CATEGORY:
                 if (value == null) {
-                    LOGGER.warning("<alix:field name=\"" + name + "\"> A field of type=\"" + type
+                    LOGGER.warn("<alix:field name=\"" + name + "\"> A field of type=\"" + type
                             + "\" must have an attribute value=\"A category\"");
                     break;
                 }
@@ -499,7 +500,7 @@ public class AlixSAXIndexer extends DefaultHandler
                 break;
             case FACET:
                 if (value == null) {
-                    LOGGER.warning("<alix:field name=\"" + name + "\"> A field of type=\"" + type
+                    LOGGER.warn("<alix:field name=\"" + name + "\"> A field of type=\"" + type
                             + "\" must have an attribute value=\"A facet\"");
                     break;
                 }
@@ -509,14 +510,14 @@ public class AlixSAXIndexer extends DefaultHandler
             case STRING:
             case TOKEN:
                 if (value == null) {
-                    LOGGER.warning("<alix:field name=\"" + name + "\"> A field of type=\"" + type
+                    LOGGER.warn("<alix:field name=\"" + name + "\"> A field of type=\"" + type
                             + "\" must have an attribute value=\"token\"");
                     break;
                 }
                 doc.add(new StringField(name, value, Field.Store.YES));
                 break;
             default:
-                LOGGER.warning("<alix:field name=\"" + name + "\"> The type=\"" + type + "\" is not yet implemented");
+                LOGGER.warn("<alix:field name=\"" + name + "\"> The type=\"" + type + "\" is not yet implemented");
             }
         } else if (localName.equals("corpus")) {
             // nothing for now

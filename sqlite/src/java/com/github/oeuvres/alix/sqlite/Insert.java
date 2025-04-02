@@ -49,7 +49,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.List;
-import java.util.logging.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -60,6 +59,9 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterFrPersname;
 import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
@@ -67,6 +69,7 @@ import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
+import com.github.oeuvres.alix.lucene.index.AlixDocument;
 import com.github.oeuvres.alix.util.Dir;
 
 /**
@@ -74,7 +77,8 @@ import com.github.oeuvres.alix.util.Dir;
  */
 public class Insert
 {
-    private static Logger logger = Logger.getLogger("alix.sqlite.insert");
+    /** logger */
+    private static Logger LOGGER = LoggerFactory.getLogger(Insert.class);
 
     /**
      * A lucene analyzer to get lems

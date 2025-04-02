@@ -19,6 +19,9 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.util.BytesRef;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.oeuvres.alix.lucene.analysis.AnalyzerMeta;
 import com.github.oeuvres.alix.util.ML;
 
@@ -30,6 +33,8 @@ import com.github.oeuvres.alix.util.ML;
  */
 public class AlixDocument
 {
+    /** logger */
+    private static Logger LOGGER = LoggerFactory.getLogger(AlixDocument.class);
     /** Lucene document to populate */
     Document doc;
     /** Non repeatable fields */

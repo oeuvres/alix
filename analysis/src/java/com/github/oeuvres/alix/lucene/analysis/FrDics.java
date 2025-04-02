@@ -43,13 +43,14 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+
 import com.github.oeuvres.alix.common.Tag;
 import com.github.oeuvres.alix.common.Flags;
+import com.github.oeuvres.alix.fr.French;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
@@ -66,6 +67,8 @@ import com.github.oeuvres.alix.util.CSVReader.Row;
 @SuppressWarnings("unlikely-arg-type")
 public class FrDics
 {
+    /** Logger */
+    private static Logger LOGGER = LoggerFactory.getLogger(FrDics.class);
     /** Column for a graphy like found in texts, required */
     public final static int GRAPH = 0;
     /** Column for a grammatical category, required if no ORTH */
@@ -76,8 +79,6 @@ public class FrDics
     public final static int NORM = 3;
     /** Avoid multiple loading of external resource */
     private static final Set<String> loaded = new HashSet<>();
-    /** Logger */
-    static Logger LOGGER = LoggerFactory.getLogger(FrDics.class.getName());
     /** Flag for compound, end of term */
     static final public int LEAF = 0x100;
     /** Flag for compound, to be continued */
@@ -166,6 +167,7 @@ public class FrDics
             "commune.csv"    // french town, at the end
         };
         for (String f : files) {
+            // LOGGER.debug(f);
             loadResource(f, f);
         }
     }
@@ -243,7 +245,7 @@ public class FrDics
     private static void loadResource(final String key, final String res)
     {
         FrDics.res = res;
-        Reader reader = new InputStreamReader(TagFr.class.getResourceAsStream(res), StandardCharsets.UTF_8);
+        Reader reader = new InputStreamReader(French.class.getResourceAsStream(res), StandardCharsets.UTF_8);
         load(key, reader, false);
     }
     

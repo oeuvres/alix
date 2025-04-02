@@ -47,7 +47,9 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -83,7 +85,8 @@ import com.github.oeuvres.alix.util.RowcolQueue;
 // ChronicleMap has been tested, but it is not more than x2 compared to lucene BinaryField, so stay in Lucene
 public class FieldRail  extends FieldCharsAbstract
 {
-    static Logger LOGGER = Logger.getLogger(FieldRail.class.getName());
+    /** logger */
+    private static Logger LOGGER = LoggerFactory.getLogger(FieldRail.class);
     /** Keep the freqs for the field */
     private final FieldText fieldText;
     /** The path of underlaying file store */

@@ -189,7 +189,6 @@ public class FilterLocution extends TokenFilter
                     if (length < 0) continue;
                     compound.setLength(length).append(pair.replace);
                     nodeType = FrDics.TREELOC.get(compound);
-                    System.out.println(compound);
                     break;
                 }
             }
