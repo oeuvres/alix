@@ -106,7 +106,7 @@ public class FilterAposHyphenFr extends TokenFilter
      * Default constructor.
      * @param input previous filter.
      */
-    protected FilterAposHyphenFr(TokenStream input) {
+    public FilterAposHyphenFr(TokenStream input) {
         super(input);
     }
 

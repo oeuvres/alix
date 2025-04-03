@@ -101,6 +101,7 @@ public class FilterCloud extends TokenFilter
         suffix[ADVneg.code] = "_MG"; // 9
         suffix[ADVquest.code] = "_MG"; // 4
         suffix[DETprep.code] = "_MG"; // 4
+        suffix[DETnum.code] = "_MG"; // from locutions
     }
 
     /**
@@ -173,7 +174,8 @@ public class FilterCloud extends TokenFilter
         }
         if (!lemAtt.isEmpty()) termAtt.setEmpty().append(lemAtt);
         else if (!orthAtt.isEmpty()) termAtt.setEmpty().append(orthAtt);
-        termAtt.append(suffix[flags]);
+        String suff = suffix[flags];
+        if (suff != null) termAtt.append(suff);
         return true;
     }
 

@@ -37,15 +37,14 @@ public class TokenStreamsTest {
         // File file = new File("src/test/resources/article.xml");
         // String text = Files.readString(Paths.get(file.getAbsolutePath()), StandardCharsets.UTF_8);
         text = "s’il les prenait en considération…. parce que l’acte étant à";
+        text = "Il fallait naître jusqu’alors !";
+        text = "D’accord, le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors <aside>en note</aside> j’en veux !";
+        text = "Parfois — rarement —, je parviens à me souvenir de certaines sensations profondes et indéfinies (telle sensation physique de bonheur, dans une rue au coucher du soleil, des phares d’automobiles étoilent le brouillard, les visages se cachent dans des fourrures, personne ne sait la richesse de ta vie…).";
         text = "<h1 class=\"head\">Avant-propos\n"
             + "<br class=\"lb\"/>de la seconde édition<a class=\"bookmark\" href=\"#body\"> </a>\n"
             + "         </h1>\n"
-            + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion"
+            + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion.</p>"
         ;
-        text = "Il fallait naître jusqu’alors !";
-        text = "Le sujet était périlleux : si particulier, il prêtait à des abus de pittoresque, de couleur locale, de détails techniques ou de fastidieuses explications nécessaires, défauts auxquels Montherlant n’a pas toujours échappé, mais qu’il domine dans l’ensemble et entraîne dans l’allure puissante à la fois et désinvolte de son récit.";
-        text = "D’accord, le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors <aside>en note</aside> j’en veux !";
-        
 
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);

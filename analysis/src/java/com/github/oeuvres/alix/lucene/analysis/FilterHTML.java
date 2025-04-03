@@ -33,7 +33,9 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
+import java.util.Set;
 
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -60,6 +62,35 @@ public class FilterHTML extends TokenFilter
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** A flag for non content element */
     private int skip;
+    /** Elements to skip */
+    static final CharArraySet SKIP = new CharArraySet(10, false);
+    static {
+        SKIP.add("aside");
+        SKIP.add("nav");
+        SKIP.add("note");
+        SKIP.add("teiHeader");
+    }
+    /** Elements para like */
+    static final CharArraySet PARA = new CharArraySet(20, false);
+    static {
+        PARA.add("cell");
+        PARA.add("h1");
+        PARA.add("h2");
+        PARA.add("h3");
+        PARA.add("h4");
+        PARA.add("h5");
+        PARA.add("h6");
+        PARA.add("item"); 
+        PARA.add("li"); 
+        PARA.add("p"); 
+        PARA.add("td"); 
+    }
+    /** Elements section like */
+    static final CharArraySet SECTION = new CharArraySet(10, false);
+    static {
+        SECTION.add("article");
+        SECTION.add("section");
+    }
 
     /**
      * Default constructor.
@@ -69,6 +100,22 @@ public class FilterHTML extends TokenFilter
         super(input);
         skip = 0;
     }
+    
+    static private int tagEnd(char[] chars)
+    {
+        for (int i = 0, len = chars.length; i < len; i++) {
+            char c = chars[i];
+            if (c == '>' || c == ' ') {
+                return i;
+            }
+            // <br/> </span>
+            if (i > 1 && c == '/') {
+                return i;
+            }
+        }
+        return -1;
+    }
+
 
     @SuppressWarnings("unlikely-arg-type")
     @Override
@@ -76,34 +123,77 @@ public class FilterHTML extends TokenFilter
     {
         while (input.incrementToken()) {
             // update the char wrapper with present term
+            
             test.wrap(termAtt.buffer(), termAtt.length());
+            final int flags = flagsAtt.getFlags();
+            final boolean xml = (flags == XML.code);
+            boolean open = false;
+            boolean close = false;
+            if (xml) {
+                close =  test.startsWith("</");
+                if (!close) open = test.startsWith('<');
+            }
+            int tagOff = -1;
+            int tagLen = -1;
+            if (open) {
+                tagLen = tagEnd(termAtt.buffer());
+                if (tagLen > 1) {
+                    tagOff = 1;
+                    tagLen = tagLen - tagOff;
+                }
+                else {
+                    tagLen = -1;
+                }
+            }
+            else if (close) {
+                tagLen = tagEnd(termAtt.buffer());
+                if (tagLen > 2) {
+                    tagOff = 2;
+                    tagLen = tagLen - tagOff;
+                }
+                else {
+                    tagLen = -1;
+                }
+            }
             if (skip > 0) {
-                if (test.equals("</aside>") || test.equals("</nav>")) {
+                // not XML tag, skip
+                if (!xml) {
+                    continue;
+                }
+                // opening tag in skip, one level more of skip
+                else if (open && SKIP.contains(termAtt.buffer(), tagOff, tagLen)) {
+                    skip++;
+                    continue;
+                }
+                else if (close && SKIP.contains(termAtt.buffer(), tagOff, tagLen)) {
                     skip--;
-                    if (skip < 0) skip = 0;
+                    if (skip < 0) skip = 0; // secure
+                    continue;
                 }
                 continue;
             }
             
             // not XML tag, return it with no change
-            if (flagsAtt.getFlags() != XML.code) {
+            if (!xml) {
                 return true;
             }
-            if (
-                test.startsWith("<aside") || test.startsWith("<nav")) {
+            else if (open && SKIP.contains(termAtt.buffer(), tagOff, tagLen)) {
                 skip++;
                 continue;
             }
-            // most positions of XML tags will be skipped without information
-            if (test.equals("</p>") || test.equals("</li>") || test.equals("</td>")) {
+            else if (close &&  PARA.contains(termAtt.buffer(), tagOff, tagLen)) {
                 flagsAtt.setFlags(PUNpara.code);
                 termAtt.setEmpty().append("¶");
                 return true;
             }
-            if (test.equals("</section>") || test.equals("</article>")) {
+            else if (close &&  SECTION.contains(termAtt.buffer(), tagOff, tagLen)) {
                 flagsAtt.setFlags(PUNsection.code);
                 termAtt.setEmpty().append("§");
                 return true;
+            }
+            // other tags, do something ?
+            else {
+                
             }
         }
         return false;
