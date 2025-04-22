@@ -52,7 +52,6 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -65,8 +64,6 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
@@ -89,14 +86,6 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
-
-import com.github.oeuvres.alix.fr.TagFr;
-import com.github.oeuvres.alix.lucene.search.FieldFacet;
-import com.github.oeuvres.alix.lucene.search.Scale;
-import com.github.oeuvres.alix.lucene.search.SuggestForm;
-import com.github.oeuvres.alix.lucene.search.FieldText;
-import com.github.oeuvres.alix.lucene.search.FieldRail;
-import com.github.oeuvres.alix.lucene.search.FieldInt;
 
 /**
  * <p>
@@ -165,8 +154,6 @@ public class AlixReader
     private FieldInfos fieldInfos;
     /** The IndexSearcher if requested */
     private IndexSearcher searcher;
-    /** The IndexWriter if requested */
-    private IndexWriter writer;
     /** Analyzer for indexation and search */
     final private Analyzer analyzer;
     /** Ways to open a lucene index */

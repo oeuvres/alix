@@ -85,7 +85,6 @@ public class Analyze4vec implements Callable<Integer>
         final CharTermAttribute termAtt = tokenStream.addAttribute(CharTermAttribute.class);
         final FlagsAttribute flagsAtt = tokenStream.addAttribute(FlagsAttribute.class);
         tokenStream.reset();
-        int startLast = 0;
         while(tokenStream.incrementToken()) {
             final int flags = flagsAtt.getFlags();
             if (flags == PUNsection.code) {

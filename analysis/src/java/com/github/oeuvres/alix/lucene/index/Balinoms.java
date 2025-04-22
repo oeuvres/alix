@@ -191,7 +191,7 @@ public class Balinoms implements Callable<Integer>
                 toks++;
                 final int flag = attFlags.getFlags();
                 // TODO test to avoid over tagging ?
-                if (!NAME.isName(flag))
+                if (!TagFr.isName(flag))
                     continue;
                 // Should not arrive, but it arrives
                 if (lemAtt.isEmpty()) {

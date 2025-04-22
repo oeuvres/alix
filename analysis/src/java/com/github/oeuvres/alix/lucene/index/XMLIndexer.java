@@ -65,7 +65,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 
-import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.xml.JarResolver;
 
 /**
