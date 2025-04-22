@@ -1,38 +1,37 @@
 package com.github.oeuvres.alix.lucene.index;
 
 import static com.github.oeuvres.alix.common.Flags.*;
+import static com.github.oeuvres.alix.fr.TagFr.*;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.InvalidPropertiesFormatException;
-import java.util.Properties;
 import java.util.concurrent.Callable;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
+import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.FilterAposHyphenFr;
-import com.github.oeuvres.alix.lucene.analysis.FilterCloud;
 import com.github.oeuvres.alix.lucene.analysis.FilterFrPos;
 import com.github.oeuvres.alix.lucene.analysis.FilterHTML;
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
-import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
-import com.github.oeuvres.alix.util.Dir;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -42,17 +41,13 @@ import picocli.CommandLine.Parameters;
  * Analyse an XML/TEI corpus to output a custom text designed for a word2vec training.
  */
 @Command(name = "Analyze", description = "Analyse an XML/TEI corpus to output a custom text designed for a word2vec training.")
-public class Analyze4vec implements Callable<Integer>
+public class Analyze4vec extends Cli implements Callable<Integer>
 {
     final static String APP = "alix.corpus4vec";
-    @Parameters(index = "0", arity = "1", paramLabel = "corpus.xml", description = "1 Java/XML/properties describing a document collection (src file…)")
-    /** configuration files */
-    File conf;
+
     @Parameters(index = "1", arity = "1", paramLabel = "corpus.txt", description = "1 destination text file for analyzed corpus.")
     /** Destination text file. */
     File dstFile;
-    /** File globs to parse, populated by parsing corpus properties */
-    ArrayList<Path> paths = new ArrayList<>();
     @Override
     public Integer call() throws Exception
     {
@@ -85,6 +80,7 @@ public class Analyze4vec implements Callable<Integer>
         final CharTermAttribute termAtt = tokenStream.addAttribute(CharTermAttribute.class);
         final FlagsAttribute flagsAtt = tokenStream.addAttribute(FlagsAttribute.class);
         tokenStream.reset();
+        int startLast = 0;
         while(tokenStream.incrementToken()) {
             final int flags = flagsAtt.getFlags();
             if (flags == PUNsection.code) {
@@ -116,67 +112,6 @@ public class Analyze4vec implements Callable<Integer>
         }
         tokenStream.close();
     }
-
-    
-    /**
-     * Parse properties to output the corpus
-     * 
-     * @param propsFile A properties file in XML format
-     *                  {@link Properties#loadFromXML(java.io.InputStream)}.
-     * @throws IOException          I/O file system error, or required files not
-     *                              found.
-     * @throws NoSuchFieldException Properties errors.
-     */
-    public void parse(File propsFile) throws IOException, NoSuchFieldException
-    {
-        if (!propsFile.exists()) throw new FileNotFoundException(
-                "\n  [" + APP + "] " + propsFile.getAbsolutePath() + "\nProperties file not found");
-        Properties props = new Properties();
-        try {
-            props.loadFromXML(new FileInputStream(propsFile));
-        }
-        catch (InvalidPropertiesFormatException e) {
-            throw new InvalidPropertiesFormatException(
-                    "\n  [" + APP + "] " + propsFile + "\nXML error in properties file\n"
-                            + "cf. https://docs.oracle.com/javase/8/docs/api/java/util/Properties.html");
-        }
-        catch (IOException e) {
-            throw new IOException(
-                    "\n  [" + APP + "] " + propsFile.getAbsolutePath() + "\nProperties file not readable");
-        }
-
-        final File base = propsFile.getCanonicalFile().getParentFile();
-
-        final String src = props.getProperty("src");
-        if (src == null) throw new NoSuchFieldException(
-                "\n  [" + APP + "] " + propsFile + "\nan src entry is needed, to have path to index"
-                        + "\n<entry key=\"src\">../corpus1/*.xml;../corpus2/*.xml</entry>");
-        String[] blurf = src.split(" *[;] *|[\t ]*[\n\r]+[\t ]*");
-        // resolve globs relative to the folder of the properties field
-        for (String glob : blurf) {
-            glob = Dir.globNorm(glob, base);
-            Dir.include(paths, glob);
-        }
-        
-        final String exclude = props.getProperty("exclude");
-        if (exclude != null) {
-            String[] globs = exclude.split(" *[;] *|[\t ]*[\n\r]+[\t ]*");
-            for (String glob : globs) {
-                glob = Dir.globNorm(glob, base);
-                Dir.exclude(paths, glob);
-            }
-        }
-        final String dicfile = props.getProperty("dicfile");
-        if (dicfile != null) {
-            File dicAbs = new File(dicfile);
-            if (!dicAbs.isAbsolute()) dicAbs = new File(base, dicfile);
-            if (!dicAbs.exists()) {
-                throw new FileNotFoundException("Local dictionary file not found <entry key=\"dicfile\">" + dicfile
-                        + "</entry>, resolved as " + dicAbs.getAbsolutePath());
-            }
-            FrDics.load(dicAbs.getCanonicalPath(), dicAbs);
-        }
-    }
     
     public class Analyzer4vec extends Analyzer
     {
@@ -205,8 +140,144 @@ public class Analyze4vec implements Callable<Integer>
             // group compounds after lemmatization for verbal compounds
             ts = new FilterLocution(ts);
             // last filter èrepare term to index
-            ts = new FilterCloud(ts);
+            ts = new Filter4vec(ts);
             return new TokenStreamComponents(tokenizer, ts);
+        }
+    }
+    
+    /**
+     * A final token filter before indexation, to plug after a lemmatizer filter,
+     * providing most significant tokens for word cloud. Index lemma instead of
+     * forms when available. Strip punctuation and numbers. Positions of striped
+     * tokens are deleted. This allows simple computation of a token context (ex:
+     * span queries, co-occurrences).
+     */
+    public class Filter4vec extends TokenFilter
+    {
+        /** The term provided by the Tokenizer */
+        private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+        /** The position increment (inform it if positions are stripped) */
+        private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
+        /** A linguistic category as a short number, see {@link TagFr} */
+        private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+        /** A normalized orthographic form */
+        private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
+        /** A lemma when possible */
+        private final LemAtt lemAtt = addAttribute(LemAtt.class);
+        /** keep right position order */
+        private int skippedPositions;
+        /** Convert flags as tag to append to term */
+        static String[] suffix = new String[256];
+        static {
+            suffix[VERB.code] = "_VERB"; // 305875
+            suffix[SUB.code] = ""; // 110522
+            suffix[ADJ.code] = "_ADJ"; // 67833
+            suffix[VERBger.code] = "_VERB"; // 8207
+            suffix[ADV.code] = "_ADV"; // 2336
+            suffix[VERBppas.code] = "_VERB"; // 1107
+            suffix[VERBexpr.code] = "_VERB"; // 270
+            suffix[NUM.code] = ""; // 254
+            suffix[EXCL.code] = ""; // 166
+            suffix[VERBmod.code] = "_VERB"; // 91
+            suffix[VERBaux.code] = "_AUX"; // 89
+            suffix[PREP.code] = "_MG"; // 71
+            suffix[PROpers.code] = "_MG"; // 51
+            suffix[ADVscen.code] = "_MG"; // 33
+            suffix[DETindef.code] = "_MG"; // 31
+            suffix[PROindef.code] = "_MG"; // 28
+            suffix[PROdem.code] = "_MG"; // 27
+            suffix[ADVasp.code] = "_MG"; // 24
+            suffix[ADVdeg.code] = "_MG"; // 23
+            suffix[PROrel.code] = "_MG"; // 18
+            suffix[PROquest.code] = "_MG"; // 16
+            suffix[CONJsub.code] = "_MG"; // 16
+            suffix[DETposs.code] = "_MG"; // 15
+            suffix[ADVconj.code] = "_MG"; // 15
+            suffix[DETart.code] = "_MG"; // 11
+            suffix[DETdem.code] = "_MG"; // 10
+            suffix[CONJcoord.code] = "_MG"; // 10
+            suffix[ADVneg.code] = "_MG"; // 9
+            suffix[ADVquest.code] = "_MG"; // 4
+            suffix[DETprep.code] = "_MG"; // 4
+            suffix[DETnum.code] = "_MG"; // from locutions
+        }
+
+        /**
+         * Default constructor.
+         * @param input previous filter.
+         */
+        public Filter4vec(TokenStream input) {
+            super(input);
+        }
+
+        @Override
+        public final boolean incrementToken() throws IOException
+        {
+            // skipping positions will create holes, the count of tokens will be different
+            // from the count of positions
+            skippedPositions = 0;
+            while (input.incrementToken()) {
+                // no position for XML between words
+                if (flagsAtt.getFlags() == XML.code) {
+                    continue;
+                }
+                if (accept()) {
+                    if (skippedPositions != 0) {
+                        posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
+                    }
+                    return true;
+                }
+                skippedPositions += posIncrAtt.getPositionIncrement();
+            }
+            return false;
+        }
+
+        /**
+         * Most of the tokens are not rejected but rewrited, except punctuation.
+         * 
+         * @return true if accepted
+         */
+        protected boolean accept()
+        {
+            final int flags = flagsAtt.getFlags();
+            if (flags == TEST.code) {
+                System.out.println(termAtt + " — " + orthAtt);
+            }
+            // record an empty token at punctuation position for the rails
+            if (PUN.isPun(flags)) {
+                if (flags == PUNclause.code) {
+                }
+                else if (flags == PUNsent.code) {
+                }
+                else if (flags == PUNpara.code || flags == PUNsection.code) {
+                    // let it
+                }
+                else {
+                    // termAtt.setEmpty().append("");
+                }
+                return true;
+            }
+            // unify numbers
+            if (flags == DIGIT.code) {
+                termAtt.setEmpty().append("#");
+                return true;
+            }
+            if (!lemAtt.isEmpty()) termAtt.setEmpty().append(lemAtt);
+            else if (!orthAtt.isEmpty()) termAtt.setEmpty().append(orthAtt);
+            // String suff = suffix[flags];
+            return true;
+        }
+
+        @Override
+        public void reset() throws IOException
+        {
+            super.reset();
+        }
+
+        @Override
+        public void end() throws IOException
+        {
+            super.end();
         }
 
     }

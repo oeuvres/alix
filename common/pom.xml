@@ -16,7 +16,7 @@
         <dependency>
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-core</artifactId>
-            <version>10.1.0</version>
+            <version>10.2.0</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -26,5 +26,10 @@
     </dependencies>
     <build>
         <sourceDirectory>src/java</sourceDirectory>
+        <resources>
+            <resource>
+               <directory>src/resources</directory>
+            </resource>
+        </resources>
     </build>
 </project>

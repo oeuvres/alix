@@ -26,14 +26,14 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.lucene</groupId>
+            <artifactId>lucene-test-framework</artifactId>
+            <version>10.2.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <version>5.12.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-test-framework</artifactId>
-            <version>10.1.0</version>
         </dependency>
         <!-- Memory size of an object -->
         <dependency>

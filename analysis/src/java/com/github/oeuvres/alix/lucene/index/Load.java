@@ -291,7 +291,7 @@ public class Load implements Callable<Integer>
      * 
      * @param name Name of the base.
      * @param path Path where to write the path index.
-     * @throws Exception Errors in the XML parsing.
+     * @throws Exception ListErrors in the XML parsing.
      */
     public void write(String name, Path path) throws Exception
     {
@@ -327,7 +327,7 @@ public class Load implements Callable<Integer>
      * 
      * @param dstDir Destination parent file directory.
      * @param name   Name of the index to write.
-     * @throws Exception Errors during XML process and Lucene indexation.
+     * @throws Exception ListErrors during XML process and Lucene indexation.
      */
     public void writeSafe(final File dstDir, final String name) throws Exception
     {

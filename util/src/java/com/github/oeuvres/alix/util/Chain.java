@@ -41,17 +41,14 @@ import java.util.LinkedList;
  * A mutable string implementation that grows on the right ({@link Appendable},
  * but also, on the left {@link #prepend(char)}.
  * </p>
- * <p>
- * The hash function is same as {#link {@link String#hashCode()} so that a Chain
- * can be found in a Set&lt;String&gt;.
- * </p>
+
  * <p>
  * The same internal char array could be shared by multiple Chain instances
  * (with different offset and size). Some efficient methods are provided, for
  * example, searching by prefix and/or suffix {@link #glob(CharSequence)}.
  * </p>
  */
-public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
+public class Chain implements Appendable, CharSequence, Cloneable, Comparable<CharSequence>
 {
     /** The characters */
     private char[] chars;
@@ -241,6 +238,18 @@ public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
         return this.chars[zero + index];
     }
 
+    @Override
+    public Object clone() {
+        Chain cloned;
+        try {
+            cloned = (Chain) super.clone();
+        } 
+        catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+        cloned.chars = this.chars.clone(); // Ensure deep copy
+        return cloned;
+    }
     /**
      * HashMaps maybe optimized by ordered lists in buckets. Do not use as a nice
      * orthographic ordering.
@@ -468,29 +477,26 @@ public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
         if (this == o)
             return true;
         char[] test;
-        // limit content lookup
-        int offset = zero;
-        int lim = size;
         if (o instanceof Chain) {
             Chain oChain = (Chain) o;
-            if (oChain.size != lim)
+            if (oChain.size != size)
                 return false;
             // hashcode already calculated, if different, not same strings
             if (hash != 0 && oChain.hash != 0 && hash != oChain.hash)
                 return false;
             test = oChain.chars;
-            int offset2 = oChain.zero;
-            for (int i = 0; i < lim; i++) {
-                if (chars[offset + i] != test[offset2 + i])
+            for (int i = 0; i < size; i++) {
+                if (chars[zero + i] != oChain.chars[oChain.zero + i])
                     return false;
             }
             return true;
-        } else if (o instanceof char[]) {
-            if (((char[]) o).length != lim)
+        } 
+        else if (o instanceof char[]) {
+            if (((char[]) o).length != size)
                 return false;
             test = (char[]) o;
-            for (int i = 0; i < lim; i++) {
-                if (chars[offset + i] != test[i])
+            for (int i = 0; i < size; i++) {
+                if (chars[zero + i] != test[i])
                     return false;
             }
             return true;
@@ -499,21 +505,19 @@ public class Chain implements CharSequence, Appendable, Comparable<CharSequence>
         // slower)
         else if (o instanceof CharSequence) {
             CharSequence oCs = (CharSequence) o;
-            if (oCs.length() != size)
+            if (oCs.length() != size) {
                 return false;
-            for (int i = 0; i < lim; i++) {
-                if (oCs.charAt(i) != chars[offset + i])
+            }
+            for (int i = 0; i < size; i++) {
+                if (oCs.charAt(i) != chars[zero + i]) {
                     return false;
+                }
             }
             return true;
         }
-        /*
-         * else if (o instanceof String) { if ( ((String)o).length() != size) return
-         * false; test = ((String)o).toCharArray(); for ( int i=0; i < size; i++ ) { if
-         * ( chars[offset+i] != test[i] ) return false; } return true; }
-         */
-        else
+        else {
             return false;
+        }
     }
 
     /**

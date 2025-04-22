@@ -216,6 +216,10 @@ public class TokenizerML  extends Tokenizer
                     break; // a too big token stop
                 }
             }
+            // possible entity
+            else if (c == ';' && termAtt.charAt(0) == '&') {
+                // TODO !
+            }
             // Clause punctuation, send a punctuation event to separate tokens
             else if (',' == c || ';' == c || ':' == c || '(' == c || ')' == c || '—' == c || '–' == c 
                     || '"' == c || '«' == c || '»' == c ) {
