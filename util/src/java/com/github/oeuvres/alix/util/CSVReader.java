@@ -70,19 +70,12 @@ public class CSVReader
      * @param cols number of colums.
      * @throws FileNotFoundException file 404.
      */
-    public CSVReader(final File file, final int cols) throws FileNotFoundException {
+    public CSVReader(final File file, final int cols, final char sep) throws FileNotFoundException {
         this.reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
         row = new Row(cols);
+        this.sep = sep;
     }
 
-    /**
-     * Build a CSV scanner on a reader with predefined number of columns.
-     * @param reader text to parse.
-     * @param cols number of colums.
-     */
-    public CSVReader(Reader reader, final int cols) {
-        this(reader, cols, (char) 0);
-    }
 
     /**
      * Build a CSV scanner on a reader with predefined number of columns and a separator char.

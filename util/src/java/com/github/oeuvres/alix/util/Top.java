@@ -227,7 +227,7 @@ public class Top<E> implements Iterable<Top.Entry<E>>
         }
         // bigger than smaller, modify it
         else {
-            data[minIndex].score(score);
+            data[minIndex].score(score).value(value);
             // update minIndex
             update();
         }

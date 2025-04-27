@@ -284,7 +284,7 @@ public class FrDics
         loaded.add(name);
         CSVReader csv = null;
         try {
-            csv = new CSVReader(reader, 4);
+            csv = new CSVReader(reader, 4, ',');
             csv.readRow(); // skip first line
             Row row;
             while ((row = csv.readRow()) != null) {
@@ -301,20 +301,10 @@ public class FrDics
                     decompose(graph, TREELOC);
                 }
                 // known abbreviation with at least one final dot, add the compounds
-                // do not handle multi word abbreviation like "av. J.-C."
+                // do not handle here multi word abbreviation like "av. J.-C."
                 Chain norm = row.get(NORM);
                 if (!hasSpace && graph.last() == '.') {
-                    // if multiple dots like U.S.A., add U., U.S., and U.S.A.
-                    for (int length = 2; length <= graph.length() ; length++) {
-                        if (graph.charAt(length - 1) != '.') continue;
-                        CharsAttImpl key = new CharsAttImpl(graph, 0, length);
-                        BREVIDOT.add(key);
-                    }
-                    if (!norm.isEmpty()) {
-                        NORMALIZE.put(new CharsAttImpl(graph), new CharsAttImpl(norm));
-                    }
-                    // do not add brevidots to dico ? 
-                    continue; 
+                    BREVIDOT.add(new CharsAttImpl(graph));
                 }
                 // check if it is normalization
                 if (!norm.isEmpty()) {
@@ -386,6 +376,21 @@ public class FrDics
         if (val == null)
             return false;
         att.setEmpty().append(val);
+        return true;
+    }
+    
+    /**
+     * Get normalized orthographic form for a real grapphical form in text.
+     * 
+     * @param test {@link CharAtt} implementation, normalized.
+     * @return true if a normalization has been done, false otherwise.
+     */
+    public static boolean norm(final CharsAtt test, final CharTermAttribute dst)
+    {
+        CharsAtt val = NORMALIZE.get(test);
+        if (val == null)
+            return false;
+        dst.setEmpty().append(val);
         return true;
     }
 

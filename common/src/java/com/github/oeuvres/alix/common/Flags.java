@@ -10,7 +10,7 @@ public enum Flags implements Tag
     
     /** No information */
     TOKEN(0x00),
-    /** Known as unknown from dicitonaries */
+    /** Known as unknown from dictionaries */
     UNKNOWN(0x01),
     /** Message sent by a process */
     TEST(0x02),

@@ -100,6 +100,10 @@ public class Analyze4vec extends Cli implements Callable<Integer>
             else if (PUN.isPun(flags)) {
                 continue;
             }
+            // unknown
+            else if (flags == TOKEN.code()) {
+                continue;
+            }
             else {
                 char[] chars = termAtt.buffer();
                 final int len = termAtt.length();

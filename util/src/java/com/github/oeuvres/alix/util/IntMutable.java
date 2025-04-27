@@ -22,4 +22,8 @@ public class IntMutable
     public int hashCode() {
         return value;
     }
+    @Override
+    public String toString() {
+        return "" + value;
+    }
 }

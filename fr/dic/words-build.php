@@ -18,7 +18,7 @@ function prenoms()
     if ($handle) {
         while (($line = fgets($handle, 4096)) !== false) {
             if ($line[0] == '#') continue;
-            $data = str_getcsv($line, ",");
+            $data = str_getcsv($line, ",", "\"", "\\");
             $forename[$data[0]] = $data[1];
         }
         if (!feof($handle)) {
@@ -30,7 +30,7 @@ function prenoms()
     if ($handle) {
         while (($line = fgets($handle, 4096)) !== false) {
             if (strpos($line, "\tprn") === false) continue;
-            $data = str_getcsv($line, "\t");
+            $data = str_getcsv($line, "\t", "\"", "\\");
             $name = $data[0];
             if (isset($forename[$name])) continue;
             $cat = "NAMEpers";
@@ -53,7 +53,7 @@ function merge()
     if ($handle) {
         while (($line = fgets($handle, 4096)) !== false) {
             if ($line[0] == '#') continue;
-            $data = str_getcsv($line, ";");
+            $data = str_getcsv($line, ";", "\"", "\\");
             // take first one
             $graph = $data[0];
             $cat = $data[1];
@@ -95,7 +95,7 @@ function merge()
     $write = @fopen("grammalecte.tsv", "w");
     if ($read) {
         while (($line = fgets($read, 4096)) !== false) {
-            $data = str_getcsv($line, "\t");
+            $data = str_getcsv($line, "\t", "\"", "\\");
             $graph = $data[0];
             $cat = $data[2];
             if (
@@ -123,10 +123,10 @@ function merge()
 function toWord()
 {
     $read = @fopen(__DIR__ . "/grammalecte.tsv", "r");
-    $write = @fopen(dirname(__DIR__) . "/src/java/com/github/oeuvres/alix/fr/word.csv", "w");
+    $write = @fopen(dirname(__DIR__) . "/src/resources/com/github/oeuvres/alix/fr/word.csv", "w");
     if ($read) {
         while (($line = fgets($read, 4096)) !== false) {
-            $data = str_getcsv($line, "\t");
+            $data = str_getcsv($line, "\t", "\"", "\\");
             if ($data[0] == $data[1]) $data[1] = "";
             $data = array_slice($data, 0, 3);
             fwrite($write, implode(",", $data) . "\n");
@@ -145,7 +145,7 @@ function tags()
     $read = @fopen(__DIR__ . "/grammalecte.tsv", "r");
     if ($read) {
         while (($line = fgets($read, 4096)) !== false) {
-            $data = str_getcsv($line, "\t");
+            $data = str_getcsv($line, "\t", "\"", "\\");
             /*
             if (!isset($data[3])) {
                 echo $line;
@@ -176,7 +176,7 @@ function duplicates()
     $n = 1;
     if ($read) {
         while (($line = fgets($read, 4096)) !== false) {
-            $data = str_getcsv($line, "\t");
+            $data = str_getcsv($line, "\t", "\"", "\\");
             $key = $data[0] . "_" . $data[1];
             if ($data[1] == "VERB") $key .= $key . "_" . $data[3];
             if (isset($records[$key])) {
@@ -196,4 +196,3 @@ function duplicates()
 }
 
 toWord();
-duplicates();

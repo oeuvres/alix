@@ -64,7 +64,7 @@ public class ListErrors  extends Cli implements Callable<Integer>
             }
         }
         else {
-            String text = "Mais cela ne signifie naturellement pas qu’il sache d’emblée composer les dépassements entre eux (Δ<hi>xz</hi> = Δ<hi>xy</hi> + Δ<hi>yz</hi>) et, comme on le verra sous 2), il est au contraire probable qu’aux débuts un plus grand dépassement, et même un dépassement égal mais entre éléments plus grands, leur paraissent d’une autre nature qu’un dépassement entre petits éléments.";
+            String text = "Mais cela ne signifie naturellement pas qu’il sache d’emblée composer les dépassements &gt; entre eux (Δ<hi>xz</hi> = Δ<hi>xy</hi> + Δ<hi>yz</hi>) &amp;, comme on le verra sous 2), il est au contraire probable qu’aux débuts un plus grand dépassement, et même un dépassement égal mais entre éléments plus grands, leur paraissent d’une autre nature qu’un dépassement entre petits éléments.";
             analyze(analyzer.tokenStream("", new StringReader(text)));
         }
 
@@ -72,6 +72,9 @@ public class ListErrors  extends Cli implements Callable<Integer>
         analyzer.close();
         Top<Chain> top = new Top<Chain>(Chain.class, 2000);
         for (Entry<Chain, IntMutable> entry: errors.entrySet()) {
+            if (entry.getKey().equals("Ad*")) {
+                System.out.println(entry);
+            }
             top.insert(entry.getValue().value(), entry.getKey());
         }
         
@@ -113,8 +116,8 @@ public class ListErrors  extends Cli implements Callable<Integer>
                 continue;
             }
             charsAtt.wrap(termAtt.buffer(), termAtt.length());
+            FrDics.norm(charsAtt);
             if (Char.isUpperCase(charsAtt.charAt(0))) {
-                FrDics.norm(charsAtt);
                 if (FrDics.name(charsAtt) != null) {
                     up();
                     continue;
@@ -126,11 +129,28 @@ public class ListErrors  extends Cli implements Callable<Integer>
                     continue;
                 }
                 charsAtt.toLower();
-            }
-            if (FrDics.word(charsAtt) != null) {
+                if (FrDics.word(charsAtt) != null) {
+                    up();
+                    continue;
+                }
+                // candidate name, let it
+                // charsAtt.capitalize();
                 up();
                 continue;
             }
+            else if (FrDics.word(charsAtt) != null) {
+                up();
+                continue;
+            }
+            // variables
+            if (
+                charsAtt.length() == 1
+             || (charsAtt.length() == 2 && (charsAtt.charAt(1) == '\'' || charsAtt.charAt(1) == '.' || Char.isDigit(charsAtt.charAt(1))))
+            ) {
+                up();
+                continue;
+            }
+            
             if (!form.isEmpty()) form.append(' ');
             form.append(termAtt);
         }
@@ -173,13 +193,8 @@ public class ListErrors  extends Cli implements Callable<Integer>
      */
     public static void main(String[] args) throws Exception
     {
-        /*
         int exitCode = new CommandLine(new ListErrors()).execute(args);
         System.exit(exitCode);
-        */
-        CharTermAttribute term = new CharTermAttributeImpl();
-        term.append("test");
-        System.out.println(term.equals("test"));
     }
 
 }

@@ -1,6 +1,8 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.lucene.analysis.CharacterUtils;
 import org.apache.lucene.analysis.Tokenizer;
@@ -88,14 +90,20 @@ public class TokenizerML  extends Tokenizer
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** Used as char[] wrapper for testing */
     private final CharsAttImpl test = new CharsAttImpl();
-    /** Buffer of chars */
-    private final CharacterBuffer buffer = CharacterUtils.newCharacterBuffer(8192);
+    /** Buffer of chars, give a big size avoiding pb for  */
+    private final CharacterBuffer buffer = CharacterUtils.newCharacterBuffer(2 * 1024 * 1024);
     /** Position in buffer */
     private int bufferIndex = 0;
     /** size of buffer*/
     private int  bufferLen = 0;
     /** current char offset */
     private int offset = 0;
+    /** XML entities */
+    static final Map<String, String> XML_ENT = Map.ofEntries(
+        Map.entry("gt", ">"),
+        Map.entry("lt", "<"),
+        Map.entry("amp", "&")
+    );
     
     /**
      * Build a Tokenizer for Markup tagged text.
@@ -111,7 +119,7 @@ public class TokenizerML  extends Tokenizer
         // flags
         boolean intag = false;
         boolean number = false;
-        
+        int amp = -1; // check XML entities
         // Mandatory start of a term
         int startOffset = -1;
         char lastChar;
@@ -136,12 +144,12 @@ public class TokenizerML  extends Tokenizer
             }
             // if no luck, a try to go back in buffer can fall in negative
             if (bufferIndex < 0) {
-                // System.out.println(buffer.getBuffer());
                 bufferIndex = 0;
             }
             lastChar = c;
             c = buffer.getBuffer()[bufferIndex];
-            // default, go next
+            // record an event for entities
+            if (c == '&') amp = termAtt.length();
             
             // start of a tag, do not advance cursors
             if (c == '<') {
@@ -216,9 +224,24 @@ public class TokenizerML  extends Tokenizer
                     break; // a too big token stop
                 }
             }
-            // possible entity
-            else if (c == ';' && termAtt.charAt(0) == '&') {
-                // TODO !
+            // xml entity, handle case like -&gt;
+            else if (c == ';' && amp >= 0) {
+                termAtt.append(c);
+                final int lim = termAtt.length() - 2 - amp;
+                for (var entry : XML_ENT.entrySet()) {
+                    String key = entry.getKey();
+                    if (key.length() != lim) continue;
+                    int pos = 0;
+                    for (; pos < lim; pos++) {
+                        if (termAtt.charAt(pos + amp + 1) != key.charAt(pos)) break;
+                    }
+                    // entity seems found here
+                    if (pos == lim) {
+                        termAtt.setLength(amp).append(entry.getValue());
+                        break;
+                    }
+                }
+                amp = -1;
             }
             // Clause punctuation, send a punctuation event to separate tokens
             else if (',' == c || ';' == c || ':' == c || '(' == c || ')' == c || '—' == c || '–' == c 
@@ -236,17 +259,12 @@ public class TokenizerML  extends Tokenizer
                 offset++;
                 break;
             }
-            // abbreviation ?
+            // complex case, the dot and abbreviations, append and let next filter define what to do
             else if (c == '.' && Char.isLetter(lastChar) ) {
                 termAtt.append(c);
-                // not an abbreviaiton, send without dot
-                if (!FrDics.isBrevidot( test.wrap(termAtt.buffer(), termAtt.length()) )) {
-                    termAtt.setLength(termAtt.length() - 1);
-                    break;
-                }
             }
             // Possible sentence delimiters
-            else if (c == '.' || c == '…' || c == '?' || c == '!' ) {
+            else if ( c == '.' || c == '…' || c == '?' || c == '!' ) {
                 // if pending word, send, and come back later
                 if (!termAtt.isEmpty() && lastChar != '.' && lastChar != '?' && lastChar != '!') {
                     break;
@@ -258,13 +276,37 @@ public class TokenizerML  extends Tokenizer
                 }
                 termAtt.append(c);
             }
-            // not token char, token to send
+            // not token char, token to send ?
             else if (!termAtt.isEmpty()) {
                 break;
             }
             bufferIndex++;
             offset++;
         }
+        // final dot special case
+        int len = termAtt.length();
+        if (Char.isLetter(termAtt.charAt(0)) && termAtt.charAt(len - 1) == '.') {
+            test.wrap(termAtt.buffer(), termAtt.length());
+            if (FrDics.isBrevidot(test) ) {
+                // maybe normalize now
+                FrDics.norm(test, termAtt);
+            }
+            // one letter, abbreviation
+            else if (termAtt.length() == 2) {
+                
+            }
+            // go back in buffer to restart from first point, remember the "..." case
+            else {
+                while (termAtt.charAt(len - 1) == '.') {
+                    len--;
+                    bufferIndex--;
+                    offset--;
+                    endOffset = offset;
+                }
+                termAtt.setLength(len);
+            }
+        }
+        
         // here, a term should be ready, send it
         posIncAtt.setPositionIncrement(1);
         posLenAtt.setPositionLength(1);

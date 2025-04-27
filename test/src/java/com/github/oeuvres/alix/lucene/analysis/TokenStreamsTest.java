@@ -36,7 +36,6 @@ public class TokenStreamsTest {
         String text = "";
         // File file = new File("src/test/resources/article.xml");
         // String text = Files.readString(Paths.get(file.getAbsolutePath()), StandardCharsets.UTF_8);
-        text = "s’il les prenait en considération…. parce que l’acte étant à";
         text = "Il fallait naître jusqu’alors !";
         text = "D’accord, le chemin de Fer d’intérêt local dont j’ai pris conscience à cause d’enfants, parce qu’alors <aside>en note</aside> j’en veux !";
         text = "Parfois — rarement —, je parviens à me souvenir de certaines sensations profondes et indéfinies (telle sensation physique de bonheur, dans une rue au coucher du soleil, des phares d’automobiles étoilent le brouillard, les visages se cachent dans des fourrures, personne ne sait la richesse de ta vie…).";
@@ -45,6 +44,9 @@ public class TokenStreamsTest {
             + "         </h1>\n"
             + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion.</p>"
         ;
+        text = "<p>On remarque ici l’emploi de « pourquoi » dans le sens de « pour quelle raison » (voir chap. V). On voit donc combien ces deux discussions sont supérieures aux précédentes.</p>";
+        text = "s’il les prenait... en considération &gt; parce que l’acte étant &lt; à … -&gt; à …, etc.";
+
 
         Analyzer ana = new AnalyzerAlix();
         analyze(ana.tokenStream("_cloud", text), text);
