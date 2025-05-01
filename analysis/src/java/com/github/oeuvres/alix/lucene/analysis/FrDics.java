@@ -85,6 +85,8 @@ public class FrDics
     static final public int BRANCH = 0x200;
     /** 500 000 types French lexicon seems not too bad for memory */
     static final private HashMap<CharsAtt, LexEntry> WORDS = new HashMap<>((int) (500000 / 0.75));
+    /** 100 000 lemmas, for lookup */
+    static final private HashMap<Chain, String> LEMMAS = new HashMap<>((int) (100000 / 0.75));
     /** French names on which keep Capitalization */
     static final private HashMap<CharsAtt, LexEntry> NAMES = new HashMap<>((int) (50000 / 0.75));
     /** A tree to resolve compounds */
@@ -115,37 +117,49 @@ public class FrDics
         entry("VERB", VERB),
         entry("X", TOKEN)
      */
-    Map<String, String> tagList = Map.ofEntries(
-        Map.entry("VERB", "VERB"), // 305193
-        Map.entry("SUB", "SUB"), // 110474
-        Map.entry("ADJ", "ADJ"), // 67833
-        Map.entry("VERBger", "VERB"), // 8207
-        Map.entry("ADV", "ADV"), // 2331
-        Map.entry("VERBppas", "VERB"), // 1107
-        Map.entry("VERBaux2", "VERB"), // 639
-        Map.entry("VERBexpr", "VERB"), // 270
-        Map.entry("NUM", "NUM"), // 254
-        Map.entry("EXCL", "EXCL"), // 166
-        Map.entry("VERBaux", "VERBaux"), // 132
-        Map.entry("VERBmod", "VERB"), // 91
-        Map.entry("PREP", "PREP"), // 73
-        Map.entry("PROpers", "PRO"), // 59
-        Map.entry("DETindef", "DET"), // 34
-        Map.entry("ADVscen", "ADV"), // 32
-        Map.entry("DETposs", "DET"), // 31
-        Map.entry("PROindef", "PRO"), // 26
-        Map.entry("ADVdeg", "ADV"), // 23
-        Map.entry("ADVasp", "ADV"), // 22
-        Map.entry("SUBplace", "SUB"), // 22
-        Map.entry("PROdem", "PRO"), // 21
-        Map.entry("ADVconj", "ADV"), // 20
-        Map.entry("CONJsub", "CONJsub"), // 16
-        Map.entry("DETart", "DET"), // 11
-        Map.entry("ADVneg", "ADV"), // 11
-        Map.entry("CONJcoord", "CONJcoord"), // 10
-        Map.entry("DETprep", "DETprep"), // 4
-        Map.entry("DETdem", "DETdem"), // 4
-        Map.entry("ADVquest", "ADV") // 4
+    static Map<Chain, String> tagList = Map.ofEntries(
+        Map.entry(new Chain("VERB"), "VERB"), // 305193
+        Map.entry(new Chain("SUB"), "SUB"), // 110474
+        Map.entry(new Chain("ADJ"), "ADJ"), // 67833
+        Map.entry(new Chain("VERBger"), "VERB"), // 8207
+        Map.entry(new Chain("ADV"), "ADV"), // 2331
+        Map.entry(new Chain("VERBppas"), "VERB"), // 1107
+        Map.entry(new Chain("VERBaux2"), "VERB"), // 639
+        Map.entry(new Chain("VERBexpr"), "VERB"), // 270
+        Map.entry(new Chain("NUM"), "NUM"), // 254
+        Map.entry(new Chain("EXCL"), "EXCL"), // 166
+        Map.entry(new Chain("VERBaux"), "VERBaux"), // 132
+        Map.entry(new Chain("VERBmod"), "VERB"), // 91
+        Map.entry(new Chain("PREP"), "PREP"), // 73
+        Map.entry(new Chain("PROpers"), "PRO"), // 59
+        Map.entry(new Chain("DETindef"), "DET"), // 34
+        Map.entry(new Chain("ADVscen"), "ADV"), // 32
+        Map.entry(new Chain("DETposs"), "DET"), // 31
+        Map.entry(new Chain("PROindef"), "PRO"), // 26
+        Map.entry(new Chain("ADVdeg"), "ADV"), // 23
+        Map.entry(new Chain("ADVasp"), "ADV"), // 22
+        Map.entry(new Chain("SUBplace"), "SUB"), // 22
+        Map.entry(new Chain("PROdem"), "PRO"), // 21
+        Map.entry(new Chain("ADVconj"), "ADV"), // 20
+        Map.entry(new Chain("CONJsub"), "CONJsub"), // 16
+        Map.entry(new Chain("DETart"), "DET"), // 11
+        Map.entry(new Chain("ADVneg"), "ADV"), // 11
+        Map.entry(new Chain("CONJcoord"), "CONJcoord"), // 10
+        Map.entry(new Chain("DETprep"), "DETprep"), // 4
+        Map.entry(new Chain("DETdem"), "DETdem"), // 4
+        Map.entry(new Chain("ADVquest"), "ADV"), // 4
+        Map.entry(new Chain("NAME"), "NAME"),
+        Map.entry(new Chain("NAMEpers"), "NAME"),
+        Map.entry(new Chain("NAMEpersm"), "NAME"),
+        Map.entry(new Chain("NAMEpersf"), "NAME"),
+        Map.entry(new Chain("NAMEplace"), "NAME"),
+        Map.entry(new Chain("NAMEorg"), "NAME"),
+        Map.entry(new Chain("NAMEevent"), "NAME"),
+        Map.entry(new Chain("NAMEauthor"), "NAME"),
+        Map.entry(new Chain("NAMEfict"), "NAME"),
+        Map.entry(new Chain("NAMEtitle"), "NAME"),
+        Map.entry(new Chain("NAMEpeople"), "NAME"),
+        Map.entry(new Chain("NAMEgod"), "NAMEtag")
     );
 
     
@@ -311,7 +325,6 @@ public class FrDics
                     NORMALIZE.put(new CharsAttImpl(graph), new CharsAttImpl(norm));
                     continue;
                 }
-
                 putRecord(graph, row.get(TAG), row.get(LEM), replace);
             }
             csv.close();
@@ -327,11 +340,13 @@ public class FrDics
 
     private static void putRecord(Chain graph, Chain tag, Chain lem, boolean replace)
     {
+        String tagSuff = tagList.get(tag);
+
         if (graph.first() == '0') {
             graph.firstDel();
             NAMES.remove(graph);
             WORDS.remove(graph);
-            WORDS.remove(graph.append("_").append(tag));
+            WORDS.remove(graph.append("_").append(tagSuff));
             return;
         }
         // is a name
@@ -342,9 +357,25 @@ public class FrDics
         }
         // is a word, add an entry for GRAPH_TAG
         else {
+            lem.replace('’', '\'');
+            if (!lem.isEmpty() && tagSuff != null) {
+                // test if this lemma is known, with which tag
+                final String tagFirst = LEMMAS.get(lem);
+                if (tagFirst == null) {
+                    LEMMAS.put((Chain)lem.clone(), tagSuff); // do not forget to clone lem
+                }
+                else if(tagFirst.equals(tagSuff)) {
+                    // do nothing with the first tag
+                }
+                else { // other tag, new lemma
+                    lem.append("_").append(tagSuff);
+                }
+            }
+
+            
             LexEntry entry = new LexEntry(graph, tag, lem);
-            if (!tag.isEmpty()) {
-                CharsAttImpl graph_tag = new CharsAttImpl(graph).append("_").append(tag);
+            if (tagSuff != null) {
+                CharsAttImpl graph_tag = new CharsAttImpl(graph).append("_").append(tagSuff);
                 if (!replace && !WORDS.containsKey(graph_tag)) WORDS.put(graph_tag, entry);
             }
             if (!replace && !WORDS.containsKey(graph)) WORDS.put(new CharsAttImpl(graph), entry);
@@ -432,19 +463,20 @@ public class FrDics
                 LOGGER.debug(res + " graph=\"" + graph + "\"? Graph empty, tag=\"" + tag + "\", lem=\"" + lem +"\"");
             }
             graph.replace('’', '\'');
-            String tagKey = tag.toString();
             Tag tagEnum = null;
+            String tagKey = tag.toString();
             try {
                tagEnum = TagFr.valueOf(tagKey);
             }
             catch (Exception e) {
                 try {
                     tagEnum = Flags.valueOf(tagKey);
-                 }
+                }
                 catch (Exception ee) {
                     LOGGER.debug(res + " graph=\"" + graph + "\" tag=\"" + tag + "\"? tag not found.");
                 }
             }
+            
             if (tagEnum != null) {
                 this.tag = tagEnum.code();
             }
@@ -456,7 +488,6 @@ public class FrDics
                 this.lem = null;
             }
             else {
-                lem.replace('’', '\'');
                 this.lem = new CharsAttImpl(lem);
             }
         }
@@ -465,7 +496,7 @@ public class FrDics
         public String toString()
         {
             StringBuilder sb = new StringBuilder();
-            sb.append(TagFr.VERB.name(this.tag));
+            sb.append(TagFr.name(this.tag));
             if (graph != null)
                 sb.append(" graph=\"").append(graph).append("\"");
             if (lem != null)

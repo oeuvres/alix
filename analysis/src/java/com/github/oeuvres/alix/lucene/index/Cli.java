@@ -20,7 +20,7 @@ import com.github.oeuvres.alix.util.Dir;
 import picocli.CommandLine.Parameters;
 
 /**
- * Tools to process a 
+ * Tools to process a corpus config file.
  */
 public abstract class Cli
 {

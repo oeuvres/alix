@@ -32,6 +32,7 @@ import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
 import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
+import com.github.oeuvres.alix.util.Char;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -101,9 +102,11 @@ public class Analyze4vec extends Cli implements Callable<Integer>
                 continue;
             }
             // unknown
+            /*
             else if (flags == TOKEN.code()) {
                 continue;
             }
+            */
             else {
                 char[] chars = termAtt.buffer();
                 final int len = termAtt.length();
@@ -266,8 +269,13 @@ public class Analyze4vec extends Cli implements Callable<Integer>
                 termAtt.setEmpty().append("#");
                 return true;
             }
-            if (!lemAtt.isEmpty()) termAtt.setEmpty().append(lemAtt);
-            else if (!orthAtt.isEmpty()) termAtt.setEmpty().append(orthAtt);
+            if (!lemAtt.isEmpty()) {
+                termAtt.setEmpty().append(lemAtt);
+            }
+            else if (!orthAtt.isEmpty()) {
+                termAtt.setEmpty().append(orthAtt);
+            }
+            // else if (!orthAtt.isEmpty()) termAtt.setEmpty().append(orthAtt);
             // String suff = suffix[flags];
             return true;
         }

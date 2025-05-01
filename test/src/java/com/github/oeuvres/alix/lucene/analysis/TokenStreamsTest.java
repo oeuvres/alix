@@ -30,7 +30,7 @@ public class TokenStreamsTest {
     @Test
     static public void locution() throws IOException
     {
-        File dic = new File("../../piaget_labo/install/piaget-dic.csv");
+        File dic = new File("../../ddr_lab/install/ddr-dic.csv");
         FrDics.load(dic.getCanonicalPath(), dic);
 
         String text = "";
@@ -45,7 +45,7 @@ public class TokenStreamsTest {
             + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion.</p>"
         ;
         text = "<p>On remarque ici l’emploi de « pourquoi » dans le sens de « pour quelle raison » (voir chap. V). On voit donc combien ces deux discussions sont supérieures aux précédentes.</p>";
-        text = "s’il les prenait... en considération &gt; parce que l’acte étant &lt; à … -&gt; à …, etc.";
+        text = "s’il les prenait... en considération &gt; parce que l’acte étant &lt; à … -&gt; à l’empire stato-national.";
 
 
         Analyzer ana = new AnalyzerAlix();
