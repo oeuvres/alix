@@ -11,6 +11,8 @@ C.,NAME
 Cpt.,,,compte
 cpt.,,,compte
 c.-à-d.,,,c'est à dire
+categ.,,,catégorie
+catég.,,,catégorie
 cf.,VERB
 Cf.,VERB,,
 ch.,,,chapitre
@@ -92,6 +94,7 @@ P.u.F.,,,PUF
 p.u.f.,,,PUF
 p.,,,page
 pag.,,,page
+phr.,,,phrase
 pp.,,,pages
 P.P.,,,pages
 Pr.,,,Professeur
