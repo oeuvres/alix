@@ -48,7 +48,12 @@ public enum Flags implements Tag
     }
     public boolean isPun(final int code)
     {
-        return (code == 0x08 || code == 0x09 || code == 0x0A || code == 0x0B || code == 0x0C);
+        return (code == PUN.code 
+          || code == PUNsection.code 
+          || code == PUNpara.code 
+          || code == PUNsent.code 
+          || code == PUNclause.code
+        );
     }
     
     static public String name(final int code)
