@@ -23,13 +23,16 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
+import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.FilterAposHyphenFr;
 import com.github.oeuvres.alix.lucene.analysis.FilterFrPos;
 import com.github.oeuvres.alix.lucene.analysis.FilterHTML;
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
+import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 import com.github.oeuvres.alix.util.Char;
@@ -45,6 +48,8 @@ import picocli.CommandLine.Parameters;
 public class Analyze4vec extends Cli implements Callable<Integer>
 {
     final static String APP = "alix.corpus4vec";
+    final static TagFilter nonword = new TagFilter().setGroup(0).setGroup(NUM).setGroup(MISC);
+    final static TagFilter nogram = new TagFilter().set(VERB).set(SUB).set(ADJ).setGroup(NAME);
 
     @Parameters(index = "1", arity = "1", paramLabel = "corpus.txt", description = "1 destination text file for analyzed corpus.")
     /** Destination text file. */
@@ -77,8 +82,9 @@ public class Analyze4vec extends Cli implements Callable<Integer>
     private static void unroll(final TokenStream tokenStream, final Writer writer) throws IOException
     {
         
-
+        final CharsAttImpl test = new CharsAttImpl();
         final CharTermAttribute termAtt = tokenStream.addAttribute(CharTermAttribute.class);
+        final LemAtt lemAtt = tokenStream.addAttribute(LemAtt.class);
         final FlagsAttribute flagsAtt = tokenStream.addAttribute(FlagsAttribute.class);
         tokenStream.reset();
         int startLast = 0;
@@ -94,16 +100,28 @@ public class Analyze4vec extends Cli implements Callable<Integer>
                 writer.write('\n');
                 continue;
             }
-            else if (flags == PUNsent.code) {
-                // out.write(10);
-                continue;
-            }
-            else if (PUN.isPun(flags)) {
-                continue;
-            }
-            // unknown
+            // keep grammatical word, word2vec use them
             /*
-            else if (flags == TOKEN.code()) {
+            else if (!nogram.get(flags)) {
+                continue;
+            }
+            */
+            // non word
+            else if (nonword.get(flags)) {
+                continue;
+            }
+            else if (FrDics.isStop(test.wrap(termAtt.buffer(), termAtt.length()))) {
+                continue;
+            }
+            /*
+            // probably non word, be careful of Suj
+            else if (lemAtt.isEmpty() && termAtt.length() < 3) {
+                continue;
+            }
+            */
+            // unknown word from dico: typo, foreign
+            /*
+            else if (!TagFr.isName(flags) && lemAtt.isEmpty()) {
                 continue;
             }
             */

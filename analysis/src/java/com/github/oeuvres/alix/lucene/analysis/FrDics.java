@@ -85,8 +85,6 @@ public class FrDics
     static final public int BRANCH = 0x200;
     /** 500 000 types French lexicon seems not too bad for memory */
     static final private HashMap<CharsAtt, LexEntry> WORDS = new HashMap<>((int) (500000 / 0.75));
-    /** 100 000 lemmas, for lookup */
-    static final private HashMap<Chain, String> LEMMAS = new HashMap<>((int) (100000 / 0.75));
     /** French names on which keep Capitalization */
     static final private HashMap<CharsAtt, LexEntry> NAMES = new HashMap<>((int) (50000 / 0.75));
     /** A tree to resolve compounds */
@@ -95,6 +93,8 @@ public class FrDics
     static final private Map<CharsAtt, CharsAtt> NORMALIZE = new HashMap<>((int) (100 / 0.75));
     /** Abbreviations with a final dot */
     static final private Set<CharsAtt> BREVIDOT = new HashSet<>((int) (200 / 0.75));
+    /** Stopwords */
+    static final private Set<CharsAtt> STOP = new HashSet<>((int) (1000 / 0.75));
     /** current dictionnary loaded, for logging */
     static String res;
     /** Convert tags from dictionary to tags obtained by tagger 
@@ -165,6 +165,7 @@ public class FrDics
     
     /** Load dictionaries */
     static {
+        loadStop("stop.csv");
         // first word win
         String[] files = { 
             "locutions.csv", // compounds to decompose
@@ -192,27 +193,6 @@ public class FrDics
     private FrDics()
     {
         
-    }
-
-    /**
-     * Test if the requested chars are a known abbreviation ending by a dot.
-     * 
-     * @param att {@link CharTermAttribute} implementation.
-     * @return true if submitted form is an abbreviation, false otherwise.
-     */
-    public static boolean isBrevidot(CharsAttImpl att)
-    {
-        return BREVIDOT.contains(att);
-    }
-
-    /**
-     * Verify that a dictionary is already loaded.
-     * @param key a local identifying name for a dictionary
-     * @return
-     */
-    public static boolean contains(final String key)
-    {
-        return loaded.contains(key);
     }
 
     /**
@@ -252,17 +232,37 @@ public class FrDics
     }
 
     /**
-     * Load a jar resource as dictionary.
+     * Test if the requested chars are a known abbreviation ending by a dot.
      * 
-     * @param res resource path according to the class loader.
+     * @param att {@link CharTermAttribute} implementation.
+     * @return true if submitted form is an abbreviation, false otherwise.
      */
-    private static void loadResource(final String key, final String res)
+    public static boolean isBrevidot(CharsAttImpl att)
     {
-        FrDics.res = res;
-        Reader reader = new InputStreamReader(French.class.getResourceAsStream(res), StandardCharsets.UTF_8);
-        load(key, reader, false);
+        return BREVIDOT.contains(att);
     }
     
+    /**
+     * Verify that a dictionary is already loaded.
+     * @param key a local identifying name for a dictionary
+     * @return
+     */
+    public static boolean isLoaded(final String key)
+    {
+        return loaded.contains(key);
+    }
+
+    /**
+     * Test if the requested chars are a known stop word.
+     * 
+     * @param att {@link CharTermAttribute} implementation.
+     * @return true if submitted form is a know stop word, false otherwise.
+     */
+    public static boolean isStop(CharsAttImpl att)
+    {
+        return STOP.contains(att);
+    }
+
     /**
      * Load a file as a dictionary.
      * 
@@ -338,48 +338,43 @@ public class FrDics
         }
     }
 
-    private static void putRecord(Chain graph, Chain tag, Chain lem, boolean replace)
+    /**
+     * Load a jar resource as dictionary.
+     * 
+     * @param res resource path according to the class loader.
+     */
+    private static void loadResource(final String key, final String res)
     {
-        String tagSuff = tagList.get(tag);
+        FrDics.res = res;
+        Reader reader = new InputStreamReader(French.class.getResourceAsStream(res), StandardCharsets.UTF_8);
+        load(key, reader, false);
+    }
 
-        if (graph.first() == '0') {
-            graph.firstDel();
-            NAMES.remove(graph);
-            WORDS.remove(graph);
-            WORDS.remove(graph.append("_").append(tagSuff));
+    /**
+     * Load a stop list for analysis
+     * 
+     * @param res resource path according to the class loader.
+     */
+    synchronized static public void loadStop(final String res)
+    {
+        if (loaded.contains(res)) {
+            System.out.println(res + " already loaded");
             return;
         }
-        // is a name
-        else if (graph.isFirstUpper()) {
-            if (!replace && NAMES.containsKey(graph)) return;
-            LexEntry entry = new LexEntry(graph, tag, lem);
-            NAMES.put(new CharsAttImpl(graph), entry);
-        }
-        // is a word, add an entry for GRAPH_TAG
-        else {
-            lem.replace('’', '\'');
-            if (!lem.isEmpty() && tagSuff != null) {
-                // test if this lemma is known, with which tag
-                final String tagFirst = LEMMAS.get(lem);
-                if (tagFirst == null) {
-                    LEMMAS.put((Chain)lem.clone(), tagSuff); // do not forget to clone lem
-                }
-                else if(tagFirst.equals(tagSuff)) {
-                    // do nothing with the first tag
-                }
-                else { // other tag, new lemma
-                    lem.append("_").append(tagSuff);
-                }
+        loaded.add(res);
+        Reader reader = new InputStreamReader(French.class.getResourceAsStream(res), StandardCharsets.UTF_8);
+        CSVReader csv = null;
+        try {
+            csv = new CSVReader(reader, 1, ',');
+            csv.readRow(); // skip first line
+            Row row;
+            while ((row = csv.readRow()) != null) {
+                STOP.add(new CharsAttImpl(row.get(0)));
             }
-
-            
-            LexEntry entry = new LexEntry(graph, tag, lem);
-            if (tagSuff != null) {
-                CharsAttImpl graph_tag = new CharsAttImpl(graph).append("_").append(tagSuff);
-                if (!replace && !WORDS.containsKey(graph_tag)) WORDS.put(graph_tag, entry);
-            }
-            if (!replace && !WORDS.containsKey(graph)) WORDS.put(new CharsAttImpl(graph), entry);
-            
+        } catch (Exception e) {
+            System.out.println("Dictionary parse error in file " + reader);
+            if (csv != null) System.out.println(" line " + csv.line());
+            e.printStackTrace();
         }
     }
 
@@ -396,7 +391,7 @@ public class FrDics
     }
 
     /**
-     * Get normalized orthographic form for a real grapphical form in text.
+     * Get normalized orthographic form for a real graphical form in text.
      * 
      * @param att {@link CharTermAttribute} implementation, normalized.
      * @return true if a normalization has been done, false otherwise.
@@ -423,6 +418,36 @@ public class FrDics
             return false;
         dst.setEmpty().append(val);
         return true;
+    }
+
+    private static void putRecord(Chain graph, Chain tag, Chain lem, boolean replace)
+    {
+        String tagSuff = tagList.get(tag);
+    
+        if (graph.first() == '0') {
+            graph.firstDel();
+            NAMES.remove(graph);
+            WORDS.remove(graph);
+            WORDS.remove(graph.append("_").append(tagSuff));
+            return;
+        }
+        // is a name
+        else if (graph.isFirstUpper()) {
+            if (!replace && NAMES.containsKey(graph)) return;
+            LexEntry entry = new LexEntry(graph, tag, lem);
+            NAMES.put(new CharsAttImpl(graph), entry);
+        }
+        // is a word, add an entry for GRAPH_TAG
+        else {
+            lem.replace('’', '\'');
+            LexEntry entry = new LexEntry(graph, tag, lem);
+            if (tagSuff != null) {
+                CharsAttImpl graph_tag = new CharsAttImpl(graph).append("_").append(tagSuff);
+                if (!replace && !WORDS.containsKey(graph_tag)) WORDS.put(graph_tag, entry);
+            }
+            if (!replace && !WORDS.containsKey(graph)) WORDS.put(new CharsAttImpl(graph), entry);
+            
+        }
     }
 
     /**
