@@ -181,6 +181,8 @@ public enum TagFr implements Tag {
     ABBR(0xF1, "Abréviation", ""),
     /** Exclamation */
     EXCL(0xF2, "Exclamation", "Ho, Ô, haha… (interjections)"),
+    /** Exclamation */
+    MG(0xF3, "Mot grammatical", "Déterminants, pronoms, connecteurs…"),
 
     ;
     static final Index index = new Index(16, 255);
@@ -237,7 +239,12 @@ public enum TagFr implements Tag {
     @Override
     public int code(final String name)
     {
-        return valueOf(name).code;
+        try {
+            return valueOf(name).code;
+        }
+        catch (Exception e) {
+            return 0;
+        }
     }
 
     @Override
