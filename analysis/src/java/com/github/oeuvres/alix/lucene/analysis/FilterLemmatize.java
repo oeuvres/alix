@@ -202,18 +202,25 @@ public final class FilterLemmatize extends TokenFilter
             }
             if (entryWord != null) { // known word
                 orthAtt.toLower();
-                // norm here after right casing, J
+                // norm here after right casing
                 FrDics.norm(orthAtt);
                 // if not after a pun, maybe a capitalized concept État, or a name La Fontaine,
                 // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc.
                 // restore initial cap
                 if (!puncopy) termAtt.buffer()[0] = c1;
                 flagsAtt.setFlags(entryWord.tag); // trust dictionary
-                if (entryWord.lem != null) lemAtt.copy(entryWord.lem);
+                if (entryWord.lem != null) {
+                    lemAtt.copy(entryWord.lem);
+                }
+                // say it is known by dico
+                else {
+                    lemAtt.copy(entryWord.graph);
+                }
                 return true;
             } 
-            else { // unknown word, infer it's a NAME
-                if (flags == TOKEN.code) flagsAtt.setFlags(NAME.code);
+            else { 
+                // unknown word, infer it's a NAME, force Tagger errors
+                flagsAtt.setFlags(NAME.code);
                 // Normalize caps ? NAME -> Name
                 orthAtt.capitalize();
                 return true;
@@ -236,7 +243,14 @@ public final class FilterLemmatize extends TokenFilter
             }
             // known word
             flagsAtt.setFlags(entryWord.tag); // trust dictionary
-            if (entryWord.lem != null) lemAtt.copy(entryWord.lem);
+            if (entryWord.lem != null) {
+                lemAtt.copy(entryWord.lem);
+            }
+            // say it is known by dico
+            else {
+                lemAtt.copy(entryWord.graph);
+            }
+
         }
         return true;
     }

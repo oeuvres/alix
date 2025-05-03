@@ -219,8 +219,8 @@ public class FilterLocution extends TokenFilter
                     if (entry.lem != null) {
                         lemAtt.setEmpty().append(entry.lem);
                     }
-                    else {
-                        lemAtt.setEmpty();
+                    else { // say this locution is known in dic
+                        lemAtt.setEmpty().append(orthAtt);
                     }
                 }
                 // no lemma or tags for this locution
