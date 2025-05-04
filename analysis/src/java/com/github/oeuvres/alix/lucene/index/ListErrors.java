@@ -1,16 +1,13 @@
 package com.github.oeuvres.alix.lucene.index;
 
 import static com.github.oeuvres.alix.common.Flags.*;
+import static com.github.oeuvres.alix.fr.TagFr.NUM;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.StringReader;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
@@ -19,18 +16,24 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttributeImpl;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
+import static com.github.oeuvres.alix.common.Flags.*;
+import static com.github.oeuvres.alix.fr.TagFr.*;
+
+import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.lucene.analysis.FilterAposHyphenFr;
 import com.github.oeuvres.alix.lucene.analysis.FilterFrPos;
 import com.github.oeuvres.alix.lucene.analysis.FilterHTML;
+import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
+import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
-import com.github.oeuvres.alix.lucene.index.Analyze4vec.Analyzer4vec;
-import com.github.oeuvres.alix.util.Char;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 import com.github.oeuvres.alix.util.Chain;
+import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.IntMutable;
 import com.github.oeuvres.alix.util.Top;
 
@@ -42,7 +45,9 @@ public class ListErrors  extends Cli implements Callable<Integer>
 {
     HashMap<Chain, IntMutable> errors = new HashMap<>(20000);
     Chain form = new Chain();
-    
+    final static TagFilter nonword = new TagFilter().setGroup(0).clear(TOKEN).setGroup(NUM);
+    final static TagFilter name = new TagFilter().setGroup(NAME);
+
     
     @Override
     public Integer call() throws Exception
@@ -50,24 +55,17 @@ public class ListErrors  extends Cli implements Callable<Integer>
         long time = System.nanoTime();
         Analyzer analyzer = new AnaUnknown();
 
-        if (conf != null) {
-            parse(conf);
-            paths.sort(null);
-            for (final Path path: paths) {
-                System.out.println(path);
-                BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(
-                        new FileInputStream(path.toFile())
-                    , "UTF-8")
-                );
-                analyze(analyzer.tokenStream("", reader));
-            }
+        parse(conf);
+        paths.sort(null);
+        for (final Path path: paths) {
+            System.out.println(path);
+            BufferedReader reader = new BufferedReader(
+                new InputStreamReader(
+                    new FileInputStream(path.toFile())
+                , "UTF-8")
+            );
+            analyze(analyzer.tokenStream("", reader));
         }
-        else {
-            String text = "Mais cela ne signifie naturellement pas qu’il sache d’emblée composer les dépassements &gt; entre eux (Δ<hi>xz</hi> = Δ<hi>xy</hi> + Δ<hi>yz</hi>) &amp;, comme on le verra sous 2), il est au contraire probable qu’aux débuts un plus grand dépassement, et même un dépassement égal mais entre éléments plus grands, leur paraissent d’une autre nature qu’un dépassement entre petits éléments.";
-            analyze(analyzer.tokenStream("", new StringReader(text)));
-        }
-
         
         analyzer.close();
         Top<Chain> top = new Top<Chain>(Chain.class, 2000);
@@ -102,57 +100,32 @@ public class ListErrors  extends Cli implements Callable<Integer>
         
 
         final CharTermAttribute termAtt = tokenStream.addAttribute(CharTermAttribute.class);
-        final CharsAttImpl charsAtt = new CharsAttImpl();
         final FlagsAttribute flagsAtt = tokenStream.addAttribute(FlagsAttribute.class);
+        final LemAtt lemAtt = tokenStream.addAttribute(LemAtt.class);
+        final OrthAtt orthAtt = tokenStream.addAttribute(OrthAtt.class);
+        
+        final CharsAttImpl testAtt = new CharsAttImpl();
         tokenStream.reset();
         while(tokenStream.incrementToken()) {
+            if (termAtt.isEmpty()) {
+                continue;
+            }
             final int flags = flagsAtt.getFlags();
-            if (PUN.isPun(flags)) {
-                up();
-                continue;
-            }
-            if (DIGIT.code() == flags) {
-                up();
-                continue;
-            }
-            charsAtt.wrap(termAtt.buffer(), termAtt.length());
-            FrDics.norm(charsAtt);
-            if (Char.isUpperCase(charsAtt.charAt(0))) {
-                if (FrDics.name(charsAtt) != null) {
-                    up();
-                    continue;
-                }
-                charsAtt.capitalize();
-                FrDics.norm(charsAtt);
-                if (FrDics.name(charsAtt) != null) {
-                    up();
-                    continue;
-                }
-                charsAtt.toLower();
-                if (FrDics.word(charsAtt) != null) {
-                    up();
-                    continue;
-                }
-                // candidate name, let it
-                // charsAtt.capitalize();
-                up();
-                continue;
-            }
-            else if (FrDics.word(charsAtt) != null) {
-                up();
-                continue;
-            }
-            // variables
+            testAtt.wrap(termAtt.buffer(), termAtt.length());
+            char lastChar = termAtt.charAt(termAtt.length() - 1);
             if (
-                charsAtt.length() == 1
-             || (charsAtt.length() == 2 && (charsAtt.charAt(1) == '\'' || charsAtt.charAt(1) == '.' || Char.isDigit(charsAtt.charAt(1))))
+                nonword.get(flags)
+                || name.get(flags)
+                || !lemAtt.isEmpty()
+                || FrDics.isStop(testAtt)
+                || Char.isDigit(lastChar)
+                || lastChar == '\''
+                || termAtt.length() < 3
             ) {
-                up();
                 continue;
             }
-            
-            if (!form.isEmpty()) form.append(' ');
             form.append(termAtt);
+            up();
         }
         tokenStream.close();
     }
@@ -181,6 +154,11 @@ public class ListErrors  extends Cli implements Callable<Integer>
             ts = new FilterAposHyphenFr(ts);
             // pos tagging before lemmatize
             ts = new FilterFrPos(ts);
+            // provide lemma+pos
+            ts = new FilterLemmatize(ts);
+            // group compounds after lemmatization for verbal compounds
+            ts = new FilterLocution(ts);
+            
             return new TokenStreamComponents(tokenizer, ts);
         }
     }

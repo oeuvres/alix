@@ -13,6 +13,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.concurrent.Callable;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -48,8 +49,48 @@ import picocli.CommandLine.Parameters;
 public class Analyze4vec extends Cli implements Callable<Integer>
 {
     final static String APP = "alix.corpus4vec";
-    final static TagFilter nonword = new TagFilter().setGroup(0).setGroup(NUM).setGroup(MISC);
+    final static TagFilter nonword = new TagFilter().setGroup(0).clear(TOKEN).setGroup(NUM);
     final static TagFilter nogram = new TagFilter().set(VERB).set(SUB).set(ADJ).setGroup(NAME);
+    
+    /** Convert flags as tag to append to term */
+
+    
+
+    static String[] suffix = new String[256];
+    static {
+        Arrays.fill(suffix, "");
+        suffix[VERB.code] = "_VERB"; // 305875
+        suffix[SUB.code] = ""; // 110522
+        suffix[ADJ.code] = "_ADJ"; // 67833
+        suffix[VERBger.code] = "_VERB"; // 8207
+        suffix[ADV.code] = "_ADV"; // 2336
+        suffix[VERBppas.code] = "_VERB"; // 1107
+        suffix[VERBexpr.code] = "_VERB"; // 270
+        suffix[NUM.code] = ""; // 254
+        suffix[EXCL.code] = ""; // 166
+        suffix[VERBmod.code] = "_VERB"; // 91
+        suffix[VERBaux.code] = "_AUX"; // 89
+        suffix[PREP.code] = "_MG"; // 71
+        suffix[PROpers.code] = "_MG"; // 51
+        suffix[ADVscen.code] = "_MG"; // 33
+        suffix[DETindef.code] = "_MG"; // 31
+        suffix[PROindef.code] = "_MG"; // 28
+        suffix[PROdem.code] = "_MG"; // 27
+        suffix[ADVasp.code] = "_MG"; // 24
+        suffix[ADVdeg.code] = "_MG"; // 23
+        suffix[PROrel.code] = "_MG"; // 18
+        suffix[PROquest.code] = "_MG"; // 16
+        suffix[CONJsub.code] = "_MG"; // 16
+        suffix[DETposs.code] = "_MG"; // 15
+        suffix[ADVconj.code] = "_MG"; // 15
+        suffix[DETart.code] = "_MG"; // 11
+        suffix[DETdem.code] = "_MG"; // 10
+        suffix[CONJcoord.code] = "_MG"; // 10
+        suffix[ADVneg.code] = "_MG"; // 9
+        suffix[ADVquest.code] = "_MG"; // 4
+        suffix[DETprep.code] = "_MG"; // 4
+        suffix[DETnum.code] = "_MG"; // from locutions
+    }
 
     @Parameters(index = "1", arity = "1", paramLabel = "corpus.txt", description = "1 destination text file for analyzed corpus.")
     /** Destination text file. */
@@ -95,45 +136,42 @@ public class Analyze4vec extends Cli implements Callable<Integer>
                 writer.write('\n');
                 continue;
             }
-            else if (flags == PUNpara.code) {
+            if (flags == PUNpara.code) {
                 writer.write('\n');
                 writer.write('\n');
                 continue;
             }
-            // keep grammatical word, word2vec use them
-            /*
-            else if (!nogram.get(flags)) {
+            // skip pun
+            if (PUN.isPun(flags)) {
                 continue;
             }
-            */
-            // non word
-            else if (nonword.get(flags)) {
-                continue;
+            // G4, A'
+            char lastChar = termAtt.charAt(termAtt.length() - 1);
+            if (Char.isDigit(lastChar) || lastChar == '\'') {
+                termAtt.setEmpty().append("{x}");
             }
-            else if (FrDics.isStop(test.wrap(termAtt.buffer(), termAtt.length()))) {
-                continue;
+            // not a name
+            if (!TagFr.isName(flags)) {
+                // keep grammatical word, word2vec use them
+                // unknown word are also useful
+                // if(lemAtt.isEmpty()) continue;
+                termAtt.append(suffix[flags]);
             }
-            /*
-            // probably non word, be careful of Suj
-            else if (lemAtt.isEmpty() && termAtt.length() < 3) {
-                continue;
-            }
-            */
-            // unknown word from dico: typo, foreign
-            /*
-            else if (!TagFr.isName(flags) && lemAtt.isEmpty()) {
-                continue;
-            }
-            */
             else {
-                char[] chars = termAtt.buffer();
-                final int len = termAtt.length();
-                for (int i = 0; i < len; i++) {
-                    if (chars[i] == ' ') chars[i] = '_';
+                // A, B, C…
+                if (termAtt.length() < 2) {
+                    termAtt.setEmpty().append("{x}");
                 }
-                writer.write(termAtt.buffer(), 0, termAtt.length());
-                writer.write(' ');
             }
+            // last case, output it
+            char[] chars = termAtt.buffer();
+            final int len = termAtt.length();
+            for (int i = 0; i < len; i++) {
+                if (chars[i] == ' ') chars[i] = '_';
+            }
+            
+            writer.write(termAtt.buffer(), 0, termAtt.length());
+            writer.write(' ');
         }
         tokenStream.close();
     }

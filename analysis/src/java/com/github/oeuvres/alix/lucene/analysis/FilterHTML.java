@@ -70,6 +70,7 @@ public class FilterHTML extends TokenFilter
         SKIP.add("note");
         SKIP.add("teiHeader");
     }
+    // TODO formula
     /** Elements para like */
     static final CharArraySet PARA = new CharArraySet(20, false);
     static {
