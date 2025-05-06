@@ -13,17 +13,15 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.concurrent.Callable;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
+import com.github.oeuvres.alix.common.Flags;
 import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.FilterAposHyphenFr;
@@ -50,47 +48,11 @@ public class Analyze4vec extends Cli implements Callable<Integer>
 {
     final static String APP = "alix.corpus4vec";
     final static TagFilter nonword = new TagFilter().setGroup(0).clear(TOKEN).setGroup(NUM);
-    final static TagFilter nogram = new TagFilter().set(VERB).set(SUB).set(ADJ).setGroup(NAME);
+    final static TagFilter sem = new TagFilter().set(VERB).set(SUB).set(ADJ).setGroup(NAME);
     
     /** Convert flags as tag to append to term */
 
     
-
-    static String[] suffix = new String[256];
-    static {
-        Arrays.fill(suffix, "");
-        suffix[VERB.code] = "_VERB"; // 305875
-        suffix[SUB.code] = ""; // 110522
-        suffix[ADJ.code] = "_ADJ"; // 67833
-        suffix[VERBger.code] = "_VERB"; // 8207
-        suffix[ADV.code] = "_ADV"; // 2336
-        suffix[VERBppas.code] = "_VERB"; // 1107
-        suffix[VERBexpr.code] = "_VERB"; // 270
-        suffix[NUM.code] = ""; // 254
-        suffix[EXCL.code] = ""; // 166
-        suffix[VERBmod.code] = "_VERB"; // 91
-        suffix[VERBaux.code] = "_AUX"; // 89
-        suffix[PREP.code] = "_MG"; // 71
-        suffix[PROpers.code] = "_MG"; // 51
-        suffix[ADVscen.code] = "_MG"; // 33
-        suffix[DETindef.code] = "_MG"; // 31
-        suffix[PROindef.code] = "_MG"; // 28
-        suffix[PROdem.code] = "_MG"; // 27
-        suffix[ADVasp.code] = "_MG"; // 24
-        suffix[ADVdeg.code] = "_MG"; // 23
-        suffix[PROrel.code] = "_MG"; // 18
-        suffix[PROquest.code] = "_MG"; // 16
-        suffix[CONJsub.code] = "_MG"; // 16
-        suffix[DETposs.code] = "_MG"; // 15
-        suffix[ADVconj.code] = "_MG"; // 15
-        suffix[DETart.code] = "_MG"; // 11
-        suffix[DETdem.code] = "_MG"; // 10
-        suffix[CONJcoord.code] = "_MG"; // 10
-        suffix[ADVneg.code] = "_MG"; // 9
-        suffix[ADVquest.code] = "_MG"; // 4
-        suffix[DETprep.code] = "_MG"; // 4
-        suffix[DETnum.code] = "_MG"; // from locutions
-    }
 
     @Parameters(index = "1", arity = "1", paramLabel = "corpus.txt", description = "1 destination text file for analyzed corpus.")
     /** Destination text file. */
@@ -120,12 +82,13 @@ public class Analyze4vec extends Cli implements Callable<Integer>
         return 0;
     }
     
-    private static void unroll(final TokenStream tokenStream, final Writer writer) throws IOException
+    static void unroll(final TokenStream tokenStream, final Writer writer) throws IOException
     {
         
         final CharsAttImpl test = new CharsAttImpl();
         final CharTermAttribute termAtt = tokenStream.addAttribute(CharTermAttribute.class);
         final LemAtt lemAtt = tokenStream.addAttribute(LemAtt.class);
+        final OrthAtt orthAtt = tokenStream.addAttribute(OrthAtt.class);
         final FlagsAttribute flagsAtt = tokenStream.addAttribute(FlagsAttribute.class);
         tokenStream.reset();
         int startLast = 0;
@@ -142,26 +105,42 @@ public class Analyze4vec extends Cli implements Callable<Integer>
                 continue;
             }
             // skip pun
-            if (PUN.isPun(flags)) {
+            if (
+                PUN.isPun(flags)
+                || MATH.code == flags
+            ) {
                 continue;
             }
+            // do no suppress term=D’, take orth=de
+            char lastChar = (!orthAtt.isEmpty())?orthAtt.charAt(orthAtt.length() - 1):termAtt.charAt(termAtt.length() - 1);
+            if (
+                   flags == DIGIT.code
+                || flags == NUM.code
+                || flags == NUMno.code
+            ) {
+                termAtt.setEmpty().append("#");
+            }
             // G4, A'
-            char lastChar = termAtt.charAt(termAtt.length() - 1);
-            if (Char.isDigit(lastChar) || lastChar == '\'') {
+            else if (Char.isDigit(lastChar) || lastChar == '\'') {
                 termAtt.setEmpty().append("{x}");
             }
-            // not a name
-            if (!TagFr.isName(flags)) {
-                // keep grammatical word, word2vec use them
-                // unknown word are also useful
-                // if(lemAtt.isEmpty()) continue;
-                termAtt.append(suffix[flags]);
+            // pos suffix do not add precision
+            // keep grammatical word works 
+            // else if (!sem.get(flags)) continue;
+            // skip unknown words to hide OCR suprises
+            else if (!TagFr.isName(flags) && lemAtt.isEmpty()) {
+                continue;
             }
-            else {
-                // A, B, C…
-                if (termAtt.length() < 2) {
-                    termAtt.setEmpty().append("{x}");
-                }
+            else if (!lemAtt.isEmpty()) {
+                termAtt.setEmpty().append(lemAtt);
+            }
+            // verbs inflected ?
+            else if (!orthAtt.isEmpty()) {
+                termAtt.setEmpty().append(orthAtt);
+            }
+            // A, B, C…
+            if (TagFr.isName(flags) && termAtt.length() < 2) {
+                termAtt.setEmpty().append("{x}");
             }
             // last case, output it
             char[] chars = termAtt.buffer();
@@ -176,7 +155,7 @@ public class Analyze4vec extends Cli implements Callable<Integer>
         tokenStream.close();
     }
     
-    public class Analyzer4vec extends Analyzer
+    public static class Analyzer4vec extends Analyzer
     {
         /**
          * Default constructor.
@@ -202,153 +181,10 @@ public class Analyze4vec extends Cli implements Callable<Integer>
             ts = new FilterLemmatize(ts);
             // group compounds after lemmatization for verbal compounds
             ts = new FilterLocution(ts);
-            // last filter èrepare term to index
-            ts = new Filter4vec(ts);
             return new TokenStreamComponents(tokenizer, ts);
         }
     }
-    
-    /**
-     * A final token filter before indexation, to plug after a lemmatizer filter,
-     * providing most significant tokens for word cloud. Index lemma instead of
-     * forms when available. Strip punctuation and numbers. Positions of striped
-     * tokens are deleted. This allows simple computation of a token context (ex:
-     * span queries, co-occurrences).
-     */
-    public class Filter4vec extends TokenFilter
-    {
-        /** The term provided by the Tokenizer */
-        private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-        /** The position increment (inform it if positions are stripped) */
-        private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
-        /** A linguistic category as a short number, see {@link TagFr} */
-        private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-        /** A normalized orthographic form */
-        private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
-        /** A lemma when possible */
-        private final LemAtt lemAtt = addAttribute(LemAtt.class);
-        /** keep right position order */
-        private int skippedPositions;
-        /** Convert flags as tag to append to term */
-        static String[] suffix = new String[256];
-        static {
-            suffix[VERB.code] = "_VERB"; // 305875
-            suffix[SUB.code] = ""; // 110522
-            suffix[ADJ.code] = "_ADJ"; // 67833
-            suffix[VERBger.code] = "_VERB"; // 8207
-            suffix[ADV.code] = "_ADV"; // 2336
-            suffix[VERBppas.code] = "_VERB"; // 1107
-            suffix[VERBexpr.code] = "_VERB"; // 270
-            suffix[NUM.code] = ""; // 254
-            suffix[EXCL.code] = ""; // 166
-            suffix[VERBmod.code] = "_VERB"; // 91
-            suffix[VERBaux.code] = "_AUX"; // 89
-            suffix[PREP.code] = "_MG"; // 71
-            suffix[PROpers.code] = "_MG"; // 51
-            suffix[ADVscen.code] = "_MG"; // 33
-            suffix[DETindef.code] = "_MG"; // 31
-            suffix[PROindef.code] = "_MG"; // 28
-            suffix[PROdem.code] = "_MG"; // 27
-            suffix[ADVasp.code] = "_MG"; // 24
-            suffix[ADVdeg.code] = "_MG"; // 23
-            suffix[PROrel.code] = "_MG"; // 18
-            suffix[PROquest.code] = "_MG"; // 16
-            suffix[CONJsub.code] = "_MG"; // 16
-            suffix[DETposs.code] = "_MG"; // 15
-            suffix[ADVconj.code] = "_MG"; // 15
-            suffix[DETart.code] = "_MG"; // 11
-            suffix[DETdem.code] = "_MG"; // 10
-            suffix[CONJcoord.code] = "_MG"; // 10
-            suffix[ADVneg.code] = "_MG"; // 9
-            suffix[ADVquest.code] = "_MG"; // 4
-            suffix[DETprep.code] = "_MG"; // 4
-            suffix[DETnum.code] = "_MG"; // from locutions
-        }
 
-        /**
-         * Default constructor.
-         * @param input previous filter.
-         */
-        public Filter4vec(TokenStream input) {
-            super(input);
-        }
-
-        @Override
-        public final boolean incrementToken() throws IOException
-        {
-            // skipping positions will create holes, the count of tokens will be different
-            // from the count of positions
-            skippedPositions = 0;
-            while (input.incrementToken()) {
-                // no position for XML between words
-                if (flagsAtt.getFlags() == XML.code) {
-                    continue;
-                }
-                if (accept()) {
-                    if (skippedPositions != 0) {
-                        posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
-                    }
-                    return true;
-                }
-                skippedPositions += posIncrAtt.getPositionIncrement();
-            }
-            return false;
-        }
-
-        /**
-         * Most of the tokens are not rejected but rewrited, except punctuation.
-         * 
-         * @return true if accepted
-         */
-        protected boolean accept()
-        {
-            final int flags = flagsAtt.getFlags();
-            if (flags == TEST.code) {
-                System.out.println(termAtt + " — " + orthAtt);
-            }
-            // record an empty token at punctuation position for the rails
-            if (PUN.isPun(flags)) {
-                if (flags == PUNclause.code) {
-                }
-                else if (flags == PUNsent.code) {
-                }
-                else if (flags == PUNpara.code || flags == PUNsection.code) {
-                    // let it
-                }
-                else {
-                    // termAtt.setEmpty().append("");
-                }
-                return true;
-            }
-            // unify numbers
-            if (flags == DIGIT.code) {
-                termAtt.setEmpty().append("#");
-                return true;
-            }
-            if (!lemAtt.isEmpty()) {
-                termAtt.setEmpty().append(lemAtt);
-            }
-            else if (!orthAtt.isEmpty()) {
-                termAtt.setEmpty().append(orthAtt);
-            }
-            // else if (!orthAtt.isEmpty()) termAtt.setEmpty().append(orthAtt);
-            // String suff = suffix[flags];
-            return true;
-        }
-
-        @Override
-        public void reset() throws IOException
-        {
-            super.reset();
-        }
-
-        @Override
-        public void end() throws IOException
-        {
-            super.end();
-        }
-
-    }
     
     /**
      * Send index loading.

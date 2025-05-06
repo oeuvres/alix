@@ -84,7 +84,7 @@ public class FilterHTML extends TokenFilter
         PARA.add("item"); 
         PARA.add("li"); 
         PARA.add("p"); 
-        PARA.add("td"); 
+        PARA.add("tr"); 
     }
     /** Elements section like */
     static final CharArraySet SECTION = new CharArraySet(10, false);

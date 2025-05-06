@@ -91,7 +91,7 @@ public final class FilterLemmatize extends TokenFilter
     /** Current Flags */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** Last token was Punctuation */
-    private boolean pun = true;
+    private boolean sent = true;
     /** Store state */
     private State save;
 
@@ -122,15 +122,15 @@ public final class FilterLemmatize extends TokenFilter
         if (flags == XML.code) { // tags maybe used upper
             return true;
         }
-        // store pun event, skiping XML
+        // store sent event, skiping XML
         // was last token a sentence punctuation ?
         if (flags == PUNsection.code ||flags == PUNpara.code || flags == PUNsent.code) {
-            // record a pun event
-            this.pun = true;
+            // record a sent event
+            this.sent = true;
             return true;
         }
-        final boolean puncopy = pun;
-        this.pun = false; // chnge it now
+        final boolean sentWas = sent;
+        this.sent = false; // change it now
         // 0 length event ?
         if (termAtt.length() == 0)
             return true;
@@ -159,7 +159,7 @@ public final class FilterLemmatize extends TokenFilter
             // Roman number for more than one char, pb M<sup>elle</sup>
             if (len > 1 && n > 0) {
                 flagsAtt.setFlags(DIGIT.code);
-                lemAtt.append("" + n);
+                lemAtt.setEmpty().append("" + n);
                 return true;
             }
             // Copy orthAtt if restore is needed
@@ -189,42 +189,39 @@ public final class FilterLemmatize extends TokenFilter
                     return true;
                 }
             }
-            LexEntry entryWord = null;
-            String tag = TagFr.name(flags);
-            testAtt.toLower(); // test if lower is known
-            if (tag != null) {
-                final int testLength = testAtt.length();
-                entryWord = FrDics.word(testAtt.append("_").append(tag));
-                testAtt.setLength(testLength); // restore test length
-            }
-            if (entryWord == null) {
-                entryWord = FrDics.word(testAtt);
-            }
-            if (entryWord != null) { // known word
-                orthAtt.toLower();
-                // norm here after right casing
-                FrDics.norm(orthAtt);
-                // if not after a pun, maybe a capitalized concept État, or a name La Fontaine,
-                // or a title — Le Siècle, La Plume, La Nouvelle Revue, etc.
-                // restore initial cap
-                if (!puncopy) termAtt.buffer()[0] = c1;
-                flagsAtt.setFlags(entryWord.tag); // trust dictionary
-                if (entryWord.lem != null) {
-                    lemAtt.copy(entryWord.lem);
+            //  Start of phrase, maybe a common word to lowerCase
+            if (sentWas) {
+                LexEntry entryWord = null;
+                String tag = TagFr.name(flags);
+                testAtt.toLower(); // test if lower is known
+                if (tag != null) {
+                    final int testLength = testAtt.length();
+                    entryWord = FrDics.word(testAtt.append("_").append(tag));
+                    testAtt.setLength(testLength); // restore test length
                 }
-                // say it is known by dico
-                else {
-                    lemAtt.copy(entryWord.graph);
+                if (entryWord == null) {
+                    entryWord = FrDics.word(testAtt);
                 }
-                return true;
-            } 
-            else { 
-                // unknown word, infer it's a NAME, force Tagger errors
-                flagsAtt.setFlags(NAME.code);
-                // Normalize caps ? NAME -> Name
-                orthAtt.capitalize();
-                return true;
+                if (entryWord != null) { // known word
+                    orthAtt.toLower();
+                    // norm here after right casing
+                    FrDics.norm(orthAtt);
+                    flagsAtt.setFlags(entryWord.tag); // trust dictionary
+                    if (entryWord.lem != null) {
+                        lemAtt.copy(entryWord.lem);
+                    }
+                    // say it is known by dico
+                    else {
+                        lemAtt.copy(entryWord.graph);
+                    }
+                    return true;
+                }
             }
+            // unknown word, infer it's a NAME, force Tagger errors, maybe a book Title
+            flagsAtt.setFlags(NAME.code);
+            // Normalize caps ? NAME -> Name
+            orthAtt.capitalize();
+            return true;
         } 
         else {
             LexEntry entryWord = null;
@@ -261,6 +258,6 @@ public final class FilterLemmatize extends TokenFilter
     {
         super.reset();
         save = null;
-        pun = true;
+        sent = true;
     }
 }

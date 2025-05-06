@@ -44,8 +44,8 @@ public class TokenStreamsTest {
             + "         </h1>\n"
             + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion.</p>"
         ;
-        text = "<p>On remarque ici l’emploi de « pourquoi » dans le sens de « pour quelle raison » (voir chap. V). On voit donc combien ces deux discussions sont supérieures aux précédentes.</p>";
-        text = "s’il les prenait... en considération &gt; parce que l’acte étant &lt; à … -&gt; à l’empire stato-national.";
+        text = "<p>On remarque ici l’emploi de « Pourquoi » dans le sens de « pour quelle raison » (voir chap. V). On voit donc combien ces deux discussions sont supérieures aux précédentes.</p>";
+
 
 
         Analyzer ana = new AnalyzerAlix();
