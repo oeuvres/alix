@@ -14,7 +14,18 @@ import java.util.ArrayList;
 import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
 
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
+
+import com.github.oeuvres.alix.lucene.analysis.FilterAposHyphenFr;
+import com.github.oeuvres.alix.lucene.analysis.FilterFrPos;
+import com.github.oeuvres.alix.lucene.analysis.FilterHTML;
+import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
+import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
+import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
 import com.github.oeuvres.alix.util.Dir;
 
 import picocli.CommandLine.Parameters;
@@ -29,6 +40,39 @@ public abstract class Cli
             System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out), true, "UTF-8"));
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
+        }
+    }
+    
+    public class AnaCli extends Analyzer
+    {
+        /**
+         * Default constructor.
+         */
+        public AnaCli()
+        {
+            super();
+        }
+        
+
+
+        @SuppressWarnings("resource")
+        @Override
+        public TokenStreamComponents createComponents(String field)
+        {
+            final Tokenizer tokenizer = new TokenizerML();
+            TokenStream ts = tokenizer; // segment words
+            // interpret html tags as token events like para or section
+            ts = new FilterHTML(ts);
+            // fr split on ’ and -
+            ts = new FilterAposHyphenFr(ts);
+            // pos tagging before lemmatize
+            ts = new FilterFrPos(ts);
+            // provide lemma+pos
+            ts = new FilterLemmatize(ts);
+            // group compounds after lemmatization for verbal compounds
+            ts = new FilterLocution(ts);
+            
+            return new TokenStreamComponents(tokenizer, ts);
         }
     }
     

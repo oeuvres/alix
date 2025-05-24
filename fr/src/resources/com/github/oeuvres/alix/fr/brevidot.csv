@@ -18,8 +18,8 @@ Cf.,,,cf.
 ch.,,,chapitre
 chap.,,,chapitre
 Chap.,,,chapitre
-cit.,,,cité
-coll.,,,collection
+cit.,SUB,,
+coll.,SUB,,
 D.,NAME
 Dec.,,,décembre
 Déc.,,,décembre
@@ -32,14 +32,18 @@ ed.,,,édition
 eq.,,,équation
 éq.,,,équation
 etc.,ADV
+exp.,SUB,,
+Exp.,,,exp.
 F.,NAME
+Fam.,,,Fam.
+fam.,SUB,,
 fasc.,,,fascicule
 fev.,,,février
 Fev.,,,février
 fevr.,,,février
 Fevr.,,,février
-fig.,,,figure
-fol.,,,folio
+fig.,NAME,,
+fol.,NAME,,
 fr.,,,francs
 Fr.,,,francs
 G.,NAME
@@ -65,6 +69,7 @@ J.-C.,NAME
 K.,NAME
 L.,NAME
 liv.,,,livre
+loc. cit.,SUB
 loc.,SUB
 M.,,,monsieur
 Me.,,,maître
@@ -134,9 +139,11 @@ U.,NAME
 U.S.A.,,,USA
 V.,NAME
 v.,,,voir
+Var.,,,var.
+var.,SUB,,
 vol.,,,volume
-voy.,,,voyez
-Voy.,,,voyez
+voy.,VERB,,
+Voy.,,,voy.
 W.,NAME
 X.,NAME
 Y.,NAME

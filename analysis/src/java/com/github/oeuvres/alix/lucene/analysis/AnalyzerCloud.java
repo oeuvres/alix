@@ -66,7 +66,7 @@ public class AnalyzerCloud extends Analyzer
         ts = new FilterLemmatize(ts);
         // group compounds after lemmatization for verbal compounds
         ts = new FilterLocution(ts);
-        // last filter èrepare term to index
+        // last filter prepare term to index
         ts = new FilterCloud(ts);
         return new TokenStreamComponents(tokenizer, ts);
     }

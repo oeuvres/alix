@@ -150,8 +150,9 @@ public class FilterLocution extends TokenFilter
                 compound.append(orthAtt);
             }
             */
+            // Do not normalize, stade II, stade III
             if (tag == DIGIT.code) {
-                compound.append("#");
+                compound.append(termAtt);
             }
             else if (TagFr.isName(tag)) {
                 compound.append(termAtt);

@@ -189,38 +189,37 @@ public final class FilterLemmatize extends TokenFilter
                     return true;
                 }
             }
-            //  Start of phrase, maybe a common word to lowerCase
-            if (sentWas) {
-                LexEntry entryWord = null;
-                String tag = TagFr.name(flags);
-                testAtt.toLower(); // test if lower is known
-                if (tag != null) {
-                    final int testLength = testAtt.length();
-                    entryWord = FrDics.word(testAtt.append("_").append(tag));
-                    testAtt.setLength(testLength); // restore test length
+            // Is it a common word to lowerCase ?
+            // be careful to dialogs, — <hi>Parce que c’est fermé.</hi>
+            LexEntry entryWord = null;
+            String tag = TagFr.name(flags);
+            testAtt.toLower(); // test if lower is known
+            if (tag != null) {
+                final int testLength = testAtt.length();
+                entryWord = FrDics.word(testAtt.append("_").append(tag));
+                testAtt.setLength(testLength); // restore test length
+            }
+            if (entryWord == null) {
+                entryWord = FrDics.word(testAtt);
+            }
+            if (entryWord != null) { // known word
+                orthAtt.toLower();
+                // norm here after right casing
+                FrDics.norm(orthAtt);
+                flagsAtt.setFlags(entryWord.tag); // trust dictionary
+                if (entryWord.lem != null) {
+                    lemAtt.copy(entryWord.lem);
                 }
-                if (entryWord == null) {
-                    entryWord = FrDics.word(testAtt);
+                // say it is known by dico
+                else {
+                    lemAtt.copy(entryWord.graph);
                 }
-                if (entryWord != null) { // known word
-                    orthAtt.toLower();
-                    // norm here after right casing
-                    FrDics.norm(orthAtt);
-                    flagsAtt.setFlags(entryWord.tag); // trust dictionary
-                    if (entryWord.lem != null) {
-                        lemAtt.copy(entryWord.lem);
-                    }
-                    // say it is known by dico
-                    else {
-                        lemAtt.copy(entryWord.graph);
-                    }
-                    return true;
-                }
+                return true;
             }
             // unknown word, infer it's a NAME, force Tagger errors, maybe a book Title
             flagsAtt.setFlags(NAME.code);
-            // Normalize caps ? NAME -> Name
-            orthAtt.capitalize();
+            // Do not normalize caps ? NAME -> Name, but URSS -> Urss, IIIA, Iiia
+            // orthAtt.capitalize();
             return true;
         } 
         else {

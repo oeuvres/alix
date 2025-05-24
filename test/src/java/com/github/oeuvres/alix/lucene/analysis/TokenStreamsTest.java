@@ -30,7 +30,8 @@ public class TokenStreamsTest {
     @Test
     static public void locution() throws IOException
     {
-        File dic = new File("../../ddr_lab/install/ddr-dic.csv");
+        // File dic = new File("../../ddr_lab/install/ddr-dic.csv");
+        File dic = new File("../../piaget_labo/install/piaget-dic.csv");
         FrDics.load(dic.getCanonicalPath(), dic);
 
         String text = "";
@@ -44,11 +45,12 @@ public class TokenStreamsTest {
             + "         </h1>\n"
             + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion.</p>"
         ;
-        text = "<p>On remarque ici l’emploi de « Pourquoi » dans le sens de « pour quelle raison » (voir chap. V). On voit donc combien ces deux discussions sont supérieures aux précédentes.</p>";
+        text = "Autrement dit, le sujet du sous-stade II B raisonne sur l’inclinaison et la distance comme s’il s’agissait de deux facteurs indépendants.";
 
 
 
         Analyzer ana = new AnalyzerAlix();
+        // Analyzer ana = new AnalyzerLocution();
         analyze(ana.tokenStream("_cloud", text), text);
         ana.close();
     }
