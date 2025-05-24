@@ -358,7 +358,7 @@ public class Expressions  extends Cli implements Callable<Integer>
             }
             form.append(" ");
             if (!orthAtt.isEmpty()) form.append(orthAtt);
-            else form.append(lemAtt);
+            else form.append(termAtt);
             words++;
             if (words < 3) continue;
             IntMutable count = bigrams.get(form);

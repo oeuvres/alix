@@ -157,20 +157,21 @@ public class Chain implements Appendable, CharSequence, Cloneable, Comparable<Ch
     }
 
     @Override
-    public Chain append(final CharSequence cs)
+    public Chain append(final CharSequence chars)
     {
-        return append(cs, 0, cs.length());
+        if (chars == null) return this;
+        return append(chars, 0, chars.length());
     }
 
     @Override
-    public Chain append(CharSequence s, final int start, final int end)
+    public Chain append(CharSequence chars, final int start, final int end)
     {
-        if (s == null) {
+        if (chars == null) {
             return this;
         }
         final int len = end - start;
         ensureRight(len);
-        write(size, s, start, end);
+        write(size, chars, start, end);
         size += len;
         return this;
     }

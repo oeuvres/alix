@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
+import java.util.Map.Entry;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -26,7 +27,10 @@ import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
 import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
+import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Dir;
+import com.github.oeuvres.alix.util.IntMutable;
+import com.github.oeuvres.alix.util.Top;
 
 import picocli.CommandLine.Parameters;
 

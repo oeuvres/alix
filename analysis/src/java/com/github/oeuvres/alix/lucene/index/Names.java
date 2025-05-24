@@ -1,7 +1,6 @@
 package com.github.oeuvres.alix.lucene.index;
 
 import static com.github.oeuvres.alix.common.Flags.*;
-import static com.github.oeuvres.alix.fr.TagFr.NUM;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -95,33 +94,43 @@ public class Names  extends Cli implements Callable<Integer>
             final int flags = flagsAtt.getFlags();
             final int group = (flags & 0xF0);
             if (termAtt.isEmpty()) {
-                continue; // empty position
+                continue; // skip empty position
             }
-            if (form.isEmpty()) {
-                if (group != NAME.code) continue;
-                // start with a name
+            // candidate name, append
+            if (group == NAME.code) {
+                if (!form.isEmpty()) form.append(" ");
                 if (!orthAtt.isEmpty()) form.append(orthAtt);
                 else form.append(termAtt);
-                words = 1;
+                words++;
                 continue;
             }
-            // append next name
-            if (group == NAME.code) {
-                form.append(" ");
-                if (!orthAtt.isEmpty()) form.append(orthAtt);
-                else form.append(lemAtt);
+            // breaks
+            if (
+                    PUN.isPun(flags)
+                 || Char.isDigit(termAtt.charAt(0))
+                 || !lemAtt.isEmpty() // token known from dictionary as a word
+            ) {
+                if (form.isEmpty()) continue;
+                IntMutable count = forms.get(form);
+                if (count == null) {
+                    count = new IntMutable(0);
+                    forms.put((Chain)form.clone(), count);
+                }
+                count.inc();
+                form.setLength(0);
+                words = 0;
+            }
+            // ?
+            if (form.isEmpty()) {
+                System.out.println(termAtt);
                 continue;
             }
-            // append next not name for species
+            // Arion subfuscus ? (maybe foreign words like Piaget said)
+            form.append(" ");
             if (!orthAtt.isEmpty()) form.append(orthAtt);
-            else form.append(lemAtt);
-            IntMutable count = forms.get(form);
-            if (count == null) {
-                count = new IntMutable(0);
-                forms.put((Chain)form.clone(), count);
-            }
-            count.inc();
-            form.setLength(0);
+            else form.append(termAtt);
+            words++;
+            continue;
         }
         tokenStream.close();
     }

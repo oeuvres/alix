@@ -431,22 +431,22 @@ public class FrDics
             WORDS.remove(graph.append("_").append(tagSuff));
             return;
         }
-        // is a name
-        else if (graph.isFirstUpper()) {
-            if (!replace && NAMES.containsKey(graph)) return;
+        lem.replace('’', '\'');
+        graph.replace('’', '\'');
+        // is a name, TODO safer
+        if (graph.isFirstUpper()) {
+            if (NAMES.containsKey(graph) && !replace) return;
             LexEntry entry = new LexEntry(graph, tag, lem);
             NAMES.put(new CharsAttImpl(graph), entry);
         }
         // is a word, add an entry for GRAPH_TAG
         else {
-            lem.replace('’', '\'');
             LexEntry entry = new LexEntry(graph, tag, lem);
             if (tagSuff != null) {
                 CharsAttImpl graph_tag = new CharsAttImpl(graph).append("_").append(tagSuff);
-                if (!replace && !WORDS.containsKey(graph_tag)) WORDS.put(graph_tag, entry);
+                if (!WORDS.containsKey(graph_tag) || replace) WORDS.put(graph_tag, entry);
             }
-            if (!replace && !WORDS.containsKey(graph)) WORDS.put(new CharsAttImpl(graph), entry);
-            
+            if (!WORDS.containsKey(graph) || replace) WORDS.put(new CharsAttImpl(graph), entry);
         }
     }
 
