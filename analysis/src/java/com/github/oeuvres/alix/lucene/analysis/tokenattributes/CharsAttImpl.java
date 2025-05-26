@@ -480,7 +480,7 @@ public class CharsAttImpl extends AttributeImpl
             if (chain.length() != len)
                 return false;
             char[] test = chain.array();
-            int start = chain.start();
+            int start = chain.offset();
             for (int i = zero; i < zero + len; i++) {
                 if (test[start] != chars[i])
                     return false;

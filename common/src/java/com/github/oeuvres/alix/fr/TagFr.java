@@ -94,7 +94,9 @@ public enum TagFr implements Tag {
     /** Fiction character name */
     NAMEfict(0x49, "Personnage", "Rodogune, Chicot… (nom de personnage fictif, dictionnaire)."),
     /** title name */
-    NAMEtitle(0x4A, "Titre", " Titre d’œuvre (dictionnaire)") { },
+    NAMEtitle(0x4A, "Titre", " Titre d’œuvre (dictionnaire)"),
+    /** title name */
+    NAMEspec(0x4B, "Espèce", " Xerophila candidula"),
     /** People name */
     NAMEpeople(0x4E, "Peuple", " (nom de peuple, dictionnaire)."),
     /** God name */

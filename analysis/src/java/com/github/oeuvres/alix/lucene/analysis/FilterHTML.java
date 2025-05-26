@@ -82,6 +82,7 @@ public class FilterHTML extends TokenFilter
         PARA.add("h5");
         PARA.add("h6");
         PARA.add("item"); 
+        PARA.add("label");
         PARA.add("li"); 
         PARA.add("p"); 
         PARA.add("tr"); 

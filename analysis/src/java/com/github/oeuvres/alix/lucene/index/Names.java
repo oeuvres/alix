@@ -43,7 +43,32 @@ import picocli.CommandLine.Command;
 public class Names  extends Cli implements Callable<Integer>
 {
     HashMap<Chain, IntMutable> forms = new HashMap<>(16384);
-    Chain form = new Chain();
+    final static CharArraySet STOP = new CharArraySet(200, false);
+    static {
+        String[] words = new String[]{
+            "A' B",
+            "BC",
+            "Einstellung",
+            "IB",
+            "Ib",
+            "IIA",
+            "IIa",
+            "IIB",
+            "IIb",
+            "IIIA",
+            "IIIa",
+            "IIIB",
+            "IIIb",
+            "I-IV",
+            "Melle",
+            "Pr",
+            "The",
+        };
+        for (final String word: words) {
+            STOP.add(word);
+        }
+    }
+
 
     
     @Override
@@ -56,6 +81,7 @@ public class Names  extends Cli implements Callable<Integer>
         paths.sort(null);
         for (final Path path: paths) {
             System.err.println(path);
+            this.path = path;
             BufferedReader reader = new BufferedReader(
                 new InputStreamReader(
                     new FileInputStream(path.toFile())
@@ -81,15 +107,15 @@ public class Names  extends Cli implements Callable<Integer>
     private void analyze(final TokenStream tokenStream) throws IOException
     {
         
-
+        final Chain form = new Chain();
         final CharTermAttribute termAtt = tokenStream.addAttribute(CharTermAttribute.class);
         final FlagsAttribute flagsAtt = tokenStream.addAttribute(FlagsAttribute.class);
         final LemAtt lemAtt = tokenStream.addAttribute(LemAtt.class);
         final OrthAtt orthAtt = tokenStream.addAttribute(OrthAtt.class);
-        
         final CharsAttImpl testAtt = new CharsAttImpl();
         tokenStream.reset();
         int words = 0;
+        Chain glob = new Chain("? ?");
         while(tokenStream.incrementToken()) {
             final int flags = flagsAtt.getFlags();
             final int group = (flags & 0xF0);
@@ -97,20 +123,44 @@ public class Names  extends Cli implements Callable<Integer>
                 continue; // skip empty position
             }
             // candidate name, append
-            if (group == NAME.code) {
+            if (
+                group == NAME.code 
+                && flags != NAMEspec.code
+                && flags != NAMEplace.code
+                && flags != NAMEorg.code
+                && !Char.isDigit(termAtt.charAt(termAtt.length() - 1)) // A1
+            ) {
                 if (!form.isEmpty()) form.append(" ");
                 if (!orthAtt.isEmpty()) form.append(orthAtt);
                 else form.append(termAtt);
-                words++;
+                
+                if (STOP.contains(form.array(), form.offset(), form.length())) {
+                    form.setLength(0);
+                    words = 0;
+                }
+                else {
+                    words++;
+                }
                 continue;
             }
             // breaks
             if (
                     PUN.isPun(flags)
+                 || Char.isMath(termAtt.charAt(0)) // < >
                  || Char.isDigit(termAtt.charAt(0))
                  || !lemAtt.isEmpty() // token known from dictionary as a word
             ) {
-                if (form.isEmpty()) continue;
+                if (
+                    form.isEmpty()
+                 || form.length() == 1 // variable
+                 || form.last() == '\'' // A'
+                 || form.last() == '.' // A.
+                 || glob.glob(form) // W q
+                ) {
+                    form.setLength(0);
+                    words = 0;
+                    continue;
+                }
                 IntMutable count = forms.get(form);
                 if (count == null) {
                     count = new IntMutable(0);
@@ -119,17 +169,10 @@ public class Names  extends Cli implements Callable<Integer>
                 count.inc();
                 form.setLength(0);
                 words = 0;
-            }
-            // ?
-            if (form.isEmpty()) {
-                System.out.println(termAtt);
                 continue;
             }
-            // Arion subfuscus ? (maybe foreign words like Piaget said)
-            form.append(" ");
-            if (!orthAtt.isEmpty()) form.append(orthAtt);
-            else form.append(termAtt);
-            words++;
+            // not yet a name, append nothing
+            if (form.isEmpty()) continue;
             continue;
         }
         tokenStream.close();

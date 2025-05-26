@@ -673,7 +673,7 @@ public class Chain implements Appendable, CharSequence, Cloneable, Comparable<Ch
             return false;
         }
         // possible optimization for suffix search *suff
-        if (glob.charAt(globend) == '*') {
+        if (glob.charAt(globend - 1) == '*') {
             // TODO
         }
         int globi = globstart;
@@ -1222,7 +1222,7 @@ public class Chain implements Appendable, CharSequence, Cloneable, Comparable<Ch
      * 
      * @return internal start index of first char.
      */
-    public int start()
+    public int offset()
     {
         return zero;
     }

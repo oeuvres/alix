@@ -45,7 +45,7 @@ public class TokenStreamsTest {
             + "         </h1>\n"
             + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion.</p>"
         ;
-        text = "Autrement dit, le sujet du sous-stade II B raisonne sur l’inclinaison et la distance comme s’il s’agissait de deux facteurs indépendants.";
+        text = "Mais on peut aussi considérer <hi>p et p</hi> comme des propositions positives et négatives";
 
 
 

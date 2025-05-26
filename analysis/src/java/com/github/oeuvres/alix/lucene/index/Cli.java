@@ -47,6 +47,10 @@ public abstract class Cli
         }
     }
     
+    /** Current path processed */
+    Path path;
+
+    
     public class AnaCli extends Analyzer
     {
         /**

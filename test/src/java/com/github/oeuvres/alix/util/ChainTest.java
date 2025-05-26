@@ -19,6 +19,8 @@ public class ChainTest {
         assertTrue(glob.glob("maze"));
         assertFalse(glob.glob("mazurka"));
         assertFalse(glob.glob("amaze"));
+        glob.copy("? ?");
+        assertFalse(glob.glob("D f"));
     }
     
     @Test
