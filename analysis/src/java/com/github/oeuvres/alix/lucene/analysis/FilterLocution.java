@@ -156,7 +156,13 @@ public class FilterLocution extends TokenFilter
                 compound.append(termAtt);
             }
             else if (TagFr.isName(tag)) {
-                compound.append(termAtt);
+                // if normalized J. PIAGET
+                if (orthAtt.length() != 0) {
+                    compound.append(orthAtt);
+                }
+                else {
+                    compound.append(termAtt);
+                }
             }
             // verbs, compound key is the lemma
             else if (TagFr.isVerb(tag) && lemAtt.length() != 0) {

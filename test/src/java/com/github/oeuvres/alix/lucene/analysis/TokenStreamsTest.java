@@ -33,6 +33,8 @@ public class TokenStreamsTest {
         // File dic = new File("../../ddr_lab/install/ddr-dic.csv");
         File dic = new File("../../piaget_labo/install/piaget-dic.csv");
         FrDics.load(dic.getCanonicalPath(), dic);
+        dic = new File("../../piaget_labo/install/piaget-authors.csv");
+        FrDics.load(dic.getCanonicalPath(), dic);
 
         String text = "";
         // File file = new File("src/test/resources/article.xml");
@@ -45,7 +47,7 @@ public class TokenStreamsTest {
             + "         </h1>\n"
             + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion.</p>"
         ;
-        text = "Mais on peut aussi considérer <hi>p et p</hi> comme des propositions positives et négatives";
+        text = "Mais on peut aussi considérer J. PIAGET comme des propositions positives et négatives";
 
 
 

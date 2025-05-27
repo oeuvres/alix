@@ -169,6 +169,10 @@ public final class FilterLemmatize extends TokenFilter
             if (entryName == null) {
                 testAtt.capitalize();
                 entryName = FrDics.name(testAtt); // known name ?
+                // normalized for exist
+                if (entryName != null) {
+                    orthAtt.setLength(0).append(testAtt);
+                }
             }
             if (entryName != null) {
                 // trust dictionary

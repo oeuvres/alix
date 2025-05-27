@@ -139,15 +139,23 @@ public abstract class Cli
                 Dir.exclude(paths, glob);
             }
         }
+        // multiple dicfiles possible
         final String dicfile = props.getProperty("dicfile");
         if (dicfile != null) {
-            File dicAbs = new File(dicfile);
-            if (!dicAbs.isAbsolute()) dicAbs = new File(base, dicfile);
-            if (!dicAbs.exists()) {
-                throw new FileNotFoundException("Local dictionary file not found <entry key=\"dicfile\">" + dicfile
-                        + "</entry>, resolved as " + dicAbs.getAbsolutePath());
+            String[] dics = dicfile.split("[\n\r]+");
+            for (String dic: dics) {
+                dic = dic.trim();
+                if (dic.isBlank()) continue;
+                File dicAbs = new File(dic);
+                if (!dicAbs.isAbsolute()) dicAbs = new File(base, dic);
+                if (!dicAbs.exists()) {
+                    System.err.println("Local dictionary file not found: " + dic
+                            + " (resolved as: " + dicAbs.getAbsolutePath() + ")");
+                    continue;
+                }
+                FrDics.load(dicAbs.getCanonicalPath(), dicAbs);
+                System.err.println("Local dictionary loaded: " + dicAbs);
             }
-            FrDics.load(dicAbs.getCanonicalPath(), dicAbs);
         }
     }
 

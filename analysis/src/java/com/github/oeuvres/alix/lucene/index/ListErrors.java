@@ -104,20 +104,18 @@ public class ListErrors  extends Cli implements Callable<Integer>
         final LemAtt lemAtt = tokenStream.addAttribute(LemAtt.class);
         final OrthAtt orthAtt = tokenStream.addAttribute(OrthAtt.class);
         
-        final CharsAttImpl testAtt = new CharsAttImpl();
         tokenStream.reset();
         while(tokenStream.incrementToken()) {
             if (termAtt.isEmpty()) {
                 continue;
             }
             final int flags = flagsAtt.getFlags();
-            testAtt.wrap(termAtt.buffer(), termAtt.length());
             char lastChar = termAtt.charAt(termAtt.length() - 1);
             if (
                 nonword.get(flags)
                 || name.get(flags)
                 || !lemAtt.isEmpty()
-                || FrDics.isStop(testAtt)
+                || FrDics.isStop(termAtt)
                 || Char.isDigit(lastChar)
                 || lastChar == '\''
                 || termAtt.length() < 3
