@@ -236,7 +236,7 @@ public class FieldText extends FieldCharsAbstract
             if (indexOfSpace > 0) formId4isLoc.set(formId);
             final int indexOfUnder = chain.indexOf('_');
             if (indexOfUnder > 0) {
-                final String name = new String(chain.array(), chain.offset(indexOfUnder + 1), chain.length() - indexOfUnder - 1).intern();
+                final String name = new String(chain.buffer(), chain.offset(indexOfUnder + 1), chain.length() - indexOfUnder - 1).intern();
                 formId4tagNo[formId] = tag.code(name);
             }
         }

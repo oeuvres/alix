@@ -167,7 +167,8 @@ public final class FilterLemmatize extends TokenFilter
             // c1 = orth.charAt(0); // keep initial cap, maybe useful
             LexEntry entryName = FrDics.name(testAtt); // known name ? USSR ?
             if (entryName == null) {
-                entryName = FrDics.name(testAtt.capitalize()); // known name ?
+                testAtt.capitalize();
+                entryName = FrDics.name(testAtt); // known name ?
             }
             if (entryName != null) {
                 // trust dictionary
@@ -179,7 +180,7 @@ public final class FilterLemmatize extends TokenFilter
             // Charles-François-Bienvenu, Va-t’en, Allez-vous
             int pos = orthAtt.indexOf('-');
             if (pos > 0) {
-                int length = testAtt.length();
+                final int length = testAtt.length();
                 testAtt.setLength(pos);
                 entryName = FrDics.name(testAtt);
                 orthAtt.setLength(length); // restore length
@@ -218,7 +219,7 @@ public final class FilterLemmatize extends TokenFilter
             }
             // unknown word, infer it's a NAME, force Tagger errors, maybe a book Title
             flagsAtt.setFlags(NAME.code);
-            // Do not normalize caps ? NAME -> Name, but URSS -> Urss, IIIA, Iiia
+            // Do not normalize caps, NAME -> Name, but URSS -> Urss, IIIA, Iiia
             // orthAtt.capitalize();
             return true;
         } 

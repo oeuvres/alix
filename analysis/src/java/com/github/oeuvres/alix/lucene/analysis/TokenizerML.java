@@ -88,8 +88,6 @@ public class TokenizerML  extends Tokenizer
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** A linguistic category as a short number, see {@link TagFr} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-    /** Used as char[] wrapper for testing */
-    private final CharsAttImpl test = new CharsAttImpl();
     /** Buffer of chars, give a big size avoiding pb for  */
     private final CharacterBuffer buffer = CharacterUtils.newCharacterBuffer(2 * 1024 * 1024);
     /** Position in buffer */
@@ -286,10 +284,8 @@ public class TokenizerML  extends Tokenizer
         // final dot special case
         int len = termAtt.length();
         if (Char.isLetter(termAtt.charAt(0)) && termAtt.charAt(len - 1) == '.') {
-            test.wrap(termAtt.buffer(), termAtt.length());
-            if (FrDics.isBrevidot(test) ) {
-                // maybe normalize now
-                FrDics.norm(test, termAtt);
+            if (FrDics.isBrevidot(termAtt) ) {
+                // known word with ending dot
             }
             // one letter, abbreviation
             else if (termAtt.length() == 2) {

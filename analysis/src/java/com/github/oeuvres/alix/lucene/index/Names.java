@@ -99,6 +99,7 @@ public class Names  extends Cli implements Callable<Integer>
         System.err.println(((System.nanoTime() - time) / 1000000) + " ms.");
         int n = 0;
         for(Top.Entry<Chain> entry: top) {
+            
             System.out.println(++n + ".\t" +entry.value() + "\t" + (int)entry.score());
         }
         return 0;
@@ -134,7 +135,7 @@ public class Names  extends Cli implements Callable<Integer>
                 if (!orthAtt.isEmpty()) form.append(orthAtt);
                 else form.append(termAtt);
                 
-                if (STOP.contains(form.array(), form.offset(), form.length())) {
+                if (STOP.contains(form.buffer(), form.offset(), form.length())) {
                     form.setLength(0);
                     words = 0;
                 }

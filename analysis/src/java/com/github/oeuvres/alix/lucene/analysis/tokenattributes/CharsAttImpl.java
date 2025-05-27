@@ -436,18 +436,18 @@ public class CharsAttImpl extends AttributeImpl
      * @param suffix to test.
      * @return true if attribute ends by suffix, false otherwise.
      */
-    public int endsWith(final  CharSequence suffix)
+    public boolean endsWith(final  CharSequence suffix)
     {
         final int olen = suffix.length();
         if (olen > len)
-            return -1;
+            return false;
         int i = zero + len;
         for (int j = olen - 1; j >= zero; j--) {
             i--;
             if (chars[i] != suffix.charAt(j))
-                return -1;
+                return false;
         }
-        return i;
+        return true;
     }
 
     @Override
@@ -479,7 +479,7 @@ public class CharsAttImpl extends AttributeImpl
             Chain chain = (Chain) other;
             if (chain.length() != len)
                 return false;
-            char[] test = chain.array();
+            char[] test = chain.buffer();
             int start = chain.offset();
             for (int i = zero; i < zero + len; i++) {
                 if (test[start] != chars[i])
@@ -682,13 +682,7 @@ public class CharsAttImpl extends AttributeImpl
      */
     public final CharsAttImpl rtrim()
     {
-        while (len > 0) {
-            char c = chars[zero + len - 1];
-            if (c != ' ') break;
-            len--;
-            hash = 0;
-        }
-        return this;
+        return this.rtrim("  \t\n\r");
     }
 
     /**

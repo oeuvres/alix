@@ -48,6 +48,7 @@ import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
+import com.github.oeuvres.alix.util.Chain;
 
 /**
  * Plug behind TokenLem, take a Trie dictionary, and try to compound locutions.
@@ -67,7 +68,7 @@ public class FilterLocution extends TokenFilter
     /** A stack of states */
     private AttDeque queue;
     /** A term used to concat a compound */
-    private CharsAttImpl compound = new CharsAttImpl();
+    private Chain compound = new Chain();
     /** Simple frozen pair of Strings */
     final class Pair {
         final String search;
@@ -186,9 +187,8 @@ public class FilterLocution extends TokenFilter
             // Test another ending word, (parce qu’ => parce que)
             if (!wasEmpty && nodeType == null) {
                 for (Pair pair: endings) {
-                    final int length = compound.endsWith(pair.search);
-                    if (length < 0) continue;
-                    compound.setLength(length).append(pair.replace);
+                    if (!compound.endsWith(pair.search)) continue;
+                    compound.setLength(compound.length() - pair.search.length()).append(pair.replace);
                     nodeType = FrDics.TREELOC.get(compound);
                     break;
                 }
@@ -203,9 +203,9 @@ public class FilterLocution extends TokenFilter
             if ((nodeType & FrDics.LEAF) > 0) {
                 // get its entry
                 FrDics.norm(compound); // xx e -> 20e
-                LexEntry entry = FrDics.word(compound);
+                LexEntry entry = FrDics.word(compound.buffer(), compound.offset(), compound.length());
                 if (entry == null) {
-                    entry = FrDics.name(compound);
+                    entry = FrDics.name(compound.buffer(), compound.offset(), compound.length());
                 }
                 // known entry, find its lem
                 if (entry != null) {
