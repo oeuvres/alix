@@ -27,6 +27,8 @@ import com.github.oeuvres.alix.lucene.analysis.FilterFrPos;
 import com.github.oeuvres.alix.lucene.analysis.FilterHTML;
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
+import com.github.oeuvres.alix.lucene.analysis.FrDics;
+import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
@@ -40,7 +42,7 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
 @Command(name = "Expressions", description = "Analyse an XML/TEI corpus to output a freqlist of multiword expressions.")
-public class Names  extends Cli implements Callable<Integer>
+public class Names extends Cli implements Callable<Integer>
 {
     HashMap<Chain, IntMutable> forms = new HashMap<>(16384);
     final static CharArraySet STOP = new CharArraySet(200, false);
@@ -69,6 +71,10 @@ public class Names  extends Cli implements Callable<Integer>
         }
     }
 
+    public Names()
+    {
+        super();
+    }
 
     
     @Override
@@ -99,8 +105,11 @@ public class Names  extends Cli implements Callable<Integer>
         System.err.println(((System.nanoTime() - time) / 1000000) + " ms.");
         int n = 0;
         for(Top.Entry<Chain> entry: top) {
-            
-            System.out.println(++n + ".\t" +entry.value() + "\t" + (int)entry.score());
+            Chain value = entry.value();
+            LexEntry lex = FrDics.name(value.buffer(), value.offset(), value.length());
+            System.out.print((int)entry.score() + "\t" +value + "\t" );
+            if (lex != null) System.out.print(TagFr.name(lex.tag) );
+            System.out.print("\n");
         }
         return 0;
     }

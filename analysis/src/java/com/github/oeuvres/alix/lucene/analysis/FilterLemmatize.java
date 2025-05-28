@@ -164,10 +164,11 @@ public final class FilterLemmatize extends TokenFilter
             }
             // Copy orthAtt if restore is needed
             testAtt.copy(orthAtt);
-            // c1 = orth.charAt(0); // keep initial cap, maybe useful
+            FrDics.norm(testAtt); // try normalisation before test in dic
             LexEntry entryName = FrDics.name(testAtt); // known name ? USSR ?
             if (entryName == null) {
                 testAtt.capitalize();
+                FrDics.norm(testAtt); // try normalisation before test
                 entryName = FrDics.name(testAtt); // known name ?
                 // normalized for exist
                 if (entryName != null) {

@@ -65,6 +65,8 @@ jan.,,,janvier
 janv.,,,janvier
 Jan.,,,janvier
 Janv.,,,janvier
+journ.,REF,,
+Journ.,,,journ.
 juil.,,,juillet
 juill.,,,juillet
 Juil.,,,juillet
@@ -122,6 +124,8 @@ Q.,NAME
 quest.,REF,,
 Quest.,,,quest.
 R.,NAME
+rev.,REF,,
+Rev.,,,rev.
 S.,NAME
 sc.,REF,,
 Sect.,,,sect.

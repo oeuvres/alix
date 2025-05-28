@@ -285,6 +285,11 @@ public class Expressions  extends Cli implements Callable<Integer>
         }
     }
     
+    public Expressions()
+    {
+        super();
+    }
+    
     @Override
     public Integer call() throws Exception
     {

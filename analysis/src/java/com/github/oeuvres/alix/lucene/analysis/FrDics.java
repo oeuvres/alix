@@ -380,8 +380,8 @@ public class FrDics
     }
 
     /**
-     * Get a dictionary entry from the name dictionary
-     * from a char[] array ttribute.
+     * Get a name entry from of a dictionary
+     * with a char[] array.
      * 
      * @param att {@link CharTermAttribute} implementation.
      * @return available proper name entry for the submitted form, or null if not found.

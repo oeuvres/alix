@@ -26,11 +26,16 @@
             <artifactId>alix-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>alix-search</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-analysis-common</artifactId>
-            <version>10.2.0</version>
+            <version>10.2.1</version>
         </dependency>
         <dependency>
             <groupId>net.sf.saxon</groupId>

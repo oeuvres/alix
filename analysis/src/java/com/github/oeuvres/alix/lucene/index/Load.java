@@ -33,60 +33,43 @@
 package com.github.oeuvres.alix.lucene.index;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.InvalidPropertiesFormatException;
 import java.util.List;
-import java.util.Properties;
 import java.util.Scanner;
 import java.util.concurrent.Callable;
 
 import org.apache.lucene.index.IndexWriter;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalyzerAlix;
-import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.util.Dir;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
-import picocli.CommandLine.Parameters;
 
 /**
  * Load an XML/TEI corpus in a custom Lucene index for Alix.
  */
 @Command(name = "com.github.oeuvres.alix.cli.Load", description = "Load an XML/TEI corpus in a custom Lucene index for Alix.")
-public class Load implements Callable<Integer>
+public class Load  extends Cli implements Callable<Integer>
 {
     /** Prefix for log lines. */
     public static String APP = "Alix";
-
-    @Parameters(arity = "1..*", paramLabel = "base.xml", description = "1 or more Java/XML/properties describing a document base (label, src…)")
-    File[] conflist;
     @Option(names = { "-u", "--unsafe" }, description = "For windows filesystem, no temp lucene index")
     boolean unsafe;
     @Option(names = { "-t", "--threads" }, description = "Number of threads for indexation")
     int threads;
-    /** File globs to index, populated by parsing base properties */
-    ArrayList<Path> paths = new ArrayList<>();
-    /** Destination directory of index of a base */
-    File dstdir;
-    /** Destination name of base */
-    String dstname;
-    /** Possible local transformation for pre-indexation */
-    String xsl;
+    /** Parent directory for lucene indexes */
+    File lucenedir;
     
     /**
      * Default constructor.
      */
     public Load()
     {
-        
+        super();
     }
 
     /**
@@ -125,6 +108,7 @@ public class Load implements Callable<Integer>
         // no system properties allow to detect a linux running inside windows on
         // windows filesystem
         unsafe = os.startsWith("Windows");
+        /*
         for (final File conf : conflist) {
             dstname = conf.getName().replaceFirst("\\..+$", "");
             // in case of glob, avoid some things
@@ -136,132 +120,33 @@ public class Load implements Callable<Integer>
             long time = System.nanoTime();
             parse(conf); // populate variables
             // write index with collected base properties
-            if (unsafe) writeUnsafe(dstdir, dstname);
-            else writeSafe(dstdir, dstname);
+            if (unsafe) writeUnsafe(lucenedir, dstname);
+            else writeSafe(lucenedir, dstname);
             System.out.println(
                     "[" + APP + "] " + dstname + " indexed in " + ((System.nanoTime() - time) / 1000000) + " ms.");
-        }
+        } */
+        long time = System.nanoTime();
+        properties(conf); // populate variables
+        // write index with collected base properties
+        if (unsafe) writeUnsafe(lucenedir, properties.getProperty("name"));
+        else writeSafe(lucenedir, properties.getProperty("name"));
+        System.out.println(
+                "[" + APP + "] " + properties.getProperty("name") + " indexed in " + ((System.nanoTime() - time) / 1000000) + " ms.");
         System.out.println("Thats all folks.");
         return 0;
     }
 
-    /**
-     * Parse properties to produce an alix lucene index
-     * 
-     * @param propsFile A properties file in XML format
-     *                  {@link Properties#loadFromXML(java.io.InputStream)}.
-     * @throws IOException          I/O file system error, or required files not
-     *                              found.
-     * @throws NoSuchFieldException Properties errors.
-     */
-    public void parse(File propsFile) throws IOException, NoSuchFieldException
+    public void properties(File propsFile) throws NoSuchFieldException, IOException
     {
-        if (!propsFile.exists()) throw new FileNotFoundException(
-                "\n  [" + APP + "] " + propsFile.getAbsolutePath() + "\nProperties file not found");
-        Properties props = new Properties();
-        try {
-            props.loadFromXML(new FileInputStream(propsFile));
-        }
-        catch (InvalidPropertiesFormatException e) {
-            throw new InvalidPropertiesFormatException(
-                    "\n  [" + APP + "] " + propsFile + "\nXML error in properties file\n"
-                            + "cf. https://docs.oracle.com/javase/8/docs/api/java/util/Properties.html");
-        }
-        catch (IOException e) {
-            throw new IOException(
-                    "\n  [" + APP + "] " + propsFile.getAbsolutePath() + "\nProperties file not readable");
-        }
-
-        String prop;
-        String key;
-
-        key = "name";
-        prop = props.getProperty(key);
-        if (prop != null) {
-            dstname = prop;
-        }
-
-        // link to a separate file list
-        key = "srcfile";
-        prop = props.getProperty(key);
-        if (prop != null) {
-            File file = new File(prop);
-            if (!file.isAbsolute()) file = new File(propsFile.getParentFile(), prop);
-            if (!file.exists()) {
-                throw new FileNotFoundException("File list <entry key=\"" + key + "\">" + prop
-                        + "</entry>, resolved as " + file.getAbsolutePath());
-            }
-            File base = file.getCanonicalFile().getParentFile();
-            List<String> lines = Files.readAllLines(file.toPath());
-            for (int i = 0; i < lines.size(); i++) {
-                String glob = lines.get(i);
-                glob = Dir.globNorm(glob, base);
-                Dir.include(paths, glob);
-            }
-        }
-        // direct list
-        else {
-            String src = props.getProperty("src");
-
-            if (src == null) throw new NoSuchFieldException(
-                    "\n  [" + APP + "] " + propsFile + "\nan src entry is needed, to have path to index"
-                            + "\n<entry key=\"src\">../corpus1/*.xml;../corpus2/*.xml</entry>");
-            String[] blurf = src.split(" *[;] *|[\t ]*[\n\r]+[\t ]*");
-            // resolve globs relative to the folder of the properties field
-            final File base = propsFile.getCanonicalFile().getParentFile();
-            for (String glob : blurf) {
-                // System.out.println("[" + APP + "] process " + glob );
-                glob = Dir.globNorm(glob, base);
-                Dir.include(paths, glob);
-            }
-        }
-
-        key = "exclude";
-        prop = props.getProperty(key);
-        if (prop != null) {
-            // resolve globs relative to the folder of the properties field
-            final File base = propsFile.getCanonicalFile().getParentFile();
-            String[] globs = prop.split(" *[;] *|[\t ]*[\n\r]+[\t ]*");
-            for (String glob : globs) {
-                glob = Dir.globNorm(glob, base);
-                Dir.exclude(paths, glob);
-            }
-        }
-        
-        key = "dicfile";
-        prop = props.getProperty(key);
-        if (prop != null) {
-            File dicfile = new File(prop);
-            if (!dicfile.isAbsolute()) dicfile = new File(propsFile.getParentFile(), prop);
-            if (!dicfile.exists()) {
-                throw new FileNotFoundException("Local dictionary file not found <entry key=\"" + key + "\">" + prop
-                        + "</entry>, resolved as " + dicfile.getAbsolutePath());
-            }
-            FrDics.load(dicfile.getCanonicalPath(), dicfile);
-        }
-
-        // set a local xsl to generate alix:document
-        key = "xsl";
-        prop = props.getProperty(key);
-        if (prop != null) {
-            File file = new File(prop);
-            if (!file.isAbsolute()) file = new File(propsFile.getParentFile(), prop);
-            if (!file.exists()) {
-                throw new FileNotFoundException("XSLT file not found <entry key=\"" + key + "\">" + prop
-                        + "</entry>, resolved as " + file.getAbsolutePath());
-            }
-            xsl = file.toString();
-        }
-
-        prop = props.getProperty("dstdir");
-        if (prop != null) {
-            dstdir = new File(prop);
-            if (!dstdir.isAbsolute()) dstdir = new File(propsFile.getParentFile(), prop);
+        parse(propsFile);
+        List<String> globs = globs("lucenedir");
+        if (globs.size() > 0) {
+            lucenedir = new File(globs.getFirst());
+            System.out.println(lucenedir);
         }
         else {
-            dstdir = propsFile.getParentFile();
+            lucenedir = propsFile.getParentFile();
         }
-
     }
 
     /**
@@ -291,7 +176,7 @@ public class Load implements Callable<Integer>
      * 
      * @param name Name of the base.
      * @param path Path where to write the path index.
-     * @throws Exception ListErrors in the XML parsing.
+     * @throws Exception Unknowns in the XML parsing.
      */
     public void write(String name, Path path) throws Exception
     {
@@ -327,16 +212,16 @@ public class Load implements Callable<Integer>
      * 
      * @param dstDir Destination parent file directory.
      * @param name   Name of the index to write.
-     * @throws Exception ListErrors during XML process and Lucene indexation.
+     * @throws Exception Unknowns during XML process and Lucene indexation.
      */
     public void writeSafe(final File dstDir, final String name) throws Exception
     {
 
         // Use a tmp dir to not overwrite a working index on server
-        final File tmpDir = new File(dstdir, nameTmp(name));
+        final File tmpDir = new File(lucenedir, nameTmp(name));
         if (!ask4rmdir(tmpDir)) return;
-        File oldDir = new File(dstdir, nameOld(name));
-        File theDir = new File(dstdir, name);
+        File oldDir = new File(lucenedir, nameOld(name));
+        File theDir = new File(lucenedir, name);
         /* Register thing to do at the end */
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
@@ -368,7 +253,7 @@ public class Load implements Callable<Integer>
      * Because a bug in Microsoft.Windows filesystem with Java, impossible to have
      * the same safe indexation like for unix.
      *
-     * @param dstdir Parent destination file system directory.
+     * @param lucenedir Parent destination file system directory.
      * @param name   Name of a lucene index.
      * @throws Exception XML or Lucene erros.
      */
