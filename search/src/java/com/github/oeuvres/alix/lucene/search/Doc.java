@@ -329,11 +329,9 @@ public class Doc
      * @throws NoSuchFieldException  not a text field.
      * @throws IOException           Lucene errors.
      */
-    static public FormEnum formEnum(AlixReader alix, int docId, String field, Distrib distrib, TagFilter formFilter)
+    static public FormEnum formEnum(AlixReader alix, int docId, String field, Distrib distrib, boolean nostop)
             throws NoSuchFieldException, IOException
     {
-        boolean hasTags = (formFilter != null && formFilter.hasInfoTag());
-        boolean noStop = (formFilter != null && formFilter.get(NOSTOP));
         boolean hasDistrib = (distrib != null);
 
         // get index term stats
@@ -349,7 +347,7 @@ public class Doc
         // final long restLen = fieldText.occsAll - occsDoc;
         Terms tvek = alix.reader().termVectors().get(docId, field);
         if (tvek == null) {
-            throw new NoSuchFieldException("Missig search Vector for field=" + field + " docId=" + docId);
+            throw new NoSuchFieldException("Missing search Vector for field=" + field + " docId=" + docId);
         }
         TermsEnum termit = tvek.iterator();
         while (termit.next() != null) {
@@ -358,11 +356,8 @@ public class Doc
                 continue;
             }
             final int formId = fieldText.formId(bytes);
-            if (noStop) {
+            if (nostop) {
                 if (fieldText.isStop(formId)) continue;
-            }
-            else if (hasTags) {
-                if (!formFilter.get(fieldText.tag(formId))) continue;
             }
             if (hasDistrib) {
                 distrib.expectation(fieldText.occs(formId), fieldText.occsAll);

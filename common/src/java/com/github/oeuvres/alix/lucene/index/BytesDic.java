@@ -53,7 +53,15 @@ public class BytesDic
     /** Dictionary words as bytes. */
     private BytesRefHash dic = new BytesRefHash();
 
-    public boolean contains(BytesRef bytes) {
+    public BytesDic()
+    {
+        dic.add(new BytesRef(""));
+        dic.add(new BytesRef("#")); // default for comment
+        dic.add(new BytesRef(",")); // default separator
+    }
+    
+    public boolean contains(BytesRef bytes)
+    {
         return (dic.find(bytes) != -1);
     }
     /**
