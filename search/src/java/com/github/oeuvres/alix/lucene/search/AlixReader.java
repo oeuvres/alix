@@ -86,6 +86,11 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefHash;
+
+import com.github.oeuvres.alix.fr.TagFr;
+import com.github.oeuvres.alix.lucene.index.BytesDic;
 
 /**
  * <p>
@@ -154,6 +159,10 @@ public class AlixReader
     private FieldInfos fieldInfos;
     /** The IndexSearcher if requested */
     private IndexSearcher searcher;
+    /** Dictionary of stopwords for the index */
+    private BytesRefHash stopwords = new BytesRefHash();
+
+    
     /** Analyzer for indexation and search */
     final private Analyzer analyzer;
     /** Ways to open a lucene index */
@@ -201,6 +210,10 @@ public class AlixReader
         }
         this.analyzer = analyzer;
         this.props = new Properties();
+        stopwords.add(new BytesRef(""));
+        stopwords.add(new BytesRef("#")); // default for comment
+        stopwords.add(new BytesRef(",")); // default separator
+        BytesDic.load(stopwords, TagFr.class.getResourceAsStream("stop.csv"));
     }
 
     /**
@@ -371,6 +384,8 @@ public class AlixReader
         cache(key, fieldRail);
         return fieldRail;
     }
+    
+    
 
     /**
      * Get a frequence object.
@@ -386,6 +401,7 @@ public class AlixReader
         if (fieldText != null)
             return fieldText;
         fieldText = new FieldText(reader(), fieldName);
+        fieldText.loadStopwords(stopwords);
         cache(key, fieldText);
         return fieldText;
     }

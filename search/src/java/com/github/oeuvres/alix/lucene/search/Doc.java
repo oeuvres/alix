@@ -51,6 +51,7 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefHash;
 
 import static com.github.oeuvres.alix.common.Flags.*;
 import static com.github.oeuvres.alix.common.Names.*;
@@ -168,7 +169,7 @@ public class Doc
      * @throws IOException          Lucene errors.
      * @throws NoSuchFieldException Field doesn’t exists.
      */
-    public String contrast(final String field, final int docId2, final BytesDic stopwords) throws IOException, NoSuchFieldException
+    public String contrast(final String field, final int docId2, final BytesRefHash stopwords) throws IOException, NoSuchFieldException
     {
         return contrast(field, docId2, stopwords, false);
     }
@@ -184,7 +185,7 @@ public class Doc
      * @throws IOException          Lucene errors.
      * @throws NoSuchFieldException Field doesn’t exists.
      */
-    public String contrast(final String field, final int docId2, final BytesDic stopwords, final boolean right)
+    public String contrast(final String field, final int docId2, final BytesRefHash stopwords, final boolean right)
             throws IOException, NoSuchFieldException
     {
         String text = get(field);
@@ -207,7 +208,7 @@ public class Doc
         double max2 = Double.MIN_VALUE;
         while (termit1.next() != null) {
             term1 = termit1.term();
-            if (stopwords != null && stopwords.contains(term1)) continue;
+            if (stopwords != null && stopwords.find(term1) > -1) continue;
 
             // termit1.ord(); UnsupportedOperationException
             final int count1 = (int) termit1.totalTermFreq();
@@ -502,7 +503,7 @@ public class Doc
      * @throws IllegalAccessException 
      * @throws InstantiationException 
      */
-    public Top<String> intersect(final String field, final int docId2, final BytesDic stopwords) 
+    public Top<String> intersect(final String field, final int docId2, final BytesRefHash stopwords) 
         throws IOException, NoSuchFieldException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException
     {
         // new lucene API, not tested
@@ -521,7 +522,7 @@ public class Doc
         // loop on source search
         while ((term1 = termit1.next()) != null) {
             // filter stop word
-            if (stopwords != null && stopwords.contains(term1)) continue;
+            if (stopwords != null && stopwords.find(term1) > -1) continue;
             double count1 = termit1.totalTermFreq();
             double count2 = 0;
             // loop on other doc to find

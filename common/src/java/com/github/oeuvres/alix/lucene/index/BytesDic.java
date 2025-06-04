@@ -50,30 +50,20 @@ import org.apache.lucene.util.BytesRefHash;
  */
 public class BytesDic
 {
-    /** Dictionary words as bytes. */
-    private BytesRefHash dic = new BytesRefHash();
 
-    public BytesDic()
+    private BytesDic()
     {
-        dic.add(new BytesRef(""));
-        dic.add(new BytesRef("#")); // default for comment
-        dic.add(new BytesRef(",")); // default separator
     }
     
-    public boolean contains(BytesRef bytes)
-    {
-        return (dic.find(bytes) != -1);
-    }
     /**
      * Load a word list from an {@link InputStream}
      * @param file
      * @throws IOException
      */
-    public BytesDic load(final File file) throws IOException
+    static public void load(final BytesRefHash dic, final File file) throws IOException
     {
         Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
-        load(reader);
-        return this;
+        load(dic, reader);
     }
     
     /**
@@ -82,11 +72,10 @@ public class BytesDic
      * @param stream resource to load.
      * @throws IOException
      */
-    public BytesDic load(final InputStream stream) throws IOException
+    static public void load(final BytesRefHash dic, final InputStream stream) throws IOException
     {
         Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
-        load(reader);
-        return this;
+        load(dic, reader);
     }
     
     /**
@@ -95,7 +84,7 @@ public class BytesDic
      * @param reader reader to load.
      * @throws IOException
      */
-    public BytesDic load(Reader reader) throws IOException
+    static public void load(final BytesRefHash dic, final Reader reader) throws IOException
     {
         try (BufferedReader br = getBufferedReader(reader)) {
             String word = null;
@@ -109,7 +98,6 @@ public class BytesDic
                 dic.add(bytes);
             }
         }
-        return this;
     }
     
     /**

@@ -110,6 +110,16 @@ public abstract class Cli
             FrDics.load(dicAbs.getCanonicalPath(), dicAbs);
             System.err.println("Local dictionary loaded: " + dicAbs);
         }
+        for (final String dic: globs("stopfile")) {
+            File dicAbs = new File(dic);
+            if (!dicAbs.exists()) {
+                System.err.println("Local dictionary file not found: " + dic
+                        + " (resolved as: " + dicAbs.getAbsolutePath() + ")");
+                continue;
+            }
+            FrDics.load(dicAbs.getCanonicalPath(), dicAbs);
+            System.err.println("Local dictionary loaded: " + dicAbs);
+        }
         
         key = "xsl";
         List<String> values = globs(key);

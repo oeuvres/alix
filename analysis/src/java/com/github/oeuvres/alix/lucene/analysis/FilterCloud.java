@@ -46,6 +46,7 @@ import static com.github.oeuvres.alix.fr.TagFr.*;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
+import com.github.oeuvres.alix.util.Char;
 
 /**
  * A final token filter before indexation, to plug after a lemmatizer filter,
@@ -67,7 +68,7 @@ public class FilterCloud extends TokenFilter
     /** A lemma when possible */
     private final LemAtt lemAtt = addAttribute(LemAtt.class);
     /** keep right position order */
-    private int skippedPositions;
+    private int holes;
 
 
     /**
@@ -83,20 +84,43 @@ public class FilterCloud extends TokenFilter
     {
         // skipping positions will create holes, the count of tokens will be different
         // from the count of positions
-        skippedPositions = 0;
+        holes = 0;
         while (input.incrementToken()) {
-            // no position for XML between words
-            if (flagsAtt.getFlags() == XML.code) {
-                continue;
-            }
+            if (skip()) continue;
             if (accept()) {
-                if (skippedPositions != 0) {
-                    posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
-                }
+                if (holes != 0) posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + holes);
                 return true;
             }
-            skippedPositions += posIncrAtt.getPositionIncrement();
+            holes += posIncrAtt.getPositionIncrement();
         }
+        return false;
+    }
+    
+    /**
+     * Token to skip, without the position, different noises.
+     * @return
+     */
+    protected boolean skip()
+    {
+        final int flags = flagsAtt.getFlags();
+        // known word from dictionary, keep it
+        if (!lemAtt.isEmpty()) return false;
+        // empty
+        if (termAtt.isEmpty()) return true;
+        // no position for XML between words M<sup>elle</sup>
+        if (flags == XML.code) return true;
+        // unknown short word
+        if (termAtt.length() < 3) return true;
+        // < >
+        if (Char.isMath(termAtt.charAt(0))) return true;
+        char charLast = termAtt.charAt(termAtt.length() - 1);
+        // variable like A'
+        if (charLast == '\'') return true;
+        // variable like A.
+        if (charLast == '.' && termAtt.length() == 2) return true;
+        // variable like A4
+        if (Char.isDigit(charLast) && !Char.isDigit(termAtt.charAt(termAtt.length() - 2))) return true;
+        // default is no skip
         return false;
     }
 
@@ -121,8 +145,8 @@ public class FilterCloud extends TokenFilter
                 // let it
             }
             else {
-                // termAtt.setEmpty().append("");
             }
+            termAtt.setEmpty().append("");
             return true;
         }
         // unify numbers
@@ -131,15 +155,7 @@ public class FilterCloud extends TokenFilter
             return true;
         }
         
-        // keep flexion of substantives ? Nothing to append to term
-        /*
-        if (flags == SUB.code) {
-            if (orthAtt.length() != 0) {
-                termAtt.setEmpty().append(orthAtt);
-            }
-            return true;
-        }
-        */
+        // do not keep flexion on substantives, no semantic gain
         if (!lemAtt.isEmpty()) termAtt.setEmpty().append(lemAtt);
         else if (!orthAtt.isEmpty()) termAtt.setEmpty().append(orthAtt);
         // no more suffix

@@ -17,6 +17,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 
 import static com.github.oeuvres.alix.common.Names.*;
+
 import com.github.oeuvres.alix.lucene.search.AlixReader;
 import com.github.oeuvres.alix.lucene.search.Distrib;
 import com.github.oeuvres.alix.lucene.search.Doc;
@@ -57,39 +58,69 @@ public class Keywords implements Callable<Integer>
             new Sort(new SortField(ALIX_ID, SortField.Type.STRING))
         );
         ScoreDoc[] hits = results.scoreDocs;
-        
+
+
 
         for (ScoreDoc src : hits) {
             final int docId = src.doc;
             final Document document = storedFields.document(docId, fields);
             final String bibl = document.get(BIBL).replaceAll("<a [^>]+>", "").replaceAll("</a>", "");
-            System.out.println("<p>" + bibl + "</p>");
             
-            FormEnum forms = Doc.formEnum(alixReader, docId, TEXT_CLOUD, Distrib.OCCS, true);
-            printKeywords(forms, Distrib.FREQ); // OCCS = FREQ
-            printKeywords(forms, Distrib.TFIDF);
-            printKeywords(forms, Distrib.CHI2);
-            printKeywords(forms, Distrib.BM25);
-            printKeywords(forms, Distrib.G);
+            // freq without stop words
+            FormEnum formsNostop = null;
+            FormEnum forms = null;
+            try {
+                formsNostop = Doc.formEnum(alixReader, docId, TEXT_CLOUD, Distrib.OCCS, true);
+                forms = Doc.formEnum(alixReader, docId, TEXT_CLOUD, Distrib.OCCS, false);
+            }
+            catch (Exception e) {
+                System.err.println("[" + document.get(ALIX_ID) + "] " + bibl);
+                continue;
+            }
+            System.out.println("<h4>[" + document.get(ALIX_ID) + "] " + bibl + "</h4>");
+            printKeywords(formsNostop, Distrib.FREQ, "Fréquence");
+            printKeywords(formsNostop, Distrib.G, "G test");
+            // printKeywords(formsNostop, Distrib.TFIDF, null);
+            // printKeywords(forms, Distrib.CHI2);
+            // freq with stop words
+            printKeywords(formsNostop, Distrib.FREQ_IDF, "Fréquence * IDF");
         }
 
         return 0;
     }
     
-    private void printKeywords(FormEnum forms, Distrib distrib)
+    private void print(final String label, final String[] terms)
     {
-        forms.score(distrib);
-        forms.sort(FormEnum.Order.SCORE, 50, false);
-        boolean first = true;
         System.out.print("<p>");
-        System.out.print("<b>" + distrib.name() + "</b>: ");
+        System.out.print("<b>" + label + "</b>: ");
+        boolean first = true;
+        for (String form: terms) {
+            if (first) first = false;
+            else System.out.print(", ");
+            System.out.print(ML.escape(form));
+        }
+        System.out.println("<p>");
+    }
+    
+    private void printKeywords(final FormEnum forms, final Distrib distrib, String label)
+    {
+        if (label == null) label = distrib.name();
+        forms.score(distrib);
+        forms.sort(FormEnum.Order.SCORE, 10, false);
+        System.out.print("<p>");
+        System.out.print("<b>" + label + "</b>: ");
+        boolean first = true;
         while (forms.hasNext()) {
             forms.next();
             String form = forms.form();
             if (first) first = false;
             else System.out.print(", ");
             System.out.print(ML.escape(form));
-            System.out.print(" <small>(" + forms.freq() + ")</small>");
+            /*
+            System.out.print(" <small>(" + forms.freq());
+            // System.out.print(" — " + String.format("%.5f", forms.score()));
+            System.out.print(")</small>");
+            */
         }
         System.out.println("<p>");
     }

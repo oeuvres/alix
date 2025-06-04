@@ -47,7 +47,7 @@ public class TokenStreamsTest {
             + "         </h1>\n"
             + "         <p class=\"noindent p\">C’est souvent à la fois un plaisir et une désillusion.</p>"
         ;
-        text = "Mais on peut aussi considérer J. PIAGET comme des propositions positives et négatives";
+        text = "le cercle extérieur de diamètre <hi>B.</hi> (A’ étant alors la largeur de l’intervalle entre eux deux) selon un certain nombre de rapports <hi>A’ — A : n,</hi> jusqu’à <hi>A’ = A,</hi> puis selon un certain nombre de rapports <hi>A’ = nA.</hi>";
 
 
 

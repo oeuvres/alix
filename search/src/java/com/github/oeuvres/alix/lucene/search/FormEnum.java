@@ -652,7 +652,8 @@ public class FormEnum implements FormIterator
         if (formId4freq == null) {
             throw new IllegalArgumentException("No freqs for this dictionary to calculate score on.");
         }
-        scoreByForm = new double[maxForm];
+        if (scoreByForm == null) scoreByForm = new double[maxForm];
+        else Arrays.fill(scoreByForm, 0.0D);
         for (int formId = 0; formId < maxForm; formId++) {
             if (formId4freq[formId] < 1)
                 continue;

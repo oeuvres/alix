@@ -11,9 +11,9 @@ public enum Distrib {
         /** Average of document length */
         protected double docAvg;
         /** Classical BM25 param */
-        private final double k1 = 1.2f;
+        private final double k1 = 1.2d; // 0-3
         /** Classical BM25 param */
-        private final double b = 0.75f;
+        private final double b = 0.75d; // 1-0
         /** Cache idf for a form */
         private double idf;
     
@@ -86,6 +86,38 @@ public enum Distrib {
         }
 
     },
+    /**
+     * Log test
+     */
+    FREQ_IDF()
+    {
+        @Override
+        public void idf(final double hits, final double docsAll, final double occsAll)
+        {
+            // (docsAll - hits) is the secret to exclude function word
+            this.idf = Math.log(1.0 + (docsAll - hits + 0.5D) / (hits + 0.5D));
+        }
+        
+        @Override
+        public double score(final double freq, final double docLen)
+        {
+            if (freq < 1 || docLen < 1)
+                return 0;
+            final double Ei = expectation * docLen;
+
+            // maybe negative
+            // return idf * 2.0D * freq * Math.log(freq / Ei);
+            return idf * freq;
+        }
+
+        @Override
+        public double last(final double freq, final double docLen)
+        {
+            return score(freq, docLen);
+        }
+
+    },
+
     /** Count of occs found. */
     OCCS
     {
@@ -157,6 +189,12 @@ public enum Distrib {
     {
         return;
     }
+
+    public double idf()
+    {
+        return idf;
+    }
+
 
     /**
      * Calculate a score for a form by doc.

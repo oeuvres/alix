@@ -80,16 +80,14 @@ public class FieldText extends FieldCharsAbstract
     protected final long[] formId4occs;
     /** formId4isPun.get(formId) == true: form is punctuation. */
     private BitSet formId4isPun;
-    /** formId4isStop.get(formId) == true: form is a stop word. */
-    private BitSet formId4isStop;
+    /** formId4isStop.get(formId) == true: form is a stop word (use a growable bitSet). */
+    private java.util.BitSet formId4isStop = new java.util.BitSet();
     /** formId4flag[formId] = {@link TagFr#no()}; lexical type of form. */
     protected int[] formId4tagNo;
     /** formId4isLoc.get(formId) == true: form is a locution. */
     private BitSet formId4isLoc;
     /** Tag set TODO parameter */
     private final Tag tag = TagFr.VERB;
-    /** Preload stopword, TODO parameter */
-    private BytesDic stopwords = new BytesDic().load(TagFr.class.getResourceAsStream("stop.csv"));
     
     /**
      * Build the dictionaries and stats. Each form indexed for the field will be
@@ -194,7 +192,6 @@ public class FieldText extends FieldCharsAbstract
         maxForm = stack.size() + 1; // should be the stack of non empty term + empty term
         // here we should have all we need to affect a freq formId
         // sort forms, and reloop on them to get optimized things
-        java.util.BitSet stopRecord = new java.util.BitSet(); // record StopWords in a growable BitSet
         java.util.BitSet punRecord = new java.util.BitSet();
         formId4isLoc = new SparseFixedBitSet(maxForm); // record locutions, size of BitSet will be full
         
@@ -212,7 +209,6 @@ public class FieldText extends FieldCharsAbstract
             // if (bytes.length == 0) formId = 0; // if empty pos is counted
             formId4occs[formId] = rec.occs;
             formId4docs[formId] = rec.docs;
-            if (stopwords != null && stopwords.contains(bytes)) stopRecord.set(formId);
             // find the pos, in case of term 
             chain.setLength(0).append(bytes.bytes, bytes.offset, bytes.length);
             char c = chain.charAt(0);
@@ -239,11 +235,6 @@ public class FieldText extends FieldCharsAbstract
                 final String name = new String(chain.buffer(), chain.offset(indexOfUnder + 1), chain.length() - indexOfUnder - 1).intern();
                 formId4tagNo[formId] = tag.code(name);
             }
-        }
-        // convert a java.lang growable BitSets in fixed lucene ones
-        formId4isStop = new FixedBitSet(stopRecord.length());
-        for (int formId = stopRecord.nextSetBit(0); formId != -1; formId = stopRecord.nextSetBit(formId + 1)) {
-            formId4isStop.set(formId);
         }
         formId4isPun = new FixedBitSet(punRecord.length());
         for (int formId = punRecord.nextSetBit(0); formId != -1; formId = punRecord.nextSetBit(formId + 1)) {
@@ -792,17 +783,6 @@ public class FieldText extends FieldCharsAbstract
     }
 
     /**
-     * Return tag attached to form according to {@link TagFr}.
-     * 
-     * @param formId id of a form.
-     * @return tag for the form.
-     */
-    public int tag(int formId)
-    {
-        return formId4tagNo[formId];
-    }
-
-    /**
      * Total count of occurrences (except empty positions) for a docId.
      * 
      * @param docId lucene internal doc id.
@@ -811,6 +791,32 @@ public class FieldText extends FieldCharsAbstract
     public int occsByDoc(final int docId)
     {
         return docId4occs[docId];
+    }
+
+    /**
+     * Set a bitset of stopwords for this field.
+     * 
+     * @param stopwords
+     */
+    public void loadStopwords(BytesRefHash stopwords)
+    {
+        BytesRef bytes = new BytesRef();
+        for (int formId = 1; formId < maxForm; formId++) {
+            dic.get(formId, bytes);
+            if (stopwords.find(bytes) < 0) continue;
+            formId4isStop.set(formId);
+        }
+    }
+
+    /**
+     * Return tag attached to form according to {@link TagFr}.
+     * 
+     * @param formId id of a form.
+     * @return tag for the form.
+     */
+    public int tag(int formId)
+    {
+        return formId4tagNo[formId];
     }
 
     @Override
