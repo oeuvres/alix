@@ -22,7 +22,7 @@ XSLT 1.0 is compatible browser, PHP, Python, Java…
   xmlns:tei="http://www.tei-c.org/ns/1.0"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <!-- Import shared templates -->
-  <xsl:import href="tei_common.xsl"/>
+  <xsl:import href="../tei_common.xsl"/>
   <!-- What kind of root element to output ? html, div, article -->
   <xsl:param name="root" select="$html"/>
   <xsl:key match="/" name="split" use="'root'"/>
@@ -118,9 +118,7 @@ Sections
     <xsl:param name="from"/>
     <xsl:param name="level" select="count(ancestor::*) - 2"/>
     <section>
-      <xsl:attribute name="id">
-        <xsl:call-template name="id"/>
-      </xsl:attribute>
+      <!-- do not identify section, but titles -->
       <xsl:call-template name="atts">
         <xsl:with-param name="rend">
           <xsl:value-of select="@rend"/>
@@ -208,22 +206,21 @@ Sections
         or self::tei:salute
         or self::tei:signed
         ]">
-        <xsl:text> </xsl:text>
         <header>
           <xsl:apply-templates select="$first/preceding-sibling::node()">
             <xsl:with-param name="level" select="$level"/>
             <xsl:with-param name="from" select="$from"/>
           </xsl:apply-templates>
         </header>
-        <xsl:text>&#10;</xsl:text>
+        <!-- Do no insert spacing here, this will break auto indent -->
         <xsl:apply-templates select="$first | $first/following-sibling::node()">
-          <xsl:with-param name="level" select="$level + 1"/>
+          <xsl:with-param name="level" select="$level"/>
           <xsl:with-param name="from" select="$from"/>
         </xsl:apply-templates>
       </xsl:when>
       <xsl:otherwise>
         <xsl:apply-templates>
-          <xsl:with-param name="level" select="$level + 1"/>
+          <xsl:with-param name="level" select="$level"/>
           <xsl:with-param name="from" select="$from"/>
         </xsl:apply-templates>
       </xsl:otherwise>
@@ -285,10 +282,9 @@ Sections
   <xsl:template match="tei:head">
     <xsl:param name="from"/>
     <xsl:param name="level" select="count(ancestor::*[tei:head])"/>
+    <!-- get a slug for an idea -->
     <xsl:variable name="id">
-      <xsl:for-each select="parent::*">
-        <xsl:call-template name="id"/>
-      </xsl:for-each>
+      <xsl:apply-templates select="." mode="id"/>
     </xsl:variable>
     <xsl:variable name="name">
       <xsl:choose>
@@ -310,6 +306,10 @@ Sections
             <xsl:value-of select="../@type"/>
           </xsl:with-param>
         </xsl:call-template>
+        <xsl:attribute name="id">
+          <xsl:value-of select="$id"/>
+        </xsl:attribute>
+        <xsl:attribute name="tabindex">-1</xsl:attribute>
         <xsl:for-each select="preceding-sibling::tei:head[1][@type = 'kicker']">
           <xsl:apply-templates/>
           <br/>
@@ -317,9 +317,7 @@ Sections
         <xsl:apply-templates select="node()[not(self::tei:pb)]">
           <xsl:with-param name="from" select="$from"/>
         </xsl:apply-templates>
-        <a class="bookmark" href="#{$id}">
-          <xsl:text> </xsl:text>
-        </a>
+        <a class="bookmark" aria-hidden="true" href="#{$id}">🔗</a>
       </xsl:element>
     </xsl:if>
   </xsl:template>
@@ -431,7 +429,7 @@ Sections
       </xsl:choose>
     </xsl:variable>
     <xsl:element name="{$el}">
-      <xsl:variable name="prev" select="preceding-sibling::*[not(self::tei:pb)][1]"/>
+      <xsl:variable name="prev" select="preceding-sibling::*[not(self::tei:pb)][not(self::tei:cb)][1]"/>
       <xsl:variable name="char1" select="substring( normalize-space(.), 1, 1)"/>
       <xsl:call-template name="atts">
         <xsl:with-param name="rend">
@@ -869,21 +867,23 @@ Tables
   <!-- table  -->
   <xsl:template match="tei:table">
     <xsl:param name="from"/>
-    <table>
-      <xsl:call-template name="atts">
-        <xsl:with-param name="rend">
-          <xsl:choose>
-            <xsl:when test="@rend">
-              <xsl:value-of select="@rend"/>
-            </xsl:when>
-            <xsl:otherwise>table</xsl:otherwise>
-          </xsl:choose>
-        </xsl:with-param>
-      </xsl:call-template>
-      <xsl:apply-templates>
-        <xsl:with-param name="from" select="$from"/>
-      </xsl:apply-templates>
-    </table>
+    <div class="table-container">
+      <table>
+        <xsl:call-template name="atts">
+          <xsl:with-param name="rend">
+            <xsl:choose>
+              <xsl:when test="@rend">
+                <xsl:value-of select="@rend"/>
+              </xsl:when>
+              <xsl:otherwise>table</xsl:otherwise>
+            </xsl:choose>
+          </xsl:with-param>
+        </xsl:call-template>
+        <xsl:apply-templates>
+          <xsl:with-param name="from" select="$from"/>
+        </xsl:apply-templates>
+      </table>
+    </div>
   </xsl:template>
   <xsl:template match="tei:table/tei:head">
     <xsl:param name="from"/>
@@ -1306,7 +1306,7 @@ Tables
         <xsl:if test="$mixed != ''">
           <xsl:value-of select="$lf"/>
         </xsl:if>
-        <a class="{normalize-space($class)}">
+        <a class="{normalize-space($class)}" role="doc-pagebreak" aria-hidden="true" tabindex="-1">
           <xsl:choose>
             <!-- @xml:base ? -->
             <xsl:when test="@facs">
@@ -2164,11 +2164,11 @@ Elements block or inline level
       <xsl:otherwise>
         <xsl:variable name="el">
           <xsl:choose>
-            <xsl:when test="self::tei:label and parent::tei:figure">div</xsl:when>
+            <xsl:when test="self::tei:label and parent::tei:figure">figcaption</xsl:when>
             <xsl:when test="self::tei:label">p</xsl:when>
             <xsl:when test="self::tei:q">blockquote</xsl:when>
             <xsl:when test="self::tei:quote">blockquote</xsl:when>
-            <xsl:otherwise>div</xsl:otherwise>
+            <xsl:otherwise>p</xsl:otherwise>
           </xsl:choose>
         </xsl:variable>
         <xsl:element name="{$el}" namespace="http://www.w3.org/1999/xhtml">
@@ -2290,16 +2290,8 @@ Elements block or inline level
           <xsl:call-template name="atts">
             <xsl:with-param name="rend">
               <xsl:value-of select="@rend"/>
-              <xsl:text> </xsl:text>
-              <xsl:value-of select="translate($key, $idfrom, $idto)"/>
             </xsl:with-param>
           </xsl:call-template>
-          <xsl:attribute name="data-key">
-            <xsl:value-of select="translate($key, $idfrom, $idto)"/>
-          </xsl:attribute>
-          <xsl:attribute name="id">
-            <xsl:call-template name="id"/>
-          </xsl:attribute>
           <xsl:apply-templates/>
         </span>
       </xsl:otherwise>
