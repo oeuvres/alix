@@ -13,9 +13,9 @@
   extension-element-prefixes="exslt saxon"
   
   >
-  <xsl:import href="tei_flow_html.xsl"/>
-  <xsl:import href="tei_notes_html.xsl"/>
-  <xsl:import href="tei_toc_html.xsl"/>
+  <xsl:import href="tei_html/tei_flow_html.xsl"/>
+  <xsl:import href="tei_html/tei_notes_html.xsl"/>
+  <xsl:import href="tei_html/tei_toc_html.xsl"/>
   <!-- keep xml indent or toc will be… compact -->
   <xsl:output indent="yes" encoding="UTF-8" method="xml" omit-xml-declaration="yes"/>
   <!-- chapter split policy -->
