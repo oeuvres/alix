@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- To index TEI files in lucene with Alix LGPL http://www.gnu.org/licenses/lgpl.html 
-  © 2019 Frederic.Glorieux@fictif.org & Opteos -->
+  © 2022 Frederic.Glorieux@fictif.org & unige.ch
+  © 2019 Frederic.Glorieux@fictif.org & Opteos
+-->
 <xsl:transform version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns="http://www.w3.org/1999/xhtml" 
   xmlns:alix="https://oeuvres.github.io/alix" 
@@ -421,10 +423,10 @@
           <alix:field name="year" type="int" value="{$bookyear}"/>
         </xsl:when>
       </xsl:choose>
-      <alix:field name="bibl" type="meta">
+      <alix:field name="source" type="meta">
         <xsl:choose>
-          <xsl:when test="tei:head/tei:note[@type = 'bibl']">
-            <xsl:apply-templates select="tei:head/tei:note[@type = 'bibl']/node()"/>
+          <xsl:when test="tei:head/tei:note[@type = 'source']">
+            <xsl:apply-templates select="tei:head/tei:note[@type = 'source']/node()"/>
           </xsl:when>
           <xsl:otherwise>
             <xsl:copy-of select="$bibl-book"/>
@@ -519,5 +521,9 @@
         </xsl:otherwise>
       </xsl:choose>
     </xsl:for-each>
+  </xsl:template>
+
+  <xsl:template match="tei:div/tei:note[@type = 'bibl']">
+    <!-- metadata, no output -->
   </xsl:template>
 </xsl:transform>

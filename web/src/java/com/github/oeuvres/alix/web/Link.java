@@ -34,7 +34,7 @@ package com.github.oeuvres.alix.web;
 
 import java.lang.reflect.Field;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Automates tabs link in a navigation bar.
