@@ -1,13 +1,11 @@
 <?php
 /**
- # Alix, lexique pour lemmatisation
+# Alix, lexique pour lemmatisation du Français
 
-* Convertir les étiquettes de grammalecte au format Alix
-* ? Pas de lemme dans la colonne lemme si c’est la ligne du lemme
-* Trier par ordre alphabétique, puis par étiquette
-* Trier les homographes comme word.csv pour les étiquettes
-* Lister les homographes inconnu
-
+Verbes modaux : aimer, devoir, falloir, paraître, pouvoir, savoir, sembler, souhaiter, vouloir
+“Il se voit décerner…”
+Verbes d’aspect: aller, venir
+Verbes d’expression : admettre, affirmer, ajouter, alléguer, annoncer, arguer, asséner, assurer, attester, avancer, avertir, avouer, balbutier, bégayer, brailler, bredouiller, chuchoter, clamer, conclure, concéder, confesser, confier, confirmer, convenir, contester, crier, déclarer, démentir, dire, écrire, estimer, expliquer, exposer, garantir, grommeler, grogner, hurler, indiquer, informer, insinuer, jurer, lâcher, lancer, marteler, marmonner, maugréer, mentionner, murmurer, nier, noter, objecter, observer, opiner, ordonner, plaider, préciser, prédire, prévenir, prétendre, proposer, protester, raconter, rappeler, répéter, répliquer, répondre, révéler, rétorquer, signaler, signifier, souffler, souligner, soutenir, stipuler, suggérer, susurrer, tonner, vociférer
 */
 
 
