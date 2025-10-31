@@ -17,28 +17,23 @@ import java.util.Random;
 import com.github.oeuvres.alix.fr.French;
 
 /**
- * WordGen: runtime sampler for a character 3‑gram (k=3) model.
+ * WordGen: runtime sampler for a character 3‑gram (k=3) model with
+ * Maximum‑Likelihood (ML) and Modified Kneser–Ney (KN) smoothing variants.
  *
- * <p><b>Why you saw odd outputs</b>:
+ * <p><b>Data model</b>:
  * <ul>
- *   <li><b>Phantom final "è"</b>: source can contain decomposed sequences like <code>e</code> + U+0300 (COMBINING GRAVE).
- *       Rendering makes it look like U+00E8. This class normalizes to NFC when reading, so counts
- *       for decomposed vs precomposed forms are merged.</li>
- *   <li><b>Very long strings (no early EOS)</b>: ML trigrams can emit EOS only from contexts (a,b) that ended words in
- *       training. In a sparse lexicon (each entry count = 1), many internal contexts never precede EOS, so the chain
- *       can wander until it hits an end-capable context or the hard {@code maxLen}.</li>
- * </ul></p>
- *
- * <p>Design notes</p>
- * <ul>
- *   <li>Alphabet Σ includes BOS='^' and EOS='$'.</li>
- *   <li>Training reads <code>word{sep}count</code> lines, NFC-normalizes tokens, builds dense ML counts c3/c2/c1,
- *       then compacts nonzero rows to Walker–alias tables.</li>
- *   <li>Generation starts at (^,^). If trigram row (a,b) exists, we sample it; otherwise we back off to b's bigram row,
- *       or to the continuation unigram.</li>
- *   <li><b>final usage:</b> fields are final where immutability is intended; local references are final when they are not
- *       reassigned. This documents intent and helps with safe publication of immutable state under the JMM.</li>
+ *   <li>Alphabet Σ includes BOS='^' (id 0) and EOS='$' (id 1).</li>
+ *   <li>Training file format: <code>word{sep}count</code> per line. Tokens are trimmed and NFC‑normalized.</li>
+ *   <li>We collect dense ML counts c3[a,b,c], c2[b,c], c1[c]; totals tot3[a,b]=Σ_c c3 and tot2[b]=Σ_c c2.</li>
+ *   <li>For ML, we compact non‑zero rows into Walker–alias samplers.</li>
+ *   <li>For KN (subclass <code>KN</code>), we compute per‑row discounted weights and back‑off masses λ, and sample by
+ *       interpolation: P(c|ab) = (1−λ_ab)·P_disc(c|ab) + λ_ab·P_KN(c|b); and P_KN(c|b) = (1−λ_b)·P_disc(c|b) + λ_b·P_cont(c).</li>
  * </ul>
+ *
+ * <p><b>Why long strings can occur under ML</b>:</p>
+ * EOS can be emitted only from bigram states (a,b) that ended words in training. If the chain
+ * roams inside end‑free contexts, it stops only when it reaches an end‑capable state or hits a max length cap.
+ * KN interpolation fixes this by giving EOS non‑zero mass more broadly via back‑off.
  */
 public abstract class WordGen
 {
@@ -59,20 +54,30 @@ public abstract class WordGen
     public final short[] charToId = new short[65536];
 
     /**
-     * Primary trigram samplers per state (a,b) indexed by row = a*S + b. Row is
-     * null if the state has no observed continuations (i.e., unseen ab). Each
-     * AliasRow holds only the observed next symbols c with their ML mass.
+     * ML trigram samplers per state (a,b) indexed by row = a*S + b. Nullable rows.
      */
     public final AliasRow[] trigrams; // length S*S, may contain null rows
 
-    /** Bigram samplers per previous symbol b (may be null). */
+    /** ML bigram samplers per previous symbol b (nullable). */
     public final AliasRow[] bigrams; // length S, may contain null rows
 
-    /** Unigram continuation sampler P_cont(.), used when bigrams back off has no row. */
+    /** ML unigram sampler (frequency of symbols). */
     public final AliasRow unigrams;
 
     /** RNG used for alias sampling. */
     public final Random rng;
+
+    // ========= Retained counts (for KN and diagnostics) =========
+    /** Dense trigram counts c3[a,b,c]. */
+    protected final long[] triCounts; // size S*S*S
+    /** Dense bigram counts c2[b,c]. */
+    protected final long[] biCounts;  // size S*S
+    /** Dense unigram counts c1[c]. */
+    protected final long[] uniCounts; // size S
+    /** Row totals: tot3[a,b] = Σ_c c3[a,b,c]. */
+    protected final long[] tot3;      // size S*S
+    /** Row totals: tot2[b]   = Σ_c c2[b,c]. */
+    protected final long[] tot2;      // size S
 
     // ===================== Construction =====================
 
@@ -82,7 +87,7 @@ public abstract class WordGen
      * <p>Parsing policy:
      * <ul>
      *   <li>Skip empty or '#' comment lines.</li>
-     *   <li>Tokens are trimmed with {@code String.strip()} and normalized to NFC via {@link Normalizer}.</li>
+     *   <li>Tokens are trimmed and normalized to NFC via {@link Normalizer}.</li>
      *   <li>No case folding. Adjust upstream if desired.</li>
      *   <li>Negative / non-numeric counts are ignored.</li>
      * </ul>
@@ -104,20 +109,14 @@ public abstract class WordGen
                 if (line.isEmpty() || line.charAt(0) == '#') continue;
                 final int tab = line.indexOf(sep);
                 if (tab <= 0 || tab == line.length() - 1) continue;
-                final String raw = line.substring(0, tab).strip();
-                if (raw.isEmpty()) continue;
-                final String word = Normalizer.normalize(raw, Normalizer.Form.NFC);
-                if (!word.equals(raw)) {
-                    System.out.println("--  source <> norm: " + word + " " + raw);
-                }
+                String word = line.substring(0, tab).strip();
+                if (word.isEmpty()) continue;
+                word = Normalizer.normalize(word, Normalizer.Form.NFC);
                 final String num = line.substring(tab + 1).trim();
 
                 final long cnt;
-                try {
-                    cnt = Long.parseLong(num);
-                } catch (final NumberFormatException e) {
-                    continue;
-                }
+                try { cnt = Long.parseLong(num); }
+                catch (final NumberFormatException e) { continue; }
                 if (cnt <= 0) continue;
 
                 rows.add(new WC(word, cnt));
@@ -149,11 +148,11 @@ public abstract class WordGen
         }
 
         // 3) Dense ML counts: tri[S*S*S], bi[S*S], uni[S]
-        final long[] tri = new long[S * S * S]; // c3[a,b,c]
-        final long[] bi = new long[S * S];      // c2[b,c]
-        final long[] uni = new long[S];         // c1[c]
-        final long[] tot3 = new long[S * S];    // Σ_c c3[a,b,c]
-        final long[] tot2 = new long[S];        // Σ_c c2[b,c]
+        this.triCounts = new long[S * S * S]; // c3[a,b,c]
+        this.biCounts  = new long[S * S];     // c2[b,c]
+        this.uniCounts = new long[S];         // c1[c]
+        this.tot3      = new long[S * S];     // Σ_c c3[a,b,c]
+        this.tot2      = new long[S];         // Σ_c c2[b,c]
 
         for (final WC r : rows) {
             final String w = r.word;
@@ -173,75 +172,55 @@ public abstract class WordGen
                 final short c = id(seq[i + 2]);
 
                 final int idx3 = ((a * S) + b) * S + c;
-                tri[idx3] += cnt;
+                triCounts[idx3] += cnt;
                 tot3[a * S + b] += cnt;
 
                 final int idx2 = b * S + c;
-                bi[idx2] += cnt;
+                biCounts[idx2] += cnt;
                 tot2[b] += cnt;
 
-                uni[c] += cnt;
+                uniCounts[c] += cnt;
             }
         }
 
-        // 4) Build alias rows
+        // 4) Build ML alias rows from dense tables
         this.trigrams = new AliasRow[S * S];
         for (int ab = 0; ab < S * S; ab++) {
-            if (tot3[ab] == 0) {
-                trigrams[ab] = null;
-                continue;
-            }
+            if (tot3[ab] == 0) { trigrams[ab] = null; continue; }
             final int base = ab * S;
-
-            int nz = 0;
-            for (int c = 0; c < S; c++) if (tri[base + c] != 0) nz++;
-
+            int nz = 0; for (int c = 0; c < S; c++) if (triCounts[base + c] != 0) nz++;
             final char[] sym = new char[nz];
             final long[] cnt = new long[nz];
             for (int c = 0, k = 0; c < S; c++) {
-                final long v = tri[base + c];
-                if (v != 0) {
-                    sym[k] = idToChar[c];
-                    cnt[k++] = v;
-                }
+                final long v = triCounts[base + c];
+                if (v != 0) { sym[k] = idToChar[c]; cnt[k++] = v; }
             }
             trigrams[ab] = AliasRow.fromCounts(sym, cnt);
         }
 
         this.bigrams = new AliasRow[S];
         for (int b = 0; b < S; b++) {
-            if (tot2[b] == 0) {
-                bigrams[b] = null;
-                continue;
-            }
+            if (tot2[b] == 0) { bigrams[b] = null; continue; }
             final int base = b * S;
-            int nz = 0;
-            for (int c = 0; c < S; c++) if (bi[base + c] != 0) nz++;
+            int nz = 0; for (int c = 0; c < S; c++) if (biCounts[base + c] != 0) nz++;
             final char[] sym = new char[nz];
             final long[] cnt = new long[nz];
             for (int c = 0, k = 0; c < S; c++) {
-                final long v = bi[base + c];
-                if (v != 0) {
-                    sym[k] = idToChar[c];
-                    cnt[k++] = v;
-                }
+                final long v = biCounts[base + c];
+                if (v != 0) { sym[k] = idToChar[c]; cnt[k++] = v; }
             }
             bigrams[b] = AliasRow.fromCounts(sym, cnt);
         }
 
-        int nz = 0;
-        for (int c = 0; c < S; c++) if (uni[c] != 0) nz++;
+        int nz = 0; for (int c = 0; c < S; c++) if (uniCounts[c] != 0) nz++;
         if (nz == 0) { // defensive: EOS-only dist
             this.unigrams = new AliasRow(new char[] { EOS }, new float[] { 1f }, new short[] { 0 });
         } else {
             final char[] usym = new char[nz];
             final long[] ucnt = new long[nz];
             for (int c = 0, k = 0; c < S; c++) {
-                final long v = uni[c];
-                if (v != 0) {
-                    usym[k] = idToChar[c];
-                    ucnt[k++] = v;
-                }
+                final long v = uniCounts[c];
+                if (v != 0) { usym[k] = idToChar[c]; ucnt[k++] = v; }
             }
             this.unigrams = AliasRow.fromCounts(usym, ucnt);
         }
@@ -263,43 +242,53 @@ public abstract class WordGen
     // ----- Simple (word, count) holder -----
     private static final class WC
     {
-        final String word;
-        final long count;
-        WC(final String w, final long c) { this.word = w; this.count = c; }
+        final String word; final long count; WC(final String w, final long c) { this.word = w; this.count = c; }
     }
 
     public static final class AliasRow
     {
         public final char[] sym;
-        public final float[] prob;
-        public final short[] alias;
+        public final float[] prob;  // bucket probability (scaled so that Σ prob / n = 1)
+        public final short[] alias; // alias bucket index
         public final int size;
 
         public AliasRow(final char[] sym, final float[] prob, final short[] alias)
-        {
-            this.sym = sym;
-            this.prob = prob;
-            this.alias = alias;
-            this.size = sym.length;
-        }
+        { this.sym = sym; this.prob = prob; this.alias = alias; this.size = sym.length; }
 
+        /** Build alias table from integral counts. */
         public static AliasRow fromCounts(final char[] sym, final long[] cnt)
         {
             final int n = sym.length;
             if (n == 0) throw new IllegalArgumentException("empty row");
-            long tot = 0;
-            for (final long v : cnt) tot += v;
+            long tot = 0; for (final long v : cnt) tot += v;
+            if (tot <= 0) { // uniform fallback
+                final float[] p = new float[n]; final short[] a = new short[n];
+                Arrays.fill(p, 1f); for (short i = 0; i < n; i++) a[i] = i; return new AliasRow(sym, p, a);
+            }
+            final double[] weights = new double[n];
+            for (int i = 0; i < n; i++) weights[i] = (double) cnt[i];
+            return fromWeights(sym, weights);
+        }
+
+        /** Build alias table from arbitrary non‑negative weights. */
+        public static AliasRow fromWeights(final char[] sym, final double[] w)
+        {
+            final int n = sym.length;
+            if (n == 0) throw new IllegalArgumentException("empty row");
+            double tot = 0.0; for (double x : w) tot += x;
+            final float[] prob = new float[n];
+            final short[] alias = new short[n];
+            if (tot <= 0.0) {
+                Arrays.fill(prob, 1f); for (short i = 0; i < n; i++) alias[i] = i; return new AliasRow(sym, prob, alias);
+            }
             final double[] g = new double[n];
             final Deque<Integer> small = new ArrayDeque<>();
             final Deque<Integer> large = new ArrayDeque<>();
             for (int i = 0; i < n; i++) {
-                final double p = (tot == 0) ? 0.0 : (cnt[i] / (double) tot);
+                final double p = w[i] / tot;
                 g[i] = p * n;
                 if (g[i] < 1.0) small.add(i); else large.add(i);
             }
-
-            final float[] prob = new float[n];
-            final short[] alias = new short[n];
             while (!small.isEmpty() && !large.isEmpty()) {
                 final int s = small.removeFirst();
                 final int l = large.removeFirst();
@@ -347,30 +336,29 @@ public abstract class WordGen
             final int ab = a * S + b;
             final char c;
             if (trigrams[ab] != null) c = sampleNext(a, b);
-            else c = sample(bigrams[b] != null ? bigrams[b] : unigrams);
+            else c = sampleBackoff(b);
 
             if (id(c) == EOS_ID) {
                 if (len >= minLen) break;
                 // Enforce minLen: try a back-off draw from the same context b
-                final char forced = sample(bigrams[b] != null ? bigrams[b] : unigrams);
+                final char forced = sampleBackoff(b);
                 if (id(forced) == EOS_ID) continue; // try again next loop
                 if (len == out.length) out = Arrays.copyOf(out, out.length << 1);
                 out[len++] = forced;
-                a = b;
-                b = id(forced);
+                a = b; b = id(forced);
                 continue;
             }
 
             if (len == out.length) out = Arrays.copyOf(out, out.length << 1);
             out[len++] = c;
             if (len >= maxLen) break;
-            a = b;
-            b = id(c);
+            a = b; b = id(c);
         }
         return Arrays.copyOf(out, len);
     }
 
-    // ----- Hook: decide next char for context (a,b) where trigrams[ab] != null
+    // ----- Hooks -----
+    /** Decide next char for context (a,b) when a trigram row exists. */
     protected abstract char sampleNext(final short aId, final short bId);
 
     /**
@@ -382,6 +370,13 @@ public abstract class WordGen
      * <p>Implementation notes: O(1) expected time. Draw u in [0,1), i=floor(u*n), r=u-i.
      * Pick bucket i if r < prob[i], else alias[i].</p>
      */
+    protected char sampleBackoff(final short bId)
+    {   // ML default: bigram if present else unigram
+        final AliasRow row = (bigrams[bId] != null) ? bigrams[bId] : unigrams;
+        return sample(row);
+    }
+
+    /** Walker–alias sampling. */
     protected final char sample(final AliasRow row)
     {
         final int n = row.size;
@@ -392,49 +387,213 @@ public abstract class WordGen
         return row.sym[i];
     }
 
-    /** Maximum-likelihood (no smoothing): next ~ trigrams[a*S + b] directly. */
+    /** Maximum-likelihood (no smoothing). */
     public static final class ML extends WordGen
     {
         public ML(final Reader in, final char sep) throws IOException { super(in, sep); }
 
-        @Override
-        protected char sampleNext(final short aId, final short bId)
+        @Override protected char sampleNext(final short aId, final short bId)
         {
             AliasRow r = trigrams[aId * S + bId];
-            if (r == null) r = (bigrams[bId] != null) ? bigrams[bId] : unigrams;
+            if (r == null) return sampleBackoff(bId);
             return sample(r);
         }
     }
 
     /**
-     * Interpolated Kneser–Ney variant (stub for future work).
+     * Modified Kneser–Ney trigram model with bigram back‑off and continuation unigrams.
+     *
+     * <p>Discounts are estimated per order via Chen–Goodman (1999):
+     * D_r = r − (r+1)·Y·(n_{r+1}/n_r) for r∈{1,2,3}, with Y = n1/(n1+2 n2).
+     * We clamp to [0, r) and fall back to 0.75 if ill‑defined.</p>
      */
     public static final class KN extends WordGen
     {
-        /** Back-off weight λ₂(ab) per trigram state (a,b), in [0,1]. */
+        /** Back-off weight λ₂(ab) per trigram state (a,b). */
         public final float[] lambda2; // length S*S
+        /** Back-off weight λ₁(b) per bigram state b. */
+        public final float[] lambda1; // length S
 
-        protected KN(final Reader in, final char sep) throws IOException
+        /** Discounted trigram and bigram rows (P_disc). */
+        private final AliasRow[] triDisc; // length S*S
+        private final AliasRow[] biDisc;  // length S
+        /** Continuation unigram P_cont(.). */
+        private final AliasRow cont;
+
+        /** Mass of the discounted component (1−λ) cached per row. */
+        private final float[] triMass; // 1 - lambda2
+        private final float[] biMass;  // 1 - lambda1
+
+        public KN(final Reader in, final char sep) throws IOException
         {
             super(in, sep);
-            lambda2 = null; // TODO
+
+            // --- Estimate discounts per order ---
+            final Discounts d3 = estimateDiscounts(triCounts);
+            final Discounts d2 = estimateDiscounts(biCounts);
+
+            // --- Continuation counts for P_cont(c) ---
+            final long[] contCount = new long[S];
+            long bigramTypeTotal = 0;
+            for (int b = 0; b < S; b++) {
+                final int base = b * S;
+                for (int c = 0; c < S; c++) {
+                    if (biCounts[base + c] > 0) { contCount[c]++; bigramTypeTotal++; }
+                }
+            }
+            // contCount[c] / bigramTypeTotal = P_cont(c)
+            this.cont = buildAliasFromCounts(contCount);
+
+            // --- Build discounted bigram rows and λ₁(b) ---
+            this.lambda1 = new float[S];
+            this.biDisc = new AliasRow[S];
+            this.biMass = new float[S];
+            for (int b = 0; b < S; b++) {
+                final long rowTot = tot2[b];
+                if (rowTot == 0) { lambda1[b] = 1f; biDisc[b] = null; biMass[b] = 0f; continue; }
+                final int base = b * S;
+                int nz = 0, n1 = 0, n2 = 0, n3p = 0;
+                for (int c = 0; c < S; c++) {
+                    final long v = biCounts[base + c];
+                    if (v == 0) continue; nz++;
+                    if (v == 1) n1++; else if (v == 2) n2++; else n3p++;
+                }
+                final double D1 = d2.D1, D2 = d2.D2, D3 = d2.D3;
+                final double backMass = (D1 * n1 + D2 * n2 + D3 * n3p) / (double) rowTot;
+                this.lambda1[b] = (float) clamp01(backMass);
+                this.biMass[b] = (float) clamp01(1.0 - backMass);
+
+                final char[] sym = new char[nz];
+                final double[] w = new double[nz];
+                for (int c = 0, k = 0; c < S; c++) {
+                    final long v = biCounts[base + c];
+                    if (v == 0) continue;
+                    final double Dc = (v == 1) ? D1 : (v == 2) ? D2 : D3;
+                    final double ww = v - Dc; // discounted weight
+                    sym[k] = idToChar[c];
+                    w[k++] = Math.max(0.0, ww);
+                }
+                this.biDisc[b] = AliasRow.fromWeights(sym, w);
+            }
+
+            // --- Build discounted trigram rows and λ₂(ab) ---
+            this.lambda2 = new float[S * S];
+            this.triDisc = new AliasRow[S * S];
+            this.triMass = new float[S * S];
+            for (int ab = 0; ab < S * S; ab++) {
+                final long rowTot = tot3[ab];
+                if (rowTot == 0) { lambda2[ab] = 1f; triDisc[ab] = null; triMass[ab] = 0f; continue; }
+                final int base = ab * S;
+                int nz = 0, n1 = 0, n2 = 0, n3p = 0;
+                for (int c = 0; c < S; c++) {
+                    final long v = triCounts[base + c];
+                    if (v == 0) continue; nz++;
+                    if (v == 1) n1++; else if (v == 2) n2++; else n3p++;
+                }
+                final double D1 = d3.D1, D2 = d3.D2, D3 = d3.D3;
+                final double backMass = (D1 * n1 + D2 * n2 + D3 * n3p) / (double) rowTot;
+                this.lambda2[ab] = (float) clamp01(backMass);
+                this.triMass[ab] = (float) clamp01(1.0 - backMass);
+
+                final char[] sym = new char[nz];
+                final double[] w = new double[nz];
+                for (int c = 0, k = 0; c < S; c++) {
+                    final long v = triCounts[base + c];
+                    if (v == 0) continue;
+                    final double Dc = (v == 1) ? D1 : (v == 2) ? D2 : D3;
+                    final double ww = v - Dc; // discounted weight
+                    sym[k] = idToChar[c];
+                    w[k++] = Math.max(0.0, ww);
+                }
+                this.triDisc[ab] = AliasRow.fromWeights(sym, w);
+            }
         }
 
-        @Override
-        protected char sampleNext(final short aId, final short bId)
+        private static final class Discounts { final double D1,D2,D3; Discounts(double d1,double d2,double d3){D1=d1;D2=d2;D3=d3;} }
+
+        /** Estimate Chen–Goodman discounts (per order), with robust fallbacks. */
+        private Discounts estimateDiscounts(final long[] counts)
         {
-            AliasRow r = trigrams[aId * S + bId];
-            if (r != null) return sample(r);
-            r = (bigrams[bId] != null) ? bigrams[bId] : unigrams;
-            return sample(r);
+            long n1=0,n2=0,n3=0,n4=0;
+            for (final long v : counts) {
+                if (v==0) continue;
+                if (v==1) n1++; else if (v==2) n2++; else if (v==3) n3++; else n4++;
+            }
+            if (n1==0 || (n1+2.0*n2)==0) {
+                // Fallback to a conventional single discount 0.75
+                return new Discounts(0.75, 0.75, 0.75);
+            }
+            final double Y = n1 / (n1 + 2.0 * n2);
+            double D1 = 1.0 - 2.0 * Y * (n2 / (double) Math.max(1L,n1));
+            double D2 = 2.0 - 3.0 * Y * (n3 / (double) Math.max(1L,n2));
+            double D3 = 3.0 - 4.0 * Y * (n4 / (double) Math.max(1L,n3));
+            // Clamp and sanitize
+            D1 = clamp(D1, 0.0, 1.0);
+            D2 = clamp(D2, 0.0, 2.0);
+            D3 = clamp(D3, 0.0, 3.0);
+            // Ensure monotone-ish (not required, but helps degenerate cases)
+            if (D2 < D1) D2 = D1;
+            if (D3 < D2) D3 = D2;
+            // Convert to per-count discounts (used as v - D(count)) where count>=3 uses D3
+            // but D must be < 1 for stable positive weights; if not, fallback
+            if (D1>=1.0 || D2>=2.0 || D3>=3.0) return new Discounts(0.75,0.75,0.75);
+            return new Discounts(D1,D2,D3);
+        }
+
+        private static double clamp(final double x, final double lo, final double hi) { return Math.max(lo, Math.min(hi, x)); }
+        private static double clamp01(final double x) { return clamp(x, 0.0, 1.0); }
+
+        private AliasRow buildAliasFromCounts(final long[] counts)
+        {
+            int nz = 0; for (int c = 0; c < S; c++) if (counts[c] > 0) nz++;
+            if (nz == 0) return new AliasRow(new char[]{EOS}, new float[]{1f}, new short[]{0});
+            final char[] sym = new char[nz];
+            final long[] cnt = new long[nz];
+            for (int c = 0, k = 0; c < S; c++) if (counts[c] > 0) { sym[k] = idToChar[c]; cnt[k++] = counts[c]; }
+            return AliasRow.fromCounts(sym, cnt);
+        }
+
+        @Override protected char sampleNext(final short aId, final short bId)
+        {
+            final int ab = aId * S + bId;
+            final AliasRow tri = triDisc[ab];
+            if (tri != null) {
+                final double u = rng.nextDouble();
+                if (u < triMass[ab]) return sample(tri);        // discounted trigram part
+                return sampleBigramKN(bId);                     // back-off
+            }
+            return sampleBigramKN(bId);
+        }
+
+        @Override protected char sampleBackoff(final short bId)
+        {   // for constructor-time generate() or missing tri rows
+            return sampleBigramKN(bId);
+        }
+
+        private char sampleBigramKN(final short bId)
+        {
+            final AliasRow bi = biDisc[bId];
+            if (bi != null) {
+                final double u = rng.nextDouble();
+                if (u < biMass[bId]) return sample(bi);         // discounted bigram part
+                return sample(cont);                            // continuation unigram
+            }
+            return sample(cont);
         }
     }
 
     public static void main(final String[] args) throws Exception
     {
-        final InputStream is = French.class.getResourceAsStream("fr-google1gram.csv");
-        final Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
+        // final String lexicon = "fr-grammalecte.csv";
+        final String lexicon = "fr-google1gram.csv";
+        Reader reader = new InputStreamReader(French.class.getResourceAsStream(lexicon), StandardCharsets.UTF_8);
+        System.out.println("== ML");
         final WordGen wordML = new WordGen.ML(reader, ',');
-        for (int i = 0; i < 100; i++) System.out.println(wordML.generate());
+        for (int i = 0; i < 20; i++) System.out.println(wordML.generate());
+        // KN demo^
+        reader = new InputStreamReader(French.class.getResourceAsStream(lexicon), StandardCharsets.UTF_8);
+        System.out.println("== KN");
+        final WordGen wordKN = new WordGen.KN(reader, ',');
+        for (int i = 0; i < 20; i++) System.out.println(wordKN.generate());
     }
 }
