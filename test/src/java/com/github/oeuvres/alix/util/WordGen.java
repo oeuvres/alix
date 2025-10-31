@@ -13,18 +13,37 @@ import java.util.BitSet;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Random;
+import java.text.Normalizer;
 
 import com.github.oeuvres.alix.fr.French;
 
 /**
- * WordGen: runtime sampler for a character 3-gram (k=3) Kneser–Ney model.
+ * WordGen: runtime sampler for a character 3‑gram (k=3) model.
  *
- * It starts from two BOS markers ('^','^') and repeatedly samples the next
- * symbol using: - primary trigram row P_primary(. | a,b) with probability (1 -
- * lambda2[ab]), - back-off bigrams row P_KN(. | b) with probability
- * lambda2[ab], falling back to the continuation unigram when needed.
+ * <p><b>Notes on surprises you may see</b>:
+ * <ul>
+ *   <li><b>Words ending with unexpected characters (e.g., 'è'):</b> your
+ *       training list may contain decomposed Unicode sequences like <code>e</code> +
+ *       U+0300 COMBINING GRAVE. When rendered, they look like a precomposed
+ *       'è'. This class now normalizes input to NFC, which merges such sequences
+ *       into a single code point, making statistics consistent.</li>
+ *   <li><b>Very long outputs with no early termination:</b> with the maximum‑likelihood
+ *       trigram policy (used by {@link ML}), the model can only emit EOS ('$')
+ *       from a context (a,b) that actually ended a word in training. If the chain
+ *       keeps visiting purely internal contexts, it will only stop at the hard
+ *       {@code maxLen} cap. Use the {@link KN} variant (interpolated back‑off)
+ *       when available to make endings more likely across contexts.</li>
+ * </ul></p>
  *
- * This class does NOT train or build alias tables. It only samples.
+ * <p>Model and data representation:</p>
+ * <ul>
+ *   <li>Alphabet Σ includes a begin-of-string (BOS='^') and end-of-string (EOS='$') marker.</li>
+ *   <li>Training reads <code>word{sep}count</code> lines, builds dense count tables for
+ *       trigrams c3[a,b,c], bigrams c2[b,c], unigrams c1[c], then converts non‑zero rows
+ *       to Walker‑alias samplers.</li>
+ *   <li>Generation starts from (^,^), samples next symbols from trigrams if the state was seen;
+ *       otherwise backs off to bigrams of <em>b</em>, and if even that is unseen, to the continuation unigram.</li>
+ * </ul>
  */
 public abstract class WordGen
 {
@@ -37,7 +56,6 @@ public abstract class WordGen
     /** End of String id */
     public static final short EOS_ID = 1;
 
-    // ----- Alphabet and mapping -----
     /** Alphabet size (includes BOS and EOS). */
     public final int S;
     /** id -> char (length S). */
@@ -54,7 +72,7 @@ public abstract class WordGen
     public final AliasRow[] trigrams; // length S*S, may contain null rows
     /**
      * Bigram Kneser–Ney samplers per previous symbol b. Row is null if b has no
-     * observed continuations; in that case, fallback to {@link #unigram}.
+     * observed continuations.
      */
     public final AliasRow[] bigrams; // length S, may contain null rows
 
@@ -70,10 +88,17 @@ public abstract class WordGen
     // ===================== Construction =====================
 
     /**
-     * Build the model from a TSV reader (word \t count). No smoothing here. Parsing
-     * policy: - Skip empty or '#' comment lines. - Keep chars as-is (no
-     * normalization here; add if you need it). - Negative / non-numeric counts are
-     * ignored.
+     * Build the model from a CSV/TSV-like reader (word{sep}count).
+     *
+     * <p>Parsing policy:
+     * <ul>
+     *   <li>Skip empty or '#' comment lines.</li>
+     *   <li>Tokens are <b>trimmed</b> with {@code String.strip()} and normalized to NFC via
+     *       {@link Normalizer} to canonicalize any decomposed diacritics.</li>
+     *   <li>Keep characters as-is otherwise (no case folding; add if you need it).</li>
+     *   <li>Negative / non-numeric counts are ignored.</li>
+     * </ul>
+     * </p>
      */
     protected WordGen(final Reader in, final char sep) throws IOException
     {
@@ -92,6 +117,10 @@ public abstract class WordGen
                 int tab = line.indexOf(sep);
                 if (tab <= 0 || tab == line.length() - 1) continue;
                 String word = line.substring(0, tab);
+                // Normalize and sanitize the token: trim and NFC to merge any combining marks
+                word = word.strip();
+                if (word.isEmpty()) continue;
+                word = Normalizer.normalize(word, Normalizer.Form.NFC);
                 String num = line.substring(tab + 1).trim();
 
                 long cnt;
@@ -132,10 +161,7 @@ public abstract class WordGen
                     + charToId[BOS] + "/" + charToId[EOS]);
         }
 
-        System.out.println(idToChar);
-        System.out.println(""+rows.size()+" rows");
-        
-        // ---------- 3) Dense ML counts: tri[S*S*S], bi[S*S], uni[S] ----------
+        // 3) Dense ML counts: tri[S*S*S], bi[S*S], uni[S]
         final long[] tri = new long[S * S * S]; // c3[a,b,c]
         final long[] bi = new long[S * S]; // c2[b,c]
         final long[] uni = new long[S]; // c1[c]
@@ -262,8 +288,8 @@ public abstract class WordGen
 
         WC(String w, long c)
         {
-            word = w;
-            count = c;
+            this.word = w;
+            this.count = c;
         }
     }
 
@@ -298,14 +324,16 @@ public abstract class WordGen
                 if (g[i] < 1.0) small.add(i);
                 else large.add(i);
             }
+
             float[] prob = new float[n];
             short[] alias = new short[n];
             while (!small.isEmpty() && !large.isEmpty()) {
-                int s = small.removeLast(), l = large.removeLast();
+                int s = small.removeFirst();
+                int l = large.removeFirst();
                 prob[s] = (float) g[s];
                 alias[s] = (short) l;
-                g[l] = g[l] - (1.0 - g[s]);
-                if (g[l] < 1.0 - 1e-12) small.add(l);
+                g[l] = (g[l] + g[s]) - 1.0;
+                if (g[l] < 1.0) small.add(l);
                 else large.add(l);
             }
             for (int i : small) {
@@ -330,6 +358,14 @@ public abstract class WordGen
     public char[] generate()
     {
         return generate(1, 64); // minLen=1, maxLen=64 by default
+    }
+
+    /**
+     * Convenience: generate and return as a Java String.
+     */
+    public String generateString()
+    {
+        return new String(generate());
     }
 
     /**
@@ -360,7 +396,8 @@ public abstract class WordGen
 
             if (id(c) == EOS_ID) {
                 if (len >= minLen) break;
-                // enforce minLen by forcing continuation once
+                // Enforce minLen: try to force one non‑EOS char using a back‑off row
+                // Note: if 'forced' comes back EOS again, we simply try again in the next loop
                 char forced = sample(bigrams[b] != null ? bigrams[b] : unigrams);
                 if (id(forced) == EOS_ID) continue;
                 if (len == out.length) out = Arrays.copyOf(out, out.length << 1);
@@ -380,13 +417,18 @@ public abstract class WordGen
     }
 
     // ----- Hook: decide next char for context (a,b) where trigrams[ab] != null
-    // -----
     protected abstract char sampleNext(short aId, short bId);
 
     /**
-     * Alias sampling (Vose): - Let row have n buckets. Draw u in [0,1), i =
-     * floor(u*n), r = frac(u*n). - Pick bucket i if r < prob[i], else pick
-     * alias[i]. - Return the symbol id at the chosen bucket.
+     * Walker-alias sampling step.
+     *
+     * @param row alias table to sample
+     * @return one char sampled according to row’s multinomial
+     *
+     * <p>Implementation notes: O(1) expected time.
+     * Algorithm: - Let row have n buckets. Draw u in [0,1), i = floor(u*n), r = frac(u*n).
+     * - Pick bucket i if r < prob[i], else pick alias[i].
+     * - Return the symbol id at the chosen bucket.
      */
     protected char sample(AliasRow row)
     {
@@ -417,6 +459,10 @@ public abstract class WordGen
         }
     }
 
+    /**
+     * Interpolated Kneser–Ney variant (stub for future work).
+     * Currently not implemented; kept to document the intended design.
+     */
     public static final class KN extends WordGen
     {
 
@@ -437,7 +483,22 @@ public abstract class WordGen
         @Override
         protected char sampleNext(short aId, short bId)
         {
-            // TODO Auto-generated method stub
+            // TODO KN
+            AliasRow row = trigrams[aId * S + bId];
+            if (row != null) return sample(row);
+            row = (bigrams[bId] != null) ? bigrams[bId] : unigrams;
+            return sample(row);
+        }
+
+        // TODO: reserveDiscountMass() etc.
+
+        /**
+         * KN mixing: sample next symbol with probability (1-λ₂) from trigram, with
+         * λ₂ from bigram/unigram backoff; use RNG to flip the coin.
+         */
+        protected char sampleInterpolate(short aId, short bId)
+        {
+            // TODO
             return 0;
         }
 
