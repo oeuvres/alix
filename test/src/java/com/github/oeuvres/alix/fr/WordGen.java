@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.util;
+package com.github.oeuvres.alix.fr;
 
 import java.io.BufferedReader;
 import java.io.IOException;

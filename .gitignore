@@ -15,3 +15,5 @@ buildNumber.properties
 .classpath
 .project
 .~*
+test/src/java/com/github/oeuvres/alix/fr/affix_miner_java_prefix_suffix_stem_extraction_from_lemma_udpos_count.java
+test/stemming/
