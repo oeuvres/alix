@@ -30,876 +30,153 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.github.oeuvres.alix.util;
 
+import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CoderResult;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.LinkedList;
-
 
 /**
- * <p>
- * A mutable string implementation that grows on the right ({@link Appendable},
- * but also, on the left {@link #prepend(char)}.
- * </p>
-
- * <p>
- * The same internal char array could be shared by multiple Chain instances
- * (with different offset and length). Some efficient methods are provided, for
- * example, searching by prefix and/or suffix {@link #glob(CharSequence)}.
- * </p>
+ * Mutable {@link CharSequence} backed by a growable {@code char[]} with slack
+ * on both sides (gap-buffer style). Supports amortized O(1) append and prepend
+ * by reserving left or right capacity.
+ *
+ * <h3>State &amp; invariants</h3>
+ * <ul>
+ * <li>{@code chars}: backing array</li>
+ * <li>{@code zero}: logical start index into {@code chars}</li>
+ * <li>{@code length}: logical length</li>
+ * <li>{@code hash}: cached hashCode (0 means “dirty”)</li>
+ * <li>Invariant: {@code 0 <= zero <= zero+length <= chars.length}</li>
+ * </ul>
+ *
+ * <h3>Growth</h3> {@link #ensureLeft(int)} and {@link #ensureRight(int)}
+ * allocate using {@code Calcul.nextSquare(int)} and reposition content as
+ * needed.
+ *
+ * <h3>Sharing &amp; retention</h3> {@link #subSequence(int, int)} returns a
+ * <em>view</em> (no copy) over the same array; this can retain a large array.
+ * Use {@link #compact()} to drop slack when needed.
+ *
+ * <h3>Thread-safety</h3> Not thread-safe.
+ *
+ * <h3>Complexity (amortized)</h3> append/prepend O(1); charAt O(1);
+ * equals/compare O(n).
  */
 public class Chain implements Appendable, CharSequence, Cloneable, Comparable<CharSequence>
 {
-    /** The characters */
+
+    /** Backing characters. */
     private char[] chars;
-    /** Number of characters used */
+
+    /** Logical length. */
     private int length = 0;
-    /** Start index of the String in the chars */
+
+    /** Logical start inside {@link #chars}. */
     private int zero = 0;
-    /** Cache the hash code for the string */
+
+    /** Cached hash (0 = recompute on next {@link #hashCode()}). */
     private int hash = 0;
 
+    /** Stack of marks */
+    private int[] markStack; // lazily allocated
+
+    /** Pointer in markStack */
+    private int markSp = 0;
+
     /**
-     * Empty constructor, value will be set later
+     * Construct an empty chain with default capacity (16).
      */
-    public Chain() {
-        chars = new char[16];
+    public Chain()
+    {
+        this.chars = new char[16];
+        this.zero = 0;
+        this.length = 0;
     }
 
     /**
-     * Back the chain to an external char array (no copy).
-     * 
-     * @param src      Source char array.
-     * @param offset  Offset index where a string start.
-     * @param length    Length of the string.
+     * Construct a view over an existing array, without copying.
+     *
+     * @param src    source array
+     * @param offset starting index in {@code src}
+     * @param length number of characters from {@code offset}
+     * @throws StringIndexOutOfBoundsException if bounds are invalid
      */
-    public Chain(final char[] src, final int offset, final int length) {
-        if (offset < 0)
-            throw new StringIndexOutOfBoundsException("offset=" + offset + " < 0");
-        if (length < 0)
-            throw new StringIndexOutOfBoundsException("length=" + length + " < 0");
-        if (offset >= src.length)
-            throw new StringIndexOutOfBoundsException("offset=" + offset + ">= length=" + src.length);
-        if (offset + length > src.length)
-            throw new StringIndexOutOfBoundsException("start+length=" + offset + length + "> length=" + src.length);
+    public Chain(final char[] src, final int offset, final int length)
+    {
+        if (offset < 0) throw new StringIndexOutOfBoundsException("offset=" + offset + " < 0");
+        if (length < 0) throw new StringIndexOutOfBoundsException("length=" + length + " < 0");
+        if (offset > src.length)
+            throw new StringIndexOutOfBoundsException("offset=" + offset + " > src.length=" + src.length);
+        if (offset + length > src.length) throw new StringIndexOutOfBoundsException(
+                "offset+length=" + (offset + length) + " > src.length=" + src.length);
         this.chars = src;
         this.zero = offset;
         this.length = length;
     }
 
     /**
-     * Construct a chain by copy of a char sequence.
-     * 
-     * @param cs Char sequence (String, but also String buffers or builders).
-     */
-    public Chain(final CharSequence cs) {
-        this.chars = new char[cs.length()];
-        copy(cs, 0, cs.length());
-    }
-
-    /**
-     * Construct a chain by copy of a section of char sequence (String, but also
-     * String buffers or builders)
-     * 
-     * @param cs    a char sequence (String, but also String buffers or builders)
-     * @param start start offset index from source string
-     * @param len   number of chars from offset
-     */
-    public Chain(final CharSequence cs, final int start, final int len) {
-        this.chars = new char[len - start];
-        copy(cs, start, len);
-    }
-
-    /**
-     * Append a character.
-     * 
-     * @param c Char to append.
-     * @return the Chain object for chaining
-     */
-    @Override
-    public Chain append(final char c)
-    {
-        ensureRight(1);
-        chars[zero + length] = c;
-        length++;
-        return this;
-    }
-
-    /**
-     * Append a copy of a span of a char array.
-     * 
-     * @param  src     Source char array.
-     * @param  offset  Start index of chars to append.
-     * @param  length  Amount of chars to append from.
-     * @return This Chain object to chain methods.
-     */
-    public Chain append(final char[] src, final int offset, final int length)
-    {
-        ensureRight(length);
-        System.arraycopy(src, offset, this.chars, this.length, length);
-        this.length += length;
-        return this;
-    }
-
-    /**
-     * Append a chain.
-     * 
-     * @param chain Source chain to append.
-     * @return the Chain object for chaining
-     */
-    public Chain append(final Chain chain)
-    {
-        ensureRight(chain.length);
-        System.arraycopy(chain.chars, chain.zero, chars, zero + this.length, chain.length);
-        this.length += chain.length;
-        return this;
-    }
-
-    @Override
-    public Chain append(final CharSequence chars)
-    {
-        if (chars == null) return this;
-        return append(chars, 0, chars.length());
-    }
-
-    @Override
-    public Chain append(final CharSequence chars, final int start, final int end)
-    {
-        if (chars == null) {
-            return this;
-        }
-        final int len = end - start;
-        ensureRight(len);
-        write(this.length, chars, start, end);
-        this.length += len;
-        return this;
-    }
-    
-    /**
-     * Append utf-8 bytes.
-     * 
-     * @param bytes The bytes to be decoded into chars.
-     * @param offset The index of the first byte to decode.
-     * @param length The number of bytes to decode.
-     * @return This Chain object for chaining.
-     */
-    public Chain append(final byte[] bytes, final int offset, final int length)
-    {
-        ensureRight(length);
-        final int added = UTF8toUTF16(bytes, offset, length, chars, zero + this.length);
-        this.length += added;
-        return this;
-    }
-
-    /**
-     * Same as {@link org.apache.lucene.analysis.tokenattributes.CharTermAttribute#buffer()}, 
-     * Return a pointer on the internal char array.
-     * 
-     * @return The internal char array.
-     */
-    public char[] buffer()
-    {
-        return this.chars;
-    }
-
-    /**
-     * Try to capitalize (initial capital only) decently, according to some rules
-     * available in latin language. ex: ÉTATS-UNIS -&gt; États-Unis.
-     * 
-     * @return This Chain object for chaining
-     */
-    public Chain capitalize()
-    {
-        hash = 0;
-        char last;
-        char c = chars[zero];
-        if (Char.isLowerCase(c))
-            chars[zero] = Character.toUpperCase(c);
-        for (int i = zero + 1; i < this.length; i++) {
-            last = c;
-            c = chars[i];
-            if (last == '-' || last == '.' || last == '\'' || last == '’' || last == ' ') {
-                if (Char.isLowerCase(c))
-                    chars[i] = Character.toUpperCase(c);
-            } else {
-                if (Char.isUpperCase(c))
-                    chars[i] = Character.toLowerCase(c);
-            }
-        }
-        return this;
-    }
-
-    @Override
-    public char charAt(final int index)
-    {
-        if ((index < 0) || (index >= this.length)) { 
-            throw new StringIndexOutOfBoundsException(index); 
-        }
-        return this.chars[zero + index];
-    }
-
-    @Override
-    public Object clone() {
-        Chain cloned;
-        try {
-            cloned = (Chain) super.clone();
-        } 
-        catch (CloneNotSupportedException e) {
-            throw new RuntimeException(e);
-        }
-        cloned.chars = this.chars.clone(); // Ensure deep copy
-        return cloned;
-    }
-    /**
-     * HashMaps maybe optimized by ordered lists in buckets. Do not use as a nice
-     * orthographic ordering.
-     */
-    @Override
-    public int compareTo(final CharSequence cs)
-    {
-        if (cs instanceof Chain) {
-            Chain oChain = ((Chain)cs);
-            char v1[] = chars;
-            char v2[] = oChain.chars;
-            int k1 = zero;
-            int k2 = oChain.zero;
-            int lim1 = k1 + Math.min(this.length, oChain.length);
-            while (k1 < lim1) {
-                char c1 = v1[k1];
-                char c2 = v2[k2];
-                if (c1 != c2) {
-                    return c1 - c2;
-                }
-                k1++;
-                k2++;
-            }
-            return this.length - oChain.length;
-        }
-        
-        char[] chars = this.chars; // localize
-        int ichars = zero;
-        int istring = 0;
-        int lim = Math.min(this.length, cs.length());
-        while (istring < lim) {
-            char c1 = chars[ichars];
-            char c2 = cs.charAt(istring);
-            if (c1 != c2) {
-                return c1 - c2;
-            }
-            ichars++;
-            istring++;
-        }
-        return this.length - cs.length();
-    }
-
-    /**
-     * Is a char present in char sequence ?
-     * @param c Char to search.
-     * @return True if char found at least one time, false if not found.
-     */
-    public boolean contains(final char c)
-    {
-        for (int i = zero + 1; i < this.length; i++) {
-            if (c == chars[i])
-                return true;
-        }
-        return false;
-    }
-
-    /**
-     * Replace Chain content by a copy af a String.
-     * 
-     * @param cs a char sequence
-     * @return This Chain object to chain methods.
-     */
-    public Chain copy(final CharSequence cs)
-    {
-        return copy(cs, 0, cs.length());
-    }
-
-    /**
-     * Replace Chain content by a span of String
-     * 
-     * @param cs     a char sequence
-     * @param offset index of the string from where to copy chars
-     * @param length number of chars to copy
-     * @return the Chain object for chaining, or null if the String provided is null
-     *         (for testing)
-     */
-    public Chain copy(final CharSequence cs, int offset, int length)
-    {
-        if (cs == null) {
-            return null;
-        }
-        this.zero = 0;
-        this.hash = 0;
-        this.length = length;
-        
-        if (offset < 0)
-            throw new StringIndexOutOfBoundsException("offset=" + offset +" < 0");
-        if (offset >= cs.length())
-            throw new StringIndexOutOfBoundsException("offset=" + offset + ">= cs.length()=" + cs.length());
-        if (offset + length > cs.length())
-            throw new StringIndexOutOfBoundsException("offset+length=" + (offset + length) + ">= cs.length()=" + cs.length());
-
-        
-        if (length <= 0) {
-            this.length = 0;
-            return this;
-        }
-        if (length > this.length) {
-            ensureRight(length - this.length);
-        }
-        for (int i = zero, limit = zero + length; i < limit; i++) {
-            chars[i] = cs.charAt(offset++);
-        }
-        // slower value = s.toCharArray(); size = value.length;
-        return this;
-    }
-
-    /**
-     * Replace Chain content by copy of a char array, 2 time faster than String
-     * 
-     * @param a text as char array
-     * @return the Chain object for chaining
-     */
-    public Chain copy(final char[] a)
-    {
-        return copy(a, 0, a.length);
-    }
-
-    /**
-     * Replace Chain content by a span of a char array.
-     * 
-     * @param a      text as char array
-     * @param offset  start index of the string from where to copy chars
-     * @param length number of chars to copy
-     * @return the Chain object for chaining
-     */
-    public Chain copy(final char[] a, int offset, int length)
-    {
-        if (offset < 0)
-            throw new StringIndexOutOfBoundsException("offset=" + offset +" < 0");
-        if (offset >= a.length)
-            throw new StringIndexOutOfBoundsException("offset=" + offset + ">= a.length=" + a.length);
-        if (offset + length > a.length)
-            throw new StringIndexOutOfBoundsException("offset+length=" + (offset + length) + ">= a.length=" + a.length);
-        
-        // copy restart zero index
-        this.zero = 0;
-        this.hash = 0;
-        this.length = length;
-        if (this.zero + length > chars.length)
-            chars = new char[this.zero + length];
-        System.arraycopy(a, offset, chars, this.zero, length);
-        return this;
-    }
-
-    /**
-     * Replace this chain content by a copy of a chain (keep allocated memory if
-     * enough).
-     * 
-     * @param chain The chain to copy.
-     * @return This Chain object to chain methods.
-     */
-    public Chain copy(Chain chain)
-    {
-        final int dstLength = chain.chars.length;
-        if (chain.chars.length > chars.length) {
-            this.chars = new char[dstLength];
-        }
-        System.arraycopy(chain.chars, 0, chars, 0, dstLength);
-        this.zero = chain.zero;
-        this.length = chain.length;
-        return this;
-    }
-
-    /**
-     * Test an ending char.
-     * 
-     * @param c char to test.
-     * @return true if last char == c, false otherwise.
-     */
-    public boolean endsWith(final char c)
-    {
-        if (this.length < 1)
-            return false;
-        return (chars[zero + this.length - 1] == c);
-    }
-
-    /**
-     * Test suffix (substring at end).
-     * 
-     * @param suffix a char sequence to test at end of Chain.
-     * @return true if the Chain ends by suffix.
-     */
-    public boolean endsWith(final CharSequence suffix)
-    {
-        int lim = suffix.length();
-        if (lim > this.length)
-            return false;
-        for (int i = 0; i < lim; i++) {
-            if (suffix.charAt(lim - 1 - i) != chars[zero + this.length - 1 - i])
-                return false;
-        }
-        return true;
-    }
-
-    /**
-     * Ensure capacity of underlying char array for appending to start. Progression
-     * is next power of 2.
-     * 
-     * @param amount Amount of chars to ensure.
-     * @return True if char array has grown, false otherwise.
-     */
-    private boolean ensureLeft(int amount)
-    {
-        hash = 0; // reset hashcode on each write operation
-        if (amount <= zero) {
-            return false; // enough space, do nothing
-        }
-        final int newLength = Calcul.nextSquare(amount + this.length + 1);
-        char[] a = new char[newLength];
-        int newStart = amount + (newLength - this.length - amount) / 2;
-        System.arraycopy(chars, zero, a, newStart, this.length);
-        this.chars = a;
-        this.zero = newStart;
-        return true;
-    }
-
-    /**
-     * Ensure capacity of underlying char array for appending to end. Progression is
-     * next power of 2.
-     * 
-     * @param amount Amount of chars to ensure.
-     * @return True if char array has grown, false otherwise.
-     */
-    private boolean ensureRight(int amount)
-    {
-        hash = 0; // reset hashcode on each write operation
-        if ((zero + this.length + amount) <= chars.length) {
-            return false; // enough space, do nothing
-        }
-        final int newLength = Calcul.nextSquare(zero + this.length + amount);
-        /*
-         * char[] a = new char[newLength]; System.arraycopy(chars, 0, a, 0,
-         * chars.length); chars = a;
-         */
-        chars = Arrays.copyOf(chars, newLength);
-        return true;
-    }
-
-    @Override
-    public boolean equals(final Object o)
-    {
-        if (this == o)
-            return true;
-        char[] test;
-        if (o instanceof Chain) {
-            Chain oChain = (Chain) o;
-            if (oChain.length != this.length)
-                return false;
-            // hashcode already calculated, if different, not same strings
-            if (hash != 0 && oChain.hash != 0 && hash != oChain.hash)
-                return false;
-            test = oChain.chars;
-            for (int i = 0; i < this.length; i++) {
-                if (chars[zero + i] != oChain.chars[oChain.zero + i])
-                    return false;
-            }
-            return true;
-        } 
-        else if (o instanceof char[]) {
-            if (((char[]) o).length != this.length)
-                return false;
-            test = (char[]) o;
-            for (int i = 0; i < this.length; i++) {
-                if (chars[zero + i] != test[i])
-                    return false;
-            }
-            return true;
-        }
-        // String or other CharSequence, access char by char (do not try an array copy,
-        // slower)
-        else if (o instanceof CharSequence) {
-            CharSequence oCs = (CharSequence) o;
-            if (oCs.length() != this.length) {
-                return false;
-            }
-            for (int i = 0; i < this.length; i++) {
-                if (oCs.charAt(i) != chars[zero + i]) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
-    /**
-     * Peek first char (left).
-     * 
-     * @return The char at zero position.
-     */
-    public char first()
-    {
-        return chars[zero];
-    }
-
-    /**
-     * Set first char (left).
-     * @param c Set first char.
-     * @return This Chain object to chain methods.
-     */
-    public Chain first(char c)
-    {
-        hash = 0;
-        chars[zero] = c;
-        return this;
-    }
-
-    /**
-     * Delete first char, by modification of pointers.
-     * @return This Chain object to chain methods.
-     */
-    public Chain firstDel()
-    {
-        hash = 0;
-        zero++;
-        this.length--;
-        return this;
-    }
-
-    /**
-     * Remove an amount of chars from start (left).
-     * 
-     * @param amount Amount of chars to delete.
-     * @return This Chain object to chain methods.
-     */
-    public Chain firstDel(final int amount)
-    {
-        hash = 0;
-        if (amount > this.length)
-            throw new StringIndexOutOfBoundsException("amount=" + amount + " > length=" + this.length);
-        this.length -= amount;
-        zero += amount;
-        return this;
-    }
-
-    /**
-     * Put first char upperCase
-     * 
-     * @return This Chain object to chain methods.
-     */
-    public Chain firstToUpper()
-    {
-        hash = 0;
-        chars[zero] = Character.toUpperCase(chars[zero]);
-        return this;
-    }
-
-    /**
-     * Fill a char array with the chars of this Chain.
-     * For efficiency, no tests are done, user should ensure the length of destination array to contain
-     * this Chain.
-     * 
-     * @param dst Destination char array to fill 
-     */
-    public void getChars(final char[] dst)
-    {
-        // let error cry
-        System.arraycopy(this.chars, this.zero, dst, 0, this.length);
-    }
-
-    /**
-     * Same as {StringBuffer#getChars()}.
-     * 
-     * @param srcBegin  start copying at this offset.
-     * @param srcEnd    stop copying at this offset.
-     * @param dst       the array to copy the data into.
-     * @param dstBegin   offset into dst.
-     */
-    public void getChars(final int srcBegin, final int srcEnd, final char[] dst, final int dstBegin)
-    {
-        if (srcBegin < 0 || srcEnd > this.length || srcEnd < srcBegin) {
-            throw new StringIndexOutOfBoundsException();
-        }
-        System.arraycopy(this.chars, this.zero + srcBegin, dst, dstBegin, srcEnd - srcBegin);
-    }
-
-    /**
-     * Use this Chain as a glob pattern to match with a charSequence. For example, "maz*" will match
-     * with "maze", "mazurka", but not "amaze". "maz?" will match with "maze" but not "mazurka" and "amaze".
-     * 
-     * @param text  the chars to test.
-     * @return true if pattern matches, false otherwise.
-     */
-    public boolean glob(final CharSequence text)
-    {
-        return glob(this, 0, this.length, text, 0, text.length());
-    }
-
-    /**
-     * Check if a glob pattern match with a charSequence. For example, "maz*" will match
-     * with "maze", "mazurka", but not "amaze". "maz?" will match with "maze" but not "mazurka" and "amaze".
-     * 
-     * @param glob  The pattern to match.
-     * @param text  The chars to test.
-     * @return true if pattern matches, false otherwise.
-     */
-    static boolean glob(
-        final CharSequence glob, 
-        final CharSequence text
-    )
-    {
-        return glob(glob, 0, glob.length(), text, 0, text.length());
-    }
-
-    /**
-     * Check if a glob pattern match with a charSequence.
-     * Positions are freely available to work with big char sequences.
-     * For example, "maz*" will match
-     * with "maze", "mazurka", but not "amaze". "maz?" will match with "maze" but not "mazurka" and "amaze".
-     * 
-     * @param glob       The pattern to match.
-     * @param globstart  [globstart, globend[
-     * @param globend    [globstart, globend[
-     * @param text       The chars to test.
-     * @param textstart  [textstart, textend[
-     * @param textend    [textstart, textend[
-     * @return true if pattern matches, false otherwise.
-     * @return
-     */
-    static boolean glob(
-        final CharSequence glob, 
-        final int globstart, 
-        final int globend, 
-        final CharSequence text, 
-        final int textstart,
-        final int textend
-    )
-    {
-        // empty pattern will never found things
-        if (glob.length() < 1 || globend - globstart < 1) {
-            return false;
-        }
-        // empty text will never match
-        if (text.length() < 1 || textend - textstart < 1) {
-            return false;
-        }
-        // possible optimization for suffix search *suff
-        if (glob.charAt(globend - 1) == '*') {
-            // TODO
-        }
-        int globi = globstart;
-        boolean skip = false;
-        int texti = textstart;
-        for (; texti < textend; texti++) {
-            final char textc = text.charAt(texti);
-            // end of glob
-            if (globi >= globend) {
-                break;
-            }
-            final char globc = glob.charAt(globi);
-            // test equals before the wildcard skip
-            if (textc == globc) {
-                globi++;
-                skip = false;
-                continue;
-            }
-            else if (skip) {
-                continue;
-            }
-            else if (globc == '?') {
-                globi++;
-                continue;
-            }
-            else if (globc == '*') {
-                // last char is a joker, always true at this step
-                if (globi + 1 == globend) {
-                    return true;
-                }
-                skip = true;
-                globi++;
-            }
-            else if (textc != globc) {
-                // bad char
-                return false;
-            }
-        }
-        // tested string is not exhausted, not match
-        if (texti != textend) {
-            return false;
-        }
-        // pattern is not exhausted, tested string is not match, except if last char is a joker
-        if (globi != globend) {
-            if (glob.charAt(globend - 1) == '*') return true;
-            return false;
-        }
-        // should be OK here
-        return true;
-    }
-
-    /**
-     * Returns a hash code for this string. The hash code for a <code>String</code>
-     * object is computed as <blockquote>
-     * 
-     * <pre>
-     * s[0]*31^(n-1) + s[1]*31^(n-2) + ... + s[n-1]
-     * </pre>
-     * 
-     * </blockquote> using <code>int</code> arithmetic, where <code>s[i]</code> is
-     * the <i>i</i>th character of the string, <code>n</code> is the length of the
-     * string, and <code>^</code> indicates exponentiation. (The hash value of the
-     * empty string is zero.)
+     * Construct a chain by copying the content of a {@link CharSequence}.
      *
-     * @return a hash code value for this object.
+     * @param cs the source sequence (String, StringBuilder, etc.)
      */
-    @Override
-    public int hashCode()
+    public Chain(final CharSequence cs)
     {
-        int h = hash;
-        if (h == 0) {
-            int end = zero + this.length;
-            for (int i = zero; i < end; i++) {
-                h = 31 * h + chars[i];
-            }
-            hash = h;
-        }
-        return h;
-    }
-    
-    /**
-     * First position of a char.
-     * 
-     * @param c char to search.
-     * @return -1 if not found or positive index if found
-     */
-    public int indexOf(final char c)
-    {
-        for (int i = 0; i < this.length; i++) {
-            if (c == chars[zero + i])
-                return i;
-        }
-        return -1;
-    }
-
-
-    /**
-     * Insert chars at a position, moving possible chars after the inserted ones.
-     * 
-     * @param dstOffset  destination position where to insert cs.
-     * @param src        source chars to insert.
-     * @return this Chain object to chain methods.
-     */
-    public Chain insert(int dstOffset, CharSequence src)
-    {
-        return insert(dstOffset, src, 0, src.length());
+        this.chars = new char[Math.max(16, cs.length())];
+        this.zero = 0;
+        this.length = 0;
+        append(cs);
     }
 
     /**
-     * Insert chars at a position, moving possible chars after the inserted ones.
-     * 
-     * @param dstOffset  destination position where to insert cs.
-     * @param src        source chars to insert.
-     * @param srcStart   [srcStart, srcEnd[
-     * @param srcEnd     [srcStart, srcEnd[
-     * @return this Chain object to chain methods.
+     * Construct a chain by copy of a section of a char sequence.
+     *
+     * @param cs    source sequence
+     * @param start start offset (inclusive) in {@code cs}
+     * @param end   end offset (exclusive) in {@code cs}
+     * @throws StringIndexOutOfBoundsException if bounds are invalid
      */
-    public Chain insert(int dstOffset, CharSequence src, int srcStart, final int srcEnd)
+    public Chain(final CharSequence cs, final int start, final int end)
     {
-        if (src == null) {
-            return this;
-        }
-        int len = srcEnd - srcStart;
-        if (len < 0) {
-            throw new NegativeArraySizeException("begin=" + srcStart + " end=" + srcEnd + " begin > end, no chars to append");
-        }
-        int amount = len;
-        if (dstOffset >= this.length) {
-            amount += dstOffset - this.length;
-        }
-        ensureRight(amount);
-        shift(dstOffset, len);
-        write(dstOffset, src, srcStart, srcEnd);
-        this.length += amount;
-        return this;
+        if (start < 0 || end < start || end > cs.length()) throw new StringIndexOutOfBoundsException();
+        final int len = end - start;
+        this.chars = new char[Math.max(16, len)];
+        this.zero = 0;
+        this.length = 0;
+        append(cs, start, end);
     }
 
     /**
-     * Is Chain with no chars ?
-     * 
-     * @return true if length == 0, false otherwise.
+     * Construct a chain by copy of a section of a char sequence. Signature
+     * compatible with your original: length instead of end.
+     *
+     * @param cs    source sequence
+     * @param start start offset (inclusive) in {@code cs}
+     * @param len   number of characters to copy
+     * @throws StringIndexOutOfBoundsException if bounds are invalid
      */
-    public boolean isEmpty()
+    public Chain(final CharSequence cs, final int start, final int len, final boolean dummyToDisambiguate)
     {
-        return (this.length == 0);
+        // keep binary compatibility if you already used (cs,start,len) somewhere
+        if (start < 0 || len < 0 || start + len > cs.length()) throw new StringIndexOutOfBoundsException();
+        final int end = start + len;
+        this.chars = new char[Math.max(16, len)];
+        this.zero = 0;
+        this.length = 0;
+        append(cs, start, end);
     }
+
+    // ----------------------- CharSequence -----------------------
 
     /**
-     * Is first letter Upper case ?
-     * 
-     * @return true for Titlecase, UPPERCASE; false for lowercase
+     * @return logical length of this sequence
      */
-    public boolean isFirstUpper()
-    {
-        return Char.isUpperCase(chars[zero]);
-    }
-
-    /**
-     * Last char.
-     * 
-     * @return last char
-     */
-    public char last()
-    {
-        if (this.length == 0)
-            return 0;
-        return chars[zero + this.length - 1];
-    }
-
-    /**
-     * Set last char (right)
-     * @param c the char to set.
-     * @return This Chain object to chain methods.
-     */
-    public Chain last(char c)
-    {
-        hash = 0;
-        chars[zero + this.length - 1] = c;
-        return this;
-    }
-
-    /**
-     * Remove last char (right), by modification of pointers.
-     * @return this Chain object to chain methods.
-     */
-    public Chain lastDel()
-    {
-        hash = 0;
-        this.length--;
-        return this;
-    }
-
-    /**
-     * Remove an amount of chars from end (right).
-     * 
-     * @param amount of chars to delete.
-     * @return this Chain object to chain methods.
-     */
-    public Chain lastDel(final int amount)
-    {
-        hash = 0;
-        if (amount > this.length) {
-            throw new StringIndexOutOfBoundsException("amount=" + amount + " > length=" + this.length);
-        }
-        this.length -= amount;
-        return this;
-    }
-
     @Override
     public int length()
     {
@@ -907,627 +184,1296 @@ public class Chain implements Appendable, CharSequence, Cloneable, Comparable<Ch
     }
 
     /**
-     * Like xpath normalize-space(), normalize a char used as a separator, maybe
-     * useful for url paths.
-     * 
-     * @param cs    the char sequence to normalize.
-     * @param sep   the char used as a separator,
-     * @return a normalized String.
+     * Get character at the given logical index.
+     *
+     * @param index 0-based logical index
+     * @return character at {@code index}
+     * @throws StringIndexOutOfBoundsException if {@code index} is out of range
      */
-    static public String normalize(final CharSequence cs, final char sep)
+    @Override
+    public char charAt(final int index)
     {
-        return normalize(cs, new String(new char[] { sep }), sep);
+        if (index < 0 || index >= this.length) throw new StringIndexOutOfBoundsException(index);
+        return this.chars[zero + index];
     }
 
-    /**
-     * Like xpath normalize-space(), replace a set of chars, maybe repeated,
-     * for example space chars "\t\n  ",
-     * by only one char, for example space ' '. 
-     * 
-     * @param cs       a char sequence to normalize.
-     * @param search   a set of chars to normalize ex: "\t\n  ".
-     * @param replace  a normalized char ex: ' '.
-     * @return a new normalized String.
-     */
-    static public String normalize(final CharSequence cs, final String search, final char replace)
-    {
-        // create a new char array, not bigger than actual size
-        final int len = cs.length();
-        char[] newChars = new char[len];
-        int length = 0;
-        boolean sepToAppend = false;
-        boolean lastIsFullChar = false;
-        for (int i = 0; i < len; i++) {
-            final char c = cs.charAt(i);
-            // full char, append
-            if (search.indexOf(c) == -1) {
-                lastIsFullChar = true;
-                // append a separator only before a token to append
-                if (sepToAppend) {
-                    newChars[length++] = replace;
-                    sepToAppend = false;
-                }
-                newChars[length++] = c;
-                continue;
-            }
-            // separator
-            if (!lastIsFullChar) {
-                // previous was start or separator, append nothing
-                continue;
-            }
-            // append separator
-            lastIsFullChar = false;
-            sepToAppend = true;
-        }
-        return new String(newChars, 0, length);
-    }
-    
-    /**
-     * Return the start index in the chars char array.
-     * 
-     * @return internal start index of first char.
-     */
-    public int offset()
-    {
-        return zero;
-    }
+    // ----------------------- Appendable -------------------------
 
     /**
-     * Expert only, returns offset in the internal char[] array for index,
-     * useful in conjunction with {@link #buffer()} to use chars.
-     * 
-     * @param index
-     * @return
+     * Append a single character.
+     *
+     * @param c character to append
+     * @return {@code this}
      */
-    public int offset(int index)
+    @Override
+    public Chain append(final char c)
     {
-        return zero+index;
-    }
-
-    /**
-     * Append a char at start (left).
-     * 
-     * @param c the char to append.
-     * @return this Chain object to chain methods.
-     */
-    public Chain prepend(char c)
-    {
-        ensureLeft(1);
-        zero--;
-        chars[zero] = c;
-        this.length++;
-        return this;
-    }
-
-    /**
-     * Append a char sequence at start (left).
-     * 
-     * @param src the source char sequence to append.
-     * @return this Chain object to chain methods.
-     */
-    public Chain prepend(final CharSequence src)
-    {
-        return prepend(src, 0, src.length());
-    }
-
-    /**
-     * Append a char sequence at start (left).
-     * 
-     * @param src       char sequence to prepend.
-     * @param srcStart  [srcStart, srcEnd[
-     * @param srcEnd    [srcStart, srcEnd[
-     * @return this Chain object to chain methods.
-     */
-    public Chain prepend(final CharSequence src, int srcStart, final int srcEnd)
-    {
-        if (src == null)
-            return this;
-        int amount = srcEnd - srcStart;
-        if (amount < 0)
-            throw new NegativeArraySizeException("srcStart=" + srcStart + " srcEnd=" + srcEnd + " srcStart > srcEnd, no chars to append");
-        ensureLeft(amount);
-        final int newStart = zero - amount;
-        if (amount > 4) { // only use instanceof check series for longer CSQs, else simply iterate
-            if (src instanceof String) {
-                ((String) src).getChars(srcStart, srcEnd, chars, newStart);
-            } else if (src instanceof StringBuilder) {
-                ((StringBuilder) src).getChars(srcStart, srcEnd, chars, newStart);
-            } else if (src instanceof StringBuffer) {
-                ((StringBuffer) src).getChars(srcStart, srcEnd, chars, newStart);
-                /*
-                 * possible optimisation here ? } else if (cs instanceof CharBuffer &&
-                 * ((CharBuffer) cs).hasArray()) { final CharBuffer cb = (CharBuffer) cs;
-                 */
-            } else {
-                for (int i = newStart, limit = zero; i < limit; i++) {
-                    chars[i] = src.charAt(srcStart++);
-                }
-            }
-        } else {
-            for (int i = newStart, limit = zero; i < limit; i++) {
-                chars[i] = src.charAt(srcStart++);
-            }
-        }
-        this.length += amount;
-        zero = newStart;
-        return this;
-    }
-
-    /**
-     * Replace a char by another
-     * 
-     * @param oldChar char to replace.
-     * @param newChar replacement char.
-     * @return this Chain object to chain methods.
-     */
-    public Chain replace(final char oldChar, final char newChar)
-    {
+        ensureRight(1);
+        chars[zero + length] = c;
+        length++;
         hash = 0;
-        for (int i = zero, limit = zero + this.length; i < limit; i++) {
-            if (chars[i] != oldChar)
-                continue;
-            chars[i] = newChar;
-        }
         return this;
     }
 
     /**
-     * Read value in a char separated string. The chain objected is update from
-     * offset position to the next separator (or end of String).
-     * 
-     * @param separator
-     * @param offset    index position to read from
-     * @return a new offset from where to search in String, or -1 when end of line
-     *         is reached
+     * Append an entire character sequence.
+     *
+     * @param csq sequence to append (ignored if {@code null})
+     * @return {@code this}
      */
-    /*
-     * rewrite public int value(Chain cell, final char separator) { if (pointer < 0)
-     * pointer = 0; pointer = value(cell, separator, pointer); return pointer; }
-     * 
-     * public int value(Chain cell, final char separator, final int offset) { if
-     * (offset >= size) return -1; char[] dat = chars; int to = start + offset; int
-     * max = start + size; while (to < max) { if (dat[to] == separator && (to == 0
-     * || dat[to - 1] != '\\')) { // test escape char cell.link(this, offset, to -
-     * offset - start); return to - start + 1; } to++; } // end of line
-     * cell.link(this, offset, to - offset - start); return to - start; }
-     */
+    @Override
+    public Chain append(final CharSequence csq)
+    {
+        if (csq == null) return this;
+        return append(csq, 0, csq.length());
+    }
 
     /**
-     * Reset chain (keep all memory already allocated). Keep start where it is,
-     * efficient for prepend.
-     * 
-     * @return this Chain object to chain methods.
+     * Append a span of a character sequence.
+     *
+     * <p>
+     * Logical coordinates: appends {@code csq.subSequence(start, end)} to the tail.
+     * </p>
+     *
+     * <p>
+     * Performance: uses bulk-copy fast paths for common types ({@link String},
+     * {@link StringBuilder}, {@link StringBuffer}, and {@code Chain}); otherwise
+     * falls back to a per-character loop.
+     * </p>
+     *
+     * @param csq   source sequence (ignored if {@code null})
+     * @param start start offset (inclusive) in {@code csq}
+     * @param end   end offset (exclusive) in {@code csq}
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if {@code start < 0},
+     *                                         {@code end < start}, or
+     *                                         {@code end > csq.length()}
      */
-    public Chain reset()
+    @Override
+    public Chain append(final CharSequence csq, final int start, final int end)
     {
+        if (csq == null) return this;
+        if (start < 0 || end < start || end > csq.length()) {
+            throw new StringIndexOutOfBoundsException("start=" + start + " end=" + end + " len=" + csq.length());
+        }
+        final int len = end - start;
+        if (len == 0) return this;
+
+        // Reserve once; compute destination before writes.
+        ensureRight(len);
+        final int dstBase = this.zero + this.length;
+
+        // Self-append must stage through a temporary buffer.
+        if (csq == this) {
+            final char[] tmp = new char[len];
+            System.arraycopy(this.chars, this.zero + start, tmp, 0, len);
+            System.arraycopy(tmp, 0, this.chars, dstBase, len);
+            this.length += len;
+            this.hash = 0;
+            return this;
+        }
+
+        // Fast paths for common CharSequence implementations.
+        if (csq instanceof String s) {
+            s.getChars(start, end, this.chars, dstBase);
+        } else if (csq instanceof StringBuilder sb) {
+            sb.getChars(start, end, this.chars, dstBase);
+        } else if (csq instanceof StringBuffer sbuf) {
+            sbuf.getChars(start, end, this.chars, dstBase);
+        } else if (csq instanceof Chain other) {
+            System.arraycopy(other.chars, other.zero + start, this.chars, dstBase, len);
+        } else {
+            // Generic fallback for arbitrary CharSequence
+            for (int i = 0, src = start, dst = dstBase; i < len; i++) {
+                this.chars[dst++] = csq.charAt(src++);
+            }
+        }
+
+        this.length += len;
         this.hash = 0;
+        return this;
+    }
+
+    // ----------------------- Extra ops --------------------------
+
+    /**
+     * Append a span of a char array.
+     *
+     * @param src    source array
+     * @param offset start offset in {@code src}
+     * @param length number of characters to append
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if bounds are invalid
+     */
+    public Chain append(final char[] src, final int offset, final int length)
+    {
+        if (offset < 0 || length < 0 || offset + length > src.length) throw new StringIndexOutOfBoundsException();
+        if (length == 0) return this;
+        ensureRight(length);
+        System.arraycopy(src, offset, this.chars, zero + this.length, length);
+        this.length += length;
+        this.hash = 0;
+        return this;
+    }
+
+    /**
+     * Append UTF-8 bytes, decoding directly into the internal buffer. Uses
+     * {@code REPLACE} for malformed/unmappable input.
+     *
+     * @param bytes  UTF-8 encoded bytes
+     * @param offset start offset in {@code bytes}
+     * @param length number of bytes to decode
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if bounds are invalid
+     */
+    public Chain append(final byte[] bytes, final int offset, final int length)
+    {
+        if (offset < 0 || length < 0 || offset + length > bytes.length) throw new StringIndexOutOfBoundsException();
+        if (length == 0) return this;
+        // Worst case: 1 char per byte. Ensure upper bound space.
+        ensureRight(length);
+        final ByteBuffer bb = ByteBuffer.wrap(bytes, offset, length);
+        final CharBuffer cb = CharBuffer.wrap(chars, zero + this.length, chars.length - (zero + this.length));
+        final CharsetDecoder dec = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPLACE)
+                .onUnmappableCharacter(CodingErrorAction.REPLACE);
+        try {
+            CoderResult cr = dec.decode(bb, cb, true);
+            if (!cr.isUnderflow()) cr.throwException();
+            cr = dec.flush(cb);
+            if (!cr.isUnderflow()) cr.throwException();
+        } catch (CharacterCodingException e) {
+            // Defensive fallback — REPLACE should prevent this path.
+            while (bb.hasRemaining() && cb.hasRemaining()) {
+                bb.get();
+                cb.put('\uFFFD');
+            }
+        }
+        final int added = cb.position() - (zero + this.length);
+        this.length += added;
+        this.hash = 0;
+        return this;
+    }
+
+    /**
+     * Direct access to the backing array (may be reallocated by future appends).
+     *
+     * @return the internal {@code char[]} buffer
+     * @implNote Write-through is allowed, but you must keep the invariant
+     *           {@code 0 <= zero <= zero+length <= chars.length}.
+     */
+    public char[] buffer()
+    {
+        return this.chars;
+    }
+
+    /**
+     * Capitalize words using simple Latin heuristics: first letter uppercased;
+     * after '-', '.', apostrophe, or space: uppercase; others lowercased.
+     *
+     * @return {@code this}
+     */
+    public Chain capitalize()
+    {
+        if (this.length == 0) return this;
+        final int start = zero;
+        final int end = zero + length;
+        char c0 = chars[start];
+        chars[start] = Character.toUpperCase(c0);
+        for (int i = start + 1; i < end; i++) {
+            char prev = chars[i - 1];
+            char c = chars[i];
+            if (prev == '-' || prev == '.' || prev == '\'' || prev == '’' || prev == ' ') {
+                chars[i] = Character.toUpperCase(c);
+            } else {
+                chars[i] = Character.toLowerCase(c);
+            }
+        }
+        hash = 0;
+        return this;
+    }
+
+    /**
+     * Clear to empty while keeping capacity.
+     *
+     * @return {@code this}
+     */
+    public Chain clear()
+    {
         this.length = 0;
         this.zero = 0;
-        return this;
-    }
-
-   /**
-    * Delete spaces at end (right trim)
-    * @return <code>this</code>
-    */
-   public final Chain rtrim()
-   {
-       return this.rtrim("  \t\n\r");
-   }
-
-    
-    /**
-     * Delete different characters at the end (right trim)
-     * 
-     * @param spaces char codes to delete
-     * @return <code>this</code>
-     */
-    public final Chain rtrim(String spaces)
-    {
-        while (this.length > 0) {
-            char c = chars[zero + this.length - 1];
-            if (spaces.indexOf(c) < 0) break;
-            this.length--;
-            hash = 0;
-        }
-        return this;
-    }
-    
-    /**
-     * Same as {@link org.apache.lucene.analysis.tokenattributes.CharTermAttribute#setEmpty()}, 
-     * sets the length of the character sequence to zero.
-     * 
-     * @return this Chain object to chain methods.
-     */
-    public Chain setEmpty()
-    {
-        zero = 0;
-        this.length = 0;
         this.hash = 0;
         return this;
     }
-    
+
     /**
-     *Same as {@link StringBuffer#setLength(int)}, sets the length of the character sequence.
+     * Discard (pop) the most recently pushed checkpoint without changing content.
      *
-     * @param newLength the new length.
-     * @return this Chain object to chain methods.
+     * <p>
+     * Use when speculative edits are accepted and no rollback is desired.
+     * </p>
+     *
+     * @return {@code this}
+     * @throws IllegalStateException if no checkpoint is present
+     * @see #pushMark()
+     * @see #rollbackMark()
      */
-    public Chain setLength(int newLength)
+    public Chain commitMark()
     {
-        if (newLength < 0) {
-            throw new StringIndexOutOfBoundsException(newLength);
+        if (markSp == 0) throw new IllegalStateException("commitMark() with empty mark stack");
+        markSp--;
+        return this;
+    }
+
+    /**
+     * Compact to a tight array (drop left/right slack) to reduce memory retention.
+     *
+     * @return {@code this}
+     */
+    public Chain compact()
+    {
+        if (length == 0) {
+            this.chars = new char[16];
+            this.zero = 0;
+            this.hash = 0;
+            return this;
         }
-        if (newLength > this.length) {
-            ensureRight(newLength - this.length);
-            // fill new chars with 0
-            Arrays.fill(chars, zero+this.length, zero+newLength, '\0');
-        }
-        if (newLength == 0) zero = 0;
-        this.length = newLength;
+        if (zero == 0 && length == chars.length) return this;
+        this.chars = Arrays.copyOfRange(this.chars, zero, zero + length);
+        this.zero = 0;
         this.hash = 0;
         return this;
     }
 
     /**
-     * Wrap the Chain on another char array without copy
-     * 
-     * @param chars text as char array.
-     * @param offset start offset to bind.
-     * @param length amount of chars to bind.
-     * @return this Chain object to chain methods.
+     * Replace content with a copy of {@code cs}.
+     *
+     * @param cs source sequence (ignored if {@code null})
+     * @return {@code this} (or {@code null} if {@code cs} is null, for legacy
+     *         parity)
      */
-    public Chain set(final char[] chars, final int offset, int length)
+    public Chain copy(final CharSequence cs)
     {
-        this.chars = chars;
-        this.zero = offset;
-        this.length = length;
+        if (cs == null) return null;
+        clear();
+        return append(cs);
+    }
+
+    /**
+     * Replace content with a span of {@code cs}.
+     *
+     * @param cs     source sequence (ignored if {@code null})
+     * @param offset start offset (inclusive) in {@code cs}
+     * @param len    number of characters to copy
+     * @return {@code this} (or {@code null} if {@code cs} is null, for legacy
+     *         parity)
+     * @throws StringIndexOutOfBoundsException if bounds are invalid
+     */
+    public Chain copy(final CharSequence cs, int offset, int len)
+    {
+        if (cs == null) return null;
+        if (offset < 0 || len < 0 || offset + len > cs.length()) throw new StringIndexOutOfBoundsException();
+        clear();
+        return append(cs, offset, offset + len);
+    }
+
+    /**
+     * Replace content with a span of an array.
+     *
+     * @param a      source array
+     * @param offset start offset in {@code a}
+     * @param len    number of characters to copy
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if bounds are invalid
+     */
+    public Chain copy(final char[] a, int offset, int len)
+    {
+        if (offset < 0 || len < 0 || offset + len > a.length) throw new StringIndexOutOfBoundsException();
+        clear();
+        ensureRight(len);
+        System.arraycopy(a, offset, this.chars, zero, len);
+        this.length = len;
         this.hash = 0;
         return this;
     }
 
     /**
-     * Modify a char in the String
-     * 
-     * @param index position of the char to change
-     * @param c     new char value
-     * @return this Chain object to chain methods.
+     * Replace content with that of another {@code Chain}.
+     *
+     * @param other source chain (if {@code null}, clears this chain)
+     * @return {@code this}
      */
-    public Chain setCharAt(final int index, final char c)
+    public Chain copy(final Chain other)
     {
-        hash = 0;
-        if ((index < 0) || (index >= this.length)) {
-            throw new StringIndexOutOfBoundsException(index);
+        if (other == null) {
+            clear();
+            return this;
         }
-        chars[zero + index] = c;
+        final int need = other.length;
+        if (chars == null || need > chars.length) chars = new char[Calcul.nextSquare(need)];
+        System.arraycopy(other.chars, other.zero, this.chars, 0, need);
+        this.zero = 0;
+        this.length = need;
+        this.hash = 0;
         return this;
     }
 
     /**
-     * Make place to insert len chars at offset
-     * 
-     * @param offset
-     * @param length
-     * @return this Chain object to chain methods.
+     * Test whether the sequence contains a given character.
+     *
+     * @param c character to search
+     * @return {@code true} if found
      */
-    private Chain shift(final int offset, int length)
+    public boolean contains(final char c)
     {
-        System.arraycopy(chars, // src array
-            zero + offset, // src pos, offset, relative to start index (in case of prepend)
-            chars, // copy to itself, size should be ensure before
-            (zero + offset + length), // destPos, copy after len to insert
-            (this.length - offset) // length, amount to copy
-        );
-        return this;
+        for (int i = 0; i < this.length; i++) {
+            if (chars[zero + i] == c) return true;
+        }
+        return false;
     }
 
     /**
-     * Split on one char.
-     * 
-     * @param separator a char, ex: ',', ' ', ';'…
-     * @return array of segments separated.
+     * Check whether the sequence ends with a single character.
+     *
+     * @param c character to test
+     * @return {@code true} if last char equals {@code c}
      */
-    public String[] split(final char separator)
+    public boolean endsWith(final char c)
     {
-        // store generated Strings in alist
-        LinkedList<String> list = new LinkedList<>();
-        int offset = zero;
-        int to = zero;
-        int max = zero + this.length;
-        char[] dat = chars;
-        while (to < max) {
-            // not separator, continue
-            if (dat[to] != separator) {
-                to++;
-                continue;
-            }
-            // separator, add a String, if not empty
-            if (to - offset > 0) {
-                list.add(new String(dat, offset, to - offset));
-            }
-            offset = ++to;
-        }
-        // separator, add a String, if not empty
-        if (to - offset > 0) {
-            list.add(new String(dat, offset, to - offset));
-        }
-        return list.toArray(new String[0]);
+        if (this.length < 1) return false;
+        return chars[zero + this.length - 1] == c;
     }
 
     /**
-     * Split on one or more char.
-     * 
-     * @param separators, ex: ",; ".
-     * @return array of segments separated.
+     * Check whether the sequence ends with a given suffix.
+     *
+     * @param suffix suffix to test
+     * @return {@code true} if it ends with {@code suffix}
      */
-    public String[] split(final String separators)
+    public boolean endsWith(final CharSequence suffix)
     {
-        // store generated Strings in alist
-        LinkedList<String> list = new LinkedList<>();
-        int offset = zero;
-        int to = zero;
-        int max = zero + this.length;
-        char[] dat = chars;
-        while (to < max) {
-            // not separator, continue
-            if (separators.indexOf(dat[to]) == -1) {
-                to++;
-                continue;
-            }
-            // separator, add a String, if not empty
-            if (to - offset > 0) {
-                list.add(new String(dat, offset, to - offset));
-            }
-            offset = ++to;
-        }
-        // separator, add a String, if not empty
-        if (to - offset > 0) {
-            list.add(new String(dat, offset, to - offset));
-        }
-        return list.toArray(new String[0]);
-    }
-
-    /**
-     * Test prefix
-     * 
-     * @param prefix char sequence to test.
-     * @return true if the Chain starts by prefix.
-     */
-    public boolean startsWith(final CharSequence prefix)
-    {
-        int lim = prefix.length();
-        if (lim > this.length)
-            return false;
+        final int lim = suffix.length();
+        if (lim > this.length) return false;
         for (int i = 0; i < lim; i++) {
-            if (prefix.charAt(i) != chars[zero + i]) {
-                return false;
-            }
+            if (suffix.charAt(lim - 1 - i) != chars[zero + this.length - 1 - i]) return false;
         }
         return true;
     }
 
-    @Override
-    public CharSequence subSequence(int start, int end)
-    {
-        if (end < start) {
-            throw new StringIndexOutOfBoundsException("end=" + end + " < start=" + start);
-        }
-        if (start >= this.length) {
-            throw new StringIndexOutOfBoundsException("start=" + start + " >= length=" + this.length);
-        }
-        if (end > this.length) {
-            throw new StringIndexOutOfBoundsException("end=" + end + " > length=" + this.length);
-        }
-        if (start == end) {
-            return "";
-        }
-        return new String(chars, zero + start, zero + end - start);
-    }
-    
     /**
-     * 
-     * @return
+     * Get the first character.
+     *
+     * @return first character
+     * @throws StringIndexOutOfBoundsException if empty
      */
-    public char[] toCharArray()
+    public char first()
     {
-        return Arrays.copyOfRange(chars, zero, this.length);
+        if (this.length == 0) throw new StringIndexOutOfBoundsException("empty");
+        return chars[zero];
     }
 
     /**
-     * Change case of the chars in scope of the chain.
-     * 
-     * @return this Chain object to chain methods.
+     * Set the first character.
+     *
+     * @param c new first character
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if empty
      */
-    public Chain toLower()
+    public Chain first(final char c)
     {
+        if (this.length == 0) throw new StringIndexOutOfBoundsException("empty");
+        chars[zero] = c;
         hash = 0;
-        char c;
-        for (int i = zero; i < this.length; i++) {
-            c = chars[i];
-            if (!Char.isUpperCase(c))
-                continue;
-            chars[i] = Character.toLowerCase(c);
-        }
         return this;
     }
 
+    /**
+     * Delete the first character (no-op if empty).
+     *
+     * @return {@code this}
+     */
+    public Chain firstDel()
+    {
+        if (this.length == 0) return this;
+        zero++;
+        length--;
+        hash = 0;
+        return this;
+    }
+
+    /**
+     * Delete {@code amount} characters from the start.
+     *
+     * @param amount number of characters to delete
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if {@code amount} &lt; 0 or &gt;
+     *                                         length
+     */
+    public Chain firstDel(final int amount)
+    {
+        if (amount < 0 || amount > this.length) throw new StringIndexOutOfBoundsException();
+        zero += amount;
+        length -= amount;
+        hash = 0;
+        return this;
+    }
+
+    /**
+     * Test the first character for equality with {@code c}.
+     *
+     * @param c character to test
+     * @return {@code true} if this chain is non-empty and its first character
+     *         equals {@code c}
+     */
+    public boolean firstIs(final char c)
+    {
+        return this.length > 0 && chars[zero] == c;
+    }
+
+    /**
+     * Copy characters from this sequence into the destination array.
+     * <p>
+     * Semantics match {@link String#getChars(int, int, char[], int)}: copies
+     * {@code srcEnd - srcBegin} characters starting at logical index
+     * {@code srcBegin} of this chain into {@code dst}, starting at index
+     * {@code dstBegin}.
+     * </p>
+     *
+     * @param srcBegin the start offset in this sequence (inclusive),
+     *                 {@code 0 <= srcBegin <= srcEnd}
+     * @param srcEnd   the end offset in this sequence (exclusive),
+     *                 {@code srcEnd <= length()}
+     * @param dst      the destination array
+     * @param dstBegin the start offset in the destination array
+     * @throws NullPointerException      if {@code dst} is {@code null}
+     * @throws IndexOutOfBoundsException if the indices are out of range:
+     *                                   <ul>
+     *                                   <li>{@code srcBegin < 0}</li>
+     *                                   <li>{@code srcEnd > length()}</li>
+     *                                   <li>{@code srcBegin > srcEnd}</li>
+     *                                   <li>{@code dstBegin < 0}</li>
+     *                                   <li>{@code dstBegin + (srcEnd - srcBegin) > dst.length}</li>
+     *                                   </ul>
+     */
+    public void getChars(final int srcBegin, final int srcEnd, final char[] dst, final int dstBegin)
+    {
+        if (dst == null) throw new NullPointerException("dst");
+        // validate source range in logical coordinates
+        if (srcBegin < 0 || srcEnd < srcBegin || srcEnd > this.length) {
+            throw new IndexOutOfBoundsException(
+                    "srcBegin=" + srcBegin + " srcEnd=" + srcEnd + " length=" + this.length);
+        }
+        final int n = srcEnd - srcBegin;
+        // validate destination capacity
+        if (dstBegin < 0 || dstBegin + n > dst.length) {
+            throw new IndexOutOfBoundsException("dstBegin=" + dstBegin + " n=" + n + " dst.length=" + dst.length);
+        }
+        // bulk copy from the physical window [zero + srcBegin, zero + srcEnd)
+        System.arraycopy(this.chars, this.zero + srcBegin, dst, dstBegin, n);
+    }
+
+    /**
+     * Current number of active checkpoints.
+     *
+     * <p>
+     * Useful for assertions to ensure every pushed mark is either committed or
+     * rolled back.
+     * </p>
+     *
+     * @return the number of checkpoints on the stack (0 if none)
+     * @see #pushMark()
+     */
+    public int getMarkDepth()
+    {
+        return markSp;
+    }
+
+    /**
+     * Simple glob matcher supporting '*' (any run) and '?' (single char).
+     *
+     * @param pattern glob pattern
+     * @return {@code true} if matched
+     */
+    public boolean glob(final CharSequence pattern)
+    {
+        int pi = 0, si = 0, star = -1, mark = -1;
+        final int pn = pattern.length();
+        final int sn = this.length;
+        while (si < sn) {
+            char pc = (pi < pn) ? pattern.charAt(pi) : 0;
+            if (pi < pn && (pc == '?' || pc == chars[zero + si])) {
+                pi++;
+                si++;
+                continue;
+            }
+            if (pi < pn && pc == '*') {
+                star = ++pi;
+                mark = si;
+                continue;
+            }
+            if (star != -1) {
+                pi = star;
+                si = ++mark;
+                continue;
+            }
+            return false;
+        }
+        while (pi < pn && pattern.charAt(pi) == '*') pi++;
+        return pi == pn;
+    }
+
+    // ------------------------ Insert operations ------------------------
+
+    /**
+     * Insert a single character at the given logical index.
+     *
+     * <p>
+     * Logical coordinates: {@code 0 <= index <= length()}. Inserting at {@code 0}
+     * prepends; inserting at {@code length()} appends.
+     * </p>
+     *
+     * <p>
+     * Complexity: amortized O(1) at the ends; O(n) when inserting in the middle
+     * (shifts the tail right).
+     * </p>
+     *
+     * @param index insertion position in logical coordinates
+     * @param c     character to insert
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if {@code index} is out of range
+     */
+    public Chain insert(final int index, final char c)
+    {
+        if (index < 0 || index > this.length) {
+            throw new StringIndexOutOfBoundsException("index=" + index + " length=" + this.length);
+        }
+        if (index == 0) { // prepend
+            ensureLeft(1);
+            chars[--zero] = c;
+            length++;
+            hash = 0;
+            return this;
+        }
+        if (index == this.length) { // append
+            return append(c);
+        }
+        // middle: shift tail right by 1
+        ensureRight(1);
+        final int dst = zero + index;
+        System.arraycopy(chars, dst, chars, dst + 1, this.length - index);
+        chars[dst] = c;
+        this.length++;
+        this.hash = 0;
+        return this;
+    }
+
+    /**
+     * Insert a character sequence at the given logical index. Delegates to
+     * {@link #insert(int, CharSequence, int, int)}.
+     *
+     * @param index insertion position in logical coordinates ({@code 0..length()})
+     * @param csq   sequence to insert (ignored if {@code null})
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if {@code index} is out of range
+     */
+    public Chain insert(final int index, final CharSequence csq)
+    {
+        if (csq == null) return this;
+        return insert(index, csq, 0, csq.length());
+    }
+
+    /**
+     * Insert a span of a character sequence at the given logical index.
+     *
+     * <p>
+     * Logical coordinates: {@code 0 <= index <= length()} for the destination;
+     * {@code 0 <= start <= end <= csq.length()} for the source.
+     * </p>
+     *
+     * <p>
+     * Performance: for common types, uses bulk copies:
+     * {@link String#getChars(int, int, char[], int)},
+     * {@link StringBuilder#getChars(int, int, char[], int)},
+     * {@link StringBuffer#getChars(int, int, char[], int)}, and
+     * {@code System.arraycopy} for {@code Chain}. Falls back to a per-char loop for
+     * arbitrary {@link CharSequence}s.
+     * </p>
+     *
+     * <p>
+     * Self-insert is supported: if {@code csq == this}, the source slice is staged
+     * through a temporary buffer before any shifting.
+     * </p>
+     *
+     * <p>
+     * Complexity: amortized O(1) at the ends; O(n) in the middle (tail shift).
+     * </p>
+     *
+     * @param index insertion position in logical coordinates
+     * @param csq   source sequence (ignored if {@code null})
+     * @param start start offset in {@code csq} (inclusive)
+     * @param end   end offset in {@code csq} (exclusive)
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if any bound is invalid
+     */
+    public Chain insert(final int index, final CharSequence csq, final int start, final int end)
+    {
+        if (csq == null) return this;
+        if (index < 0 || index > this.length) {
+            throw new StringIndexOutOfBoundsException("index=" + index + " length=" + this.length);
+        }
+        if (start < 0 || end < start || end > csq.length()) {
+            throw new StringIndexOutOfBoundsException("start=" + start + " end=" + end + " cs.length=" + csq.length());
+        }
+        final int len = end - start;
+        if (len == 0) return this;
+
+        // Self-insert safety: stage the source before any structural changes.
+        char[] tmp = null;
+        if (csq == this) {
+            tmp = new char[len];
+            // use current logical coordinates (safe before shifting)
+            System.arraycopy(this.chars, this.zero + start, tmp, 0, len);
+        }
+
+        if (index == 0) { // prepend via left slack (no tail shift)
+            ensureLeft(len);
+            zero -= len;
+            if (tmp != null) {
+                System.arraycopy(tmp, 0, chars, zero, len);
+            } else if (csq instanceof String s) {
+                s.getChars(start, end, chars, zero);
+            } else if (csq instanceof StringBuilder sb) {
+                sb.getChars(start, end, chars, zero);
+            } else if (csq instanceof StringBuffer sbuf) {
+                sbuf.getChars(start, end, chars, zero);
+            } else if (csq instanceof Chain other) {
+                System.arraycopy(other.chars, other.zero + start, chars, zero, len);
+            } else {
+                int dst = zero;
+                for (int i = start; i < end; i++)
+                    chars[dst++] = csq.charAt(i);
+            }
+            length += len;
+            hash = 0;
+            return this;
+        }
+
+        if (index == this.length) { // append
+            return append(csq, start, end);
+        }
+
+        // middle insert: shift tail, then write the payload
+        ensureRight(len);
+        final int dst = zero + index;
+        final int tail = this.length - index;
+        System.arraycopy(chars, dst, chars, dst + len, tail);
+
+        if (tmp != null) {
+            System.arraycopy(tmp, 0, chars, dst, len);
+        } else if (csq instanceof String s) {
+            s.getChars(start, end, chars, dst);
+        } else if (csq instanceof StringBuilder sb) {
+            sb.getChars(start, end, chars, dst);
+        } else if (csq instanceof StringBuffer sbuf) {
+            sbuf.getChars(start, end, chars, dst);
+        } else if (csq instanceof Chain other) {
+            System.arraycopy(other.chars, other.zero + start, chars, dst, len);
+        } else {
+            int d = dst;
+            for (int i = start; i < end; i++)
+                chars[d++] = csq.charAt(i);
+        }
+
+        this.length += len;
+        this.hash = 0;
+        return this;
+    }
+
+    /**
+     * Insert a span of a char array at the given logical index.
+     *
+     * <p>
+     * Logical coordinates: {@code 0 <= index <= length()} for the destination;
+     * {@code 0 <= offset <= offset+len <= src.length} for the source.
+     * </p>
+     *
+     * <p>
+     * Complexity: amortized O(1) at the ends; O(n) in the middle (tail shift).
+     * </p>
+     *
+     * @param index  insertion position in logical coordinates
+     * @param src    source array
+     * @param offset start offset in {@code src}
+     * @param len    number of characters to insert
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if any bound is invalid
+     * @throws NullPointerException            if {@code src} is {@code null}
+     */
+    public Chain insert(final int index, final char[] src, final int offset, final int len)
+    {
+        if (src == null) throw new NullPointerException("src");
+        if (index < 0 || index > this.length) {
+            throw new StringIndexOutOfBoundsException("index=" + index + " length=" + this.length);
+        }
+        if (offset < 0 || len < 0 || offset + len > src.length) {
+            throw new StringIndexOutOfBoundsException("offset=" + offset + " len=" + len + " src.length=" + src.length);
+        }
+        if (len == 0) return this;
+
+        if (index == 0) { // prepend via left slack
+            ensureLeft(len);
+            zero -= len;
+            System.arraycopy(src, offset, chars, zero, len);
+            length += len;
+            hash = 0;
+            return this;
+        }
+        if (index == this.length) { // append
+            ensureRight(len);
+            System.arraycopy(src, offset, chars, zero + this.length, len);
+            this.length += len;
+            this.hash = 0;
+            return this;
+        }
+        // middle
+        ensureRight(len);
+        final int dst = zero + index;
+        final int tail = this.length - index;
+        System.arraycopy(chars, dst, chars, dst + len, tail);
+        System.arraycopy(src, offset, chars, dst, len);
+        this.length += len;
+        this.hash = 0;
+        return this;
+    }
+
+    /**
+     * Get the last character.
+     *
+     * <p>
+     * Logical coordinates: equivalent to {@code charAt(length() - 1)}.
+     * </p>
+     *
+     * @return the last character
+     * @throws StringIndexOutOfBoundsException if this chain is empty
+     */
+    public char last()
+    {
+        if (this.length == 0) throw new StringIndexOutOfBoundsException("empty");
+        return chars[zero + this.length - 1];
+    }
+
+    /**
+     * Set the last character.
+     *
+     * <p>
+     * Logical coordinates: modifies {@code charAt(length() - 1)}.
+     * </p>
+     *
+     * @param c new last character
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if this chain is empty
+     */
+    public Chain last(final char c)
+    {
+        if (this.length == 0) throw new StringIndexOutOfBoundsException("empty");
+        chars[zero + this.length - 1] = c;
+        hash = 0;
+        return this;
+    }
+
+    /**
+     * Delete the last character (no-op if empty).
+     *
+     * <p>
+     * After return, {@code length()} is decremented by 1 if it was &gt; 0, and
+     * unchanged otherwise.
+     * </p>
+     *
+     * @return {@code this}
+     */
+    public Chain lastDel()
+    {
+        if (this.length == 0) return this;
+        this.length--;
+        hash = 0;
+        return this;
+    }
+
+    /**
+     * Delete {@code amount} characters from the end (the tail).
+     *
+     * <p>
+     * Logical coordinates: drops the suffix
+     * {@code subSequence(length() - amount, length())}.
+     * </p>
+     *
+     * @param amount number of characters to delete from the end
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if {@code amount} &lt; 0 or
+     *                                         {@code amount} &gt; {@link #length()}
+     */
+    public Chain lastDel(final int amount)
+    {
+        if (amount < 0 || amount > this.length) {
+            throw new StringIndexOutOfBoundsException("amount=" + amount + " length=" + this.length);
+        }
+        this.length -= amount;
+        hash = 0;
+        return this;
+    }
+
+    /**
+     * Test the last character for equality with {@code c}.
+     *
+     * @param c character to test
+     * @return {@code true} if this chain is non-empty and its last character equals
+     *         {@code c}
+     */
+    public boolean lastIs(final char c)
+    {
+        return this.length > 0 && chars[zero + this.length - 1] == c;
+    }
+
+    /**
+     * Inspect the most recently pushed checkpoint without popping it.
+     *
+     * @return the saved logical length for the top checkpoint
+     * @throws IllegalStateException if no checkpoint is present
+     * @see #pushMark()
+     */
+    public int peekMark()
+    {
+        if (markSp == 0) throw new IllegalStateException("peekMark() with empty mark stack");
+        return markStack[markSp - 1];
+    }
+
+    /**
+     * Prepend a single character (amortized O(1)).
+     *
+     * @param c character to prepend
+     * @return {@code this}
+     */
+    public Chain prepend(final char c)
+    {
+        ensureLeft(1);
+        zero--;
+        chars[zero] = c;
+        length++;
+        hash = 0;
+        return this;
+    }
+
+    /**
+     * Prepend a span of a char array.
+     *
+     * <p>
+     * Copies {@code src[offset .. offset+length)} so that its first element becomes
+     * the new first character of this sequence.
+     * </p>
+     *
+     * @param src    source array
+     * @param offset start offset in {@code src}
+     * @param length number of characters to copy
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if {@code offset < 0},
+     *                                         {@code length < 0}, or
+     *                                         {@code offset + length > src.length}
+     */
+    public Chain prepend(final char[] src, final int offset, final int length)
+    {
+        if (offset < 0 || length < 0 || offset + length > src.length) {
+            throw new StringIndexOutOfBoundsException();
+        }
+        if (length == 0) return this;
+
+        ensureLeft(length);
+        zero -= length; // make room on the left
+        System.arraycopy(src, offset, this.chars, zero, length);
+        this.length += length;
+        hash = 0;
+        return this;
+    }
+
+    /**
+     * Prepend an entire char array (convenience).
+     *
+     * @param src source array
+     * @return {@code this}
+     * @throws NullPointerException if {@code src} is {@code null}
+     */
+    public Chain prepend(final char[] src)
+    {
+        return prepend(src, 0, src.length);
+    }
+
+    /**
+     * Prepend a character sequence.
+     *
+     * @param csq sequence to prepend (ignored if {@code null})
+     * @return {@code this}
+     */
+    public Chain prepend(final CharSequence csq)
+    {
+        if (csq == null) return this;
+        return prepend(csq, 0, csq.length());
+    }
+
+    /**
+     * Prepend a span of a character sequence.
+     *
+     * <p>
+     * Logical coordinates: inserts {@code csq.subSequence(start, end)} at the
+     * front. Bounds are validated against {@code csq.length()}.
+     * </p>
+     *
+     * <p>
+     * Performance: uses bulk-copy fast paths for common types ({@link String},
+     * {@link StringBuilder}, {@link StringBuffer}, and {@code Chain}); otherwise
+     * falls back to a per-character copy.
+     * </p>
+     *
+     * @param csq   source sequence (ignored if {@code null})
+     * @param start start offset (inclusive) in {@code csq}
+     * @param end   end offset (exclusive) in {@code csq}
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if {@code start < 0},
+     *                                         {@code end < start}, or
+     *                                         {@code end > csq.length()}
+     */
+    public Chain prepend(final CharSequence csq, final int start, final int end)
+    {
+        if (csq == null) return this;
+        if (start < 0 || end < start || end > csq.length()) {
+            throw new StringIndexOutOfBoundsException("start=" + start + " end=" + end + " len=" + csq.length());
+        }
+        final int len = end - start;
+        if (len == 0) return this;
+
+        // Self-prepend safety: copy out before shifting 'zero'.
+        if (csq == this) {
+            final char[] tmp = new char[len];
+            System.arraycopy(this.chars, this.zero + start, tmp, 0, len);
+            ensureLeft(len);
+            this.zero -= len;
+            System.arraycopy(tmp, 0, this.chars, this.zero, len);
+            this.length += len;
+            this.hash = 0;
+            return this;
+        }
+
+        ensureLeft(len);
+        this.zero -= len;
+
+        // Fast paths for common CharSequence implementations
+        if (csq instanceof String s) {
+            s.getChars(start, end, this.chars, this.zero);
+        } else if (csq instanceof StringBuilder sb) {
+            sb.getChars(start, end, this.chars, this.zero);
+        } else if (csq instanceof StringBuffer sbuf) {
+            sbuf.getChars(start, end, this.chars, this.zero);
+        } else if (csq instanceof Chain other) {
+            System.arraycopy(other.chars, other.zero + start, this.chars, this.zero, len);
+        } else {
+            // Generic fallback
+            for (int i = 0, src = start, dst = this.zero; i < len; i++) {
+                this.chars[dst++] = csq.charAt(src++);
+            }
+        }
+
+        this.length += len;
+        this.hash = 0;
+        return this;
+    }
+
+    /**
+     * Push a checkpoint at the current logical end of this sequence.
+     *
+     * <p>
+     * The checkpoint stores {@link #length()} and can later be used to truncate
+     * back to that position via {@link #rollbackMark()}. Multiple checkpoints may
+     * be nested (LIFO stack).
+     * </p>
+     *
+     * <p>
+     * <strong>Intended use:</strong> right-side editing (append-only between push
+     * and rollback), such as speculative parsing of a token or XML tag. The
+     * checkpoint is in <em>logical</em> coordinates and remains valid across
+     * internal buffer reallocations.
+     * </p>
+     *
+     * @return {@code this}
+     * @implNote Do not call {@code prepend(...)} while a checkpoint is active;
+     *           rollback truncates the tail and will also discard prepended
+     *           content.
+     * @see #rollbackMark()
+     * @see #commitMark()
+     * @see #peekMark()
+     * @see #getMarkDepth()
+     */
+    public Chain pushMark()
+    {
+        if (markStack == null) markStack = new int[4];
+        if (markSp == markStack.length) {
+            markStack = java.util.Arrays.copyOf(markStack, markStack.length << 1);
+        }
+        markStack[markSp++] = this.length;
+        return this;
+    }
+
+    /**
+     * Roll back to the most recently pushed checkpoint and pop it.
+     *
+     * <p>
+     * Equivalent to {@code setLength(savedLength)} where {@code savedLength} is the
+     * value captured by the last {@link #pushMark()} call. After return, the
+     * logical length equals that mark; all content appended since the mark was set
+     * is discarded.
+     * </p>
+     *
+     * <p>
+     * Complexity: O(1). Does not modify the left offset ({@code zero}).
+     * </p>
+     *
+     * @return {@code this}
+     * @throws IllegalStateException if no checkpoint is present
+     * @see #pushMark()
+     * @see #commitMark()
+     */
+    public Chain rollbackMark()
+    {
+        if (markSp == 0) throw new IllegalStateException("rollbackMark() with empty mark stack");
+        final int m = markStack[--markSp];
+        if (m < 0 || m > this.length) {
+            // Defensive: should never happen unless misused across invariants.
+            throw new IllegalStateException("invalid mark=" + m + " length=" + this.length);
+        }
+        this.length = m;
+        this.hash = 0;
+        return this;
+    }
+
+    /**
+     * Replace the character at the given logical index.
+     *
+     * <p>
+     * Logical coordinates: {@code 0 <= index < length()}. This method operates on
+     * UTF-16 <em>code units</em>, like {@link StringBuilder#setCharAt(int, char)}:
+     * if {@code index} addresses one half of a surrogate pair, the pair may be
+     * broken.
+     * </p>
+     *
+     * <p>
+     * Complexity: O(1). Does not change {@link #length()} and does not affect
+     * marks; only the cached hash is invalidated.
+     * </p>
+     *
+     * @param index logical index of the character to replace
+     * @param c     new character (UTF-16 code unit)
+     * @return {@code this}
+     * @throws StringIndexOutOfBoundsException if {@code index} is out of range
+     */
+    public Chain setCharAt(final int index, final char c)
+    {
+        if (index < 0 || index >= this.length) {
+            throw new StringIndexOutOfBoundsException("index=" + index + " length=" + this.length);
+        }
+        this.chars[this.zero + index] = c;
+        this.hash = 0;
+        return this;
+    }
+
+    /**
+     * Set the logical length of this sequence.
+     *
+     * <p>
+     * If the new length is smaller than the current length, the sequence is
+     * truncated. If it is larger, the sequence is extended and the added characters
+     * are set to {@code '\0'} (NUL), matching
+     * {@link java.lang.StringBuilder#setLength(int)} semantics.
+     * </p>
+     *
+     * <p>
+     * This method does not modify the left offset ({@code zero}); it only shortens
+     * or extends on the right (tail).
+     * </p>
+     *
+     * @param newLength the new length, {@code newLength >= 0}
+     * @throws IndexOutOfBoundsException if {@code newLength} is negative
+     */
+    public void setLengthI(final int newLength)
+    {
+        if (newLength < 0) {
+            throw new IndexOutOfBoundsException("newLength=" + newLength);
+        }
+        if (newLength == this.length) {
+            return;
+        }
+        if (newLength < this.length) { // shrink
+            this.length = newLength;
+            this.hash = 0;
+            return;
+        }
+        // grow
+        final int delta = newLength - this.length;
+        ensureRight(delta);
+        final int dst = this.zero + this.length;
+        // fill with NULs to mirror StringBuilder
+        Arrays.fill(this.chars, dst, dst + delta, '\0');
+        this.length = newLength;
+        this.hash = 0;
+    }
+
+    /**
+     * Check whether the sequence starts with a given prefix.
+     *
+     * @param prefix prefix to test
+     * @return {@code true} if it starts with {@code prefix}
+     */
+    public boolean startsWith(final CharSequence prefix)
+    {
+        final int lim = prefix.length();
+        if (lim > this.length) return false;
+        for (int i = 0; i < lim; i++) {
+            if (prefix.charAt(i) != chars[zero + i]) return false;
+        }
+        return true;
+    }
+
+    // ----------------------- equals/compare/hash ----------------
+
+    /**
+     * Return a view of a sub-sequence (no copying).
+     *
+     * @param start start offset (inclusive), logical coordinates
+     * @param end   end offset (exclusive), logical coordinates
+     * @return a {@code Chain} sharing the same backing array
+     * @throws StringIndexOutOfBoundsException if bounds are invalid
+     * @implNote This retains the backing array; call {@link #compact()} if needed.
+     */
+    @Override
+    public Chain subSequence(final int start, final int end)
+    {
+        if (start < 0 || end < start || end > this.length) throw new StringIndexOutOfBoundsException();
+        return new Chain(this.chars, this.zero + start, end - start);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean equals(final Object o)
+    {
+        if (this == o) return true;
+        if (o instanceof Chain oc) {
+            if (oc.length != this.length) return false;
+            if (this.hash != 0 && oc.hash != 0 && this.hash != oc.hash) return false;
+            for (int i = 0; i < this.length; i++) {
+                if (this.chars[this.zero + i] != oc.chars[oc.zero + i]) return false;
+            }
+            return true;
+        }
+        if (o instanceof CharSequence cs) {
+            if (cs.length() != this.length) return false;
+            for (int i = 0; i < this.length; i++) {
+                if (cs.charAt(i) != this.chars[this.zero + i]) return false;
+            }
+            return true;
+        }
+        if (o instanceof char[] a) {
+            if (a.length != this.length) return false;
+            for (int i = 0; i < this.length; i++) {
+                if (a[i] != this.chars[this.zero + i]) return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public int hashCode()
+    {
+        int h = this.hash;
+        if (h == 0 && this.length > 0) {
+            int off = this.zero;
+            int end = off + this.length;
+            for (int i = off; i < end; i++) {
+                h = 31 * h + this.chars[i];
+            }
+            this.hash = h;
+        }
+        return h;
+    }
+
+    /**
+     * Lexicographic comparison against any {@link CharSequence}.
+     *
+     * @param cs other sequence
+     * @return negative/zero/positive per {@link Comparable} contract
+     */
+    @Override
+    public int compareTo(final CharSequence cs)
+    {
+        final int n1 = this.length, n2 = cs.length();
+        final int n = Math.min(n1, n2);
+        for (int i = 0; i < n; i++) {
+            int d = this.chars[this.zero + i] - cs.charAt(i);
+            if (d != 0) return d;
+        }
+        return n1 - n2;
+    }
+
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {
-        return new String(chars, zero, this.length);
+        return new String(this.chars, this.zero, this.length);
     }
 
     /**
-     * Read value in a char separated string. The chain objected is update from
-     * offset position to the next separator (or end of String).
-     * 
-     * @param separator
-     * @param offset    index position to read from
-     * @return a new offset from where to search in String, or -1 when end of line
-     *         is reached
+     * Deep clone (copies the backing array).
+     *
+     * @return cloned {@code Chain}
      */
-    /*
-     * rewrite public int value(Chain cell, final char separator) { if (pointer < 0)
-     * pointer = 0; pointer = value(cell, separator, pointer); return pointer; }
-     * 
-     * public int value(Chain cell, final char separator, final int offset) { if
-     * (offset >= size) return -1; char[] dat = chars; int to = start + offset; int
-     * max = start + size; while (to < max) { if (dat[to] == separator && (to == 0
-     * || dat[to - 1] != '\\')) { // test escape char cell.link(this, offset, to -
-     * offset - start); return to - start + 1; } to++; } // end of line
-     * cell.link(this, offset, to - offset - start); return to - start; }
-     */
+    @Override
+    public Chain clone()
+    {
+        try {
+            Chain c = (Chain) super.clone();
+            c.chars = Arrays.copyOf(this.chars, this.chars.length);
+            return c;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    // ----------------------- capacity management ----------------
 
     /**
-     * Suppress spaces at start and end of string. Do not affect the internal char
-     * array chars but modify only its limits. Should be very efficient.
-     * 
-     * @return this Chain object (modified).
+     * Ensure at least {@code amount} free slots on the left (for prepend).
+     *
+     * @param amount required free slots
      */
-    public Chain trim()
+    private void ensureLeft(final int amount)
     {
+        if (amount <= zero) return;
+        final int needed = amount + length + 1;
+        final int newLen = Calcul.nextSquare(needed);
+        final char[] a = new char[newLen];
+        final int newStart = amount + (newLen - length - amount) / 2;
+        System.arraycopy(chars, zero, a, newStart, length);
+        chars = a;
+        zero = newStart;
         hash = 0;
-        int left = zero;
-        char[] dat = chars;
-        int right = zero + this.length;
-        while (left < right && dat[left] < ' ') {
-            left++;
-        }
-        zero = left;
-        right--;
-        while (right > left && dat[left] < ' ') {
-            right--;
-        }
-        this.length = right - left + 1;
-        return this;
     }
 
     /**
-     * Suppress specific chars at start and end of String. Do not affect the
-     * internal char array chars but modify only its limits.
-     * 
-     * @param spaces ex: "\n\t ".
-     * @return this Chain object (modified).
+     * Ensure at least {@code amount} free slots on the right (for append).
+     *
+     * @param amount required free slots
      */
-    public Chain trim(final String spaces)
+    private void ensureRight(final int amount)
     {
+        if ((zero + length + amount) <= chars.length) return;
+        final int newLen = Calcul.nextSquare(zero + length + amount);
+        chars = Arrays.copyOf(chars, newLen);
         hash = 0;
-        int left = zero;
-        char[] dat = chars;
-        int right = zero + this.length;
-        // possible optimisation on indexOf() ?
-        while (left < right && spaces.indexOf(dat[left]) > -1) {
-            left++;
-        }
-        zero = left;
-        right--;
-        // test for escape chars ? "\""
-        while (right > left && spaces.indexOf(dat[right]) > -1) {
-            right--;
-        }
-        this.length = right - left + 1;
-        return this;
     }
-
-    /**
-     * Copied from lucene to allow UTF-8 bytes conversion to chars from a specific
-     * index int the destination char array.
-     * <p>
-     * Interprets the given byte array as UTF-8 and converts to UTF-16. It is the
-     * responsibility of the caller to make sure that the destination array is large
-     * enough.
-     * <p>
-     * NOTE: Full characters are read, even if this reads past the length passed
-     * (and can result in an ArrayOutOfBoundsException if invalid UTF-8 is passed).
-     * Explicit checks for valid UTF-8 are not performed.
-
-     * @param utf8 source bytes.
-     * @param offset start position in source bytes.
-     * @param length amount of bytes to parse.
-     * @param out  destination char array to fill.
-     * @param out_offset start position in destination array.
-     * @return the amout of chars appended.
-     */
-    public static int UTF8toUTF16(byte[] utf8, int offset, int length, char[] out, final int out_offset)
-    {
-        int out_pos = out_offset;
-        final long HALF_MASK = 0x3FFL;
-        final long UNI_MAX_BMP = 0x0000FFFF;
-        final int limit = offset + length;
-        while (offset < limit) {
-            int b = utf8[offset++] & 0xff;
-            if (b < 0xc0) {
-                assert b < 0x80;
-                out[out_pos++] = (char) b;
-            } else if (b < 0xe0) {
-                out[out_pos++] = (char) (((b & 0x1f) << 6) + (utf8[offset++] & 0x3f));
-            } else if (b < 0xf0) {
-                out[out_pos++] = (char) (((b & 0xf) << 12) + ((utf8[offset] & 0x3f) << 6) + (utf8[offset + 1] & 0x3f));
-                offset += 2;
-            } else {
-                assert b < 0xf8 : "b = 0x" + Integer.toHexString(b);
-                int ch = ((b & 0x7) << 18) + ((utf8[offset] & 0x3f) << 12) + ((utf8[offset + 1] & 0x3f) << 6)
-                        + (utf8[offset + 2] & 0x3f);
-                offset += 3;
-                if (ch < UNI_MAX_BMP) {
-                    out[out_pos++] = (char) ch;
-                } else {
-                    int chHalf = ch - 0x0010000;
-                    out[out_pos++] = (char) ((chHalf >> 10) + 0xD800);
-                    out[out_pos++] = (char) ((chHalf & HALF_MASK) + 0xDC00);
-                }
-            }
-        }
-        return out_pos - out_offset;
-    }
-
-    /**
-     * Back the chain to an external char array (no copy).
-     * 
-     * @param src Source char array.
-     */
-    public Chain wrap(final char[] src) {
-        this.chars = src;
-        hash = 0;
-        zero = 0;
-        this.length = src.length;
-        return this;
-    }
-
-    /**
-     * Poor a string in data, array should have right size
-     * 
-     * @param dstOffset  Position in this Chain from where to write chars.
-     * @param src        Source char sequence to get char from.
-     * @param srcStart   Start index of chars to copy from source char sequence.
-     * @param srcEnd     End index of chars to copy from source char array.
-     */
-    private void write(final int dstOffset, final CharSequence src, int srcStart, final int srcEnd)
-    {
-        final int len = srcEnd - srcStart;
-        if (len < 0) {
-            throw new NegativeArraySizeException("start=" + srcStart + " end=" + srcEnd + " start > end, no chars to append");
-        }
-        if (len > 4) { // only use instanceof check series for longer CSQs, else simply iterate
-            if (src instanceof String) {
-                ((String) src).getChars(srcStart, srcEnd, chars, zero + dstOffset);
-            } else if (src instanceof StringBuilder) {
-                ((StringBuilder) src).getChars(srcStart, srcEnd, chars, zero + dstOffset);
-            } else if (src instanceof StringBuffer) {
-                ((StringBuffer) src).getChars(srcStart, srcEnd, chars, zero + dstOffset);
-            } else if (src instanceof CharBuffer && ((CharBuffer) src).hasArray()) {
-                final CharBuffer cb = (CharBuffer) src;
-                System.arraycopy(cb.array(), cb.arrayOffset() + cb.position() + srcStart, chars, zero + dstOffset, len);
-            } else {
-                for (int i = zero + dstOffset, limit = zero + dstOffset + len; i < limit; i++) {
-                    chars[i] = src.charAt(srcStart++);
-                }
-            }
-        } else {
-            for (int i = zero + dstOffset, limit = zero + dstOffset + len; i < limit; i++) {
-                chars[i] = src.charAt(srcStart++);
-            }
-        }
-    }
-
 }

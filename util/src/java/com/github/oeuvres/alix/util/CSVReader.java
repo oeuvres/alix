@@ -130,12 +130,44 @@ public class CSVReader
         Chain cell = row.next();
         int bufPos = this.bufPos;
         int bufMark = bufPos; // from where to start a copy
-        char sep = this.sep; // localize
-        boolean sep1 = (sep != 0);
         // char quote = this.quote;
         // boolean inquote;
         char lastChar = 0;
         int crlf = 0; // used to not append CR to a CRLF ending line
+        
+        /*
+        final ArrayList<String> out = new ArrayList<>();
+        final StringBuilder sb = new StringBuilder();
+        boolean inQuotes = false;
+        for (int i = 0; i < line.length(); i++) {
+            char ch = line.charAt(i);
+            if (inQuotes) {
+                if (ch == '"') {
+                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                        sb.append('"');
+                        i++;
+                    } else {
+                        inQuotes = false;
+                    }
+                } else {
+                    sb.append(ch);
+                }
+            } else {
+                if (ch == '"') {
+                    inQuotes = true;
+                } else if (ch == ',') {
+                    out.add(sb.toString());
+                    sb.setLength(0);
+                } else {
+                    sb.append(ch);
+                }
+            }
+        }
+        out.add(sb.toString());
+        return out;
+    }
+    */
+        boolean inQuotes = false;
         while (true) {
             // fill buffer
             if (bufLen == bufPos) {
@@ -170,10 +202,8 @@ public class CSVReader
                 break;
             if (c == CR)
                 continue;
-            // exclude case of cell separator
-            if (sep1) { // one char declared for cell separator
-                if (c != sep)
-                    continue;
+            if (sep != 0 && c != sep) {
+                continue;
             } else { // nice sugar on common separators
                 if (c != '\t' && c != ',' && c != ';')
                     continue;
@@ -237,7 +267,7 @@ public class CSVReader
         {
             this.pointer = 0;
             for (int i = cols - 1; i >= 0; i--) {
-                cells[i].reset();
+                cells[i].clear();
             }
             return this;
         }

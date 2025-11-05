@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -22,77 +23,57 @@ public class ML
     private static int KWIC_MAXCHARS = 500;
     /** HTML entities */
     public static final HashMap<String, Character> HTMLENT = new HashMap<String, Character>();
-    /*// shall we load entities ?
-    static {
-        BufferedReader buf = new BufferedReader(
-                new InputStreamReader(Char.class.getResourceAsStream("htmlent.csv"), StandardCharsets.UTF_8));
-        String l;
-        String ent;
-        Character c;
-        int pos;
-        try {
-            buf.readLine(); // first line is labels
-            while ((l = buf.readLine()) != null) {
-                l = l.trim();
-                if (l.charAt(0) == '#')
-                    continue;
-                pos = l.indexOf(' ');
-                if (pos < 3)
-                    continue;
-                if (pos + 1 >= l.length())
-                    continue;
-                ent = l.substring(0, pos);
-                c = l.charAt(pos + 1);
-                HTMLENT.put(ent, c);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-    */
+    /*
+     * // shall we load entities ? static { BufferedReader buf = new BufferedReader(
+     * new InputStreamReader(Char.class.getResourceAsStream("htmlent.csv"),
+     * StandardCharsets.UTF_8)); String l; String ent; Character c; int pos; try {
+     * buf.readLine(); // first line is labels while ((l = buf.readLine()) != null)
+     * { l = l.trim(); if (l.charAt(0) == '#') continue; pos = l.indexOf(' '); if
+     * (pos < 3) continue; if (pos + 1 >= l.length()) continue; ent = l.substring(0,
+     * pos); c = l.charAt(pos + 1); HTMLENT.put(ent, c); } } catch (IOException e) {
+     * e.printStackTrace(); } }
+     */
 
     /**
      * Avoid instantiation, use static methods instead.
      */
     private ML()
     {
-        
+
     }
+
     /**
-     * Used to build a concordance. 
-     * From a random point in an xml file, append text to a mutable destination charSequence,
-     * limit to an amount of chars.
+     * Used to build a concordance. From a random point in an xml file, append text
+     * to a mutable destination charSequence, limit to an amount of chars.
      * 
-     * @param xml source markup text.
+     * @param xml    source markup text.
      * @param offset position in xml from which append words or chars.
-     * @param chain destination chain.
-     * @param chars amount of chars to append.
+     * @param chain  destination chain.
+     * @param chars  amount of chars to append.
      */
     public static void appendChars(final String xml, int offset, final Chain chain, final int chars)
     {
         append(xml, offset, chain, chars, -1);
     }
+
     /**
-     * Used to build a concordance. 
-     * From a random point in an xml file, append text to a mutable destination charSequence,
-     * limit to an amount of chars, or words.
+     * Used to build a concordance. From a random point in an xml file, append text
+     * to a mutable destination charSequence, limit to an amount of chars, or words.
      * 
-     * @param xml source markup text.
+     * @param xml    source markup text.
      * @param offset position in xml from which append words or chars.
-     * @param chain destination chain.
-     * @param chars amount of chars append.
-     * @param words amount of words to append.
+     * @param chain  destination chain.
+     * @param chars  amount of chars append.
+     * @param words  amount of words to append.
      */
     private static void append(final String xml, int offset, final Chain chain, int chars, int words)
     {
         // silently limit parameters
-        if (words <= 0 && chars <= 0)
-            chars = 50;
-        else if (chars > KWIC_MAXCHARS)
-            chars = KWIC_MAXCHARS;
+        if (words <= 0 && chars <= 0) chars = 50;
+        else if (chars > KWIC_MAXCHARS) chars = KWIC_MAXCHARS;
         int cc = 0; // char count
         int wc = 0; // word count
-    
+
         int length = xml.length();
         boolean lt = false, first = true, space = false, token = false;
         // word count and spacing will bug for non indented tags like
@@ -120,10 +101,8 @@ public class ML
             case '\n':
             case '\r':
             case '\t':
-                if (lt)
-                    break; // space inside tag, skip
-                if (space)
-                    break; // second or more space, skip
+                if (lt) break; // space inside tag, skip
+                if (space) break; // second or more space, skip
                 space = true; // stop record space after this one
                 chain.append(' ');
                 cc++;
@@ -133,8 +112,7 @@ public class ML
                 }
                 break;
             default:
-                if (lt)
-                    break; // char in tag, skip
+                if (lt) break; // char in tag, skip
                 space = false; // renew space flag
                 chain.append(c);
                 cc++;
@@ -148,31 +126,28 @@ public class ML
                 }
             }
             offset++;
-            if (words <= 0)
-                ; // no matter about words;
-            else if (token)
-                continue; // do not break inside a word
-            else if (wc >= words)
-                break; // we got enough words
-            if (chars > 0 && cc >= chars)
-                break; // chars limit reached
+            if (words <= 0); // no matter about words;
+            else if (token) continue; // do not break inside a word
+            else if (wc >= words) break; // we got enough words
+            if (chars > 0 && cc >= chars) break; // chars limit reached
         }
         // ? delete last char for words ?
     }
+
     /**
-     * Used to build a concordance. 
-     * From a random point in an xml file, append text to a mutable destination charSequence,
-     * limit to an amount of words.
+     * Used to build a concordance. From a random point in an xml file, append text
+     * to a mutable destination charSequence, limit to an amount of words.
      * 
-     * @param xml source markup text.
+     * @param xml    source markup text.
      * @param offset position in xml from which append words or chars.
-     * @param chain destination chain.
-     * @param words amount of words to append.
+     * @param chain  destination chain.
+     * @param words  amount of words to append.
      */
     public static void appendWords(final String xml, int offset, final Chain chain, final int words)
     {
         append(xml, offset, chain, -1, words);
     }
+
     /**
      * Return a normalize-space() text version of an xml excerpt (possibly broken).
      *
@@ -188,15 +163,16 @@ public class ML
         detag(xml, 0, xml.length(), dest, null);
         return dest.toString();
     }
+
     /**
      * Return a normalize-space() text version of an xml excerpt (possibly broken),
      * with selected tags allowed
      * 
-     * @param xml span of text with tags.
+     * @param xml     span of text with tags.
      * @param include set of tags allowed.
      * @return normalized text without tags.
      */
-    public static String detag(final String xml, Set<String> include)
+    public static String detag(final String xml, String[] include)
     {
         if (xml == null || xml.isEmpty()) {
             return "";
@@ -205,103 +181,223 @@ public class ML
         detag(xml, 0, xml.length(), dest, include);
         return dest.toString();
     }
+
+
     /**
-     * Return a normalize-space() text version of an xml excerpt (possibly with
-     * broken tags). Chain could be reused here for performances.
-     * 
-     * @param xml span of text with tags.
-     * @param begin start index in xml.
-     * @param end end index in xml.
-     * @param dest destination {@link CharSequence}.
-     * @param include set of tags allowed.
+     * Append a normalize-space() text view of an XML/HTML excerpt (tag soup).
+     *
+     * <p>
+     * Behavior:
+     * </p>
+     * <ul>
+     * <li>Collapses ASCII whitespace (space, tab, CR, LF) to a single space;
+     * removes leading and trailing space.</li>
+     * <li>Removes all element markup by default. If {@code include} is non-null and
+     * contains the element <em>local</em> name (case-insensitive), the tag markup
+     * {@code <...>} is preserved (text content is always kept).</li>
+     * <li>Tolerates broken excerpts:
+     * <ul>
+     * <li>If the slice begins inside a tag, the initial broken markup is
+     * discarded.</li>
+     * <li>If the slice ends inside a tag, the unterminated markup is
+     * discarded.</li>
+     * </ul>
+     * </li>
+     * <li>Does not decode entities, does not interpret comments/PI/CDATA specially;
+     * they are treated as tags and stripped unless explicitly included by
+     * name.</li>
+     * </ul>
+     *
+     * <p>
+     * Destination: content is <em>appended</em> to {@code dest}. Nothing is
+     * cleared.
+     * </p>
+     *
+     * @param xml     source text (possibly ill-formed)
+     * @param begin   start index (inclusive); clamped to {@code [0, xml.length()]}
+     * @param end     end index (exclusive); clamped to {@code [0, xml.length()]}
+     * @param dest    output buffer; receives normalized text and any preserved tags
+     * @param include set of tag names to preserve (case-insensitive). If
+     *                {@code null} or empty, all tags are stripped.
      */
-    @SuppressWarnings("unlikely-arg-type")
-    public static void detag(final String xml, int begin, int end, Chain dest, Set<String> include)
+    public static void detag(final String xml, int begin, int end, final Chain dest, final String[] include)
     {
-        // silently fails if bad params
-        if (begin < 0 || end < 0) {
-            return;
-        }
-        if (end > xml.length()) {
-            end = xml.length();
-        }
-        if (begin > end) {
-            return;
-        }
-        boolean start = true; // before first tag (avoid broken tag)
-        // boolean lt = false; // tag is started
-        // tag name to test
-        Chain tagName = new Chain();
-        boolean tagRecord = false;
-        int tagLength = -1; // if we need to erase tag
-        boolean space = false; // a space have been sent
-    
-        char lastPrint = ' ';
-        char lastChar = ' ';
+        if (xml == null || dest == null) return;
+
+        // Clamp range
+        if (begin < 0) begin = 0;
+        if (end < begin) return;
+        if (end > xml.length()) end = xml.length();
+        if (begin >= end) return;
+
+        
+        // Method-level mark: lets us discard a broken leading tag without touching
+        // prior dest content.
+        final int baseDepth = dest.getMarkDepth();
+        dest.pushMark();
+
+        boolean inTag = false; // currently copying tag markup
+        boolean recordName = false; // still scanning the element name
+        boolean spacePending = false; // one collapsed space to emit before next text char
+        boolean sawLtSinceBegin = false; // have we seen any '<' yet (to identify a broken-leading '>')
+        char lastInput = 0; // previous input char
+        char lastPrinted = 0; // last character we actually committed to dest (for punctuation heuristic)
+
+        final StringBuilder tagName = new StringBuilder(); // collects element name only (no '/', '!', '?', attributes)
+
         for (int i = begin; i < end; i++) {
-            char c = xml.charAt(i);
-            switch (c) {
-            case '<':
-                space = false; // renew space flag
-                start = false; // no more broken tag at start
-                // pb with bad indent html
-                // tique.</p><p class="p">Ains
-                if (lastChar == '>' && Char.isPUNsent(lastPrint)) {
-                    lastPrint = ' ';
-                    dest.append(' ');
-                    space = true;
-                }
-                tagLength = dest.length(); // record position if we want to go back
-                tagName.reset(); // prepare the testing tag
-                tagRecord = true;
-                dest.append(c);
-                break;
-            case '>':
-                tagRecord = false;
-                // a broken tag at start, erase what was appended
-                if (start) {
-                    dest.reset();
-                    start = false;
+            final char c = xml.charAt(i);
+
+            if (!inTag) {
+                switch (c) {
+                case '<': {
+                    // Punctuation heuristic: if previous input was '>' and last printed is sentence
+                    // punctuation, add a space.
+                    if (lastInput == '>' && Char.isPUNsent(lastPrinted) && !dest.endsWith(' ')) {
+                        dest.append(' ');
+                        spacePending = false;
+                        lastPrinted = ' ';
+                    }
+                    // Begin a tag: record markup and remember position in case we strip it.
+                    dest.pushMark();
+                    inTag = true;
+                    recordName = true;
+                    tagName.setLength(0);
+                    sawLtSinceBegin = true;
+                    dest.append('<');
                     break;
                 }
-                dest.append(c);
-                // no tag tag include, erase recorded tag
-                if (include == null || !include.contains(tagName)) {
-                    dest.setLength(tagLength);
+                case '>': {
+                    // We hit a '>' before any '<' → we started inside a broken tag; discard
+                    // whatever we appended in this call.
+                    if (!sawLtSinceBegin) {
+                        // roll back to the method-level mark
+                        while (dest.getMarkDepth() > baseDepth + 1) dest.rollbackMark(); // close any accidental inner
+                                                                                         // marks
+                        dest.rollbackMark(); // method-level mark
+                        dest.pushMark(); // re-establish method-level mark for the remainder
+                        // do not output this '>'
+                        break;
+                    }
+                    // Otherwise, a stray '>' in text; treat as text.
+                    if (spacePending && !dest.endsWith(' ')) {
+                        dest.append(' ');
+                        lastPrinted = ' ';
+                    }
+                    dest.append('>');
+                    spacePending = false;
+                    lastPrinted = '>';
+                    break;
                 }
-                tagLength = -1; // reset, nothing more <tag> to strip
-                break;
-            case ' ':
-            case '\n':
-            case '\r':
-            case '\t':
-                // always end of tagName
-                tagRecord = false;
-                // record space in tag
-                if (space)
-                    break; // second or more space, skip
-                space = true; // stop record space
-                dest.append(' ');
-                lastPrint = ' ';
-                break;
-            case '/':
-                // closing tag ?
-                dest.append(c);
-                break;
-            default:
-                if (tagRecord) { // record tagName
-                    tagName.append(c);
+                case ' ':
+                case '\n':
+                case '\r':
+                case '\t': {
+                    // collapse runs
+                    spacePending = true;
+                    break;
                 }
-                space = false; // renew space flag
-                dest.append(c);
-                lastPrint = c;
+                default: {
+                    if (spacePending && !dest.endsWith(' ')) {
+                        dest.append(' ');
+                        lastPrinted = ' ';
+                    }
+                    dest.append(c);
+                    spacePending = false;
+                    lastPrinted = c;
+                    break;
+                }
+                }
+            } else {
+                // inTag == true : we are copying markup and maybe recording the element name
+                // prefix
+                switch (c) {
+                case '>': {
+                    inTag = false;
+                    recordName = false;
+                    dest.append('>');
+                    // Decide whether to keep or strip this tag's markup
+                    boolean keep = false;
+                    if (include != null && tagName.length() > 0) {
+                        for (String tag: include) {
+                            if (tag.contentEquals(tagName)) {
+                                keep=true;
+                                break;
+                            }
+                        }
+                    }
+                    if (keep) {
+                        dest.commitMark();
+                        lastPrinted = '>'; // last committed char is '>'
+                    } else {
+                        dest.rollbackMark(); // erase the markup we just appended
+                        // after stripping a tag, we do not force a space; normalization is handled by
+                        // text flow
+                    }
+                    break;
+                }
+                case ' ':
+                case '\n':
+                case '\r':
+                case '\t': {
+                    recordName = false; // element name ended before attributes
+                    dest.append(c);
+                    break;
+                }
+                case '/': {
+                    // closing tag or self-closing tail; '/' is part of markup
+                    dest.append('/');
+                    // if '/' appears before any name char, it's a close token; do not record into
+                    // tagName
+                    recordName &= (tagName.length() > 0);
+                    break;
+                }
+                default: {
+                    if (recordName) {
+                        // First character of name may not be '/', '!' or '?'
+                        if (tagName.length() == 0 && (c == '/' || c == '!' || c == '?')) {
+                            recordName = false; // special or closing; we won't keep such tags unless included
+                                                // explicitly by that symbol (rare)
+                        } else {
+                            // Accept a conservative ASCII name charset: A-Z a-z 0-9 _ - :
+                            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_'
+                                    || c == '-' || c == ':') {
+                                tagName.append(c);
+                            } else {
+                                recordName = false; // name ended; remaining chars are attributes or other markup
+                            }
+                        }
+                    }
+                    dest.append(c);
+                    break;
+                }
+                }
             }
-            lastChar = c;
+
+            lastInput = c;
         }
-        // last unclose tag, strip
-        if (tagLength >= 0) dest.setLength(tagLength);
+
+        // If we ended while still in a tag, drop the unterminated markup.
+        while (dest.getMarkDepth() > baseDepth + 1) {
+            // there may be nested marks from nested tags; roll them back
+            dest.rollbackMark();
+        }
+        if (dest.getMarkDepth() == baseDepth + 1) {
+            // drop the last unfinished tag (if any)
+            dest.rollbackMark();
+        }
+
+        // Commit the method-level mark.
+        if (dest.getMarkDepth() != baseDepth) {
+            dest.commitMark();
+        }
+
+        // Trim a trailing single space (normalize-space semantics).
+        if (dest.length() > 0 && dest.lastIs(' ')) {
+            dest.lastDel();
+        }
     }
-    
+
     /**
      * Ensure that a String could be included as html text.
      * 
@@ -310,22 +406,18 @@ public class ML
      */
     public static String escape(final CharSequence cs)
     {
-        if (cs == null)
-            return "";
+        if (cs == null) return "";
         final StringBuilder out = new StringBuilder(Math.max(16, cs.length()));
         for (int i = 0; i < cs.length(); i++) {
             char c = cs.charAt(i);
-            if (c == '<')
-                out.append("&lt;");
-            else if (c == '>')
-                out.append("&gt;");
-            else if (c == '&')
-                out.append("&amp;");
-            else
-                out.append(c);
+            if (c == '<') out.append("&lt;");
+            else if (c == '>') out.append("&gt;");
+            else if (c == '&') out.append("&amp;");
+            else out.append(c);
         }
         return out.toString();
     }
+
     /**
      * Get the char from an HTML entity like &amp;gt; or &amp;#128;. Will not work
      * on supplementary char like &amp;Afr; 𝔄 &amp;x1d504; (3 bytes).
@@ -336,8 +428,7 @@ public class ML
     public static char forChar(final String ent)
     {
         Character c = HTMLENT.get(ent);
-        if (c == null)
-            return 0;
+        if (c == null) return 0;
         return c;
     }
 
@@ -351,8 +442,7 @@ public class ML
     {
         @SuppressWarnings("unlikely-arg-type")
         Character c = HTMLENT.get(ent);
-        if (c == null)
-            return 0;
+        if (c == null) return 0;
         return c;
     }
 
@@ -375,7 +465,7 @@ public class ML
      * 
      * @param path file path.
      * @throws UnsupportedEncodingException not an UTF-8 file.
-     * @throws IOException file error.
+     * @throws IOException                  file error.
      */
     static void load(final String path) throws UnsupportedEncodingException, IOException
     {
@@ -391,21 +481,21 @@ public class ML
             Chain achar = row.get(1);
             // we should log here, but… where?
             if (achar.length() != 1) {
-                System.out.println("Too much chars for, "+ ent+ ":" + achar);
+                System.out.println("Too much chars for, " + ent + ":" + achar);
                 continue;
             }
             HTMLENT.put(ent.toString(), achar.charAt(0));
         }
     }
+
     /**
-     * Used to build a concordance. 
-     * From a random point in an xml file, prepend text to a mutable destination charSequence,
-     * limit to an amount of words.
+     * Used to build a concordance. From a random point in an xml file, prepend text
+     * to a mutable destination charSequence, limit to an amount of words.
      * 
-     * @param xml source markup text.
+     * @param xml    source markup text.
      * @param offset position in xml from which prepend words or chars.
-     * @param chain destination chain.
-     * @param words amount of words to prepend.
+     * @param chain  destination chain.
+     * @param words  amount of words to prepend.
      */
     public static void prependWords(final String xml, int offset, final Chain chain, final int words)
     {
@@ -413,14 +503,13 @@ public class ML
     }
 
     /**
-     * Used to build a concordance. 
-     * From a random point in an xml file, prepend text to a mutable destination charSequence,
-     * limit to an amount of chars.
+     * Used to build a concordance. From a random point in an xml file, prepend text
+     * to a mutable destination charSequence, limit to an amount of chars.
      * 
-     * @param xml source markup text.
+     * @param xml    source markup text.
      * @param offset position in xml from which prepend words or chars.
-     * @param chain destination chain.
-     * @param chars amount of chars prepend.
+     * @param chain  destination chain.
+     * @param chars  amount of chars prepend.
      */
     public static void prependChars(final String xml, int offset, final Chain chain, final int chars)
     {
@@ -428,23 +517,20 @@ public class ML
     }
 
     /**
-     * Used to build a concordance. 
-     * From a random point in an xml file, prepend text to a mutable destination charSequence,
-     * limit to an amount of chars, or words.
+     * Used to build a concordance. From a random point in an xml file, prepend text
+     * to a mutable destination charSequence, limit to an amount of chars, or words.
      * 
-     * @param xml source markup text.
+     * @param xml    source markup text.
      * @param offset position in xml from which prepend words or chars.
-     * @param chain destination chain.
-     * @param chars amount of chars prepend.
-     * @param words amount of words to prepend.
+     * @param chain  destination chain.
+     * @param chars  amount of chars prepend.
+     * @param words  amount of words to prepend.
      */
     private static void prepend(final String xml, int offset, final Chain chain, int chars, int words)
     {
         // silently limit parameters
-        if (words <= 0 && chars <= 0)
-            chars = 50;
-        else if (chars > KWIC_MAXCHARS)
-            chars = KWIC_MAXCHARS;
+        if (words <= 0 && chars <= 0) chars = 50;
+        else if (chars > KWIC_MAXCHARS) chars = KWIC_MAXCHARS;
         int cc = 0; // char count
         int wc = 0; // word count
 
@@ -472,10 +558,8 @@ public class ML
             case '\n':
             case '\r':
             case '\t':
-                if (gt)
-                    break; // space inside tag, skip
-                if (space)
-                    break; // second or more space, skip
+                if (gt) break; // space inside tag, skip
+                if (space) break; // second or more space, skip
                 chain.prepend(' ');
                 space = true; // stop record space
                 cc++;
@@ -485,8 +569,7 @@ public class ML
                 }
                 break;
             default:
-                if (gt)
-                    break; // char in tag, skip
+                if (gt) break; // char in tag, skip
                 space = false; // renew space flag
                 chain.prepend(c);
                 cc++;
@@ -500,14 +583,10 @@ public class ML
                 }
             }
             offset--;
-            if (words <= 0)
-                ; // no matter about words;
-            else if (token)
-                continue; // do not break inside a word
-            else if (wc >= words)
-                break; // we got enough words
-            if (chars > 0 && cc >= chars)
-                break; // chars limit reached
+            if (words <= 0); // no matter about words;
+            else if (token) continue; // do not break inside a word
+            else if (wc >= words) break; // we got enough words
+            if (chars > 0 && cc >= chars) break; // chars limit reached
         }
         // if word, delete last car prepend?
     }
