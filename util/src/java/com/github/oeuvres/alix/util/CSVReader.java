@@ -383,18 +383,18 @@ public final class CSVReader {
 	}
 
 	/**
-	 * Returns the content of a cell from the last row as a {@link CharSequence}.
+	 * Returns the content of a cell from the last row as a {@link StringBuilder}.
 	 * <p>
 	 * The returned object is a {@link StringBuilder} managed and reused by this
 	 * reader. Its contents are only valid until the next successful call to
 	 * {@link #readRow()}.
 	 *
 	 * @param index the cell index (0-based)
-	 * @return a {@link CharSequence} representing the cell content
+	 * @return a {@link StringBuilder} representing the cell content
 	 * @throws IndexOutOfBoundsException if {@code index} is negative or not less
 	 *                                   than {@link #getCellCount()}
 	 */
-	public CharSequence getCell(int index) {
+	public StringBuilder getCell(int index) {
 		if (index < 0 || index >= cellCount) {
 			throw new IndexOutOfBoundsException("cell index " + index + " out of bounds (count=" + cellCount + ")");
 		}
