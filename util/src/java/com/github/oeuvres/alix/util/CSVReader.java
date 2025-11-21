@@ -32,286 +32,429 @@
  */
 package com.github.oeuvres.alix.util;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * A light fast csv parser without Strings, especially to load jar resources.
- * Populate a reusable predefined array of object.
+ * A low-allocation CSV reader that parses character data from a {@link Reader}
+ * into reusable cell buffers.
+ * <p>
+ * Design goals:
+ * <ul>
+ * <li>No external dependencies</li>
+ * <li>Minimal garbage creation per row (no {@link String} per cell)</li>
+ * <li>Support for large CSV files</li>
+ * </ul>
+ *
+ * <h3>Features</h3>
+ * <ul>
+ * <li>Reads directly from a {@link Reader} using an internal {@code char[]}
+ * buffer (no {@link java.io.BufferedReader} required).</li>
+ * <li>Stores each row's cells in an {@link ArrayList} of reusable
+ * {@link StringBuilder} instances. The same instances are reused for subsequent
+ * rows.</li>
+ * <li>Supports:
+ * <ul>
+ * <li>Configurable separator (default: {@code ','})</li>
+ * <li>Configurable quote character (default: {@code '"'})</li>
+ * <li>CR ({@code '\r'}), LF ({@code '\n'}), and CRLF line endings</li>
+ * <li>Quoted fields</li>
+ * <li>Escaped quotes inside quoted fields ({@code ""} → {@code "})</li>
+ * <li>Optional UTF-8 BOM ({@code '\uFEFF'}) at start of stream</li>
+ * </ul>
+ * </li>
+ * </ul>
+ *
+ * <h3>Usage pattern</h3>
+ * 
+ * <pre>{@code
+ * Reader r = ...; // e.g. InputStreamReader(getResourceAsStream(...), StandardCharsets.UTF_8)
+ * CSVReader csv = new CSVReader(r);
+ *
+ * while (csv.readRow()) {
+ *     int cells = csv.getCellCount();
+ *     for (int i = 0; i < cells; i++) {
+ *         CharSequence cell = csv.getCell(i); // backed by an internal StringBuilder
+ *         // process cell
+ *     }
+ * }
+ * }</pre>
+ *
+ * <h3>Lifetime of returned cell values</h3>
+ * <p>
+ * The {@link CharSequence} objects returned by {@link #getCell(int)} are backed
+ * by {@link StringBuilder} instances that are owned and reused by this reader.
+ * Their contents are only valid until the next successful call to
+ * {@link #readRow()}. If you need to keep a cell value beyond that, call
+ * {@link #getCellAsString(int)} and store the resulting {@link String}.
  */
-public class CSVReader
-{
-    private static final int BUFFER_SIZE = 16384; // tested
-    private final char[] buf = new char[BUFFER_SIZE];
-    private int bufPos;
-    private int bufLen;
-    private static final char LF = '\n';
-    private static final char CR = '\r';
-    /** The char source */
-    private Reader reader;
-    /** The cell delimiter char */
-    private char sep;
-    /** The text delimiter char */
-    // private final char quote;
-    /** Row to populate */
-    private Row row;
-    /** line number */
-    private int line = -1;
+public final class CSVReader {
 
-    /**
-     * Build a CSV scanner on a text file with predefined number of columns.
-     * @param file text to parse.
-     * @param cols number of colums.
-     * @throws FileNotFoundException file 404.
-     */
-    public CSVReader(final File file, final int cols, final char sep) throws FileNotFoundException {
-        this.reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
-        row = new Row(cols);
-        this.sep = sep;
-    }
+	/**
+	 * Underlying character source.
+	 * <p>
+	 * This is typically an {@link java.io.InputStreamReader}, possibly wrapped
+	 * around a JAR resource or a file input stream.
+	 */
+	private final Reader in;
 
+	/**
+	 * Field separator character (e.g. {@code ','} or {@code ';'}).
+	 */
+	private final char separator;
 
-    /**
-     * Build a CSV scanner on a reader with predefined number of columns and a separator char.
-     * 
-     * @param reader text to parse.
-     * @param cols number of colums.
-     * @param sep char between cells.
-     */
-    public CSVReader(Reader reader, final int cols, final char sep) {
-        this.reader = getBufferedReader(reader);
-        row = new Row(cols);
-        // quote = '"';
-        this.sep = sep;
-    }
+	/**
+	 * Quote character used to enclose fields (typically {@code '"'}).
+	 */
+	private final char quote;
 
-    /**
-     * Close uderlying reader.
-     * @throws IOException file error.
-     */
-    public void close() throws IOException
-    {
-        reader.close();
-    }
+	/**
+	 * Internal I/O buffer for reading from {@link #in}.
+	 * <p>
+	 * Characters are read from the underlying {@link Reader} into this buffer in
+	 * bulk, then consumed one by one by the CSV parsing state machine.
+	 */
+	private final char[] buf;
 
-    private static BufferedReader getBufferedReader(Reader reader)
-    {
-        return (reader instanceof BufferedReader)
-            ? (BufferedReader) reader
-            : new BufferedReader(reader);
-    }
+	/**
+	 * Current position in {@link #buf} (index of next char to consume).
+	 */
+	private int bufPos = 0;
 
-    /**
-     * Last line number.
-     * @return line number.
-     */
-    public int line()
-    {
-        return this.line;
-    }
+	/**
+	 * Number of valid characters currently in {@link #buf}.
+	 */
+	private int bufLen = 0;
 
-    /**
-     * Read one row.
-     * 
-     * @return pointer on the row, populated.
-     * @throws IOException Lucene errors.
-     */
-    public Row readRow() throws IOException
-    {
-        if (this.bufPos < 0)
-            return null;
-        Row row = this.row.reset();
-        Chain cell = row.next();
-        int bufPos = this.bufPos;
-        int bufMark = bufPos; // from where to start a copy
-        // char quote = this.quote;
-        // boolean inquote;
-        char lastChar = 0;
-        int crlf = 0; // used to not append CR to a CRLF ending line
-        
-        /*
-        final ArrayList<String> out = new ArrayList<>();
-        final StringBuilder sb = new StringBuilder();
-        boolean inQuotes = false;
-        for (int i = 0; i < line.length(); i++) {
-            char ch = line.charAt(i);
-            if (inQuotes) {
-                if (ch == '"') {
-                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
-                        sb.append('"');
-                        i++;
-                    } else {
-                        inQuotes = false;
-                    }
-                } else {
-                    sb.append(ch);
-                }
-            } else {
-                if (ch == '"') {
-                    inQuotes = true;
-                } else if (ch == ',') {
-                    out.add(sb.toString());
-                    sb.setLength(0);
-                } else {
-                    sb.append(ch);
-                }
-            }
-        }
-        out.add(sb.toString());
-        return out;
-    }
-    */
-        boolean inQuotes = false;
-        while (true) {
-            // fill buffer
-            if (bufLen == bufPos) {
-                // copy chars before erase them
-                if (cell == null)
-                    ;
-                else if (lastChar == CR)
-                    cell.append(buf, bufMark, bufLen - bufMark - 1); // do not append CR to cell
-                else
-                    cell.append(buf, bufMark, bufLen - bufMark);
-                bufLen = reader.read(buf, 0, buf.length);
-                bufMark = 0;
-                // source is finished
-                if (bufLen < 0) {
-                    cell = null;
-                    bufPos = -1; // say end of file to next call
-                    break;
-                }
-                bufPos = 0;
-            }
-            final char c = buf[bufPos++];
-            // escaping char ? shall we do something ?
-            if (lastChar == CR) {
-                if (c != LF) { // old mac line
-                    bufPos--;
-                    break;
-                } else if ((bufPos - bufMark) > 1)
-                    crlf = 1;
-            }
-            lastChar = c;
-            if (c == LF)
-                break;
-            if (c == CR)
-                continue;
-            if (sep != 0 && c != sep) {
-                continue;
-            } else { // nice sugar on common separators
-                if (c != '\t' && c != ',' && c != ';')
-                    continue;
-            }
-            // here we should change of cell
-            if (cell != null)
-                cell.append(buf, bufMark, bufPos - bufMark - 1);
-            bufMark = bufPos;
-            cell = row.next();
-        }
-        // append pending chars to current cell
-        if (cell != null)
-            cell.append(buf, bufMark, bufPos - bufMark - 1 - crlf);
-        this.bufPos = bufPos;
-        line++;
-        return row;
-    }
-    
+	/**
+	 * Flag indicating that end-of-file has been reached and no more data is
+	 * available.
+	 */
+	private boolean eof = false;
 
-    /**
-     * Current row, popualted by last {@link #readRow()}.
-     * @return pointer to row.
-     */
-    public Row row()
-    {
-        return this.row;
-    }
+	/**
+	 * Flag indicating that the next character read is the very first character of
+	 * the stream.
+	 * <p>
+	 * Used to skip a UTF-8 BOM ({@code '\uFEFF'}) if present.
+	 */
+	private boolean atStart = true;
 
+	/**
+	 * Per-row cell buffers.
+	 * <p>
+	 * Each element corresponds to a cell in the current row. The list is grown
+	 * lazily and reused across rows. Only the first {@link #cellCount} elements are
+	 * valid for the last row read.
+	 */
+	private final ArrayList<StringBuilder> cells;
 
-    /**
-     * Mutable object to record cells as {@link CharSequence}.
-     */
-    public class Row
-    {
-        /** Predefined number of cells to populate */
-        private final Chain[] cells;
-        /** Number of columns */
-        private final int cols;
-        /** Internal pointer in cells */
-        int pointer;
+	/**
+	 * Number of cells in the last row successfully read by {@link #readRow()}.
+	 */
+	private int cellCount = 0;
 
-        /** 
-         * Build a row receiver with predefined cout of cells.
-         * 
-         * @param cols fixed number of colums.
-         */
-        public Row(int cols) {
-            cells = new Chain[cols];
-            for (int i = cols - 1; i >= 0; i--) {
-                cells[i] = new Chain();
-            }
-            this.cols = cols;
-        }
+	/**
+	 * If fixed number of cells
+	 */
+	private int cellMax = -1;
 
-        /**
-         * Reset all cells.
-         * 
-         * @return this.
-         */
-        public Row reset()
-        {
-            this.pointer = 0;
-            for (int i = cols - 1; i >= 0; i--) {
-                cells[i].clear();
-            }
-            return this;
-        }
+	/**
+	 * Creates a {@code CSVReader} with default settings:
+	 * <ul>
+	 * <li>Separator: {@code ','}</li>
+	 * <li>Quote: {@code '"'}</li>
+	 * <li>I/O buffer size: 8192 characters</li>
+	 * <li>Initial cell capacity: 16 cells per row</li>
+	 * <li>Initial capacity per cell: 64 characters</li>
+	 * </ul>
+	 *
+	 * @param in the underlying character stream to read from; must not be
+	 *           {@code null}
+	 * @throws NullPointerException if {@code in} is {@code null}
+	 */
+	public CSVReader(Reader in) {
+		this(in, ',', -1, '"', 8192);
+	}
 
-        /**
-         * Give cell by column number.
-         * 
-         * @param col column number.
-         * @return cell as char sequence.
-         */
-        public Chain get(int col)
-        {
-            return cells[col];
-        }
+	/**
+	 * Creates a {@code CSVReader} with default settings:
+	 * <ul>
+	 * <li>Separator: {@code ','}</li>
+	 * <li>Quote: {@code '"'}</li>
+	 * <li>I/O buffer size: 8192 characters</li>
+	 * <li>Initial cell capacity: 16 cells per row</li>
+	 * <li>Initial capacity per cell: 64 characters</li>
+	 * </ul>
+	 *
+	 * @param in        the underlying character stream to read from; must not be
+	 *                  {@code null}
+	 * @param separator field separator character (e.g. {@code ','} or {@code ';'})
+	 * @throws NullPointerException if {@code in} is {@code null}
+	 */
+	public CSVReader(Reader in, char separator) {
+		this(in, separator, -1, '"', 8192);
+	}
 
-        /**
-         * Give next cell or null if no more
-         * 
-         * @return cell as char sequence.
-         */
-        public Chain next()
-        {
-            if (pointer >= cols)
-                return null;
-            return cells[pointer++];
-        }
-        
-        @Override
-        public String toString()
-        {
-            StringBuilder sb = new StringBuilder();
-            boolean first = true;
-            sb.append('|');
-            for (int i = 0; i < cols; i++) {
-                if (first)
-                    first = false;
-                else
-                    sb.append("|\t|");
-                sb.append(cells[i]);
-            }
-            sb.append('|');
-            return sb.toString();
-        }
+	/**
+	 * Creates a {@code CSVReader} with fully configurable parameters.
+	 *
+	 * @param in              the underlying character stream to read from; must not
+	 *                        be {@code null}
+	 * @param separator       field separator character (e.g. {@code ','} or
+	 *                        {@code ';'})
+	 * @param cellMax         limit number of columns to explore
+	 * @param quote           quote character for fields (typically {@code '"'})
+	 * 
+	 * @throws NullPointerException     if {@code in} is {@code null}
+	 * @throws IllegalArgumentException if {@code bufferSize <= 0}
+	 */
+	public CSVReader(final Reader in, final char separator, final int cellMax, final char quote, final int bufferSize) {
 
-    }
+		if (in == null) {
+			throw new NullPointerException("Reader is null");
+		}
+		if (bufferSize <= 0) {
+			throw new IllegalArgumentException("bufferSize <= 0");
+		}
+		
 
+		this.in = in;
+		this.separator = separator;
+		this.quote = quote;
+		this.buf = new char[bufferSize];
+		if (cellMax > 0) this.cellMax = cellMax;
+
+		final int initialCells = 1;
+		this.cells = new ArrayList<>(initialCells);
+		for (int i = 0; i < initialCells; i++) {
+			cells.add(new StringBuilder());
+		}
+	}
+
+	/**
+	 * Reads the next CSV row from the underlying {@link Reader}.
+	 * <p>
+	 * This method drives the CSV parsing state machine until it reaches:
+	 * <ul>
+	 * <li>A line terminator (CR, LF, or CRLF), or</li>
+	 * <li>End of stream (EOF).</li>
+	 * </ul>
+	 * When the method returns {@code true}, the contents of the row are available
+	 * via {@link #getCell(int)} and {@link #getCellCount()}. Their values remain
+	 * valid until the next call to {@code readRow()}.
+	 *
+	 * <p>
+	 * Behaviour at EOF:
+	 * <ul>
+	 * <li>If the last row is not terminated by a newline, it is returned as a valid
+	 * row.</li>
+	 * <li>If EOF is reached without reading any characters for a new row, the
+	 * method returns {@code false} and no row is produced.</li>
+	 * </ul>
+	 *
+	 * @return {@code true} if a row was successfully read; {@code false} if EOF was
+	 *         reached and no further rows are available.
+	 * @throws IOException if an I/O error occurs while reading from the underlying
+	 *                     {@link Reader}
+	 */
+	public boolean readRow() throws IOException {
+		if (eof) {
+			return false;
+		}
+
+		// Reset row state
+		cellCount = 1;
+		ensureCellCapacity(1);
+		StringBuilder cell = cells.get(0);
+		cell.setLength(0);
+
+		boolean inQuotes = false;
+		boolean atCellStart = true;
+		boolean sawAny = false;
+
+		for (;;) {
+
+			if (bufPos >= bufLen) {
+				if (!fill()) {
+					// Reached EOF
+					eof = true;
+					if (!sawAny && atCellStart) {
+						// No data at all for a new row
+						cellCount = 0;
+						return false;
+					}
+					// Return last (possibly unterminated) row
+					return true;
+				}
+			}
+
+			char c = buf[bufPos++];
+
+			// Handle optional BOM only on first character of stream
+			if (atStart) {
+				atStart = false;
+				if (c == '\uFEFF') {
+					// Skip BOM and continue with the next character
+					continue;
+				}
+			}
+
+			sawAny = true;
+
+			if (inQuotes) {
+				// Inside a quoted field
+				if (c == quote) {
+					// Possible closing quote or escaped quote ""
+					if (bufPos >= bufLen && !fill()) {
+						// Treat as closing quote at EOF
+						inQuotes = false;
+						continue;
+					}
+					if (bufPos < bufLen && buf[bufPos] == quote) {
+						// Escaped double-quote: "" -> "
+						cell.append(quote);
+						bufPos++;
+					} else {
+						// Closing quote
+						inQuotes = false;
+					}
+				} else {
+					cell.append(c);
+				}
+				continue;
+			}
+
+			// Outside quotes
+			if (c == '\n') {
+				// Linefeed: end of row
+				return true;
+			} else if (c == '\r') {
+				// Carriage return: may be CRLF
+				if (bufPos >= bufLen && !fill()) {
+					// CR at EOF
+					eof = true;
+					return true;
+				}
+				if (bufPos < bufLen && buf[bufPos] == '\n') {
+					// Consume the LF in CRLF
+					bufPos++;
+				}
+				return true;
+			} else if (c == quote && atCellStart) {
+				// Opening quote at the start of a cell
+				inQuotes = true;
+				atCellStart = false;
+			} 
+			if (cellMax > 0 && cellMax > cellCount) {
+				// fixed count of cells, no more cells needed, let loop till endOfLine
+				continue;
+			}
+			else if (c == separator) {
+                // End of current cell; start a new cell
+                ensureCellCapacity(cellCount + 1);
+                cell = cells.get(cellCount);
+                cell.setLength(0);
+                cellCount++;
+                atCellStart = true;
+            }  
+			else {
+				// Regular character in an unquoted cell
+				cell.append(c);
+				atCellStart = false;
+			}
+		}
+	}
+
+	/**
+	 * Returns the number of cells in the last row successfully read by
+	 * {@link #readRow()}.
+	 * <p>
+	 * Only indices in the range {@code [0, getCellCount() - 1]} are valid for
+	 * {@link #getCell(int)} and {@link #getCellAsString(int)}.
+	 *
+	 * @return the number of cells in the last row; {@code 0} if no row has been
+	 *         read yet or if EOF was reached without any data for a row
+	 */
+	public int getCellCount() {
+		return cellCount;
+	}
+
+	/**
+	 * Returns the content of a cell from the last row as a {@link CharSequence}.
+	 * <p>
+	 * The returned object is a {@link StringBuilder} managed and reused by this
+	 * reader. Its contents are only valid until the next successful call to
+	 * {@link #readRow()}.
+	 *
+	 * @param index the cell index (0-based)
+	 * @return a {@link CharSequence} representing the cell content
+	 * @throws IndexOutOfBoundsException if {@code index} is negative or not less
+	 *                                   than {@link #getCellCount()}
+	 */
+	public CharSequence getCell(int index) {
+		if (index < 0 || index >= cellCount) {
+			throw new IndexOutOfBoundsException("cell index " + index + " out of bounds (count=" + cellCount + ")");
+		}
+		return cells.get(index);
+	}
+
+	/**
+	 * Returns the content of a cell from the last row as an immutable
+	 * {@link String}.
+	 * <p>
+	 * Unlike {@link #getCell(int)}, this method creates a new {@link String} and is
+	 * therefore more expensive in terms of memory allocations. Use it only if you
+	 * need the cell value beyond the next call to {@link #readRow()}, or if you
+	 * need an immutable snapshot.
+	 *
+	 * @param index the cell index (0-based)
+	 * @return a {@link String} representing the cell content
+	 * @throws IndexOutOfBoundsException if {@code index} is negative or not less
+	 *                                   than {@link #getCellCount()}
+	 */
+	public String getCellAsString(int index) {
+		return getCell(index).toString();
+	}
+
+	// -------------------------------------------------------------------------
+	// Internal helpers
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Fills the internal I/O buffer from the underlying {@link Reader}.
+	 * <p>
+	 * This method overwrites {@link #buf} with new data and resets {@link #bufPos}
+	 * and {@link #bufLen} accordingly.
+	 *
+	 * @return {@code true} if at least one character was read; {@code false} if EOF
+	 *         was reached and no data was read
+	 * @throws IOException if an I/O error occurs while reading from the underlying
+	 *                     {@link Reader}
+	 */
+	private boolean fill() throws IOException {
+		bufLen = in.read(buf, 0, buf.length);
+		bufPos = 0;
+		return bufLen > 0;
+	}
+
+	/**
+	 * Ensures that the internal list of cell buffers has at least
+	 * {@code minCapacity} elements, growing the list and adding new
+	 * {@link StringBuilder} instances as needed.
+	 * <p>
+	 * Newly created {@link StringBuilder} instances are initialised with a small
+	 * default capacity (64 characters), which is usually sufficient for many CSV
+	 * files. Adjust as necessary for your data characteristics.
+	 *
+	 * @param minCapacity the minimum number of cell buffers required
+	 */
+	private void ensureCellCapacity(int minCapacity) {
+		// Grow the list lazily as needed
+		while (cells.size() < minCapacity) {
+			cells.add(new StringBuilder(64));
+		}
+	}
 }
