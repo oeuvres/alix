@@ -35,7 +35,6 @@ package com.github.oeuvres.alix.util;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * A low-allocation CSV reader that parses character data from a {@link Reader}
@@ -182,7 +181,6 @@ public final class CSVReader {
 	/**
 	 * Creates a {@code CSVReader} with default settings:
 	 * <ul>
-	 * <li>Separator: {@code ','}</li>
 	 * <li>Quote: {@code '"'}</li>
 	 * <li>I/O buffer size: 8192 characters</li>
 	 * <li>Initial cell capacity: 16 cells per row</li>
@@ -196,6 +194,25 @@ public final class CSVReader {
 	 */
 	public CSVReader(Reader in, char separator) {
 		this(in, separator, -1, '"', 8192);
+	}
+	
+	/**
+	 * Creates a {@code CSVReader} with default settings:
+	 * <ul>
+	 * <li>Quote: {@code '"'}</li>
+	 * <li>I/O buffer size: 8192 characters</li>
+	 * <li>Initial cell capacity: 16 cells per row</li>
+	 * <li>Initial capacity per cell: 64 characters</li>
+	 * </ul>
+	 *
+	 * @param in        the underlying character stream to read from; must not be
+	 *                  {@code null}
+	 * @param separator field separator character (e.g. {@code ','} or {@code ';'})
+	 * @param cellMax         limit number of columns to explore
+	 * @throws NullPointerException if {@code in} is {@code null}
+	 */
+	public CSVReader(Reader in, char separator, final int cellMax) {
+		this(in, separator, cellMax, '"', 8192);
 	}
 
 	/**

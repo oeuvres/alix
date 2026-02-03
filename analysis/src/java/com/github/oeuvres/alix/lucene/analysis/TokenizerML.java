@@ -15,6 +15,8 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.AttributeFactory;
 
 import static com.github.oeuvres.alix.common.Flags.*;
+
+import com.github.oeuvres.alix.fr.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.AttributeFactoryAlix;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Char;

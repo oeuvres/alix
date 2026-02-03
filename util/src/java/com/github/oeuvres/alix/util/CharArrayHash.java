@@ -338,7 +338,7 @@ public final class CharArrayHash
     private void rehash(int newCap)
     {
         int[] oldTable = table;
-        short[] oldFp = fp16;
+        // short[] oldFp = fp16;
         table = new int[newCap];
         Arrays.fill(table, -1);
         fp16 = new short[newCap];

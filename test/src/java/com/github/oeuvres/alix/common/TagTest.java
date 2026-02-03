@@ -3,8 +3,8 @@ package com.github.oeuvres.alix.common;
 import java.io.Reader;
 import java.io.StringReader;
 
+import com.github.oeuvres.alix.fr.FrDics;
 import com.github.oeuvres.alix.fr.TagFr;
-import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 
@@ -21,7 +21,7 @@ public class TagTest
         tagfr();
         /*
         String csv = """
-GRAPH,TAG,LEM,NORM
+COL_GRAPH,TAG,LEM,NORM
 test,,,OK
 """;
         Reader reader = new StringReader(csv);

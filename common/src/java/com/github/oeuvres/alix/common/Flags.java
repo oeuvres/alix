@@ -73,7 +73,7 @@ public enum Flags implements Tag
     /** Organisation name */
     PROPNorg(0x45),
     /** Event name */
-    PROPNevent(0x47"),
+    PROPNevent(0x47),
     /** Author name */
     PROPNauthor(0x48),
     /** Fiction character name */
@@ -145,8 +145,9 @@ public enum Flags implements Tag
     CCONJ(0x81),
     /** UDPOS Subordinating conjunction */
     SCONJ(0x82),
+    
     /** Adverbial conjunction */
-    ADVconj(0x83, "Adv. conj.", "Cependant, désormais… (adverbe de connexion)."),
+    ADVconj(0x88, "Adv. conj.", "Cependant, désormais… (adverbe de connexion)."),
     
     // Ax, Numéraux divers
     /** UDPOSNumeral */

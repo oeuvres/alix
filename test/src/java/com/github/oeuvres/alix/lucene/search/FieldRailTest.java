@@ -11,9 +11,9 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
+import com.github.oeuvres.alix.fr.FrDics;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.common.TagFilter;
-import com.github.oeuvres.alix.lucene.analysis.FrDics;
 import com.github.oeuvres.alix.lucene.Alix;
 import com.github.oeuvres.alix.util.CoocMat;
 

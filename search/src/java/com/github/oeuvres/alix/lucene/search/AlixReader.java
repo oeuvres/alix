@@ -213,6 +213,7 @@ public class AlixReader
         stopwords.add(new BytesRef(""));
         stopwords.add(new BytesRef("#")); // default for comment
         stopwords.add(new BytesRef(",")); // default separator
+        // TODO, language agnostic here
         BytesDic.load(stopwords, TagFr.class.getResourceAsStream("stop.csv"));
     }
 

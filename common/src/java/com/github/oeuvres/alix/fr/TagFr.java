@@ -238,6 +238,11 @@ public enum TagFr implements Tag {
         return tag.name();
     }
     
+    static public Tag tag(final int code)
+    {
+        return index.get(code);
+    }
+    
     @Override
     public int code(final String name)
     {

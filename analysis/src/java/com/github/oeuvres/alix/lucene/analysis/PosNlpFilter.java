@@ -44,18 +44,16 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import com.github.oeuvres.alix.common.Tag;
-import com.github.oeuvres.alix.fr.French;
 
 import static com.github.oeuvres.alix.common.Flags.*;
-import static com.github.oeuvres.alix.fr.TagFr.*;
 
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerME;
 
 /**
- * Plug behind TokenLem, take a Trie dictionary, and try to compound locutions.
+ * 
  */
-public class FilterFrPos extends TokenFilter
+public class PosNlpFilter extends TokenFilter
 {
     static {
         // let opennlp decide, he knows better
@@ -69,21 +67,10 @@ public class FilterFrPos extends TokenFilter
     private AttDeque queue;
     /** Maximum size of a sentence to send to the tagger */
     final static int SENTMAX = 300;
-    /** The pos tagger */
-    static private POSModel posModel;
-    static {
-        // model must be static, tagger should be thread safe till 
 
-        try (InputStream modelIn = French.class.getResourceAsStream(French.OPENNLP_POS.resource)) {
-             posModel = new POSModel(modelIn);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
     /** non thread safe tagger, one by instance of filter */
     private POSTaggerME tagger;
-    /** tag  */
+    /** tagset https://universaldependencies.org/u/pos/  */
     Map<String, Tag> tagList = Map.ofEntries(
         Map.entry("ADJ", ADJ),
         Map.entry("ADP", PREP),
@@ -111,7 +98,7 @@ public class FilterFrPos extends TokenFilter
      * Default constructor.
      * @param input previous filter.
      */
-    public FilterFrPos(TokenStream input) {
+    public PosNlpFilter(TokenStream input, POSModel posModel) {
         super(input);
         tagger = new POSTaggerME(posModel);
         // here, “this” has not all its attributes, AttributeQueue.copyTo() will bug

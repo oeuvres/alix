@@ -43,7 +43,7 @@ import static com.github.oeuvres.alix.common.Flags.*;
 import static com.github.oeuvres.alix.fr.TagFr.*;
 
 import com.github.oeuvres.alix.fr.TagFr;
-import com.github.oeuvres.alix.lucene.analysis.FrDics.LexEntry;
+import com.github.oeuvres.alix.lucene.analysis.Lexicon.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
@@ -82,6 +82,8 @@ import com.github.oeuvres.alix.util.Char;
  */
 public final class FilterLemmatize extends TokenFilter
 {
+    /** The lexicon from which read lemmas */
+    private final Lexicon lexicon;
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** A normalized orthographic form (ex : capitalization) */
@@ -99,8 +101,9 @@ public final class FilterLemmatize extends TokenFilter
      * Default constructor.
      * @param input previous filter.
      */
-    public FilterLemmatize(TokenStream input) {
+    public FilterLemmatize(TokenStream input, Lexicon lexicon) {
         super(input);
+        this.lexicon = lexicon;
     }
 
     @Override
@@ -144,7 +147,7 @@ public final class FilterLemmatize extends TokenFilter
             orthAtt.copy(termAtt); // start with original term
         }
         // normalise oeil -> œil, Etat -> État, naître -> naitre
-        FrDics.norm((CharsAttImpl)orthAtt);
+        lexicon.norm((CharsAttImpl)orthAtt);
 
         // First letter of token is upper case, is it a name ? Is it an upper case
         // header ?
@@ -164,12 +167,12 @@ public final class FilterLemmatize extends TokenFilter
             }
             // Copy orthAtt if restore is needed
             testAtt.copy(orthAtt);
-            FrDics.norm(testAtt); // try normalisation before test in dic
-            LexEntry entryName = FrDics.name(testAtt); // known name ? USSR ?
+            lexicon.norm(testAtt); // try normalisation before test in dic
+            LexEntry entryName = lexicon.name(testAtt); // known name ? USSR ?
             if (entryName == null) {
                 testAtt.capitalize();
-                FrDics.norm(testAtt); // try normalisation before test
-                entryName = FrDics.name(testAtt); // known name ?
+                lexicon.norm(testAtt); // try normalisation before test
+                entryName = lexicon.name(testAtt); // known name ?
                 // normalized for exist
                 if (entryName != null) {
                     orthAtt.setLength(0).append(testAtt);
@@ -179,7 +182,7 @@ public final class FilterLemmatize extends TokenFilter
                 // trust dictionary
                 flagsAtt.setFlags(entryName.tag);
                 // could be normalization
-                if (entryName.lem != null) orthAtt.copy(entryName.lem);
+                if (entryName.lem != null) orthAtt.copyBuffer(entryName.lem, 0, entryName.lem.length);
                 return true;
             }
             // Charles-François-Bienvenu, Va-t’en, Allez-vous
@@ -187,7 +190,7 @@ public final class FilterLemmatize extends TokenFilter
             if (pos > 0) {
                 final int length = testAtt.length();
                 testAtt.setLength(pos);
-                entryName = FrDics.name(testAtt);
+                entryName = lexicon.name(testAtt);
                 orthAtt.setLength(length); // restore length
                 if (entryName != null) {
                     // trust dictionary
@@ -202,23 +205,23 @@ public final class FilterLemmatize extends TokenFilter
             testAtt.toLower(); // test if lower is known
             if (tag != null) {
                 final int testLength = testAtt.length();
-                entryWord = FrDics.word(testAtt.append("_").append(tag));
+                entryWord = lexicon.word(testAtt.append("_").append(tag));
                 testAtt.setLength(testLength); // restore test length
             }
             if (entryWord == null) {
-                entryWord = FrDics.word(testAtt);
+                entryWord = lexicon.word(testAtt);
             }
             if (entryWord != null) { // known word
                 orthAtt.toLower();
                 // norm here after right casing
-                FrDics.norm(orthAtt);
+                lexicon.norm(orthAtt);
                 flagsAtt.setFlags(entryWord.tag); // trust dictionary
                 if (entryWord.lem != null) {
-                    lemAtt.copy(entryWord.lem);
+                    lemAtt.copyBuffer(entryWord.lem, 0, entryWord.lem.length);
                 }
                 // say it is known by dico
                 else {
-                    lemAtt.copy(entryWord.graph);
+                    lemAtt.copyBuffer(entryWord.graph, 0, entryWord.graph.length);
                 }
                 return true;
             }
@@ -234,11 +237,11 @@ public final class FilterLemmatize extends TokenFilter
             String tag = TagFr.name(flags);
             if (tag != null) {
                 final int testLength = testAtt.length();
-                entryWord = FrDics.word(testAtt.append("_").append(tag));
+                entryWord = lexicon.word(testAtt.append("_").append(tag));
                 testAtt.setLength(testLength); // restore test length
             }
             if (entryWord == null) {
-                entryWord = FrDics.word(testAtt);
+                entryWord = lexicon.word(testAtt);
             }
             if (entryWord == null) {
                 return true;
@@ -246,11 +249,11 @@ public final class FilterLemmatize extends TokenFilter
             // known word
             flagsAtt.setFlags(entryWord.tag); // trust dictionary
             if (entryWord.lem != null) {
-                lemAtt.copy(entryWord.lem);
+                lemAtt.copyBuffer(entryWord.lem, 0, entryWord.lem.length);
             }
             // say it is known by dico
             else {
-                lemAtt.copy(entryWord.graph);
+                lemAtt.copyBuffer(entryWord.graph, 0, entryWord.graph.length);
             }
 
         }

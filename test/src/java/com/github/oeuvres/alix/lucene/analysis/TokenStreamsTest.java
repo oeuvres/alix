@@ -19,6 +19,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.junit.Test;
 
 import com.github.oeuvres.alix.common.Flags;
+import com.github.oeuvres.alix.fr.FrDics;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;

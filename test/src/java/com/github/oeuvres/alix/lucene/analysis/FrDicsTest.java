@@ -11,6 +11,7 @@ import org.apache.lucene.util.BytesRef;
 // import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.junit.Test;
 
+import com.github.oeuvres.alix.fr.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Chain;
@@ -59,7 +60,7 @@ public class FrDicsTest {
     {
         for (String word: new String[] {"de", "le", "la", "voiture"}) {
             BytesRef bytes = new BytesRef(word);
-            System.out.println(word + ":" + FrDics.isStop(bytes));
+            System.out.println(word + ":" + FrLexicon.isStop(bytes));
         }
     }
     */

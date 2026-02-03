@@ -46,7 +46,6 @@ import org.apache.lucene.util.UnicodeUtil;
 
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Char;
-import com.github.oeuvres.alix.lucene.analysis.FrDics;
 
 /**
  * An implementation of Lucene {@link CharTermAttribute} designed to be an

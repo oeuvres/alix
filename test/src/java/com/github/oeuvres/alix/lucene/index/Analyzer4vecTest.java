@@ -4,6 +4,8 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import org.apache.lucene.analysis.Analyzer;
 
+import com.github.oeuvres.alix.cli.Analyze4vec;
+
 public class Analyzer4vecTest
 {
 

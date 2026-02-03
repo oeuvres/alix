@@ -30,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene.analysis;
+package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -43,16 +43,13 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
-import com.github.oeuvres.alix.common.Tag;
-import com.github.oeuvres.alix.common.Flags;
-import com.github.oeuvres.alix.fr.French;
-import com.github.oeuvres.alix.fr.TagFr;
+import com.github.oeuvres.alix.lucene.analysis.Lexicon;
+import com.github.oeuvres.alix.lucene.analysis.Lexicon.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Chain;
@@ -66,38 +63,32 @@ import com.github.oeuvres.alix.util.CSVReader.Row;
  * comparison {@link CharsAttImpl#compareTo(CharsAttImpl)}.
  */
 @SuppressWarnings("unlikely-arg-type")
-public class FrDics
+public class FrLexicon extends Lexicon
 {
-    /** Logger */
-    private static Logger LOGGER = LoggerFactory.getLogger(FrDics.class);
     /** Column for a graphy like found in texts, required */
-    public final static int GRAPH = 0;
+    public final static int COL_GRAPH = 0;
     /** Column for a grammatical category, required if no ORTH */
-    public final static int TAG = 1;
+    public final static int COL_TAG = 1;
     /** Column for a lemma, optional */
-    public final static int LEM = 2;
+    public final static int COL_LEM = 2;
     /** Column for normalized form at indexation */
-    public final static int NORM = 3;
-    /** Avoid multiple loading of external resource */
-    private static final Set<String> loaded = new HashSet<>();
+    public final static int COL_NORM = 3;
     /** Flag for compound, end of term */
     static final public int LEAF = 0x100;
     /** Flag for compound, to be continued */
     static final public int BRANCH = 0x200;
     /** 500 000 types French lexicon seems not too bad for memory */
-    static final CharArrayMap<LexEntry> WORDS = new CharArrayMap(500000, false);
+    static final CharArrayMap<LexEntry> WORDS = new CharArrayMap<>(500000, false);
     /** French names on which keep Capitalization */
-    final static CharArrayMap<LexEntry> NAMES = new CharArrayMap(5000, false);
+    final static CharArrayMap<LexEntry> NAMES = new CharArrayMap<>(5000, false);
     /** A tree to resolve compounds */
     static final HashMap<CharsAtt, Integer> TREELOC = new HashMap<>((int) (1500 / 0.75));
     /** Graphic normalization (replacement) */
-    static final private CharArrayMap<String> NORMALIZE = new CharArrayMap(5000, false);
+    static final private CharArrayMap<String> NORMALIZE = new CharArrayMap<>(5000, false);
     /** Abbreviations with a final dot */
     static final private CharArraySet BREVIDOT = new CharArraySet(200, false);
     /** Stopwords */
     static final private CharArraySet STOP = new CharArraySet(1000, false);
-    /** current dictionnary loaded, for logging */
-    static String res;
     /** Convert tags from dictionary to tags obtained by tagger 
         entry("ADJ", ADJ),
         entry("ADP", PREP),
@@ -118,6 +109,7 @@ public class FrDics
         entry("VERB", VERB),
         entry("X", TOKEN)
      */
+    // Mapping from lexical resources tags to the pos tagger tags
     static Map<Chain, String> tagList = Map.ofEntries(
         Map.entry(new Chain("VERB"), "VERB"), // 305193
         Map.entry(new Chain("SUB"), "SUB"), // 110474
@@ -162,42 +154,38 @@ public class FrDics
         Map.entry(new Chain("NAMEpeople"), "NAME"),
         Map.entry(new Chain("NAMEgod"), "NAMEtag")
     );
-
     
-    /** Load dictionaries */
-    static {
-        loadStop("stop.csv");
-        // first word win
+    /**
+     * Avoid instantiation, use static method instead.
+     */
+    FrLexicon()
+    {
+        // ???
+        // loadStop("com/github/oeuvres/alix/fr/stop.csv");
+        // Load dictionaries
         String[] files = { 
-            "locutions.csv", // compounds to decompose
-            "caps.csv",      // normalization of initial capital without accent
-            "orth.csv",      // normalisation of oe œ, and some other word
-            "num.csv",       // normalisation of ordinals for centuries
-            "brevidot.csv",  // abbreviations finishing by a dot
-            "word.csv",      // the big dic, before some names
-            "author.csv",    // well known authorities (writers)
-            "name.csv",      // other proper names
-            "forename.csv",  // foreName with gender
-            "place.csv",     // world place name 
-            "france.csv",    // places in France
-            "commune.csv"    // french town, at the end
+            "com/github/oeuvres/alix/fr/locutions.csv", // compounds to decompose
+            "com/github/oeuvres/alix/fr/caps.csv",      // normalization of initial capital without accent
+            "com/github/oeuvres/alix/fr/orth.csv",      // normalisation of oe œ, and some other word
+            "com/github/oeuvres/alix/fr/num.csv",       // normalisation of ordinals for centuries
+            "com/github/oeuvres/alix/fr/brevidot.csv",  // abbreviations finishing by a dot
+            "com/github/oeuvres/alix/fr/word.csv",      // the big dic, before some names
+            "com/github/oeuvres/alix/fr/author.csv",    // well known authorities (writers)
+            "com/github/oeuvres/alix/fr/name.csv",      // other proper names
+            "com/github/oeuvres/alix/fr/forename.csv",  // foreName with gender
+            "com/github/oeuvres/alix/fr/place.csv",     // world place name 
+            "com/github/oeuvres/alix/fr/france.csv",    // places in France
+            "com/github/oeuvres/alix/fr/commune.csv"    // french town, at the end
         };
         for (String f : files) {
             // LOGGER.debug(f);
             loadResource(f, f);
         }
     }
-    
-    /**
-     * Avoid instantiation, use static method instead.
-     */
-    private FrDics()
-    {
-        
-    }
 
     /**
-     * Insert a compound candidate in the compound tree
+     * Insert a compound candidate in the compound tree.
+     * Is language dependent.
      * 
      * @param form a form to insert
      * @param tree the tree to insert in.
@@ -243,15 +231,7 @@ public class FrDics
         return BREVIDOT.contains(att.buffer(), 0, att.length());
     }
     
-    /**
-     * Verify that a dictionary is already loaded.
-     * @param key a local identifying name for a dictionary
-     * @return
-     */
-    public static boolean isLoaded(final String key)
-    {
-        return loaded.contains(key);
-    }
+
 
     /**
      * Test if the requested chars are a known stop word.
@@ -259,32 +239,21 @@ public class FrDics
      * @param att {@link CharTermAttribute} implementation.
      * @return true if submitted form is a know stop word, false otherwise.
      */
+    /*
     public static boolean isStop(CharTermAttribute att)
     {
         return STOP.contains(att);
     }
+    */
 
-    /**
-     * Load a file as a dictionary.
-     * 
-     * @param file file path.
-     * @throws IOException file errors.
-     */
-    public static void load(final String key, final File file) throws IOException
-    {
-        FrDics.res = file.getAbsolutePath();
-        Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
-        // default is replace
-        load(key, reader, true);
-    }
 
     /**
      * Insert a local csv (comma separated values) dictionary of 4 cols:
      * <ul>
-     * <li>0. GRAPH. Required, graphical form used as a key (could be a lemma for
+     * <li>0. COL_GRAPH. Required, graphical form used as a key (could be a lemma for
      * verbs in locutions like “avoir l’air”).</li>
-     * <li>1. TAG. Required, morpho-syntaxic code.</li>
-     * <li>2. LEM. Optional, lemmatization.</li>
+     * <li>1. COL_TAG. Required, morpho-syntaxic code.</li>
+     * <li>2. COL_LEM. Optional, lemmatization.</li>
      * <li>4. ORTH. Optional, form normalization.</li>
      * </ul>
      * 
@@ -303,7 +272,7 @@ public class FrDics
             csv.readRow(); // skip first line
             Row row;
             while ((row = csv.readRow()) != null) {
-                Chain graph = row.get(GRAPH);
+                Chain graph = row.get(COL_GRAPH);
                 if (graph.isEmpty() || graph.charAt(0) == '#')
                     continue;
                 // normalize apos
@@ -317,7 +286,7 @@ public class FrDics
                 }
                 // known abbreviation with at least one final dot, add the compounds
                 // do not handle here multi word abbreviation like "av. J.-C."
-                Chain norm = row.get(NORM);
+                Chain norm = row.get(COL_NORM);
                 if (!hasSpace && graph.last() == '.') {
                     BREVIDOT.add(graph.toCharArray());
                 }
@@ -326,7 +295,7 @@ public class FrDics
                     NORMALIZE.put(graph.toCharArray(), norm.toString());
                     continue;
                 }
-                putRecord(graph, row.get(TAG), row.get(LEM), replace);
+                putRecord(graph, row.get(COL_TAG), row.get(COL_LEM), replace);
             }
             csv.close();
         } catch (Exception e) {
@@ -346,38 +315,13 @@ public class FrDics
      */
     private static void loadResource(final String key, final String res)
     {
-        FrDics.res = res;
-        Reader reader = new InputStreamReader(French.class.getResourceAsStream(res), StandardCharsets.UTF_8);
+        Lexicon.res = res;
+        Reader reader = new InputStreamReader(Thread.currentThread()
+                .getContextClassLoader()
+                .getResourceAsStream(res), StandardCharsets.UTF_8);
         load(key, reader, false);
     }
 
-    /**
-     * Load a stop list for analysis
-     * 
-     * @param res resource path according to the class loader.
-     */
-    synchronized static public void loadStop(final String res)
-    {
-        if (loaded.contains(res)) {
-            System.out.println(res + " already loaded");
-            return;
-        }
-        loaded.add(res);
-        Reader reader = new InputStreamReader(French.class.getResourceAsStream(res), StandardCharsets.UTF_8);
-        CSVReader csv = null;
-        try {
-            csv = new CSVReader(reader, 1, ',');
-            csv.readRow(); // skip first line
-            Row row;
-            while ((row = csv.readRow()) != null) {
-                // STOP.add(new CharsAttImpl(row.get(0)));
-            }
-        } catch (Exception e) {
-            System.out.println("Dictionary parse error in file " + reader);
-            if (csv != null) System.out.println(" line " + csv.line());
-            e.printStackTrace();
-        }
-    }
 
     /**
      * Get a name entry from of a dictionary
@@ -518,75 +462,5 @@ public class FrDics
         return WORDS.get(chars, offset, len);
     }
 
-    /**
-     * An entry for a dictionary te get lemma from
-     * an inflected form.
-     */
-    public static class LexEntry
-    {
-        /** Inflected form.  */
-        final public CharsAttImpl graph;
-        /** A lexical word type. */
-        final public int tag;
-        /** lemma form. */
-        final public CharsAttImpl lem;
-
-        /**
-         * Full constructor with cells coming from a {@link CSVReader}
-         * 
-         * @param graph graphical form found in texts.
-         * @param tag short name for a lexical type.
-         * @param graph normalized orthographic form.
-         * @param lem lemma form.
-         */
-        public LexEntry(final Chain graph, final Chain tag, final Chain lem) {
-            if (graph.isEmpty()) {
-                LOGGER.debug(res + " graph=\"" + graph + "\"? Graph empty, tag=\"" + tag + "\", lem=\"" + lem +"\"");
-            }
-            graph.replace('’', '\'');
-            Tag tagEnum = null;
-            String tagKey = tag.toString();
-            try {
-               tagEnum = TagFr.valueOf(tagKey);
-            }
-            catch (Exception e) {
-                try {
-                    tagEnum = Flags.valueOf(tagKey);
-                }
-                catch (Exception ee) {
-                    LOGGER.debug(res + " graph=\"" + graph + "\" tag=\"" + tag + "\"? tag not found.");
-                }
-            }
-            
-            if (tagEnum != null) {
-                this.tag = tagEnum.code();
-            }
-            else {
-                this.tag = 0;
-            }
-            this.graph = new CharsAttImpl(graph);
-            if (lem == null || lem.isEmpty()) {
-                this.lem = null;
-            }
-            else {
-                this.lem = new CharsAttImpl(lem);
-            }
-        }
-
-        @Override
-        public String toString()
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.append(TagFr.name(this.tag));
-            if (graph != null)
-                sb.append(" graph=\"").append(graph).append("\"");
-            if (lem != null)
-                sb.append(" lem=\"").append(lem).append("\"");
-            // if (branch) sb.append(" BRANCH");
-            // if (leaf) sb.append(" LEAF");
-            // sb.append("\n");
-            return sb.toString();
-        }
-    }
 
 }

@@ -471,20 +471,16 @@ public class ML
     {
         String cont = new String(Files.readAllBytes(Paths.get(path)), "UTF-8");
         Reader reader = new StringReader(cont);
-        CSVReader csv = new CSVReader(reader, 2, '\t');
+        CSVReader csv = new CSVReader(reader, '\t', 2);
         csv.readRow(); // skip first line
-        CSVReader.Row row;
-        while ((row = csv.readRow()) != null) {
-            Chain ent = row.get(0);
-            if (ent.first() == '#') continue;
-            if (ent.last() == ';') continue;
-            Chain achar = row.get(1);
-            // we should log here, but… where?
-            if (achar.length() != 1) {
-                System.out.println("Too much chars for, " + ent + ":" + achar);
-                continue;
-            }
-            HTMLENT.put(ent.toString(), achar.charAt(0));
+        while (csv.readRow()) {
+        		String key = csv.getCellAsString(0);
+        		if (key.length() == 0) continue;
+            if (key.charAt(0) == '#') continue; // comment
+            StringBuilder value = csv.getCell(1);
+            // Bad line, not a char, we should log here, but… where?
+            if (value.length() != 1) continue;
+            HTMLENT.put(key, value.charAt(0));
         }
     }
 
