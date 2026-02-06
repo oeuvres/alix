@@ -45,7 +45,7 @@ public class ChainTest {
             "1 2",
         };
         for (int i = 0; i < phrases.length; i++) {
-            String result = Chain.normalize(phrases[i], " \n\t\r", ' ');
+            String result = Chain.normalizeSpace(phrases[i]);
             assertEquals( expected[i], result);
         }
     }

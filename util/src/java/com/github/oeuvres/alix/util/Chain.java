@@ -41,6 +41,7 @@ import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.LinkedList;
 
 /**
  * Mutable {@link CharSequence} backed by a growable {@code char[]} with slack
@@ -1034,6 +1035,61 @@ public class Chain implements Appendable, CharSequence, Cloneable, Comparable<Ch
     }
 
     /**
+     * Like xpath normalize-space(), normalize a char used as a separator, maybe
+     * useful for url paths.
+     * 
+     * @param cs    the char sequence to normalize.
+     * @return a normalized String.
+     */
+    static public String normalizeSpace(final CharSequence cs)
+    {
+        return normalizeSpace(cs," \n\t\r", ' ');
+    }
+
+    /**
+     * Like xpath normalize-space(), replace a set of chars, maybe repeated,
+     * for example space chars "\t\n  ",
+     * by only one char, for example space ' '. 
+     * 
+     * @param cs       a char sequence to normalize.
+     * @param search   a set of chars to normalize ex: "\t\n  ".
+     * @param replace  a normalized char ex: ' '.
+     * @return a new normalized String.
+     */
+    static public String normalizeSpace(final CharSequence cs, final String search, final char replace)
+    {
+        // create a new char array, not bigger than actual size
+        final int len = cs.length();
+        char[] newChars = new char[len];
+        int length = 0;
+        boolean sepToAppend = false;
+        boolean lastIsFullChar = false;
+        for (int i = 0; i < len; i++) {
+            final char c = cs.charAt(i);
+            // full char, append
+            if (search.indexOf(c) == -1) {
+                lastIsFullChar = true;
+                // append a separator only before a token to append
+                if (sepToAppend) {
+                    newChars[length++] = replace;
+                    sepToAppend = false;
+                }
+                newChars[length++] = c;
+                continue;
+            }
+            // separator
+            if (!lastIsFullChar) {
+                // previous was start or separator, append nothing
+                continue;
+            }
+            // append separator
+            lastIsFullChar = false;
+            sepToAppend = true;
+        }
+        return new String(newChars, 0, length);
+    }
+    
+    /**
      * Inspect the most recently pushed checkpoint without popping it.
      *
      * @return the saved logical length for the top checkpoint
@@ -1320,6 +1376,72 @@ public class Chain implements Appendable, CharSequence, Cloneable, Comparable<Ch
         Arrays.fill(this.chars, dst, dst + delta, '\0');
         this.length = newLength;
         this.hash = 0;
+    }
+    
+    /**
+     * Split on one char.
+     * 
+     * @param separator a char, ex: ',', ' ', ';'…
+     * @return array of segments separated.
+     */
+    public String[] split(final char separator)
+    {
+        // store generated Strings in alist
+        LinkedList<String> list = new LinkedList<>();
+        int offset = zero;
+        int to = zero;
+        int max = zero + this.length;
+        char[] dat = chars;
+        while (to < max) {
+            // not separator, continue
+            if (dat[to] != separator) {
+                to++;
+                continue;
+            }
+            // separator, add a String, if not empty
+            if (to - offset > 0) {
+                list.add(new String(dat, offset, to - offset));
+            }
+            offset = ++to;
+        }
+        // separator, add a String, if not empty
+        if (to - offset > 0) {
+            list.add(new String(dat, offset, to - offset));
+        }
+        return list.toArray(new String[0]);
+    }
+
+    /**
+     * Split on one or more char.
+     * 
+     * @param separators, ex: ",; ".
+     * @return array of segments separated.
+     */
+    public String[] split(final String separators)
+    {
+        // store generated Strings in alist
+        LinkedList<String> list = new LinkedList<>();
+        int offset = zero;
+        int to = zero;
+        int max = zero + this.length;
+        char[] dat = chars;
+        while (to < max) {
+            // not separator, continue
+            if (separators.indexOf(dat[to]) == -1) {
+                to++;
+                continue;
+            }
+            // separator, add a String, if not empty
+            if (to - offset > 0) {
+                list.add(new String(dat, offset, to - offset));
+            }
+            offset = ++to;
+        }
+        // separator, add a String, if not empty
+        if (to - offset > 0) {
+            list.add(new String(dat, offset, to - offset));
+        }
+        return list.toArray(new String[0]);
     }
 
     /**
