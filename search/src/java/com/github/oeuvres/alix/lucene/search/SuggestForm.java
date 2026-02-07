@@ -49,7 +49,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
-import static com.github.oeuvres.alix.common.Flags.*;
+import static com.github.oeuvres.alix.common.Upos.*;
 import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.IntList;

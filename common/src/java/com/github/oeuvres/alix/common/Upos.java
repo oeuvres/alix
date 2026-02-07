@@ -4,7 +4,7 @@ package com.github.oeuvres.alix.common;
  * List of flags inferred by an analyzer without dictionaries or tagger,
  * on alphabetic scripts.
  */
-public enum Flags implements Tag
+public enum Upos implements Tag
 {
     // 0x, possible flags 
     
@@ -20,10 +20,8 @@ public enum Flags implements Tag
     STOP(0x04),
     /** Non stop word */
     NOSTOP(0x05),
-    /** Locution  (maybe substantive, conjunction…) */
+    /** Locution (maybe substantive, conjunction…) */
     LOC(0x06),
-    /** [0-9\-] numbers */
-    DIGIT(0x07),
     
     /** UDPOS, Punctuation */
     PUNCT(0x08),
@@ -37,15 +35,15 @@ public enum Flags implements Tag
     PUNCTclause(0x0C),
     
     // 1x, verbs
-    /** UDPOS, verb */
+    /** https://universaldependencies.org/u/pos/VERB.html */
     VERB(0x10),
-    /** UDPOS, auxiliary verb */
+    /** https://universaldependencies.org/u/pos/AUX_.html */
     AUX(0x11),
-    /** Infinitive */
+    /** https://universaldependencies.org/u/feat/VerbForm.html#inf-infinitive */
     VERBinf(0x12),
-    /** Participle past */
+    /** https://universaldependencies.org/u/feat/VerbForm.html#part-participle-verbal-adjective */
     VERBpartpast(0x13),
-    /** Participle present */
+    /** https://universaldependencies.org/u/feat/VerbForm.html#part-participle-verbal-adjective */
     VERBpartpres(0x14),
 
     // 2x, substantifs
@@ -88,13 +86,14 @@ public enum Flags implements Tag
     PROPNgod(0x4F),
 
     // 5x, Adverbes
-    /** UDPOS Adverb */
+    /** https://universaldependencies.org/u/pos/ADV.html */
     ADV(0x50),
     /** Interrogative adverb */
     ADVint(0x51),
     /** Negation adverb */
     ADVneg(0x52),
-    // non UD feats
+    /** https://universaldependencies.org/u/pos/PART.html fr: n’, ne */
+    PART(0x53),
     /** Situation (space-time) adverb */
     ADVsit(0x58),
     /** Aspect adverb */
@@ -102,8 +101,7 @@ public enum Flags implements Tag
     /** Gradation adverb */
     ADVdeg(0x5A),
 
-    // 6x, déterminants
-    /** UDPOS, determiner*/
+    /** https://universaldependencies.org/u/pos/DET.html */
     DET(0x60),
     /** Article */
     DETart(0x61),
@@ -120,8 +118,8 @@ public enum Flags implements Tag
     /** Prepositional determiner, UD ADP+DET, fr: du, aux */
     ADP_DET(0x67),
 
-    // 7x, pronoms
-    /** UDPOS Pronoun */
+    // 7x, pronouns
+    /** https://universaldependencies.org/u/pos/PRON.html */
     PRON(0x70),
     /** Demonstrative pronoun */
     PRONdem(0x71),
@@ -138,60 +136,63 @@ public enum Flags implements Tag
     /** UD ADP+PRON, ex fr: duquel, auquel… */
     ADP_PRON(0x89),
 
-    // 8x, connecteurs
-    /** UDPOS “ad”position (pre or post in some languages) */
+    // 8x, connectors
+    /** https://universaldependencies.org/u/pos/ADP.html “ad”position (pre or post in some languages) */
     ADP(0x80),
-    /** UDPOS Coordinating conjunction */
+    /** https://universaldependencies.org/u/pos/CCONJ.html */
     CCONJ(0x81),
-    /** UDPOS Subordinating conjunction */
+    /** https://universaldependencies.org/u/pos/SCONJ.html */
     SCONJ(0x82),
     
     /** Adverbial conjunction */
-    ADVconj(0x88, "Adv. conj.", "Cependant, désormais… (adverbe de connexion)."),
+    // ADVconj(0x88, "Adv. conj.", "Cependant, désormais… (adverbe de connexion)."),
     
-    // Ax, Numéraux divers
-    /** UDPOSNumeral */
+    // Ax, numerals
+    /** https://universaldependencies.org/u/pos/NUM.html */
     NUM(0xA0),
     /** Ordinal */
     NUMord(0xA1),
-    /** UDPOS Symbol  */
+    /** https://universaldependencies.org/u/pos/SYM.html  */
     SYM(0xA8),
-    /** Reference */
-    REF(0xA2, "Référence", "p. 50, f. 2… (un numéro utilisé comme référence, comme une page, une note…"),
+    /** [0-9\-] numbers */
+    DIGIT(0x07),
     /** Math operator */
     MATH(0xA3),
     /** Physical unit (cm, kg…) */
     UNIT(0xA4),
+    /** A number reference, for example p. 50 */
+    REF(0xA2),
 
-    // Fx, divers
-    /** Misc */
-    MISC(0xF0, "Divers", ""),
-    /** Abbreviation (maybe name, substantive…) */
-    ABBR(0xF1, "Abréviation", ""),
-    /** Exclamation */
-    EXCL(0xF2, "Exclamation", "Ho, Ô, haha… (interjections)"),
-    /** Exclamation */
-    MG(0xF3, "Mot grammatical", "Déterminants, pronoms, connecteurs…"),
+    // misc
+    /** https://universaldependencies.org/u/pos/X.html */
+    X(0xF0),
+    /** https://universaldependencies.org/u/pos/INTJ.html */
+    INTJ(0xF1),
+    /** Abbreviation before resolution to a pos */
+    ABBR(0xF8),
+    /** Grammatical word, before resolution */
+    MG(0xF9)
+    ;
     
     
     public final int code;
     static final Index index = new Index(0, 15);
     static
     {
-        for (Flags tag : Flags.values()) index.add(tag.code, tag);
+        for (Upos tag : Upos.values()) index.add(tag.code, tag);
     }
 
-    private Flags(final int code)
+    private Upos(final int code)
     {
         this.code = code;
     }
     public boolean isPun(final int code)
     {
-        return (code == PUN.code 
-          || code == PUNsection.code 
-          || code == PUNpara.code 
-          || code == PUNsent.code 
-          || code == PUNclause.code
+        return (code == PUNCT.code 
+          || code == PUNCTsection.code 
+          || code == PUNCTpara.code 
+          || code == PUNCTsent.code 
+          || code == PUNCTclause.code
         );
     }
     

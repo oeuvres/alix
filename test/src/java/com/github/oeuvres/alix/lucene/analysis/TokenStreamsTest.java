@@ -18,7 +18,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 // import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.junit.Test;
 
-import com.github.oeuvres.alix.common.Flags;
+import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.fr.FrDics;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
@@ -106,7 +106,7 @@ public class TokenStreamsTest {
             final int startOffset = offsetAttribute.startOffset();
             final int flags = flagsAttribute.getFlags();
             String tag = TagFr.name(flags);
-            if (tag == null) tag = Flags.name(flags);
+            if (tag == null) tag = Upos.name(flags);
             if (tag == null) tag = "" + flags;
             System.out.print(""
               + "term=" + termAttribute.toString() + "\t" 

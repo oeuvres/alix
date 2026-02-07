@@ -14,7 +14,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.AttributeFactory;
 
-import static com.github.oeuvres.alix.common.Flags.*;
+import static com.github.oeuvres.alix.common.Upos.*;
 
 import com.github.oeuvres.alix.fr.FrDics;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.AttributeFactoryAlix;
@@ -23,7 +23,7 @@ import com.github.oeuvres.alix.util.Char;
 
 /**
  * A tokenizer for latin script languages and possible XML like tags. Tags are kept in token stream for further analysis.
- * A {@link FlagsAttribute} is set with an int define in {@link Flags}.
+ * A {@link FlagsAttribute} is set with an int define in {@link Upos}.
  *
  * <pre>
  * &lt;p&gt;            XML

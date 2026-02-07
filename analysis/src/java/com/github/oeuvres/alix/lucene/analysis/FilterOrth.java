@@ -40,7 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
-import static com.github.oeuvres.alix.common.Flags.*;
+import static com.github.oeuvres.alix.common.Upos.*;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 

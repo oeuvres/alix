@@ -45,7 +45,7 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import com.github.oeuvres.alix.common.Tag;
 
-import static com.github.oeuvres.alix.common.Flags.*;
+import static com.github.oeuvres.alix.common.Upos.*;
 
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerME;

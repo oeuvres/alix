@@ -65,7 +65,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 
-import static com.github.oeuvres.alix.common.Flags.*;
+import static com.github.oeuvres.alix.common.Upos.*;
 import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Edge;

@@ -13,7 +13,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.oeuvres.alix.common.Flags;
+import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.common.Tag;
 import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
@@ -79,7 +79,7 @@ public abstract class Lexicon
             }
             catch (Exception e) {
                 try {
-                    tagEnum = Flags.valueOf(tagKey);
+                    tagEnum = Upos.valueOf(tagKey);
                 }
                 catch (Exception ee) {
                     logger.debug(res + " graph=\"" + graph + "\" tag=\"" + tag + "\"? tag not found.");
