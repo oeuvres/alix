@@ -1355,7 +1355,7 @@ public class Chain implements Appendable, CharSequence, Cloneable, Comparable<Ch
      * @param newLength the new length, {@code newLength >= 0}
      * @throws IndexOutOfBoundsException if {@code newLength} is negative
      */
-    public void setLengthI(final int newLength)
+    public void setLength(final int newLength)
     {
         if (newLength < 0) {
             throw new IndexOutOfBoundsException("newLength=" + newLength);

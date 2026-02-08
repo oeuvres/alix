@@ -66,7 +66,7 @@ import com.github.oeuvres.alix.util.CSVReader.Row;
 public class FrLexicon extends Lexicon
 {
     /** Column for a graphy like found in texts, required */
-    public final static int COL_GRAPH = 0;
+    public final static int COL_INFLECTION = 0;
     /** Column for a grammatical category, required if no ORTH */
     public final static int COL_TAG = 1;
     /** Column for a lemma, optional */
@@ -272,7 +272,7 @@ public class FrLexicon extends Lexicon
             csv.readRow(); // skip first line
             Row row;
             while ((row = csv.readRow()) != null) {
-                Chain graph = row.get(COL_GRAPH);
+                Chain graph = row.get(COL_INFLECTION);
                 if (graph.isEmpty() || graph.charAt(0) == '#')
                     continue;
                 // normalize apos

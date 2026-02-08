@@ -1,8 +1,10 @@
 package com.github.oeuvres.alix.common;
 
 /**
- * List of flags inferred by an analyzer without dictionaries or tagger,
- * on alphabetic scripts.
+ * Set of flags used during an analysis process (pos tagging, lemmatization).
+ * Universal POS tags always used when possible
+ * https://universaldependencies.org/u/pos/
+ * Some other useful technical tags for semantic analysis
  */
 public enum Upos implements Tag
 {
