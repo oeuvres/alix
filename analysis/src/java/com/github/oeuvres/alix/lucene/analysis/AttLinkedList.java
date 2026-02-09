@@ -173,6 +173,10 @@ public class AttLinkedList
         ensureLast();
         last.copy(buffer, copyOffset, copyLength, startOffset, endOffset);
     }
+    
+    public void clear() {
+        first = last = null;
+    }
 
     /**
      * Like {@link AbstractCollection#isEmpty()}.

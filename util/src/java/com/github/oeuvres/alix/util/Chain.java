@@ -629,6 +629,12 @@ public class Chain implements Appendable, CharSequence, Cloneable, Comparable<Ch
     {
         return this.length > 0 && chars[zero] == c;
     }
+    
+    public void getChars(final char[] dst)
+    {
+        if (dst == null) throw new NullPointerException("dst");
+        getChars(0, dst.length, dst, 0);
+    }
 
     /**
      * Copy characters from this sequence into the destination array.

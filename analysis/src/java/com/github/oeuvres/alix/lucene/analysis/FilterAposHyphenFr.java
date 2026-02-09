@@ -1,3 +1,35 @@
+/*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
+ * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
+ *                Frédéric Glorieux <frederic.glorieux@fictif.org>
+ *
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic tools for French,
+ * available under Apache license.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
+ * for a java course at Inalco  http://www.er-tim.fr/
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
+ * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * http://savannah.nongnu.org/projects/sdx/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
@@ -10,16 +42,21 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import static com.github.oeuvres.alix.common.Upos.*;
+
 /**
  * A filter that decomposes words on a list of suffixes and prefixes, mainly to handle 
  * hyphenation and apostrophe ellision in French. The original token is broken and lost,
  * offset are precisely kept, so that word counting and stats are not biased by multiple
  * words on same positions.
  * 
+ * https://fr.wikipedia.org/wiki/Emploi_du_trait_d%27union_pour_les_pr%C3%A9fixes_en_fran%C3%A7ais
+ * 
  * Known side effect : qu’en-dira-t-on, donne-m’en, emmène-m’y.
  */
 public class FilterAposHyphenFr extends TokenFilter
 {
+    private static final int MAX_STEPS = 16;
+
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** Char index in source text. */
@@ -28,15 +65,13 @@ public class FilterAposHyphenFr extends TokenFilter
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** Stack of stored states */
     private final AttLinkedList deque = new AttLinkedList();
-    
-    
+
     /** Ellisions prefix */
-    static CharArrayMap<char[]> PREFIX = new CharArrayMap<>(30, false);
-    static { // ellisions
+    private static final CharArrayMap<char[]> PREFIX = new CharArrayMap<>(30, false);
+    static {
         PREFIX.put("d'", "de".toCharArray());
-        PREFIX.put("d'", "de".toCharArray()); // keep ' for locution, like d’abord
         PREFIX.put("D'", "de".toCharArray());
-        PREFIX.put("j'", "je".toCharArray()); // j’aime.
+        PREFIX.put("j'", "je".toCharArray());
         PREFIX.put("J'", "je".toCharArray());
         PREFIX.put("jusqu'", "jusque".toCharArray());
         PREFIX.put("Jusqu'", "jusque".toCharArray());
@@ -44,7 +79,7 @@ public class FilterAposHyphenFr extends TokenFilter
         PREFIX.put("L'", "l'".toCharArray());
         PREFIX.put("lorsqu'", "lorsque".toCharArray());
         PREFIX.put("Lorsqu'", "lorsque".toCharArray());
-        PREFIX.put("m'", "me".toCharArray()); // il m’aime.
+        PREFIX.put("m'", "me".toCharArray());
         PREFIX.put("M'", "me".toCharArray());
         PREFIX.put("n'", "ne".toCharArray()); // N’y va pas.
         PREFIX.put("N'", "ne".toCharArray());
@@ -56,15 +91,16 @@ public class FilterAposHyphenFr extends TokenFilter
         PREFIX.put("Quelqu'", "quelque".toCharArray());
         PREFIX.put("quoiqu'", "quoique".toCharArray());
         PREFIX.put("Quoiqu'", "quoique".toCharArray());
-        PREFIX.put("s'", "se".toCharArray()); // il s’aime.
+        PREFIX.put("s'", "se".toCharArray());
         PREFIX.put("S'", "se".toCharArray());
-        PREFIX.put("t'", "te".toCharArray()); // il t’aime.
+        PREFIX.put("t'", "te".toCharArray());
         PREFIX.put("T'", "te".toCharArray());
     }
-    // https://fr.wikipedia.org/wiki/Emploi_du_trait_d%27union_pour_les_pr%C3%A9fixes_en_fran%C3%A7ais
+
     /** Hyphen suffixes */
-    static final CharArrayMap<char[]> SUFFIX = new CharArrayMap<>(30, false);
+    private static final CharArrayMap<char[]> SUFFIX = new CharArrayMap<>(30, false);
     static {
+
         SUFFIX.put("-ce", "ce".toCharArray()); // Serait-ce ?
         SUFFIX.put("-ci", null); // cette année-ci, ceux-ci.
         SUFFIX.put("-elle", "elle".toCharArray()); // dit-elle.
@@ -92,12 +128,6 @@ public class FilterAposHyphenFr extends TokenFilter
         SUFFIX.put("-y", "y".toCharArray()); // allons-y.
     }
 
-    
-
-    /**
-     * Default constructor.
-     * @param input previous filter.
-     */
     public FilterAposHyphenFr(TokenStream input) {
         super(input);
     }
@@ -105,111 +135,116 @@ public class FilterAposHyphenFr extends TokenFilter
     @Override
     public final boolean incrementToken() throws IOException
     {
-        // check if a term has been stored from last call
+        // Emit buffered tokens first
         if (!deque.isEmpty()) {
             deque.removeFirst(termAtt, offsetAtt);
         }
         else {
-            if (!input.incrementToken()) {
-                // end of stream
-                return false;
-            }
+            if (!input.incrementToken()) return false;
         }
+
         // do not try to split in XML tags
         if (flagsAtt.getFlags() == XML.code) {
             return true;
         }
-        int loop = 0;
-        while (true) {
-            if (++loop > 10) {
-                throw new IOException("AposHyph décon: " + deque);
-            }
-            char[] chars = termAtt.buffer();
-            int hyphLast = termAtt.length() - 1;
-            for (; hyphLast >= 0; hyphLast--) {
-                if ('-' == chars[hyphLast]) break;
-            }
-            int aposFirst = 0;
-            for (; aposFirst < termAtt.length(); aposFirst++) {
-                if (chars[aposFirst] == '’') chars[aposFirst] = '\'';
-                if ('\'' == chars[aposFirst]) break;
-            }
-            if (aposFirst >= termAtt.length()) aposFirst = -1;
 
-            if (aposFirst < 0 && hyphLast < 0) {
-                // no changes
-                return true;
-            }
-            // apos is last char, let it run, maybe maths A', D'
-            if ((aposFirst + 1) == termAtt.length()) {
-                return true;
-            }
-            // hyphen is first char, let it run, maybe linguistic -suffix
-            if (hyphLast == 0) {
-                return true;
-            }
-            // test prefixes
+        for (int step = 0; step < MAX_STEPS; step++) {
+            final int len = termAtt.length();
+            if (len <= 1) return true;
+
+            final char[] buf = termAtt.buffer();
+
+            final int hyphLast = lastHyphenIndexAndNormalize(buf, len);
+            final int aposFirst = firstAposIndexAndNormalize(buf, len);
+
+            if (aposFirst < 0 && hyphLast < 0) return true;
+
+            // apos is last char, let it run (maths A', D', etc.)
+            if (aposFirst == len - 1) return true;
+
+            // hyphen is first or last char, let it run
+            if (hyphLast == 0 || hyphLast == len - 1) return true;
+
+            // Prefix split on apostrophe
             if (aposFirst > 0) {
                 final int startOffset = offsetAtt.startOffset();
-                if (PREFIX.containsKey(termAtt.buffer(), 0, aposFirst + 1)) {
-                    final char[] value = PREFIX.get(termAtt.buffer(), 0, aposFirst + 1);
-                    /* Strip prefix ?
-                    if (value == null) {
-                        // skip this prefix, retry to find something
-                        termAtt.copyBuffer(termAtt.buffer(), aposFirst + 1, termAtt.length() - aposFirst - 1);
-                        offsetAtt.setOffset(startOffset + aposFirst + 1, offsetAtt.endOffset());
-                        continue;
-                    }
-                    */
+                final int prefixLen = aposFirst + 1;
+
+                final char[] value = PREFIX.get(buf, 0, prefixLen);
+                if (value != null) {
                     // keep term after prefix for next call
                     deque.addLast(
-                        termAtt.buffer(), 
-                        aposFirst + 1, 
-                        termAtt.length() - aposFirst - 1,
-                        startOffset + aposFirst + 1,
+                        buf,
+                        prefixLen,
+                        len - prefixLen,
+                        startOffset + prefixLen,
                         offsetAtt.endOffset()
                     );
                     // send the prefix
                     termAtt.copyBuffer(value, 0, value.length);
-                    termAtt.setLength(aposFirst + 1);
-                    offsetAtt.setOffset(startOffset, startOffset + aposFirst + 1);
+                    offsetAtt.setOffset(startOffset, startOffset + prefixLen);
                     return true;
                 }
             }
+
+            // Suffix split on hyphen
             if (hyphLast > 0) {
-                // test suffix
-                if (SUFFIX.containsKey(termAtt.buffer(), hyphLast, termAtt.length() - hyphLast)) {
-                    final char[] value = SUFFIX.get(termAtt.buffer(), hyphLast, termAtt.length() - hyphLast);
-                    // if value is not skipped, add it at start in stack
+                final int suffixLen = len - hyphLast;
+
+                if (SUFFIX.containsKey(buf, hyphLast, suffixLen)) {
+                    final char[] value = SUFFIX.get(buf, hyphLast, suffixLen);
+
                     if (value != null) {
                         deque.addFirst(
-                            value, 
-                            0, 
+                            value,
+                            0,
                             value.length,
-                            offsetAtt.startOffset()+hyphLast,
+                            offsetAtt.startOffset() + hyphLast,
                             offsetAtt.endOffset()
                         );
                     }
-                    // set term without suffix, let work the loop
+
+                    // set term without suffix, loop again (may strip multiple suffixes)
                     offsetAtt.setOffset(offsetAtt.startOffset(), offsetAtt.startOffset() + hyphLast);
                     termAtt.setLength(hyphLast);
                     continue;
                 }
             }
+
             return true; // term is OK like that
         }
+
+        throw new IllegalStateException("FilterAposHyphenFr: exceeded MAX_STEPS, deque=" + deque);
     }
-    
+
+    private static int firstAposIndexAndNormalize(final char[] buf, final int len) {
+        for (int i = 0; i < len; i++) {
+            char c = buf[i];
+            if (c == '’' || c == '\u02BC') { // U+2019 or U+02BC
+                buf[i] = '\'';
+                c = '\'';
+            }
+            if (c == '\'') return i;
+        }
+        return -1;
+    }
+
+    private static int lastHyphenIndexAndNormalize(final char[] buf, final int len) {
+        for (int i = len - 1; i >= 0; i--) {
+            char c = buf[i];
+            if (c == '\u2010' || c == '\u2011' || c == '\u00AD') { // hyphen variants
+                buf[i] = '-';
+                c = '-';
+            }
+            if (c == '-') return i;
+        }
+        return -1;
+    }
+
     @Override
     public void reset() throws IOException
     {
         super.reset();
+        deque.clear(); // add clear() to AttLinkedList (recommended)
     }
-
-    @Override
-    public void end() throws IOException
-    {
-        super.end();
-    }
-
 }
