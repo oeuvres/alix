@@ -178,7 +178,7 @@ public enum Upos implements Tag
     
     
     public final int code;
-    static final Index index = new Index(0, 15);
+    static final Index index = new Index(0, 0xFF);
     static
     {
         for (Upos tag : Upos.values()) index.add(tag.code, tag);
