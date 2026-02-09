@@ -2,7 +2,6 @@ package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.lucene.analysis.CharacterUtils;
 import org.apache.lucene.analysis.Tokenizer;
@@ -12,13 +11,9 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
-import org.apache.lucene.util.AttributeFactory;
 
 import static com.github.oeuvres.alix.common.Upos.*;
 
-import com.github.oeuvres.alix.fr.FrDics;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.AttributeFactoryAlix;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Char;
 
 /**
@@ -109,7 +104,8 @@ public class TokenizerML  extends Tokenizer
      * Build a Tokenizer for Markup tagged text.
      */
     public TokenizerML() {
-        super(new AttributeFactoryAlix(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
+        super();
+        // super(new AttributeFactoryAlix(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
     }
     
     @Override
@@ -254,7 +250,7 @@ public class TokenizerML  extends Tokenizer
                 termAtt.append(c);
                 startOffset = offset;
                 endOffset = offset + 1;
-                flagsAtt.setFlags(PUNclause.code);
+                flagsAtt.setFlags(PUNCTclause.code);
                 bufferIndex++;
                 offset++;
                 break;
@@ -271,7 +267,7 @@ public class TokenizerML  extends Tokenizer
                 }
                 // append punctuation and wait for space to send (???, !!!, ...)
                 if (termAtt.isEmpty()) {
-                    flagsAtt.setFlags(PUNsent.code);
+                    flagsAtt.setFlags(PUNCTsent.code);
                     startOffset = offset;
                 }
                 termAtt.append(c);
@@ -286,7 +282,7 @@ public class TokenizerML  extends Tokenizer
         // final dot special case
         int len = termAtt.length();
         if (Char.isLetter(termAtt.charAt(0)) && termAtt.charAt(len - 1) == '.') {
-            if (FrDics.isBrevidot(termAtt) ) {
+            if (false) { // FrDics.isBrevidot(termAtt)
                 // known word with ending dot
             }
             // one letter, abbreviation
