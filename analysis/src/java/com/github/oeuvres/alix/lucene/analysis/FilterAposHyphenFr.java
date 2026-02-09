@@ -1,8 +1,8 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
-import java.util.HashMap;
 
+import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -10,7 +10,6 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import static com.github.oeuvres.alix.common.Upos.*;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 /**
  * A filter that decomposes words on a list of suffixes and prefixes, mainly to handle 
  * hyphenation and apostrophe ellision in French. The original token is broken and lost,
@@ -25,81 +24,74 @@ public class FilterAposHyphenFr extends TokenFilter
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** Char index in source text. */
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-    /** A linguistic category as a short number, see {@link TagFr} */
+    /** A linguistic category as a short number, see {@link Upos} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** Stack of stored states */
     private final AttLinkedList deque = new AttLinkedList();
     
     
     /** Ellisions prefix */
-    static final public HashMap<CharsAttImpl, CharsAttImpl> PREFIX = new HashMap<CharsAttImpl, CharsAttImpl>((int) (30 / 0.75));
+    static CharArrayMap<char[]> PREFIX = new CharArrayMap<>(30, false);
     static { // ellisions
-        put(PREFIX, "d'", "de"); // keep ' for locution, like d’abord
-        put(PREFIX, "D'", "de");
-        put(PREFIX, "j'", "je"); // j’aime.
-        put(PREFIX, "J'", "je");
-        put(PREFIX, "jusqu'", "jusque");
-        put(PREFIX, "Jusqu'", "jusque");
-        put(PREFIX, "l'", "l'"); // je l’aime. le ou la
-        put(PREFIX, "L'", "l'");
-        put(PREFIX, "lorsqu'", "lorsque");
-        put(PREFIX, "Lorsqu'", "lorsque");
-        put(PREFIX, "m'", "me"); // il m’aime.
-        put(PREFIX, "M'", "me");
-        put(PREFIX, "n'", "ne"); // N’y va pas.
-        put(PREFIX, "N'", "ne");
-        put(PREFIX, "puisqu'", "puisque");
-        put(PREFIX, "Puisqu'", "puisque");
-        put(PREFIX, "qu'", "que");
-        put(PREFIX, "Qu'", "que");
-        put(PREFIX, "quelqu'", "quelque");
-        put(PREFIX, "Quelqu'", "quelque");
-        put(PREFIX, "quoiqu'", "quoique");
-        put(PREFIX, "Quoiqu'", "quoique");
-        put(PREFIX, "s'", "se"); // il s’aime.
-        put(PREFIX, "S'", "se");
-        put(PREFIX, "t'", "te"); // il t’aime.
-        put(PREFIX, "T'", "te");
+        PREFIX.put("d'", "de".toCharArray());
+        PREFIX.put("d'", "de".toCharArray()); // keep ' for locution, like d’abord
+        PREFIX.put("D'", "de".toCharArray());
+        PREFIX.put("j'", "je".toCharArray()); // j’aime.
+        PREFIX.put("J'", "je".toCharArray());
+        PREFIX.put("jusqu'", "jusque".toCharArray());
+        PREFIX.put("Jusqu'", "jusque".toCharArray());
+        PREFIX.put("l'", "l'".toCharArray()); // je l’aime. le ou la
+        PREFIX.put("L'", "l'".toCharArray());
+        PREFIX.put("lorsqu'", "lorsque".toCharArray());
+        PREFIX.put("Lorsqu'", "lorsque".toCharArray());
+        PREFIX.put("m'", "me".toCharArray()); // il m’aime.
+        PREFIX.put("M'", "me".toCharArray());
+        PREFIX.put("n'", "ne".toCharArray()); // N’y va pas.
+        PREFIX.put("N'", "ne".toCharArray());
+        PREFIX.put("puisqu'", "puisque".toCharArray());
+        PREFIX.put("Puisqu'", "puisque".toCharArray());
+        PREFIX.put("qu'", "que".toCharArray());
+        PREFIX.put("Qu'", "que".toCharArray());
+        PREFIX.put("quelqu'", "quelque".toCharArray());
+        PREFIX.put("Quelqu'", "quelque".toCharArray());
+        PREFIX.put("quoiqu'", "quoique".toCharArray());
+        PREFIX.put("Quoiqu'", "quoique".toCharArray());
+        PREFIX.put("s'", "se".toCharArray()); // il s’aime.
+        PREFIX.put("S'", "se".toCharArray());
+        PREFIX.put("t'", "te".toCharArray()); // il t’aime.
+        PREFIX.put("T'", "te".toCharArray());
     }
     // https://fr.wikipedia.org/wiki/Emploi_du_trait_d%27union_pour_les_pr%C3%A9fixes_en_fran%C3%A7ais
     /** Hyphen suffixes */
-    static final public HashMap<CharsAttImpl, CharsAttImpl> SUFFIX = new HashMap<CharsAttImpl, CharsAttImpl>((int) (30 / 0.75));
+    static final CharArrayMap<char[]> SUFFIX = new CharArrayMap<>(30, false);
     static {
-        put(SUFFIX, "-ce", "ce"); // Serait-ce ?
-        put(SUFFIX, "-ci", null); // cette année-ci, ceux-ci.
-        put(SUFFIX, "-elle", "elle"); // dit-elle.
-        put(SUFFIX, "-elles", "elles"); // disent-elles.
-        put(SUFFIX, "-en", "en"); // parlons-en.
-        put(SUFFIX, "-eux", "eux"); // 
-        put(SUFFIX, "-il", "il"); // dit-il.
-        put(SUFFIX, "-ils", "ils"); // disent-ils.
-        put(SUFFIX, "-je", "je"); // dis-je.
-        put(SUFFIX, "-la", "la"); // prends-la !
-        put(SUFFIX, "-là", null); // cette année-là, ceux-là.
-        put(SUFFIX, "-le", "le"); // rends-le !
-        put(SUFFIX, "-les", "les"); // rends-les !
-        put(SUFFIX, "-leur", "leur"); // rends-leur !
-        put(SUFFIX, "-lui", "lui"); // rends-leur !
-        put(SUFFIX, "-me", "me"); // laissez-moi !
-        put(SUFFIX, "-moi", "moi"); // laissez-moi !
-        put(SUFFIX, "-nous", "nous"); // laisse-nous.
-        put(SUFFIX, "-on", "on"); // laisse-nous.
-        put(SUFFIX, "-t", null); // habite-t-il ici ?
-        put(SUFFIX, "-te", "te"); // 
-        put(SUFFIX, "-toi", "toi"); // 
-        put(SUFFIX, "-tu", "tu"); // viendras-tu ?
-        put(SUFFIX, "-vous", "vous"); // voulez-vous ?
-        put(SUFFIX, "-y", "y"); // allons-y.
+        SUFFIX.put("-ce", "ce".toCharArray()); // Serait-ce ?
+        SUFFIX.put("-ci", null); // cette année-ci, ceux-ci.
+        SUFFIX.put("-elle", "elle".toCharArray()); // dit-elle.
+        SUFFIX.put("-elles", "elles".toCharArray()); // disent-elles.
+        SUFFIX.put("-en", "en".toCharArray()); // parlons-en.
+        SUFFIX.put("-eux", "eux".toCharArray()); // 
+        SUFFIX.put("-il", "il".toCharArray()); // dit-il.
+        SUFFIX.put("-ils", "ils".toCharArray()); // disent-ils.
+        SUFFIX.put("-je", "je".toCharArray()); // dis-je.
+        SUFFIX.put("-la", "la".toCharArray()); // prends-la !
+        SUFFIX.put("-là", null); // cette année-là, ceux-là.
+        SUFFIX.put("-le", "le".toCharArray()); // rends-le !
+        SUFFIX.put("-les", "les".toCharArray()); // rends-les !
+        SUFFIX.put("-leur", "leur".toCharArray()); // rends-leur !
+        SUFFIX.put("-lui", "lui".toCharArray()); // rends-leur !
+        SUFFIX.put("-me", "me".toCharArray()); // laissez-moi !
+        SUFFIX.put("-moi", "moi".toCharArray()); // laissez-moi !
+        SUFFIX.put("-nous", "nous".toCharArray()); // laisse-nous.
+        SUFFIX.put("-on", "on".toCharArray()); // laisse-nous.
+        SUFFIX.put("-t", null); // habite-t-il ici ?
+        SUFFIX.put("-te", "te".toCharArray()); // 
+        SUFFIX.put("-toi", "toi".toCharArray()); // 
+        SUFFIX.put("-tu", "tu".toCharArray()); // viendras-tu ?
+        SUFFIX.put("-vous", "vous".toCharArray()); // voulez-vous ?
+        SUFFIX.put("-y", "y".toCharArray()); // allons-y.
     }
-    private static final void put(final HashMap<CharsAttImpl, CharsAttImpl> dic, final String key, final String value)
-    {
-        if (value == null) {
-            dic.put(new CharsAttImpl(key), null);
-        }
-        else {
-            dic.put(new CharsAttImpl(key), new CharsAttImpl(value));
-        }
-    }
+
     
 
     /**
@@ -113,7 +105,6 @@ public class FilterAposHyphenFr extends TokenFilter
     @Override
     public final boolean incrementToken() throws IOException
     {
-        final CharsAttImpl test = new CharsAttImpl();
         // check if a term has been stored from last call
         if (!deque.isEmpty()) {
             deque.removeFirst(termAtt, offsetAtt);
@@ -140,6 +131,7 @@ public class FilterAposHyphenFr extends TokenFilter
             }
             int aposFirst = 0;
             for (; aposFirst < termAtt.length(); aposFirst++) {
+                if (chars[aposFirst] == '’') chars[aposFirst] = '\'';
                 if ('\'' == chars[aposFirst]) break;
             }
             if (aposFirst >= termAtt.length()) aposFirst = -1;
@@ -158,11 +150,10 @@ public class FilterAposHyphenFr extends TokenFilter
             }
             // test prefixes
             if (aposFirst > 0) {
-                test.wrap(termAtt.buffer(), 0, aposFirst + 1);
                 final int startOffset = offsetAtt.startOffset();
-                if (PREFIX.containsKey(test)) {
-                    /*
-                    final CharsAttImpl value = PREFIX.get(test);
+                if (PREFIX.containsKey(termAtt.buffer(), 0, aposFirst + 1)) {
+                    final char[] value = PREFIX.get(termAtt.buffer(), 0, aposFirst + 1);
+                    /* Strip prefix ?
                     if (value == null) {
                         // skip this prefix, retry to find something
                         termAtt.copyBuffer(termAtt.buffer(), aposFirst + 1, termAtt.length() - aposFirst - 1);
@@ -179,6 +170,7 @@ public class FilterAposHyphenFr extends TokenFilter
                         offsetAtt.endOffset()
                     );
                     // send the prefix
+                    termAtt.copyBuffer(value, 0, value.length);
                     termAtt.setLength(aposFirst + 1);
                     offsetAtt.setOffset(startOffset, startOffset + aposFirst + 1);
                     return true;
@@ -186,12 +178,17 @@ public class FilterAposHyphenFr extends TokenFilter
             }
             if (hyphLast > 0) {
                 // test suffix
-                test.wrap(termAtt.buffer(), hyphLast, termAtt.length() - hyphLast);
-                if (SUFFIX.containsKey(test)) {
-                    final CharsAttImpl value = SUFFIX.get(test);
+                if (SUFFIX.containsKey(termAtt.buffer(), hyphLast, termAtt.length() - hyphLast)) {
+                    final char[] value = SUFFIX.get(termAtt.buffer(), hyphLast, termAtt.length() - hyphLast);
                     // if value is not skipped, add it at start in stack
                     if (value != null) {
-                        deque.addFirst(value, offsetAtt.startOffset()+hyphLast, offsetAtt.endOffset());
+                        deque.addFirst(
+                            value, 
+                            0, 
+                            value.length,
+                            offsetAtt.startOffset()+hyphLast,
+                            offsetAtt.endOffset()
+                        );
                     }
                     // set term without suffix, let work the loop
                     offsetAtt.setOffset(offsetAtt.startOffset(), offsetAtt.startOffset() + hyphLast);
