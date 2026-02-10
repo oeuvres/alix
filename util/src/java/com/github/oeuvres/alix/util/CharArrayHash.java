@@ -2,8 +2,8 @@
  * Alix, A Lucene Indexer for XML documents.
  * 
  * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
- *                Frédéric Glorieux <frederic.glorieux@fictif.org>
- * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
+ *                Frederic Glorieux <frederic.glorieux@fictif.org>
+ * Copyright 2016 Frederic Glorieux <frederic.glorieux@fictif.org>
  *
  * Alix is a java library to index and search XML text documents
  * with Lucene https://lucene.apache.org/core/
@@ -14,8 +14,8 @@
  * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
  * Alix continues the concepts of SDX under another licence
- * «Système de Documentation XML»
- * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * "Systeme de Documentation XML"
+ * 2000-2010  Ministere de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,13 +46,23 @@ import java.util.Arrays;
  *
  * <p>Implementation details:
  * <ul>
- *   <li>Open addressing with linear probing; table capacity is always a power of two.</li>
- *   <li>Load factor ~0.75; automatic rehash on growth.</li>
- *   <li>Keys are stored contiguously in a growing {@code char} slab; per-ord metadata store offset,
- *       length, and the 32-bit hash to avoid recomputing during rehash.</li>
- *   <li>Lookup uses a 16-bit fingerprint (top bits of the 32-bit hash), length check, then a
- *       {@code memcmp}-style verification against the slab.</li>
+ *   <li>Open addressing with linear probing; table capacity is always a power of two (fast masking).</li>
+ *   <li>Load factor ~0.75; automatic rehash on growth. Ords remain stable across rehash.</li>
+ *   <li>Keys are copied and stored contiguously in a growing {@code char} slab.</li>
+ *   <li>Per-ord metadata store offset, length, and the 32-bit hash. Length is stored as an
+ *       <em>unsigned</em> 16-bit value (supports key lengths 0..65535).</li>
+ *   <li>Lookup uses: (1) slot check, (2) length check, (3) 16-bit fingerprint derived from the
+ *       stored 32-bit hash (top 16 bits), then (4) a {@code memcmp}-style verification against the slab.</li>
  *   <li>Hash function: Murmur3-32 over UTF-16 code units (robust distribution for short Latin keys).</li>
+ * </ul>
+ *
+ * <p>Space/time trade-offs:
+ * <ul>
+ *   <li>Compared to keeping a dedicated 16-bit fingerprint array per slot, this implementation saves
+ *       {@code 2 * capacity} bytes, but fingerprint checks may require an additional random load from
+ *       {@code keyHash[ord]} when length matches.</li>
+ *   <li>Use {@link #trimToSize()} after bulk build to reduce slack in metadata arrays, the slab, and
+ *       (optionally) the hash table itself.</li>
  * </ul>
  *
  * <p>Complexity:
@@ -74,11 +84,11 @@ public final class CharArrayHash
     /**
      * Constructs the hash with an expected number of unique keys.
      *
-     * <p>The table's initial capacity is chosen to keep the load factor ≤ 0.75 for the expected
+     * <p>The table's initial capacity is chosen to keep the load factor <= 0.75 for the expected
      * number of unique keys. The internal key-slab and per-ord metadata arrays are also sized
      * heuristically based on {@code expectedSize} and will grow as needed.
      *
-     * @param expectedSize an estimate of the number of distinct keys to be added (must be ≥ 1; values ≤ 0 are treated as 1)
+     * @param expectedSize an estimate of the number of distinct keys to be added (must be >= 1; values <= 0 are treated as 1)
      */
     public CharArrayHash(int expectedSize)
     {
@@ -87,15 +97,15 @@ public final class CharArrayHash
         while (cap < need) cap <<= 1;
         table = new int[cap];
         Arrays.fill(table, -1); // -1 = empty
-        fp16 = new short[cap];
         mask = cap - 1;
 
         // ord metadata (0-based ords). Reserve slot count = expected + slack.
         int metaCap = Math.max(8, expectedSize);
         keyOff = new int[metaCap];
-        keyLen = new int[metaCap];
+        keyLen = new short[metaCap];
         keyHash = new int[metaCap];
 
+        // Heuristic: small average token size; the slab grows geometrically.
         slab = new char[Math.max(16, expectedSize * 4)];
     }
 
@@ -104,7 +114,7 @@ public final class CharArrayHash
      *
      * <p>This method implements the {@code BytesRefHash.add} return contract:
      * <ul>
-     *   <li>If the key is new, returns its assigned 0-based ordinal (ord ≥ 0).</li>
+     *   <li>If the key is new, returns its assigned 0-based ordinal (ord >= 0).</li>
      *   <li>If the key already exists, returns {@code -(ord) - 1} (a negative encoding of the existing ord).</li>
      * </ul>
      *
@@ -115,32 +125,37 @@ public final class CharArrayHash
      * @param len number of {@code char} code units to read
      * @return {@code ord} if the key was added; otherwise {@code -(ord)-1} if the key already existed
      * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code key}
+     * @throws IllegalArgumentException if {@code len} is greater than 65535
      */
     public int add(char[] key, int off, int len)
     {
         checkBounds(key, off, len);
-        int h = Murmur3.hashChars(key, off, len, SEED);
+        if (len > MAX_KEY_LENGTH) throw new IllegalArgumentException("key length > 65535: " + len);
+
+        final int h = Murmur3.hashChars(key, off, len, SEED);
         int i = h & mask;
-        short f = (short) (h >>> 16);
 
         for (;;) {
-            int ord = table[i];
+            final int ord = table[i];
             if (ord == -1) { // empty slot -> insert
-                ord = sizeOrds; // 0-based
+                final int newOrd = sizeOrds; // 0-based
                 sizeOrds++;
-                ensureOrdCapacity(sizeOrds);
-                int base = appendToSlab(key, off, len);
-                keyOff[ord] = base;
-                keyLen[ord] = len;
-                keyHash[ord] = h;
 
-                table[i] = ord;
-                fp16[i] = f;
+                ensureOrdCapacity(sizeOrds);
+                final int base = appendToSlab(key, off, len);
+                keyOff[newOrd] = base;
+                keyLen[newOrd] = (short) len; // stored unsigned
+                keyHash[newOrd] = h;
+
+                table[i] = newOrd;
                 if (++occupied > resizeThreshold()) rehash(table.length << 1);
-                return ord; // new => >= 0
+                return newOrd; // new => >= 0
             }
 
-            if (fp16[i] == f && keyLen[ord] == len && equalsAt(ord, key, off, len)) {
+            // Fast reject chain: length -> 16-bit fingerprint (top hash bits) -> full compare
+            if (((keyLen[ord] & 0xFFFF) == len)
+                    && (((keyHash[ord] ^ h) & 0xFFFF_0000) == 0)
+                    && equalsAt(ord, key, off, len)) {
                 return -ord - 1; // existing => negative encoding
             }
             i = (i + 1) & mask; // linear probe
@@ -159,13 +174,20 @@ public final class CharArrayHash
     public int find(char[] key, int off, int len)
     {
         checkBounds(key, off, len);
-        int h = Murmur3.hashChars(key, off, len, SEED);
+        if (len > MAX_KEY_LENGTH) return -1; // cannot exist (see add)
+
+        final int h = Murmur3.hashChars(key, off, len, SEED);
         int i = h & mask;
-        short f = (short) (h >>> 16);
+
         for (;;) {
-            int ord = table[i];
+            final int ord = table[i];
             if (ord == -1) return -1;
-            if (fp16[i] == f && keyLen[ord] == len && equalsAt(ord, key, off, len)) return ord;
+
+            if (((keyLen[ord] & 0xFFFF) == len)
+                    && (((keyHash[ord] ^ h) & 0xFFFF_0000) == 0)
+                    && equalsAt(ord, key, off, len)) {
+                return ord;
+            }
             i = (i + 1) & mask;
         }
     }
@@ -173,14 +195,18 @@ public final class CharArrayHash
     /**
      * Returns the number of unique keys in the hash.
      *
-     * @return the number of assigned ords (≥ 0)
+     * @return the number of assigned ords (>= 0)
      */
     public int size()
     {
         return sizeOrds;
     }
 
-    // Access to stored keys (read-only)
+    /**
+     * Returns the underlying character slab storing all keys contiguously.
+     *
+     * <p>The valid range is {@code [0 .. slabUsed)}.
+     */
     public char[] slab()
     {
         return slab;
@@ -189,7 +215,7 @@ public final class CharArrayHash
     /**
      * Returns the starting offset of the key identified by the given ordinal within the slab.
      *
-     * @param ord the 0-based ordinal of the key (0 ≤ ord &lt; {@link #size()})
+     * @param ord the 0-based ordinal of the key (0 <= ord &lt; {@link #size()})
      * @return the starting offset within {@link #slab()}
      * @throws IllegalArgumentException if {@code ord} is out of range
      */
@@ -202,29 +228,82 @@ public final class CharArrayHash
     /**
      * Returns the length (in {@code char} code units) of the key identified by the given ordinal.
      *
-     * @param ord the 0-based ordinal of the key (0 ≤ ord &lt; {@link #size()})
+     * @param ord the 0-based ordinal of the key (0 <= ord &lt; {@link #size()})
      * @return the number of {@code char} code units of the key at {@link #keyOffset(int)}
      * @throws IllegalArgumentException if {@code ord} is out of range
      */
     public int keyLength(int ord)
     {
         checkOrd(ord);
-        return keyLen[ord];
+        return keyLen[ord] & 0xFFFF;
+    }
+
+    /**
+     * Shrinks internal storage to (approximately) the minimum needed for the current contents.
+     *
+     * <p>Intended for bulk-build workflows:
+     * <ol>
+     *   <li>Create with a reasonable {@code expectedSize}.</li>
+     *   <li>Add all keys.</li>
+     *   <li>Call {@link #trimToSize()} once to reduce memory slack.</li>
+     * </ol>
+     *
+     * <p>This method:
+     * <ul>
+     *   <li>Trims the slab to {@code slabUsed}.</li>
+     *   <li>Trims per-ord metadata arrays to {@link #size()}.</li>
+     *   <li>Optionally shrinks the hash table to the smallest power-of-two capacity that can hold
+     *       {@link #size()} entries at the target load factor, rebuilding the table if it shrinks.</li>
+     * </ul>
+     *
+     * <p>After trimming, further {@link #add(char[], int, int)} calls remain valid, but may grow
+     * arrays again.
+     */
+    public void trimToSize()
+    {
+        // 1) shrink slab
+        if (slab.length != slabUsed) {
+            slab = Arrays.copyOf(slab, slabUsed);
+        }
+
+        // 2) shrink per-ord metadata
+        if (keyOff.length != sizeOrds) {
+            keyOff = Arrays.copyOf(keyOff, sizeOrds);
+            keyLen = Arrays.copyOf(keyLen, sizeOrds);
+            keyHash = Arrays.copyOf(keyHash, sizeOrds);
+        }
+
+        // 3) shrink table (if possible)
+        int need = (int) Math.ceil(sizeOrds / LOAD_FACTOR);
+        int cap = 1;
+        while (cap < need) cap <<= 1;
+        if (cap < table.length) {
+            rehash(cap);
+        }
+    }
+
+    /**
+     * Alias for {@link #trimToSize()} to emphasize the "bulk build then freeze" use-case.
+     */
+    public void freeze()
+    {
+        trimToSize();
     }
 
     // ---- Internals -----------------------------------------------------------
 
     private static final float LOAD_FACTOR = 0.75f;
     private static final int SEED = 0x9747b28c;
+    private static final int MAX_KEY_LENGTH = 0xFFFF;
 
-    // Hash table: stores ords (>=0) or -1 if empty; 16-bit fingerprint for quick
-    // reject
+    // Hash table: stores ords (>=0) or -1 if empty.
     private int[] table;
-    private short[] fp16;
     private int mask;
 
     // Per-ord metadata (0-based ords)
-    private int[] keyOff, keyLen, keyHash;
+    private int[] keyOff;
+    private short[] keyLen; // unsigned
+    private int[] keyHash;
 
     // Key storage
     private char[] slab;
@@ -251,7 +330,7 @@ public final class CharArrayHash
      * Validates that {@code ord} is a currently assigned ordinal.
      *
      * @param ord 0-based ordinal
-     * @throws IllegalArgumentException if {@code ord} is &lt; 0 or ≥ {@link #size()}
+     * @throws IllegalArgumentException if {@code ord} is &lt; 0 or >= {@link #size()}
      */
     private void checkOrd(int ord)
     {
@@ -321,7 +400,7 @@ public final class CharArrayHash
     private void ensureOrdCapacity(int required)
     {
         if (required <= keyOff.length) return;
-        int cap = Math.max(required, keyOff.length + (keyOff.length >>> 1) + 16);
+        final int cap = Math.max(required, keyOff.length + (keyOff.length >>> 1) + 16);
         keyOff = Arrays.copyOf(keyOff, cap);
         keyLen = Arrays.copyOf(keyLen, cap);
         keyHash = Arrays.copyOf(keyHash, cap);
@@ -337,23 +416,19 @@ public final class CharArrayHash
      */
     private void rehash(int newCap)
     {
-        int[] oldTable = table;
-        // short[] oldFp = fp16;
+        final int[] oldTable = table;
         table = new int[newCap];
         Arrays.fill(table, -1);
-        fp16 = new short[newCap];
         mask = newCap - 1;
         occupied = 0;
 
         for (int i = 0; i < oldTable.length; i++) {
-            int ord = oldTable[i];
+            final int ord = oldTable[i];
             if (ord < 0) continue;
-            int h = keyHash[ord];
+            final int h = keyHash[ord];
             int j = h & mask;
-            short f = (short) (h >>> 16);
             while (table[j] != -1) j = (j + 1) & mask;
             table[j] = ord;
-            fp16[j] = f;
             occupied++;
         }
     }
@@ -401,7 +476,7 @@ public final class CharArrayHash
                 k1 *= c2;
                 h1 ^= k1;
             }
-            int bytes = len << 1;
+            final int bytes = len << 1;
             h1 ^= bytes;
             h1 ^= (h1 >>> 16);
             h1 *= 0x85ebca6b;

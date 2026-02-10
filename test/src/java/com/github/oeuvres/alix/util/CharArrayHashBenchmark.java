@@ -58,6 +58,7 @@ public class CharArrayHashBenchmark
             int r = h.add(w, 0, w.length);
             lastOrd = (r >= 0) ? r : (-r - 1);
         }
+        h.trimToSize();
 
         long buildNs = System.nanoTime() - t0;
         forceGC();
