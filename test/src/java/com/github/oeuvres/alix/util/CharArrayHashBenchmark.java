@@ -15,47 +15,56 @@ import java.util.*;
 /**
  * Benchmark CharArrayHash vs Lucene CharArrayMap on a large word list.
  *
- * CLI: --file <path> UTF-8 file, one token per line (optional) --target <N>
- * desired unique tokens (default 600000) --mode <hash|map|both> which
- * structure(s) to test (default both) --lowercase lowercase tokens before
- * insert (optional)
- *
- * Notes: - Uses Δ(used heap) after GC as a coarse footprint estimator. - For
- * reproducible results, fix heap: -Xms4g -Xmx4g -XX:+UseG1GC - Requires your
- * CharArrayHash class on classpath.
+ * Notes:
+ * - This version avoids "same char[] instance" lookup bias by using separate
+ *   precomputed probe arrays for hits.
+ * - Build simulates a copy-required token stream: CharArrayHash copies from a reused buffer
+ *   into its slab, CharArrayMap must allocate a stable char[] per key.
+ * - Uses Δ(used heap) after GC as a coarse footprint estimator.
  */
 public class CharArrayHashBenchmark
 {
+    private static final Random RNG = new Random(0xC0FFEE);
 
     public static void main(String[] args) throws Exception
     {
         final String lexicon = "word.csv";
         InputStream is = French.class.getResourceAsStream(lexicon);
         Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
-        List<char[]> tokens = loadTokens(reader);
+
+        List<String> tokens = loadTokensAsStrings(reader);
         System.out.println("Loaded tokens: " + fmt(tokens.size()));
 
-        List<char[]> hits = new ArrayList<>(tokens);
-        List<char[]> misses = makeMisses(tokens);
+        // Precompute lookup probes (distinct arrays) so timing excludes allocation.
+        List<char[]> hitProbes = makeHitProbes(tokens);
+        List<char[]> missProbes = makeMissesFromHits(hitProbes);
 
         System.out.println("\n=== Lucene CharArrayMap<Integer> ===");
-        runMap(tokens, hits, misses);
+        runMap(tokens, hitProbes, missProbes);
+
         System.out.println("\n=== CharArrayHash ===");
-        runHash(tokens, hits, misses);
+        runHash(tokens, hitProbes, missProbes);
     }
 
     // ---------------------- CharArrayHash ----------------------
 
-    private static void runHash(List<char[]> tokens, List<char[]> hits, List<char[]> misses)
+    private static void runHash(List<String> tokens, List<char[]> hits, List<char[]> misses)
     {
         forceGC();
         long mem0 = usedMem();
         long t0 = System.nanoTime();
 
         CharArrayHash h = new CharArrayHash(tokens.size());
+
+        // Reused buffer: realistic for token streams (copy-required).
+        char[] buf = new char[32];
         int lastOrd = -1;
-        for (char[] w : tokens) {
-            int r = h.add(w, 0, w.length);
+
+        for (String s : tokens) {
+            int len = s.length();
+            if (buf.length < len) buf = new char[len];
+            s.getChars(0, len, buf, 0);
+            int r = h.add(buf, 0, len);
             lastOrd = (r >= 0) ? r : (-r - 1);
         }
         h.trimToSize();
@@ -82,21 +91,26 @@ public class CharArrayHashBenchmark
         });
 
         print("CharArrayHash", tokens.size(), buildNs, bestHitNs, bestMissNs, bytes);
-        if (lastOrd == 42) System.out.print(""); // keep reachable
+        if (lastOrd == 42) System.out.print("");
     }
 
     // ---------------------- CharArrayMap<Integer> ----------------------
 
-    private static void runMap(List<char[]> tokens, List<char[]> hits, List<char[]> misses)
+    private static void runMap(List<String> tokens, List<char[]> hits, List<char[]> misses)
     {
         forceGC();
         long mem0 = usedMem();
         long t0 = System.nanoTime();
 
         CharArrayMap<Integer> map = new CharArrayMap<>(tokens.size(), false);
+
+        // Copy-required: store stable char[] keys, so allocate per token.
         int id = 0;
-        for (char[] w : tokens) {
-            map.put(w, id++); // uses char[] API
+        for (String s : tokens) {
+            int len = s.length();
+            char[] k = new char[len];
+            s.getChars(0, len, k, 0);
+            map.put(k, id++);
         }
 
         long buildNs = System.nanoTime() - t0;
@@ -126,27 +140,33 @@ public class CharArrayHashBenchmark
         if (id == 7) System.out.print("");
     }
 
-    // ---------------------- helpers ----------------------
+    // ---------------------- data prep ----------------------
 
-    private static final Random RNG = new Random(0xC0FFEE);
-
-    private static List<char[]> loadTokens(Reader reader) throws IOException
+    private static List<String> loadTokensAsStrings(Reader reader) throws IOException
     {
-        List<char[]> out = new ArrayList<>(600000);
+        List<String> out = new ArrayList<>(600000);
         CSVReader csvReader = new CSVReader(reader, ',', 1, '"', 16384);
-        // header line
         if (!csvReader.readRow()) throw new IOException("Empty file?");
         while (csvReader.readRow()) {
-        		final int wordLength = csvReader.getCell(0).length();
-        		final char[] word = new char[wordLength];
-        		csvReader.getCell(0).getChars(0, wordLength, word, 0);
-        		out.add(word);
+            out.add(csvReader.getCellAsString(0));
         }
         Collections.shuffle(out, RNG);
         return out;
     }
 
-    private static List<char[]> makeMisses(List<char[]> hits)
+    private static List<char[]> makeHitProbes(List<String> tokens)
+    {
+        List<char[]> hits = new ArrayList<>(tokens.size());
+        for (String s : tokens) {
+            int len = s.length();
+            char[] w = new char[len];
+            s.getChars(0, len, w, 0);
+            hits.add(w);
+        }
+        return hits;
+    }
+
+    private static List<char[]> makeMissesFromHits(List<char[]> hits)
     {
         List<char[]> misses = new ArrayList<>(hits.size());
         for (char[] w : hits) {
@@ -157,6 +177,8 @@ public class CharArrayHashBenchmark
         }
         return misses;
     }
+
+    // ---------------------- helpers ----------------------
 
     private static void forceGC()
     {
@@ -204,11 +226,9 @@ public class CharArrayHashBenchmark
         System.out.println("Name:           " + name);
         System.out.println("Entries:        " + fmt(n));
         System.out.println("Build time:     " + String.format(Locale.ROOT, "%.2f ms", buildMs));
-        System.out.println(
-                "Hit lookup:     " + String.format(Locale.ROOT, "%.2f ms", hitMs) + "  (" + fmtQps(hitQps) + " qps)");
-        System.out.println(
-                "Miss lookup:    " + String.format(Locale.ROOT, "%.2f ms", missMs) + "  (" + fmtQps(missQps) + " qps)");
-        System.out.println("Heap Δ (bytes): " + fmt(bytes));
+        System.out.println("Hit lookup:     " + String.format(Locale.ROOT, "%.2f ms", hitMs) + "  (" + fmtQps(hitQps) + " qps)");
+        System.out.println("Miss lookup:    " + String.format(Locale.ROOT, "%.2f ms", missMs) + "  (" + fmtQps(missQps) + " qps)");
+        System.out.println("Heap \u0394 (bytes): " + fmt(bytes));
         System.out.println("Bytes/entry:    " + (Double.isNaN(bpe) ? "n/a" : String.format(Locale.ROOT, "%.2f", bpe)));
     }
 
@@ -223,5 +243,4 @@ public class CharArrayHashBenchmark
         if (qps >= 1_000) return String.format(Locale.ROOT, "%.1fk", qps);
         return String.format(Locale.ROOT, "%.0f", qps);
     }
-
 }

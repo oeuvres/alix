@@ -132,7 +132,7 @@ public final class CharArrayHash
         checkBounds(key, off, len);
         if (len > MAX_KEY_LENGTH) throw new IllegalArgumentException("key length > 65535: " + len);
 
-        final int h = Murmur3.hashChars(key, off, len, SEED);
+        final int h = murmur3(key, off, len);
         int i = h & mask;
 
         for (;;) {
@@ -176,7 +176,7 @@ public final class CharArrayHash
         checkBounds(key, off, len);
         if (len > MAX_KEY_LENGTH) return -1; // cannot exist (see add)
 
-        final int h = Murmur3.hashChars(key, off, len, SEED);
+        final int h = murmur3(key, off, len);
         int i = h & mask;
 
         for (;;) {
@@ -293,7 +293,6 @@ public final class CharArrayHash
     // ---- Internals -----------------------------------------------------------
 
     private static final float LOAD_FACTOR = 0.75f;
-    private static final int SEED = 0x9747b28c;
     private static final int MAX_KEY_LENGTH = 0xFFFF;
 
     // Hash table: stores ords (>=0) or -1 if empty.
@@ -433,58 +432,100 @@ public final class CharArrayHash
         }
     }
 
-    /**
-     * Murmur3-32 hashing specialized for {@code char[]} inputs (UTF-16 code units).
-     *
-     * <p>Processes two {@code char}s per 32-bit block (little-endian packing). The tail handles a
-     * single remaining {@code char} if present. The finalization step mixes in the total number of
-     * bytes processed (i.e., {@code len << 1}).
-     */
-    private static final class Murmur3
-    {
-        /**
-         * Computes Murmur3-32 for a UTF-16 {@code char[]} slice using the x86_32 mixing constants.
-         *
-         * @param a    input array of UTF-16 code units
-         * @param off  start offset (inclusive)
-         * @param len  number of {@code char} code units to read
-         * @param seed 32-bit seed (use a fixed constant for deterministic behavior)
-         * @return the 32-bit hash value
-         * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code a}
-         */
-        static int hashChars(final char[] a, final int off, final int len, final int seed)
-        {
-            final int n16 = len >>> 1;
-            final boolean odd = (len & 1) != 0;
-            int h1 = seed, idx = off;
-            final int c1 = 0xcc9e2d51, c2 = 0x1b873593;
 
-            for (int i = 0; i < (n16 << 1); i += 2) {
-                int k1 = (a[idx] & 0xFFFF) | ((a[idx + 1] & 0xFFFF) << 16);
-                idx += 2;
-                k1 *= c1;
-                k1 = (k1 << 15) | (k1 >>> 17);
-                k1 *= c2;
-                h1 ^= k1;
-                h1 = (h1 << 13) | (h1 >>> 19);
-                h1 = h1 * 5 + 0xe6546b64;
-            }
-            if (odd) {
-                int k1 = (a[idx] & 0xFFFF);
-                k1 *= c1;
-                k1 = (k1 << 15) | (k1 >>> 17);
-                k1 *= c2;
-                h1 ^= k1;
-            }
-            final int bytes = len << 1;
-            h1 ^= bytes;
-            h1 ^= (h1 >>> 16);
-            h1 *= 0x85ebca6b;
-            h1 ^= (h1 >>> 13);
-            h1 *= 0xc2b2ae35;
-            h1 ^= (h1 >>> 16);
-            return h1;
+    /**
+     * Computes Murmur3-32 for a UTF-16 {@code char[]} slice using the x86_32 mixing constants.
+     *
+     * @param a    input array of UTF-16 code units
+     * @param off  start offset (inclusive)
+     * @param len  number of {@code char} code units to read
+     * @return the 32-bit hash value
+     * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code a}
+     */
+    static int murmur3(final char[] a, final int off, final int len)
+    {
+        final int seed = 0x9747b28c;
+        final int n16 = len >>> 1;
+        final boolean odd = (len & 1) != 0;
+        int h1 = seed, idx = off;
+        final int c1 = 0xcc9e2d51, c2 = 0x1b873593;
+
+        for (int i = 0; i < (n16 << 1); i += 2) {
+            int k1 = (a[idx] & 0xFFFF) | ((a[idx + 1] & 0xFFFF) << 16);
+            idx += 2;
+            k1 *= c1;
+            k1 = (k1 << 15) | (k1 >>> 17);
+            k1 *= c2;
+            h1 ^= k1;
+            h1 = (h1 << 13) | (h1 >>> 19);
+            h1 = h1 * 5 + 0xe6546b64;
         }
+        if (odd) {
+            int k1 = (a[idx] & 0xFFFF);
+            k1 *= c1;
+            k1 = (k1 << 15) | (k1 >>> 17);
+            k1 *= c2;
+            h1 ^= k1;
+        }
+        final int bytes = len << 1;
+        h1 ^= bytes;
+        h1 ^= (h1 >>> 16);
+        h1 *= 0x85ebca6b;
+        h1 ^= (h1 >>> 13);
+        h1 *= 0xc2b2ae35;
+        h1 ^= (h1 >>> 16);
+        return h1;
     }
 
+    /**
+     * 31-based polynomial hash (String-style) over UTF-16 code units.
+     *
+     * Important: if you index with (h & mask) in a power-of-two table, you should
+     * smear the result (h ^ (h >>> 16)) to improve low-bit distribution.
+     */
+    static int hash31(final char[] a, final int off, final int len)
+    {
+        int h = 0;
+        final int end = off + len;
+        for (int i = off; i < end; i++) {
+            h = 31 * h + a[i];
+        }
+        // smear like HashMap to improve low bits for power-of-two masking
+        h ^= (h >>> 16);
+        return h;
+    }
+    
+    /**
+     * Murmur3 fmix32 finalizer (avalanche).
+     *
+     * <p>Mixes all bits of {@code h} so that small differences in input
+     * produce large differences in output. Useful after a cheap rolling hash
+     * (e.g., 31-polynomial) when indexing with power-of-two masking.</p>
+     */
+    static int fmix32(int h)
+    {
+        h ^= (h >>> 16);
+        h *= 0x85ebca6b;
+        h ^= (h >>> 13);
+        h *= 0xc2b2ae35;
+        h ^= (h >>> 16);
+        return h;
+    }
+    
+    /**
+     * Cheap rolling hash (String-style) + fmix32 avalanche.
+     *
+     * <p>Good compromise for power-of-two hash tables: fast loop, robust final bits.</p>
+     */
+    static int hash31_fmix32(final char[] a, final int off, final int len)
+    {
+        int h = 0;
+        final int end = off + len;
+        for (int i = off; i < end; i++) {
+            h = 31 * h + a[i];
+        }
+        // incorporate length (like String does implicitly via iteration count, but explicit helps)
+        h ^= (len << 1);
+        return fmix32(h);
+    }
 }
