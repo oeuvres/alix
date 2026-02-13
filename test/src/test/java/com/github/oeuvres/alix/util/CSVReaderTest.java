@@ -6,7 +6,28 @@ import java.io.StringReader;
 
 import org.junit.jupiter.api.Test;
 
+import com.github.oeuvres.alix.fr.French;
+
 class CSVReaderTest {
+    
+    @Test
+    void loadRes() throws Exception {
+        String resource = "/com/github/oeuvres/alix/fr/word.csv";
+        long rows = 0;
+        long chars = 0;
+
+        try (CSVReader csv = new CSVReader(French.class, "word.csv", ',', 3)) {
+            while (csv.readRow()) {
+                rows++;
+                // consume some data to prevent dead-code elimination
+                int n = csv.getCellCount();
+                if (n > 0)
+                    chars += csv.getCell(0).length();
+            }
+        }
+        System.out.println("rows=" + rows + " chars=" + chars);
+    }
+
 
     @Test
     void readsSimpleUnquotedRow() throws Exception {

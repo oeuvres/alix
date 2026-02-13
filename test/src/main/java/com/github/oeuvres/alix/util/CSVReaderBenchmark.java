@@ -1,5 +1,7 @@
 package com.github.oeuvres.alix.util;
 
+import org.apache.lucene.analysis.CharArrayMap;
+import org.apache.lucene.analysis.CharArraySet;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 
@@ -14,31 +16,33 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 @Fork(value = 1)
 @State(Scope.Thread)
-public class CSVReaderBenchmark {
+public class CSVReaderBenchmark
+{
 
     /**
      * Put your big dictionary CSV in classpath at this exact path:
-     *   src/jmh/resources/bench/dictionary.csv
-     * so it ends up as /bench/dictionary.csv in the JAR.
+     * src/jmh/resources/bench/dictionary.csv so it ends up as /bench/dictionary.csv
+     * in the JAR.
      */
-    @Param({"/bench/word.csv"})
+    @Param({ "/bench/word.csv" })
     public String resourcePath;
 
     /**
-     * Use the separator that matches your dictionary format.
-     * (Your CSVReader supports configurable separators.)
+     * Use the separator that matches your dictionary format. (Your CSVReader
+     * supports configurable separators.)
      */
-    @Param({","})
+    @Param({ "," })
     public String sep;
 
     private byte[] csvBytes; // preloaded resource bytes (JAR I/O removed)
 
     @Setup(Level.Trial)
-    public void loadResourceBytesOnce() throws IOException {
+    public void loadResourceBytesOnce() throws IOException
+    {
         try (InputStream is = CSVReaderBenchmark.class.getResourceAsStream(resourcePath)) {
             if (is == null) {
                 // Fallback: generate a representative CSV so the benchmark still runs
-                String generated = generateRepresentativeDictionaryCsv(200_000);
+                String generated = generateRepresentativeDictionaryCsv(500_000);
                 csvBytes = generated.getBytes(StandardCharsets.UTF_8);
             } else {
                 csvBytes = readAllBytes(is);
@@ -52,27 +56,22 @@ public class CSVReaderBenchmark {
 
     /**
      * Parser + UTF-8 decoding throughput.
-     * No JAR I/O: reads from in-memory byte[].
      */
     @Benchmark
-    public long parse_preloaded_bytes_countRows(Blackhole bh) throws Exception {
-        char separator = sep.charAt(0);
-
-        InputStream is = new ByteArrayInputStream(csvBytes);
-        Reader r = new InputStreamReader(is, StandardCharsets.UTF_8);
-
-        CSVReader2 csv = new CSVReader2(r, separator);
+    public long jar_resource_direct(Blackhole bh) throws Exception
+    {
         long rows = 0;
         long chars = 0;
 
-        while (csv.readRow()) {
-            rows++;
-            // consume some data to prevent dead-code elimination
-            int n = csv.getCellCount();
-            if (n > 0) chars += csv.getCell(0).length();
+        try (CSVReader csv = new CSVReader(CSVReaderBenchmark.class, "/bench/word.csv", ',', 3)) {
+            while (csv.readRow()) {
+                rows++;
+                // consume some data to prevent dead-code elimination
+                int n = csv.getCellCount();
+                if (n > 0)
+                    chars += csv.getCell(0).length();
+            }
         }
-
-        r.close();
         bh.consume(chars);
         return rows;
     }
@@ -82,7 +81,8 @@ public class CSVReaderBenchmark {
      * This is closer to "load dictionary from a jar resource".
      */
     @Benchmark
-    public long parse_from_jar_resource_countRows(Blackhole bh) throws Exception {
+    public long parse_from_jar_resource_countRows(Blackhole bh) throws Exception
+    {
         char separator = sep.charAt(0);
 
         try (InputStream is = CSVReaderBenchmark.class.getResourceAsStream(resourcePath)) {
@@ -90,62 +90,86 @@ public class CSVReaderBenchmark {
                 throw new IllegalStateException("Missing resource: " + resourcePath);
             }
             try (Reader r = new InputStreamReader(is, StandardCharsets.UTF_8)) {
-                CSVReader2 csv = new CSVReader2(r, separator);
+                CSVReader csv = new CSVReader(r, separator);
                 long rows = 0;
                 long chars = 0;
 
                 while (csv.readRow()) {
                     rows++;
                     int n = csv.getCellCount();
-                    if (n > 0) chars += csv.getCell(0).length();
+                    if (n > 0)
+                        chars += csv.getCell(0).length();
                 }
 
                 bh.consume(chars);
+                csv.close();
                 return rows;
             }
         }
     }
-
+    
     /**
-     * Realistic dictionary load:
-     * parse + allocate Strings + build a HashMap (high allocation, but realistic).
+     * Realistic dictionary load: parse + allocate Strings + build a HashMap (high
+     * allocation, but realistic).
      *
-     * Assumes dictionary rows like:
-     *   key,value
-     * or at least 2 columns.
+     * Assumes dictionary rows like: key,value or at least 2 columns.
      */
     @Benchmark
-    public int parse_preloaded_bytes_buildHashMap(Blackhole bh) throws Exception {
-        char separator = sep.charAt(0);
+    public int load_resource_lucene_CharArraySet(Blackhole bh) throws Exception
+    {
 
-        InputStream is = new ByteArrayInputStream(csvBytes);
-        Reader r = new InputStreamReader(is, StandardCharsets.UTF_8);
-        CSVReader2 csv = new CSVReader2(r, separator);
+        // 1<<19 =
+        CharArraySet set = new CharArraySet(1 << 19, false);
 
-        // Rough guess: if your CSV has 200k rows, size accordingly
-        HashMap<String, String> map = new HashMap<>(1 << 18);
-
-        while (csv.readRow()) {
-            if (csv.getCellCount() < 2) continue;
-            // Must copy: getCell(i) is reused each row
-            String key = csv.getCellAsString(0);
-            String val = csv.getCellAsString(1);
-            map.put(key, val);
+        try (CSVReader csv = new CSVReader(CSVReaderBenchmark.class, "/bench/word.csv", ',', 3)) {
+            while (csv.readRow()) {
+                if (csv.getCellCount() < 3)
+                    continue;
+                // key copied by CharArrayMap; value must be immutable
+                set.add(csv.getCell(0));
+            }
         }
 
-        r.close();
+        bh.consume(set);
+        return set.size();
+    }
+
+    /**
+     * Realistic dictionary load: parse + allocate Strings + build a HashMap (high
+     * allocation, but realistic).
+     *
+     * Assumes dictionary rows like: key,value or at least 2 columns.
+     */
+    @Benchmark
+    public int parse_preloaded_bytes_buildHashMap(Blackhole bh) throws Exception
+    {
+
+        // 1<<19 =
+        HashMap<String, String> map = new HashMap<>(1 << 19);
+
+        try (CSVReader csv = new CSVReader(CSVReaderBenchmark.class, "/bench/word.csv", ',', 3)) {
+            while (csv.readRow()) {
+                if (csv.getCellCount() < 3)
+                    continue;
+                // key copied by CharArrayMap; value must be immutable
+                map.put(csv.getCellAsString(0), csv.getCellAsString(2));
+            }
+        }
+
         bh.consume(map);
         return map.size();
     }
 
     /**
-     * Isolate JAR resource read throughput only (no parsing).
-     * Useful to see if you are I/O/decoding bound.
+     * Isolate JAR resource read throughput only (no parsing). Useful to see if you
+     * are I/O/decoding bound.
      */
     @Benchmark
-    public int jar_resource_read_all_bytes_only() throws Exception {
+    public int jar_resource_read_all_bytes_only() throws Exception
+    {
         try (InputStream is = CSVReaderBenchmark.class.getResourceAsStream(resourcePath)) {
-            if (is == null) throw new IllegalStateException("Missing resource: " + resourcePath);
+            if (is == null)
+                throw new IllegalStateException("Missing resource: " + resourcePath);
             byte[] b = readAllBytes(is);
             return b.length;
         }
@@ -155,7 +179,8 @@ public class CSVReaderBenchmark {
     // Helpers
     // ---------------------------
 
-    private static byte[] readAllBytes(InputStream is) throws IOException {
+    private static byte[] readAllBytes(InputStream is) throws IOException
+    {
         // Compatible with older JDKs too (no InputStream.readAllBytes() assumption)
         ByteArrayOutputStream bos = new ByteArrayOutputStream(64 * 1024);
         byte[] buf = new byte[64 * 1024];
@@ -167,10 +192,11 @@ public class CSVReaderBenchmark {
     }
 
     /**
-     * Generates a “dictionary-like” CSV:
-     * key<lemma|pos|freq with some quotes and separators to exercise the parser.
+     * Generates a “dictionary-like” CSV: key<lemma|pos|freq with some quotes and
+     * separators to exercise the parser.
      */
-    private static String generateRepresentativeDictionaryCsv(int rows) {
+    private static String generateRepresentativeDictionaryCsv(int rows)
+    {
         StringBuilder sb = new StringBuilder(rows * 30);
         sb.append("key,value\n");
         for (int i = 0; i < rows; i++) {
