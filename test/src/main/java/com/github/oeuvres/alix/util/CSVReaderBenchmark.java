@@ -1,6 +1,6 @@
 package com.github.oeuvres.alix.util;
 
-import org.apache.lucene.analysis.CharArrayMap;
+
 import org.apache.lucene.analysis.CharArraySet;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
