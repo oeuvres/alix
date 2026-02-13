@@ -216,7 +216,7 @@ public final class CSVReader
      */
     public CSVReader(Reader in, char separator, final int cellMax)
     {
-        this(in, separator, cellMax, '"', 8192);
+        this(in, separator, cellMax, '"', 64*1024);
     }
 
     /**
@@ -281,13 +281,10 @@ public final class CSVReader
      * @throws IOException if an I/O error occurs while reading from the underlying
      *                     {@link Reader}
      */
-    public boolean readRow() throws IOException
-    {
-        if (eof) {
-            return false;
-        }
+    public boolean readRow() throws IOException {
+        if (eof) return false;
 
-        // Reset row state
+        // Ensure we have at least one cell buffer
         cellCount = 1;
         ensureCellCapacity(1);
         StringBuilder cell = cells.get(0);
@@ -297,96 +294,149 @@ public final class CSVReader
         boolean atCellStart = true;
         boolean sawAny = false;
 
-        for (;;) {
+        // Handle BOM once at stream start (faster than checking per char)
+        if (atStart) {
+            atStart = false;
+            if (bufPos >= bufLen && !fill()) {
+                eof = true;
+                cellCount = 0;
+                return false;
+            }
+            if (bufLen > 0 && buf[bufPos] == '\uFEFF') {
+                bufPos++;
+            }
+        }
 
+        for (;;) {
             if (bufPos >= bufLen) {
                 if (!fill()) {
-                    // Reached EOF
                     eof = true;
                     if (!sawAny && atCellStart) {
-                        // No data at all for a new row
                         cellCount = 0;
                         return false;
                     }
-                    // Return last (possibly unterminated) row
-                    return true;
+                    return true; // last unterminated row
                 }
             }
-
-            char c = buf[bufPos++];
-
-            // Handle optional BOM only on first character of stream
-            if (atStart) {
-                atStart = false;
-                if (c == '\uFEFF') {
-                    // Skip BOM and continue with the next character
-                    continue;
-                }
-            }
-
-            sawAny = true;
 
             if (inQuotes) {
-                // Inside a quoted field
-                if (c == quote) {
-                    // Possible closing quote or escaped quote ""
-                    if (bufPos >= bufLen && !fill()) {
-                        // Treat as closing quote at EOF
-                        inQuotes = false;
+                // Scan until next quote; append chunks in bulk
+                int start = bufPos;
+                while (true) {
+                    while (bufPos < bufLen && buf[bufPos] != quote) {
+                        bufPos++;
+                    }
+
+                    // append chunk before quote
+                    if (cell != null && bufPos > start) {
+                        cell.append(buf, start, bufPos - start);
+                    }
+                    if (bufPos < bufLen) sawAny = true; // we saw something in this buffer
+
+                    if (bufPos >= bufLen) {
+                        // need more data
+                        if (!fill()) {
+                            eof = true;
+                            // treat EOF as end-of-field/row
+                            return true;
+                        }
+                        start = bufPos;
                         continue;
                     }
-                    if (bufPos < bufLen && buf[bufPos] == quote) {
-                        // Escaped double-quote: "" -> "
-                        cell.append(quote);
-                        bufPos++;
-                    } else {
-                        // Closing quote
-                        inQuotes = false;
+
+                    // buf[bufPos] is quote
+                    bufPos++; // consume quote
+
+                    // Lookahead for escaped quote
+                    if (bufPos >= bufLen) {
+                        if (!fill()) {
+                            eof = true;
+                            inQuotes = false;
+                            return true;
+                        }
                     }
-                } else {
-                    cell.append(c);
+                    if (bufPos < bufLen && buf[bufPos] == quote) {
+                        // escaped quote
+                        if (cell != null) cell.append(quote);
+                        bufPos++; // consume second quote
+                        start = bufPos;
+                        continue;
+                    }
+
+                    // closing quote
+                    inQuotes = false;
+                    atCellStart = false;
+                    break;
                 }
                 continue;
             }
 
             // Outside quotes
-            if (c == '\n') {
-                // Linefeed: end of row
-                return true;
-            } else if (c == '\r') {
-                // Carriage return: may be CRLF
-                if (bufPos >= bufLen && !fill()) {
-                    // CR at EOF
-                    eof = true;
-                    return true;
-                }
-                if (bufPos < bufLen && buf[bufPos] == '\n') {
-                    // Consume the LF in CRLF
-                    bufPos++;
-                }
-                return true;
-            } else if (c == quote && atCellStart) {
-                // Opening quote at the start of a cell
+            char c = buf[bufPos];
+
+            // Opening quote only if it's the first char of the cell
+            if (atCellStart && c == quote) {
                 inQuotes = true;
+                bufPos++;
+                sawAny = true;
                 atCellStart = false;
-            }
-            if (cellMax > 0 && cellMax > cellCount) {
-                // fixed count of cells, no more cells needed, let loop till endOfLine
                 continue;
-            } else if (c == separator) {
-                // End of current cell; start a new cell
+            }
+
+            // Scan unquoted run until separator or newline
+            int start = bufPos;
+            while (bufPos < bufLen) {
+                c = buf[bufPos];
+                if (c == separator || c == '\n' || c == '\r') break;
+                bufPos++;
+            }
+            if (cell != null && bufPos > start) {
+                cell.append(buf, start, bufPos - start);
+            }
+            if (bufPos > start) sawAny = true;
+            atCellStart = false;
+
+            if (bufPos >= bufLen) continue; // refill and continue
+
+            // Consume delimiter
+            c = buf[bufPos++];
+            sawAny = true;
+
+            if (c == separator) {
+                atCellStart = true;
+
+                // Enforce "return at most cellMax cells"
+                if (cellMax > 0 && cellCount >= cellMax) {
+                    cell = null;     // discard subsequent cells' content
+                    inQuotes = false; // quote handling continues via state machine
+                    continue;
+                }
+
                 ensureCellCapacity(cellCount + 1);
                 cell = cells.get(cellCount);
                 cell.setLength(0);
                 cellCount++;
-                atCellStart = true;
-            } else {
-                // Regular character in an unquoted cell
-                cell.append(c);
-                atCellStart = false;
+                continue;
             }
+
+            if (c == '\n') {
+                return true;
+            }
+
+            // c == '\r': handle CRLF
+            if (bufPos >= bufLen) {
+                if (!fill()) {
+                    eof = true;
+                    return true;
+                }
+            }
+            if (bufPos < bufLen && buf[bufPos] == '\n') {
+                bufPos++;
+            }
+            return true;
         }
     }
+
 
     /**
      * Returns the number of cells in the last row successfully read by
