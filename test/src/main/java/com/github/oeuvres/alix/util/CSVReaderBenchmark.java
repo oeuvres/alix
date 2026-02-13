@@ -61,7 +61,7 @@ public class CSVReaderBenchmark {
         InputStream is = new ByteArrayInputStream(csvBytes);
         Reader r = new InputStreamReader(is, StandardCharsets.UTF_8);
 
-        CSVReader csv = new CSVReader(r, separator);
+        CSVReader2 csv = new CSVReader2(r, separator);
         long rows = 0;
         long chars = 0;
 
@@ -90,7 +90,7 @@ public class CSVReaderBenchmark {
                 throw new IllegalStateException("Missing resource: " + resourcePath);
             }
             try (Reader r = new InputStreamReader(is, StandardCharsets.UTF_8)) {
-                CSVReader csv = new CSVReader(r, separator);
+                CSVReader2 csv = new CSVReader2(r, separator);
                 long rows = 0;
                 long chars = 0;
 
@@ -120,7 +120,7 @@ public class CSVReaderBenchmark {
 
         InputStream is = new ByteArrayInputStream(csvBytes);
         Reader r = new InputStreamReader(is, StandardCharsets.UTF_8);
-        CSVReader csv = new CSVReader(r, separator);
+        CSVReader2 csv = new CSVReader2(r, separator);
 
         // Rough guess: if your CSV has 200k rows, size accordingly
         HashMap<String, String> map = new HashMap<>(1 << 18);

@@ -39,7 +39,7 @@ import java.util.Map;
  * - text.txt is a normal UTF-8 file (one token per line).
  * - dictionary key is INFLECTION only (POS ignored); "first wins" for duplicates.
  */
-public final class LexiconLookupBench {
+public final class BenchLuceneLookupAlgos {
 
     // ---------------------------
     // Config
@@ -131,7 +131,7 @@ public final class LexiconLookupBench {
 
     private static Reader openClasspathResourceUtf8(String resourcePath) throws IOException {
         final String rp = resourcePath.startsWith("/") ? resourcePath : ("/" + resourcePath);
-        InputStream in = LexiconLookupBench.class.getResourceAsStream(rp);
+        InputStream in = BenchLuceneLookupAlgos.class.getResourceAsStream(rp);
         if (in == null) {
             throw new FileNotFoundException("Resource not found on classpath: " + rp);
         }

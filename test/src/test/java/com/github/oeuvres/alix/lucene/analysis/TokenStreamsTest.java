@@ -141,7 +141,7 @@ public class TokenStreamsTest {
         public TokenStreamComponents createComponents(String field)
         {
             final Tokenizer tokenizer = new TokenizerML(); // segment words
-            TokenStream ts = new FilterAposHyphenFr(tokenizer);
+            TokenStream ts = new FilterAposHyphenFrTest(tokenizer);
             // ts = new FilterLemmatize(ts); // provide lemma+pos
             // ts = new FilterFind(ts); // orthographic form and lemma as term to index
             // ts = new ASCIIFoldingFilter(ts); // no accents
@@ -174,7 +174,7 @@ public class TokenStreamsTest {
         {
             final Tokenizer tokenizer = new TokenizerML(); // segment words
             TokenStream ts  = tokenizer;
-            ts = new FilterAposHyphenFr(ts);
+            ts = new FilterAposHyphenFrTest(ts);
             // ts = new FilterLemmatize(ts); // provide lemma+pos
             ts = new FilterLocution(ts); // concat known locutions
             return new TokenStreamComponents(tokenizer, ts);
