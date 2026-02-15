@@ -32,19 +32,18 @@
  */
 package com.github.oeuvres.alix.lucene.analysis;
 
-
 import java.util.Map;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Locale;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
-import com.github.oeuvres.alix.common.Tag;
-
+import com.github.oeuvres.alix.common.Upos;
 import static com.github.oeuvres.alix.common.Upos.*;
 
 import opennlp.tools.postag.POSModel;
@@ -70,23 +69,23 @@ public class PosNlpFilter extends TokenFilter
 
     /** non thread safe tagger, one by instance of filter */
     private POSTaggerME tagger;
-    /** tagset https://universaldependencies.org/u/pos/  */
-    Map<String, Tag> tagList = Map.ofEntries(
+    /** tagset https://universaldependencies.org/u/pos/ */
+    private static final Map<String, Upos> TAG_LIST = Map.ofEntries(
         Map.entry("ADJ", ADJ),
-        Map.entry("ADP", PREP),
-        Map.entry("ADP+DET", DETprep),
-        Map.entry("ADP+PRON", PREPpro),
+        Map.entry("ADP", ADP),
+        Map.entry("ADP+DET", ADP_DET),
+        Map.entry("ADP+PRON", ADP_PRON),
         Map.entry("ADV", ADV),
-        Map.entry("AUX", VERBaux),
-        Map.entry("CCONJ", CONJcoord),
+        Map.entry("AUX", AUX),
+        Map.entry("CCONJ", CCONJ),
         Map.entry("DET", DET),
-        Map.entry("INTJ", EXCL),
-        Map.entry("NOUN", SUB),
+        Map.entry("INTJ", INTJ),
+        Map.entry("NOUN", NOUN),
         Map.entry("NUM", NUM),
-        Map.entry("PRON", PRO),
-        Map.entry("PROPN", NAME),
+        Map.entry("PRON", PRON),
+        Map.entry("PROPN", PROPN),
         Map.entry("PUNCT", TOKEN), // pun is filtered upper, tagger bug
-        Map.entry("SCONJ", CONJsub),
+        Map.entry("SCONJ", SCONJ),
         Map.entry("SYM", TOKEN),
         Map.entry("VERB", VERB),
         Map.entry("X", TOKEN)
@@ -96,9 +95,11 @@ public class PosNlpFilter extends TokenFilter
 
     /**
      * Default constructor.
+     * 
      * @param input previous filter.
      */
-    public PosNlpFilter(TokenStream input, POSModel posModel) {
+    public PosNlpFilter(TokenStream input, POSModel posModel)
+    {
         super(input);
         tagger = new POSTaggerME(posModel);
         // here, “this” has not all its attributes, AttributeQueue.copyTo() will bug
@@ -122,45 +123,52 @@ public class PosNlpFilter extends TokenFilter
         while (queue.size() < SENTMAX) {
             clearAttributes(); // clear before next incrementToken
             toksLeft = input.incrementToken();
-            if (!toksLeft) break;
+            if (!toksLeft)
+                break;
             queue.addLast(this);
             final int flags = flagsAtt.getFlags();
-            if (
-                   flags == PUNsection.code
-                || flags == PUNpara.code
-                || flags == PUNsent.code
-            ) break;
+            if (flags == PUNCTsection.code || flags == PUNCTpara.code || flags == PUNCTsent.code)
+                break;
         }
         // should be finisehd here
-        if (queue.size() == 0) {
-            assert toksLeft == false: "Tokens left but queue empty 🤔";
-            return toksLeft;
-        }
+        final int n = queue.size();
+        if (n == 0)
+            return false;
+
         String[] sentence = new String[queue.size()];
-        boolean first = true;
-        for (int i = 0; i < queue.size(); i++) {
-            FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
+        boolean firstToken = true;
+        boolean needsTagging = false;
+        for (int i = 0; i < n; i++) {
+            final FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
             // those tags will not help tagger
-            if (flags.getFlags() == PUNsection.code || flags.getFlags() == PUNpara.code) {
-                sentence[i] = "";
+            if (flags.getFlags() == PUNCTsection.code || flags.getFlags() == PUNCTpara.code) {
+                sentence[i] = ".";
+                continue;
             }
-            else {
-                CharTermAttribute term = queue.get(i).getAttribute(CharTermAttribute.class);
-                // do not intern, maybe better for memory but not for speed
-                sentence[i] = new String(term.buffer(), 0, term.length());
-                // bug initial cap, Tu_NAME vas_VERB bien_ ?_PUN
-                if (first) sentence[i] = sentence[i].toLowerCase();
-                first = false;
+            final CharTermAttribute term = queue.get(i).getAttribute(CharTermAttribute.class);
+            String s = new String(term.buffer(), 0, term.length());
+
+            // bug initial cap, Tu_NAME vas_VERB bien_ ?_PUN
+            if (firstToken && !s.isEmpty() && Character.isUpperCase(s.charAt(0))) {
+                s = s.toLowerCase(Locale.ROOT);
             }
+            sentence[i] = s;
+            if (flags.getFlags() == TOKEN.code)
+                needsTagging = true;
         }
-        String[] tags = tagger.tag(sentence);
-        for (int i = 0; i < queue.size(); i++) {
-            FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
-            // keep previous tags, especially pun precision ; do not trust pun inferences of tagger
-            if (flags.getFlags() != TOKEN.code) {
-            }
-            else {
-                flags.setFlags(tagList.get(tags[i]).code());
+        if (needsTagging) {
+            final String[] tags = tagger.tag(sentence);
+
+            for (int i = 0; i < n; i++) {
+                final FlagsAttribute f = queue.get(i).getAttribute(FlagsAttribute.class);
+                if (f.getFlags() != TOKEN.code)
+                    continue;
+
+                final Upos upos = TAG_LIST.get(tags[i]);
+                if (upos != null) {
+                    f.setFlags(upos.code());
+                }
+                // else: keep TOKEN (or choose a fallback)
             }
         }
         clearAttributes();
@@ -172,12 +180,13 @@ public class PosNlpFilter extends TokenFilter
     public void reset() throws IOException
     {
         super.reset();
+        queue.clear();
     }
 
     @Override
     public void end() throws IOException
     {
-        
+
         super.end();
     }
 }
