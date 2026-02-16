@@ -23,6 +23,7 @@ public class CSVReaderBenchmark
      * Put your big dictionary CSV in classpath at this exact path:
      * src/jmh/resources/bench/dictionary.csv so it ends up as /bench/dictionary.csv
      * in the JAR.
+     * mvn -q -DskipTests clean compile exec:java "-Dexec.mainClass=org.openjdk.jmh.Main" "-Dexec.classpathScope=compile" "-Dexec.args=CSVReaderBenchmark -f 0"
      */
     @Param({ "/bench/word.csv" })
     public String resourcePath;
