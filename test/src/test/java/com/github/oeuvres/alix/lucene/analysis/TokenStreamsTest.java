@@ -66,7 +66,7 @@ public class TokenStreamsTest {
         // String text = "<span class=\"sc\">Piaget</span> (1907) <i>Un, moineau albinos</i>";
         // soft hyphen
         // String text = "Ce problème est de savoir si l’interprétation psycho-réflexo­logique exclut l’interprétation psychologique ou si elle la complète simplement.";
-        TokenizerML tokenizer = new TokenizerML();
+        MLTokenizer tokenizer = new MLTokenizer();
         tokenizer.setReader(new StringReader(text));
         analyze(tokenizer, text);
     }
@@ -83,7 +83,7 @@ public class TokenStreamsTest {
     {
         String text = "<p class=\"p\"><b>Lexical tokenization</b> is conversion of a text into (semantically or syntactically) meaningful <i>lexical tokens</i> belonging to categories defined by a \"lexer\" program. In case of a <a href=\"/wiki/Natural_language\" title=\"Natural language\">natural language</a>, those categories include nouns, verbs, adjectives, punctuations etc.";
         
-        TokenizerML tokenizer = new TokenizerML();
+        MLTokenizer tokenizer = new MLTokenizer();
         tokenizer.setReader(new StringReader(text));
         analyze(tokenizer, text);
     }
@@ -140,7 +140,7 @@ public class TokenStreamsTest {
         @Override
         public TokenStreamComponents createComponents(String field)
         {
-            final Tokenizer tokenizer = new TokenizerML(); // segment words
+            final Tokenizer tokenizer = new MLTokenizer(); // segment words
             TokenStream ts = new FilterAposHyphenFrTest(tokenizer);
             // ts = new FilterLemmatize(ts); // provide lemma+pos
             // ts = new FilterFind(ts); // orthographic form and lemma as term to index
@@ -155,7 +155,7 @@ public class TokenStreamsTest {
         @Override
         public TokenStreamComponents createComponents(String field)
         {
-            final Tokenizer tokenizer = new TokenizerML(); // segment words
+            final Tokenizer tokenizer = new MLTokenizer(); // segment words
             TokenStream result = new ASCIIFoldingFilter(tokenizer); // provide lemma+pos
             return new TokenStreamComponents(tokenizer, result);
         }
@@ -172,7 +172,7 @@ public class TokenStreamsTest {
         @Override
         public TokenStreamComponents createComponents(String field)
         {
-            final Tokenizer tokenizer = new TokenizerML(); // segment words
+            final Tokenizer tokenizer = new MLTokenizer(); // segment words
             TokenStream ts  = tokenizer;
             ts = new FilterAposHyphenFrTest(ts);
             // ts = new FilterLemmatize(ts); // provide lemma+pos
@@ -188,7 +188,7 @@ public class TokenStreamsTest {
         @Override
         public TokenStreamComponents createComponents(String field)
         {
-            final Tokenizer tokenizer = new TokenizerML(); // segment words
+            final Tokenizer tokenizer = new MLTokenizer(); // segment words
             TokenStream result = new FilterLemmatize(tokenizer); // provide lemma+pos
             return new TokenStreamComponents(tokenizer, result);
         }

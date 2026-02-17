@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import org.apache.lucene.analysis.CharArrayMap;
+import org.apache.lucene.analysis.CharArraySet;
 
 import com.github.oeuvres.alix.lucene.analysis.Lexicons;
 import com.github.oeuvres.alix.util.Cache;
@@ -14,6 +15,30 @@ public class FrLexicons
 {
     private FrLexicons()
     {
+    }
+    
+    public static CharArraySet getDotEndingWords(String... localFiles)
+    {
+        CharArraySet m = (CharArraySet) Cache.get(CharArraySet.class, FrLexicons.class, 
+         p -> {
+            try {
+                return dotEndingWords(p);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }, localFiles);
+        return m;
+    }
+
+    private static CharArraySet dotEndingWords(List<String> localFiles) throws IOException
+    {
+        // set ignore case
+        CharArraySet map = new CharArraySet(100, true);
+        Lexicons.fillSet(map, Lexicons.class, "/com/github/oeuvres/alix/fr/brevidot.csv", 0, ".");
+        for (String file : localFiles) {
+            Lexicons.fillSet(map, Path.of(file), 0, ".");
+        }
+        return map;
     }
 
     static CharArrayMap<char[]> getTermMapping(String... localFiles)
@@ -32,9 +57,9 @@ public class FrLexicons
     private static CharArrayMap<char[]> termMapping(List<String> localFiles) throws IOException
     {
         CharArrayMap<char[]> map = new CharArrayMap<char[]>(2000, false);
-        Lexicons.fillPairs(map, Lexicons.class, "/com/github/oeuvres/alix/fr/norm.csv", false);
+        Lexicons.fillMap(map, Lexicons.class, "/com/github/oeuvres/alix/fr/norm.csv", false);
         for (String file : localFiles) {
-            Lexicons.fillPairs(map, Path.of(file), true);
+            Lexicons.fillMap(map, Path.of(file), true);
         }
         return map;
     }

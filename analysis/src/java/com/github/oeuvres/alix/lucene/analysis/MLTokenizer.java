@@ -26,7 +26,7 @@ import com.github.oeuvres.alix.util.Char;
  * - No buffer backtracking; uses a one-char pushback slot.
  * - Sentence punctuation token cannot absorb following letters (e.g., "!Word" no longer possible).
  */
-public class TokenizerML extends Tokenizer
+public class MLTokenizer extends Tokenizer
 {
     /** Max size of a word-like token (not tags). */
     private static final int TOKEN_MAX_SIZE = 256;
@@ -54,11 +54,11 @@ public class TokenizerML extends Tokenizer
     private int pendingChar = -1;          // 0..65535, or -1
     private int pendingCharOffset = -1;    // offset where pendingChar occurs
 
-    public TokenizerML() { 
+    public MLTokenizer() { 
         this(CharArraySet.EMPTY_SET);
     }
 
-    public TokenizerML(final CharArraySet keepTrailingDot) { 
+    public MLTokenizer(final CharArraySet keepTrailingDot) { 
         super();
         // Lucene-style: accept null as “no config”
         this.keepTrailingDot = (keepTrailingDot == null) ? CharArraySet.EMPTY_SET : keepTrailingDot;
@@ -135,35 +135,38 @@ public class TokenizerML extends Tokenizer
                 continue;
             }
 
-            // Abbrev-dot resolution: previous char appended '.' after a letter.
-            // Decide whether '.' stays with the token (internal) or becomes punctuation.
-            if (abbrevDot) {
-                if (!Char.isLetter(c)) {
-                    
-                    // 1) keep dot for 1-letter abbreviation ("M.") — existing policy
-                    final boolean oneLetterAbbrev = (termLen == 2 && Char.isLetter(termBuf[0]));
-                    
-                    // 2) optional: keep dot for configured abbreviations (termBuf ends with '.')
-                    //    test WITHOUT the final dot: [0, termLen-1)
-                    final boolean listedAbbrev =
-                            !oneLetterAbbrev
-                            && keepTrailingDot != CharArraySet.EMPTY_SET
-                            && keepTrailingDot.contains(termBuf, 0, termLen - 1);
-                    
-                    if (!oneLetterAbbrev && !listedAbbrev) {
-                        // detach '.' and re-emit as punctuation
-                        termLen--;
-                        pendingChar = '.';
-                        pendingCharOffset = off - 1; // '.' already consumed
-                        tokenEndOff = off - 1;       // token ends before '.'
-                        abbrevDot = false;
-                        break;
-                    }
-                    // else: keep the dot in the token; the delimiter will end the token naturally
-                }
-                // internal dot case: next char is a letter => keep dot, continue normally
-                abbrevDot = false;
-            }
+         // Abbrev-dot resolution: previous char appended '.' after a letter.
+         // Decide whether '.' stays with the token (internal) or becomes punctuation.
+         if (abbrevDot) {
+             if (!Char.isLetter(c)) {
+
+                 // 1) keep dot for 1-letter abbreviation ("M.")
+                 final boolean oneLetterAbbrev = (termLen == 2 && Char.isLetter(termBuf[0]));
+
+                 // 2) keep dot for dotted abbreviations/initialisms ("U.S.A.", "Ph.D.")
+                 final boolean dottedAbbrev = !oneLetterAbbrev && looksLikeDottedAbbrev(termBuf, termLen);
+
+                 // 3) optional: keep dot for configured abbreviations (termBuf ends with '.')
+                 //    test WITHOUT the final dot: [0, termLen-1)
+                 final boolean listedAbbrev =
+                         !oneLetterAbbrev
+                         && keepTrailingDot != CharArraySet.EMPTY_SET
+                         && keepTrailingDot.contains(termBuf, 0, termLen - 1);
+
+                 if (!oneLetterAbbrev && !dottedAbbrev && !listedAbbrev) {
+                     // detach '.' and re-emit as punctuation
+                     termLen--;
+                     pendingChar = '.';
+                     pendingCharOffset = off - 1; // '.' already consumed
+                     tokenEndOff = off - 1;       // token ends before '.'
+                     abbrevDot = false;
+                     break;
+                 }
+                 // else: keep the dot in the token; the delimiter will end the token naturally
+             }
+             // internal dot case: next char is a letter => keep dot, continue normally
+             abbrevDot = false;
+         }
 
             // Start of tag '<'
             if (c == '<') {
@@ -277,15 +280,15 @@ public class TokenizerML extends Tokenizer
                 return true;
             }
 
-            // Dot after a letter: may be abbrev/internal dot. Append now; decide next char whether to detach.
-            if (c == '.' && termLen > 0 && Char.isLetter(c)) {
+         // Dot after a letter: may be abbrev/internal dot. Append now; decide next char whether to detach.
+            if (c == '.' && termLen > 0 && Char.isLetter(termBuf[termLen - 1])) {
                 if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
                 termBuf[termLen++] = '.';
                 bi++; off++; lastChar = '.';
                 abbrevDot = true;
                 continue;
             }
-
+            
             // Sentence punctuation: standalone run token
             if (isSentencePunct(c)) {
                 if (termLen > 0) break; // emit pending token; punctuation next call
@@ -333,6 +336,22 @@ public class TokenizerML extends Tokenizer
             if (termLen > 0) break;   // emit current token; do not consume delimiter
             bi++; off++; lastChar = c; // skip delimiter and continue
         }
+        
+     // EOF-safe abbrev-dot resolution: the loop may end without peeking the next char.
+        if (abbrevDot) {
+            final boolean oneLetterAbbrev = (termLen == 2 && Char.isLetter(termBuf[0]));
+            final boolean dottedAbbrev = !oneLetterAbbrev && looksLikeDottedAbbrev(termBuf, termLen);
+            final boolean listedAbbrev =
+                    !oneLetterAbbrev
+                    && keepTrailingDot != CharArraySet.EMPTY_SET
+                    && keepTrailingDot.contains(termBuf, 0, termLen - 1);
+            if (!oneLetterAbbrev && !dottedAbbrev && !listedAbbrev) {
+                termLen--;
+                pendingChar = '.';
+                pendingCharOffset = off - 1;
+                tokenEndOff = off - 1;
+            }
+        }
 
         // Finalize token built in this call
         termAtt.setLength(termLen);
@@ -346,6 +365,30 @@ public class TokenizerML extends Tokenizer
         offset = off;
 
         return true;
+    }
+    
+    /**
+     * Heuristic: token currently ends with '.' and also contains internal dots separating short letter-only segments.
+     * Examples: "U.S.A.", "e.g.", "Ph.D.".
+     */
+    private static boolean looksLikeDottedAbbrev(final char[] buf, final int len)
+    {
+        if (len < 4 || buf[len - 1] != '.') return false; // at least "A.B."
+        int segLen = 0;
+        boolean hasInternalDot = false;
+        for (int i = 0; i < len - 1; i++) { // exclude trailing '.'
+            final char c = buf[i];
+            if (c == '.') {
+                if (segLen == 0 || segLen > 3) return false;
+                hasInternalDot = true;
+                segLen = 0;
+                continue;
+            }
+            if (!Char.isLetter(c)) return false;
+            segLen++;
+            if (segLen > 3) return false;
+        }
+        return hasInternalDot && segLen > 0 && segLen <= 3;
     }
 
     private boolean emitPendingPunct() throws IOException

@@ -50,7 +50,7 @@ public class FilterAposHyphenFrTest
         @Override
         public TokenStreamComponents createComponents(String field)
         {
-            final Tokenizer tokenizer = new TokenizerML();
+            final Tokenizer tokenizer = new MLTokenizer();
             TokenStream ts = tokenizer;
             ts = new FilterAposHyphenFr(tokenizer);
             return new TokenStreamComponents(tokenizer, ts);

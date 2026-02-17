@@ -54,11 +54,11 @@ public class AnalyzerOrth extends Analyzer
     @Override
     public TokenStreamComponents createComponents(String field)
     {
-        final Tokenizer tokenizer = new TokenizerML();
+        final Tokenizer tokenizer = new MLTokenizer();
         // segment words
         TokenStream ts = tokenizer;
         // interpret html tags as token events like para or section
-        ts = new FilterHTML(ts);
+        ts = new MLFilter(ts);
         // fr split on ’ and -
         ts = new FilterAposHyphenFr(ts);
         // provide lemma+pos

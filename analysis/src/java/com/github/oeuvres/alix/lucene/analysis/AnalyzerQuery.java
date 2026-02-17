@@ -55,7 +55,7 @@ public class AnalyzerQuery extends Analyzer
     @Override
     public TokenStreamComponents createComponents(String field)
     {
-        final Tokenizer tokenizer = new TokenizerML(); // segment words, keep '*'
+        final Tokenizer tokenizer = new MLTokenizer(); // segment words, keep '*'
         TokenStream result = new FilterLemmatize(tokenizer); // provide lemma+pos
         result = new FilterFind(result); // orthographic form (not lemma) as term to index
         result = new ASCIIFoldingFilter(result); // no accents

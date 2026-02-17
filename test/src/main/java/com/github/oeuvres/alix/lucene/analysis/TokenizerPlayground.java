@@ -5,11 +5,11 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
+import com.github.oeuvres.alix.lucene.analysis.fr.FrLexicons;
+
 import java.io.StringReader;
 import java.util.List;
 
-// adjust imports to your packages
-import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
 
 import static com.github.oeuvres.alix.common.Upos.*;
 
@@ -20,6 +20,11 @@ public class TokenizerPlayground {
 
     // --- curated cases (edit freely) ---
     static final List<Case> CASES = List.of(
+
+        new Case("dots", "Abbreviation dot",
+            "M. Dupont rencontre Dr. Martin, etc. U.S.A. fin. C. H. Waddington, par exemple.",
+            "Decide policy: keep 'M.' as one token; internal dots in initialisms."),
+            
         new Case("pb", 
                 "Page break", 
                 "<a class=\"pb\" role=\"doc-pagebreak\" aria-hidden=\"true\" tabindex=\"-1\" href=\"#p137\" id=\"p137\">[p. 137]</a>", 
@@ -36,10 +41,6 @@ public class TokenizerPlayground {
         new Case("C03", "Em dash separators",
             "— et personne ne songe à en nier la nécessité —",
             "Dash should be punctuation token(s); check spaces around."),
-
-        new Case("dots", "Abbreviation dot",
-            "M. Dupont rencontre Dr. Martin, etc. U.S.A. fin. C. H. Waddington, par exemple.",
-            "Decide policy: keep 'M.' as one token; internal dots in initialisms."),
 
         new Case("Numbers", "Numbers + decimal separators + trailing punctuation",
             "3,14 2.718 12, 12. 1,234 1.234 99... fin",
@@ -61,9 +62,10 @@ public class TokenizerPlayground {
     public static void main(String[] args) throws Exception {
         String which = (args.length == 0) ? "orig" : args[0]; // orig|v2|v3|diff12|diff13|diff23|all
         switch (which) {
-            case "orig" -> runAll("TokenizerML (orig)", TokenizerML::new);
+            // how to build here a tokenizer with a parameter in constructor?
+            case "orig" -> runAll("MLTokenizer", () -> new MLTokenizer(FrLexicons.getDotEndingWords()));
             default -> {
-                System.err.println("Usage: TokenizerPlayground [orig|v2|v3|diff12|diff13|diff23|all]");
+                System.err.println("Usage: TokenizerPlayground [orig]");
                 System.exit(2);
             }
         }

@@ -55,9 +55,9 @@ public class AnalyzerFind extends Analyzer
     @Override
     public TokenStreamComponents createComponents(String field)
     {
-        final Tokenizer tokenizer = new TokenizerML(); // segment words
+        final Tokenizer tokenizer = new MLTokenizer(); // segment words
         TokenStream ts = tokenizer;
-        ts = new FilterHTML(ts); // interpret tags
+        ts = new MLFilter(ts); // interpret tags
         ts = new FilterAposHyphenFr(ts); // fr split on ’ and -
         ts = new FilterLemmatize(ts); // provide lemma+pos
         ts = new FilterFind(ts); // orthographic form and lemma as term to index

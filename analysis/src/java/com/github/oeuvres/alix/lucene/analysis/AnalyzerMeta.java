@@ -54,9 +54,9 @@ public class AnalyzerMeta extends Analyzer
     @Override
     protected TokenStreamComponents createComponents(String fieldName)
     {
-        final Tokenizer tokenizer = new TokenizerML(); // segment words
+        final Tokenizer tokenizer = new MLTokenizer(); // segment words
         TokenStream ts = tokenizer;
-        ts = new FilterHTML(ts); // strip tags
+        ts = new MLFilter(ts); // strip tags
         ts = new FilterAposHyphenFr(ts); // fr split on ’ and -
         ts = new ASCIIFoldingFilter(ts); // no accents
         return new TokenStreamComponents(tokenizer, ts);

@@ -52,7 +52,7 @@ public class RewriteFilterBenchmark
     public void setup() throws Exception
     {
         termMap = new CharArrayMap<char[]>(1000, false);
-        Lexicons.fillPairs(termMap, Path.of(mappingCsv), false);
+        Lexicons.fillMap(termMap, Path.of(mappingCsv), false);
         synMap = buildSynonymMap(termMap);
 
         // Load tokens once; one token per line.

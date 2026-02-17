@@ -54,10 +54,10 @@ public class AnalyzerCloud extends Analyzer
     @Override
     public TokenStreamComponents createComponents(String field)
     {
-        final Tokenizer tokenizer = new TokenizerML();
+        final Tokenizer tokenizer = new MLTokenizer();
         TokenStream ts = tokenizer; // segment words
         // interpret html tags as token events like para or section
-        ts = new FilterHTML(ts);
+        ts = new MLFilter(ts);
         // fr split on ’ and -
         ts = new FilterAposHyphenFr(ts);
         // pos tagging before lemmatize

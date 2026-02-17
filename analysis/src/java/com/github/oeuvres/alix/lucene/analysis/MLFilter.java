@@ -51,7 +51,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
  * tokens are deleted. This allows simple computation of a token context (ex:
  * span queries, co-occurrences).
  */
-public class FilterHTML extends TokenFilter
+public class MLFilter extends TokenFilter
 {
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -98,7 +98,7 @@ public class FilterHTML extends TokenFilter
      * Default constructor.
      * @param input previous filter.
      */
-    public FilterHTML(TokenStream input) {
+    public MLFilter(TokenStream input) {
         super(input);
         skip = 0;
     }
