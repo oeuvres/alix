@@ -10,8 +10,6 @@ import java.util.List;
 
 // adjust imports to your packages
 import com.github.oeuvres.alix.lucene.analysis.TokenizerML;
-import com.github.oeuvres.alix.lucene.analysis.TokenizerML2;
-import com.github.oeuvres.alix.lucene.analysis.TokenizerML3;
 
 import static com.github.oeuvres.alix.common.Upos.*;
 
@@ -61,23 +59,9 @@ public class TokenizerPlayground {
     );
 
     public static void main(String[] args) throws Exception {
-        String which = (args.length == 0) ? "v3" : args[0]; // orig|v2|v3|diff12|diff13|diff23|all
+        String which = (args.length == 0) ? "orig" : args[0]; // orig|v2|v3|diff12|diff13|diff23|all
         switch (which) {
             case "orig" -> runAll("TokenizerML (orig)", TokenizerML::new);
-            case "v2"   -> runAll("TokenizerML2", TokenizerML2::new);
-            case "v3"   -> runAll("TokenizerML3", TokenizerML3::new);
-
-            // "human diff": prints first divergence, no asserts
-            case "diff12" -> diffAll("orig", TokenizerML::new, "v2", TokenizerML2::new);
-            case "diff13" -> diffAll("orig", TokenizerML::new, "v3", TokenizerML3::new);
-            case "diff23" -> diffAll("v2", TokenizerML2::new, "v3", TokenizerML3::new);
-
-            // prints outputs for all three (long)
-            case "all" -> {
-                runAll("TokenizerML (orig)", TokenizerML::new);
-                runAll("TokenizerML2", TokenizerML2::new);
-                runAll("TokenizerML3", TokenizerML3::new);
-            }
             default -> {
                 System.err.println("Usage: TokenizerPlayground [orig|v2|v3|diff12|diff13|diff23|all]");
                 System.exit(2);

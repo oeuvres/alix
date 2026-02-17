@@ -59,8 +59,6 @@ public class MLTokenizerBenchmark {
             reader = new RewindableCharArrayReader(inputChars, inputLen);
 
             orig = new Runner(new TokenizerML());
-            v2   = new Runner(new TokenizerML2());
-            v3   = new Runner(new TokenizerML3());
         }
 
         @TearDown(Level.Trial)

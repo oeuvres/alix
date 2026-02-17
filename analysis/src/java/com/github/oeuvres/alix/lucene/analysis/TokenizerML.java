@@ -1,8 +1,8 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
-import java.util.Map;
 
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.CharacterUtils;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.CharacterUtils.CharacterBuffer;
@@ -17,304 +17,405 @@ import static com.github.oeuvres.alix.common.Upos.*;
 import com.github.oeuvres.alix.util.Char;
 
 /**
- * A tokenizer for latin script languages and possible XML like tags. Tags are kept in token stream for further analysis.
- * A {@link FlagsAttribute} is set with an int define in {@link Upos}.
+ * Micro-optimized tokenizer for latin script languages and XML-like tags.
+ * Keeps tags as tokens (flags XML), clause punctuation as tokens (flags PUNCTclause),
+ * sentence punctuation runs as tokens (flags PUNCTsent), numbers as tokens (flags DIGIT).
  *
- * <pre>
- * &lt;p&gt;            XML
- * &lt;b&gt;            XML
- * Lexical
- * tokenization
- * &lt;/b&gt;           XML
- * is
- * conversion
- * of
- * a
- * text
- * into
- * (              PUNclause
- * semantically
- * or
- * syntactically
- * )              PUNclause
- * meaningful
- * &lt;i&gt;            XML
- * lexical
- * tokens
- * &lt;/i&gt;           XML
- * belonging
- * to
- * categories
- * defined
- * by
- * a
- * lexer
- * program
- * .              PUNphrase
- * In
- * case
- * of
- * a
- * &lt;a href="/wiki/Natural_language" title="Natural language"&gt;    XML
- * natural
- * language
- * &lt;/a&gt;           XML
- * ,              PUNclause
- * those
- * categories
- * include
- * nouns
- * ,              PUNclause
- * verbs
- * ,              PUNclause
- * adjectives
- * ,              PUNclause
- * punctuations
- * etc
- * </pre>
- * 
+ * Differences vs original TokenizerML:
+ * - Entity decoding uses direct checks (no Map iteration).
+ * - No buffer backtracking; uses a one-char pushback slot.
+ * - Sentence punctuation token cannot absorb following letters (e.g., "!Word" no longer possible).
  */
-public class TokenizerML  extends Tokenizer
+public class TokenizerML extends Tokenizer
 {
-    /** Max size of a word */
-    private final int TOKEN_MAX_SIZE = 256;
-    /** The term provided by the Tokenizer */
+    /** Max size of a word-like token (not tags). */
+    private static final int TOKEN_MAX_SIZE = 256;
+
+    /** IO buffer size (chars). Tune for your workload; 2 MiB per instance is usually wasteful. */
+    private static final int IO_BUFFER_SIZE = 32 * 1024;
+    
+    /** Dr., etc. */
+    private final CharArraySet keepTrailingDot;
+    
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
     private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-    /** A linguistic category as a short number, see {@link TagFr} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-    /** Buffer of chars, give a big size avoiding pb for  */
-    private static final int IO_BUFFER_SIZE = 32 * 1024;
+
     private final CharacterBuffer buffer = CharacterUtils.newCharacterBuffer(IO_BUFFER_SIZE);
-    /** Position in buffer */
+
     private int bufferIndex = 0;
-    /** size of buffer*/
-    private int  bufferLen = 0;
-    /** current char offset */
+    private int bufferLen = 0;
+    /** Current char offset (UTF-16 code units). Points to next char to read. */
     private int offset = 0;
-    /** XML entities */
-    static final Map<String, String> XML_ENT = Map.ofEntries(
-        Map.entry("gt", ">"),
-        Map.entry("lt", "<"),
-        Map.entry("amp", "&")
-    );
-    
-    /**
-     * Build a Tokenizer for Markup tagged text.
-     */
-    public TokenizerML() {
-        super();
-        // super(new AttributeFactoryAlix(AttributeFactory.DEFAULT_ATTRIBUTE_FACTORY));
+
+    /** One-char pushback (used to re-emit punctuation stripped from numbers/abbrev-dot). */
+    private int pendingChar = -1;          // 0..65535, or -1
+    private int pendingCharOffset = -1;    // offset where pendingChar occurs
+
+    public TokenizerML() { 
+        this(CharArraySet.EMPTY_SET);
     }
-    
+
+    public TokenizerML(final CharArraySet keepTrailingDot) { 
+        super();
+        // Lucene-style: accept null as “no config”
+        this.keepTrailingDot = (keepTrailingDot == null) ? CharArraySet.EMPTY_SET : keepTrailingDot;
+    }
+
     @Override
     public final boolean incrementToken() throws IOException
     {
         clearAttributes();
-        // flags
-        boolean intag = false;
-        boolean number = false;
-        int amp = -1; // check XML entities
-        // Mandatory start of a term
+
+        // Fast path: emit pending punctuation first (no buffer rewinds).
+        if (pendingCharOffset >= 0) {
+            return emitPendingPunct();
+        }
+
+        char[] termBuf = termAtt.buffer();
+        int termLen = 0;
+
+        boolean inTag = false;
+        boolean inNumber = false;
+        boolean inSentPunct = false;
+
+        boolean abbrevDot = false; // last appended '.' after a letter; may need to detach next char
+        int amp = -1;              // position of '&' in termBuf (for &gt;/&lt;/&amp;)
+
         int startOffset = -1;
-        char lastChar;
-        char c = 0;
-        int endOffset;
+        int tokenEndOff = -1; // if set, overrides "off" for offsetAtt end
+
+        int bi = bufferIndex;
+        int bl = bufferLen;
+        int off = offset;
+        char[] io = buffer.getBuffer();
+
+        char lastChar = 0;
+
         while (true) {
-            endOffset = offset;
-            // needs more chars ? start (-1, -1). End (0, 0).
-            if (bufferIndex >= bufferLen) {
-                // use default lucene code to read chars from source
-                CharacterUtils.fill(buffer, input); // read supplementary char aware with CharacterUtils
-                bufferLen = buffer.getLength();
-                bufferIndex = 0;
-                // end of stream
-                if (bufferLen == 0) {
-                    // last term to send, 
-                    if (!termAtt.isEmpty()) {
-                        break;
-                    }
+            // refill
+            if (bi >= bl) {
+                CharacterUtils.fill(buffer, input);
+                bl = buffer.getLength();
+                bi = 0;
+                io = buffer.getBuffer();
+                if (bl == 0) {
+                    if (termLen > 0) break; // emit last token
+                    // store back cursor
+                    bufferIndex = bi; bufferLen = bl; offset = off;
                     return false;
                 }
             }
-            // if no luck, a try to go back in buffer can fall in negative
-            if (bufferIndex < 0) {
-                bufferIndex = 0;
-            }
-            lastChar = c;
-            c = buffer.getBuffer()[bufferIndex];
-            // record an event for entities
-            if (c == '&') amp = termAtt.length();
-            
-            // start of a tag, do not advance cursors
-            if (c == '<') {
-                // send pending term, come back next call
-                if (!termAtt.isEmpty()) {
-                    break;
+
+            final char c = io[bi];
+
+            // If currently emitting sentence punctuation, stop as soon as next char is not .?!…
+            if (inSentPunct) {
+                if (isSentencePunct(c)) {
+                    // append and consume
+                    if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                    termBuf[termLen++] = c;
+                    bi++; off++; lastChar = c;
+                    continue;
                 }
-                intag = true;
-                startOffset = offset;
-                termAtt.append(c);
+                break; // do not consume delimiter
             }
-            // inside a tag, record char
-            else if (intag) {
-                termAtt.append(c);
-                if (c == '>') { // end of tag, send it, set for next char
+
+            // Inside a tag: append until '>' inclusive
+            if (inTag) {
+                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                termBuf[termLen++] = c;
+                bi++; off++; lastChar = c;
+                if (c == '>') {
                     flagsAtt.setFlags(XML.code);
-                    endOffset = offset + 1; // position of '>' + 1
-                    bufferIndex++;
-                    offset++;
                     break;
                 }
+                continue;
             }
-            // num
-            else if (Char.isDigit(c)) {
-                if (termAtt.isEmpty()) {
-                    number = true;
-                    flagsAtt.setFlags(DIGIT.code);
-                    startOffset = offset;
+
+            // Abbrev-dot resolution: previous char appended '.' after a letter.
+            // Decide whether '.' stays with the token (internal) or becomes punctuation.
+            if (abbrevDot) {
+                if (!Char.isLetter(c)) {
+                    
+                    // 1) keep dot for 1-letter abbreviation ("M.") — existing policy
+                    final boolean oneLetterAbbrev = (termLen == 2 && Char.isLetter(termBuf[0]));
+                    
+                    // 2) optional: keep dot for configured abbreviations (termBuf ends with '.')
+                    //    test WITHOUT the final dot: [0, termLen-1)
+                    final boolean listedAbbrev =
+                            !oneLetterAbbrev
+                            && keepTrailingDot != CharArraySet.EMPTY_SET
+                            && keepTrailingDot.contains(termBuf, 0, termLen - 1);
+                    
+                    if (!oneLetterAbbrev && !listedAbbrev) {
+                        // detach '.' and re-emit as punctuation
+                        termLen--;
+                        pendingChar = '.';
+                        pendingCharOffset = off - 1; // '.' already consumed
+                        tokenEndOff = off - 1;       // token ends before '.'
+                        abbrevDot = false;
+                        break;
+                    }
+                    // else: keep the dot in the token; the delimiter will end the token naturally
                 }
-                // start a negative number
-                if (termAtt.length() == 1 && lastChar == '-') {
-                    number = true;
-                    flagsAtt.setFlags(DIGIT.code);
+                // internal dot case: next char is a letter => keep dot, continue normally
+                abbrevDot = false;
+            }
+
+            // Start of tag '<'
+            if (c == '<') {
+                if (termLen > 0) break; // emit pending token; tag will be processed next call
+                inTag = true;
+                startOffset = off;
+                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                termBuf[termLen++] = c;
+                bi++; off++; lastChar = c;
+                continue;
+            }
+
+            // Number mode
+            if (inNumber) {
+                if (Char.isDigit(c)) {
+                    if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                    termBuf[termLen++] = c;
+                    bi++; off++; lastChar = c;
+                    continue;
                 }
-                // if not a number started, will be appended to something else
-                termAtt.append(c);
-            }
-            // decimal ?
-            else if (number && (c == '.' || c == ',') && lastChar != '.' && lastChar != ',') {
-                termAtt.append(c);
-            }
-            // end of number, send, and go back on next call
-            else if (number && !Char.isDigit(c)) {
-                number = false;
-                // dot or comma after number was punctuation
-                if (lastChar == '.' || lastChar == ',') {
-                    termAtt.setLength(termAtt.length() - 1);
-                    bufferIndex--;
-                    offset--;
+                // Decimal separator candidate (original behavior: accept, then remove if it ends number)
+                if ((c == '.' || c == ',') && lastChar != '.' && lastChar != ',') {
+                    if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                    termBuf[termLen++] = c;
+                    bi++; off++; lastChar = c;
+                    continue;
+                }
+
+                // End of number: do not consume current c; strip trailing '.'/',' if present and push back.
+                inNumber = false;
+                if (termLen > 0) {
+                    final char last = termBuf[termLen - 1];
+                    if (last == '.' || last == ',') {
+                        termLen--;
+                        pendingChar = last;
+                        pendingCharOffset = off - 1; // punctuation position
+                        tokenEndOff = off - 1;       // <-- number ends BEFORE punctuation
+                    }
                 }
                 break;
             }
-            // specific joker 
-            else if (c == '*' && !termAtt.isEmpty()) {
-                termAtt.append(c);
-            }
-            // if a letter, sure we add it 
-            else if (Char.isToken(c)) {
-                // start of token, record startOffset
-                if (termAtt.isEmpty()) {
-                    startOffset = offset;
+
+            // Digits (start number if token empty; or negative number if "-" already in token)
+            if (Char.isDigit(c)) {
+                if (termLen == 0) {
+                    inNumber = true;
+                    flagsAtt.setFlags(DIGIT.code);
+                    startOffset = off;
+                }
+                else if (termLen == 1 && lastChar == '-') {
+                    inNumber = true;
+                    flagsAtt.setFlags(DIGIT.code);
                 }
 
-                if (c == '’') c = '\''; // normalize apos
-                if (c != (char) 0xAD) { // soft hyphen, do not append to term
-                    termAtt.append(c);
-                }
-                // something went wrong in loops or it is not a text with space like 
-                if (termAtt.length() >= TOKEN_MAX_SIZE) {
-                    bufferIndex++;
-                    offset++;
-                    break; // a too big token stop
-                }
+                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                termBuf[termLen++] = c;
+                bi++; off++; lastChar = c;
+                continue;
             }
-            // xml entity, handle case like -&gt;
-            else if (c == ';' && amp >= 0) {
-                termAtt.append(c);
-                final int lim = termAtt.length() - 2 - amp;
-                for (var entry : XML_ENT.entrySet()) {
-                    String key = entry.getKey();
-                    if (key.length() != lim) continue;
-                    int pos = 0;
-                    for (; pos < lim; pos++) {
-                        if (termAtt.charAt(pos + amp + 1) != key.charAt(pos)) break;
+
+            // XML entities: handle &gt; &lt; &amp; (keeps unknown entities verbatim).
+            if (c == ';' && amp >= 0 && termLen >= amp + 2) {
+                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                termBuf[termLen++] = ';';
+                bi++; off++; lastChar = c;
+
+                // name length between '&' and ';'
+                final int nameLen = termLen - amp - 2;
+                if (nameLen == 2) {
+                    final char a = termBuf[amp + 1], b = termBuf[amp + 2];
+                    if (a == 'g' && b == 't') {
+                        termLen = amp;
+                        if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                        termBuf[termLen++] = '>';
                     }
-                    // entity seems found here
-                    if (pos == lim) {
-                        termAtt.setLength(amp).append(entry.getValue());
-                        break;
+                    else if (a == 'l' && b == 't') {
+                        termLen = amp;
+                        if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                        termBuf[termLen++] = '<';
+                    }
+                }
+                else if (nameLen == 3) {
+                    final char a = termBuf[amp + 1], b = termBuf[amp + 2], d = termBuf[amp + 3];
+                    if (a == 'a' && b == 'm' && d == 'p') {
+                        termLen = amp;
+                        if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                        termBuf[termLen++] = '&';
                     }
                 }
                 amp = -1;
+                continue;
             }
-            // Clause punctuation, send a punctuation event to separate tokens
-            else if (',' == c || ';' == c || ':' == c || '(' == c || ')' == c || '—' == c || '–' == c 
-                    || '"' == c || '«' == c || '»' == c ) {
-                // send pending term, come back next call, 
-                if (!termAtt.isEmpty()) {
-                    break;
-                }
-                // send the punctuation
-                termAtt.append(c);
-                startOffset = offset;
-                endOffset = offset + 1;
+
+            // Clause punctuation: standalone token
+            if (isClausePunct(c)) {
+                if (termLen > 0) break; // emit pending token; punctuation next call
+                startOffset = off;
                 flagsAtt.setFlags(PUNCTclause.code);
-                bufferIndex++;
-                offset++;
-                break;
+                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(1);
+                termBuf[0] = c;
+                termLen = 1;
+                bi++; off++; lastChar = c;
+
+                // finalize and return immediately
+                termAtt.setLength(termLen);
+                posIncAtt.setPositionIncrement(1);
+                posLenAtt.setPositionLength(1);
+                final int endOffset = (tokenEndOff >= 0) ? tokenEndOff : off;
+                offsetAtt.setOffset(correctOffset(startOffset), correctOffset(endOffset));
+                bufferIndex = bi; bufferLen = bl; offset = off;
+                return true;
             }
-            // complex case, the dot and abbreviations, append and let next filter define what to do
-            else if (c == '.' && Char.isLetter(lastChar) ) {
-                termAtt.append(c);
+
+            // Dot after a letter: may be abbrev/internal dot. Append now; decide next char whether to detach.
+            if (c == '.' && termLen > 0 && Char.isLetter(c)) {
+                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                termBuf[termLen++] = '.';
+                bi++; off++; lastChar = '.';
+                abbrevDot = true;
+                continue;
             }
-            // Possible sentence delimiters
-            else if ( c == '.' || c == '…' || c == '?' || c == '!' ) {
-                // if pending word, send, and come back later
-                if (!termAtt.isEmpty() && lastChar != '.' && lastChar != '?' && lastChar != '!') {
+
+            // Sentence punctuation: standalone run token
+            if (isSentencePunct(c)) {
+                if (termLen > 0) break; // emit pending token; punctuation next call
+                inSentPunct = true;
+                flagsAtt.setFlags(PUNCTsent.code);
+                startOffset = off;
+                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(1);
+                termBuf[0] = c;
+                termLen = 1;
+                bi++; off++; lastChar = c;
+                continue;
+            }
+
+            // Joker '*' only appended if token already started (original behavior).
+            if (c == '*' && termLen > 0) {
+                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                termBuf[termLen++] = '*';
+                bi++; off++; lastChar = c;
+                continue;
+            }
+
+            // Word-like token char
+            if (Char.isToken(c)) {
+                if (termLen == 0) startOffset = off;
+
+                if (c == '&') amp = termLen;
+
+                char out = c;
+                if (out == '’') out = '\'';
+                if (out != (char)0xAD) { // ignore soft hyphen
+                    if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                    termBuf[termLen++] = out;
+                }
+
+                bi++; off++; lastChar = c;
+
+                if (termLen >= TOKEN_MAX_SIZE) {
+                    // original behavior: cut overly long tokens
                     break;
                 }
-                // append punctuation and wait for space to send (???, !!!, ...)
-                if (termAtt.isEmpty()) {
-                    flagsAtt.setFlags(PUNCTsent.code);
-                    startOffset = offset;
-                }
-                termAtt.append(c);
+                continue;
             }
-            // not token char, token to send ?
-            else if (!termAtt.isEmpty()) {
-                break;
-            }
-            bufferIndex++;
-            offset++;
+
+            // Delimiter / whitespace / control / etc.
+            if (termLen > 0) break;   // emit current token; do not consume delimiter
+            bi++; off++; lastChar = c; // skip delimiter and continue
         }
-        // final dot special case
-        int len = termAtt.length();
-        if (Char.isLetter(termAtt.charAt(0)) && termAtt.charAt(len - 1) == '.') {
-            if (false) { // FrDics.isBrevidot(termAtt)
-                // known word with ending dot
-            }
-            // one letter, abbreviation
-            else if (termAtt.length() == 2) {
-                
-            }
-            // go back in buffer to restart from first point, remember the "..." case
-            else {
-                while (termAtt.charAt(len - 1) == '.') {
-                    len--;
-                    bufferIndex--;
-                    offset--;
-                    endOffset = offset;
-                }
-                termAtt.setLength(len);
-            }
-        }
-        
-        // here, a term should be ready, send it
+
+        // Finalize token built in this call
+        termAtt.setLength(termLen);
         posIncAtt.setPositionIncrement(1);
         posLenAtt.setPositionLength(1);
+        final int endOffset = (tokenEndOff >= 0) ? tokenEndOff : off;
         offsetAtt.setOffset(correctOffset(startOffset), correctOffset(endOffset));
-        // do not increment buffer and offset here, ex: word<endOfWord/>, break is done on '<'
+
+        bufferIndex = bi;
+        bufferLen = bl;
+        offset = off;
+
         return true;
     }
-    
+
+    private boolean emitPendingPunct() throws IOException
+    {
+        // pendingChar already consumed earlier; current (offset, bufferIndex) point after it.
+        final int pOff = pendingCharOffset;
+        final char pc = (char) pendingChar;
+        pendingCharOffset = -1;
+        pendingChar = -1;
+
+        char[] termBuf = termAtt.buffer();
+        if (termBuf.length == 0) termBuf = termAtt.resizeBuffer(1);
+        termBuf[0] = pc;
+        int termLen = 1;
+
+        int bi = bufferIndex;
+        int bl = bufferLen;
+        int off = offset;
+        char[] io = buffer.getBuffer();
+
+        // Clause punctuation: standalone
+        if (isClausePunct(pc)) {
+            flagsAtt.setFlags(PUNCTclause.code);
+            termAtt.setLength(termLen);
+            posIncAtt.setPositionIncrement(1);
+            posLenAtt.setPositionLength(1);
+            offsetAtt.setOffset(correctOffset(pOff), correctOffset(pOff + 1));
+            return true;
+        }
+
+        // Sentence punctuation: merge with following .?!… in buffer
+        if (isSentencePunct(pc)) {
+            flagsAtt.setFlags(PUNCTsent.code);
+
+            while (true) {
+                if (bi >= bl) {
+                    CharacterUtils.fill(buffer, input);
+                    bl = buffer.getLength();
+                    bi = 0;
+                    io = buffer.getBuffer();
+                    if (bl == 0) break;
+                }
+                final char c = io[bi];
+                if (!isSentencePunct(c)) break;
+
+                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                termBuf[termLen++] = c;
+                bi++; off++;
+            }
+
+            termAtt.setLength(termLen);
+            posIncAtt.setPositionIncrement(1);
+            posLenAtt.setPositionLength(1);
+            offsetAtt.setOffset(correctOffset(pOff), correctOffset(off));
+            bufferIndex = bi; bufferLen = bl; offset = off;
+            return true;
+        }
+
+        // Fallback: emit as a single-char token with no flags (should not happen with current uses).
+        termAtt.setLength(termLen);
+        posIncAtt.setPositionIncrement(1);
+        posLenAtt.setPositionLength(1);
+        offsetAtt.setOffset(correctOffset(pOff), correctOffset(pOff + 1));
+        return true;
+    }
+
     @Override
     public final void end() throws IOException
     {
         super.end();
-        // set final offset ?
         offsetAtt.setOffset(correctOffset(offset), correctOffset(offset));
     }
 
@@ -325,8 +426,35 @@ public class TokenizerML  extends Tokenizer
         bufferIndex = 0;
         bufferLen = 0;
         offset = 0;
-        buffer.reset(); // make sure to reset the IO buffer!!
+        pendingChar = -1;
+        pendingCharOffset = -1;
+        buffer.reset();
     }
-    
+
+    // --- fast classification helpers ---
+
+    private static boolean isSentencePunct(char c) {
+        return c == '.' || c == '…' || c == '?' || c == '!';
+    }
+
+    private static boolean isClausePunct(char c) {
+        // switch is generally compiled efficiently
+        switch (c) {
+            case ',':
+            case ';':
+            case ':':
+            case '(':
+            case ')':
+            case '—':
+            case '–':
+            case '"':
+            case '«':
+            case '»':
+                return true;
+            default:
+                return false;
+        }
+    }
 
 }
+

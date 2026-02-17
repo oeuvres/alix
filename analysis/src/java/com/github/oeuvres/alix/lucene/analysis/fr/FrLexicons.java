@@ -16,22 +16,18 @@ public class FrLexicons
     {
     }
 
-    static CharArrayMap<char[]> getTermMapping(String... localFiles) {
+    static CharArrayMap<char[]> getTermMapping(String... localFiles)
+    {
         @SuppressWarnings("unchecked") // due to CharArrayMap.class being raw (type erasure)
-        CharArrayMap<char[]> m = (CharArrayMap<char[]>) Cache.get(
-            CharArrayMap.class,
-            FrLexicons.class,
-            p -> {
-                try {
-                    return termMapping(p);
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-            },
-            localFiles
-        );
+        CharArrayMap<char[]> m = (CharArrayMap<char[]>) Cache.get(CharArrayMap.class, FrLexicons.class, p -> {
+            try {
+                return termMapping(p);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }, localFiles);
         return m;
-      }
+    }
 
     private static CharArrayMap<char[]> termMapping(List<String> localFiles) throws IOException
     {
