@@ -39,11 +39,9 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
+import com.github.oeuvres.alix.common.Upos;
 import static com.github.oeuvres.alix.common.Upos.*;
-import static com.github.oeuvres.alix.fr.TagFr.*;
 
-import com.github.oeuvres.alix.fr.TagFr;
-import com.github.oeuvres.alix.lucene.analysis.Lexicon.LexEntry;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
@@ -83,7 +81,7 @@ import com.github.oeuvres.alix.util.Char;
 public final class FilterLemmatize extends TokenFilter
 {
     /** The lexicon from which read lemmas */
-    private final Lexicon lexicon;
+    private final LemmaDic lexicon;
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** A normalized orthographic form (ex : capitalization) */
@@ -96,12 +94,18 @@ public final class FilterLemmatize extends TokenFilter
     private boolean sent = true;
     /** Store state */
     private State save;
+    
+    public FilterLemmatize(TokenStream input)
+    {
+        super(input);
+        throw new Error("TODO");
+    }
 
     /**
      * Default constructor.
      * @param input previous filter.
      */
-    public FilterLemmatize(TokenStream input, Lexicon lexicon) {
+    public FilterLemmatize(TokenStream input, LemmaDic lexicon) {
         super(input);
         this.lexicon = lexicon;
     }
@@ -127,7 +131,7 @@ public final class FilterLemmatize extends TokenFilter
         }
         // store sent event, skiping XML
         // was last token a sentence punctuation ?
-        if (flags == PUNsection.code ||flags == PUNpara.code || flags == PUNsent.code) {
+        if (flags == PUNCTsection.code ||flags == PUNCTpara.code || flags == PUNCTsent.code) {
             // record a sent event
             this.sent = true;
             return true;
@@ -146,6 +150,8 @@ public final class FilterLemmatize extends TokenFilter
         if (orthAtt.length() == 0) {
             orthAtt.copy(termAtt); // start with original term
         }
+        
+        /*
         // normalise oeil -> œil, Etat -> État, naître -> naitre
         lexicon.norm((CharsAttImpl)orthAtt);
 
@@ -221,7 +227,7 @@ public final class FilterLemmatize extends TokenFilter
                 }
                 // say it is known by dico
                 else {
-                    lemAtt.copyBuffer(entryWord.graph, 0, entryWord.graph.length);
+                    lemAtt.copyBuffer(entryWord.inflection, 0, entryWord.inflection.length);
                 }
                 return true;
             }
@@ -253,10 +259,11 @@ public final class FilterLemmatize extends TokenFilter
             }
             // say it is known by dico
             else {
-                lemAtt.copyBuffer(entryWord.graph, 0, entryWord.graph.length);
+                lemAtt.copyBuffer(entryWord.inflection, 0, entryWord.inflection.length);
             }
 
         }
+        */
         return true;
     }
     

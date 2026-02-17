@@ -16,14 +16,14 @@ public class FrLexicons
     {
     }
 
-    static CharArrayMap<char[]> getNormalizer(String... localFiles) {
+    static CharArrayMap<char[]> getTermMapping(String... localFiles) {
         @SuppressWarnings("unchecked") // due to CharArrayMap.class being raw (type erasure)
         CharArrayMap<char[]> m = (CharArrayMap<char[]>) Cache.get(
             CharArrayMap.class,
             FrLexicons.class,
             p -> {
                 try {
-                    return normalizer(p);
+                    return termMapping(p);
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 }
@@ -33,7 +33,7 @@ public class FrLexicons
         return m;
       }
 
-    private static CharArrayMap<char[]> normalizer(List<String> localFiles) throws IOException
+    private static CharArrayMap<char[]> termMapping(List<String> localFiles) throws IOException
     {
         CharArrayMap<char[]> map = new CharArrayMap<char[]>(2000, false);
         Lexicons.fillPairs(map, Lexicons.class, "/com/github/oeuvres/alix/fr/norm.csv", false);

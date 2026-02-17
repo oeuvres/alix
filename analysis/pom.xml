@@ -26,6 +26,11 @@
             <artifactId>alix-search</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>alix-fr</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.apache.lucene</groupId>
@@ -44,6 +49,7 @@
             <artifactId>opennlp-tools</artifactId>
             <version>2.5.7</version>
         </dependency>
+
     </dependencies>
 
     <build>

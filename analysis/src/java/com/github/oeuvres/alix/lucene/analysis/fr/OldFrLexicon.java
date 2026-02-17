@@ -48,8 +48,7 @@ import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
-import com.github.oeuvres.alix.lucene.analysis.Lexicon;
-import com.github.oeuvres.alix.lucene.analysis.Lexicon.LexEntry;
+
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Chain;
@@ -62,7 +61,7 @@ import com.github.oeuvres.alix.util.CSVReader;
  * comparison {@link CharsAttImpl#compareTo(CharsAttImpl)}.
  */
 @SuppressWarnings("unlikely-arg-type")
-public class FrLexicon extends Lexicon
+public class OldFrLexicon 
 {
     /** Column for a graphy like found in texts, required */
     public final static int COL_INFLECTION = 0;
@@ -77,9 +76,9 @@ public class FrLexicon extends Lexicon
     /** Flag for compound, to be continued */
     static final public int BRANCH = 0x200;
     /** 500 000 types French lexicon seems not too bad for memory */
-    static final CharArrayMap<LexEntry> WORDS = new CharArrayMap<>(500000, false);
+    // static final CharArrayMap<LexEntry> WORDS = new CharArrayMap<>(500000, false);
     /** French names on which keep Capitalization */
-    final static CharArrayMap<LexEntry> NAMES = new CharArrayMap<>(5000, false);
+    // final static CharArrayMap<LexEntry> NAMES = new CharArrayMap<>(5000, false);
     /** A tree to resolve compounds */
     static final CharArrayMap<Integer> TREELOC = new CharArrayMap<>((int) (1500 / 0.75), false);
     /** Graphic normalization (replacement) */
@@ -157,7 +156,7 @@ public class FrLexicon extends Lexicon
     /**
      * Avoid instantiation, use static method instead.
      */
-    FrLexicon()
+    OldFrLexicon()
     {
         // ???
         // loadStop("com/github/oeuvres/alix/fr/stop.csv");
@@ -178,7 +177,7 @@ public class FrLexicon extends Lexicon
         };
         for (String f : files) {
             // LOGGER.debug(f);
-            loadResource(f, f);
+            // loadResource(f, f);
         }
     }
 
@@ -260,6 +259,7 @@ public class FrLexicon extends Lexicon
      */
     synchronized static public void load(final String name, final Reader reader, boolean replace)
     {
+        /*
         if (loaded.contains(name)) {
             System.out.println(name + " already loaded");
             return;
@@ -305,161 +305,11 @@ public class FrLexicon extends Lexicon
                 System.out.println();
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Load a jar resource as dictionary.
-     * 
-     * @param res resource path according to the class loader.
-     */
-    private static void loadResource(final String key, final String res)
-    {
-        Lexicon.res = res;
-        Reader reader = new InputStreamReader(Thread.currentThread()
-                .getContextClassLoader()
-                .getResourceAsStream(res), StandardCharsets.UTF_8);
-        load(key, reader, false);
-    }
-
-
-    /**
-     * Get a name entry from of a dictionary
-     * with a char[] array.
-     * 
-     * @param att {@link CharTermAttribute} implementation.
-     * @return available proper name entry for the submitted form, or null if not found.
-     */
-    public static LexEntry name(final CharTermAttribute att)
-    {
-        return NAMES.get(att.buffer(), 0, att.length());
-    }
-    
-    /**
-     * Get a name dictionary entry from a char array.
-     *
-     * @param chars  readonly chars to test
-     * @param offset start offser
-     * @param length amount of chars to test
-     * @return available proper name entry for the submitted form, or null if not found.
-     */
-    public static LexEntry name(final char[] chars, final int offset, final int length)
-    {
-        return NAMES.get(chars, offset, length);
-    }
-
-    /**
-     * Normalize orthographic form for a real graphical form in text.
-     * 
-     * @param att {@link CharTermAttribute} implementation, normalized.
-     * @return true if a normalization has been done, false otherwise.
-     */
-    public static boolean norm(CharTermAttribute att)
-    {
-        String val = NORMALIZE.get(att.buffer(), 0, att.length());
-        if (val == null)
-            return false;
-        att.setEmpty().append(val);
-        return true;
-    }
-    
-    /**
-     * Normalize orthographic form for a real graphical form in text.
-     * 
-     * @param chain
-     * @return
-     */
-    public static boolean norm(Chain chain)
-    {
-        String val = NORMALIZE.get(chain.buffer(), chain.offset(), chain.length());
-        if (val == null)
-            return false;
-        chain.setEmpty().append(val);
-        return true;
-    }
-    
-    /**
-     * Get normalized orthographic form for a real grapphical form in text.
-     * 
-     * @param test {@link CharAtt} implementation, normalized.
-     * @return true if a normalization has been done, false otherwise.
-     */
-    /*
-    public static boolean norm(final CharsAtt test, final CharTermAttribute dst)
-    {
-        CharsAtt val = NORMALIZE.get(test);
-        if (val == null)
-            return false;
-        dst.setEmpty().append(val);
-        return true;
-    }
-    */
-
-    private static void putRecord(Chain inflection, Chain tag, Chain lem, boolean replace)
-    {
-        String tagSuff = tagList.get(tag);
-    
-        // UnsupportedOperationException() with CharArrayMap
-        /*
-        if (graph.first() == '0') {
-            graph.firstDel();
-            NAMES.remove(graph);
-            WORDS.remove(graph);
-            WORDS.remove(graph.append("_").append(tagSuff));
-            return;
-        }
         */
-        lem.replace('’', '\'');
-        inflection.replace('’', '\'');
-        // is a name, TODO safer ? 
-        if (inflection.isFirstUpper()) {
-            if (NAMES.containsKey(inflection.buffer(), inflection.offset(), inflection.length()) && !replace) return;
-            LexEntry entry = new LexEntry(inflection, tag, lem);
-            NAMES.put(inflection.toCharArray(), entry);
-        }
-        // is a word, add an entry for GRAPH_TAG
-        else {
-            LexEntry entry = new LexEntry(inflection, tag, lem);
-            if (tagSuff != null) {
-                final int oldLen = inflection.length();
-                inflection.append("_").append(tagSuff);
-                if (!WORDS.containsKey(inflection.buffer(), inflection.offset(), inflection.length()) || replace) {
-                    WORDS.put(inflection.toCharArray(), entry);
-                }
-                inflection.setLength(oldLen);
-            }
-            if (!WORDS.containsKey(inflection.buffer(), inflection.offset(), inflection.length()) || replace) {
-                WORDS.put(inflection.toCharArray(), entry);
-            }
-        }
     }
-    
-    /**
-     * Get a dictionary entry from the name dictionary
-     * from a char[] array ttribute.
-     * 
-     * @param att {@link CharTermAttribute} implementation.
-     * @return available proper name entry for the submitted form, or null if not found.
-     */
-    public static LexEntry word(final CharTermAttribute att)
-    {
-        return WORDS.get(att.buffer(), 0, att.length());
-    }
-    
-    /**
-     * Get a word dictionary entry with a char array.
-     *
-     * @param chars  readonly chars to test
-     * @param offset start offser
-     * @param length amount of chars to test
-     * @return available proper name entry for the submitted form, or null if not found.
-     * 
-     * @param att {@link CharTermAttribute} implementation.
-     * @return available common word entry for the submitted form, or null if not found.
-     */
-    public static LexEntry word(final char[] chars, final int offset, final int len)
-    {
-        return WORDS.get(chars, offset, len);
-    }
+
+
+
 
 
 }

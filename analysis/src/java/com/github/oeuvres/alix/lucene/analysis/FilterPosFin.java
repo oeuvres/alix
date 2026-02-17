@@ -41,7 +41,7 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import static com.github.oeuvres.alix.common.Upos.*;
-import com.github.oeuvres.alix.fr.TagFr;
+import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 
@@ -106,7 +106,7 @@ public class FilterPosFin extends TokenFilter
     {
         final int flags = flagsAtt.getFlags();
         // record an empty token at puctuation position for the rails
-        if (PUN.isPun(flags)) {
+        if (PUNCT.isPun(flags)) {
             return true;
         }
         // unify numbers
@@ -115,10 +115,10 @@ public class FilterPosFin extends TokenFilter
         }
         // or take the normalized form
         else if (orthAtt.length() != 0) {
-            termAtt.setEmpty().append(orthAtt + "_" + TagFr.name(flags));
+            termAtt.setEmpty().append(orthAtt + "_" + Upos.name(flags));
         }
         else {
-            termAtt.append("_" + TagFr.name(flags));
+            termAtt.append("_" + Upos.name(flags));
         }
 
         return true;

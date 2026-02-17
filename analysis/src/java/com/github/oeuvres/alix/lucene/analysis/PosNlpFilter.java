@@ -92,6 +92,13 @@ public class PosNlpFilter extends TokenFilter
     );
     /** state of the queue */
     private boolean tagged = false;
+    
+    public PosNlpFilter(TokenStream input)
+    {
+        super(input);
+        throw new Error("TODO");
+    }
+
 
     /**
      * Default constructor.

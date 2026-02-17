@@ -40,10 +40,9 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
+import com.github.oeuvres.alix.common.Upos;
 import static com.github.oeuvres.alix.common.Upos.*;
-import static com.github.oeuvres.alix.fr.TagFr.*;
 
-import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 import com.github.oeuvres.alix.util.Char;
@@ -136,12 +135,12 @@ public class FilterCloud extends TokenFilter
             System.out.println(termAtt + " — " + orthAtt);
         }
         // record an empty token at puctuation position for the rails
-        if (PUN.isPun(flags)) {
-            if (flags == PUNclause.code) {
+        if (PUNCT.isPun(flags)) {
+            if (flags == PUNCTclause.code) {
             }
-            else if (flags == PUNsent.code) {
+            else if (flags == PUNCTsent.code) {
             }
-            else if (flags == PUNpara.code || flags == PUNsection.code) {
+            else if (flags == PUNCTpara.code || flags == PUNCTsection.code) {
                 // let it
             }
             else {

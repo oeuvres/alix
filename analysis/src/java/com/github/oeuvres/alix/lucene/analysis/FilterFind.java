@@ -116,7 +116,7 @@ public class FilterFind extends TokenFilter
     {
         final int tag = flagsAtt.getFlags();
         // jump punctuation position
-        if (PUN.isPun(tag)) {
+        if (PUNCT.isPun(tag)) {
             return false;
         }
         // append normalize form if exists

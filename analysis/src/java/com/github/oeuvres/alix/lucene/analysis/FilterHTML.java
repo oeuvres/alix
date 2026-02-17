@@ -184,12 +184,12 @@ public class FilterHTML extends TokenFilter
                 continue;
             }
             else if (close &&  PARA.contains(termAtt.buffer(), tagOff, tagLen)) {
-                flagsAtt.setFlags(PUNpara.code);
+                flagsAtt.setFlags(PUNCTpara.code);
                 termAtt.setEmpty().append("¶");
                 return true;
             }
             else if (close &&  SECTION.contains(termAtt.buffer(), tagOff, tagLen)) {
-                flagsAtt.setFlags(PUNsection.code);
+                flagsAtt.setFlags(PUNCTsection.code);
                 termAtt.setEmpty().append("§");
                 return true;
             }

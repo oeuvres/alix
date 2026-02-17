@@ -42,12 +42,9 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
 import static com.github.oeuvres.alix.common.Upos.*;
+import com.github.oeuvres.alix.common.Upos;
 
-import com.github.oeuvres.alix.fr.FrDics;
-import com.github.oeuvres.alix.fr.TagFr;
-import com.github.oeuvres.alix.fr.FrDics.LexEntry;
 
-import static com.github.oeuvres.alix.fr.TagFr.*;
 
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
@@ -109,6 +106,7 @@ public class FilterLocution extends TokenFilter
             queue = new AttDeque(10, this);
         }
         clearAttributes(); // clear before next incrementToken
+        /*
         // restart compound at each call
         compound.setEmpty();
         
@@ -139,7 +137,7 @@ public class FilterLocution extends TokenFilter
         do {
             final int tag = flagsAtt.getFlags();
             // if token is pun, end of branch, exit
-            if (PUN.isPun(tag) || tag == XML.code || termAtt.length() == 0) {
+            if (PUNCT.isPun(tag) || tag == XML.code || termAtt.length() == 0) {
                 // after the loop, the queue logic before exit
                 break;
             }
@@ -150,16 +148,14 @@ public class FilterLocution extends TokenFilter
             }
             // choose version of form to append for test, according to its pos
             // forms to keep as is
-            /*
-            if (orthAtt.length() != 0 && EXCEPTIONS.contains(orthAtt)) {
-                compound.append(orthAtt);
-            }
-            */
+            // if (orthAtt.length() != 0 && EXCEPTIONS.contains(orthAtt)) {
+            //    compound.append(orthAtt);
+            // }
             // Do not normalize, stade II, stade III
             if (tag == DIGIT.code) {
                 compound.append(termAtt);
             }
-            else if (TagFr.isName(tag)) {
+            else if (Upos.isName(tag)) {
                 // if normalized J. PIAGET
                 if (orthAtt.length() != 0) {
                     compound.append(orthAtt);
@@ -290,6 +286,7 @@ public class FilterLocution extends TokenFilter
         else { // we are in the queue
             queue.removeFirst(this);
         }
+        */
         return true;
     }
 
