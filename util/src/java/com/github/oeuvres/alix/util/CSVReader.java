@@ -36,6 +36,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 
 /**
@@ -209,6 +211,14 @@ public final class CSVReader implements Closeable
     // Constructors (Reader mode)
     // -------------------------------------------------------------------------
 
+    public CSVReader(final Path path,
+            final char separator,
+            final int cellMax) throws IOException
+    {
+        this(openFile(path), separator, cellMax, '"', 64 * 1024, 64 * 1024);
+    }
+    
+    
     /**
      * Creates a {@code CSVReader} with default settings:
      * <ul>
@@ -317,12 +327,13 @@ public final class CSVReader implements Closeable
      *
      * <p>For absolute classpath resources, pass a leading '/': {@code "/bench/word.csv"}.</p>
      *
+     * @param anchor       anchor class used to resolve the resource
      * @param resourcePath classpath resource path
      * @throws IOException if the resource cannot be found or opened
      */
-    public CSVReader(final String resourcePath) throws IOException
+    public CSVReader(final Class<?> anchor, final String resourcePath) throws IOException
     {
-        this(CSVReader.class, resourcePath, ',', -1);
+        this(anchor, resourcePath, ',', -1);
     }
 
     /**
@@ -403,7 +414,7 @@ public final class CSVReader implements Closeable
      * @return an open {@link InputStream} for the resource
      * @throws IOException if the resource cannot be found
      */
-    private static InputStream openResource(final Class<?> anchor, final String resourcePath) throws IOException
+    public static InputStream openResource(final Class<?> anchor, final String resourcePath) throws IOException
     {
         if (anchor == null) throw new NullPointerException("anchor is null");
         if (resourcePath == null) throw new NullPointerException("resourcePath is null");
@@ -415,6 +426,11 @@ public final class CSVReader implements Closeable
         return is;
     }
 
+    private static InputStream openFile(final Path path) throws IOException {
+        if (path == null) throw new NullPointerException("path is null");
+        return Files.newInputStream(path); // owned/closed by CSVReader.close()
+    }
+    
     // -------------------------------------------------------------------------
     // Main CSV parsing API
     // -------------------------------------------------------------------------
@@ -649,6 +665,50 @@ public final class CSVReader implements Closeable
         return getCell(index).toString();
     }
 
+    /**
+     * Copies the content of a cell from the last row into a freshly allocated {@code char[]}.
+     * <p>
+     * This is a snapshot: the returned array is independent of the internal {@link StringBuilder}
+     * instances reused by this reader, so it remains valid after subsequent calls to {@link #readRow()}.
+     * </p>
+     *
+     * <p>For allocation-free reuse across calls, use {@link #getCellToCharArray(int, char[])}.</p>
+     *
+     * @param index the cell index (0-based)
+     * @return a newly allocated {@code char[]} whose length equals the cell length
+     * @throws IndexOutOfBoundsException if {@code index} is negative or not less than {@link #getCellCount()}
+     */
+    public char[] getCellToCharArray(final int index)
+    {
+        return getCellToCharArray(index, null);
+    }
+
+    /**
+     * Copies the content of a cell from the last row into a caller-provided buffer.
+     * <p>
+     * If {@code dst} is {@code null} or smaller than the cell length, a new array is allocated.
+     * Otherwise, {@code dst} is reused and returned.
+     * </p>
+     *
+     * <p><b>Important:</b> if {@code dst.length} is larger than the cell length, only the first
+     * {@code len} characters are written, where {@code len == getCell(index).length()}. The remainder
+     * of the array is left unchanged.</p>
+     *
+     * @param index the cell index (0-based)
+     * @param dst an optional destination buffer to reuse
+     * @return the buffer containing the copied cell characters (either {@code dst} or a newly allocated array)
+     * @throws IndexOutOfBoundsException if {@code index} is negative or not less than {@link #getCellCount()}
+     */
+    public char[] getCellToCharArray(final int index, char[] dst)
+    {
+        final StringBuilder cell = getCell(index);
+        final int len = cell.length();
+        if (dst == null || dst.length < len) dst = new char[len];
+        cell.getChars(0, len, dst, 0);
+        return dst;
+    }
+
+    
     // -------------------------------------------------------------------------
     // Resource management
     // -------------------------------------------------------------------------
@@ -906,4 +966,6 @@ public final class CSVReader implements Closeable
             cells.add(new StringBuilder(64));
         }
     }
+    
+
 }

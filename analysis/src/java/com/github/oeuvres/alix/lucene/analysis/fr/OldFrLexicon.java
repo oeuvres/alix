@@ -54,7 +54,6 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.CSVReader;
-import com.github.oeuvres.alix.util.CSVReader.Row;
 
 /**
  * Preloaded word List for lucene indexation in {@link HashMap}. Efficiency
@@ -82,7 +81,7 @@ public class FrLexicon extends Lexicon
     /** French names on which keep Capitalization */
     final static CharArrayMap<LexEntry> NAMES = new CharArrayMap<>(5000, false);
     /** A tree to resolve compounds */
-    static final HashMap<CharsAtt, Integer> TREELOC = new HashMap<>((int) (1500 / 0.75));
+    static final CharArrayMap<Integer> TREELOC = new CharArrayMap<>((int) (1500 / 0.75), false);
     /** Graphic normalization (replacement) */
     static final private CharArrayMap<String> NORMALIZE = new CharArrayMap<>(5000, false);
     /** Abbreviations with a final dot */
@@ -395,7 +394,7 @@ public class FrLexicon extends Lexicon
     }
     */
 
-    private static void putRecord(Chain graph, Chain tag, Chain lem, boolean replace)
+    private static void putRecord(Chain inflection, Chain tag, Chain lem, boolean replace)
     {
         String tagSuff = tagList.get(tag);
     
@@ -410,26 +409,26 @@ public class FrLexicon extends Lexicon
         }
         */
         lem.replace('’', '\'');
-        graph.replace('’', '\'');
+        inflection.replace('’', '\'');
         // is a name, TODO safer ? 
-        if (graph.isFirstUpper()) {
-            if (NAMES.containsKey(graph.buffer(), graph.offset(), graph.length()) && !replace) return;
-            LexEntry entry = new LexEntry(graph, tag, lem);
-            NAMES.put(graph.toCharArray(), entry);
+        if (inflection.isFirstUpper()) {
+            if (NAMES.containsKey(inflection.buffer(), inflection.offset(), inflection.length()) && !replace) return;
+            LexEntry entry = new LexEntry(inflection, tag, lem);
+            NAMES.put(inflection.toCharArray(), entry);
         }
         // is a word, add an entry for GRAPH_TAG
         else {
-            LexEntry entry = new LexEntry(graph, tag, lem);
+            LexEntry entry = new LexEntry(inflection, tag, lem);
             if (tagSuff != null) {
-                final int oldLen = graph.length();
-                graph.append("_").append(tagSuff);
-                if (!WORDS.containsKey(graph.buffer(), graph.offset(), graph.length()) || replace) {
-                    WORDS.put(graph.toCharArray(), entry);
+                final int oldLen = inflection.length();
+                inflection.append("_").append(tagSuff);
+                if (!WORDS.containsKey(inflection.buffer(), inflection.offset(), inflection.length()) || replace) {
+                    WORDS.put(inflection.toCharArray(), entry);
                 }
-                graph.setLength(oldLen);
+                inflection.setLength(oldLen);
             }
-            if (!WORDS.containsKey(graph.buffer(), graph.offset(), graph.length()) || replace) {
-                WORDS.put(graph.toCharArray(), entry);
+            if (!WORDS.containsKey(inflection.buffer(), inflection.offset(), inflection.length()) || replace) {
+                WORDS.put(inflection.toCharArray(), entry);
             }
         }
     }

@@ -178,21 +178,25 @@ public class LuceneLookupBenchmark {
     // ---------------------------
 
     @Benchmark
+    @OperationsPerInvocation(BATCH_SIZE)
     public long map_directCharSlice(Data d, Cursor c) {
         return scan_MapDirectBatch(d.map, d.corpus, c.nextStart(d.corpus.size));
     }
 
     @Benchmark
+    @OperationsPerInvocation(BATCH_SIZE)
     public long map_viaCharTermAtt(Data d, Cursor c) throws Exception {
         return scan_MapViaCharTermAttBatch(d.map, d.corpus, c.ts, c.termAtt, c.nextStart(d.corpus.size));
     }
 
     @Benchmark
+    @OperationsPerInvocation(BATCH_SIZE)
     public long fst_directUtf8Bytes(Data d, Cursor c) throws Exception {
         return scan_FstDirectBytesBatch(d.fst, d.corpus, c.term, c.nextStart(d.corpus.size));
     }
 
     @Benchmark
+    @OperationsPerInvocation(BATCH_SIZE)
     public long fst_viaBytesRefAtt(Data d, Cursor c) throws Exception {
         return scan_FstViaBytesRefAttBatch(d.fst, d.corpus, c.ts, c.bytesAtt, c.nextStart(d.corpus.size));
     }

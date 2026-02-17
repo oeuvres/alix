@@ -49,7 +49,7 @@ public class CharsDicBenchmark {
         public String corpusSource;
 
         /** Used only when corpusSource=FILE. Default kept from your raw benchmark; override at runtime. */
-        @Param({"D:/code/alix/test/target/text.txt"})
+        @Param({"src/test/test-data/text.txt"})
         public String corpusPath;
 
         /** Used only when corpusSource=FILE. */
