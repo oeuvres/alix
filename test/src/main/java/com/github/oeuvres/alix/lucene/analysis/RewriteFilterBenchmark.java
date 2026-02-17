@@ -19,6 +19,7 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -26,116 +27,97 @@ import java.util.concurrent.TimeUnit;
  * Benchmark: TermMappingFilter vs SynonymGraphFilter for single-token
  * replacement. Input: one token per line (LineTokenizer).
  */
-@BenchmarkMode(Mode.Throughput)
-@OutputTimeUnit(TimeUnit.SECONDS)
+// @BenchmarkMode(Mode.Throughput)
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
 @Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
 @Fork(value = 2)
-@State(Scope.Benchmark)
+// @State(Scope.Benchmark)
+@State(Scope.Thread) // per-thread streams; avoids shared mutable state
 public class RewriteFilterBenchmark
 {
-
+    
+    
     @Param({ "src/test/test-data/text.txt" }) // override with: -p tokensFile=/path/to/file
     public String tokensFile;
 
     @Param({ "src/test/test-data/norm-test.csv" }) // use the cleaned file I produced
     public String mappingCsv;
 
-    private String tokenText; // loaded once; benchmark reads from StringReader
+    private static final int BATCH = 5_000_000;
+    private char[][] tokens;
     private CharArrayMap<char[]> termMap; // single-token, 1->1
     private SynonymMap synMap;
 
-    private Analyzer baseline;
-    private Analyzer termMapping;
-    private Analyzer synonymGraph;
+    private TokenArrayBatchStream base;
+    private TokenStream mappingTs;
+    private TokenStream synonymTs;
 
     @Setup(Level.Trial)
     public void setup() throws Exception
     {
-        tokenText = Files.readString(Path.of(tokensFile), StandardCharsets.UTF_8);
         termMap = new CharArrayMap<char[]>(1000, false);
         Lexicons.fillPairs(termMap, Path.of(mappingCsv), false);
         synMap = buildSynonymMap(termMap);
 
-        baseline = new Analyzer()
-        {
-            @Override
-            protected TokenStreamComponents createComponents(String fieldName)
-            {
-                LineTokenizer tok = new LineTokenizer();
-                return new TokenStreamComponents(tok);
-            }
-        };
+        // Load tokens once; one token per line.
+        List<String> lines = Files.readAllLines(Path.of(tokensFile), StandardCharsets.UTF_8);
+        tokens = new char[lines.size()][];
+        for (int i = 0; i < lines.size(); i++) tokens[i] = lines.get(i).toCharArray();
+    }
+    
+    @Setup(Level.Iteration)
+    public void setupIteration() {
+      // Base stream + filter chains (reuse objects; only reset each invocation).
+      base = new TokenArrayBatchStream(tokens, BATCH);
 
-        termMapping = new Analyzer()
-        {
-            @Override
-            protected TokenStreamComponents createComponents(String fieldName)
-            {
-                LineTokenizer tok = new LineTokenizer();
-                TokenStream ts = new TermMappingFilter(tok, termMap);
-                return new TokenStreamComponents(tok, ts);
-            }
-        };
+      // TermMappingFilter chain
+      mappingTs = new TermMappingFilter(base, termMap);
 
-        synonymGraph = new Analyzer()
-        {
-            @Override
-            protected TokenStreamComponents createComponents(String fieldName)
-            {
-                LineTokenizer tok = new LineTokenizer();
-                TokenStream ts = new SynonymGraphFilter(tok, synMap, false /* ignoreCase */);
-                // No FlattenGraphFilter needed because: 1 token in, 1 token out,
-                // includeOrig=false.
-                return new TokenStreamComponents(tok, ts);
-            }
-        };
+      // SynonymGraphFilter chain needs its own base stream to avoid interference
+      TokenArrayBatchStream base2 = new TokenArrayBatchStream(tokens, BATCH);
+      synonymTs = new SynonymGraphFilter(base2, synMap, false);
+
+      // Move starting point each iteration to avoid “best-case” cache patterns.
+      int shift = (int)(System.nanoTime() & 0x7fffffff) % tokens.length;
+      base.advanceStart(shift);
+      base2.advanceStart(shift);
     }
 
     @TearDown(Level.Trial)
     public void tearDown()
     {
-        baseline.close();
-        termMapping.close();
-        synonymGraph.close();
+
     }
 
     @Benchmark
-    public void baseline(Blackhole bh) throws IOException
-    {
-        consume(baseline, bh);
+    @OperationsPerInvocation(BATCH)
+    public void termMappingFilter(Blackhole bh) throws IOException {
+      consume(mappingTs, bh);
     }
 
     @Benchmark
-    public void termMappingFilter(Blackhole bh) throws IOException
-    {
-        consume(termMapping, bh);
+    @OperationsPerInvocation(BATCH)
+    public void synonymGraphFilter(Blackhole bh) throws IOException {
+      consume(synonymTs, bh);
     }
 
-    @Benchmark
-    public void synonymGraphFilter(Blackhole bh) throws IOException
-    {
-        consume(synonymGraph, bh);
-    }
 
-    private void consume(Analyzer a, Blackhole bh) throws IOException
-    {
-        try (Reader r = new StringReader(tokenText); TokenStream ts = a.tokenStream("f", r)) {
-            CharTermAttribute term = ts.addAttribute(CharTermAttribute.class);
-            ts.reset();
-            while (ts.incrementToken()) {
-                // Consume enough to prevent DCE without dominating cost.
-                int len = term.length();
-                bh.consume(len);
-                if (len > 0) {
-                    char[] buf = term.buffer();
-                    bh.consume(buf[0]);
-                    bh.consume(buf[len - 1]);
-                }
-            }
-            ts.end();
+    private static void consume(TokenStream ts, Blackhole bh) throws IOException {
+        CharTermAttribute term = ts.addAttribute(CharTermAttribute.class);
+        ts.reset();
+        while (ts.incrementToken()) {
+          int len = term.length();
+          bh.consume(len);
+          if (len != 0) {
+            char[] b = term.buffer();
+            bh.consume(b[0]);
+            bh.consume(b[len - 1]);
+          }
         }
-    }
+        ts.end();
+      }
 
     private static SynonymMap buildSynonymMap(CharArrayMap<char[]> map) throws IOException
     {
@@ -162,50 +144,42 @@ public class RewriteFilterBenchmark
         return key.toString();
     }
 
-    /** Fast tokenizer for input where each line is already a token. */
-    public final class LineTokenizer extends Tokenizer
-    {
+    public final class TokenArrayBatchStream extends TokenStream {
+        private final char[][] tokens;
+        private final int batchSize;
+        private int cursor;     // global cursor (cycled)
+        private int emitted;    // emitted in this batch
+
         private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-        private final OffsetAttribute offAtt = addAttribute(OffsetAttribute.class);
 
-        private BufferedReader br;
-        private int offset;
+        public TokenArrayBatchStream(char[][] tokens, int batchSize) {
+          this.tokens = tokens;
+          this.batchSize = batchSize;
+        }
 
-        @Override
-        public void reset() throws IOException
-        {
-            super.reset();
-            Reader r = this.input;
-            this.br = (r instanceof BufferedReader) ? (BufferedReader) r : new BufferedReader(r);
-            this.offset = 0;
+        /** Advance the start position for the next invocation (optional; keeps fairness across runs). */
+        public void advanceStart(int delta) {
+          cursor = (cursor + delta) % tokens.length;
+          if (cursor < 0) cursor += tokens.length;
         }
 
         @Override
-        public boolean incrementToken() throws IOException
-        {
-            clearAttributes();
-            String line = br.readLine();
-            if (line == null)
-                return false;
-
-            // Drop empty lines (optional). If you want to preserve them as tokens, remove
-            // this loop.
-            while (line != null && line.isEmpty()) {
-                offset++; // accounts for newline
-                line = br.readLine();
-                if (line == null)
-                    return false;
-            }
-
-            termAtt.setEmpty().append(line);
-
-            int start = offset;
-            int end = start + line.length();
-            offAtt.setOffset(start, end);
-
-            // +1 for '\n' (works for '\r\n' too; offsets are not used here anyway)
-            offset = end + 1;
-            return true;
+        public void reset() throws IOException {
+          super.reset();
+          emitted = 0;
         }
-    }
+
+        @Override
+        public boolean incrementToken() {
+          if (emitted >= batchSize) return false;
+
+          clearAttributes();
+          char[] t = tokens[cursor++];
+          if (cursor == tokens.length) cursor = 0;
+
+          termAtt.copyBuffer(t, 0, t.length);
+          emitted++;
+          return true;
+        }
+      }
 }
