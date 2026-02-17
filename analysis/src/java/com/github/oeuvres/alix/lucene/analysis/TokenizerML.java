@@ -86,7 +86,8 @@ public class TokenizerML  extends Tokenizer
     /** A linguistic category as a short number, see {@link TagFr} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** Buffer of chars, give a big size avoiding pb for  */
-    private final CharacterBuffer buffer = CharacterUtils.newCharacterBuffer(2 * 1024 * 1024);
+    private static final int IO_BUFFER_SIZE = 32 * 1024;
+    private final CharacterBuffer buffer = CharacterUtils.newCharacterBuffer(IO_BUFFER_SIZE);
     /** Position in buffer */
     private int bufferIndex = 0;
     /** size of buffer*/
