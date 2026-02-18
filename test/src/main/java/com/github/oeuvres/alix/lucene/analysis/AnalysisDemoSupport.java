@@ -4,95 +4,75 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.util.Attribute;
 
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 /**
- * Shared utilities for Lucene TokenStream demos:
- * <ul>
- * <li>curated {@link Case} inputs</li>
- * <li>token dump to stdout</li>
- * <li>token snapshots and first-diff reporting</li>
- * </ul>
+ * Shared utilities for Lucene analysis demos (Tokenizer / TokenFilter / Analyzer).
  *
- * <p>
- * Designed for human inspection (manual regression), not for automated JUnit
- * assertions.
- * </p>
+ * <p>Scope: human inspection and manual regression (console dump + token snapshots + first-diff).
+ * This is intentionally not a JUnit helper.</p>
+ *
+ * <p>Supported attributes:</p>
+ * <ul>
+ *   <li>Required: {@link CharTermAttribute}, {@link OffsetAttribute}</li>
+ *   <li>Optional: {@link PosAttribute} (printed/collected if present)</li>
+ * </ul>
  */
-public final class AnalysisDemoSupport
-{
-    private AnalysisDemoSupport()
-    {
-    }
+public final class AnalysisDemoSupport {
+
+    private AnalysisDemoSupport() { }
 
     /** A curated demo case. */
-    public record Case(String id, String title, String input, String notes)
-    {
-    }
+    public record Case(String id, String title, String input, String notes) { }
 
     /**
-     * A snapshot of a token for diffing/printing. flags/pos may be null if absent.
+     * Token snapshot for diffing/printing.
+     * {@code pos} is null if {@link PosAttribute} is absent from the stream.
      */
-    public record Tok(String term, Integer flags, Integer pos, int start, int end)
-    {
-        @Override
-        public String toString()
-        {
-            return escape(term) + "  " + (flags == null ? "-" : flags.toString()) + "  "
-                    + (pos == null ? "-" : pos.toString()) + "  [" + start + "," + end + ")";
-        }
-    }
+    public record Tok(String term, Integer pos, int start, int end) { }
 
     // -------------------------------------------------------------------------
-    // Dump helpers (Tokenizer / Analyzer)
+    // Public API: printing
     // -------------------------------------------------------------------------
 
-    public static void printTokens(Tokenizer tok, String input) throws IOException
-    {
-        printTokens(tok, input);
-    }
-
-    public static void printTokens(Analyzer analyzer, String field, String input) throws IOException
-    {
-        Objects.requireNonNull(analyzer, "analyzer");
-        try (TokenStream ts = analyzer.tokenStream(field, new StringReader(input))) {
-            dumpAndClose(ts, input);
-        }
-    }
-
-    private static void dumpAndClose(TokenStream ts, String input) throws IOException
-    {
+    public static void printTokens(final Tokenizer tokenizer, final String input) throws IOException {
+        Objects.requireNonNull(tokenizer, "tokenizer");
+        tokenizer.setReader(new StringReader(nz(input)));
         try {
-            dump(ts, input);
+            dump(tokenizer, input);
         } finally {
-            ts.close();
+            tokenizer.close();
+        }
+    }
+
+    public static void printTokens(final Analyzer analyzer, final String field, final String input) throws IOException {
+        Objects.requireNonNull(analyzer, "analyzer");
+        Objects.requireNonNull(field, "field");
+        try (TokenStream ts = analyzer.tokenStream(field, new StringReader(nz(input)))) {
+            dump(ts, input);
         }
     }
 
     /**
-     * Dump a TokenStream already configured with its Reader (if needed). This
-     * method calls reset/end and closes only if you call a close-wrapping helper.
+     * Dump a TokenStream already configured with its Reader (if needed).
+     *
+     * <p>Calls {@code reset()} and {@code end()} but does not close the stream.</p>
      */
-    public static void dump(TokenStream ts, String input) throws IOException
-    {
+    public static void dump(final TokenStream ts, final String input) throws IOException {
         Objects.requireNonNull(ts, "ts");
-
-        if (!ts.hasAttribute(CharTermAttribute.class)) {
-            throw new IllegalStateException("TokenStream has no CharTermAttribute");
-        }
-        if (!ts.hasAttribute(OffsetAttribute.class)) {
-            throw new IllegalStateException("TokenStream has no OffsetAttribute");
-        }
+        requireAttribute(ts, CharTermAttribute.class);
+        requireAttribute(ts, OffsetAttribute.class);
 
         final CharTermAttribute term = ts.getAttribute(CharTermAttribute.class);
         final OffsetAttribute off = ts.getAttribute(OffsetAttribute.class);
@@ -106,69 +86,64 @@ public final class AnalysisDemoSupport
                 final int e = off.endOffset();
                 final Integer p = (pos == null) ? null : pos.getPos();
 
-                System.out.printf("%5d  [%d,%d)  %-10s  %-8s  %s |%s|%n", i++, s, e, Upos.name(p),
-                        escape(term.toString()), safeSlice(input, s, e));
+                System.out.printf(
+                    "%5d  [%d,%d)  %-6s  %s |%s|%n",
+                    i++,
+                    s, e,
+                    uposLabel(p),
+                    escape(term.toString()),
+                    safeSlice(input, s, e)
+                );
             }
             ts.end();
         } finally {
-            // do not close here; caller decides (Analyzer helper uses try-with-resources)
+            // caller closes
         }
     }
 
     // -------------------------------------------------------------------------
-    // Snapshot + diff
+    // Public API: snapshot + diff
     // -------------------------------------------------------------------------
 
-    public static ArrayList<Tok> collect(Tokenizer tok, String input) throws IOException
-    {
-        Objects.requireNonNull(tok, "tok");
-        tok.setReader(new StringReader(input));
-        return collectAndClose(tok, input);
-    }
-
-    public static ArrayList<Tok> collect(Analyzer analyzer, String field, String input) throws IOException
-    {
-        Objects.requireNonNull(analyzer, "analyzer");
-        try (TokenStream ts = analyzer.tokenStream(field, new StringReader(input))) {
-            return collect(ts);
-        }
-    }
-
-    private static ArrayList<Tok> collectAndClose(TokenStream ts, String input) throws IOException
-    {
+    public static ArrayList<Tok> collect(final Tokenizer tokenizer, final String input) throws IOException {
+        Objects.requireNonNull(tokenizer, "tokenizer");
+        tokenizer.setReader(new StringReader(nz(input)));
         try {
-            return collect(ts);
+            return collect(tokenizer);
         } finally {
-            ts.close();
+            tokenizer.close();
+        }
+    }
+
+    public static ArrayList<Tok> collect(final Analyzer analyzer, final String field, final String input) throws IOException {
+        Objects.requireNonNull(analyzer, "analyzer");
+        Objects.requireNonNull(field, "field");
+        try (TokenStream ts = analyzer.tokenStream(field, new StringReader(nz(input)))) {
+            return collect(ts);
         }
     }
 
     /**
-     * Collect a snapshot list from a configured TokenStream (reader already set if
-     * needed).
+     * Collect a token snapshot list from a configured TokenStream.
+     *
+     * <p>Calls {@code reset()} and {@code end()} but does not close the stream.</p>
      */
-    public static ArrayList<Tok> collect(TokenStream ts) throws IOException
-    {
-        if (!ts.hasAttribute(CharTermAttribute.class)) {
-            throw new IllegalStateException("TokenStream has no CharTermAttribute");
-        }
-        if (!ts.hasAttribute(OffsetAttribute.class)) {
-            throw new IllegalStateException("TokenStream has no OffsetAttribute");
-        }
+    public static ArrayList<Tok> collect(final TokenStream ts) throws IOException {
+        Objects.requireNonNull(ts, "ts");
+        requireAttribute(ts, CharTermAttribute.class);
+        requireAttribute(ts, OffsetAttribute.class);
 
         final CharTermAttribute term = ts.getAttribute(CharTermAttribute.class);
         final OffsetAttribute off = ts.getAttribute(OffsetAttribute.class);
-        final FlagsAttribute flags = ts.hasAttribute(FlagsAttribute.class) ? ts.getAttribute(FlagsAttribute.class)
-                : null;
         final PosAttribute pos = ts.hasAttribute(PosAttribute.class) ? ts.getAttribute(PosAttribute.class) : null;
 
         final ArrayList<Tok> out = new ArrayList<>(256);
+
         ts.reset();
         try {
             while (ts.incrementToken()) {
-                final Integer f = (flags == null) ? null : flags.getFlags();
                 final Integer p = (pos == null) ? null : pos.getPos();
-                out.add(new Tok(term.toString(), f, p, off.startOffset(), off.endOffset()));
+                out.add(new Tok(term.toString(), p, off.startOffset(), off.endOffset()));
             }
             ts.end();
             return out;
@@ -178,18 +153,32 @@ public final class AnalysisDemoSupport
     }
 
     /**
-     * Print the first token-level difference between two snapshot lists.
+     * Print the first token-level difference between two snapshots.
+     * Differences include term, pos, and offsets.
      */
-    public static void firstDiff(String aName, List<Tok> a, String bName, List<Tok> b, String input)
-    {
+    public static void firstDiff(
+        final String aName, final List<Tok> a,
+        final String bName, final List<Tok> b,
+        final String input
+    ) {
+        Objects.requireNonNull(aName, "aName");
+        Objects.requireNonNull(bName, "bName");
+        Objects.requireNonNull(a, "a");
+        Objects.requireNonNull(b, "b");
+
         final int n = Math.min(a.size(), b.size());
         for (int i = 0; i < n; i++) {
-            final Tok ta = a.get(i), tb = b.get(i);
+            final Tok ta = a.get(i);
+            final Tok tb = b.get(i);
             if (!ta.equals(tb)) {
                 System.out.println("First diff at token #" + i);
-                System.out.println("  " + aName + ": " + ta);
-                System.out.println("  " + bName + ": " + tb);
-                System.out.println("  ctx: " + context(input, Math.min(ta.start, tb.start), Math.max(ta.end, tb.end)));
+                System.out.println("  " + aName + ": " + formatTok(ta));
+                System.out.println("  " + bName + ": " + formatTok(tb));
+                System.out.println("  ctx: " + context(
+                    nz(input),
+                    Math.min(ta.start(), tb.start()),
+                    Math.max(ta.end(), tb.end())
+                ));
                 return;
             }
         }
@@ -201,45 +190,100 @@ public final class AnalysisDemoSupport
     }
 
     // -------------------------------------------------------------------------
-    // Formatting helpers
+    // Internal helpers
     // -------------------------------------------------------------------------
 
-    public static String escape(String s)
-    {
+    private static <T extends Attribute> void requireAttribute(final TokenStream ts, final Class<T> attr) {
+        if (!ts.hasAttribute(attr)) {
+            throw new IllegalStateException("TokenStream has no " + attr.getSimpleName());
+        }
+    }
+
+    /** Avoid null inputs in Readers / slicing. */
+    private static String nz(final String s) {
+        return (s == null) ? "" : s;
+    }
+
+    /** POS label: "-", or UPOS name, or numeric fallback. */
+    private static String uposLabel(final Integer code) {
+        if (code == null || code.intValue() == 0) return "-";
+        try {
+            final String name = Upos.name(code.intValue());
+            return (name == null || name.isEmpty()) ? String.valueOf(code) : name;
+        } catch (RuntimeException ex) {
+            // Defensive: if Upos.name throws for unknown codes.
+            return String.valueOf(code);
+        }
+    }
+
+    private static String formatTok(final Tok t) {
+        return escape(t.term())
+            + "  pos=" + uposLabel(t.pos())
+            + "  [" + t.start() + "," + t.end() + ")";
+    }
+
+    public static String escape(final String s) {
+        if (s == null) return "null";
         return s.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
     }
 
     /** Safe substring for offset debugging; does not throw. */
-    public static String safeSlice(String input, int start, int end)
-    {
-        if (input == null)
-            return "";
-        if (start < 0 || end < 0 || start > end)
-            return "<bad offsets>";
-        if (start > input.length())
-            return "<out of range>";
-        if (end > input.length())
-            end = input.length();
-        return input.substring(start, end);
+    public static String safeSlice(final String input, int start, int end) {
+        final String in = nz(input);
+        if (start < 0 || end < 0 || start > end) return "<bad offsets>";
+        if (start > in.length()) return "<out of range>";
+        if (end > in.length()) end = in.length();
+        return in.substring(start, end);
     }
 
-    public static String context(String input, int start, int end)
-    {
-        int lo = Math.max(0, start - 30);
-        int hi = Math.min(input.length(), end + 30);
-        String ctx = input.substring(lo, hi).replace("\n", "\\n").replace("\r", "\\r");
-        int a = start - lo;
-        int b = Math.max(a, end - lo);
+    /**
+     * Return a short context snippet around [start,end) with a caret marker.
+     */
+    public static String context(final String input, final int start, final int end) {
+        final String in = nz(input);
+        final int s = Math.max(0, start);
+        final int e = Math.min(in.length(), Math.max(s, end));
 
-        StringBuilder sb = new StringBuilder();
+        final int lo = Math.max(0, s - 30);
+        final int hi = Math.min(in.length(), e + 30);
+
+        final String ctx = in.substring(lo, hi).replace("\n", "\\n").replace("\r", "\\r");
+        final int a = s - lo;
+        final int b = Math.max(a, e - lo);
+
+        final StringBuilder sb = new StringBuilder();
         sb.append("\"").append(ctx).append("\"");
         sb.append("\n       ");
-        for (int i = 0; i < a; i++)
-            sb.append(' ');
+        for (int i = 0; i < a; i++) sb.append(' ');
         sb.append('^');
-        for (int i = a + 1; i < b; i++)
-            sb.append('-');
+        for (int i = a + 1; i < b; i++) sb.append('-');
         sb.append('^');
         return sb.toString();
+    }
+
+    // -------------------------------------------------------------------------
+    // Optional convenience: run cases
+    // -------------------------------------------------------------------------
+
+    /**
+     * Convenience runner for a list of cases using an Analyzer.
+     * Keeps demo classes small.
+     */
+    public static void runAll(final Analyzer analyzer, final String field, final List<Case> cases) {
+        Objects.requireNonNull(analyzer, "analyzer");
+        Objects.requireNonNull(field, "field");
+        Objects.requireNonNull(cases, "cases");
+        for (Case c : cases) {
+            System.out.println();
+            System.out.println("== " + c.id() + "  " + c.title());
+            if (c.notes() != null && !c.notes().isEmpty()) {
+                System.out.println("-- " + c.notes());
+            }
+            try {
+                printTokens(analyzer, field, c.input());
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
     }
 }
