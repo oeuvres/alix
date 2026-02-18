@@ -32,39 +32,54 @@
  */
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
+
 import java.io.IOException;
 
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.util.AttributeSource;
+
+import com.github.oeuvres.alix.lucene.analysis.TokenStateQueue;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
 import static com.github.oeuvres.alix.common.Upos.*;
 
 /**
- * A filter that decomposes words on a list of suffixes and prefixes, mainly to handle 
- * hyphenation and apostrophe ellision in French. The original token is broken and lost,
- * offset are precisely kept, so that word counting and stats are not biased by multiple
+ * A filter that decomposes words on a list of suffixes and prefixes, mainly to handle
+ * hyphenation and apostrophe elision in French. The original token is broken and lost,
+ * offsets are precisely kept, so that word counting and stats are not biased by multiple
  * words on same positions.
- * 
+ *
  * https://fr.wikipedia.org/wiki/Emploi_du_trait_d%27union_pour_les_pr%C3%A9fixes_en_fran%C3%A7ais
- * 
- * Known side effect : qu’en-dira-t-on, donne-m’en, emmène-m’y.
+ *
+ * Known side effect: qu’en-dira-t-on, donne-m’en, emmène-m’y.
  */
 public class FrenchCliticSplitFilter extends TokenFilter
 {
     private static final int MAX_STEPS = 16;
+
+    /** Small ring is enough in practice; can grow if needed. */
+    private static final int QUEUE_CAPACITY = 16;
 
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** Char index in source text. */
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** A linguistic category as a short number, see {@link Upos} */
-    private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-    /** Stack of stored states */
-    private final AttLinkedList deque = new AttLinkedList();
+    private final PosAttribute posAtt = addAttribute(PosAttribute.class);
+
+    /** Ring-buffer of stored token states (lazy init). */
+    private TokenStateQueue queue;
+
+    /** Scratch attribute source used to build buffered tokens without mutating current token. */
+    private AttributeSource scratch;
+    private CharTermAttribute scratchTerm;
+    private OffsetAttribute scratchOffset;
+    private PositionIncrementAttribute scratchPosInc;
 
     /** Ellisions prefix */
     private static final CharArrayMap<char[]> PREFIX = new CharArrayMap<>(30, false);
@@ -100,32 +115,31 @@ public class FrenchCliticSplitFilter extends TokenFilter
     /** Hyphen suffixes */
     private static final CharArrayMap<char[]> SUFFIX = new CharArrayMap<>(30, false);
     static {
-
-        SUFFIX.put("-ce", "ce".toCharArray()); // Serait-ce ?
-        SUFFIX.put("-ci", null); // cette année-ci, ceux-ci.
-        SUFFIX.put("-elle", "elle".toCharArray()); // dit-elle.
+        SUFFIX.put("-ce", "ce".toCharArray()); // Serait-ce ?
+        SUFFIX.put("-ci", null);               // cette année-ci, ceux-ci.
+        SUFFIX.put("-elle", "elle".toCharArray());   // dit-elle.
         SUFFIX.put("-elles", "elles".toCharArray()); // disent-elles.
-        SUFFIX.put("-en", "en".toCharArray()); // parlons-en.
-        SUFFIX.put("-eux", "eux".toCharArray()); // 
-        SUFFIX.put("-il", "il".toCharArray()); // dit-il.
-        SUFFIX.put("-ils", "ils".toCharArray()); // disent-ils.
-        SUFFIX.put("-je", "je".toCharArray()); // dis-je.
-        SUFFIX.put("-la", "la".toCharArray()); // prends-la !
-        SUFFIX.put("-là", null); // cette année-là, ceux-là.
-        SUFFIX.put("-le", "le".toCharArray()); // rends-le !
-        SUFFIX.put("-les", "les".toCharArray()); // rends-les !
-        SUFFIX.put("-leur", "leur".toCharArray()); // rends-leur !
-        SUFFIX.put("-lui", "lui".toCharArray()); // rends-leur !
-        SUFFIX.put("-me", "me".toCharArray()); // laissez-moi !
-        SUFFIX.put("-moi", "moi".toCharArray()); // laissez-moi !
-        SUFFIX.put("-nous", "nous".toCharArray()); // laisse-nous.
-        SUFFIX.put("-on", "on".toCharArray()); // laisse-nous.
-        SUFFIX.put("-t", null); // habite-t-il ici ?
-        SUFFIX.put("-te", "te".toCharArray()); // 
-        SUFFIX.put("-toi", "toi".toCharArray()); // 
-        SUFFIX.put("-tu", "tu".toCharArray()); // viendras-tu ?
-        SUFFIX.put("-vous", "vous".toCharArray()); // voulez-vous ?
-        SUFFIX.put("-y", "y".toCharArray()); // allons-y.
+        SUFFIX.put("-en", "en".toCharArray());       // parlons-en.
+        SUFFIX.put("-eux", "eux".toCharArray());
+        SUFFIX.put("-il", "il".toCharArray());       // dit-il.
+        SUFFIX.put("-ils", "ils".toCharArray());     // disent-ils.
+        SUFFIX.put("-je", "je".toCharArray());       // dis-je.
+        SUFFIX.put("-la", "la".toCharArray());       // prends-la !
+        SUFFIX.put("-là", null);                     // cette année-là, ceux-là.
+        SUFFIX.put("-le", "le".toCharArray());       // rends-le !
+        SUFFIX.put("-les", "les".toCharArray());     // rends-les !
+        SUFFIX.put("-leur", "leur".toCharArray());   // rends-leur !
+        SUFFIX.put("-lui", "lui".toCharArray());     // rends-lui !
+        SUFFIX.put("-me", "me".toCharArray());
+        SUFFIX.put("-moi", "moi".toCharArray());     // laissez-moi !
+        SUFFIX.put("-nous", "nous".toCharArray());   // laisse-nous.
+        SUFFIX.put("-on", "on".toCharArray());       // dit-on.
+        SUFFIX.put("-t", null);                      // habite-t-il ici ?
+        SUFFIX.put("-te", "te".toCharArray());
+        SUFFIX.put("-toi", "toi".toCharArray());
+        SUFFIX.put("-tu", "tu".toCharArray());       // viendras-tu ?
+        SUFFIX.put("-vous", "vous".toCharArray());   // voulez-vous ?
+        SUFFIX.put("-y", "y".toCharArray());         // allons-y.
     }
 
     public FrenchCliticSplitFilter(TokenStream input) {
@@ -135,16 +149,19 @@ public class FrenchCliticSplitFilter extends TokenFilter
     @Override
     public final boolean incrementToken() throws IOException
     {
+        ensureQueue();
+
         // Emit buffered tokens first
-        if (!deque.isEmpty()) {
-            deque.removeFirst(termAtt, offsetAtt);
+        if (!queue.isEmpty()) {
+            clearAttributes();
+            queue.removeFirst(this);
         }
         else {
             if (!input.incrementToken()) return false;
         }
 
         // do not try to split in XML tags
-        if (flagsAtt.getFlags() == XML.code) {
+        if (posAtt.getPos() == XML.code) {
             return true;
         }
 
@@ -173,13 +190,14 @@ public class FrenchCliticSplitFilter extends TokenFilter
                 final char[] value = PREFIX.get(buf, 0, prefixLen);
                 if (value != null) {
                     // keep term after prefix for next call
-                    deque.addLast(
+                    bufferLastFromCurrent(
                         buf,
                         prefixLen,
                         len - prefixLen,
                         startOffset + prefixLen,
                         offsetAtt.endOffset()
                     );
+
                     // send the prefix
                     termAtt.copyBuffer(value, 0, value.length);
                     offsetAtt.setOffset(startOffset, startOffset + prefixLen);
@@ -195,7 +213,7 @@ public class FrenchCliticSplitFilter extends TokenFilter
                     final char[] value = SUFFIX.get(buf, hyphLast, suffixLen);
 
                     if (value != null) {
-                        deque.addFirst(
+                        bufferFirstFromCurrent(
                             value,
                             0,
                             value.length,
@@ -214,7 +232,47 @@ public class FrenchCliticSplitFilter extends TokenFilter
             return true; // term is OK like that
         }
 
-        throw new IllegalStateException("FilterAposHyphenFr: exceeded MAX_STEPS, deque=" + deque);
+        throw new IllegalStateException("FilterAposHyphenFr: exceeded MAX_STEPS, queue=" + queue);
+    }
+
+    /**
+     * Buffer a token built from the current token state (all attributes copied),
+     * then overriding term and offsets.
+     *
+     * Important: position increment is normalized to 1 so that gaps from the original token
+     * are not duplicated on generated tokens.
+     */
+    private void bufferLastFromCurrent(final char[] buf, final int off, final int len, final int startOffset, final int endOffset) {
+        this.copyTo(scratch);
+        scratchTerm.copyBuffer(buf, off, len);
+        scratchOffset.setOffset(startOffset, endOffset);
+        scratchPosInc.setPositionIncrement(1);
+        queue.addLast(scratch);
+    }
+
+    private void bufferFirstFromCurrent(final char[] buf, final int off, final int len, final int startOffset, final int endOffset) {
+        this.copyTo(scratch);
+        scratchTerm.copyBuffer(buf, off, len);
+        scratchOffset.setOffset(startOffset, endOffset);
+        scratchPosInc.setPositionIncrement(1);
+        queue.addFirst(scratch);
+    }
+
+    private void ensureQueue() {
+        if (queue != null) return;
+
+        queue = new TokenStateQueue(
+            QUEUE_CAPACITY,
+            4 * QUEUE_CAPACITY,
+            TokenStateQueue.OverflowPolicy.GROW,
+            this
+        );
+
+        scratch = this.cloneAttributes();
+        scratch.clearAttributes();
+        scratchTerm = scratch.getAttribute(CharTermAttribute.class);
+        scratchOffset = scratch.getAttribute(OffsetAttribute.class);
+        scratchPosInc = scratch.getAttribute(PositionIncrementAttribute.class);
     }
 
     private static int firstAposIndexAndNormalize(final char[] buf, final int len) {
@@ -245,6 +303,6 @@ public class FrenchCliticSplitFilter extends TokenFilter
     public void reset() throws IOException
     {
         super.reset();
-        deque.clear(); // add clear() to AttLinkedList (recommended)
+        if (queue != null) queue.clear();
     }
 }
