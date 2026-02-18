@@ -1,9 +1,10 @@
 /*
  * Alix, A Lucene Indexer for XML documents.
  * 
+ * Copyright 2026 Frédéric Glorieux <frederic.glorieux@fictif.org> & Unige
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
- * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
  * Alix is a java library to index and search XML text documents
  * with Lucene https://lucene.apache.org/core/
@@ -30,175 +31,391 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.github.oeuvres.alix.lucene.analysis;
+
+import java.util.NoSuchElementException;
 
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.AttributeSource;
 
-import com.github.oeuvres.alix.util.Roller;
-
 /**
- * A fixed size collection of lucene {@link AttributeSource}, 
- * allowing insertion and removal at both ends,
- * a bit like a {@link java.util.Deque}. This class is used in the context of 
- * a {@link org.apache.lucene.analysis.TokenFilter}, to record states needed
- * by forward lookup or backward lookup (ex: concatenation of expressions).
- * 
- * This deque do not inherits from
- * {@link java.util.Collection} framework, because in the context of a
- * lucene analysis process, values of attributes like the actual token are volatile and needs to be copied
- * {@link AttributeSource#copyTo(AttributeSource)} else where to be kept.
+ * A ring-buffer of Lucene {@link AttributeSource} snapshots ("token states") for {@link org.apache.lucene.analysis.TokenStream}
+ * processing.
+ *
+ * <p>Intended use: in a {@link org.apache.lucene.analysis.TokenFilter} that needs a small look-ahead / look-behind window
+ * (e.g. multi-word expression detection, token compounding, local rewrite rules).
+ *
+ * <h2>Design</h2>
+ * <ul>
+ *   <li>The queue owns a fixed number of pre-allocated {@link AttributeSource} slots, created via
+ *       {@link AttributeSource#cloneAttributes()} from a model {@link AttributeSource}.</li>
+ *   <li>Capturing a token state uses {@link AttributeSource#copyTo(AttributeSource)} into an existing slot, avoiding
+ *       per-token {@link AttributeSource.State} allocations.</li>
+ *   <li>Slots are reused; references returned by {@link #get(int)}, {@link #peekFirst()} and {@link #peekLast()}
+ *       are internal views that will be overwritten by subsequent pushes once that slot is reused.</li>
+ * </ul>
+ *
+ * <h2>Initialization timing</h2>
+ * <p>The constructor requires a model {@link AttributeSource} (typically {@code this} from a {@link org.apache.lucene.analysis.TokenFilter}).
+ * For maximum safety with Lucene's attribute plumbing, instantiate this queue only once your filter has added all attributes it will use.
+ * A conservative pattern is lazy creation on the first {@code incrementToken()} call.</p>
+ *
+ * <h2>Overflow</h2>
+ * <p>When capacity is reached, the {@link OverflowPolicy} determines whether to throw, drop, or grow (up to {@code maxCapacity}).</p>
  */
-public class TokenStateQueue extends Roller
-{
-    /** Data of the sliding window */
-    private AttributeSource[] data;
+public final class TokenStateQueue {
+    /**
+     * Policy applied when pushing into a full queue.
+     */
+    public enum OverflowPolicy {
+        /** Throw {@link IllegalStateException}. */
+        THROW,
+        /** Drop the oldest element (head) and accept the new one (sliding window). */
+        DROP_OLDEST,
+        /** Ignore the new element (keep current contents). */
+        DROP_NEWEST,
+        /**
+         * Grow the internal ring buffer (typically doubling) up to {@code maxCapacity}.
+         * If {@code maxCapacity} is reached, throws {@link IllegalStateException}.
+         */
+        GROW
+    }
+
+    private final AttributeSource model;
+    private final OverflowPolicy overflowPolicy;
+    private final int maxCapacity;
+
+    private AttributeSource[] ring; // slots
+    private int head;               // physical index of logical 0
+    private int size;               // number of valid elements
 
     /**
-     * Constructor, fixed data size.
-     * @param size number of elements of this roll.
-     * @param atts clonable attributes
+     * Create a fixed-capacity queue that throws on overflow.
+     *
+     * @param capacity initial and maximum capacity (number of token states)
+     * @param model attribute model used to create compatible slots (usually {@code this} in a TokenFilter)
      */
-    public TokenStateQueue(final int size, AttributeSource atts) {
-        super(size);
-        data = new AttributeSource[size];
-        for (int i = 0; i < size; i++) {
-            data[i] = atts.cloneAttributes();
-        }
+    public TokenStateQueue(final int capacity, final AttributeSource model) {
+        this(capacity, capacity, OverflowPolicy.THROW, model);
     }
 
     /**
-     * Add attributes to queue.
-     * @param source Attributes to add
+     * Create a queue with an overflow policy and (optional) growth.
+     *
+     * @param initialCapacity initial capacity (number of token states)
+     * @param maxCapacity hard limit for growth (must be &gt;= initialCapacity)
+     * @param overflowPolicy overflow behavior when the queue is full
+     * @param model attribute model used to create compatible slots (usually {@code this} in a TokenFilter)
      */
-    public void addLast(AttributeSource source)
-    {
-        if (size >= capacity) {
-            throw new ArrayIndexOutOfBoundsException("size = capacity = " + (size) + ", impossible to add more");
+    public TokenStateQueue(final int initialCapacity, final int maxCapacity, final OverflowPolicy overflowPolicy, final AttributeSource model) {
+        if (model == null) throw new NullPointerException("model must not be null");
+        if (initialCapacity < 1) throw new IllegalArgumentException("initialCapacity must be >= 1");
+        if (maxCapacity < initialCapacity) throw new IllegalArgumentException("maxCapacity must be >= initialCapacity");
+        if (overflowPolicy == null) throw new NullPointerException("overflowPolicy must not be null");
+
+        this.model = model;
+        this.overflowPolicy = overflowPolicy;
+        this.maxCapacity = maxCapacity;
+
+        initRing(initialCapacity);
+    }
+
+    /**
+     * @return current number of stored token states.
+     */
+    public int size() {
+        return size;
+    }
+
+    /**
+     * @return {@code true} if no token state is stored.
+     */
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    /**
+     * @return current ring capacity.
+     */
+    public int capacity() {
+        return ring.length;
+    }
+
+    /**
+     * @return hard maximum capacity if {@link OverflowPolicy#GROW} is used.
+     */
+    public int maxCapacity() {
+        return maxCapacity;
+    }
+
+    /**
+     * Remove all stored states (does not change capacity).
+     */
+    public void clear() {
+        head = 0;
+        size = 0;
+    }
+
+    /**
+     * Capture {@code source} into a new element at the end of the queue.
+     *
+     * <p>Typical usage inside {@code incrementToken()} is {@code queue.addLast(this)} after reading a token from input.</p>
+     *
+     * @param source attribute source to snapshot
+     */
+    public void addLast(final AttributeSource source) {
+        if (source == null) throw new NullPointerException("source must not be null");
+        if (size == ring.length) {
+            if (!handleOverflowForPush()) return; // DROP_NEWEST case
         }
-        source.copyTo(data[pointer(size)]);
+        final int slot = physicalIndex(size);
+        source.copyTo(ring[slot]);
         size++;
     }
 
-
     /**
-     * Copy attributes from a position to the specified target, to change indexation state.
-     * @param target The attributes where copy to
-     * @param index The stored position from which copy
+     * Capture {@link #model} into a new element at the end of the queue.
+     * Convenience overload for the common case where the queue model is the producer.
      */
-    public void copyTo(AttributeSource target, final int index)
-    {
-        if (size < 1) {
-            throw new ArrayIndexOutOfBoundsException("size=0, no element to copy");
-        }
-        if (index < 0 || index >= size) {
-            throw new ArrayIndexOutOfBoundsException("position=" + index + ", not in [0," + size +"[");
-        }
-        data[pointer(index)].copyTo(target);
+    public void addLast() {
+        addLast(model);
     }
 
     /**
-     * Give a pointer on attributes of a token.
-     * Contract similar to {@link java.util.List#get(int)}.
-     * 
-     * @return attributes stored
+     * Capture {@code source} into a new element at the front of the queue.
+     *
+     * @param source attribute source to snapshot
      */
-    public AttributeSource get(final int index)
-    {
-        if (size < 1) {
-            throw new ArrayIndexOutOfBoundsException("size=0, no element to return");
+    public void addFirst(final AttributeSource source) {
+        if (source == null) throw new NullPointerException("source must not be null");
+        if (size == ring.length) {
+            if (!handleOverflowForUnshift()) return; // DROP_NEWEST case (interpreted as "ignore new")
         }
-        if (index < 0) {
-            throw new ArrayIndexOutOfBoundsException("index=" + index + " < 0");
-        }
-        if (index >= size) {
-            throw new ArrayIndexOutOfBoundsException("index=" + index + " >= size=" + size);
-        }
-        return data[pointer(index)];
+        head = dec(head, ring.length);
+        source.copyTo(ring[head]);
+        size++;
     }
 
     /**
-     * Give a pointer on the first attributes of the queue.
-     * @return attributes stored
+     * Capture {@link #model} into a new element at the front of the queue.
      */
-    public AttributeSource peekFirst()
-    {
-        if (size < 1) {
-            throw new ArrayIndexOutOfBoundsException("size = 0, no element to return");
-        }
-        return data[pointer(0)];
+    public void addFirst() {
+        addFirst(model);
     }
 
     /**
-     * Copy the first attributes in the queue to the specified target, to change indexation state.
-     * @param target destination where to copy attribute values
+     * Return an internal view of the stored state at {@code index} (0 = first).
+     *
+     * <p><b>Warning:</b> the returned {@link AttributeSource} is owned by this queue. Its content will be overwritten
+     * when the corresponding slot is reused by future pushes.</p>
+     *
+     * @param index logical index in {@code [0, size)}
+     * @return internal attribute source view
      */
-    public void peekFirst(AttributeSource target)
-    {
-        if (size < 1) {
-            throw new ArrayIndexOutOfBoundsException("size = 0, no element to copy");
-        }
-        data[pointer(0)].copyTo(target);
+    public AttributeSource get(final int index) {
+        checkIndex(index);
+        return ring[physicalIndex(index)];
     }
 
     /**
-     * Remove first element in the roller if exists,
-     * contract similar to {@link java.util.Deque#removeFirst()}.
-     * 
+     * Copy the stored state at {@code index} into {@code target}.
+     *
+     * @param target destination attribute source
+     * @param index logical index in {@code [0, size)}
      */
-    public void removeFirst()
-    {
-        if (size < 1) {
-            throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
-        }
+    public void restoreTo(final AttributeSource target, final int index) {
+        if (target == null) throw new NullPointerException("target must not be null");
+        checkIndex(index);
+        ring[physicalIndex(index)].copyTo(target);
+    }
+
+    /**
+     * @return internal view of the first stored state, or {@code null} if empty.
+     */
+    public AttributeSource peekFirst() {
+        return (size == 0) ? null : ring[head];
+    }
+
+    /**
+     * @return internal view of the last stored state, or {@code null} if empty.
+     */
+    public AttributeSource peekLast() {
+        return (size == 0) ? null : ring[physicalIndex(size - 1)];
+    }
+
+    /**
+     * Remove the first element.
+     *
+     * @throws NoSuchElementException if empty
+     */
+    public void removeFirst() {
+        if (size == 0) throw new NoSuchElementException("empty");
+        head = inc(head, ring.length);
         size--;
-        zero(pointer(1));
     }
 
     /**
-     * Remove first element in the queue and copy its values to target,
-     * contract similar to {@link java.util.Deque#removeFirst()}.
-     * 
-     * @param target destination where to copy attribute values
+     * Remove the first element and copy it into {@code target}.
+     *
+     * @param target destination attribute source
+     * @throws NoSuchElementException if empty
      */
-    public void removeFirst(AttributeSource target)
-    {
-        if (size < 1) {
-            throw new ArrayIndexOutOfBoundsException("size = 0, no element to remove");
-        }
-        data[pointer(0)].copyTo(target);
+    public void removeFirst(final AttributeSource target) {
+        if (target == null) throw new NullPointerException("target must not be null");
+        if (size == 0) throw new NoSuchElementException("empty");
+        ring[head].copyTo(target);
+        head = inc(head, ring.length);
         size--;
-        zero(pointer(1));
     }
-    
 
     /**
-     * Set value by position. Will never overflow the roller.
-     * 
-     * @param source element to store at the position
-     * @param position index where to set the value
+     * Remove the last element.
+     *
+     * @throws NoSuchElementException if empty
      */
-    public void set(AttributeSource source, final int position)
-    {
-        source.copyTo(data[pointer(position)]);
+    public void removeLast() {
+        if (size == 0) throw new NoSuchElementException("empty");
+        size--;
+    }
+
+    /**
+     * Remove the last element and copy it into {@code target}.
+     *
+     * @param target destination attribute source
+     * @throws NoSuchElementException if empty
+     */
+    public void removeLast(final AttributeSource target) {
+        if (target == null) throw new NullPointerException("target must not be null");
+        if (size == 0) throw new NoSuchElementException("empty");
+        ring[physicalIndex(size - 1)].copyTo(target);
+        size--;
     }
 
     @Override
-    public String toString()
-    {
-        StringBuilder sb = new StringBuilder();
-        sb.append("[");
+    public String toString() {
+        final StringBuilder sb = new StringBuilder(64);
+        sb.append('[');
         for (int i = 0; i < size; i++) {
             if (i > 0) sb.append(", ");
-            if (data[pointer(i)].hasAttribute(CharTermAttribute.class)) {
-                sb.append(data[pointer(i)].getAttribute(CharTermAttribute.class));
-            }
-            else {
-                sb.append(data[pointer(i)]);
+            final AttributeSource atts = ring[physicalIndex(i)];
+            if (atts.hasAttribute(CharTermAttribute.class)) {
+                sb.append(atts.getAttribute(CharTermAttribute.class));
+            } else {
+                sb.append(atts);
             }
         }
-        sb.append("]");
+        sb.append(']');
         return sb.toString();
     }
 
+    // ----------------- internals -----------------
+
+    private void initRing(final int capacity) {
+        ring = new AttributeSource[capacity];
+        // Each slot must be compatible with model.copyTo(slot).
+        for (int i = 0; i < capacity; i++) {
+            ring[i] = model.cloneAttributes();
+            // Optional: clear default values (keeps impl compatibility; content is overwritten on capture anyway).
+            ring[i].clearAttributes();
+        }
+        head = 0;
+        size = 0;
+    }
+
+    /**
+     * Handle overflow for addLast/addLast(model).
+     *
+     * @return true if caller should proceed to store the new element, false if it should be ignored
+     */
+    private boolean handleOverflowForPush() {
+        switch (overflowPolicy) {
+            case THROW:
+                throw new IllegalStateException("TokenStateQueue is full (capacity=" + ring.length + ")");
+            case DROP_NEWEST:
+                return false;
+            case DROP_OLDEST:
+                // sliding window: evict head
+                head = inc(head, ring.length);
+                size--; // make room
+                return true;
+            case GROW:
+                growOrThrow();
+                return true;
+            default:
+                throw new AssertionError("Unknown overflowPolicy=" + overflowPolicy);
+        }
+    }
+
+    /**
+     * Handle overflow for addFirst/addFirst(model).
+     *
+     * @return true if caller should proceed to store the new element, false if it should be ignored
+     */
+    private boolean handleOverflowForUnshift() {
+        switch (overflowPolicy) {
+            case THROW:
+                throw new IllegalStateException("TokenStateQueue is full (capacity=" + ring.length + ")");
+            case DROP_NEWEST:
+                return false;
+            case DROP_OLDEST:
+                // if we unshift into a full buffer, "drop oldest" means drop the current last
+                size--; // discard tail
+                return true;
+            case GROW:
+                growOrThrow();
+                return true;
+            default:
+                throw new AssertionError("Unknown overflowPolicy=" + overflowPolicy);
+        }
+    }
+
+    private void growOrThrow() {
+        final int oldCap = ring.length;
+        if (oldCap >= maxCapacity) {
+            throw new IllegalStateException("TokenStateQueue reached maxCapacity=" + maxCapacity);
+        }
+        int newCap = oldCap << 1;
+        if (newCap < 0) newCap = maxCapacity; // overflow guard
+        if (newCap > maxCapacity) newCap = maxCapacity;
+
+        final AttributeSource[] newRing = new AttributeSource[newCap];
+
+        // Reorder existing elements contiguously at [0..size)
+        for (int i = 0; i < size; i++) {
+            newRing[i] = ring[physicalIndex(i)];
+        }
+
+        // Allocate new slots for [size..newCap)
+        for (int i = size; i < newCap; i++) {
+            newRing[i] = model.cloneAttributes();
+            newRing[i].clearAttributes();
+        }
+
+        ring = newRing;
+        head = 0;
+    }
+
+    private int physicalIndex(final int logicalIndex) {
+        int p = head + logicalIndex;
+        final int cap = ring.length;
+        if (p >= cap) p -= cap;
+        return p;
+    }
+
+    private static int inc(final int idx, final int mod) {
+        final int x = idx + 1;
+        return (x == mod) ? 0 : x;
+    }
+
+    private static int dec(final int idx, final int mod) {
+        final int x = idx - 1;
+        return (x < 0) ? (mod - 1) : x;
+    }
+
+    private void checkIndex(final int index) {
+        if (index < 0 || index >= size) {
+            throw new IndexOutOfBoundsException("index=" + index + " not in [0," + size + ")");
+        }
+    }
 }
