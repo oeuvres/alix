@@ -61,7 +61,7 @@ public class AnalyzerCloud extends Analyzer
         // fr split on ’ and -
         ts = new FilterAposHyphenFr(ts);
         // pos tagging before lemmatize
-        ts = new PosNlpFilter(ts);
+        ts = new PosFilter(ts);
         // provide lemma+pos
         ts = new FilterLemmatize(ts);
         // group compounds after lemmatization for verbal compounds
