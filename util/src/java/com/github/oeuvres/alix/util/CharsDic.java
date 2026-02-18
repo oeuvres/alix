@@ -36,13 +36,13 @@ import java.util.Arrays;
 
 /**
  * A dependency-free, {@link org.apache.lucene.util.BytesRefHash BytesRefHash}-style hash table for
- * {@code char[]} keys. Same performance (memory and speed) as a Lucene
+ * {@code char[]} terms. Same performance (memory and speed) as a Lucene
  * {@link org.apache.lucene.analysis.CharArrayMap CharArrayMap}.
  *
  * <p>Semantics mirror Lucene's {@link org.apache.lucene.util.BytesRefHash BytesRefHash}:</p>
  * <ul>
- *   <li>{@link #add(char[], int, int)} returns the 0-based ordinal (ord) if the key was not present;
- *       otherwise it returns {@code -(ord) - 1} for an existing key.</li>
+ *   <li>{@link #add(char[], int, int)} returns the 0-based ordinal (ord) if the term was not present;
+ *       otherwise it returns {@code -(ord) - 1} for an existing term.</li>
  *   <li>{@link #find(char[], int, int)} returns {@code ord} if present, or {@code -1} if absent.</li>
  * </ul>
  *
@@ -50,19 +50,19 @@ import java.util.Arrays;
  * <ul>
  *   <li>Open addressing with linear probing; table capacity is always a power of two (fast masking).</li>
  *   <li>Load factor ~0.75; automatic rehash on growth. Ords remain stable across rehash.</li>
- *   <li>Keys are copied and stored contiguously in a growing {@code char} slab.</li>
+ *   <li>Terms are copied and stored contiguously in a growing {@code char} slab.</li>
  *   <li>Per-ord metadata store offset, length, and the 32-bit hash. Length is stored as an
- *       <em>unsigned</em> 16-bit value (supports key lengths 0..65535).</li>
+ *       <em>unsigned</em> 16-bit value (supports term lengths 0..65535).</li>
  *   <li>Lookup uses: (1) slot check, (2) length check, (3) 16-bit fingerprint derived from the
  *       stored 32-bit hash (top 16 bits), then (4) a {@code memcmp}-style verification against the slab.</li>
- *   <li>Hash function: Murmur3-32 over UTF-16 code units (robust distribution for short Latin keys).</li>
+ *   <li>Hash function: Murmur3-32 over UTF-16 code units (robust distribution for short Latin terms).</li>
  * </ul>
  *
  * <p>Space/time trade-offs:</p>
  * <ul>
  *   <li>Compared to keeping a dedicated 16-bit fingerprint array per slot, this implementation saves
  *       {@code 2 * capacity} bytes, but fingerprint checks may require an additional random load from
- *       {@code keyHash[ord]} when length matches.</li>
+ *       {@code termHash[ord]} when length matches.</li>
  *   <li>Use {@link #trimToSize()} after bulk build to reduce slack in metadata arrays, the slab, and
  *       (optionally) the hash table itself.</li>
  * </ul>
@@ -88,33 +88,33 @@ public final class CharsDic
     // Per-ord metadata packed in one array to reduce random loads on hits.
     // meta[ord] = [ off:32 | len:16 | unused:16 ]  (len stored unsigned in low 16 bits)
     private long[] meta;
-    private int[] keyHash; // kept for rehash (and optional diagnostics); not used on hot path
+    private int[] termHash; // kept for rehash (and optional diagnostics); not used on hot path
     
     
     private static final float LOAD_FACTOR = 0.75f;
-    private static final int MAX_KEY_LENGTH = 0xFFFF;
+    private static final int MAX_TERM_LENGTH = 0xFFFF;
     
-    // Key storage
+    // Term storage
     private char[] slab;
     private int slabUsed = 0;
     
     // Sizes
-    private int sizeOrds = 0; // number of unique keys
+    private int sizeOrds = 0; // number of unique terms
     private int occupied = 0; // filled slots in table
-    // Maximum key length ever added (monotonic).
-    private int maxKeyLen = 0;
+    // Maximum term length ever added (monotonic).
+    private int maxTermLen = 0;
 
     // ---- Public API ----------------------------------------------------------
 
 
     /**
-     * Constructs the hash with an expected number of unique keys.
+     * Constructs the hash with an expected number of unique terms.
      *
      * <p>The table's initial capacity is chosen to keep the load factor <= 0.75 for the expected
-     * number of unique keys. The internal key-slab and per-ord metadata arrays are also sized
+     * number of unique terms. The internal term-slab and per-ord metadata arrays are also sized
      * heuristically based on {@code expectedSize} and will grow as needed.
      *
-     * @param expectedSize an estimate of the number of distinct keys to be added (must be >= 1; values <= 0 are treated as 1)
+     * @param expectedSize an estimate of the number of distinct terms to be added (must be >= 1; values <= 0 are treated as 1)
      */
     public CharsDic(int expectedSize)
     {
@@ -130,36 +130,36 @@ public final class CharsDic
         // ord metadata
         int metaCap = Math.max(8, expectedSize);
         meta = new long[metaCap];
-        keyHash = new int[metaCap];
+        termHash = new int[metaCap];
 
         // Heuristic: small average token size; the slab grows geometrically.
         slab = new char[Math.max(16, expectedSize * 4)];
     }
 
     /**
-     * Adds the specified key if absent, or returns the existing ordinal if present.
+     * Adds the specified term if absent, or returns the existing ordinal if present.
      *
      * <p>This method implements the {@code BytesRefHash.add} return contract:
      * <ul>
-     *   <li>If the key is new, returns its assigned 0-based ordinal (ord >= 0).</li>
-     *   <li>If the key already exists, returns {@code -(ord) - 1} (a negative encoding of the existing ord).</li>
+     *   <li>If the term is new, returns its assigned 0-based ordinal (ord >= 0).</li>
+     *   <li>If the term already exists, returns {@code -(ord) - 1} (a negative encoding of the existing ord).</li>
      * </ul>
      *
      * <p>No removal is supported. Ords are stable across table resizes.
      *
-     * @param key the key array (UTF-16 code units)
-     * @param off start offset within {@code key} (inclusive)
+     * @param term the term array (UTF-16 code units)
+     * @param off start offset within {@code term} (inclusive)
      * @param len number of {@code char} code units to read
-     * @return {@code ord} if the key was added; otherwise {@code -(ord)-1} if the key already existed
-     * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code key}
+     * @return {@code ord} if the term was added; otherwise {@code -(ord)-1} if the term already existed
+     * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code term}
      * @throws IllegalArgumentException if {@code len} is greater than 65535
      */
-    public int add(char[] key, int off, int len)
+    public int add(char[] term, int off, int len)
     {
-        checkBounds(key, off, len);
-        if (len > MAX_KEY_LENGTH) throw new IllegalArgumentException("key length > 65535: " + len);
+        checkBounds(term, off, len);
+        if (len > MAX_TERM_LENGTH) throw new IllegalArgumentException("term length > 65535: " + len);
 
-        final int h = hashCode(key, off, len);
+        final int h = hashCode(term, off, len);
         final short f = (short) (h >>> 16);
         int i = h & mask;
 
@@ -169,11 +169,11 @@ public final class CharsDic
                 final int newOrd = sizeOrds++; // 0-based
                 ensureOrdCapacity(sizeOrds);
 
-                final int base = appendToSlab(key, off, len);
+                final int base = appendToSlab(term, off, len);
                 meta[newOrd] = packMeta(base, len);
-                keyHash[newOrd] = h;
+                termHash[newOrd] = h;
 
-                if (len > maxKeyLen) maxKeyLen = len;
+                if (len > maxTermLen) maxTermLen = len;
                 
                 table[i] = newOrd;
                 fp16[i] = f;
@@ -182,10 +182,10 @@ public final class CharsDic
                 return newOrd;
             }
 
-         // Probe rejection in table order: fp16 then len then memcmp
+            // Probe rejection in table order: fp16 then len then memcmp
             if (fp16[i] == f) {
                 final long m = meta[ord];
-                if (metaLen(m) == len && equalsAt(ord, key, off, len)) {
+                if (metaLen(m) == len && equalsAt(ord, term, off, len)) {
                     return -ord - 1;
                 }
             }
@@ -194,20 +194,20 @@ public final class CharsDic
     }
 
     /**
-     * Finds the ordinal for the specified key.
+     * Finds the ordinal for the specified term.
      *
-     * @param key the key array (UTF-16 code units)
-     * @param off start offset within {@code key} (inclusive)
+     * @param term the term array (UTF-16 code units)
+     * @param off start offset within {@code term} (inclusive)
      * @param len number of {@code char} code units to read
      * @return the 0-based ordinal if present; otherwise {@code -1}
-     * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code key}
+     * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code term}
      */
-    public int find(char[] key, int off, int len)
+    public int find(char[] term, int off, int len)
     {
-        checkBounds(key, off, len);
-        if (len > MAX_KEY_LENGTH) return -1;
+        checkBounds(term, off, len);
+        if (len > MAX_TERM_LENGTH) return -1;
 
-        final int h = hashCode(key, off, len);
+        final int h = hashCode(term, off, len);
         final short f = (short) (h >>> 16);
 
         // 2) Main table
@@ -218,7 +218,7 @@ public final class CharsDic
 
             if (fp16[i] == f) {
                 final long m = meta[ord];
-                if (metaLen(m) == len && equalsAt(ord, key, off, len)) {
+                if (metaLen(m) == len && equalsAt(ord, term, off, len)) {
                     return ord;
                 }
             }
@@ -236,10 +236,10 @@ public final class CharsDic
     }
     
     /**
-     * Copies the key identified by {@code ord} into {@code dst}, starting at index 0.
+     * Copies the term identified by {@code ord} into {@code dst}, starting at index 0.
      *
      * <p>This method is the char[] analogue of Lucene's {@code BytesRefHash.get(int, BytesRef)}:
-     * it provides safe, allocation-free access to the stored key material without exposing the
+     * it provides safe, allocation-free access to the stored term material without exposing the
      * internal slab.</p>
      *
      * <p>Usage pattern:</p>
@@ -251,8 +251,8 @@ public final class CharsDic
      *
      * <p>Capacity rule:</p>
      * <ul>
-     *   <li>If {@code dst.length < keyLength(ord)}, this method throws an {@link IllegalArgumentException}.</li>
-     *   <li>Call {@link #keyLength(int)} first to size your scratch buffer if needed.</li>
+     *   <li>If {@code dst.length < termLength(ord)}, this method throws an {@link IllegalArgumentException}.</li>
+     *   <li>Call {@link #termLength(int)} first to size your scratch buffer if needed.</li>
      * </ul>
      *
      * <p>Thread-safety:</p>
@@ -261,9 +261,9 @@ public final class CharsDic
      *   <li>If you call {@link #add(char[], int, int)} concurrently, external synchronization is required.</li>
      * </ul>
      *
-     * @param ord the 0-based ordinal of the key (0 <= ord < {@link #size()})
-     * @param dst destination array to receive the key, starting at index 0
-     * @return the key length (number of {@code char} code units copied)
+     * @param ord the 0-based ordinal of the term (0 <= ord < {@link #size()})
+     * @param dst destination array to receive the term, starting at index 0
+     * @return the term length (number of {@code char} code units copied)
      * @throws IllegalArgumentException if {@code ord} is out of range or {@code dst} is too small
      * @throws NullPointerException if {@code dst} is null
      */
@@ -283,14 +283,14 @@ public final class CharsDic
 
     
     /**
-     * Returns the key identified by {@code ord} as a {@link String}.
+     * Returns the term identified by {@code ord} as a {@link String}.
      *
      * <p>This is a convenience method intended for debugging, logging, diagnostics,
      * and tests. It necessarily allocates a new String (and may copy characters),
      * so it should not be used on hot paths.</p>
      *
-     * @param ord the 0-based ordinal of the key (0 <= ord < {@link #size()})
-     * @return a newly created String containing the key characters
+     * @param ord the 0-based ordinal of the term (0 <= ord < {@link #size()})
+     * @return a newly created String containing the term characters
      * @throws IllegalArgumentException if {@code ord} is out of range
      */
     public String getAsString(final int ord)
@@ -303,48 +303,48 @@ public final class CharsDic
     }
 
     /**
-     * Returns the length (in {@code char} code units) of the key identified by the given ordinal.
+     * Returns the length (in {@code char} code units) of the term identified by the given ordinal.
      *
-     * @param ord the 0-based ordinal of the key (0 <= ord &lt; {@link #size()})
-     * @return the number of {@code char} code units of the key at {@link #keyOffset(int)}
+     * @param ord the 0-based ordinal of the term (0 <= ord &lt; {@link #size()})
+     * @return the number of {@code char} code units of the term at {@link #termOffset(int)}
      * @throws IllegalArgumentException if {@code ord} is out of range
      */
-    public int keyLength(int ord)
+    public int termLength(int ord)
     {
         checkOrd(ord);
         return (int) meta[ord] & 0xFFFF;
     }
 
     /**
-     * Returns the starting offset of the key identified by the given ordinal within the slab.
+     * Returns the starting offset of the term identified by the given ordinal within the slab.
      *
-     * @param ord the 0-based ordinal of the key (0 <= ord &lt; {@link #size()})
+     * @param ord the 0-based ordinal of the term (0 <= ord &lt; {@link #size()})
      * @return the starting offset within {@link #slab()}
      * @throws IllegalArgumentException if {@code ord} is out of range
      */
-    public int keyOffset(int ord)
+    public int termOffset(int ord)
     {
         checkOrd(ord);
         return (int) (meta[ord] >>> 32);
     }
     
     /**
-     * Returns the maximum key length (in {@code char} code units) ever added to this dictionary.
+     * Returns the maximum term length (in {@code char} code units) ever added to this dictionary.
      *
      * <p>This is intended to pre-size reusable scratch buffers, e.g. in TokenFilter code, so that
      * calls to {@link #get(int, char[])} never need to grow the buffer.</p>
      *
      * <p>Complexity: {@code O(1)}.</p>
      *
-     * @return the maximum length among all stored keys, in UTF-16 code units
+     * @return the maximum length among all stored terms, in UTF-16 code units
      */
-    public int maxKeyLength()
+    public int maxTermLength()
     {
-        return maxKeyLen;
+        return maxTermLen;
     }
 
     /**
-     * Returns the number of unique keys in the hash.
+     * Returns the number of unique terms in the dictionary.
      *
      * @return the number of assigned ords (>= 0)
      */
@@ -354,7 +354,7 @@ public final class CharsDic
     }
 
     /**
-     * Returns the underlying character slab storing all keys contiguously.
+     * Returns the underlying character slab storing all terms contiguously.
      *
      * <p>The valid range is {@code [0 .. slabUsed)}.
      */
@@ -369,7 +369,7 @@ public final class CharsDic
      * <p>Intended for bulk-build workflows:
      * <ol>
      *   <li>Create with a reasonable {@code expectedSize}.</li>
-     *   <li>Add all keys.</li>
+     *   <li>Add all terms.</li>
      *   <li>Call {@link #trimToSize()} once to reduce memory slack.</li>
      * </ol>
      *
@@ -404,28 +404,28 @@ public final class CharsDic
         // now shrink per-ord arrays (safe after rehash too)
         if (meta.length != sizeOrds) {
             meta = Arrays.copyOf(meta, sizeOrds);
-            keyHash = Arrays.copyOf(keyHash, sizeOrds);
+            termHash = Arrays.copyOf(termHash, sizeOrds);
         }
 
 
     }
 
     /**
-     * Appends {@code key[off..off+len)} to the end of the slab, growing the slab as needed.
+     * Appends {@code term[off..off+len)} to the end of the slab, growing the slab as needed.
      *
-     * @param key source key array
+     * @param term source term array
      * @param off start offset
      * @param len number of {@code char}s to copy
-     * @return the starting offset within the slab where the key was written
+     * @return the starting offset within the slab where the term was written
      */
-    private int appendToSlab(char[] key, int off, int len)
+    private int appendToSlab(char[] term, int off, int len)
     {
         int need = slabUsed + len;
         if (need > slab.length) {
             int cap = Math.max(need, slab.length + (slab.length >>> 1) + 16);
             slab = Arrays.copyOf(slab, cap);
         }
-        System.arraycopy(key, off, slab, slabUsed, len);
+        System.arraycopy(term, off, slab, slabUsed, len);
         int base = slabUsed;
         slabUsed = need;
         return base;
@@ -456,21 +456,21 @@ public final class CharsDic
     }
 
     /**
-     * Compares the key at {@code ord} against the specified {@code key[off..off+len)}.
+     * Compares the term at {@code ord} against the specified {@code term[off..off+len)}.
      *
      * <p>Assumes length equality was already checked by the caller.
      *
      * @param ord target ordinal
-     * @param key probe key array
-     * @param off start offset in {@code key}
+     * @param term probe term array
+     * @param off start offset in {@code term}
      * @param len number of characters to compare
      * @return {@code true} if all {@code len} characters are equal; otherwise {@code false}
      */
-    private boolean equalsAt(int ord, char[] key, int off, int len)
+    private boolean equalsAt(int ord, char[] term, int off, int len)
     {
         final int s = metaOff(meta[ord]);
         for (int i = 0; i < len; i++) {
-            if (slab[s + i] != key[off + i]) return false;
+            if (slab[s + i] != term[off + i]) return false;
         }
         return true;
     }
@@ -487,7 +487,7 @@ public final class CharsDic
         if (required <= meta.length) return;
         int cap = Math.max(required, meta.length + (meta.length >>> 1) + 16);
         meta = Arrays.copyOf(meta, cap);
-        keyHash = Arrays.copyOf(keyHash, cap);
+        termHash = Arrays.copyOf(termHash, cap);
     }
 
     private static int metaLen(long m)
@@ -521,7 +521,7 @@ public final class CharsDic
     /**
      * Rehashes the table to {@code newCap} slots and reinserts all existing ords.
      *
-     * <p>This method does not move or rewrite key data in the slab; it only rebuilds the index
+     * <p>This method does not move or rewrite term data in the slab; it only rebuilds the index
      * using the stored 32-bit hashes and ord metadata. The {@code newCap} must be a power of two.
      *
      * @param newCap the new table capacity (power of two)
@@ -532,8 +532,8 @@ public final class CharsDic
             throw new IllegalArgumentException("newCap must be power of two: " + newCap);
         }
         // This check catches your current failure mode immediately and clearly.
-        if (keyHash.length < sizeOrds) {
-            throw new IllegalStateException("keyHash too small: keyHash.length=" + keyHash.length
+        if (termHash.length < sizeOrds) {
+            throw new IllegalStateException("termHash too small: termHash.length=" + termHash.length
                     + " sizeOrds=" + sizeOrds);
         }
         
@@ -544,7 +544,7 @@ public final class CharsDic
         occupied = 0;
 
         for (int ord = 0; ord < sizeOrds; ord++) {
-            final int h = keyHash[ord];
+            final int h = termHash[ord];
             int j = h & mask;
             while (table[j] != -1) j = (j + 1) & mask;
             
