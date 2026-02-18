@@ -101,7 +101,8 @@ public final class CharsDic
     // Sizes
     private int sizeOrds = 0; // number of unique keys
     private int occupied = 0; // filled slots in table
-
+    // Maximum key length ever added (monotonic).
+    private int maxKeyLen = 0;
 
     // ---- Public API ----------------------------------------------------------
 
@@ -172,6 +173,8 @@ public final class CharsDic
                 meta[newOrd] = packMeta(base, len);
                 keyHash[newOrd] = h;
 
+                if (len > maxKeyLen) maxKeyLen = len;
+                
                 table[i] = newOrd;
                 fp16[i] = f;
 
@@ -231,6 +234,73 @@ public final class CharsDic
     {
         trimToSize();
     }
+    
+    /**
+     * Copies the key identified by {@code ord} into {@code dst}, starting at index 0.
+     *
+     * <p>This method is the char[] analogue of Lucene's {@code BytesRefHash.get(int, BytesRef)}:
+     * it provides safe, allocation-free access to the stored key material without exposing the
+     * internal slab.</p>
+     *
+     * <p>Usage pattern:</p>
+     * <pre>{@code
+     * char[] buf = new char[64];                 // reusable scratch
+     * int len = dic.get(ord, buf);               // copies into buf[0..len)
+     * termAtt.copyBuffer(buf, 0, len);           // emit token
+     * }</pre>
+     *
+     * <p>Capacity rule:</p>
+     * <ul>
+     *   <li>If {@code dst.length < keyLength(ord)}, this method throws an {@link IllegalArgumentException}.</li>
+     *   <li>Call {@link #keyLength(int)} first to size your scratch buffer if needed.</li>
+     * </ul>
+     *
+     * <p>Thread-safety:</p>
+     * <ul>
+     *   <li>This method is safe for concurrent reads provided the dictionary is not being mutated.</li>
+     *   <li>If you call {@link #add(char[], int, int)} concurrently, external synchronization is required.</li>
+     * </ul>
+     *
+     * @param ord the 0-based ordinal of the key (0 <= ord < {@link #size()})
+     * @param dst destination array to receive the key, starting at index 0
+     * @return the key length (number of {@code char} code units copied)
+     * @throws IllegalArgumentException if {@code ord} is out of range or {@code dst} is too small
+     * @throws NullPointerException if {@code dst} is null
+     */
+    public int get(final int ord, final char[] dst)
+    {
+        checkOrd(ord);
+        if (dst == null) throw new NullPointerException("dst");
+        final long m = meta[ord];
+        final int len = (int) m & 0xFFFF;
+        if (dst.length < len) {
+            throw new IllegalArgumentException("dst too small: dst.length=" + dst.length + " need=" + len);
+        }
+        final int off = (int) (m >>> 32);
+        System.arraycopy(slab, off, dst, 0, len);
+        return len;
+    }
+
+    
+    /**
+     * Returns the key identified by {@code ord} as a {@link String}.
+     *
+     * <p>This is a convenience method intended for debugging, logging, diagnostics,
+     * and tests. It necessarily allocates a new String (and may copy characters),
+     * so it should not be used on hot paths.</p>
+     *
+     * @param ord the 0-based ordinal of the key (0 <= ord < {@link #size()})
+     * @return a newly created String containing the key characters
+     * @throws IllegalArgumentException if {@code ord} is out of range
+     */
+    public String getAsString(final int ord)
+    {
+        checkOrd(ord);
+        final long m = meta[ord];
+        final int off = (int) (m >>> 32);
+        final int len = (int) m & 0xFFFF;
+        return new String(slab, off, len);
+    }
 
     /**
      * Returns the length (in {@code char} code units) of the key identified by the given ordinal.
@@ -256,6 +326,21 @@ public final class CharsDic
     {
         checkOrd(ord);
         return (int) (meta[ord] >>> 32);
+    }
+    
+    /**
+     * Returns the maximum key length (in {@code char} code units) ever added to this dictionary.
+     *
+     * <p>This is intended to pre-size reusable scratch buffers, e.g. in TokenFilter code, so that
+     * calls to {@link #get(int, char[])} never need to grow the buffer.</p>
+     *
+     * <p>Complexity: {@code O(1)}.</p>
+     *
+     * @return the maximum length among all stored keys, in UTF-16 code units
+     */
+    public int maxKeyLength()
+    {
+        return maxKeyLen;
     }
 
     /**
