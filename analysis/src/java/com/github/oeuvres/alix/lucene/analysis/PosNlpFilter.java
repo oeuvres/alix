@@ -63,7 +63,7 @@ public class PosNlpFilter extends TokenFilter
     /** Current Flags */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** A stack of states */
-    private AttDeque queue;
+    private TokenStateQueue queue;
     /** Maximum size of a sentence to send to the tagger */
     final static int SENTMAX = 300;
 
@@ -117,7 +117,7 @@ public class PosNlpFilter extends TokenFilter
     {
         // needed here to have all atts in queue
         if (queue == null) {
-            queue = new AttDeque(SENTMAX, this);
+            queue = new TokenStateQueue(SENTMAX, this);
         }
         // empty the queue
         if (!queue.isEmpty()) {

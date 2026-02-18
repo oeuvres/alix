@@ -67,7 +67,7 @@ public class FilterLocution extends TokenFilter
     /** A lemma when possible */
     private final LemAtt lemAtt = addAttribute(LemAtt.class);
     /** A stack of states */
-    private AttDeque queue;
+    private TokenStateQueue queue;
     /** A term used to concat a compound */
     private Chain compound = new Chain();
     /** Simple frozen pair of Strings */
@@ -103,7 +103,7 @@ public class FilterLocution extends TokenFilter
     {
         // needed here to have all atts in queue
         if (queue == null) {
-            queue = new AttDeque(10, this);
+            queue = new TokenStateQueue(10, this);
         }
         clearAttributes(); // clear before next incrementToken
         /*

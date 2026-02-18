@@ -49,7 +49,7 @@ import com.github.oeuvres.alix.util.Roller;
  * lucene analysis process, values of attributes like the actual token are volatile and needs to be copied
  * {@link AttributeSource#copyTo(AttributeSource)} else where to be kept.
  */
-public class AttDeque extends Roller
+public class TokenStateQueue extends Roller
 {
     /** Data of the sliding window */
     private AttributeSource[] data;
@@ -59,7 +59,7 @@ public class AttDeque extends Roller
      * @param size number of elements of this roll.
      * @param atts clonable attributes
      */
-    public AttDeque(final int size, AttributeSource atts) {
+    public TokenStateQueue(final int size, AttributeSource atts) {
         super(size);
         data = new AttributeSource[size];
         for (int i = 0; i < size; i++) {
