@@ -18,6 +18,7 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import static com.github.oeuvres.alix.common.Upos.*;
 
+import com.github.oeuvres.alix.lucene.analysis.fr.FrenchCliticSplitFilter;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.Dir;
 
@@ -31,7 +32,7 @@ public class TokenizerTest
         {
             final Tokenizer tokenizer = new MLTokenizer();
             TokenStream ts = tokenizer;
-            ts = new FilterAposHyphenFr(tokenizer);
+            ts = new FrenchCliticSplitFilter(tokenizer);
             return new TokenStreamComponents(tokenizer, ts);
         }
 

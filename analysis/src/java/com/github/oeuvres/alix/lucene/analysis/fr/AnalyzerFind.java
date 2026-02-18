@@ -37,7 +37,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
-import com.github.oeuvres.alix.lucene.analysis.FilterAposHyphenFr;
 import com.github.oeuvres.alix.lucene.analysis.FilterFind;
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.MLFilter;
@@ -64,7 +63,7 @@ public class AnalyzerFind extends Analyzer
         final Tokenizer tokenizer = new MLTokenizer(); // segment words
         TokenStream ts = tokenizer;
         ts = new MLFilter(ts); // interpret tags
-        ts = new FilterAposHyphenFr(ts); // fr split on ’ and -
+        ts = new FrenchCliticSplitFilter(ts); // fr split on ’ and -
         ts = new FilterLemmatize(ts); // provide lemma+pos
         ts = new FilterFind(ts); // orthographic form and lemma as term to index
         ts = new ASCIIFoldingFilter(ts); // no accents

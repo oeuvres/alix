@@ -36,7 +36,6 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 
-import com.github.oeuvres.alix.lucene.analysis.FilterAposHyphenFr;
 import com.github.oeuvres.alix.lucene.analysis.FilterCloud;
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
@@ -67,7 +66,7 @@ public class AnalyzerCloud extends Analyzer
         // interpret html tags as token events like para or section
         ts = new MLFilter(ts);
         // fr split on ’ and -
-        ts = new FilterAposHyphenFr(ts);
+        ts = new FrenchCliticSplitFilter(ts);
         // pos tagging before lemmatize
         ts = new PosTaggingFilter(ts);
         // provide lemma+pos

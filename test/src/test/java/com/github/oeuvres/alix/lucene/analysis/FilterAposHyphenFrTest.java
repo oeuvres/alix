@@ -12,6 +12,7 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.junit.jupiter.api.Test;
 
 import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.analysis.fr.FrenchCliticSplitFilter;
 
 
 public class FilterAposHyphenFrTest
@@ -52,7 +53,7 @@ public class FilterAposHyphenFrTest
         {
             final Tokenizer tokenizer = new MLTokenizer();
             TokenStream ts = tokenizer;
-            ts = new FilterAposHyphenFr(tokenizer);
+            ts = new FrenchCliticSplitFilter(tokenizer);
             return new TokenStreamComponents(tokenizer, ts);
         }
 

@@ -30,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene.analysis;
+package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.io.IOException;
 
@@ -53,7 +53,7 @@ import static com.github.oeuvres.alix.common.Upos.*;
  * 
  * Known side effect : qu’en-dira-t-on, donne-m’en, emmène-m’y.
  */
-public class FilterAposHyphenFr extends TokenFilter
+public class FrenchCliticSplitFilter extends TokenFilter
 {
     private static final int MAX_STEPS = 16;
 
@@ -128,7 +128,7 @@ public class FilterAposHyphenFr extends TokenFilter
         SUFFIX.put("-y", "y".toCharArray()); // allons-y.
     }
 
-    public FilterAposHyphenFr(TokenStream input) {
+    public FrenchCliticSplitFilter(TokenStream input) {
         super(input);
     }
 
