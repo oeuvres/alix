@@ -13,6 +13,8 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 // import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.junit.Test;
 
+import com.github.oeuvres.alix.lucene.analysis.fr.AnalyzerAlix;
+
 public class FlagFindFilterTest {
 
     public void testPos() throws IOException

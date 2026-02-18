@@ -30,22 +30,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene.analysis;
+package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 
+import com.github.oeuvres.alix.lucene.analysis.FilterAposHyphenFr;
+import com.github.oeuvres.alix.lucene.analysis.FilterCloud;
+import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
+import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
+import com.github.oeuvres.alix.lucene.analysis.MLFilter;
+import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
+
 /**
  * Analysis scenario for French in Alix. The linguistic features of Alix are
  * language dependent.
  */
-public class AnalyzerPos extends Analyzer
+public class AnalyzerCloud extends Analyzer
 {
     /**
      * Default constructor.
      */
-    public AnalyzerPos()
+    public AnalyzerCloud()
     {
         super();
     }
@@ -61,12 +69,13 @@ public class AnalyzerPos extends Analyzer
         // fr split on ’ and -
         ts = new FilterAposHyphenFr(ts);
         // pos tagging before lemmatize
-        ts = new PosFilter(ts);
+        ts = new PosTaggingFilter(ts);
         // provide lemma+pos
-        // ts = new FilterLemmatize(ts);
+        ts = new FilterLemmatize(ts);
         // group compounds after lemmatization for verbal compounds
-        // ts = new FilterLocution(ts);
-        // ts = new FilterCloud(ts);
+        ts = new FilterLocution(ts);
+        // last filter prepare term to index
+        ts = new FilterCloud(ts);
         return new TokenStreamComponents(tokenizer, ts);
     }
 

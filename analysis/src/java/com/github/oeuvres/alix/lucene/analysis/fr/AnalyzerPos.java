@@ -30,38 +30,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene.analysis;
+package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
+
+import com.github.oeuvres.alix.lucene.analysis.FilterAposHyphenFr;
+import com.github.oeuvres.alix.lucene.analysis.MLFilter;
+import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 
 /**
  * Analysis scenario for French in Alix. The linguistic features of Alix are
  * language dependent.
  */
-public class AnalyzerFind extends Analyzer
+public class AnalyzerPos extends Analyzer
 {
     /**
      * Default constructor.
      */
-    public AnalyzerFind()
+    public AnalyzerPos()
     {
         super();
     }
-    
+
     @SuppressWarnings("resource")
     @Override
     public TokenStreamComponents createComponents(String field)
     {
-        final Tokenizer tokenizer = new MLTokenizer(); // segment words
-        TokenStream ts = tokenizer;
-        ts = new MLFilter(ts); // interpret tags
-        ts = new FilterAposHyphenFr(ts); // fr split on ’ and -
-        ts = new FilterLemmatize(ts); // provide lemma+pos
-        ts = new FilterFind(ts); // orthographic form and lemma as term to index
-        ts = new ASCIIFoldingFilter(ts); // no accents
+        final Tokenizer tokenizer = new MLTokenizer();
+        TokenStream ts = tokenizer; // segment words
+        // interpret html tags as token events like para or section
+        ts = new MLFilter(ts);
+        // fr split on ’ and -
+        ts = new FilterAposHyphenFr(ts);
+        // pos tagging before lemmatize
+        ts = new PosTaggingFilter(ts);
+        // provide lemma+pos
+        // ts = new FilterLemmatize(ts);
+        // group compounds after lemmatization for verbal compounds
+        // ts = new FilterLocution(ts);
+        // ts = new FilterCloud(ts);
         return new TokenStreamComponents(tokenizer, ts);
     }
 

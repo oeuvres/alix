@@ -60,7 +60,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 
-import com.github.oeuvres.alix.lucene.analysis.AnalyzerMeta;
+import com.github.oeuvres.alix.lucene.analysis.fr.AnalyzerMeta;
 import com.github.oeuvres.alix.util.Dir;
 
 /**

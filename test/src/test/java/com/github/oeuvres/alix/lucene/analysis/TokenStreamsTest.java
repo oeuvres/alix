@@ -21,6 +21,8 @@ import org.junit.Test;
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.fr.FrDics;
 import com.github.oeuvres.alix.fr.TagFr;
+import com.github.oeuvres.alix.lucene.analysis.fr.AnalyzerAlix;
+import com.github.oeuvres.alix.lucene.analysis.fr.AnalyzerCloud;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;

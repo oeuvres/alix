@@ -30,44 +30,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene.analysis;
+package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
+
+import com.github.oeuvres.alix.lucene.analysis.FilterAposHyphenFr;
+import com.github.oeuvres.alix.lucene.analysis.MLFilter;
+import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
 
 /**
- * Analysis scenario for French in Alix. The linguistic features of Alix are
- * language dependent.
+ * An Analyzer for metadata.
  */
-public class AnalyzerCloud extends Analyzer
+public class AnalyzerMeta extends Analyzer
 {
     /**
      * Default constructor.
      */
-    public AnalyzerCloud()
+    public AnalyzerMeta()
     {
         super();
     }
-
+    
     @SuppressWarnings("resource")
     @Override
-    public TokenStreamComponents createComponents(String field)
+    protected TokenStreamComponents createComponents(String fieldName)
     {
-        final Tokenizer tokenizer = new MLTokenizer();
-        TokenStream ts = tokenizer; // segment words
-        // interpret html tags as token events like para or section
-        ts = new MLFilter(ts);
-        // fr split on ’ and -
-        ts = new FilterAposHyphenFr(ts);
-        // pos tagging before lemmatize
-        ts = new PosFilter(ts);
-        // provide lemma+pos
-        ts = new FilterLemmatize(ts);
-        // group compounds after lemmatization for verbal compounds
-        ts = new FilterLocution(ts);
-        // last filter prepare term to index
-        ts = new FilterCloud(ts);
+        final Tokenizer tokenizer = new MLTokenizer(); // segment words
+        TokenStream ts = tokenizer;
+        ts = new MLFilter(ts); // strip tags
+        ts = new FilterAposHyphenFr(ts); // fr split on ’ and -
+        ts = new ASCIIFoldingFilter(ts); // no accents
         return new TokenStreamComponents(tokenizer, ts);
     }
 

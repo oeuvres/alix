@@ -14,6 +14,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 
 import static com.github.oeuvres.alix.common.Upos.*;
 
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.util.Char;
 
 /**
@@ -41,7 +42,8 @@ public class MLTokenizer extends Tokenizer
     private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
     private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-    private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    private final PosAttribute posAtt = addAttribute(PosAttribute.class);
+
 
     private final CharacterBuffer buffer = CharacterUtils.newCharacterBuffer(IO_BUFFER_SIZE);
 
@@ -129,7 +131,7 @@ public class MLTokenizer extends Tokenizer
                 termBuf[termLen++] = c;
                 bi++; off++; lastChar = c;
                 if (c == '>') {
-                    flagsAtt.setFlags(XML.code);
+                    posAtt.setPos(XML.code);
                     break;
                 }
                 continue;
@@ -213,12 +215,12 @@ public class MLTokenizer extends Tokenizer
             if (Char.isDigit(c)) {
                 if (termLen == 0) {
                     inNumber = true;
-                    flagsAtt.setFlags(DIGIT.code);
+                    posAtt.setPos(DIGIT.code);
                     startOffset = off;
                 }
                 else if (termLen == 1 && lastChar == '-') {
                     inNumber = true;
-                    flagsAtt.setFlags(DIGIT.code);
+                    posAtt.setPos(DIGIT.code);
                 }
 
                 if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
@@ -264,7 +266,7 @@ public class MLTokenizer extends Tokenizer
             if (isClausePunct(c)) {
                 if (termLen > 0) break; // emit pending token; punctuation next call
                 startOffset = off;
-                flagsAtt.setFlags(PUNCTclause.code);
+                posAtt.setPos(PUNCTclause.code);
                 if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(1);
                 termBuf[0] = c;
                 termLen = 1;
@@ -293,7 +295,7 @@ public class MLTokenizer extends Tokenizer
             if (isSentencePunct(c)) {
                 if (termLen > 0) break; // emit pending token; punctuation next call
                 inSentPunct = true;
-                flagsAtt.setFlags(PUNCTsent.code);
+                posAtt.setPos(PUNCTsent.code);
                 startOffset = off;
                 if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(1);
                 termBuf[0] = c;
@@ -411,7 +413,7 @@ public class MLTokenizer extends Tokenizer
 
         // Clause punctuation: standalone
         if (isClausePunct(pc)) {
-            flagsAtt.setFlags(PUNCTclause.code);
+            posAtt.setPos(PUNCTclause.code);
             termAtt.setLength(termLen);
             posIncAtt.setPositionIncrement(1);
             posLenAtt.setPositionLength(1);
@@ -421,7 +423,7 @@ public class MLTokenizer extends Tokenizer
 
         // Sentence punctuation: merge with following .?!… in buffer
         if (isSentencePunct(pc)) {
-            flagsAtt.setFlags(PUNCTsent.code);
+            posAtt.setPos(PUNCTsent.code);
 
             while (true) {
                 if (bi >= bl) {

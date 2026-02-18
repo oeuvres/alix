@@ -3,54 +3,41 @@ package com.github.oeuvres.alix.lucene.analysis.tokenattributes;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 
-public class PosAttributeImpl extends AttributeImpl implements PosAttribute
-{
-    private int pos = 0;
-
-    /** Initialize this attribute with no value */
-    public PosAttributeImpl() {}
+/**
+ * Default implementation for {@link PosAttribute}.
+ *
+ * <p>Lucene locates attribute implementations by naming convention: the interface
+ * {@code XyzAttribute} is implemented by {@code XyzAttributeImpl} in the same classpath.
+ *
+ * <p>Implementation stores a single {@code int} POS code. This keeps the attribute compact,
+ * fast to copy, and friendly to {@link com.github.oeuvres.alix.lucene.analysis.TokenStateQueue}
+ * snapshots (which rely on {@code AttributeSource.copyTo}).
+ */
+public final class PosAttributeImpl extends AttributeImpl implements PosAttribute {
+    private int pos = UNKNOWN;
 
     @Override
     public int getPos() {
-      return pos;
+        return pos;
     }
 
     @Override
     public void setPos(final int pos) {
-      this.pos = pos;
+        this.pos = pos;
     }
 
     @Override
     public void clear() {
-      pos = 0;
+        pos = UNKNOWN;
     }
 
     @Override
-    public boolean equals(Object other) {
-      if (this == other) {
-        return true;
-      }
-
-      if (other instanceof PosAttributeImpl) {
-        return ((PosAttributeImpl) other).pos == pos;
-      }
-
-      return false;
+    public void copyTo(final AttributeImpl target) {
+        ((PosAttribute) target).setPos(pos);
     }
 
     @Override
-    public int hashCode() {
-      return pos;
-    }
-
-    @Override
-    public void copyTo(AttributeImpl target) {
-      PosAttribute t = (PosAttribute) target;
-      t.setPos(pos);
-    }
-
-    @Override
-    public void reflectWith(AttributeReflector reflector) {
-      reflector.reflect(PosAttribute.class, "pos", pos);
+    public void reflectWith(final AttributeReflector reflector) {
+        reflector.reflect(PosAttribute.class, "pos", pos);
     }
 }

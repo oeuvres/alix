@@ -52,7 +52,7 @@ import opennlp.tools.postag.POSTaggerME;
 /**
  * 
  */
-public class PosFilter extends TokenFilter
+public class PosTaggingFilter extends TokenFilter
 {
     static {
         // let opennlp decide, he knows better
@@ -93,7 +93,7 @@ public class PosFilter extends TokenFilter
     /** state of the queue */
     private boolean tagged = false;
     
-    public PosFilter(TokenStream input)
+    public PosTaggingFilter(TokenStream input)
     {
         super(input);
         throw new Error("TODO");
@@ -105,7 +105,7 @@ public class PosFilter extends TokenFilter
      * 
      * @param input previous filter.
      */
-    public PosFilter(TokenStream input, POSModel posModel)
+    public PosTaggingFilter(TokenStream input, POSModel posModel)
     {
         super(input);
         tagger = new POSTaggerME(posModel);

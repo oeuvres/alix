@@ -22,7 +22,7 @@ import org.apache.lucene.util.BytesRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.oeuvres.alix.lucene.analysis.AnalyzerMeta;
+import com.github.oeuvres.alix.lucene.analysis.fr.AnalyzerMeta;
 import com.github.oeuvres.alix.util.ML;
 
 /**

@@ -30,12 +30,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene.analysis;
+package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
+
+import com.github.oeuvres.alix.lucene.analysis.FilterFind;
+import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
+import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
 
 /**
  * Analysis scenario for French in Alix. The linguistic features of Alix are

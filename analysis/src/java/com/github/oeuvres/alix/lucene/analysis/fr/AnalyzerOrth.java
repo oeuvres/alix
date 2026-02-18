@@ -30,51 +30,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene.analysis;
+package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
 
-import com.github.oeuvres.alix.common.Tag;
+import com.github.oeuvres.alix.lucene.analysis.FilterAposHyphenFr;
+import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
+import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
+import com.github.oeuvres.alix.lucene.analysis.FilterOrth;
+import com.github.oeuvres.alix.lucene.analysis.MLFilter;
+import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
 
 /**
  * Analysis scenario for French in Alix. The linguistic features of Alix are
  * language dependent.
  */
-public class AnalyzerAlix extends DelegatingAnalyzerWrapper
+public class AnalyzerOrth extends Analyzer
 {
-    final Analyzer cloudAnalyzer;
-    final Analyzer findAnalyzer;
-    final Analyzer orthAnalyzer;
-    final Analyzer posAnalyzer;
-    final Analyzer queryAnalyzer;
-
     /**
      * Default constructor.
      */
-    public AnalyzerAlix() {
-        super(PER_FIELD_REUSE_STRATEGY);
-        cloudAnalyzer = new AnalyzerCloud();
-        findAnalyzer = new AnalyzerFind();
-        orthAnalyzer = new AnalyzerOrth();
-        posAnalyzer = new AnalyzerPos();
-        queryAnalyzer = new AnalyzerQuery();
-    }
-
-    @Override
-    protected Analyzer getWrappedAnalyzer(String fieldName)
+    public AnalyzerOrth()
     {
-        if (fieldName.equals("query") || fieldName.equals("search")) {
-            return queryAnalyzer;
-        } else if (fieldName.endsWith("_cloud")) {
-            return cloudAnalyzer;
-        } else if (fieldName.endsWith("_orth")) {
-            return orthAnalyzer;
-        } else if (fieldName.endsWith("_pos")) {
-            return posAnalyzer;
-        } else {
-            return findAnalyzer;
-        }
+        super();
+    }
+    
+    @SuppressWarnings("resource")
+    @Override
+    public TokenStreamComponents createComponents(String field)
+    {
+        final Tokenizer tokenizer = new MLTokenizer();
+        // segment words
+        TokenStream ts = tokenizer;
+        // interpret html tags as token events like para or section
+        ts = new MLFilter(ts);
+        // fr split on ’ and -
+        ts = new FilterAposHyphenFr(ts);
+        // provide lemma+pos
+        ts = new FilterLemmatize(ts);
+        // group compounds after lemmatization for verbal compounds
+        ts = new FilterLocution(ts);
+        ts = new FilterOrth(ts);
+        return new TokenStreamComponents(tokenizer, ts);
     }
 
 }

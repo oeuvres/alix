@@ -57,8 +57,9 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import com.github.oeuvres.alix.lucene.analysis.fr.AnalyzerMeta;
+
 import static com.github.oeuvres.alix.common.Names.*;
-import com.github.oeuvres.alix.lucene.analysis.AnalyzerMeta;
 
 /**
  * An XML parser allowing to index XML or HTMTL.
