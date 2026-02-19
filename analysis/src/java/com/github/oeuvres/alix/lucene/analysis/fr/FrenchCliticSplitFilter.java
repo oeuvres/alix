@@ -62,10 +62,14 @@ import static com.github.oeuvres.alix.common.Upos.*;
  */
 public class FrenchCliticSplitFilter extends TokenFilter
 {
-    private static final int MAX_STEPS = 16;
+    /**
+     * Hard safety cap on the number of clitic splits attempted for a single token.
+     *
+     * <p>Rationale: pathological inputs like "fais-le-le-le-..." should not explode the queue
+     * nor throw; the filter should fall back to emitting the original token.</p>
+     */
+    private static final int MAX_SPLITS = 8;
 
-    /** Small ring is enough in practice; can grow if needed. */
-    private static final int QUEUE_CAPACITY = 16;
 
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -115,37 +119,26 @@ public class FrenchCliticSplitFilter extends TokenFilter
         KEEP_AS_IS.add("qu'est-ce");
     }
 
-    /** Ellisions prefix */
+    /** Ellisions prefix (case-insensitive). */
     private static final CharArrayMap<char[]> PREFIX = new CharArrayMap<>(30, true);
     static {
+        // CharArrayMap is ignoreCase=true, do not duplicate case variants.
         PREFIX.put("d'", "de".toCharArray());
-        PREFIX.put("D'", "de".toCharArray());
         PREFIX.put("j'", "je".toCharArray());
-        PREFIX.put("J'", "je".toCharArray());
         PREFIX.put("jusqu'", "jusque".toCharArray());
-        PREFIX.put("Jusqu'", "jusque".toCharArray());
-        PREFIX.put("l'", "l'".toCharArray()); // je l’aime. le ou la
-        PREFIX.put("L'", "l'".toCharArray());
+        PREFIX.put("l'", "l'".toCharArray()); // je l’aime: le/la ambiguous
         PREFIX.put("lorsqu'", "lorsque".toCharArray());
-        PREFIX.put("Lorsqu'", "lorsque".toCharArray());
         PREFIX.put("m'", "me".toCharArray());
-        PREFIX.put("M'", "me".toCharArray());
         PREFIX.put("n'", "ne".toCharArray()); // N’y va pas.
-        PREFIX.put("N'", "ne".toCharArray());
         PREFIX.put("puisqu'", "puisque".toCharArray());
-        PREFIX.put("Puisqu'", "puisque".toCharArray());
         PREFIX.put("qu'", "que".toCharArray());
-        PREFIX.put("Qu'", "que".toCharArray());
         PREFIX.put("quoiqu'", "quoique".toCharArray());
-        PREFIX.put("Quoiqu'", "quoique".toCharArray());
         PREFIX.put("s'", "se".toCharArray());
-        PREFIX.put("S'", "se".toCharArray());
         PREFIX.put("t'", "te".toCharArray());
-        PREFIX.put("T'", "te".toCharArray());
     }
 
-    /** Hyphen suffixes */
-    private static final CharArrayMap<char[]> SUFFIX = new CharArrayMap<>(30, false);
+    /** Hyphen suffixes (case-insensitive: "dit-Il" should behave like "dit-il"). */
+    private static final CharArrayMap<char[]> SUFFIX = new CharArrayMap<>(30, true);
     static {
         SUFFIX.put("-ce", "ce".toCharArray()); // Serait-ce ?
         SUFFIX.put("-ci", null);               // cette année-ci, ceux-ci.
@@ -202,89 +195,112 @@ public class FrenchCliticSplitFilter extends TokenFilter
             return true;
         }
 
+        // Fast guard: absurdly hyphenated tokens are almost certainly junk.
+        // Do not attempt to split them (and do not normalize) - just emit as-is.
+        if (tooManyHyphens(termAtt.buffer(), termAtt.length(), MAX_SPLITS)) {
+            return true;
+        }
+
         // Capture the token state before any in-place normalization/splitting.
         this.copyTo(original);
 
+        int splits = 0;
         try {
-            for (int step = 0; step < MAX_STEPS; step++) {
+            while (true) {
                 final int len = termAtt.length();
                 if (len <= 1) return true;
 
-            final char[] buf = termAtt.buffer();
+                final char[] buf = termAtt.buffer();
 
-            final int hyphLast = lastHyphenIndexAndNormalize(buf, len);
-            final int aposFirst = firstAposIndexAndNormalize(buf, len);
+                final int hyphLast = lastHyphenIndexAndNormalize(buf, len);
+                final int aposFirst = firstAposIndexAndNormalize(buf, len);
 
-            if (aposFirst < 0 && hyphLast < 0) return true;
+                if (aposFirst < 0 && hyphLast < 0) return true;
 
-            // apos is last char, let it run (maths A', D', etc.)
-            if (aposFirst == len - 1) return true;
+                // apos is last char, let it run (maths A', D', etc.)
+                if (aposFirst == len - 1) return true;
 
-            // hyphen is first or last char, let it run
-            if (hyphLast == 0 || hyphLast == len - 1) return true;
+                // hyphen is first or last char, let it run
+                if (hyphLast == 0 || hyphLast == len - 1) return true;
 
-            // Prefix split on apostrophe
-            if (aposFirst > 0) {
-                final int startOffset = offsetAtt.startOffset();
-                final int prefixLen = aposFirst + 1;
+                // Prefix split on apostrophe (but NEVER before a capital letter: D'Alembert, L'Oréal, ...)
+                if (aposFirst > 0) {
+                    final int prefixLen = aposFirst + 1;
+                    if (prefixLen < len) {
+                        final char next = buf[prefixLen];
+                        if (!isUpperOrTitle(next)) {
+                            final char[] value = PREFIX.get(buf, 0, prefixLen);
+                            if (value != null) {
+                                if (++splits > MAX_SPLITS) {
+                                    rollbackToOriginal();
+                                    return true;
+                                }
 
-                final char[] value = PREFIX.get(buf, 0, prefixLen);
-                if (value != null) {
-                    // keep term after prefix for next call
-                    bufferLastFromCurrent(
-                        buf,
-                        prefixLen,
-                        len - prefixLen,
-                        startOffset + prefixLen,
-                        offsetAtt.endOffset()
-                    );
+                                final int startOffset = offsetAtt.startOffset();
 
-                    // send the prefix
-                    termAtt.copyBuffer(value, 0, value.length);
-                    offsetAtt.setOffset(startOffset, startOffset + prefixLen);
-                    return true;
-                }
-            }
+                                // keep term after prefix for next call
+                                bufferLastFromCurrent(
+                                    buf,
+                                    prefixLen,
+                                    len - prefixLen,
+                                    startOffset + prefixLen,
+                                    offsetAtt.endOffset()
+                                );
 
-            // Suffix split on hyphen
-            if (hyphLast > 0) {
-                final int suffixLen = len - hyphLast;
-
-                if (SUFFIX.containsKey(buf, hyphLast, suffixLen)) {
-                    final char[] value = SUFFIX.get(buf, hyphLast, suffixLen);
-
-                    if (value != null) {
-                        bufferFirstFromCurrent(
-                            value,
-                            0,
-                            value.length,
-                            offsetAtt.startOffset() + hyphLast,
-                            offsetAtt.endOffset()
-                        );
+                                // send the prefix
+                                termAtt.copyBuffer(value, 0, value.length);
+                                offsetAtt.setOffset(startOffset, startOffset + prefixLen);
+                                return true;
+                            }
+                        }
                     }
-
-                    // set term without suffix, loop again (may strip multiple suffixes)
-                    offsetAtt.setOffset(offsetAtt.startOffset(), offsetAtt.startOffset() + hyphLast);
-                    termAtt.setLength(hyphLast);
-                    continue;
                 }
-            }
+
+                // Suffix split on hyphen
+                if (hyphLast > 0) {
+                    final int suffixLen = len - hyphLast;
+
+                    if (SUFFIX.containsKey(buf, hyphLast, suffixLen)) {
+                        if (++splits > MAX_SPLITS) {
+                            rollbackToOriginal();
+                            return true;
+                        }
+
+                        final char[] value = SUFFIX.get(buf, hyphLast, suffixLen);
+                        if (value != null) {
+                            bufferFirstFromCurrent(
+                                value,
+                                0,
+                                value.length,
+                                offsetAtt.startOffset() + hyphLast,
+                                offsetAtt.endOffset()
+                            );
+                        }
+
+                        // set term without suffix, loop again (may strip multiple suffixes)
+                        offsetAtt.setOffset(offsetAtt.startOffset(), offsetAtt.startOffset() + hyphLast);
+                        termAtt.setLength(hyphLast);
+                        continue;
+                    }
+                }
 
                 return true; // term is OK like that
             }
-
-            throw new IllegalStateException("FilterAposHyphenFr: exceeded MAX_STEPS, queue=" + queue);
         }
         catch (IllegalStateException e) {
             // If queue capacity is exceeded, rollback: no split, emit the original token as-is.
             final String msg = e.getMessage();
             if (msg != null && msg.startsWith("TokenStateQueue is full")) {
-                queue.clear();
-                original.copyTo(this);
+                rollbackToOriginal();
                 return true;
             }
             throw e;
         }
+    }
+
+    private void rollbackToOriginal() {
+        if (queue != null) queue.clear();
+        original.copyTo(this);
     }
 
     /**
@@ -314,8 +330,8 @@ public class FrenchCliticSplitFilter extends TokenFilter
         if (queue != null) return;
 
         queue = new TokenStateQueue(
-            QUEUE_CAPACITY,
-            QUEUE_CAPACITY,
+            MAX_SPLITS,
+            MAX_SPLITS,
             TokenStateQueue.OverflowPolicy.THROW,
             this
         );
@@ -343,7 +359,7 @@ public class FrenchCliticSplitFilter extends TokenFilter
         final char[] buf = termAtt.buffer();
         for (int i = 0; i < len; i++) {
             char c = buf[i];
-            if (c == '’' || c == '\u02BC') c = '\'';
+            if (c == '\u2019' || c == '\u2018' || c == '\u02BC') c = '\'';
             else if (c == '\u2010' || c == '\u2011' || c == '\u00AD') c = '-';
             normBuf[i] = Character.toLowerCase(c);
         }
@@ -360,13 +376,32 @@ public class FrenchCliticSplitFilter extends TokenFilter
     private static int firstAposIndexAndNormalize(final char[] buf, final int len) {
         for (int i = 0; i < len; i++) {
             char c = buf[i];
-            if (c == '’' || c == '\u02BC') { // U+2019 or U+02BC
+            if (c == '\u2019' || c == '\u2018' || c == '\u02BC') { // apostrophe variants
                 buf[i] = '\'';
                 c = '\'';
             }
             if (c == '\'') return i;
         }
         return -1;
+    }
+
+    private static boolean isUpperOrTitle(final char c) {
+        return Character.isUpperCase(c) || Character.isTitleCase(c);
+    }
+
+    /**
+     * Guard against pathological inputs (e.g., repeated "-le" suffixes).
+     * Counts ASCII hyphen and common hyphen variants without mutating the buffer.
+     */
+    private static boolean tooManyHyphens(final char[] buf, final int len, final int max) {
+        int count = 0;
+        for (int i = 0; i < len; i++) {
+            final char c = buf[i];
+            if (c == '-' || c == '\u2010' || c == '\u2011' || c == '\u00AD') {
+                if (++count > max) return true;
+            }
+        }
+        return false;
     }
 
     private static int lastHyphenIndexAndNormalize(final char[] buf, final int len) {
