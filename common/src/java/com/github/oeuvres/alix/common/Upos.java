@@ -188,7 +188,7 @@ public enum Upos implements Tag
     {
         this.code = code;
     }
-    public boolean isPun(final int code)
+    static public boolean isPunct(final int code)
     {
         return (code == PUNCT.code 
           || code == PUNCTsection.code 
@@ -204,6 +204,10 @@ public enum Upos implements Tag
         if (tag == null) return null;
         return tag.name();
     }
+    static public int code(final String name)
+    {
+        return valueOf(name.replace('+', '_')).code;
+    }
 
     @Override
     public int code()
@@ -211,9 +215,4 @@ public enum Upos implements Tag
         return code;
     }
     
-    @Override
-    public int code(final String name)
-    {
-        return valueOf(name).code;
-    }
 }

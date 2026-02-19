@@ -427,7 +427,7 @@ public class FieldRail  extends FieldCharsAbstract
                         // out.write(10);
                         continue;
                     }
-                    else if (PUN.isPun(flag)) {
+                    else if (PUN.isPunct(flag)) {
                         continue;
                     }
                     else if (formFilter != null && !formFilter.get(formId)) {

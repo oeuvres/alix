@@ -135,7 +135,7 @@ public class FilterCloud extends TokenFilter
             System.out.println(termAtt + " — " + orthAtt);
         }
         // record an empty token at puctuation position for the rails
-        if (PUNCT.isPun(flags)) {
+        if (PUNCT.isPunct(flags)) {
             if (flags == PUNCTclause.code) {
             }
             else if (flags == PUNCTsent.code) {

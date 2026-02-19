@@ -109,7 +109,7 @@ public class FilterOrth extends TokenFilter
             System.out.println(termAtt + " — " + orthAtt);
         }
         // record an empty token at puctuation position for the rails
-        if (PUNCT.isPun(tag)) {
+        if (PUNCT.isPunct(tag)) {
             if (tag == PUNCTclause.code) {
             }
             else if (tag == PUNCTsent.code) {
