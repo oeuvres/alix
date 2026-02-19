@@ -52,6 +52,23 @@ public final class FrenchPosTaggingFilterDemo {
     static final List<AnalysisDemoSupport.Case> CASES = List.of(
 
         new AnalysisDemoSupport.Case(
+                "Clitique",
+                "L’Homme est l’Avenir de l’Apocalypse.",
+                null
+            ),
+        new AnalysisDemoSupport.Case(
+                "Clitique",
+                "Ce est la vie.",
+                null
+            ),
+        
+        new AnalysisDemoSupport.Case(
+            "Mixed XML tag",
+            "il <i>ira</i> où ?",
+            null
+        ),
+
+        new AnalysisDemoSupport.Case(
             "Sentence-initial capital (workaround for 'Tu' mis-tagging)",
             "Tu vas bien ?",
             null
@@ -75,6 +92,8 @@ public final class FrenchPosTaggingFilterDemo {
             "Le chat mange la souris.",
             null
         ),
+        
+
 
         new AnalysisDemoSupport.Case(
             "Adjectives and adverbs",
@@ -158,7 +177,8 @@ public final class FrenchPosTaggingFilterDemo {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
                 Tokenizer tokenizer = new MLTokenizer(FrenchLexicons.getDotEndingWords());
-                TokenStream stream = new PosTaggingFilter(tokenizer, model);
+                TokenStream stream = new FrenchCliticSplitFilter(tokenizer);
+                // stream = new PosTaggingFilter(stream, model);
                 return new TokenStreamComponents(tokenizer, stream);
             }
         };

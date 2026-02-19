@@ -47,9 +47,15 @@ public final class FrenchCliticSplitFilterDemo {
     static final List<AnalysisDemoSupport.Case> CASES = List.of(
 
         new AnalysisDemoSupport.Case(
+                "Clitique",
+                "L’homme est l’Avenir de l’Apocalypse à l’abord du désastre.",
+                null
+            ),
+
+        new AnalysisDemoSupport.Case(
             "Curly apostrophes + common prefixes",
-            "D’Alembert n’a pas dit d’abord.",
-            "Exercises normalization of U+2019 to '\'' and prefix table: D'/n'/d'."
+            "D’Alembert n’est l’avenir de l’Homme.",
+            ""
         ),
 
         new AnalysisDemoSupport.Case(

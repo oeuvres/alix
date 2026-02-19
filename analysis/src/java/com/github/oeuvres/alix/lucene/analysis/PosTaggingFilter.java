@@ -39,6 +39,7 @@ import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.util.ArrayUtil;
 
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
@@ -59,8 +60,10 @@ public class PosTaggingFilter extends TokenFilter
         // System.setProperty("opennlp.interner.class","opennlp.tools.util.jvm.JvmStringInterner");
     }
     /** The term provided by the Tokenizer */
+    @SuppressWarnings("unused")
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
+    @SuppressWarnings("unused")
     private final ProbAttribute probAtt = addAttribute(ProbAttribute.class);
     /** A stack of states */
     private TokenStateQueue queue;
@@ -69,6 +72,8 @@ public class PosTaggingFilter extends TokenFilter
 
     /** non thread safe tagger, one by instance of filter */
     private POSTaggerME tagger;
+    /** queue indices of tokens passed to OpenNLP */
+    private int[] token4tag = new int[0];
 
 
     /**
@@ -87,7 +92,7 @@ public class PosTaggingFilter extends TokenFilter
     {
 
         // 0) Drain queued tokens first
-        if (!queue.isEmpty()) {
+        if (queue != null && !queue.isEmpty()) {
             clearAttributes();
             queue.removeFirst(this);
             return true;
@@ -112,58 +117,78 @@ public class PosTaggingFilter extends TokenFilter
         if (n == 0)
             return false;
 
-        // 3) Build sentence[] for the tagger + detect if we have any lexical TOKEN
-        final String[] sentence = new String[n];
-
+        // 3) Build token4tag[] once (queue index -> included in tag sentence)
+        int m = 0;
+        // ensure capacity of map token->tag
+        token4tag = ArrayUtil.grow(token4tag, n + 1);
         for (int i = 0; i < n; i++) {
             final PosAttribute p = queue.get(i).getAttribute(PosAttribute.class);
+            if (p == null) continue; // defensive
+
             final int pos = p.getPos();
 
-            if (pos == PUNCTsection.code || pos == PUNCTpara.code) {
-                sentence[i] = ".";
+            // Skip structural XML tags entirely (do not emit empty strings to OpenNLP)
+            if (pos == XML.code) continue;
+
+            // Sentence/para/section boundaries: keep as punctuation token for the tagger
+            if (pos == PUNCTsection.code || pos == PUNCTpara.code || pos == PUNCTsent.code) {
+                token4tag[m++] = i;
                 continue;
             }
 
+            // Skip empty terms for OpenNLP
             final CharTermAttribute t = queue.get(i).getAttribute(CharTermAttribute.class);
-            String s = t.toString();
-
-            /*
-            if (pos == TOKEN.code) {
-                // Your “first word” workaround: apply only once, on the first lexical token
-                if (firstLex && !s.isEmpty() && Character.isUpperCase(s.charAt(0))) {
-                    s = s.toLowerCase(Locale.ROOT);
-                }
-                firstLex = false;
-                needsTagging = true;
-            }
-            */
-
-            sentence[i] = s;
+            if (t == null || t.length() == 0) continue;
+            token4tag[m++] = i;
         }
 
-        // 4) Tag + write back into PosAttribute (only where upstream said TOKEN)
+        // If nothing is taggable, just drain queue as-is
+        if (m == 0) {
+            clearAttributes();
+            queue.removeFirst(this);
+            return true;
+        }
+        
+        // 4) Allocate exactly the OpenNLP sentence array (single String[] per sentence)
+        final String[] sentence = new String[m];
+        for (int j = 0; j < m; j++) {
+            final int i = token4tag[j];
+            final PosAttribute p = queue.get(i).getAttribute(PosAttribute.class);
+            final int pos = p.getPos();
+
+            if (pos == PUNCTsection.code || pos == PUNCTpara.code || pos == PUNCTsent.code) {
+                sentence[j] = ".";
+            } else {
+                // safe because we filtered empty terms above
+                sentence[j] = queue.get(i).getAttribute(CharTermAttribute.class).toString();
+            }
+        }
+
+        
+
+        // 5) Tag + write back using token4tag[] (no re-testing of “taggable” predicate)
         final String[] tags = tagger.tag(sentence);
-        double[] probs = tagger.probs();
+        final double[] probs = tagger.probs();
 
-        for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            final int i = token4tag[j];
+
             final ProbAttribute prob = queue.get(i).getAttribute(ProbAttribute.class);
-            prob.setProb(probs[i]);
-            final PosAttribute pos = queue.get(i).getAttribute(PosAttribute.class);
-            final int origPos = pos.getPos();
-            // Upper filter provide more precise punctuation than the tagger, keep it.
+            if (prob != null) prob.setProb(probs[j]);
+
+            final PosAttribute posAttr = queue.get(i).getAttribute(PosAttribute.class);
+            if (posAttr == null) continue;
+
+            final int origPos = posAttr.getPos();
+
+            // Keep upstream punctuation unchanged (including boundaries we injected as ".")
             if (Upos.isPunct(origPos)) continue;
-            Upos upos = Upos.get(tags[i].replace('+', '_'));
-            if (upos == null) {
-                // for testing only
-                // System.out.println(tags[i]);
-            }
-            else {
-                pos.setPos(upos.code());
-            }
-            // else keep TOKEN (or choose a fallback)
+
+            final Upos upos = Upos.get(tags[j].replace('+', '_'));
+            if (upos != null) posAttr.setPos(upos.code());
         }
 
-        // 5) Emit first token of the now-tagged queue
+        // 6) Emit first token of the now-tagged queue
         clearAttributes();
         queue.removeFirst(this);
         return true;

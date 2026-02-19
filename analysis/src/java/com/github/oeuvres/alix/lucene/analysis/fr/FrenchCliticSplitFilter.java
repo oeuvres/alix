@@ -97,7 +97,6 @@ public class FrenchCliticSplitFilter extends TokenFilter
     private static final CharArraySet KEEP_AS_IS = new CharArraySet(32, true);
     static {
         // Lexicalized form: splitting "quelqu'un" into "quelque" + "un" is usually undesirable.
-        KEEP_AS_IS.add("c'est");
         KEEP_AS_IS.add("d'abord");
         KEEP_AS_IS.add("d'accord");
         KEEP_AS_IS.add("d'ailleurs");
