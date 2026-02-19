@@ -35,6 +35,8 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.io.IOException;
 
+import org.apache.lucene.analysis.CharArraySet;
+
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -75,14 +77,46 @@ public class FrenchCliticSplitFilter extends TokenFilter
     /** Ring-buffer of stored token states (lazy init). */
     private TokenStateQueue queue;
 
+    /** Snapshot of the current token before any split/normalization, used for rollback. */
+    private AttributeSource original;
+
+    /** Reusable buffer for case-insensitive keep-as-is lookups. */
+    private char[] normBuf = new char[32];
+
     /** Scratch attribute source used to build buffered tokens without mutating current token. */
     private AttributeSource scratch;
     private CharTermAttribute scratchTerm;
     private OffsetAttribute scratchOffset;
     private PositionIncrementAttribute scratchPosInc;
 
+    /** Tokens that must never be split (lookup is performed case-insensitively in {@link #keepAsIs()}). */
+    private static final CharArraySet KEEP_AS_IS = new CharArraySet(32, true);
+    static {
+        // Lexicalized form: splitting "quelqu'un" into "quelque" + "un" is usually undesirable.
+        KEEP_AS_IS.add("c'est");
+        KEEP_AS_IS.add("d'abord");
+        KEEP_AS_IS.add("d'accord");
+        KEEP_AS_IS.add("d'ailleurs");
+        KEEP_AS_IS.add("d'autant");
+        KEEP_AS_IS.add("d'autre");
+        KEEP_AS_IS.add("d'autres");
+        KEEP_AS_IS.add("d'emblée");
+        KEEP_AS_IS.add("d'après");
+        KEEP_AS_IS.add("d'avec");
+        KEEP_AS_IS.add("d'entre");
+        KEEP_AS_IS.add("d'ici");
+        KEEP_AS_IS.add("l'un");
+        KEEP_AS_IS.add("l'une");
+        KEEP_AS_IS.add("l'autre");
+        KEEP_AS_IS.add("n'est");
+        KEEP_AS_IS.add("n'est-ce");
+        KEEP_AS_IS.add("n'importe");
+        KEEP_AS_IS.add("n'empêche");
+        KEEP_AS_IS.add("qu'est-ce");
+    }
+
     /** Ellisions prefix */
-    private static final CharArrayMap<char[]> PREFIX = new CharArrayMap<>(30, false);
+    private static final CharArrayMap<char[]> PREFIX = new CharArrayMap<>(30, true);
     static {
         PREFIX.put("d'", "de".toCharArray());
         PREFIX.put("D'", "de".toCharArray());
@@ -102,8 +136,6 @@ public class FrenchCliticSplitFilter extends TokenFilter
         PREFIX.put("Puisqu'", "puisque".toCharArray());
         PREFIX.put("qu'", "que".toCharArray());
         PREFIX.put("Qu'", "que".toCharArray());
-        PREFIX.put("quelqu'", "quelque".toCharArray());
-        PREFIX.put("Quelqu'", "quelque".toCharArray());
         PREFIX.put("quoiqu'", "quoique".toCharArray());
         PREFIX.put("Quoiqu'", "quoique".toCharArray());
         PREFIX.put("s'", "se".toCharArray());
@@ -165,9 +197,18 @@ public class FrenchCliticSplitFilter extends TokenFilter
             return true;
         }
 
-        for (int step = 0; step < MAX_STEPS; step++) {
-            final int len = termAtt.length();
-            if (len <= 1) return true;
+        // Some lexicalized forms should never be split.
+        if (keepAsIs()) {
+            return true;
+        }
+
+        // Capture the token state before any in-place normalization/splitting.
+        this.copyTo(original);
+
+        try {
+            for (int step = 0; step < MAX_STEPS; step++) {
+                final int len = termAtt.length();
+                if (len <= 1) return true;
 
             final char[] buf = termAtt.buffer();
 
@@ -229,10 +270,21 @@ public class FrenchCliticSplitFilter extends TokenFilter
                 }
             }
 
-            return true; // term is OK like that
-        }
+                return true; // term is OK like that
+            }
 
-        throw new IllegalStateException("FilterAposHyphenFr: exceeded MAX_STEPS, queue=" + queue);
+            throw new IllegalStateException("FilterAposHyphenFr: exceeded MAX_STEPS, queue=" + queue);
+        }
+        catch (IllegalStateException e) {
+            // If queue capacity is exceeded, rollback: no split, emit the original token as-is.
+            final String msg = e.getMessage();
+            if (msg != null && msg.startsWith("TokenStateQueue is full")) {
+                queue.clear();
+                original.copyTo(this);
+                return true;
+            }
+            throw e;
+        }
     }
 
     /**
@@ -263,8 +315,8 @@ public class FrenchCliticSplitFilter extends TokenFilter
 
         queue = new TokenStateQueue(
             QUEUE_CAPACITY,
-            4 * QUEUE_CAPACITY,
-            TokenStateQueue.OverflowPolicy.GROW,
+            QUEUE_CAPACITY,
+            TokenStateQueue.OverflowPolicy.THROW,
             this
         );
 
@@ -273,6 +325,36 @@ public class FrenchCliticSplitFilter extends TokenFilter
         scratchTerm = scratch.getAttribute(CharTermAttribute.class);
         scratchOffset = scratch.getAttribute(OffsetAttribute.class);
         scratchPosInc = scratch.getAttribute(PositionIncrementAttribute.class);
+
+        original = this.cloneAttributes();
+        original.clearAttributes();
+    }
+
+    /**
+     * Case-insensitive lookup for tokens that must not be split.
+     *
+     * <p>Performs a lightweight normalization for apostrophe and hyphen variants
+     * without mutating the current token buffer.</p>
+     */
+    private boolean keepAsIs() {
+        final int len = termAtt.length();
+        if (len <= 0) return false;
+        ensureNormBuf(len);
+        final char[] buf = termAtt.buffer();
+        for (int i = 0; i < len; i++) {
+            char c = buf[i];
+            if (c == '’' || c == '\u02BC') c = '\'';
+            else if (c == '\u2010' || c == '\u2011' || c == '\u00AD') c = '-';
+            normBuf[i] = Character.toLowerCase(c);
+        }
+        return KEEP_AS_IS.contains(normBuf, 0, len);
+    }
+
+    private void ensureNormBuf(final int len) {
+        if (normBuf.length >= len) return;
+        int newLen = normBuf.length;
+        while (newLen < len) newLen <<= 1;
+        normBuf = new char[newLen];
     }
 
     private static int firstAposIndexAndNormalize(final char[] buf, final int len) {
