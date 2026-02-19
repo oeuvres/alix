@@ -178,11 +178,7 @@ public enum Upos implements Tag
     
     
     public final int code;
-    static final Index index = new Index(0, 0xFF);
-    static
-    {
-        for (Upos tag : Upos.values()) index.add(tag.code, tag);
-    }
+    static final Tag.Lookup<Upos> LOOKUP = Tag.Lookup.of(values());
 
     private Upos(final int code)
     {
@@ -198,15 +194,13 @@ public enum Upos implements Tag
         );
     }
     
-    static public String name(final int code)
+    static public Upos get(final int code)
     {
-        Tag tag = index.get(code);
-        if (tag == null) return null;
-        return tag.name();
+        return LOOKUP.get(code);
     }
-    static public int code(final String name)
+    static public Upos get(final String name)
     {
-        return valueOf(name.replace('+', '_')).code;
+        return LOOKUP.get(name);
     }
 
     @Override

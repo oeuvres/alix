@@ -1,48 +1,98 @@
 package com.github.oeuvres.alix.common;
 
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Contract and tool for linguistic tool.
  */
-public interface Tag {
+public interface Tag
+{
 
-    static class Index{
-        private final int min;
-        private final int max;
-        private final Tag[] code4tag;
-        public Index(final int min, final int max) {
-            if (min < 0) {
-                throw new IllegalArgumentException("min=" + min + " < 0, out of range.");
+    /**
+     * Dual lookup for enums implementing Tag: - code -> enum constant (array, O(1))
+     * - name -> enum constant (HashMap, O(1) avg)
+     *
+     * Build-time checks: duplicate code or duplicate name =>
+     * IllegalArgumentException.
+     */
+    final class Lookup<E extends Enum<E> & Tag>
+    {
+        private final int minCode;
+        private final Object[] byCode; // stores E
+        private final Map<String, E> byName; // immutable view
+
+        private Lookup(final E[] values)
+        {
+            if (values == null || values.length == 0) {
+                throw new IllegalArgumentException("Empty enum values");
             }
-            if (min < 0) {
-                throw new IllegalArgumentException("max=" + max + " < min=" + min+", out of range");
+
+            int min = Integer.MAX_VALUE;
+            int max = Integer.MIN_VALUE;
+            for (E e : values) {
+                final int c = e.code();
+                if (c < min)
+                    min = c;
+                if (c > max)
+                    max = c;
             }
-            this.min = min;
-            this.max = max;
-            code4tag = new Tag[max + 1];
+
+            this.minCode = min;
+            this.byCode = new Object[max - min + 1];
+
+            final HashMap<String, E> m = new HashMap<>(values.length * 2);
+
+            for (E e : values) {
+                // code -> e
+                final int idx = e.code() - min;
+                if (byCode[idx] != null) {
+                    throw new IllegalArgumentException(
+                            "Duplicate code=" + e.code() + " for " + e + " and " + byCode[idx]);
+                }
+                byCode[idx] = e;
+
+                // name -> e
+                final String n = e.name();
+                final E prev = m.putIfAbsent(n, e);
+                if (prev != null && prev != e) {
+                    throw new IllegalArgumentException("Duplicate name=\"" + n + "\" for " + e + " and " + prev);
+                }
+            }
+
+            this.byName = Map.copyOf(m);
         }
-        public void add(int code, Tag tag) {
-            if (code < min || code > max) {
-                throw new IllegalArgumentException("code=" + code + " for “" + tag + "”, out of range [" + min +", " + max + "]");
-            }
-            if (code4tag[code] != null) {
-                throw new IllegalArgumentException("code=" + code  + " for “" + tag + ", already affected to tag=" + code4tag[code]);
-            }
-            code4tag[code] = tag;
+
+        public static <E extends Enum<E> & Tag> Lookup<E> of(final Class<E> enumClass)
+        {
+            return new Lookup<>(enumClass.getEnumConstants());
         }
-        /**
-         * Returns a {@link Tag} by code, or null if code out of range, or if 
-         * no tag for this code.
-         * @param code {@link Tag#code()}-
-         * @return tag for this code if any or null.
-         */
-        public Tag get(final int code) {
-            if (code < min || code > max) return null;
-            return code4tag[code];
+
+        /** Alternative builder to avoid `.class` from inside the enum. */
+        public static <E extends Enum<E> & Tag> Lookup<E> of(final E[] values)
+        {
+            return new Lookup<>(values);
+        }
+
+        public E get(final int code)
+        {
+            final int idx = code - minCode;
+            if (idx < 0 || idx >= byCode.length)
+                return null;
+            @SuppressWarnings("unchecked")
+            final E e = (E) byCode[idx];
+            return e;
+        }
+
+        public E get(final String name)
+        {
+            if (name == null)
+                return null;
+            return byName.get(name);
         }
     }
 
     public String name();
+
     public int code();
-    public int code(String name);
 }
