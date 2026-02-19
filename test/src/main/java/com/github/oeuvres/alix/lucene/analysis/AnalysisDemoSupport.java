@@ -34,7 +34,7 @@ public final class AnalysisDemoSupport {
     private AnalysisDemoSupport() { }
 
     /** A curated demo case. */
-    public record Case(String id, String title, String input, String notes) { }
+    public record Case(String title, String input, String notes) { }
 
     /**
      * Token snapshot for diffing/printing.
@@ -275,7 +275,8 @@ public final class AnalysisDemoSupport {
         Objects.requireNonNull(cases, "cases");
         for (Case c : cases) {
             System.out.println();
-            System.out.println("== " + c.id() + "  " + c.title());
+            System.out.println("== " + c.title());
+            System.out.println(c.input());
             if (c.notes() != null && !c.notes().isEmpty()) {
                 System.out.println("-- " + c.notes());
             }

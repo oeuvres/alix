@@ -47,28 +47,24 @@ public final class FrenchCliticSplitFilterDemo {
     static final List<AnalysisDemoSupport.Case> CASES = List.of(
 
         new AnalysisDemoSupport.Case(
-            "apos-curly",
             "Curly apostrophes + common prefixes",
             "D’Alembert n’a pas dit d’abord.",
             "Exercises normalization of U+2019 to '\'' and prefix table: D'/n'/d'."
         ),
 
         new AnalysisDemoSupport.Case(
-            "apos-long",
             "Longer apostrophe prefixes (lorsqu', puisqu', qu')",
             "Lorsqu’il arrive, puisqu’on sait ce qu’il veut.",
             "Should emit tokens like 'lorsque' + 'il', 'puisque' + 'on', 'que' + 'il'."
         ),
 
         new AnalysisDemoSupport.Case(
-            "hyph-inversion",
             "Inversion and linking -t",
             "Habite-t-il ici ? Serait-ce vrai ?",
             "Should drop '-t' (suffix -t => null), split '-il' and '-ce'."
         ),
 
         new AnalysisDemoSupport.Case(
-            "hyph-multi",
             "Multiple clitic suffixes (ordering)",
             // U+2011 (non-breaking hyphen) to test lastHyphenIndexAndNormalize
             "Rends‑le‑moi; donne-les-leur.",
@@ -76,35 +72,30 @@ public final class FrenchCliticSplitFilterDemo {
         ),
 
         new AnalysisDemoSupport.Case(
-            "hyph-y-en",
             "Y/En clitics",
             "Allons-y, parlons-en.",
             "Expect allons + y; parlons + en."
         ),
 
         new AnalysisDemoSupport.Case(
-            "xml-skip",
             "Do not split inside XML tags",
             "<a href=\"d'Artagnan\">d'Artagnan</a> d'Artagnan",
             "Filter skips splitting when PosAttribute==XML for tag tokens. If you observe splits inside <...>, your upstream does not set pos=XML or tags are not tokenized as XML."
         ),
 
         new AnalysisDemoSupport.Case(
-            "hyph-null-suffix",
             "Suffixes mapped to null (-ci, -là)",
             "Ceux-ci viennent cette année-là.",
             "Filter strips -ci/-là without emitting a token (value null). Verify this is desired."
         ),
 
         new AnalysisDemoSupport.Case(
-            "known-side-effect",
             "Known side effect: qu’en-dira-t-on",
             "Qu’en-dira-t-on ?",
             "Comment in filter mentions this form. Observe what splits and what remains glued."
         ),
 
         new AnalysisDemoSupport.Case(
-            "lexicalized",
             "Potentially over-aggressive splits (quelqu', l')",
             "Quelqu’un l’aime; L’Oreal est cité.",
             "PREFIX contains quelqu' => quelque + un; l' is preserved as " +
@@ -112,7 +103,6 @@ public final class FrenchCliticSplitFilterDemo {
         ),
 
         new AnalysisDemoSupport.Case(
-            "max-steps",
             "Pathological: exceed MAX_STEPS",
             MAX_STEPS_TOKEN,
             "If this crashes, it demonstrates a robustness limit. If it does not, your tokenizer likely split the token earlier."
@@ -123,7 +113,7 @@ public final class FrenchCliticSplitFilterDemo {
         try (Analyzer analyzer = buildAnalyzer()) {
             System.out.println("\n==== FrenchCliticSplitFilterDemo ====\n");
             for (AnalysisDemoSupport.Case c : CASES) {
-                System.out.println("---- " + c.id() + " | " + c.title() + " ----");
+                System.out.println("---- " + c.title() + " ----");
                 if (c.notes() != null && !c.notes().isEmpty()) {
                     System.out.println("Notes: " + c.notes());
                 }
