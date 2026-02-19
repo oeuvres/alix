@@ -12,6 +12,8 @@ public interface Tag
     /**
      * Dual lookup for enums implementing Tag: - code -> enum constant (array, O(1))
      * - name -> enum constant (HashMap, O(1) avg)
+     * 
+     * HashMap is optimized for Upos lookup from a PosTagger.
      *
      * Build-time checks: duplicate code or duplicate name =>
      * IllegalArgumentException.

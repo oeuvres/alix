@@ -198,9 +198,24 @@ public enum Upos implements Tag
     {
         return LOOKUP.get(code);
     }
+
     static public Upos get(final String name)
     {
         return LOOKUP.get(name);
+    }
+    
+    static public String name(final int code)
+    {
+        Upos upos = LOOKUP.get(code);
+        if (upos == null) return null;
+        return upos.name();
+    }
+    
+    static public int code(final String name)
+    {
+        Upos upos = LOOKUP.get(name);
+        if (upos == null) return -1;
+        return upos.code();
     }
 
     @Override
