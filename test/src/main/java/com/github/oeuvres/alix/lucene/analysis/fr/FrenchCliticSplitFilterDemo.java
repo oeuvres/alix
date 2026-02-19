@@ -147,7 +147,7 @@ public final class FrenchCliticSplitFilterDemo {
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
-                Tokenizer tokenizer = new MLTokenizer(FrLexicons.getDotEndingWords());
+                Tokenizer tokenizer = new MLTokenizer(FrenchLexicons.getDotEndingWords());
                 TokenStream stream = new FrenchCliticSplitFilter(tokenizer);
                 return new TokenStreamComponents(tokenizer, stream);
             }

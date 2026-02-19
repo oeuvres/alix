@@ -84,7 +84,7 @@ public class MLTokenizerDemo
         final String which = (args.length == 0) ? "orig" : args[0]; // orig | (reserved for future modes)
         switch (which) {
             case "orig" -> {
-                Analyzer a = AnalyzerFactory.forTokenizer(() -> new MLTokenizer(FrLexicons.getDotEndingWords()));
+                Analyzer a = AnalyzerFactory.forTokenizer(() -> new MLTokenizer(FrenchLexicons.getDotEndingWords()));
                 AnalysisDemoSupport.runAll(a, "f", CASES);
             }
             default -> {

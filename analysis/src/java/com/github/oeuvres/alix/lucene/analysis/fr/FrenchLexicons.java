@@ -11,15 +11,15 @@ import org.apache.lucene.analysis.CharArraySet;
 import com.github.oeuvres.alix.lucene.analysis.Lexicons;
 import com.github.oeuvres.alix.util.Cache;
 
-public class FrLexicons
+public class FrenchLexicons
 {
-    private FrLexicons()
+    private FrenchLexicons()
     {
     }
     
     public static CharArraySet getDotEndingWords(String... localFiles)
     {
-        CharArraySet m = (CharArraySet) Cache.get(CharArraySet.class, FrLexicons.class, 
+        CharArraySet m = (CharArraySet) Cache.get(CharArraySet.class, FrenchLexicons.class, 
          p -> {
             try {
                 return dotEndingWords(p);
@@ -44,7 +44,7 @@ public class FrLexicons
     static CharArrayMap<char[]> getTermMapping(String... localFiles)
     {
         @SuppressWarnings("unchecked") // due to CharArrayMap.class being raw (type erasure)
-        CharArrayMap<char[]> m = (CharArrayMap<char[]>) Cache.get(CharArrayMap.class, FrLexicons.class, p -> {
+        CharArrayMap<char[]> m = (CharArrayMap<char[]>) Cache.get(CharArrayMap.class, FrenchLexicons.class, p -> {
             try {
                 return termMapping(p);
             } catch (IOException e) {

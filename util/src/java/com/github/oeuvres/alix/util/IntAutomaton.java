@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene.analysis.fr;
+package com.github.oeuvres.alix.util;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
