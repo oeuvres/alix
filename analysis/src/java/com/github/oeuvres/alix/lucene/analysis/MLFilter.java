@@ -44,6 +44,7 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import static com.github.oeuvres.alix.common.Upos.*;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
 /**
  * A final token filter before indexation, to plug after a lemmatizer filter,
@@ -57,10 +58,7 @@ public class MLFilter extends TokenFilter
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final CharsAttImpl test = new CharsAttImpl();
-    /** The position increment (inform it if positions are stripped) */
-    // private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
-    /** A linguistic category as a short number, see {@link TagFr} */
-    private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    private final PosAttribute posAtt = addAttribute(PosAttribute.class);
     /** A flag for non content element */
     private int skip;
     /** Elements to skip */
@@ -128,8 +126,8 @@ public class MLFilter extends TokenFilter
             // update the char wrapper with present term
             
             test.wrap(termAtt.buffer(), termAtt.length());
-            final int flags = flagsAtt.getFlags();
-            final boolean xml = (flags == XML.code);
+            final int pos = posAtt.getPos();
+            final boolean xml = (pos == XML.code);
             boolean open = false;
             boolean close = false;
             if (xml) {
@@ -185,12 +183,12 @@ public class MLFilter extends TokenFilter
                 continue;
             }
             else if (close &&  PARA.contains(termAtt.buffer(), tagOff, tagLen)) {
-                flagsAtt.setFlags(PUNCTpara.code);
+                posAtt.setPos(PUNCTpara.code);
                 termAtt.setEmpty().append("¶");
                 return true;
             }
             else if (close &&  SECTION.contains(termAtt.buffer(), tagOff, tagLen)) {
-                flagsAtt.setFlags(PUNCTsection.code);
+                posAtt.setPos(PUNCTsection.code);
                 termAtt.setEmpty().append("§");
                 return true;
             }
