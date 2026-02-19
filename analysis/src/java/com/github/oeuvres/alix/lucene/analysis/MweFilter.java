@@ -33,6 +33,8 @@
  */
 package com.github.oeuvres.alix.lucene.analysis;
 
+import java.io.IOException;
+
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -41,7 +43,8 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.AttributeSource;
 
-import java.io.IOException;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
+
 
 /**
  * Replaces contiguous multi-word expressions (MWEs) by a single token using a compiled {@code MweLexicon}.
@@ -63,9 +66,9 @@ import java.io.IOException;
  */
 public final class MweFilter extends TokenFilter {
 
+    private TokenStateQueue queue;
   private final MweLexicon lex;
   private final int maxTokens;
-  private TokenStateQueue queue;
 
   // Standard Lucene attrs
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -74,8 +77,9 @@ public final class MweFilter extends TokenFilter {
   private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
 
   // Your attrs (examples; use your actual ones)
-  private final LemmaIdAttribute lemmaIdAtt = addAttribute(LemmaIdAttribute.class);
-  private final PosIdAttribute posIdAtt = addAttribute(PosIdAttribute.class);
+  private final PosAttribute posAtt = addAttribute(PosAttribute.class);
+  // private final LemmaIdAttribute lemmaIdAtt = addAttribute(LemmaIdAttribute.class);
+  // private final PosIdAttribute posIdAtt = addAttribute(PosIdAttribute.class);
 
   // Carry position increments from skipped tokens inside a matched MWE to the next emitted token.
   private int carryPosInc = 0;
@@ -125,9 +129,9 @@ public final class MweFilter extends TokenFilter {
 
     for (int i = 0; i < limit; i++) {
       final AttributeSource s = queue.get(i);
-      final int tokId = s.getAttribute(LemmaIdAttribute.class).getLemmaId();
+      // final int tokId = s.getAttribute(LemmaIdAttribute.class).getLemmaId();
 
-      st = lex.step(st, tokId);
+      // st = lex.step(st, tokId);
       if (st < 0) break;
 
       final int entryId = lex.acceptEntry(st);
@@ -223,9 +227,9 @@ public final class MweFilter extends TokenFilter {
     posLenAtt.setPositionLength(lenTokens);
 
     // Assign POS + optional lemma id for the MWE token.
-    posIdAtt.setPosId(lex.pos(entryId));
+    // posIdAtt.setPosId(lex.pos(entryId));
     final int mweLemma = lex.lemmaId(entryId);
-    if (mweLemma >= 0) lemmaIdAtt.setLemmaId(mweLemma);
+    // if (mweLemma >= 0) lemmaIdAtt.setLemmaId(mweLemma);
   }
 }
 
