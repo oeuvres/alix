@@ -69,7 +69,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  * @see org.apache.lucene.analysis.charfilter.MappingCharFilter
  * @see org.apache.lucene.analysis.synonym.SynonymGraphFilter
  */
-public final class TermMappingFilter extends TokenFilter {
+public final class TermReplaceFilter extends TokenFilter {
 
     /**
      * Term rewrite table. Keys are matched against the current token term; values are copied
@@ -86,7 +86,7 @@ public final class TermMappingFilter extends TokenFilter {
      * @param input the upstream {@link TokenStream} (tokenizer or previous filter)
      * @param map the rewrite table mapping surface forms to replacement forms
      */
-    public TermMappingFilter(final TokenStream input, final CharArrayMap<char[]> map) {
+    public TermReplaceFilter(final TokenStream input, final CharArrayMap<char[]> map) {
         super(input);
         this.map = map;
     }

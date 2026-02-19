@@ -67,7 +67,7 @@ public class RewriteFilterBenchmark
       base = new TokenArrayBatchStream(tokens, BATCH);
 
       // TermMappingFilter chain
-      mappingTs = new TermMappingFilter(base, termMap);
+      mappingTs = new TermReplaceFilter(base, termMap);
 
       // SynonymGraphFilter chain needs its own base stream to avoid interference
       TokenArrayBatchStream base2 = new TokenArrayBatchStream(tokens, BATCH);
