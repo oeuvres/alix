@@ -1,9 +1,10 @@
 /*
  * Alix, A Lucene Indexer for XML documents.
  * 
+ * Copyright 2026 Frédéric Glorieux <frederic.glorieux@fictif.org> & Unige
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
- * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
  * Alix is a java library to index and search XML text documents
  * with Lucene https://lucene.apache.org/core/
@@ -32,18 +33,17 @@
  */
 package com.github.oeuvres.alix.lucene.analysis;
 
-import java.util.Map;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.Locale;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
+
 import static com.github.oeuvres.alix.common.Upos.*;
 
 import opennlp.tools.postag.POSModel;
@@ -60,8 +60,8 @@ public class PosTaggingFilter extends TokenFilter
     }
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-    /** Current Flags */
-    private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    private final PosAttribute posAtt = addAttribute(PosAttribute.class);
+    private final ProbAttribute probAtt = addAttribute(ProbAttribute.class);
     /** A stack of states */
     private TokenStateQueue queue;
     /** Maximum size of a sentence to send to the tagger */
@@ -69,35 +69,6 @@ public class PosTaggingFilter extends TokenFilter
 
     /** non thread safe tagger, one by instance of filter */
     private POSTaggerME tagger;
-    /** tagset https://universaldependencies.org/u/pos/ */
-    private static final Map<String, Upos> TAG_LIST = Map.ofEntries(
-        Map.entry("ADJ", ADJ),
-        Map.entry("ADP", ADP),
-        Map.entry("ADP+DET", ADP_DET),
-        Map.entry("ADP+PRON", ADP_PRON),
-        Map.entry("ADV", ADV),
-        Map.entry("AUX", AUX),
-        Map.entry("CCONJ", CCONJ),
-        Map.entry("DET", DET),
-        Map.entry("INTJ", INTJ),
-        Map.entry("NOUN", NOUN),
-        Map.entry("NUM", NUM),
-        Map.entry("PRON", PRON),
-        Map.entry("PROPN", PROPN),
-        Map.entry("PUNCT", TOKEN), // pun is filtered upper, tagger bug
-        Map.entry("SCONJ", SCONJ),
-        Map.entry("SYM", TOKEN),
-        Map.entry("VERB", VERB),
-        Map.entry("X", TOKEN)
-    );
-    /** state of the queue */
-    private boolean tagged = false;
-    
-    public PosTaggingFilter(TokenStream input)
-    {
-        super(input);
-        throw new Error("TODO");
-    }
 
 
     /**
@@ -114,69 +85,85 @@ public class PosTaggingFilter extends TokenFilter
     @Override
     public final boolean incrementToken() throws IOException
     {
-        // needed here to have all atts in queue
-        if (queue == null) {
-            queue = new TokenStateQueue(SENTMAX, this);
-        }
-        // empty the queue
+
+        // 0) Drain queued tokens first
         if (!queue.isEmpty()) {
             clearAttributes();
             queue.removeFirst(this);
             return true;
         }
-        boolean toksLeft = true;
-        // store states till pun
+
+
+        // 2) Fill queue until boundary or SENTMAX or EOF
         while (queue.size() < SENTMAX) {
-            clearAttributes(); // clear before next incrementToken
-            toksLeft = input.incrementToken();
-            if (!toksLeft)
+            clearAttributes();
+            if (!input.incrementToken())
                 break;
+
             queue.addLast(this);
-            final int flags = flagsAtt.getFlags();
-            if (flags == PUNCTsection.code || flags == PUNCTpara.code || flags == PUNCTsent.code)
+
+            final int pos = posAtt.getPos(); // structural classification from upstream
+            if (pos == PUNCTsection.code || pos == PUNCTpara.code || pos == PUNCTsent.code) {
                 break;
+            }
         }
-        // should be finisehd here
+
         final int n = queue.size();
         if (n == 0)
             return false;
 
-        String[] sentence = new String[queue.size()];
-        boolean firstToken = true;
-        boolean needsTagging = false;
+        // 3) Build sentence[] for the tagger + detect if we have any lexical TOKEN
+        final String[] sentence = new String[n];
+
         for (int i = 0; i < n; i++) {
-            final FlagsAttribute flags = queue.get(i).getAttribute(FlagsAttribute.class);
-            // those tags will not help tagger
-            if (flags.getFlags() == PUNCTsection.code || flags.getFlags() == PUNCTpara.code) {
+            final PosAttribute p = queue.get(i).getAttribute(PosAttribute.class);
+            final int pos = p.getPos();
+
+            if (pos == PUNCTsection.code || pos == PUNCTpara.code) {
                 sentence[i] = ".";
                 continue;
             }
-            final CharTermAttribute term = queue.get(i).getAttribute(CharTermAttribute.class);
-            String s = new String(term.buffer(), 0, term.length());
 
-            // bug initial cap, Tu_NAME vas_VERB bien_ ?_PUN
-            if (firstToken && !s.isEmpty() && Character.isUpperCase(s.charAt(0))) {
-                s = s.toLowerCase(Locale.ROOT);
-            }
-            sentence[i] = s;
-            if (flags.getFlags() == TOKEN.code)
-                needsTagging = true;
-        }
-        if (needsTagging) {
-            final String[] tags = tagger.tag(sentence);
+            final CharTermAttribute t = queue.get(i).getAttribute(CharTermAttribute.class);
+            String s = t.toString();
 
-            for (int i = 0; i < n; i++) {
-                final FlagsAttribute f = queue.get(i).getAttribute(FlagsAttribute.class);
-                if (f.getFlags() != TOKEN.code)
-                    continue;
-
-                final Upos upos = TAG_LIST.get(tags[i]);
-                if (upos != null) {
-                    f.setFlags(upos.code());
+            /*
+            if (pos == TOKEN.code) {
+                // Your “first word” workaround: apply only once, on the first lexical token
+                if (firstLex && !s.isEmpty() && Character.isUpperCase(s.charAt(0))) {
+                    s = s.toLowerCase(Locale.ROOT);
                 }
-                // else: keep TOKEN (or choose a fallback)
+                firstLex = false;
+                needsTagging = true;
             }
+            */
+
+            sentence[i] = s;
         }
+
+        // 4) Tag + write back into PosAttribute (only where upstream said TOKEN)
+        final String[] tags = tagger.tag(sentence);
+        double[] probs = tagger.probs();
+
+        for (int i = 0; i < n; i++) {
+            final ProbAttribute prob = queue.get(i).getAttribute(ProbAttribute.class);
+            prob.setProb(probs[i]);
+            final PosAttribute pos = queue.get(i).getAttribute(PosAttribute.class);
+            final int origPos = pos.getPos();
+            // Upper filter provide more precise punctuation than the tagger, keep it.
+            if (Upos.isPunct(origPos)) continue;
+            Upos upos = Upos.get(tags[i].replace('+', '_'));
+            if (upos == null) {
+                // for testing only
+                // System.out.println(tags[i]);
+            }
+            else {
+                pos.setPos(upos.code());
+            }
+            // else keep TOKEN (or choose a fallback)
+        }
+
+        // 5) Emit first token of the now-tagged queue
         clearAttributes();
         queue.removeFirst(this);
         return true;
@@ -186,7 +173,10 @@ public class PosTaggingFilter extends TokenFilter
     public void reset() throws IOException
     {
         super.reset();
-        queue.clear();
+        if (queue == null)
+            queue = new TokenStateQueue(SENTMAX, this);
+        else
+            queue.clear();
     }
 
     @Override
