@@ -9,6 +9,7 @@ import org.apache.lucene.util.Attribute;
 
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -71,28 +72,29 @@ public final class AnalysisDemoSupport {
      */
     public static void dump(final TokenStream ts, final String input) throws IOException {
         Objects.requireNonNull(ts, "ts");
-        requireAttribute(ts, CharTermAttribute.class);
-        requireAttribute(ts, OffsetAttribute.class);
 
-        final CharTermAttribute term = ts.getAttribute(CharTermAttribute.class);
-        final OffsetAttribute off = ts.getAttribute(OffsetAttribute.class);
-        final PosAttribute pos = ts.hasAttribute(PosAttribute.class) ? ts.getAttribute(PosAttribute.class) : null;
+        final CharTermAttribute termAtt = ts.getAttribute(CharTermAttribute.class);
+        final OffsetAttribute offAtt = ts.getAttribute(OffsetAttribute.class);
+        final PosAttribute posAtt = ts.hasAttribute(PosAttribute.class) ? ts.getAttribute(PosAttribute.class) : null;
+        final ProbAttribute probAtt = ts.getAttribute(ProbAttribute.class);
 
         ts.reset();
         try {
             int i = 0;
             while (ts.incrementToken()) {
-                final int s = off.startOffset();
-                final int e = off.endOffset();
-                final Integer p = (pos == null) ? null : pos.getPos();
+                final int start = offAtt.startOffset();
+                final int end = offAtt.endOffset();
+                final int pos = (posAtt != null)?posAtt.getPos():0;
+                final double prob = (probAtt != null)?probAtt.getProb():-1;
 
                 System.out.printf(
-                    "%5d  [%d,%d)  %-6s  %s |%s|%n",
+                    "%5d  [%d,%d) |%s| %s  %-6s  %.5f%n",
                     i++,
-                    s, e,
-                    uposLabel(p),
-                    escape(term.toString()),
-                    safeSlice(input, s, e)
+                    start, end,
+                    safeSlice(input, start, end),
+                    escape(termAtt.toString()),
+                    Upos.get(pos).name(),
+                    prob
                 );
             }
             ts.end();
@@ -130,8 +132,6 @@ public final class AnalysisDemoSupport {
      */
     public static ArrayList<Tok> collect(final TokenStream ts) throws IOException {
         Objects.requireNonNull(ts, "ts");
-        requireAttribute(ts, CharTermAttribute.class);
-        requireAttribute(ts, OffsetAttribute.class);
 
         final CharTermAttribute term = ts.getAttribute(CharTermAttribute.class);
         final OffsetAttribute off = ts.getAttribute(OffsetAttribute.class);
@@ -189,36 +189,16 @@ public final class AnalysisDemoSupport {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Internal helpers
-    // -------------------------------------------------------------------------
-
-    private static <T extends Attribute> void requireAttribute(final TokenStream ts, final Class<T> attr) {
-        if (!ts.hasAttribute(attr)) {
-            throw new IllegalStateException("TokenStream has no " + attr.getSimpleName());
-        }
-    }
 
     /** Avoid null inputs in Readers / slicing. */
     private static String nz(final String s) {
         return (s == null) ? "" : s;
     }
 
-    /** POS label: "-", or UPOS name, or numeric fallback. */
-    private static String uposLabel(final Integer code) {
-        if (code == null || code.intValue() == 0) return "-";
-        try {
-            final String name = Upos.name(code.intValue());
-            return (name == null || name.isEmpty()) ? String.valueOf(code) : name;
-        } catch (RuntimeException ex) {
-            // Defensive: if Upos.name throws for unknown codes.
-            return String.valueOf(code);
-        }
-    }
 
     private static String formatTok(final Tok t) {
         return escape(t.term())
-            + "  pos=" + uposLabel(t.pos())
+            + "  pos=" + Upos.get(t.pos()).name()
             + "  [" + t.start() + "," + t.end() + ")";
     }
 

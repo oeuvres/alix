@@ -4,27 +4,33 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.core.WhitespaceTokenizer;
+import org.apache.lucene.analysis.core.LowerCaseFilter;
+import org.apache.lucene.analysis.standard.StandardTokenizer;
 
 import java.util.List;
 
 /**
- * Demo driver for {@link TermReplaceFilter}.
+ * Demo driver for a dictionary-based term replacement filter (TermReplaceFilter).
  *
- * <p>This program is for human inspection. It runs curated strings through two analyzers:
+ * <p>This demonstrates <b>orthographic normalization</b> (not lemmatization): mapping known spelling
+ * variants to a single canonical form via exact, whole-token lookup.
  *
+ * <p>Typical inputs: OCR/legacy spelling, ASCII transliterations, locale variants (UK/US), and
+ * German pre-/post-reform spellings.
+ *
+ * <h2>Pipeline</h2>
  * <pre>
- *   WhitespaceTokenizer -> TermReplaceFilter   (case-sensitive map)
- *   WhitespaceTokenizer -> TermReplaceFilter   (ignoreCase map)
+ *   StandardTokenizer -> TermReplaceFilter
  * </pre>
  *
  * <p>Notes:
  * <ul>
- *   <li>This demo uses {@link WhitespaceTokenizer} so token boundaries are obvious.
- *       In a production analyzer you will likely use {@code StandardTokenizer} (or your own tokenizer),
- *       which changes what can match (punctuation handling, apostrophes, etc.).</li>
- *   <li>{@link TermReplaceFilter} rewrites only {@code CharTermAttribute}; offsets (and other attributes)
- *       remain those of the original token.</li>
+ *   <li>StandardTokenizer avoids punctuation-as-token artefacts; however it will split on hyphens
+ *       and apostrophes, so this demo avoids such examples on purpose.</li>
+ *   <li>LowerCaseFilter makes the demo stable for sentence-initial capitalization and German nouns.
+ *       If you need to preserve case, remove LowerCaseFilter and adapt the map accordingly.</li>
+ *   <li>If your filter class is still named {@code TermMappingFilter}, replace
+ *       {@code new TermReplaceFilter(...)} with {@code new TermMappingFilter(...)}.</li>
  * </ul>
  */
 public final class TermReplaceFilterDemo {
@@ -33,111 +39,168 @@ public final class TermReplaceFilterDemo {
 
     private static final String FIELD = "f";
 
-    /**
-     * Curated cases aimed at illustrating:
-     * - whole-token matching (including punctuation if the tokenizer keeps it)
-     * - unicode normalization via explicit mapping
-     * - case-sensitive vs ignoreCase lookup behavior
-     */
-    static final List<AnalysisDemoSupport.Case> CASES = List.of(
+    // ---------------------------------------------------------------------
+    // Curated cases (orthography, not lemmatization)
+    // ---------------------------------------------------------------------
 
+    static final List<AnalysisDemoSupport.Case> EN_CASES = List.of(
         new AnalysisDemoSupport.Case(
-            "Simple spelling normalization",
-            "colour colour, colour.",
-            "Map contains keys for 'colour', 'colour,' and 'colour.' so that the tokenizer choice is visible."
+            "Digraph / learned spelling variants",
+            "Paediatric anaemia Encyclopaedia foetus.",
+            "IgnoreCase. Canonicalize ae/oe variants: paediatric→pediatric, anaemia→anemia, encyclopaedia→encyclopedia, foetus→fetus."
         ),
-
         new AnalysisDemoSupport.Case(
-            "Diacritics folding via explicit mapping",
-            "résumé résumé, Résumé.",
-            "Shows explicit replacements only; this is not an ASCIIFoldingFilter."
+            "UK/US spelling normalization (lexicon-driven)",
+            "The colour of the centre is grey; we organise the programme.",
+            "Canonicalize to US spellings: colour→color, centre→center, organise→organize, programme→program."
         ),
-
         new AnalysisDemoSupport.Case(
-            "Unicode punctuation mapping (curly apostrophe, NB hyphen)",
-            "D’Alembert l’Oréal e-mail",
-            "Curly apostrophe U+2019 and NB hyphen U+2011 are replaced only if the exact token matches the map."
+            "Diacritics in loanwords and editorial spellings",
+            "A naïve coöperate façade résumé.",
+            "Canonicalize to plain ASCII: naïve→naive, coöperate→cooperate, façade→facade, résumé→resume."
+        )
+    );
+
+    static final List<AnalysisDemoSupport.Case> FR_CASES = List.of(
+        new AnalysisDemoSupport.Case(
+            "French ligatures: ASCII fallback → canonical Unicode",
+            "boeuf coeur soeur oeuvre oeuf foetus",
+            "Canonicalize oe→œ only for listed forms: boeuf→bœuf, coeur→cœur, soeur→sœur, oeuvre→œuvre, oeuf→œuf, foetus→fœtus."
         ),
-
         new AnalysisDemoSupport.Case(
-            "Case sensitivity",
-            "NYC nyc Nyc",
-            "Compare case-sensitive and ignoreCase maps; replacement is the same canonical form."
+            "Missing diacritics (curated, non-algorithmic)",
+            "aout noel etude",
+            "Restore diacritics only when you are confident: aout→août, noel→noël, etude→étude. (Avoid ambiguous cases like pere/père/…)"
+        )
+    );
+
+    static final List<AnalysisDemoSupport.Case> DE_CASES = List.of(
+        new AnalysisDemoSupport.Case(
+            "German orthography reform and ß/ss variants",
+            "daß dass muß muss strasse straße gross groß fluß fluss",
+            "Canonicalize to standard modern spellings: daß→dass, muß→muss, strasse→straße, gross→groß, fluß→fluss."
+        ),
+        new AnalysisDemoSupport.Case(
+            "Umlaut transliterations: ue/oe/ae → ü/ö/ä (curated list)",
+            "mueller müller goedel gödel schroeder schröder",
+            "Canonicalize common transliterations: mueller→müller, goedel→gödel, schroeder→schröder."
+        ),
+        new AnalysisDemoSupport.Case(
+            "Other lexicalized spelling variants",
+            "photographie fotografie",
+            "Sometimes you just pick a house style: photographie→fotografie (if your corpus mixes both)."
         )
     );
 
     public static void main(String[] args) throws Exception {
-        // Two analyzers to make ignoreCase behavior explicit.
         try (
-            Analyzer cs = buildAnalyzer(buildMap(false));
-            Analyzer ic = buildAnalyzer(buildMap(true))
+            Analyzer en = buildAnalyzer(buildEnglishMap());
+            Analyzer fr = buildAnalyzer(buildFrenchMap());
+            Analyzer de = buildAnalyzer(buildGermanMap())
         ) {
-            System.out.println("\n==== TermReplaceFilterDemo ====");
-            System.out.println("Tokenizer: WhitespaceTokenizer");
-            System.out.println("Filters:   TermReplaceFilter (case-sensitive) vs (ignoreCase)\n");
+            System.out.println("\n==== TermReplaceFilterDemo ====\n");
 
-            for (AnalysisDemoSupport.Case c : CASES) {
-                System.out.println("---- " +  c.title() + " ----");
-                if (c.notes() != null && !c.notes().isEmpty()) {
-                    System.out.println("Notes: " + c.notes());
-                }
-                System.out.println("Input: " + AnalysisDemoSupport.escape(c.input()));
-
-                System.out.println("\n[case-sensitive]");
-                AnalysisDemoSupport.printTokens(cs, FIELD, c.input());
-
-                System.out.println("\n[ignoreCase]");
-                AnalysisDemoSupport.printTokens(ic, FIELD, c.input());
-
-                // Optional: first token-level difference between the two analyzers.
-                final var a = AnalysisDemoSupport.collect(cs, FIELD, c.input());
-                final var b = AnalysisDemoSupport.collect(ic, FIELD, c.input());
-                System.out.println();
-                AnalysisDemoSupport.firstDiff("case-sensitive", a, "ignoreCase", b, c.input());
-                System.out.println();
-            }
+            run("EN", en, EN_CASES);
+            run("FR", fr, FR_CASES);
+            run("DE", de, DE_CASES);
         }
     }
 
-    /**
-     * Minimal Analyzer for WhitespaceTokenizer -> TermReplaceFilter.
-     */
+    private static void run(final String lang, final Analyzer analyzer, final List<AnalysisDemoSupport.Case> cases)
+        throws Exception
+    {
+        System.out.println("\n== " + lang + " ==\n");
+        for (AnalysisDemoSupport.Case c : cases) {
+            System.out.println("----? " + c.title() + " ----");
+            if (c.notes() != null && !c.notes().isEmpty()) {
+                System.out.println("Notes: " + c.notes());
+            }
+            System.out.println("Input: " + AnalysisDemoSupport.escape(c.input()));
+
+            try {
+                AnalysisDemoSupport.printTokens(analyzer, FIELD, c.input());
+            }
+            catch (RuntimeException ex) {
+                System.out.println("[ERROR] " + ex.getClass().getSimpleName() + ": " + ex.getMessage());
+            }
+            System.out.println();
+        }
+    }
+
+    /** Minimal Analyzer for StandardTokenizer ->TermReplaceFilter. */
     private static Analyzer buildAnalyzer(final CharArrayMap<char[]> map) {
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
-                final Tokenizer tokenizer = new WhitespaceTokenizer();
-                final TokenStream stream = new TermReplaceFilter(tokenizer, map);
+                Tokenizer tokenizer = new StandardTokenizer();
+                TokenStream stream = tokenizer;
+                stream = new TermReplaceFilter(stream, map);
                 return new TokenStreamComponents(tokenizer, stream);
             }
         };
     }
 
-    /**
-     * Demo mapping table.
-     *
-     * <p>Values are {@code char[]} to avoid per-token allocations.
-     */
-    private static CharArrayMap<char[]> buildMap(final boolean ignoreCase) {
-        final CharArrayMap<char[]> map = new CharArrayMap<>(32, ignoreCase);
 
-        // Spelling normalization (with punctuation variants for WhitespaceTokenizer).
-        put(map, "colour",  "color");
-        put(map, "colour,", "color,");
-        put(map, "colour.", "color.");
+    private static CharArrayMap<char[]> buildEnglishMap() {
+        final CharArrayMap<char[]> map = new CharArrayMap<>(64, true);
 
-        // Diacritics folding via explicit mapping.
-        put(map, "résumé",  "resume");
-        put(map, "résumé,", "resume,");
-        put(map, "Résumé.", "resume.");
+        // UK -> US
+        put(map, "colour", "color");
+        put(map, "centre", "center");
+        put(map, "organise", "organize");
+        put(map, "programme", "program");
 
-        // Unicode punctuation: curly apostrophe / NB hyphen.
-        put(map, "D’Alembert", "D'Alembert"); // U+2019 -> '
-        put(map, "l’Oréal",    "l'Oréal");
-        put(map, "e-mail",     "email");     // U+2011 NB hyphen
+        // Digraphs / learned spellings
+        put(map, "paediatric", "pediatric");
+        put(map, "anaemia", "anemia");
+        put(map, "encyclopaedia", "encyclopedia");
+        put(map, "foetus", "fetus");
 
-        // Canonicalization of abbreviations.
-        put(map, "NYC", "new_york_city");
+        // Diacritics in common loanwords/editorial spellings
+        put(map, "naïve", "naive");
+        put(map, "coöperate", "cooperate");
+        put(map, "façade", "facade");
+        put(map, "résumé", "resume");
+
+        return map;
+    }
+
+    private static CharArrayMap<char[]> buildFrenchMap() {
+        final CharArrayMap<char[]> map = new CharArrayMap<>(64, true);
+
+        // Ligatures (ASCII fallback -> canonical Unicode)
+        put(map, "boeuf", "bœuf");
+        put(map, "coeur", "cœur");
+        put(map, "soeur", "sœur");
+        put(map, "oeuvre", "œuvre");
+        put(map, "oeuf", "œuf");
+        put(map, "foetus", "fœtus");
+
+        // Curated diacritics restoration
+        put(map, "aout", "août");
+        put(map, "noel", "noël");
+        put(map, "etude", "étude");
+
+        return map;
+    }
+
+    private static CharArrayMap<char[]> buildGermanMap() {
+        final CharArrayMap<char[]> map = new CharArrayMap<>(96, true);
+
+        // Pre-/post-reform and Swiss variants
+        put(map, "daß", "dass");
+        put(map, "muß", "muss");
+        put(map, "strasse", "straße");
+        put(map, "gross", "groß");
+        put(map, "fluß", "fluss");
+
+        // Umlaut transliterations (curated list)
+        put(map, "mueller", "müller");
+        put(map, "goedel", "gödel");
+        put(map, "schroeder", "schröder");
+
+        // House style example
+        put(map, "photographie", "fotografie");
 
         return map;
     }
