@@ -262,22 +262,23 @@ public final class CharsDic
      * </ul>
      *
      * @param ord the 0-based ordinal of the term (0 <= ord < {@link #size()})
-     * @param dst destination array to receive the term, starting at index 0
+     * @param dst destination array to receive the term
+     * @param dstOff start offset (inclusive) where to term
      * @return the term length (number of {@code char} code units copied)
      * @throws IllegalArgumentException if {@code ord} is out of range or {@code dst} is too small
      * @throws NullPointerException if {@code dst} is null
      */
-    public int get(final int ord, final char[] dst)
+    public int get(final int ord, final char[] dst, int dstOff)
     {
         checkOrd(ord);
         if (dst == null) throw new NullPointerException("dst");
         final long m = meta[ord];
         final int len = (int) m & 0xFFFF;
-        if (dst.length < len) {
-            throw new IllegalArgumentException("dst too small: dst.length=" + dst.length + " need=" + len);
+        if ( dst.length - dstOff < len) {
+            throw new IllegalArgumentException("dst too small: dst.length - dstOff =" + (dst.length - dstOff) + " need=" + len);
         }
         final int off = (int) (m >>> 32);
-        System.arraycopy(slab, off, dst, 0, len);
+        System.arraycopy(slab, off, dst, dstOff, len);
         return len;
     }
 
