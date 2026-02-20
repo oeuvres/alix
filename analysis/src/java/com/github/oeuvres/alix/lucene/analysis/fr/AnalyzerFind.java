@@ -38,7 +38,6 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
 import com.github.oeuvres.alix.lucene.analysis.FilterFind;
-import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.MLFilter;
 import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
 

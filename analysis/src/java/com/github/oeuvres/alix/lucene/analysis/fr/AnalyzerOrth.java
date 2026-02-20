@@ -36,7 +36,6 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 
-import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
 import com.github.oeuvres.alix.lucene.analysis.FilterOrth;
 import com.github.oeuvres.alix.lucene.analysis.MLFilter;

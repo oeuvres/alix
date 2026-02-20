@@ -30,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene.analysis;
+package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.io.IOException;
 
@@ -42,6 +42,7 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import com.github.oeuvres.alix.common.Upos;
 import static com.github.oeuvres.alix.common.Upos.*;
 
+import com.github.oeuvres.alix.lucene.analysis.FilterCloud;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
